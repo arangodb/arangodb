@@ -34,6 +34,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
 #include "VocBase/Methods/Collections.h"
 
 #include "Execution.h"

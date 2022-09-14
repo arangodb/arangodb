@@ -122,11 +122,11 @@ completely transparent to inspectors. This can be achieved by writing the
 This is currently not implemented. Please let me know in case you need support
 for this.
 
-### Fallbacks and Invariants
+### Fallbacks, Invariants and custom Context
 
-For each field, we may provide a fallback value for optional fields or a
-predicate that checks invariants on the data (or both). For example, consider
-the following class and its implementation for `inspect`:
+For each field, we may provide a fallback value or fallback factory for optional
+fields, as well a predicate that checks invariants on the data. For example,
+consider the following class and its implementation for `inspect`:
 ```cpp
 struct LogTargetConfig {
   std::size_t writeConcern = 1;
@@ -148,19 +148,19 @@ auto inspect(Inspector& f, LogTargetConfig& x) {
 ```
 
 By default all attributes specified in the description have to be present when
-loading. If an attribute is not present but has a fallback value defined, then
-the field is instead set to the fallback value. Fallback values are taken by
-value, but as the example shows we can use `std::ref` to capture references.
-The attributes are processed in the same order they are specified.
-`writeConcern` is a mandatory attribute while `softWriteConcern` is optional,
-but if `softWriteConcern` is not specified explicitly, we want it to default
-to the exact same value as `writeConcern`. Since `writeConcern` is specified
-first, it is also processed first. For `softWriteConcern` we capture a reference
-to `writeConcern` as fallback, so when we process `softWriteConcern` and cannot
-find it, we take the fallback value from the already processed `writeConcern`.
-Alternatively one can use `Inspector::keep()` to indicate that we simply want to
-keep the current value of that field (see the fallback call for "waitForSync" in
-the example).
+loading. If an attribute is not present but has a fallback value (or factory)
+defined, then the field is instead initialized with the fallback. Fallback
+values are taken by value, but as the example shows we can use `std::ref` to
+capture references. The attributes are processed in the same order they are
+specified. `writeConcern` is a mandatory attribute while `softWriteConcern` is
+optional, but if `softWriteConcern` is not specified explicitly, we want it to
+default to the exact same value as `writeConcern`. Since `writeConcern` is
+specified first, it is also processed first. For `softWriteConcern` we capture
+a reference to `writeConcern` as fallback, so when we process `softWriteConcern`
+and cannot find it, we take the fallback value from the already processed
+`writeConcern`. Alternatively one can use `Inspector::keep()` to indicate that
+we simply want to keep the current value of that field (see the fallback call
+for "waitForSync" in the example).
 
 `writeConcern` and `softWriteConcern` must both be greater zero, which is
 verified by the provided invariant function. `invariant` takes some callable
@@ -177,6 +177,34 @@ object.
 
 Invariants are only checked when `isLoading` is true (see "Splitting Save and
 Load").
+
+If all you want to do is check the invariants for a manually filled struct
+there is the `ValidateInspector` that does just that. Since invariant are only
+checked when `isLoading` is true, this is also set for the `ValidateInspector`,
+even though it does _not_ modify the given object.
+
+Being able to define fallback values and invariants is fine, but sometimes those
+depend on some configuration that are not available in the `inspect` function.
+This is were custom contexts come in. Suppose we want `writeConcern` to default
+to some value that can be configured, e.g., via the command line. Then you can
+pass an object that contains your `defaultWriteConcern` to the constructor of
+the respective Inspector, which will store a reference to it. This reference is
+then available via `getContext` as shown in the following example which uses a
+`fallbackFactor` to initialize `writeConcern` (this is just so we also have an
+example of how to use `fallbackFactory`; `fallback` would work just as well):
+```cpp
+template<class Inspector>
+auto inspect(Inspector& f, LogTargetConfig& x) {
+  auto& context = f.getContext();
+  return f.object(x)
+      .fields(f.field("writeConcern", x.writeConcern).invariant(greaterZero)
+                  .fallbackFactory([&]() { return context.defaultWriteConcern; }),
+              f.field("softWriteConcern", x.softWriteConcern)
+                  .fallback(std::ref(x.writeConcern)).invariant(greaterZero),
+              f.field("waitForSync", x.waitForSync).fallback(f.keep()))
+      .invariant([](LogTargetConfig& c) { return c.writeConcern >= c.softWriteConcern});
+}
+```
 
 ### Specializing `Access`
 
