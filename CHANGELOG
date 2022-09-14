@@ -1,6 +1,8 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Display progress during Arangosearch link and inverted index recovery.
+
 * Fixed SEARCH-374 and SEARCH-358 Fixed a rare case of wrong seek operation in
   the sparse_bitset during query ArangoSearch execution.
 
