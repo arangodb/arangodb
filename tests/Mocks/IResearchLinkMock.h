@@ -90,8 +90,8 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
       arangodb::velocypack::Builder& builder,
       std::underlying_type<arangodb::Index::Serialize>::type) const override;
 
-  void toVelocyPackFigures(velocypack::Builder& builder) const override {
-    IResearchLink::toVelocyPackStats(builder);
+  void toVelocyPackFigures(velocypack::Builder& builder) const final {
+    IResearchDataStore::toVelocyPackStats(builder);
   }
 
   IndexType type() const override { return IResearchLink::type(); }

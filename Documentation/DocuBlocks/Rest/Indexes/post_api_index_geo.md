@@ -35,7 +35,7 @@ the attribute *latitude* and of the attribute *longitude* must a
 double. All documents, which do not have the attribute paths or which
 values are not suitable, are ignored.
 
-@RESTBODYPARAM{geoJson,string,optional,string}
+@RESTBODYPARAM{geoJson,boolean,optional,}
 If a geo-spatial index on a *location* is constructed
 and *geoJson* is *true*, then the order within the array is longitude
 followed by latitude. This corresponds to the format described in

@@ -49,6 +49,7 @@ const setup = require(base);
   setup.createStrings();
   setup.createPersistent();
   setup.createView();
+  setup.createSearch();
   setup.createSmartGraph();
   setup.createSmartArangoSearch();
   setup.createSatelliteCollections();

@@ -769,6 +769,51 @@
       },
 
       ////////////////////////////////////////////////////////////////////////////////
+      /// @brief test search-alias restoring
+      ////////////////////////////////////////////////////////////////////////////////
+
+      testSearch: function () {
+        let collection = db._collection("searchCollection");
+        assertNotEqual(null, collection);
+
+        let index = collection.index("searchIndex");
+        assertTrue(index.includeAllFields);
+        assertEqual(index.consolidationIntervalMsec, 0);
+        assertEqual(index.cleanupIntervalStep, 42);
+
+        let search = db._view("searchSearch");
+        assertNotEqual(null, search);
+        assertEqual("searchSearch", search.name());
+        let props = search.properties();
+        assertEqual(props.indexes, [{ collection: "searchCollection", index: "searchIndex" }]);
+
+        // After a restore, the Inverted index needs to be rebuilt, therefore
+        // we cannot expect that the data is immediately visible. We can only
+        // hope that the data will be there in due course:
+
+        var startTime = new Date();
+        var res;
+        while (new Date() - startTime < 60000) {
+          res = db._query("FOR doc IN " + search.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
+          if (res.length === 5000) {
+            break;
+          }
+          console.log("Waiting for inverted index to be built...");
+          internal.wait(1);
+        }
+        assertEqual(5000, res.length);
+
+        res = db._query("FOR doc IN " + search.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
+        assertEqual(2500, res.length);
+
+        res = db._query("FOR doc IN " + search.name() + " SEARCH doc.value >= 5000 RETURN doc").toArray();
+        assertEqual(0, res.length);
+
+        res = db._query("FOR doc IN " + search.name() + " SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en') RETURN doc").toArray();
+        assertEqual(1, res.length);
+      },
+
+      ////////////////////////////////////////////////////////////////////////////////
       /// @brief test custom analyzers restoring
       ////////////////////////////////////////////////////////////////////////////////
       testAnalyzers: function () {

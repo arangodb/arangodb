@@ -64,6 +64,7 @@ constexpr std::string_view kStoredValuesFieldName = "storedValues";
 constexpr std::string_view kConsistencyFieldName = "consistency";
 constexpr std::string_view kAnalyzerDefinitionsFieldName =
     "analyzerDefinitions";
+constexpr std::string_view kIsSearchField = "searchField";
 
 #ifdef USE_ENTERPRISE
 void gatherNestedNulls(std::string_view parent,
@@ -396,13 +397,12 @@ bool IResearchInvertedIndexMeta::json(
     }
   }
 
-  for (auto const& it : consistencyTypeMap) {
-    if (it.second == _consistency) {
-      builder.add(kConsistencyFieldName, VPackValue(it.first));
-    }
-  }
-
-  builder.add(kVersionFieldName, VPackValue(static_cast<uint32_t>(_version)));
+  // FIXME: Uncomment once support is done
+  // for (auto const& it : consistencyTypeMap) {
+  //  if (it.second == _consistency) {
+  //    builder.add(kConsistencyFieldName, VPackValue(it.first));
+  //  }
+  //}
 
   return InvertedIndexField::json(server, builder, *this, true, defaultVocbase);
 }
@@ -497,7 +497,11 @@ bool InvertedIndexField::json(
     builder.add(kNameFieldName, VPackValue(toString()));
   }
 
-  if (!_fields.empty()) {
+  if (rootMode || parent._isSearchField != _isSearchField) {
+    builder.add(kIsSearchField, VPackValue(_isSearchField));
+  }
+
+  if (!_fields.empty() || rootMode) {
     auto fieldsAttributeName =
         rootMode ? kFieldsFieldName : kNestedFieldsFieldName;
     VPackArrayBuilder nestedArray(&builder, fieldsAttributeName);
@@ -526,6 +530,7 @@ bool InvertedIndexField::init(
     _isArray = parent._isArray;
     _overrideValue = parent._overrideValue;
     _expression = parent._expression;
+    _isSearchField = parent._isSearchField;
   }
   std::vector<basics::AttributeName> fieldParts;
   if (slice.isString()) {
@@ -533,7 +538,7 @@ bool InvertedIndexField::init(
     try {
       TRI_ASSERT(!parent._analyzers.empty());
       _analyzers[0] = parent.analyzer();
-      TRI_ParseAttributeString(slice.stringView(), fieldParts, true);
+      TRI_ParseAttributeString(slice.stringView(), fieldParts, !_isSearchField);
       TRI_ASSERT(!fieldParts.empty());
     } catch (arangodb::basics::Exception const& err) {
       LOG_TOPIC("1d04c", ERR, arangodb::iresearch::TOPIC)
@@ -542,6 +547,17 @@ bool InvertedIndexField::init(
       return false;
     }
   } else if (slice.isObject()) {
+    if (slice.hasKey(kIsSearchField)) {
+      auto value = slice.get(kIsSearchField);
+      if (value.isBoolean()) {
+        _isSearchField = value.getBoolean();
+      } else {
+        LOG_TOPIC("1d04d", ERR, arangodb::iresearch::TOPIC)
+            << "Error parsing attribute: " << kIsSearchField;
+        errorField = kIsSearchField;
+        return false;
+      }
+    }
     if (!rootMode) {
       // name attribute
       auto nameSlice = slice.get(kNameFieldName);
@@ -550,7 +566,8 @@ bool InvertedIndexField::init(
         return false;
       }
       try {
-        TRI_ParseAttributeString(nameSlice.stringView(), fieldParts, true);
+        TRI_ParseAttributeString(nameSlice.stringView(), fieldParts,
+                                 !_isSearchField);
         TRI_ASSERT(!fieldParts.empty());
       } catch (arangodb::basics::Exception const& err) {
         LOG_TOPIC("84c20", ERR, arangodb::iresearch::TOPIC)
@@ -733,13 +750,21 @@ bool InvertedIndexField::init(
     _path += tmp;
   }
 
-  auto fieldsAttributeName =
-      rootMode ? kFieldsFieldName : kNestedFieldsFieldName;
 #ifndef USE_ENTERPRISE
   if (!rootMode) {
+    if (slice.isObject() && slice.hasKey(kNestedFieldsFieldName)) {
+      errorField =
+          absl::StrCat(kNestedFieldsFieldName,
+                       " is supported in ArangoDB Enterprise Edition only.");
+      return false;
+    }
+
     return true;
   }
 #endif
+  auto const fieldsAttributeName =
+      rootMode ? kFieldsFieldName : kNestedFieldsFieldName;
+
   if (slice.isObject() && slice.hasKey(fieldsAttributeName)) {
     auto nestedSlice = slice.get(fieldsAttributeName);
     if (!nestedSlice.isArray()) {
@@ -813,6 +838,7 @@ bool InvertedIndexField::operator==(
         _features == other._features && _isArray == other._isArray &&
         _overrideValue == other._overrideValue &&
         _expression == other._expression &&
+        _isSearchField == other._isSearchField &&
         _fields.size() == other._fields.size())) {
     return false;
   }
@@ -842,9 +868,10 @@ bool IResearchInvertedIndexSort::toVelocyPack(
     addStringRef(builder, kCompressionFieldName, compression);
   }
 
-  if (!_locale.isBogus()) {
-    builder.add(kLocaleFieldName, VPackValue(_locale.getName()));
-  }
+  // FIXME: Uncomment once support is done
+  // if (!_locale.isBogus()) {
+  //  builder.add(kLocaleFieldName, VPackValue(_locale.getName()));
+  //}
   return true;
 }
 
@@ -902,11 +929,12 @@ IResearchInvertedIndexMetaIndexingContext::
     : _analyzers(&field->_analyzers),
       _primitiveOffset(field->_primitiveOffset),
       _meta(field),
+      _sort(field->_sort),
+      _storedValues(field->_storedValues),
       _hasNested(field->_hasNested),
       _includeAllFields(field->_includeAllFields),
       _trackListPositions(field->_trackListPositions),
-      _sort(field->_sort),
-      _storedValues(field->_storedValues) {
+      _isSearchField(field->_isSearchField) {
   if (add) {
     addField(*field);
   }
@@ -934,6 +962,7 @@ void IResearchInvertedIndexMetaIndexingContext::addField(
         current->_primitiveOffset = f._primitiveOffset;
         current->_includeAllFields = f._includeAllFields;
         current->_trackListPositions = f._trackListPositions;
+        current->_isSearchField = f._isSearchField;
       }
     }
 #ifdef USE_ENTERPRISE

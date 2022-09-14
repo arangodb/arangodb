@@ -40,10 +40,12 @@ struct RocksDBOptions : arangodb::RocksDBOptionsProvider {
   uint64_t maxTotalWalSize() const noexcept override;
   uint32_t numThreadsHigh() const noexcept override;
   uint32_t numThreadsLow() const noexcept override;
+  uint64_t periodicCompactionTtl() const noexcept override;
 
   struct GeneralOptions {
     uint32_t numThreadsLow;
     uint32_t numThreadsHigh;
+    uint64_t periodicCompactionTtl;
 
     uint64_t maxTotalWalSize;
 
@@ -110,6 +112,8 @@ struct RocksDBOptions : arangodb::RocksDBOptionsProvider {
       return f.object(o).fields(
           f.field("numThreadsLow", o.numThreadsLow).fallback(f.keep()),
           f.field("numThreadsHigh", o.numThreadsHigh).fallback(f.keep()),
+          f.field("periodicCompactionTtl", o.periodicCompactionTtl)
+              .fallback(f.keep()),
 
           f.field("maxTotalWalSize", o.maxTotalWalSize).fallback(f.keep()),
           f.field("allowFAllocate", o.allowFAllocate).fallback(f.keep()),

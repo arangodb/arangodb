@@ -9628,7 +9628,7 @@ AqlValue functions::CosineSimilarity(aql::ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintNull());
     }
 
-    return ::numberValue(numerator / denominator, true);
+    return ::numberValue(std::clamp(numerator / denominator, -1.0, 1.0), true);
   };
 
   return DistanceImpl(expressionContext, node, parameters,

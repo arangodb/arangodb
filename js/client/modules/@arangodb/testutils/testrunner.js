@@ -226,16 +226,24 @@ let databasesTest = {
     // TODO: we are currently filtering out the UnitTestDB here because it is 
     // created and not cleaned up by a lot of the `authentication` tests. This
     // should be fixed eventually
-    db._useDatabase('_system');
-    let databasesAfter = db._databases().filter((name) => name !== 'UnitTestDB');
-    if (databasesAfter.length !== 1 || databasesAfter[0] !== '_system') {
+    try {
+      db._useDatabase('_system');
+      let databasesAfter = db._databases().filter((name) => name !== 'UnitTestDB');
+      if (databasesAfter.length !== 1 || databasesAfter[0] !== '_system') {
+        obj.results[obj.translateResult(te)] = {
+          status: false,
+          message: 'Cleanup missing - test left over databases: ' + JSON.stringify(databasesAfter) + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
+        };
+        return false;
+      }
+      return true;
+    } catch (x) {
       obj.results[obj.translateResult(te)] = {
         status: false,
-        message: 'Cleanup missing - test left over databases: ' + JSON.stringify(databasesAfter) + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
+        message: 'failed to fetch the databases list: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
       };
-      return false;
     }
-    return true;
+    return false;
   }
 };
 

@@ -87,5 +87,10 @@ struct FilterConstants {
   static constexpr int64_t DefaultStartsWithMinMatchCount{1};
 };
 
+void appendExpression(irs::boolean_filter& filter, aql::AstNode const& node,
+                      QueryContext const& ctx, FilterContext const& filterCtx);
+
+irs::filter& addAllFilter(irs::boolean_filter& filter, bool hasNestedFields);
+
 }  // namespace iresearch
 }  // namespace arangodb
