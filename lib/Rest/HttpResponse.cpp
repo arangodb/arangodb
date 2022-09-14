@@ -31,11 +31,11 @@
 #include <time.h>
 
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/tri-strings.h"
 #include "Meta/conversion.h"
 #include "Rest/GeneralRequest.h"
 
@@ -154,25 +154,21 @@ void HttpResponse::writeHeader(StringBuffer* output) {
     size_t const keyLength = key.size();
 
     // ignore content-length
-    if (keyLength == 14 && key[0] == 'c' &&
-        memcmp(key.c_str(), "content-length", keyLength) == 0) {
+    if (key == StaticStrings::ContentLength) {
       continue;
-    } else if (keyLength == 10 && key[0] == 'c' &&
-               memcmp(key.c_str(), "connection", keyLength) == 0) {
+    } else if (key == StaticStrings::Connection) {
       // this ensures we don't print two "Connection" headers
       continue;
     }
 
     // save transfer encoding
-    if (keyLength == 17 && key[0] == 't' &&
-        memcmp(key.c_str(), "transfer-encoding", keyLength) == 0) {
+    if (key == StaticStrings::TransferEncoding) {
       seenTransferEncodingHeader = true;
       transferEncoding = it.second;
       continue;
     }
 
-    if (keyLength == 6 && key[0] == 's' &&
-        memcmp(key.c_str(), "server", keyLength) == 0) {
+    if (key == StaticStrings::Server) {
       // this ensures we don't print two "Server" headers
       seenServerHeader = true;
       // go on and use the user-defined "Server" header value
@@ -405,7 +401,7 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
     // convert object to JSON string
     VPackStringBufferAdapter buffer(_body->stringBuffer());
 
-    VPackDumper dumper(&buffer, &tmpOpts);
+    velocypack::Dumper dumper(&buffer, &tmpOpts);
     dumper.dump(current);
   } else {
     // determine the length of the to-be-generated JSON string,
@@ -413,7 +409,7 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
     velocypack::StringLengthSink sink;
 
     // usual dumping -  but not to the response body
-    VPackDumper dumper(&sink, &tmpOpts);
+    velocypack::Dumper dumper(&sink, &tmpOpts);
     dumper.dump(current);
 
     headResponse(static_cast<size_t>(sink.length));
