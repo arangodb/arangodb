@@ -928,7 +928,6 @@ TEST_F(VPackSaveInspectorTest, store_embedded_fields) {
   ASSERT_TRUE(result.ok());
 
   velocypack::Slice slice = builder.slice();
-  std::cout << slice.toString() << std::endl;
   ASSERT_TRUE(slice.isObject());
   EXPECT_EQ(n.e.a, slice["a"].getInt());
   EXPECT_EQ(n.e.inner.i, slice["i"].getInt());
