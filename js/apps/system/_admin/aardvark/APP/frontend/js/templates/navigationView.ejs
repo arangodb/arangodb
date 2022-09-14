@@ -39,7 +39,7 @@
     <% if (currentDB.get('isSystem') && !isCluster) { %>
       <li class="replication-menu"><a id="replication" class="tab" href="#replication"><i class="fa fa-server"></i>Replication</a></li>
     <% } %>
-    <% if (currentDB.get('isSystem') || currentDB.get(!isCluster)) { %>
+    <% if (currentDB.get('isSystem') && !isCluster) { %>
       <% if (!readOnly) { %>
        <li class="logs-menu"><a id="logs" class="tab" href="#logs"><i class="fa fa-file-text"></i>Logs</a></li>
       <% } %>

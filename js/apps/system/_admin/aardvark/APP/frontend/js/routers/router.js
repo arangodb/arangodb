@@ -638,13 +638,11 @@
       xhr.setRequestHeader('Authorization', 'Basic ' + btoa(token));
     },
 
-    logger: function () {
+    logger: function() {
       this.checkUser();
 
       this.init.then(() => {
-
         const redirectCallback = function() {
-          this.routes[''] = 'collections';
           this.navigate('#collections', {trigger: true});
         }.bind(this);
 
@@ -653,7 +651,6 @@
           if (this.loggerView) {
             this.loggerView.remove();
           }
-
           const co = new window.ArangoLogs({
             upto: true,
             loglevel: 4
@@ -663,6 +660,7 @@
           });
           this.loggerView.render(true);
         }.bind(this);
+
         if (!this.isCluster) {
           if (this.currentDB.get('name') === '_system') {
             arangoHelper.checkDatabasePermissions(redirectCallback, loggerCallback);
