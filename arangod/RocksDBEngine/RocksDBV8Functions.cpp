@@ -298,7 +298,7 @@ static void JS_CollectionRevisionTreeVerification(
     try {
       auto* physical = toRocksDBCollection(*collection);
       auto batchId = ctx->id();
-      storedTree = physical->revisionTree(batchId);
+      storedTree = physical->revisionTree(ctx->snapshotTick());
       computedTree = physical->computeRevisionTree(batchId);
       ctx->setDeleted();
     } catch (...) {

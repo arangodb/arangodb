@@ -4,6 +4,13 @@ devel
 * Added authenticate header to the HTTP response when status code is 401 
   for HTTP/2.
 
+* Implement prefetch for revision trees, in case a batch is created with
+  a distinguished collection as for `SynchronizeShard`. This ensures that
+  the revision tree for the batch will be available when needed, even though
+  the revision tree for the collection might already have advanced beyond
+  the sequence number of the snapshot in the batch. This ensures that
+  shards can get in sync more reliably and more quickly.
+
 * Fixed log with json format not respecting the value of parameter 
   `--log.shorten-filenames`.
 
