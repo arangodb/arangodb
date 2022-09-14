@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <functional>
 #include <limits>
 #include <optional>
 #include <string_view>
@@ -46,16 +47,32 @@ struct ParseOptions {
   bool ignoreMissingFields = false;
 };
 
-template<bool AllowUnsafeTypes>
+template<bool AllowUnsafeTypes, class Context = NoContext>
 struct VPackLoadInspectorImpl
-    : InspectorBase<VPackLoadInspectorImpl<AllowUnsafeTypes>> {
+    : InspectorBase<VPackLoadInspectorImpl<AllowUnsafeTypes, Context>,
+                    Context> {
+ protected:
+  using Base = InspectorBase<VPackLoadInspectorImpl, Context>;
+
+ public:
   static constexpr bool isLoading = true;
 
-  explicit VPackLoadInspectorImpl(velocypack::Builder& builder,
-                                  ParseOptions options = {})
+  explicit VPackLoadInspectorImpl(
+      velocypack::Builder& builder,
+      ParseOptions options = {}) requires(!Base::hasContext)
       : VPackLoadInspectorImpl(builder.slice(), options) {}
-  explicit VPackLoadInspectorImpl(velocypack::Slice slice, ParseOptions options)
+
+  explicit VPackLoadInspectorImpl(velocypack::Builder& builder,
+                                  ParseOptions options, Context const& context)
+      : VPackLoadInspectorImpl(builder.slice(), options, context) {}
+
+  explicit VPackLoadInspectorImpl(
+      velocypack::Slice slice, ParseOptions options) requires(!Base::hasContext)
       : _slice(slice), _options(options) {}
+
+  explicit VPackLoadInspectorImpl(velocypack::Slice slice, ParseOptions options,
+                                  Context const& context)
+      : Base(context), _slice(slice), _options(options) {}
 
   template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
   [[nodiscard]] Status value(T& v) {
@@ -175,30 +192,27 @@ struct VPackLoadInspectorImpl
            | [&]() { return endArray(); };          //
   }
 
-  [[nodiscard]] Status::Success parseField(
-      velocypack::Slice, typename VPackLoadInspectorImpl::IgnoreField&&) {
+  [[nodiscard]] Status::Success parseField(velocypack::Slice,
+                                           typename Base::IgnoreField&&) {
     return {};
   }
 
   template<class T>
   [[nodiscard]] Status parseField(velocypack::Slice slice, T&& field) {
-    VPackLoadInspectorImpl ff(slice, _options);
-    auto name = VPackLoadInspectorImpl::getFieldName(field);
-    auto& value = VPackLoadInspectorImpl::getFieldValue(field);
+    auto ff = make(slice);
+    auto name = Base::getFieldName(field);
+    auto& value = Base::getFieldValue(field);
     auto load = [&]() -> Status {
       auto isPresent = !slice.isNone();
-      using FallbackField =
-          decltype(VPackLoadInspectorImpl::getFallbackField(field));
+      using FallbackField = decltype(Base::getFallbackField(field));
       if constexpr (!std::is_void_v<FallbackField>) {
         auto applyFallback = [&](auto& val) {
-          VPackLoadInspectorImpl::getFallbackField(field).apply(val);
+          Base::getFallbackField(field).apply(val);
         };
-        if constexpr (!std::is_void_v<
-                          decltype(VPackLoadInspectorImpl::getTransformer(
-                              field))>) {
-          return loadTransformedField(
-              ff, name, isPresent, value, std::move(applyFallback),
-              VPackLoadInspectorImpl::getTransformer(field));
+        if constexpr (!std::is_void_v<decltype(Base::getTransformer(field))>) {
+          return loadTransformedField(ff, name, isPresent, value,
+                                      std::move(applyFallback),
+                                      Base::getTransformer(field));
         } else {
           return loadField(ff, name, isPresent, value,
                            std::move(applyFallback));
@@ -207,12 +221,9 @@ struct VPackLoadInspectorImpl
         if (!isPresent && _options.ignoreMissingFields) {
           return {};
         }
-        if constexpr (!std::is_void_v<
-                          decltype(VPackLoadInspectorImpl::getTransformer(
-                              field))>) {
-          return loadTransformedField(
-              ff, name, isPresent, value,
-              VPackLoadInspectorImpl::getTransformer(field));
+        if constexpr (!std::is_void_v<decltype(Base::getTransformer(field))>) {
+          return loadTransformedField(ff, name, isPresent, value,
+                                      Base::getTransformer(field));
         } else {
           return loadField(ff, name, isPresent, value);
         }
@@ -249,15 +260,31 @@ struct VPackLoadInspectorImpl
   };
 
   struct EmptyFallbackContainer {
-    explicit EmptyFallbackContainer(typename VPackLoadInspectorImpl::Keep&&) {}
+    explicit EmptyFallbackContainer(typename Base::Keep&&) {}
     template<class T>
     void apply(T&) const noexcept {}
   };
 
   template<class U>
-  using FallbackContainer = std::conditional_t<
-      std::is_same_v<U, typename VPackLoadInspectorImpl::Keep>,
-      EmptyFallbackContainer, ActualFallbackContainer<U>>;
+  using FallbackContainer =
+      std::conditional_t<std::is_same_v<U, typename Base::Keep>,
+                         EmptyFallbackContainer, ActualFallbackContainer<U>>;
+
+  template<class Fn>
+  struct FallbackFactoryContainer {
+    explicit FallbackFactoryContainer(Fn&& fn) : factory(std::move(fn)) {}
+    template<class T>
+    void apply(T& val) const noexcept {
+      if constexpr (std::is_assignable_v<T, std::invoke_result_t<Fn>>) {
+        val = std::invoke(factory);
+      } else {
+        val = T{std::invoke(factory)};
+      }
+    }
+
+   private:
+    Fn factory;
+  };
 
   template<class Invariant>
   struct InvariantContainer {
@@ -272,7 +299,7 @@ struct VPackLoadInspectorImpl
   template<class... Args>
   Status applyFields(Args&&... args) {
     std::array<std::string_view, sizeof...(args)> names{
-        VPackLoadInspectorImpl::getFieldName(args)...};
+        Base::getFieldName(args)...};
     std::array<velocypack::Slice, sizeof...(args)> slices;
     for (auto [k, v] : VPackObjectIterator(slice())) {
       auto it = std::find(names.begin(), names.end(), k.stringView());
@@ -289,8 +316,7 @@ struct VPackLoadInspectorImpl
 
   template<class... Ts, class... Args>
   auto processVariant(
-      typename VPackLoadInspectorImpl::template UnqualifiedVariant<Ts...>&
-          variant,
+      typename Base::template UnqualifiedVariant<Ts...>& variant,
       Args&&... args) {
     auto loadVariant = [&]() -> Status {
       VPackObjectIterator it(_slice);
@@ -308,10 +334,8 @@ struct VPackLoadInspectorImpl
   }
 
   template<class... Ts, class... Args>
-  auto processVariant(
-      typename VPackLoadInspectorImpl::template QualifiedVariant<Ts...>&
-          variant,
-      Args&&... args) {
+  auto processVariant(typename Base::template QualifiedVariant<Ts...>& variant,
+                      Args&&... args) {
     auto loadVariant = [&]() -> Status {
       auto type = slice()[variant.typeField];
       if (!type.isString()) {
@@ -339,6 +363,13 @@ struct VPackLoadInspectorImpl
   }
 
  protected:
+  auto make(velocypack::Slice slice) {
+    if constexpr (Base::hasContext) {
+      return VPackLoadInspectorImpl(slice, _options, this->getContext());
+    } else {
+      return VPackLoadInspectorImpl(slice, _options);
+    }
+  }
   Status::Success parseFields(velocypack::Slice* slices) {
     return Status::Success{};
   }
@@ -358,7 +389,7 @@ struct VPackLoadInspectorImpl
   Status parseType(std::string_view tag, velocypack::Slice value,
                    std::variant<Ts...>& result, Arg&& arg, Args&&... args) {
     if (arg.tag == tag) {
-      VPackLoadInspectorImpl inspector(value, _options);
+      auto inspector = make(value);
       typename Arg::Type v;
       auto res = inspector.apply(v);
       if (res.ok()) {
@@ -380,7 +411,7 @@ struct VPackLoadInspectorImpl
   Status processList(T& list) {
     std::size_t idx = 0;
     for (auto&& s : VPackArrayIterator(_slice)) {
-      VPackLoadInspectorImpl ff(s, _options);
+      auto ff = make(s);
       typename T::value_type val;
       if (auto res = process(ff, val); !res.ok()) {
         return {std::move(res), std::to_string(idx), Status::ArrayTag{}};
@@ -394,7 +425,7 @@ struct VPackLoadInspectorImpl
   template<class T>
   Status processMap(T& map) {
     for (auto&& pair : VPackObjectIterator(_slice)) {
-      VPackLoadInspectorImpl ff(pair.value, _options);
+      auto ff = make(pair.value);
       typename T::mapped_type val;
       if (auto res = process(ff, val); !res.ok()) {
         return {std::move(res), "'" + pair.key.copyString() + "'",
@@ -406,19 +437,15 @@ struct VPackLoadInspectorImpl
   }
 
   template<class T, class U>
-  Status checkInvariant(
-      typename VPackLoadInspectorImpl::template InvariantField<T, U>& field) {
-    using Field =
-        typename VPackLoadInspectorImpl::template InvariantField<T, U>;
-    return InspectorBase<VPackLoadInspectorImpl>::template checkInvariant<
-        Field, Field::InvariantFailedError>(
-        field.invariantFunc, VPackLoadInspectorImpl::getFieldValue(field));
+  Status checkInvariant(typename Base::template InvariantField<T, U>& field) {
+    using Field = typename Base::template InvariantField<T, U>;
+    return Base::template checkInvariant<Field, Field::InvariantFailedError>(
+        field.invariantFunc, Base::getFieldValue(field));
   }
 
   template<class T>
   auto checkInvariant(T& field) {
-    if constexpr (!InspectorBase<VPackLoadInspectorImpl>::template IsRawField<
-                      std::remove_cvref_t<T>>::value) {
+    if constexpr (!Base::template IsRawField<std::remove_cvref_t<T>>::value) {
       return checkInvariant(field.inner);
     } else {
       return Status::Success{};
@@ -428,7 +455,7 @@ struct VPackLoadInspectorImpl
   template<std::size_t Idx, std::size_t End, class T>
   [[nodiscard]] Status processTuple(T& data) {
     if constexpr (Idx < End) {
-      VPackLoadInspectorImpl ff{_slice[Idx], _options};
+      auto ff = make(_slice[Idx]);
       if (auto res = process(ff, std::get<Idx>(data)); !res.ok()) {
         return {std::move(res), std::to_string(Idx), Status::ArrayTag{}};
       }
@@ -442,7 +469,7 @@ struct VPackLoadInspectorImpl
   [[nodiscard]] Status processArray(T (&data)[N]) {
     std::size_t index = 0;
     for (auto&& v : VPackArrayIterator(_slice)) {
-      VPackLoadInspectorImpl ff(v, _options);
+      auto ff = make(v);
       if (auto res = process(ff, data[index]); !res.ok()) {
         return {std::move(res), std::to_string(index), Status::ArrayTag{}};
       }
@@ -462,7 +489,9 @@ struct VPackLoadInspectorImpl
   ParseOptions _options;
 };
 
-using VPackLoadInspector = VPackLoadInspectorImpl<false>;
-using VPackUnsafeLoadInspector = VPackLoadInspectorImpl<true>;
+template<class Context = NoContext>
+using VPackLoadInspector = VPackLoadInspectorImpl<false, Context>;
+template<class Context = NoContext>
+using VPackUnsafeLoadInspector = VPackLoadInspectorImpl<true, Context>;
 
 }  // namespace arangodb::inspection
