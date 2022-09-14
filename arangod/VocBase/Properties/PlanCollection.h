@@ -156,6 +156,7 @@ struct PlanCollection {
   bool usesRevisionsAsDocumentIds;
   bool isSmart;
   bool isDisjoint;
+  bool isSmartChild = false;
   std::string smartGraphAttribute;
   // Deprecated, and not documented anymore
 
@@ -239,6 +240,8 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
           f.field("computedValues", planCollection.computedValues)
               .fallback(VPackSlice::emptyArraySlice()),
           f.field("avoidServers", planCollection.avoidServers)
+              .fallback(f.keep()),
+          f.field("isSmartChild", planCollection.isSmartChild)
               .fallback(f.keep()));
 }
 

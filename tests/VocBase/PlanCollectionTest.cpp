@@ -251,6 +251,7 @@ TEST_F(PlanCollectionUserAPITest, test_minimal_user_input) {
   EXPECT_EQ(testee->id, "");
   EXPECT_EQ(testee->smartGraphAttribute, "");
   EXPECT_TRUE(testee->avoidServers.empty());
+  EXPECT_FALSE(testee->isSmartChild);
 }
 
 TEST_F(PlanCollectionUserAPITest, test_illegal_names) {
@@ -459,6 +460,30 @@ TEST_F(PlanCollectionUserAPITest, test_isSmartCannotBeSatellite) {
   EXPECT_FALSE(res.ok()) << "Configured smartCollection as 'satellite'.";
 }
 
+TEST_F(PlanCollectionUserAPITest, test_isSmartChildCannotBeSatellite) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder guard(&body);
+    // has to be greater or equal to used writeConcern
+    body.add("name", VPackValue("test"));
+    body.add("isSmartChild", VPackValue(true));
+    body.add("replicationFactor", VPackValue("satellite"));
+  }
+
+  // Note: We can also make this parsing fail in the first place.
+  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
+  ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
+                           << testee.result().errorMessage();
+  EXPECT_EQ(testee->isSmartChild, true);
+  EXPECT_EQ(testee->replicationFactor, 0);
+
+  // No special config required, this always fails
+  PlanCollection::DatabaseConfiguration config{};
+  auto res = testee->validateDatabaseConfiguration(config);
+  EXPECT_FALSE(res.ok()) << "Configured smartChild collection as 'satellite'.";
+}
+
+
 TEST_F(PlanCollectionUserAPITest, test_atMost8ShardKeys) {
   // We split this string up into characters, to use those as shardKey
   // attributes Just for simplicity reasons, and to avoid having duplicates
@@ -657,6 +682,7 @@ GenerateStringAttributeTest(globallyUniqueId);
 GenerateBoolAttributeTest(syncByRevision);
 GenerateBoolAttributeTest(usesRevisionsAsDocumentIds);
 GenerateBoolAttributeTest(isSmart);
+GenerateBoolAttributeTest(isSmartChild);
 GenerateBoolAttributeTest(isDisjoint);
 GenerateStringAttributeTest(id);
 GenerateStringAttributeTest(smartGraphAttribute);
