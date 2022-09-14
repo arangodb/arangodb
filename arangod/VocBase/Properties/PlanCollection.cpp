@@ -278,7 +278,7 @@ arangodb::Result PlanCollection::validateDatabaseConfiguration(
                   std::to_string(config.maxReplicationFactor) + ")"};
     }
 
-    if (replicationFactor < config.minReplicationFactor) {
+    if (replicationFactor != 0 && replicationFactor < config.minReplicationFactor) {
       return {TRI_ERROR_BAD_PARAMETER,
               std::string("replicationFactor must not be lower than "
                           "minimum allowed replicationFactor (") +

@@ -628,7 +628,22 @@ Collections::create(         // create collection
   config.enforceReplicationFactor = enforceReplicationFactor;
 
   ClusterInfo& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
-  for (auto const& col : collections) {
+  for (auto& col : collections) {
+    if (!col.distributeShardsLike.empty()) {
+      // Apply distributeShardsLike overwrites
+      // TODO: Make this piece unit-testable.
+      CollectionNameResolver resolver(vocbase);
+      auto myColToDistributeLike = resolver.getCollection(col.distributeShardsLike);
+      if (myColToDistributeLike == nullptr) {
+        return Result{
+          TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+            "Collection not found: " + col.distributeShardsLike +
+            " in database " + vocbase.name()};
+      }
+      col.numberOfShards = myColToDistributeLike->numberOfShards();
+      col.replicationFactor = myColToDistributeLike->replicationFactor();
+      col.writeConcern = myColToDistributeLike->writeConcern();
+    }
     // TODO: Maybe we can do this within the parsing Step already.
     // but that is a cleanup for later.
     auto res = col.validateDatabaseConfiguration(config);
