@@ -237,4 +237,61 @@ template<class Inspector, class T, class Fn>
 struct IsFallbackField<FallbackFactoryField<Inspector, T, Fn>>
     : std::true_type {};
 
+static constexpr const char FieldInvariantFailedError[] =
+    "Field invariant failed";
+
+static constexpr const char ObjectInvariantFailedError[] =
+    "Object invariant failed";
+
+template<class Inspector>
+struct EmbeddedFields {
+  virtual ~EmbeddedFields() = default;
+  virtual Status apply(Inspector&, typename Inspector::EmbeddedParam&) = 0;
+  virtual Status checkInvariant() { return {}; };
+};
+
+template<class Inspector, class... Ts>
+struct EmbeddedFieldsImpl : EmbeddedFields<Inspector> {
+  template<class... Args>
+  explicit EmbeddedFieldsImpl(Args&&... args)
+      : fields(std::forward<Args>(args)...) {}
+
+  Status apply(Inspector& inspector,
+               typename Inspector::EmbeddedParam& param) override {
+    return [&inspector, &param, this]<std::size_t... I>(std::index_sequence<I...>) {
+      return inspector.processEmbeddedFields(param, std::get<I>(fields)...);
+    }(std::make_index_sequence<sizeof...(Ts)>{});
+  }
+
+ private:
+  std::tuple<Ts...> fields;
+};
+
+template<class Inspector, class Object, class Invariant>
+struct EmbeddedFieldsWithObjectInvariant : EmbeddedFields<Inspector> {
+  template<class Fn>
+  explicit EmbeddedFieldsWithObjectInvariant(
+      Object& object, Fn&& invariant,
+      std::unique_ptr<EmbeddedFields<Inspector>> fields)
+      : fields(std::move(fields)),
+        invariant(std::forward<Fn>(invariant)),
+        object(object) {}
+
+  Status apply(Inspector& inspector,
+               typename Inspector::EmbeddedParam& param) override {
+    return fields->apply(inspector, param);
+  }
+
+  Status checkInvariant() override {
+    return Inspector::Base::template checkInvariant<
+        detail::ObjectInvariantFailedError>(std::forward<Invariant>(invariant),
+                                            object);
+  }
+
+ private:
+  std::unique_ptr<EmbeddedFields<Inspector>> fields;
+  Invariant invariant;
+  Object& object;
+};
+
 }  // namespace arangodb::inspection::detail

@@ -488,6 +488,16 @@ auto inspect(Inspector& f, Embedded& v) {
   return f.object(v).fields(f.field("x", v.x), f.embedFields(v.inner));
 }
 
+struct EmbeddedObjectInvariant {
+  int x;
+  ObjectInvariant inner;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, EmbeddedObjectInvariant& v) {
+  return f.object(v).fields(f.field("x", v.x), f.embedFields(v.inner));
+}
+
 }  // namespace
 
 namespace {
@@ -2037,6 +2047,21 @@ TEST_F(VPackLoadInspectorTest,
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Field invariant failed", result.error());
   EXPECT_EQ("i", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_embedded_object_with_object_invariant_not_fulfilled) {
+  builder.openObject();
+  builder.add("x", 1);
+  builder.add("i", 42);
+  builder.add("s", "");
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  EmbeddedObjectInvariant o;
+  auto result = inspector.apply(o);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Object invariant failed", result.error());
 }
 
 struct VPackInspectionTest : public ::testing::Test {};

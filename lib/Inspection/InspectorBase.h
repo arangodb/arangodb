@@ -31,6 +31,7 @@
 #include <tuple>
 #include <type_traits>
 #include <ucontext.h>
+#include <utility>
 #include <variant>
 
 #include <velocypack/Iterator.h>
@@ -200,23 +201,11 @@ struct InspectorBase : detail::ContextContainer<Context> {
   struct FieldsResult {
     template<class Invariant>
     auto invariant(Invariant&& func) {
-      //return self.objectInvariant(std::forward<Invariant>(func), std::move(result), object);
-
-      if constexpr (Derived::isLoading) {
-        if (!result.ok()) {
-          return std::move(result);
-        }
-        return checkInvariant<FieldsResult, FieldsResult::InvariantFailedError>(
-            std::forward<Invariant>(func), object);
-      } else {
-        return std::move(result);
-      }
+      return inspector.objectInvariant(object, std::forward<Invariant>(func),
+                                       std::move(result));
     }
-    
-    operator Status() && { return std::move(result); }
 
-    static constexpr const char InvariantFailedError[] =
-        "Object invariant failed";
+    operator Status() && { return std::move(result); }
 
    private:
     template<class TT>
@@ -303,7 +292,7 @@ struct InspectorBase : detail::ContextContainer<Context> {
     std::variant<Ts...>& _value;
   };
 
-  template<class T, const char ErrorMsg[], class Func, class... Args>
+  template<const char ErrorMsg[], class Func, class... Args>
   static Status checkInvariant(Func&& func, Args&&... args) {
     using result_t = std::invoke_result_t<Func, Args...>;
     if constexpr (std::is_same_v<result_t, bool>) {
@@ -318,35 +307,17 @@ struct InspectorBase : detail::ContextContainer<Context> {
       return std::invoke(std::forward<Func>(func), std::forward<Args>(args)...);
     }
   }
+
+  template<class, class, class>
+  friend struct detail::EmbeddedFieldsWithObjectInvariant;
 };
 
 namespace detail {
-
-template<class Inspector>
-struct Fields {
-  virtual ~Fields() = default;
-  virtual Status apply(Inspector&, typename Inspector::EmbeddedParam&) = 0;
-};
-
-template<class Inspector, class... Ts>
-struct EmbeddedFields : Fields<Inspector> {
-  template<class... Args>
-  explicit EmbeddedFields(Args&&... args)
-      : fields(std::forward<Args>(args)...) {}
-
-  Status apply(Inspector& inspector,
-               typename Inspector::EmbeddedParam& param) override {
-    return [&inspector, &param, this]<std::size_t... I>(std::index_sequence<I...>) {
-      return inspector.processEmbeddedFields(param, std::get<I>(fields)...);
-    }(std::make_index_sequence<sizeof...(Ts)>{});
-  }
-  std::tuple<Ts...> fields;
-};
-
 template<class Parent, class Context>
 struct EmbeddedFieldInspector
     : InspectorBase<EmbeddedFieldInspector<Parent, Context>, Context, Parent> {
-  using Base = InspectorBase<EmbeddedFieldInspector<Parent, Context>, Context, Parent>;
+  using Base =
+      InspectorBase<EmbeddedFieldInspector<Parent, Context>, Context, Parent>;
 
   static constexpr bool isLoading = Parent::isLoading;
 
@@ -380,7 +351,7 @@ struct EmbeddedFieldInspector
 
   template<class... Args>
   Status applyFields(Args&&... args) {
-    fields = std::make_unique<EmbeddedFields<Parent, Args...>>(
+    fields = std::make_unique<EmbeddedFieldsImpl<Parent, Args...>>(
         std::forward<Args>(args)...);
     return {};
   }
@@ -398,7 +369,16 @@ struct EmbeddedFieldInspector
     return fail();
   }
 
-  std::unique_ptr<Fields<Parent>> fields;
+  template<class Fn, class T>
+  Status objectInvariant(T& object, Fn&& invariant, Status result) {
+    TRI_ASSERT(result.ok())
+        << "embedded inspection failed with error " << result.error();
+    fields = std::make_unique<EmbeddedFieldsWithObjectInvariant<Parent, T, Fn>>(
+        object, std::forward<Fn>(invariant), std::move(fields));
+    return result;
+  }
+
+  std::unique_ptr<EmbeddedFields<Parent>> fields;
 
  private:
   template<bool Fail = true>
@@ -412,10 +392,12 @@ struct EmbeddedFieldInspector
 
 template<class Derived, class Context, class TargetInspector>
 template<class T>
-auto InspectorBase<Derived, Context, TargetInspector>::embedFields(T& value) const {
+auto InspectorBase<Derived, Context, TargetInspector>::embedFields(
+    T& value) const {
   auto insp = [this]() {
-    if constexpr(InspectorBase::hasContext) {
-      return detail::EmbeddedFieldInspector<Derived, Context>(this->getContext());
+    if constexpr (InspectorBase::hasContext) {
+      return detail::EmbeddedFieldInspector<Derived, Context>(
+          this->getContext());
     } else {
       return detail::EmbeddedFieldInspector<Derived, Context>();
     }

@@ -244,9 +244,6 @@ struct VPackLoadInspectorImpl
     explicit InvariantContainer(Invariant&& invariant)
         : invariantFunc(std::move(invariant)) {}
     Invariant invariantFunc;
-
-    static constexpr const char InvariantFailedError[] =
-        "Field invariant failed";
   };
 
   template<class... Args>
@@ -315,11 +312,23 @@ struct VPackLoadInspectorImpl
            | [&]() { return endObject(); };  //
   }
 
+  template<class Invariant, class T>
+  Status objectInvariant(T& object, Invariant&& func, Status result) {
+    if (result.ok()) {
+      result =
+          Base::template checkInvariant<detail::ObjectInvariantFailedError>(
+              std::forward<Invariant>(func), object);
+    }
+    return result;
+  }
+
  private:
   template<class>
-  friend struct detail::Fields;
-  template<class, class...>
   friend struct detail::EmbeddedFields;
+  template<class, class...>
+  friend struct detail::EmbeddedFieldsImpl;
+  template<class, class, class>
+  friend struct detail::EmbeddedFieldsWithObjectInvariant;
 
   using FieldsMap =
       std::unordered_map<std::string_view, std::pair<velocypack::Slice, bool>>;
@@ -352,9 +361,12 @@ struct VPackLoadInspectorImpl
            [&]() { return parseFields(fields, std::forward<Args>(args)...); };
   }
 
-  [[nodiscard]] Status::Success parseField(
-      FieldsMap& fields, typename VPackLoadInspectorImpl::IgnoreField&& field) {
+  [[nodiscard]] Status::Success parseField(FieldsMap& fields,
+                                           typename Base::IgnoreField&& field) {
     if (auto it = fields.find(field.name); it != fields.end()) {
+      TRI_ASSERT(!it->second.second)
+          << "field " << field.name << " processed twice during inspection. "
+          << "Make sure field names are unique!";
       it->second.second = true;  // mark the field as processed
     }
     return {};
@@ -362,9 +374,10 @@ struct VPackLoadInspectorImpl
 
   [[nodiscard]] Status parseField(
       FieldsMap& fields,
-      std::unique_ptr<detail::Fields<VPackLoadInspectorImpl>>&&
+      std::unique_ptr<detail::EmbeddedFields<VPackLoadInspectorImpl>>&&
           embeddedFields) {
-    return embeddedFields->apply(*this, fields);
+    return embeddedFields->apply(*this, fields)  //
+           | [&]() { return embeddedFields->checkInvariant(); };
   }
 
   template<class T>
@@ -469,7 +482,7 @@ struct VPackLoadInspectorImpl
   template<class T, class U>
   Status checkInvariant(typename Base::template InvariantField<T, U>& field) {
     using Field = typename Base::template InvariantField<T, U>;
-    return Base::template checkInvariant<Field, Field::InvariantFailedError>(
+    return Base::template checkInvariant<detail::FieldInvariantFailedError>(
         field.invariantFunc, Base::getFieldValue(field));
   }
 
