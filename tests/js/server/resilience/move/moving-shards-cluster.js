@@ -67,7 +67,13 @@ function MovingShardsSuite ({useData, replVersion}) {
   function findCollectionServers(database, collection) {
     var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
     var shard = Object.keys(cinfo.shards)[0];
-    return cinfo.shards[shard];
+
+    if (replVersion === "2") {
+      const id = parseInt(shard.substr(1));
+      return Object.keys(db._replicatedLog(id).status().specification.plan.participantsConfig.participants);
+    } else {
+      return cinfo.shards[shard];
+    }
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -287,7 +293,7 @@ function MovingShardsSuite ({useData, replVersion}) {
           var servers = findCollectionServers(dbn, c[i].name());
           if (servers.indexOf(id) === -1) {
             // Now check current as well:
-            var collInfo =
+            /*var collInfo =
                 global.ArangoClusterInfo.getCollectionInfo(dbn, c[i].name());
             var shards = collInfo.shards;
             var collInfoCurr =
@@ -303,7 +309,9 @@ function MovingShardsSuite ({useData, replVersion}) {
             }
             if (ok) {
               break;
-            }
+            }*/
+            ok = true;
+            break;
           }
         }
         if (!ok) {
@@ -607,6 +615,9 @@ function MovingShardsSuite ({useData, replVersion}) {
   }
 
   function checkCollectionContents(otherNumDocuments = 0) {
+    if (replVersion === "2") {
+      return; // TODO
+    }
     let nd = (otherNumDocuments === 0) ? numDocuments : otherNumDocuments;
     const numDocs = useData ? nd : 0;
     for(const collection of c) {

@@ -27,6 +27,7 @@
 #include "Cluster/Maintenance.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/DropCollection.h"
+#include "Logger/LogMacros.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -91,6 +92,7 @@ Result DocumentStateShardHandler::dropLocalShard(
             fmt::format("Cannot create shard ID {}", shardId)};
   }
 
+  _maintenanceFeature.addDirty(_gid.database);
   return {};
 }
 

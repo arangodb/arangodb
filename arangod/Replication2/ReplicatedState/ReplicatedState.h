@@ -188,6 +188,7 @@ struct ReplicatedState final
 
     ReplicatedState& _self;
     std::shared_ptr<IStateManager> currentManager = nullptr;
+    std::unique_ptr<CoreType> oldCore = nullptr;
   };
   Guarded<GuardedData> guardedData;
   LoggerContext const loggerContext;

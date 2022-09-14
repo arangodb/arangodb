@@ -1268,27 +1268,6 @@ void addDatabaseToTransactions(std::string const& name,
   transactions.push_back({operation, precondition});
 }
 
-/// @brief report local to current
-arangodb::Result arangodb::maintenance::diffLocalCurrent(
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        local,
-    VPackSlice const& current, std::string const& serverId,
-    Transactions& transactions,
-    MaintenanceFeature::ShardActionMap const& shardActionMap) {
-  // Iterate over local databases
-  for (auto const& ldbo : local) {
-    std::string const& dbname = ldbo.first;
-
-    // Current has this database
-    if (!current.hasKey(dbname)) {
-      // Create new database in current
-      addDatabaseToTransactions(dbname, transactions);
-    }
-  }
-
-  return {};
-}
-
 /// @brief Phase one: Compare plan and local and create descriptions
 arangodb::Result arangodb::maintenance::phaseOne(
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
