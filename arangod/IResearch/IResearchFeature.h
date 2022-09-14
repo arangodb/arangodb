@@ -24,15 +24,18 @@
 
 #pragma once
 
-#include "StorageEngine/StorageEngine.h"
 #include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
+#include "StorageEngine/StorageEngine.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <typeindex>
 
@@ -107,6 +110,12 @@ class IResearchFeature final : public ArangodFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief report progress during recovery phase
+  //////////////////////////////////////////////////////////////////////////////
+  void reportRecoveryProgress(arangodb::IndexId id, std::string_view phase,
+                              size_t current, size_t total);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief schedule an asynchronous task for execution
   /// @param id thread group to handle the execution
   /// @param fn the function to execute
@@ -166,6 +175,12 @@ class IResearchFeature final : public ArangodFeature {
 
   // helper object, only useful during WAL recovery
   std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;
+
+  // state used for progress reporting only
+  struct ProgressReportState {
+    arangodb::IndexId lastReportId{0};
+    std::chrono::time_point<std::chrono::system_clock> lastReportTime{};
+  } _progressState;
 };
 
 }  // namespace iresearch
