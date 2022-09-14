@@ -329,6 +329,8 @@ struct VPackLoadInspectorImpl
   friend struct detail::EmbeddedFieldsImpl;
   template<class, class, class>
   friend struct detail::EmbeddedFieldsWithObjectInvariant;
+  template<class, class>
+  friend struct detail::EmbeddedFieldInspector;
 
   using FieldsMap =
       std::unordered_map<std::string_view, std::pair<velocypack::Slice, bool>>;

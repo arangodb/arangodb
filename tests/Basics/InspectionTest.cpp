@@ -479,23 +479,45 @@ auto inspect(Inspector& f, Struct2& x) {
 }
 
 struct Embedded {
-  int x;
+  int a;
   InvariantAndFallback inner;
+  int b;
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, Embedded& v) {
-  return f.object(v).fields(f.field("x", v.x), f.embedFields(v.inner));
+  return f.object(v).fields(f.field("a", v.a), f.embedFields(v.inner),
+                            f.field("b", v.b));
+}
+
+struct NestedEmbedding {
+  Embedded e;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, NestedEmbedding& v) {
+  return f.object(v).fields(f.embedFields(v.e));
 }
 
 struct EmbeddedObjectInvariant {
-  int x;
+  int a;
   ObjectInvariant inner;
+  int b;
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, EmbeddedObjectInvariant& v) {
-  return f.object(v).fields(f.field("x", v.x), f.embedFields(v.inner));
+  return f.object(v).fields(f.field("a", v.a), f.embedFields(v.inner),
+                            f.field("b", v.b));
+}
+
+struct NestedEmbeddingWithObjectInvariant {
+  EmbeddedObjectInvariant e;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, NestedEmbeddingWithObjectInvariant& v) {
+  return f.object(v).fields(f.embedFields(v.e));
 }
 
 }  // namespace
@@ -900,16 +922,18 @@ TEST_F(VPackSaveInspectorTest, store_unqualified_variant) {
 }
 
 TEST_F(VPackSaveInspectorTest, store_embedded_fields) {
-  Embedded const f{.x = 1, .inner = {.i = 42, .s = "foobar"}};
-  auto result = inspector.apply(f);
+  NestedEmbedding const n{
+      .e = {.a = 1, .inner = {.i = 42, .s = "foobar"}, .b = 2}};
+  auto result = inspector.apply(n);
   ASSERT_TRUE(result.ok());
 
   velocypack::Slice slice = builder.slice();
   std::cout << slice.toString() << std::endl;
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(f.x, slice["x"].getInt());
-  EXPECT_EQ(f.inner.i, slice["i"].getInt());
-  EXPECT_EQ(f.inner.s, slice["s"].copyString());
+  EXPECT_EQ(n.e.a, slice["a"].getInt());
+  EXPECT_EQ(n.e.inner.i, slice["i"].getInt());
+  EXPECT_EQ(n.e.inner.s, slice["s"].copyString());
+  EXPECT_EQ(n.e.b, slice["b"].getInt());
 }
 
 struct VPackLoadInspectorTest : public ::testing::Test {
@@ -2022,28 +2046,31 @@ TEST_F(VPackLoadInspectorTest, load_type_with_unsafe_fields) {
 
 TEST_F(VPackLoadInspectorTest, load_embedded_object) {
   builder.openObject();
-  builder.add("x", 1);
+  builder.add("a", 1);
+  builder.add("b", 2);
   builder.close();
   VPackLoadInspector inspector{builder};
 
-  Embedded o;
-  auto result = inspector.apply(o);
+  NestedEmbedding n;
+  auto result = inspector.apply(n);
   ASSERT_TRUE(result.ok());
-  EXPECT_EQ(1, o.x);
-  EXPECT_EQ(42, o.inner.i);
-  EXPECT_EQ("foobar", o.inner.s);
+  EXPECT_EQ(1, n.e.a);
+  EXPECT_EQ(42, n.e.inner.i);
+  EXPECT_EQ("foobar", n.e.inner.s);
+  EXPECT_EQ(2, n.e.b);
 }
 
 TEST_F(VPackLoadInspectorTest,
        load_embedded_object_with_invariant_not_fulfilled) {
   builder.openObject();
-  builder.add("x", 1);
+  builder.add("a", 1);
+  builder.add("b", 2);
   builder.add("i", 0);
   builder.close();
   VPackLoadInspector inspector{builder};
 
-  Embedded o;
-  auto result = inspector.apply(o);
+  NestedEmbedding n;
+  auto result = inspector.apply(n);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Field invariant failed", result.error());
   EXPECT_EQ("i", result.path());
@@ -2052,13 +2079,14 @@ TEST_F(VPackLoadInspectorTest,
 TEST_F(VPackLoadInspectorTest,
        load_embedded_object_with_object_invariant_not_fulfilled) {
   builder.openObject();
-  builder.add("x", 1);
+  builder.add("a", 1);
+  builder.add("b", 2);
   builder.add("i", 42);
   builder.add("s", "");
   builder.close();
   VPackLoadInspector inspector{builder};
 
-  EmbeddedObjectInvariant o;
+  NestedEmbeddingWithObjectInvariant o;
   auto result = inspector.apply(o);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Object invariant failed", result.error());

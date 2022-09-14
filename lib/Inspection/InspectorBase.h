@@ -321,6 +321,11 @@ struct EmbeddedFieldInspector
 
   static constexpr bool isLoading = Parent::isLoading;
 
+  explicit EmbeddedFieldInspector(Parent& parent) : Base(), _parent(parent) {}
+
+  explicit EmbeddedFieldInspector(Parent& parent, Context const& context)
+      : Base(context), _parent(parent) {}
+
   [[nodiscard]] Status::Success beginObject() { return {}; }
 
   [[nodiscard]] Status::Success endObject() { return {}; }
@@ -369,6 +374,28 @@ struct EmbeddedFieldInspector
     return fail();
   }
 
+  template<class U>
+  using FallbackContainer = typename Parent::template FallbackContainer<U>;
+
+  template<class Fn>
+  using FallbackFactoryContainer =
+      typename Parent::template FallbackFactoryContainer<Fn>;
+
+  template<class Invariant>
+  using InvariantContainer =
+      typename Parent::template InvariantContainer<Invariant>;
+
+ private:
+  template<class, class, class>
+  friend struct ::arangodb::inspection::InspectorBase;
+
+  using EmbeddedParam = typename Parent::EmbeddedParam;
+
+  template<class... Args>
+  auto processEmbeddedFields(EmbeddedParam& param, Args&&... args) {
+    return _parent.processEmbeddedFields(param, std::forward<Args>(args)...);
+  }
+
   template<class Fn, class T>
   Status objectInvariant(T& object, Fn&& invariant, Status result) {
     TRI_ASSERT(result.ok())
@@ -378,14 +405,17 @@ struct EmbeddedFieldInspector
     return result;
   }
 
-  std::unique_ptr<EmbeddedFields<Parent>> fields;
+  Parent& parent() { return _parent; }
 
- private:
   template<bool Fail = true>
   Status::Success fail() {
     static_assert(!Fail, "embedFields can only be used for objects");
     return {};
   }
+
+  std::unique_ptr<EmbeddedFields<Parent>> fields;
+
+  Parent& _parent;
 };
 
 }  // namespace detail
@@ -394,12 +424,22 @@ template<class Derived, class Context, class TargetInspector>
 template<class T>
 auto InspectorBase<Derived, Context, TargetInspector>::embedFields(
     T& value) const {
-  auto insp = [this]() {
-    if constexpr (InspectorBase::hasContext) {
-      return detail::EmbeddedFieldInspector<Derived, Context>(
-          this->getContext());
+  auto& parentInspector =
+      [p = const_cast<InspectorBase*>(this)]() -> decltype(auto) {
+    if constexpr (std::is_same_v<Derived, TargetInspector>) {
+      return p->self();
     } else {
-      return detail::EmbeddedFieldInspector<Derived, Context>();
+      // we are an embedded inspector
+      return p->self().parent();
+    }
+  }();
+  auto insp = [this, &parentInspector]() {
+    if constexpr (InspectorBase::hasContext) {
+      return detail::EmbeddedFieldInspector<TargetInspector, Context>(
+          parentInspector, this->getContext());
+    } else {
+      return detail::EmbeddedFieldInspector<TargetInspector, Context>(
+          parentInspector);
     }
   }();
   auto res = insp.apply(value);

@@ -134,14 +134,6 @@ struct VPackSaveInspector
 
   auto applyFields() { return Status::Success{}; }
 
-  template<class... Args>
-  auto applyFields(
-      std::unique_ptr<detail::EmbeddedFields<VPackSaveInspector>>&& fields,
-      Args&&... args) {
-    EmbeddedParam param;
-    return fields->apply(*this, param);
-  }
-
   template<class Arg, class... Args>
   auto applyFields(Arg&& arg, Args&&... args) {
     auto res = applyField(std::forward<Arg>(arg));
@@ -211,12 +203,21 @@ struct VPackSaveInspector
   friend struct detail::EmbeddedFieldsImpl;
   template<class, class, class>
   friend struct detail::EmbeddedFieldsWithObjectInvariant;
+  template<class, class>
+  friend struct detail::EmbeddedFieldInspector;
 
   using EmbeddedParam = std::monostate;
 
   template<class... Args>
   auto processEmbeddedFields(EmbeddedParam&, Args&&... args) {
     return applyFields(std::forward<Args>(args)...);
+  }
+
+  [[nodiscard]] auto applyField(
+      std::unique_ptr<detail::EmbeddedFields<VPackSaveInspector>> const&
+          fields) {
+    EmbeddedParam param;
+    return fields->apply(*this, param);
   }
 
   template<class T>

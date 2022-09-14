@@ -259,7 +259,7 @@ struct EmbeddedFieldsImpl : EmbeddedFields<Inspector> {
   Status apply(Inspector& inspector,
                typename Inspector::EmbeddedParam& param) override {
     return [&inspector, &param, this]<std::size_t... I>(std::index_sequence<I...>) {
-      return inspector.processEmbeddedFields(param, std::get<I>(fields)...);
+      return inspector.processEmbeddedFields(param, std::get<I>(std::move(fields))...);
     }(std::make_index_sequence<sizeof...(Ts)>{});
   }
 
