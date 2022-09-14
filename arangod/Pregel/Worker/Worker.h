@@ -63,11 +63,11 @@ class IWorker : public std::enable_shared_from_this<IWorker> {
       -> futures::Future<ResultT<GlobalSuperStepFinished>> = 0;
   [[nodiscard]] virtual auto store(Store const& message)
       -> futures::Future<ResultT<Stored>> = 0;
+  [[nodiscard]] virtual auto cleanup(Cleanup const& message)
+      -> futures::Future<ResultT<CleanupFinished>> = 0;
   virtual void cancelGlobalStep(
       VPackSlice const& data) = 0;  // called by coordinator
   virtual void receivedMessages(PregelMessage const& data) = 0;
-  virtual auto finalizeExecution(StartCleanup const& data)
-      -> CleanupStarted = 0;
   virtual auto aqlResult(bool withId) const -> PregelResults = 0;
 };
 
@@ -168,7 +168,6 @@ class Worker : public IWorker {
   [[nodiscard]] auto _makeStatusCallback() -> std::function<void()>;
 
   auto _gssFinishedEvent() const -> GlobalSuperStepFinished;
-  auto _cleanupFinishedEvent() const -> CleanupFinished;
 
  public:
   Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,
@@ -189,9 +188,10 @@ class Worker : public IWorker {
   auto runGlobalSuperStep(RunGlobalSuperStep const& data)
       -> futures::Future<ResultT<GlobalSuperStepFinished>> override;
   auto store(Store const& message) -> futures::Future<ResultT<Stored>> override;
+  auto cleanup(Cleanup const& message)
+      -> futures::Future<ResultT<CleanupFinished>> override;
   void cancelGlobalStep(VPackSlice const& data) override;
   void receivedMessages(PregelMessage const& data) override;
-  auto finalizeExecution(StartCleanup const& data) -> CleanupStarted override;
 
   auto aqlResult(bool withId) const -> PregelResults override;
 };

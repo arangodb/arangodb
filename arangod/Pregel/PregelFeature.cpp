@@ -43,6 +43,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "ExecutionNumber.h"
+#include "Futures/Unit.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
@@ -633,13 +634,12 @@ void PregelFeature::cleanupConductor(ExecutionNumber executionNumber) {
   _workers.erase(executionNumber);
 }
 
-void PregelFeature::cleanupWorker(ExecutionNumber executionNumber) {
-  // unmapping etc might need a few seconds
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestLane::INTERNAL_LOW, [this, executionNumber] {
+auto PregelFeature::cleanupWorker(ExecutionNumber executionNumber)
+    -> futures::Future<futures::Unit> {
+  return futures::makeFutureWith([&]() {
     MUTEX_LOCKER(guard, _mutex);
     _workers.erase(executionNumber);
+    return futures::Unit{};
   });
 }
 
@@ -659,7 +659,7 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
 
   auto message = deserialize<ModernMessage>(body);
   auto c = conductor(message.executionNumber);
-  if (!c && std::holds_alternative<CleanupFinished>(message.payload)) {
+  if (!c && std::holds_alternative<ResultT<CleanupFinished>>(message.payload)) {
     // conductor not found, but potentially already garbage-collected
     return;
   }
@@ -697,15 +697,11 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
               message.executionNumber);
   }
   auto w = worker(message.executionNumber);
-  if (std::holds_alternative<StartCleanup>(message.payload)) {
-    if (isStopping()) {
-      return;  // shutdown ongoing
-    }
+  if (std::holds_alternative<Cleanup>(message.payload)) {
     if (!w) {
-      // except this is a cleanup call, and cleanup has already happened
-      // because of garbage collection
+      // cleanup has already happended because of garbage collection
       auto response = ModernMessage{.executionNumber = message.executionNumber,
-                                    .payload = {CleanupStarted{}}};
+                                    .payload = CleanupFinished{}};
       serialize(outBuilder, response);
       return;
     }

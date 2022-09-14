@@ -581,7 +581,7 @@ template<typename V, typename E>
 auto GraphStore<V, E>::storeVertices(
     std::vector<ShardID> const& globalShards, RangeIterator<Vertex<V, E>>& it,
     size_t threadNumber, std::function<void()> const& statusUpdateCallback)
-    -> ResultT<Stored> {
+    -> Result {
   // transaction on one shard
   OperationOptions options;
   options.silent = true;
@@ -700,13 +700,13 @@ auto GraphStore<V, E>::storeVertices(
   if (result.fail()){
     return result;
   }
-  return Stored{};
+  return Result{};
 }
 
 template<typename V, typename E>
 auto GraphStore<V, E>::storeResults(
     WorkerConfig* config, std::function<void()> const& statusUpdateCallback)
-    -> futures::Future<ResultT<Stored>> {
+    -> futures::Future<Result> {
   _config = config;
   double now = TRI_microtime();
 
@@ -725,7 +725,7 @@ auto GraphStore<V, E>::storeResults(
   LOG_PREGEL("f3fd9", DEBUG) << "Storing vertex data (" << numSegments
                              << " vertices) using " << numT << " threads";
 
-  auto storedVertices = std::vector<futures::Future<ResultT<Stored>>>{};
+  auto storedVertices = std::vector<futures::Future<Result>>{};
   for (size_t i = 0; i < numT; ++i) {
     size_t startI = i * (numSegments / numT);
     size_t endI = (i + 1) * (numSegments / numT);
@@ -739,7 +739,7 @@ auto GraphStore<V, E>::storeResults(
     // TODO can't just write edges with SmartGraphs
   }
 
-  return futures::collectAll(storedVertices).thenValue([&](auto results) -> ResultT<Stored> {
+  return futures::collectAll(storedVertices).thenValue([&](auto results) {
     for (auto&& result : results){
       if (result.hasException()) {
         return Result{TRI_ERROR_INTERNAL,
@@ -753,7 +753,7 @@ auto GraphStore<V, E>::storeResults(
     }
     LOG_PREGEL("b5a21", DEBUG)
         << "Storing data took " << (TRI_microtime() - now) << "s";
-    return Stored{};
+    return Result{};
   });
 }
 

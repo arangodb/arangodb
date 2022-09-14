@@ -51,3 +51,8 @@ auto WorkerApi::store(Store const& message)
     -> futures::Future<ResultT<Stored>> {
   return execute<Stored>(message);
 }
+
+auto WorkerApi::cleanup(Cleanup const& message)
+    -> futures::Future<ResultT<CleanupFinished>> {
+  return execute<CleanupFinished>(message);
+}

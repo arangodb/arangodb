@@ -184,11 +184,7 @@ void Conductor::start() {
 
 auto Conductor::process(MessagePayload const& message) -> Result {
   return std::visit(
-      overloaded{[&](CleanupFinished const& x) -> Result {
-                   finishedWorkerFinalize(x);
-                   return {};
-                 },
-                 [&](StatusUpdated const& x) -> Result {
+      overloaded{[&](StatusUpdated const& x) -> Result {
                    workerStatusUpdate(x);
                    return {};
                  },
@@ -454,15 +450,6 @@ void Conductor::cleanup() {
   }
 }
 
-void Conductor::finishedWorkerFinalize(CleanupFinished const& data) {
-  MUTEX_LOCKER(guard, _callbackMutex);
-
-  LOG_PREGEL("08142", WARN) << fmt::format(
-      "finishedWorkerFinalize, got response from {}.", data.senderId);
-
-  state->receive(data);
-}
-
 bool Conductor::canBeGarbageCollected() const {
   // we don't want to block other operations for longer, so if we can't
   // immediately acuqire the mutex here, we assume a conductor cannot be
@@ -685,6 +672,3 @@ auto Conductor::changeState(conductor::StateType name) -> void {
 
 template auto Conductor::_sendToAllDBServers(
     CollectPregelResults const& message) -> ResultT<std::vector<ModernMessage>>;
-
-template auto Conductor::_sendToAllDBServers(StartCleanup const& message)
-    -> ResultT<std::vector<ModernMessage>>;

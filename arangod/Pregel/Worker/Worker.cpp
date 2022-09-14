@@ -543,9 +543,21 @@ auto Worker<V, E, M>::store(Store const& message)
   // tell graphstore to remove read locks
   _graphStore->_reports = &this->_reports;
   return _graphStore->storeResults(&_config, _makeStatusCallback())
-      .thenValue([&](auto result) {
+      .thenValue([&](auto result) -> ResultT<Stored> {
         _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
-        return result;
+        if (result.fail()) {
+          return result;
+        }
+
+        _state = WorkerState::DONE;
+
+        VPackBuilder reports;
+        {
+          VPackObjectBuilder o(&reports);
+          reports.add(VPackValue(Utils::reportsKey));
+          _reports.intoBuilder(reports);
+        }
+        return Stored{std::move(reports)};
       });
 }
 
@@ -557,39 +569,16 @@ void Worker<V, E, M>::cancelGlobalStep(VPackSlice const& data) {
 }
 
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::finalizeExecution(StartCleanup const& command)
-    -> CleanupStarted {
+auto Worker<V, E, M>::cleanup(Cleanup const& command)
+    -> futures::Future<ResultT<CleanupFinished>> {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicious activity
   MUTEX_LOCKER(guard, _commandMutex);
-  if (_state == WorkerState::DONE) {
-    LOG_PREGEL("4067a", DEBUG) << "removing worker";
-    _feature.cleanupWorker(_config.executionNumber());
-    return CleanupStarted{};
-  }
-
-  _state = WorkerState::DONE;
-  LOG_PREGEL("b3f35", WARN) << "Discarding results";
-  auto event = _cleanupFinishedEvent();
-  auto modernMessage = ModernMessage{
-      .executionNumber = _config.executionNumber(), .payload = event};
-  VPackBuilder message;
-  serialize(message, modernMessage);
-  _callConductor(message);
-  _reports.clear();
-  _feature.cleanupWorker(_config.executionNumber());
-  return CleanupStarted{};
-}
-
-template<typename V, typename E, typename M>
-auto Worker<V, E, M>::_cleanupFinishedEvent() const -> CleanupFinished {
-  VPackBuilder reports;
-  {
-    VPackObjectBuilder o(&reports);
-    reports.add(VPackValue(Utils::reportsKey));
-    _reports.intoBuilder(reports);
-  }
-  return CleanupFinished{ServerState::instance()->getId(), std::move(reports)};
+  LOG_PREGEL("4067a", DEBUG) << "Removing worker";
+  return _feature.cleanupWorker(_config.executionNumber())
+      .thenValue([](auto _) -> ResultT<CleanupFinished> {
+        return {CleanupFinished{}};
+      });
 }
 
 template<typename V, typename E, typename M>
@@ -762,10 +751,13 @@ auto Worker<V, E, M>::process(MessagePayload const& message)
                       .payload = {result}};
                 });
           },
-          [&](StartCleanup const& x)
-              -> futures::Future<ResultT<ModernMessage>> {
-            return {ModernMessage{.executionNumber = _config.executionNumber(),
-                                  .payload = finalizeExecution(x)}};
+          [&](Cleanup const& x) -> futures::Future<ResultT<ModernMessage>> {
+            return cleanup(x).thenValue(
+                [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
+                  return ModernMessage{
+                      .executionNumber = _config.executionNumber(),
+                      .payload = {result}};
+                });
           },
           [&](CollectPregelResults const& x)
               -> futures::Future<ResultT<ModernMessage>> {

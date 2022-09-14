@@ -47,6 +47,8 @@ struct WorkerApi : NewIWorker {
       -> futures::Future<ResultT<GlobalSuperStepFinished>> override;
   [[nodiscard]] auto store(Store const& message)
       -> futures::Future<ResultT<Stored>> override;
+  [[nodiscard]] auto cleanup(Cleanup const& message)
+      -> futures::Future<ResultT<CleanupFinished>> override;
 
  private:
   ServerID _server;

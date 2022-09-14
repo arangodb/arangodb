@@ -148,7 +148,7 @@ class GraphStore final {
   /// Write results to database
   auto storeResults(WorkerConfig* config,
                     std::function<void()> const& statusUpdateCallback)
-      -> futures::Future<ResultT<Stored>>;
+      -> futures::Future<Result>;
 
   ReportManager* _reports;
 
@@ -164,7 +164,7 @@ class GraphStore final {
   auto storeVertices(
     std::vector<ShardID> const& globalShards, RangeIterator<Vertex<V, E>>& it,
     size_t threadNumber, std::function<void()> const& statusUpdateCallback)
-    -> ResultT<Stored>;
+    -> Result;
   uint64_t determineVertexIdRangeStart(uint64_t numVertices);
 
   constexpr size_t vertexSegmentSize() const {

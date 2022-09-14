@@ -1,5 +1,6 @@
 #include "CanceledState.h"
 #include <chrono>
+#include "fmt/chrono.h"
 
 #include "Basics/FunctionUtils.h"
 #include "Pregel/Conductor/Conductor.h"
@@ -18,58 +19,63 @@ Canceled::Canceled(Conductor& conductor, std::chrono::seconds const& ttl)
   }
 }
 
-auto Canceled::run() -> void {
-  LOG_PREGEL_CONDUCTOR("dd721", WARN)
-      << "Execution was canceled, results will be discarded.";
-
-  bool ok = basics::function_utils::retryUntilTimeout(
-      [this]() -> bool {
-        conductor.cleanup();
-        LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Finalizing workers";
-        auto startCleanupCommand = StartCleanup{
-            .gss = conductor._globalSuperstep, .withStoring = false};
-        auto response = conductor._sendToAllDBServers(startCleanupCommand);
-        return response.ok();
-      },
-      Logger::PREGEL, "cancel worker execution");
-  if (!ok) {
-    LOG_PREGEL_CONDUCTOR("f8b3c", ERR)
-        << "Failed to cancel worker execution for five minutes, giving up.";
+auto Canceled::_cleanup() -> CleanupFuture {
+  auto results = std::vector<futures::Future<ResultT<CleanupFinished>>>{};
+  for (auto&& [_, worker] : conductor.workers) {
+    results.emplace_back(worker.cleanup(Cleanup{}));
   }
-  conductor._workHandle.reset();
+  return futures::collectAll(results);
 }
 
-auto Canceled::receive(Message const& message) -> void {
-  if (message.type() != MessageType::CleanupFinished) {
-    LOG_PREGEL_CONDUCTOR("14df4", WARN)
-        << "When canceled, we expect a CleanupFinished "
-           "message, but we received message type "
-        << static_cast<int>(message.type());
-    return;
+auto Canceled::_cleanupUntilTimeout(std::chrono::steady_clock::time_point start)
+    -> futures::Future<Result> {
+  conductor.cleanup();
+
+  if (conductor._feature.isStopping()) {
+    LOG_PREGEL_CONDUCTOR("bd540", DEBUG)
+        << "Feature is stopping, workers are already shutting down, no need to "
+           "clean them up.";
+    return Result{};
   }
-  auto event = static_cast<CleanupFinished const&>(message);
-  conductor._ensureUniqueResponse(event.senderId);
-  {
-    auto reports = event.reports.slice();
-    if (reports.isArray()) {
-      conductor._reports.appendFromSlice(reports);
+
+  LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Cleanup workers";
+  return _cleanup().thenValue([&](auto results) {
+    for (auto const& result : results) {
+      if (result.get().fail()) {
+        LOG_PREGEL_CONDUCTOR("1c495", ERR) << fmt::format(
+            "Got unsuccessful response from worker while cleaning up: {}",
+            result.get().errorMessage());
+        if (std::chrono::steady_clock::now() - start >= _timeout) {
+          return Result{
+              TRI_ERROR_INTERNAL,
+              fmt::format("Failed to cancel worker execution for {}, giving up",
+                          _timeout)};
+        }
+        std::this_thread::sleep_for(_retryInterval);
+        return _cleanupUntilTimeout(start).get();
+      }
     }
-  }
-  if (conductor._respondedServers.size() != conductor._dbServers.size()) {
-    return;
-  }
+    return Result{};
+  });
+}
 
-  if (conductor._inErrorAbort) {
-    conductor.changeState(StateType::FatalError);
-    return;
-  }
+auto Canceled::run() -> void {
+  LOG_PREGEL_CONDUCTOR("dd721", WARN)
+      << "Execution was canceled, conductor and workers are discarded.";
 
-  auto* scheduler = SchedulerFeature::SCHEDULER;
-  if (scheduler) {
-    scheduler->queue(
-        RequestLane::CLUSTER_AQL, [this, self = conductor.shared_from_this()] {
-          LOG_PREGEL_CONDUCTOR("6928f", INFO) << "Conductor is erased";
-          conductor._feature.cleanupConductor(conductor._executionNumber);
-        });
-  }
+  _cleanupUntilTimeout(std::chrono::steady_clock::now())
+      .thenValue([&](auto result) {
+        if (result.fail()) {
+          LOG_PREGEL_CONDUCTOR("f8b3c", ERR) << result.errorMessage();
+          return;
+        }
+
+        if (conductor._inErrorAbort) {
+          conductor.changeState(StateType::FatalError);
+          return;
+        }
+
+        LOG_PREGEL_CONDUCTOR("6928f", INFO) << "Conductor is erased";
+        conductor._feature.cleanupConductor(conductor._executionNumber);
+      });
 }
