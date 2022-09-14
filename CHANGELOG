@@ -1,5 +1,5 @@
-v3.10.0 (XXXX-XX-XX)
---------------------
+v3.10.0-beta.1 (2022-09-14)
+---------------------------
 
 * Display progress during Arangosearch link and inverted index recovery.
 
