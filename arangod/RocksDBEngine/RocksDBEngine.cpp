@@ -2783,11 +2783,11 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       StorageEngine::registerReplicatedState(*vocbase, info);
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC("554b1", ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("554c1", ERR, arangodb::Logger::ENGINES)
         << "error while opening database: " << ex.what();
     throw;
   } catch (...) {
-    LOG_TOPIC("5933d", ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("5f33d", ERR, arangodb::Logger::ENGINES)
         << "error while opening database: unknown exception";
     throw;
   }
