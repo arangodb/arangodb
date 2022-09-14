@@ -650,8 +650,6 @@
 
 
         const loggerCallback = function() {
-          console.log("Entered callback");
-
           if (this.loggerView) {
             this.loggerView.remove();
           }
