@@ -634,7 +634,10 @@ OperationResult transaction::Methods::anyLocal(
   VPackBuilder resultBuilder;
   if (_state->isDBServer()) {
     std::shared_ptr<LogicalCollection> const& collection =
-        trxCollection(cid)->collection();
+        trxColl->collection();
+    if (collection == nullptr) {
+      return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options);
+    }
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
       return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
@@ -784,12 +787,16 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 
   DataSourceId cid = addCollectionAtRuntime(translateName(collectionName),
                                             AccessMode::Type::READ);
-  auto const& collection = trxCollection(cid)->collection();
 
   arangodb::velocypack::StringRef key(
       transaction::helpers::extractKeyPart(value));
   if (key.empty()) {
-    return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+    return {TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD};
+  }
+
+  auto const& collection = trxCollection(cid)->collection();
+  if (collection == nullptr) {
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
   return collection->getPhysical()->read(
@@ -821,9 +828,12 @@ Result transaction::Methods::documentFastPathLocal(
   TRI_ASSERT(trxColl != nullptr);
   std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
   TRI_ASSERT(collection != nullptr);
+  if (collection == nullptr) {
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+  }
 
   if (key.empty()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+    return {TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD};
   }
 
   // We never want to see our own writes here, otherwise we could observe
@@ -889,6 +899,10 @@ Future<OperationResult> transaction::Methods::documentLocal(
       addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   std::shared_ptr<LogicalCollection> const& collection =
       trxCollection(cid)->collection();
+  if (collection == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
 
   VPackBuilder resultBuilder;
   Result res;
@@ -1007,6 +1021,10 @@ Future<OperationResult> transaction::Methods::insertLocal(
   DataSourceId cid = addCollectionAtRuntime(cname, AccessMode::Type::WRITE);
   std::shared_ptr<LogicalCollection> const& collection =
       trxCollection(cid)->collection();
+  if (collection == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
@@ -1256,6 +1274,15 @@ Future<OperationResult> transaction::Methods::insertLocal(
     while (it.valid()) {
       bool excludeFromReplication = false;
       VPackSlice s = it.value();
+      TRI_IF_FAILURE("insertLocal::fakeResult1") {
+        res.reset(TRI_ERROR_DEBUG);
+        createBabiesError(replicationType == ReplicationType::FOLLOWER
+                              ? nullptr
+                              : &resultBuilder,
+                          errorCounter, res);
+        it.next();
+        continue;
+      }
       res = workForOneDocument(s, true, excludeFromReplication);
       if (res.fail()) {
         createBabiesError(replicationType == ReplicationType::FOLLOWER
@@ -1267,7 +1294,9 @@ Future<OperationResult> transaction::Methods::insertLocal(
       }
       it.next();
     }
-    res.reset();  // With babies reporting is handled in the result body
+
+    // it is ok to clobber res here!
+    res.reset();
   } else {
     bool excludeFromReplication = false;
     res = workForOneDocument(value, false, excludeFromReplication);
@@ -1289,35 +1318,44 @@ Future<OperationResult> transaction::Methods::insertLocal(
              (value.isArray() && resultBuilder.slice().isEmptyArray()) ||
              (value.isObject() && resultBuilder.slice().isEmptyObject()));
 
+  TRI_ASSERT(res.ok() || !value.isArray());
+
+  TRI_IF_FAILURE("insertLocal::fakeResult2") { res.reset(TRI_ERROR_DEBUG); }
+
   TRI_ASSERT(!value.isArray() || options.silent ||
              resultBuilder.slice().length() == value.length());
 
   std::shared_ptr<VPackBufferUInt8> resDocs = resultBuilder.steal();
-  if (res.ok() && replicationType == ReplicationType::LEADER) {
-    TRI_ASSERT(collection != nullptr);
-    TRI_ASSERT(followers != nullptr);
+  if (res.ok()) {
+    if (replicationType == ReplicationType::LEADER && !followers->empty()) {
+      TRI_ASSERT(collection != nullptr);
 
-    // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
-    // get here, in the single document case, we do not try to replicate
-    // in case of an error.
+      // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
+      // get here, in the single document case, we do not try to replicate
+      // in case of an error.
 
-    // Now replicate the good operations on all followers:
-    return replicateOperations(collection.get(), followers, options, value,
-                               TRI_VOC_DOCUMENT_OPERATION_INSERT, resDocs,
-                               excludePositions, *collection->followers())
-        .thenValue([options, errs = std::move(errorCounter),
-                    resDocs](Result res) mutable {
-          if (!res.ok()) {
-            return OperationResult{std::move(res), options};
-          }
-          if (options.silent && errs.empty()) {
-            // We needed the results, but do not want to report:
-            resDocs->clear();
-          }
-          return OperationResult(std::move(res), std::move(resDocs), options,
-                                 std::move(errs));
-        });
+      // Now replicate the good operations on all followers:
+      return replicateOperations(collection, followers, options, value,
+                                 TRI_VOC_DOCUMENT_OPERATION_INSERT, resDocs,
+                                 std::move(excludePositions))
+          .thenValue([options, errs = std::move(errorCounter),
+                      resDocs](Result res) mutable {
+            if (!res.ok()) {
+              return OperationResult{std::move(res), options};
+            }
+            if (options.silent && errs.empty()) {
+              // We needed the results, but do not want to report:
+              resDocs->clear();
+            }
+            return OperationResult(std::move(res), std::move(resDocs), options,
+                                   std::move(errs));
+          });
+    }
+
+    // execute a deferred intermediate commit, if required.
+    res = performIntermediateCommitIfRequired(collection->id());
   }
+
   if (options.silent && errorCounter.empty()) {
     // We needed the results, but do not want to report:
     resDocs->clear();
@@ -1397,6 +1435,10 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   auto* trxColl = trxCollection(cid);
   TRI_ASSERT(trxColl->isLocked(AccessMode::Type::WRITE));
   auto const& collection = trxColl->collection();
+  if (collection == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
 
   // Assert my assumption that we don't have a lock only with mmfiles single
   // document operations.
@@ -1550,10 +1592,10 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   };             // workForOneDocument
   ///////////////////////
 
-  bool multiCase = newValue.isArray();
   std::unordered_map<ErrorCode, size_t> errorCounter;
   Result res;
-  if (multiCase) {
+
+  if (newValue.isArray()) {
     VPackArrayBuilder guard(&resultBuilder);
     VPackArrayIterator it(newValue);
     while (it.valid()) {
@@ -1566,7 +1608,9 @@ Future<OperationResult> transaction::Methods::modifyLocal(
       }
       it.next();
     }
-    res.reset();  // With babies reporting is handled in the result body
+
+    // it is ok to clobber res here!
+    res.reset();
   } else {
     res = workForOneDocument(newValue, false);
 
@@ -1588,33 +1632,37 @@ Future<OperationResult> transaction::Methods::modifyLocal(
              resultBuilder.slice().length() == newValue.length());
 
   auto resDocs = resultBuilder.steal();
-  if (res.ok() && replicationType == ReplicationType::LEADER) {
-    // We still hold a lock here, because this is update/replace and we're
-    // therefore not doing single document operations. But if we didn't hold it
-    // at the beginning of the method the followers may not be up-to-date.
-    TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
-    TRI_ASSERT(collection != nullptr);
-    TRI_ASSERT(followers != nullptr);
+  if (res.ok()) {
+    if (replicationType == ReplicationType::LEADER && !followers->empty()) {
+      // We still hold a lock here, because this is update/replace and we're
+      // therefore not doing single document operations. But if we didn't hold
+      // it at the beginning of the method the followers may not be up-to-date.
+      TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
+      TRI_ASSERT(collection != nullptr);
 
-    // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
-    // get here, in the single document case, we do not try to replicate
-    // in case of an error.
+      // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
+      // get here, in the single document case, we do not try to replicate
+      // in case of an error.
 
-    // Now replicate the good operations on all followers:
-    return replicateOperations(collection.get(), followers, options, newValue,
-                               operation, resDocs, {}, *collection->followers())
-        .thenValue([options, errs = std::move(errorCounter),
-                    resDocs](Result&& res) mutable {
-          if (!res.ok()) {
-            return OperationResult{std::move(res), options};
-          }
-          if (options.silent && errs.empty()) {
-            // We needed the results, but do not want to report:
-            resDocs->clear();
-          }
-          return OperationResult(std::move(res), std::move(resDocs),
-                                 std::move(options), std::move(errs));
-        });
+      // Now replicate the good operations on all followers:
+      return replicateOperations(collection, followers, options, newValue,
+                                 operation, resDocs, {})
+          .thenValue([options, errs = std::move(errorCounter),
+                      resDocs](Result&& res) mutable {
+            if (!res.ok()) {
+              return OperationResult{std::move(res), options};
+            }
+            if (options.silent && errs.empty()) {
+              // We needed the results, but do not want to report:
+              resDocs->clear();
+            }
+            return OperationResult(std::move(res), std::move(resDocs),
+                                   std::move(options), std::move(errs));
+          });
+    }
+
+    // execute a deferred intermediate commit, if required.
+    res = performIntermediateCommitIfRequired(collection->id());
   }
 
   if (options.silent && errorCounter.empty()) {
@@ -1670,6 +1718,10 @@ Future<OperationResult> transaction::Methods::removeLocal(
   auto* trxColl = trxCollection(cid);
   TRI_ASSERT(trxColl->isLocked(AccessMode::Type::WRITE));
   auto const& collection = trxColl->collection();
+  if (collection == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
@@ -1814,7 +1866,9 @@ Future<OperationResult> transaction::Methods::removeLocal(
                           errorCounter, res);
       }
     }
-    res.reset();  // With babies reporting is handled in the result body
+
+    // it is ok to clobber res here!
+    res.reset();
   } else {
     res = workForOneDocument(value, false);
 
@@ -1836,31 +1890,34 @@ Future<OperationResult> transaction::Methods::removeLocal(
              resultBuilder.slice().length() == value.length());
 
   auto resDocs = resultBuilder.steal();
-  if (res.ok() && replicationType == ReplicationType::LEADER) {
-    TRI_ASSERT(collection != nullptr);
-    TRI_ASSERT(followers != nullptr);
-    // Now replicate the same operation on all followers:
+  if (res.ok()) {
+    if (replicationType == ReplicationType::LEADER && !followers->empty()) {
+      TRI_ASSERT(collection != nullptr);
+      // Now replicate the same operation on all followers:
 
-    // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
-    // get here, in the single document case, we do not try to replicate
-    // in case of an error.
+      // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
+      // get here, in the single document case, we do not try to replicate
+      // in case of an error.
 
-    // Now replicate the good operations on all followers:
-    return replicateOperations(collection.get(), followers, options, value,
-                               TRI_VOC_DOCUMENT_OPERATION_REMOVE, resDocs, {},
-                               *collection->followers())
-        .thenValue([options, errs = std::move(errorCounter),
-                    resDocs](Result res) mutable {
-          if (!res.ok()) {
-            return OperationResult{std::move(res), options};
-          }
-          if (options.silent && errs.empty()) {
-            // We needed the results, but do not want to report:
-            resDocs->clear();
-          }
-          return OperationResult(std::move(res), std::move(resDocs),
-                                 std::move(options), std::move(errs));
-        });
+      // Now replicate the good operations on all followers:
+      return replicateOperations(collection, followers, options, value,
+                                 TRI_VOC_DOCUMENT_OPERATION_REMOVE, resDocs, {})
+          .thenValue([options, errs = std::move(errorCounter),
+                      resDocs](Result res) mutable {
+            if (!res.ok()) {
+              return OperationResult{std::move(res), options};
+            }
+            if (options.silent && errs.empty()) {
+              // We needed the results, but do not want to report:
+              resDocs->clear();
+            }
+            return OperationResult(std::move(res), std::move(resDocs),
+                                   std::move(options), std::move(errs));
+          });
+    }
+
+    // execute a deferred intermediate commit, if required.
+    res = performIntermediateCommitIfRequired(collection->id());
   }
 
   if (options.silent && errorCounter.empty()) {
@@ -1907,6 +1964,9 @@ OperationResult transaction::Methods::allLocal(
   if (_state->isDBServer()) {
     std::shared_ptr<LogicalCollection> const& collection =
         trxCollection(cid)->collection();
+    if (collection == nullptr) {
+      return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options);
+    }
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
       return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
@@ -1958,6 +2018,10 @@ Future<OperationResult> transaction::Methods::truncateLocal(
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   auto const& collection = trxCollection(cid)->collection();
+  if (collection == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
@@ -2254,6 +2318,9 @@ OperationResult transaction::Methods::countLocal(
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   auto const& collection = trxCollection(cid)->collection();
+  if (collection == nullptr) {
+    return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options);
+  }
 
   //  Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
   //
@@ -2329,6 +2396,9 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(
 
   std::shared_ptr<LogicalCollection> const& logical = trxColl->collection();
   TRI_ASSERT(logical != nullptr);
+  if (logical == nullptr) {
+    throwCollectionNotFound(collectionName.c_str());
+  }
 
   // TODO: an extra optimizer rule could make this unnecessary
   if (isInaccessibleCollection(collectionName)) {
@@ -2514,18 +2584,14 @@ Result transaction::Methods::resolveId(
 // Unified replication of operations. May be inserts (with or without
 // overwrite), removes, or modifies (updates/replaces).
 Future<Result> Methods::replicateOperations(
-    LogicalCollection* collection,
+    std::shared_ptr<LogicalCollection> collection,
     std::shared_ptr<const std::vector<ServerID>> const& followerList,
     OperationOptions const& options, VPackSlice const value,
     TRI_voc_document_operation_e const operation,
     std::shared_ptr<VPackBuffer<uint8_t>> const& ops,
-    std::unordered_set<size_t> const& excludePositions,
-    FollowerInfo& followerInfo) {
+    std::unordered_set<size_t> excludePositions) {
   TRI_ASSERT(followerList != nullptr);
-
-  if (followerList->empty()) {
-    return Result();
-  }
+  TRI_ASSERT(!followerList->empty());
 
   // path and requestType are different for insert/remove/modify.
 
@@ -2828,10 +2894,14 @@ Future<Result> Methods::replicateOperations(
       }
     }
 
+    Result res;
     if (didRefuse) {  // case (1), caller may abort this transaction
-      return Result(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+      res.reset(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+    } else {
+      // execute a deferred intermediate commit, if required.
+      res = performIntermediateCommitIfRequired(collection->id());
     }
-    return Result();
+    return res;
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
@@ -3114,6 +3184,11 @@ futures::Future<OperationResult> Methods::countInternal(
   }
 
   return futures::makeFuture(countLocal(collectionName, type, options));
+}
+
+// perform a (deferred) intermediate commit if required
+Result Methods::performIntermediateCommitIfRequired(DataSourceId collectionId) {
+  return _state->performIntermediateCommitIfRequired(collectionId);
 }
 
 #ifndef USE_ENTERPRISE

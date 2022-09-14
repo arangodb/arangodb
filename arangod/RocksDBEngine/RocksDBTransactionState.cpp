@@ -379,9 +379,8 @@ void RocksDBTransactionState::rollbackOperation(
 /// @brief add an operation for a transaction collection
 Result RocksDBTransactionState::addOperation(
     DataSourceId cid, RevisionId revisionId,
-    TRI_voc_document_operation_e operationType,
-    bool& hasPerformedIntermediateCommit) {
-  Result result = _rocksMethods->addOperation(cid, revisionId, operationType);
+    TRI_voc_document_operation_e operationType) {
+  Result result = _rocksMethods->addOperation(operationType);
 
   if (result.ok()) {
     auto tcoll =
@@ -389,7 +388,7 @@ Result RocksDBTransactionState::addOperation(
     if (tcoll == nullptr) {
       std::string message = "collection '" + std::to_string(cid.id()) +
                             "' not found in transaction state";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(message));
     }
 
     // should not fail or fail with exception
@@ -401,11 +400,13 @@ Result RocksDBTransactionState::addOperation(
     if (queryCache->mayBeActive() && tcoll->collection()) {
       queryCache->invalidate(&_vocbase, tcoll->collection()->guid());
     }
-
-    result =
-        _rocksMethods->checkIntermediateCommit(hasPerformedIntermediateCommit);
   }
   return result;
+}
+
+Result RocksDBTransactionState::performIntermediateCommitIfRequired(
+    DataSourceId cid) {
+  return _rocksMethods->checkIntermediateCommit();
 }
 
 bool RocksDBTransactionState::ensureSnapshot() {

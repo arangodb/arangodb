@@ -910,6 +910,11 @@ Result RocksDBCollection::truncate(transaction::Methods& trx,
 
     if (res.ok()) {
       res = savepoint.finish(_logicalCollection.id(), newRevisionId());
+
+      if (res.ok()) {
+        res =
+            state->performIntermediateCommitIfRequired(_logicalCollection.id());
+      }
     }
 
     if (res.fail()) {  // Failed to remove document in truncate.
