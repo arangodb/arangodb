@@ -59,7 +59,7 @@ function IResearchOffsetInfoAqlTestSuiteCommunity() {
 
       db._createDatabase(dbName);
       db._useDatabase(dbName);
-      col = db._create("docs");
+      let col = db._create("docs");
       analyzers.save("offsets", "delimiter", { delimiter: " " }, [ "frequency", "position", "offset"]);
       col.insert({ _key: "a"});
       col.insert({ body: "the quick brown fox jumps over the lazy dog", sub: { body: "the quick brown fox jumps over the lazy dog" } });
