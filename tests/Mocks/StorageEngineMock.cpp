@@ -1967,6 +1967,19 @@ auto StorageEngineMock::dropReplicatedLog(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
+arangodb::Result StorageEngineMock::updateReplicatedState(
+    TRI_vocbase_t& vocbase,
+    const arangodb::replication2::replicated_state::PersistedStateInfo& info) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+arangodb::Result StorageEngineMock::dropReplicatedState(
+    TRI_vocbase_t& vocbase, arangodb::replication2::LogId id) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 TransactionCollectionMock::TransactionCollectionMock(
     arangodb::TransactionState* state, arangodb::DataSourceId cid,
     arangodb::AccessMode::Type accessType)
