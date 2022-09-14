@@ -1,6 +1,9 @@
 v3.9.4 (XXXX-XX-XX)
 -------------------
 
+* Fixed SEARCH-374: Fixed ArangoSearch seek iteration over documents in sparse
+  bitset.
+
 * Added startup option `--arangosearch.skip-recovery` to skip the recovery of
   arangosearch view links or inverted indexes.
   The startup option can be specified multiple times and is expected to either
