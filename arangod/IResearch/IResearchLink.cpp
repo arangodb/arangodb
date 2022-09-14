@@ -1674,9 +1674,11 @@ Result IResearchLink::initDataStore(
           linkLock->_engine->changeCollection(linkLock->collection().vocbase(),
                                               linkLock->collection(), true);
 
-          // we cannot return an error from here as this would abort the
-          // entire recovery and fail the startup.
-          return {};
+          if (asyncFeature->failQueriesOnOutOfSync()) {
+            // we cannot return an error from here as this would abort the
+            // entire recovery and fail the startup.
+            return {};
+          }
         }
 
         LOG_TOPIC("5b59c", TRACE, TOPIC)
@@ -1745,6 +1747,10 @@ Result IResearchLink::insert(transaction::Methods& trx,
         << "skipping 'insert', operation tick '" << _engine->recoveryTick()
         << "', recovery tick '" << _dataStore._recoveryTick << "'";
 
+    return {};
+  }
+
+  if (_asyncFeature->failQueriesOnOutOfSync() && isOutOfSync()) {
     return {};
   }
 
@@ -1968,6 +1974,10 @@ Result IResearchLink::remove(transaction::Methods& trx,
         << "skipping 'removal', operation tick '" << _engine->recoveryTick()
         << "', recovery tick '" << _dataStore._recoveryTick << "'";
 
+    return {};
+  }
+
+  if (_asyncFeature->failQueriesOnOutOfSync() && isOutOfSync()) {
     return {};
   }
 
