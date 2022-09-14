@@ -772,6 +772,12 @@
             console.log("result (should be VIKING): ", result);
             if(result.code === 404) {
               console.log("The orphan collection '" + oC + "' does not exist anymore");
+              const editedVertexCollectionsFiltered = editedVertexCollections.filter(
+                (collection) => collection !== oC
+              );
+              console.log("editedVertexCollectionsFiltered: ", editedVertexCollectionsFiltered);
+              //editedVertexCollections = editedVertexCollectionsFiltered;
+              //editedVertexCollections = ['vikingboat', 'shieldwall'];
               // remove already deleted orphan collection from currentOrphanage array
             }
           }
@@ -781,6 +787,7 @@
       editedVertexCollections.forEach(
         function (vC) {
           console.log("editedVertexCollections (2): ", editedVertexCollections);
+          //console.log("Above should be vikingboat and shielwall ###########");
           if (currentOrphanage.indexOf(vC) === -1) {
             graph.addVertexCollection(vC);
           }
