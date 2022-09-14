@@ -28,3 +28,9 @@ void test::MockStatePersistorInterface::updateStateInformation(
   std::unique_lock guard(_mutex);
   _info.emplace(info);
 }
+
+void test::MockStatePersistorInterface::deleteStateInformation(
+    LogId stateId) noexcept {
+  std::unique_lock guard(_mutex);
+  _info.reset();
+}

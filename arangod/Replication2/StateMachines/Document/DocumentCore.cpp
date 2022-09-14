@@ -60,3 +60,12 @@ DocumentCore::DocumentCore(
 auto DocumentCore::getShardId() -> std::string_view { return _shardId; }
 
 auto DocumentCore::getGid() -> GlobalLogIdentifier { return _gid; }
+
+void DocumentCore::drop() {
+  auto result = _shardHandler->dropLocalShard(_params.collectionId);
+  if (result.fail()) {
+    LOG_CTX("b7e0d", FATAL, this->loggerContext)
+        << "Failed to drop shard " << _shardId << " for replicated state "
+        << _gid << ": " << result;
+  }
+}

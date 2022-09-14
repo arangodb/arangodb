@@ -121,6 +121,12 @@ struct VocbaseStatePersistor
     engine.updateReplicatedState(vocbase, info);
   }
 
+  void deleteStateInformation(replication2::LogId stateId) noexcept override {
+    StorageEngine& engine =
+        vocbase.server().getFeature<EngineSelectorFeature>().engine();
+    engine.dropReplicatedState(vocbase, stateId);
+  }
+
   TRI_vocbase_t& vocbase;
 };
 }  // namespace
@@ -238,9 +244,15 @@ struct arangodb::VocBaseLogManager {
   [[nodiscard]] auto dropReplicatedState(arangodb::replication2::LogId id)
       -> arangodb::Result {
     LOG_CTX("658c6", DEBUG, _logContext) << "Dropping replicated state " << id;
+    StorageEngine& engine =
+        _server.getFeature<EngineSelectorFeature>().engine();
     return _guardedData.doUnderLock([&](GuardedData& data) {
       if (auto iter = data.states.find(id); iter != data.states.end()) {
-        // Now we can drop the persisted log
+        iter->second->drop();
+        auto res = engine.dropReplicatedState(_vocbase, id);
+        if (res.fail()) {
+          return res;
+        }
         data.states.erase(iter);
       } else {
         return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);

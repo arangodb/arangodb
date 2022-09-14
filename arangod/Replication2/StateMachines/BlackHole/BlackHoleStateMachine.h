@@ -46,6 +46,7 @@ struct BlackHoleState {
   using FactoryType = BlackHoleFactory;
   using CoreType = BlackHoleCore;
   using CoreParameterType = void;
+  using CleanupHandlerType = void;
 };
 
 struct BlackHoleLogEntry {

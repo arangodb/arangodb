@@ -48,6 +48,7 @@ struct ReplicatedStateFollowerResignTest : test::ReplicatedLogTest {
     using FactoryType = test::RecordingFactory<LeaderType, FollowerType>;
     using CoreType = test::TestCoreType;
     using CoreParameterType = void;
+    using CleanupHandlerType = void;
   };
 
   std::shared_ptr<State::FactoryType> factory =

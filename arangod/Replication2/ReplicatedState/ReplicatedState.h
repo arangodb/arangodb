@@ -71,6 +71,7 @@ struct ReplicatedStateBase {
   virtual void start(
       std::unique_ptr<ReplicatedStateToken> token,
       std::optional<velocypack::SharedSlice> const& coreParameter) = 0;
+  virtual void drop() = 0;
   virtual void rebuildMe(IStateManagerBase const* caller) noexcept = 0;
   [[nodiscard]] virtual auto getStatus() -> std::optional<StateStatus> = 0;
   [[nodiscard]] auto getLeader()
@@ -113,7 +114,7 @@ struct ReplicatedState final
   void start(
       std::unique_ptr<ReplicatedStateToken> token,
       std::optional<velocypack::SharedSlice> const& coreParameter) override;
-
+  void drop() override;
   /**
    * Returns the follower state machine. Returns nullptr if no follower state
    * machine is present. (i.e. this server is not a follower)

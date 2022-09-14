@@ -121,6 +121,7 @@ struct MockDocumentStateShardHandler : IDocumentStateShardHandler {
   MOCK_METHOD(ResultT<std::string>, createLocalShard,
               (std::string const&, std::shared_ptr<velocypack::Builder> const&),
               (override));
+  MOCK_METHOD(Result, dropLocalShard, (std::string const&), (override));
 };
 
 struct DocumentStateMachineTest : test::ReplicatedLogTest {

@@ -207,8 +207,39 @@ auto ReplicatedState<S>::buildCore(
     }
     auto params = velocypack::deserialize<typename S::CoreParameterType>(
         coreParameter->slice());
+    PersistedStateInfo info;
+    info.stateId = log->getId();
+    info.specification.type = S::NAME;
+    info.specification.parameters = *coreParameter;
+    persistor->updateStateInformation(info);
     return factory->constructCore(log->getGlobalLogId(), std::move(params));
   }
+}
+
+template<typename S>
+void ReplicatedState<S>::drop() {
+  auto deferred = guardedData.doUnderLock([&](GuardedData& data) {
+    if (data.currentManager == nullptr) {
+      return DeferredAction{};
+    }
+    using CleanupHandler =
+        typename ReplicatedStateTraits<S>::CleanupHandlerType;
+    if constexpr (not std::is_void_v<CleanupHandler>) {
+      static_assert(
+          std::is_invocable_r_v<std::shared_ptr<CleanupHandler>,
+                                decltype(&Factory::constructCleanupHandler),
+                                Factory>);
+      std::shared_ptr<CleanupHandler> cleanupHandler =
+          factory->constructCleanupHandler();
+      auto [core, token, action] = std::move(*data.currentManager).resign();
+      cleanupHandler->drop(std::move(core));
+      return std::move(action);
+    } else {
+      auto [core, token, action] = std::move(*data.currentManager).resign();
+      return std::move(action);
+    }
+  });
+  deferred.fire();
 }
 
 template<typename S>

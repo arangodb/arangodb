@@ -30,6 +30,7 @@ namespace arangodb::replication2::test {
 struct MockStatePersistorInterface : replicated_state::StatePersistorInterface {
   void updateStateInformation(
       const replicated_state::PersistedStateInfo& info) noexcept override;
+  void deleteStateInformation(LogId stateId) noexcept override;
 
   std::mutex _mutex;
   std::optional<replicated_state::PersistedStateInfo> _info;

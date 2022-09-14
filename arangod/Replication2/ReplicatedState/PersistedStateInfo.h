@@ -43,6 +43,7 @@ auto inspect(Inspector& f, PersistedStateInfo& x) {
 struct StatePersistorInterface {
   virtual ~StatePersistorInterface() = default;
   virtual void updateStateInformation(PersistedStateInfo const&) noexcept = 0;
+  virtual void deleteStateInformation(LogId stateId) noexcept = 0;
 };
 
 }  // namespace arangodb::replication2::replicated_state

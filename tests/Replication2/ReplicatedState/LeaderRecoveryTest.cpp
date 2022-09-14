@@ -51,6 +51,7 @@ struct MyHelperState {
   using FollowerType = EmptyFollowerType<MyHelperState>;
   using CoreType = MyCoreType;
   using CoreParameterType = void;
+  using CleanupHandlerType = void;
 };
 
 struct MyHelperLeaderState : IReplicatedLeaderState<MyHelperState> {

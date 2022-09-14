@@ -40,68 +40,54 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::test;
 
-struct ReplicatedStateLeaderResignTest : test::ReplicatedLogTest {
+struct ReplicatedStateCleanupTest : test::ReplicatedLogTest {
+  struct CleanupHandler {
+    void drop(std::unique_ptr<test::TestCoreType> core) {
+      cores.emplace_back(std::move(core));
+    }
+
+    std::vector<std::unique_ptr<test::TestCoreType>> cores;
+  };
+
+  template<typename LeaderType, typename FollowerType>
+  struct Factory : test::RecordingFactory<LeaderType, FollowerType> {
+    auto constructCleanupHandler() -> std::shared_ptr<CleanupHandler> {
+      return lastCleanupHandler = std::make_shared<CleanupHandler>();
+    }
+
+    std::shared_ptr<CleanupHandler> lastCleanupHandler;
+  };
+
   struct State {
     using LeaderType = test::FakeLeaderType<State>;
     using FollowerType = test::EmptyFollowerType<State>;
     using EntryType = test::DefaultEntryType;
-    using FactoryType = test::RecordingFactory<LeaderType, FollowerType>;
+    using FactoryType = Factory<LeaderType, FollowerType>;
     using CoreType = test::TestCoreType;
     using CoreParameterType = void;
-    using CleanupHandlerType = void;
+    using CleanupHandlerType = CleanupHandler;
   };
 
-  ReplicatedStateLeaderResignTest() {
-    feature->registerStateType<State>("my-state");
-  }
-  std::shared_ptr<ReplicatedStateFeature> feature =
-      std::make_shared<ReplicatedStateFeature>();
-
-  std::shared_ptr<test::FakeLeader> logLeader =
-      std::make_shared<test::FakeLeader>();
   std::shared_ptr<State::FactoryType> factory =
       std::make_shared<State::FactoryType>();
-  std::unique_ptr<State::CoreType> core = std::make_unique<State::CoreType>();
-  std::shared_ptr<State::LeaderType> leaderState;
-  std::shared_ptr<ReplicatedStateMetrics> _metrics =
-      std::make_shared<ReplicatedStateMetricsMock>("foo");
   std::shared_ptr<test::MockStatePersistorInterface> _persistor =
       std::make_shared<test::MockStatePersistorInterface>();
   LoggerContext const loggerCtx{Logger::REPLICATED_STATE};
-  std::shared_ptr<replicated_state::LeaderStateManager<State>> manager =
-      std::make_shared<replicated_state::LeaderStateManager<State>>(
-          loggerCtx, nullptr, logLeader, std::move(core),
-          std::make_unique<ReplicatedStateToken>(StateGeneration{1}), factory,
-          _metrics, _persistor);
+  std::shared_ptr<ReplicatedStateMetrics> _metrics =
+      std::make_shared<ReplicatedStateMetricsMock>("foo");
 };
 
-TEST_F(ReplicatedStateLeaderResignTest, complete_run_without_resign) {
-  auto index =
-      logLeader->insertMultiplexedValue<State>(DefaultEntryType{"foo", "bar"});
-  manager->run();
-  logLeader->triggerLeaderEstablished(index);
-  auto stateLeader = factory->getLatestLeader();
-  stateLeader->resolveRecoveryOk();
-}
+TEST_F(ReplicatedStateCleanupTest, complete_run_without_resign) {
+  auto log = makeReplicatedLog(LogId{12});
+  auto state = std::make_shared<ReplicatedState<State>>(log, factory, loggerCtx,
+                                                        _metrics, _persistor);
 
-TEST_F(ReplicatedStateLeaderResignTest,
-       complete_run_with_resign_during_recovery) {
-  auto index =
-      logLeader->insertMultiplexedValue<State>(DefaultEntryType{"foo", "bar"});
-  manager->run();
-  logLeader->triggerLeaderEstablished(index);
-  auto stateLeader = factory->getLatestLeader();
-  auto [core, token, action] = std::move(*manager).resign();
-  action.fire();
-  stateLeader->resolveRecoveryOk();
-}
+  auto const stateGeneration = StateGeneration{1};
+  state->start(std::make_unique<ReplicatedStateToken>(stateGeneration),
+               std::nullopt);
 
-TEST_F(ReplicatedStateLeaderResignTest,
-       complete_run_with_resign_before_recovery) {
-  auto index =
-      logLeader->insertMultiplexedValue<State>(DefaultEntryType{"foo", "bar"});
-  manager->run();
-  auto [core, token, action] = std::move(*manager).resign();
-  action.fire();
-  logLeader->triggerLeaderEstablished(index);
+  state->drop();
+  auto cleanupHandler = factory->lastCleanupHandler;
+  ASSERT_NE(cleanupHandler, nullptr);
+  EXPECT_EQ(cleanupHandler->cores.size(), 1);
 }

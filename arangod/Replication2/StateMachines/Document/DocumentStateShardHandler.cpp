@@ -66,4 +66,31 @@ auto DocumentStateShardHandler::createLocalShard(
   return ResultT<std::string>::success(std::move(shardId));
 }
 
+Result DocumentStateShardHandler::dropLocalShard(
+    const std::string& collectionId) {
+  auto shardId = stateIdToShardId(_gid.id);
+  auto serverId = ServerState::instance()->getId();
+
+  maintenance::ActionDescription actionDescription(
+      std::map<std::string, std::string>{
+          {maintenance::NAME, maintenance::DROP_COLLECTION},
+          {maintenance::COLLECTION, collectionId},
+          {maintenance::SHARD, shardId},
+          {maintenance::DATABASE, _gid.database},
+          {maintenance::SERVER_ID, std::move(serverId)},
+          {maintenance::THE_LEADER, "replication2"},
+      },
+      maintenance::HIGHER_PRIORITY, false);
+
+  maintenance::CreateCollection collectionCreator(_maintenanceFeature,
+                                                  actionDescription);
+  bool work = collectionCreator.first();
+  if (work) {
+    return {TRI_ERROR_INTERNAL,
+            fmt::format("Cannot create shard ID {}", shardId)};
+  }
+
+  return {};
+}
+
 }  // namespace arangodb::replication2::replicated_state::document
