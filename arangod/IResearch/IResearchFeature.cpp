@@ -82,6 +82,9 @@
 
 using namespace std::chrono_literals;
 
+DECLARE_GAUGE(arangodb_search_num_out_of_sync_links, uint64_t,
+              "Number of arangosearch links currently out of sync");
+
 namespace arangodb {
 
 namespace basics {
@@ -656,17 +659,6 @@ void registerScorers(aql::AqlFunctionFeature& functions) {
       });
 }
 
-void registerRecoveryHelper(application_features::ApplicationServer& server) {
-  auto helper =
-      std::make_shared<arangodb::iresearch::IResearchRocksDBRecoveryHelper>(
-          server);
-  auto res = RocksDBEngine::registerRecoveryHelper(helper);
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        res.errorNumber(), "failed to register RocksDB recovery helper");
-  }
-}
-
 void registerUpgradeTasks(application_features::ApplicationServer& server) {
   if (!server.hasFeature<UpgradeFeature>()) {
     return;  // nothing to register with (OK if no tasks actually need to be
@@ -792,6 +784,9 @@ std::string const CONSOLIDATION_THREADS_PARAM(
     "--arangosearch.consolidation-threads");
 std::string const CONSOLIDATION_THREADS_IDLE_PARAM(
     "--arangosearch.consolidation-threads-idle");
+std::string const FAIL_ON_OUT_OF_SYNC(
+    "--arangosearch.fail-queries-on-out-of-sync");
+std::string const SKIP_RECOVERY("--arangosearch.skip-recovery");
 
 void IResearchLogTopic::log_appender(void* /*context*/, const char* function,
                                      const char* file, int line,
@@ -870,12 +865,15 @@ IResearchFeature::IResearchFeature(
     : ApplicationFeature(server, IResearchFeature::name()),
       _async(std::make_unique<IResearchAsync>()),
       _running(false),
+      _failQueriesOnOutOfSync(false),
       _consolidationThreads(0),
       _consolidationThreadsIdle(0),
       _commitThreads(0),
       _commitThreadsIdle(0),
       _threads(0),
-      _threadsLimit(0) {
+      _threadsLimit(0),
+      _outOfSyncLinks(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_search_num_out_of_sync_links{})) {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
   startsAfter<IResearchAnalyzerFeature>();
@@ -924,10 +922,43 @@ void IResearchFeature::collectOptions(
                   "for commit tasks (0 == autodetect)",
                   new options::UInt32Parameter(&_commitThreadsIdle))
       .setIntroducedIn(30705);
+  options
+      ->addOption(SKIP_RECOVERY,
+                  "skip data recovery for the specified view links on startup. "
+                  "entries here should have the format "
+                  "'<collection-name>/<link-id>'. "
+                  "the pseudo-entry 'all' will disable recovery for all view "
+                  "links. all links skipped during recovery will be marked "
+                  "as out of sync when the recovery is completed. these links "
+                  "will need to be recreated manually afterwards (note: using "
+                  "this option may cause data of affected links to become "
+                  "incomplete or more incomplete until "
+                  "they have been manually recreated)",
+                  new options::VectorParameter<options::StringParameter>(
+                      &_skipRecoveryItems))
+      .setIntroducedIn(30904);
+  options
+      ->addOption(FAIL_ON_OUT_OF_SYNC,
+                  "whether or not retrieval queries on out of sync "
+                  "links should fail",
+                  new options::BooleanParameter(&_failQueriesOnOutOfSync))
+      .setIntroducedIn(30904);
 }
 
 void IResearchFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
+  // validate all entries in _skipRecoveryItems for formal correctness
+  for (auto const& item : _skipRecoveryItems) {
+    if (item != "all" && basics::StringUtils::split(item, '/').size() != 2) {
+      LOG_TOPIC("b9f28", FATAL, arangodb::iresearch::TOPIC)
+          << "invalid format for '" << SKIP_RECOVERY
+          << "' parameter. expecting '"
+          << "<collection-name>/<link-id>' or "
+          << "'all', got: '" << item << "'";
+      FATAL_ERROR_EXIT();
+    }
+  }
+
   auto const& args = options->processingResult();
   bool const threadsSet = args.touched(THREADS_PARAM);
   bool const threadsLimitSet = args.touched(THREADS_LIMIT_PARAM);
@@ -989,7 +1020,7 @@ void IResearchFeature::prepare() {
   // register 'arangosearch' Transaction DataSource registration callback
   registerTransactionDataSourceRegistrationCallback();
 
-  registerRecoveryHelper(server());
+  registerRecoveryHelper();
 
   // register filters
   if (server().hasFeature<aql::AqlFunctionFeature>()) {
@@ -1146,6 +1177,49 @@ std::tuple<size_t, size_t, size_t> IResearchFeature::stats(
 
 std::pair<size_t, size_t> IResearchFeature::limits(ThreadGroup id) const {
   return _async->get(id).limits();
+}
+
+bool IResearchFeature::linkSkippedDuringRecovery(
+    arangodb::IndexId id) const noexcept {
+  if (_recoveryHelper != nullptr) {
+    return _recoveryHelper->wasSkipped(id);
+  }
+  return false;
+}
+
+void IResearchFeature::trackOutOfSyncLink() noexcept { ++_outOfSyncLinks; }
+
+void IResearchFeature::untrackOutOfSyncLink() noexcept {
+  uint64_t previous = _outOfSyncLinks.fetch_sub(1);
+  TRI_ASSERT(previous > 0);
+}
+
+bool IResearchFeature::failQueriesOnOutOfSync() const noexcept {
+  TRI_IF_FAILURE("ArangoSearch::FailQueriesOnOutOfSync") {
+    // here to test --arangosearch.fail-queries-on-out-of-sync
+    return true;
+  }
+  return _failQueriesOnOutOfSync;
+}
+
+void IResearchFeature::registerRecoveryHelper() {
+  if (!_skipRecoveryItems.empty()) {
+    LOG_TOPIC("e36f2", WARN, arangodb::iresearch::TOPIC)
+        << "arangosearch recovery explicitly disabled via the '"
+        << SKIP_RECOVERY
+        << "' startup option for the following links: " << _skipRecoveryItems
+        << ". all affected links that are touched during "
+           "recovery will be marked as out of sync and should be recreated "
+           "manually when the recovery is finished.";
+  }
+
+  _recoveryHelper = std::make_shared<IResearchRocksDBRecoveryHelper>(
+      server(), _skipRecoveryItems);
+  auto res = RocksDBEngine::registerRecoveryHelper(_recoveryHelper);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        res.errorNumber(), "failed to register RocksDB recovery helper");
+  }
 }
 
 template<typename Engine, typename std::enable_if_t<
