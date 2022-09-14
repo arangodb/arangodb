@@ -402,7 +402,7 @@ void CommitTask::operator()() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   // run commit ('_asyncSelf' locked by async task)
-  auto [res, timeMs] = linkLock->commitUnsafe(false, &code);
+  auto [res, timeMs] = linkLock->commitUnsafe(false, nullptr, code);
 
   if (res.ok()) {
     LOG_TOPIC("7e323", TRACE, TOPIC)
@@ -718,7 +718,7 @@ Result IResearchDataStore::commit(LinkLock& linkLock, bool wait) {
 
   // must be valid if _asyncSelf->lock() is valid
   CommitResult code = CommitResult::UNDEFINED;
-  auto result = linkLock->commitUnsafe(wait, &code).result;
+  auto result = linkLock->commitUnsafe(wait, nullptr, code).result;
   size_t commitMsec = 0;
   size_t cleanupStep = 0;
   {
@@ -742,9 +742,10 @@ Result IResearchDataStore::commit(LinkLock& linkLock, bool wait) {
 /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
 ////////////////////////////////////////////////////////////////////////////////
 IResearchDataStore::UnsafeOpResult IResearchDataStore::commitUnsafe(
-    bool wait, CommitResult* code) {
+    bool wait, irs::index_writer::progress_report_callback const& progress,
+    CommitResult& code) {
   auto begin = std::chrono::steady_clock::now();
-  auto result = commitUnsafeImpl(wait, code);
+  auto result = commitUnsafeImpl(wait, progress, code);
   uint64_t timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::steady_clock::now() - begin)
                         .count();
@@ -774,7 +775,7 @@ IResearchDataStore::UnsafeOpResult IResearchDataStore::commitUnsafe(
 
   if (bool ok = result.ok(); !ok && _numFailedCommits != nullptr) {
     _numFailedCommits->fetch_add(1, std::memory_order_relaxed);
-  } else if (ok && *code == CommitResult::DONE && _avgCommitTimeMs != nullptr) {
+  } else if (ok && code == CommitResult::DONE && _avgCommitTimeMs != nullptr) {
     _avgCommitTimeMs->store(computeAvg(_commitTimeNum, timeMs),
                             std::memory_order_relaxed);
   }
@@ -784,7 +785,9 @@ IResearchDataStore::UnsafeOpResult IResearchDataStore::commitUnsafe(
 ////////////////////////////////////////////////////////////////////////////////
 /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
 ////////////////////////////////////////////////////////////////////////////////
-Result IResearchDataStore::commitUnsafeImpl(bool wait, CommitResult* code) {
+Result IResearchDataStore::commitUnsafeImpl(
+    bool wait, irs::index_writer::progress_report_callback const& progress,
+    CommitResult& code) {
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
@@ -792,7 +795,7 @@ Result IResearchDataStore::commitUnsafeImpl(bool wait, CommitResult* code) {
 
   if (!subscription) {
     // already released
-    *code = CommitResult::NO_CHANGES;
+    code = CommitResult::NO_CHANGES;
     return {};
   }
 
@@ -806,7 +809,7 @@ Result IResearchDataStore::commitUnsafeImpl(bool wait, CommitResult* code) {
             << "commit for arangosearch link '" << id()
             << "' is already in progress, skipping";
 
-        *code = CommitResult::IN_PROGRESS;
+        code = CommitResult::IN_PROGRESS;
         return {};
       }
 
@@ -821,15 +824,15 @@ Result IResearchDataStore::commitUnsafeImpl(bool wait, CommitResult* code) {
 
     try {
       // _lastCommittedTick is being updated in '_before_commit'
-      *code = _dataStore._writer->commit() ? CommitResult::DONE
-                                           : CommitResult::NO_CHANGES;
+      code = _dataStore._writer->commit(progress) ? CommitResult::DONE
+                                                  : CommitResult::NO_CHANGES;
     } catch (...) {
       // restore last committed tick in case of any error
       _lastCommittedTick = lastCommittedTick;
       throw;
     }
 
-    if (CommitResult::NO_CHANGES == *code) {
+    if (CommitResult::NO_CHANGES == code) {
       LOG_TOPIC("7e319", TRACE, iresearch::TOPIC)
           << "no changes registered for arangosearch link '" << id()
           << "' got last operation tick '" << _lastCommittedTick << "'";
@@ -1314,7 +1317,7 @@ Result IResearchDataStore::initDataStore(
         if (outOfSync) {
           // mark link as out of sync
           linkLock->setOutOfSync();
-          // persist "failed" flag in RocksDB. note: if this fails, it will
+          // persist "out of sync" flag in RocksDB. note: if this fails, it will
           // throw an exception and abort the recovery & startup.
           linkLock->_engine->changeCollection(linkLock->collection().vocbase(),
                                               linkLock->collection(), true);
@@ -1326,11 +1329,18 @@ Result IResearchDataStore::initDataStore(
           }
         }
 
+        irs::index_writer::progress_report_callback progress =
+            [id = linkLock->id(), asyncFeature](std::string_view phase,
+                                                size_t current, size_t total) {
+              // forward progress reporting to asyncFeature
+              asyncFeature->reportRecoveryProgress(id, phase, current, total);
+            };
+
         LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
             << "starting sync for arangosearch link '" << linkLock->id() << "'";
 
         CommitResult code{CommitResult::UNDEFINED};
-        auto [res, timeMs] = linkLock->commitUnsafe(true, &code);
+        auto [res, timeMs] = linkLock->commitUnsafe(true, progress, code);
 
         LOG_TOPIC("0e0ca", TRACE, iresearch::TOPIC)
             << "finished sync for arangosearch link '" << linkLock->id() << "'";
