@@ -642,7 +642,8 @@ Collections::create(         // create collection
       }
       col.numberOfShards = myColToDistributeLike->numberOfShards();
       col.replicationFactor = myColToDistributeLike->replicationFactor();
-      col.writeConcern = myColToDistributeLike->writeConcern();
+      // TODO: writeConcern is inherited when using replication2
+      // col.writeConcern = myColToDistributeLike->writeConcern();
     }
     // TODO: Maybe we can do this within the parsing Step already.
     // but that is a cleanup for later.

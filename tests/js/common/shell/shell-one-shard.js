@@ -117,32 +117,13 @@ function OneShardPropertiesSuite () {
         assertEqual(props.writeConcern, 2);
 
         try {
-          // This is forbidden, we are using more than one shard
-          db._create("test", {
-            numberOfShards: 2
-          });
-          fail();
-        } catch (err) {
+	  // Disallow using a different distributeShardsLike
+          let c = db._create("test", { distributeShardsLike: "" });
+	  fail();
+	} catch (err) {
           assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-        }
-
-        try {
-          // This is forbidden, we are setting distributeShardsLike not to
-          // system setup.
-          db._create("test", {
-            distributeShardsLike: ""
-          });
-          fail();
-        } catch (err) {
-          assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-        }
-
-        // Let us create a collection with explicit replicationFactor and writeConcern
-        let c = db._create("test", {
-          writeConcern: 1,
-          replicationFactor: 1,
-        });
-
+	}
+        let c = db._create("test", { writeConcern: 1, replicationFactor: 1, numberOfShards: 2 });
         props = c.properties();
         assertEqual(2, props.writeConcern);
         assertEqual(2, props.replicationFactor);
@@ -267,13 +248,12 @@ function OneShardPropertiesSuite () {
       }
       db._createDatabase(dn, { sharding : "single", replicationFactor : 2 });
       db._useDatabase(dn);
+      // ReplicationFactor is overwritten by distributeShardsLike
+      let c = db._create("oneshardcol", { replicationFactor : 5 });
+      assertEqual(c.properties().replicationFactor, 2);
+      db._drop("oneshardcol");
       try {
-        db._create("oneshardcol", { replicationFactor : 5 });
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
-      }
-      try {
+        // WriteConcern is specific to collection and is now greater than replicationFactor, which is disallowed
         db._create("oneshardcol", { writeConcern : 5 });
         fail();
       } catch (err) {
@@ -287,13 +267,12 @@ function OneShardPropertiesSuite () {
       }
       db._createDatabase(dn, { sharding : "single", writeConcern: 2, replicationFactor : 2 });
       db._useDatabase(dn);
+      // ReplicationFactor is overwritten by distributeShardsLike
+      let c = db._create("oneshardcol", { replicationFactor : 5 });
+      assertEqual(c.properties().replicationFactor, 2);
+      assertEqual(c.properties().writeConcern, 2);
       try {
-        db._create("oneshardcol", { replicationFactor : 5 });
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
-      }
-      try {
+        // WriteConcern is specific to collection and is now greater than replicationFactor, which is disallowed
         db._create("oneshardcol", { writeConcern : 5 });
         fail();
       } catch (err) {
@@ -392,7 +371,17 @@ function OneShardPropertiesSuite () {
         {
           // we want to create a normal collection and have a different replication factor
           let col2 = db._collection("overrideCollection2");
-          let col3 = db._create("overrideCollection3", { distributeShardsLike: "overrideCollection2"});
+          try {
+            // Write concern is not inherited, the replicationFactor is. The default for the database is 2
+            // we inherit replication factor 1 by distribute shards like, with default wc 2. This is forbidden,
+            // as writeConcern is higher than replicationFactor.
+            db._create("overrideCollection3", { distributeShardsLike: "overrideCollection2"});
+            fail();
+          } catch (err) {
+            assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+          }
+          // Giving correct write concern we can do distributeShardsLike properly
+          let col3 = db._create("overrideCollection3", { distributeShardsLike: "overrideCollection2", writeConcern: 1});
           let col2Properties = col2.properties();
           let col3Properties = col3.properties();
 
