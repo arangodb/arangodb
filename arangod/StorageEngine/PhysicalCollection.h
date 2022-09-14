@@ -33,6 +33,7 @@
 #include "Futures/Future.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "StorageEngine/ReplicationIterator.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -229,7 +230,7 @@ class PhysicalCollection {
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(
       transaction::Methods& trx);
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(
-      uint64_t batchId);
+      rocksdb::SequenceNumber trxSeq);
   virtual std::unique_ptr<containers::RevisionTree> computeRevisionTree(
       uint64_t batchId);
 

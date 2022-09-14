@@ -1,6 +1,23 @@
 devel
 -----
 
+* Implement prefetch for revision trees, in case a batch is created with
+  a distinguished collection as for `SynchronizeShard`. This ensures that
+  the revision tree for the batch will be available when needed, even though
+  the revision tree for the collection might already have advanced beyond
+  the sequence number of the snapshot in the batch. This ensures that
+  shards can get in sync more reliably and more quickly.
+
+* Fixed log with json format not respecting the value of parameter 
+  `--log.shorten-filenames`.
+
+* Updated arangosync to v2.12.0-preview-12.
+
+* Added "intermediateCommits" statistics return value for AQL queries, to
+  relay the number of intermediate commits back that a write query performed.
+
+* Updated ArangoDB Starter to 0.15.5-preview-3.
+
 * Fixed a rare occuring issue where paths inside a DisjointSmart traversal
   containing only satellite relevant nodes were not returned properly 
   (ES-1265).
