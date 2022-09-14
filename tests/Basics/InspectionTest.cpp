@@ -2348,6 +2348,30 @@ TEST_F(ValidateInspectorTest, validate_object_with_nested_invariant) {
   }
 }
 
+TEST_F(ValidateInspectorTest, validate_embedded_object) {
+  NestedEmbedding n{.e = {.a = 1, .inner = {.i = 42, .s = "foobar"}, .b = 2}};
+  auto result = inspector.apply(n);
+  ASSERT_TRUE(result.ok());
+}
+
+TEST_F(ValidateInspectorTest,
+       validate_embedded_object_with_invariant_not_fulfilled) {
+  NestedEmbedding n{.e = {.a = 1, .inner = {.i = 0, .s = "foobar"}, .b = 2}};
+  auto result = inspector.apply(n);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Field invariant failed", result.error());
+  EXPECT_EQ("i", result.path());
+}
+
+TEST_F(ValidateInspectorTest,
+       validate_embedded_object_with_object_invariant_not_fulfilled) {
+  NestedEmbeddingWithObjectInvariant o{
+      .e = {.a = 1, .inner = {.i = 42, .s = ""}, .b = 2}};
+  auto result = inspector.apply(o);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Object invariant failed", result.error());
+}
+
 struct WithContext {
   int i;
   std::string s;
