@@ -460,14 +460,16 @@ static void handleLocalShard(
   auto localLeader = cprops.get(THE_LEADER).stringView();
   bool const isLeading = localLeader.empty();
   if (it == commonShrds.end()) {
-    // This collection is not planned anymore, can drop it
-    description = std::make_shared<ActionDescription>(
-        std::map<std::string, std::string>{
-            {NAME, DROP_COLLECTION}, {DATABASE, dbname}, {SHARD, colname}},
-        isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true);
-    makeDirty.insert(dbname);
-    callNotify = true;
-    actions.emplace_back(std::move(description));
+    if (replicationVersion != replication::Version::TWO) {
+      // This collection is not planned anymore, can drop it
+      description = std::make_shared<ActionDescription>(
+          std::map<std::string, std::string>{
+              {NAME, DROP_COLLECTION}, {DATABASE, dbname}, {SHARD, colname}},
+          isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true);
+      makeDirty.insert(dbname);
+      callNotify = true;
+      actions.emplace_back(std::move(description));
+    }
     return;
   }
   // We dropped out before

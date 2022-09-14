@@ -26,6 +26,7 @@
 #include "Cluster/CreateCollection.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/DropCollection.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -82,9 +83,9 @@ Result DocumentStateShardHandler::dropLocalShard(
       },
       maintenance::HIGHER_PRIORITY, false);
 
-  maintenance::CreateCollection collectionCreator(_maintenanceFeature,
-                                                  actionDescription);
-  bool work = collectionCreator.first();
+  maintenance::DropCollection collectionDropper(_maintenanceFeature,
+                                                actionDescription);
+  bool work = collectionDropper.first();
   if (work) {
     return {TRI_ERROR_INTERNAL,
             fmt::format("Cannot create shard ID {}", shardId)};

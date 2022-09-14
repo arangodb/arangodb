@@ -27,6 +27,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Basics/application-exit.h"
 
 using namespace arangodb::replication2::replicated_state::document;
 
@@ -67,5 +68,6 @@ void DocumentCore::drop() {
     LOG_CTX("b7e0d", FATAL, this->loggerContext)
         << "Failed to drop shard " << _shardId << " for replicated state "
         << _gid << ": " << result;
+    FATAL_ERROR_EXIT();
   }
 }
