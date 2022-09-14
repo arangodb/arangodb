@@ -35,7 +35,7 @@ if len(sys.argv) > 1 and (sys.argv[1] == "-h" or sys.argv[1] == "--help"):
 
 # Some data:
 CATEGORYNAMES = ["Health", "AQL", "Transactions", "Foxx", "Pregel",
-                 "Statistics", "Replication", "Disk", "Errors",
+                 "Statistics", "Replication", "Disk", "Errors", "ArangoSearch",
                  "RocksDB", "Hotbackup", "k8s", "Connectivity", "Network",
                  "V8", "Agency", "Scheduler", "Maintenance", "kubearangodb",
                  "License"]
