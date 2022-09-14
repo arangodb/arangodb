@@ -311,7 +311,8 @@ TEST_F(DocumentStateMachineTest,
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
-          feature->createReplicatedState(DocumentState::NAME, leaderLog));
+          feature->createReplicatedState(DocumentState::NAME, leaderLog,
+                                         statePersistor));
   ASSERT_NE(leaderReplicatedState, nullptr);
 
   EXPECT_CALL(*agencyHandlerMock, getCollectionPlan(collectionId)).Times(1);
@@ -344,7 +345,8 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
-          feature->createReplicatedState(DocumentState::NAME, leaderLog));
+          feature->createReplicatedState(DocumentState::NAME, leaderLog,
+                                         statePersistor));
   ASSERT_NE(leaderReplicatedState, nullptr);
 
   EXPECT_CALL(*agencyHandlerMock, getCollectionPlan(collectionId)).Times(1);
