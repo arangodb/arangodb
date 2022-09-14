@@ -74,12 +74,13 @@ function IResearchOffsetInfoAqlTestSuiteCommunity() {
     tearDownAll : function () { 
       cleanup();
     },
+    //TODO: commented test cases must be enabled after BTS-1010 is done
 
-    testSimpleOffset: function() {
-      checkThatQueryReturnsExpectedError(
-        "FOR d IN docsView SEARCH d._key == 'a' RETURN OFFSET_INFO(d, '_key')",
-        errors.ERROR_NOT_IMPLEMENTED.code);
-    },
+    // testSimpleOffset: function() {
+    //   checkThatQueryReturnsExpectedError(
+    //     "FOR d IN docsView SEARCH d._key == 'a' RETURN OFFSET_INFO(d, '_key')",
+    //     errors.ERROR_NOT_IMPLEMENTED.code);
+    // },
 
     testOffsetWithAnalyzer: function() {
       checkThatQueryReturnsExpectedError(
@@ -93,17 +94,17 @@ function IResearchOffsetInfoAqlTestSuiteCommunity() {
         errors.ERROR_NOT_IMPLEMENTED.code);
     },
 
-    testOffsetWithNonExistentField: function() {
-      checkThatQueryReturnsExpectedError(
-        "FOR doc IN docsView SEARCH ANALYZER(doc.doesNotExist == 'brown', 'offsets') RETURN OFFSET_INFO(doc, 'doesNotExist')",
-        errors.ERROR_NOT_IMPLEMENTED.code);
-    },
+    // testOffsetWithNonExistentField: function() {
+    //   checkThatQueryReturnsExpectedError(
+    //     "FOR doc IN docsView SEARCH ANALYZER(doc.doesNotExist == 'brown', 'offsets') RETURN OFFSET_INFO(doc, 'doesNotExist')",
+    //     errors.ERROR_NOT_IMPLEMENTED.code);
+    // },
 
-    testOffsetWithNonExistentSubField: function() {
-      checkThatQueryReturnsExpectedError(
-        "FOR doc IN docsView SEARCH ANALYZER(doc.sub.doesNotExist == 'brown', 'offsets') RETURN OFFSET_INFO(doc, 'sub.body.doesNotExist')",
-        errors.ERROR_NOT_IMPLEMENTED.code);
-    },
+    // testOffsetWithNonExistentSubField: function() {
+    //   checkThatQueryReturnsExpectedError(
+    //     "FOR doc IN docsView SEARCH ANALYZER(doc.sub.doesNotExist == 'brown', 'offsets') RETURN OFFSET_INFO(doc, 'sub.body.doesNotExist')",
+    //     errors.ERROR_NOT_IMPLEMENTED.code);
+    // },
 
   }
 }
