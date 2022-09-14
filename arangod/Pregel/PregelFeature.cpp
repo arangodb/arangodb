@@ -481,15 +481,22 @@ void PregelFeature::start() {
 void PregelFeature::beginShutdown() {
   TRI_ASSERT(isStopping());
 
-  MUTEX_LOCKER(guard, _mutex);
-  _gcHandle.reset();
-
-  // cancel all conductors and workers
-  for (auto& it : _conductors) {
-    it.second.conductor->cancel();
+  std::vector<std::shared_ptr<Conductor>> conductors;
+  {
+    MUTEX_LOCKER(guard, _mutex);
+    _gcHandle.reset();
+    for (auto& it : _conductors) {
+      conductors.emplace_back(it.second.conductor);
+    }
+    for (auto it : _workers) {
+      it.second.second->cancelGlobalStep(VPackSlice());
+    }
   }
-  for (auto it : _workers) {
-    it.second.second->cancelGlobalStep(VPackSlice());
+
+  // delete all conductors and workers
+  // without holding the mutex permanently
+  for (auto&& c : conductors) {
+    c->cancel();
   }
 }
 
