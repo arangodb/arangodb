@@ -781,12 +781,12 @@ auto Worker<V, E, M>::loadGraph(LoadGraph const& graph)
     -> futures::Future<ResultT<GraphLoaded>> {
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
 
-  LOG_PREGEL("52070", WARN) << fmt::format(
+  LOG_PREGEL("52070", DEBUG) << fmt::format(
       "Worker for execution number {} is loading", _config.executionNumber());
   return futures::makeFuture(
              _graphStore->loadShards(&_config, _makeStatusCallback()))
       .then([&](auto&& result) {
-        LOG_PREGEL("52062", WARN) << fmt::format(
+        LOG_PREGEL("52062", DEBUG) << fmt::format(
             "Worker for execution number {} has finished loading.",
             _config.executionNumber());
         _makeStatusCallback()();

@@ -75,7 +75,7 @@ auto Canceled::run() -> void {
           return;
         }
 
-        LOG_PREGEL_CONDUCTOR("6928f", INFO) << "Conductor is erased";
+        LOG_PREGEL_CONDUCTOR("6928f", DEBUG) << "Conductor is erased";
         conductor._feature.cleanupConductor(conductor._executionNumber);
       });
 }
