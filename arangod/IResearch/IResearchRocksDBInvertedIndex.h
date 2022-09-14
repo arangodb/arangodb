@@ -93,6 +93,8 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
     return IResearchInvertedIndex::covers(projections);
   }
 
+  bool canBeUpdated() const noexcept override { return true; }
+
   Result drop() override;
 
   void load() override {}

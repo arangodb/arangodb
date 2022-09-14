@@ -1089,6 +1089,10 @@ std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice info,
   return idx;
 }
 
+Result LogicalCollection::updateIndex(IndexId iid, velocypack::Slice body) {
+  return _physical->updateIndex(iid, body);
+}
+
 /// @brief drops an index, including index file removal and replication
 bool LogicalCollection::dropIndex(IndexId iid) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());

@@ -137,6 +137,8 @@ class PhysicalCollection {
   virtual std::shared_ptr<Index> createIndex(velocypack::Slice info,
                                              bool restore, bool& created) = 0;
 
+  virtual Result updateIndex(IndexId iid, velocypack::Slice body) = 0;
+
   virtual bool dropIndex(IndexId iid) = 0;
 
   virtual std::unique_ptr<IndexIterator> getAllIterator(

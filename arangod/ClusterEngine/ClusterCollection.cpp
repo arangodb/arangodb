@@ -274,6 +274,10 @@ void ClusterCollection::prepareIndexes(
   TRI_ASSERT(!_indexes.empty());
 }
 
+Result ClusterCollection::updateIndex(IndexId iid, velocypack::Slice body) {
+  return {TRI_ERROR_NOT_IMPLEMENTED};
+}
+
 std::shared_ptr<Index> ClusterCollection::createIndex(velocypack::Slice info,
                                                       bool restore,
                                                       bool& created) {

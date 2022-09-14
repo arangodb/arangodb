@@ -466,6 +466,10 @@ void RocksDBCollection::prepareIndexes(
   TRI_ASSERT(!_indexes.empty());
 }
 
+Result RocksDBCollection::updateIndex(IndexId iid, VPackSlice body) {
+  return {};
+}
+
 std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice info,
                                                       bool restore,
                                                       bool& created) {

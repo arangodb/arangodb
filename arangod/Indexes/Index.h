@@ -399,6 +399,8 @@ class Index {
   // called when the index is dropped
   virtual Result drop();
 
+  virtual bool canBeUpdated() const noexcept { return false; }
+
   /// @brief called after the collection was truncated
   /// @param tick at which truncate was applied
   virtual void afterTruncate(TRI_voc_tick_t, transaction::Methods*) {}
