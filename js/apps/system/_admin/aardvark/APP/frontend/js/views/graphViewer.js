@@ -76,9 +76,7 @@
       'click #reloadGraph': 'reloadGraph',
       'click #settingsMenu': 'toggleSettings',
       'click #toggleForce': 'toggleLayout',
-      'click #selectNodes': 'toggleLasso',
-      'click #refreshGraph': 'refreshGraph',
-      'click #currentGraphData': 'currentGraphData',
+      'click #selectNodes': 'toggleLasso'
     },
 
     cursorX: 0,
@@ -95,11 +93,6 @@
     graphConfig: null,
     graphSettings: null,
 
-    currentGraphData: function() {
-      console.log("nodes: ", this.currentGraph.graph.nodes());
-      console.log("edges: ", this.currentGraph.graph.edges());
-    },
-
     downloadPNG: function () {
       var size = parseInt($('#graph-container').width(), 10);
       sigma.plugins.image(this.currentGraph, this.currentGraph.renderers[0], {
@@ -110,31 +103,6 @@
         background: 'white',
         zoom: false
       });
-    },
-
-    refreshGraph:function () {
-      var self = this;
-      console.log("refreshGraph: Refreshing graph");
-      console.log("refreshGraph (self.algorithm): ", self.algorithm);
-      if (self.algorithm === 'force') {
-        console.log("refreshGraph: in 'force'");
-        console.log("refreshGraph (self.currentGraph): ", self.currentGraph);
-        //self.currentGraph.refresh({ skipIndexation: true });
-        self.startLayout(true, origin);
-      }
-      /*
-      //self.currentGraph.refresh();
-      if (self.algorithm === 'force') {
-        self.startLayout(true, origin);
-      } else if (self.algorithm === 'fruchtermann') {
-        sigma.layouts.fruchtermanReingold.start(self.currentGraph);
-        self.currentGraph.refresh();
-        self.cameraToNode(origin, 1000);
-      } else if (self.algorithm === 'noverlap') {
-        self.startLayout(true, origin); // TODO: tmp bugfix, rerender with noverlap currently not possible
-      // self.currentGraph.startNoverlap();
-      }
-      */
     },
 
     loadFullGraphModal: function () {
@@ -200,7 +168,6 @@
     },
 
     render: function (toFocus) {
-      console.log("Graph is getting rendered");
       this.$el.html(this.template.render({}));
 
       // render navigation
@@ -605,7 +572,6 @@
     },
 
     rerender: function () {
-      console.log("Graph is getting RErendered");
       this.fetchGraph();
     },
 
@@ -645,7 +611,6 @@
         self.setupSigma();
 
         self.fetchStarted = new Date();
-        console.log("AJAXDATA: ", ajaxData);
         $.ajax({
           type: 'GET',
           url: arangoHelper.databaseUrl('/_admin/aardvark/graph/' + encodeURIComponent(self.name)),
@@ -1654,7 +1619,6 @@
       }
 
       ajaxData.query = 'FOR v, e, p IN 1..1 ANY ' + JSON.stringify(id) + ' GRAPH ' + JSON.stringify(self.name) + ' RETURN p';
-      console.log("ajaxData in expandNode: ", ajaxData);
 
       $.ajax({
         type: 'GET',
@@ -1673,8 +1637,6 @@
     },
 
     checkExpand: function (data, origin, ajaxData) {
-      console.log("ajaxData in checkExpand: ", ajaxData);
-      console.log("ajaxData.nodeColorAttribute in checkExpand: ", ajaxData.nodeColorAttribute);
       var self = this;
       var newNodes = data.nodes;
       var newEdges = data.edges;
@@ -1702,17 +1664,13 @@
         });
 
         if (found === false) {
-          //if(graph.settings.nodeColorAttribute !== undefined && graph.settings.nodeColorAttribute !== '') {
           if(ajaxData.nodeColorAttribute !== undefined && ajaxData.nodeColorAttribute !== '') {
-            console.log("I expand a node because ajaxData.nodeColorAttribute is set");
             if(!self.nodeColorAttributes.some(node => node.name === newNode.nodeColorAttributeValue)) {
-              console.log("The nodeColorAttributeValue #" + newNode.nodeColorAttributeValue + "# doesn not exist yet");
               const tempNodeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
               const nodeColorAttributeObj = {
                 'name': newNode.nodeColorAttributeValue || '',
                 'color': tempNodeColor
               };
-              console.log("Newly created nodeColorAttribute (nodeColorAttributeObj) in checkExpand: ", nodeColorAttributeObj);
               self.nodeColorAttributes.push(nodeColorAttributeObj);
             }
 
@@ -1721,11 +1679,6 @@
               newNode.color = categoryColor;
             //}
           }
-          /*
-          else {
-            console.log("No ajaxData.nodeColorAttribute set. Therefore I don't color the node after expansion!");
-          }
-          */
           self.currentGraph.graph.addNode(newNode);
           newNodeCounter++;
         }
@@ -1743,33 +1696,17 @@
       $('#edgesCount').text(parseInt($('#edgesCount').text(), 10) + newEdgeCounter);
 
       // rerender graph
-      console.log("Current nodes before relayouting: ", this.currentGraph.graph.nodes());
       if (newNodeCounter > 0 || newEdgeCounter > 0) {
-        console.log("RERENDER Graph in checkExpand with algorithm: ", self.algorithm);
         if (self.algorithm === 'force') {
-          console.log("Relayout with force");
           self.startLayout(true, origin);
         } else if (self.algorithm === 'fruchtermann') {
-          console.log("Relayout with fruchtermann");
           sigma.layouts.fruchtermanReingold.start(self.currentGraph);
           self.currentGraph.refresh();
           self.cameraToNode(origin, 1000);
         } else if (self.algorithm === 'noverlap') {
-          console.log("Relayout with noverlap (which is not possible)");
           self.startLayout(true, origin); // TODO: tmp bugfix, rerender with noverlap currently not possible
           // self.currentGraph.startNoverlap();
         }
-        // To avoid that a node is not drawn ('force'-layout) trigger the drawing again
-        /*
-        if (self.algorithm === 'force') {
-          console.log("###############################################");
-          console.log("Additional rerendering to avoid non-drawn nodes");
-          console.log("###############################################");
-          self.currentGraph.refresh({ skipIndexation: true });
-        }
-        */
-        //console.log("refreshGraph a second time!");
-        //self.refreshGraph();
       }
     },
 
@@ -1982,17 +1919,7 @@
     },
 
     colorNodesByAttribute: function(s, attribute) {
-      console.log("Coloring node by attribute (colorNodesByAttribute)");
       var self = this;
-
-      console.log("in colorNodesByAttribute (s): ", s);
-      console.log("in colorNodesByAttribute (s.graph): ", s.graph);
-      console.log("in colorNodesByAttribute (s.graph.nodes()): ", s.graph.nodes());
-      console.log("in colorNodesByAttribute (attribute): ", attribute);
-      console.log("self.colors: ", self.colors);
-      console.log("self.nodeColorAttributes: ", self.nodeColorAttributes);
-
-      //const nodeColorAttributes = [];
           
       s.graph.nodes().forEach(function (n) {
         if(!self.nodeColorAttributes.some(node => node.name === n.nodeColorAttributeValue)) {
@@ -2001,15 +1928,12 @@
             'name': n.nodeColorAttributeValue || '',
             'color': tempNodeColor
           };
-          console.log("Newly created nodeColorAttribute (nodeColorAttributeObj): ", nodeColorAttributeObj);
           self.nodeColorAttributes.push(nodeColorAttributeObj);
         }
-        console.log("n: ", n);
         const categoryColor = self.nodeColorAttributes.find(object => object.name === n.nodeColorAttributeValue) ? '#' + self.nodeColorAttributes.find(object => object.name === n.nodeColorAttributeValue).color : '#f00';
         n.color = categoryColor;
       });
       s.refresh();
-      console.log("self.nodeColorAttributes: ", self.nodeColorAttributes);
     },
 
     renderGraph: function (graph, toFocus, aqlMode, layout, renderer, edgeType) {
@@ -2259,7 +2183,6 @@
         };
 
         s.bind('clickNode', function (e) {
-          console.log("e: ", e);
           if (self.contextState.createEdge === true) {
             self.clearMouseCanvas();
             self.removeHelp();
@@ -2516,18 +2439,8 @@
         $('#toggleForce').fadeOut('fast');
       }
 
-      console.log("renderGraph (graph): ", graph);
-      console.log("renderGraph (toFocus): ", toFocus);
-      console.log("renderGraph (aqlMode): ", aqlMode);
-      console.log("renderGraph (layout): ", layout);
-      console.log("renderGraph (renderer): ", renderer);
-      console.log("renderGraph (edgeType): ", edgeType);
-      console.log("renderGraph (graph.settings.nodeColorAttribute): ", graph.settings.nodeColorAttribute);
       if(graph.settings.nodeColorAttribute !== undefined && graph.settings.nodeColorAttribute !== '') {
-        console.log("graph.settings.nodeColorAttribute IS SET: ", graph.settings.nodeColorAttribute);
         this.colorNodesByAttribute(s, graph.settings.nodeColorAttribute);
-      } else {
-        console.log("graph.settings.nodeColorAttribute is UNDEFINED!");
       }
     },
 
@@ -2573,101 +2486,33 @@
     },
 
     startLayout: function (kill, origin) {
-      console.log("In startLayout:---------");
-      console.log("kill: ", kill);
-      console.log("origin: ", origin);
       var self = this;
       this.currentGraph.settings('drawLabels', false);
       this.currentGraph.settings('drawEdgeLabels', false);
       sigma.plugins.killDragNodes(this.currentGraph);
-      let rerendered = false;
-
-      /*
-      // Idea:
-      // 1) Refresh the graph with the new added nodes first
-      // 2) Start the force algorithm
-          // launch force-atlas for 5sec
-          s.startForceAtlas2();
-      //window.setTimeout(function() {s.killForceAtlas2()}, 10000);
-      // 3) Stop the force algorithm as it won't stop by itself
-      */
-
-      /*
-      // 1)
-      this.currentGraph.refresh();
-
-      // 2)
-      this.currentGraph.startForceAtlas2({
-        worker: true
-      });
-
-      // 3)
-      window.setTimeout(
-        function() {
-          self.stopLayout();
-          //self.currentGraph.killForceAtlas2()
-        },
-        500
-      );
-      // launch force-atlas for 5sec
-      //s.startForceAtlas2();
-      //window.setTimeout(function() {s.killForceAtlas2()}, 10000);
-      */
 
       if (kill === true) {
-        console.log("1 #############################self.currentGraph.isForceAtlas2Running(): ", self.currentGraph.isForceAtlas2Running());
         this.currentGraph.killForceAtlas2();
-
 
         window.setTimeout(function () {
           self.stopLayout();
 
           if (origin) {
-            console.log("In origin part as origin is set!!!!!!!!!!!!");
-            console.log("2 #############################self.currentGraph.isForceAtlas2Running(): ", self.currentGraph.isForceAtlas2Running());
             self.currentGraph.refresh({ skipIndexation: true });
             // self.cameraToNode(origin, 1000);
           }
-            // in case of 'force' layout render the graph a second time to prevent non-drawn nodes
-            if (self.algorithm === 'force') {
-              self.currentGraph.killForceAtlas2();
-              console.log("3333333 #############################self.currentGraph.isForceAtlas2Running(): ", self.currentGraph.isForceAtlas2Running());
+        }, 1000);
 
-              window.setTimeout(function () {
-                self.stopLayout();
-
-                if (origin) {
-                  console.log("+++++  REEEEEEERENDER  +++++");
-                  console.log("44444444 #############################self.currentGraph.isForceAtlas2Running(): ", self.currentGraph.isForceAtlas2Running());
-                  self.currentGraph.refresh();
-                  // self.cameraToNode(origin, 1000);
-                }
-              }, 500);
-            }
-        }, 500);
-
-      }
-
-      if (self.algorithm === 'force' && !rerendered) {
-        console.log("++++++++++++++++++++++++++++++++++++++++++++++++++");
-        console.log("As the layout is '" + self.algorithm + "', it shall rerender to avoid non-drawn nodes after expanding a node");
-        console.log("--------------------------------------------------");
-        //self.refreshGraph();
-        //self.startLayout(true, origin);
-        //self.currentGraph.refresh({ skipIndexation: true });
-        rerendered = true;
       }
 
       $('#toggleForce .fa').removeClass('fa-play').addClass('fa-pause');
       $('#toggleForce span').html('Stop layout');
       this.layouting = true;
       if (this.aqlMode) {
-        console.log("this.aqlMode is true");
         this.currentGraph.startForceAtlas2({
           worker: true
         });
       } else {
-        console.log("In else part as this.aqlMode is false");
         this.currentGraph.startForceAtlas2({
           worker: true
         });

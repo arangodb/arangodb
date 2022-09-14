@@ -945,30 +945,11 @@ authRouter.get('/graph/:name', function (req, res) {
               nodeObj.color = tmpObjNodes[coll];
             }
           } else if (config.nodeColorAttribute !== '') {
-            nodeObj['outside'] = 'Vikingship';
-            nodeObj['fullnodedata'] = node;
-            nodeObj['fullnodedatatype'] = node.type;
-            nodeObj['configtype'] = config.nodeColorAttribute;
             var attr = node[config.nodeColorAttribute];
-            nodeObj['attr'] = attr;
-            //if (attr) {
             if (attr !== '') {
-              nodeObj['inside'] = 'Vikingboat';
-              nodeObj['hasownpropertyresult'] = tmpObjNodes.hasOwnProperty(attr);
-              //if (tmpObjNodes.hasOwnProperty(attr)) {
-                nodeObj['insideimportant'] = 'Shieldwall';
-                nodeObj[config.nodeColorAttribute] = attr;
                 nodeObj['nodeColorAttributeKey'] = config.nodeColorAttribute;
                 nodeObj['nodeColorAttributeValue'] = attr;
                 nodeObj.color = tmpObjNodes[attr];
-              /*
-              } else {
-                nodeObj['hasownpropertyresultfalse1'] = colors.jans[Object.keys(tmpObjNodes).length];
-                nodeObj['hasownpropertyresultfalse2'] = tmpObjNodes[attr];
-                tmpObjNodes[attr] = colors.jans[Object.keys(tmpObjNodes).length];
-                nodeObj.color = tmpObjNodes[attr];
-              }
-              */
             }
           }
 
