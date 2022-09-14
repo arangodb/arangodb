@@ -535,6 +535,9 @@ RestStatus RestCollectionHandler::handleCommandPut() {
       return RestStatus::DONE;
     }
 
+    // LOG_DEVEL << "TRUNCATE COMPLETE FOR " <<
+    // std::to_string(_activeTrx->tid().id());
+
     if (ServerState::instance()->isDBServer() &&
         (_activeTrx->state()->collection(
              coll->name(), AccessMode::Type::EXCLUSIVE) == nullptr ||
@@ -559,16 +562,33 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     return waitForFuture(
         _activeTrx->truncateAsync(coll->name(), opts)
             .thenValue([this, coll, opts](OperationResult&& opres) {
+              // if (ServerState::instance()->isCoordinator()) {
+              //   LOG_DEVEL << "TRUNCATE COMPLETE FOR " <<
+              //   std::to_string(_activeTrx->tid().id());
+              // }
+
               // Will commit if no error occured.
               // or abort if an error occured.
               // result stays valid!
               Result res = _activeTrx->finish(opres.result);
+              // LOG_DEVEL << "TRUNCATE FINISHED FOR " <<
+              // std::to_string(_activeTrx->tid().id());
               if (opres.fail()) {
+                // if (ServerState::instance()->isCoordinator()) {
+                //   LOG_DEVEL << "TRUNCATE FAILED FOR " <<
+                //   std::to_string(_activeTrx->tid().id()) << ": " <<
+                //   opres.result.errorMessage();
+                // }
                 generateTransactionError(coll->name(), opres);
                 return;
               }
 
               if (res.fail()) {
+                // if (ServerState::instance()->isCoordinator()) {
+                //   LOG_DEVEL << "TRUNCATE FAILED FOR " <<
+                //   std::to_string(_activeTrx->tid().id()) << ": " <<
+                //   res.errorMessage();
+                // }
                 generateTransactionError(
                     coll->name(), OperationResult(res, opres.options), "");
                 return;
