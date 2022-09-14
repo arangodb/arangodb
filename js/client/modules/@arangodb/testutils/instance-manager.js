@@ -764,8 +764,10 @@ class instanceManager {
       arangod.serverCrashedLocal = true;
     });
     this.arangods.forEach((arangod) => {
-      crashUtils.aggregateDebugger(arangod, this.options);
-      arangod.waitForExitAfterDebugKill();
+      if (arangod.checkArangoAlive()) {
+        crashUtils.aggregateDebugger(arangod, this.options);
+        arangod.waitForExitAfterDebugKill();
+      }
     });
     return true;
   }
