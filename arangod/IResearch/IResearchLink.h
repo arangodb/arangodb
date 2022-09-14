@@ -29,6 +29,8 @@
 #include "store/directory.hpp"
 #include "utils/utf8_path.hpp"
 
+#include <atomic>
+
 #include "Indexes/Index.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchVPackComparer.h"
@@ -290,7 +292,35 @@ class IResearchLink {
   /// this call, false otherwise
   bool setCollectionName(irs::string_ref name) noexcept;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief set the data store to out of sync. if a data store is out of sync,
+  /// it is known to have incomplete data and may refuse to serve queries
+  /// (depending on settings). returns true if the call set the data store to
+  /// out of sync, and false if the data store was already marked as out of
+  /// sync before.
+  //////////////////////////////////////////////////////////////////////////////
+  bool setOutOfSync() noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the data store is out of sync (i.e. has incomplete
+  /// data)
+  //////////////////////////////////////////////////////////////////////////////
+  bool isOutOfSync() const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not queries on this data store fail should fail with an
+  /// error if the data store is out of sync.
+  //////////////////////////////////////////////////////////////////////////////
+  bool failQueriesOnOutOfSync() const noexcept;
+
  protected:
+  enum class DataStoreError : uint8_t {
+    // data store has no issues
+    kNoError = 0,
+    // data store is out of sync
+    kOutOfSync = 1,
+  };
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief index stats
   //////////////////////////////////////////////////////////////////////////////
@@ -385,6 +415,11 @@ class IResearchLink {
   Result commitUnsafe(bool wait, CommitResult* code);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief worker function for commitUnsafe
+  //////////////////////////////////////////////////////////////////////////////
+  Result commitUnsafeImpl(bool wait, CommitResult* code);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief run segment consolidation on the data store
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
@@ -420,6 +455,10 @@ class IResearchLink {
   LogicalCollection& _collection;  // the linked collection
   DataStore
       _dataStore;  // the iresearch data store, protected by _asyncSelf->mutex()
+
+  // data store error state
+  std::atomic<DataStoreError> _error;
+
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;
   IndexId const _id;                  // the index identifier
