@@ -434,7 +434,27 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
       ]
   })";
 
+#ifndef USE_ENTERPRISE
+  // 'nested' attribute isn't supported in CE
+  constexpr std::string_view kWrongDefinitionCE = R"(
+  {
+      "fields": [
+          {
+              "name": "foo",
+              "nested": [
+                  {
+                      "name": "bar"
+                  }
+              ]
+          }
+      ]
+  })";
+#endif
+
   constexpr std::array badJsons{
+#ifndef USE_ENTERPRISE
+      kWrongDefinitionCE,
+#endif
       kWrongDefinition2,  kWrongDefinition3,  kWrongDefinition4,
       kWrongDefinition5,  kWrongDefinition6,  kWrongDefinition8,
       kWrongDefinition7,  kWrongDefinition11, kWrongDefinition12,
