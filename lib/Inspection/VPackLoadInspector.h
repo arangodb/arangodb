@@ -363,6 +363,14 @@ struct VPackLoadInspectorImpl
            [&]() { return parseFields(fields, std::forward<Args>(args)...); };
   }
 
+  [[nodiscard]] Status parseField(
+      FieldsMap& fields,
+      std::unique_ptr<detail::EmbeddedFields<VPackLoadInspectorImpl>>&&
+          embeddedFields) {
+    return embeddedFields->apply(*this, fields)  //
+           | [&]() { return embeddedFields->checkInvariant(); };
+  }
+
   [[nodiscard]] Status::Success parseField(FieldsMap& fields,
                                            typename Base::IgnoreField&& field) {
     if (auto it = fields.find(field.name); it != fields.end()) {
@@ -374,20 +382,15 @@ struct VPackLoadInspectorImpl
     return {};
   }
 
-  [[nodiscard]] Status parseField(
-      FieldsMap& fields,
-      std::unique_ptr<detail::EmbeddedFields<VPackLoadInspectorImpl>>&&
-          embeddedFields) {
-    return embeddedFields->apply(*this, fields)  //
-           | [&]() { return embeddedFields->checkInvariant(); };
-  }
-
   template<class T>
   [[nodiscard]] Status parseField(FieldsMap& fields, T&& field) {
     auto name = Base::getFieldName(field);
     velocypack::Slice slice;
     bool isPresent = false;
     if (auto it = fields.find(name); it != fields.end()) {
+      TRI_ASSERT(!it->second.second)
+          << "field " << name << " processed twice during inspection. "
+          << "Make sure field names are unique!";
       isPresent = true;
       slice = it->second.first;
       it->second.second = true;  // mark the field as processed
