@@ -25,20 +25,21 @@
 
 #include <regex>
 
-namespace {
-std::regex const removeComments("#.*$", std::regex::ECMAScript);
-std::regex const removeTabs("^[ \t]+|[ \t]+$", std::regex::ECMAScript);
-}  // namespace
-
-namespace arangodb {
-namespace options {
+namespace arangodb::options {
 
 std::string removeCommentsFromNumber(std::string const& value) {
+  // note: these regex objects are built upon every invocation of this function.
+  // this is necessary because this function is called during static
+  // initialization, and we need to avoid an init order fiasco with TU-local
+  // regexes and other TUs.
+
   // replace trailing comments
-  auto noComment = std::regex_replace(value, ::removeComments, "");
+  auto noComment =
+      std::regex_replace(value, std::regex("#.*$", std::regex::ECMAScript), "");
+
   // replace leading spaces, replace trailing spaces
-  return std::regex_replace(noComment, ::removeTabs, "");
+  return std::regex_replace(
+      noComment, std::regex("^[ \t]+|[ \t]+$", std::regex::ECMAScript), "");
 }
 
-}  // namespace options
-}  // namespace arangodb
+}  // namespace arangodb::options
