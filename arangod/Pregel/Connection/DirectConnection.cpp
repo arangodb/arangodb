@@ -8,7 +8,7 @@
 using namespace arangodb::pregel;
 
 auto DirectConnection::send(Destination const& destination,
-                            ModernMessage&& message)
+                            ModernMessage&& message) const
     -> futures::Future<ResultT<ModernMessage>> {
   if (std::holds_alternative<LoadGraph>(message.payload)) {
     try {

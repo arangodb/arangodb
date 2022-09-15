@@ -49,6 +49,8 @@ struct WorkerApi : NewIWorker {
       -> futures::Future<ResultT<Stored>> override;
   [[nodiscard]] auto cleanup(Cleanup const& message)
       -> futures::Future<ResultT<CleanupFinished>> override;
+  [[nodiscard]] auto results(CollectPregelResults const& message) const
+      -> futures::Future<ResultT<PregelResults>> override;
 
  private:
   ServerID _server;
@@ -56,7 +58,7 @@ struct WorkerApi : NewIWorker {
   std::unique_ptr<Connection> _connection;
 
   template<typename Out, typename In>
-  auto execute(In const& in) -> futures::Future<ResultT<Out>>;
+  auto execute(In const& in) const -> futures::Future<ResultT<Out>>;
 };
 
 }  // namespace arangodb::pregel::conductor

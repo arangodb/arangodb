@@ -39,14 +39,18 @@ struct Done : State {
   ~Done() = default;
   auto run() -> void override;
   auto receive(Message const& message) -> void override;
-  auto getResults(bool withId) -> PregelResults override;
+  auto getResults(bool withId) -> ResultT<PregelResults> override;
   auto name() const -> std::string override { return "done"; };
   auto isRunning() const -> bool override { return false; }
   auto getExpiration() const
       -> std::optional<std::chrono::system_clock::time_point> override {
     return expiration;
   };
-};
 
+ private:
+  using ResultsFuture = futures::Future<std::vector<
+      futures::Try<arangodb::ResultT<arangodb::pregel::PregelResults>>>>;
+  auto _results(bool withId) -> ResultsFuture;
+};
 }  // namespace conductor
 }  // namespace arangodb::pregel

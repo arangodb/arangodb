@@ -731,6 +731,24 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
   return;
 }
 
+auto PregelFeature::collectPregelResults(ExecutionNumber const& executionNumber,
+                                         bool withId)
+    -> ResultT<PregelResults> {
+  if (ServerState::instance()->isCoordinator()) {
+    auto c = conductor(executionNumber);
+    if (!c) {
+      return Result{TRI_ERROR_HTTP_NOT_FOUND, "Execution number is invalid"};
+    }
+    return c->collectAQLResults(withId);
+  } else {
+    auto w = worker(executionNumber);
+    if (!w) {
+      return Result{TRI_ERROR_HTTP_NOT_FOUND, "Execution number is invalid"};
+    }
+    return w->results(CollectPregelResults{.withId = withId}).get();
+  }
+}
+
 uint64_t PregelFeature::numberOfActiveConductors() const {
   MUTEX_LOCKER(guard, _mutex);
   uint64_t nr{0};

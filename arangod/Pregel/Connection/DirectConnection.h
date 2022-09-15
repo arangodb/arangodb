@@ -31,7 +31,7 @@ namespace arangodb::pregel {
 struct DirectConnection : Connection {
   DirectConnection(PregelFeature& feature, TRI_vocbase_t& vocbase)
       : _feature{feature}, _vocbaseGuard{vocbase} {}
-  auto send(Destination const& destination, ModernMessage&& message)
+  auto send(Destination const& destination, ModernMessage&& message) const
       -> futures::Future<ResultT<ModernMessage>> override;
   ~DirectConnection() = default;
 

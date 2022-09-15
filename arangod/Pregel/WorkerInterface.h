@@ -20,6 +20,8 @@ class NewIWorker {
       -> futures::Future<ResultT<Stored>> = 0;
   [[nodiscard]] virtual auto cleanup(Cleanup const& message)
       -> futures::Future<ResultT<CleanupFinished>> = 0;
+  [[nodiscard]] virtual auto results(CollectPregelResults const& message) const
+      -> futures::Future<ResultT<PregelResults>> = 0;
 };
 
 }  // namespace arangodb::pregel

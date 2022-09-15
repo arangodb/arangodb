@@ -52,8 +52,10 @@ enum class StateType {
 struct State {
   virtual auto run() -> void = 0;
   virtual auto receive(Message const& message) -> void = 0;
-  virtual auto getResults(bool withId) -> PregelResults {
-    return PregelResults{.results = VPackBuilder{}};
+  virtual auto getResults(bool withId) -> ResultT<PregelResults> {
+    VPackBuilder emptyArray;
+    { VPackArrayBuilder ab(&emptyArray); }
+    return PregelResults{emptyArray};
   };
   virtual auto name() const -> std::string = 0;
   virtual auto isRunning() const -> bool = 0;

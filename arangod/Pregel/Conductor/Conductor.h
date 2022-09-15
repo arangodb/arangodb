@@ -183,7 +183,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   auto process(MessagePayload const& message) -> Result;
   void start();
   void cancel();
-  auto collectAQLResults(bool withId) -> PregelResults;
+  auto collectAQLResults(bool withId) -> ResultT<PregelResults>;
   void toVelocyPack(arangodb::velocypack::Builder& result) const;
 
   bool canBeGarbageCollected() const;

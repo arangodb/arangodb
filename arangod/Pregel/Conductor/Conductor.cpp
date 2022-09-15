@@ -465,12 +465,12 @@ bool Conductor::canBeGarbageCollected() const {
          expiration.value() <= std::chrono::system_clock::now();
 }
 
-auto Conductor::collectAQLResults(bool withId) -> PregelResults {
+auto Conductor::collectAQLResults(bool withId) -> ResultT<PregelResults> {
   MUTEX_LOCKER(guard, _callbackMutex);
   if (_storeResults) {
     VPackBuilder results;
     { VPackArrayBuilder ab(&results); }
-    return PregelResults{.results = results};
+    return PregelResults{results};
   }
   return state->getResults(withId);
 }

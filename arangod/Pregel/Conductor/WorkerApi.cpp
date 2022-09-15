@@ -11,7 +11,7 @@ using namespace arangodb::pregel::conductor;
 // Out defines the expected response type:
 // The function returns an error if this expectation is not fulfilled
 template<typename Out, typename In>
-auto WorkerApi::execute(In const& in) -> futures::Future<ResultT<Out>> {
+auto WorkerApi::execute(In const& in) const -> futures::Future<ResultT<Out>> {
   return _connection
       ->send(
           Destination{Destination::Type::server, _server},
@@ -55,4 +55,9 @@ auto WorkerApi::store(Store const& message)
 auto WorkerApi::cleanup(Cleanup const& message)
     -> futures::Future<ResultT<CleanupFinished>> {
   return execute<CleanupFinished>(message);
+}
+
+auto WorkerApi::results(CollectPregelResults const& message) const
+    -> futures::Future<ResultT<PregelResults>> {
+  return execute<PregelResults>(message);
 }

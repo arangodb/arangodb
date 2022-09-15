@@ -69,7 +69,7 @@ auto Destination::toString() const -> std::string {
 }
 
 auto NetworkConnection::send(Destination const& destination,
-                             ModernMessage&& message)
+                             ModernMessage&& message) const
     -> futures::Future<ResultT<ModernMessage>> {
   auto messageBuffer = serialize(message);
   if (messageBuffer.fail()) {
@@ -92,7 +92,7 @@ auto NetworkConnection::send(Destination const& destination,
 }
 
 auto NetworkConnection::sendWithoutRetry(Destination const& destination,
-                                         ModernMessage&& message)
+                                         ModernMessage&& message) const
     -> futures::Future<Result> {
   auto messageBuffer = serialize(message);
   if (messageBuffer.fail()) {
