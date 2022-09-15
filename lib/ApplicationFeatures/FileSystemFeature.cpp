@@ -43,7 +43,7 @@ void FileSystemFeature::collectOptions(
                   "supported on all filesystems",
                   new BooleanParameter(&_useSplice),
                   options::makeFlags(Flags::DefaultNoOs, Flags::OsLinux))
-      .setIntroducedIn(30100);
+      .setIntroducedIn(30904);
 #endif
 }
 
