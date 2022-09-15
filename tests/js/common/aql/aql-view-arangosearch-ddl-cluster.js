@@ -29,8 +29,8 @@ var db = require("@arangodb").db;
 var analyzers = require("@arangodb/analyzers");
 var ERRORS = require("@arangodb").errors;
 const isServer = require("@arangodb").isServer;
-const {getRawMetric, getEndpointsByType} = require("@arangodb/test-helper");
 const request = require("@arangodb/request");
+const {getRawMetric, getEndpointsByType} = require("@arangodb/test-helper");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

@@ -88,6 +88,9 @@
     const satgm = (isEnterprise) ? require("@arangodb/satellite-graph") : {};
     const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
     const {map, zipObject} = require('lodash');
+    const isServer = require("@arangodb").isServer;
+    const request = require("@arangodb/request");
+    const {getRawMetric, getEndpointsByType} = require("@arangodb/test-helper");
 
     console.info("Test suite arguments: " + JSON.stringify(args));
 
@@ -852,27 +855,26 @@
         let res = db._query("FOR doc IN " + search.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
         assertEqual(5000, res.length);
 
-        let figures = collection.getIndexes(true, true)
-          .find(e => e.name === "searchIndex")
-          .figures;
-        // TODO(MBkkt) cannot locate @arangodb/cluster :(
-        // if (require("@arangodb/cluster").isCluster()) {
-        //   assertEqual(figures.numDocs, 0);
-        //   assertEqual(figures.numLiveDocs, 0);
-        //   assertEqual(figures.numSegments, 0);
-        //   assertEqual(figures.numFiles, 0);
-        //   assertEqual(figures.indexSize, 0);
-          let request = require("@arangodb/request");
+        if (isServer) {
           request({
             method: "get",
             url: "/_db/_system/_admin/metrics?mode=write_global",
-            headers: { accept: "application/json" },
-            body: {} });
-          require("internal").sleep(1);
-          figures = collection.getIndexes(true, true)
-            .find(e => e.name === "searchIndex")
-            .figures;
-        // }
+            headers: {accept: "application/json"},
+            body: {}
+          });
+        } else {
+          let coordinators = getEndpointsByType("coordinator");
+          getRawMetric(coordinators[0], '?mode=write_global');
+          for (let i = 1; i < coordinators.length; i++) {
+            let c = coordinators[i];
+            getRawMetric(c, '?mode=trigger_global');
+          }
+        }
+        require("internal").sleep(1);
+
+        let figures = collection.getIndexes(true, true)
+          .find(e => e.name === "searchIndex")
+          .figures;
         assertEqual(figures.numDocs, 5001);
         assertEqual(figures.numLiveDocs, 5001);
         assertTrue(figures.numSegments >= 1);
