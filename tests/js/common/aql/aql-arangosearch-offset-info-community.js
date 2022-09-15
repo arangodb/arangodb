@@ -104,7 +104,7 @@ function IResearchOffsetInfoAqlTestSuiteCommunity() {
         "FOR doc IN docsView SEARCH ANALYZER(doc.sub.doesNotExist == 'brown', 'offsets') RETURN OFFSET_INFO(doc, 'sub.body.doesNotExist')",
         errors.ERROR_NOT_IMPLEMENTED.code);
     }
-  }
+  };
 }
 
 if (!isEnterprise) {
