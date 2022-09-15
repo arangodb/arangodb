@@ -113,5 +113,4 @@ function HttpAuthenticateSuite() {
 }
 
 jsunity.run(HttpAuthenticateSuite);
-//jsunity.run(Http2AuthenticateSuite);
 return jsunity.done();
