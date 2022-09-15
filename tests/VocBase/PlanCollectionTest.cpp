@@ -483,6 +483,29 @@ TEST_F(PlanCollectionUserAPITest, test_isSmartChildCannotBeSatellite) {
   EXPECT_FALSE(res.ok()) << "Configured smartChild collection as 'satellite'.";
 }
 
+TEST_F(PlanCollectionUserAPITest, test_oneShardDBCannotBeSatellite) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder guard(&body);
+    // has to be greater or equal to used writeConcern
+    body.add("name", VPackValue("test"));
+    body.add("replicationFactor", VPackValue("satellite"));
+  }
+
+  // Note: We can also make this parsing fail in the first place.
+  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
+  ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
+                           << testee.result().errorMessage();
+  EXPECT_EQ(testee->replicationFactor, 0);
+
+  // No special config required, this always fails
+  PlanCollection::DatabaseConfiguration config{};
+  config.isOneShardDB = true;
+  auto res = testee->validateDatabaseConfiguration(config);
+  EXPECT_FALSE(res.ok()) << "Configured a oneShardDB collection as 'satellite'.";
+}
+
+
 
 TEST_F(PlanCollectionUserAPITest, test_atMost8ShardKeys) {
   // We split this string up into characters, to use those as shardKey

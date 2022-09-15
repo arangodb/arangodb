@@ -305,7 +305,6 @@ arangodb::Result PlanCollection::validateDatabaseConfiguration(
       return {TRI_ERROR_BAD_PARAMETER, "'satellite' cannot use shardKeys"};
     }
   }
-
   if (config.isOneShardDB) {
     if (numberOfShards != 1) {
       return {TRI_ERROR_BAD_PARAMETER,
@@ -316,6 +315,12 @@ arangodb::Result PlanCollection::validateDatabaseConfiguration(
       return {TRI_ERROR_BAD_PARAMETER,
               "Collection in a 'oneShardDatabase' cannot define "
               "'distributeShardsLike'"};
+    }
+
+    if (replicationFactor == 0) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "Collection in a 'oneShardDatabase' cannot be a "
+              "'satellite'"};
     }
   }
 
