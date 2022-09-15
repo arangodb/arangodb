@@ -813,16 +813,7 @@
         // we cannot expect that the data is immediately visible. We can only
         // hope that the data will be there in due course:
 
-        var startTime = new Date();
-        var res;
-        while (new Date() - startTime < 60000) {
-          res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
-          if (res.length === 5000) {
-            break;
-          }
-          console.log("Waiting for arangosearch index to be built...");
-          internal.wait(1);
-        }
+        let res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
         assertEqual(5000, res.length);
 
         res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
@@ -858,17 +849,35 @@
         // we cannot expect that the data is immediately visible. We can only
         // hope that the data will be there in due course:
 
-        var startTime = new Date();
-        var res;
-        while (new Date() - startTime < 60000) {
-          res = db._query("FOR doc IN " + search.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
-          if (res.length === 5000) {
-            break;
-          }
-          console.log("Waiting for inverted index to be built...");
-          internal.wait(1);
-        }
+        let res = db._query("FOR doc IN " + search.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
         assertEqual(5000, res.length);
+
+        let figures = collection.getIndexes(true, true)
+          .find(e => e.name === "searchIndex")
+          .figures;
+        // TODO(MBkkt) cannot locate @arangodb/cluster :(
+        // if (require("@arangodb/cluster").isCluster()) {
+        //   assertEqual(figures.numDocs, 0);
+        //   assertEqual(figures.numLiveDocs, 0);
+        //   assertEqual(figures.numSegments, 0);
+        //   assertEqual(figures.numFiles, 0);
+        //   assertEqual(figures.indexSize, 0);
+          let request = require("@arangodb/request");
+          request({
+            method: "get",
+            url: "/_db/_system/_admin/metrics?mode=write_global",
+            headers: { accept: "application/json" },
+            body: {} });
+          require("internal").sleep(1);
+          figures = collection.getIndexes(true, true)
+            .find(e => e.name === "searchIndex")
+            .figures;
+        // }
+        assertEqual(figures.numDocs, 5001);
+        assertEqual(figures.numLiveDocs, 5001);
+        assertTrue(figures.numSegments >= 1);
+        assertTrue(figures.numFiles >= 7);
+        assertTrue(figures.indexSize > 0);
 
         res = db._query("FOR doc IN " + search.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
         assertEqual(2500, res.length);

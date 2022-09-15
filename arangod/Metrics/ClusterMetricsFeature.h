@@ -168,7 +168,7 @@ class ClusterMetricsFeature final : public ArangodFeature {
   Scheduler::WorkHandle _update;
   Scheduler::WorkHandle _timer;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  uint32_t _timeout = 1;
+  uint32_t _timeout = 10;
 #else
   uint32_t _timeout = 0;
 #endif
