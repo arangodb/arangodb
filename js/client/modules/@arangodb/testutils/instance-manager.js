@@ -764,8 +764,10 @@ class instanceManager {
       arangod.serverCrashedLocal = true;
     });
     this.arangods.forEach((arangod) => {
-      crashUtils.aggregateDebugger(arangod, this.options);
-      arangod.waitForExitAfterDebugKill();
+      if (arangod.checkArangoAlive()) {
+        crashUtils.aggregateDebugger(arangod, this.options);
+        arangod.waitForExitAfterDebugKill();
+      }
     });
     return true;
   }
@@ -897,12 +899,13 @@ class instanceManager {
             localTimeout = localTimeout + 60;
           }
           if ((internal.time() - shutdownTime) > localTimeout) {
-            this.dumpAgency();
             print(Date() + ' forcefully terminating ' + yaml.safeDump(arangod.getStructure()) +
                   ' after ' + timeout + 's grace period; marking crashy.');
+            this.dumpAgency();
             arangod.serverCrashedLocal = true;
             shutdownSuccess = false;
             arangod.killWithCoreDump('forced shutdown');
+            crashUtils.aggregateDebugger(arangod, this.options);
             crashed = true;
             if (!arangod.isAgent()) {
               nonAgenciesCount--;
