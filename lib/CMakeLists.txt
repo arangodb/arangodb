@@ -76,6 +76,7 @@ add_library(arango STATIC
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
   ApplicationFeatures/CpuUsageFeature.cpp
+  ApplicationFeatures/FileSystemFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/GreetingsFeaturePhase.cpp
   ApplicationFeatures/LanguageFeature.cpp

@@ -32,6 +32,7 @@
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/CpuUsageFeature.h"
+#include "ApplicationFeatures/FileSystemFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
@@ -204,6 +205,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 #ifdef TRI_HAVE_GETRLIMIT
     server.addFeature<FileDescriptorsFeature>();
 #endif
+    server.addFeature<FileSystemFeature>();
     server.addFeature<FlushFeature>();
     server.addFeature<FortuneFeature>();
     server.addFeature<FoxxFeature>();
