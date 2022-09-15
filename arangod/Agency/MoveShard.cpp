@@ -544,21 +544,27 @@ bool MoveShard::startReplication2() {
   auto target =
       velocypack::deserialize<TargetType>(targetNode.toBuilder().slice());
 
-  // update target
-  if (target.participants.contains(_to)) {
-    moveShardFinish(false, false,
-                    "toServer must be a follower in plan for shard");
-    return false;
-  }
+  bool const containsTo = target.participants.contains(_to);
+  bool const containsFrom = target.participants.contains(_from);
 
-  if (not target.participants.contains(_from)) {
-    moveShardFinish(false, false,
-                    "fromServer must not be a follower in plan for shard");
-    return false;
-  }
+  // if not change-leader-only move shard
+  if (not(containsTo and containsFrom and _isLeader)) {
+    // update target
+    if (containsTo) {
+      moveShardFinish(false, false,
+                      "toServer must not be a follower in plan for shard");
+      return false;
+    }
 
-  target.participants.erase(_from);
-  target.participants.emplace(_to, TargetType::Participant{});
+    if (not containsFrom) {
+      moveShardFinish(false, false,
+                      "fromServer must be a follower in plan for shard");
+      return false;
+    }
+
+    target.participants.erase(_from);
+    target.participants.emplace(_to, TargetType::Participant{});
+  }
 
   auto oldTargetVersion = target.version;
   auto expected = target.version.value_or(1) + 1;
@@ -611,7 +617,6 @@ bool MoveShard::startReplication2() {
   }
 
   // Transact to agency:
-  LOG_DEVEL << "MoveShard start: " << trx.toJson();
   write_ret_t res = singleWriteTransaction(_agent, trx, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
@@ -668,8 +673,6 @@ JOB_STATUS MoveShard::pendingReplication2() {
 
   //_snapshot.hasAsUInt();
   auto currentSupervisionVersion = getShardSupervisionVersion();
-  LOG_DEVEL << "expectedVersion = " << _expectedTargetVersion
-            << "current = " << currentSupervisionVersion.value_or(0);
   if (currentSupervisionVersion < _expectedTargetVersion) {
     return PENDING;  // not yet converged
   }
@@ -696,8 +699,6 @@ JOB_STATUS MoveShard::pendingReplication2() {
   }
 
   // Transact to agency:
-
-  LOG_DEVEL << "MoveShard pending: " << trx.toJson();
   write_ret_t res = singleWriteTransaction(_agent, trx, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
