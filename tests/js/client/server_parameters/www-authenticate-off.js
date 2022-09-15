@@ -28,6 +28,7 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+let db = require('internal').db;
 const protocols = ["tcp", "h2"];
 const user = "root";
 

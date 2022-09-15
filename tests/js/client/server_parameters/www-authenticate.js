@@ -54,22 +54,19 @@ function HttpAuthenticateSuite() {
       protocols.forEach((protocol) => {
         connectWith(protocol, user, "");
         // need to change password, otherwise, the request will return 200
-        users.update(user, "abc");
-        try {
+        const updateRes = users.update(user, "abc");
+        if (updateRes.code === 200) {
           let result = arango.GET_RAW("/_api/version");
           assertEqual(401, result.code);
           assertTrue(result.headers.hasOwnProperty('www-authenticate'));
-        } catch (err1) {
-          throw err1;
-        } finally {
-          try {
-            // to change password back to the original one, we must reconnect with the current one, then change it back to the original one, then connect again
-            arango.reconnectWithNewPassword("abc");
-            users.update(user, "");
-            arango.reconnectWithNewPassword("");
-          } catch (err2) {
-            throw err2;
-          }
+        }
+        try {
+          // to change password back to the original one, we must reconnect with the current one, then change it back to the original one, then connect again
+          arango.reconnectWithNewPassword("abc");
+          users.update(user, "");
+          arango.reconnectWithNewPassword("");
+        } catch (err) {
+          throw err;
         }
       });
     },
@@ -78,25 +75,21 @@ function HttpAuthenticateSuite() {
       protocols.forEach(protocol => {
         connectWith(protocol, user, "");
         // need to change password, otherwise, the request will return 200
-        users.update(user, "abc");
-        try {
+        const updateRes = users.update(user, "abc");
+        if (updateRes.code === 200) {
           let result = arango.GET_RAW("/_api/version", {"x-omit-www-authenticate": "abc"});
           assertEqual(401, result.code);
           assertFalse(result.headers.hasOwnProperty('www-authenticate'));
-        } catch (err1) {
-          throw err1;
-        } finally {
-          try {
-            // to change password back to the original one, we must reconnect with the current one, then change it back to the original one, then connect again
-            arango.reconnectWithNewPassword("abc");
+        }
+        try {
+          // to change password back to the original one, we must reconnect with the current one, then change it back to the original one, then connect again
+          arango.reconnectWithNewPassword("abc");
 
-            users.update(user, "");
+          users.update(user, "");
 
-            arango.reconnectWithNewPassword("");
-          } catch (err2) {
-            throw(err2);
-          }
-
+          arango.reconnectWithNewPassword("");
+        } catch (err2) {
+          throw(err2);
         }
       });
     },
