@@ -27,7 +27,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/EnumeratePathsExecutor.h"

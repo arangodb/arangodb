@@ -575,7 +575,7 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
     stats.residentSize < 140000000
   ) || stats.virtualSize === 0;
   if (options.test !== undefined) {
-    print(CYAN + this.name + " - in single test mode, hard killing." + RESET);
+    print(CYAN + instanceInfo.name + " - in single test mode, hard killing." + RESET);
     instanceInfo.exitStatus = killExternal(instanceInfo.pid, termSignal);
   } else if (platform.substr(0, 3) === 'win') {
     if (!options.disableMonitor) {
