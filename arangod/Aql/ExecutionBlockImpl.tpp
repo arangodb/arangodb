@@ -24,6 +24,9 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
+#include "Aql/types.h"
 #include "ExecutionBlockImpl.h"
 
 #include "Aql/AqlCallStack.h"
@@ -346,15 +349,15 @@ ExecutionBlockImpl<Executor>::initializeCursor(InputAqlItemRow const& input) {
              _state == InternalState::FETCH_DATA);
   _state = InternalState::FETCH_DATA;
 
+  if constexpr (std::is_same_v<Executor, IdExecutor<ConstFetcher>>) {
+    SharedAqlItemBlockPtr block = input.cloneToBlock(
+        _engine->itemBlockManager(), registerInfos().registersToKeep().back(),
+        registerInfos().numberOfOutputRegisters());
+    // We inject an empty copy of our skipped here,
+    // This is resetted, but will maintain the size
+    _rowFetcher.injectBlock(std::move(block), _skipped);
+  }
   resetExecutor();
-
-  // // use this with c++17 instead of specialization below
-  // if constexpr (std::is_same_v<Executor, IdExecutor>) {
-  //   if (items != nullptr) {
-  //     _executor._inputRegisterValues.reset(
-  //         items->slice(pos, *(_executor._registerInfos.registersToKeep())));
-  //   }
-  // }
 
   return ExecutionBlock::initializeCursor(input);
 }
@@ -468,91 +471,6 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
     THROW_ARANGO_EXCEPTION(_firstFailure);
   }
 }
-
-// Avoid duplicate symbols when linking: This file is directly included by
-// ExecutionBlockImplTestInstances.cpp
-#ifndef ARANGODB_INCLUDED_FROM_GTESTS
-
-// Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
-// Without the namespaces it fails with
-// error: specialization of 'template<class Executor>
-// std::pair<arangodb::aql::ExecutionState, arangodb::Result>
-// arangodb::aql::ExecutionBlockImpl<Executor>::initializeCursor(arangodb::aql::AqlItemBlock*,
-// size_t)' in different namespace
-namespace arangodb::aql {
-// TODO -- remove this specialization when cpp 17 becomes available
-
-template<>
-template<>
-auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<
-    IdExecutor<ConstFetcher>>(SharedAqlItemBlockPtr block, SkipResult skipped)
-    -> void {
-  // reinitialize the DependencyProxy
-  _dependencyProxy.reset();
-
-  // destroy and re-create the Fetcher
-  _rowFetcher.~Fetcher();
-  new (&_rowFetcher) Fetcher(_dependencyProxy);
-
-  TRI_ASSERT(_skipped.nothingSkipped());
-
-  // Local skipped is either fresh (depth == 1)
-  // Or exactly of the size handed in
-  TRI_ASSERT(_skipped.subqueryDepth() == 1 ||
-             _skipped.subqueryDepth() == skipped.subqueryDepth());
-
-  TRI_ASSERT(_state == InternalState::DONE ||
-             _state == InternalState::FETCH_DATA);
-
-  _state = InternalState::FETCH_DATA;
-
-  // Reset state of execute
-  _lastRange = AqlItemBlockInputRange{MainQueryState::HASMORE};
-  _hasUsedDataRangeBlock = false;
-  _upstreamState = ExecutionState::HASMORE;
-
-  _rowFetcher.injectBlock(std::move(block), std::move(skipped));
-
-  resetExecutor();
-}
-
-// TODO -- remove this specialization when cpp 17 becomes available
-template<>
-std::pair<ExecutionState, Result>
-ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
-    InputAqlItemRow const& input) {
-  SharedAqlItemBlockPtr block = input.cloneToBlock(
-      _engine->itemBlockManager(), registerInfos().registersToKeep().back(),
-      registerInfos().numberOfOutputRegisters());
-  TRI_ASSERT(_skipped.nothingSkipped());
-  _skipped.reset();
-  // We inject an empty copy of our skipped here,
-  // This is resetted, but will maintain the size
-  injectConstantBlock(std::move(block), _skipped);
-
-  // end of default initializeCursor
-  return ExecutionBlock::initializeCursor(input);
-}
-
-}  // namespace arangodb::aql
-#else
-// Just predeclare the specializations for the tests.
-
-namespace arangodb::aql {
-template<>
-template<>
-auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<
-    IdExecutor<ConstFetcher>>(SharedAqlItemBlockPtr block, SkipResult skipped)
-    -> void;
-
-template<>
-std::pair<ExecutionState, Result>
-ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
-    InputAqlItemRow const& input);
-
-}  // namespace arangodb::aql
-
-#endif
 
 // TODO: We need to define the size of this block based on Input / Executor /
 // Subquery depth
@@ -982,144 +900,10 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
-// Avoid duplicate symbols when linking: This file is directly included by
-// ExecutionBlockImplTestInstances.cpp
-#ifndef ARANGODB_INCLUDED_FROM_GTESTS
-template<>
-auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(
-    AqlCallStack& stack) -> ExecState {
-  TRI_ASSERT(_outputItemRow);
-  TRI_ASSERT(_outputItemRow->isInitialized());
-  TRI_ASSERT(!_outputItemRow->allRowsUsed());
-
-  // The Subquery Start returns DONE after every row.
-  // This needs to be resetted as soon as a shadowRow has been produced
-  _executorReturnedDone = false;
-
-  if (_lastRange.hasDataRow()) {
-    // If we have a dataRow, the executor needs to write it's output.
-    // If we get woken up by a dataRow during forwarding of ShadowRows
-    // This will return false, and if so we need to call produce instead.
-    auto didWrite = _executor.produceShadowRow(_lastRange, *_outputItemRow);
-    // Need to report that we have written a row in the call
-
-    if (didWrite) {
-      auto& subqueryCall = stack.modifyTopCall();
-      subqueryCall.didProduce(1);
-      if (_lastRange.hasShadowRow()) {
-        // Forward the ShadowRows
-        return ExecState::SHADOWROWS;
-      }
-      return ExecState::NEXTSUBQUERY;
-    } else {
-      // Woken up after shadowRow forwarding
-      // Need to call the Executor
-      return ExecState::CHECKCALL;
-    }
-  } else {
-    // Need to forward the ShadowRows
-    auto&& [state, shadowRow] = _lastRange.nextShadowRow();
-    TRI_ASSERT(shadowRow.isInitialized());
-    _outputItemRow->increaseShadowRowDepth(shadowRow);
-    TRI_ASSERT(_outputItemRow->produced());
-    _outputItemRow->advanceRow();
-
-    // Count that we have now produced a row in the new depth.
-    // Note: We need to increment the depth by one, as the we have increased
-    // it while writing into the output by one as well.
-    countShadowRowProduced(stack, shadowRow.getDepth() + 1);
-
-    if (_lastRange.hasShadowRow()) {
-      return ExecState::SHADOWROWS;
-    }
-    // If we do not have more shadowRows
-    // we need to return.
-
-    auto& subqueryCallList = stack.modifyCallListAtDepth(shadowRow.getDepth());
-
-    if (!subqueryCallList.hasDefaultCalls()) {
-      return ExecState::DONE;
-    }
-
-    auto& subqueryCall = subqueryCallList.modifyNextCall();
-    if (subqueryCall.getLimit() == 0 && !subqueryCall.needSkipMore()) {
-      return ExecState::DONE;
-    }
-
-    _executorReturnedDone = false;
-
-    return ExecState::NEXTSUBQUERY;
-  }
-}
-
-template<>
-auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(
-    AqlCallStack& stack) -> ExecState {
-  TRI_ASSERT(_outputItemRow);
-  TRI_ASSERT(_outputItemRow->isInitialized());
-  TRI_ASSERT(!_outputItemRow->allRowsUsed());
-  if (!_lastRange.hasShadowRow()) {
-    // We got back without a ShadowRow in the LastRange
-    // Let client call again
-    return ExecState::NEXTSUBQUERY;
-  }
-  auto&& [state, shadowRow] = _lastRange.nextShadowRow();
-  TRI_ASSERT(shadowRow.isInitialized());
-  if (shadowRow.isRelevant()) {
-    // We need to consume the row, and write the Aggregate to it.
-    _executor.consumeShadowRow(shadowRow, *_outputItemRow);
-    // we need to reset the ExecutorHasReturnedDone, it will
-    // return done after every subquery is fully collected.
-    _executorReturnedDone = false;
-
-  } else {
-    _outputItemRow->decreaseShadowRowDepth(shadowRow);
-  }
-
-  TRI_ASSERT(_outputItemRow->produced());
-  _outputItemRow->advanceRow();
-  // The stack in used here contains all calls for within the subquery.
-  // Hence any inbound subquery needs to be counted on its level
-
-  countShadowRowProduced(stack, shadowRow.getDepth());
-
-  if (state == ExecutorState::DONE) {
-    // We have consumed everything, we are
-    // Done with this query
-    return ExecState::DONE;
-  } else if (_lastRange.hasDataRow()) {
-    // Multiple concatenated Subqueries
-    return ExecState::NEXTSUBQUERY;
-  } else if (_lastRange.hasShadowRow()) {
-    // We still have shadowRows, we
-    // need to forward them
-    return ExecState::SHADOWROWS;
-  } else if (_outputItemRow->isFull()) {
-    // Fullfilled the call
-    // Need to return!
-    return ExecState::DONE;
-  } else {
-    // End of input, we are done for now
-    // Need to call again
-    return ExecState::NEXTSUBQUERY;
-  }
-}
-#else
-// Just predeclare the specializations for the tests.
-template<>
-auto ExecutionBlockImpl<SubqueryStartExecutor>::shadowRowForwarding(
-    AqlCallStack& stack) -> ExecState;
-
-template<>
-auto ExecutionBlockImpl<SubqueryEndExecutor>::shadowRowForwarding(
-    AqlCallStack& stack) -> ExecState;
-
-#endif
-
 template<class Executor>
 auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
     AqlCallStack& stack, SkipResult& skipResult) -> ExecState {
-  TRI_ASSERT(executorHasSideEffects<Executor>);
+  static_assert(executorHasSideEffects<Executor>);
   if (!stack.needToCountSubquery()) {
     // We need to really produce things here
     // fall back to original version as any other executor.
@@ -1205,44 +989,106 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
   }
 }
 
-template<class Executor>
-auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
-    -> ExecState {
+template<typename Executor>
+auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryStart(
+    AqlCallStack& stack)
+    -> ExecState requires std::same_as<Executor, SubqueryStartExecutor> {
+  TRI_ASSERT(_outputItemRow);
+  TRI_ASSERT(_outputItemRow->isInitialized());
+  TRI_ASSERT(!_outputItemRow->allRowsUsed());
+
+  // The Subquery Start returns DONE after every row.
+  // This needs to be resetted as soon as a shadowRow has been produced
+  _executorReturnedDone = false;
+
+  if (_lastRange.hasDataRow()) {
+    // If we have a dataRow, the executor needs to write it's output.
+    // If we get woken up by a dataRow during forwarding of ShadowRows
+    // This will return false, and if so we need to call produce instead.
+    auto didWrite = _executor.produceShadowRow(_lastRange, *_outputItemRow);
+    // Need to report that we have written a row in the call
+
+    if (didWrite) {
+      auto& subqueryCall = stack.modifyTopCall();
+      subqueryCall.didProduce(1);
+      if (_lastRange.hasShadowRow()) {
+        // Forward the ShadowRows
+        return ExecState::SHADOWROWS;
+      }
+      return ExecState::NEXTSUBQUERY;
+    } else {
+      // Woken up after shadowRow forwarding
+      // Need to call the Executor
+      return ExecState::CHECKCALL;
+    }
+  } else {
+    // Need to forward the ShadowRows
+    auto&& [state, shadowRow] = _lastRange.nextShadowRow();
+    TRI_ASSERT(shadowRow.isInitialized());
+    _outputItemRow->increaseShadowRowDepth(shadowRow);
+    TRI_ASSERT(_outputItemRow->produced());
+    _outputItemRow->advanceRow();
+
+    // Count that we have now produced a row in the new depth.
+    // Note: We need to increment the depth by one, as the we have increased
+    // it while writing into the output by one as well.
+    countShadowRowProduced(stack, shadowRow.getDepth() + 1);
+
+    if (_lastRange.hasShadowRow()) {
+      return ExecState::SHADOWROWS;
+    }
+    // If we do not have more shadowRows
+    // we need to return.
+
+    auto& subqueryCallList = stack.modifyCallListAtDepth(shadowRow.getDepth());
+
+    if (!subqueryCallList.hasDefaultCalls()) {
+      return ExecState::DONE;
+    }
+
+    auto& subqueryCall = subqueryCallList.modifyNextCall();
+    if (subqueryCall.getLimit() == 0 && !subqueryCall.needSkipMore()) {
+      return ExecState::DONE;
+    }
+
+    _executorReturnedDone = false;
+
+    return ExecState::NEXTSUBQUERY;
+  }
+}
+
+template<typename Executor>
+auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
+    AqlCallStack& stack)
+    -> ExecState requires std::same_as<Executor, SubqueryEndExecutor> {
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
   TRI_ASSERT(!_outputItemRow->allRowsUsed());
   if (!_lastRange.hasShadowRow()) {
     // We got back without a ShadowRow in the LastRange
-    // Let us continue with the next Subquery
+    // Let client call again
     return ExecState::NEXTSUBQUERY;
   }
-
   auto&& [state, shadowRow] = _lastRange.nextShadowRow();
   TRI_ASSERT(shadowRow.isInitialized());
-
-  // TODO FIXME WARNING THIS IS AN UGLY HACK. PLEASE SOLVE ME IN A MORE
-  // SENSIBLE WAY!
-  //
-  // the row fetcher doesn't know its ranges, the ranges don't know the fetcher
-  //
-  // ranges synchronize shadow rows, and fetcher synchronizes skipping
-  //
-  // but there are interactions between the two.
-  if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
-    _rowFetcher.resetDidReturnSubquerySkips(shadowRow.getDepth());
-  }
-
-  countShadowRowProduced(stack, shadowRow.getDepth());
   if (shadowRow.isRelevant()) {
-    LOG_QUERY("6d337", DEBUG) << printTypeInfo() << " init executor.";
-    // We found a relevant shadow Row.
-    // We need to reset the Executor
-    resetExecutor();
+    // We need to consume the row, and write the Aggregate to it.
+    _executor.consumeShadowRow(shadowRow, *_outputItemRow);
+    // we need to reset the ExecutorHasReturnedDone, it will
+    // return done after every subquery is fully collected.
+    _executorReturnedDone = false;
+
+  } else {
+    _outputItemRow->decreaseShadowRowDepth(shadowRow);
   }
 
-  _outputItemRow->moveRow(shadowRow);
   TRI_ASSERT(_outputItemRow->produced());
   _outputItemRow->advanceRow();
+  // The stack in used here contains all calls for within the subquery.
+  // Hence any inbound subquery needs to be counted on its level
+
+  countShadowRowProduced(stack, shadowRow.getDepth());
+
   if (state == ExecutorState::DONE) {
     // We have consumed everything, we are
     // Done with this query
@@ -1251,25 +1097,92 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
     // Multiple concatenated Subqueries
     return ExecState::NEXTSUBQUERY;
   } else if (_lastRange.hasShadowRow()) {
-    // We still have shadowRows.
-    auto const& lookAheadRow = _lastRange.peekShadowRow();
-    if (lookAheadRow.isRelevant()) {
-      // We are starting the NextSubquery here.
-      if constexpr (Executor::Properties::allowsBlockPassthrough ==
-                    BlockPassthrough::Enable) {
-        // TODO: Check if this works with skip forwarding
-        return ExecState::SHADOWROWS;
-      }
+    // We still have shadowRows, we
+    // need to forward them
+    return ExecState::SHADOWROWS;
+  } else if (_outputItemRow->isFull()) {
+    // Fullfilled the call
+    // Need to return!
+    return ExecState::DONE;
+  } else {
+    // End of input, we are done for now
+    // Need to call again
+    return ExecState::NEXTSUBQUERY;
+  }
+}
+
+template<class Executor>
+auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
+    -> ExecState {
+  if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+    return shadowRowForwardingSubqueryStart(stack);
+  } else if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
+    return shadowRowForwardingSubqueryEnd(stack);
+  } else {
+    TRI_ASSERT(_outputItemRow);
+    TRI_ASSERT(_outputItemRow->isInitialized());
+    TRI_ASSERT(!_outputItemRow->allRowsUsed());
+    if (!_lastRange.hasShadowRow()) {
+      // We got back without a ShadowRow in the LastRange
+      // Let us continue with the next Subquery
       return ExecState::NEXTSUBQUERY;
     }
-    // we need to forward them
-    return ExecState::SHADOWROWS;
-  } else {
-    // End of input, need to fetch new!
-    // Just start with the next subquery.
-    // If in doubt the next row will be a shadowRow again,
-    // this will be forwarded than.
-    return ExecState::NEXTSUBQUERY;
+
+    auto&& [state, shadowRow] = _lastRange.nextShadowRow();
+    TRI_ASSERT(shadowRow.isInitialized());
+
+    // TODO FIXME WARNING THIS IS AN UGLY HACK. PLEASE SOLVE ME IN A MORE
+    // SENSIBLE WAY!
+    //
+    // the row fetcher doesn't know its ranges, the ranges don't know the
+    // fetcher
+    //
+    // ranges synchronize shadow rows, and fetcher synchronizes skipping
+    //
+    // but there are interactions between the two.
+    if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
+      _rowFetcher.resetDidReturnSubquerySkips(shadowRow.getDepth());
+    }
+
+    countShadowRowProduced(stack, shadowRow.getDepth());
+    if (shadowRow.isRelevant()) {
+      LOG_QUERY("6d337", DEBUG) << printTypeInfo() << " init executor.";
+      // We found a relevant shadow Row.
+      // We need to reset the Executor
+      resetExecutor();
+    }
+
+    _outputItemRow->moveRow(shadowRow);
+    TRI_ASSERT(_outputItemRow->produced());
+    _outputItemRow->advanceRow();
+    if (state == ExecutorState::DONE) {
+      // We have consumed everything, we are
+      // Done with this query
+      return ExecState::DONE;
+    } else if (_lastRange.hasDataRow()) {
+      // Multiple concatenated Subqueries
+      return ExecState::NEXTSUBQUERY;
+    } else if (_lastRange.hasShadowRow()) {
+      // We still have shadowRows.
+      auto const& lookAheadRow = _lastRange.peekShadowRow();
+      if (lookAheadRow.isRelevant()) {
+        // We are starting the NextSubquery here.
+        if constexpr (Executor::Properties::allowsBlockPassthrough ==
+                      BlockPassthrough::Enable) {
+          // TODO: Check if this works with skip forwarding
+          return ExecState::SHADOWROWS;
+        }
+        return ExecState::NEXTSUBQUERY;
+      }
+      // we need to forward them
+      return ExecState::SHADOWROWS;
+    } else {
+      // End of input, need to fetch new!
+      // Just start with the next subquery.
+      // If in doubt the next row will be a shadowRow again,
+      // this will be forwarded than.
+      return ExecState::NEXTSUBQUERY;
+    }
   }
 }
 
@@ -2116,26 +2029,6 @@ auto ExecutionBlockImpl<Executor>::lastRangeHasDataRow() const noexcept
   return _lastRange.hasDataRow();
 }
 
-// Avoid duplicate symbols when linking: This file is directly included by
-// ExecutionBlockImplTestInstances.cpp
-#ifndef ARANGODB_INCLUDED_FROM_GTESTS
-template<>
-template<>
-RegisterId
-ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::
-    getOutputRegisterId() const noexcept {
-  return _executorInfos.getOutputRegister();
-}
-#else
-// Just predeclare the specializations for the tests.
-
-template<>
-template<>
-RegisterId
-ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::
-    getOutputRegisterId() const noexcept;
-#endif
-
 template<class Executor>
 void ExecutionBlockImpl<Executor>::init() {
   TRI_ASSERT(!_initialized);
@@ -2408,479 +2301,48 @@ void ExecutionBlockImpl<Executor>::CallstackSplit::run(
   }
 }
 
-// Avoid compiling everything again in the tests
-#ifndef ARANGODB_INCLUDED_FROM_GTESTS
+// TODO: find out whether this is still needed. It is used in
+//       ScatterExecutor and in DistributeClientExecutor
+template<class Executor>
+auto ExecutionBlockImpl<Executor>::injectConstantBlock(
+    SharedAqlItemBlockPtr block, SkipResult skipped)
+    -> void requires std::same_as<Executor, IdExecutor<ConstFetcher>> {
+  // reinitialize the DependencyProxy
+  _dependencyProxy.reset();
 
-template class ::arangodb::aql::ExecutionBlockImpl<
-    CalculationExecutor<CalculationType::Condition>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    CalculationExecutor<CalculationType::Reference>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    CalculationExecutor<CalculationType::V8Condition>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ConstrainedSortExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<CountCollectExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<DistinctCollectExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<HashedCollectExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<AccuWindowExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<WindowExecutor>;
+  // destroy and re-create the Fetcher
+  _rowFetcher.~Fetcher();
+  new (&_rowFetcher) Fetcher(_dependencyProxy);
 
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        false, false, false,
-        arangodb::iresearch::MaterializeType::NotMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        false, false, false,
-        arangodb::iresearch::MaterializeType::LateMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<
-    aql::ExecutionTraits<false, false, false,
-                         arangodb::iresearch::MaterializeType::Materialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        false, false, false,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        false, false, false,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        true, false, false,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        true, false, false,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        false, false, true,
-        arangodb::iresearch::MaterializeType::NotMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        false, false, true,
-        arangodb::iresearch::MaterializeType::LateMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<
-    aql::ExecutionTraits<false, false, true,
-                         arangodb::iresearch::MaterializeType::Materialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        false, false, true,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        false, false, true,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        true, false, true,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        true, false, true,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
+  TRI_ASSERT(_skipped.nothingSkipped());
 
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        false, true, false,
-        arangodb::iresearch::MaterializeType::NotMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        false, true, false,
-        arangodb::iresearch::MaterializeType::LateMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<
-    aql::ExecutionTraits<false, true, false,
-                         arangodb::iresearch::MaterializeType::Materialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        false, true, false,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        false, true, false,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        true, true, false,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        true, true, false,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        false, true, true,
-        arangodb::iresearch::MaterializeType::NotMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        false, true, true,
-        arangodb::iresearch::MaterializeType::LateMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        false, true, true, arangodb::iresearch::MaterializeType::Materialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        false, true, true,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        false, true, true,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        true, true, true,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewExecutor<aql::ExecutionTraits<
-        true, true, true,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
+  // Local skipped is either fresh (depth == 1)
+  // Or exactly of the size handed in
+  TRI_ASSERT(_skipped.subqueryDepth() == 1 ||
+             _skipped.subqueryDepth() == skipped.subqueryDepth());
 
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        false, false, false,
-        arangodb::iresearch::MaterializeType::NotMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        false, false, false,
-        arangodb::iresearch::MaterializeType::LateMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<
-    aql::ExecutionTraits<false, false, false,
-                         arangodb::iresearch::MaterializeType::Materialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        false, false, false,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        false, false, false,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        true, false, false,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        true, false, false,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        false, true, false,
-        arangodb::iresearch::MaterializeType::NotMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        false, true, false,
-        arangodb::iresearch::MaterializeType::LateMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<
-    aql::ExecutionTraits<false, true, false,
-                         arangodb::iresearch::MaterializeType::Materialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        false, true, false,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        false, true, false,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        true, true, false,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        true, true, false,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        false, false, true,
-        arangodb::iresearch::MaterializeType::NotMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        false, false, true,
-        arangodb::iresearch::MaterializeType::LateMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<
-    aql::ExecutionTraits<false, false, true,
-                         arangodb::iresearch::MaterializeType::Materialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        false, false, true,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        false, false, true,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        true, false, true,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        true, false, true,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        false, true, true,
-        arangodb::iresearch::MaterializeType::NotMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        false, true, true,
-        arangodb::iresearch::MaterializeType::LateMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        false, true, true, arangodb::iresearch::MaterializeType::Materialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        false, true, true,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        false, true, true,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        true, true, true,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewMergeExecutor<aql::ExecutionTraits<
-        true, true, true,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
+  TRI_ASSERT(_state == InternalState::DONE ||
+             _state == InternalState::FETCH_DATA);
 
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        false, false, false,
-        arangodb::iresearch::MaterializeType::NotMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        false, false, false,
-        arangodb::iresearch::MaterializeType::LateMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        false, false, false,
-        arangodb::iresearch::MaterializeType::Materialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        false, false, false,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        false, false, false,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        true, false, false,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        true, false, false,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        false, true, false,
-        arangodb::iresearch::MaterializeType::NotMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        false, true, false,
-        arangodb::iresearch::MaterializeType::LateMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        false, true, false,
-        arangodb::iresearch::MaterializeType::Materialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        false, true, false,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        false, true, false,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        true, true, false,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        true, true, false,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        false, false, true,
-        arangodb::iresearch::MaterializeType::NotMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        false, false, true,
-        arangodb::iresearch::MaterializeType::LateMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        false, false, true,
-        arangodb::iresearch::MaterializeType::Materialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        false, false, true,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        false, false, true,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        true, false, true,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        true, false, true,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        false, true, true,
-        arangodb::iresearch::MaterializeType::NotMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        false, true, true,
-        arangodb::iresearch::MaterializeType::LateMaterialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        false, true, true, arangodb::iresearch::MaterializeType::Materialize>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        false, true, true,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        false, true, true,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        true, true, true,
-        arangodb::iresearch::MaterializeType::NotMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-        true, true, true,
-        arangodb::iresearch::MaterializeType::LateMaterialize |
-            arangodb::iresearch::MaterializeType::UseStoredValues>>>;
+  _state = InternalState::FETCH_DATA;
 
-template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
+  // Reset state of execute
+  _lastRange = AqlItemBlockInputRange{MainQueryState::HASMORE};
+  _hasUsedDataRangeBlock = false;
+  _upstreamState = ExecutionState::HASMORE;
 
-// IndexTag, Insert, Remove, Update,Replace, Upsert are only tags for this one
-template class ::arangodb::aql::ExecutionBlockImpl<
-    SingleRemoteModificationExecutor<IndexTag>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    SingleRemoteModificationExecutor<Insert>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    SingleRemoteModificationExecutor<Remove>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    SingleRemoteModificationExecutor<Update>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    SingleRemoteModificationExecutor<Replace>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    SingleRemoteModificationExecutor<Upsert>>;
+  _rowFetcher.injectBlock(std::move(block), std::move(skipped));
 
-template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    EnumeratePathsExecutor<arangodb::graph::KShortestPathsFinder>>;
+  resetExecutor();
+}
 
-/* SingleServer */
-template class ::arangodb::aql::ExecutionBlockImpl<
-    EnumeratePathsExecutor<KPathRefactored>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    EnumeratePathsExecutor<KPathRefactoredTracer>>;
-
-// template class ::arangodb::aql::ExecutionBlockImpl<
-//     EnumeratePathsExecutor<AllShortestPaths>>;
-// template class ::arangodb::aql::ExecutionBlockImpl<
-//     EnumeratePathsExecutor<AllShortestPathsTracer>>;
-
-/* Cluster */
-template class ::arangodb::aql::ExecutionBlockImpl<
-    EnumeratePathsExecutor<KPathRefactoredCluster>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    EnumeratePathsExecutor<KPathRefactoredClusterTracer>>;
-
-// template class ::arangodb::aql::ExecutionBlockImpl<
-//     EnumeratePathsExecutor<AllShortestPathsCluster>>;
-// template class ::arangodb::aql::ExecutionBlockImpl<
-//     EnumeratePathsExecutor<AllShortestPathsClusterTracer>>;
-
-template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<SubqueryEndExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<SubqueryStartExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<SortingGatherExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    ParallelUnsortedGatherExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<UnsortedGatherExecutor>;
-
-template class ::arangodb::aql::ExecutionBlockImpl<
-    MaterializeExecutor<RegisterId>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    MaterializeExecutor<std::string const&>>;
-
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<
-    SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<
-    SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<
-    SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<
-    SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
-
-#ifdef USE_ENTERPRISE
-template class ::arangodb::aql::ExecutionBlockImpl<
-    ::arangodb::iresearch::OffsetMaterializeExecutor>;
-#endif
-
-#endif
+// FIXME: this might not be used anymore; with the introduction of
+// spliced subqueries we shouldn't have the case in
+// ExecutionEngine::setupEngineRoot. Trying to ADB_PROD_ASSERT
+// this fact leads to instant crash on startup though.
+template<typename Executor>
+auto ExecutionBlockImpl<Executor>::getOutputRegisterId() const noexcept
+    -> RegisterId requires std::same_as<
+        Executor, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>> {
+  return _executorInfos.getOutputRegister();
+}
