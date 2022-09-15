@@ -38,6 +38,10 @@ devel
 
 * Updated Views UI with all changes necessary for the 3.10.0 launch.
 
+* Added message on the UI view of Logs when the user has restricted access,
+  either because cannot access `_system`, or because is currently in 
+  another database. 
+
 * Fix for the Pregel's HITS algorithm using a fixed value instead of the
   passed "threshold" parameter. The same applied to the new HITSKleinberg.
 

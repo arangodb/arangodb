@@ -36,7 +36,7 @@
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
