@@ -239,7 +239,7 @@ void ReplicatedState<S>::drop() {
           factory->constructCleanupHandler();
       cleanupHandler->drop(std::move(core));
     }
-    return std::move(action);
+    return action;
   });
   deferred.fire();
 }
