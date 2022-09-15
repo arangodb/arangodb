@@ -140,7 +140,6 @@ class H2CommTask final : public GeneralCommTask<T> {
       _responses;
 
   std::map<int32_t, Stream> _streams;
-  std::map<int32_t, bool> _authHeaders;
 
   nghttp2_session* _session = nullptr;
 
