@@ -1944,9 +1944,6 @@ static void ClientConnection_reconnectWithNewPassword(
   V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
       args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
-  // v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
-  // ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
-
   if (v8connection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL(
         "reconnectWithNewPassword() must be invoked on an arango connection "
