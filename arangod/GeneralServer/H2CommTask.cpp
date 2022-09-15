@@ -79,7 +79,6 @@ template<SocketType T>
   auto req =
       std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ sid,
                                     /*allowMethodOverride*/ false);
-
   me->createStream(sid, std::move(req));
 
   LOG_TOPIC("33598", TRACE, Logger::REQUESTS)
@@ -392,9 +391,7 @@ void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
         // server
 
         TRI_ASSERT(req->messageId() == 1);
-
         auto* strm = me.createStream(1, std::move(req));
-
         TRI_ASSERT(strm);
 
         // will start writing later
@@ -719,7 +716,6 @@ void H2CommTask<T>::queueHttp2Responses() {
 
     const int32_t streamId = static_cast<int32_t>(response->messageId());
     Stream* strm = findStream(streamId);
-
     if (strm == nullptr) {  // stream was already closed for some reason
       LOG_TOPIC("e2773", DEBUG, Logger::REQUESTS)
           << "response with message id '" << streamId
@@ -961,9 +957,7 @@ template<SocketType T>
 typename H2CommTask<T>::Stream* H2CommTask<T>::createStream(
     int32_t sid, std::unique_ptr<HttpRequest> req) {
   TRI_ASSERT(static_cast<uint64_t>(sid) == req->messageId());
-
   auto [it, inserted] = _streams.emplace(sid, Stream{std::move(req)});
-
   TRI_ASSERT(inserted == true);
   return &it->second;
 }
