@@ -31,6 +31,7 @@
 #include "Basics/asio_ns.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogContext.h"
@@ -78,6 +79,7 @@ template<SocketType T>
   auto req =
       std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ sid,
                                     /*allowMethodOverride*/ false);
+
   me->createStream(sid, std::move(req));
 
   LOG_TOPIC("33598", TRACE, Logger::REQUESTS)
@@ -390,7 +392,9 @@ void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
         // server
 
         TRI_ASSERT(req->messageId() == 1);
+
         auto* strm = me.createStream(1, std::move(req));
+
         TRI_ASSERT(strm);
 
         // will start writing later
@@ -526,7 +530,13 @@ template<SocketType T>
 void H2CommTask<T>::processStream(Stream& stream) {
   DTraceH2CommTaskProcessStream((size_t)this);
 
+  if (!stream.request->header("x-omit-www-authenticate").empty()) {
+    stream.mustSendAuthHeader = false;
+  } else {
+    stream.mustSendAuthHeader = true;
+  }
   std::unique_ptr<HttpRequest> req = std::move(stream.request);
+
   auto msgId = req->messageId();
   auto respContentType = req->contentTypeResponse();
   try {
@@ -709,6 +719,7 @@ void H2CommTask<T>::queueHttp2Responses() {
 
     const int32_t streamId = static_cast<int32_t>(response->messageId());
     Stream* strm = findStream(streamId);
+
     if (strm == nullptr) {  // stream was already closed for some reason
       LOG_TOPIC("e2773", DEBUG, Logger::REQUESTS)
           << "response with message id '" << streamId
@@ -735,9 +746,9 @@ void H2CommTask<T>::queueHttp2Responses() {
     // suppress sending the www-authenticate header by sending us an
     // x-omit-www-authenticate header.
     bool needWwwAuthenticate =
-        (res.responseCode() == rest::ResponseCode::UNAUTHORIZED &&
-         (!strm->request ||
-          strm->request->header("x-omit-www-authenticate").empty()));
+        (this->_auth->isActive() &&
+         res.responseCode() == rest::ResponseCode::UNAUTHORIZED &&
+         strm->mustSendAuthHeader);
 
     bool seenServerHeader = false;
     for (auto const& it : res.headers()) {
@@ -950,7 +961,9 @@ template<SocketType T>
 typename H2CommTask<T>::Stream* H2CommTask<T>::createStream(
     int32_t sid, std::unique_ptr<HttpRequest> req) {
   TRI_ASSERT(static_cast<uint64_t>(sid) == req->messageId());
+
   auto [it, inserted] = _streams.emplace(sid, Stream{std::move(req)});
+
   TRI_ASSERT(inserted == true);
   return &it->second;
 }

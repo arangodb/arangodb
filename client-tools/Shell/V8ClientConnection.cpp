@@ -417,6 +417,11 @@ void V8ClientConnection::reconnect() {
   }
 }
 
+void V8ClientConnection::reconnectWithNewPassword(std::string const& password) {
+  _client.setPassword(password);
+  this->reconnect();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enum for wrapped V8 objects
 ////////////////////////////////////////////////////////////////////////////////
@@ -1921,6 +1926,45 @@ static void ClientConnection_setDatabaseName(
   TRI_V8_TRY_CATCH_END
 }
 
+////////////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "reconnectWithNewPassword" for test
+/// environment only
+////////////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_reconnectWithNewPassword(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
+  // get the connection
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+
+  // v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
+  // ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+
+  if (v8connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "reconnectWithNewPassword() must be invoked on an arango connection "
+        "object "
+        "instance.");
+  }
+
+  if (args.Length() != 1 || !args[0]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("reconnectWithNewPassword(<password>)");
+  }
+
+  std::string const password = TRI_ObjectToString(isolate, args[0]);
+  v8connection->reconnectWithNewPassword(password);
+
+  TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
+}
+
 v8::Local<v8::Value> V8ClientConnection::getData(
     v8::Isolate* isolate, std::string_view location,
     std::unordered_map<std::string, std::string> const& headerFields,
@@ -2598,6 +2642,11 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_proto->Set(isolate, "connectedUser",
                         v8::FunctionTemplate::New(
                             isolate, ClientConnection_connectedUser, v8client));
+
+  connection_proto->Set(
+      isolate, "reconnectWithNewPassword",
+      v8::FunctionTemplate::New(
+          isolate, ClientConnection_reconnectWithNewPassword, v8client));
 
   connection_proto->Set(
       isolate, "protocol",

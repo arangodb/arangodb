@@ -25,6 +25,7 @@
 
 #include "GeneralServer/AsioSocket.h"
 #include "GeneralServer/GeneralCommTask.h"
+#include "Rest/HttpRequest.h"
 
 #include <boost/lockfree/queue.hpp>
 #include <memory>
@@ -102,6 +103,7 @@ class H2CommTask final : public GeneralCommTask<T> {
 
     std::unique_ptr<HttpRequest> request;
     std::unique_ptr<H2Response> response;  // hold response memory
+    bool mustSendAuthHeader = true;
 
     size_t headerBuffSize = 0;  // total header size
     size_t responseOffset = 0;  // current offset in response body
@@ -138,6 +140,7 @@ class H2CommTask final : public GeneralCommTask<T> {
       _responses;
 
   std::map<int32_t, Stream> _streams;
+  std::map<int32_t, bool> _authHeaders;
 
   nghttp2_session* _session = nullptr;
 

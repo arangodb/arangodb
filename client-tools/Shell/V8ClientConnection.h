@@ -79,6 +79,8 @@ class V8ClientConnection {
   void connect();
   void reconnect();
 
+  void reconnectWithNewPassword(std::string const& password);
+
   double timeout() const;
 
   void timeout(double value);
