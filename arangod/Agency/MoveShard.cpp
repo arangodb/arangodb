@@ -620,12 +620,12 @@ bool MoveShard::startReplication2() {
   write_ret_t res = singleWriteTransaction(_agent, trx, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC("45120", DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("4512d", DEBUG, Logger::SUPERVISION)
         << "Pending: Move shard " + _shard + " from " + _from + " to " + _to;
     return true;
   }
 
-  LOG_TOPIC("0a925", DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("0a92d", DEBUG, Logger::SUPERVISION)
       << "Start precondition failed for MoveShard job " + _jobId;
   return false;
 }
@@ -1043,12 +1043,12 @@ JOB_STATUS MoveShard::pendingLeader() {
   write_ret_t res = singleWriteTransaction(_agent, trx, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC("f8c21", DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("ffc21", DEBUG, Logger::SUPERVISION)
         << "Pending: Move shard " + _shard + " from " + _from + " to " + _to;
     return (finishedAfterTransaction ? FINISHED : PENDING);
   }
 
-  LOG_TOPIC("521eb", DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("52feb", DEBUG, Logger::SUPERVISION)
       << "Precondition failed for MoveShard job " + _jobId;
   return PENDING;
 }
