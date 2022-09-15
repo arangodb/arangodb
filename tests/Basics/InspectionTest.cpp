@@ -416,6 +416,25 @@ struct Struct1 {
 struct Struct2 {
   int v;
 };
+struct Struct3 {
+  int a;
+  int b;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, Struct1& x) {
+  return f.object(x).fields(f.field("v", x.v));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, Struct2& x) {
+  return f.object(x).fields(f.field("v", x.v));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, Struct3& x) {
+  return f.object(x).fields(f.field("a", x.a), f.field("b", x.b));
+}
 
 struct MyQualifiedVariant
     : std::variant<std::string, int, Struct1, Struct2, std::monostate> {};
@@ -475,14 +494,27 @@ auto inspect(Inspector& f, UnqualifiedVariant& x) {
                             f.field("e", x.e));
 }
 
+struct MyEmbeddedVariant : std::variant<Struct1, Struct2, Struct3> {};
+
+struct EmbeddedVariant {
+  MyEmbeddedVariant a;
+  MyEmbeddedVariant b;
+  MyEmbeddedVariant c;
+};
+
 template<class Inspector>
-auto inspect(Inspector& f, Struct1& x) {
-  return f.object(x).fields(f.field("v", x.v));
+auto inspect(Inspector& f, MyEmbeddedVariant& x) {
+  namespace insp = arangodb::inspection;
+  return f.variant(x).embedded("t").alternatives(
+      insp::type<Struct1>("Struct1"),   //
+      insp::type<Struct2>("Struct2"),   //
+      insp::type<Struct3>("Struct3"));  //
 }
 
 template<class Inspector>
-auto inspect(Inspector& f, Struct2& x) {
-  return f.object(x).fields(f.field("v", x.v));
+auto inspect(Inspector& f, EmbeddedVariant& x) {
+  return f.object(x).fields(f.field("a", x.a), f.field("b", x.b),
+                            f.field("c", x.c));
 }
 
 enum class MyStringEnum {
@@ -1023,6 +1055,26 @@ TEST_F(VPackSaveInspectorTest,
   auto result = inspector.apply(val);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Unknown enum value 42", result.error());
+}
+
+TEST_F(VPackSaveInspectorTest, store_embedded_variant) {
+  EmbeddedVariant d{
+      .a = {Struct1{1}}, .b = {Struct2{2}}, .c = {Struct3{.a = 1, .b = 2}}};
+  auto result = inspector.apply(d);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+
+  EXPECT_EQ("Struct1", slice["a"]["t"].stringView());
+  EXPECT_EQ(1, slice["a"]["v"].getInt());
+
+  EXPECT_EQ("Struct2", slice["b"]["t"].stringView());
+  EXPECT_EQ(2, slice["b"]["v"].getInt());
+
+  EXPECT_EQ("Struct3", slice["c"]["t"].stringView());
+  EXPECT_EQ(1, slice["c"]["a"].getInt());
+  EXPECT_EQ(2, slice["c"]["b"].getInt());
 }
 
 TEST_F(VPackSaveInspectorTest, store_embedded_fields) {
@@ -1973,7 +2025,7 @@ TEST_F(VPackLoadInspectorTest,
   auto result = inspector.apply(v);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Expecting type String", result.error());
-  EXPECT_EQ("a.value", result.path());
+  EXPECT_EQ("a.v", result.path());
 }
 
 TEST_F(VPackLoadInspectorTest,
@@ -2110,11 +2162,11 @@ TEST_F(VPackLoadInspectorTest,
   auto result = inspector.apply(v);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Expecting type String", result.error());
-  EXPECT_EQ("a.value", result.path());
+  EXPECT_EQ("a.string", result.path());
 }
 
 TEST_F(VPackLoadInspectorTest,
-       error_missing_data_when_parsing_qualified_variant) {
+       error_missing_data_when_parsing_unqualified_variant) {
   builder.openObject();
   builder.add(VPackValue("a"));
   builder.openObject();
@@ -2127,6 +2179,126 @@ TEST_F(VPackLoadInspectorTest,
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Missing unqualified variant data", result.error());
   EXPECT_EQ("a", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest, load_embedded_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("t", "Struct1");
+  builder.add("v", 1);
+  builder.close();
+
+  builder.add(VPackValue("b"));
+  builder.openObject();
+  builder.add("t", "Struct2");
+  builder.add("v", 2);
+  builder.close();
+
+  builder.add(VPackValue("c"));
+  builder.openObject();
+  builder.add("t", "Struct3");
+  builder.add("a", 1);
+  builder.add("b", 2);
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  EmbeddedVariant v{.a = {}, .b = {}, .c = {}};
+  auto result = inspector.apply(v);
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(1, std::get<Struct1>(v.a).v);
+  EXPECT_EQ(2, std::get<Struct2>(v.b).v);
+  EXPECT_EQ(1, std::get<Struct3>(v.c).a);
+  EXPECT_EQ(2, std::get<Struct3>(v.c).b);
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_unknown_type_tag_when_loading_embedded_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("t", "blubb");
+  builder.add("v", "");
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  EmbeddedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Found invalid type: blubb", result.error());
+  EXPECT_EQ("a", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_expecting_int_when_parsing_embedded_variant_value) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("t", "Struct1");
+  builder.add("v", "blubb");
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  EmbeddedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Expecting type Int", result.error());
+  EXPECT_EQ("a.v", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_missing_tag_when_parsing_embedded_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("v", 42);
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  EmbeddedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Variant type field \"t\" is missing", result.error());
+  EXPECT_EQ("a", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_invalid_tag_type_when_parsing_embedded_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("t", 42);
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  EmbeddedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Variant type field \"t\" must be a string", result.error());
+  EXPECT_EQ("a", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_missing_value_when_parsing_embedded_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("t", "Struct3");
+  builder.add("a", 1);
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  EmbeddedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Missing required attribute 'b'", result.error());
+  EXPECT_EQ("a.b", result.path());
 }
 
 TEST_F(VPackLoadInspectorTest, load_type_with_unsafe_fields) {
