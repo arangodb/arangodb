@@ -111,6 +111,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool _isDisjoint = false;
 
+  bool _enabledClusterOneShardRule = false;
+
   explicit TraverserOptions(arangodb::aql::QueryContext& query);
 
   TraverserOptions(arangodb::aql::QueryContext& query,
@@ -233,6 +235,9 @@ struct TraverserOptions : public graph::BaseOptions {
   auto isDisjoint() const -> bool;
 
   auto isSatelliteLeader() const -> bool;
+
+  auto setClusterOneShardRule() -> void;
+  auto isClusterOneShardRuleEnabled() const -> bool;
 
   auto getEdgeDestination(arangodb::velocypack::Slice edge,
                           arangodb::velocypack::StringRef origin) const
