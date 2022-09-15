@@ -297,6 +297,10 @@ arangodb::Result PlanCollection::validateDatabaseConfiguration(
       return {TRI_ERROR_BAD_PARAMETER,
               "'isSmart' and replicationFactor 'satellite' cannot be combined"};
     }
+    if (isSmartChild) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "'isSmartChild' and replicationFactor 'satellite' cannot be combined"};
+    }
     if (shardKeys.size() != 1 || shardKeys[0] != StaticStrings::KeyString) {
       return {TRI_ERROR_BAD_PARAMETER, "'satellite' cannot use shardKeys"};
     }
