@@ -858,14 +858,13 @@
         if (isServer) {
           request({
             method: "get",
-            url: "/_db/_system/_admin/metrics?mode=write_global",
+            url: "/_db/_system/_admin/metrics?mode=trigger_global",
             headers: {accept: "application/json"},
             body: {}
           });
         } else {
           let coordinators = getEndpointsByType("coordinator");
-          getRawMetric(coordinators[0], '?mode=write_global');
-          for (let i = 1; i < coordinators.length; i++) {
+          for (let i = 0; i < coordinators.length; i++) {
             let c = coordinators[i];
             getRawMetric(c, '?mode=trigger_global');
           }
