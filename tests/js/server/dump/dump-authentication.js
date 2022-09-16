@@ -62,6 +62,7 @@ jsunity.run(function dump_single_testsuite() {
       "testTransactionAbort",
       "testPersistent",
       "testView",
+      "testSearch",
       "testAnalyzers",
       "testIndexAnalyzerCollection",
       "testJobsAndQueues",
