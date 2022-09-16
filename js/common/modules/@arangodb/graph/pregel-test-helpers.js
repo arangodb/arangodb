@@ -52,7 +52,7 @@ const Graph = graphGeneration.Graph;
 const epsilon = 0.00001;
 
 /**
- * Assert that expected and actual are equal up to the tolerance epsilon.
+ * Assert that expected and actual are of the same type and that they are equal up to the tolerance epsilon.
  * @param expected the expected value, a number
  * @param actual the actual value, a number
  * @param epsilon the tolerance, a number
@@ -62,6 +62,9 @@ const epsilon = 0.00001;
  * @param context the context in that the test is performed, output after the values
  */
 const assertAlmostEquals = function (expected, actual, epsilon, msg, expectedDescription, actualDescription, context) {
+    assertEqual(typeof expected, typeof actual,
+        `Different types: type of ${expectedDescription} is ${typeof expected}, ` +
+        `type of ${actualDescription} is ${typeof actual}. ` + `${context}`);
     if (Math.abs(expected - actual) >= epsilon) {
         console.error(msg + ":");
         console.error("    " + expectedDescription + ":");
