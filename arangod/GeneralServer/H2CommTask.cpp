@@ -31,6 +31,7 @@
 #include "Basics/asio_ns.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogContext.h"
@@ -526,7 +527,13 @@ template<SocketType T>
 void H2CommTask<T>::processStream(Stream& stream) {
   DTraceH2CommTaskProcessStream((size_t)this);
 
+  if (!stream.request->header("x-omit-www-authenticate").empty()) {
+    stream.mustSendAuthHeader = false;
+  } else {
+    stream.mustSendAuthHeader = true;
+  }
   std::unique_ptr<HttpRequest> req = std::move(stream.request);
+
   auto msgId = req->messageId();
   auto respContentType = req->contentTypeResponse();
   try {
@@ -745,6 +752,16 @@ void H2CommTask<T>::queueHttp2Responses() {
     nva.push_back({(uint8_t*)":status", (uint8_t*)status.data(), 7,
                    status.size(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
 
+    // if we return HTTP 401, we need to send a www-authenticate header back
+    // with the response. in this case we need to check if the header was
+    // already set or if we need to set it ourselves. note that clients can
+    // suppress sending the www-authenticate header by sending us an
+    // x-omit-www-authenticate header.
+    bool needWwwAuthenticate =
+        (this->_auth->isActive() &&
+         res.responseCode() == rest::ResponseCode::UNAUTHORIZED &&
+         strm->mustSendAuthHeader);
+
     bool seenServerHeader = false;
     for (auto const& it : res.headers()) {
       std::string const& key = it.first;
@@ -759,6 +776,8 @@ void H2CommTask<T>::queueHttp2Responses() {
 
       if (key == StaticStrings::Server) {
         seenServerHeader = true;
+      } else if (needWwwAuthenticate && key == StaticStrings::WwwAuthenticate) {
+        needWwwAuthenticate = false;
       }
 
       nva.push_back(
@@ -770,6 +789,19 @@ void H2CommTask<T>::queueHttp2Responses() {
     if (!seenServerHeader && !HttpResponse::HIDE_PRODUCT_HEADER) {
       nva.push_back(
           {(uint8_t*)"server", (uint8_t*)"ArangoDB", 6, 8,
+           NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
+    }
+
+    if (needWwwAuthenticate) {
+      TRI_ASSERT(res.responseCode() == rest::ResponseCode::UNAUTHORIZED);
+      nva.push_back(
+          {(uint8_t*)"www-authenticate", (uint8_t*)"Basic, realm=\"ArangoDB\"",
+           16, 23,
+           NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
+
+      nva.push_back(
+          {(uint8_t*)"www-authenticate",
+           (uint8_t*)"Bearer, token_type=\"JWT\", realm=\"ArangoDB\"", 16, 42,
            NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
     }
 
