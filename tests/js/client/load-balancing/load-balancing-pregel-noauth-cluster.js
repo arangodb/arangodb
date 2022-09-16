@@ -153,11 +153,6 @@ function PregelSuite () {
         assertFalse(result.body.error);
         assertEqual(result.status, 200);
       });
-      
-      url = baseUrl;
-      result = sendRequest('GET', url, {}, false);
-      assertEqual(result.status, 200);
-      assertEqual([], result.body);
     },
 
     testPregelForwarding: function() {
