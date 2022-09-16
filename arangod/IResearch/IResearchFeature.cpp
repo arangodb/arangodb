@@ -870,11 +870,7 @@ bool isScorer(aql::Function const& func) noexcept {
 }
 
 bool isOffsetInfo(aql::Function const& func) noexcept {
-#ifdef USE_ENTERPRISE
   return func.implementation == &offsetInfoFunc;
-#else
-  return false;
-#endif
 }
 
 IResearchFeature::IResearchFeature(Server& server)
