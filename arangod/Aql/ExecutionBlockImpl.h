@@ -64,6 +64,8 @@ class SkipResult;
 class ParallelUnsortedGatherExecutor;
 class MultiDependencySingleRowFetcher;
 class RegisterInfos;
+class SubqueryStartExecutor;
+class SubqueryEndExecutor;
 
 template<typename T, typename... Es>
 constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
@@ -193,11 +195,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] std::pair<ExecutionState, Result> initializeCursor(
       InputAqlItemRow const& input) override;
 
-  template<class exec = Executor,
-           typename =
-               std::enable_if_t<std::is_same_v<exec, IdExecutor<ConstFetcher>>>>
   auto injectConstantBlock(SharedAqlItemBlockPtr block, SkipResult skipped)
-      -> void;
+      -> void requires std::same_as<Executor, IdExecutor<ConstFetcher>>;
 
   [[nodiscard]] ExecutorInfos const& executorInfos() const;
 
@@ -222,10 +221,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   void collectExecStats(ExecutionStats& stats) override;
 
-  template<class exec = Executor,
-           typename = std::enable_if_t<std::is_same_v<
-               exec, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>>
-  [[nodiscard]] RegisterId getOutputRegisterId() const noexcept;
+  [[nodiscard]] auto getOutputRegisterId() const noexcept
+      -> RegisterId requires std::same_as<
+          Executor, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // This is a helper method to inject a prepared
@@ -292,6 +290,11 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // Executor is done, we need to handle ShadowRows of subqueries.
   // In most executors they are simply copied, in subquery executors
   // there needs to be actions applied here.
+  [[nodiscard]] auto shadowRowForwardingSubqueryStart(AqlCallStack& stack)
+      -> ExecState requires std::same_as<Executor, SubqueryStartExecutor>;
+  [[nodiscard]] auto shadowRowForwardingSubqueryEnd(AqlCallStack& stack)
+      -> ExecState requires std::same_as<Executor, SubqueryEndExecutor>;
+
   [[nodiscard]] auto shadowRowForwarding(AqlCallStack& stack) -> ExecState;
 
   [[nodiscard]] auto outputIsFull() const noexcept -> bool;
