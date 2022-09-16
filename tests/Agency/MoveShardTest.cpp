@@ -145,11 +145,10 @@ class MoveShardTest
 };
 
 TEST_F(MoveShardTest, the_job_should_fail_if_toserver_does_not_exist) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -190,11 +189,10 @@ TEST_F(MoveShardTest, the_job_should_fail_if_toserver_does_not_exist) {
 }
 
 TEST_F(MoveShardTest, the_job_should_fail_if_servers_are_planned_followers) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -236,11 +234,10 @@ TEST_F(MoveShardTest, the_job_should_fail_if_servers_are_planned_followers) {
 }
 
 TEST_F(MoveShardTest, the_job_should_fail_if_fromserver_does_not_exist) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -275,18 +272,18 @@ TEST_F(MoveShardTest, the_job_should_fail_if_fromserver_does_not_exist) {
   Job& spyMoveShard = spy.get();
   spyMoveShard.start(aborts);
 
-  Verify(Method(spy, finish)
-             .Matching([](std::string const& server, std::string const& shard,
-                          bool success, std::string const& reason,
-                          query_t const payload) -> bool { return !success; }));
+  Verify(
+      Method(spy, finish)
+          .Matching([](std::string const& server, std::string const& shard,
+                       bool success, std::string const& reason,
+                       query_t const& payload) -> bool { return !success; }));
 }
 
 TEST_F(MoveShardTest, the_job_should_fail_if_fromserver_is_not_in_plan) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -328,11 +325,10 @@ TEST_F(MoveShardTest, the_job_should_fail_if_fromserver_is_not_in_plan) {
 }
 
 TEST_F(MoveShardTest, the_job_should_fail_if_fromserver_does_not_exist_2) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -393,11 +389,10 @@ TEST_F(MoveShardTest, the_job_should_fail_if_fromserver_does_not_exist_2) {
 }
 
 TEST_F(MoveShardTest, the_job_should_remain_in_todo_if_shard_is_locked) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -435,11 +430,10 @@ TEST_F(MoveShardTest, the_job_should_remain_in_todo_if_shard_is_locked) {
 }
 
 TEST_F(MoveShardTest, the_job_should_remain_in_todo_if_server_is_locked) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -477,11 +471,10 @@ TEST_F(MoveShardTest, the_job_should_remain_in_todo_if_server_is_locked) {
 }
 
 TEST_F(MoveShardTest, the_job_should_fail_if_target_server_was_cleaned_out) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -530,11 +523,10 @@ TEST_F(MoveShardTest, the_job_should_fail_if_target_server_was_cleaned_out) {
 }
 
 TEST_F(MoveShardTest, the_job_should_fail_if_the_target_server_is_failed) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -581,11 +573,10 @@ TEST_F(MoveShardTest, the_job_should_fail_if_the_target_server_is_failed) {
 }
 
 TEST_F(MoveShardTest, the_job_should_wait_until_the_target_server_is_good) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -633,11 +624,10 @@ TEST_F(MoveShardTest, the_job_should_wait_until_the_target_server_is_good) {
 TEST_F(
     MoveShardTest,
     the_job_should_fail_if_the_shard_distributes_its_shards_like_some_other) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -684,11 +674,10 @@ TEST_F(
 
 TEST_F(MoveShardTest,
        the_job_should_be_moved_to_pending_when_everything_is_ok) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -807,11 +796,10 @@ TEST_F(MoveShardTest,
 }
 
 TEST_F(MoveShardTest, moving_from_a_follower_should_be_possible) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -876,11 +864,10 @@ TEST_F(MoveShardTest, moving_from_a_follower_should_be_possible) {
 TEST_F(
     MoveShardTest,
     when_moving_a_shard_that_is_a_distributeshardslike_leader_move_the_rest_as_well) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -1027,11 +1014,10 @@ TEST_F(
 }
 
 TEST_F(MoveShardTest, if_the_to_server_no_longer_replica_we_should_abort) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -1095,18 +1081,17 @@ TEST_F(MoveShardTest, if_the_to_server_no_longer_replica_we_should_abort) {
 
 TEST_F(MoveShardTest,
        if_the_collection_was_dropped_while_moving_finish_the_job) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -1147,17 +1132,16 @@ TEST_F(MoveShardTest,
   Verify(Method(spy, finish)
              .Matching([](std::string const& server, std::string const& shard,
                           bool success, std::string const& reason,
-                          query_t const payload) -> bool { return success; }));
+                          query_t const& payload) -> bool { return success; }));
 }
 
 TEST_F(
     MoveShardTest,
     if_the_collection_was_dropped_before_the_job_could_be_started_just_finish_the_job) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -1208,17 +1192,16 @@ TEST_F(
   Verify(Method(spy, finish)
              .Matching([](std::string const& server, std::string const& shard,
                           bool success, std::string const& reason,
-                          query_t const payload) -> bool { return success; }));
+                          query_t const& payload) -> bool { return success; }));
 }
 
 TEST_F(
     MoveShardTest,
     the_job_should_wait_until_the_planned_shard_situation_has_been_created_in_current) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -1272,11 +1255,10 @@ TEST_F(
 }
 
 TEST_F(MoveShardTest, if_the_job_is_done_it_should_properly_finish_itself) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -1370,11 +1352,10 @@ TEST_F(MoveShardTest, if_the_job_is_done_it_should_properly_finish_itself) {
 TEST_F(
     MoveShardTest,
     the_job_should_not_finish_itself_when_only_parts_of_distributeshardslike_have_been_adopted) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -1501,11 +1482,10 @@ TEST_F(
 TEST_F(
     MoveShardTest,
     the_job_should_finish_when_all_distributeshardslike_shards_have_adapted) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -1719,11 +1699,10 @@ TEST_F(
 
 TEST_F(MoveShardTest,
        a_moveshard_job_that_just_made_it_to_todo_can_simply_be_aborted) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -1781,11 +1760,10 @@ TEST_F(MoveShardTest,
 TEST_F(
     MoveShardTest,
     a_pending_moveshard_job_should_also_put_the_original_server_back_into_place_when_aborted) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -1883,11 +1861,10 @@ TEST_F(
 
 TEST_F(MoveShardTest,
        after_the_new_leader_has_synchronized_the_new_leader_should_resign) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -2015,11 +1992,10 @@ TEST_F(MoveShardTest,
 }
 
 TEST_F(MoveShardTest, if_current_entry_missing_nothing_should_happen) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -2081,11 +2057,10 @@ TEST_F(MoveShardTest, if_current_entry_missing_nothing_should_happen) {
 
 TEST_F(MoveShardTest,
        when_the_old_leader_is_not_yet_ready_for_resign_nothing_should_happen) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -2152,11 +2127,10 @@ TEST_F(MoveShardTest,
 TEST_F(
     MoveShardTest,
     aborting_the_job_while_a_leader_transition_is_in_progress_should_make_the_old_leader_leader_again) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -2263,11 +2237,10 @@ TEST_F(
 TEST_F(
     MoveShardTest,
     aborting_the_job_while_the_new_leader_is_already_in_place_should_not_break_plan) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto const& it : VPackObjectIterator(s)) {
@@ -2354,11 +2327,10 @@ TEST_F(
 TEST_F(
     MoveShardTest,
     if_we_are_ready_to_resign_the_old_server_then_finally_move_to_the_new_leader) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -2482,11 +2454,10 @@ TEST_F(
 }
 
 TEST_F(MoveShardTest, if_the_new_leader_took_over_finish_the_job) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -2696,11 +2667,10 @@ TEST_F(
 TEST_F(
     MoveShardTest,
     when_aborting_a_moveshard_job_that_is_moving_stuff_away_from_a_follower_move_back_everything_in_place) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -2802,11 +2772,10 @@ TEST_F(
 }
 
 TEST_F(MoveShardTest, if_aborting_failed_report_it_back_properly) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -2871,11 +2840,10 @@ TEST_F(MoveShardTest, if_aborting_failed_report_it_back_properly) {
 
 TEST_F(MoveShardTest,
        if_aborting_failed_due_to_a_precondition_report_it_properly) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -2939,11 +2907,10 @@ TEST_F(MoveShardTest,
 }
 
 TEST_F(MoveShardTest, trying_to_abort_a_finished_should_result_in_failure) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -3007,11 +2974,10 @@ TEST_F(MoveShardTest, trying_to_abort_a_finished_should_result_in_failure) {
 }
 
 TEST_F(MoveShardTest, test_cancel_pending_job) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -3066,11 +3032,10 @@ TEST_F(MoveShardTest, test_cancel_pending_job) {
 }
 
 TEST_F(MoveShardTest, test_cancel_todo_job) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
@@ -3127,11 +3092,10 @@ TEST_F(MoveShardTest, test_cancel_todo_job) {
 TEST_F(
     MoveShardTest,
     when_promoting_the_new_leader_the_old_one_should_become_a_resigned_follower_so_we_can_fall_back_on_it_if_the_switch_didnt_work) {
-  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&,
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
-      createTestStructure = [&](VPackSlice const& s, std::string const& path) {
-        std::unique_ptr<VPackBuilder> builder;
-        builder.reset(new VPackBuilder());
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
           for (auto it : VPackObjectIterator(s)) {
