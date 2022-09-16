@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,26 +19,18 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+#include "MockStatePersistorInterface.h"
 
-#pragma once
+using namespace arangodb::replication2;
 
-namespace arangodb::replication2::replicated_state {
+void test::MockStatePersistorInterface::updateStateInformation(
+    replicated_state::PersistedStateInfo const& info) noexcept {
+  std::unique_lock guard(_mutex);
+  _info.emplace(info);
+}
 
-template<typename T>
-struct EntryDeserializer {};
-template<typename T>
-struct EntrySerializer {};
-
-template<typename S>
-struct ReplicatedStateTraits {
-  using FactoryType = typename S::FactoryType;
-  using LeaderType = typename S::LeaderType;
-  using FollowerType = typename S::FollowerType;
-  using EntryType = typename S::EntryType;
-  using CoreType = typename S::CoreType;
-  using Deserializer = EntryDeserializer<EntryType>;
-  using Serializer = EntrySerializer<EntryType>;
-  using CleanupHandlerType = typename S::CleanupHandlerType;
-};
-
-}  // namespace arangodb::replication2::replicated_state
+void test::MockStatePersistorInterface::deleteStateInformation(
+    LogId stateId) noexcept {
+  std::unique_lock guard(_mutex);
+  _info.reset();
+}

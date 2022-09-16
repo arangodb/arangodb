@@ -54,6 +54,7 @@ struct LogUnconfiguredParticipant;
 }  // namespace replicated_log
 
 namespace replicated_state {
+struct StatePersistorInterface;
 struct ReplicatedStateMetrics;
 struct IReplicatedLeaderStateBase;
 struct IReplicatedFollowerStateBase;
@@ -70,6 +71,7 @@ struct ReplicatedStateBase {
   virtual void start(
       std::unique_ptr<ReplicatedStateToken> token,
       std::optional<velocypack::SharedSlice> const& coreParameter) = 0;
+  virtual void drop() = 0;
   virtual void rebuildMe(IStateManagerBase const* caller) noexcept = 0;
   [[nodiscard]] virtual auto getStatus() -> std::optional<StateStatus> = 0;
   [[nodiscard]] auto getLeader()
@@ -101,7 +103,8 @@ struct ReplicatedState final
   explicit ReplicatedState(std::shared_ptr<replicated_log::ReplicatedLog> log,
                            std::shared_ptr<Factory> factory,
                            LoggerContext loggerContext,
-                           std::shared_ptr<ReplicatedStateMetrics>);
+                           std::shared_ptr<ReplicatedStateMetrics>,
+                           std::shared_ptr<StatePersistorInterface>);
   ~ReplicatedState() override;
 
   /**
@@ -111,7 +114,7 @@ struct ReplicatedState final
   void start(
       std::unique_ptr<ReplicatedStateToken> token,
       std::optional<velocypack::SharedSlice> const& coreParameter) override;
-
+  void drop() override;
   /**
    * Returns the follower state machine. Returns nullptr if no follower state
    * machine is present. (i.e. this server is not a follower)
@@ -145,6 +148,7 @@ struct ReplicatedState final
   };
 
  private:
+  auto buildCore(std::optional<velocypack::SharedSlice> const& coreParameter);
   auto getLeaderBase() -> std::shared_ptr<IReplicatedLeaderStateBase> final {
     return getLeader();
   }
@@ -153,6 +157,7 @@ struct ReplicatedState final
     return getFollower();
   }
 
+  std::shared_ptr<StatePersistorInterface> const persistor{nullptr};
   std::shared_ptr<Factory> const factory;
   std::shared_ptr<replicated_log::ReplicatedLog> const log{};
 

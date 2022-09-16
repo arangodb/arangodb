@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,26 +19,31 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
+#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Replication2/ReplicatedState/StateCommon.h"
 
 namespace arangodb::replication2::replicated_state {
 
-template<typename T>
-struct EntryDeserializer {};
-template<typename T>
-struct EntrySerializer {};
+struct PersistedStateInfo {
+  LogId stateId;
+  SnapshotInfo snapshot;
+  StateGeneration generation;
+  agency::ImplementationSpec specification;
+};
 
-template<typename S>
-struct ReplicatedStateTraits {
-  using FactoryType = typename S::FactoryType;
-  using LeaderType = typename S::LeaderType;
-  using FollowerType = typename S::FollowerType;
-  using EntryType = typename S::EntryType;
-  using CoreType = typename S::CoreType;
-  using Deserializer = EntryDeserializer<EntryType>;
-  using Serializer = EntrySerializer<EntryType>;
-  using CleanupHandlerType = typename S::CleanupHandlerType;
+template<class Inspector>
+auto inspect(Inspector& f, PersistedStateInfo& x) {
+  return f.object(x).fields(f.field("stateId", x.stateId),
+                            f.field("snapshot", x.snapshot),
+                            f.field("generation", x.generation),
+                            f.field("specification", x.specification));
+}
+
+struct StatePersistorInterface {
+  virtual ~StatePersistorInterface() = default;
+  virtual void updateStateInformation(PersistedStateInfo const&) noexcept = 0;
+  virtual void deleteStateInformation(LogId stateId) noexcept = 0;
 };
 
 }  // namespace arangodb::replication2::replicated_state
