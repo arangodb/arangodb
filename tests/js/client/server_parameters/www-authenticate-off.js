@@ -46,7 +46,13 @@ let connectWith = function(protocol, user, password) {
 };
 
 function testSuite() {
+
   return {
+
+    tearDown: function() {
+      connectWith(protocols[0], user, "");
+    },
+
     testHeader: function() {
       protocols.forEach((protocol) => {
         connectWith(protocol, user, "");
