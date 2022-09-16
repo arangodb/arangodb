@@ -417,10 +417,12 @@ void V8ClientConnection::reconnect() {
   }
 }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void V8ClientConnection::reconnectWithNewPassword(std::string const& password) {
   _client.setPassword(password);
   this->reconnect();
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enum for wrapped V8 objects
@@ -1926,6 +1928,7 @@ static void ClientConnection_setDatabaseName(
   TRI_V8_TRY_CATCH_END
 }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 ////////////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "reconnectWithNewPassword" for test
 /// environment only
@@ -1961,6 +1964,7 @@ static void ClientConnection_reconnectWithNewPassword(
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
+#endif
 
 v8::Local<v8::Value> V8ClientConnection::getData(
     v8::Isolate* isolate, std::string_view location,
@@ -2640,10 +2644,12 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
                         v8::FunctionTemplate::New(
                             isolate, ClientConnection_connectedUser, v8client));
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   connection_proto->Set(
       isolate, "reconnectWithNewPassword",
       v8::FunctionTemplate::New(
           isolate, ClientConnection_reconnectWithNewPassword, v8client));
+#endif
 
   connection_proto->Set(
       isolate, "protocol",

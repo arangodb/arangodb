@@ -2,13 +2,11 @@
 /* global getOptions, assertEqual, assertFalse, assertTrue, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test for security-related server options
-///
-/// @file
-///
+/// @brief test for server startup options
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,10 +20,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is ArangoDB Inc, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
@@ -38,8 +35,10 @@ const jsunity = require('jsunity');
 const crypto = require('@arangodb/crypto');
 const protocols = ["tcp", "h2"];
 const users = require("@arangodb/users");
-let db = require('internal').db;
-const user = "root";
+const db = require('internal').db;
+let maintainerMode = require('internal').db._version(true)['details']['maintainer-mode'];
+const helper = require('@arangodb/testutils/user-helper');
+const user = "testUser";
 
 let connectWith = function(protocol, user, password) {
   let endpoint = arango.getEndpoint().replace(/^[a-zA-Z0-9\+]+:/, protocol + ':');
@@ -50,24 +49,30 @@ function HttpAuthenticateSuite() {
 
   return {
 
+    setUp: function() {
+      users.save(user, "");
+      users.grantDatabase(user, '_system', 'rw');
+      helper.switchUser(user);
+    },
+
+    tearDown: function() {
+      helper.switchUser("root");
+      users.remove(user);
+      arango.reconnectWithNewPassword("");
+    },
+
     testUnauthorized: function() {
       protocols.forEach((protocol) => {
         connectWith(protocol, user, "");
         // need to change password, otherwise, the request will return 200
-        const updateRes = users.update(user, "abc");
-        if (updateRes.code === 200) {
-          let result = arango.GET_RAW("/_api/version");
-          assertEqual(401, result.code);
-          assertTrue(result.headers.hasOwnProperty('www-authenticate'));
-        }
-        try {
-          // to change password back to the original one, we must reconnect with the current one, then change it back to the original one, then connect again
-          arango.reconnectWithNewPassword("abc");
-          users.update(user, "");
-          arango.reconnectWithNewPassword("");
-        } catch (err) {
-          throw err;
-        }
+        users.update(user, "abc");
+        let result = arango.GET_RAW("/_api/version");
+        assertEqual(401, result.code);
+        assertTrue(result.headers.hasOwnProperty('www-authenticate'));
+        // to change password back to the original one, we must reconnect with the current one, then change it back to the original one, then connect again
+        arango.reconnectWithNewPassword("abc");
+        users.update(user, "");
+        arango.reconnectWithNewPassword("");
       });
     },
 
@@ -75,22 +80,14 @@ function HttpAuthenticateSuite() {
       protocols.forEach(protocol => {
         connectWith(protocol, user, "");
         // need to change password, otherwise, the request will return 200
-        const updateRes = users.update(user, "abc");
-        if (updateRes.code === 200) {
-          let result = arango.GET_RAW("/_api/version", {"x-omit-www-authenticate": "abc"});
-          assertEqual(401, result.code);
-          assertFalse(result.headers.hasOwnProperty('www-authenticate'));
-        }
-        try {
-          // to change password back to the original one, we must reconnect with the current one, then change it back to the original one, then connect again
-          arango.reconnectWithNewPassword("abc");
-
-          users.update(user, "");
-
-          arango.reconnectWithNewPassword("");
-        } catch (err2) {
-          throw(err2);
-        }
+        users.update(user, "abc");
+        let result = arango.GET_RAW("/_api/version", {"x-omit-www-authenticate": "abc"});
+        assertEqual(401, result.code);
+        assertFalse(result.headers.hasOwnProperty('www-authenticate'));
+        // to change password back to the original one, we must reconnect with the current one, then change it back to the original one, then connect again
+        arango.reconnectWithNewPassword("abc");
+        users.update(user, "");
+        arango.reconnectWithNewPassword("");
       });
     },
 
@@ -108,9 +105,10 @@ function HttpAuthenticateSuite() {
         assertFalse(result.headers.hasOwnProperty('www-authenticate'));
       });
     },
-
   };
 }
 
-jsunity.run(HttpAuthenticateSuite);
+if (maintainerMode) {
+  jsunity.run(HttpAuthenticateSuite);
+}
 return jsunity.done();
