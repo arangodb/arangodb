@@ -26,6 +26,9 @@
 #include "Cluster/ServerDefaults.h"
 #include "Logger/LogMacros.h"
 #include "VocBase/Properties/PlanCollection.h"
+
+#include "InspectTestHelperMakros.h"
+
 #include <velocypack/Builder.h>
 
 namespace arangodb::tests {
@@ -37,58 +40,6 @@ namespace arangodb::tests {
  * which is highly overlapping
  *********************/
 
-#define GenerateFailsOnBool(attributeName)                                  \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, true)); \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, false));
-
-#define GenerateFailsOnInteger(attributeName)                             \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 1));  \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 0));  \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 42)); \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, -2));
-
-#define GenerateFailsOnDouble(attributeName)                               \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 4.5)); \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 0.2)); \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, -0.3));
-
-#define GenerateFailsOnNonEmptyString(attributeName)                          \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, "test")); \
-  assertParsingThrows(                                                        \
-      createMinimumBodyWithOneValue(#attributeName, "dogfather"));
-
-#define GenerateFailsOnString(attributeName)                              \
-  assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, "")); \
-  GenerateFailsOnNonEmptyString(attribtueName)
-
-#define GenerateFailsOnArray(attributeName)          \
-  assertParsingThrows(createMinimumBodyWithOneValue( \
-      #attributeName, VPackSlice::emptyArraySlice()));
-
-#define GenerateFailsOnObject(attributeName)         \
-  assertParsingThrows(createMinimumBodyWithOneValue( \
-      #attributeName, VPackSlice::emptyObjectSlice()));
-
-// This macro generates a basic bool value test, checking if we get true/false
-// through and other basic types are rejected.
-
-#define GenerateBoolAttributeTest(attributeName)                              \
-  TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                   \
-    auto shouldBeEvaluatedTo = [&](VPackBuilder const& body, bool expected) { \
-      auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});      \
-      EXPECT_EQ(testee->attributeName, expected)                              \
-          << "Parsing error in " << body.toJson();                            \
-    };                                                                        \
-    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, true),  \
-                        true);                                                \
-    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, false), \
-                        false);                                               \
-    GenerateFailsOnInteger(attributeName);                                    \
-    GenerateFailsOnDouble(attributeName);                                     \
-    GenerateFailsOnString(attributeName);                                     \
-    GenerateFailsOnArray(attributeName);                                      \
-    GenerateFailsOnObject(attributeName);                                     \
-  }
 // This macro generates a basic integer value test, checking if we get 2 and 42
 // through and other basic types are rejected.
 // NOTE: we also test 4.5 (double) right now this passes the validator, need to
@@ -118,46 +69,6 @@ namespace arangodb::tests {
 
 #define GeneratePositiveIntegerAttributeTest(attributeName) \
   GeneratePositiveIntegerAttributeTestInternal(attributeName, attributeName)
-
-#define GenerateStringAttributeTest(attributeName)                             \
-  TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                    \
-    auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                   \
-                                   std::string const& expected) {              \
-      auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});       \
-      EXPECT_EQ(testee->attributeName, expected)                               \
-          << "Parsing error in " << body.toJson();                             \
-    };                                                                         \
-    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, "test"), \
-                        "test");                                               \
-    shouldBeEvaluatedTo(                                                       \
-        createMinimumBodyWithOneValue(#attributeName, "unknown"), "unknown");  \
-    GenerateFailsOnBool(attributeName);                                        \
-    GenerateFailsOnInteger(attributeName);                                     \
-    GenerateFailsOnDouble(attributeName);                                      \
-    GenerateFailsOnArray(attributeName);                                       \
-    GenerateFailsOnObject(attributeName);                                      \
-  }
-
-#define GenerateOptionalStringAttributeTest(attributeName)                     \
-  TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                    \
-    auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                   \
-                                   std::string const& expected) {              \
-      auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});       \
-      ASSERT_TRUE(testee->attributeName.has_value())                           \
-          << "Parsing error in " << body.toJson();                             \
-      EXPECT_EQ(testee->attributeName.value(), expected)                       \
-          << "Parsing error in " << body.toJson();                             \
-    };                                                                         \
-    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, "test"), \
-                        "test");                                               \
-    shouldBeEvaluatedTo(                                                       \
-        createMinimumBodyWithOneValue(#attributeName, "unknown"), "unknown");  \
-    GenerateFailsOnBool(attributeName);                                        \
-    GenerateFailsOnInteger(attributeName);                                     \
-    GenerateFailsOnDouble(attributeName);                                      \
-    GenerateFailsOnArray(attributeName);                                       \
-    GenerateFailsOnObject(attributeName);                                      \
-  }
 
 /**********************
  * TEST SECTION
@@ -192,6 +103,12 @@ class PlanCollectionUserAPITest : public ::testing::Test {
       }
     }
     return body;
+  }
+
+  // Tries to parse the given body and returns a ResulT of your Type under
+  // test.
+  static ResultT<PlanCollection> parse(VPackSlice body) {
+    return PlanCollection::fromCreateAPIBody(body, {});
   }
 
   static void assertParsingThrows(VPackBuilder const& body) {
@@ -687,28 +604,29 @@ TEST_F(PlanCollectionUserAPITest, test_smartJoinAttribute_cannot_be_empty) {
 }
 
 // Tests for generic attributes without special needs
-GenerateBoolAttributeTest(waitForSync);
-GenerateBoolAttributeTest(doCompact);
-GenerateBoolAttributeTest(isSystem);
-GenerateBoolAttributeTest(isVolatile);
-GenerateBoolAttributeTest(cacheEnabled);
+GenerateBoolAttributeTest(PlanCollectionUserAPITest, waitForSync);
+GenerateBoolAttributeTest(PlanCollectionUserAPITest, doCompact);
+GenerateBoolAttributeTest(PlanCollectionUserAPITest, isSystem);
+GenerateBoolAttributeTest(PlanCollectionUserAPITest, isVolatile);
+GenerateBoolAttributeTest(PlanCollectionUserAPITest, cacheEnabled);
 
 GeneratePositiveIntegerAttributeTest(numberOfShards);
 GeneratePositiveIntegerAttributeTest(replicationFactor);
 GeneratePositiveIntegerAttributeTest(writeConcern);
 
-GenerateStringAttributeTest(distributeShardsLike);
-GenerateOptionalStringAttributeTest(smartJoinAttribute);
-GenerateStringAttributeTest(globallyUniqueId);
+GenerateStringAttributeTest(PlanCollectionUserAPITest, distributeShardsLike);
+GenerateOptionalStringAttributeTest(PlanCollectionUserAPITest,
+                                    smartJoinAttribute);
+GenerateStringAttributeTest(PlanCollectionUserAPITest, globallyUniqueId);
 
 // Covers a non-documented API
-GenerateBoolAttributeTest(syncByRevision);
-GenerateBoolAttributeTest(usesRevisionsAsDocumentIds);
-GenerateBoolAttributeTest(isSmart);
-GenerateBoolAttributeTest(isSmartChild);
-GenerateBoolAttributeTest(isDisjoint);
-GenerateStringAttributeTest(id);
-GenerateStringAttributeTest(smartGraphAttribute);
+GenerateBoolAttributeTest(PlanCollectionUserAPITest, syncByRevision);
+GenerateBoolAttributeTest(PlanCollectionUserAPITest,
+                          usesRevisionsAsDocumentIds);
+GenerateBoolAttributeTest(PlanCollectionUserAPITest, isSmart);
+GenerateBoolAttributeTest(PlanCollectionUserAPITest, isDisjoint);
+GenerateStringAttributeTest(PlanCollectionUserAPITest, id);
+GenerateStringAttributeTest(PlanCollectionUserAPITest, smartGraphAttribute);
 
 GeneratePositiveIntegerAttributeTestInternal(minReplicationFactor,
                                              writeConcern);

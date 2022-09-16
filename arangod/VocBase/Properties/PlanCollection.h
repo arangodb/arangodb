@@ -25,6 +25,7 @@
 #include "Basics/StaticStrings.h"
 #include "Inspection/Status.h"
 #include "Inspection/VPackLoadInspector.h"
+#include "VocBase/Properties/UtilityInvariants.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -69,27 +70,6 @@ struct PlanCollection {
     bool isOneShardDB = false;
   };
 
-  struct Invariants {
-    [[nodiscard]] static auto isNonEmpty(std::string const& value)
-        -> inspection::Status;
-
-    [[nodiscard]] static auto isNonEmptyIfPresent(
-        std::optional<std::string> const& value) -> inspection::Status;
-
-    [[nodiscard]] static auto isGreaterZero(uint64_t const& value)
-        -> inspection::Status;
-
-    [[nodiscard]] static auto isValidShardingStrategy(std::string const& value)
-        -> inspection::Status;
-
-    [[nodiscard]] static auto isValidCollectionType(
-        std::underlying_type_t<TRI_col_type_e> const& value)
-        -> inspection::Status;
-
-    [[nodiscard]] static auto areShardKeysValid(
-        std::vector<std::string> const& value) -> inspection::Status;
-  };
-
   struct Transformers {
     struct ReplicationSatellite {
       using MemoryType = uint64_t;
@@ -122,45 +102,51 @@ struct PlanCollection {
       DatabaseConfiguration config) const;
 
   std::string name = StaticStrings::Empty;
-  std::underlying_type_t<TRI_col_type_e> type;
-  bool waitForSync;
-  bool isSystem;
-  bool doCompact;
-  bool isVolatile;
-  bool cacheEnabled;
+  std::underlying_type_t<TRI_col_type_e> type =
+      TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
+  bool waitForSync = false;
+  bool isSystem = false;
+  bool doCompact = false;
+  bool isVolatile = false;
+  bool cacheEnabled = false;
 
-  uint64_t numberOfShards;
-  uint64_t replicationFactor;
-  uint64_t writeConcern;
-  std::string distributeShardsLike;
-  std::optional<std::string> smartJoinAttribute;
-  std::string shardingStrategy;
-  std::string globallyUniqueId;
+  uint64_t numberOfShards = 1;
+  uint64_t replicationFactor = 1;
+  uint64_t writeConcern = 1;
+  std::string distributeShardsLike = StaticStrings::Empty;
+  std::optional<std::string> smartJoinAttribute = std::nullopt;
+  std::string shardingStrategy = StaticStrings::Empty;
+  std::string globallyUniqueId = StaticStrings::Empty;
 
-  std::vector<std::string> shardKeys;
-
-  // TODO: This can be optimized into it's own struct.
-  // Did a short_cut here to avoid concatenated changes
-  arangodb::velocypack::Builder computedValues;
+  std::vector<std::string> shardKeys =
+      std::vector<std::string>{StaticStrings::KeyString};
 
   // TODO: This can be optimized into it's own struct.
   // Did a short_cut here to avoid concatenated changes
-  arangodb::velocypack::Builder schema;
+  arangodb::velocypack::Builder computedValues =
+      VPackBuilder{VPackSlice::emptyArraySlice()};
 
   // TODO: This can be optimized into it's own struct.
   // Did a short_cut here to avoid concatenated changes
-  arangodb::velocypack::Builder keyOptions;
+  arangodb::velocypack::Builder schema =
+      VPackBuilder{VPackSlice::emptyObjectSlice()};
+
+  // TODO: This can be optimized into it's own struct.
+  // Did a short_cut here to avoid concatenated changes
+  arangodb::velocypack::Builder keyOptions =
+      VPackBuilder{VPackSlice::emptyObjectSlice()};
 
   // NOTE: These attributes are not documented
-  bool syncByRevision;
-  bool usesRevisionsAsDocumentIds;
-  bool isSmart;
-  bool isDisjoint;
+  bool syncByRevision = true;
+  bool usesRevisionsAsDocumentIds = true;
+  bool isSmart = false;
+  bool isDisjoint = false;
   bool isSmartChild = false;
-  std::string smartGraphAttribute;
+  std::string smartGraphAttribute = StaticStrings::Empty;
+
   // Deprecated, and not documented anymore
 
-  std::string id;
+  std::string id = StaticStrings::Empty;
 
   // Not documented, actually this is an option, not a configuration parameter
   std::vector<std::string> avoidServers = {};
@@ -180,25 +166,26 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
       .fields(
           f.field("name", planCollection.name)
               .fallback(f.keep())
-              .invariant(PlanCollection::Invariants::isNonEmpty),
-          f.field("id", planCollection.id).fallback(""),
-          f.field("waitForSync", planCollection.waitForSync).fallback(false),
-          f.field("isSystem", planCollection.isSystem).fallback(false),
-          f.field("doCompact", planCollection.doCompact).fallback(false),
-          f.field("cacheEnabled", planCollection.cacheEnabled).fallback(false),
-          f.field("isVolatile", planCollection.isVolatile).fallback(false),
+              .invariant(UtilityInvariants::isNonEmpty),
+          f.field("id", planCollection.id).fallback(f.keep()),
+          f.field("waitForSync", planCollection.waitForSync).fallback(f.keep()),
+          f.field("isSystem", planCollection.isSystem).fallback(f.keep()),
+          f.field("doCompact", planCollection.doCompact).fallback(f.keep()),
+          f.field("cacheEnabled", planCollection.cacheEnabled)
+              .fallback(f.keep()),
+          f.field("isVolatile", planCollection.isVolatile).fallback(f.keep()),
           f.field("syncByRevision", planCollection.syncByRevision)
-              .fallback(true),
+              .fallback(f.keep()),
           f.field("usesRevisionsAsDocumentIds",
                   planCollection.usesRevisionsAsDocumentIds)
-              .fallback(true),
-          f.field("isSmart", planCollection.isSmart).fallback(false),
-          f.field("isDisjoint", planCollection.isDisjoint).fallback(false),
+              .fallback(f.keep()),
+          f.field("isSmart", planCollection.isSmart).fallback(f.keep()),
+          f.field("isDisjoint", planCollection.isDisjoint).fallback(f.keep()),
           f.field("smartGraphAttribute", planCollection.smartGraphAttribute)
-              .fallback(""),
+              .fallback(f.keep()),
           f.field("numberOfShards", planCollection.numberOfShards)
               .fallback(f.keep())
-              .invariant(PlanCollection::Invariants::isGreaterZero),
+              .invariant(UtilityInvariants::isGreaterZero),
           // Deprecated, and not documented anymore
           // The ordering is important here, minReplicationFactor
           // has to be before writeConcern, this way we ensure that writeConcern
@@ -212,7 +199,7 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
           // values.
           f.field("writeConcern", planCollection.writeConcern)
               .fallback(f.keep())
-              .invariant(PlanCollection::Invariants::isGreaterZero),
+              .invariant(UtilityInvariants::isGreaterZero),
           f.field("replicationFactor", planCollection.replicationFactor)
               .fallback(f.keep())
               .transformWith(
@@ -221,24 +208,22 @@ auto inspect(Inspector& f, PlanCollection& planCollection) {
               .fallback(f.keep()),
           f.field(StaticStrings::SmartJoinAttribute,
                   planCollection.smartJoinAttribute)
-              .invariant(PlanCollection::Invariants::isNonEmptyIfPresent),
+              .invariant(UtilityInvariants::isNonEmptyIfPresent),
           f.field("globallyUniqueId", planCollection.globallyUniqueId)
-              .fallback(""),
+              .fallback(f.keep()),
           f.field("shardingStrategy", planCollection.shardingStrategy)
-              .fallback("")
-              .invariant(PlanCollection::Invariants::isValidShardingStrategy),
+              .fallback(f.keep())
+              .invariant(UtilityInvariants::isValidShardingStrategy),
           f.field("shardKeys", planCollection.shardKeys)
-              .fallback(std::vector<std::string>{StaticStrings::KeyString})
-              .invariant(PlanCollection::Invariants::areShardKeysValid),
+              .fallback(f.keep())
+              .invariant(UtilityInvariants::areShardKeysValid),
           f.field("type", planCollection.type)
-              .fallback(TRI_col_type_e::TRI_COL_TYPE_DOCUMENT)
-              .invariant(PlanCollection::Invariants::isValidCollectionType),
-          f.field("schema", planCollection.schema)
-              .fallback(VPackSlice::emptyObjectSlice()),
-          f.field("keyOptions", planCollection.keyOptions)
-              .fallback(VPackSlice::emptyObjectSlice()),
+              .fallback(f.keep())
+              .invariant(UtilityInvariants::isValidCollectionType),
+          f.field("schema", planCollection.schema).fallback(f.keep()),
+          f.field("keyOptions", planCollection.keyOptions).fallback(f.keep()),
           f.field("computedValues", planCollection.computedValues)
-              .fallback(VPackSlice::emptyArraySlice()),
+              .fallback(f.keep()),
           f.field("avoidServers", planCollection.avoidServers)
               .fallback(f.keep()),
           f.field("isSmartChild", planCollection.isSmartChild)

@@ -23,7 +23,10 @@
 #include "PlanCollectionToAgencyWriter.h"
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyPaths.h"
+#include "Inspection/VPack.h"
 #include "VocBase/Properties/PlanCollection.h"
+
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 

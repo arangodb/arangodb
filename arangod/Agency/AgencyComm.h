@@ -324,6 +324,10 @@ class AgencyOperation {
   void toGeneralBuilder(arangodb::velocypack::Builder& builder) const;
   AgencyOperationType type() const;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  std::string const& key() const { return _key; }
+#endif
+
  public:
   uint64_t _ttl = 0;
 

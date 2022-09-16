@@ -1,0 +1,16 @@
+//
+// Created by Michael Hackstein on 16.09.22.
+//
+
+#ifndef ARANGODB3_COLLECTIONMUTABLEPROPERTIES_H
+#define ARANGODB3_COLLECTIONMUTABLEPROPERTIES_H
+
+
+
+class CollectionMutableProperties {
+
+};
+
+
+
+#endif //ARANGODB3_COLLECTIONMUTABLEPROPERTIES_H
