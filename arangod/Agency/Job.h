@@ -93,6 +93,7 @@ struct Job {
   virtual void run(bool& aborts) = 0;
 
   bool considerCancellation();
+  auto isReplication2Database(std::string_view database) -> bool;
 
   void runHelper(std::string const& server, std::string const& shard,
                  bool& aborts) {

@@ -45,6 +45,8 @@ struct DocumentCore {
   auto getShardId() -> std::string_view;
   auto getGid() -> GlobalLogIdentifier;
 
+  void drop();
+
  private:
   GlobalLogIdentifier _gid;
   DocumentCoreParameters _params;

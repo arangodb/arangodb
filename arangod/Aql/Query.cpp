@@ -895,6 +895,7 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
     _execStats.requests += _numRequests.load(std::memory_order_relaxed);
     _execStats.setPeakMemoryUsage(_resourceMonitor.peak());
     _execStats.setExecutionTime(elapsedSince(_startTime));
+    _execStats.setIntermediateCommits(_trx->state()->numIntermediateCommits());
     for (auto& engine : _snippets) {
       engine->collectExecutionStats(_execStats);
     }
@@ -1344,6 +1345,11 @@ transaction::Methods& Query::trxForOptimization() {
   return *_trx;
 }
 
+void Query::addIntermediateCommits(uint64_t value) {
+  TRI_ASSERT(_trx != nullptr);
+  _trx->state()->addIntermediateCommits(value);
+}
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 void Query::initForTests() {
   this->init(/*createProfile*/ false);
@@ -1427,10 +1433,16 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 
               VPackSlice val = res.slice().get("stats");
               if (val.isObject()) {
-                ss->executeLocked(
-                    [&] { query.executionStats().add(ExecutionStats(val)); });
+                ss->executeLocked([&] {
+                  query.executionStats().add(ExecutionStats(val));
+                  if (auto s = val.get("intermediateCommits");
+                      s.isNumber<uint64_t>()) {
+                    query.addIntermediateCommits(s.getNumber<uint64_t>());
+                  }
+                });
               }
-              // read "warnings" attribute if present and add it to our query
+              // read "warnings" attribute if present and add it to our
+              // query
               val = res.slice().get("warnings");
               if (val.isArray()) {
                 for (VPackSlice it : VPackArrayIterator(val)) {

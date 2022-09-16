@@ -68,7 +68,7 @@ class WorkerConfig {
   inline std::string const& coordinatorId() const { return _coordinatorId; }
 
   inline TRI_vocbase_t* vocbase() const { return _vocbase; }
-  inline std::string const& database() const { return _vocbase->name(); }
+  std::string const& database() const;
 
   // collection shards on this worker
   inline std::map<CollectionID, std::vector<ShardID>> const&

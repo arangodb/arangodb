@@ -368,7 +368,7 @@ bool RocksDBTransactionState::isOnlyExclusiveTransaction() const noexcept {
   });
 }
 
-bool RocksDBTransactionState::hasFailedOperations() const {
+bool RocksDBTransactionState::hasFailedOperations() const noexcept {
   return (_status == transaction::Status::ABORTED) && hasOperations();
 }
 

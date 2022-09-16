@@ -57,7 +57,10 @@ class ReplicatedRocksDBTransactionCollection final
   TRI_voc_tick_t lastOperationTick() const noexcept;
 
   /// @brief number of commits, including intermediate commits
-  uint64_t numCommits() const;
+  uint64_t numCommits() const noexcept;
+
+  /// @brief number intermediate commits
+  uint64_t numIntermediateCommits() const noexcept;
 
   uint64_t numOperations() const noexcept;
 

@@ -27,7 +27,7 @@
 #include "Aql/AttributeNamePath.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
@@ -95,7 +95,11 @@ IndexNode::IndexNode(ExecutionPlan* plan,
       basics::VelocyPackHelper::getBooleanValue(base, "evalFCalls", true);
   _options.useCache = basics::VelocyPackHelper::getBooleanValue(
       base, StaticStrings::UseCache, true);
+  _options.waitForSync = basics::VelocyPackHelper::getBooleanValue(
+      base, StaticStrings::WaitForSyncString, false);
   _options.limit = basics::VelocyPackHelper::getNumericValue(base, "limit", 0);
+  _options.lookahead = basics::VelocyPackHelper::getNumericValue(
+      base, StaticStrings::IndexLookahead, IndexIteratorOptions{}.lookahead);
 
   if (_options.sorted && base.isObject() && base.get("reverse").isBool()) {
     // legacy
@@ -232,7 +236,10 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   builder.add("reverse", VPackValue(!_options.ascending));  // legacy
   builder.add("evalFCalls", VPackValue(_options.evaluateFCalls));
   builder.add(StaticStrings::UseCache, VPackValue(_options.useCache));
+  builder.add(StaticStrings::WaitForSyncString,
+              VPackValue(_options.waitForSync));
   builder.add("limit", VPackValue(_options.limit));
+  builder.add(StaticStrings::IndexLookahead, VPackValue(_options.lookahead));
 
   if (isLateMaterialized()) {
     builder.add(VPackValue("outNmDocId"));
