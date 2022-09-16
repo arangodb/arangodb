@@ -379,7 +379,7 @@ const graphGenerator = function (verticesEdgesGenerator) {
     };
 };
 
-const makeEdgeBetweenVertices = function(vColl, from, fromLabel, to, toLabel) {
+const makeEdgeBetweenVertices = function (vColl, from, fromLabel, to, toLabel) {
     return {
         _from: `${vColl}/${fromLabel}_${from}`,
         _to: `${vColl}/${toLabel}_${to}`,
@@ -393,7 +393,7 @@ const makeEdgeBetweenVertices = function(vColl, from, fromLabel, to, toLabel) {
  * @param subgraphs a document containing "vertices" and "edges"
  * @returns {{vertices: *[], edges: *[]}}
  */
-const unionGraph = function(subgraphs) {
+const unionGraph = function (subgraphs) {
     let vertices = [];
     for (const subgraph of subgraphs) {
         vertices = vertices.concat(subgraph.vertices);
@@ -421,10 +421,176 @@ const printTopology = function (vertices, edges) {
     }
 };
 
+const loadGraphGenerators = function (isSmart) {
+    if (isSmart) {
+        return {
+            makeEdgeBetweenVertices:
+            require("@arangodb/graph/graphs-generation-enterprise").enterpriseMakeEdgeBetweenVertices,
+            verticesEdgesGenerator:
+            require("@arangodb/graph/graphs-generation-enterprise").enterpriseGenerator
+        };
+    }
+    return {
+        makeEdgeBetweenVertices: makeEdgeBetweenVertices,
+        verticesEdgesGenerator: communityGenerator
+    };
+};
+
+class Vertex {
+
+    constructor(key, label, value = 0) {
+        this.outEdges = [];
+        this.outNeighbors = new Set();
+        this.inEdges = [];
+        this.inNeighbors = new Set();
+        this._key = key;
+        this.label = label;
+        this.value = value;
+    }
+
+    outDegree() {
+        return this.outNeighbors.size;
+    }
+}
+
+class Graph {
+
+    vertex(key) {
+        return this.vertices.get(key);
+    }
+
+    printVertices(onlyKeys = false) {
+        if (onlyKeys) {
+            let listVertices = [];
+            for (const [vKey,] of this.vertices) {
+                listVertices.push(vKey);
+            }
+            console.warn(listVertices);
+        } else {
+            console.warn(`Vertices: `);
+            for (const [vKey, v] of this.vertices) {
+                console.warn(`  ${vKey} : `);
+                console.warn(`    label: ${v.label}`);
+                console.warn(`    value: ${JSON.stringify(v.value)}$`);
+                console.warn(`    outNeighbs: ${JSON.stringify(v.outNeighbors)}`);
+                console.warn(`    inNeighbs:  ${JSON.stringify(v.inNeighbors)}`);
+            }
+            console.warn("End vertices");
+        }
+    }
+
+    /**
+     * Constructs a graph.
+     * @param vertices Array of objects containing attributes "_key" (unique vertex key) and "result".
+     * @param edges Array of objects representing edges, each object should contain attributes "_from" and "_to"
+     *      and for each value of "_from" and "_to" there should be a vertex whose _key is this value.
+     */
+    constructor(vertices, edges) {
+        const getKey = function (v) {
+            return v.substr(v.indexOf('/') + 1);
+        };
+
+        this.vertices = new Map(); // maps vertex key to the vertex object
+        for (const v of vertices) {
+            this.vertices.set(v._key, new Vertex(v._key, v.label));
+        }
+
+        this.edges = new Set();
+        for (const e of edges) {
+            const from = getKey(e._from);
+            const to = getKey(e._to);
+            assertTrue(this.vertices.has(from),
+                `vertices do not contain the _from of ${JSON.stringify(e)} (which is ${from})`);
+            assertTrue(this.vertices.has(`${to}`),
+                `vertices do not contain the _to of ${JSON.stringify(e)} (which is ${to})`);
+
+            this.edges.add(e);
+
+            this.vertices.get(from).outEdges.push(e);
+            this.vertices.get(to).inEdges.push(e);
+            if (from !== to) {
+                this.vertices.get(from).outNeighbors.add(to);
+                this.vertices.get(to).inNeighbors.add(from);
+            }
+        }
+        // this.printVertices();
+    }
+
+
+    /**
+     * Performs BFS from source, calls cbOnFindVertex on a vertex when the vertex is reached and cbOnPopVertex
+     * when the vertex is popped from the queue.
+     * @param source The key of the vertex to start the search from
+     * @param cbOnFindVertex Either undefiend or the callback function to run on a vertex
+     *              that is being pushed on the queue. The function can have one or two arguments:
+     *              the vertex being pushed and its parent in the search. The second argument can be undefined.
+     * @param cbOnPopVertex Either undefined or the callback function to run on a vertex
+     *              that is being popped from the queue. The function must have one argument: the vertex being popped.
+     */
+    bfs(source, cbOnFindVertex, cbOnPopVertex) {
+        assertTrue(typeof (source) === `string`, `${source} is not a string`);
+        assertTrue(this.vertices.has(`${source}`), `bfs: the given source "${JSON.stringify(source)}" is not a vertex`);
+        let visited = new Set();
+        visited.add(source);
+        if (cbOnFindVertex !== undefined) {
+            cbOnFindVertex(this.vertex(source));
+        }
+        let queue = [source];
+        while (queue.length !== 0) {
+            const vKey = queue.shift();
+            const v = this.vertex(vKey);
+            if (cbOnPopVertex !== undefined) {
+                cbOnPopVertex(v);
+            }
+            for (const wKey of v.outNeighbors) {
+                if (!visited.has(wKey)) {
+                    visited.add(wKey);
+                    if (cbOnFindVertex !== undefined) {
+                        cbOnFindVertex(this.vertex(wKey), v);
+                    }
+                    queue.push(wKey);
+                }
+            }
+        }
+    }
+
+    /**
+     * Performs DFS from source, calls cbOnFindVertex on a vertex when the vertex is reached and cbOnPopVertex
+     * when the vertex is popped from the queue.
+     */
+    dfs(source, cbOnFindVertex, cbOnPopVertex) {
+        assertTrue(this.vertices.has(source), `dfs: the given source "${source}" is not a vertex`);
+        let visited = new Set();
+        visited.add(source);
+        let stack = [source];
+        if (cbOnFindVertex !== undefined) {
+            cbOnFindVertex(this.vertex(source));
+        }
+        while (stack.length !== 0) {
+            const vKey = stack.pop();
+            const v = this.vertex(vKey);
+            if (cbOnPopVertex !== undefined) {
+                cbOnPopVertex(v);
+            }
+            for (const wKey of v.outNeighbors) {
+                if (!visited.has(wKey)) {
+                    visited.add(wKey);
+                    if (cbOnFindVertex !== undefined) {
+                        cbOnFindVertex(this.vertex(wKey), v);
+                    }
+                    stack.push(wKey);
+                }
+            }
+        }
+    }
+}
+
+
 exports.communityGenerator = communityGenerator;
 exports.graphGenerator = graphGenerator;
 exports.makeEdgeBetweenVertices = makeEdgeBetweenVertices;
 exports.unionGraph = unionGraph;
 exports.printTopology = printTopology;
 exports.unionGraph = unionGraph;
-
+exports.loadGraphGenerators = loadGraphGenerators;
+exports.Graph = Graph;

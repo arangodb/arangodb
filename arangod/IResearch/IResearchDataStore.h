@@ -99,6 +99,10 @@ struct IResearchTrxState final : public TransactionState::Cookie {
   }
 };
 
+void clusterCollectionName(LogicalCollection const& collection, ClusterInfo* ci,
+                           uint64_t id, bool indexIdAttribute,
+                           std::string& name);
+
 class IResearchDataStore {
  public:
   using AsyncLinkPtr = std::shared_ptr<AsyncLinkHandle>;
@@ -328,7 +332,9 @@ class IResearchDataStore {
   /// @param wait even if other thread is committing
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  UnsafeOpResult commitUnsafe(bool wait, CommitResult* code);
+  UnsafeOpResult commitUnsafe(
+      bool wait, irs::index_writer::progress_report_callback const& progress,
+      CommitResult& code);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run segment consolidation on the data store
@@ -350,7 +356,9 @@ class IResearchDataStore {
   /// @param wait even if other thread is committing
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  Result commitUnsafeImpl(bool wait, CommitResult* code);
+  Result commitUnsafeImpl(
+      bool wait, irs::index_writer::progress_report_callback const& progress,
+      CommitResult& code);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run segment consolidation on the data store
@@ -421,6 +429,8 @@ class IResearchDataStore {
   /// @note Unsafe, can only be called is _asyncSelf is locked
   ////////////////////////////////////////////////////////////////////////////////
   Stats updateStatsUnsafe() const;
+
+  void initClusterMetrics() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief insert metrics to MetricsFeature

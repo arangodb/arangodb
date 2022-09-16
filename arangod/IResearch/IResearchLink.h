@@ -164,10 +164,11 @@ class IResearchLink : public IResearchDataStore {
   Result insert(transaction::Methods& trx, LocalDocumentId documentId,
                 velocypack::Slice doc);
 
+  std::string const& getDbName() const noexcept;
   std::string const& getViewId() const noexcept;
-  std::string const& getDbName() const;
-  std::string const& getShardName() const noexcept;
   std::string getCollectionName() const;
+  std::string const& getShardName() const noexcept;
+
   bool hasNested() const noexcept;
 
  protected:

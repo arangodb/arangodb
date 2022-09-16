@@ -51,6 +51,7 @@
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include "Replication2/Version.h"
 #include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
@@ -405,29 +406,29 @@ static void handlePlanShard(
       }
     }
   } else {  // Create the collection, if not a previous error stops us
-    if (errors.shards.find(dbname + "/" + colname + "/" + shname) ==
-            errors.shards.end() &&
-        replicationVersion != replication::Version::TWO) {
-      // Skip for replication 2 databases
-      auto props = createProps(cprops);  // Only once might need often!
-      description = std::make_shared<ActionDescription>(
-          std::map<std::string, std::string>{
-              {NAME, CREATE_COLLECTION},
-              {COLLECTION, colname},
-              {SHARD, shname},
-              {DATABASE, dbname},
-              {SERVER_ID, serverId},
-              {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
-          shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true,
-          std::move(props));
-      makeDirty.insert(dbname);
-      callNotify = true;
-      actions.emplace_back(std::move(description));
+    if (!errors.shards.contains(dbname + "/" + colname + "/" + shname)) {
+      if (replicationVersion != replication::Version::TWO) {
+        // Skip for replication 2 databases
+        auto props = createProps(cprops);  // Only once might need often!
+        description = std::make_shared<ActionDescription>(
+            std::map<std::string, std::string>{
+                {NAME, CREATE_COLLECTION},
+                {COLLECTION, colname},
+                {SHARD, shname},
+                {DATABASE, dbname},
+                {SERVER_ID, serverId},
+                {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
+            shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true,
+            std::move(props));
+        makeDirty.insert(dbname);
+        callNotify = true;
+        actions.emplace_back(std::move(description));
+      }
     } else {
       LOG_TOPIC("c1d8e", DEBUG, Logger::MAINTENANCE)
           << "Previous failure exists for creating local shard " << dbname
-          << "/" << shname << "for central " << dbname << "/" << colname
-          << "- skipping";
+          << "/" << shname << " for central " << dbname << "/" << colname
+          << " - skipping";
     }
   }
 }

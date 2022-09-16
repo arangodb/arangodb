@@ -42,9 +42,6 @@ function runSetup () {
   v = db._createView('UnitTestsRecoveryView2', 'arangosearch', {});
   v.properties({ links: { UnitTestsRecovery1: { includeAllFields: true }, UnitTestsRecovery2: { includeAllFields: true } } });
   
-  v = db._createView('UnitTestsRecoveryView3', 'arangosearch', {});
-  v.properties({ links: { UnitTestsRecovery3: { includeAllFields: true } } });
-     
   // set failure point that makes commits go wrong
   internal.debugSetFailAt("ArangoSearch::FailOnCommit");
 
@@ -64,7 +61,10 @@ function runSetup () {
  
   // remove failure point 
   internal.debugClearFailAt();
-
+  
+  v = db._createView('UnitTestsRecoveryView3', 'arangosearch', {});
+  v.properties({ links: { UnitTestsRecovery3: { includeAllFields: true } } });
+     
   db['UnitTestsRecovery3'].insert({});
   db._query("FOR doc IN UnitTestsRecoveryView3 OPTIONS {waitForSync: true} RETURN doc");
 

@@ -870,11 +870,7 @@ bool isScorer(aql::Function const& func) noexcept {
 }
 
 bool isOffsetInfo(aql::Function const& func) noexcept {
-#ifdef USE_ENTERPRISE
   return func.implementation == &offsetInfoFunc;
-#else
-  return false;
-#endif
 }
 
 IResearchFeature::IResearchFeature(Server& server)
@@ -949,21 +945,22 @@ void IResearchFeature::collectOptions(
           "the pseudo-entry 'all' will disable recovery for all view "
           "links/inverted indexes. "
           "all links/inverted indexes skipped during recovery will be marked "
-          "as failed when "
+          "as out of sync when "
           "the recovery is completed. these links/indexes will need to be "
           "recreated manually "
           "afterwards (note: using this option will cause data of affected "
-          "links/inverted indexes to become unavailable for querying until "
+          "links/inverted indexes to become incomplete or more incomplete "
+          "until "
           "they have been manually recreated)",
           new options::VectorParameter<options::StringParameter>(
               &_skipRecoveryItems))
-      .setIntroducedIn(31100);
+      .setIntroducedIn(30904);
   options
       ->addOption(FAIL_ON_OUT_OF_SYNC,
                   "whether or not retrieval queries on out of sync "
                   "links/indexes should fail",
                   new options::BooleanParameter(&_failQueriesOnOutOfSync))
-      .setIntroducedIn(31100);
+      .setIntroducedIn(30904);
 }
 
 void IResearchFeature::validateOptions(
@@ -1141,6 +1138,27 @@ void IResearchFeature::unprepare() {
   _running.store(false);
 }
 
+void IResearchFeature::reportRecoveryProgress(arangodb::IndexId id,
+                                              std::string_view phase,
+                                              size_t current, size_t total) {
+  TRI_ASSERT(total != 0);
+  auto now = std::chrono::system_clock::now();
+
+  if (id != _progressState.lastReportId ||
+      now - _progressState.lastReportTime >= std::chrono::minutes(1)) {
+    // report progress only when index/link id changes or one minute has passed
+
+    auto progress = static_cast<size_t>(100.0 * current / total);
+    LOG_TOPIC("d1f18", INFO, TOPIC)
+        << "recovering arangosearch index " << id << ", " << phase
+        << ": operation " << (current + 1) << "/" << total << " (" << progress
+        << "%)...";
+
+    _progressState.lastReportId = id;
+    _progressState.lastReportTime = now;
+  }
+}
+
 bool IResearchFeature::queue(ThreadGroup id,
                              std::chrono::steady_clock::duration delay,
                              std::function<void()>&& fn) {
@@ -1230,7 +1248,7 @@ void IResearchFeature::registerRecoveryHelper() {
         << SKIP_RECOVERY << "' startup option for the following links/indexes: "
         << _skipRecoveryItems
         << ". all affected links/indexes that are touched during "
-           "recovery will be marked as failed and will need to be recreated "
+           "recovery will be marked as out of sync and should be recreated "
            "manually when the recovery is finished.";
   }
 

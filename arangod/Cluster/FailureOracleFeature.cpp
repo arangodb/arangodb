@@ -29,6 +29,7 @@
 #include "Basics/system-compiler.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallback.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FailureOracle.h"
 #include "Scheduler/Scheduler.h"

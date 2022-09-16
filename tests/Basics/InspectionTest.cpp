@@ -23,7 +23,6 @@
 
 #include <gtest/gtest.h>
 
-#include <cstdint>
 #include <iostream>
 #include <list>
 #include <memory>
@@ -38,14 +37,13 @@
 #include <velocypack/velocypack-memory.h>
 
 #include "Inspection/Access.h"
-#include "Inspection/Status.h"
+#include "Inspection/ValidateInspector.h"
 #include "Inspection/VPackLoadInspector.h"
 #include "Inspection/VPackSaveInspector.h"
 #include "Inspection/VPack.h"
 #include "velocypack/Builder.h"
 
 #include "Logger/LogMacros.h"
-#include "velocypack/Slice.h"
 
 namespace {
 
@@ -176,13 +174,17 @@ struct Fallback {
   int i;
   std::string s;
   Dummy d = {.i = 1, .d = 4.2, .b = true, .s = "2"};
+  int dynamic;
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, Fallback& x) {
-  return f.object(x).fields(f.field("i", x.i).fallback(42),
-                            f.field("s", x.s).fallback("foobar"),
-                            f.field("d", x.d).fallback(f.keep()));
+  return f.object(x).fields(
+      f.field("i", x.i).fallback(42), f.field("s", x.s).fallback("foobar"),
+      f.field("d", x.d).fallback(f.keep()),
+      f.field("dynamic", x.dynamic).fallbackFactory([&x]() {
+        return x.i * 2;
+      }));
 }
 
 struct Invariant {
@@ -238,6 +240,16 @@ auto inspect(Inspector& f, ObjectInvariant& x) {
   return f.object(x)
       .fields(f.field("i", x.i), f.field("s", x.s))
       .invariant([](ObjectInvariant& o) { return o.i != 0 && !o.s.empty(); });
+}
+
+struct NestedInvariant {
+  Invariant i;
+  ObjectInvariant o;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, NestedInvariant& x) {
+  return f.object(x).fields(f.field("i", x.i), f.field("o", x.o));
 }
 
 struct FallbackReference {
@@ -469,8 +481,8 @@ auto inspect(Inspector& f, Struct2& x) {
 
 namespace {
 using namespace arangodb;
-using VPackLoadInspector = inspection::VPackLoadInspector;
-using VPackSaveInspector = inspection::VPackSaveInspector;
+using VPackLoadInspector = inspection::VPackLoadInspector<>;
+using VPackSaveInspector = inspection::VPackSaveInspector<>;
 
 struct VPackSaveInspectorTest : public ::testing::Test {
   velocypack::Builder builder;
@@ -1516,6 +1528,7 @@ TEST_F(VPackLoadInspectorTest, load_object_with_fallbacks) {
   EXPECT_EQ(42, f.i);
   EXPECT_EQ("foobar", f.s);
   EXPECT_EQ(expected, f.d);
+  EXPECT_EQ(84, f.dynamic);  // f.i * 2
 }
 
 TEST_F(VPackLoadInspectorTest, load_object_with_fallback_reference) {
@@ -1961,7 +1974,7 @@ TEST_F(VPackLoadInspectorTest, load_type_with_unsafe_fields) {
   builder.add("slice", VPackValue("blubb"));
   builder.add("hashed", VPackValue("hashedString"));
   builder.close();
-  arangodb::inspection::VPackUnsafeLoadInspector inspector{builder};
+  arangodb::inspection::VPackUnsafeLoadInspector<> inspector{builder};
 
   Unsafe u;
   auto result = inspector.apply(u);
@@ -2155,6 +2168,162 @@ TEST_F(VPackInspectionTest, ResultTWithTInside) {
   auto deserialized =
       arangodb::velocypack::deserialize<arangodb::ResultT<uint64_t>>(slice);
   EXPECT_EQ(result, deserialized);
+}
+
+struct ValidateInspectorTest : public ::testing::Test {
+  arangodb::inspection::ValidateInspector<> inspector;
+};
+
+TEST_F(ValidateInspectorTest, validate_object_with_invariant_fulfilled) {
+  Invariant i{.i = 42, .s = "foobar"};
+  auto result = inspector.apply(i);
+  ASSERT_TRUE(result.ok());
+}
+
+TEST_F(ValidateInspectorTest, validate_object_with_invariant_not_fulfilled) {
+  {
+    Invariant i{.i = 0, .s = "foobar"};
+    auto result = inspector.apply(i);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Field invariant failed", result.error());
+    EXPECT_EQ("i", result.path());
+  }
+
+  {
+    Invariant i{.i = 42, .s = ""};
+    auto result = inspector.apply(i);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Field invariant failed", result.error());
+    EXPECT_EQ("s", result.path());
+  }
+}
+
+TEST_F(ValidateInspectorTest,
+       validate_object_with_invariant_Result_not_fulfilled) {
+  {
+    InvariantWithResult i{.i = 0};
+    auto result = inspector.apply(i);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Must not be zero", result.error());
+    EXPECT_EQ("i", result.path());
+  }
+
+  {
+    Invariant i{.i = 42, .s = ""};
+    auto result = inspector.apply(i);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Field invariant failed", result.error());
+    EXPECT_EQ("s", result.path());
+  }
+}
+
+TEST_F(ValidateInspectorTest, validate_object_with_object_invariant) {
+  ObjectInvariant o{.i = 42, .s = ""};
+  auto result = inspector.apply(o);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Object invariant failed", result.error());
+}
+
+TEST_F(ValidateInspectorTest, validate_object_with_nested_invariant) {
+  {
+    NestedInvariant n{.i = {.i = 0, .s = "x"}, .o = {.i = 42, .s = "x"}};
+    auto result = inspector.apply(n);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Field invariant failed", result.error());
+    EXPECT_EQ("i.i", result.path());
+  }
+
+  {
+    NestedInvariant n{.i = {.i = 42, .s = "x"}, .o = {.i = 0, .s = "x"}};
+    auto result = inspector.apply(n);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Object invariant failed", result.error());
+    EXPECT_EQ("o", result.path());
+  }
+}
+
+struct WithContext {
+  int i;
+  std::string s;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, WithContext& v) {
+  auto& context = f.getContext();
+  return f.object(v).fields(
+      f.field("i", v.i).fallback(context.defaultInt).invariant([&](int v) {
+        return v > context.minInt;
+      }),
+      f.field("s", v.s).fallback(context.defaultString));
+}
+
+TEST(VPackLoadInspectorContext, deserialize_with_context) {
+  struct Context {
+    int defaultInt;
+    int minInt;
+    std::string defaultString;
+  };
+
+  velocypack::Builder builder;
+  builder.openObject();
+  builder.close();
+
+  {
+    Context ctxt{.defaultInt = 42, .minInt = 0, .defaultString = "foobar"};
+    auto data = velocypack::deserialize<WithContext>(builder.slice(), {}, ctxt);
+    EXPECT_EQ(42, data.i);
+    EXPECT_EQ("foobar", data.s);
+  }
+
+  {
+    Context ctxt{.defaultInt = -1, .minInt = -2, .defaultString = "blubb"};
+    auto data = velocypack::deserialize<WithContext>(builder.slice(), {}, ctxt);
+    EXPECT_EQ(-1, data.i);
+    EXPECT_EQ("blubb", data.s);
+  }
+}
+
+TEST(VPackSaveInspectorContext, serialize_with_context) {
+  struct Context {
+    int defaultInt;
+    int minInt;
+    std::string defaultString;
+  };
+
+  Context ctxt{};
+  velocypack::Builder builder;
+  inspection::VPackSaveInspector<Context> inspector(builder, ctxt);
+
+  WithContext data{.i = 42, .s = "foobar"};
+  auto res = inspector.apply(data);
+  ASSERT_TRUE(res.ok());
+  EXPECT_EQ(42, builder.slice()["i"].getInt());
+  EXPECT_EQ("foobar", builder.slice()["s"].copyString());
+}
+
+TEST(ValidateInspectorContext, validate_with_context) {
+  struct Context {
+    int defaultInt;
+    int minInt;
+    std::string defaultString;
+  };
+  Context ctxt{.defaultInt = 0, .minInt = 42, .defaultString = ""};
+
+  {
+    inspection::ValidateInspector<Context> inspector(ctxt);
+    WithContext data{.i = 43, .s = ""};
+    auto result = inspector.apply(data);
+    EXPECT_TRUE(result.ok());
+  }
+
+  {
+    inspection::ValidateInspector inspector(ctxt);
+    WithContext data{.i = 42, .s = ""};
+    auto result = inspector.apply(data);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Field invariant failed", result.error());
+    EXPECT_EQ("i", result.path());
+  }
 }
 
 }  // namespace
