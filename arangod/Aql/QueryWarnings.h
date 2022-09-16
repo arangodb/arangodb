@@ -35,7 +35,6 @@ class Builder;
 }
 
 namespace aql {
-
 struct QueryOptions;
 
 class QueryWarnings final {
@@ -43,14 +42,15 @@ class QueryWarnings final {
   QueryWarnings& operator=(QueryWarnings const&) = delete;
 
  public:
-  explicit QueryWarnings();
+  QueryWarnings();
   ~QueryWarnings() = default;
 
-  /// @brief register an error
-  /// this also makes the query abort
+  // register an error
+  // this also makes the query abort
   [[noreturn]] void registerError(ErrorCode code,
                                   std::string_view details = {});
-  /// @brief register a warning
+
+  // register a warning
   void registerWarning(ErrorCode code, std::string_view details = {});
 
   void toVelocyPack(arangodb::velocypack::Builder& b) const;
@@ -61,13 +61,10 @@ class QueryWarnings final {
 
   std::vector<std::pair<ErrorCode, std::string>> all() const;
 
-  static std::string buildFormattedString(ErrorCode code,
-                                          std::string_view details);
-
  private:
   mutable std::mutex _mutex;
 
-  /// @brief warnings collected during execution
+  // warnings collected during execution
   std::vector<std::pair<ErrorCode, std::string>> _list;
 
   size_t _maxWarningCount;

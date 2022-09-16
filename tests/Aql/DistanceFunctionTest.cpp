@@ -91,7 +91,7 @@ AqlValue evaluateDistanceFunction(std::span<AqlValue const> params,
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
   fakeit::When(Method(expressionContextMock, registerWarning))
-      .AlwaysDo([](ErrorCode, char const*) {});
+      .AlwaysDo([](ErrorCode, std::string_view) {});
 
   VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;
@@ -192,6 +192,8 @@ TEST(DistanceFuncton, CosineSimilarityTest) {
                          "[0.89, 0.19, 1000, 1]", node);
   assertDistanceFunction("0.7817515661170301", "[3456, 191, -90, 500, 0.32]",
                          "[713, 201, 508, -0.5, 0.75]", node);
+  assertDistanceFunction("1.0", "[0,1,3,4]", "[0,1,3,4]", node);
+  assertDistanceFunction("-1.0", "[0,-1,-3,-4]", "[0,1,3,4]", node);
   assertDistanceFunction("-1", "[2]", "[-1]", node);
   assertDistanceFunction("1", "[1]", "[1]", node);
   assertDistanceFunction("-1", "[-1,0]", "[1,0]", node);
