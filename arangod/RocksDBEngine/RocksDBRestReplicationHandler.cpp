@@ -347,9 +347,9 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
       }
 
       basics::StringBuffer& buffer = httpResponse->body();
-      arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
+      basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
       // note: we need the CustomTypeHandler here
-      VPackDumper dumper(&adapter, trxContext->getVPackOptions());
+      velocypack::Dumper dumper(&adapter, trxContext->getVPackOptions());
       for (auto marker : arangodb::velocypack::ArrayIterator(data)) {
         dumper.dump(marker);
         httpResponse->body().appendChar('\n');
