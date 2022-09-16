@@ -49,6 +49,7 @@ const setup = require(base);
   setup.createTransactional();
   setup.createPersistent();
   setup.createView();
+  setup.createSearch();
   setup.createJobs();
   setup.createFoxx();
   setup.createAnalyzers();
