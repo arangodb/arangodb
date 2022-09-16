@@ -28,18 +28,17 @@
 namespace arangodb::options {
 
 std::string removeCommentsFromNumber(std::string const& value) {
-  // note: these regex objects are built upon every invocation of this function.
-  // this is necessary because this function is called during static
-  // initialization, and we need to avoid an init order fiasco with TU-local
-  // regexes and other TUs.
+  // note:
+  // this function is already called during static initialization.
+  // the following regex objects are function-local statics, because
+  // we cannot have them statically initialized on the TU level.
+  static std::regex const removeComments("#.*$", std::regex::ECMAScript);
+  static std::regex const removeTabs("^[ \t]+|[ \t]+$", std::regex::ECMAScript);
 
   // replace trailing comments
-  auto noComment =
-      std::regex_replace(value, std::regex("#.*$", std::regex::ECMAScript), "");
-
+  auto noComment = std::regex_replace(value, removeComments, "");
   // replace leading spaces, replace trailing spaces
-  return std::regex_replace(
-      noComment, std::regex("^[ \t]+|[ \t]+$", std::regex::ECMAScript), "");
+  return std::regex_replace(noComment, removeTabs, "");
 }
 
 }  // namespace arangodb::options
