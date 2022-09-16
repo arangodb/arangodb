@@ -948,7 +948,7 @@ void IResearchInvertedIndexMetaIndexingContext::addField(
     auto current = this;
     for (size_t i = 0; i < f._attribute.size(); ++i) {
       auto const& a = f._attribute[i];
-      auto& fieldsContainer = nested ? current->_nested : current->_fields;
+      auto& fieldsContainer = nested && i == 0 ? current->_nested : current->_fields;
       auto emplaceRes = fieldsContainer.emplace(
           a.name, IResearchInvertedIndexMetaIndexingContext{_meta, false});
 
@@ -956,9 +956,11 @@ void IResearchInvertedIndexMetaIndexingContext::addField(
         // first emplaced as nested root then array may come as regular field
         emplaceRes.first->second._isArray |= a.shouldExpand;
         current = &(emplaceRes.first->second);
+        current->_hasNested |= !f._fields.empty();
       } else {
         current = &(emplaceRes.first->second);
         current->_isArray = a.shouldExpand;
+        current->_hasNested = !f._fields.empty();
       }
       if (i == f._attribute.size() - 1) {
         current->_analyzers = &f._analyzers;
@@ -970,6 +972,7 @@ void IResearchInvertedIndexMetaIndexingContext::addField(
     }
 #ifdef USE_ENTERPRISE
     if (!f._fields.empty()) {
+      current->_hasNested = true;
       current->addField(f, true);
     }
 #endif
