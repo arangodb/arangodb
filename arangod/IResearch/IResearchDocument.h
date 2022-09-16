@@ -173,8 +173,6 @@ class FieldIterator {
     kNestedFields,
     // enumerates nested documents in the array
     kNestedObjects,
-    // builds way to nested array in case of nested subfield
-    kNestedIntermediate
   };
 
   struct Level {
