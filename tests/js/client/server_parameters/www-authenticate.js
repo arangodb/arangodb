@@ -50,9 +50,9 @@ function HttpAuthenticateSuite() {
   return {
 
     setUp: function() {
+      connectWith("tcp", "root", "");
       users.save(user, "");
       users.grantDatabase(user, '_system', 'rw');
-      helper.switchUser(user);
     },
 
     tearDown: function() {
