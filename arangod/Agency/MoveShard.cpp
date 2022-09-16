@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
 #include "Cluster/ClusterHelpers.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
