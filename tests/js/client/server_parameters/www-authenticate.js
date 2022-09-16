@@ -56,9 +56,8 @@ function HttpAuthenticateSuite() {
     },
 
     tearDown: function() {
-      helper.switchUser("root");
+      connectWith("tcp", "root", "");
       users.remove(user);
-      arango.reconnectWithNewPassword("");
     },
 
     testUnauthorized: function() {
