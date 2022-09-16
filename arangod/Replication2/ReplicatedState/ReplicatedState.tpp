@@ -219,9 +219,15 @@ auto ReplicatedState<S>::buildCore(
 template<typename S>
 void ReplicatedState<S>::drop() {
   auto deferred = guardedData.doUnderLock([&](GuardedData& data) {
+    std::unique_ptr<CoreType> core;
+    DeferredAction action;
     if (data.currentManager == nullptr) {
-      return DeferredAction{};
+      core = std::move(data.oldCore);
+    } else {
+      std::tie(core, std::ignore, action) =
+          std::move(*data.currentManager).resign();
     }
+
     using CleanupHandler =
         typename ReplicatedStateTraits<S>::CleanupHandlerType;
     if constexpr (not std::is_void_v<CleanupHandler>) {
@@ -231,13 +237,9 @@ void ReplicatedState<S>::drop() {
                                 Factory>);
       std::shared_ptr<CleanupHandler> cleanupHandler =
           factory->constructCleanupHandler();
-      auto [core, token, action] = std::move(*data.currentManager).resign();
       cleanupHandler->drop(std::move(core));
-      return std::move(action);
-    } else {
-      auto [core, token, action] = std::move(*data.currentManager).resign();
-      return std::move(action);
     }
+    return action;
   });
   deferred.fire();
 }
@@ -252,11 +254,12 @@ auto ReplicatedState<S>::GuardedData::rebuild(
   try {
     participant = _self.log->getParticipant();
   } catch (replicated_log::ParticipantResignedException const& ex) {
-    LOG_CTX("eacb9", TRACE, _self.loggerContext)
+    LOG_CTX("eacb9", INFO, _self.loggerContext)
         << "Replicated log participant is gone. Replicated state will go "
            "soon as well. Error code: "
         << ex.code();
     currentManager = nullptr;
+    oldCore = std::move(core);
     return {};
   }
   if (auto leader =
