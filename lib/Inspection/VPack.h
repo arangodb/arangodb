@@ -42,6 +42,13 @@ void serialize(Builder& builder, T& value) {
   }
 }
 
+template<class T>
+auto serialize(T& value) -> std::shared_ptr<Builder> {
+  auto builder = std::make_shared<Builder>();
+  serialize(*builder, value);
+  return builder;
+}
+
 namespace detail {
 template<class Inspector, class T>
 void deserialize(Inspector& inspector, T& result) {

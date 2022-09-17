@@ -2001,6 +2001,18 @@ TEST_F(VPackInspectionTest, serialize) {
   EXPECT_EQ(d.s, slice["s"].copyString());
 }
 
+TEST_F(VPackInspectionTest, serialize_to_builder) {
+  Dummy const d{.i = 42, .d = 123.456, .b = true, .s = "cheese"};
+  auto builder = arangodb::velocypack::serialize(d);
+  auto slice = builder->slice();
+
+  ASSERT_TRUE(slice.isObject());
+  EXPECT_EQ(d.i, slice["i"].getInt());
+  EXPECT_EQ(d.d, slice["d"].getDouble());
+  EXPECT_EQ(d.b, slice["b"].getBool());
+  EXPECT_EQ(d.s, slice["s"].copyString());
+}
+
 TEST_F(VPackInspectionTest, deserialize) {
   velocypack::Builder builder;
   builder.openObject();
