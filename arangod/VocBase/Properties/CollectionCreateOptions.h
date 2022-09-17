@@ -22,29 +22,19 @@
 
 #pragma once
 
-#include "Basics/StaticStrings.h"
-
 #include <string>
+#include <vector>
 
 namespace arangodb {
-
-struct CollectionInternalProperties {
-  std::string globallyUniqueId = StaticStrings::Empty;
-  std::string id = StaticStrings::Empty;
-  bool syncByRevision = true;
-  bool usesRevisionsAsDocumentIds = true;
-  bool isSmartChild = false;
+struct CollectionCreateOptions {
+  // Not documented, actually this is an option, not a configuration parameter
+  std::vector<std::string> avoidServers = {};
 };
 
 template<class Inspector>
-auto inspect(Inspector& f, CollectionInternalProperties& props) {
+auto inspect(Inspector& f, CollectionCreateOptions& props) {
   return f.object(props).fields(
-      f.field("globallyUniqueId", props.globallyUniqueId).fallback(f.keep()),
-      f.field("id", props.id).fallback(f.keep()),
-      f.field("syncByRevision", props.syncByRevision).fallback(f.keep()),
-      f.field("usesRevisionsAsDocumentIds", props.usesRevisionsAsDocumentIds)
-          .fallback(f.keep()),
-      f.field("isSmartChild", props.isSmartChild).fallback(f.keep()));
+      f.field("avoidServers", props.avoidServers).fallback(f.keep()));
 }
 
 }  // namespace arangodb

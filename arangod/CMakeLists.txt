@@ -510,6 +510,7 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   VocBase/Methods/Upgrade.cpp
   VocBase/Methods/UpgradeTasks.cpp
   VocBase/Methods/Version.cpp
+  VocBase/Properties/CollectionCreateOptions.cpp
   VocBase/Properties/CollectionConstantProperties.cpp
   VocBase/Properties/CollectionInternalProperties.cpp
   VocBase/Properties/CollectionMutableProperties.cpp

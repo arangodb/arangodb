@@ -2827,7 +2827,8 @@ ClusterMethods::createCollectionsOnCoordinator(
 
     if (collections.empty()) {
       for (auto const& info : collections) {
-        events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_INTERNAL);
+        events::CreateCollection(vocbase.name(), info.mutableProperties.name,
+                                 TRI_ERROR_INTERNAL);
       }
       return Result(TRI_ERROR_INTERNAL, "createCollectionsOnCoordinator");
     }

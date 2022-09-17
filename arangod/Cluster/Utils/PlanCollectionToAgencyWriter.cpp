@@ -35,12 +35,13 @@ PlanCollectionToAgencyWriter::PlanCollectionToAgencyWriter(PlanCollection col)
 
 [[nodiscard]] AgencyOperation PlanCollectionToAgencyWriter::prepareOperation(
     std::string const& databaseName) const {
-  auto const collectionPath = cluster::paths::root()
-                                  ->arango()
-                                  ->plan()
-                                  ->collections()
-                                  ->database(databaseName)
-                                  ->collection(_collection.id);
+  auto const collectionPath =
+      cluster::paths::root()
+          ->arango()
+          ->plan()
+          ->collections()
+          ->database(databaseName)
+          ->collection(_collection.internalProperties.id);
   auto builder = std::make_shared<VPackBuilder>();
   // Add all Collection properties
   velocypack::serialize(*builder, _collection);

@@ -610,7 +610,8 @@ Collections::create(         // create collection
   ExecContext const& exec = options.context();
   if (!exec.canUseDatabase(vocbase.name(), auth::Level::RW)) {
     for (auto const& col : collections) {
-      events::CreateCollection(vocbase.name(), col.name, TRI_ERROR_FORBIDDEN);
+      events::CreateCollection(vocbase.name(), col.mutableProperties.name,
+                               TRI_ERROR_FORBIDDEN);
     }
     return arangodb::Result(                             // result
         TRI_ERROR_FORBIDDEN,                             // code
@@ -629,19 +630,22 @@ Collections::create(         // create collection
 
   ClusterInfo& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
   for (auto& col : collections) {
-    if (!col.distributeShardsLike.empty()) {
+    if (!col.constantProperties.distributeShardsLike.empty()) {
       // Apply distributeShardsLike overwrites
       // TODO: Make this piece unit-testable.
       CollectionNameResolver resolver(vocbase);
-      auto myColToDistributeLike = resolver.getCollection(col.distributeShardsLike);
+      auto myColToDistributeLike =
+          resolver.getCollection(col.constantProperties.distributeShardsLike);
       if (myColToDistributeLike == nullptr) {
-        return Result{
-          TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-            "Collection not found: " + col.distributeShardsLike +
-            " in database " + vocbase.name()};
+        return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+                      "Collection not found: " +
+                          col.constantProperties.distributeShardsLike +
+                          " in database " + vocbase.name()};
       }
-      col.numberOfShards = myColToDistributeLike->numberOfShards();
-      col.replicationFactor = myColToDistributeLike->replicationFactor();
+      col.constantProperties.numberOfShards =
+          myColToDistributeLike->numberOfShards();
+      col.mutableProperties.replicationFactor =
+          myColToDistributeLike->replicationFactor();
       // TODO: writeConcern is inherited when using replication2
       // col.writeConcern = myColToDistributeLike->writeConcern();
     }
@@ -650,7 +654,8 @@ Collections::create(         // create collection
     auto res = col.validateDatabaseConfiguration(config);
     if (res.fail()) {
       for (auto const& reportCollection : collections) {
-        events::CreateCollection(vocbase.name(), reportCollection.name,
+        events::CreateCollection(vocbase.name(),
+                                 reportCollection.mutableProperties.name,
                                  res.errorNumber());
       }
       return res;
@@ -660,7 +665,8 @@ Collections::create(         // create collection
     // factor
     if (config.enforceReplicationFactor &&
         ServerState::instance()->isCoordinator() &&
-        col.replicationFactor > ci.getCurrentDBServers().size()) {
+        col.mutableProperties.replicationFactor >
+            ci.getCurrentDBServers().size()) {
       return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
     }
 
@@ -669,8 +675,9 @@ Collections::create(         // create collection
       // we do not make use of the actual ComputedValueExecutor here
       // TODO: Can be replaced by a two step way inspect -> ComputedValuesInput
       // -> ComputedValues
-      auto result = ComputedValues::buildInstance(vocbase, col.shardKeys,
-                                                  col.computedValues.slice());
+      auto result = ComputedValues::buildInstance(
+          vocbase, col.constantProperties.shardKeys,
+          col.mutableProperties.computedValues.slice());
       if (result.fail()) {
         return result.result();
       }
@@ -688,7 +695,7 @@ Collections::create(         // create collection
         enforceReplicationFactor, isNewDatabase);
     if (results.fail()) {
       for (auto const& info : collections) {
-        events::CreateCollection(vocbase.name(), info.name,
+        events::CreateCollection(vocbase.name(), info.mutableProperties.name,
                                  results.errorNumber());
       }
       return results;
@@ -697,7 +704,8 @@ Collections::create(         // create collection
       // TODO: CHeck if this can really happen after refactoring is completed
       // We may be able to guarantee error when nothing could be done.
       for (auto const& info : collections) {
-        events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_INTERNAL);
+        events::CreateCollection(vocbase.name(), info.mutableProperties.name,
+                                 TRI_ERROR_INTERNAL);
       }
       return Result(TRI_ERROR_INTERNAL, "createCollectionsOnCoordinator");
     }
@@ -762,17 +770,20 @@ Collections::create(         // create collection
     }
   } catch (basics::Exception const& ex) {
     for (auto const& info : collections) {
-      events::CreateCollection(vocbase.name(), info.name, ex.code());
+      events::CreateCollection(vocbase.name(), info.mutableProperties.name,
+                               ex.code());
     }
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
     for (auto const& info : collections) {
-      events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_INTERNAL);
+      events::CreateCollection(vocbase.name(), info.mutableProperties.name,
+                               TRI_ERROR_INTERNAL);
     }
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     for (auto const& info : collections) {
-      events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_INTERNAL);
+      events::CreateCollection(vocbase.name(), info.mutableProperties.name,
+                               TRI_ERROR_INTERNAL);
     }
     return Result(TRI_ERROR_INTERNAL, "cannot create collection");
   }
@@ -781,13 +792,15 @@ Collections::create(         // create collection
       // don't log here (again) for single servers, because on the single
       // server we will log the creation of each collection inside
       // vocbase::createCollectionWorker
-      events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_NO_ERROR);
+      events::CreateCollection(vocbase.name(), info.mutableProperties.name,
+                               TRI_ERROR_NO_ERROR);
     }
 
     // TODO: update auditLog reporting
     OperationResult result(Result(), info.toCollectionsCreate().steal(),
                            options);
-    events::PropertyUpdateCollection(vocbase.name(), info.name, result);
+    events::PropertyUpdateCollection(vocbase.name(),
+                                     info.mutableProperties.name, result);
   }
 
   return results;

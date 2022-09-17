@@ -77,6 +77,28 @@ class CollectionConstantPropertiesTest : public ::testing::Test {
   }
 };
 
+TEST_F(CollectionConstantPropertiesTest, test_minimal_user_input) {
+  VPackBuilder body;
+  { VPackObjectBuilder guard(&body); }
+  auto testee = parse(body.slice());
+  ASSERT_TRUE(testee.ok());
+  EXPECT_EQ(testee->type, TRI_col_type_e::TRI_COL_TYPE_DOCUMENT);
+  EXPECT_FALSE(testee->isSystem);
+  EXPECT_FALSE(testee->doCompact);
+  EXPECT_FALSE(testee->isVolatile);
+  EXPECT_FALSE(testee->cacheEnabled);
+  EXPECT_EQ(testee->numberOfShards, 1);
+  EXPECT_EQ(testee->distributeShardsLike, "");
+  EXPECT_FALSE(testee->smartJoinAttribute.has_value());
+  EXPECT_EQ(testee->shardingStrategy, "");
+  ASSERT_EQ(testee->shardKeys.size(), 1);
+  EXPECT_EQ(testee->shardKeys.at(0), StaticStrings::KeyString);
+  EXPECT_TRUE(testee->keyOptions.slice().isEmptyObject());
+  EXPECT_FALSE(testee->isSmart);
+  EXPECT_FALSE(testee->isDisjoint);
+  EXPECT_EQ(testee->smartGraphAttribute, "");
+}
+
 TEST_F(CollectionConstantPropertiesTest, test_collection_type) {
   auto shouldBeEvaluatedToType = [&](VPackBuilder const& body,
                                      TRI_col_type_e type) {
@@ -106,13 +128,48 @@ TEST_F(CollectionConstantPropertiesTest, test_collection_type) {
   GenerateFailsOnObject(type);
 }
 
+TEST_F(CollectionConstantPropertiesTest, test_shardingStrategy) {
+  auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,
+                                 std::string const& expected) {
+    auto testee = parse(body.slice());
+    EXPECT_EQ(testee->shardingStrategy, expected)
+        << "Parsing error in " << body.toJson();
+  };
+  std::vector<std::string> allowedStrategies{"",
+                                             "hash",
+                                             "enterprise-hash-smart-edge",
+                                             "community-compat",
+                                             "enterprise-compat",
+                                             "enterprise-smart-edge-compat"};
+
+  for (auto const& strategy : allowedStrategies) {
+    shouldBeEvaluatedTo(
+        createMinimumBodyWithOneValue("shardingStrategy", strategy), strategy);
+  }
+
+  GenerateFailsOnBool(shardingStrategy);
+  GenerateFailsOnNonEmptyString(shardingStrategy);
+  GenerateFailsOnInteger(shardingStrategy);
+  GenerateFailsOnDouble(shardingStrategy);
+  GenerateFailsOnArray(shardingStrategy);
+  GenerateFailsOnObject(shardingStrategy);
+}
 
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isSystem);
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isSmart);
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isDisjoint);
-GenerateStringAttributeTest(CollectionConstantPropertiesTest, smartGraphAttribute);
+GenerateBoolAttributeTest(CollectionConstantPropertiesTest, doCompact);
+GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isVolatile);
+GenerateBoolAttributeTest(CollectionConstantPropertiesTest, cacheEnabled);
 
-GenerateStringAttributeTest(CollectionConstantPropertiesTest, distributeShardsLike);
-GenerateOptionalStringAttributeTest(CollectionConstantPropertiesTest, smartJoinAttribute);
+GeneratePositiveIntegerAttributeTest(CollectionConstantPropertiesTest,
+                                     numberOfShards);
+GenerateStringAttributeTest(CollectionConstantPropertiesTest,
+                            smartGraphAttribute);
+
+GenerateStringAttributeTest(CollectionConstantPropertiesTest,
+                            distributeShardsLike);
+GenerateOptionalStringAttributeTest(CollectionConstantPropertiesTest,
+                                    smartJoinAttribute);
 
 }  // namespace arangodb::tests

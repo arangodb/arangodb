@@ -49,8 +49,7 @@ struct CollectionConstantProperties {
   std::string shardingStrategy = StaticStrings::Empty;
   std::optional<std::string> smartJoinAttribute = std::nullopt;
 
-  std::vector<std::string> shardKeys =
-      std::vector<std::string>{StaticStrings::KeyString};
+  std::vector<std::string> shardKeys;
 
   // TODO: This can be optimized into it's own struct.
   // Did a short_cut here to avoid concatenated changes
@@ -60,8 +59,16 @@ struct CollectionConstantProperties {
   // NOTE: These attributes are not documented
   bool isSmart = false;
   bool isDisjoint = false;
+  bool doCompact = false;
+  bool isVolatile = false;
+  bool cacheEnabled = false;
 
   std::string smartGraphAttribute = StaticStrings::Empty;
+
+  // TODO: Maybe this is better off with a transformator Uint -> col_type_e
+  [[nodiscard]] TRI_col_type_e getType() const noexcept {
+    return TRI_col_type_e(type);
+  }
 };
 
 template<class Inspector>
@@ -70,6 +77,9 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
       f.field("isSystem", props.isSystem).fallback(f.keep()),
       f.field("isSmart", props.isSmart).fallback(f.keep()),
       f.field("isDisjoint", props.isDisjoint).fallback(f.keep()),
+      f.field("doCompact", props.doCompact).fallback(f.keep()),
+      f.field("cacheEnabled", props.cacheEnabled).fallback(f.keep()),
+      f.field("isVolatile", props.isVolatile).fallback(f.keep()),
       f.field("smartGraphAttribute", props.smartGraphAttribute)
           .fallback(f.keep()),
       f.field("numberOfShards", props.numberOfShards)
@@ -83,7 +93,7 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
           .fallback(f.keep())
           .invariant(UtilityInvariants::isValidShardingStrategy),
       f.field("shardKeys", props.shardKeys)
-          .fallback(f.keep())
+          .fallback(std::vector<std::string>{StaticStrings::KeyString})
           .invariant(UtilityInvariants::areShardKeysValid),
       f.field("type", props.type)
           .fallback(f.keep())

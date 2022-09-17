@@ -41,14 +41,15 @@ PlanCollection initWithDefaults(
     std::string const& name) {
   PlanCollection res;
   // Inject certain default values.
-  res.name = name;
+  res.mutableProperties.name = name;
 
   // This will make sure the default configuration for Sharding attributes are
   // applied
-  res.numberOfShards = config.defaultNumberOfShards;
-  res.replicationFactor = config.defaultReplicationFactor;
-  res.writeConcern = config.defaultWriteConcern;
-  res.distributeShardsLike = config.defaultDistributeShardsLike;
+  res.constantProperties.numberOfShards = config.defaultNumberOfShards;
+  res.mutableProperties.replicationFactor = config.defaultReplicationFactor;
+  res.mutableProperties.writeConcern = config.defaultWriteConcern;
+  res.constantProperties.distributeShardsLike =
+      config.defaultDistributeShardsLike;
 
   return res;
 }
@@ -59,6 +60,51 @@ ResultT<PlanCollection> parseAndValidate(
     std::function<void(PlanCollection&)> applyOnSuccess) {
   try {
     PlanCollection res = initWithDefaults(config, defaultName);
+
+    auto status = velocypack::deserializeWithStatus(
+        input, res.mutableProperties, {.ignoreUnknownFields = true});
+    if (!status.ok()) {
+      if (status.path() == "name") {
+        // Special handling to be backwards compatible error reporting
+        // on "name"
+        return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
+      }
+      return Result{
+          TRI_ERROR_BAD_PARAMETER,
+          status.error() +
+              (status.path().empty() ? "" : " on path " + status.path())};
+    }
+
+    status = velocypack::deserializeWithStatus(input, res.constantProperties,
+                                               {.ignoreUnknownFields = true});
+    if (!status.ok()) {
+      if (status.path() == StaticStrings::SmartJoinAttribute) {
+        return Result{TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE, status.error()};
+      }
+      return Result{
+          TRI_ERROR_BAD_PARAMETER,
+          status.error() +
+              (status.path().empty() ? "" : " on path " + status.path())};
+    }
+    status = velocypack::deserializeWithStatus(input, res.internalProperties,
+                                               {.ignoreUnknownFields = true});
+    if (!status.ok()) {
+      return Result{
+          TRI_ERROR_BAD_PARAMETER,
+          status.error() +
+              (status.path().empty() ? "" : " on path " + status.path())};
+    }
+    status = velocypack::deserializeWithStatus(input, res.options,
+                                               {.ignoreUnknownFields = true});
+    if (!status.ok()) {
+      return Result{
+          TRI_ERROR_BAD_PARAMETER,
+          status.error() +
+              (status.path().empty() ? "" : " on path " + status.path())};
+    }
+    applyOnSuccess(res);
+    return res;
+#if false
     auto status = velocypack::deserializeWithStatus(input, res);
     if (status.ok()) {
       // TODO: We can actually call validateDatabaseConfiguration
@@ -78,6 +124,7 @@ ResultT<PlanCollection> parseAndValidate(
         TRI_ERROR_BAD_PARAMETER,
         status.error() +
             (status.path().empty() ? "" : " on path " + status.path())};
+#endif
   } catch (basics::Exception const& e) {
     return Result{e.code(), e.message()};
   } catch (std::exception const& e) {
@@ -138,8 +185,8 @@ ResultT<PlanCollection> PlanCollection::fromCreateAPIV8(
                               // As we hand in an enum the type has to be valid.
                               // TODO: Should we silently do this?
                               // or should we throw an illegal use error?
-                              col.type = type;
-                              col.name = name;
+                              col.constantProperties.type = type;
+                              col.mutableProperties.name = name;
                             });
 }
 
@@ -155,39 +202,17 @@ arangodb::velocypack::Builder PlanCollection::toCreateCollectionProperties(
   return builder;
 }
 
-
-auto PlanCollection::Transformers::ReplicationSatellite::toSerialized(
-    MemoryType v, SerializedType& result) -> arangodb::inspection::Status {
-  result.add(VPackValue(v));
-  return {};
-}
-
-auto PlanCollection::Transformers::ReplicationSatellite::fromSerialized(
-    SerializedType const& b, MemoryType& result)
-    -> arangodb::inspection::Status {
-  auto v = b.slice();
-  if (v.isString() && v.isEqualString("satellite")) {
-    result = 0;
-    return {};
-  } else if (v.isNumber()) {
-    result = v.getNumber<MemoryType>();
-    if (result != 0) {
-      return {};
-    }
-  }
-  return {"Only an integer number or 'satellite' is allowed"};
-}
-
 arangodb::Result PlanCollection::validateDatabaseConfiguration(
     DatabaseConfiguration config) const {
   //  Check name is allowed
-  if (!CollectionNameValidator::isAllowedName(
-          isSystem, config.allowExtendedNames, name)) {
+  if (!CollectionNameValidator::isAllowedName(constantProperties.isSystem,
+                                              config.allowExtendedNames,
+                                              mutableProperties.name)) {
     return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
   if (config.shouldValidateClusterSettings) {
     if (config.maxNumberOfShards > 0 &&
-        numberOfShards > config.maxNumberOfShards) {
+        constantProperties.numberOfShards > config.maxNumberOfShards) {
       return {TRI_ERROR_CLUSTER_TOO_MANY_SHARDS,
               std::string("too many shards. maximum number of shards is ") +
                   std::to_string(config.maxNumberOfShards)};
@@ -197,53 +222,58 @@ arangodb::Result PlanCollection::validateDatabaseConfiguration(
   // Check Replication factor
   if (config.enforceReplicationFactor) {
     if (config.maxReplicationFactor > 0 &&
-        replicationFactor > config.maxReplicationFactor) {
+        mutableProperties.replicationFactor > config.maxReplicationFactor) {
       return {TRI_ERROR_BAD_PARAMETER,
               std::string("replicationFactor must not be higher than "
                           "maximum allowed replicationFactor (") +
                   std::to_string(config.maxReplicationFactor) + ")"};
     }
 
-    if (replicationFactor != 0 && replicationFactor < config.minReplicationFactor) {
+    if (mutableProperties.replicationFactor != 0 &&
+        mutableProperties.replicationFactor < config.minReplicationFactor) {
       return {TRI_ERROR_BAD_PARAMETER,
               std::string("replicationFactor must not be lower than "
                           "minimum allowed replicationFactor (") +
                   std::to_string(config.minReplicationFactor) + ")"};
     }
 
-    if (replicationFactor > 0 && replicationFactor < writeConcern) {
+    if (mutableProperties.replicationFactor > 0 &&
+        mutableProperties.replicationFactor < mutableProperties.writeConcern) {
       return {TRI_ERROR_BAD_PARAMETER,
               "writeConcern must not be higher than replicationFactor"};
     }
   }
 
-  if (replicationFactor == 0) {
+  if (mutableProperties.replicationFactor == 0) {
     // We are a satellite, we cannot be smart at the same time
-    if (isSmart) {
+    if (constantProperties.isSmart) {
       return {TRI_ERROR_BAD_PARAMETER,
               "'isSmart' and replicationFactor 'satellite' cannot be combined"};
     }
-    if (isSmartChild) {
+    if (internalProperties.isSmartChild) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "'isSmartChild' and replicationFactor 'satellite' cannot be combined"};
+              "'isSmartChild' and replicationFactor 'satellite' cannot be "
+              "combined"};
     }
-    if (shardKeys.size() != 1 || shardKeys[0] != StaticStrings::KeyString) {
+    if (constantProperties.shardKeys.size() != 1 ||
+        constantProperties.shardKeys[0] != StaticStrings::KeyString) {
       return {TRI_ERROR_BAD_PARAMETER, "'satellite' cannot use shardKeys"};
     }
   }
   if (config.isOneShardDB) {
-    if (numberOfShards != 1) {
+    if (constantProperties.numberOfShards != 1) {
       return {TRI_ERROR_BAD_PARAMETER,
               "Collection in a 'oneShardDatabase' must have 1 shard"};
     }
 
-    if (distributeShardsLike != config.defaultDistributeShardsLike) {
+    if (constantProperties.distributeShardsLike !=
+        config.defaultDistributeShardsLike) {
       return {TRI_ERROR_BAD_PARAMETER,
               "Collection in a 'oneShardDatabase' cannot define "
               "'distributeShardsLike'"};
     }
 
-    if (replicationFactor == 0) {
+    if (mutableProperties.replicationFactor == 0) {
       return {TRI_ERROR_BAD_PARAMETER,
               "Collection in a 'oneShardDatabase' cannot be a "
               "'satellite'"};

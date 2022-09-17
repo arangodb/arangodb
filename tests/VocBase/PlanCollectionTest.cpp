@@ -40,35 +40,7 @@ namespace arangodb::tests {
  * which is highly overlapping
  *********************/
 
-// This macro generates a basic integer value test, checking if we get 2 and 42
-// through and other basic types are rejected.
-// NOTE: we also test 4.5 (double) right now this passes the validator, need to
-// discuss if this is correct
 
-#define GeneratePositiveIntegerAttributeTestInternal(attributeName, valueName) \
-  TEST_F(PlanCollectionUserAPITest, test_##attributeName) {                    \
-    auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                   \
-                                   uint64_t expected) {                        \
-      auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});       \
-      EXPECT_EQ(testee->valueName, expected)                                   \
-          << "Parsing error in " << body.toJson();                             \
-    };                                                                         \
-    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 2), 2);  \
-    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 42),     \
-                        42);                                                   \
-    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 4.5),    \
-                        4);                                                    \
-    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, -1));    \
-    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, 0));     \
-    assertParsingThrows(createMinimumBodyWithOneValue(#attributeName, -4.5));  \
-    GenerateFailsOnBool(attributeName);                                        \
-    GenerateFailsOnString(attributeName);                                      \
-    GenerateFailsOnArray(attributeName);                                       \
-    GenerateFailsOnObject(attributeName);                                      \
-  }
-
-#define GeneratePositiveIntegerAttributeTest(attributeName) \
-  GeneratePositiveIntegerAttributeTestInternal(attributeName, attributeName)
 
 /**********************
  * TEST SECTION
@@ -132,118 +104,16 @@ TEST_F(PlanCollectionUserAPITest, test_minimal_user_input) {
   }
   auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
   ASSERT_TRUE(testee.ok());
-  EXPECT_EQ(testee->name, colName);
   // Test Default values
-  EXPECT_FALSE(testee->waitForSync);
-  EXPECT_FALSE(testee->isSystem);
-  EXPECT_FALSE(testee->doCompact);
-  EXPECT_FALSE(testee->isVolatile);
-  EXPECT_FALSE(testee->cacheEnabled);
-  EXPECT_EQ(testee->type, TRI_col_type_e::TRI_COL_TYPE_DOCUMENT);
-
-  EXPECT_EQ(testee->numberOfShards, 1);
-  EXPECT_EQ(testee->replicationFactor, 1);
-  EXPECT_EQ(testee->writeConcern, 1);
-
-  EXPECT_EQ(testee->distributeShardsLike, "");
-  EXPECT_FALSE(testee->smartJoinAttribute.has_value());
-  EXPECT_EQ(testee->globallyUniqueId, "");
-  EXPECT_EQ(testee->shardingStrategy, "");
-
-  // TODO: We only test defaults here, not all possible options
-  ASSERT_EQ(testee->shardKeys.size(), 1);
-  EXPECT_EQ(testee->shardKeys.at(0), StaticStrings::KeyString);
 
   // TODO: this is just rudimentary
   // does not test internals yet
-  EXPECT_TRUE(testee->computedValues.slice().isEmptyArray());
-  EXPECT_TRUE(testee->schema.slice().isEmptyObject());
-  EXPECT_TRUE(testee->keyOptions.slice().isEmptyObject());
+  EXPECT_TRUE(testee->mutableProperties.computedValues.slice().isEmptyArray());
+  EXPECT_TRUE(testee->mutableProperties.schema.slice().isEmptyObject());
 
   // This covers only non-documented APIS
-  EXPECT_TRUE(testee->syncByRevision);
-  EXPECT_TRUE(testee->usesRevisionsAsDocumentIds);
-  EXPECT_FALSE(testee->isSmart);
-  EXPECT_FALSE(testee->isDisjoint);
-  EXPECT_EQ(testee->id, "");
-  EXPECT_EQ(testee->smartGraphAttribute, "");
-  EXPECT_TRUE(testee->avoidServers.empty());
-  EXPECT_FALSE(testee->isSmartChild);
-}
 
-TEST_F(PlanCollectionUserAPITest, test_illegal_names) {
-  // The empty string
-  assertParsingThrows(createMinimumBodyWithOneValue("name", ""));
-
-  // Non String types
-  assertParsingThrows(createMinimumBodyWithOneValue("name", 0));
-  assertParsingThrows(
-      createMinimumBodyWithOneValue("name", VPackSlice::emptyObjectSlice()));
-  assertParsingThrows(
-      createMinimumBodyWithOneValue("name", VPackSlice::emptyArraySlice()));
-
-  GenerateFailsOnBool(name);
-  GenerateFailsOnInteger(name);
-  GenerateFailsOnDouble(name);
-  GenerateFailsOnArray(name);
-  GenerateFailsOnObject(name);
-}
-
-TEST_F(PlanCollectionUserAPITest, test_collection_type) {
-  auto shouldBeEvaluatedToType = [&](VPackBuilder const& body,
-                                     TRI_col_type_e type) {
-    auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
-    EXPECT_EQ(testee->type, type) << "Parsing error in " << body.toJson();
-  };
-
-  // Edge types, we only have two valid ways to get edges
-  shouldBeEvaluatedToType(createMinimumBodyWithOneValue("type", 3),
-                          TRI_col_type_e::TRI_COL_TYPE_EDGE);
-
-  shouldBeEvaluatedToType(createMinimumBodyWithOneValue("type", 2),
-                          TRI_col_type_e::TRI_COL_TYPE_DOCUMENT);
-
-  /// The following defaulted to edge before (not mentioned in doc since 3.3)
-  assertParsingThrows(createMinimumBodyWithOneValue("type", "edge"));
-  /// The following defaulted to document before (not mentioned in doc
-  /// since 3.3):
-  assertParsingThrows(createMinimumBodyWithOneValue("type", 0));
-  assertParsingThrows(createMinimumBodyWithOneValue("type", 1));
-  assertParsingThrows(createMinimumBodyWithOneValue("type", 4));
-  assertParsingThrows(createMinimumBodyWithOneValue("type", "document"));
-
-  assertParsingThrows(createMinimumBodyWithOneValue("type", "dogfather"));
-  assertParsingThrows(
-      createMinimumBodyWithOneValue("type", VPackSlice::emptyObjectSlice()));
-  assertParsingThrows(
-      createMinimumBodyWithOneValue("type", VPackSlice::emptyArraySlice()));
-}
-
-TEST_F(PlanCollectionUserAPITest, test_shardingStrategy) {
-  auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,
-                                 std::string const& expected) {
-    auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
-    EXPECT_EQ(testee->shardingStrategy, expected)
-        << "Parsing error in " << body.toJson();
-  };
-  std::vector<std::string> allowedStrategies{"",
-                                             "hash",
-                                             "enterprise-hash-smart-edge",
-                                             "community-compat",
-                                             "enterprise-compat",
-                                             "enterprise-smart-edge-compat"};
-
-  for (auto const& strategy : allowedStrategies) {
-    shouldBeEvaluatedTo(
-        createMinimumBodyWithOneValue("shardingStrategy", strategy), strategy);
-  }
-
-  GenerateFailsOnBool(shardingStrategy);
-  GenerateFailsOnNonEmptyString(shardingStrategy);
-  GenerateFailsOnInteger(shardingStrategy);
-  GenerateFailsOnDouble(shardingStrategy);
-  GenerateFailsOnArray(shardingStrategy);
-  GenerateFailsOnObject(shardingStrategy);
+  EXPECT_TRUE(testee->options.avoidServers.empty());
 }
 
 TEST_F(PlanCollectionUserAPITest,
@@ -263,7 +133,7 @@ TEST_F(PlanCollectionUserAPITest,
     auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
     ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                              << testee.result().errorMessage();
-    EXPECT_EQ(testee->writeConcern, 3);
+    EXPECT_EQ(testee->mutableProperties.writeConcern, 3);
   }
   {
     // We change order of attributes in the input vpack
@@ -281,7 +151,7 @@ TEST_F(PlanCollectionUserAPITest,
     auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
     ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                              << testee.result().errorMessage();
-    EXPECT_EQ(testee->writeConcern, 3);
+    EXPECT_EQ(testee->mutableProperties.writeConcern, 3);
   }
 }
 
@@ -289,7 +159,7 @@ TEST_F(PlanCollectionUserAPITest, test_satelliteReplicationFactor) {
   auto shouldBeEvaluatedTo = [&](VPackBuilder const& body, uint64_t number) {
     auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
     ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-    EXPECT_EQ(testee->replicationFactor, number)
+    EXPECT_EQ(testee->mutableProperties.replicationFactor, number)
         << "Parsing error in " << body.toJson();
   };
 
@@ -304,7 +174,7 @@ TEST_F(PlanCollectionUserAPITest, test_configureMaxNumberOfShards) {
   // First Step of parsing has to pass
   auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
   ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-  EXPECT_EQ(testee->numberOfShards, 1024)
+  EXPECT_EQ(testee->constantProperties.numberOfShards, 1024)
       << "Parsing error in " << body.toJson();
 
   PlanCollection::DatabaseConfiguration config{};
@@ -348,8 +218,9 @@ TEST_F(PlanCollectionUserAPITest, test_configureMaxNumberOfShards) {
       // 16 < 1024 should fail
       config.maxNumberOfShards = 16;
       auto res = testee->validateDatabaseConfiguration(config);
-      EXPECT_FALSE(res.ok()) << "Configured " << config.maxNumberOfShards
-                             << " but " << testee->numberOfShards << "passed.";
+      EXPECT_FALSE(res.ok())
+          << "Configured " << config.maxNumberOfShards << " but "
+          << testee->constantProperties.numberOfShards << "passed.";
     }
   }
 }
@@ -368,8 +239,8 @@ TEST_F(PlanCollectionUserAPITest, test_isSmartCannotBeSatellite) {
   auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
   ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                            << testee.result().errorMessage();
-  EXPECT_EQ(testee->isSmart, true);
-  EXPECT_EQ(testee->replicationFactor, 0);
+  EXPECT_EQ(testee->constantProperties.isSmart, true);
+  EXPECT_EQ(testee->mutableProperties.replicationFactor, 0);
 
   // No special config required, this always fails
   PlanCollection::DatabaseConfiguration config{};
@@ -391,8 +262,8 @@ TEST_F(PlanCollectionUserAPITest, test_isSmartChildCannotBeSatellite) {
   auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
   ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                            << testee.result().errorMessage();
-  EXPECT_EQ(testee->isSmartChild, true);
-  EXPECT_EQ(testee->replicationFactor, 0);
+  EXPECT_EQ(testee->internalProperties.isSmartChild, true);
+  EXPECT_EQ(testee->mutableProperties.replicationFactor, 0);
 
   // No special config required, this always fails
   PlanCollection::DatabaseConfiguration config{};
@@ -413,16 +284,15 @@ TEST_F(PlanCollectionUserAPITest, test_oneShardDBCannotBeSatellite) {
   auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
   ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                            << testee.result().errorMessage();
-  EXPECT_EQ(testee->replicationFactor, 0);
+  EXPECT_EQ(testee->mutableProperties.replicationFactor, 0);
 
   // No special config required, this always fails
   PlanCollection::DatabaseConfiguration config{};
   config.isOneShardDB = true;
   auto res = testee->validateDatabaseConfiguration(config);
-  EXPECT_FALSE(res.ok()) << "Configured a oneShardDB collection as 'satellite'.";
+  EXPECT_FALSE(res.ok())
+      << "Configured a oneShardDB collection as 'satellite'.";
 }
-
-
 
 TEST_F(PlanCollectionUserAPITest, test_atMost8ShardKeys) {
   // We split this string up into characters, to use those as shardKey
@@ -438,7 +308,7 @@ TEST_F(PlanCollectionUserAPITest, test_atMost8ShardKeys) {
     // The first 8 have to be allowed
     auto testee = PlanCollection::fromCreateAPIBody(body.slice(), {});
     ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-    EXPECT_EQ(testee->shardKeys, shardKeysToTest)
+    EXPECT_EQ(testee->constantProperties.shardKeys, shardKeysToTest)
         << "Parsing error in " << body.toJson();
   }
 
@@ -553,7 +423,7 @@ TEST_F(PlanCollectionUserAPITest, test_distributeShardsLike_default) {
   auto body = createMinimumBodyWithOneValue("name", "test");
   auto testee = PlanCollection::fromCreateAPIBody(body.slice(), config);
   ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
-  EXPECT_EQ(testee->distributeShardsLike, defaultShardBy);
+  EXPECT_EQ(testee->constantProperties.distributeShardsLike, defaultShardBy);
 }
 
 TEST_F(PlanCollectionUserAPITest, test_oneShard_forcesDistributeShardsLike) {
@@ -568,7 +438,7 @@ TEST_F(PlanCollectionUserAPITest, test_oneShard_forcesDistributeShardsLike) {
   auto body = createMinimumBodyWithOneValue("distributeShardsLike", "test");
   auto testee = PlanCollection::fromCreateAPIBody(body.slice(), config);
   ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
-  EXPECT_EQ(testee->distributeShardsLike, "test");
+  EXPECT_EQ(testee->constantProperties.distributeShardsLike, "test");
 
   auto res = testee->validateDatabaseConfiguration(config);
   EXPECT_FALSE(res.ok()) << "Distribute shards like violates oneShard database";
@@ -586,7 +456,7 @@ TEST_F(PlanCollectionUserAPITest, test_oneShard_moreShards) {
   auto testee = PlanCollection::fromCreateAPIBody(body.slice(), config);
   // This could already fail, as soon as we have a context
   ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
-  EXPECT_EQ(testee->numberOfShards, 5);
+  EXPECT_EQ(testee->constantProperties.numberOfShards, 5);
 
   auto res = testee->validateDatabaseConfiguration(config);
   EXPECT_FALSE(res.ok()) << "Number of Shards violates oneShard database";
@@ -604,32 +474,9 @@ TEST_F(PlanCollectionUserAPITest, test_smartJoinAttribute_cannot_be_empty) {
 }
 
 // Tests for generic attributes without special needs
-GenerateBoolAttributeTest(PlanCollectionUserAPITest, waitForSync);
-GenerateBoolAttributeTest(PlanCollectionUserAPITest, doCompact);
-GenerateBoolAttributeTest(PlanCollectionUserAPITest, isSystem);
-GenerateBoolAttributeTest(PlanCollectionUserAPITest, isVolatile);
-GenerateBoolAttributeTest(PlanCollectionUserAPITest, cacheEnabled);
 
-GeneratePositiveIntegerAttributeTest(numberOfShards);
-GeneratePositiveIntegerAttributeTest(replicationFactor);
-GeneratePositiveIntegerAttributeTest(writeConcern);
 
-GenerateStringAttributeTest(PlanCollectionUserAPITest, distributeShardsLike);
-GenerateOptionalStringAttributeTest(PlanCollectionUserAPITest,
-                                    smartJoinAttribute);
-GenerateStringAttributeTest(PlanCollectionUserAPITest, globallyUniqueId);
 
-// Covers a non-documented API
-GenerateBoolAttributeTest(PlanCollectionUserAPITest, syncByRevision);
-GenerateBoolAttributeTest(PlanCollectionUserAPITest,
-                          usesRevisionsAsDocumentIds);
-GenerateBoolAttributeTest(PlanCollectionUserAPITest, isSmart);
-GenerateBoolAttributeTest(PlanCollectionUserAPITest, isDisjoint);
-GenerateStringAttributeTest(PlanCollectionUserAPITest, id);
-GenerateStringAttributeTest(PlanCollectionUserAPITest, smartGraphAttribute);
-
-GeneratePositiveIntegerAttributeTestInternal(minReplicationFactor,
-                                             writeConcern);
 namespace {
 enum AllowedFlags : uint8_t {
   Allways = 0,
@@ -715,7 +562,8 @@ TEST_P(PlanCollectionNamesTest, test_allowed_without_flags) {
 
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->name, getName()) << "Parsing error in " << body.toJson();
+    EXPECT_EQ(testee->mutableProperties.name, getName())
+        << "Parsing error in " << body.toJson();
   } else {
     EXPECT_FALSE(result.ok()) << getErrorReason();
   }
@@ -740,7 +588,8 @@ TEST_P(PlanCollectionNamesTest, test_allowed_with_isSystem_flag) {
 
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->name, getName()) << "Parsing error in " << body.toJson();
+    EXPECT_EQ(testee->mutableProperties.name, getName())
+        << "Parsing error in " << body.toJson();
   } else {
     EXPECT_FALSE(result.ok()) << getErrorReason();
   }
@@ -764,7 +613,8 @@ TEST_P(PlanCollectionNamesTest, test_allowed_with_extendendNames_flag) {
 
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->name, getName()) << "Parsing error in " << body.toJson();
+    EXPECT_EQ(testee->mutableProperties.name, getName())
+        << "Parsing error in " << body.toJson();
   } else {
     EXPECT_FALSE(result.ok()) << getErrorReason();
   }
@@ -790,7 +640,8 @@ TEST_P(PlanCollectionNamesTest,
 
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->name, getName()) << "Parsing error in " << body.toJson();
+    EXPECT_EQ(testee->mutableProperties.name, getName())
+        << "Parsing error in " << body.toJson();
   } else {
     EXPECT_FALSE(result.ok()) << getErrorReason();
   }
@@ -839,9 +690,9 @@ TEST_P(PlanCollectionReplicationFactorTest, test_noMaxReplicationFactor) {
   // Parsing should always be okay
 
   ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-  EXPECT_EQ(testee->writeConcern, writeConcern())
+  EXPECT_EQ(testee->mutableProperties.writeConcern, writeConcern())
       << "Parsing error in " << body.toJson();
-  EXPECT_EQ(testee->replicationFactor, replicationFactor())
+  EXPECT_EQ(testee->mutableProperties.replicationFactor, replicationFactor())
       << "Parsing error in " << body.toJson();
 
   auto result = testee->validateDatabaseConfiguration(config);
@@ -851,8 +702,8 @@ TEST_P(PlanCollectionReplicationFactorTest, test_noMaxReplicationFactor) {
   bool isAllowed = writeConcern() <= replicationFactor();
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->writeConcern, writeConcern());
-    EXPECT_EQ(testee->replicationFactor, replicationFactor());
+    EXPECT_EQ(testee->mutableProperties.writeConcern, writeConcern());
+    EXPECT_EQ(testee->mutableProperties.replicationFactor, replicationFactor());
   } else {
     EXPECT_FALSE(result.ok()) << result.errorMessage();
   }
@@ -872,9 +723,9 @@ TEST_P(PlanCollectionReplicationFactorTest, test_maxReplicationFactor) {
   // Parsing should always be okay
 
   ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-  EXPECT_EQ(testee->writeConcern, writeConcern())
+  EXPECT_EQ(testee->mutableProperties.writeConcern, writeConcern())
       << "Parsing error in " << body.toJson();
-  EXPECT_EQ(testee->replicationFactor, replicationFactor())
+  EXPECT_EQ(testee->mutableProperties.replicationFactor, replicationFactor())
       << "Parsing error in " << body.toJson();
 
   auto result = testee->validateDatabaseConfiguration(config);
@@ -885,8 +736,8 @@ TEST_P(PlanCollectionReplicationFactorTest, test_maxReplicationFactor) {
                    replicationFactor() <= config.maxReplicationFactor;
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->writeConcern, writeConcern());
-    EXPECT_EQ(testee->replicationFactor, replicationFactor());
+    EXPECT_EQ(testee->mutableProperties.writeConcern, writeConcern());
+    EXPECT_EQ(testee->mutableProperties.replicationFactor, replicationFactor());
   } else {
     EXPECT_FALSE(result.ok()) << result.errorMessage();
   }
@@ -906,9 +757,9 @@ TEST_P(PlanCollectionReplicationFactorTest, test_minReplicationFactor) {
   // Parsing should always be okay
 
   ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-  EXPECT_EQ(testee->writeConcern, writeConcern())
+  EXPECT_EQ(testee->mutableProperties.writeConcern, writeConcern())
       << "Parsing error in " << body.toJson();
-  EXPECT_EQ(testee->replicationFactor, replicationFactor())
+  EXPECT_EQ(testee->mutableProperties.replicationFactor, replicationFactor())
       << "Parsing error in " << body.toJson();
 
   auto result = testee->validateDatabaseConfiguration(config);
@@ -919,8 +770,8 @@ TEST_P(PlanCollectionReplicationFactorTest, test_minReplicationFactor) {
                    replicationFactor() >= config.minReplicationFactor;
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->writeConcern, writeConcern());
-    EXPECT_EQ(testee->replicationFactor, replicationFactor());
+    EXPECT_EQ(testee->mutableProperties.writeConcern, writeConcern());
+    EXPECT_EQ(testee->mutableProperties.replicationFactor, replicationFactor());
   } else {
     EXPECT_FALSE(result.ok()) << result.errorMessage();
   }
@@ -941,9 +792,9 @@ TEST_P(PlanCollectionReplicationFactorTest, test_nonoEnforce) {
   // Parsing should always be okay
 
   ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-  EXPECT_EQ(testee->writeConcern, writeConcern())
+  EXPECT_EQ(testee->mutableProperties.writeConcern, writeConcern())
       << "Parsing error in " << body.toJson();
-  EXPECT_EQ(testee->replicationFactor, replicationFactor())
+  EXPECT_EQ(testee->mutableProperties.replicationFactor, replicationFactor())
       << "Parsing error in " << body.toJson();
 
   auto result = testee->validateDatabaseConfiguration(config);
@@ -952,8 +803,8 @@ TEST_P(PlanCollectionReplicationFactorTest, test_nonoEnforce) {
   bool isAllowed = true;
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->writeConcern, writeConcern());
-    EXPECT_EQ(testee->replicationFactor, replicationFactor());
+    EXPECT_EQ(testee->mutableProperties.writeConcern, writeConcern());
+    EXPECT_EQ(testee->mutableProperties.replicationFactor, replicationFactor());
   } else {
     EXPECT_FALSE(result.ok()) << result.errorMessage();
   }
