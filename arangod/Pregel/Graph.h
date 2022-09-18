@@ -42,7 +42,7 @@ struct PregelID {
   PregelShard shard;  // uint16_t
 
   PregelID() : shard(InvalidPregelShard) {}
-  PregelID(PregelShard s, std::string  k) : key(std::move(k)), shard(s) {}
+  PregelID(PregelShard s, std::string k) : key(std::move(k)), shard(s) {}
 
   bool operator==(const PregelID& rhs) const {
     return shard == rhs.shard && key == rhs.key;
@@ -56,7 +56,9 @@ struct PregelID {
     return shard < rhs.shard || (shard == rhs.shard && key < rhs.key);
   }
 
-  [[nodiscard]] bool isValid() const { return shard != InvalidPregelShard && !key.empty(); }
+  [[nodiscard]] bool isValid() const {
+    return shard != InvalidPregelShard && !key.empty();
+  }
 };
 
 template<typename V, typename E>
@@ -81,7 +83,9 @@ class Edge {
     return {_toKey, _toKeyLength};
   }
   E& data() noexcept { return _data; }
-  [[nodiscard]] PregelShard targetShard() const noexcept { return _targetShard; }
+  [[nodiscard]] PregelShard targetShard() const noexcept {
+    return _targetShard;
+  }
 };
 
 template<typename V, typename E>
@@ -186,7 +190,9 @@ class Vertex {
 
   [[nodiscard]] uint16_t keyLength() const noexcept { return _keyLength; }
 
-  [[nodiscard]] std::string_view key() const { return std::string_view(_key, keyLength()); }
+  [[nodiscard]] std::string_view key() const {
+    return std::string_view(_key, keyLength());
+  }
   V const& data() const& { return _data; }
   V& data() & { return _data; }
 

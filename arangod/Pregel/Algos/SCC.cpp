@@ -87,7 +87,7 @@ struct SCCComputation
         // If this node doesn't have any parents or outgoing edges,
         // it can't be part of an SCC
         if (vertexState->parents.empty() || getEdgeCount() == 0) {
-          voteHalt(); // this makes the vertex inactive
+          voteHalt();  // this makes the vertex inactive
         } else {
           SenderMessage<uint64_t> message(pregelId(), vertexState->color);
           sendMessageToAllNeighbours(message);
@@ -120,9 +120,9 @@ struct SCCComputation
           SenderMessage<uint64_t> message(pregelId(), vertexState->color);
           // sendMessageToAllParents
           for (PregelID const& pid : vertexState->parents) {
-            sendMessage(pid, message); // todo: if the parent was deactivated
-                                       //  this reactivates it in the refactored
-                                       //  Pregel. Change this.
+            sendMessage(pid, message);  // todo: if the parent was deactivated
+                                        //  this reactivates it in the
+                                        //  refactored Pregel. Change this.
           }
         }
         break;
