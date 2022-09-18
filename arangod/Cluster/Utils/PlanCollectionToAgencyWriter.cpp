@@ -31,20 +31,19 @@
 using namespace arangodb;
 
 PlanCollectionToAgencyWriter::PlanCollectionToAgencyWriter(PlanCollection col)
-    : _collection{std::move(col)} {}
+    : _entry(std::move(col)) {}
 
 [[nodiscard]] AgencyOperation PlanCollectionToAgencyWriter::prepareOperation(
     std::string const& databaseName) const {
-  auto const collectionPath =
-      cluster::paths::root()
-          ->arango()
-          ->plan()
-          ->collections()
-          ->database(databaseName)
-          ->collection(_collection.internalProperties.id);
-  auto builder = std::make_shared<VPackBuilder>();
-  // Add all Collection properties
-  velocypack::serialize(*builder, _collection);
+  auto const collectionPath = cluster::paths::root()
+                                  ->arango()
+                                  ->plan()
+                                  ->collections()
+                                  ->database(databaseName)
+                                  ->collection(_entry.getCID());
+  // TODO: This is temporary
+  auto builder = std::make_shared<VPackBuilder>(_entry.toVPackDeprecated());
+  // velocypack::serialize(*builder, _entry);
   return AgencyOperation{collectionPath, AgencyValueOperationType::SET,
                          std::move(builder)};
 }

@@ -22,22 +22,27 @@
 
 #pragma once
 
-#include "Cluster/Utils/PlanCollectionEntry.h"
+#include "Basics/StaticStrings.h"
+#include "Cluster/ClusterTypes.h"
+#include "VocBase/Properties/UtilityInvariants.h"
+
+#include <string>
 
 namespace arangodb {
-
-class AgencyOperation;
-struct PlanCollection;
-
-struct PlanCollectionToAgencyWriter {
-  explicit PlanCollectionToAgencyWriter(PlanCollection col);
-
-  [[nodiscard]] AgencyOperation prepareOperation(
-      std::string const& databaseName) const;
-
- private:
-  // Information required for the collection to write
-  PlanCollectionEntry _entry;
+struct AgencyIsBuildingFlags {
+  bool isBuilding = true;
+  std::string coordinatorName{StaticStrings::Empty};
+  RebootId rebootId{0};
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, AgencyIsBuildingFlags& props) {
+  return f.object(props).fields(
+      f.field("isBuilding", props.isBuilding).fallback(f.keep()),
+      f.field("coordinator", props.coordinatorName)
+          .fallback(f.keep())
+          .invariant(UtilityInvariants::isNonEmpty),
+      f.field("coordinatorRebootId", props.rebootId).fallback(f.keep()));
+}
 
 }  // namespace arangodb

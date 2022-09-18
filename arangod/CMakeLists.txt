@@ -779,6 +779,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/MaintenanceFeature.cpp
   Cluster/MaintenanceRestHandler.cpp
   Cluster/MaintenanceWorker.cpp
+  Cluster/Utils/PlanCollectionEntry.cpp
   Cluster/Utils/PlanCollectionToAgencyWriter.cpp
   Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp

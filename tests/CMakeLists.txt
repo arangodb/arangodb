@@ -225,6 +225,7 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterInfoTest.cpp
   Cluster/PlanCollectionToAgencyWriterTest.cpp
+  Cluster/PlanCollectionEntryTest.cpp
   Cluster/QueryAnalyzerRevisionsTest.cpp
   Cluster/RebootTrackerTest.cpp
   Containers/EnumerateTest.cpp

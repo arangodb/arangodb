@@ -20,24 +20,29 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+
+#include "gtest/gtest.h"
 
 #include "Cluster/Utils/PlanCollectionEntry.h"
+#include "VocBase/Properties/PlanCollection.h"
 
-namespace arangodb {
+#include "Logger/LogMacros.h"
+#include "Inspection/VPack.h"
 
-class AgencyOperation;
-struct PlanCollection;
+#include <velocypack/Builder.h>
 
-struct PlanCollectionToAgencyWriter {
-  explicit PlanCollectionToAgencyWriter(PlanCollection col);
-
-  [[nodiscard]] AgencyOperation prepareOperation(
-      std::string const& databaseName) const;
-
- private:
-  // Information required for the collection to write
-  PlanCollectionEntry _entry;
+namespace arangodb::tests {
+class PlanCollectionEntryTest : public ::testing::Test {
+ protected:
 };
 
-}  // namespace arangodb
+TEST_F(PlanCollectionEntryTest, default_values) {
+  PlanCollection col{};
+  col.mutableProperties.name = "test";
+  PlanCollectionEntry entry{col};
+
+  auto builder = entry.toVPackDeprecated();
+  LOG_DEVEL << builder.toJson();
+}
+
+}
