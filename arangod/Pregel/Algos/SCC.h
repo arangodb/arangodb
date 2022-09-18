@@ -26,23 +26,43 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/CommonFormats.h"
 
-namespace arangodb {
-namespace pregel {
-namespace algos {
+namespace arangodb::pregel::algos {
 
-/// Finds strongly connected components of the graph.
-///
-/// 1. Each vertex starts with its vertex id as its "color".
-/// 2. Remove vertices which cannot be in a SCC (no incoming or no outgoing
-/// edges)
-/// 3. Propagate the color forward from each vertex, accept a neighbor's color
-/// if it's smaller than yours.
-///    At convergence, vertices with the same color represents all nodes that
-///    are visitable from the root of that color.
-/// 4. Reverse the graph.
-/// 5. Start at all roots, walk the graph. Visit a neighbor if it has the same
-/// color as you.
-///    All nodes visited belongs to the SCC identified by the root color.
+/** Finds strongly connected components of the graph.
+ *
+ * The algorithm is a simplification of the algorithm given in
+ * Da Yan, James Cheng, Kai Xing, Yi Lu, Wilfred Ng, Yingyi Bu,
+ * "Pregel Algorithms for Graph Connectivity Problems with Performance
+ * Guarantees", Proceedings of the VLDB Endowment, Volume 7, Issue 14, October
+ * 2014, pp. 1821–1832, http://www.vldb.org/pvldb/vol7/p1821-yan.pdf, see
+ * Section 6.1.
+ *
+ * 1. Each vertex starts with its vertex id as its "color".
+ * 2. Remove vertices which cannot be in an SCC (no incoming or no outgoing
+ * edges).
+ * 3. Propagate the color forward from each vertex, accept a predecessor's color
+ *    if it's smaller than yours. For the propagation, a vertex sends its color
+ *    to all its out-neighbors.
+ *    When the fixed point is reached, vertices with the same color are exactly
+ *    those reachable from the root of that color. Each vertex obtains the
+ *    least color of a vertex from that it is reachable.
+ * 4. Start at all vertices whose color did not change and propagate its color
+ *    backwards as long as the color does not change. For the propagation, a
+ *    vertex that received colors from its out-neighbors sends its color to all
+ *    its in-neighbors and becomes inactive.
+
+ *    When the fixed point is reached, every SCC that cannot be reached from a
+ *    vertex with an Id smaller than all Ids in the SCC is identified: all its
+ *    vertices are inactive (and will not become active any more) and they all
+ *    have the same color. The colors of all other vertices will be reset in the
+ *    next round and will never become the color of the SCC.
+ *
+ *    If there are SCCs that can be reached from a vertex with a smaller Id,
+ *    their vertices are active and the computation is repeated only for the
+ *    active vertices. For this, the algorithm goes to Step 1.
+ *
+ *    Otherwise, the algorithm terminates.
+ */
 
 struct SCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
  public:
@@ -51,18 +71,18 @@ struct SCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
       : SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>>(
             server, "scc", userParams) {}
 
-  GraphFormat<SCCValue, int8_t>* inputFormat() const override;
-  MessageFormat<SenderMessage<uint64_t>>* messageFormat() const override {
+  [[nodiscard]] GraphFormat<SCCValue, int8_t>* inputFormat() const override;
+  [[nodiscard]] MessageFormat<SenderMessage<uint64_t>>* messageFormat()
+      const override {
     return new SenderMessageFormat<uint64_t>();
   }
 
   VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>*
   createComputation(WorkerConfig const*) const override;
 
-  MasterContext* masterContext(VPackSlice userParams) const override;
+  [[nodiscard]] MasterContext* masterContext(
+      VPackSlice userParams) const override;
 
-  IAggregator* aggregator(std::string const& name) const override;
+  [[nodiscard]] IAggregator* aggregator(std::string const& name) const override;
 };
-}  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel::algos
