@@ -2201,7 +2201,7 @@ TEST_F(ValidateInspectorTest, validate_object_with_invariant_not_fulfilled) {
 TEST_F(ValidateInspectorTest,
        validate_object_with_invariant_Result_not_fulfilled) {
   {
-    InvariantWithResult i{.i = 0};
+    InvariantWithResult i{.i = 0, .s = ""};
     auto result = inspector.apply(i);
     ASSERT_FALSE(result.ok());
     EXPECT_EQ("Must not be zero", result.error());
