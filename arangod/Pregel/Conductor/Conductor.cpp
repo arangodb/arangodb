@@ -45,8 +45,8 @@
 #include "Pregel/Conductor/States/LoadingState.h"
 #include "Pregel/Conductor/States/State.h"
 #include "Pregel/Conductor/States/StoringState.h"
-#include "Pregel/Conductor/ClusterWorkerApi.h"
-#include "Pregel/Conductor/SingleServerWorkerApi.h"
+#include "Pregel/Conductor/WorkerApi.h"
+#include "Pregel/Connection/DirectConnection.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/ConductorStatus.h"
@@ -72,6 +72,7 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 #include "velocypack/Builder.h"
+#include "Pregel/Connection/NetworkConnection.h"
 
 #include <Inspection/VPack.h>
 #include <velocypack/Iterator.h>
@@ -351,18 +352,22 @@ auto Conductor::_initializeWorkers(VPackSlice additional) -> GraphLoadedFuture {
     TRI_ASSERT(vertexMap.size() == 1);
     auto [server, _] = *vertexMap.begin();
     _dbServers.push_back(server);
-    workers.emplace(server,
-                    std::make_unique<conductor::SingleServerWorkerApi>(
-                        _executionNumber, _feature, _vocbaseGuard.database()));
+    workers.emplace(
+        server, conductor::WorkerApi{server, _executionNumber,
+                                     std::make_unique<DirectConnection>(
+                                         _feature, _vocbaseGuard.database())});
   } else {
     for (auto const& [server, _] : vertexMap) {
       _dbServers.push_back(server);
-      workers.emplace(
-          server,
-          std::make_unique<conductor::ClusterWorkerApi>(
-              _executionNumber,
-              Connection::create(server, Utils::baseUrl(Utils::workerPrefix),
-                                 _vocbaseGuard.database())));
+      network::RequestOptions reqOpts;
+      reqOpts.timeout = network::Timeout(5.0 * 60.0);
+      reqOpts.database = _vocbaseGuard.database().name();
+      workers.emplace(server,
+                      conductor::WorkerApi{
+                          server, _executionNumber,
+                          std::make_unique<NetworkConnection>(
+                              Utils::baseUrl(Utils::workerPrefix),
+                              std::move(reqOpts), _vocbaseGuard.database())});
     }
   }
   _status = ConductorStatus::forWorkers(_dbServers);
@@ -440,7 +445,7 @@ auto Conductor::_initializeWorkers(VPackSlice additional) -> GraphLoadedFuture {
     b.close();
 
     auto graph = LoadGraph{.details = b};
-    results.emplace_back(workers[server]->loadGraph(graph));
+    results.emplace_back(workers[server].loadGraph(graph));
   }
   return futures::collectAll(results);
 }

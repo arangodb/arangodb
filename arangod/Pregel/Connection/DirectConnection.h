@@ -22,37 +22,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <cstdint>
-#include <string_view>
-#include "Basics/ResultT.h"
-#include "Cluster/ClusterTypes.h"
-#include "Futures/Future.h"
-#include "Network/ConnectionPool.h"
-#include "Pregel/WorkerConductorMessages.h"
-#include "velocypack/Builder.h"
-#include "Network/Methods.h"
+#include "Pregel/Connection/Connection.h"
+#include "Utils/DatabaseGuard.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb::pregel {
 
-template<typename T>
-concept RestMessage = requires(T a) {
-  { a.path } -> std::convertible_to<std::string>;
-};
-
-struct Connection {
- public:
-  static auto create(ServerID const& destinationId, std::string const& baseUrl,
-                     TRI_vocbase_t& vocbase) -> Connection;
-  Connection(ServerID destinationId, std::string baseUrl,
-             network::RequestOptions requestOptions,
-             network::ConnectionPool* connectionPool);
-  auto post(ModernMessage&& message) -> futures::Future<ResultT<ModernMessage>>;
+struct DirectConnection : Connection {
+  DirectConnection(PregelFeature& feature, TRI_vocbase_t& vocbase)
+      : _feature{feature}, _vocbaseGuard{vocbase} {}
+  auto send(Destination const& destination, ModernMessage&& message)
+      -> futures::Future<ResultT<ModernMessage>> override;
+  ~DirectConnection() = default;
 
  private:
-  ServerID _destinationId;
-  std::string _baseUrl;
-  network::RequestOptions _requestOptions;
-  network::ConnectionPool* _connectionPool;
+  PregelFeature& _feature;
+  const DatabaseGuard _vocbaseGuard;
 };
 
 }  // namespace arangodb::pregel

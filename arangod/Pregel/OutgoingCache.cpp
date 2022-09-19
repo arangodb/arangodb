@@ -24,7 +24,9 @@
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
+#include "Pregel/Graph.h"
 #include "Pregel/IncomingCache.h"
+#include "Pregel/Connection/NetworkConnection.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/WorkerConfig.h"
 
@@ -40,6 +42,8 @@
 #include "velocypack/Builder.h"
 
 #include <velocypack/Iterator.h>
+#include <cstddef>
+#include <cstdint>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -84,69 +88,66 @@ void ArrayOutCache<M>::appendMessage(PregelShard shard,
 }
 
 template<typename M>
+auto ArrayOutCache<M>::messagesToVPack(
+    std::unordered_map<std::string, std::vector<M>> const& messagesForVertices)
+    -> std::tuple<size_t, VPackBuilder> {
+  VPackBuilder messagesVPack;
+  size_t messageCount = 0;
+  {
+    VPackArrayBuilder ab(&messagesVPack);
+    for (auto const& [vertex, messages] : messagesForVertices) {
+      messagesVPack.add(VPackValue(vertex));  // key
+      {
+        VPackArrayBuilder ab2(&messagesVPack);
+        for (M const& message : messages) {
+          this->_format->addValue(messagesVPack, message);
+          messageCount++;
+        }
+      }
+    }
+  }
+  return {messageCount, messagesVPack};
+}
+
+template<typename M>
 void ArrayOutCache<M>::flushMessages() {
   if (this->_containedMessages == 0) {
     return;
   }
 
-  // LOG_TOPIC("7af7f", INFO, Logger::PREGEL) << "Beginning to send messages to
-  // other machines";
   uint64_t gss = this->_config->globalSuperstep();
   if (this->_sendToNextGSS) {
     gss += 1;
   }
-  VPackOptions options = VPackOptions::Defaults;
-  options.buildUnindexedArrays = true;
-  options.buildUnindexedObjects = true;
 
-  auto& server = this->_config->vocbase()->server();
-  auto const& nf = server.template getFeature<arangodb::NetworkFeature>();
-  network::ConnectionPool* pool = nf.pool();
   network::RequestOptions reqOpts;
   reqOpts.database = this->_config->database();
   reqOpts.skipScheduler = true;
+  auto connection =
+      NetworkConnection{this->_baseUrl, reqOpts, *this->_config->vocbase()};
 
-  std::vector<futures::Future<network::Response>> responses;
+  std::vector<futures::Future<Result>> responses;
   for (auto const& [shard, vertexMessageMap] : _shardMap) {
     if (vertexMessageMap.size() == 0) {
       continue;
     }
 
-    VPackBuilder messagesVPack(&options);
-    {
-      VPackArrayBuilder ab(&messagesVPack);
-      for (auto const& [vertex, messages] : vertexMessageMap) {
-        messagesVPack.add(VPackValue(vertex));  // key
-        {
-          VPackArrayBuilder ab2(&messagesVPack);
-          for (M const& message : messages) {
-            this->_format->addValue(messagesVPack, message);
-            if (this->_sendToNextGSS) {
-              this->_sendCountNextGSS++;
-            } else {
-              this->_sendCount++;
-            }
-          }
-        }
-      }
+    auto [shardMessageCount, messageVPack] = messagesToVPack(vertexMessageMap);
+    responses.emplace_back(connection.sendWithoutRetry(
+        Destination{Destination::Type::shard,
+                    this->_config->globalShardIDs()[shard]},
+        ModernMessage{.executionNumber = this->_config->executionNumber(),
+                      .payload = PregelMessage{
+                          .senderId = ServerState::instance()->getId(),
+                          .gss = gss,
+                          .shard = shard,
+                          .messages = messageVPack}}));
+
+    if (this->_sendToNextGSS) {
+      this->_sendCountNextGSS += shardMessageCount;
+    } else {
+      this->_sendCount += shardMessageCount;
     }
-    auto message = ModernMessage{
-        .executionNumber = this->_config->executionNumber(),
-        .payload = PregelMessage{.senderId = ServerState::instance()->getId(),
-                                 .gss = gss,
-                                 .shard = shard,
-                                 .messages = messagesVPack}};
-
-    // add a request
-    ShardID const& shardId = this->_config->globalShardIDs()[shard];
-
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder data(buffer, &options);
-    serialize(data, message);
-    responses.emplace_back(
-        network::sendRequest(pool, "shard:" + shardId, fuerte::RestVerb::Post,
-                             this->_baseUrl + Utils::modernMessagingPath,
-                             std::move(buffer), reqOpts));
   }
 
   futures::collectAll(responses).wait();
@@ -203,62 +204,56 @@ void CombiningOutCache<M>::appendMessage(PregelShard shard,
 }
 
 template<typename M>
+auto CombiningOutCache<M>::messagesToVPack(
+    std::unordered_map<std::string_view, M> const& messagesForVertices)
+    -> VPackBuilder {
+  VPackBuilder messagesVPack;
+  {
+    VPackArrayBuilder ab(&messagesVPack);
+    for (auto const& [vertex, message] : messagesForVertices) {
+      messagesVPack.add(VPackValuePair(vertex.data(), vertex.size(),
+                                       VPackValueType::String));  // key
+      this->_format->addValue(messagesVPack, message);            // value
+    }
+  }
+  return messagesVPack;
+}
+template<typename M>
 void CombiningOutCache<M>::flushMessages() {
   if (this->_containedMessages == 0) {
     return;
   }
 
   uint64_t gss = this->_config->globalSuperstep();
-  VPackOptions options = VPackOptions::Defaults;
-  options.buildUnindexedArrays = true;
-  options.buildUnindexedObjects = true;
 
-  auto& server = this->_config->vocbase()->server();
-  auto const& nf = server.template getFeature<arangodb::NetworkFeature>();
-  network::ConnectionPool* pool = nf.pool();
   network::RequestOptions reqOpts;
   reqOpts.database = this->_config->database();
   reqOpts.timeout = network::Timeout(180);
   reqOpts.skipScheduler = true;
+  auto connection =
+      NetworkConnection{this->_baseUrl, reqOpts, *this->_config->vocbase()};
 
-  std::vector<futures::Future<network::Response>> responses;
+  std::vector<futures::Future<Result>> responses;
   for (auto const& [shard, vertexMessageMap] : _shardMap) {
     if (vertexMessageMap.size() == 0) {
       continue;
     }
 
-    VPackBuilder messagesVPack(&options);
-    {
-      VPackArrayBuilder ab(&messagesVPack);
-      for (auto const& [vertex, message] : vertexMessageMap) {
-        messagesVPack.add(VPackValuePair(vertex.data(), vertex.size(),
-                                         VPackValueType::String));  // key
-        this->_format->addValue(messagesVPack, message);            // value
+    responses.emplace_back(connection.sendWithoutRetry(
+        Destination{Destination::Type::shard,
+                    this->_config->globalShardIDs()[shard]},
+        ModernMessage{.executionNumber = this->_config->executionNumber(),
+                      .payload = PregelMessage{
+                          .senderId = ServerState::instance()->getId(),
+                          .gss = gss,
+                          .shard = shard,
+                          .messages = messagesToVPack(vertexMessageMap)}}));
 
-        if (this->_sendToNextGSS) {
-          this->_sendCountNextGSS++;
-        } else {
-          this->_sendCount++;
-        }
-      }
+    if (this->_sendToNextGSS) {
+      this->_sendCountNextGSS += vertexMessageMap.size();
+    } else {
+      this->_sendCount += vertexMessageMap.size();
     }
-    auto message = ModernMessage{
-        .executionNumber = this->_config->executionNumber(),
-        .payload = PregelMessage{.senderId = ServerState::instance()->getId(),
-                                 .gss = gss,
-                                 .shard = shard,
-                                 .messages = messagesVPack}};
-
-    // add a request
-    ShardID const& shardId = this->_config->globalShardIDs()[shard];
-
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder data(buffer, &options);
-    serialize(data, message);
-    responses.emplace_back(
-        network::sendRequest(pool, "shard:" + shardId, fuerte::RestVerb::Post,
-                             this->_baseUrl + Utils::modernMessagingPath,
-                             std::move(buffer), reqOpts));
   }
 
   futures::collectAll(responses).wait();
