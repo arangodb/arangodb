@@ -284,7 +284,7 @@ endif()
 option(STATIC_EXECUTABLES "produce static executables" OFF)
 if (STATIC_EXECUTABLES)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
-  if (WINDOWS)
+  if (WIN32)
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
   else ()
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
@@ -448,9 +448,6 @@ option(HOMEBREW
 )
 
 if (WIN32)
-  set(WINDOWS TRUE)
-  set(MSBUILD TRUE)
-
   add_definitions(-D_USE_MATH_DEFINES)
   add_definitions(-DNOMINMAX)
   add_definitions(-D_WIN32_WINNT=0x600)
@@ -488,7 +485,7 @@ endif ()
 # user options
 # ------------------------------------------------------------------------------
 
-if (WINDOWS)
+if (WIN32)
   SET(USE_JEMALLOC OFF)
 elseif (APPLE)
   SET(USE_JEMALLOC OFF)
@@ -539,7 +536,7 @@ endif()
 # /usr/bin/ch(mod|own) to prevent the search
 # to find those files the NO_DEFAULT_PATH
 # argument is passed
-if (NOT WINDOWS)
+if (NOT WIN32)
   find_program (MAKE make gmake)
 
   find_program(
@@ -691,7 +688,7 @@ endif ()
 
 set(ARANGODB_SSE42_FLAGS "")
 set(BUILDING_FOR_ARM64 OFF)
-if (NOT WINDOWS)
+if (NOT WIN32)
   include(TargetArch)
 
   target_architecture(CMAKE_TARGET_ARCHITECTURES)
@@ -860,7 +857,7 @@ endif()
 ## LIBRARY RESOLV
 ################################################################################
 
-if (NOT WINDOWS)
+if (NOT WIN32)
   set(SYS_LIBS ${SYS_LIBS} resolv)
 
   if (NOT DARWIN)
