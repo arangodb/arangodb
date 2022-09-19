@@ -770,6 +770,14 @@ Result IResearchInvertedIndex::init(
                    errField + "': " + definition.toString()));
     return {TRI_ERROR_BAD_PARAMETER, errField};
   }
+  auto& cf = _collection.vocbase().server().getFeature<ClusterFeature>();
+  if (cf.isEnabled() && ServerState::instance()->isDBServer()) {
+    bool const wide =
+        _collection.id() == _collection.planId() && _collection.isAStub();
+    clusterCollectionName(_collection, wide ? nullptr : &cf.clusterInfo(),
+                          id().id(), false /*TODO meta.willIndexIdAttribute()*/,
+                          _meta._collectionName);
+  }
   if (ServerState::instance()->isSingleServer() ||
       ServerState::instance()->isDBServer()) {
     TRI_ASSERT(_meta._sort.sortCompression());

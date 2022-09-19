@@ -1,10 +1,18 @@
+v3.10.0 (XXXX-XX-XX)
+--------------------
+
+* Fixed BTS-1017: Fixed a graph search issue, where subqueries lead to incorrect
+  results when they have been pushed down fully onto a DBServer when they are in
+  a Hybrid Disjoint SmartGraph context and SatelliteCollections were part of it.
+
+* Fixed SEARCH-386 Fixed disjunction coverage in the inverted index with
+  non-default analyzers.
+
+* Fixed SEARCH-373  Fixed indexing same field as nested and as non-nested.
+
+
 v3.10.0-beta.1 (2022-09-14)
 ---------------------------
-
-* Fixed BTS-1017: Fixed a graph search issue, where subqueries lead to
-  incorrect results when they have been pushed down fully onto a DBServer
-  when they are in a Hybrid Disjoint SmartGraph context and
-  SatelliteCollections were part of it.
 
 * Display progress during Arangosearch link and inverted index recovery.
 
