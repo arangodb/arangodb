@@ -46,7 +46,8 @@ function optimizerRuleInvertedIndexTestSuite() {
       analyzers.save("my_geo", "geojson",{type: 'point'}, ["frequency", "norm", "position"]);
       col.ensureIndex({type: 'inverted',
                        name: 'InvertedIndexUnsorted',
-                       fields: ['data_field',
+                       fields: ['data_field', {name:'norm_field', analyzer: 'text_en'},
+                                {name:'norm_field2', analyzer: 'text_en'},
                                 {name:'searchField', searchField:true},
                                 {name:'geo_field', analyzer:'my_geo'},
                                 {name:'custom_field', analyzer:'text_en'}]});
@@ -60,12 +61,14 @@ function optimizerRuleInvertedIndexTestSuite() {
       for (let i = 0; i < docs; i++) {
         if (i % 10 === 0) {
           data.push({count:i,
+                     norm_field: 'fOx',
                      searchField:i,
                      data_field:'value' + i % 100,
                      custom_field:"quick brown",
                      geo_field:{type: 'Point', coordinates: [37.615895, 55.7039]}});
         } else {
           data.push({count:i,
+                     norm_field2: 'BOX',
                      data_field:'value' + i % 100,
                      custom_field: i,
                      geo_field:{type: 'Point', coordinates: [27.615895, 15.7039]}});  
@@ -90,7 +93,8 @@ function optimizerRuleInvertedIndexTestSuite() {
     testCreateDuplicate: function () {
        let idx = col.ensureIndex({type: 'inverted',
                         name: 'InvertedIndexUnsorted_duplicate',
-                        fields: ['data_field',
+                        fields: ['data_field', {name:'norm_field', analyzer: 'text_en'},
+                                {name:'norm_field2', analyzer: 'text_en'},
                                 {name:'searchField', searchField:true},
                                 {name:'geo_field', analyzer:'my_geo'},
                                 {name:'custom_field', analyzer:'text_en'}]});
@@ -439,6 +443,18 @@ function optimizerRuleInvertedIndexTestSuite() {
       const res = AQL_EXPLAIN(query.query, query.bindVars);
       const appliedRules = res.plan.rules;
       assertFalse(appliedRules.includes(useIndexes));
+    },
+    testDisjunctionOptimized: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER d.norm_field == 'fox' OR d.norm_field2 == 'box'
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      assertEqual(docs, executeRes.length);
     },
   };
 }
