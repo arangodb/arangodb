@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertFalse, arango */
+/* global getOptions, assertEqual, assertTrue, assertFalse, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for security-related server options
@@ -28,41 +28,39 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-let db = require('internal').db;
-const protocols = ["tcp", "h2"];
-const user = "root";
-
 if (getOptions === true) {
-  return {
-    'server.authentication': 'false'
+  let args = {
+    'javascript.copy-installation': 'true',
+    'javascript.allow-admin-execute': 'true',
   };
+  if (require("internal").platform === 'linux') {
+    // turn off splicing. this is a linux-specific startup option
+    args['use-splice-syscall'] =  'false';
+  }
+  return args;
 }
-const jsunity = require('jsunity');
-const request = require('@arangodb/request').request;
 
-let connectWith = function(protocol, user, password) {
-  let endpoint = arango.getEndpoint().replace(/^[a-zA-Z0-9\+]+:/, protocol + ':');
-  arango.reconnect(endpoint, db._name(), user, password);
-};
+const db = require("@arangodb").db;
+const fs = require("fs");
+const jsunity = require('jsunity');
 
 function testSuite() {
+  const errors = require('@arangodb').errors;
 
   return {
-
-    tearDown: function() {
-      connectWith(protocols[0], user, "");
+    testCanExecuteAction : function() {
+      // fetch server-side database directory name
+      let data = "return require('@arangodb').db._path();";
+      let dbPath = arango.POST("/_admin/execute", data);
+      let jsPath = fs.join(dbPath, "js");
+      assertTrue(fs.exists(jsPath));
+      assertTrue(fs.exists(fs.join(jsPath, "node")));
+      assertTrue(fs.exists(fs.join(jsPath, "node", "node_modules")));
+      assertTrue(fs.exists(fs.join(jsPath, "node", "node_modules", "lodash")));
+      assertFalse(fs.exists(fs.join(jsPath, "node", "eslint")));
     },
-
-    testHeader: function() {
-      protocols.forEach((protocol) => {
-        connectWith(protocol, user, "");
-        let result = arango.GET_RAW("/_api/version");
-        assertEqual(200, result.code);
-        assertFalse(result.headers.hasOwnProperty('www-authenticate'));
-      });
-    },
+    
   };
 }
-
 jsunity.run(testSuite);
 return jsunity.done();
