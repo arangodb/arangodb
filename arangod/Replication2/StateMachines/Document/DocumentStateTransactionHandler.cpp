@@ -33,10 +33,7 @@ namespace {
 
 auto shouldIgnoreError(arangodb::OperationResult const& res) noexcept -> bool {
   auto ignoreError = [](ErrorCode code) {
-    return code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
-           // TODO - should not be necessary once we cancel transactions when we
-           // loose leadership
-           code == TRI_ERROR_ARANGO_CONFLICT;
+    return code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
   };
 
   if (res.fail() && !ignoreError(res.errorNumber())) {
@@ -94,6 +91,8 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
     _transactions.clear();
     return Result{};
   }
+
+  TRI_ASSERT(doc.tid.isFollowerTransactionId());
 
   try {
     auto trx = ensureTransaction(doc);
