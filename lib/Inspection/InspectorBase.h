@@ -481,7 +481,7 @@ struct InspectorBase : detail::ContextContainer<Context> {
     bool loadValue(ValueType const& read, T v, Arg&& a, Args&&... args) {
       checkType<Arg>();
       if constexpr (std::is_constructible_v<ValueType, Arg>) {
-        if (read == a) {
+        if (read == static_cast<ValueType>(a)) {
           this->_value = v;
           return true;
         }
