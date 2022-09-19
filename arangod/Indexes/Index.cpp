@@ -645,24 +645,24 @@ Result Index::drop() {
 
 /// @brief default implementation for supportsFilterCondition
 Index::FilterCosts Index::supportsFilterCondition(
-    std::vector<std::shared_ptr<arangodb::Index>> const&,
-    arangodb::aql::AstNode const* /* node */,
-    arangodb::aql::Variable const* /* reference */, size_t itemsInIndex) const {
+    transaction::Methods& /*trx*/, std::vector<std::shared_ptr<Index>> const&,
+    aql::AstNode const* /* node */, aql::Variable const* /* reference */,
+    size_t itemsInIndex) const {
   // by default no filter conditions are supported
   return Index::FilterCosts::defaultCosts(itemsInIndex);
 }
 
 /// @brief default implementation for supportsSortCondition
 Index::SortCosts Index::supportsSortCondition(
-    arangodb::aql::SortCondition const* /* sortCondition */,
-    arangodb::aql::Variable const* /* node */, size_t itemsInIndex) const {
+    aql::SortCondition const* /* sortCondition */,
+    aql::Variable const* /* node */, size_t itemsInIndex) const {
   // by default no sort conditions are supported
   return Index::SortCosts::defaultCosts(itemsInIndex);
 }
 
-arangodb::aql::AstNode* Index::specializeCondition(
-    arangodb::aql::AstNode* /* node */,
-    arangodb::aql::Variable const* /* reference */) const {
+aql::AstNode* Index::specializeCondition(
+    transaction::Methods& /*trx*/, aql::AstNode* /* node */,
+    aql::Variable const* /* reference */) const {
   // the default implementation should never be called
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -688,18 +688,18 @@ std::unique_ptr<IndexIterator> Index::iteratorForCondition(
 
 /// @brief perform some base checks for an index condition part
 bool Index::canUseConditionPart(
-    arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
-    arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
-    arangodb::containers::FlatHashSet<std::string>& nonNullAttributes,
+    aql::AstNode const* access, aql::AstNode const* other,
+    aql::AstNode const* op, aql::Variable const* reference,
+    containers::FlatHashSet<std::string>& nonNullAttributes,
     bool isExecution) const {
   if (_sparse) {
-    if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN) {
+    if (op->type == aql::NODE_TYPE_OPERATOR_BINARY_NIN) {
       return false;
     }
 
-    if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
-        (other->type == arangodb::aql::NODE_TYPE_EXPANSION ||
-         other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
+    if (op->type == aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+        (other->type == aql::NODE_TYPE_EXPANSION ||
+         other->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
       // value IN a.b  OR  value IN a.b[*]
       if (!access->isConstant()) {
         return false;
@@ -710,8 +710,8 @@ bool Index::canUseConditionPart(
         return false;
       }
       */
-    } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
-               access->type == arangodb::aql::NODE_TYPE_EXPANSION) {
+    } else if (op->type == aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+               access->type == aql::NODE_TYPE_EXPANSION) {
       // value[*] IN a.b
       if (!other->isConstant()) {
         return false;
@@ -722,15 +722,15 @@ bool Index::canUseConditionPart(
         return false;
       }
       */
-    } else if (access->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    } else if (access->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
       // a.b == value  OR  a.b IN values
 
-      if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT) {
+      if (op->type == aql::NODE_TYPE_OPERATOR_BINARY_GT) {
         // > anything also excludes "null". now note that this attribute cannot
         // become null range definitely exludes the "null" value
         ::markAsNonNull(op, access, nonNullAttributes);
-      } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
-                 op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE) {
+      } else if (op->type == aql::NODE_TYPE_OPERATOR_BINARY_LT ||
+                 op->type == aql::NODE_TYPE_OPERATOR_BINARY_LE) {
         // <  and  <= are not supported with sparse indexes as this may include
         // null values
         if (::canBeNull(op, access, nonNullAttributes)) {
@@ -742,12 +742,12 @@ bool Index::canUseConditionPart(
       }
 
       if (other->isConstant()) {
-        if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE &&
+        if (op->type == aql::NODE_TYPE_OPERATOR_BINARY_NE &&
             other->isNullValue()) {
           // != null. now note that a certain attribute cannot become null
           ::markAsNonNull(op, access, nonNullAttributes);
           return true;
-        } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE &&
+        } else if (op->type == aql::NODE_TYPE_OPERATOR_BINARY_GE &&
                    !other->isNullValue()) {
           // >= non-null. now note that a certain attribute cannot become null
           ::markAsNonNull(op, access, nonNullAttributes);
@@ -755,8 +755,8 @@ bool Index::canUseConditionPart(
         }
 
         if (other->isNullValue() &&
-            (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
-             op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE)) {
+            (op->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+             op->type == aql::NODE_TYPE_OPERATOR_BINARY_GE)) {
           // ==  and  >= null are not supported with sparse indexes for the same
           // reason
           if (::canBeNull(op, access, nonNullAttributes)) {
@@ -766,8 +766,8 @@ bool Index::canUseConditionPart(
           return true;
         }
 
-        if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
-            other->type == arangodb::aql::NODE_TYPE_ARRAY) {
+        if (op->type == aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+            other->type == aql::NODE_TYPE_ARRAY) {
           size_t const n = other->numMembers();
 
           for (size_t i = 0; i < n; ++i) {
@@ -795,7 +795,7 @@ bool Index::canUseConditionPart(
     return true;
   }
 
-  if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE) {
+  if (op->type == aql::NODE_TYPE_OPERATOR_BINARY_NE) {
     // none of the indexes can use !=, so we can exit here
     // note that this function may have been called for operator !=. this is
     // necessary to track the non-null attributes, e.g. attr != null, so we can
@@ -805,22 +805,22 @@ bool Index::canUseConditionPart(
   }
 
   // test if the reference variable is contained on both sides of the expression
-  arangodb::aql::VarSet variables;
-  if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
-      (other->type == arangodb::aql::NODE_TYPE_EXPANSION ||
-       other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
+  aql::VarSet variables;
+  if (op->type == aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+      (other->type == aql::NODE_TYPE_EXPANSION ||
+       other->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
     // value IN a.b  OR  value IN a.b[*]
-    arangodb::aql::Ast::getReferencedVariables(access, variables);
+    aql::Ast::getReferencedVariables(access, variables);
     if (variables.find(reference) != variables.end()) {
       variables.clear();
-      arangodb::aql::Ast::getReferencedVariables(other, variables);
+      aql::Ast::getReferencedVariables(other, variables);
     }
   } else {
     // a.b == value  OR  a.b IN values
     if (!other->isConstant()) {
       // don't look for referenced variables if we only access a
       // constant value (there will be no variables then...)
-      arangodb::aql::Ast::getReferencedVariables(other, variables);
+      aql::Ast::getReferencedVariables(other, variables);
     }
   }
 
@@ -864,7 +864,7 @@ void Index::expandInSearchValues(VPackSlice const base,
     }
 
     std::unordered_map<size_t, std::vector<VPackSlice>> elements;
-    arangodb::basics::VelocyPackHelper::VPackLess<true> sorter;
+    basics::VelocyPackHelper::VPackLess<true> sorter;
     size_t n = static_cast<size_t>(oneLookup.length());
     for (VPackValueLength i = 0; i < n; ++i) {
       VPackSlice current = oneLookup.at(i);
@@ -887,12 +887,11 @@ void Index::expandInSearchValues(VPackSlice const base,
           return;
         }
 
-        std::unordered_set<VPackSlice,
-                           arangodb::basics::VelocyPackHelper::VPackHash,
-                           arangodb::basics::VelocyPackHelper::VPackEqual>
+        std::unordered_set<VPackSlice, basics::VelocyPackHelper::VPackHash,
+                           basics::VelocyPackHelper::VPackEqual>
             tmp(static_cast<size_t>(nList),
-                arangodb::basics::VelocyPackHelper::VPackHash(),
-                arangodb::basics::VelocyPackHelper::VPackEqual());
+                basics::VelocyPackHelper::VPackHash(),
+                basics::VelocyPackHelper::VPackEqual());
 
         for (VPackSlice el : VPackArrayIterator(inList)) {
           tmp.emplace(el);
@@ -945,7 +944,7 @@ void Index::expandInSearchValues(VPackSlice const base,
 /// @brief whether or not the index covers all the attributes passed in.
 /// the function may modify the projections by setting the coveringIndexPosition
 /// value in it.
-bool Index::covers(arangodb::aql::Projections& projections) const {
+bool Index::covers(aql::Projections& projections) const {
   size_t const n = projections.size();
 
   if (n == 0) {
@@ -983,7 +982,7 @@ bool Index::covers(arangodb::aql::Projections& projections) const {
       // projection on  a.b.c
       if (k >= field.size() && k != std::numeric_limits<size_t>::max()) {
         TRI_ASSERT(k > 0);
-        TRI_ASSERT(k < arangodb::aql::Projections::kNoCoveringIndexPosition);
+        TRI_ASSERT(k < aql::Projections::kNoCoveringIndexPosition);
         projections[i].coveringIndexPosition = static_cast<uint16_t>(j);
         projections[i].coveringIndexCutoff = static_cast<uint16_t>(k);
         found = true;
@@ -999,7 +998,7 @@ bool Index::covers(arangodb::aql::Projections& projections) const {
   return true;
 }
 
-void Index::warmup(arangodb::transaction::Methods*,
+void Index::warmup(transaction::Methods*,
                    std::shared_ptr<basics::LocalTaskQueue>) {
   // Do nothing. If an index needs some warmup
   // it has to explicitly implement it.
@@ -1039,7 +1038,7 @@ void Index::addErrorMsg(result::Error& r, std::string const& key) const {
   }
 }
 
-double Index::getTimestamp(arangodb::velocypack::Slice const& doc,
+double Index::getTimestamp(velocypack::Slice const& doc,
                            std::string const& attributeName) const {
   VPackSlice value = doc.get(attributeName);
 
@@ -1075,19 +1074,18 @@ std::string const& Index::getAttribute() const {
   return field.name;
 }
 
-AttributeAccessParts::AttributeAccessParts(
-    arangodb::aql::AstNode const* comparison,
-    arangodb::aql::Variable const* variable)
+AttributeAccessParts::AttributeAccessParts(aql::AstNode const* comparison,
+                                           aql::Variable const* variable)
     : comparison(comparison),
       attribute(nullptr),
       value(nullptr),
-      opType(arangodb::aql::NODE_TYPE_NOP) {
+      opType(aql::NODE_TYPE_NOP) {
   // first assume a.b == value
   attribute = comparison->getMember(0);
   value = comparison->getMember(1);
   opType = comparison->type;
 
-  if (attribute->type != arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+  if (attribute->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
     // got value == a.b  ->  flip the two sides
     attribute = comparison->getMember(1);
     value = comparison->getMember(0);
@@ -1098,8 +1096,7 @@ AttributeAccessParts::AttributeAccessParts(
   TRI_ASSERT(attribute->isAttributeAccessForVariable(variable, true));
 }
 
-void Index::normalizeFilterCosts(arangodb::Index::FilterCosts& costs,
-                                 arangodb::Index const* idx,
+void Index::normalizeFilterCosts(Index::FilterCosts& costs, Index const* idx,
                                  size_t itemsInIndex, size_t invocations) {
   // number of fields to consider for this index. this is normally
   // equivalent to the number of fields of the index, but also adds the
@@ -1135,9 +1132,9 @@ void Index::normalizeFilterCosts(arangodb::Index::FilterCosts& costs,
 }
 
 /// @brief set fields from slice
-std::vector<std::vector<arangodb::basics::AttributeName>> Index::parseFields(
+std::vector<std::vector<basics::AttributeName>> Index::parseFields(
     VPackSlice fields, bool allowEmpty, bool allowExpansion) {
-  std::vector<std::vector<arangodb::basics::AttributeName>> result;
+  std::vector<std::vector<basics::AttributeName>> result;
 
   if (fields.isArray()) {
     size_t const n = static_cast<size_t>(fields.length());
@@ -1149,7 +1146,7 @@ std::vector<std::vector<arangodb::basics::AttributeName>> Index::parseFields(
                                        "invalid index description");
       }
 
-      std::vector<arangodb::basics::AttributeName> parsedAttributes;
+      std::vector<basics::AttributeName> parsedAttributes;
       TRI_ParseAttributeString(name.copyString(), parsedAttributes,
                                allowExpansion);
       result.emplace_back(std::move(parsedAttributes));
@@ -1163,10 +1160,10 @@ std::vector<std::vector<arangodb::basics::AttributeName>> Index::parseFields(
   return result;
 }
 
-std::vector<std::vector<arangodb::basics::AttributeName>> Index::mergeFields(
-    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields1,
-    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields2) {
-  std::vector<std::vector<arangodb::basics::AttributeName>> result;
+std::vector<std::vector<basics::AttributeName>> Index::mergeFields(
+    std::vector<std::vector<basics::AttributeName>> const& fields1,
+    std::vector<std::vector<basics::AttributeName>> const& fields2) {
+  std::vector<std::vector<basics::AttributeName>> result;
   result.reserve(fields1.size() + fields2.size());
 
   result.insert(result.end(), fields1.begin(), fields1.end());
