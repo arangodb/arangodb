@@ -118,7 +118,12 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
   TRI_ASSERT(operation != OperationType::kAbortAllOngoingTrx);
   if (operation == OperationType::kCommit ||
       operation == OperationType::kAbort) {
-    _activeTransactions.getLockedGuard()->erase(transactionId);
+    if (_activeTransactions.getLockedGuard()->erase(transactionId) == 0) {
+      // we have not replicated anything for a transaction with this id, so
+      // there is no need to replicate the abort/commit operation
+      return LogIndex{};  // TODO - can we do this differently instead of
+                          // returning a dummy index/
+    }
   } else {
     _activeTransactions.getLockedGuard()->emplace(transactionId);
   }

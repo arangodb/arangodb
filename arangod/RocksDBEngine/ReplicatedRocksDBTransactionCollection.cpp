@@ -176,7 +176,10 @@ auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
   // also covers the case that ReplicatedRocksDBTransactionState instances can
   // be created on followers (but just for read-only access) in which case we
   // obviously must not attempt to fetch the leaderState.
-  if (accessType() != AccessMode::Type::READ && _leaderState == nullptr) {
+  if (accessType() != AccessMode::Type::READ &&
+      // index creation is read-only, but might still use an exclusive lock
+      !_transaction->hasHint(transaction::Hints::Hint::INDEX_CREATION) &&
+      _leaderState == nullptr) {
     // Note that doing this here is only correct as long as we're not supporting
     // distributeShardsLike.
     // Later, we must make sure to get the very same state for all collections
