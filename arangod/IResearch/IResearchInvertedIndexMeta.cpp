@@ -539,8 +539,8 @@ bool InvertedIndexField::init(
     TRI_ASSERT(!rootMode);
     try {
       TRI_ASSERT(!parent._analyzers.empty());
-      _analyzers[0] = parent.analyzer();
       TRI_ParseAttributeString(slice.stringView(), fieldParts, !_isSearchField);
+      _analyzers[0] = parent.analyzer();
       TRI_ASSERT(!fieldParts.empty());
     } catch (arangodb::basics::Exception const& err) {
       LOG_TOPIC("1d04c", ERR, arangodb::iresearch::TOPIC)
@@ -631,18 +631,20 @@ bool InvertedIndexField::init(
               << "Error loading analyzer '" << name << "'";
           return false;
         }
-        if (!found) {
-          // save in referencedAnalyzers
-          analyzerDefinitions.emplace(analyzer);
-        }
+        // save in referencedAnalyzers
+        analyzerDefinitions.emplace(analyzer);
         _analyzers[0] =
             FieldMeta::Analyzer(std::move(analyzer), std::move(shortName));
       } else {
         errorField = kAnalyzerFieldName;
         return false;
       }
-    } else if (!rootMode) {
-      _analyzers[0] = parent.analyzer();
+    } else {
+      auto& analyzer = parent.analyzer();
+      if (!rootMode) {
+        _analyzers[0] = analyzer;
+      }
+      analyzerDefinitions.emplace(analyzer._pool);
     }
     if (slice.hasKey(kFeaturesFieldName)) {
       Features tmp;
