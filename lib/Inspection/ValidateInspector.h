@@ -34,8 +34,16 @@
 
 namespace arangodb::inspection {
 
-struct ValidateInspector : InspectorBase<ValidateInspector> {
+template<class Context = NoContext>
+struct ValidateInspector : InspectorBase<ValidateInspector<Context>, Context> {
+ protected:
+  using Base = InspectorBase<ValidateInspector, Context>;
+
+ public:
   static constexpr bool isLoading = true;
+
+  ValidateInspector() requires(!Base::hasContext) = default;
+  ValidateInspector(Context const& context) : Base(context) {}
 
   template<class T>
   [[nodiscard]] Status::Success value(T&) {
@@ -74,6 +82,10 @@ struct ValidateInspector : InspectorBase<ValidateInspector> {
   struct FallbackContainer {
     explicit FallbackContainer(U&&) {}
   };
+  template<class Fn>
+  struct FallbackFactoryContainer {
+    explicit FallbackFactoryContainer(Fn&&) {}
+  };
 
   template<class Invariant>
   struct InvariantContainer {
@@ -91,14 +103,16 @@ struct ValidateInspector : InspectorBase<ValidateInspector> {
   }
 
   template<class... Ts, class... Args>
-  Status::Success processVariant(UnqualifiedVariant<Ts...>& variant,
-                                 Args&&... args) {
+  Status::Success processVariant(
+      typename Base::template UnqualifiedVariant<Ts...>& variant,
+      Args&&... args) {
     return {};
   }
 
   template<class... Ts, class... Args>
-  Status::Success processVariant(QualifiedVariant<Ts...>& variant,
-                                 Args&&... args) {
+  Status::Success processVariant(
+      typename Base::template QualifiedVariant<Ts...>& variant,
+      Args&&... args) {
     return {};
   }
 
@@ -118,8 +132,8 @@ struct ValidateInspector : InspectorBase<ValidateInspector> {
 
   template<class T>
   [[nodiscard]] Status validateField(T&& field) {
-    auto name = getFieldName(field);
-    auto& value = getFieldValue(field);
+    auto name = Base::getFieldName(field);
+    auto& value = Base::getFieldValue(field);
 
     auto res = loadField(*this, name, true, value)         //
                | [&]() { return checkInvariant(field); };  //
@@ -131,16 +145,15 @@ struct ValidateInspector : InspectorBase<ValidateInspector> {
   }
 
   template<class T, class U>
-  Status checkInvariant(InvariantField<T, U>& field) {
-    using Field = InvariantField<T, U>;
-    return InspectorBase<ValidateInspector>::checkInvariant<
-        Field, Field::InvariantFailedError>(field.invariantFunc,
-                                            getFieldValue(field));
+  Status checkInvariant(typename Base::template InvariantField<T, U>& field) {
+    using Field = typename Base::template InvariantField<T, U>;
+    return Base::template checkInvariant<Field, Field::InvariantFailedError>(
+        field.invariantFunc, Base::getFieldValue(field));
   }
 
   template<class T>
   auto checkInvariant(T& field) {
-    if constexpr (!IsRawField<std::remove_cvref_t<T>>::value) {
+    if constexpr (!Base::template IsRawField<std::remove_cvref_t<T>>::value) {
       return checkInvariant(field.inner);
     } else {
       return Status::Success{};

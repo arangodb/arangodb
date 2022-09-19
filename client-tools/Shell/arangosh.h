@@ -36,6 +36,7 @@ class V8ShellFeature;
 class V8SecurityFeature;
 class V8PlatformFeature;
 class LanguageFeature;
+class FileSystemFeature;
 class ShellConsoleFeature;
 class TempFeature;
 class EncryptionFeature;
@@ -49,9 +50,9 @@ using ArangoshFeatures = TypeList<
     EncryptionFeature,
 #endif
     ShellConsoleFeature, HttpEndpointProvider, ConfigFeature, LoggerFeature,
-    RandomFeature, ShellColorsFeature, ShutdownFeature, SslFeature,
-    V8ShellFeaturePhase, ShellFeature, V8PlatformFeature, V8ShellFeature,
-    LanguageFeature, V8SecurityFeature, TempFeature>;
+    FileSystemFeature, RandomFeature, ShellColorsFeature, ShutdownFeature,
+    SslFeature, V8ShellFeaturePhase, ShellFeature, V8PlatformFeature,
+    V8ShellFeature, LanguageFeature, V8SecurityFeature, TempFeature>;
 using ArangoshServer = ApplicationServerT<ArangoshFeatures>;
 using ArangoshFeature = ApplicationFeatureT<ArangoshServer>;
 

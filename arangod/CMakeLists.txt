@@ -365,7 +365,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/EnumerateListExecutor.cpp
   Aql/EnumeratePathsExecutor.cpp
   Aql/ExecutionBlock.cpp
-  Aql/ExecutionBlockImpl.cpp
   Aql/ExecutionEngine.cpp
   Aql/ExecutionNode.cpp
   Aql/ExecutionNodeId.cpp

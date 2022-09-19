@@ -570,11 +570,12 @@ void Logger::log(char const* logid, char const* function, char const* file,
     // file and line
     if (_showLineNumber && file != nullptr) {
       char const* filename = file;
-      char const* shortened = strrchr(filename, TRI_DIR_SEPARATOR_CHAR);
-      if (shortened != nullptr) {
-        filename = shortened + 1;
+      if (_shortenFilenames) {
+        char const* shortened = strrchr(filename, TRI_DIR_SEPARATOR_CHAR);
+        if (shortened != nullptr) {
+          filename = shortened + 1;
+        }
       }
-
       out.append(",\"file\":");
       dumper.appendString(filename, strlen(filename));
     }
