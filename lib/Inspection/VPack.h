@@ -43,7 +43,7 @@ void serialize(Builder& builder, T& value) {
 }
 
 template<class T>
-auto serialize(T& value) -> std::shared_ptr<Builder> {
+[[nodiscard]] auto serialize(T& value) -> std::shared_ptr<Builder> {
   auto builder = std::make_shared<Builder>();
   serialize(*builder, value);
   return builder;
