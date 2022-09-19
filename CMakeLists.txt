@@ -690,27 +690,6 @@ else ()
   )
 endif ()
 
-# broken clock_gettime on MacOSX
-SET(USE_LOCAL_CLOCK_GETTIME FALSE)
-
-if (APPLE)
-  TRY_RUN(RUN_CLOCK_GETTIME
-          COMPILE_CLOCK_GETTIME
-          ${PROJECT_BINARY_DIR}/test_clock_gettime
-          ${CMAKE_SOURCE_DIR}/cmake/test_clock_gettime.c
-          OUTPUT_VARIABLE OUTPUT_CLOCK_GETTIME)
-
-  if (${COMPILE_CLOCK_GETTIME})
-    if (${RUN_CLOCK_GETTIME} STREQUAL "FAILED_TO_RUN")
-      set(USE_LOCAL_CLOCK_GETTIME TRUE)
-    endif ()
-  endif ()
-
-  if (USE_LOCAL_CLOCK_GETTIME)
-    message(STATUS "using a home-made clock_gettime")
-  endif ()
-endif ()
-
 ################################################################################
 ## TARGET ARCHITECTURE
 ################################################################################
