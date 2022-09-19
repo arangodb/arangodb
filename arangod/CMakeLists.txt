@@ -249,234 +249,6 @@ set(LIB_ARANGO_GRAPH_SOURCES
   RestHandler/RestGraphHandler.cpp
 )
 
-set(LIB_ARANGO_PREGEL_AIR_SOURCES
-  Pregel/Algos/AIR/AIR.cpp
-  Pregel/Algos/AIR/AbstractAccumulator.cpp
-  Pregel/Algos/AIR/AccumulatorOptions.cpp
-  Pregel/Algos/AIR/Accumulators.cpp
-  Pregel/Algos/AIR/EdgeData.cpp
-  Pregel/Algos/AIR/GraphFormat.cpp
-  Pregel/Algos/AIR/MasterContext.cpp
-  Pregel/Algos/AIR/MessageData.cpp
-  Pregel/Algos/AIR/MessageFormat.cpp
-  Pregel/Algos/AIR/VertexComputation.cpp
-  Pregel/Algos/AIR/VertexData.cpp
-  Pregel/Algos/AIR/WorkerContext.cpp
-)
-
-set(LIB_ARANGO_PREGEL_SOURCES
-  Pregel/AggregatorHandler.cpp
-  Pregel/AlgoRegistry.cpp
-  Pregel/Algos/AsyncSCC.cpp
-  Pregel/Algos/ConnectedComponents.cpp
-  Pregel/Algos/DMID/DMID.cpp
-  Pregel/Algos/EffectiveCloseness/EffectiveCloseness.cpp
-  Pregel/Algos/EffectiveCloseness/HLLCounter.cpp
-  Pregel/Algos/HITS.cpp
-  Pregel/Algos/HITSKleinberg.cpp
-  Pregel/Algos/LabelPropagation.cpp
-  Pregel/Algos/LineRank.cpp
-  Pregel/Algos/PageRank.cpp
-  Pregel/Algos/RecoveringPageRank.cpp
-  Pregel/Algos/SCC.cpp
-  Pregel/Algos/SLPA.cpp
-  Pregel/Algos/SSSP.cpp
-  Pregel/Algos/ShortestPath.cpp
-  Pregel/Algos/WCC.cpp
-  Pregel/Conductor.cpp
-  Pregel/GraphStore.cpp
-  Pregel/IncomingCache.cpp
-  Pregel/IndexHelpers.cpp
-  Pregel/OutgoingCache.cpp
-  Pregel/PregelFeature.cpp
-  Pregel/PregelMetrics.cpp
-  Pregel/Recovery.cpp
-  Pregel/Reports.cpp
-  Pregel/Reports.h
-  Pregel/Utils.cpp
-  Pregel/Worker.cpp
-  Pregel/WorkerConfig.cpp
-  RestHandler/RestControlPregelHandler.cpp
-  RestHandler/RestPregelHandler.cpp
-)
-
-set(LIB_ARANGO_AQL_SOURCES
-  Aql/Aggregator.cpp
-  Aql/AqlCall.cpp
-  Aql/AqlCallList.cpp
-  Aql/AqlCallSet.cpp
-  Aql/AqlCallStack.cpp
-  Aql/AqlExecuteResult.cpp
-  Aql/AqlFunctionFeature.cpp
-  Aql/AqlFunctionsInternalCache.cpp
-  Aql/AqlItemBlock.cpp
-  Aql/AqlItemBlockInputRange.cpp
-  Aql/AqlItemBlockManager.cpp
-  Aql/AqlItemBlockUtils.cpp
-  Aql/AqlItemMatrix.cpp
-  Aql/AqlTransaction.cpp
-  Aql/AqlValue.cpp
-  Aql/AqlValueGroup.cpp
-  Aql/AqlValueMaterializer.cpp
-  Aql/Arithmetic.cpp
-  Aql/Ast.cpp
-  Aql/AstHelper.cpp
-  Aql/AstNode.cpp
-  Aql/AstResources.cpp
-  Aql/AsyncExecutor.cpp
-  Aql/AttributeAccessor.cpp
-  Aql/AttributeNamePath.cpp
-  Aql/BindParameters.cpp
-  Aql/BlocksWithClients.cpp
-  Aql/CalculationExecutor.cpp
-  Aql/CalculationNodeVarFinder.cpp
-  Aql/ClusterNodes.cpp
-  Aql/CollectNode.cpp
-  Aql/CollectOptions.cpp
-  Aql/Collection.cpp
-  Aql/CollectionAccess.cpp
-  Aql/CollectionAccessingNode.cpp
-  Aql/Collections.cpp
-  Aql/Condition.cpp
-  Aql/ConditionFinder.cpp
-  Aql/ConstFetcher.cpp
-  Aql/ConstrainedSortExecutor.cpp
-  Aql/CostEstimate.cpp
-  Aql/CountCollectExecutor.cpp
-  Aql/DependencyProxy.cpp
-  Aql/DistinctCollectExecutor.cpp
-  Aql/DistributeClientBlock.cpp
-  Aql/DistributeConsumerNode.cpp
-  Aql/DistributeExecutor.cpp
-  Aql/DocumentExpressionContext.cpp
-  Aql/DocumentProducingHelper.cpp
-  Aql/DocumentProducingNode.cpp
-  Aql/EnumeratePathsNode.cpp
-  Aql/ClusterQuery.cpp
-  Aql/EngineInfoContainerCoordinator.cpp
-  Aql/EngineInfoContainerDBServerServerBased.cpp
-  Aql/EnumerateCollectionExecutor.cpp
-  Aql/EnumerateListExecutor.cpp
-  Aql/EnumeratePathsExecutor.cpp
-  Aql/ExecutionBlock.cpp
-  Aql/ExecutionEngine.cpp
-  Aql/ExecutionNode.cpp
-  Aql/ExecutionNodeId.cpp
-  Aql/ExecutionPlan.cpp
-  Aql/ExecutionState.cpp
-  Aql/ExecutionStats.cpp
-  Aql/ExecutorExpressionContext.cpp
-  Aql/Expression.cpp
-  Aql/FilterExecutor.cpp
-  Aql/FixedVarExpressionContext.cpp
-  Aql/Function.cpp
-  Aql/Functions.cpp
-  Aql/GraphNode.cpp
-  Aql/Graphs.cpp
-  Aql/HashedCollectExecutor.cpp
-  Aql/IResearchViewExecutor.cpp
-  Aql/IResearchViewNode.cpp
-  Aql/IResearchViewOptimizerRules.cpp
-  Aql/IdExecutor.cpp
-  Aql/InAndOutRowExpressionContext.cpp
-  Aql/IndexExecutor.cpp
-  Aql/IndexHint.cpp
-  Aql/IndexNode.cpp
-  Aql/IndexNodeOptimizerRules.cpp
-  Aql/InputAqlItemRow.cpp
-  Aql/InsertModifier.cpp
-  Aql/LateMaterializedExpressionContext.cpp
-  Aql/LateMaterializedOptimizerRulesCommon.cpp
-  Aql/LimitExecutor.cpp
-  Aql/LimitStats.cpp
-  Aql/MaterializeExecutor.cpp
-  Aql/ModificationExecutor.cpp
-  Aql/ModificationExecutorHelpers.cpp
-  Aql/ModificationExecutorInfos.cpp
-  Aql/ModificationNodes.cpp
-  Aql/ModificationOptions.cpp
-  Aql/MultiAqlItemBlockInputRange.cpp
-  Aql/MultiDependencySingleRowFetcher.cpp
-  Aql/MutexExecutor.cpp
-  Aql/MutexNode.cpp
-  Aql/NodeFinder.cpp
-  Aql/NonConstExpression.cpp
-  Aql/NonConstExpressionContainer.cpp
-  Aql/NoResultsExecutor.cpp
-  Aql/Optimizer.cpp
-  Aql/OptimizerRules.cpp
-  Aql/OptimizerRulesCluster.cpp
-  Aql/OptimizerRulesFeature.cpp
-  Aql/OptimizerRulesReplaceFunctions.cpp
-  Aql/OptimizerUtils.cpp
-  Aql/OutputAqlItemRow.cpp
-  Aql/ParallelUnsortedGatherExecutor.cpp
-  Aql/Parser.cpp
-  Aql/Projections.cpp
-  Aql/Quantifier.cpp
-  Aql/Query.cpp
-  Aql/QueryCache.cpp
-  Aql/QueryContext.cpp
-  Aql/QueryExecutionState.cpp
-  Aql/QueryExpressionContext.cpp
-  Aql/QueryList.cpp
-  Aql/QueryOptions.cpp
-  Aql/QueryProfile.cpp
-  Aql/QueryRegistry.cpp
-  Aql/QuerySnippet.cpp
-  Aql/QueryString.cpp
-  Aql/QueryWarnings.cpp
-  Aql/Range.cpp
-  Aql/RegisterId.cpp
-  Aql/RegisterInfos.cpp
-  Aql/RegisterPlan.cpp
-  Aql/RemoteExecutor.cpp
-  Aql/RemoveModifier.cpp
-  Aql/RestAqlHandler.cpp
-  Aql/ReturnExecutor.cpp
-  Aql/ScatterExecutor.cpp
-  Aql/Scopes.cpp
-  Aql/ShadowAqlItemRow.cpp
-  Aql/ShardLocking.cpp
-  Aql/SharedAqlItemBlockPtr.cpp
-  Aql/SharedQueryState.cpp
-  Aql/ShortStringStorage.cpp
-  Aql/ShortestPathExecutor.cpp
-  Aql/ShortestPathNode.cpp
-  Aql/SimpleModifier.cpp
-  Aql/SingleRemoteModificationExecutor.cpp
-  Aql/SingleRowFetcher.cpp
-  Aql/SkipResult.cpp
-  Aql/SortCondition.cpp
-  Aql/SortExecutor.cpp
-  Aql/SortNode.cpp
-  Aql/SortRegister.cpp
-  Aql/SortedCollectExecutor.cpp
-  Aql/SortedRowsStorageBackendMemory.cpp
-  Aql/SortedRowsStorageBackendStaged.cpp
-  Aql/SortingGatherExecutor.cpp
-  Aql/SubqueryEndExecutionNode.cpp
-  Aql/SubqueryEndExecutor.cpp
-  Aql/SubqueryStartExecutionNode.cpp
-  Aql/SubqueryStartExecutor.cpp
-  Aql/Timing.cpp
-  Aql/TraversalConditionFinder.cpp
-  Aql/TraverserEngineShardLists.cpp
-  Aql/TraversalExecutor.cpp
-  Aql/TraversalNode.cpp
-  Aql/UnsortedGatherExecutor.cpp
-  Aql/UpdateReplaceModifier.cpp
-  Aql/UpsertModifier.cpp
-  Aql/V8Executor.cpp
-  Aql/VarUsageFinder.cpp
-  Aql/Variable.cpp
-  Aql/VariableGenerator.cpp
-  Aql/WindowNode.cpp
-  Aql/WindowExecutor.cpp
-  Aql/grammar.cpp
-  Aql/tokens.cpp
-)
-
 set(LIB_ARANGO_VOCBASE_SOURCES
   Aql/PlanCache.cpp
   Aql/QueryCursor.cpp
@@ -522,24 +294,6 @@ set(LIB_ARANGO_UTILS_SOURCES
   ${ENTERPRISE_FILES}
 )
 
-set(LIB_ARANGO_HEALTH_SOURCES
-  StorageEngine/HealthData.cpp
-)
-
-set(LIB_ARANGO_STORAGE_ENGINE_SOURCES
-  StorageEngine/EngineSelectorFeature.cpp
-  StorageEngine/HotBackup.cpp
-  StorageEngine/PhysicalCollection.cpp
-  StorageEngine/TransactionCollection.cpp
-  StorageEngine/TransactionState.cpp
-  StorageEngine/StorageEngine.cpp
-)
-
-set(LIB_ARANGO_STORAGE_ENGINE_COMMON_SOURCES
-  StorageEngine/ReplicationIterator.cpp
-  StorageEngine/WalAccess.cpp
-)
-
 set(LIB_ARANGO_INDEXES_SOURCES
   GeoIndex/Index.cpp
   GeoIndex/Covering.cpp
@@ -549,26 +303,6 @@ set(LIB_ARANGO_INDEXES_SOURCES
   Indexes/IndexIterator.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
   Indexes/SortedIndexAttributeMatcher.cpp
-)
-
-set(LIB_ARANGO_CACHE_SOURCES
-  Cache/BucketState.cpp
-  Cache/Cache.cpp
-  Cache/CacheManagerFeature.cpp
-  Cache/CacheManagerFeatureThreads.cpp
-  Cache/CachedValue.cpp
-  Cache/Finding.cpp
-  Cache/Manager.cpp
-  Cache/ManagerTasks.cpp
-  Cache/Metadata.cpp
-  Cache/PlainBucket.cpp
-  Cache/PlainCache.cpp
-  Cache/Rebalancer.cpp
-  Cache/Table.cpp
-  Cache/Transaction.cpp
-  Cache/TransactionManager.cpp
-  Cache/TransactionalBucket.cpp
-  Cache/TransactionalCache.cpp
 )
 
 set(LIB_ARANGO_REPLICATION_SOURCES
@@ -665,39 +399,6 @@ set (LIB_ARANGO_METRICS_SOURCES
   Metrics/ClusterMetricsFeature.cpp
   RestHandler/RestMetricsHandler.cpp
   )
-
-set(LIB_ARANGO_AGENCY_SOURCES
-  Agency/ActiveFailoverJob.cpp
-  Agency/AddFollower.cpp
-  Agency/AgencyComm.cpp
-  Agency/AgencyFeature.cpp
-  Agency/AgencyPaths.cpp
-  Agency/Agent.cpp
-  Agency/AgentCallback.cpp
-  Agency/AgentConfiguration.cpp
-  Agency/AsyncAgencyComm.cpp
-  Agency/CleanOutServer.cpp
-  Agency/Compactor.cpp
-  Agency/Constituent.cpp
-  Agency/FailedFollower.cpp
-  Agency/FailedLeader.cpp
-  Agency/FailedServer.cpp
-  Agency/Helpers.cpp
-  Agency/Inception.cpp
-  Agency/Job.cpp
-  Agency/JobContext.cpp
-  Agency/MoveShard.cpp
-  Agency/Node.cpp
-  Agency/PathComponent.cpp
-  Agency/RemoveFollower.cpp
-  Agency/ResignLeadership.cpp
-  Agency/RestAgencyHandler.cpp
-  Agency/RestAgencyPrivHandler.cpp
-  Agency/State.cpp
-  Agency/Store.cpp
-  Agency/Supervision.cpp
-  Agency/v8-agency.cpp
-)
 
 set(LIB_ARANGO_V8SERVER_SOURCES
   Cluster/v8-cluster.cpp
@@ -960,20 +661,6 @@ add_library(arango_graph STATIC
   ${LIB_ARANGO_GRAPH_SOURCES}
 )
 
-add_library(arango_pregel STATIC
-  ${LIB_ARANGO_PREGEL_SOURCES}
-  ${LIB_ARANGO_PREGEL_AIR_SOURCES}
-)
-
-add_library(arango_aql STATIC
-  ${LIB_ARANGO_AQL_SOURCES}
-  ${ADDITIONAL_LIB_ARANGO_AQL_SOURCES}
-)
-
-add_library(arango_health STATIC
-  ${LIB_ARANGO_HEALTH_SOURCES}
-)
-
 add_library(arango_vocbase STATIC
   ${LIB_ARANGO_VOCBASE_SOURCES}
 )
@@ -986,22 +673,8 @@ add_library(arango_utils STATIC
   ${LIB_ARANGO_UTILS_SOURCES}
 )
 
-add_library(arango_storage_engine STATIC
-  ${LIB_ARANGO_STORAGE_ENGINE_SOURCES}
-)
-
-# arango_storage_engine uses arango_rocksdb.
-# In turn, arango_storage_engine_common provides something for both.
-add_library(arango_storage_engine_common STATIC
-  ${LIB_ARANGO_STORAGE_ENGINE_COMMON_SOURCES}
-)
-
 add_library(arango_indexes STATIC
   ${LIB_ARANGO_INDEXES_SOURCES}
-)
-
-add_library(arango_cache STATIC
-  ${LIB_ARANGO_CACHE_SOURCES}
 )
 
 add_library(arango_replication STATIC
@@ -1014,10 +687,6 @@ add_library(arango_replication2 STATIC
 
 add_library(arango_metrics STATIC
   ${LIB_ARANGO_METRICS_SOURCES}
-)
-
-add_library(arango_agency STATIC
-  ${LIB_ARANGO_AGENCY_SOURCES}
 )
 
 add_library(arangoserver STATIC
@@ -1068,22 +737,6 @@ add_library(arango_cluster_methods STATIC
 # C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\include\atldef.h(94): fatal error C1189: #error:  ATL does not support compilation with /J or _CHAR_UNSIGNED flag enabled [C:\vm04-windows\oskar\work\ArangoDB\build\lib\arango.vcxproj]
 # .
 
-target_link_libraries(arango_agency arango)
-target_link_libraries(arango_agency arango_health)
-target_link_libraries(arango_agency arango_iresearch)
-target_link_libraries(arango_agency arango_metrics)
-
-target_link_libraries(arango_aql arango_geo)
-target_link_libraries(arango_aql arango_graph)
-target_link_libraries(arango_aql arango_indexes)
-target_link_libraries(arango_aql arango_iresearch)
-target_link_libraries(arango_aql arango_network)
-target_link_libraries(arango_aql immer)
-
-target_link_libraries(arango_cache arango)
-target_link_libraries(arango_cache arango::validation)
-target_link_libraries(arango_cache boost_system)
-
 target_link_libraries(arango_cluster_engine arango_health)
 target_link_libraries(arango_cluster_engine arango_indexes)
 target_link_libraries(arango_cluster_engine boost_boost)
@@ -1108,8 +761,6 @@ target_link_libraries(arango_graph arango_aql)
 target_link_libraries(arango_graph arango_cache)
 target_link_libraries(arango_graph arango_vocbase)
 target_link_libraries(arango_graph boost_boost)
-
-target_link_libraries(arango_health arango)
 
 target_link_libraries(arango_indexes arango_geo)
 target_link_libraries(arango_indexes boost_boost)
@@ -1136,12 +787,6 @@ target_link_libraries(arango_network arango::validation)
 target_link_libraries(arango_network arango_replication2)
 target_link_libraries(arango_network immer)
 
-target_link_libraries(arango_pregel arango)
-target_link_libraries(arango_pregel arango_agency)
-target_link_libraries(arango_pregel arango_greenspun)
-target_link_libraries(arango_pregel boost_boost)
-target_link_libraries(arango_pregel boost_system)
-
 target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)
 target_link_libraries(arango_replication arango_vocbase)
@@ -1163,23 +808,12 @@ target_link_libraries(arango_rocksdb boost_boost)
 target_link_libraries(arango_rocksdb arango::validation)
 target_link_libraries(arango_rocksdb arango_restart_action)
 
-target_link_libraries(arango_storage_engine_common arango::validation)
-target_link_libraries(arango_storage_engine_common arango_replication2)
-target_link_libraries(arango_storage_engine_common immer)
-
 if (USE_ENTERPRISE)
   # this is required for hotbackup. Views need to be flushed.
   target_include_directories(arango_rocksdb
     PUBLIC ${IRESEARCH_INCLUDE}
   )
 endif()
-
-target_link_libraries(arango_storage_engine arango_cluster_engine)
-target_link_libraries(arango_storage_engine arango_cluster_methods)
-target_link_libraries(arango_storage_engine arango_rocksdb)
-target_link_libraries(arango_storage_engine arango::validation)
-target_link_libraries(arango_storage_engine arango_replication2)
-target_link_libraries(arango_storage_engine immer)
 
 target_link_libraries(arango_utils boost_boost)
 target_link_libraries(arango_utils arango::validation)
@@ -1260,25 +894,31 @@ if (USE_JEMALLOC)
   add_dependencies(arangod jemalloc_build)
 endif ()
 
+# TODO move CMAKE_DEPRECATE_OPTIONS to presets
+if (USE_FAIL_ON_WARNINGS)
+  if (MSVC)
+    list(APPEND ${CMAKE_DEPRECATE_OPTIONS} /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
+      # There's a warning about /MP being unused if compiling only a single file
+      list(APPEND ${CMAKE_DEPRECATE_OPTIONS} -Wno-unused-command-line-argument)
+    endif()
+  else ()
+    list(APPEND ${CMAKE_DEPRECATE_OPTIONS} -Werror -Wno-error=deprecated-declarations)
+  endif ()
+endif ()
+
 foreach(TARGET
-  arango_agency
-  arango_aql
-  arango_cache
   arango_cluster_engine
   arango_cluster_methods
   arango_common_rest_handler
   arango_graph
-  arango_health
   arango_indexes
   arango_iresearch
   arango_metrics
   arango_network
-  arango_pregel
   arango_replication
   arango_replication2
   arango_rocksdb
-  arango_storage_engine
-  arango_storage_engine_common
   arango_utils
   arango_v8server
   arango_vocbase
@@ -1288,17 +928,8 @@ foreach(TARGET
   target_include_directories(${TARGET} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   target_include_directories(${TARGET} PRIVATE "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
-  if (USE_FAIL_ON_WARNINGS)
-    if (MSVC)
-      target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-      if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
-        # There's a warning about /MP being unused if compiling only a single file
-        target_compile_options(${TARGET} PRIVATE -Wno-unused-command-line-argument)
-      endif()
-    else ()
-      target_compile_options(${TARGET} PRIVATE -Werror -Wno-error=deprecated-declarations)
-    endif ()
-  endif ()
+  target_compile_options(${TARGET} PRIVATE
+	  ${CMAKE_DEPRECATE_OPTION})
 endforeach()
 
 ################################################################################
@@ -1322,3 +953,9 @@ install_command_alias(${BIN_ARANGOD}
 )
 
 install_config(arango-init-database)
+
+add_subdirectory(Agency)
+add_subdirectory(Aql)
+add_subdirectory(Cache)
+add_subdirectory(Pregel)
+add_subdirectory(StorageEngine)

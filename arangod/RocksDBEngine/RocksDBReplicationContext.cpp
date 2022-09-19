@@ -532,8 +532,8 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
   RocksDBBlockerGuard blocker(cIter->logical.get());
   auto blockerSeq = blocker.placeBlocker();
 
-  arangodb::basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
-  VPackDumper dumper(&adapter, &cIter->vpackOptions);
+  basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
+  velocypack::Dumper dumper(&adapter, &cIter->vpackOptions);
   TRI_ASSERT(cIter->iter && !cIter->sorted());
   while (cIter->hasMore() && buff.length() < chunkSize) {
     if (useEnvelope) {
