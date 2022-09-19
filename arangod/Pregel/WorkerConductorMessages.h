@@ -33,6 +33,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <variant>
 
 namespace arangodb::pregel {
 
@@ -46,42 +47,58 @@ struct Message {
 // ------ events sent from worker to conductor -------
 
 struct GraphLoaded : Message {
-  std::string senderId;
-  ExecutionNumber executionNumber;
   uint64_t vertexCount;
   uint64_t edgeCount;
-  GraphLoaded() noexcept {};
-  GraphLoaded(std::string const& senderId, ExecutionNumber executionNumber,
-              uint64_t vertexCount, uint64_t edgeCount)
-      : senderId{senderId},
-        executionNumber{executionNumber},
-        vertexCount{vertexCount},
-        edgeCount{edgeCount} {}
+  GraphLoaded() noexcept = default;
+  GraphLoaded(uint64_t vertexCount, uint64_t edgeCount)
+      : vertexCount{vertexCount}, edgeCount{edgeCount} {}
   auto type() const -> MessageType override { return MessageType::GraphLoaded; }
 };
 
 template<typename Inspector>
 auto inspect(Inspector& f, GraphLoaded& x) {
+  return f.object(x).fields(f.field("vertexCount", x.vertexCount),
+                            f.field("edgeCount", x.edgeCount));
+}
+
+struct GlobalSuperStepPrepared {
+  std::string senderId;
+  uint64_t activeCount;
+  uint64_t vertexCount;
+  uint64_t edgeCount;
+  VPackBuilder messages;
+  VPackBuilder aggregators;
+  GlobalSuperStepPrepared() noexcept = default;
+  GlobalSuperStepPrepared(std::string senderId, uint64_t activeCount,
+                          uint64_t vertexCount, uint64_t edgeCount,
+                          VPackBuilder messages, VPackBuilder aggregators)
+      : senderId{std::move(senderId)},
+        activeCount{activeCount},
+        vertexCount{vertexCount},
+        edgeCount{edgeCount},
+        messages{std::move(messages)},
+        aggregators{std::move(aggregators)} {}
+};
+template<typename Inspector>
+auto inspect(Inspector& f, GlobalSuperStepPrepared& x) {
   return f.object(x).fields(
       f.field(Utils::senderKey, x.senderId),
-      f.field(Utils::executionNumberKey, x.executionNumber),
-      f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount));
+      f.field("activeCount", x.activeCount),
+      f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount),
+      f.field("messages", x.messages), f.field("aggregators", x.aggregators));
 }
 
 struct GlobalSuperStepFinished : Message {
   std::string senderId;
-  ExecutionNumber executionNumber;
   uint64_t gss;
   VPackBuilder reports;
   VPackBuilder messageStats;
   VPackBuilder aggregators;
   GlobalSuperStepFinished() noexcept {};
-  GlobalSuperStepFinished(std::string const& senderId,
-                          ExecutionNumber executionNumber, uint64_t gss,
+  GlobalSuperStepFinished(std::string senderId, uint64_t gss,
                           VPackBuilder reports, VPackBuilder messageStats,
                           VPackBuilder aggregators)
-      : senderId{senderId},
-        executionNumber{executionNumber},
+      : senderId{std::move(senderId)},
         gss{gss},
         reports{std::move(reports)},
         messageStats{std::move(messageStats)},
@@ -91,12 +108,11 @@ struct GlobalSuperStepFinished : Message {
 
 template<typename Inspector>
 auto inspect(Inspector& f, GlobalSuperStepFinished& x) {
-  return f.object(x).fields(
-      f.field(Utils::senderKey, x.senderId),
-      f.field(Utils::executionNumberKey, x.executionNumber),
-      f.field(Utils::globalSuperstepKey, x.gss), f.field("reports", x.reports),
-      f.field("messageStats", x.messageStats),
-      f.field("aggregators", x.aggregators));
+  return f.object(x).fields(f.field(Utils::senderKey, x.senderId),
+                            f.field(Utils::globalSuperstepKey, x.gss),
+                            f.field("reports", x.reports),
+                            f.field("messageStats", x.messageStats),
+                            f.field("aggregators", x.aggregators));
 }
 
 struct CleanupFinished : Message {
@@ -135,35 +151,6 @@ auto inspect(Inspector& f, StatusUpdated& x) {
       f.field("status", x.status));
 }
 
-// worker -> conductor as immediate answer
-
-struct GlobalSuperStepPrepared {
-  std::string senderId;
-  uint64_t activeCount;
-  uint64_t vertexCount;
-  uint64_t edgeCount;
-  VPackBuilder messages;
-  VPackBuilder aggregators;
-  GlobalSuperStepPrepared() noexcept = default;
-  GlobalSuperStepPrepared(std::string senderId, uint64_t activeCount,
-                          uint64_t vertexCount, uint64_t edgeCount,
-                          VPackBuilder messages, VPackBuilder aggregators)
-      : senderId{std::move(senderId)},
-        activeCount{activeCount},
-        vertexCount{vertexCount},
-        edgeCount{edgeCount},
-        messages{std::move(messages)},
-        aggregators{std::move(aggregators)} {}
-};
-template<typename Inspector>
-auto inspect(Inspector& f, GlobalSuperStepPrepared& x) {
-  return f.object(x).fields(
-      f.field(Utils::senderKey, x.senderId),
-      f.field("activeCount", x.activeCount),
-      f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount),
-      f.field("messages", x.messages), f.field("aggregators", x.aggregators));
-}
-
 struct PregelResults {
   VPackBuilder results;
 };
@@ -193,48 +180,38 @@ auto inspect(Inspector& f, GssCanceled& x) {
 // ------ commands sent from conductor to worker -------
 
 struct LoadGraph {
-  ExecutionNumber executionNumber;
   VPackBuilder details;
-  const std::string path = Utils::startExecutionPath;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, LoadGraph& x) {
-  return f.object(x).fields(
-      f.field(Utils::executionNumberKey, x.executionNumber),
-      f.field("details", x.details));
+  return f.object(x).fields(f.field("details", x.details));
 }
 
 struct PrepareGlobalSuperStep {
-  ExecutionNumber executionNumber;
   uint64_t gss;
   uint64_t vertexCount;
   uint64_t edgeCount;
-  const std::string path = Utils::prepareGSSPath;
 };
 
 template<typename Inspector>
 auto inspect(Inspector& f, PrepareGlobalSuperStep& x) {
-  return f.object(x).fields(
-      f.field(Utils::executionNumberKey, x.executionNumber),
-      f.field(Utils::globalSuperstepKey, x.gss),
-      f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount));
+  return f.object(x).fields(f.field(Utils::globalSuperstepKey, x.gss),
+                            f.field("vertexCount", x.vertexCount),
+                            f.field("edgeCount", x.edgeCount));
 }
 
 struct RunGlobalSuperStep {
-  ExecutionNumber executionNumber;
   uint64_t gss;
   uint64_t vertexCount;
   uint64_t edgeCount;
   bool activateAll;
   VPackBuilder toWorkerMessages;
   VPackBuilder aggregators;
-  const std::string path = Utils::startGSSPath;
 };
 
 template<typename Inspector>
 auto inspect(Inspector& f, RunGlobalSuperStep& x) {
   return f.object(x).fields(
-      f.field(Utils::executionNumberKey, x.executionNumber),
       f.field(Utils::globalSuperstepKey, x.gss),
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount),
       f.field("activateAll", x.activateAll),
@@ -279,4 +256,50 @@ auto inspect(Inspector& f, CollectPregelResults& x) {
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field("withId", x.withId).fallback(false));
 }
+
+// ---------------------- modern message ----------------------
+
+using MessagePayload =
+    std::variant<LoadGraph, ResultT<GraphLoaded>, PrepareGlobalSuperStep,
+                 ResultT<GlobalSuperStepPrepared>, RunGlobalSuperStep,
+                 ResultT<GlobalSuperStepFinished>>;
+
+struct MessagePayloadSerializer : MessagePayload {};
+template<class Inspector>
+auto inspect(Inspector& f, MessagePayloadSerializer& x) {
+  return f.variant(x).unqualified().alternatives(
+      arangodb::inspection::type<LoadGraph>("loadGraph"),
+      arangodb::inspection::type<ResultT<GraphLoaded>>("graphLoaded"),
+      arangodb::inspection::type<PrepareGlobalSuperStep>(
+          "prepareGlobalSuperStep"),
+      arangodb::inspection::type<ResultT<GlobalSuperStepPrepared>>(
+          "globalSuperStepPrepared"),
+      arangodb::inspection::type<RunGlobalSuperStep>("runGlobalSuperStep"),
+      arangodb::inspection::type<ResultT<GlobalSuperStepFinished>>(
+          "globalSuperStepFinished"));
+}
+template<typename Inspector>
+auto inspect(Inspector& f, MessagePayload& x) {
+  if constexpr (Inspector::isLoading) {
+    auto v = MessagePayloadSerializer{};
+    auto res = f.apply(v);
+    x = MessagePayload{v};
+    return res;
+  } else {
+    auto v = MessagePayloadSerializer{x};
+    return f.apply(v);
+  }
+}
+
+struct ModernMessage {
+  ExecutionNumber executionNumber;
+  MessagePayload payload;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ModernMessage& x) {
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field("payload", x.payload));
+}
+
 }  // namespace arangodb::pregel

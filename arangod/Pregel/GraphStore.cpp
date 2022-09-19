@@ -233,9 +233,7 @@ auto GraphStore<V, E>::loadShards(
       }
     }
   }
-  auto graphLoaded =
-      GraphLoaded{ServerState::instance()->getId(), _executionNumber,
-                  localVertexCount(), localEdgeCount()};
+  auto graphLoaded = GraphLoaded{localVertexCount(), localEdgeCount()};
   futures::Promise<ResultT<GraphLoaded>> promise;
   promise.setValue(ResultT<GraphLoaded>{graphLoaded});
   return promise.getFuture();

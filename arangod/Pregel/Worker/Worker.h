@@ -52,6 +52,8 @@ class PregelFeature;
 class IWorker : public std::enable_shared_from_this<IWorker> {
  public:
   virtual ~IWorker() = default;
+  [[nodiscard]] virtual auto process(MessagePayload const& message)
+      -> ResultT<ModernMessage> = 0;
   [[nodiscard]] virtual auto loadGraph(LoadGraph const& graph)
       -> futures::Future<ResultT<GraphLoaded>> = 0;
   [[nodiscard]] virtual auto prepareGlobalSuperStep(
@@ -172,6 +174,8 @@ class Worker : public IWorker {
   ~Worker();
 
   // ====== called by rest handler =====
+  auto process(MessagePayload const& message)
+      -> ResultT<ModernMessage> override;
   auto loadGraph(LoadGraph const& graph)
       -> futures::Future<ResultT<GraphLoaded>> override;
   auto prepareGlobalSuperStep(PrepareGlobalSuperStep const& data)

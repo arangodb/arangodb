@@ -166,8 +166,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   // === REST callbacks ===
   void workerStatusUpdate(VPackSlice const& data);
-  void finishedWorkerStartup(VPackSlice const& data);
-  VPackBuilder finishedWorkerStep(VPackSlice const& data);
   void finishedWorkerFinalize(VPackSlice data);
 
   std::vector<ShardID> getShardIds(ShardID const& collection) const;

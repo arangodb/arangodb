@@ -25,6 +25,7 @@
 
 #include <atomic>
 #include <unordered_set>
+#include <variant>
 
 #include <fmt/core.h>
 #include <fmt/ostream.h>
@@ -603,6 +604,11 @@ void PregelFeature::garbageCollectConductors() try {
 
 void PregelFeature::addWorker(std::shared_ptr<IWorker>&& w,
                               ExecutionNumber executionNumber) {
+  if (worker(executionNumber)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "Worker with this execution number already exists.");
+  }
   if (isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
@@ -683,6 +689,33 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
     return;  // shutdown ongoing
   }
 
+  if (path == Utils::modernMessagingPath) {
+    auto message = deserialize<ModernMessage>(body);
+    if (std::holds_alternative<LoadGraph>(message.payload)) {
+      addWorker(
+          AlgoRegistry::createWorker(
+              vocbase, std::get<LoadGraph>(message.payload).details.slice(),
+              *this),
+          message.executionNumber);
+    }
+    auto w = worker(message.executionNumber);
+    if (!w) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_CURSOR_NOT_FOUND,
+          fmt::format(
+              "Handling request {} but worker for execution {} does not exist",
+              body.toJson(), message.executionNumber));
+    }
+    auto response = w->process(message.payload);
+    if (response.fail()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_CURSOR_NOT_FOUND,
+          fmt::format("Execution {}: {}: {}", message.executionNumber,
+                      response.errorMessage(), body.toJson()));
+    }
+    serialize(outBuilder, response.get());
+  }
+
   VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
 
   if (!sExecutionNum.isInteger()) {
@@ -694,25 +727,7 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
 
   std::shared_ptr<IWorker> w = worker(exeNum);
 
-  // create a new worker instance if necessary
-  if (path == Utils::startExecutionPath) {
-    if (w) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL,
-          "Worker with this execution number already exists.");
-    }
-
-    auto command = deserialize<LoadGraph>(body);
-    addWorker(
-        AlgoRegistry::createWorker(vocbase, command.details.slice(), *this),
-        exeNum);
-
-    auto graphLoaded = worker(exeNum)->loadGraph(command).get();
-    serialize(outBuilder, graphLoaded);
-
-    return;
-  } else if (!w) {
-    // any other call should have a working worker instance
+  if (!w) {
     if (path == Utils::finalizeExecutionPath) {
       // except this is a cleanup call, and cleanup has already happened
       // because of garbage collection
@@ -728,20 +743,8 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
         exeNum);
   }
 
-  if (path == Utils::prepareGSSPath) {
-    auto message = deserialize<PrepareGlobalSuperStep>(body);
-    auto response = w->prepareGlobalSuperStep(message).get();
-    serialize(outBuilder, response);
-  } else if (path == Utils::startGSSPath) {
-    auto message = deserialize<RunGlobalSuperStep>(body);
-    auto response = w->runGlobalSuperStep(message).get();
-    serialize(outBuilder, response);
-  } else if (path == Utils::messagesPath) {
+  if (path == Utils::messagesPath) {
     w->receivedMessages(body);
-  } else if (path == Utils::cancelGSSPath) {
-    w->cancelGlobalStep(body);
-    auto response = GssCanceled{};
-    serialize(outBuilder, response);
   } else if (path == Utils::finalizeExecutionPath) {
     w->finalizeExecution(body, [this, exeNum]() { cleanupWorker(exeNum); });
     auto response = CleanupStarted{};

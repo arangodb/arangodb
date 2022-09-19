@@ -36,8 +36,7 @@ auto Computing::_prepareGlobalSuperStep() -> GlobalSuperStepPreparedFuture {
   conductor._totalEdgesCount = 0;
 
   auto prepareGssCommand =
-      PrepareGlobalSuperStep{.executionNumber = conductor._executionNumber,
-                             .gss = conductor._globalSuperstep,
+      PrepareGlobalSuperStep{.gss = conductor._globalSuperstep,
                              .vertexCount = conductor._totalVerticesCount,
                              .edgeCount = conductor._totalEdgesCount};
   auto results =
@@ -63,8 +62,7 @@ auto Computing::_runGlobalSuperStep(bool activateAll)
     conductor._aggregators->serializeValues(aggregators);
   }
   auto startGssCommand =
-      RunGlobalSuperStep{.executionNumber = conductor._executionNumber,
-                         .gss = conductor._globalSuperstep,
+      RunGlobalSuperStep{.gss = conductor._globalSuperstep,
                          .vertexCount = conductor._totalVerticesCount,
                          .edgeCount = conductor._totalEdgesCount,
                          .activateAll = activateAll,

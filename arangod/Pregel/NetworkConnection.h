@@ -28,6 +28,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Futures/Future.h"
 #include "Network/ConnectionPool.h"
+#include "Pregel/WorkerConductorMessages.h"
 #include "velocypack/Builder.h"
 #include "Network/Methods.h"
 
@@ -45,8 +46,7 @@ struct Connection {
   Connection(ServerID destinationId, std::string baseUrl,
              network::RequestOptions requestOptions,
              network::ConnectionPool* connectionPool);
-  template<typename OutType, RestMessage InType>
-  auto post(InType const& message) -> futures::Future<ResultT<OutType>>;
+  auto post(ModernMessage&& message) -> futures::Future<ResultT<ModernMessage>>;
 
  private:
   ServerID _destinationId;
