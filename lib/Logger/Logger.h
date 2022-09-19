@@ -310,7 +310,7 @@ class Logger {
 
   static void log(char const* logid, char const* function, char const* file,
                   int line, LogLevel level, size_t topicId,
-                  std::string const& message);
+                  std::string_view message);
 
   static void append(
       LogGroup&, std::unique_ptr<LogMessage> msg, bool forceDirect,

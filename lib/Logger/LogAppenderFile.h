@@ -27,6 +27,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <vector>
 
@@ -50,25 +51,14 @@ class LogAppenderStream : public LogAppender {
  protected:
   void updateFd(int fd) { _fd = fd; }
 
-  // write the log message into the already allocated output buffer
-  size_t writeIntoOutputBuffer(std::string const& message);
-
   virtual void writeLogMessage(LogLevel level, size_t topicId,
-                               char const* buffer, size_t len) = 0;
+                               std::string const& message) = 0;
 
   /// @brief maximum size for reusable log buffer
   /// if the buffer exceeds this size, it will be freed after the log
   /// message was produced. otherwise it will be kept for recycling
   static constexpr size_t maxBufferSize = 64 * 1024;
 
- private:
-  /// @brief a reusable buffer for log messages
-  std::unique_ptr<char[]> _buffer;
-
-  /// @brief allocation size of the buffer
-  size_t _bufferSize;
-
- protected:
   /// @brief file descriptor
   int _fd;
 
@@ -81,8 +71,8 @@ class LogAppenderFile : public LogAppenderStream {
   explicit LogAppenderFile(std::string const& filename);
   ~LogAppenderFile();
 
-  void writeLogMessage(LogLevel level, size_t topicId, char const* buffer,
-                       size_t len) override final;
+  void writeLogMessage(LogLevel level, size_t topicId,
+                       std::string const& message) override final;
 
   std::string details() const override final;
 
@@ -121,12 +111,11 @@ class LogAppenderStdStream : public LogAppenderStream {
   std::string details() const override final { return std::string(); }
 
   static void writeLogMessage(int fd, bool useColors, LogLevel level,
-                              size_t topicId, char const* p, size_t length,
-                              bool appendNewline);
+                              size_t topicId, std::string const& message);
 
  private:
-  void writeLogMessage(LogLevel level, size_t topicId, char const* buffer,
-                       size_t len) override final;
+  void writeLogMessage(LogLevel level, size_t topicId,
+                       std::string const& message) override final;
 };
 
 class LogAppenderStderr final : public LogAppenderStdStream {

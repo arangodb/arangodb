@@ -108,7 +108,7 @@ void LogMessage::shrink(std::size_t maxLength) {
       // after shrinking
       _offset = static_cast<uint32_t>(_message.size());
     }
-    _message.append("...", 3);
+    _message.append("...\n", 4);
     _shrunk = true;
   }
 }
@@ -511,7 +511,7 @@ std::string const& Logger::translateLogLevel(LogLevel level) noexcept {
 
 void Logger::log(char const* logid, char const* function, char const* file,
                  int line, LogLevel level, size_t topicId,
-                 std::string const& message) try {
+                 std::string_view message) try {
   TRI_ASSERT(logid != nullptr);
   LogContext& logContext = LogContext::current();
 
@@ -684,7 +684,7 @@ void Logger::log(char const* logid, char const* function, char const* file,
       if (maxMessageLength > message.size()) {
         maxMessageLength = message.size();
       }
-      dumper.appendString(message.c_str(), maxMessageLength);
+      dumper.appendString(message.data(), maxMessageLength);
 
       // this tells the logger to not shrink our (potentially already
       // shrunk) message once more - if it would shrink the message again,
@@ -794,7 +794,7 @@ void Logger::log(char const* logid, char const* function, char const* file,
     {
       READ_LOCKER(guard, _structuredParamsLock);
       //  meta data from log
-      LogContext::OverloadVisitor visitor([&out, &_writerFn = _writerFn](
+      LogContext::OverloadVisitor visitor([&out, writerFn = _writerFn](
                                               std::string_view const& key,
                                               auto&& value) {
         if (!_structuredLogParams.contains({key.data(), key.size()})) {
@@ -803,36 +803,36 @@ void Logger::log(char const* logid, char const* function, char const* file,
         out.push_back('[');
         out.append(key).append(": ", 2);
 
-        std::string newValue;
         if constexpr (std::is_same_v<std::string_view,
                                      std::remove_cv_t<std::remove_reference_t<
                                          decltype(value)>>>) {
-          newValue = std::move((value));
+          writerFn(value, out);
         } else {
-          newValue = std::move(std::to_string(value));
+          std::string number = std::to_string(value);
+          writerFn(number, out);
         }
 
-        _writerFn(newValue, out);
         out.append("] ", 2);
       });
       logContext.visit(visitor);
     }
 
-    // json format uses internal options for escaping control and unicode chars,
-    // in this case, we use the Escaper class
     _writerFn(message, out);
   }
 
   TRI_ASSERT(offset == 0 || !_useJson);
+
+  // append final newline
+  out.push_back('\n');
 
   auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId,
                                           std::move(out), offset, shrunk);
 
   append(defaultLogGroup(), std::move(msg), false,
          [level, topicId](LogMessage const& msg) -> void {
-           LogAppenderStdStream::writeLogMessage(
-               STDERR_FILENO, (isatty(STDERR_FILENO) == 1), level, topicId,
-               msg._message.data(), msg._message.size(), true);
+           LogAppenderStdStream::writeLogMessage(STDERR_FILENO,
+                                                 (isatty(STDERR_FILENO) == 1),
+                                                 level, topicId, msg._message);
          });
 } catch (...) {
   // logging itself must never cause an exeption to escape

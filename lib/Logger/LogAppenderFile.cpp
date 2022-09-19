@@ -54,56 +54,10 @@ int LogAppenderFile::_fileMode = S_IRUSR | S_IWUSR | S_IRGRP;
 int LogAppenderFile::_fileGroup = 0;
 
 LogAppenderStream::LogAppenderStream(std::string const& filename, int fd)
-    : LogAppender(), _bufferSize(0), _fd(fd), _useColors(false) {}
-
-size_t LogAppenderStream::writeIntoOutputBuffer(std::string const& message) {
-  char* output = _buffer.get();
-
-  for (size_t i = 0; i < message.size(); ++i) {
-    *output++ = std::move(message.at(i));
-  }
-  *output++ = '\n';
-  *output = '\0';
-
-  return (output - _buffer.get());
-}
+    : LogAppender(), _fd(fd), _useColors(false) {}
 
 void LogAppenderStream::logMessage(LogMessage const& message) {
-  // check max. required output length
-  size_t const neededBufferSize = message._message.size() + 2;
-
-  // check if we can re-use our already existing buffer
-  if (neededBufferSize > _bufferSize) {
-    _buffer.reset();
-    _bufferSize = 0;
-  }
-
-  if (_buffer == nullptr) {
-    // create a new buffer
-    try {
-      // grow buffer exponentially
-      _buffer.reset(new char[neededBufferSize * 2]);
-      _bufferSize = neededBufferSize * 2;
-    } catch (...) {
-      // if allocation fails, simply give up
-      return;
-    }
-  }
-
-  TRI_ASSERT(_buffer != nullptr);
-
-  size_t length = writeIntoOutputBuffer(message._message);
-
-  TRI_ASSERT(length <= neededBufferSize);
-
-  this->writeLogMessage(message._level, message._topicId, _buffer.get(),
-                        length);
-
-  if (_bufferSize > maxBufferSize) {
-    // free the buffer so the Logger is not hogging so much memory
-    _buffer.reset();
-    _bufferSize = 0;
-  }
+  this->writeLogMessage(message._level, message._topicId, message._message);
 }
 
 LogAppenderFile::LogAppenderFile(std::string const& filename)
@@ -162,8 +116,10 @@ LogAppenderFile::LogAppenderFile(std::string const& filename)
 LogAppenderFile::~LogAppenderFile() = default;
 
 void LogAppenderFile::writeLogMessage(LogLevel level, size_t /*topicId*/,
-                                      char const* buffer, size_t len) {
+                                      std::string const& message) {
   bool giveUp = false;
+  char const* buffer = message.c_str();
+  size_t len = message.size();
 
   while (len > 0) {
     auto n = TRI_WRITE(_fd, buffer, static_cast<TRI_write_t>(len));
@@ -181,6 +137,7 @@ void LogAppenderFile::writeLogMessage(LogLevel level, size_t /*topicId*/,
       }
     }
 
+    TRI_ASSERT(len >= static_cast<size_t>(n));
     buffer += n;
     len -= n;
   }
@@ -315,51 +272,44 @@ LogAppenderStdStream::~LogAppenderStdStream() {
 }
 
 void LogAppenderStdStream::writeLogMessage(LogLevel level, size_t topicId,
-                                           char const* buffer, size_t len) {
-  writeLogMessage(_fd, _useColors, level, topicId, buffer, len, false);
+                                           std::string const& message) {
+  writeLogMessage(_fd, _useColors, level, topicId, message);
 }
 
 void LogAppenderStdStream::writeLogMessage(int fd, bool useColors,
                                            LogLevel level, size_t /*topicId*/,
-                                           char const* buffer, size_t len,
-                                           bool appendNewline) {
+                                           std::string const& message) {
   if (!allowStdLogging()) {
     return;
   }
 
-  char const* nl = (appendNewline ? "\n" : "");
-  TRI_ASSERT(buffer != nullptr);
-  TRI_ASSERT(nl != nullptr);
+  // out stream
+  FILE* fp = (fd == STDOUT_FILENO ? stdout : stderr);
 
-  if (*buffer != '\0' || *nl != '\0') {
-    // out stream
-    FILE* fp = (fd == STDOUT_FILENO ? stdout : stderr);
-
-    if (useColors) {
-      // joyful color output
-      if (level == LogLevel::FATAL || level == LogLevel::ERR) {
-        fprintf(fp, "%s%s%s%s", ShellColorsFeature::SHELL_COLOR_RED, buffer,
-                ShellColorsFeature::SHELL_COLOR_RESET, nl);
-      } else if (level == LogLevel::WARN) {
-        fprintf(fp, "%s%s%s%s", ShellColorsFeature::SHELL_COLOR_YELLOW, buffer,
-                ShellColorsFeature::SHELL_COLOR_RESET, nl);
-      } else {
-        fprintf(fp, "%s%s%s%s", ShellColorsFeature::SHELL_COLOR_RESET, buffer,
-                ShellColorsFeature::SHELL_COLOR_RESET, nl);
-      }
+  if (useColors) {
+    // joyful color output
+    if (level == LogLevel::FATAL || level == LogLevel::ERR) {
+      fprintf(fp, "%s%s%s", ShellColorsFeature::SHELL_COLOR_RED,
+              message.c_str(), ShellColorsFeature::SHELL_COLOR_RESET);
+    } else if (level == LogLevel::WARN) {
+      fprintf(fp, "%s%s%s", ShellColorsFeature::SHELL_COLOR_YELLOW,
+              message.c_str(), ShellColorsFeature::SHELL_COLOR_RESET);
     } else {
-      // non-colored output
-      fprintf(fp, "%s%s", buffer, nl);
+      fprintf(fp, "%s%s%s", ShellColorsFeature::SHELL_COLOR_RESET,
+              message.c_str(), ShellColorsFeature::SHELL_COLOR_RESET);
     }
+  } else {
+    // non-colored output
+    fprintf(fp, "%s", message.c_str());
+  }
 
-    if (level == LogLevel::FATAL || level == LogLevel::ERR ||
-        level == LogLevel::WARN || level == LogLevel::INFO) {
-      // flush the output so it becomes visible immediately
-      // at least for log levels that are used seldomly
-      // it would probably be overkill to flush everytime we
-      // encounter a log message for level DEBUG or TRACE
-      fflush(fp);
-    }
+  if (level == LogLevel::FATAL || level == LogLevel::ERR ||
+      level == LogLevel::WARN || level == LogLevel::INFO) {
+    // flush the output so it becomes visible immediately
+    // at least for log levels that are used seldomly
+    // it would probably be overkill to flush everytime we
+    // encounter a log message for level DEBUG or TRACE
+    fflush(fp);
   }
 }
 
