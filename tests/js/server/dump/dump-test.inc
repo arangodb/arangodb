@@ -869,11 +869,15 @@
             getRawMetric(c, '?mode=trigger_global');
           }
         }
-        require("internal").sleep(2);
-
-        let figures = collection.getIndexes(true, true)
-          .find(e => e.name === "searchIndex")
-          .figures;
+        for (var i = 0; i < 100; ++i) {
+          require("internal").sleep(0.5);
+          let figures = collection.getIndexes(true, true)
+            .find(e => e.name === "searchIndex")
+            .figures;
+          if (figures.numDocs != 0) {
+            break;
+          }
+        }
         assertEqual(figures.numDocs, 5001);
         assertEqual(figures.numLiveDocs, 5001);
         assertTrue(figures.numSegments >= 1);
