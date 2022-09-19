@@ -897,7 +897,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
     ASSERT_EQ(Consistency::kEventual, meta._consistency);
     ASSERT_FALSE(meta._analyzers.empty());
     ASSERT_EQ(meta._analyzers[0]._shortName, "identity");
-    ASSERT_EQ(meta._features, arangodb::iresearch::Features());
+    ASSERT_EQ(meta._features,
+              arangodb::iresearch::Features(FieldFeatures::NORM, irs::IndexFeatures::FREQ));
     ASSERT_FALSE(meta._isSearchField);
   }
   // with active vocbase
@@ -923,7 +924,9 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
     ASSERT_EQ(Consistency::kEventual, meta._consistency);
     ASSERT_FALSE(meta._analyzers.empty());
     ASSERT_EQ(meta._analyzers[0]._shortName, "identity");
-    ASSERT_EQ(meta._features, arangodb::iresearch::Features());
+    ASSERT_EQ(meta._features,
+              Features(
+                  FieldFeatures::NORM, irs::IndexFeatures::FREQ));
     ASSERT_FALSE(meta._isSearchField);
   }
 }
@@ -974,7 +977,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
   ASSERT_EQ(meta._consistency, Consistency::kEventual);
   ASSERT_FALSE(meta._analyzers.empty());
   ASSERT_EQ(meta._analyzers[0]._shortName, "identity");
-  ASSERT_EQ(meta._features, arangodb::iresearch::Features());
+  ASSERT_EQ(meta._features,
+            Features(FieldFeatures::NORM, irs::IndexFeatures::FREQ));
   ASSERT_EQ(meta._writebufferActive, 10);
   ASSERT_EQ(meta._writebufferIdle, 11);
   ASSERT_EQ(meta._writebufferSizeMax, 12);
