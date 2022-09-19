@@ -43,6 +43,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "ExecutionNumber.h"
+#include "Futures/Unit.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
@@ -480,15 +481,22 @@ void PregelFeature::start() {
 void PregelFeature::beginShutdown() {
   TRI_ASSERT(isStopping());
 
-  MUTEX_LOCKER(guard, _mutex);
-  _gcHandle.reset();
-
-  // cancel all conductors and workers
-  for (auto& it : _conductors) {
-    it.second.conductor->cancel();
+  std::vector<std::shared_ptr<Conductor>> conductors;
+  {
+    MUTEX_LOCKER(guard, _mutex);
+    _gcHandle.reset();
+    for (auto& it : _conductors) {
+      conductors.emplace_back(it.second.conductor);
+    }
+    for (auto it : _workers) {
+      it.second.second->cancelGlobalStep(VPackSlice());
+    }
   }
-  for (auto it : _workers) {
-    it.second.second->cancelGlobalStep(VPackSlice());
+
+  // delete all conductors and workers
+  // without holding the mutex permanently
+  for (auto&& c : conductors) {
+    c->cancel();
   }
 }
 
@@ -633,13 +641,12 @@ void PregelFeature::cleanupConductor(ExecutionNumber executionNumber) {
   _workers.erase(executionNumber);
 }
 
-void PregelFeature::cleanupWorker(ExecutionNumber executionNumber) {
-  // unmapping etc might need a few seconds
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestLane::INTERNAL_LOW, [this, executionNumber] {
+auto PregelFeature::cleanupWorker(ExecutionNumber executionNumber)
+    -> futures::Future<futures::Unit> {
+  return futures::makeFutureWith([&]() {
     MUTEX_LOCKER(guard, _mutex);
     _workers.erase(executionNumber);
+    return futures::Unit{};
   });
 }
 

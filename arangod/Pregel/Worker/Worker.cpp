@@ -62,8 +62,6 @@ template<class... Ts>
 struct overloaded : Ts... {
   using Ts::operator()...;
 };
-template<class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
 }  // namespace
 
 #define LOG_PREGEL(logId, level)          \
@@ -184,8 +182,7 @@ template<typename V, typename E, typename M>
 auto Worker<V, E, M>::prepareGlobalSuperStep(
     PrepareGlobalSuperStep const& message)
     -> futures::Future<ResultT<GlobalSuperStepPrepared>> {
-  return futures::makeFutureWith(
-      [&]() { return prepareGlobalSuperStepFct(message); });
+  return futures::makeFuture(prepareGlobalSuperStepFct(message));
 }
 
 template<typename V, typename E, typename M>
@@ -334,13 +331,6 @@ auto Worker<V, E, M>::runGlobalSuperStep(RunGlobalSuperStep const& message)
       });
 }
 
-template<typename V, typename E, typename M>
-void Worker<V, E, M>::cancelGlobalStep(VPackSlice const& data) {
-  MUTEX_LOCKER(guard, _commandMutex);
-  _state = WorkerState::DONE;
-  _workHandle.reset();
-}
-
 /// WARNING only call this while holding the _commandMutex
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::_processVerticesInThreads() -> VerticesProcessedFuture {
@@ -370,8 +360,8 @@ auto Worker<V, E, M>::_processVerticesInThreads() -> VerticesProcessedFuture {
     TRI_ASSERT(endI <= numSegments);
 
     auto vertices = _graphStore->vertexIterator(startI, endI);
-    processedVertices.emplace_back(futures::makeFutureWith(
-        [&]() { return _processVertices(i, vertices); }));
+    processedVertices.emplace_back(
+        futures::makeFuture(_processVertices(i, vertices)));
   }
 
   LOG_PREGEL("425c3", DEBUG)
@@ -546,57 +536,49 @@ auto Worker<V, E, M>::_gssFinishedEvent() const -> GlobalSuperStepFinished {
 }
 
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::finalizeExecution(StartCleanup const& command)
-    -> CleanupStarted {
-  // Only expect serial calls from the conductor.
-  // Lock to prevent malicious activity
-  MUTEX_LOCKER(guard, _commandMutex);
-  if (_state == WorkerState::DONE) {
-    LOG_PREGEL("4067a", DEBUG) << "removing worker";
-    _feature.cleanupWorker(_config.executionNumber());
-    return CleanupStarted{};
-  }
+auto Worker<V, E, M>::store(Store const& message)
+    -> futures::Future<ResultT<Stored>> {
+  _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
+  LOG_PREGEL("91264", DEBUG) << "Storing results";
+  // tell graphstore to remove read locks
+  _graphStore->_reports = &this->_reports;
+  return _graphStore->storeResults(&_config, _makeStatusCallback())
+      .thenValue([&](auto result) -> ResultT<Stored> {
+        _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
+        if (result.fail()) {
+          return result;
+        }
 
-  auto const doStore = command.withStoring;
-  auto cleanup = [self = shared_from_this(), this, doStore] {
-    if (doStore) {
-      _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
-    }
+        _state = WorkerState::DONE;
 
-    auto event = _cleanupFinishedEvent();
-    auto modernMessage = ModernMessage{
-        .executionNumber = _config.executionNumber(), .payload = event};
-    VPackBuilder message;
-    serialize(message, modernMessage);
-    _callConductor(message);
-    _reports.clear();
-    _feature.cleanupWorker(_config.executionNumber());
-  };
-
-  _state = WorkerState::DONE;
-  if (doStore) {
-    LOG_PREGEL("91264", DEBUG) << "Storing results";
-    // tell graphstore to remove read locks
-    _graphStore->_reports = &this->_reports;
-    _graphStore->storeResults(&_config, std::move(cleanup),
-                              _makeStatusCallback());
-    _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
-  } else {
-    LOG_PREGEL("b3f35", WARN) << "Discarding results";
-    cleanup();
-  }
-  return CleanupStarted{};
+        VPackBuilder reports;
+        {
+          VPackObjectBuilder o(&reports);
+          reports.add(VPackValue(Utils::reportsKey));
+          _reports.intoBuilder(reports);
+        }
+        return Stored{std::move(reports)};
+      });
 }
 
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::_cleanupFinishedEvent() const -> CleanupFinished {
-  VPackBuilder reports;
-  {
-    VPackObjectBuilder o(&reports);
-    reports.add(VPackValue(Utils::reportsKey));
-    _reports.intoBuilder(reports);
-  }
-  return CleanupFinished{ServerState::instance()->getId(), std::move(reports)};
+void Worker<V, E, M>::cancelGlobalStep(VPackSlice const& data) {
+  MUTEX_LOCKER(guard, _commandMutex);
+  _state = WorkerState::DONE;
+  _workHandle.reset();
+}
+
+template<typename V, typename E, typename M>
+auto Worker<V, E, M>::cleanup(Cleanup const& command)
+    -> futures::Future<ResultT<CleanupFinished>> {
+  // Only expect serial calls from the conductor.
+  // Lock to prevent malicious activity
+  MUTEX_LOCKER(guard, _commandMutex);
+  LOG_PREGEL("4067a", DEBUG) << "Removing worker";
+  return _feature.cleanupWorker(_config.executionNumber())
+      .thenValue([](auto _) -> ResultT<CleanupFinished> {
+        return {CleanupFinished{}};
+      });
 }
 
 template<typename V, typename E, typename M>
@@ -761,10 +743,21 @@ auto Worker<V, E, M>::process(MessagePayload const& message)
                       .payload = {result}};
                 });
           },
-          [&](StartCleanup const& x)
-              -> futures::Future<ResultT<ModernMessage>> {
-            return {ModernMessage{.executionNumber = _config.executionNumber(),
-                                  .payload = finalizeExecution(x)}};
+          [&](Store const& x) -> futures::Future<ResultT<ModernMessage>> {
+            return store(x).thenValue(
+                [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
+                  return ModernMessage{
+                      .executionNumber = _config.executionNumber(),
+                      .payload = {result}};
+                });
+          },
+          [&](Cleanup const& x) -> futures::Future<ResultT<ModernMessage>> {
+            return cleanup(x).thenValue(
+                [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
+                  return ModernMessage{
+                      .executionNumber = _config.executionNumber(),
+                      .payload = {result}};
+                });
           },
           [&](CollectPregelResults const& x)
               -> futures::Future<ResultT<ModernMessage>> {
@@ -788,13 +781,12 @@ auto Worker<V, E, M>::loadGraph(LoadGraph const& graph)
     -> futures::Future<ResultT<GraphLoaded>> {
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
 
-  LOG_PREGEL("52070", WARN) << fmt::format(
+  LOG_PREGEL("52070", DEBUG) << fmt::format(
       "Worker for execution number {} is loading", _config.executionNumber());
-  return futures::makeFutureWith([&]() {
-           return _graphStore->loadShards(&_config, _makeStatusCallback());
-         })
+  return futures::makeFuture(
+             _graphStore->loadShards(&_config, _makeStatusCallback()))
       .then([&](auto&& result) {
-        LOG_PREGEL("52062", WARN) << fmt::format(
+        LOG_PREGEL("52062", DEBUG) << fmt::format(
             "Worker for execution number {} has finished loading.",
             _config.executionNumber());
         _makeStatusCallback()();

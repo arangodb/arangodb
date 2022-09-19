@@ -99,6 +99,7 @@ auto Computing::run() -> void {
                 "{}\n",
                 result.get().errorMessage());
             conductor.changeState(StateType::InError);
+            return;
           }
           auto gssPrepared = result.get().get();
           conductor._aggregators->aggregateValues(

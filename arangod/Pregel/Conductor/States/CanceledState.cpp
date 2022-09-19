@@ -1,5 +1,6 @@
 #include "CanceledState.h"
 #include <chrono>
+#include "fmt/chrono.h"
 
 #include "Basics/FunctionUtils.h"
 #include "Pregel/Conductor/Conductor.h"
@@ -18,9 +19,49 @@ Canceled::Canceled(Conductor& conductor, std::chrono::seconds const& ttl)
   }
 }
 
+auto Canceled::_cleanup() -> CleanupFuture {
+  auto results = std::vector<futures::Future<ResultT<CleanupFinished>>>{};
+  for (auto&& [_, worker] : conductor.workers) {
+    results.emplace_back(worker.cleanup(Cleanup{}));
+  }
+  return futures::collectAll(results);
+}
+
+auto Canceled::_cleanupUntilTimeout(std::chrono::steady_clock::time_point start)
+    -> futures::Future<Result> {
+  conductor.cleanup();
+
+  if (conductor._feature.isStopping()) {
+    LOG_PREGEL_CONDUCTOR("bd540", DEBUG)
+        << "Feature is stopping, workers are already shutting down, no need to "
+           "clean them up.";
+    return Result{};
+  }
+
+  LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Cleanup workers";
+  return _cleanup().thenValue([&](auto results) {
+    for (auto const& result : results) {
+      if (result.get().fail()) {
+        LOG_PREGEL_CONDUCTOR("1c495", ERR) << fmt::format(
+            "Got unsuccessful response from worker while cleaning up: {}",
+            result.get().errorMessage());
+        if (std::chrono::steady_clock::now() - start >= _timeout) {
+          return Result{
+              TRI_ERROR_INTERNAL,
+              fmt::format("Failed to cancel worker execution for {}, giving up",
+                          _timeout)};
+        }
+        std::this_thread::sleep_for(_retryInterval);
+        return _cleanupUntilTimeout(start).get();
+      }
+    }
+    return Result{};
+  });
+}
+
 auto Canceled::run() -> void {
   LOG_PREGEL_CONDUCTOR("dd721", WARN)
-      << "Execution was canceled, results will be discarded.";
+      << "Execution was canceled, conductor and workers are discarded.";
 
   bool ok = basics::function_utils::retryUntilTimeout(
       [this]() -> bool {

@@ -35,13 +35,21 @@ struct Storing : State {
   Storing(Conductor& conductor);
   ~Storing();
   auto run() -> void override;
-  auto receive(Message const& message) -> void override;
+  auto receive(Message const& message) -> void override{};
   auto name() const -> std::string override { return "storing"; };
   auto isRunning() const -> bool override { return true; }
   auto getExpiration() const
       -> std::optional<std::chrono::system_clock::time_point> override {
     return std::nullopt;
   }
+
+ private:
+  using StoredFuture = futures::Future<
+      std::vector<futures::Try<arangodb::ResultT<arangodb::pregel::Stored>>>>;
+  auto _store() -> StoredFuture;
+  using CleanupFuture = futures::Future<std::vector<
+      futures::Try<arangodb::ResultT<arangodb::pregel::CleanupFinished>>>>;
+  auto _cleanup() -> CleanupFuture;
 };
 
 }  // namespace conductor

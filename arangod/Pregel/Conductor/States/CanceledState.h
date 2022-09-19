@@ -38,13 +38,22 @@ struct Canceled : State {
   Canceled(Conductor& conductor, std::chrono::seconds const& ttl);
   ~Canceled() = default;
   auto run() -> void override;
-  auto receive(Message const& message) -> void override;
+  auto receive(Message const& message) -> void override{};
   auto name() const -> std::string override { return "canceled"; };
   auto isRunning() const -> bool override { return false; }
   auto getExpiration() const
       -> std::optional<std::chrono::system_clock::time_point> override {
     return expiration;
   };
+
+ private:
+  using CleanupFuture = futures::Future<std::vector<
+      futures::Try<arangodb::ResultT<arangodb::pregel::CleanupFinished>>>>;
+  auto _cleanup() -> CleanupFuture;
+  std::chrono::nanoseconds _retryInterval = std::chrono::seconds(1);
+  std::chrono::nanoseconds _timeout = std::chrono::minutes(5);
+  auto _cleanupUntilTimeout(std::chrono::steady_clock::time_point start)
+      -> futures::Future<Result>;
 };
 
 }  // namespace conductor

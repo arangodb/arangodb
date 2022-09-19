@@ -456,15 +456,6 @@ void Conductor::cleanup() {
   }
 }
 
-void Conductor::finishedWorkerFinalize(CleanupFinished const& data) {
-  MUTEX_LOCKER(guard, _callbackMutex);
-
-  LOG_PREGEL("08142", WARN) << fmt::format(
-      "finishedWorkerFinalize, got response from {}.", data.senderId);
-
-  state->receive(data);
-}
-
 bool Conductor::canBeGarbageCollected() const {
   // we don't want to block other operations for longer, so if we can't
   // immediately acuqire the mutex here, we assume a conductor cannot be

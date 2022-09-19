@@ -16,6 +16,10 @@ class NewIWorker {
       -> futures::Future<ResultT<GlobalSuperStepPrepared>> = 0;
   [[nodiscard]] virtual auto runGlobalSuperStep(RunGlobalSuperStep const& data)
       -> futures::Future<ResultT<GlobalSuperStepFinished>> = 0;
+  [[nodiscard]] virtual auto store(Store const& message)
+      -> futures::Future<ResultT<Stored>> = 0;
+  [[nodiscard]] virtual auto cleanup(Cleanup const& message)
+      -> futures::Future<ResultT<CleanupFinished>> = 0;
 };
 
 }  // namespace arangodb::pregel

@@ -37,6 +37,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ResultT.h"
+#include "Futures/Unit.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelMetrics.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -86,7 +87,8 @@ class PregelFeature final : public ArangodFeature {
   std::shared_ptr<IWorker> worker(ExecutionNumber executionNumber);
 
   void cleanupConductor(ExecutionNumber executionNumber);
-  void cleanupWorker(ExecutionNumber executionNumber);
+  auto cleanupWorker(ExecutionNumber executionNumber)
+      -> futures::Future<futures::Unit>;
 
   void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
                               VPackSlice const& body,
