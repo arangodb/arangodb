@@ -105,15 +105,6 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(
       }
     });
 
-    bool wide = collection.id() == collection.planId() && collection.isAStub();
-    auto& ci = collection.vocbase()
-                   .server()
-                   .getFeature<ClusterFeature>()
-                   .clusterInfo();
-    clusterCollectionName(collection, wide ? nullptr : &ci,
-                          index->Index::id().id(), false,
-                          index->_collectionName);
-
     auto initRes = index->init(
         definition, pathExists, [this]() -> irs::directory_attributes {
           auto& selector = _server.getFeature<EngineSelectorFeature>();
@@ -245,7 +236,7 @@ std::string IResearchRocksDBInvertedIndex::getCollectionName() const {
   if (ServerState::instance()->isSingleServer()) {
     return std::to_string(Index::_collection.id().id());
   }
-  return _collectionName;
+  return meta()._collectionName;
 }
 
 std::string const& IResearchRocksDBInvertedIndex::getShardName()
