@@ -151,8 +151,8 @@ function recoverySuite() {
       let figures;
       for (let i = 0; i < 100; ++i) {
         require("internal").sleep(0.5);
-        figures = collection.getIndexes(true, true)
-          .find(e => e.name === "searchIndex")
+        figures = db._collection('UnitTestsRecoveryDummy').getIndexes(true, true)
+          .find(e => e.name === "i1")
           .figures;
         if (figures.numDocs > 0) {
           break;
