@@ -964,7 +964,8 @@ void IResearchInvertedIndexMetaIndexingContext::addField(
     auto current = this;
     for (size_t i = 0; i < f._attribute.size(); ++i) {
       auto const& a = f._attribute[i];
-      auto& fieldsContainer = nested && i == 0 ? current->_nested : current->_fields;
+      auto& fieldsContainer =
+          nested && i == 0 ? current->_nested : current->_fields;
       auto emplaceRes = fieldsContainer.emplace(
           a.name, IResearchInvertedIndexMetaIndexingContext{_meta, false});
 
