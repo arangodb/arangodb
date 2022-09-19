@@ -26,12 +26,12 @@
 #include <fmt/core.h>
 #include <fmt/format.h>
 
-#include <Inspection/VPack.h>
 #include "Inspection/VPackSaveInspector.h"
 #include "Inspection/detail/traits.h"
+#include <Inspection/VPack.h>
 
 template<>
-struct fmt::formatter<VPackBuilder> {
+struct fmt::formatter<VPackSlice> {
   void set_debug_format() = delete;
 
   enum class Presentation { NotPretty, Pretty };
@@ -55,26 +55,26 @@ struct fmt::formatter<VPackBuilder> {
   }
 
   template<typename FormatContext>
-  auto format(VPackBuilder const& builder, FormatContext& ctx) const
+  auto format(VPackSlice const& slice, FormatContext& ctx) const
       -> decltype(ctx.out()) {
     switch (presentation) {
       case Presentation::NotPretty:
-        return fmt::format_to(ctx.out(), "{}", builder.toJson());
+        return fmt::format_to(ctx.out(), "{}", slice.toJson());
       case Presentation::Pretty:
-        return fmt::format_to(ctx.out(), "{}", builder.toString());
+        return fmt::format_to(ctx.out(), "{}", slice.toString());
     }
   }
 };
 
 namespace arangodb::inspection {
 // Formats an object of type T that has an overloaded inspector.
-struct inspection_formatter : fmt::formatter<VPackBuilder> {
+struct inspection_formatter : fmt::formatter<VPackSlice> {
   template<typename T, typename FormatContext,
            typename Inspector = VPackSaveInspector<NoContext>>
   requires detail::HasInspectOverload<T, Inspector>::value auto format(
       const T& value, FormatContext& ctx) const -> decltype(ctx.out()) {
     auto builder = arangodb::velocypack::serialize(value);
-    return fmt::formatter<VPackBuilder>::format(*builder, ctx);
+    return fmt::formatter<VPackSlice>::format(builder->slice(), ctx);
   }
 };
 }  // namespace arangodb::inspection
