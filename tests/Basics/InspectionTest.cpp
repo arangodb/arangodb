@@ -2092,7 +2092,7 @@ TEST_F(VPackLoadInspectorTest, load_string_enum) {
   builder.add(VPackValue("value1"));
   builder.add(VPackValue("value2"));
   builder.close();
-  arangodb::inspection::VPackLoadInspector inspector{builder};
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
 
   std::vector<MyStringEnum> enums;
   auto result = inspector.apply(enums);
@@ -2107,7 +2107,7 @@ TEST_F(VPackLoadInspectorTest, load_int_enum) {
   builder.add(VPackValue(1));
   builder.add(VPackValue(2));
   builder.close();
-  arangodb::inspection::VPackLoadInspector inspector{builder};
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
 
   std::vector<MyIntEnum> enums;
   auto result = inspector.apply(enums);
@@ -2124,7 +2124,7 @@ TEST_F(VPackLoadInspectorTest, load_mixed_enum) {
   builder.add(VPackValue("value2"));
   builder.add(VPackValue(2));
   builder.close();
-  arangodb::inspection::VPackLoadInspector inspector{builder};
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
 
   std::vector<MyMixedEnum> enums;
   auto result = inspector.apply(enums);
@@ -2138,7 +2138,7 @@ TEST_F(VPackLoadInspectorTest, load_mixed_enum) {
 
 TEST_F(VPackLoadInspectorTest, load_string_enum_returns_error_when_not_string) {
   builder.add(VPackValue(42));
-  arangodb::inspection::VPackLoadInspector inspector{builder};
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
 
   MyStringEnum myEnum;
   auto result = inspector.apply(myEnum);
@@ -2148,7 +2148,7 @@ TEST_F(VPackLoadInspectorTest, load_string_enum_returns_error_when_not_string) {
 
 TEST_F(VPackLoadInspectorTest, load_int_enum_returns_error_when_not_int) {
   builder.add(VPackValue("foobar"));
-  arangodb::inspection::VPackLoadInspector inspector{builder};
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
 
   MyIntEnum myEnum;
   auto result = inspector.apply(myEnum);
@@ -2159,7 +2159,7 @@ TEST_F(VPackLoadInspectorTest, load_int_enum_returns_error_when_not_int) {
 TEST_F(VPackLoadInspectorTest,
        load_mixed_enum_returns_error_when_not_string_or_int) {
   builder.add(VPackValue(false));
-  arangodb::inspection::VPackLoadInspector inspector{builder};
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
 
   MyMixedEnum myEnum;
   auto result = inspector.apply(myEnum);
@@ -2170,7 +2170,7 @@ TEST_F(VPackLoadInspectorTest,
 TEST_F(VPackLoadInspectorTest,
        load_string_enum_returns_error_when_value_is_unknown) {
   builder.add(VPackValue("unknownValue"));
-  arangodb::inspection::VPackLoadInspector inspector{builder};
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
 
   MyStringEnum myEnum;
   auto result = inspector.apply(myEnum);
@@ -2181,7 +2181,7 @@ TEST_F(VPackLoadInspectorTest,
 TEST_F(VPackLoadInspectorTest,
        load_int_enum_returns_error_when_value_is_unknown) {
   builder.add(VPackValue(42));
-  arangodb::inspection::VPackLoadInspector inspector{builder};
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
 
   MyIntEnum myEnum;
   auto result = inspector.apply(myEnum);
@@ -2193,7 +2193,7 @@ TEST_F(VPackLoadInspectorTest,
        load_mixed_enum_returns_error_when_value_is_unknown) {
   {
     builder.add(VPackValue("unknownValue"));
-    arangodb::inspection::VPackLoadInspector inspector{builder};
+    arangodb::inspection::VPackLoadInspector<> inspector{builder};
 
     MyMixedEnum myEnum;
     auto result = inspector.apply(myEnum);
@@ -2203,7 +2203,7 @@ TEST_F(VPackLoadInspectorTest,
   {
     builder.clear();
     builder.add(VPackValue(42));
-    arangodb::inspection::VPackLoadInspector inspector{builder};
+    arangodb::inspection::VPackLoadInspector<> inspector{builder};
 
     MyMixedEnum myEnum;
     auto result = inspector.apply(myEnum);
