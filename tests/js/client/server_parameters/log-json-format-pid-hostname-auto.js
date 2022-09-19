@@ -99,7 +99,7 @@ function LoggerSuite() {
         assertTrue(parsedRes.hasOwnProperty("topic"), parsedRes);
         assertTrue(parsedRes.hasOwnProperty("id"), parsedRes);
         assertTrue(parsedRes.hasOwnProperty("hostname"), parsedRes);
-        assertTrue(typeof parsedRes.hostname, "string");
+        assertEqual(typeof parsedRes.hostname, "string");
         assertNotEqual(parsedRes.hostname, "");
         assertTrue(parsedRes.hasOwnProperty("role"), parsedRes);
         assertFalse(parsedRes.hasOwnProperty("tid"), parsedRes);
