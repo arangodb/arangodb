@@ -153,11 +153,11 @@ class ClusterMetricsFeature final : public ArangodFeature {
   containers::FlatHashMap<std::string_view, MapReduce> _mapReduce;
   containers::FlatHashMap<std::string_view, ToPrometheus> _toPrometheus;
 
-  void rescheduleTimer() noexcept;
-  void rescheduleUpdate(uint32_t timeout) noexcept;
+  void rescheduleTimer(uint32_t timeoutMs) noexcept;
+  void rescheduleUpdate(uint32_t timeoutMs) noexcept;
 
   void update();
-  void repeatUpdate(bool force) noexcept;
+  void repeatUpdate(uint32_t timeoutMs) noexcept;
   bool writeData(uint64_t version, futures::Try<RawDBServers>&& raw);
   bool readData(futures::Try<LeaderResponse>&& raw);
   Metrics parse(RawDBServers&& metrics) const;
@@ -168,7 +168,7 @@ class ClusterMetricsFeature final : public ArangodFeature {
   Scheduler::WorkHandle _update;
   Scheduler::WorkHandle _timer;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  uint32_t _timeout = 1;
+  uint32_t _timeout = 10;
 #else
   uint32_t _timeout = 0;
 #endif
