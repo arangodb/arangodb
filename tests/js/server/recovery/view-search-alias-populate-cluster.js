@@ -31,8 +31,9 @@ var db = require('@arangodb').db;
 var internal = require('internal');
 var jsunity = require('jsunity');
 var analyzers = require("@arangodb/analyzers");
+const {getEndpointsByType, getRawMetric} = require("@arangodb/test-helper");
 
-function runSetup () {
+function runSetup() {
   'use strict';
   internal.debugClearFailAt();
 
@@ -41,16 +42,25 @@ function runSetup () {
 
   db._dropView('UnitTestsRecoveryView');
   db._dropView('UnitTestsRecoveryView2');
-  try { analyzers.remove('calcAnalyzer', true); } catch(e) {}
+  try {
+    analyzers.remove('calcAnalyzer', true);
+  } catch (e) {
+  }
 
-  analyzers.save('calcAnalyzer',"aql",{queryString:"RETURN SOUNDEX(@param)"});
-  var i1 = c.ensureIndex({ type: "inverted", name: "i1", fields: [ "a", "b", "c" ] });
-  var i2 = c.ensureIndex({ type: "inverted", name: "i2", includeAllFields:true, analyzer: "calcAnalyzer", fields: [ "a", "b", "c" ] });
-  var i3 = c.ensureIndex({ type: "inverted", name: "i3", includeAllFields:true });
+  analyzers.save('calcAnalyzer', "aql", {queryString: "RETURN SOUNDEX(@param)"});
+  var i1 = c.ensureIndex({type: "inverted", name: "i1", fields: ["a", "b", "c"]});
+  var i2 = c.ensureIndex({
+    type: "inverted",
+    name: "i2",
+    includeAllFields: true,
+    analyzer: "calcAnalyzer",
+    fields: ["a", "b", "c"]
+  });
+  var i3 = c.ensureIndex({type: "inverted", name: "i3", includeAllFields: true});
 
-  var meta1 = { indexes: [ { index: i1.name, collection: c.name() } ] };
-  var meta2 = { indexes: [ { index: i2.name, collection: c.name() } ] };
-  var meta3 = { indexes: [ { index: i3.name, collection: c.name() } ] };
+  var meta1 = {indexes: [{index: i1.name, collection: c.name()}]};
+  var meta2 = {indexes: [{index: i2.name, collection: c.name()}]};
+  var meta3 = {indexes: [{index: i3.name, collection: c.name()}]};
   db._createView('UnitTestsRecoveryView', 'search-alias', meta1);
   db._createView('UnitTestsRecoveryView2', 'search-alias', meta2);
   db._createView('UnitTestsRecoveryView3', 'search-alias', meta3);
@@ -59,25 +69,27 @@ function runSetup () {
   db._view('UnitTestsRecoveryView4').properties(meta1);
   db._view('UnitTestsRecoveryView5').properties(meta2);
 
-  for (let i = 0; i < 50000; i++) {
-    c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
+  for (let i = 0; i < 500; i++) {
+    c.save({a: "foo_" + i, b: "bar_" + i, c: i});
   }
 
-  c.save({ name: 'crashme' }, { waitForSync: true });
+  c.save({name: 'crashme'}, {waitForSync: true});
 
   internal.debugTerminate('crashing server');
 }
 
-function recoverySuite () {
+function recoverySuite() {
   'use strict';
   jsunity.jsUnity.attachAssertions();
 
   return {
-    setUp: function () {},
-    tearDown: function () {},
+    setUp: function () {
+    },
+    tearDown: function () {
+    },
 
     testIResearchLinkPopulate: function () {
-      let checkView = function(viewName, indexName) {
+      let checkView = function (viewName, indexName) {
         let v = db._view(viewName);
         assertEqual(v.name(), viewName);
         assertEqual(v.type(), 'search-alias');
@@ -93,7 +105,7 @@ function recoverySuite () {
       checkView("UnitTestsRecoveryView4", "i1");
       checkView("UnitTestsRecoveryView5", "i2");
 
-      let checkIndex = function(indexName, analyzer, includeAllFields, hasFields) {
+      let checkIndex = function (indexName, analyzer, includeAllFields, hasFields) {
         let c = db._collection("UnitTestsRecoveryDummy");
         let indexes = c.getIndexes().filter(i => i.type === "inverted" && i.name === indexName);
         assertEqual(1, indexes.length);
@@ -131,11 +143,31 @@ function recoverySuite () {
       ];
 
       queries.forEach(q => assertEqual(expectedCount, db._query(q).toArray()[0]));
+      let coordinators = getEndpointsByType("coordinator");
+      for (let i = 0; i < coordinators.length; i++) {
+        let c = coordinators[i];
+        getRawMetric(c, '?mode=trigger_global');
+      }
+      let figures;
+      for (let i = 0; i < 100; ++i) {
+        require("internal").sleep(0.5);
+        figures = db._collection('UnitTestsRecoveryDummy').getIndexes(true, true)
+          .find(e => e.name === "i1")
+          .figures;
+        if (figures.numDocs > 0) {
+          break;
+        }
+      }
+      assertEqual(figures.numDocs, 501);
+      assertEqual(figures.numLiveDocs, 501);
+      assertTrue(figures.numSegments >= 1);
+      assertTrue(figures.numFiles >= 6);
+      assertTrue(figures.indexSize > 0);
     }
   };
 }
 
-function main (argv) {
+function main(argv) {
   'use strict';
   if (argv[1] === 'setup') {
     runSetup();
