@@ -42,6 +42,7 @@
 #include "Pregel/Utils.h"
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
 #include "Pregel/Algos/ReadWrite.h"
+#include "Pregel/Algos/Summarizing.h"
 #endif
 
 using namespace arangodb;
@@ -79,6 +80,8 @@ IAlgorithm* AlgoRegistry::createAlgorithm(
   } else if (algorithm == "dmid") {
     return new algos::DMID(server, userParams);
   } else if (algorithm == "wcc") {
+    return new algos::WCC(server, userParams);
+  } else if (algorithm == "summarizing") {
     return new algos::WCC(server, userParams);
   }
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
@@ -168,6 +171,9 @@ template<typename V, typename E, typename M>
   } else if (algorithm == "wcc") {
     return createWorker(vocbase, new algos::WCC(server, userParams), body,
                         feature);
+  } else if (algorithm == "summarizing") {
+    return createWorker(vocbase, new algos::Summarizing(server, userParams),
+                        body, feature);
   }
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
   else if (algorithm == "readwrite") {
