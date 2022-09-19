@@ -1,6 +1,11 @@
 v3.10.0-beta.1 (2022-09-14)
 ---------------------------
 
+* Fixed SEARCH-386 Fixed disjunction coverage in the inverted index with 
+  non-default analyzers.
+
+* Fixed SEARCH-373  Fixed indexing same field as nested and as non-nested.
+
 * Display progress during Arangosearch link and inverted index recovery.
 
 * Fixed SEARCH-374 and SEARCH-358 Fixed a rare case of wrong seek operation in

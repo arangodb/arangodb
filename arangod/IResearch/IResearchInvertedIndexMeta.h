@@ -147,11 +147,14 @@ struct IResearchInvertedIndexMetaIndexingContext {
   IResearchInvertedIndexMetaIndexingContext(
       IResearchInvertedIndexMeta const* field, bool add = true);
 
-  void addField(InvertedIndexField const& field);
+  void addField(InvertedIndexField const& field, bool nested);
 
   absl::flat_hash_map<std::string_view,
                       IResearchInvertedIndexMetaIndexingContext>
-      _subFields;
+      _fields;
+  absl::flat_hash_map<std::string_view,
+                      IResearchInvertedIndexMetaIndexingContext>
+      _nested;
   std::array<FieldMeta::Analyzer, 1> const* _analyzers;
   size_t _primitiveOffset;
   IResearchInvertedIndexMeta const* _meta;
