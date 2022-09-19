@@ -94,6 +94,7 @@ function LoggerSuite() {
         assertEqual(parsedRes.prefix, "PREFIX");
         assertTrue(parsedRes.hasOwnProperty("time"), parsedRes);
         assertTrue(parsedRes.hasOwnProperty("pid"), parsedRes);
+        assertMatch(/\d+/, parsedRes.pid);
 
         assertTrue(parsedRes.hasOwnProperty("level"), parsedRes);
         assertTrue(parsedRes.hasOwnProperty("topic"), parsedRes);
@@ -102,12 +103,11 @@ function LoggerSuite() {
         assertEqual(parsedRes.hostname, "HOSTNAME");
         assertTrue(parsedRes.hasOwnProperty("role"), parsedRes);
         assertTrue(parsedRes.hasOwnProperty("tid"), parsedRes);
-        assertMatch(/\d{1,}/, parsedRes.tid);
+        assertMatch(/\d+/, parsedRes.tid);
         assertTrue(parsedRes.hasOwnProperty("thread"));
         assertTrue(parsedRes.hasOwnProperty("line"));
-        assertMatch(/\d{1,}/, parsedRes.line);
-        assertMatch(/^[0-9]/, parsedRes.id, parsedRes);
-        assertMatch(/^[a-f0-9]{5}/, parsedRes.id, parsedRes);
+        assertMatch(/\d+/, parsedRes.line);
+        assertMatch(/^[a-f0-9]{5}$/, parsedRes.id, parsedRes);
         assertTrue(parsedRes.hasOwnProperty("message"), parsedRes);
         assertEqual("testmann: testi" + (i - 1), parsedRes.message, parsedRes);
       }
@@ -122,10 +122,10 @@ function LoggerSuite() {
       assertTrue(res.hasOwnProperty("text"));
 
       for (let i = 0; i < res.totalAmount; ++i) {
-        assertMatch(/\d{1,}/, res.lid[i]);
-        assertMatch(/[A-Za-z]{1,}/, res.topic[i]);
-        assertMatch(/\d{1,}/, res.level[i]);
-        assertMatch(/\d{1,}/, res.timestamp[i]);
+        assertMatch(/\d+/, res.lid[i]);
+        assertMatch(/[A-Za-z]{1,}$/, res.topic[i]);
+        assertMatch(/\d+/, res.level[i]);
+        assertMatch(/\d+/, res.timestamp[i]);
       }
     },
 

@@ -105,10 +105,10 @@ function LoggerSuite() {
       assertTrue(res.hasOwnProperty("text"));
 
       for (let i = 0; i < res.totalAmount; ++i) {
-        assertMatch(/\d{1,}/, res.lid[i]);
-        assertMatch(/[A-Za-z]{1,}/, res.topic[i]);
-        assertMatch(/\d{1,}/, res.level[i]);
-        assertMatch(/\d{1,}/, res.timestamp[i]);
+        assertMatch(/\d+/, res.lid[i]);
+        assertMatch(/[A-Za-z]{1,}$/, res.topic[i]);
+        assertMatch(/\d+/, res.level[i]);
+        assertMatch(/\d+/, res.timestamp[i]);
       }
     },
 

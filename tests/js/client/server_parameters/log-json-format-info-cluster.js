@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, arango, assertMatch, assertEqual, instanceManager */
+/* global getOptions, assertTrue, arango, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for server startup options
@@ -71,6 +71,7 @@ function LoggerSuite() {
     tearDown: function() {
       db._useDatabase("_system");
       db._dropDatabase(dbName);
+      arango.reconnect(db.getEndpoint(), db._name(), "root", "");
     },
 
     testLogClusterInfoInFile: function() {
