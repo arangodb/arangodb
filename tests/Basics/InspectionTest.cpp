@@ -2010,14 +2010,13 @@ TEST_F(VPackInspectionTest, serialize) {
 
 TEST_F(VPackInspectionTest, serialize_to_builder) {
   Dummy const d{.i = 42, .d = 123.456, .b = true, .s = "cheese"};
-  auto builder = arangodb::velocypack::serialize(d);
-  auto slice = builder->slice();
+  auto sharedSlice = arangodb::velocypack::serialize(d);
 
-  ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(d.i, slice["i"].getInt());
-  EXPECT_EQ(d.d, slice["d"].getDouble());
-  EXPECT_EQ(d.b, slice["b"].getBool());
-  EXPECT_EQ(d.s, slice["s"].copyString());
+  ASSERT_TRUE(sharedSlice.isObject());
+  EXPECT_EQ(d.i, sharedSlice["i"].getInt());
+  EXPECT_EQ(d.d, sharedSlice["d"].getDouble());
+  EXPECT_EQ(d.b, sharedSlice["b"].getBool());
+  EXPECT_EQ(d.s, sharedSlice["s"].copyString());
 }
 
 TEST_F(VPackInspectionTest, formatter) {
@@ -2034,8 +2033,8 @@ TEST_F(VPackInspectionTest, formatter) {
 
   auto pretty = fmt::format("My name is {:p}", d);
   EXPECT_EQ(pretty,
-            "My name is {\n  \"b\" : true,\n  \"d\" : 123.456,\n  \"i\" : "
-            "42,\n  \"s\" : \"cheese\"\n}");
+            "My name is {\n  \"i\" : 42,\n  \"d\" : 123.456,\n  \"b\" : "
+            "true,\n  \"s\" : \"cheese\"\n}");
 }
 
 TEST_F(VPackInspectionTest, deserialize) {

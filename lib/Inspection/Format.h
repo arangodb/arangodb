@@ -73,8 +73,8 @@ struct inspection_formatter : fmt::formatter<VPackSlice> {
            typename Inspector = VPackSaveInspector<NoContext>>
   requires detail::HasInspectOverload<T, Inspector>::value auto format(
       const T& value, FormatContext& ctx) const -> decltype(ctx.out()) {
-    auto builder = arangodb::velocypack::serialize(value);
-    return fmt::formatter<VPackSlice>::format(builder->slice(), ctx);
+    auto sharedSlice = arangodb::velocypack::serialize(value);
+    return fmt::formatter<VPackSlice>::format(sharedSlice.slice(), ctx);
   }
 };
 }  // namespace arangodb::inspection
