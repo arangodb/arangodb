@@ -3,6 +3,23 @@ devel
 
 * BTS-477: added integration tests for covering log parameters
 
+* Fixed BTS-1017: Fixed a graph search issue, where subqueries lead to
+  incorrect results when they have been pushed down fully onto a DBServer
+  when they are in a Hybrid Disjoint SmartGraph context and
+  SatelliteCollections were part of it.
+
+* Fixed issue BTS-1023:
+  Added Linux-specific startup option `--use-splice-syscall` to control
+  whether the Linux-specific splice() syscall should be used for copying
+  file contents. While the syscall is generally available since Linux 2.6.x,
+  it is also required that the underlying filesystem supports the splice
+  operation. This is not true for some encrypted filesystems, on which
+  splice() calls thus fail.
+  By setting the startup option `--use-splice-syscall` to `false`, a less
+  efficient, but more portable user-space file copying method will be
+  used instead, which should work on all filesystems.
+  The startup option is not available on other operating systems than Linux.
+
 * Added authenticate header to the HTTP response when status code is 401 
   for HTTP/2.
 
