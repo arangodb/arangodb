@@ -18,45 +18,40 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Basics/TypeList.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-namespace application_features {
+namespace options {
+class ProgramOptions;
+}
 
-template<typename Features>
-class ApplicationServerT;
-class BasicFeaturePhaseClient;
-class CommunicationFeaturePhase;
-class GreetingsFeaturePhase;
-}  // namespace application_features
-
-class ClientFeature;
-class ConfigFeature;
-class FileSystemFeature;
-class ShellConsoleFeature;
 class LoggerFeature;
-class RandomFeature;
-class ShellColorsFeature;
-class ShutdownFeature;
-class SslFeature;
-class VersionFeature;
-class HttpEndpointProvider;
-class ArangoGlobalContext;
 
-using namespace application_features;
+class FileSystemFeature final
+    : public application_features::ApplicationFeature {
+ public:
+  static constexpr std::string_view name() noexcept { return "FileSystem"; }
 
-template<typename... T>
-using ArangoClientFeatures = TypeList<
-    // Phases
-    CommunicationFeaturePhase, GreetingsFeaturePhase,
-    // Features
-    VersionFeature,  // VersionFeature must go first
-    HttpEndpointProvider, ConfigFeature, FileSystemFeature, LoggerFeature,
-    RandomFeature, ShellColorsFeature, ShutdownFeature, SslFeature, T...>;
+  template<typename Server>
+  explicit FileSystemFeature(Server& server)
+      : ApplicationFeature{server, *this} {
+    setOptional(false);
+    startsAfter<LoggerFeature, Server>();
+  }
+
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+
+ private:
+  // whether or not to use the splice() syscall on Linux
+#ifdef __linux__
+  bool _useSplice = true;
+#endif
+};
 
 }  // namespace arangodb
