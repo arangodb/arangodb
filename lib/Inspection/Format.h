@@ -58,11 +58,12 @@ struct fmt::formatter<VPackSlice> {
   auto format(VPackSlice const& slice, FormatContext& ctx) const
       -> decltype(ctx.out()) {
     switch (presentation) {
-      case Presentation::NotPretty:
-        return fmt::format_to(ctx.out(), "{}", slice.toJson());
       case Presentation::Pretty:
         return fmt::format_to(ctx.out(), "{}", slice.toString());
-    }
+      case Presentation::NotPretty:
+      default:
+        return fmt::format_to(ctx.out(), "{}", slice.toJson());
+     }
   }
 };
 
