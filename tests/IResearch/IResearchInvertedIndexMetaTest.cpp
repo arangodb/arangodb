@@ -811,7 +811,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testDefaults) {
   ASSERT_EQ(irs::type<irs::compression::lz4>::id(),
             meta._sort.sortCompression());
   ASSERT_FALSE(meta.dense());
-  ASSERT_EQ(arangodb::iresearch::LinkVersion::MAX, meta._version);
+  ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
+            meta._version);
   ASSERT_EQ(2, meta._cleanupIntervalStep);
   ASSERT_EQ(1000, meta._commitIntervalMsec);
   ASSERT_EQ(1000, meta._consolidationIntervalMsec);
@@ -891,7 +892,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
               meta._sort.sortCompression());
     ASSERT_TRUE(meta._analyzerDefinitions.empty());
     ASSERT_FALSE(meta.dense());
-    ASSERT_EQ(arangodb::iresearch::LinkVersion::MAX, meta._version);
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
+              meta._version);
     ASSERT_EQ(Consistency::kEventual, meta._consistency);
     ASSERT_FALSE(meta._analyzers.empty());
     ASSERT_EQ(meta._analyzers[0]._shortName, "identity");
@@ -916,7 +918,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
               meta._sort.sortCompression());
     ASSERT_TRUE(meta._analyzerDefinitions.empty());
     ASSERT_FALSE(meta.dense());
-    ASSERT_EQ(arangodb::iresearch::LinkVersion::MAX, meta._version);
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
+              meta._version);
     ASSERT_EQ(Consistency::kEventual, meta._consistency);
     ASSERT_FALSE(meta._analyzers.empty());
     ASSERT_EQ(meta._analyzers[0]._shortName, "identity");
@@ -966,7 +969,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
   ASSERT_EQ(meta._sort.sortCompression(),
             irs::type<irs::compression::lz4>::id());
   ASSERT_FALSE(meta.dense());
-  ASSERT_EQ(arangodb::iresearch::LinkVersion::MAX, meta._version);
+  ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
+            meta._version);
   ASSERT_EQ(meta._consistency, Consistency::kEventual);
   ASSERT_FALSE(meta._analyzers.empty());
   ASSERT_EQ(meta._analyzers[0]._shortName, "identity");

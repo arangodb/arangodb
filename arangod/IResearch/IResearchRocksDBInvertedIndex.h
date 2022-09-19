@@ -162,8 +162,6 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
     *const_cast<std::vector<std::vector<basics::AttributeName>>*>(&_fields) =
         IResearchInvertedIndex::fields(meta());
   }
-
-  std::string _collectionName;
 };
 
 }  // namespace iresearch

@@ -1197,8 +1197,6 @@ function iResearchAqlTestSuite () {
             "type": "bytes_accum",
             "threshold": 0.10000000149011612
           },
-          "globallyUniqueId": "hB4A95C21732A/218",
-          "id": "218",
           "writebufferActive": 0,
           "consolidationIntervalMsec": 60000,
           "cleanupIntervalStep": 10,
@@ -1223,8 +1221,6 @@ function iResearchAqlTestSuite () {
             "type": "bytes_accum",
             "threshold": 0.10000000149011612
           },
-          "globallyUniqueId": "hB4A95C21732A/181",
-          "id": "181",
           "writebufferActive": 0,
           "consolidationIntervalMsec": 60000,
           "cleanupIntervalStep": 10,

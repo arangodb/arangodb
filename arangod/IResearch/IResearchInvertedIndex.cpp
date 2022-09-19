@@ -725,11 +725,6 @@ void IResearchInvertedIndex::toVelocyPack(ArangodServer& server,
                                           TRI_vocbase_t const* defaultVocbase,
                                           velocypack::Builder& builder,
                                           bool forPersistence) const {
-  if (!_dataStore._meta.json(builder, nullptr, nullptr)) {
-    THROW_ARANGO_EXCEPTION(Result(
-        TRI_ERROR_INTERNAL,
-        std::string{"Failed to generate inverted index store definition"}));
-  }
   if (!_meta.json(server, builder, forPersistence, defaultVocbase)) {
     THROW_ARANGO_EXCEPTION(Result(
         TRI_ERROR_INTERNAL,
@@ -777,6 +772,14 @@ Result IResearchInvertedIndex::init(
                                "definition, error in attribute '") +
                    errField + "': " + definition.toString()));
     return {TRI_ERROR_BAD_PARAMETER, errField};
+  }
+  auto& cf = _collection.vocbase().server().getFeature<ClusterFeature>();
+  if (cf.isEnabled() && ServerState::instance()->isDBServer()) {
+    bool const wide =
+        _collection.id() == _collection.planId() && _collection.isAStub();
+    clusterCollectionName(_collection, wide ? nullptr : &cf.clusterInfo(),
+                          id().id(), false /*TODO meta.willIndexIdAttribute()*/,
+                          _meta._collectionName);
   }
   if (ServerState::instance()->isSingleServer() ||
       ServerState::instance()->isDBServer()) {
