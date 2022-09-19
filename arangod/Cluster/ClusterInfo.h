@@ -1240,7 +1240,8 @@ class ClusterInfo final {
   // responsible and Current contains the actual current responsibility.
 
   // The Plan state:
-  AllCollections _plannedCollections;  // from Plan/Collections/
+  AllCollections _plannedCollections;     // from Plan/Collections/
+  AllCollections _newPlannedCollections;  // TODO
   containers::FlatHashMap<CollectionID,
                           std::shared_ptr<std::vector<std::string>>>
       _shards;  // from Plan/Collections/
