@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Basics/StaticStrings.h"
+#include "VocBase/voc-types.h"
 
 #include <string>
 
@@ -34,6 +35,13 @@ struct CollectionInternalProperties {
   bool syncByRevision = true;
   bool usesRevisionsAsDocumentIds = true;
   bool isSmartChild = false;
+  bool deleted = false;
+  uint64_t internalValidatorType = 0;
+
+  /* Still needed? Especially in Agency
+  std::underlying_type<TRI_vocbase_col_status_e> status =
+      TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED;
+  */
 };
 
 template<class Inspector>
@@ -41,10 +49,17 @@ auto inspect(Inspector& f, CollectionInternalProperties& props) {
   return f.object(props).fields(
       f.field("globallyUniqueId", props.globallyUniqueId).fallback(f.keep()),
       f.field("id", props.id).fallback(f.keep()),
-      f.field("syncByRevision", props.syncByRevision).fallback(f.keep()),
-      f.field("usesRevisionsAsDocumentIds", props.usesRevisionsAsDocumentIds)
+      f.field(StaticStrings::SyncByRevision, props.syncByRevision)
           .fallback(f.keep()),
-      f.field("isSmartChild", props.isSmartChild).fallback(f.keep()));
+      f.field(StaticStrings::UsesRevisionsAsDocumentIds,
+              props.usesRevisionsAsDocumentIds)
+          .fallback(f.keep()),
+      f.field(StaticStrings::IsSmartChild, props.isSmartChild)
+          .fallback(f.keep()),
+      f.field("deleted", props.deleted).fallback(f.keep()),
+      f.field(StaticStrings::InternalValidatorTypes,
+              props.internalValidatorType)
+          .fallback(f.keep()));
 }
 
 }  // namespace arangodb

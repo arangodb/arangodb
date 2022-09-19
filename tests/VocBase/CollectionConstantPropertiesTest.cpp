@@ -24,6 +24,7 @@
 
 #include "VocBase/Properties/CollectionConstantProperties.h"
 #include "Basics/ResultT.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Inspection/VPack.h"
 
 #include "InspectTestHelperMakros.h"
@@ -88,12 +89,24 @@ TEST_F(CollectionConstantPropertiesTest, test_minimal_user_input) {
   EXPECT_FALSE(testee->isVolatile);
   EXPECT_FALSE(testee->cacheEnabled);
   EXPECT_EQ(testee->numberOfShards, 1);
-  EXPECT_EQ(testee->distributeShardsLike, "");
+  EXPECT_FALSE(testee->distributeShardsLike.has_value());
   EXPECT_FALSE(testee->smartJoinAttribute.has_value());
-  EXPECT_EQ(testee->shardingStrategy, "");
+  // NOTE: We may want to add some context here
+  EXPECT_EQ(testee->shardingStrategy, "hash");
   ASSERT_EQ(testee->shardKeys.size(), 1);
   EXPECT_EQ(testee->shardKeys.at(0), StaticStrings::KeyString);
-  EXPECT_TRUE(testee->keyOptions.slice().isEmptyObject());
+  {
+    // Key Options have a more complex default value
+    ASSERT_TRUE(testee->keyOptions.slice().isObject());
+    auto keyOpts = testee->keyOptions.slice();
+
+    // Helper will only return true, if it exists and is true.
+    EXPECT_TRUE(basics::VelocyPackHelper::getBooleanValue(
+        keyOpts, "allowUserKeys", false));
+    EXPECT_EQ(basics::VelocyPackHelper::getStringValue(keyOpts, "type",
+                                                       "not_existing"),
+              "traditional");
+  }
   EXPECT_FALSE(testee->isSmart);
   EXPECT_FALSE(testee->isDisjoint);
   EXPECT_EQ(testee->smartGraphAttribute, "");

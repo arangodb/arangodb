@@ -48,8 +48,10 @@ PlanCollection initWithDefaults(
   res.constantProperties.numberOfShards = config.defaultNumberOfShards;
   res.mutableProperties.replicationFactor = config.defaultReplicationFactor;
   res.mutableProperties.writeConcern = config.defaultWriteConcern;
-  res.constantProperties.distributeShardsLike =
-      config.defaultDistributeShardsLike;
+  if (!config.defaultDistributeShardsLike.empty()) {
+    res.constantProperties.distributeShardsLike =
+        config.defaultDistributeShardsLike;
+  }
 
   return res;
 }

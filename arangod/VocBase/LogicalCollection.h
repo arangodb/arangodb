@@ -117,7 +117,7 @@ class LogicalCollection : public LogicalDataSource {
    * add a new value make sure it is the next free 2^n value.
    * For Backwards Compatibility a value can never be reused.
    */
-  enum InternalValidatorType {
+  enum InternalValidatorType : std::uint64_t {
     None = 0,
     LogicalSmartEdge = 1,
     LocalSmartEdge = 2,

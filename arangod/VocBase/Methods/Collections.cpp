@@ -630,16 +630,16 @@ Collections::create(         // create collection
 
   ClusterInfo& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
   for (auto& col : collections) {
-    if (!col.constantProperties.distributeShardsLike.empty()) {
+    if (col.constantProperties.distributeShardsLike.has_value()) {
       // Apply distributeShardsLike overwrites
       // TODO: Make this piece unit-testable.
       CollectionNameResolver resolver(vocbase);
-      auto myColToDistributeLike =
-          resolver.getCollection(col.constantProperties.distributeShardsLike);
+      auto myColToDistributeLike = resolver.getCollection(
+          col.constantProperties.distributeShardsLike.value());
       if (myColToDistributeLike == nullptr) {
         return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
                       "Collection not found: " +
-                          col.constantProperties.distributeShardsLike +
+                          col.constantProperties.distributeShardsLike.value() +
                           " in database " + vocbase.name()};
       }
       col.constantProperties.numberOfShards =

@@ -45,16 +45,16 @@ struct CollectionConstantProperties {
 
   uint64_t numberOfShards = 1;
 
-  std::string distributeShardsLike = StaticStrings::Empty;
-  std::string shardingStrategy = StaticStrings::Empty;
+  std::optional<std::string> distributeShardsLike = std::nullopt;
+  std::string shardingStrategy = defaultShardingStrategy();
   std::optional<std::string> smartJoinAttribute = std::nullopt;
 
-  std::vector<std::string> shardKeys;
+  std::vector<std::string> shardKeys =
+      std::vector<std::string>{StaticStrings::KeyString};
 
   // TODO: This can be optimized into it's own struct.
   // Did a short_cut here to avoid concatenated changes
-  arangodb::velocypack::Builder keyOptions =
-      VPackBuilder{VPackSlice::emptyObjectSlice()};
+  arangodb::velocypack::Builder keyOptions = defaultKeyOptions();
 
   // NOTE: These attributes are not documented
   bool isSmart = false;
@@ -69,6 +69,10 @@ struct CollectionConstantProperties {
   [[nodiscard]] TRI_col_type_e getType() const noexcept {
     return TRI_col_type_e(type);
   }
+
+ private:
+  static arangodb::velocypack::Builder defaultKeyOptions();
+  static std::string defaultShardingStrategy();
 };
 
 template<class Inspector>
@@ -86,7 +90,8 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
           .fallback(f.keep())
           .invariant(UtilityInvariants::isGreaterZero),
       f.field("distributeShardsLike", props.distributeShardsLike)
-          .fallback(f.keep()),
+          .fallback(f.keep())
+          .invariant(UtilityInvariants::isNonEmptyIfPresent),
       f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute)
           .invariant(UtilityInvariants::isNonEmptyIfPresent),
       f.field("shardingStrategy", props.shardingStrategy)

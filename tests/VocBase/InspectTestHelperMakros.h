@@ -146,7 +146,7 @@
 // discuss if this is correct
 
 #define GeneratePositiveIntegerAttributeTestInternal(TestClass, attributeName, \
-                                                     valueName)                \
+                                                     valueName, allowZero)     \
   TEST_F(TestClass, test_##attributeName) {                                    \
     auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                   \
                                    uint64_t expected) {                        \
@@ -159,8 +159,13 @@
                         42);                                                   \
     shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 4.5),    \
                         4);                                                    \
+    if (allowZero) {                                                           \
+      shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 0),    \
+                          0);                                                  \
+    } else {                                                                   \
+      __HELPER_assertParsingThrows(attributeName, 0);                          \
+    }                                                                          \
     __HELPER_assertParsingThrows(attributeName, -1);                           \
-    __HELPER_assertParsingThrows(attributeName, 0);                            \
     __HELPER_assertParsingThrows(attributeName, -4.5);                         \
     GenerateFailsOnBool(attributeName);                                        \
     GenerateFailsOnString(attributeName);                                      \
@@ -170,4 +175,8 @@
 
 #define GeneratePositiveIntegerAttributeTest(TestClass, attributeName)   \
   GeneratePositiveIntegerAttributeTestInternal(TestClass, attributeName, \
-                                               attributeName)
+                                               attributeName, false)
+
+#define GenerateIntegerAttributeTest(TestClass, attributeName)           \
+  GeneratePositiveIntegerAttributeTestInternal(TestClass, attributeName, \
+                                               attributeName, true)

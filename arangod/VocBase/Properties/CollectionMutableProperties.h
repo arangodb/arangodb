@@ -41,13 +41,11 @@ struct CollectionMutableProperties {
   uint64_t writeConcern = 1;
   // TODO: This can be optimized into it's own struct.
   // Did a short_cut here to avoid concatenated changes
-  arangodb::velocypack::Builder computedValues =
-      VPackBuilder{VPackSlice::emptyArraySlice()};
+  arangodb::velocypack::Builder computedValues{VPackSlice::nullSlice()};
 
   // TODO: This can be optimized into it's own struct.
   // Did a short_cut here to avoid concatenated changes
-  arangodb::velocypack::Builder schema =
-      VPackBuilder{VPackSlice::emptyObjectSlice()};
+  arangodb::velocypack::Builder schema{VPackSlice::nullSlice()};
 
   struct Transformers {
     struct ReplicationSatellite {

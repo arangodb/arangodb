@@ -102,6 +102,11 @@ TEST_F(CollectionMutablePropertiesTest, test_minimal_user_input) {
   EXPECT_FALSE(testee->waitForSync);
   EXPECT_EQ(testee->replicationFactor, 1);
   EXPECT_EQ(testee->writeConcern, 1);
+
+  // TODO: this is just rudimentary
+  // does not test internals yet
+  EXPECT_TRUE(testee->computedValues.slice().isNull());
+  EXPECT_TRUE(testee->schema.slice().isNull());
 }
 
 TEST_F(CollectionMutablePropertiesTest, test_illegal_names) {
@@ -127,7 +132,7 @@ GeneratePositiveIntegerAttributeTest(CollectionMutablePropertiesTest,
 GeneratePositiveIntegerAttributeTest(CollectionMutablePropertiesTest,
                                      writeConcern);
 GeneratePositiveIntegerAttributeTestInternal(CollectionMutablePropertiesTest,
-                                             minReplicationFactor,
-                                             writeConcern);
+                                             minReplicationFactor, writeConcern,
+                                             false);
 
 }  // namespace arangodb::tests

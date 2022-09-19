@@ -106,11 +106,6 @@ TEST_F(PlanCollectionUserAPITest, test_minimal_user_input) {
   ASSERT_TRUE(testee.ok());
   // Test Default values
 
-  // TODO: this is just rudimentary
-  // does not test internals yet
-  EXPECT_TRUE(testee->mutableProperties.computedValues.slice().isEmptyArray());
-  EXPECT_TRUE(testee->mutableProperties.schema.slice().isEmptyObject());
-
   // This covers only non-documented APIS
 
   EXPECT_TRUE(testee->options.avoidServers.empty());
