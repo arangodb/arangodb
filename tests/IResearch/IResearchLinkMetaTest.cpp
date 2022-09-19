@@ -3914,4 +3914,47 @@ TEST_F(IResearchLinkMetaTest, test_withNested) {
     ASSERT_EQ(1, analyzersSlice.length());
   }
 }
+#else
+TEST_F(IResearchLinkMetaTest, test_withNested) {
+  arangodb::iresearch::IResearchLinkMeta meta;
+  auto json = arangodb::velocypack::Parser::fromJson(
+      R"({
+    "analyzerDefinitions": [
+      { "name": "empty", "type": "empty",
+        "properties": {"args":"ru"}, "features": [ "frequency" ] } ],
+    "includeAllFields" : false,
+    "trackListPositions" : false,
+    "fields" : {
+      "abc": {},
+      "foo" : {
+        "nested": { "bar":{},
+                    "bas":{
+                      "nested":{
+                        "a":{"analyzers":["empty"]}, "b":{}, "c":{}
+                       }
+                    },
+                    "kas":{
+                      "nested": {
+                        "skas":{
+                          "analyzers":["empty"],
+                          "includeAllFields":true
+                         }
+                       }
+                    }
+                  }
+      },
+      "bar" : {
+        "nested": { "c":{}, "d":{}}
+      }
+    },
+    "analyzers": [ "identity" ]
+  })");
+
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
+  std::string errorField;
+  ASSERT_FALSE(
+      meta.init(server.server(), json->slice(), errorField, vocbase.name()));
+  ASSERT_NE(std::string::npos, errorField.find("Enterprise"));
+}
 #endif

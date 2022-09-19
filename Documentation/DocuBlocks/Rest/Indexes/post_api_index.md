@@ -29,7 +29,7 @@ Indexing the system attribute *_id* is not supported for user-defined indexes.
 Manually creating an index using *_id* as an index attribute will fail with
 an error.
 
-Optionally, an index name may be specified as a string in the *name* attribute.
+Optionally, an index name may be specified as a string in the **name** attribute.
 Index names have the same restrictions as collection names. If no value is
 specified, one will be auto-generated.
 
