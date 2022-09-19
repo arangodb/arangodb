@@ -61,7 +61,6 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallUnorderedMap.h"
@@ -3547,11 +3546,6 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
 
     size_t const n = condition.root()->numMembers();
 
-    if (n != 1) {
-      // either no condition or multiple ORed conditions...
-      continue;
-    }
-
     bool handled = false;
     auto current = node;
     while (current != nullptr) {
@@ -3569,6 +3563,11 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
             // single index. this is something that we can handle
             AstNode* newNode{nullptr};
             if (!indexNode->isAllCoveredByOneIndex()) {
+              if (n != 1) {
+                // either no condition or multiple ORed conditions
+                // and index has not covered entire condition.
+                break;
+              }
               newNode = condition.removeIndexCondition(
                   plan.get(), indexNode->outVariable(), indexCondition->root(),
                   indexesUsed[0].get());

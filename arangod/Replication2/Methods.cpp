@@ -26,11 +26,15 @@
 #include <Futures/Future.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/AgencyCallback.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Futures/Utilities.h"
 #include "Inspection/VPack.h"
 #include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Replication2/AgencyMethods.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"

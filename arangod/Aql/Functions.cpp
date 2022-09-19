@@ -245,14 +245,14 @@ bool isValidDocument(VPackSlice slice) {
 }
 
 void registerICUWarning(ExpressionContext* expressionContext,
-                        char const* functionName, UErrorCode status) {
+                        std::string_view functionName, UErrorCode status) {
   std::string msg;
   msg.append("in function '");
   msg.append(functionName);
   msg.append("()': ");
   msg.append(basics::Exception::FillExceptionString(TRI_ERROR_ARANGO_ICU_ERROR,
                                                     u_errorName(status)));
-  expressionContext->registerWarning(TRI_ERROR_ARANGO_ICU_ERROR, msg.c_str());
+  expressionContext->registerWarning(TRI_ERROR_ARANGO_ICU_ERROR, msg);
 }
 
 /// @brief convert a number value into an AqlValue
@@ -1360,7 +1360,7 @@ AqlValue const& extractFunctionParameterValue(
   return parameters[position];
 }
 
-std::string_view getFunctionName(const AstNode& node) noexcept {
+std::string_view getFunctionName(AstNode const& node) noexcept {
   TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
   auto const* impl = static_cast<aql::Function*>(node.getData());
   TRI_ASSERT(impl != nullptr);
@@ -1369,33 +1369,41 @@ std::string_view getFunctionName(const AstNode& node) noexcept {
 
 /// @brief register warning
 void registerWarning(ExpressionContext* expressionContext,
-                     char const* functionName, Result const& rr) {
+                     std::string_view functionName, Result const& rr) {
   std::string msg = "in function '";
   msg.append(functionName);
   msg.append("()': ");
   msg.append(rr.errorMessage());
-  expressionContext->registerWarning(rr.errorNumber(), msg.c_str());
+  expressionContext->registerWarning(rr.errorNumber(), msg);
 }
 
 /// @brief register warning
 void registerWarning(ExpressionContext* expressionContext,
-                     char const* functionName, ErrorCode code) {
+                     std::string_view functionName, ErrorCode code) {
   if (code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH &&
       code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH) {
     registerWarning(expressionContext, functionName, Result(code));
     return;
   }
 
-  std::string msg = basics::Exception::FillExceptionString(code, functionName);
-  expressionContext->registerWarning(code, msg.c_str());
+  // ensure that function name is null-terminated
+  // TODO: if we get rid of vsprintf in FillExceptionString, we don't
+  // need to pass a raw C-style string into it
+  std::string fname(functionName);
+  std::string msg = basics::Exception::FillExceptionString(code, fname.c_str());
+  expressionContext->registerWarning(code, msg);
 }
 
 void registerError(ExpressionContext* expressionContext,
-                   char const* functionName, ErrorCode code) {
+                   std::string_view functionName, ErrorCode code) {
   std::string msg;
 
   if (code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
-    msg = aql::QueryWarnings::buildFormattedString(code, functionName);
+    // ensure that function name is null-terminated
+    // TODO: if we get rid of vsprintf in FillExceptionString, we don't
+    // need to pass a raw C-style string into it
+    std::string fname(functionName);
+    msg = basics::Exception::FillExceptionString(code, fname.c_str());
   } else {
     msg.append("in function '");
     msg.append(functionName);
@@ -1403,12 +1411,12 @@ void registerError(ExpressionContext* expressionContext,
     msg.append(TRI_errno_string(code));
   }
 
-  expressionContext->registerError(code, msg.c_str());
+  expressionContext->registerError(code, msg);
 }
 
 /// @brief register usage of an invalid function argument
 void registerInvalidArgumentWarning(ExpressionContext* expressionContext,
-                                    char const* functionName) {
+                                    std::string_view functionName) {
   registerWarning(expressionContext, functionName,
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
 }
@@ -1418,8 +1426,7 @@ void registerInvalidArgumentWarning(ExpressionContext* expressionContext,
 
 /// @brief append the VelocyPack value to a string buffer
 void functions::Stringify(VPackOptions const* vopts,
-                          velocypack::StringSink& buffer,
-                          VPackSlice const& slice) {
+                          velocypack::StringSink& buffer, VPackSlice slice) {
   if (slice.isNull()) {
     // null is the empty string
     return;
@@ -3177,8 +3184,8 @@ AqlValue functions::Like(ExpressionContext* expressionContext, AstNode const&,
   ::appendAsString(vopts, adapter, regex);
 
   // the matcher is owned by the context!
-  icu::RegexMatcher* matcher = expressionContext->buildLikeMatcher(
-      buffer->data(), buffer->length(), caseInsensitive);
+  icu::RegexMatcher* matcher =
+      expressionContext->buildLikeMatcher(*buffer, caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
@@ -3372,8 +3379,8 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
   bool isEmptyExpression = (buffer->length() == 0);
 
   // the matcher is owned by the context!
-  icu::RegexMatcher* matcher = expressionContext->buildRegexMatcher(
-      buffer->data(), buffer->length(), caseInsensitive);
+  icu::RegexMatcher* matcher =
+      expressionContext->buildRegexMatcher(*buffer, caseInsensitive);
 
   if (matcher == nullptr) {
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
@@ -3470,8 +3477,8 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
   bool isEmptyExpression = (buffer->length() == 0);
 
   // the matcher is owned by the context!
-  icu::RegexMatcher* matcher = expressionContext->buildRegexMatcher(
-      buffer->data(), buffer->length(), caseInsensitive);
+  icu::RegexMatcher* matcher =
+      expressionContext->buildRegexMatcher(*buffer, caseInsensitive);
 
   if (matcher == nullptr) {
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
@@ -3571,8 +3578,8 @@ AqlValue functions::RegexTest(ExpressionContext* expressionContext,
   ::appendAsString(vopts, adapter, regex);
 
   // the matcher is owned by the context!
-  icu::RegexMatcher* matcher = expressionContext->buildRegexMatcher(
-      buffer->data(), buffer->length(), caseInsensitive);
+  icu::RegexMatcher* matcher =
+      expressionContext->buildRegexMatcher(*buffer, caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
@@ -3615,8 +3622,8 @@ AqlValue functions::RegexReplace(ExpressionContext* expressionContext,
   ::appendAsString(vopts, adapter, regex);
 
   // the matcher is owned by the context!
-  icu::RegexMatcher* matcher = expressionContext->buildRegexMatcher(
-      buffer->data(), buffer->length(), caseInsensitive);
+  icu::RegexMatcher* matcher =
+      expressionContext->buildRegexMatcher(*buffer, caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
@@ -9663,7 +9670,7 @@ AqlValue functions::CosineSimilarity(aql::ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintNull());
     }
 
-    return ::numberValue(numerator / denominator, true);
+    return ::numberValue(std::clamp(numerator / denominator, -1.0, 1.0), true);
   };
 
   return DistanceImpl(expressionContext, node, parameters,

@@ -28,6 +28,7 @@
 #include "Pregel/Algos/DMID/DMID.h"
 #include "Pregel/Algos/EffectiveCloseness/EffectiveCloseness.h"
 #include "Pregel/Algos/HITS.h"
+#include "Pregel/Algos/HITSKleinberg.h"
 #include "Pregel/Algos/LabelPropagation.h"
 #include "Pregel/Algos/LineRank.h"
 #include "Pregel/Algos/PageRank.h"
@@ -38,6 +39,9 @@
 #include "Pregel/Algos/ShortestPath.h"
 #include "Pregel/Algos/WCC.h"
 #include "Pregel/Utils.h"
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+#include "Pregel/Algos/ReadWrite.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -63,6 +67,8 @@ IAlgorithm* AlgoRegistry::createAlgorithm(
     return new algos::SCC(server, userParams);
   } else if (algorithm == "hits") {
     return new algos::HITS(server, userParams);
+  } else if (algorithm == "hitskleinberg") {
+    return new algos::HITSKleinberg(server, userParams);
   } else if (algorithm == "labelpropagation") {
     return new algos::LabelPropagation(server, userParams);
   } else if (algorithm == "slpa") {
@@ -71,7 +77,13 @@ IAlgorithm* AlgoRegistry::createAlgorithm(
     return new algos::DMID(server, userParams);
   } else if (algorithm == "wcc") {
     return new algos::WCC(server, userParams);
-  } else if (algorithm == algos::accumulators::pregel_algorithm_name) {
+  }
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+  else if (algorithm == "readwrite") {
+    return new algos::ReadWrite(server, userParams);
+  }
+#endif
+  else if (algorithm == algos::accumulators::pregel_algorithm_name) {
     return new algos::accumulators::ProgrammablePregelAlgorithm(server,
                                                                 userParams);
   } else {
@@ -134,6 +146,9 @@ template<typename V, typename E, typename M>
   } else if (algorithm == "hits") {
     return createWorker(vocbase, new algos::HITS(server, userParams), body,
                         feature);
+  } else if (algorithm == "hitskleinberg") {
+    return createWorker(vocbase, new algos::HITSKleinberg(server, userParams),
+                        body, feature);
   } else if (algorithm == "labelpropagation") {
     return createWorker(vocbase,
                         new algos::LabelPropagation(server, userParams), body,
@@ -147,7 +162,14 @@ template<typename V, typename E, typename M>
   } else if (algorithm == "wcc") {
     return createWorker(vocbase, new algos::WCC(server, userParams), body,
                         feature);
-  } else if (algorithm == algos::accumulators::pregel_algorithm_name) {
+  }
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+  else if (algorithm == "readwrite") {
+    return createWorker(vocbase, new algos::ReadWrite(server, userParams), body,
+                        feature);
+  }
+#endif
+  else if (algorithm == algos::accumulators::pregel_algorithm_name) {
     return createWorker(vocbase,
                         new algos::accumulators::ProgrammablePregelAlgorithm(
                             server, userParams),

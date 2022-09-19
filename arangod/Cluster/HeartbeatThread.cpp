@@ -36,6 +36,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/AgencyCache.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/DBServerAgencySync.h"

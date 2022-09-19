@@ -30,6 +30,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
+#include "IResearch/IResearchMetricStats.h"
 
 namespace arangodb {
 namespace iresearch {
@@ -209,6 +210,94 @@ IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(
                        .server()
                        .getFeature<EngineSelectorFeature>()
                        .engine<RocksDBEngine>()) {}
+namespace {
+
+template<typename T>
+T getMetric(IResearchRocksDBInvertedIndex const& index) {
+  T metric;
+  metric.addLabel("db", index.getDbName());
+  metric.addLabel("index", index.name());
+  metric.addLabel("collection", index.getCollectionName());
+  metric.addLabel("shard", index.getShardName());
+  return metric;
+}
+
+std::string getLabels(IResearchRocksDBInvertedIndex const& index) {
+  return absl::StrCat(  // clang-format off
+      "db=\"", index.getDbName(), "\","
+      "index=\"", index.name(), "\","
+      "collection=\"", index.getCollectionName(), "\","
+      "shard=\"", index.getShardName(), "\"");  // clang-format on
+}
+
+}  // namespace
+
+std::string IResearchRocksDBInvertedIndex::getCollectionName() const {
+  if (ServerState::instance()->isSingleServer()) {
+    return std::to_string(Index::_collection.id().id());
+  }
+  return meta()._collectionName;
+}
+
+std::string const& IResearchRocksDBInvertedIndex::getShardName()
+    const noexcept {
+  if (ServerState::instance()->isDBServer()) {
+    return Index::_collection.name();
+  }
+  return arangodb::StaticStrings::Empty;
+}
+
+void IResearchRocksDBInvertedIndex::insertMetrics() {
+  auto& metric = Index::_collection.vocbase()
+                     .server()
+                     .getFeature<metrics::MetricsFeature>();
+  _numFailedCommits =
+      &metric.add(getMetric<arangodb_search_num_failed_commits>(*this));
+  _numFailedCleanups =
+      &metric.add(getMetric<arangodb_search_num_failed_cleanups>(*this));
+  _numFailedConsolidations =
+      &metric.add(getMetric<arangodb_search_num_failed_consolidations>(*this));
+  _avgCommitTimeMs = &metric.add(getMetric<arangodb_search_commit_time>(*this));
+  _avgCleanupTimeMs =
+      &metric.add(getMetric<arangodb_search_cleanup_time>(*this));
+  _avgConsolidationTimeMs =
+      &metric.add(getMetric<arangodb_search_consolidation_time>(*this));
+  _metricStats = &metric.batchAdd<MetricStats>(kSearchStats, getLabels(*this));
+}
+
+void IResearchRocksDBInvertedIndex::removeMetrics() {
+  auto& metric = Index::_collection.vocbase()
+                     .server()
+                     .getFeature<metrics::MetricsFeature>();
+  if (_numFailedCommits) {
+    _numFailedCommits = nullptr;
+    metric.remove(getMetric<arangodb_search_num_failed_commits>(*this));
+  }
+  if (_numFailedCleanups) {
+    _numFailedCleanups = nullptr;
+    metric.remove(getMetric<arangodb_search_num_failed_cleanups>(*this));
+  }
+  if (_numFailedConsolidations) {
+    _numFailedConsolidations = nullptr;
+    metric.remove(getMetric<arangodb_search_num_failed_consolidations>(*this));
+  }
+  if (_avgCommitTimeMs) {
+    _avgCommitTimeMs = nullptr;
+    metric.remove(getMetric<arangodb_search_commit_time>(*this));
+  }
+  if (_avgCleanupTimeMs) {
+    _avgCleanupTimeMs = nullptr;
+    metric.remove(getMetric<arangodb_search_cleanup_time>(*this));
+  }
+  if (_avgConsolidationTimeMs) {
+    _avgConsolidationTimeMs = nullptr;
+    metric.remove(getMetric<arangodb_search_consolidation_time>(*this));
+  }
+  if (_metricStats) {
+    _metricStats = nullptr;
+    metric.batchRemove(kSearchStats, getLabels(*this));
+  }
+}
 
 void IResearchRocksDBInvertedIndex::toVelocyPack(
     VPackBuilder& builder,
@@ -234,6 +323,12 @@ void IResearchRocksDBInvertedIndex::toVelocyPack(
               arangodb::velocypack::Value(name()));
   builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
+
+  if (Index::hasFlag(flags, Index::Serialize::Figures)) {
+    builder.add("figures", VPackValue(VPackValueType::Object));
+    toVelocyPackFigures(builder);
+    builder.close();
+  }
 }
 
 Result IResearchRocksDBInvertedIndex::drop() /*noexcept*/ {
@@ -268,5 +363,6 @@ bool IResearchRocksDBInvertedIndex::matchesDefinition(
   return IResearchInvertedIndex::matchesDefinition(
       other, IResearchDataStore::_collection.vocbase());
 }
+
 }  // namespace iresearch
 }  // namespace arangodb

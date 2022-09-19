@@ -159,7 +159,7 @@
     "ERROR_CLUSTER_AQL_COMMUNICATION" : { "code" : 1474, "message" : "error in cluster internal communication for AQL" },
     "ERROR_CLUSTER_ONLY_ON_DBSERVER" : { "code" : 1477, "message" : "this operation is only valid on a DBserver in a cluster" },
     "ERROR_CLUSTER_BACKEND_UNAVAILABLE" : { "code" : 1478, "message" : "A cluster backend which was required for the operation could not be reached" },
-    "ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC" : { "code" : 1481, "message" : "collection is out of sync" },
+    "ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC" : { "code" : 1481, "message" : "collection/view is out of sync" },
     "ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN" : { "code" : 1482, "message" : "could not create index in plan" },
     "ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN" : { "code" : 1483, "message" : "could not drop index in plan" },
     "ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE" : { "code" : 1484, "message" : "chain of distributeShardsLike references" },

@@ -65,6 +65,8 @@ class RocksDBTransactionMethods : public RocksDBMethods {
 
   virtual uint64_t numCommits() const noexcept = 0;
 
+  virtual uint64_t numIntermediateCommits() const noexcept = 0;
+
   virtual rocksdb::ReadOptions iteratorReadOptions()
       const = 0;  // TODO - remove later
 

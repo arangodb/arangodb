@@ -110,30 +110,13 @@ using VectorFst = fst::VectorFst<Arc>;
 using FstBuilder = irs::fst_builder<char, VectorFst>;
 using ExplicitMatcher = fst::explicit_matcher<fst::SortedMatcher<VectorFst>>;
 
-std::shared_ptr<LogicalCollection> getCollection(
-    CollectionNameResolver& resolver, velocypack::Slice cidOrName) {
-  if (cidOrName.isString()) {
-    return resolver.getCollection(cidOrName.stringView());
-  } else if (cidOrName.isNumber<DataSourceId::BaseType>()) {
-    auto const cid = cidOrName.getNumber<DataSourceId::BaseType>();
-    absl::AlphaNum const cidStr{cid};  // TODO make resolve by id?
-    return resolver.getCollection(cidStr.Piece());
-  }
-  return nullptr;
-}
-
 std::shared_ptr<Index> getIndex(LogicalCollection const& collection,
-                                velocypack::Slice index) {
+                                std::string_view indexNameOrId) {
+  if (auto handle = collection.lookupIndex(indexNameOrId); handle) {
+    return handle;
+  }
   auto indexId = IndexId::none().id();
-  if (index.isString()) {
-    auto const indexNameOrId = index.stringView();
-    if (auto handle = collection.lookupIndex(indexNameOrId); handle) {
-      return handle;
-    } else if (absl::SimpleAtoi(indexNameOrId, &indexId)) {
-      return collection.lookupIndex(IndexId{indexId});
-    }
-  } else if (index.isNumber<IndexId::BaseType>()) {
-    indexId = index.getNumber<IndexId::BaseType>();
+  if (absl::SimpleAtoi(indexNameOrId, &indexId)) {
     return collection.lookupIndex(IndexId{indexId});
   }
   return nullptr;
@@ -174,61 +157,102 @@ std::string_view findLongestCommonPrefix(ExplicitMatcher& matcher,
   return key.substr(0, lastIndex);
 }
 
-std::string checkFields(SearchMeta const& search,
-                        IResearchInvertedIndexMeta const& index) {
-  auto check = [](auto const& lhs, auto const& rhs, bool lhsView) {
-    std::string_view const lhsIs = lhsView ? "view" : "index";
-    std::string_view const rhsIs = lhsView ? "Index" : "View";
+template<bool SameCollection>
+std::string abstractCheckFields(auto const& lhs, auto const& rhs,
+                                bool lhsView) {
+  std::string_view const lhsIs = lhsView ? "view" : "index";
+  std::string_view const rhsIs = lhsView ? "Index" : "View";
+  VectorFst fst;
+  FstBuilder builder{fst};
+  for (auto const& field : lhs) {
+    builder.add(field.first, true);
+  }
+  builder.finish();
 
-    VectorFst fst;
-    FstBuilder builder{fst};
-    for (auto const& field : lhs) {
-      builder.add(field.first, true);
+  ExplicitMatcher matcher{&fst, fst::MATCH_INPUT};
+  for (auto const& field : rhs) {
+    auto const name = field.first;
+    auto const prefix = findLongestCommonPrefix(matcher, name);
+    auto it = find(lhs, prefix);
+    if (it == lhs.end()) {
+      TRI_ASSERT(prefix.empty());
+      continue;
     }
-    builder.finish();
+    TRI_ASSERT(it->first == prefix);
 
-    ExplicitMatcher matcher{&fst, fst::MATCH_INPUT};
-    for (auto const& field : rhs) {
-      auto const name = field.first;
-      auto const prefix = findLongestCommonPrefix(matcher, name);
-      auto it = find(lhs, prefix);
-      if (it == lhs.end()) {
-        TRI_ASSERT(prefix.empty());
-        continue;
-      }
-      if (it->second.analyzer == field.second.analyzer) {
-        continue;
-      }
-      if (it->first == name) {
-        return absl::StrCat(rhsIs, " field '", name, "' analyzer '",
-                            field.second.analyzer, "' mismatches ", lhsIs,
-                            " field analyzer '", it->second.analyzer, "'");
+    if (SameCollection ||
+        it->second.isSearchField != field.second.isSearchField ||
+        it->second.analyzer != field.second.analyzer) {
+      if (it->first.size() == name.size()) {
+        if (SameCollection) {
+          return absl::StrCat("same field '", name, "', collection '");
+        } else if (it->second.isSearchField != field.second.isSearchField) {
+          return absl::StrCat(rhsIs, " field '", name, "' searchField '",
+                              field.second.isSearchField, "' mismatches ",
+                              lhsIs, " field searchField '",
+                              it->second.isSearchField, "'");
+        } else {
+          return absl::StrCat(rhsIs, " field '", name, "' analyzer '",
+                              field.second.analyzer, "' mismatches ", lhsIs,
+                              " field analyzer '", it->second.analyzer, "'");
+        }
       } else if (it->second.includeAllFields) {
-        return absl::StrCat(
-            rhsIs, " field '", name, "' analyzer '", field.second.analyzer,
-            "' mismatches ", lhsIs, " field '", it->first,
-            "' with includeAllFields analyzer '", it->second.analyzer, "'");
+        if (SameCollection) {
+          return absl::StrCat("field '", name, "' and field '", it->first,
+                              "' with includeAllFields, collection '");
+        } else if (it->second.isSearchField != field.second.isSearchField) {
+          return absl::StrCat(rhsIs, " field '", name, "' searchField '",
+                              field.second.isSearchField, "' mismatches ",
+                              lhsIs, " field '", it->first,
+                              "' with includeAllFields searchField '",
+                              it->second.isSearchField, "'");
+        } else {
+          return absl::StrCat(
+              rhsIs, " field '", name, "' analyzer '", field.second.analyzer,
+              "' mismatches ", lhsIs, " field '", it->first,
+              "' with includeAllFields analyzer '", it->second.analyzer, "'");
+        }
       }
     }
-    return std::string{};
-  };
+  }
+  return {};
+}
+
+auto createSortedFields(IResearchInvertedIndexMeta const& index) {
   std::vector<std::pair<std::string, SearchMeta::Field>> fields;
   fields.reserve(index._fields.size() + index._includeAllFields);
   for (auto const& field : index._fields) {
-    fields.emplace_back(field.path(),
-                        SearchMeta::Field{field.analyzer()._shortName,
-                                          field._includeAllFields});
+    fields.emplace_back(
+        field.path(),
+        SearchMeta::Field{field.analyzer()._shortName, field._includeAllFields,
+                          field._isSearchField});
   }
   if (index._includeAllFields) {
-    fields.emplace_back("",
-                        SearchMeta::Field{index.analyzer()._shortName, true});
+    fields.emplace_back("", SearchMeta::Field{index.analyzer()._shortName, true,
+                                              index._isSearchField});
   }
   std::sort(fields.begin(), fields.end(), [](auto const& lhs, auto const& rhs) {
     return lhs.first < rhs.first;
   });
-  auto error = check(search.fieldToAnalyzer, fields, true);
+  return fields;
+}
+
+std::string checkFieldsSameCollection(SearchMeta::Map const& search,
+                                      IResearchInvertedIndexMeta const& index) {
+  auto const fields = createSortedFields(index);
+  auto error = abstractCheckFields<true>(search, fields, true);
   if (error.empty()) {
-    error = check(fields, search.fieldToAnalyzer, false);
+    error = abstractCheckFields<true>(fields, search, false);
+  }
+  return error;
+}
+
+std::string checkFieldsDifferentCollections(
+    SearchMeta::Map const& search, IResearchInvertedIndexMeta const& index) {
+  auto const fields = createSortedFields(index);
+  auto error = abstractCheckFields<false>(search, fields, true);
+  if (error.empty()) {
+    error = abstractCheckFields<false>(fields, search, false);
   }
   return error;
 }
@@ -244,21 +268,21 @@ std::string check(SearchMeta const& search,
   return {};
 }
 
-void add(SearchMeta& search, IResearchInvertedIndexMeta const& index) {
+void add(SearchMeta::Map& search, IResearchInvertedIndexMeta const& index) {
   for (auto const& field : index._fields) {
-    auto it = search.fieldToAnalyzer.lower_bound(field.path());
-    if (it == search.fieldToAnalyzer.end() || it->first != field.path()) {
-      search.fieldToAnalyzer.emplace_hint(
+    auto it = search.lower_bound(field.path());
+    if (it == search.end() || it->first != field.path()) {
+      search.emplace_hint(
           it, field.path(),
           SearchMeta::Field{field.analyzer()._shortName,
-                            field._includeAllFields});
+                            field._includeAllFields, field._isSearchField});
     } else {
       it->second.includeAllFields |= field._includeAllFields;
     }
   }
   if (index._includeAllFields) {
-    search.fieldToAnalyzer.emplace(
-        "", SearchMeta::Field{index.analyzer()._shortName, true});
+    search.emplace("", SearchMeta::Field{index.analyzer()._shortName, true,
+                                         index._isSearchField});
   }
 }
 
@@ -439,7 +463,9 @@ ViewSnapshot::Links Search::getLinks() const {
   indexes.reserve(_indexes.size());
   for (auto const& [_, handles] : _indexes) {
     for (auto const& handle : handles) {
-      indexes.push_back(handle->lock());
+      if (auto index = handle->lock(); index) {
+        indexes.push_back(std::move(index));
+      }
     }
   }
   return indexes;
@@ -530,23 +556,27 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
     }
     for (auto& [cid, handles] : _indexes) {
       for (auto& handle : handles) {
-        if (auto index = handle->lock(); index) {
-          if (ctx == Serialization::Properties) {
-            auto collectionName = resolver.getCollectionNameCluster(cid);
-            // TODO(MBkkt) remove dynamic_cast
-            auto* rawIndex = dynamic_cast<Index*>(index.get());
-            if (collectionName.empty() || !rawIndex) {
-              TRI_ASSERT(false);
-              continue;
-            }
+        if (auto inverted = handle->lock(); inverted) {
+          auto* index = dynamic_cast<Index*>(inverted.get());
+          if (!index) {
+            TRI_ASSERT(false);
+            continue;
+          }
+          auto collection = resolver.getCollection(cid);
+          if (!collection) {
+            continue;
+          }
+          if (ctx == Serialization::Properties ||
+              ctx == Serialization::Inventory) {
             build.add(velocypack::Value{velocypack::ValueType::Object});
-            build.add("collection", velocypack::Value{collectionName});
-            build.add("index", velocypack::Value{rawIndex->name()});
+            build.add("collection", velocypack::Value{collection->name()});
+            build.add("index", velocypack::Value{index->name()});
           } else {
             build.add(velocypack::Value{velocypack::ValueType::Object});
-            build.add("collection", velocypack::Value{cid.id()});
-            // TODO Maybe guid or planId?
-            build.add("index", velocypack::Value{index->id().id()});
+            absl::AlphaNum collectionId{collection->id().id()};
+            build.add("collection", velocypack::Value{collectionId.Piece()});
+            absl::AlphaNum indexId{index->id().id()};
+            build.add("index", velocypack::Value{indexId.Piece()});
           }
           build.close();
         }
@@ -599,7 +629,11 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
       frozen::make_unordered_set<frozen::string>({"", "add", "del"});
   for (; it.valid(); ++it) {
     auto value = *it;
-    auto collection = getCollection(resolver, value.get("collection"));
+    auto collectionSlice = value.get("collection");
+    if (!collectionSlice.isString()) {
+      return {TRI_ERROR_BAD_PARAMETER, "'index' should be a string"};
+    }
+    auto collection = resolver.getCollection(collectionSlice.stringView());
     if (!collection) {
       if (!isUserRequest) {
         continue;
@@ -628,7 +662,11 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
                 "Cannot find collection for index to delete"};
       }
     }
-    auto index = getIndex(*collection, value.get("index"));
+    auto indexSlice = value.get("index");
+    if (!indexSlice.isString()) {
+      return {TRI_ERROR_BAD_PARAMETER, "'index' should be a string"};
+    }
+    auto index = getIndex(*collection, indexSlice.stringView());
     // TODO Remove dynamic_cast
     auto* inverted = dynamic_cast<IResearchInvertedIndex*>(index.get());
     if (!inverted) {
@@ -690,17 +728,48 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
   if (!r.ok()) {
     return r;
   }
-  r = iterate([&](auto const& indexMeta) { add(*searchMeta, indexMeta); },
+  SearchMeta::Map merged;
+  for (auto const& [_, handles] : _indexes) {
+    if (handles.size() < 2) {
+      continue;
+    }
+    bool first = true;
+    for (auto const& handle : handles) {
+      if (auto index = handle->lock(); index) {
+        auto const& inverted =
+            basics::downCast<IResearchInvertedIndex>(*index.get());
+        auto const& indexMeta = inverted.meta();
+        if (first) {
+          add(merged, indexMeta);
+          first = false;
+        } else if (auto error = checkFieldsSameCollection(merged, indexMeta);
+                   !error.empty()) {
+          return {TRI_ERROR_BAD_PARAMETER,
+                  absl::StrCat(
+                      "You cannot add to view indexes to the same collection,"
+                      " if them index the same fields. Error for: ",
+                      error, inverted.collection().name(), "'")};
+        } else {
+          add(merged, indexMeta);
+        }
+      }
+    }
+    merged.clear();
+  }
+  // TODO(MBkkt) missed optimization: I check that inverted index not intersects
+  // at all, so I can merge indexes meta to same collection without this check
+  r = iterate([&](auto const& indexMeta) { add(merged, indexMeta); },
               [&](auto const& indexMeta) {
-                auto error = checkFields(*searchMeta, indexMeta);
+                auto error = checkFieldsDifferentCollections(merged, indexMeta);
                 if (error.empty()) {
-                  add(*searchMeta, indexMeta);
+                  add(merged, indexMeta);
                 }
                 return error;
               });
   if (!r.ok()) {
     return r;
   }
+  searchMeta->fieldToAnalyzer = std::move(merged);
   if (ServerState::instance()->isSingleServer()) {
     searchMeta->createFst();
   }  // else we don't create provider from this SearchMeta

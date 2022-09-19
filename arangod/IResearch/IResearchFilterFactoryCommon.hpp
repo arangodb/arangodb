@@ -34,6 +34,7 @@
 #include "RestServer/arangod.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
+#include "VocBase/vocbase.h"
 
 using namespace std::string_literals;
 

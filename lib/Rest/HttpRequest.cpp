@@ -36,7 +36,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
-#include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
@@ -541,8 +540,8 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
       _contentTypeResponsePlain.clear();
     }
     return;
-  } else if ((_contentType == ContentType::UNSET) &&
-             (key == StaticStrings::ContentTypeHeader)) {
+  } else if (_contentType == ContentType::UNSET &&
+             key == StaticStrings::ContentTypeHeader) {
     auto res = rest::stringToContentType(value, /*default*/ ContentType::UNSET);
     // simon: the "@arangodb/requests" module by default the "text/plain"
     // content-types for JSON in most tests. As soon as someone fixes all the
@@ -707,61 +706,47 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
   TRI_ASSERT(key != nullptr);
   TRI_ASSERT(value != nullptr);
 
-  if (keyLength == StaticStrings::ContentLength.size() &&
-      memcmp(key, StaticStrings::ContentLength.c_str(), keyLength) ==
-          0) {  // 14 = strlen("content-length")
-    // do not store this header
+  std::string_view k(key, keyLength);
+
+  if (k == StaticStrings::ContentLength) {
+    // Content-Length: do not store this header
     return;
   }
 
-  if (keyLength == StaticStrings::Accept.size() &&
-      valueLength == StaticStrings::MimeTypeVPack.size() &&
-      memcmp(key, StaticStrings::Accept.c_str(), keyLength) == 0 &&
-      memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
+  std::string_view v(value, valueLength);
+
+  if (k == StaticStrings::Accept && v == StaticStrings::MimeTypeVPack) {
     _contentTypeResponse = ContentType::VPACK;
-  } else if (keyLength == StaticStrings::AcceptEncoding.size() &&
-             valueLength == StaticStrings::EncodingDeflate.size() &&
-             memcmp(key, StaticStrings::AcceptEncoding.c_str(), keyLength) ==
-                 0 &&
-             memcmp(value, StaticStrings::EncodingDeflate.c_str(),
-                    valueLength) == 0) {
+  } else if (k == StaticStrings::AcceptEncoding &&
+             v == StaticStrings::EncodingDeflate) {
     // This can be much more elaborated as the can specify weights on encodings
     // However, for now just toggle on deflate if deflate is requested
     _acceptEncoding = EncodingType::DEFLATE;
-  } else if ((_contentType == ContentType::UNSET) &&
-             (keyLength == StaticStrings::ContentTypeHeader.size()) &&
-             (memcmp(key, StaticStrings::ContentTypeHeader.c_str(),
-                     keyLength) == 0)) {
-    if (valueLength == StaticStrings::MimeTypeVPack.size() &&
-        memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
+  } else if (_contentType == ContentType::UNSET &&
+             k == StaticStrings::ContentTypeHeader) {
+    if (v == StaticStrings::MimeTypeVPack) {
       _contentType = ContentType::VPACK;
       // don't insert this header!!
       return;
     }
-    if (valueLength >= StaticStrings::MimeTypeJsonNoEncoding.size() &&
-        memcmp(value, StaticStrings::MimeTypeJsonNoEncoding.c_str(),
-               StaticStrings::MimeTypeJsonNoEncoding.length()) == 0) {
+    if (v.starts_with(StaticStrings::MimeTypeJsonNoEncoding)) {
       _contentType = ContentType::JSON;
       // don't insert this header!!
       return;
     }
   }
 
-  if (keyLength == 6 &&
-      memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
+  if (k == "cookie") {
     parseCookies(value, valueLength);
     return;
   }
 
-  if (_allowMethodOverride && keyLength >= 13 && *key == 'x' &&
-      *(key + 1) == '-') {
+  if (_allowMethodOverride && keyLength >= 13 && k.starts_with("x-")) {
     // handle x-... headers
 
     // override HTTP method?
-    if ((keyLength == 13 && memcmp(key, "x-http-method", keyLength) == 0) ||
-        (keyLength == 17 && memcmp(key, "x-method-override", keyLength) == 0) ||
-        (keyLength == 22 &&
-         memcmp(key, "x-http-method-override", keyLength) == 0)) {
+    if (k == "x-http-method" || k == "x-method-override" ||
+        k == "x-http-method-override") {
       std::string overriddenType(value, valueLength);
       StringUtils::tolowerInPlace(overriddenType);
 
@@ -912,8 +897,7 @@ std::string_view HttpRequest::rawPayload() const {
 }
 
 VPackSlice HttpRequest::payload(bool strictValidation) {
-  if ((_contentType == ContentType::UNSET) ||
-      (_contentType == ContentType::JSON)) {
+  if (_contentType == ContentType::UNSET || _contentType == ContentType::JSON) {
     if (!_payload.empty()) {
       if (!_vpackBuilder) {
         TRI_ASSERT(!_validatedPayload);

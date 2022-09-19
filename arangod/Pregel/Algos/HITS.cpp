@@ -134,16 +134,30 @@ WorkerContext* HITS::workerContext(VPackSlice userParams) const {
 }
 
 struct HITSMasterContext : public MasterContext {
-  HITSMasterContext() : authNorm(0), hubNorm(0) {}
+  // note: this is identical to getThreshold() in HITSKleinberg.cpp
+  // and could be unified, but
+  // (1) we are going to refactor it anyway
+  // (2) this would introduce common code for different algorithms
+  HITSMasterContext(VPackSlice userParams) : authNorm(0), hubNorm(0) {
+    if (userParams.hasKey(Utils::threshold)) {
+      if (!userParams.get(Utils::threshold).isNumber()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "The threshold parameter should be a number.");
+      }
+      threshold = userParams.get(Utils::threshold).getNumber<double>();
+    }
+  }
 
+  double threshold = 0.00001;
   double authNorm;
   double hubNorm;
 
   bool postGlobalSuperstep() override {
-    double const* an = getAggregatedValue<double>(kAuthNorm);
-    double const* hn = getAggregatedValue<double>(kHubNorm);
+    auto const* an = getAggregatedValue<double>(kAuthNorm);
+    auto const* hn = getAggregatedValue<double>(kHubNorm);
     double diff = std::max(std::abs(authNorm - *an), std::abs(hubNorm - *hn));
-    bool converged = globalSuperstep() > 2 && (diff < 0.00001);
+    bool converged = globalSuperstep() > 2 && (diff < threshold);
     authNorm = *an;
     hubNorm = *hn;
     // might fail on small very sparse / disconnected graphs
@@ -152,7 +166,7 @@ struct HITSMasterContext : public MasterContext {
 };
 
 MasterContext* HITS::masterContext(VPackSlice userParams) const {
-  return new HITSMasterContext();
+  return new HITSMasterContext(userParams);
 }
 
 IAggregator* HITS::aggregator(std::string const& name) const {
