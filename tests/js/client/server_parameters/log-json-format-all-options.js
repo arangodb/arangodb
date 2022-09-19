@@ -123,7 +123,7 @@ function LoggerSuite() {
 
       for (let i = 0; i < res.totalAmount; ++i) {
         assertMatch(/\d+/, res.lid[i]);
-        assertMatch(/[A-Za-z]{1,}$/, res.topic[i]);
+        assertMatch(/^[A-Za-z]{1,}$/, res.topic[i]);
         assertMatch(/\d+/, res.level[i]);
         assertMatch(/\d+/, res.timestamp[i]);
       }
