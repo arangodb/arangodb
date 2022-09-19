@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,17 +18,40 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
-/// @author Michael Hackstein
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-// Macro defined to avoid duplicate symbols when linking
-#define ARANGODB_INCLUDED_FROM_GTESTS
-#include "Aql/ExecutionBlockImpl.cpp"
-#undef ARANGODB_INCLUDED_FROM_GTESTS
+#pragma once
 
-#include "TestEmptyExecutorHelper.h"
-#include "TestLambdaExecutor.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
-template class ::arangodb::aql::ExecutionBlockImpl<TestLambdaExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<TestLambdaSkipExecutor>;
+namespace arangodb {
+namespace options {
+class ProgramOptions;
+}
+
+class LoggerFeature;
+
+class FileSystemFeature final
+    : public application_features::ApplicationFeature {
+ public:
+  static constexpr std::string_view name() noexcept { return "FileSystem"; }
+
+  template<typename Server>
+  explicit FileSystemFeature(Server& server)
+      : ApplicationFeature{server, *this} {
+    setOptional(false);
+    startsAfter<LoggerFeature, Server>();
+  }
+
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+
+ private:
+  // whether or not to use the splice() syscall on Linux
+#ifdef __linux__
+  bool _useSplice = true;
+#endif
+};
+
+}  // namespace arangodb

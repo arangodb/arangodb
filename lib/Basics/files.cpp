@@ -101,6 +101,11 @@ using namespace arangodb;
 
 namespace {
 
+// whether or not we can use the splice system call on Linux
+#ifdef __linux__
+bool canUseSplice = true;
+#endif
+
 /// @brief names of blocking files
 #ifdef TRI_HAVE_WIN32_FILE_LOCKING
 std::vector<std::pair<std::string, HANDLE>> OpenedFiles;
@@ -223,6 +228,10 @@ static std::string LocateConfigDirectoryEnv() {
 
   return r;
 }
+
+#ifdef __linux__
+void TRI_SetCanUseSplice(bool value) noexcept { ::canUseSplice = value; }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of a file
@@ -1822,63 +1831,82 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath,
 [[maybe_unused]] static bool CopyFileContents(int srcFD, int dstFD,
                                               TRI_read_t fileSize,
                                               std::string& error) {
-  bool rc = true;
-#ifdef __linux__
-  // Linux-specific file-copying code based on splice()
-  // The splice() system call first appeared in Linux 2.6.17; library support
-  // was added to glibc in version 2.5. libmusl also has bindings for it. so we
-  // simply assume it is there on Linux.
-  int splicePipe[2];
-  ssize_t pipeSize = 0;
-  long chunkSendRemain = fileSize;
-  loff_t totalSentAlready = 0;
+  TRI_ASSERT(fileSize > 0);
 
-  if (pipe(splicePipe) != 0) {
-    error = std::string("splice failed to create pipes: ") + strerror(errno);
-    return false;
-  }
-  try {
-    while (chunkSendRemain > 0) {
-      if (pipeSize == 0) {
-        pipeSize = splice(srcFD, &totalSentAlready, splicePipe[1], nullptr,
-                          chunkSendRemain, SPLICE_F_MOVE);
-        if (pipeSize == -1) {
-          error = std::string("splice read failed: ") + strerror(errno);
+  bool rc = true;
+
+#ifdef __linux__
+  if (::canUseSplice) {
+    // Linux-specific file-copying code based on splice()
+    // The splice() system call first appeared in Linux 2.6.17; library support
+    // was added to glibc in version 2.5. libmusl also has bindings for it. so
+    // we simply assume it is there on Linux.
+    int splicePipe[2];
+    ssize_t pipeSize = 0;
+    long chunkSendRemain = fileSize;
+    loff_t totalSentAlready = 0;
+
+    if (pipe(splicePipe) != 0) {
+      error = std::string("splice failed to create pipes: ") + strerror(errno);
+      return false;
+    }
+    try {
+      while (chunkSendRemain > 0) {
+        if (pipeSize == 0) {
+          pipeSize = splice(srcFD, &totalSentAlready, splicePipe[1], nullptr,
+                            chunkSendRemain, SPLICE_F_MOVE);
+          if (pipeSize == -1) {
+            error = std::string("splice read failed: ") + strerror(errno);
+            rc = false;
+            break;
+          }
+        }
+
+        auto sent = splice(splicePipe[0], nullptr, dstFD, nullptr, pipeSize,
+                           SPLICE_F_MORE | SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
+        if (sent == -1) {
+          auto e = errno;
+          error = std::string("splice read failed: ") + strerror(e);
+          if (e == EINVAL) {
+            error +=
+                ", please check if the target filesystem supports splicing, "
+                "and if not, turn if off by restarting with option "
+                "`--use-splice-syscall false`";
+          }
           rc = false;
           break;
         }
+        pipeSize -= sent;
+        chunkSendRemain -= sent;
       }
-      auto sent = splice(splicePipe[0], nullptr, dstFD, nullptr, pipeSize,
-                         SPLICE_F_MORE | SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
-      if (sent == -1) {
-        error = std::string("splice read failed: ") + strerror(errno);
-        rc = false;
-        break;
-      }
-      pipeSize -= sent;
-      chunkSendRemain -= sent;
+    } catch (...) {
+      // make sure we always close the pipes
+      rc = false;
     }
-  } catch (...) {
-    // make sure we always close the pipes
-    rc = false;
+    close(splicePipe[0]);
+    close(splicePipe[1]);
+
+    return rc;
   }
-  close(splicePipe[0]);
-  close(splicePipe[1]);
-#else
-  // 128k:
-  constexpr size_t C128 = 128 * 1024;
-  char* buf = static_cast<char*>(TRI_Allocate(C128));
+#endif
+
+  // systems other than Linux use regular file-copying.
+  // note: regular file copying will also be used on Linux
+  // if we cannot use the splice() system call
+
+  size_t bufferSize = std::min<size_t>(fileSize, 128 * 1024);
+  char* buf = static_cast<char*>(TRI_Allocate(bufferSize));
 
   if (buf == nullptr) {
     error = "failed to allocate temporary buffer";
-    rc = false;
+    return false;
   }
 
   try {
     TRI_read_t chunkRemain = fileSize;
     while (rc && (chunkRemain > 0)) {
       auto readChunk = static_cast<TRI_read_t>(
-          (std::min)(C128, static_cast<size_t>(chunkRemain)));
+          std::min(bufferSize, static_cast<size_t>(chunkRemain)));
       TRI_read_return_t nRead = TRI_READ(srcFD, buf, readChunk);
 
       if (nRead < 0) {
@@ -1919,7 +1947,6 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath,
   }
 
   TRI_Free(buf);
-#endif
   return rc;
 }
 
