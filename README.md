@@ -5,7 +5,7 @@ ArangoDB
 
 Slack: [![ArangoDB-Logo](https://slack.arangodb.com/badge.svg)](https://slack.arangodb.com)
 
-ArangoDB is a scalable open-source multi-model database natively supporting graph, document and search. All supported data models & access patterns can be combined in queries allowing for maximal flexibility. ArangoDB runs on prem, in the cloud – anywhere.
+ArangoDB is a free and open-source native graph database system. Besides graph, ArangoDB supports additional data models (JSON documents, key/value) as well as Full-Text Search. All supported data models & access patterns can be combined in queries allowing for maximal flexibility. ArangoDB runs on prem, in the cloud – anywhere.
 
 ArangoDB Cloud Service
 ------------------------
