@@ -30,6 +30,7 @@ const db = require('internal').db;
 const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
 const cn = "testCollection";
 const dbName = "maçã";
+const originalEndpoint = db.getEndpoint();
 
 if (getOptions === true) {
   return {
@@ -71,7 +72,7 @@ function LoggerSuite() {
     tearDown: function() {
       db._useDatabase("_system");
       db._dropDatabase(dbName);
-      arango.reconnect(db.getEndpoint(), db._name(), "root", "");
+      arango.reconnect(originalEndpoint, db._name(), "root", "");
     },
 
     testLogClusterInfoInFile: function() {
