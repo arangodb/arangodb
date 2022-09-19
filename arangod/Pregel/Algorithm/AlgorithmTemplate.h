@@ -20,11 +20,9 @@
 ///
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
 #include <Algorithm/Algorithm.h>
-#include <Algorithm/Formatter.h>
 
 #include <Inspection/VPack.h>
 
@@ -32,38 +30,41 @@
 #include <string>
 #include <variant>
 
-namespace arangodb::pregel::algorithms::pagerank {
+namespace arangodb::pregel::algorithms::example {
 
 struct Settings {
-  double epsilon;
-  double dampingFactor;
-
+  uint64_t iterations;
   std::string resultField;
 };
-template <typename Inspector> auto inspect(Inspector &f, Settings &x) {
-  return f.object(x).fields(f.field("epsilon", x.epsilon),
-                            f.field("dampingFactor", x.dampingFactor),
+template<typename Inspector>
+auto inspect(Inspector& f, Settings& x) {
+  return f.object(x).fields(f.field("iterations", x.iterations),
                             f.field("resultField", x.resultField));
 }
 
 struct VertexProperties {
-  double pageRank;
+  uint64_t value;
 };
-template <typename Inspector> auto inspect(Inspector &f, VertexProperties &x) {
-  return f.object(x).fields(f.field("pageRank", x.pageRank));
+template<typename Inspector>
+auto inspect(Inspector& f, VertexProperties& x) {
+  return f.object(x).fields(f.field("value", x.value));
 }
 
 struct Global {};
 
 struct Message {
-  double pageRank;
+  uint64_t value;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, Message& x) {
+  return f.object(x).fields(f.field("value", x.value));
+}
 
 struct Aggregators {
   //  MaxAggregator<double> difference;
 };
 
-struct PageRankData {
+struct Data {
   using Settings = Settings;
   using VertexProperties = VertexProperties;
   using EdgeProperties = algorithm_sdk::EmptyEdgeProperties;
@@ -74,25 +75,23 @@ struct PageRankData {
   using Aggregators = Aggregators;
 };
 
-struct Topology : public algorithm_sdk::TopologyBase<PageRankData, Topology> {
-  [[nodiscard]] auto readVertex(VPackSlice const &doc) -> VertexProperties {
-    return VertexProperties{.pageRank = 0.0};
+struct Topology : public algorithm_sdk::TopologyBase<Data, Topology> {
+  [[nodiscard]] auto readVertex(VPackSlice const& doc) -> VertexProperties {
+    return VertexProperties{.value = 0};
   }
-  [[nodiscard]] auto readEdge(VPackSlice const &doc)
+  [[nodiscard]] auto readEdge(VPackSlice const& doc)
       -> algorithm_sdk::EmptyEdgeProperties {
     return algorithm_sdk::EmptyEdgeProperties{};
   }
 };
 
-struct Conductor
-    : public algorithm_sdk::ConductorBase<PageRankData, Conductor> {
-  Conductor(PageRankData::Settings settings) : ConductorBase(settings) {}
+struct Conductor : public algorithm_sdk::ConductorBase<Data, Conductor> {
+  Conductor(Data::Settings settings) : ConductorBase(settings) {}
   auto setup() -> Global { return Global{}; }
-  auto step(Global const &global) -> Global { return global; }
+  auto step(Global const& global) -> Global { return global; }
 };
 
 struct VertexComputation
-    : public algorithm_sdk::VertexComputationBase<PageRankData,
-                                                  VertexComputation> {};
+    : public algorithm_sdk::VertexComputationBase<Data, VertexComputation> {};
 
-} // namespace arangodb::pregel::algorithms::pagerank
+}  // namespace arangodb::pregel::algorithms::example

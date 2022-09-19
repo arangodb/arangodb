@@ -27,6 +27,7 @@
 
 #include <memory>
 #include <string_view>
+#include <vector>
 
 #include <fmt/core.h>
 
@@ -42,40 +43,51 @@ struct EmptyVertexProperties {};
 struct EmptyEdgeProperties {};
 struct EmptyMessage {};
 
-struct VertexComputationContext {
-  size_t iteration{0};
-  size_t numberOfVertices{0};
-  size_t numberOfEdges{0};
+struct VertexId {};
+
+template<typename AlgorithmData, typename Topology>
+struct TopologyBase {
+  [[nodiscard]] auto readVertex_(VPackSlice const& doc) ->
+      typename AlgorithmData::VertexProperties {
+    return static_cast<Topology*>(this)->readVertex(doc);
+  }
+  [[nodiscard]] auto readEdge_(VPackSlice const& doc) ->
+      typename AlgorithmData::EdgeProperties {
+    return static_cast<Topology*>(this)->readEdge(doc);
+  }
+
+  std::vector<typename AlgorithmData::VertexProperties> vertices;
+  std::vector<typename AlgorithmData::EdgeProperties> edges;
 };
 
-template<typename AlgorithmData>
-struct AlgorithmBase {
-  [[nodiscard]] virtual constexpr auto name() const -> std::string_view = 0;
+template<typename AlgorithmData, typename VertexComputation>
+struct VertexComputationBase {
+  auto processMessage(
+      typename AlgorithmData::Global const& global,
+      typename AlgorithmData::VertexProperties const& properties,
+      size_t const& outEdges, VertexId const& from,
+      typename AlgorithmData::Message const& payload) -> void {
+    static_cast<VertexComputation*>(this)->processMessage(
+        global, properties, outEdges, from, payload);
+  }
+  auto finish() -> void { static_cast<VertexComputation*>(this)->finish(); };
+};
 
-  AlgorithmBase(typename AlgorithmData::Settings const& settings)
-      : settings{settings} {}
+template<typename AlgorithmData, typename Conductor>
+struct ConductorBase {
+  ConductorBase() = delete;
+  ConductorBase(typename AlgorithmData::Settings settings)
+      : settings(settings) {}
 
-  [[nodiscard]] virtual auto readVertexDocument(VPackSlice const& doc) const ->
-      typename AlgorithmData::VertexProperties = 0;
+  auto setup() -> typename AlgorithmData::Global {
+    static_cast<Conductor*>(this)->setup();
+  };
+  auto step(typename AlgorithmData::Global const& global) ->
+      typename AlgorithmData::Global {
+    static_cast<Conductor*>(this)->step(global);
+  };
 
-  [[nodiscard]] virtual auto readEdgeDocument(VPackSlice const& doc) const ->
-      typename AlgorithmData::EdgeProperties = 0;
-
-  virtual auto writeVertexDocument(
-      typename AlgorithmData::VertexProperties const& prop,
-      VPackSlice const& doc) -> std::shared_ptr<VPackBuilder> = 0;
-
-  virtual auto conductorSetup() -> typename AlgorithmData::Global = 0;
-  virtual auto conductorStep(typename AlgorithmData::Global const& state)
-      -> void = 0;
-
-  virtual auto vertexStep(typename AlgorithmData::Global const& global,
-                          typename AlgorithmData::VertexProperties& props) const
-      -> bool = 0;
-
-  virtual ~AlgorithmBase() = default;
-
-  typename AlgorithmData::Settings const settings;
+  typename AlgorithmData::Settings settings;
 };
 
 }  // namespace arangodb::pregel::algorithm_sdk
