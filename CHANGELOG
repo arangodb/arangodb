@@ -1,6 +1,11 @@
 v3.9.4 (XXXX-XX-XX)
 -------------------
 
+* Fixed BTS-1017: Fixed a graph search issue, where subqueries lead to
+  incorrect results when they have been pushed down fully onto a DBServer
+  when they are in a Hybrid Disjoint SmartGraph context and
+  SatelliteCollections were part of it.
+
 * Fixed SEARCH-374: Fixed ArangoSearch seek iteration over documents in sparse
   bitset.
 
