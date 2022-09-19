@@ -65,10 +65,12 @@ class IWorker : public std::enable_shared_from_this<IWorker> {
       -> futures::Future<ResultT<Stored>> = 0;
   [[nodiscard]] virtual auto cleanup(Cleanup const& message)
       -> futures::Future<ResultT<CleanupFinished>> = 0;
+  [[nodiscard]] virtual auto results(CollectPregelResults const& message) const
+      -> futures::Future<ResultT<PregelResults>> = 0;
+
   virtual void cancelGlobalStep(
       VPackSlice const& data) = 0;  // called by coordinator
   virtual void receivedMessages(PregelMessage const& data) = 0;
-  virtual auto aqlResult(bool withId) const -> PregelResults = 0;
 };
 
 template<typename V, typename E>
@@ -167,16 +169,16 @@ class Worker : public IWorker {
   [[nodiscard]] auto _observeStatus() -> Status const;
   [[nodiscard]] auto _makeStatusCallback() -> std::function<void()>;
 
-  auto _gssFinishedEvent() const -> GlobalSuperStepFinished;
+  [[nodiscard]] auto _gssFinishedEvent() const -> GlobalSuperStepFinished;
+  [[nodiscard]] auto _prepareGlobalSuperStepFct(
+      PrepareGlobalSuperStep const& data) -> ResultT<GlobalSuperStepPrepared>;
+  [[nodiscard]] auto _resultsFct(CollectPregelResults const& message) const
+      -> ResultT<PregelResults>;
 
  public:
   Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,
          VPackSlice params, PregelFeature& feature);
   ~Worker();
-
-  // futures helper function
-  [[nodiscard]] auto prepareGlobalSuperStepFct(
-      PrepareGlobalSuperStep const& data) -> ResultT<GlobalSuperStepPrepared>;
 
   // ====== called by rest handler =====
   auto process(MessagePayload const& message)
@@ -190,10 +192,11 @@ class Worker : public IWorker {
   auto store(Store const& message) -> futures::Future<ResultT<Stored>> override;
   auto cleanup(Cleanup const& message)
       -> futures::Future<ResultT<CleanupFinished>> override;
+  auto results(CollectPregelResults const& message) const
+      -> futures::Future<ResultT<PregelResults>> override;
+
   void cancelGlobalStep(VPackSlice const& data) override;
   void receivedMessages(PregelMessage const& data) override;
-
-  auto aqlResult(bool withId) const -> PregelResults override;
 };
 
 }  // namespace arangodb::pregel

@@ -182,11 +182,11 @@ template<typename V, typename E, typename M>
 auto Worker<V, E, M>::prepareGlobalSuperStep(
     PrepareGlobalSuperStep const& message)
     -> futures::Future<ResultT<GlobalSuperStepPrepared>> {
-  return futures::makeFuture(prepareGlobalSuperStepFct(message));
+  return futures::makeFuture(_prepareGlobalSuperStepFct(message));
 }
 
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::prepareGlobalSuperStepFct(
+auto Worker<V, E, M>::_prepareGlobalSuperStepFct(
     PrepareGlobalSuperStep const& message) -> ResultT<GlobalSuperStepPrepared> {
   if (_state != WorkerState::IDLE) {
     return Result{TRI_ERROR_INTERNAL,
@@ -582,10 +582,16 @@ auto Worker<V, E, M>::cleanup(Cleanup const& command)
 }
 
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
+auto Worker<V, E, M>::results(CollectPregelResults const& message) const
+    -> futures::Future<ResultT<PregelResults>> {
+  return futures::makeFuture(_resultsFct(message));
+}
+
+template<typename V, typename E, typename M>
+auto Worker<V, E, M>::_resultsFct(CollectPregelResults const& message) const
+    -> ResultT<PregelResults> {
   MUTEX_LOCKER(guard, _commandMutex);
 
-  //  std::vector<ShardID> const& shards = _config.globalShardIDs();
   std::string tmp;
 
   VPackBuilder result;
@@ -599,7 +605,7 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
 
     result.openObject(/*unindexed*/ true);
 
-    if (withId) {
+    if (message.withId) {
       std::string const& cname = _config.shardIDToCollectionName(shardId);
       if (!cname.empty()) {
         tmp.clear();
@@ -620,15 +626,14 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
     if (auto res = _graphStore->graphFormat()->buildVertexDocumentWithResult(
             result, &data);
         res.fail()) {
-      LOG_PREGEL("37fde", ERR)
-          << "failed to build vertex document: " << res.error().toString();
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AIR_EXECUTION_ERROR,
-                                     res.error().toString());
+      return Result{TRI_ERROR_AIR_EXECUTION_ERROR,
+                    fmt::format("Failed to build vertex document: {}",
+                                res.error().toString())};
     }
     result.close();
   }
   result.close();
-  return PregelResults{.results = result};
+  return PregelResults{result};
 }
 
 template<typename V, typename E, typename M>
@@ -761,8 +766,12 @@ auto Worker<V, E, M>::process(MessagePayload const& message)
           },
           [&](CollectPregelResults const& x)
               -> futures::Future<ResultT<ModernMessage>> {
-            return {ModernMessage{.executionNumber = _config.executionNumber(),
-                                  .payload = aqlResult(x.withId)}};
+            return results(x).thenValue(
+                [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
+                  return ModernMessage{
+                      .executionNumber = _config.executionNumber(),
+                      .payload = {result}};
+                });
           },
           [&](PregelMessage const& x)
               -> futures::Future<ResultT<ModernMessage>> {

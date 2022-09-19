@@ -45,7 +45,8 @@ struct Destination {
 };
 
 struct Connection {
-  virtual auto send(Destination const& destination, ModernMessage&& message)
+  virtual auto send(Destination const& destination,
+                    ModernMessage&& message) const
       -> futures::Future<ResultT<ModernMessage>> = 0;
   virtual ~Connection() = default;
 };

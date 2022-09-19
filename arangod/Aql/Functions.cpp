@@ -48,6 +48,7 @@
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
 #include "Containers/FlatHashSet.h"
 #include "Geo/Ellipsoid.h"
 #include "Geo/GeoJson.h"
@@ -8782,30 +8783,17 @@ AqlValue functions::PregelResult(ExpressionContext* expressionContext,
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
-  if (ServerState::instance()->isCoordinator()) {
-    auto c = feature.conductor(execNr);
-    if (!c) {
-      registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
-      return AqlValue(AqlValueHintEmptyArray());
-    }
-    auto results = c->collectAQLResults(withId);
-    {
-      VPackArrayBuilder ab(&builder);
-      builder.add(VPackArrayIterator(results.results.slice()));
-    }
-  } else {
-    std::shared_ptr<pregel::IWorker> worker = feature.worker(execNr);
-    if (!worker) {
-      registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
-      return AqlValue(AqlValueHintEmptyArray());
-    }
-    auto results = worker->aqlResult(withId);
-    {
-      VPackArrayBuilder ab(&builder);
-      builder.add(VPackArrayIterator(results.results.slice()));
-    }
+
+  auto pregelResults = feature.collectPregelResults(execNr, withId);
+  if (pregelResults.fail()) {
+    registerWarning(expressionContext, AFN, pregelResults.errorNumber());
+    return AqlValue(AqlValueHintEmptyArray());
   }
 
+  {
+    VPackArrayBuilder ab(&builder);
+    builder.add(VPackArrayIterator(pregelResults.get().results.slice()));
+  }
   if (builder.isEmpty()) {
     return AqlValue(AqlValueHintEmptyArray());
   }

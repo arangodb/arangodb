@@ -40,6 +40,7 @@
 #include "Futures/Unit.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelMetrics.h"
+#include "Pregel/WorkerConductorMessages.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
@@ -95,6 +96,8 @@ class PregelFeature final : public ArangodFeature {
                               VPackBuilder& outResponse);
   void handleWorkerRequest(TRI_vocbase_t& vocbase, std::string const& path,
                            VPackSlice const& body, VPackBuilder& outBuilder);
+  auto collectPregelResults(ExecutionNumber const& executionNumber, bool withId)
+      -> ResultT<PregelResults>;
 
   uint64_t numberOfActiveConductors() const;
 

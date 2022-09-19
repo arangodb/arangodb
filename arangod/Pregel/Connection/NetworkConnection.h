@@ -35,9 +35,10 @@ struct NetworkConnection : Connection {
  public:
   NetworkConnection(std::string baseUrl, network::RequestOptions requestOptions,
                     TRI_vocbase_t& vocbase);
-  auto send(Destination const& destination, ModernMessage&& message)
+  auto send(Destination const& destination, ModernMessage&& message) const
       -> futures::Future<ResultT<ModernMessage>> override;
-  auto sendWithoutRetry(Destination const& destination, ModernMessage&& message)
+  auto sendWithoutRetry(Destination const& destination,
+                        ModernMessage&& message) const
       -> futures::Future<Result>;
   ~NetworkConnection() = default;
 

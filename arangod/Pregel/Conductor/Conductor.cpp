@@ -87,8 +87,6 @@ template<class... Ts>
 struct overloaded : Ts... {
   using Ts::operator()...;
 };
-template<class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
 }  // namespace
 
 #define LOG_PREGEL(logId, level)          \
@@ -186,11 +184,7 @@ void Conductor::start() {
 
 auto Conductor::process(MessagePayload const& message) -> Result {
   return std::visit(
-      overloaded{[&](CleanupFinished const& x) -> Result {
-                   finishedWorkerFinalize(x);
-                   return {};
-                 },
-                 [&](StatusUpdated const& x) -> Result {
+      overloaded{[&](StatusUpdated const& x) -> Result {
                    workerStatusUpdate(x);
                    return {};
                  },
@@ -471,12 +465,12 @@ bool Conductor::canBeGarbageCollected() const {
          expiration.value() <= std::chrono::system_clock::now();
 }
 
-auto Conductor::collectAQLResults(bool withId) -> PregelResults {
+auto Conductor::collectAQLResults(bool withId) -> ResultT<PregelResults> {
   MUTEX_LOCKER(guard, _callbackMutex);
   if (_storeResults) {
     VPackBuilder results;
     { VPackArrayBuilder ab(&results); }
-    return PregelResults{.results = results};
+    return PregelResults{results};
   }
   return state->getResults(withId);
 }
@@ -678,6 +672,3 @@ auto Conductor::changeState(conductor::StateType name) -> void {
 
 template auto Conductor::_sendToAllDBServers(
     CollectPregelResults const& message) -> ResultT<std::vector<ModernMessage>>;
-
-template auto Conductor::_sendToAllDBServers(StartCleanup const& message)
-    -> ResultT<std::vector<ModernMessage>>;

@@ -666,7 +666,7 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
 
   auto message = deserialize<ModernMessage>(body);
   auto c = conductor(message.executionNumber);
-  if (!c && std::holds_alternative<CleanupFinished>(message.payload)) {
+  if (!c && std::holds_alternative<ResultT<CleanupFinished>>(message.payload)) {
     // conductor not found, but potentially already garbage-collected
     return;
   }
@@ -704,15 +704,11 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
               message.executionNumber);
   }
   auto w = worker(message.executionNumber);
-  if (std::holds_alternative<StartCleanup>(message.payload)) {
-    if (isStopping()) {
-      return;  // shutdown ongoing
-    }
+  if (std::holds_alternative<Cleanup>(message.payload)) {
     if (!w) {
-      // except this is a cleanup call, and cleanup has already happened
-      // because of garbage collection
+      // cleanup has already happended because of garbage collection
       auto response = ModernMessage{.executionNumber = message.executionNumber,
-                                    .payload = {CleanupStarted{}}};
+                                    .payload = CleanupFinished{}};
       serialize(outBuilder, response);
       return;
     }
@@ -733,6 +729,24 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
   }
   serialize(outBuilder, response.get());
   return;
+}
+
+auto PregelFeature::collectPregelResults(ExecutionNumber const& executionNumber,
+                                         bool withId)
+    -> ResultT<PregelResults> {
+  if (ServerState::instance()->isCoordinator()) {
+    auto c = conductor(executionNumber);
+    if (!c) {
+      return Result{TRI_ERROR_HTTP_NOT_FOUND, "Execution number is invalid"};
+    }
+    return c->collectAQLResults(withId);
+  } else {
+    auto w = worker(executionNumber);
+    if (!w) {
+      return Result{TRI_ERROR_HTTP_NOT_FOUND, "Execution number is invalid"};
+    }
+    return w->results(CollectPregelResults{.withId = withId}).get();
+  }
 }
 
 uint64_t PregelFeature::numberOfActiveConductors() const {

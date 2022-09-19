@@ -53,26 +53,36 @@ auto Done::receive(Message const& message) -> void {
       << static_cast<int>(message.type());
 }
 
-auto Done::getResults(bool withId) -> PregelResults {
-  auto collectPregelResultsCommand = CollectPregelResults{.withId = withId};
-  auto response = conductor._sendToAllDBServers(collectPregelResultsCommand);
-  if (response.fail()) {
-    THROW_ARANGO_EXCEPTION(response.errorNumber());
+auto Done::_results(bool withId) -> ResultsFuture {
+  auto results = std::vector<futures::Future<ResultT<PregelResults>>>{};
+  for (auto&& [_, worker] : conductor.workers) {
+    results.emplace_back(
+        worker.results(CollectPregelResults{.withId = withId}));
   }
-  VPackBuilder results;
-  {
-    VPackArrayBuilder ab(&results);
-    for (auto const& message : response.get()) {
-      if (!std::holds_alternative<PregelResults>(message.payload)) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "Message from worker does not include "
-                                       "the expected PregelResults type");
-      }
-      auto payload = std::get<PregelResults>(message.payload);
-      if (payload.results.slice().isArray()) {
-        results.add(VPackArrayIterator(payload.results.slice()));
-      }
-    }
-  }
-  return PregelResults{.results = results};
+  return futures::collectAll(results);
+}
+
+auto Done::getResults(bool withId) -> ResultT<PregelResults> {
+  return _results(withId)
+      .thenValue([&](auto responses) -> ResultT<PregelResults> {
+        VPackBuilder pregelResults;
+        {
+          VPackArrayBuilder ab(&pregelResults);
+          for (auto const& response : responses) {
+            if (response.get().fail()) {
+              return Result{TRI_ERROR_INTERNAL,
+                            fmt::format("Got unsuccessful response from worker "
+                                        "while requesting results: "
+                                        "{}",
+                                        response.get().errorMessage())};
+            }
+            if (auto slice = response.get().get().results.slice();
+                slice.isArray()) {
+              pregelResults.add(VPackArrayIterator(slice));
+            }
+          }
+        }
+        return PregelResults{pregelResults};
+      })
+      .get();
 }

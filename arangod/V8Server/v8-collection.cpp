@@ -1897,29 +1897,25 @@ static void JS_PregelAQLResult(
 
   auto executionNum = arangodb::pregel::ExecutionNumber(
       TRI_ObjectToUInt64(isolate, args[0], true));
-  if (ServerState::instance()->isSingleServerOrCoordinator()) {
-    auto c = pregel.conductor(executionNum);
-    if (!c) {
-      TRI_V8_THROW_EXCEPTION_USAGE("Execution number is invalid");
-    }
 
-    auto results = c->collectAQLResults(withId);
-    VPackBuilder docs;
-    {
-      VPackArrayBuilder ab(&docs);
-      docs.add(VPackArrayIterator(results.results.slice()));
-    }
-    if (docs.isEmpty()) {
-      TRI_V8_RETURN_NULL();
-    }
-    TRI_ASSERT(docs.slice().isArray());
-
-    VPackOptions resultOptions = VPackOptions::Defaults;
-    auto documents = TRI_VPackToV8(isolate, docs.slice(), &resultOptions);
-    TRI_V8_RETURN(documents);
-  } else {
-    TRI_V8_THROW_EXCEPTION_USAGE("Only valid on the coordinator");
+  auto pregelResults = pregel.collectPregelResults(executionNum, withId);
+  if (pregelResults.fail()) {
+    TRI_V8_THROW_EXCEPTION_USAGE(pregelResults.errorMessage());
   }
+
+  VPackBuilder docs;
+  {
+    VPackArrayBuilder ab(&docs);
+    docs.add(VPackArrayIterator(pregelResults.get().results.slice()));
+  }
+  if (docs.isEmpty()) {
+    TRI_V8_RETURN_NULL();
+  }
+  TRI_ASSERT(docs.slice().isArray());
+
+  VPackOptions resultOptions = VPackOptions::Defaults;
+  auto documents = TRI_VPackToV8(isolate, docs.slice(), &resultOptions);
+  TRI_V8_RETURN(documents);
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END

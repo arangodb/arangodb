@@ -149,6 +149,8 @@ auto inspect(Inspector& f, StatusUpdated& x) {
 }
 
 struct PregelResults {
+  PregelResults() noexcept = default;
+  PregelResults(VPackBuilder results) : results{std::move(results)} {}
   VPackBuilder results;
 };
 template<typename Inspector>
@@ -248,7 +250,7 @@ using MessagePayload =
                  ResultT<GlobalSuperStepPrepared>, RunGlobalSuperStep,
                  ResultT<GlobalSuperStepFinished>, Store, ResultT<Stored>,
                  Cleanup, ResultT<CleanupFinished>, CollectPregelResults,
-                 PregelResults, StatusUpdated, PregelMessage>;
+                 ResultT<PregelResults>, StatusUpdated, PregelMessage>;
 
 struct MessagePayloadSerializer : MessagePayload {};
 template<class Inspector>
@@ -268,7 +270,7 @@ auto inspect(Inspector& f, MessagePayloadSerializer& x) {
       arangodb::inspection::type<Cleanup>("cleanup"),
       arangodb::inspection::type<ResultT<CleanupFinished>>("cleanupFinished"),
       arangodb::inspection::type<CollectPregelResults>("collectPregelResults"),
-      arangodb::inspection::type<PregelResults>("pregelResults"),
+      arangodb::inspection::type<ResultT<PregelResults>>("pregelResults"),
       arangodb::inspection::type<PregelMessage>("pregelMessage"),
       arangodb::inspection::type<StatusUpdated>("statusUpdated"));
 }
