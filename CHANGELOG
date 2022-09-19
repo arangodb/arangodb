@@ -1,10 +1,25 @@
-v3.10.0-beta.1 (2022-09-14)
----------------------------
+v3.10.0 (XXXX-XX-XX)
+--------------------
 
-* Fixed SEARCH-386 Fixed disjunction coverage in the inverted index with 
+* Fixed issue BTS-1023:
+  Added Linux-specific startup option `--use-splice-syscall` to control whether
+  the Linux-specific splice() syscall should be used for copying file contents.
+  While the syscall is generally available since Linux 2.6.x, it is also
+  required that the underlying filesystem supports the splice operation. This is
+  not true for some encrypted filesystems, on which splice() calls thus fail.
+  By setting the startup option `--use-splice-syscall` to `false`, a less
+  efficient, but more portable user-space file copying method will be used
+  instead, which should work on all filesystems.
+  The startup option is not available on other operating systems than Linux.
+
+* Fixed SEARCH-386 Fixed disjunction coverage in the inverted index with
   non-default analyzers.
 
 * Fixed SEARCH-373  Fixed indexing same field as nested and as non-nested.
+
+
+v3.10.0-beta.1 (2022-09-14)
+---------------------------
 
 * Display progress during Arangosearch link and inverted index recovery.
 
