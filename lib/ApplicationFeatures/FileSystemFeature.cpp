@@ -18,26 +18,39 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "FileSystemFeature.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Utils/ArangoClient.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/files.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
+#include "ProgramOptions/ProgramOptions.h"
+
+using namespace arangodb::options;
 
 namespace arangodb {
 
-class VPackFeature;
+void FileSystemFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
+#ifdef __linux__
+  // option is only available on Linux
+  options
+      ->addOption("--use-splice-syscall",
+                  "Use the splice() syscall for file copying (may not be "
+                  "supported on all filesystems",
+                  new BooleanParameter(&_useSplice),
+                  options::makeFlags(Flags::DefaultNoOs, Flags::OsLinux))
+      .setIntroducedIn(30904);
+#endif
+}
 
-using namespace application_features;
-
-using ArangoVPackFeatures =
-    TypeList<BasicFeaturePhaseClient, GreetingsFeaturePhase, VersionFeature,
-             ConfigFeature, LoggerFeature, FileSystemFeature, RandomFeature,
-             ShellColorsFeature, ShutdownFeature, VPackFeature>;
-
-using ArangoVPackServer = ApplicationServerT<ArangoVPackFeatures>;
-using ArangoVPackFeature = ApplicationFeatureT<ArangoVPackServer>;
+void FileSystemFeature::prepare() {
+#ifdef __linux__
+  TRI_SetCanUseSplice(_useSplice);
+#endif
+}
 
 }  // namespace arangodb
