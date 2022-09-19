@@ -148,10 +148,16 @@ function recoverySuite() {
         let c = coordinators[i];
         getRawMetric(c, '?mode=trigger_global');
       }
-      require("internal").sleep(1);
-      let figures = db._collection('UnitTestsRecoveryDummy').getIndexes(true, true)
-        .find(e => e.name === "i1")
-        .figures;
+      let figures;
+      for (let i = 0; i < 100; ++i) {
+        require("internal").sleep(0.5);
+        figures = collection.getIndexes(true, true)
+          .find(e => e.name === "searchIndex")
+          .figures;
+        if (figures.numDocs > 0) {
+          break;
+        }
+      }
       assertEqual(figures.numDocs, 501);
       assertEqual(figures.numLiveDocs, 501);
       assertTrue(figures.numSegments >= 1);
