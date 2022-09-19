@@ -869,7 +869,7 @@
             getRawMetric(c, '?mode=trigger_global');
           }
         }
-        require("internal").sleep(1);
+        require("internal").sleep(2);
 
         let figures = collection.getIndexes(true, true)
           .find(e => e.name === "searchIndex")
