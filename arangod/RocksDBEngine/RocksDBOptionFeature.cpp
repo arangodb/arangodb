@@ -900,7 +900,12 @@ void RocksDBOptionFeature::collectOptions(
       ->addOption("--rocksdb.periodic-compaction-ttl",
                   "TTL (in seconds) for periodic compaction of .sst files, "
                   "based on file age (0 = no periodic compaction)",
-                  new UInt64Parameter(&_periodicCompactionTtl))
+                  new UInt64Parameter(&_periodicCompactionTtl),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30903);
 
   //////////////////////////////////////////////////////////////////////////////
