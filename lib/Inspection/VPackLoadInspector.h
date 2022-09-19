@@ -379,6 +379,7 @@ struct VPackLoadInspectorImpl
   template<class T>
   Status processList(T& list) {
     std::size_t idx = 0;
+    list.clear();
     for (auto&& s : VPackArrayIterator(_slice)) {
       VPackLoadInspectorImpl ff(s, _options);
       typename T::value_type val;
@@ -393,6 +394,7 @@ struct VPackLoadInspectorImpl
 
   template<class T>
   Status processMap(T& map) {
+    map.clear();
     for (auto&& pair : VPackObjectIterator(_slice)) {
       VPackLoadInspectorImpl ff(pair.value, _options);
       typename T::mapped_type val;

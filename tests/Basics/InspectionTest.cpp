@@ -1002,6 +1002,7 @@ TEST_F(VPackLoadInspectorTest, load_list) {
   VPackLoadInspector inspector{builder};
 
   List l;
+  l.list.push_back(43);
   auto result = inspector.apply(l);
   ASSERT_TRUE(result.ok());
 
@@ -1038,6 +1039,7 @@ TEST_F(VPackLoadInspectorTest, load_map) {
   VPackLoadInspector inspector{builder};
 
   Map m;
+  m.unordered.emplace("b", 42);
   auto result = inspector.apply(m);
   ASSERT_TRUE(result.ok());
 
