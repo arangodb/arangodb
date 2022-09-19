@@ -490,13 +490,11 @@ auto inspect(Inspector& f, Embedded& v) {
                             f.field("b", v.b));
 }
 
-struct NestedEmbedding {
-  Embedded e;
-};
+struct NestedEmbedding : Embedded {};
 
 template<class Inspector>
 auto inspect(Inspector& f, NestedEmbedding& v) {
-  return f.object(v).fields(f.embedFields(v.e));
+  return f.object(v).fields(f.embedFields(static_cast<Embedded&>(v)));
 }
 
 struct EmbeddedObjectInvariant {
@@ -511,13 +509,12 @@ auto inspect(Inspector& f, EmbeddedObjectInvariant& v) {
                             f.field("b", v.b));
 }
 
-struct NestedEmbeddingWithObjectInvariant {
-  EmbeddedObjectInvariant e;
-};
+struct NestedEmbeddingWithObjectInvariant : EmbeddedObjectInvariant {};
 
 template<class Inspector>
 auto inspect(Inspector& f, NestedEmbeddingWithObjectInvariant& v) {
-  return f.object(v).fields(f.embedFields(v.e));
+  return f.object(v).fields(
+      f.embedFields(static_cast<EmbeddedObjectInvariant&>(v)));
 }
 
 }  // namespace
@@ -923,16 +920,16 @@ TEST_F(VPackSaveInspectorTest, store_unqualified_variant) {
 
 TEST_F(VPackSaveInspectorTest, store_embedded_fields) {
   NestedEmbedding const n{
-      .e = {.a = 1, .inner = {.i = 42, .s = "foobar"}, .b = 2}};
+      Embedded{.a = 1, .inner = {.i = 42, .s = "foobar"}, .b = 2}};
   auto result = inspector.apply(n);
   ASSERT_TRUE(result.ok());
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(n.e.a, slice["a"].getInt());
-  EXPECT_EQ(n.e.inner.i, slice["i"].getInt());
-  EXPECT_EQ(n.e.inner.s, slice["s"].copyString());
-  EXPECT_EQ(n.e.b, slice["b"].getInt());
+  EXPECT_EQ(n.a, slice["a"].getInt());
+  EXPECT_EQ(n.inner.i, slice["i"].getInt());
+  EXPECT_EQ(n.inner.s, slice["s"].copyString());
+  EXPECT_EQ(n.b, slice["b"].getInt());
 }
 
 struct VPackLoadInspectorTest : public ::testing::Test {
@@ -2053,10 +2050,10 @@ TEST_F(VPackLoadInspectorTest, load_embedded_object) {
   NestedEmbedding n;
   auto result = inspector.apply(n);
   ASSERT_TRUE(result.ok());
-  EXPECT_EQ(1, n.e.a);
-  EXPECT_EQ(42, n.e.inner.i);
-  EXPECT_EQ("foobar", n.e.inner.s);
-  EXPECT_EQ(2, n.e.b);
+  EXPECT_EQ(1, n.a);
+  EXPECT_EQ(42, n.inner.i);
+  EXPECT_EQ("foobar", n.inner.s);
+  EXPECT_EQ(2, n.b);
 }
 
 TEST_F(VPackLoadInspectorTest,
@@ -2348,14 +2345,15 @@ TEST_F(ValidateInspectorTest, validate_object_with_nested_invariant) {
 }
 
 TEST_F(ValidateInspectorTest, validate_embedded_object) {
-  NestedEmbedding n{.e = {.a = 1, .inner = {.i = 42, .s = "foobar"}, .b = 2}};
+  NestedEmbedding n{
+      Embedded{.a = 1, .inner = {.i = 42, .s = "foobar"}, .b = 2}};
   auto result = inspector.apply(n);
   ASSERT_TRUE(result.ok());
 }
 
 TEST_F(ValidateInspectorTest,
        validate_embedded_object_with_invariant_not_fulfilled) {
-  NestedEmbedding n{.e = {.a = 1, .inner = {.i = 0, .s = "foobar"}, .b = 2}};
+  NestedEmbedding n{Embedded{.a = 1, .inner = {.i = 0, .s = "foobar"}, .b = 2}};
   auto result = inspector.apply(n);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Field invariant failed", result.error());
@@ -2365,7 +2363,7 @@ TEST_F(ValidateInspectorTest,
 TEST_F(ValidateInspectorTest,
        validate_embedded_object_with_object_invariant_not_fulfilled) {
   NestedEmbeddingWithObjectInvariant o{
-      .e = {.a = 1, .inner = {.i = 42, .s = ""}, .b = 2}};
+      EmbeddedObjectInvariant{.a = 1, .inner = {.i = 42, .s = ""}, .b = 2}};
   auto result = inspector.apply(o);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Object invariant failed", result.error());
