@@ -38,9 +38,10 @@ if (getOptions === true) {
     'log.role': 'true',
     'log.line-number': 'true',
     'log.ids': 'true',
-    'log.hostname': 'HOSTNAME',
+    'log.hostname': '',
     'log.process': 'false',
     'log.in-memory': 'true',
+    'log.level': 'info',
   };
 }
 
@@ -49,18 +50,7 @@ const jsunity = require('jsunity');
 function LoggerSuite() {
   'use strict';
 
-  let oldLogLevel;
-
   return {
-    setUpAll: function() {
-      oldLogLevel = arango.GET("/_admin/log/level").general;
-      arango.PUT("/_admin/log/level", {general: "info"});
-    },
-
-    tearDownAll: function() {
-      // restore previous log level for "general" topic;
-      arango.PUT("/_admin/log/level", {general: oldLogLevel});
-    },
 
     testLogEntries: function() {
       let res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
@@ -108,8 +98,7 @@ function LoggerSuite() {
         assertTrue(parsedRes.hasOwnProperty("level"), parsedRes);
         assertTrue(parsedRes.hasOwnProperty("topic"), parsedRes);
         assertTrue(parsedRes.hasOwnProperty("id"), parsedRes);
-        assertTrue(parsedRes.hasOwnProperty("hostname"), parsedRes);
-        assertEqual(parsedRes.hostname, "HOSTNAME");
+        assertFalse(parsedRes.hasOwnProperty("hostname"), parsedRes);
         assertTrue(parsedRes.hasOwnProperty("role"), parsedRes);
         assertTrue(parsedRes.hasOwnProperty("tid"), parsedRes);
         assertMatch(/\d{1,}/, parsedRes.tid);
