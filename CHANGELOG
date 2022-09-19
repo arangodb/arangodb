@@ -13,6 +13,13 @@ devel
   used instead, which should work on all filesystems.
   The startup option is not available on other operating systems than Linux.
 
+* Added authenticate header to the HTTP response when status code is 401 
+  for HTTP/2.
+
+* Best quality spam pushed down to DEBUG.
+
+* Updated arangosync to v2.12.0-preview-13.
+
 * Implement prefetch for revision trees, in case a batch is created with
   a distinguished collection as for `SynchronizeShard`. This ensures that
   the revision tree for the batch will be available when needed, even though
