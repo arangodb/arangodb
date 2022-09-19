@@ -165,10 +165,14 @@ class FieldIterator {
                                          VPackSlice slice);
 
   enum class LevelType {
+    // emits regular fields
     kNormal = 0,
+    // emits nested parents
     kNestedRoot,
+    // enumerates "arrays" of nested documents
     kNestedFields,
-    kNestedObjects
+    // enumerates nested documents in the array
+    kNestedObjects,
   };
 
   struct Level {
