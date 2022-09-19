@@ -59,8 +59,6 @@ struct CollectionConstantProperties {
   // NOTE: These attributes are not documented
   bool isSmart = false;
   bool isDisjoint = false;
-  bool doCompact = false;
-  bool isVolatile = false;
   bool cacheEnabled = false;
 
   std::string smartGraphAttribute = StaticStrings::Empty;
@@ -81,9 +79,7 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
       f.field("isSystem", props.isSystem).fallback(f.keep()),
       f.field("isSmart", props.isSmart).fallback(f.keep()),
       f.field("isDisjoint", props.isDisjoint).fallback(f.keep()),
-      f.field("doCompact", props.doCompact).fallback(f.keep()),
       f.field("cacheEnabled", props.cacheEnabled).fallback(f.keep()),
-      f.field("isVolatile", props.isVolatile).fallback(f.keep()),
       f.field("smartGraphAttribute", props.smartGraphAttribute)
           .fallback(f.keep()),
       f.field("numberOfShards", props.numberOfShards)
@@ -98,12 +94,15 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
           .fallback(f.keep())
           .invariant(UtilityInvariants::isValidShardingStrategy),
       f.field("shardKeys", props.shardKeys)
-          .fallback(std::vector<std::string>{StaticStrings::KeyString})
+          .fallback(f.keep())
           .invariant(UtilityInvariants::areShardKeysValid),
       f.field("type", props.type)
           .fallback(f.keep())
           .invariant(UtilityInvariants::isValidCollectionType),
-      f.field("keyOptions", props.keyOptions).fallback(f.keep()));
+      f.field("keyOptions", props.keyOptions).fallback(f.keep()),
+      /* Backwards compatibility, fields are allowed (MMFILES) but have no
+         relevance anymore */
+      f.ignoreField("doCompact"), f.ignoreField("isVolatile"));
 }
 
 }  // namespace arangodb

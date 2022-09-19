@@ -30,7 +30,6 @@
 namespace arangodb {
 
 struct CollectionInternalProperties {
-  std::string globallyUniqueId = StaticStrings::Empty;
   std::string id = StaticStrings::Empty;
   bool syncByRevision = true;
   bool usesRevisionsAsDocumentIds = true;
@@ -47,7 +46,6 @@ struct CollectionInternalProperties {
 template<class Inspector>
 auto inspect(Inspector& f, CollectionInternalProperties& props) {
   return f.object(props).fields(
-      f.field("globallyUniqueId", props.globallyUniqueId).fallback(f.keep()),
       f.field("id", props.id).fallback(f.keep()),
       f.field(StaticStrings::SyncByRevision, props.syncByRevision)
           .fallback(f.keep()),
@@ -59,7 +57,11 @@ auto inspect(Inspector& f, CollectionInternalProperties& props) {
       f.field("deleted", props.deleted).fallback(f.keep()),
       f.field(StaticStrings::InternalValidatorTypes,
               props.internalValidatorType)
-          .fallback(f.keep()));
+          .fallback(f.keep()),
+      /* Backwards compatibility, field is documented but does not have an
+       * effect
+       */
+      f.ignoreField("globallyUniqueId"));
 }
 
 }  // namespace arangodb

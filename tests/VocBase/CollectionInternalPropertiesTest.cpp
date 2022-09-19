@@ -82,7 +82,6 @@ TEST_F(CollectionInternalPropertiesTest, test_minimal_user_input) {
   { VPackObjectBuilder guard(&body); }
   auto testee = parse(body.slice());
   ASSERT_TRUE(testee.ok());
-  EXPECT_EQ(testee->globallyUniqueId, "");
   EXPECT_TRUE(testee->syncByRevision);
   EXPECT_TRUE(testee->usesRevisionsAsDocumentIds);
   EXPECT_EQ(testee->id, "");
@@ -92,7 +91,8 @@ TEST_F(CollectionInternalPropertiesTest, test_minimal_user_input) {
 }
 
 // Covers a non-documented API
-GenerateStringAttributeTest(CollectionInternalPropertiesTest, globallyUniqueId);
+GenerateIgnoredAttributeTest(CollectionInternalPropertiesTest,
+                             globallyUniqueId);
 GenerateBoolAttributeTest(CollectionInternalPropertiesTest, syncByRevision);
 GenerateBoolAttributeTest(CollectionInternalPropertiesTest,
                           usesRevisionsAsDocumentIds);
@@ -101,5 +101,5 @@ GenerateStringAttributeTest(CollectionInternalPropertiesTest, id);
 GenerateBoolAttributeTest(CollectionInternalPropertiesTest, isSmartChild);
 GenerateBoolAttributeTest(CollectionInternalPropertiesTest, deleted);
 GenerateIntegerAttributeTest(CollectionInternalPropertiesTest,
-                                     internalValidatorType);
+                             internalValidatorType);
 }  // namespace arangodb::tests

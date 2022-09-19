@@ -180,3 +180,21 @@
 #define GenerateIntegerAttributeTest(TestClass, attributeName)           \
   GeneratePositiveIntegerAttributeTestInternal(TestClass, attributeName, \
                                                attributeName, true)
+
+#define GenerateIgnoredAttributeTest(TestClass, attributeName)                 \
+  TEST_F(TestClass, test_##attributeName) {                                    \
+    auto shouldPass = [&](VPackBuilder const& body) {                          \
+      auto testee = parse(body.slice());                                       \
+      EXPECT_TRUE(testee.ok())                                                 \
+          << "Parsing error in " << body.toJson() << " attribute: '"           \
+          << #attributeName << "' should be ignored";                          \
+    };                                                                         \
+    shouldPass(createMinimumBodyWithOneValue(#attributeName, 2));              \
+    shouldPass(createMinimumBodyWithOneValue(#attributeName, -1));             \
+    shouldPass(createMinimumBodyWithOneValue(#attributeName, "test"));         \
+    shouldPass(createMinimumBodyWithOneValue(#attributeName, 3.5));            \
+    shouldPass(createMinimumBodyWithOneValue(#attributeName,                   \
+                                             VPackSlice::emptyObjectSlice())); \
+    shouldPass(createMinimumBodyWithOneValue(#attributeName,                   \
+                                             VPackSlice::emptyArraySlice()));  \
+  }

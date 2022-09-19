@@ -85,8 +85,6 @@ TEST_F(CollectionConstantPropertiesTest, test_minimal_user_input) {
   ASSERT_TRUE(testee.ok());
   EXPECT_EQ(testee->type, TRI_col_type_e::TRI_COL_TYPE_DOCUMENT);
   EXPECT_FALSE(testee->isSystem);
-  EXPECT_FALSE(testee->doCompact);
-  EXPECT_FALSE(testee->isVolatile);
   EXPECT_FALSE(testee->cacheEnabled);
   EXPECT_EQ(testee->numberOfShards, 1);
   EXPECT_FALSE(testee->distributeShardsLike.has_value());
@@ -171,8 +169,6 @@ TEST_F(CollectionConstantPropertiesTest, test_shardingStrategy) {
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isSystem);
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isSmart);
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isDisjoint);
-GenerateBoolAttributeTest(CollectionConstantPropertiesTest, doCompact);
-GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isVolatile);
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, cacheEnabled);
 
 GeneratePositiveIntegerAttributeTest(CollectionConstantPropertiesTest,
@@ -184,5 +180,9 @@ GenerateStringAttributeTest(CollectionConstantPropertiesTest,
                             distributeShardsLike);
 GenerateOptionalStringAttributeTest(CollectionConstantPropertiesTest,
                                     smartJoinAttribute);
+
+// Ignored for backwards compatibility with MMFiles
+GenerateIgnoredAttributeTest(CollectionConstantPropertiesTest, doCompact);
+GenerateIgnoredAttributeTest(CollectionConstantPropertiesTest, isVolatile);
 
 }  // namespace arangodb::tests
