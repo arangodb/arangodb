@@ -5,6 +5,7 @@
 #include "Pregel/Conductor/Conductor.h"
 #include "Pregel/WorkerConductorMessages.h"
 #include "Pregel/PregelFeature.h"
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb::pregel::conductor;
 
