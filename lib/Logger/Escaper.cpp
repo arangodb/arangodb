@@ -119,19 +119,11 @@ void UnicodeCharsEscaper::writeCharIntoOutputBuffer(uint32_t c,
 }
 
 template<typename ControlCharHandler, typename UnicodeCharHandler>
-size_t
-Escaper<ControlCharHandler, UnicodeCharHandler>::determineOutputBufferSize(
-    std::string const& message) {
-  return message.size() * std::max(ControlCharHandler::maxCharLength(),
-                                   UnicodeCharHandler::maxCharLength());
-}
-
-template<typename ControlCharHandler, typename UnicodeCharHandler>
 void Escaper<ControlCharHandler, UnicodeCharHandler>::writeIntoOutputBuffer(
-    std::string const& message, std::string& buffer) {
+    std::string_view message, std::string& buffer) {
   unsigned char const* p =
       reinterpret_cast<unsigned char const*>(message.data());
-  unsigned char const* end = p + message.length();
+  unsigned char const* end = p + message.size();
   while (p < end) {
     unsigned char c = *p;
     if (c < 128) {  // the character is ASCII

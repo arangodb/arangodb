@@ -137,7 +137,8 @@ char Logger::_role('\0');
 std::atomic<TRI_pid_t> Logger::_cachedPid(0);
 std::string Logger::_outputPrefix;
 std::string Logger::_hostname;
-std::function<void(std::string const&, std::string&)> Logger::_writerFn;
+void (*Logger::_writerFn)(std::string_view, std::string&) =
+    &Escaper<ControlCharsEscaper, UnicodeCharsRetainer>::writeIntoOutputBuffer;
 
 std::atomic<std::size_t> Logger::_loggingThreadRefs(0);
 std::atomic<LogThread*> Logger::_loggingThread(nullptr);
@@ -389,11 +390,12 @@ void Logger::setUseUnicodeEscaped(bool value) {
 }
 
 // alerts that startup parameters for escaping have already been assigned
-void Logger::alertDefinedEscaping() {
+void Logger::setEscaping() {
   if (_active) {
-    _writerFn = &Escaper<ControlCharsEscaper,
-                         UnicodeCharsRetainer>::writeIntoOutputBuffer;
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
+
   if (_useControlEscaped) {
     if (_useUnicodeEscaped) {
       _writerFn = &Escaper<ControlCharsEscaper,

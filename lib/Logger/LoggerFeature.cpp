@@ -427,7 +427,7 @@ void LoggerFeature::prepare() {
   Logger::setTimeFormat(LogTimeFormats::formatFromName(_timeFormatString));
   Logger::setUseControlEscaped(_useControlEscaped);
   Logger::setUseUnicodeEscaped(_useUnicodeEscaped);
-  Logger::alertDefinedEscaping();
+  Logger::setEscaping();
   Logger::setShowLineNumber(_lineNumber);
   Logger::setShortenFilenames(_shortenFilenames);
   Logger::setShowProcessIdentifier(_processId);

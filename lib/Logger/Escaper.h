@@ -22,42 +22,59 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 namespace arangodb {
 
-struct ControlCharsSuppressor {  // control chars that will not be escaped
-  static size_t maxCharLength() { return 1; }
+// control chars will not be escaped, but suppressed
+struct ControlCharsSuppressor {
+  static constexpr size_t maxCharLength() { return 1; }
   static void writeCharIntoOutputBuffer(uint32_t c, std::string& output,
                                         int numBytes);
 };
-struct ControlCharsEscaper {  //\x07 worst case
-  static size_t maxCharLength() { return 4; }
+
+// control chars will be escaped
+struct ControlCharsEscaper {
+  static constexpr size_t maxCharLength() {
+    // worst case: "\x07"
+    return 4;
+  }
   static void writeCharIntoOutputBuffer(uint32_t c, std::string& output,
                                         int numBytes);
 };
-struct UnicodeCharsRetainer {  // worst case 4 digits
-  static size_t maxCharLength() { return 4; }
+
+// Unicode chars will be retained
+struct UnicodeCharsRetainer {
+  static constexpr size_t maxCharLength() {
+    // worst case 4 digits
+    return 4;
+  }
   static void writeCharIntoOutputBuffer(uint32_t c, std::string& output,
                                         int numBytes);
 };
-struct UnicodeCharsEscaper {  //\u +4 digits
-  static size_t maxCharLength() { return 6; }
+
+// Unicode chars will be escaped
+struct UnicodeCharsEscaper {
+  static constexpr size_t maxCharLength() {
+    // "\u" +4 digits
+    return 6;
+  }
+
   static void writeCharIntoOutputBuffer(uint32_t c, std::string& output,
                                         int numBytes);
+
+ private:
   static void writeCharHelper(uint16_t c, std::string& output);
 };
 
 template<typename ControlCharHandler, typename UnicodeCharHandler>
-class Escaper {
- public:
-  ~Escaper() = default;
-  static size_t determineOutputBufferSize(std::string const& message);
-
-  static void writeIntoOutputBuffer(std::string const& message,
-                                    std::string& buffer);
+struct Escaper {
+  static void writeIntoOutputBuffer(std::string_view message,
+                                    std::string& output);
 };
 
 }  // namespace arangodb
