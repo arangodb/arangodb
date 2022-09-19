@@ -35,7 +35,7 @@ struct StateActionContext {
   virtual auto getReplicatedStateById(LogId) noexcept
       -> std::shared_ptr<replicated_state::ReplicatedStateBase> = 0;
 
-  virtual auto createReplicatedState(LogId, std::string_view, velocypack::Slice)
+  virtual auto createReplicatedState(LogId, std::string_view)
       -> ResultT<std::shared_ptr<replicated_state::ReplicatedStateBase>> = 0;
 
   virtual auto dropReplicatedState(LogId) -> Result = 0;

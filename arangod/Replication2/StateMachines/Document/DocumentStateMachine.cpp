@@ -26,6 +26,7 @@
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
+#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Transaction/Manager.h"
 
 #include <Basics/voc-errors.h>
@@ -72,7 +73,17 @@ auto DocumentFactory::constructCore(GlobalLogIdentifier gid,
       std::move(logContext));
 }
 
+auto DocumentFactory::constructCleanupHandler()
+    -> std::shared_ptr<DocumentCleanupHandler> {
+  return std::make_shared<DocumentCleanupHandler>();
+}
+
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 
 template struct arangodb::replication2::replicated_state::ReplicatedState<
     DocumentState>;
+
+void DocumentCleanupHandler::drop(std::unique_ptr<DocumentCore> core) {
+  core->drop();
+  core.reset();
+}

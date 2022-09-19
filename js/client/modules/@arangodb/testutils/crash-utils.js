@@ -565,6 +565,9 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
 }
 
 function generateCrashDump (binary, instanceInfo, options, checkStr) {
+  if (instanceInfo.hasOwnProperty('debuggerInfo')) {
+    throw new Error("this process is already debugged: " + JSON.stringify(instanceInfo.getStructure()));
+  }
   const stats = statisticsExternal(instanceInfo.pid);
   // picking some arbitrary number of a running arangod doubling it
   const generateCoreDump = (
@@ -572,7 +575,7 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
     stats.residentSize < 140000000
   ) || stats.virtualSize === 0;
   if (options.test !== undefined) {
-    print(CYAN + this.name + " - in single test mode, hard killing." + RESET);
+    print(CYAN + instanceInfo.name + " - in single test mode, hard killing." + RESET);
     instanceInfo.exitStatus = killExternal(instanceInfo.pid, termSignal);
   } else if (platform.substr(0, 3) === 'win') {
     if (!options.disableMonitor) {
@@ -596,7 +599,22 @@ function aggregateDebugger(instanceInfo, options) {
     return false;
   }
   print("waiting for debugger to terminate: " + JSON.stringify(instanceInfo.debuggerInfo));
-  print(statusExternal(instanceInfo.debuggerInfo.pid.pid, true));
+  let tearDownTimeout = 180; // s
+  while (tearDownTimeout > 0) {
+    let ret = statusExternal(instanceInfo.debuggerInfo.pid.pid, false);
+    print(ret);
+    if (ret.status === "RUNNING") {
+      sleep(1);
+      tearDownTimeout -= 1;
+    } else {
+      break;
+    }
+  }
+  if (tearDownTimeout <= 0) {
+    print(RED+"killing debugger since it did not finish its busines in 180s"+RESET);
+    killExternal(instanceInfo.debuggerInfo.pid.pid, termSignal);
+    print(statusExternal(instanceInfo.debuggerInfo.pid.pid, false));
+  }
   if (!fs.exists(instanceInfo.debuggerInfo.file)) {
     print("Failed to generate the debbugers output file for " +
           JSON.stringify(instanceInfo.getStructure()) + '\n');

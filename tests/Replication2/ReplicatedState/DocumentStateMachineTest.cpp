@@ -46,6 +46,7 @@ using namespace arangodb::replication2::replicated_state::document;
 using namespace arangodb::replication2::test;
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/Mocks/MockStatePersistorInterface.h"
 
 struct MockDatabaseGuard : IDatabaseGuard {
   MOCK_METHOD(TRI_vocbase_t&, database, (), (const, noexcept, override));
@@ -120,6 +121,7 @@ struct MockDocumentStateShardHandler : IDocumentStateShardHandler {
   MOCK_METHOD(ResultT<std::string>, createLocalShard,
               (std::string const&, std::shared_ptr<velocypack::Builder> const&),
               (override));
+  MOCK_METHOD(Result, dropLocalShard, (std::string const&), (override));
 };
 
 struct DocumentStateMachineTest : test::ReplicatedLogTest {
@@ -129,6 +131,8 @@ struct DocumentStateMachineTest : test::ReplicatedLogTest {
                                               transactionManagerMock);
   }
 
+  std::shared_ptr<MockStatePersistorInterface> statePersistor =
+      std::make_shared<MockStatePersistorInterface>();
   std::shared_ptr<ReplicatedStateFeature> feature =
       std::make_shared<ReplicatedStateFeature>();
 
@@ -210,7 +214,8 @@ TEST_F(DocumentStateMachineTest,
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
-          feature->createReplicatedState(DocumentState::NAME, leaderLog));
+          feature->createReplicatedState(DocumentState::NAME, leaderLog,
+                                         statePersistor));
   ASSERT_NE(leaderReplicatedState, nullptr);
 
   EXPECT_CALL(*agencyHandlerMock, getCollectionPlan(collectionId)).Times(1);
@@ -309,7 +314,8 @@ TEST_F(DocumentStateMachineTest,
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
-          feature->createReplicatedState(DocumentState::NAME, leaderLog));
+          feature->createReplicatedState(DocumentState::NAME, leaderLog,
+                                         statePersistor));
   ASSERT_NE(leaderReplicatedState, nullptr);
 
   EXPECT_CALL(*agencyHandlerMock, getCollectionPlan(collectionId)).Times(1);
@@ -344,7 +350,8 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
-          feature->createReplicatedState(DocumentState::NAME, leaderLog));
+          feature->createReplicatedState(DocumentState::NAME, leaderLog,
+                                         statePersistor));
   ASSERT_NE(leaderReplicatedState, nullptr);
 
   EXPECT_CALL(*agencyHandlerMock, getCollectionPlan(collectionId)).Times(1);
@@ -375,7 +382,8 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
 
   auto followerReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
-          feature->createReplicatedState(DocumentState::NAME, followerLog));
+          feature->createReplicatedState(DocumentState::NAME, followerLog,
+                                         statePersistor));
   ASSERT_NE(followerReplicatedState, nullptr);
 
   std::shared_ptr<DocumentStateTransactionHandler> real;

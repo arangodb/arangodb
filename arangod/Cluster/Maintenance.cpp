@@ -406,29 +406,29 @@ static void handlePlanShard(
       }
     }
   } else {  // Create the collection, if not a previous error stops us
-    if (errors.shards.find(dbname + "/" + colname + "/" + shname) ==
-            errors.shards.end() &&
-        replicationVersion != replication::Version::TWO) {
-      // Skip for replication 2 databases
-      auto props = createProps(cprops);  // Only once might need often!
-      description = std::make_shared<ActionDescription>(
-          std::map<std::string, std::string>{
-              {NAME, CREATE_COLLECTION},
-              {COLLECTION, colname},
-              {SHARD, shname},
-              {DATABASE, dbname},
-              {SERVER_ID, serverId},
-              {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
-          shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true,
-          std::move(props));
-      makeDirty.insert(dbname);
-      callNotify = true;
-      actions.emplace_back(std::move(description));
+    if (!errors.shards.contains(dbname + "/" + colname + "/" + shname)) {
+      if (replicationVersion != replication::Version::TWO) {
+        // Skip for replication 2 databases
+        auto props = createProps(cprops);  // Only once might need often!
+        description = std::make_shared<ActionDescription>(
+            std::map<std::string, std::string>{
+                {NAME, CREATE_COLLECTION},
+                {COLLECTION, colname},
+                {SHARD, shname},
+                {DATABASE, dbname},
+                {SERVER_ID, serverId},
+                {THE_LEADER, CreateLeaderString(leaderId, shouldBeLeading)}},
+            shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true,
+            std::move(props));
+        makeDirty.insert(dbname);
+        callNotify = true;
+        actions.emplace_back(std::move(description));
+      }
     } else {
       LOG_TOPIC("c1d8e", DEBUG, Logger::MAINTENANCE)
           << "Previous failure exists for creating local shard " << dbname
-          << "/" << shname << "for central " << dbname << "/" << colname
-          << "- skipping";
+          << "/" << shname << " for central " << dbname << "/" << colname
+          << " - skipping";
     }
   }
 }
@@ -460,14 +460,16 @@ static void handleLocalShard(
   auto localLeader = cprops.get(THE_LEADER).stringView();
   bool const isLeading = localLeader.empty();
   if (it == commonShrds.end()) {
-    // This collection is not planned anymore, can drop it
-    description = std::make_shared<ActionDescription>(
-        std::map<std::string, std::string>{
-            {NAME, DROP_COLLECTION}, {DATABASE, dbname}, {SHARD, colname}},
-        isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true);
-    makeDirty.insert(dbname);
-    callNotify = true;
-    actions.emplace_back(std::move(description));
+    if (replicationVersion != replication::Version::TWO) {
+      // This collection is not planned anymore, can drop it
+      description = std::make_shared<ActionDescription>(
+          std::map<std::string, std::string>{
+              {NAME, DROP_COLLECTION}, {DATABASE, dbname}, {SHARD, colname}},
+          isLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, true);
+      makeDirty.insert(dbname);
+      callNotify = true;
+      actions.emplace_back(std::move(description));
+    }
     return;
   }
   // We dropped out before
@@ -1264,27 +1266,6 @@ void addDatabaseToTransactions(std::string const& name,
     }
   }
   transactions.push_back({operation, precondition});
-}
-
-/// @brief report local to current
-arangodb::Result arangodb::maintenance::diffLocalCurrent(
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        local,
-    VPackSlice const& current, std::string const& serverId,
-    Transactions& transactions,
-    MaintenanceFeature::ShardActionMap const& shardActionMap) {
-  // Iterate over local databases
-  for (auto const& ldbo : local) {
-    std::string const& dbname = ldbo.first;
-
-    // Current has this database
-    if (!current.hasKey(dbname)) {
-      // Create new database in current
-      addDatabaseToTransactions(dbname, transactions);
-    }
-  }
-
-  return {};
 }
 
 /// @brief Phase one: Compare plan and local and create descriptions

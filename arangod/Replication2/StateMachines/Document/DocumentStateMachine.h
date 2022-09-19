@@ -48,9 +48,16 @@ struct DocumentCore;
 struct DocumentCoreParameters;
 
 struct IDocumentStateHandlersFactory;
+struct IDocumentStateShardHandler;
 
 struct ReplicationOptions {
   bool waitForCommit{false};
+};
+
+struct DocumentCleanupHandler {
+  void drop(std::unique_ptr<DocumentCore>);
+
+  std::shared_ptr<IDocumentStateShardHandler> shardHandler;
 };
 
 struct DocumentState {
@@ -62,6 +69,7 @@ struct DocumentState {
   using FactoryType = DocumentFactory;
   using CoreType = DocumentCore;
   using CoreParameterType = DocumentCoreParameters;
+  using CleanupHandlerType = DocumentCleanupHandler;
 };
 
 struct DocumentCoreParameters {
@@ -90,6 +98,8 @@ struct DocumentFactory {
 
   auto constructCore(GlobalLogIdentifier, DocumentCoreParameters)
       -> std::unique_ptr<DocumentCore>;
+
+  auto constructCleanupHandler() -> std::shared_ptr<DocumentCleanupHandler>;
 
  private:
   std::shared_ptr<IDocumentStateHandlersFactory> const _handlersFactory;

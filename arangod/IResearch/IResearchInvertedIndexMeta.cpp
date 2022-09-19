@@ -752,13 +752,21 @@ bool InvertedIndexField::init(
     _path += tmp;
   }
 
-  auto fieldsAttributeName =
-      rootMode ? kFieldsFieldName : kNestedFieldsFieldName;
 #ifndef USE_ENTERPRISE
   if (!rootMode) {
+    if (slice.isObject() && slice.hasKey(kNestedFieldsFieldName)) {
+      errorField =
+          absl::StrCat(kNestedFieldsFieldName,
+                       " is supported in ArangoDB Enterprise Edition only.");
+      return false;
+    }
+
     return true;
   }
 #endif
+  auto const fieldsAttributeName =
+      rootMode ? kFieldsFieldName : kNestedFieldsFieldName;
+
   if (slice.isObject() && slice.hasKey(fieldsAttributeName)) {
     auto nestedSlice = slice.get(fieldsAttributeName);
     if (!nestedSlice.isArray()) {
@@ -930,26 +938,27 @@ IResearchInvertedIndexMetaIndexingContext::
       _trackListPositions(field->_trackListPositions),
       _isSearchField(field->_isSearchField) {
   if (add) {
-    addField(*field);
+    addField(*field, false);
   }
 }
 
 void IResearchInvertedIndexMetaIndexingContext::addField(
-    InvertedIndexField const& field) {
+    InvertedIndexField const& field, bool nested) {
   for (auto const& f : field._fields) {
     auto current = this;
     for (size_t i = 0; i < f._attribute.size(); ++i) {
       auto const& a = f._attribute[i];
-      auto emplaceRes = current->_subFields.emplace(
+      auto& fieldsContainer = nested ? current->_nested : current->_fields;
+      auto emplaceRes = fieldsContainer.emplace(
           a.name, IResearchInvertedIndexMetaIndexingContext{_meta, false});
 
       if (!emplaceRes.second) {
-        TRI_ASSERT(emplaceRes.first->second._isArray == a.shouldExpand);
+        // first emplaced as nested root then array may come as regular field
+        emplaceRes.first->second._isArray |= a.shouldExpand;
         current = &(emplaceRes.first->second);
       } else {
         current = &(emplaceRes.first->second);
         current->_isArray = a.shouldExpand;
-        current->_hasNested = false;
       }
       if (i == f._attribute.size() - 1) {
         current->_analyzers = &f._analyzers;
@@ -961,8 +970,7 @@ void IResearchInvertedIndexMetaIndexingContext::addField(
     }
 #ifdef USE_ENTERPRISE
     if (!f._fields.empty()) {
-      current->_hasNested = true;
-      current->addField(f);
+      current->addField(f, true);
     }
 #endif
   }

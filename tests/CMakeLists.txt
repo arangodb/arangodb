@@ -93,7 +93,6 @@ set(ARANGODB_TESTS_SOURCES
   Agency/TransactionBuilderTests.cpp
   Aql/AqlCallListTest.cpp
   Aql/AqlExecutorTestCase.cpp
-  Aql/AqlSharedExecutionBlockImplTest.cpp
   Aql/AqlHelper.cpp
   Aql/AqlItemBlockInputRangeTest.cpp
   Aql/AqlItemBlockTest.cpp
@@ -120,7 +119,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/EnumerateCollectionExecutorTest.cpp
   Aql/EnumerateListExecutorTest.cpp
   Aql/ExecutionBlockImplTest.cpp
-  Aql/ExecutionBlockImplTestInstances.cpp
   Aql/ExecutionNodeTest.cpp
   Aql/ExecutorTestHelper.cpp
   Aql/FilterExecutorTest.cpp
@@ -354,16 +352,17 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
   Replication2/ReplicatedLog/UpdateReplicatedLogTests.cpp
   Replication2/ReplicatedLog/WaitForSyncTest.cpp
+  Replication2/ReplicatedState/DocumentStateMachineTest.cpp
   Replication2/ReplicatedState/FollowerSnapshotTest.cpp
   Replication2/ReplicatedState/FollowerWaitForTest.cpp
   Replication2/ReplicatedState/LeaderRecoveryTest.cpp
   Replication2/ReplicatedState/LeaderResignTest.cpp
   Replication2/ReplicatedState/MaintenanceTest.cpp
-  Replication2/ReplicatedState/DocumentStateMachineTest.cpp
   Replication2/ReplicatedState/PrototypeConcurrencyTest.cpp
   Replication2/ReplicatedState/PrototypeStateMachineTest.cpp
   Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp
   Replication2/ReplicatedState/ReplicatedStateTest.cpp
+  Replication2/ReplicatedState/StateCleanupTest.cpp
   Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
   Replication2/ReplicatedState/SupervisionModelChecker.cpp
   Replication2/ReplicatedState/SupervisionTest.cpp
@@ -377,7 +376,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedState/ReplicatedStateMetricsTest.cpp
   Replication2/ReplicatedLog/MetricsTest.cpp
   Replication2/ReplicatedState/FollowerResignTest.cpp
-)
+        Replication2/Mocks/MockStatePersistorInterface.cpp Replication2/Mocks/MockStatePersistorInterface.h)
 
 set(ARANGODB_GRAPH_TEST_SOURCES
   Graph/ClusterTraverserCacheTest.cpp
