@@ -2,9 +2,9 @@ v3.10.0 (XXXX-XX-XX)
 --------------------
 
 * Fixed SEARCH-386 Fixed disjunction coverage in the inverted index with 
-  non-default analyzers
+  non-default analyzers.
 
-* Fixed SEARCH-373  Fixed indexing same fiedl as nested and as non-nested
+* Fixed SEARCH-373  Fixed indexing same field as nested and as non-nested.
 
 * Display progress during Arangosearch link and inverted index recovery.
 
