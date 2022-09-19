@@ -1,6 +1,8 @@
 devel
 -----
 
+* BTS-477: added integration tests for covering log parameters
+
 * Added authenticate header to the HTTP response when status code is 401 
   for HTTP/2.
 
