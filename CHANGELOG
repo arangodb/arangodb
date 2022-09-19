@@ -1,5 +1,5 @@
-v3.10.0 (XXXX-XX-XX)
---------------------
+v3.10.0-beta.1 (2022-09-14)
+---------------------------
 
 * Fixed issue BTS-1023:
   Added Linux-specific startup option `--use-splice-syscall` to control
