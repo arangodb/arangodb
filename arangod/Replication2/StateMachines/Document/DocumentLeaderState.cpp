@@ -121,8 +121,8 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
     if (_activeTransactions.getLockedGuard()->erase(transactionId) == 0) {
       // we have not replicated anything for a transaction with this id, so
       // there is no need to replicate the abort/commit operation
-      return 0;  // TODO - can we do this differently instead of returning a
-                 // dummy index/
+      return LogIndex{};  // TODO - can we do this differently instead of
+                          // returning a dummy index/
     }
   } else {
     _activeTransactions.getLockedGuard()->emplace(transactionId);
