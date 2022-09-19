@@ -666,7 +666,7 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
 
   auto message = deserialize<ModernMessage>(body);
   auto c = conductor(message.executionNumber);
-  if (!c && std::holds_alternative<ResultT<CleanupFinished>>(message.payload)) {
+  if (!c && std::holds_alternative<CleanupFinished>(message.payload)) {
     // conductor not found, but potentially already garbage-collected
     return;
   }
@@ -704,11 +704,15 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
               message.executionNumber);
   }
   auto w = worker(message.executionNumber);
-  if (std::holds_alternative<Cleanup>(message.payload)) {
+  if (std::holds_alternative<StartCleanup>(message.payload)) {
+    if (isStopping()) {
+      return;  // shutdown ongoing
+    }
     if (!w) {
-      // cleanup has already happended because of garbage collection
+      // except this is a cleanup call, and cleanup has already happened
+      // because of garbage collection
       auto response = ModernMessage{.executionNumber = message.executionNumber,
-                                    .payload = CleanupFinished{}};
+                                    .payload = {CleanupStarted{}}};
       serialize(outBuilder, response);
       return;
     }

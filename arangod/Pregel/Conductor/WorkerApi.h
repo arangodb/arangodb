@@ -45,10 +45,13 @@ struct WorkerApi : NewIWorker {
       -> futures::Future<ResultT<GlobalSuperStepPrepared>> override;
   [[nodiscard]] auto runGlobalSuperStep(RunGlobalSuperStep const& data)
       -> futures::Future<ResultT<GlobalSuperStepFinished>> override;
+<<<<<<< HEAD
   [[nodiscard]] auto store(Store const& message)
       -> futures::Future<ResultT<Stored>> override;
   [[nodiscard]] auto cleanup(Cleanup const& message)
       -> futures::Future<ResultT<CleanupFinished>> override;
+=======
+>>>>>>> staging/pregel-refactor
 
  private:
   ServerID _server;

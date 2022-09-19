@@ -39,19 +39,30 @@ auto Storing::_cleanup() -> CleanupFuture {
 auto Storing::run() -> void {
   conductor.cleanup();
 
-  _store().thenValue([&](auto results) {
-    for (auto const& result : results) {
-      if (result.get().fail()) {
-        LOG_PREGEL_CONDUCTOR("bc495", ERR) << fmt::format(
-            "Got unsuccessful response from worker while storing graph: {}",
-            result.get().errorMessage());
-        conductor.changeState(StateType::InError);
-        return;
-      }
-      auto reports = result.get().get().reports.slice();
-      if (reports.isArray()) {
-        conductor._reports.appendFromSlice(reports);
-      }
+  LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Finalizing workers";
+
+  auto startCleanupCommand =
+      StartCleanup{.gss = conductor._globalSuperstep, .withStoring = true};
+  auto response = conductor._sendToAllDBServers(startCleanupCommand);
+  if (response.fail()) {
+    LOG_PREGEL_CONDUCTOR("f382d", ERR) << "Cleanup could not be started";
+  }
+}
+
+auto Storing::receive(Message const& message) -> void {
+  if (message.type() != MessageType::CleanupFinished) {
+    LOG_PREGEL_CONDUCTOR("1b831", WARN)
+        << "When storing, we expect a CleanupFinished "
+           "message, but we received message type "
+        << static_cast<int>(message.type());
+    return;
+  }
+  auto event = static_cast<CleanupFinished const&>(message);
+  conductor._ensureUniqueResponse(event.senderId);
+  {
+    auto reports = event.reports.slice();
+    if (reports.isArray()) {
+      conductor._reports.appendFromSlice(reports);
     }
 
     LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Cleanup workers";

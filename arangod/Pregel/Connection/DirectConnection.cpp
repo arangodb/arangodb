@@ -10,6 +10,10 @@ using namespace arangodb::pregel;
 auto DirectConnection::send(Destination const& destination,
                             ModernMessage&& message)
     -> futures::Future<ResultT<ModernMessage>> {
+  if (_feature.isStopping()) {
+    return Result{TRI_ERROR_SHUTTING_DOWN};
+  }
+
   if (std::holds_alternative<LoadGraph>(message.payload)) {
     try {
       auto created = AlgoRegistry::createWorker(
@@ -22,14 +26,7 @@ auto DirectConnection::send(Destination const& destination,
     }
   }
   auto worker = _feature.worker(message.executionNumber);
-  if (std::holds_alternative<Cleanup>(message.payload)) {
-    if (!worker || _feature.isStopping()) {
-      // either cleanup has already happended because of garbage collection
-      // or cleanup is unnecessary because shutdown already started
-      return ModernMessage{.executionNumber = message.executionNumber,
-                           .payload = CleanupFinished{}};
-    }
-  }
+  // TODO check for start cleanup
   if (!worker) {
     VPackBuilder serialized;
     serialize(serialized, message);

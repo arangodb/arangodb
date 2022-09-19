@@ -63,19 +63,54 @@ auto Canceled::run() -> void {
   LOG_PREGEL_CONDUCTOR("dd721", WARN)
       << "Execution was canceled, conductor and workers are discarded.";
 
-  _cleanupUntilTimeout(std::chrono::steady_clock::now())
-      .thenValue([&](auto result) {
-        if (result.fail()) {
-          LOG_PREGEL_CONDUCTOR("f8b3c", ERR) << result.errorMessage();
-          return;
-        }
+  bool ok = basics::function_utils::retryUntilTimeout(
+      [this]() -> bool {
+        conductor.cleanup();
+        LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Finalizing workers";
+        auto startCleanupCommand = StartCleanup{
+            .gss = conductor._globalSuperstep, .withStoring = false};
+        auto response = conductor._sendToAllDBServers(startCleanupCommand);
+        return response.ok();
+      },
+      Logger::PREGEL, "cancel worker execution");
+  if (!ok) {
+    LOG_PREGEL_CONDUCTOR("f8b3c", ERR)
+        << "Failed to cancel worker execution for five minutes, giving up.";
+  }
+  conductor._workHandle.reset();
+}
 
-        if (conductor._inErrorAbort) {
-          conductor.changeState(StateType::FatalError);
-          return;
-        }
+auto Canceled::receive(Message const& message) -> void {
+  if (message.type() != MessageType::CleanupFinished) {
+    LOG_PREGEL_CONDUCTOR("14df4", WARN)
+        << "When canceled, we expect a CleanupFinished "
+           "message, but we received message type "
+        << static_cast<int>(message.type());
+    return;
+  }
+  auto event = static_cast<CleanupFinished const&>(message);
+  conductor._ensureUniqueResponse(event.senderId);
+  {
+    auto reports = event.reports.slice();
+    if (reports.isArray()) {
+      conductor._reports.appendFromSlice(reports);
+    }
+  }
+  if (conductor._respondedServers.size() != conductor._dbServers.size()) {
+    return;
+  }
 
-        LOG_PREGEL_CONDUCTOR("6928f", DEBUG) << "Conductor is erased";
-        conductor._feature.cleanupConductor(conductor._executionNumber);
-      });
+  if (conductor._inErrorAbort) {
+    conductor.changeState(StateType::FatalError);
+    return;
+  }
+
+  auto* scheduler = SchedulerFeature::SCHEDULER;
+  if (scheduler) {
+    scheduler->queue(
+        RequestLane::CLUSTER_AQL, [this, self = conductor.shared_from_this()] {
+          LOG_PREGEL_CONDUCTOR("6928f", INFO) << "Conductor is erased";
+          conductor._feature.cleanupConductor(conductor._executionNumber);
+        });
+  }
 }

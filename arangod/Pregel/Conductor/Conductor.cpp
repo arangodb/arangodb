@@ -87,6 +87,8 @@ template<class... Ts>
 struct overloaded : Ts... {
   using Ts::operator()...;
 };
+template<class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
 }  // namespace
 
 #define LOG_PREGEL(logId, level)          \
@@ -184,7 +186,11 @@ void Conductor::start() {
 
 auto Conductor::process(MessagePayload const& message) -> Result {
   return std::visit(
-      overloaded{[&](StatusUpdated const& x) -> Result {
+      overloaded{[&](CleanupFinished const& x) -> Result {
+                   finishedWorkerFinalize(x);
+                   return {};
+                 },
+                 [&](StatusUpdated const& x) -> Result {
                    workerStatusUpdate(x);
                    return {};
                  },
@@ -672,3 +678,6 @@ auto Conductor::changeState(conductor::StateType name) -> void {
 
 template auto Conductor::_sendToAllDBServers(
     CollectPregelResults const& message) -> ResultT<std::vector<ModernMessage>>;
+
+template auto Conductor::_sendToAllDBServers(StartCleanup const& message)
+    -> ResultT<std::vector<ModernMessage>>;
