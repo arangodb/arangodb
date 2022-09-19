@@ -4,6 +4,35 @@ devel
 * Moved the handling of escaping control and unicode chars in the log to 
   the Logger instead of LogAppenderFile.
 
+* Fixed issue BTS-1023:
+  Added Linux-specific startup option `--use-splice-syscall` to control
+  whether the Linux-specific splice() syscall should be used for copying
+  file contents. While the syscall is generally available since Linux 2.6.x,
+  it is also required that the underlying filesystem supports the splice
+  operation. This is not true for some encrypted filesystems, on which
+  splice() calls thus fail.
+  By setting the startup option `--use-splice-syscall` to `false`, a less
+  efficient, but more portable user-space file copying method will be
+  used instead, which should work on all filesystems.
+  The startup option is not available on other operating systems than Linux.
+
+* Added authenticate header to the HTTP response when status code is 401 
+  for HTTP/2.
+
+* Best quality spam pushed down to DEBUG.
+
+* Updated arangosync to v2.12.0-preview-13.
+
+* Implement prefetch for revision trees, in case a batch is created with
+  a distinguished collection as for `SynchronizeShard`. This ensures that
+  the revision tree for the batch will be available when needed, even though
+  the revision tree for the collection might already have advanced beyond
+  the sequence number of the snapshot in the batch. This ensures that
+  shards can get in sync more reliably and more quickly.
+
+* Fixed log with json format not respecting the value of parameter 
+  `--log.shorten-filenames`.
+
 * Updated arangosync to v2.12.0-preview-12.
 
 * Added "intermediateCommits" statistics return value for AQL queries, to
@@ -19,8 +48,9 @@ devel
 
 * Updated Views UI with all changes necessary for the 3.10.0 launch.
 
-* Moved the handling of escaping control and unicode chars in the log to 
-  the Logger instead of LogAppenderFile.
+* Added message on the UI view of Logs when the user has restricted access,
+  either because cannot access `_system`, or because is currently in 
+  another database. 
 
 * Fix for the Pregel's HITS algorithm using a fixed value instead of the
   passed "threshold" parameter. The same applied to the new HITSKleinberg.
