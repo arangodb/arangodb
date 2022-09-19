@@ -235,12 +235,12 @@ void Escaper<ControlCharHandler, UnicodeCharHandler>::writeIntoOutputBuffer(
   }
 }
 
-template class Escaper<ControlCharsSuppressor, UnicodeCharsRetainer>;
+template struct Escaper<ControlCharsSuppressor, UnicodeCharsRetainer>;
 
-template class Escaper<ControlCharsSuppressor, UnicodeCharsEscaper>;
+template struct Escaper<ControlCharsSuppressor, UnicodeCharsEscaper>;
 
-template class Escaper<ControlCharsEscaper, UnicodeCharsRetainer>;
+template struct Escaper<ControlCharsEscaper, UnicodeCharsRetainer>;
 
-template class Escaper<ControlCharsEscaper, UnicodeCharsEscaper>;
+template struct Escaper<ControlCharsEscaper, UnicodeCharsEscaper>;
 
 }  // namespace arangodb
