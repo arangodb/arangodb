@@ -61,7 +61,7 @@ struct ConductorStatus {
     }
     return status;
   }
-  auto updateWorkerStatus(ServerID const& id, Status&& status) -> void {
+  auto updateWorkerStatus(ServerID const& id, Status const& status) -> void {
     workers.at(id) = status;
   }
   auto accumulate() const -> AccumulatedConductorStatus {

@@ -159,14 +159,14 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
       -> PostGlobalSuperStepResult;
   auto _preGlobalSuperStep() -> bool;
   auto _initializeWorkers(VPackSlice additional) -> GraphLoadedFuture;
-  template<typename OutType, typename InType>
-  auto _sendToAllDBServers(std::string const& path, InType const& message)
-      -> ResultT<std::vector<OutType>>;
+  template<typename InType>
+  auto _sendToAllDBServers(InType const& message)
+      -> ResultT<std::vector<ModernMessage>>;
   void _ensureUniqueResponse(std::string const& body);
 
   // === REST callbacks ===
-  void workerStatusUpdate(VPackSlice const& data);
-  void finishedWorkerFinalize(VPackSlice data);
+  void workerStatusUpdate(StatusUpdated const& data);
+  void finishedWorkerFinalize(CleanupFinished const& data);
 
   std::vector<ShardID> getShardIds(ShardID const& collection) const;
 
@@ -181,6 +181,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   ~Conductor();
 
+  auto process(MessagePayload const& message) -> Result;
   void start();
   void cancel();
   auto collectAQLResults(bool withId) -> PregelResults;

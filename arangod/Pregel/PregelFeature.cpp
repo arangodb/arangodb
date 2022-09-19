@@ -651,109 +651,81 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
     return;  // shutdown ongoing
   }
 
-  VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
-  if (!sExecutionNum.isInteger() && !sExecutionNum.isString()) {
-    LOG_TOPIC("8410a", ERR, Logger::PREGEL) << "Invalid execution number";
+  if (path != Utils::modernMessagingPath) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_CURSOR_NOT_FOUND,
+        fmt::format("Conductor path not found: {}", path));
   }
-  auto exeNum = ExecutionNumber{0};
-  if (sExecutionNum.isInteger()) {
-    exeNum = ExecutionNumber(sExecutionNum.getUInt());
-  } else if (sExecutionNum.isString()) {
-    exeNum = ExecutionNumber(
-        basics::StringUtils::uint64(sExecutionNum.copyString()));
+
+  auto message = deserialize<ModernMessage>(body);
+  auto c = conductor(message.executionNumber);
+  if (!c && std::holds_alternative<CleanupFinished>(message.payload)) {
+    // conductor not found, but potentially already garbage-collected
+    return;
   }
-  std::shared_ptr<Conductor> co = conductor(exeNum);
-  if (!co) {
-    if (path == Utils::finishedWorkerFinalizationPath) {
-      // conductor not found, but potentially already garbage-collected
-      return;
-    }
+  if (!c) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_CURSOR_NOT_FOUND,
         fmt::format("Conductor not found, invalid execution number: {}",
-                    exeNum));
+                    message.executionNumber));
   }
-
-  if (path == Utils::statusUpdatePath) {
-    co->workerStatusUpdate(body);
-  } else if (path == Utils::finishedWorkerFinalizationPath) {
-    co->finishedWorkerFinalize(body);
+  auto response = c->process(message.payload);
+  if (response.fail()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_CURSOR_NOT_FOUND,
+        fmt::format("Execution {}: {}: {}", message.executionNumber,
+                    response.errorMessage(), body.toJson()));
   }
+  return;
 }
 
 void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
                                         std::string const& path,
                                         VPackSlice const& body,
                                         VPackBuilder& outBuilder) {
-  if (isStopping() && path != Utils::finalizeExecutionPath) {
-    return;  // shutdown ongoing
-  }
-
-  if (path == Utils::modernMessagingPath) {
-    auto message = deserialize<ModernMessage>(body);
-    if (std::holds_alternative<LoadGraph>(message.payload)) {
-      addWorker(
-          AlgoRegistry::createWorker(
-              vocbase, std::get<LoadGraph>(message.payload).details.slice(),
-              *this),
-          message.executionNumber);
-    }
-    auto w = worker(message.executionNumber);
-    if (!w) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_CURSOR_NOT_FOUND,
-          fmt::format(
-              "Handling request {} but worker for execution {} does not exist",
-              body.toJson(), message.executionNumber));
-    }
-    auto response = w->process(message.payload);
-    if (response.fail()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_CURSOR_NOT_FOUND,
-          fmt::format("Execution {}: {}: {}", message.executionNumber,
-                      response.errorMessage(), body.toJson()));
-    }
-    serialize(outBuilder, response.get());
-  }
-
-  VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
-
-  if (!sExecutionNum.isInteger()) {
+  if (path != Utils::modernMessagingPath) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "Worker not found, invalid execution number");
+        TRI_ERROR_CURSOR_NOT_FOUND,
+        fmt::format("Worker path not found: {}", path));
   }
 
-  auto exeNum = ExecutionNumber(sExecutionNum.getUInt());
-
-  std::shared_ptr<IWorker> w = worker(exeNum);
-
-  if (!w) {
-    if (path == Utils::finalizeExecutionPath) {
+  auto message = deserialize<ModernMessage>(body);
+  if (std::holds_alternative<LoadGraph>(message.payload)) {
+    addWorker(AlgoRegistry::createWorker(
+                  vocbase, std::get<LoadGraph>(message.payload).details.slice(),
+                  *this),
+              message.executionNumber);
+  }
+  auto w = worker(message.executionNumber);
+  if (std::holds_alternative<StartCleanup>(message.payload)) {
+    if (isStopping()) {
+      return;  // shutdown ongoing
+    }
+    if (!w) {
       // except this is a cleanup call, and cleanup has already happened
       // because of garbage collection
-      auto response = CleanupStarted{};
+      auto response = ModernMessage{.executionNumber = message.executionNumber,
+                                    .payload = {CleanupStarted{}}};
       serialize(outBuilder, response);
       return;
     }
-    LOG_TOPIC("41788", WARN, Logger::PREGEL)
-        << "Handling " << path << ", worker " << exeNum << " does not exist";
-    THROW_ARANGO_EXCEPTION_FORMAT(
+  }
+  if (!w) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_CURSOR_NOT_FOUND,
-        "Handling request %s, but worker %lld does not exist.", path.c_str(),
-        exeNum);
+        fmt::format(
+            "Handling request {} but worker for execution {} does not exist",
+            body.toJson(), message.executionNumber));
   }
-
-  if (path == Utils::messagesPath) {
-    w->receivedMessages(body);
-  } else if (path == Utils::finalizeExecutionPath) {
-    w->finalizeExecution(body, [this, exeNum]() { cleanupWorker(exeNum); });
-    auto response = CleanupStarted{};
-    serialize(outBuilder, response);
-  } else if (path == Utils::aqlResultsPath) {
-    auto command = deserialize<CollectPregelResults>(body);
-    auto results = w->aqlResult(command.withId);
-    serialize(outBuilder, results);
+  auto response = w->process(message.payload);
+  if (response.fail()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_CURSOR_NOT_FOUND,
+        fmt::format("Execution {}: {}: {}", message.executionNumber,
+                    response.errorMessage(), body.toJson()));
   }
+  serialize(outBuilder, response.get());
+  return;
 }
 
 uint64_t PregelFeature::numberOfActiveConductors() const {

@@ -63,9 +63,9 @@ class IWorker : public std::enable_shared_from_this<IWorker> {
       -> futures::Future<ResultT<GlobalSuperStepFinished>> = 0;
   virtual void cancelGlobalStep(
       VPackSlice const& data) = 0;  // called by coordinator
-  virtual void receivedMessages(VPackSlice const& data) = 0;
-  virtual void finalizeExecution(VPackSlice const& data,
-                                 std::function<void()> cb) = 0;
+  virtual void receivedMessages(PregelMessage const& data) = 0;
+  virtual auto finalizeExecution(StartCleanup const& data)
+      -> CleanupStarted = 0;
   virtual auto aqlResult(bool withId) const -> PregelResults = 0;
 };
 
@@ -158,7 +158,7 @@ class Worker : public IWorker {
                         RangeIterator<Vertex<V, E>>& vertexIterator)
       -> futures::Future<ResultT<VerticesProcessed>>;
   auto _finishProcessing() -> ResultT<GlobalSuperStepFinished>;
-  void _callConductor(std::string const& path, VPackBuilder const& message);
+  void _callConductor(VPackBuilder const& message);
   void _callConductorWithResponse(std::string const& path,
                                   VPackBuilder const& message,
                                   std::function<void(VPackSlice slice)> handle);
@@ -183,9 +183,8 @@ class Worker : public IWorker {
   auto runGlobalSuperStep(RunGlobalSuperStep const& data)
       -> futures::Future<ResultT<GlobalSuperStepFinished>> override;
   void cancelGlobalStep(VPackSlice const& data) override;
-  void receivedMessages(VPackSlice const& data) override;
-  void finalizeExecution(VPackSlice const& data,
-                         std::function<void()> cb) override;
+  void receivedMessages(PregelMessage const& data) override;
+  auto finalizeExecution(StartCleanup const& data) -> CleanupStarted override;
 
   auto aqlResult(bool withId) const -> PregelResults override;
 };

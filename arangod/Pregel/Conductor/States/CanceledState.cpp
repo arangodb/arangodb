@@ -26,12 +26,9 @@ auto Canceled::run() -> void {
       [this]() -> bool {
         conductor.cleanup();
         LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Finalizing workers";
-        auto startCleanupCommand =
-            StartCleanup{.executionNumber = conductor._executionNumber,
-                         .gss = conductor._globalSuperstep,
-                         .withStoring = false};
-        auto response = conductor._sendToAllDBServers<CleanupStarted>(
-            Utils::finalizeExecutionPath, startCleanupCommand);
+        auto startCleanupCommand = StartCleanup{
+            .gss = conductor._globalSuperstep, .withStoring = false};
+        auto response = conductor._sendToAllDBServers(startCleanupCommand);
         return response.ok();
       },
       Logger::PREGEL, "cancel worker execution");

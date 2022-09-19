@@ -52,7 +52,6 @@ class Utils {
   static std::string const finishedWorkerFinalizationPath;
   static std::string const cancelGSSPath;
   static std::string const messagesPath;
-  static std::string const finalizeExecutionPath;
   static std::string const storeCheckpointPath;
   static std::string const aqlResultsPath;
 

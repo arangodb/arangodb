@@ -44,7 +44,6 @@ std::string const Utils::finishedWorkerFinalizationPath =
     "finishedFinalization";
 std::string const Utils::cancelGSSPath = "cancelGSS";
 std::string const Utils::messagesPath = "messages";
-std::string const Utils::finalizeExecutionPath = "finalizeExecution";
 std::string const Utils::storeCheckpointPath = "storeCheckpoint";
 std::string const Utils::aqlResultsPath = "aqlResult";
 

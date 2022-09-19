@@ -63,6 +63,7 @@ struct overloaded : Ts... {
   using Ts::operator()...;
 };
 }  // namespace
+
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
       << "[job " << _config.executionNumber() << "] "
@@ -80,12 +81,14 @@ std::function<void()> Worker<V, E, M>::_makeStatusCallback() {
   return [self = shared_from_this(), this] {
     auto statusUpdatedEvent =
         StatusUpdated{.senderId = ServerState::instance()->getId(),
-                      .executionNumer = _config.executionNumber(),
                       .status = _observeStatus()};
+    auto modernMessage =
+        ModernMessage{.executionNumber = _config.executionNumber(),
+                      .payload = statusUpdatedEvent};
     VPackBuilder event;
-    serialize(event, statusUpdatedEvent);
+    serialize(event, modernMessage);
 
-    _callConductor(Utils::statusUpdatePath, event);
+    _callConductor(event);
   };
 }
 
@@ -242,23 +245,17 @@ auto Worker<V, E, M>::prepareGlobalSuperStep(
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::receivedMessages(VPackSlice const& data) {
-  VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
-  uint64_t gss = gssSlice.getUInt();
-  if (gss == _config._globalSuperstep) {
-    {  // make sure the pointer is not changed while
-      // parsing messages
-      MY_READ_LOCKER(guard, _cacheRWLock);
-      // handles locking for us
-      _writeCache->parseMessages(data);
-    }
-  } else {
-    // Trigger the processing of vertices
+void Worker<V, E, M>::receivedMessages(PregelMessage const& message) {
+  if (message.gss != _config._globalSuperstep) {
     LOG_PREGEL("ecd34", ERR)
-        << "Expected: " << _config._globalSuperstep << "Got: " << gss;
+        << "Expected: " << _config._globalSuperstep << "Got: " << message.gss;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Superstep out of sync");
   }
+  // make sure the pointer is not changed while parsing messages
+  MY_READ_LOCKER(guard, _cacheRWLock);
+  // handles locking for us
+  _writeCache->parseMessages(message);
 }
 
 template<typename V, typename E, typename M>
@@ -547,31 +544,31 @@ auto Worker<V, E, M>::_gssFinishedEvent() const -> GlobalSuperStepFinished {
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
-                                        std::function<void()> cb) {
+auto Worker<V, E, M>::finalizeExecution(StartCleanup const& command)
+    -> CleanupStarted {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicious activity
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state == WorkerState::DONE) {
     LOG_PREGEL("4067a", DEBUG) << "removing worker";
-    cb();
-    return;
+    _feature.cleanupWorker(_config.executionNumber());
+    return CleanupStarted{};
   }
 
-  auto const command = deserialize<StartCleanup>(body);
-
   auto const doStore = command.withStoring;
-  auto cleanup = [self = shared_from_this(), this, doStore, cb] {
+  auto cleanup = [self = shared_from_this(), this, doStore] {
     if (doStore) {
       _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
     }
 
     auto event = _cleanupFinishedEvent();
+    auto modernMessage = ModernMessage{
+        .executionNumber = _config.executionNumber(), .payload = event};
     VPackBuilder message;
-    serialize(message, event);
-    _callConductor(Utils::finishedWorkerFinalizationPath, message);
+    serialize(message, modernMessage);
+    _callConductor(message);
     _reports.clear();
-    cb();
+    _feature.cleanupWorker(_config.executionNumber());
   };
 
   _state = WorkerState::DONE;
@@ -586,6 +583,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     LOG_PREGEL("b3f35", WARN) << "Discarding results";
     cleanup();
   }
+  return CleanupStarted{};
 }
 
 template<typename V, typename E, typename M>
@@ -596,8 +594,7 @@ auto Worker<V, E, M>::_cleanupFinishedEvent() const -> CleanupFinished {
     reports.add(VPackValue(Utils::reportsKey));
     _reports.intoBuilder(reports);
   }
-  return CleanupFinished{ServerState::instance()->getId(),
-                         _config.executionNumber(), std::move(reports)};
+  return CleanupFinished{ServerState::instance()->getId(), std::move(reports)};
 }
 
 template<typename V, typename E, typename M>
@@ -651,17 +648,17 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::_callConductor(std::string const& path,
-                                     VPackBuilder const& message) {
+void Worker<V, E, M>::_callConductor(VPackBuilder const& message) {
   if (!ServerState::instance()->isRunningInCluster()) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->queue(RequestLane::INTERNAL_LOW,
-                     [this, self = shared_from_this(), path, message] {
-                       VPackBuilder response;
-                       _feature.handleConductorRequest(
-                           *_config.vocbase(), path, message.slice(), response);
-                     });
+    scheduler->queue(
+        RequestLane::INTERNAL_LOW, [this, self = shared_from_this(), message] {
+          VPackBuilder response;
+          _feature.handleConductorRequest(*_config.vocbase(),
+                                          Utils::modernMessagingPath,
+                                          message.slice(), response);
+        });
   } else {
     std::string baseUrl = Utils::baseUrl(Utils::conductorPrefix);
 
@@ -675,9 +672,9 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
     network::RequestOptions reqOpts;
     reqOpts.database = _config.database();
 
-    network::sendRequestRetry(pool, "server:" + _config.coordinatorId(),
-                              fuerte::RestVerb::Post, baseUrl + path,
-                              std::move(buffer), reqOpts);
+    network::sendRequestRetry(
+        pool, "server:" + _config.coordinatorId(), fuerte::RestVerb::Post,
+        baseUrl + Utils::modernMessagingPath, std::move(buffer), reqOpts);
   }
 }
 
@@ -747,6 +744,18 @@ auto Worker<V, E, M>::process(MessagePayload const& message)
           [&](RunGlobalSuperStep const& x) -> ResultT<ModernMessage> {
             return ModernMessage{.executionNumber = _config.executionNumber(),
                                  .payload = {runGlobalSuperStep(x).get()}};
+          },
+          [&](StartCleanup const& x) -> ResultT<ModernMessage> {
+            return ModernMessage{.executionNumber = _config.executionNumber(),
+                                 .payload = finalizeExecution(x)};
+          },
+          [&](CollectPregelResults const& x) -> ResultT<ModernMessage> {
+            return ModernMessage{.executionNumber = _config.executionNumber(),
+                                 .payload = aqlResult(x.withId)};
+          },
+          [&](PregelMessage const& x) -> ResultT<ModernMessage> {
+            receivedMessages(x);
+            return ModernMessage{};
           },
           [](auto const& x) -> ResultT<ModernMessage> {
             return Result{TRI_ERROR_INTERNAL,
