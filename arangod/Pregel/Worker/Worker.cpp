@@ -31,13 +31,13 @@
 #include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/WorkerConductorMessages.h"
-#include "Pregel/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/VertexComputation.h"
 #include "Pregel/WorkerInterface.h"
+#include "Pregel/Worker/GraphStore.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/WriteLocker.h"
@@ -184,6 +184,13 @@ template<typename V, typename E, typename M>
 auto Worker<V, E, M>::prepareGlobalSuperStep(
     PrepareGlobalSuperStep const& message)
     -> futures::Future<ResultT<GlobalSuperStepPrepared>> {
+  return futures::makeFutureWith(
+      [&]() { return prepareGlobalSuperStepFct(message); });
+}
+
+template<typename V, typename E, typename M>
+auto Worker<V, E, M>::prepareGlobalSuperStepFct(
+    PrepareGlobalSuperStep const& message) -> ResultT<GlobalSuperStepPrepared> {
   if (_state != WorkerState::IDLE) {
     return Result{TRI_ERROR_INTERNAL,
                   "Cannot prepare a gss when the worker is not idle"};
@@ -237,13 +244,10 @@ auto Worker<V, E, M>::prepareGlobalSuperStep(
     VPackObjectBuilder ob(&aggregators);
     _workerAggregators->serializeValues(aggregators);
   }
-  auto gssPrepared = GlobalSuperStepPrepared{
+  return GlobalSuperStepPrepared{
       ServerState::instance()->getId(), _activeCount,
       _graphStore->localVertexCount(),  _graphStore->localEdgeCount(),
       std::move(messageToMaster),       aggregators};
-  futures::Promise<ResultT<GlobalSuperStepPrepared>> promise;
-  promise.setValue(ResultT<GlobalSuperStepPrepared>{gssPrepared});
-  return promise.getFuture();
 }
 
 template<typename V, typename E, typename M>
@@ -356,7 +360,7 @@ auto Worker<V, E, M>::_processVerticesInThreads() -> VerticesProcessedFuture {
   TRI_ASSERT(_runningThreads >= 1);
   TRI_ASSERT(_runningThreads <= _config.parallelism());
 
-  auto processVertices =
+  auto processedVertices =
       std::vector<futures::Future<ResultT<VerticesProcessed>>>{};
   for (size_t i = 0; i < _runningThreads; i++) {
     size_t dividend = numSegments / _runningThreads;
@@ -366,12 +370,13 @@ auto Worker<V, E, M>::_processVerticesInThreads() -> VerticesProcessedFuture {
     TRI_ASSERT(endI <= numSegments);
 
     auto vertices = _graphStore->vertexIterator(startI, endI);
-    processVertices.emplace_back(_processVertices(i, vertices));
+    processedVertices.emplace_back(futures::makeFutureWith(
+        [&]() { return _processVertices(i, vertices); }));
   }
 
   LOG_PREGEL("425c3", DEBUG)
       << "Starting processing using " << _runningThreads << " threads";
-  return futures::collectAll(processVertices);
+  return futures::collectAll(processedVertices);
 }
 
 template<typename V, typename E, typename M>
@@ -383,11 +388,10 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
   ctx->_readAggregators = _conductorAggregators.get();
 }
 
-// internally called in a WORKER THREAD!!
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::_processVertices(
     size_t threadId, RangeIterator<Vertex<V, E>>& vertexIterator)
-    -> futures::Future<ResultT<VerticesProcessed>> {
+    -> ResultT<VerticesProcessed> {
   if (_state != WorkerState::COMPUTING) {
     return Result{TRI_ERROR_INTERNAL, "Execution aborted prematurely"};
   }
@@ -468,12 +472,8 @@ auto Worker<V, E, M>::_processVertices(
     VPackObjectBuilder ob(&aggregatorVPack);
     workerAggregator.serializeValues(aggregatorVPack);
   }
-  auto verticesProcessed =
-      VerticesProcessed{std::move(aggregatorVPack), std::move(stats),
-                        activeCount, std::move(vertexComputation->_reports)};
-  futures::Promise<ResultT<VerticesProcessed>> promise;
-  promise.setValue(ResultT<VerticesProcessed>{verticesProcessed});
-  return promise.getFuture();
+  return VerticesProcessed{std::move(aggregatorVPack), std::move(stats),
+                           activeCount, std::move(vertexComputation->_reports)};
 }
 
 // called at the end of a worker thread, needs mutex
@@ -790,7 +790,9 @@ auto Worker<V, E, M>::loadGraph(LoadGraph const& graph)
 
   LOG_PREGEL("52070", WARN) << fmt::format(
       "Worker for execution number {} is loading", _config.executionNumber());
-  return std::move(_graphStore->loadShards(&_config, _makeStatusCallback()))
+  return futures::makeFutureWith([&]() {
+           return _graphStore->loadShards(&_config, _makeStatusCallback());
+         })
       .then([&](auto&& result) {
         LOG_PREGEL("52062", WARN) << fmt::format(
             "Worker for execution number {} has finished loading.",

@@ -133,7 +133,7 @@ class GraphStore final {
   // ====================== NOT THREAD SAFE ===========================
   auto loadShards(WorkerConfig* config,
                   std::function<void()> const& statusUpdateCallback)
-      -> futures::Future<ResultT<GraphLoaded>>;
+      -> ResultT<GraphLoaded>;
   void loadDocument(WorkerConfig* config, std::string const& documentID);
   void loadDocument(WorkerConfig* config, PregelShard sourceShard,
                     std::string_view key);

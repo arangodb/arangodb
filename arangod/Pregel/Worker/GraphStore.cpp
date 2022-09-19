@@ -153,7 +153,7 @@ static const char* shardError =
 template<typename V, typename E>
 auto GraphStore<V, E>::loadShards(
     WorkerConfig* config, std::function<void()> const& statusUpdateCallback)
-    -> futures::Future<ResultT<GraphLoaded>> {
+    -> ResultT<GraphLoaded> {
   _config = config;
   TRI_ASSERT(_runningThreads == 0);
   LOG_PREGEL("27f1e", DEBUG)
@@ -233,10 +233,7 @@ auto GraphStore<V, E>::loadShards(
       }
     }
   }
-  auto graphLoaded = GraphLoaded{localVertexCount(), localEdgeCount()};
-  futures::Promise<ResultT<GraphLoaded>> promise;
-  promise.setValue(ResultT<GraphLoaded>{graphLoaded});
-  return promise.getFuture();
+  return GraphLoaded{localVertexCount(), localEdgeCount()};
 }
 
 template<typename V, typename E>
