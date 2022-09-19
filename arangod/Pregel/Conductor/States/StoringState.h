@@ -35,7 +35,6 @@ struct Storing : State {
   Storing(Conductor& conductor);
   ~Storing();
   auto run() -> void override;
-  auto receive(Message const& message) -> void override{};
   auto name() const -> std::string override { return "storing"; };
   auto isRunning() const -> bool override { return true; }
   auto getExpiration() const

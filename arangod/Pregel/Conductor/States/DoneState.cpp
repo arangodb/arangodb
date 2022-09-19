@@ -47,12 +47,6 @@ auto Done::run() -> void {
       << ", stats: " << debugOut.slice().toJson();
 }
 
-auto Done::receive(Message const& message) -> void {
-  LOG_PREGEL_CONDUCTOR("88f66", WARN)
-      << "When done, we expect no messages, but received message type "
-      << static_cast<int>(message.type());
-}
-
 auto Done::_results(bool withId) -> ResultsFuture {
   auto results = std::vector<futures::Future<ResultT<PregelResults>>>{};
   for (auto&& [_, worker] : conductor.workers) {

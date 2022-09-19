@@ -38,7 +38,6 @@ struct InError : State {
   InError(Conductor& conductor, std::chrono::seconds const& ttl);
   ~InError(){};
   auto run() -> void override{};
-  auto receive(Message const& message) -> void override;
   auto name() const -> std::string override { return "in error"; };
   auto isRunning() const -> bool override { return false; }
   auto getExpiration() const

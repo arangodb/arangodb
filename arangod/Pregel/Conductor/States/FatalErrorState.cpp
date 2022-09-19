@@ -17,12 +17,6 @@ FatalError::FatalError(Conductor& conductor, std::chrono::seconds const& ttl)
   }
 }
 
-auto FatalError::receive(Message const& message) -> void {
-  LOG_PREGEL_CONDUCTOR("6363d", WARN) << "When in fatal error, we expect no "
-                                         "messages, but received message type "
-                                      << static_cast<int>(message.type());
-}
-
 auto FatalError::_results(bool withId) -> ResultsFuture {
   auto results = std::vector<futures::Future<ResultT<PregelResults>>>{};
   for (auto&& [_, worker] : conductor.workers) {
