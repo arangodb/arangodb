@@ -30,7 +30,7 @@ const db = require('internal').db;
 const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
 const cn = "testCollection";
 const dbName = "maçã";
-const originalEndpoint = db.getEndpoint();
+const originalEndpoint = arango.getEndpoint();
 
 if (getOptions === true) {
   return {
