@@ -48,6 +48,10 @@ RocksDBValue RocksDBValue::ReplicatedLog(VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::ReplicatedLog, data);
 }
 
+RocksDBValue RocksDBValue::ReplicatedState(VPackSlice data) {
+  return RocksDBValue(RocksDBEntryType::ReplicatedState, data);
+}
+
 RocksDBValue RocksDBValue::PrimaryIndexValue(LocalDocumentId const& docId,
                                              RevisionId rev) {
   return RocksDBValue(RocksDBEntryType::PrimaryIndexValue, docId, rev);

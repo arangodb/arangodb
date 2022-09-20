@@ -101,6 +101,16 @@ class Supervision : public arangodb::Thread {
   /// @brief remove hotbackup lock in agency, if expired
   void unlockHotBackup();
 
+  /**
+   * @brief Helper function to build transaction removing no longer
+   *        present servers from health monitoring
+   *
+   * @param  del       Agency transaction builder
+   * @param  todelete  List of servers to be removed
+   */
+  static void removeTransactionBuilder(
+      velocypack::Builder& del, std::vector<std::string> const& todelete);
+
   static constexpr char const* HEALTH_STATUS_GOOD = "GOOD";
   static constexpr char const* HEALTH_STATUS_BAD = "BAD";
   static constexpr char const* HEALTH_STATUS_FAILED = "FAILED";
@@ -307,15 +317,6 @@ class Supervision : public arangodb::Thread {
       _supervision_runtime_wait_for_sync_msec;
   metrics::Counter& _supervision_failed_server_counter;
 };
-
-/**
- * @brief Helper function to build transaction removing no longer
- *        present servers from health monitoring
- *
- * @param  todelete  List of servers to be removed
- * @return           Agency transaction
- */
-query_t removeTransactionBuilder(std::vector<std::string> const&);
 
 }  // namespace consensus
 }  // namespace arangodb

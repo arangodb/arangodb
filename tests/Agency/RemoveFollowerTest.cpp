@@ -130,20 +130,20 @@ TEST_F(RemoveFollowerTest, creating_a_job_should_create_a_job_in_todo) {
   Mock<AgentInterface> mockAgent;
 
   When(Method(mockAgent, write))
-      .AlwaysDo([&](query_t const& q,
+      .AlwaysDo([&](velocypack::Slice q,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
         auto expectedJobKey = "/arango/Target/ToDo/" + jobId;
-        EXPECT_EQ(typeName(q->slice()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(typeName(q->slice()[0]), "array");
-        EXPECT_EQ(q->slice()[0].length(),
+        EXPECT_EQ(typeName(q), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(typeName(q[0]), "array");
+        EXPECT_EQ(q[0].length(),
                   1);  // we always simply override! no preconditions...
-        EXPECT_EQ(typeName(q->slice()[0][0]), "object");
-        EXPECT_EQ(q->slice()[0][0].length(),
+        EXPECT_EQ(typeName(q[0][0]), "object");
+        EXPECT_EQ(q[0][0].length(),
                   1);  // should ONLY do an entry in todo
-        EXPECT_EQ(typeName(q->slice()[0][0].get(expectedJobKey)), "object");
+        EXPECT_EQ(typeName(q[0][0].get(expectedJobKey)), "object");
 
-        auto job = q->slice()[0][0].get(expectedJobKey);
+        auto job = q[0][0].get(expectedJobKey);
         EXPECT_EQ(typeName(job.get("creator")), "string");
         EXPECT_EQ(typeName(job.get("type")), "string");
         EXPECT_EQ(job.get("type").copyString(), "removeFollower");
@@ -203,16 +203,16 @@ TEST_F(RemoveFollowerTest,
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .AlwaysDo([&](query_t const& q,
+      .AlwaysDo([&](velocypack::Slice q,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        EXPECT_EQ(typeName(q->slice()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(typeName(q->slice()[0]), "array");
+        EXPECT_EQ(typeName(q), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(typeName(q[0]), "array");
         // we always simply override! no preconditions...
-        EXPECT_EQ(q->slice()[0].length(), 1);
-        EXPECT_EQ(typeName(q->slice()[0][0]), "object");
+        EXPECT_EQ(q[0].length(), 1);
+        EXPECT_EQ(typeName(q[0][0]), "object");
 
-        auto writes = q->slice()[0][0];
+        auto writes = q[0][0];
         EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
         EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
                     "string");
@@ -263,16 +263,16 @@ TEST_F(
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .AlwaysDo([&](query_t const& q,
+      .AlwaysDo([&](velocypack::Slice q,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        EXPECT_EQ(typeName(q->slice()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(typeName(q->slice()[0]), "array");
-        EXPECT_EQ(q->slice()[0].length(),
+        EXPECT_EQ(typeName(q), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(typeName(q[0]), "array");
+        EXPECT_EQ(q[0].length(),
                   1);  // we always simply override! no preconditions...
-        EXPECT_EQ(typeName(q->slice()[0][0]), "object");
+        EXPECT_EQ(typeName(q[0][0]), "object");
 
-        auto writes = q->slice()[0][0];
+        auto writes = q[0][0];
         EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
         EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
                     "string");
@@ -329,16 +329,16 @@ TEST_F(RemoveFollowerTest,
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .AlwaysDo([&](query_t const& q,
+      .AlwaysDo([&](velocypack::Slice q,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        EXPECT_EQ(typeName(q->slice()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(typeName(q->slice()[0]), "array");
-        EXPECT_EQ(q->slice()[0].length(),
+        EXPECT_EQ(typeName(q), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(typeName(q[0]), "array");
+        EXPECT_EQ(q[0].length(),
                   1);  // we always simply override! no preconditions...
-        EXPECT_EQ(typeName(q->slice()[0][0]), "object");
+        EXPECT_EQ(typeName(q[0][0]), "object");
 
-        auto writes = q->slice()[0][0];
+        auto writes = q[0][0];
         EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
         EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
                     "string");
@@ -388,15 +388,15 @@ TEST_F(
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .AlwaysDo([&](query_t const& q,
+      .AlwaysDo([&](velocypack::Slice q,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        EXPECT_EQ(typeName(q->slice()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(typeName(q->slice()[0]), "array");
-        EXPECT_EQ(q->slice()[0].length(), 2);  // precondition
-        EXPECT_EQ(typeName(q->slice()[0][0]), "object");
+        EXPECT_EQ(typeName(q), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(typeName(q[0]), "array");
+        EXPECT_EQ(q[0].length(), 2);  // precondition
+        EXPECT_EQ(typeName(q[0][0]), "object");
 
-        auto writes = q->slice()[0][0];
+        auto writes = q[0][0];
         EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
         EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
                     "string");
@@ -409,7 +409,7 @@ TEST_F(
                   COLLECTION);
         EXPECT_EQ(typeName(writes.get("/arango/Target/Failed/1")), "none");
 
-        auto precond = q->slice()[0][1];
+        auto precond = q[0][1];
         EXPECT_EQ(typeName(precond), "object");
         EXPECT_TRUE(typeName(precond.get(
                         "/arango/Supervision/Health/follower1/Status")) ==
@@ -452,16 +452,16 @@ TEST_F(RemoveFollowerTest, all_good_should_remove_folower) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .AlwaysDo([&](query_t const& q,
+      .AlwaysDo([&](velocypack::Slice q,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        EXPECT_EQ(typeName(q->slice()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(typeName(q->slice()[0]), "array");
-        EXPECT_EQ(q->slice()[0].length(),
+        EXPECT_EQ(typeName(q), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(typeName(q[0]), "array");
+        EXPECT_EQ(q[0].length(),
                   2);  // we always simply override! no preconditions...
-        EXPECT_EQ(typeName(q->slice()[0][0]), "object");
+        EXPECT_EQ(typeName(q[0][0]), "object");
 
-        auto writes = q->slice()[0][0];
+        auto writes = q[0][0];
         EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
         EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
                     "string");
@@ -528,16 +528,16 @@ TEST(RemoveFollowerLargeTest, an_agency_with_12_dbservers) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .AlwaysDo([&](query_t const& q,
+      .AlwaysDo([&](velocypack::Slice q,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        EXPECT_EQ(typeName(q->slice()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(typeName(q->slice()[0]), "array");
-        EXPECT_EQ(q->slice()[0].length(),
+        EXPECT_EQ(typeName(q), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(typeName(q[0]), "array");
+        EXPECT_EQ(q[0].length(),
                   2);  // we always simply override! no preconditions...
-        EXPECT_EQ(typeName(q->slice()[0][0]), "object");
+        EXPECT_EQ(typeName(q[0][0]), "object");
 
-        Slice writes = q->slice()[0][0];
+        Slice writes = q[0][0];
         EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
         EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
                     "string");

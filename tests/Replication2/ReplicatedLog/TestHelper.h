@@ -51,10 +51,36 @@ namespace arangodb::replication2::test {
 
 using namespace replicated_log;
 
+template<typename I>
+struct SimpleIterator : PersistedLogIterator {
+  SimpleIterator(I begin, I end) : current(begin), end(end) {}
+  ~SimpleIterator() override = default;
+
+  auto next() -> std::optional<PersistingLogEntry> override {
+    if (current == end) {
+      return std::nullopt;
+    }
+
+    return *(current++);
+  }
+
+  I current, end;
+};
+template<typename C, typename Iter = typename C::const_iterator>
+auto make_iterator(C const& c) -> std::shared_ptr<SimpleIterator<Iter>> {
+  return std::make_shared<SimpleIterator<Iter>>(c.begin(), c.end());
+}
+
 struct ReplicatedLogTest : ::testing::Test {
   template<typename MockLogT = MockLog>
   auto makeLogCore(LogId id) -> std::unique_ptr<LogCore> {
     auto persisted = makePersistedLog<MockLogT>(id);
+    return std::make_unique<LogCore>(persisted);
+  }
+
+  template<typename MockLogT = MockLog>
+  auto makeLogCore(GlobalLogIdentifier gid) -> std::unique_ptr<LogCore> {
+    auto persisted = makePersistedLog<MockLogT>(std::move(gid));
     return std::make_unique<LogCore>(persisted);
   }
 
@@ -70,6 +96,13 @@ struct ReplicatedLogTest : ::testing::Test {
     return persisted;
   }
 
+  template<typename MockLogT = MockLog>
+  auto makePersistedLog(GlobalLogIdentifier gid) -> std::shared_ptr<MockLogT> {
+    auto persisted = std::make_shared<MockLogT>(gid);
+    _persistedLogs[gid.id] = persisted;
+    return persisted;
+  }
+
   auto makeDelayedPersistedLog(LogId id) {
     return makePersistedLog<DelayedMockLog>(id);
   }
@@ -77,6 +110,15 @@ struct ReplicatedLogTest : ::testing::Test {
   template<typename MockLogT = MockLog>
   auto makeReplicatedLog(LogId id) -> std::shared_ptr<TestReplicatedLog> {
     auto core = makeLogCore<MockLogT>(id);
+    return std::make_shared<TestReplicatedLog>(
+        std::move(core), _logMetricsMock, _optionsMock,
+        LoggerContext(Logger::REPLICATION2));
+  }
+
+  template<typename MockLogT = MockLog>
+  auto makeReplicatedLog(GlobalLogIdentifier gid)
+      -> std::shared_ptr<TestReplicatedLog> {
+    auto core = makeLogCore<MockLogT>(std::move(gid));
     return std::make_shared<TestReplicatedLog>(
         std::move(core), _logMetricsMock, _optionsMock,
         LoggerContext(Logger::REPLICATION2));
