@@ -97,7 +97,7 @@ function clusterRebalanceSuite() {
         assertNotEqual(job.database, "_system");
       }
     },
-/*
+
     testCalcRebalanceAndExecute: function () {
       let result = arango.POST('/_admin/cluster/rebalance', {
         version: 1,
@@ -134,7 +134,7 @@ function clusterRebalanceSuite() {
         }
       }
     },
-*/
+
     testExecuteRebalanceVersion: function () {
       let result = arango.POST('/_admin/cluster/rebalance/execute', {
         version: 3, moves: []

@@ -593,7 +593,7 @@ function ClusterCollectionSuite () {
         }
       }
     },
-/*
+
     testCreateFailureDuringIsBuilding : function () {
       if (!isServer) {
         console.info('Skipping client test');
@@ -652,7 +652,7 @@ function ClusterCollectionSuite () {
         removeFailAt(failurePoint);
       }
     },
-*/
+
     testCreateFailureWhenRemovingIsBuilding : function () {
       if (!isServer) {
         console.info('Skipping client test');

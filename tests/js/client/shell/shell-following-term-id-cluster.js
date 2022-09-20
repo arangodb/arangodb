@@ -234,5 +234,5 @@ function followingTermIdSuite() {
   };
 }
 
-//jsunity.run(followingTermIdSuite);
+jsunity.run(followingTermIdSuite);
 return jsunity.done();

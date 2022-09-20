@@ -325,7 +325,7 @@ function IteratorSuite(permuteConfigs) {
         });
       });
     },
-/*
+
     testForwardIterationInsertSecondaryIndex: function () {
       permute((ctx, opts) => {
         const tc = ctx.collection(cn);
@@ -346,7 +346,7 @@ function IteratorSuite(permuteConfigs) {
         });
       });
     },
-*/
+
     testForwardIterationInsertSecondaryIndexFiltered: function () {
       permute((ctx, opts) => {
         const tc = ctx.collection(cn);
@@ -630,6 +630,6 @@ function TransactionIteratorSuite() {
 }
 
 jsunity.run(StandaloneAqlIteratorSuite);
-//jsunity.run(TransactionIteratorSuite);
+jsunity.run(TransactionIteratorSuite);
 
 return jsunity.done();
