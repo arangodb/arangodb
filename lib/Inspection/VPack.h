@@ -46,7 +46,7 @@ template<class T>
 [[nodiscard]] auto serialize(T& value) -> SharedSlice {
   auto builder = Builder();
   serialize(builder, value);
-  return builder.sharedSlice();
+  return std::move(builder).sharedSlice();
 }
 
 namespace detail {
