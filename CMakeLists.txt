@@ -517,8 +517,6 @@ endif()
 ## EXTERNAL PROGRAMS
 ################################################################################
 
-set(MAKE make)
-
 find_package(PythonInterp 3 EXACT REQUIRED)
 get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
@@ -530,27 +528,6 @@ execute_process(
     )
 if (NOT "${EXIT_CODE}" EQUAL "0")
   message(FATAL_ERROR "python shutil.which package is required! ")
-endif()
-
-# FIXME the build containers seem to have a
-# /usr/bin/ch(mod|own) to prevent the search
-# to find those files the NO_DEFAULT_PATH
-# argument is passed
-if (NOT WIN32)
-  find_program (MAKE make gmake)
-
-  find_program(
-    CHMOD_EXECUTABLE chmod
-    PATHS "/bin/" "/usr/bin/"
-    NO_DEFAULT_PATH
-  )
-  message(STATUS "chmod found in ${CHMOD_EXECUTABLE}")
-  find_program(
-    CHOWN_EXECUTABLE chown
-    PATHS "/bin" "/usr/bin"
-    NO_DEFAULT_PATH
-  )
-  message(STATUS "chown found in ${CHOWN_EXECUTABLE}")
 endif()
 
 ################################################################################
