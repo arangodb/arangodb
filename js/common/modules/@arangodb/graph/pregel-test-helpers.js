@@ -979,6 +979,39 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                     assertEqual(component.size, 1);
                 }
             },
+
+            testSCCTwoCliquesWithEdge: function () {
+                // 1st clique
+                const label1 = "v1";
+                const size = 3;
+                const {
+                    vertices,
+                    edges
+                } = graphGenerator(verticesEdgesGenerator(vColl, label1)).makeBidirectedClique(size);
+                db[vColl].save(vertices);
+                db[eColl].save(edges);
+
+                // 2nd clique
+                const label2 = "v2";
+                const resultC = graphGenerator(verticesEdgesGenerator(vColl, label2)).makeBidirectedClique(size);
+                db[vColl].save(resultC.vertices);
+                db[eColl].save(resultC.edges);
+
+                // connect the cliques with one directed edge
+                const e = [makeEdgesBetweenVertices(vColl, 0, label1, 0, label2)];
+                db[eColl].save(e);
+
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, {
+                    resultField: "result",
+                    store: true
+                });
+                assertEqual(computedComponents.length, 2,
+                    `We expected 2 components, instead got ${JSON.stringify(computedComponents)}`);
+
+                for (let component of computedComponents) {
+                    assertEqual(component.size, 3);
+                }
+            },
         };
     };
 }
