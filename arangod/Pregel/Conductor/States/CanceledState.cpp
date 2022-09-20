@@ -14,7 +14,6 @@ using namespace arangodb::pregel::conductor;
 
 Canceled::Canceled(Conductor& conductor, std::chrono::seconds const& ttl)
     : conductor{conductor} {
-  conductor.updateState(ExecutionState::CANCELED);
   expiration = std::chrono::system_clock::now() + ttl;
   if (not conductor._timing.total.hasFinished()) {
     conductor._timing.total.finish();

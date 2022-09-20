@@ -11,7 +11,6 @@
 using namespace arangodb::pregel::conductor;
 
 Storing::Storing(Conductor& conductor) : conductor{conductor} {
-  conductor.updateState(ExecutionState::STORING);
   conductor._timing.storing.start();
   conductor._feature.metrics()->pregelConductorsStoringNumber->fetch_add(1);
 }

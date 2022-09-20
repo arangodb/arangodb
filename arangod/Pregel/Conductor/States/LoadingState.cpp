@@ -13,7 +13,6 @@
 using namespace arangodb::pregel::conductor;
 
 Loading::Loading(Conductor& conductor) : conductor{conductor} {
-  conductor.updateState(ExecutionState::LOADING);
   conductor._timing.loading.start();
   conductor._feature.metrics()->pregelConductorsLoadingNumber->fetch_add(1);
 }

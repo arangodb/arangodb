@@ -642,8 +642,6 @@ std::vector<ShardID> Conductor::getShardIds(ShardID const& collection) const {
   return result;
 }
 
-void Conductor::updateState(ExecutionState state) { _state = state; }
-
 auto Conductor::changeState(std::unique_ptr<conductor::State> newState)
     -> void {
   state = std::move(newState);

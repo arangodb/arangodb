@@ -10,7 +10,6 @@ using namespace arangodb::pregel::conductor;
 
 FatalError::FatalError(Conductor& conductor, std::chrono::seconds const& ttl)
     : conductor{conductor} {
-  conductor.updateState(ExecutionState::FATAL_ERROR);
   expiration = std::chrono::system_clock::now() + ttl;
   if (not conductor._timing.total.hasFinished()) {
     conductor._timing.total.finish();

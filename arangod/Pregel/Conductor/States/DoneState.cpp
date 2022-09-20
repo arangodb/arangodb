@@ -10,7 +10,6 @@ using namespace arangodb::pregel::conductor;
 
 Done::Done(Conductor& conductor, std::chrono::seconds const& ttl)
     : conductor{conductor} {
-  conductor.updateState(ExecutionState::DONE);
   expiration = std::chrono::system_clock::now() + ttl;
   if (!conductor._timing.total.hasFinished()) {
     conductor._timing.total.finish();

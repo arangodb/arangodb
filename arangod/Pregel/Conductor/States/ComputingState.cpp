@@ -13,7 +13,6 @@
 using namespace arangodb::pregel::conductor;
 
 Computing::Computing(Conductor& conductor) : conductor{conductor} {
-  conductor.updateState(ExecutionState::RUNNING);
   if (!conductor._timing.computation.hasStarted()) {
     conductor._timing.computation.start();
   }

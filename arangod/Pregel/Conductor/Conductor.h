@@ -57,17 +57,6 @@
 namespace arangodb {
 namespace pregel {
 
-enum ExecutionState {
-  DEFAULT = 0,  // before calling start
-  LOADING,      // load graph into memory
-  RUNNING,      // during normal operation
-  STORING,      // store results
-  DONE,         // after everyting is done
-  CANCELED,     // after an terminal error or manual canceling
-  IN_ERROR,     // after an error which should allow recovery
-  FATAL_ERROR,  // execution can not continue because of errors
-};
-
 class PregelFeature;
 class MasterContext;
 class AggregatorHandler;
@@ -93,7 +82,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   friend struct conductor::InError;
   friend struct conductor::FatalError;
 
-  ExecutionState _state = ExecutionState::DEFAULT;
   PregelFeature& _feature;
   std::chrono::system_clock::time_point _created;
   std::chrono::seconds _ttl = std::chrono::seconds(300);
@@ -192,7 +180,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
  private:
   std::unordered_map<ServerID, conductor::WorkerApi> workers;
-  void updateState(ExecutionState state);
   void cleanup();
 
   std::unique_ptr<conductor::State> state =
