@@ -39,6 +39,7 @@
 #include "Basics/TimeString.h"
 #include "Basics/voc-errors.h"
 #include "Random/RandomGenerator.h"
+#include "Helpers.h"
 
 static std::string const DBServer = "DBServer";
 
@@ -951,4 +952,12 @@ void Job::addPreconditionServerWriteLocked(Builder& pre,
     VPackObjectBuilder shardLockEmpty(&pre);
     pre.add(PREC_IS_WRITE_LOCKED, VPackValue(jobId));
   }
+}
+
+auto Job::isReplication2Database(std::string_view database) -> bool {
+  auto dbs = _snapshot.hasAsChildren(PLAN_DATABASES);
+  if (!dbs) {
+    return false;
+  }
+  return isReplicationTwoDB(dbs->get(), std::string{database});
 }

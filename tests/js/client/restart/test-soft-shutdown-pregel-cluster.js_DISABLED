@@ -141,11 +141,14 @@ function testSuitePregel() {
     tearDown: function () {
       // The soft shutdown initiated in the test
       // should just take care of shutting down
-      coordinator.waitForInstanceShutdown(30);
-      coordinator.restartOneInstance();
-      coordinator.checkArangoConnection(10);
-
-      graph_module._drop(graphName, true);
+      if (coordinator.waitForInstanceShutdown(30)) {
+        coordinator.restartOneInstance();
+        coordinator.checkArangoConnection(10);
+        
+        graph_module._drop(graphName, true);
+      } else {
+        throw new Error("instance shutdown of coordinator failed!");
+      }
     },
 
     testPageRank: function () {

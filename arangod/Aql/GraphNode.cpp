@@ -1037,6 +1037,8 @@ bool GraphNode::isUsedAsSatellite() const { return false; }
 
 bool GraphNode::isLocalGraphNode() const { return false; }
 
+bool GraphNode::isHybridDisjoint() const { return false; }
+
 void GraphNode::waitForSatelliteIfRequired(
     ExecutionEngine const* engine) const {}
 
