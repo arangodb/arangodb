@@ -37,7 +37,9 @@ struct FatalError : State {
   Conductor& conductor;
   FatalError(Conductor& conductor, std::chrono::seconds const& ttl);
   ~FatalError(){};
-  auto run() -> void override{};
+  auto run() -> std::optional<std::unique_ptr<State>> override {
+    return std::nullopt;
+  };
   auto getResults(bool withId) -> ResultT<PregelResults> override;
   auto name() const -> std::string override { return "fatal error"; };
   auto isRunning() const -> bool override { return false; }

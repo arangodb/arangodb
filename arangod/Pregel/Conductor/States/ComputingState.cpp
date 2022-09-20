@@ -2,6 +2,8 @@
 
 #include "Pregel/Conductor/Conductor.h"
 #include "Metrics/Gauge.h"
+#include "Pregel/Conductor/States/FatalErrorState.h"
+#include "Pregel/Conductor/States/InErrorState.h"
 #include "Pregel/Conductor/States/State.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
@@ -86,68 +88,77 @@ auto Computing::_runGlobalSuperStep(bool activateAll)
   return futures::collectAll(results);
 }
 
-auto Computing::run() -> void {
-  _prepareGlobalSuperStep()
-      .thenValue([&](auto results) {
-        VPackBuilder messagesFromWorkers;
-        for (auto const& result : results) {
-          // TODO check try
-          if (result.get().fail()) {
-            LOG_PREGEL_CONDUCTOR("04189", ERR) << fmt::format(
-                "Got unsuccessful response from worker while "
-                "preparing global super step: "
-                "{}\n",
-                result.get().errorMessage());
-            conductor.changeState(StateType::InError);
-            return;
-          }
-          auto gssPrepared = result.get().get();
-          conductor._aggregators->aggregateValues(
-              gssPrepared.aggregators.slice());
-          messagesFromWorkers.add(gssPrepared.messages.slice());
-          conductor._statistics.accumulateActiveCounts(gssPrepared.senderId,
-                                                       gssPrepared.activeCount);
-          conductor._totalVerticesCount += gssPrepared.vertexCount;
-          conductor._totalEdgesCount += gssPrepared.edgeCount;
-        }
-        auto post = conductor._postGlobalSuperStep(messagesFromWorkers);
-        if (post.finished) {
-          if (conductor._storeResults) {
-            conductor.changeState(conductor::StateType::Storing);
-            return;
-          }
-          if (conductor._inErrorAbort) {
-            conductor.changeState(conductor::StateType::FatalError);
-            return;
-          }
-          conductor.changeState(conductor::StateType::Done);
-          return;
-        }
-        bool preGlobalSuperStep = conductor._preGlobalSuperStep();
-        if (!preGlobalSuperStep) {
-          conductor.changeState(conductor::StateType::FatalError);
-          return;
-        }
-        _runGlobalSuperStep(post.activateAll).thenValue([&](auto results) {
-          for (auto const& result : results) {
-            if (result.get().fail()) {
-              LOG_PREGEL_CONDUCTOR("f34bb", ERR)
-                  << "Conductor could not start GSS "
-                  << conductor._globalSuperstep;
-              conductor.changeState(conductor::StateType::InError);
-              return;
-            }
-            auto finished = result.get().get();
-            conductor._statistics.accumulateMessageStats(
-                finished.senderId, finished.messageStats.slice());
-          }
-          conductor._timing.gss.back().finish();
-          LOG_PREGEL_CONDUCTOR("39385", DEBUG)
-              << "Finished gss " << conductor._globalSuperstep << " in "
-              << conductor._timing.gss.back().elapsedSeconds().count() << "s";
-          conductor._globalSuperstep++;
-          run();  // run next GSS
-        });
-      })
-      .wait();
+auto Computing::run() -> std::optional<std::unique_ptr<State>> {
+  do {
+    auto newState =
+        _prepareGlobalSuperStep()
+            .thenValue([&](auto results)
+                           -> std::optional<std::unique_ptr<State>> {
+              VPackBuilder messagesFromWorkers;
+              for (auto const& result : results) {
+                // TODO check try
+                if (result.get().fail()) {
+                  LOG_PREGEL_CONDUCTOR("04189", ERR) << fmt::format(
+                      "Got unsuccessful response from worker while "
+                      "preparing global super step: "
+                      "{}\n",
+                      result.get().errorMessage());
+                  return std::make_unique<InError>(conductor, conductor._ttl);
+                }
+                auto gssPrepared = result.get().get();
+                conductor._aggregators->aggregateValues(
+                    gssPrepared.aggregators.slice());
+                messagesFromWorkers.add(gssPrepared.messages.slice());
+                conductor._statistics.accumulateActiveCounts(
+                    gssPrepared.senderId, gssPrepared.activeCount);
+                conductor._totalVerticesCount += gssPrepared.vertexCount;
+                conductor._totalEdgesCount += gssPrepared.edgeCount;
+              }
+              auto post = conductor._postGlobalSuperStep(messagesFromWorkers);
+              if (post.finished) {
+                if (conductor._storeResults) {
+                  return std::make_unique<Storing>(conductor);
+                }
+                if (conductor._inErrorAbort) {
+                  return std::make_unique<FatalError>(conductor,
+                                                      conductor._ttl);
+                }
+                return std::make_unique<Done>(conductor, conductor._ttl);
+              }
+              bool preGlobalSuperStep = conductor._preGlobalSuperStep();
+              if (!preGlobalSuperStep) {
+                return std::make_unique<FatalError>(conductor, conductor._ttl);
+              }
+
+              return _runGlobalSuperStep(post.activateAll)
+                  .thenValue([&](auto results)
+                                 -> std::optional<std::unique_ptr<State>> {
+                    for (auto const& result : results) {
+                      if (result.get().fail()) {
+                        LOG_PREGEL_CONDUCTOR("f34bb", ERR)
+                            << "Conductor could not start GSS "
+                            << conductor._globalSuperstep;
+                        return std::make_unique<InError>(conductor,
+                                                         conductor._ttl);
+                      }
+                      auto finished = result.get().get();
+                      conductor._statistics.accumulateMessageStats(
+                          finished.senderId, finished.messageStats.slice());
+                    }
+                    conductor._timing.gss.back().finish();
+                    LOG_PREGEL_CONDUCTOR("39385", DEBUG)
+                        << "Finished gss " << conductor._globalSuperstep
+                        << " in "
+                        << conductor._timing.gss.back().elapsedSeconds().count()
+                        << "s";
+                    conductor._globalSuperstep++;
+                    return std::nullopt;
+                  })
+                  .get();
+            })
+            .get();
+    if (newState.has_value()) {
+      return std::move(newState.value());
+    }
+  } while (true);
 }

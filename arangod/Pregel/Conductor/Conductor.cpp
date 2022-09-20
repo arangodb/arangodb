@@ -180,7 +180,7 @@ Conductor::~Conductor() {
 void Conductor::start() {
   MUTEX_LOCKER(guard, _callbackMutex);
   _timing.total.start();
-  state->run();
+  changeState(std::make_unique<conductor::Loading>(*this));
 }
 
 auto Conductor::process(MessagePayload const& message) -> Result {
@@ -268,7 +268,7 @@ void Conductor::workerStatusUpdate(StatusUpdated const& data) {
 
 void Conductor::cancel() {
   MUTEX_LOCKER(guard, _callbackMutex);
-  changeState(conductor::StateType::Canceled);
+  changeState(std::make_unique<conductor::Canceled>(*this, _ttl));
 }
 
 // resolves into an ordered list of shards for each collection on each
@@ -644,31 +644,13 @@ std::vector<ShardID> Conductor::getShardIds(ShardID const& collection) const {
 
 void Conductor::updateState(ExecutionState state) { _state = state; }
 
-auto Conductor::changeState(conductor::StateType name) -> void {
-  switch (name) {
-    case conductor::StateType::Loading:
-      state = std::make_unique<conductor::Loading>(*this);
-      break;
-    case conductor::StateType::Computing:
-      state = std::make_unique<conductor::Computing>(*this);
-      break;
-    case conductor::StateType::Storing:
-      state = std::make_unique<conductor::Storing>(*this);
-      break;
-    case conductor::StateType::Canceled:
-      state = std::make_unique<conductor::Canceled>(*this, _ttl);
-      break;
-    case conductor::StateType::Done:
-      state = std::make_unique<conductor::Done>(*this, _ttl);
-      break;
-    case conductor::StateType::InError:
-      state = std::make_unique<conductor::InError>(*this, _ttl);
-      break;
-    case conductor::StateType::FatalError:
-      state = std::make_unique<conductor::FatalError>(*this, _ttl);
-      break;
-  };
-  run();
+auto Conductor::changeState(std::unique_ptr<conductor::State> newState)
+    -> void {
+  state = std::move(newState);
+  auto nextState = state->run();
+  if (nextState.has_value()) {
+    changeState(std::move(nextState.value()));
+  }
 }
 
 template auto Conductor::_sendToAllDBServers(

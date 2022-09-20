@@ -37,7 +37,7 @@ struct Done : State {
   Conductor& conductor;
   Done(Conductor& conductor, std::chrono::seconds const& ttl);
   ~Done() = default;
-  auto run() -> void override;
+  auto run() -> std::optional<std::unique_ptr<State>> override;
   auto getResults(bool withId) -> ResultT<PregelResults> override;
   auto name() const -> std::string override { return "done"; };
   auto isRunning() const -> bool override { return false; }

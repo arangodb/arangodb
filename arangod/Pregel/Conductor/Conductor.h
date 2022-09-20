@@ -197,8 +197,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   std::unique_ptr<conductor::State> state =
       std::make_unique<conductor::Initial>(*this);
-  auto changeState(conductor::StateType name) -> void;
-  auto run() -> void { state->run(); }
+  auto changeState(std::unique_ptr<conductor::State> newState) -> void;
 };
 }  // namespace pregel
 }  // namespace arangodb

@@ -1,5 +1,7 @@
 #include "CanceledState.h"
 #include <chrono>
+#include <optional>
+#include "Pregel/Conductor/States/FatalErrorState.h"
 #include "fmt/chrono.h"
 
 #include "Basics/FunctionUtils.h"
@@ -59,23 +61,24 @@ auto Canceled::_cleanupUntilTimeout(std::chrono::steady_clock::time_point start)
   });
 }
 
-auto Canceled::run() -> void {
+auto Canceled::run() -> std::optional<std::unique_ptr<State>> {
   LOG_PREGEL_CONDUCTOR("dd721", WARN)
       << "Execution was canceled, conductor and workers are discarded.";
 
-  _cleanupUntilTimeout(std::chrono::steady_clock::now())
-      .thenValue([&](auto result) {
+  return _cleanupUntilTimeout(std::chrono::steady_clock::now())
+      .thenValue([&](auto result) -> std::optional<std::unique_ptr<State>> {
         if (result.fail()) {
           LOG_PREGEL_CONDUCTOR("f8b3c", ERR) << result.errorMessage();
-          return;
+          return std::nullopt;
         }
 
         if (conductor._inErrorAbort) {
-          conductor.changeState(StateType::FatalError);
-          return;
+          return std::make_unique<FatalError>(conductor, conductor._ttl);
         }
 
         LOG_PREGEL_CONDUCTOR("6928f", DEBUG) << "Conductor is erased";
         conductor._feature.cleanupConductor(conductor._executionNumber);
-      });
+        return std::nullopt;
+      })
+      .get();
 }

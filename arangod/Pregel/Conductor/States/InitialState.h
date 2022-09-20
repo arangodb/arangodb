@@ -34,7 +34,7 @@ struct Initial : State {
   Conductor& conductor;
   Initial(Conductor& conductor);
   ~Initial(){};
-  auto run() -> void override;
+  auto run() -> std::optional<std::unique_ptr<State>> override;
   auto name() const -> std::string override { return "initial"; };
   auto isRunning() const -> bool override { return true; }
   auto getExpiration() const

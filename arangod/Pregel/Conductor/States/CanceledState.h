@@ -37,7 +37,7 @@ struct Canceled : State {
   Conductor& conductor;
   Canceled(Conductor& conductor, std::chrono::seconds const& ttl);
   ~Canceled() = default;
-  auto run() -> void override;
+  auto run() -> std::optional<std::unique_ptr<State>> override;
   auto name() const -> std::string override { return "canceled"; };
   auto isRunning() const -> bool override { return false; }
   auto getExpiration() const

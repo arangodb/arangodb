@@ -6,4 +6,6 @@ using namespace arangodb::pregel::conductor;
 
 Initial::Initial(Conductor& conductor) : conductor{conductor} {}
 
-auto Initial::run() -> void { conductor.changeState(StateType::Loading); }
+auto Initial::run() -> std::optional<std::unique_ptr<State>> {
+  return std::make_unique<Loading>(conductor);
+}

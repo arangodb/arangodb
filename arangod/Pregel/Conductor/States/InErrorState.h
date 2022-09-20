@@ -23,6 +23,7 @@
 #pragma once
 
 #include <chrono>
+#include <optional>
 
 #include "State.h"
 
@@ -37,7 +38,9 @@ struct InError : State {
   Conductor& conductor;
   InError(Conductor& conductor, std::chrono::seconds const& ttl);
   ~InError(){};
-  auto run() -> void override{};
+  auto run() -> std::optional<std::unique_ptr<State>> override {
+    return std::nullopt;
+  };
   auto name() const -> std::string override { return "in error"; };
   auto isRunning() const -> bool override { return false; }
   auto getExpiration() const

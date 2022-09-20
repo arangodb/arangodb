@@ -1,6 +1,5 @@
 #include "DoneState.h"
 
-#include <chrono>
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Pregel/WorkerConductorMessages.h"
@@ -18,7 +17,7 @@ Done::Done(Conductor& conductor, std::chrono::seconds const& ttl)
   }
 }
 
-auto Done::run() -> void {
+auto Done::run() -> std::optional<std::unique_ptr<State>> {
   VPackBuilder debugOut;
   debugOut.openObject();
   debugOut.add("stats", VPackValue(VPackValueType::Object));
@@ -45,6 +44,7 @@ auto Done::run() -> void {
       << ", overall: " << conductor._timing.total.elapsedSeconds().count()
       << "s"
       << ", stats: " << debugOut.slice().toJson();
+  return std::nullopt;
 }
 
 auto Done::_results(bool withId) -> ResultsFuture {

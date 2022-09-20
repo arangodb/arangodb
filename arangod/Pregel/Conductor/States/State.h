@@ -39,18 +39,8 @@ namespace conductor {
   LOG_TOPIC(logId, level, Logger::PREGEL)  \
       << "[job " << conductor._executionNumber << "] "
 
-enum class StateType {
-  Loading,
-  Computing,
-  Storing,
-  Canceled,
-  Done,
-  InError,
-  FatalError
-};
-
 struct State {
-  virtual auto run() -> void = 0;
+  virtual auto run() -> std::optional<std::unique_ptr<State>> = 0;
   virtual auto getResults(bool withId) -> ResultT<PregelResults> {
     VPackBuilder emptyArray;
     { VPackArrayBuilder ab(&emptyArray); }

@@ -35,7 +35,7 @@ struct Loading : State {
   Conductor& conductor;
   Loading(Conductor& conductor);
   ~Loading();
-  auto run() -> void override;
+  auto run() -> std::optional<std::unique_ptr<State>> override;
   auto name() const -> std::string override { return "loading"; };
   auto isRunning() const -> bool override { return true; }
   auto getExpiration() const

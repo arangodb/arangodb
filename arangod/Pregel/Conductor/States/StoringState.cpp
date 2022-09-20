@@ -2,6 +2,7 @@
 
 #include "Pregel/Conductor/Conductor.h"
 #include "Metrics/Gauge.h"
+#include "Pregel/Conductor/States/FatalErrorState.h"
 #include "Pregel/Conductor/States/State.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
@@ -36,41 +37,42 @@ auto Storing::_cleanup() -> CleanupFuture {
   return futures::collectAll(results);
 }
 
-auto Storing::run() -> void {
+auto Storing::run() -> std::optional<std::unique_ptr<State>> {
   conductor.cleanup();
 
-  _store().thenValue([&](auto results) {
-    for (auto const& result : results) {
-      if (result.get().fail()) {
-        LOG_PREGEL_CONDUCTOR("bc495", ERR) << fmt::format(
-            "Got unsuccessful response from worker while storing graph: {}",
-            result.get().errorMessage());
-        conductor.changeState(StateType::InError);
-        return;
-      }
-      auto reports = result.get().get().reports.slice();
-      if (reports.isArray()) {
-        conductor._reports.appendFromSlice(reports);
-      }
-    }
-
-    LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Cleanup workers";
-    _cleanup().thenValue([&](auto results) {
-      for (auto const& result : results) {
-        if (result.get().fail()) {
-          LOG_PREGEL_CONDUCTOR("bc495", ERR) << fmt::format(
-              "Got unsuccessful response from worker while cleaning up: {}",
-              result.get().errorMessage());
-          conductor.changeState(StateType::InError);
-          return;
+  return _store()
+      .thenValue([&](auto results) -> std::unique_ptr<State> {
+        for (auto const& result : results) {
+          if (result.get().fail()) {
+            LOG_PREGEL_CONDUCTOR("bc495", ERR) << fmt::format(
+                "Got unsuccessful response from worker while storing graph: {}",
+                result.get().errorMessage());
+            return std::make_unique<InError>(conductor, conductor._ttl);
+          }
+          auto reports = result.get().get().reports.slice();
+          if (reports.isArray()) {
+            conductor._reports.appendFromSlice(reports);
+          }
         }
-      }
-      if (conductor._inErrorAbort) {
-        conductor.changeState(StateType::FatalError);
-        return;
-      }
-      conductor.changeState(StateType::Done);
-      return;
-    });
-  });
+
+        LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Cleanup workers";
+        return _cleanup()
+            .thenValue([&](auto results) -> std::unique_ptr<State> {
+              for (auto const& result : results) {
+                if (result.get().fail()) {
+                  LOG_PREGEL_CONDUCTOR("bc495", ERR) << fmt::format(
+                      "Got unsuccessful response from worker while cleaning "
+                      "up: {}",
+                      result.get().errorMessage());
+                  return std::make_unique<InError>(conductor, conductor._ttl);
+                }
+              }
+              if (conductor._inErrorAbort) {
+                return std::make_unique<FatalError>(conductor, conductor._ttl);
+              }
+              return std::make_unique<Done>(conductor, conductor._ttl);
+            })
+            .get();
+      })
+      .get();
 }
