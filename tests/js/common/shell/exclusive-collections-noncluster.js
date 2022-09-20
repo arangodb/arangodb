@@ -206,33 +206,42 @@ function ExclusiveSuite () {
     },
 
     testExclusiveExpectConflictAQL : function () {
+      print(Date() + ' main');
       c1.insert({ "_key" : "XXX" , "name" : "initial" });
       let task = tasks.register({
         command: function() {
           let db = require("internal").db;
+          print(Date() + ' task');
           db.UnitTestsExclusiveCollection2.insert({ _key: "runner1", value: false });
+          print(Date() + ' task3');
           while (!db.UnitTestsExclusiveCollection2.exists("runner2")) {
             require("internal").sleep(0.02);
           }
           for (let i = 0; i < 10000; ++i) {
             db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner1' } UPDATE { name: 'runner1' } IN UnitTestsExclusiveCollection1");
+            print(Date() + ' task upsert');
           }
           db.UnitTestsExclusiveCollection2.update("runner1", { value: true });
+          print(Date() + ' task done');
         }
       });
 
       try {
+        print(Date() + ' main');
         db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
         while (!db.UnitTestsExclusiveCollection2.exists("runner1")) {
           require("internal").sleep(0.02);
         }
         for (let i = 0; i < 10000; i++) {
           db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner2' } UPDATE { name: 'runner2' } IN UnitTestsExclusiveCollection1");
-        }
+         print(Date() + ' main upsert');
+       }
         db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
+        print(Date() + ' main upsert21');
       } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
+      print(Date() + ' main task donexx');
 
       while (true) {
         try {
@@ -244,6 +253,7 @@ function ExclusiveSuite () {
         }
       }
 
+      print(Date() + ' main task done');
       // only one transaction should have succeeded
       assertEqual(2, c2.count());
       let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
