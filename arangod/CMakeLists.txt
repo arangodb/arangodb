@@ -512,6 +512,7 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   VocBase/Methods/Version.cpp
   VocBase/Properties/CollectionCreateOptions.cpp
   VocBase/Properties/CollectionConstantProperties.cpp
+  VocBase/Properties/CollectionIndexesProperties.cpp
   VocBase/Properties/CollectionInternalProperties.cpp
   VocBase/Properties/CollectionMutableProperties.cpp
   VocBase/Properties/PlanCollection.cpp
@@ -779,6 +780,8 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/MaintenanceFeature.cpp
   Cluster/MaintenanceRestHandler.cpp
   Cluster/MaintenanceWorker.cpp
+  Cluster/Utils/IShardDistributionFactory.cpp
+  Cluster/Utils/ShardDistribution.cpp
   Cluster/Utils/PlanCollectionEntry.cpp
   Cluster/Utils/PlanCollectionToAgencyWriter.cpp
   Cluster/RebootTracker.cpp

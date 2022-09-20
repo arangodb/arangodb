@@ -22,24 +22,26 @@
 
 #pragma once
 
-#include "Cluster/Utils/PlanCollectionEntry.h"
+#include <vector>
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 
-class AgencyOperation;
-struct PlanCollection;
-struct ShardDistribution;
+namespace velocypack {
+class Builder;
+}
 
-struct PlanCollectionToAgencyWriter {
-  explicit PlanCollectionToAgencyWriter(PlanCollection col,
-                                        ShardDistribution shardDistribution);
+struct CollectionIndexesProperties {
+  // TODO: Create a inspectable struct for index infos.
+  std::vector<velocypack::Builder> indexes;
 
-  [[nodiscard]] AgencyOperation prepareOperation(
-      std::string const& databaseName) const;
-
- private:
-  // Information required for the collection to write
-  PlanCollectionEntry _entry;
+  static CollectionIndexesProperties defaultIndexesForCollectionType(
+      TRI_col_type_e type);
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, CollectionIndexesProperties& props) {
+  return f.object(props).fields(f.field("indexes", props.indexes));
+}
 
 }  // namespace arangodb

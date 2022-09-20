@@ -22,24 +22,11 @@
 
 #pragma once
 
-#include "Cluster/Utils/PlanCollectionEntry.h"
+#include "Cluster/Utils/IShardDistributionFactory.h"
 
 namespace arangodb {
-
-class AgencyOperation;
-struct PlanCollection;
-struct ShardDistribution;
-
-struct PlanCollectionToAgencyWriter {
-  explicit PlanCollectionToAgencyWriter(PlanCollection col,
-                                        ShardDistribution shardDistribution);
-
-  [[nodiscard]] AgencyOperation prepareOperation(
-      std::string const& databaseName) const;
-
- private:
-  // Information required for the collection to write
-  PlanCollectionEntry _entry;
+class EvenDistribution : public IShardDistributionFactory {
+  void shuffle() override;
 };
 
 }  // namespace arangodb

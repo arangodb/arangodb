@@ -27,7 +27,9 @@
 #include "Cluster/Utils/AgencyIsBuildingFlags.h"
 #include "VocBase/Properties/CollectionConstantProperties.h"
 #include "VocBase/Properties/CollectionMutableProperties.h"
+#include "VocBase/Properties/CollectionIndexesProperties.h"
 #include "VocBase/Properties/CollectionInternalProperties.h"
+#include "ShardDistribution.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -37,7 +39,8 @@ class Builder;
 struct PlanCollection;
 
 struct PlanCollectionEntry {
-  PlanCollectionEntry(PlanCollection collection);
+  PlanCollectionEntry(PlanCollection collection,
+                      ShardDistribution shardDistribution);
 
   [[nodiscard]] std::string const& getCID() const;
 
@@ -49,6 +52,8 @@ struct PlanCollectionEntry {
   CollectionMutableProperties _mutableProperties{};
   CollectionInternalProperties _internalProperties{};
   AgencyIsBuildingFlags _buildingFlags{};
+  CollectionIndexesProperties _indexProperties{};
+  ShardDistribution _shardDistribution;
 };
 
 template<class Inspector>

@@ -30,8 +30,9 @@
 
 using namespace arangodb;
 
-PlanCollectionToAgencyWriter::PlanCollectionToAgencyWriter(PlanCollection col)
-    : _entry(std::move(col)) {}
+PlanCollectionToAgencyWriter::PlanCollectionToAgencyWriter(
+    PlanCollection col, ShardDistribution shardDistribution)
+    : _entry(std::move(col), std::move(shardDistribution)) {}
 
 [[nodiscard]] AgencyOperation PlanCollectionToAgencyWriter::prepareOperation(
     std::string const& databaseName) const {

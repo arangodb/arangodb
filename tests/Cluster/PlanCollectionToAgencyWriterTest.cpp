@@ -25,6 +25,7 @@
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyPaths.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/Utils/IShardDistributionFactory.h"
 #include "Cluster/Utils/PlanCollectionToAgencyWriter.h"
 #include "VocBase/Properties/PlanCollection.h"
 
@@ -36,6 +37,45 @@
 namespace arangodb::tests {
 
 namespace {
+
+ServerID generateServerName(uint64_t shardIndex, uint64_t replicationIndex,
+                            uint64_t shuffle) {
+  std::string start = (replicationIndex == 0)
+                          ? "LEADER"
+                          : "FOLLOWER_" + std::to_string(replicationIndex);
+  return start + "_s_" + std::to_string(shardIndex) + "_gen_" +
+         std::to_string(shuffle);
+}
+
+// This test Shard distribution will encode Leader/Follower, and amount of
+// shuffles in server names For easier debugging
+struct TestShardDistribution : public IShardDistributionFactory {
+  TestShardDistribution(uint64_t numberOfShards, uint64_t replicationFactor) {
+    _shardToServerMapping.reserve(numberOfShards);
+    for (uint64_t s = 0; s < numberOfShards; ++s) {
+      std::vector<ServerID> servers;
+      for (uint64_t r = 0; r < replicationFactor; ++r) {
+        servers.emplace_back(generateServerName(s, r, 0));
+      }
+      _shardToServerMapping.emplace_back(std::move(servers));
+    }
+  }
+
+  auto shuffle() -> void override {
+    // We increase the index of the shuffle generation.
+    ++_shuffleGeneration;
+    for (uint64_t s = 0; s < _shardToServerMapping.size(); ++s) {
+      std::vector<ServerID>& servers = _shardToServerMapping[s];
+      for (uint64_t r = 0; r < servers.size(); ++r) {
+        servers[r] = generateServerName(s, r, _shuffleGeneration);
+      }
+      _shardToServerMapping.emplace_back(std::move(servers));
+    }
+  }
+
+ private:
+  uint64_t _shuffleGeneration{0};
+};
 auto extractCollectionEntry(VPackSlice agencyOperation, std::string const& key)
     -> VPackSlice {
   return agencyOperation.get(std::vector<std::string>{key, "new"});
@@ -62,9 +102,30 @@ class PlanCollectionToAgencyWriterTest : public ::testing::Test {
       VPackObjectBuilder bodyBuilder{&b};
       operation.toVelocyPack(b);
     }
-    auto isBuilding = b.slice().get(std::vector<std::string>{operation.key(), "new", "isBuilding"});
+    auto isBuilding = b.slice().get(
+        std::vector<std::string>{operation.key(), "new", "isBuilding"});
     ASSERT_TRUE(isBuilding.isBoolean());
     EXPECT_TRUE(isBuilding.getBoolean());
+  }
+
+  std::vector<ShardID> generateShardNames(uint64_t numberOfShards,
+                                          uint64_t idOffset = 0) {
+    std::vector<ShardID> result;
+    result.reserve(numberOfShards);
+    for (uint64_t i = 0; i < numberOfShards; ++i) {
+      result.emplace_back("s" + std::to_string(numberOfShards + idOffset));
+    }
+    return result;
+  }
+
+  PlanCollectionToAgencyWriter createWriterWithTestSharding(
+      PlanCollection col) {
+    auto numberOfShards = col.constantProperties.numberOfShards;
+    auto distProto = std::make_shared<TestShardDistribution>(
+        numberOfShards, col.mutableProperties.replicationFactor);
+    auto shards = generateShardNames(numberOfShards);
+    ShardDistribution dist{shards, distProto};
+    return PlanCollectionToAgencyWriter{std::move(col), std::move(dist)};
   }
 
  private:
@@ -78,7 +139,8 @@ TEST_F(PlanCollectionToAgencyWriterTest, can_produce_agency_precondition) {}
 TEST_F(PlanCollectionToAgencyWriterTest, can_produce_agency_operation) {
   PlanCollection col{};
   col.mutableProperties.name = "test";
-  PlanCollectionToAgencyWriter writer{col};
+
+  auto writer = createWriterWithTestSharding(col);
   AgencyOperation operation = writer.prepareOperation(dbName());
   // We have a write operation
   ASSERT_EQ(operation.type().type, AgencyOperationType::Type::VALUE);
@@ -103,7 +165,7 @@ TEST_F(PlanCollectionToAgencyWriterTest,
        default_agency_operation_has_a_constant_property_entry) {
   PlanCollection col{};
   col.mutableProperties.name = "test";
-  PlanCollectionToAgencyWriter writer{col};
+  auto writer = createWriterWithTestSharding(col);
   AgencyOperation operation = writer.prepareOperation(dbName());
 
   VPackBuilder b;
@@ -124,7 +186,7 @@ TEST_F(PlanCollectionToAgencyWriterTest,
        default_agency_operation_has_a_mutable_property_entry) {
   PlanCollection col{};
   col.mutableProperties.name = "test";
-  PlanCollectionToAgencyWriter writer{col};
+  auto writer = createWriterWithTestSharding(col);
   AgencyOperation operation = writer.prepareOperation(dbName());
 
   VPackBuilder b;
@@ -144,7 +206,7 @@ TEST_F(PlanCollectionToAgencyWriterTest,
 TEST_F(PlanCollectionToAgencyWriterTest, default_agency_operation_has_indexes) {
   PlanCollection col{};
   col.mutableProperties.name = "test";
-  PlanCollectionToAgencyWriter writer{col};
+  auto writer = createWriterWithTestSharding(col);
   AgencyOperation operation = writer.prepareOperation(dbName());
 
   VPackBuilder b;
@@ -168,7 +230,7 @@ TEST_F(PlanCollectionToAgencyWriterTest, default_agency_operation_has_indexes) {
 TEST_F(PlanCollectionToAgencyWriterTest, default_agency_operation_has_shards) {
   PlanCollection col{};
   col.mutableProperties.name = "test";
-  PlanCollectionToAgencyWriter writer{col};
+  auto writer = createWriterWithTestSharding(col);
   AgencyOperation operation = writer.prepareOperation(dbName());
 
   VPackBuilder b;
@@ -180,8 +242,21 @@ TEST_F(PlanCollectionToAgencyWriterTest, default_agency_operation_has_shards) {
   ASSERT_TRUE(entry.hasKey("shards"));
   auto shards = entry.get("shards");
   ASSERT_TRUE(shards.isObject());
-  ASSERT_TRUE(false) << "Test is not implemented completely";
-  // TODO: Need to assert some values inside the shards.
+  auto numberOfShards = col.constantProperties.numberOfShards;
+  auto replicationFactor = col.mutableProperties.replicationFactor;
+  ASSERT_EQ(shards.length(), numberOfShards);
+  auto expectedShards = generateShardNames(numberOfShards);
+  ASSERT_EQ(expectedShards.size(), numberOfShards);
+  for (uint64_t s = 0; s < numberOfShards; ++s) {
+    ASSERT_TRUE(shards.hasKey(expectedShards[s]))
+        << "Searching for " << expectedShards[s] << " in " << shards.toJson();
+    auto list = shards.get(expectedShards[s]);
+    ASSERT_TRUE(list.isArray());
+    ASSERT_EQ(list.length(), replicationFactor);
+    for (uint64_t r = 0; r < replicationFactor; ++r) {
+      EXPECT_TRUE(list.at(r).isEqualString(generateServerName(s, r, 0)));
+    }
+  }
 }
 
 /**
@@ -191,7 +266,7 @@ TEST_F(PlanCollectionToAgencyWriterTest,
        default_agency_operation_has_no_distributeShardsLike) {
   PlanCollection col{};
   col.mutableProperties.name = "test";
-  PlanCollectionToAgencyWriter writer{col};
+  auto writer = createWriterWithTestSharding(col);
   AgencyOperation operation = writer.prepareOperation(dbName());
 
   VPackBuilder b;
@@ -208,7 +283,7 @@ TEST_F(PlanCollectionToAgencyWriterTest,
        default_agency_operation_has_no_smartGraphAttribute) {
   PlanCollection col{};
   col.mutableProperties.name = "test";
-  PlanCollectionToAgencyWriter writer{col};
+  auto writer = createWriterWithTestSharding(col);
   AgencyOperation operation = writer.prepareOperation(dbName());
 
   VPackBuilder b;
@@ -225,7 +300,7 @@ TEST_F(PlanCollectionToAgencyWriterTest,
        default_agency_operation_has_no_smartJoinAttribute) {
   PlanCollection col{};
   col.mutableProperties.name = "test";
-  PlanCollectionToAgencyWriter writer{col};
+  auto writer = createWriterWithTestSharding(col);
   AgencyOperation operation = writer.prepareOperation(dbName());
 
   VPackBuilder b;
@@ -242,7 +317,7 @@ TEST_F(PlanCollectionToAgencyWriterTest,
        default_agency_operation_has_status_and_statusString) {
   PlanCollection col{};
   col.mutableProperties.name = "test";
-  PlanCollectionToAgencyWriter writer{col};
+  auto writer = createWriterWithTestSharding(col);
   AgencyOperation operation = writer.prepareOperation(dbName());
 
   VPackBuilder b;
@@ -254,7 +329,7 @@ TEST_F(PlanCollectionToAgencyWriterTest,
   // Default of Inspect would be to set it to `null`
   EXPECT_EQ(basics::VelocyPackHelper::getStringValue(entry, "statusString",
                                                      "notFound"),
-            "test");
+            "loaded");
   EXPECT_EQ(basics::VelocyPackHelper::getNumericValue<TRI_vocbase_col_status_e>(
                 entry, "status", TRI_VOC_COL_STATUS_CORRUPTED),
             TRI_VOC_COL_STATUS_LOADED);

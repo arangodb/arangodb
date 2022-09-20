@@ -20,26 +20,29 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "ShardDistribution.h"
+#include "PlanShardToServerMappping.h"
 
-#include "Cluster/Utils/PlanCollectionEntry.h"
+using namespace arangodb;
 
-namespace arangodb {
+ShardDistribution::ShardDistribution(
+    std::vector<ShardID> shardNames,
+    std::shared_ptr<IShardDistributionFactory> distributeType)
+    : _shardNames{std::move(shardNames)},
+      _distributeType{std::move(distributeType)} {}
 
-class AgencyOperation;
-struct PlanCollection;
-struct ShardDistribution;
-
-struct PlanCollectionToAgencyWriter {
-  explicit PlanCollectionToAgencyWriter(PlanCollection col,
-                                        ShardDistribution shardDistribution);
-
-  [[nodiscard]] AgencyOperation prepareOperation(
-      std::string const& databaseName) const;
-
- private:
-  // Information required for the collection to write
-  PlanCollectionEntry _entry;
-};
-
-}  // namespace arangodb
+/**
+ * @brief Get a full map of shard to Server Distribution, using the given Shards
+ * list and the current shardToServerMapping.
+ * @param shardIds list of shardIds, expected to be in correct alphabetical
+ * order.
+ */
+auto ShardDistribution::getDistributionForShards() const
+    -> PlanShardToServerMapping {
+  PlanShardToServerMapping res;
+  for (size_t i = 0; i < _shardNames.size(); ++i) {
+    res.shards.emplace(_shardNames[i],
+                       _distributeType->getServerForShardIndex(i));
+  }
+  return res;
+}

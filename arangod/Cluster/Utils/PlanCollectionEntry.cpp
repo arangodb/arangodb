@@ -23,32 +23,53 @@
 #include "PlanCollectionEntry.h"
 #include "Inspection/VPack.h"
 #include "VocBase/Properties/PlanCollection.h"
+#include "Cluster/Utils/IShardDistributionFactory.h"
+#include "PlanShardToServerMappping.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 
 using namespace arangodb;
-PlanCollectionEntry::PlanCollectionEntry(PlanCollection col)
+PlanCollectionEntry::PlanCollectionEntry(PlanCollection col,
+                                         ShardDistribution shardDistribution)
     : _constantProperties{std::move(col.constantProperties)},
       _mutableProperties{std::move(col.mutableProperties)},
       _internalProperties{std::move(col.internalProperties)},
-      _buildingFlags{} {}
+      _buildingFlags{},
+      _indexProperties(
+          CollectionIndexesProperties::defaultIndexesForCollectionType(
+              _constantProperties.getType())),
+      _shardDistribution(std::move(shardDistribution)) {}
 
 std::string const& PlanCollectionEntry::getCID() const {
   return {_internalProperties.id};
 }
 
 VPackBuilder PlanCollectionEntry::toVPackDeprecated() const {
-  // NOTE this is just a deprecated Helper that will be replaced by inspect as soon as inspector feature is merged
+  // NOTE this is just a deprecated Helper that will be replaced by inspect as
+  // soon as inspector feature is merged
   VPackBuilder constants;
   velocypack::serialize(constants, _constantProperties);
   VPackBuilder mutables;
   velocypack::serialize(mutables, _mutableProperties);
-  auto constMut = VPackCollection::merge(constants.slice(), mutables.slice(), false, false);
+  auto constMut =
+      VPackCollection::merge(constants.slice(), mutables.slice(), false, false);
   VPackBuilder internals;
   velocypack::serialize(internals, _internalProperties);
   VPackBuilder flags;
   velocypack::serialize(flags, _buildingFlags);
-  auto intFlags = VPackCollection::merge(internals.slice(), flags.slice(), false, false);
-  return VPackCollection::merge(constMut.slice(), intFlags.slice(), false, false);
+  auto intFlags =
+      VPackCollection::merge(internals.slice(), flags.slice(), false, false);
+
+  auto manyFlags =
+      VPackCollection::merge(constMut.slice(), intFlags.slice(), false, false);
+  VPackBuilder indexes;
+  velocypack::serialize(indexes, _indexProperties);
+  auto shardMapping = _shardDistribution.getDistributionForShards();
+  VPackBuilder shards;
+  velocypack::serialize(shards, shardMapping);
+  auto shardsAndIndexes =
+      VPackCollection::merge(shards.slice(), indexes.slice(), false, false);
+  return VPackCollection::merge(manyFlags.slice(), shardsAndIndexes.slice(),
+                                false, false);
 }

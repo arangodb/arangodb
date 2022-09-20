@@ -20,26 +20,19 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "IShardDistributionFactory.h"
+#include "Cluster/Utils/PlanShardToServerMappping.h"
+#include "Basics/debugging.h"
 
-#include "Cluster/Utils/PlanCollectionEntry.h"
+using namespace arangodb;
 
-namespace arangodb {
-
-class AgencyOperation;
-struct PlanCollection;
-struct ShardDistribution;
-
-struct PlanCollectionToAgencyWriter {
-  explicit PlanCollectionToAgencyWriter(PlanCollection col,
-                                        ShardDistribution shardDistribution);
-
-  [[nodiscard]] AgencyOperation prepareOperation(
-      std::string const& databaseName) const;
-
- private:
-  // Information required for the collection to write
-  PlanCollectionEntry _entry;
-};
-
-}  // namespace arangodb
+/**
+ * @brief Get the List of server for the given ShardIndex
+ * @param index The index of the shard (in alphabetical order)
+ */
+auto IShardDistributionFactory::getServerForShardIndex(size_t index) const
+    -> std::vector<ServerID> {
+  TRI_ASSERT(!_shardToServerMapping.empty());
+  TRI_ASSERT(_shardToServerMapping.size() > index);
+  return _shardToServerMapping.at(index);
+}

@@ -22,24 +22,25 @@
 
 #pragma once
 
-#include "Cluster/Utils/PlanCollectionEntry.h"
+#include "Cluster/ClusterTypes.h"
+#include "Cluster/Utils/IShardDistributionFactory.h"
+
+#include <vector>
 
 namespace arangodb {
+struct ShardDistribution {
+  ShardDistribution(std::vector<ShardID> shardNames,
+                    std::shared_ptr<IShardDistributionFactory> distributeType);
 
-class AgencyOperation;
-struct PlanCollection;
-struct ShardDistribution;
-
-struct PlanCollectionToAgencyWriter {
-  explicit PlanCollectionToAgencyWriter(PlanCollection col,
-                                        ShardDistribution shardDistribution);
-
-  [[nodiscard]] AgencyOperation prepareOperation(
-      std::string const& databaseName) const;
+  /**
+   * @brief Get a full map of shard to Server Distribution, using the given
+   * Shards list and the current shardToServerMapping.
+   * @param index
+   */
+  auto getDistributionForShards() const -> PlanShardToServerMapping;
 
  private:
-  // Information required for the collection to write
-  PlanCollectionEntry _entry;
+  std::vector<ShardID> _shardNames;
+  std::shared_ptr<IShardDistributionFactory> _distributeType;
 };
-
 }  // namespace arangodb

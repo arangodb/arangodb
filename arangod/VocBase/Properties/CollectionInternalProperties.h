@@ -29,13 +29,32 @@
 
 namespace arangodb {
 
+namespace inspection {
+struct Status;
+}
+
 struct CollectionInternalProperties {
+  struct Transformers {
+    struct StatusString {
+      using MemoryType = std::underlying_type_t<TRI_vocbase_col_status_e>;
+      using SerializedType = std::string;
+
+      static arangodb::inspection::Status toSerialized(MemoryType v,
+                                                       SerializedType& result);
+
+      static arangodb::inspection::Status fromSerialized(
+          SerializedType const& v, MemoryType& result);
+    };
+  };
+
   std::string id = StaticStrings::Empty;
   bool syncByRevision = true;
   bool usesRevisionsAsDocumentIds = true;
   bool isSmartChild = false;
   bool deleted = false;
   uint64_t internalValidatorType = 0;
+  std::underlying_type_t<TRI_vocbase_col_status_e> status =
+      TRI_VOC_COL_STATUS_LOADED;
 
   /* Still needed? Especially in Agency
   std::underlying_type<TRI_vocbase_col_status_e> status =
@@ -58,6 +77,11 @@ auto inspect(Inspector& f, CollectionInternalProperties& props) {
       f.field(StaticStrings::InternalValidatorTypes,
               props.internalValidatorType)
           .fallback(f.keep()),
+      f.field("statusString", props.status)
+          .fallback(f.keep())
+          .transformWith(
+              CollectionInternalProperties::Transformers::StatusString{}),
+      f.field("status", props.status).fallback(f.keep()),
       /* Backwards compatibility, field is documented but does not have an
        * effect
        */
