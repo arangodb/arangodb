@@ -500,7 +500,8 @@ void FieldIterator<IndexMetaStruct>::setNullValue(VPackSlice const value) {
 
 template<typename IndexMetaStruct>
 bool FieldIterator<IndexMetaStruct>::setValue(
-    VPackSlice const value, FieldMeta::Analyzer const& valueAnalyzer) {
+    VPackSlice const value, FieldMeta::Analyzer const& valueAnalyzer,
+    IndexMetaStruct const& context) {
   TRI_ASSERT(  // assert
       (value.isCustom() &&
        _nameBuffer == arangodb::StaticStrings::IdString)  // custom string
@@ -620,8 +621,8 @@ bool FieldIterator<IndexMetaStruct>::setValue(
       _value._analyzer = std::move(analyzer);
       if constexpr (std::is_same_v<IndexMetaStruct,
                                    IResearchInvertedIndexMetaIndexingContext>) {
-        _value._fieldFeatures = top().meta->fieldFeatures();
-        _value._indexFeatures = top().meta->indexFeatures();
+        _value._fieldFeatures = context.fieldFeatures();
+        _value._indexFeatures = context.indexFeatures();
       } else {
         _value._fieldFeatures = pool->fieldFeatures();
         _value._indexFeatures = pool->indexFeatures();
@@ -720,8 +721,9 @@ void FieldIterator<IndexMetaStruct>::next() {
   setAnalyzers:
     while (_begin != _end) {
       // remove previous suffix
+      TRI_ASSERT(context);
       _nameBuffer.resize(_prefixLength);
-      if (setValue(_valueSlice, *_begin++)) {
+      if (setValue(_valueSlice, *_begin++, *context)) {
         return;
       }
     }
