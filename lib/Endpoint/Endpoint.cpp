@@ -47,7 +47,8 @@
 #include "Endpoint/EndpointUnixDomain.h"
 #endif
 
-using namespace arangodb;
+namespace arangodb {
+
 using namespace arangodb::basics;
 
 Endpoint::Endpoint(DomainType domainType, EndpointType type,
@@ -413,63 +414,61 @@ bool Endpoint::setSocketFlags(TRI_socket_t s) {
   return true;
 }
 
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::Endpoint::TransportType type) {
+std::ostream& operator<<(std::ostream& stream, Endpoint::TransportType type) {
   switch (type) {
-    case arangodb::Endpoint::TransportType::HTTP:
+    case Endpoint::TransportType::HTTP:
       stream << "http";
       break;
-    case arangodb::Endpoint::TransportType::VST:
+    case Endpoint::TransportType::VST:
       stream << "vst";
       break;
   }
   return stream;
 }
 
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::Endpoint::EndpointType type) {
+std::ostream& operator<<(std::ostream& stream, Endpoint::EndpointType type) {
   switch (type) {
-    case arangodb::Endpoint::EndpointType::SERVER:
+    case Endpoint::EndpointType::SERVER:
       stream << "server";
       break;
-    case arangodb::Endpoint::EndpointType::CLIENT:
+    case Endpoint::EndpointType::CLIENT:
       stream << "client";
       break;
   }
   return stream;
 }
 
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::Endpoint::EncryptionType type) {
+std::ostream& operator<<(std::ostream& stream, Endpoint::EncryptionType type) {
   switch (type) {
-    case arangodb::Endpoint::EncryptionType::NONE:
+    case Endpoint::EncryptionType::NONE:
       stream << "none";
       break;
-    case arangodb::Endpoint::EncryptionType::SSL:
+    case Endpoint::EncryptionType::SSL:
       stream << "ssl";
       break;
   }
   return stream;
 }
 
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::Endpoint::DomainType type) {
+std::ostream& operator<<(std::ostream& stream, Endpoint::DomainType type) {
   switch (type) {
-    case arangodb::Endpoint::DomainType::UNIX:
+    case Endpoint::DomainType::UNIX:
       stream << "unix";
       break;
-    case arangodb::Endpoint::DomainType::IPV4:
+    case Endpoint::DomainType::IPV4:
       stream << "ipv4";
       break;
-    case arangodb::Endpoint::DomainType::IPV6:
+    case Endpoint::DomainType::IPV6:
       stream << "ipv6";
       break;
-    case arangodb::Endpoint::DomainType::SRV:
+    case Endpoint::DomainType::SRV:
       stream << "srv";
       break;
-    case arangodb::Endpoint::DomainType::UNKNOWN:
+    case Endpoint::DomainType::UNKNOWN:
       stream << "unknown";
       break;
   }
   return stream;
 }
+
+}  // namespace arangodb

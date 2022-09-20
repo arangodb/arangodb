@@ -41,6 +41,7 @@ struct IDocumentStateShardHandler {
       std::string const& collectionId,
       std::shared_ptr<velocypack::Builder> const& properties)
       -> ResultT<std::string> = 0;
+  virtual auto dropLocalShard(std::string const& collectionId) -> Result = 0;
 };
 
 class DocumentStateShardHandler : public IDocumentStateShardHandler {
@@ -51,6 +52,7 @@ class DocumentStateShardHandler : public IDocumentStateShardHandler {
   auto createLocalShard(std::string const& collectionId,
                         std::shared_ptr<velocypack::Builder> const& properties)
       -> ResultT<std::string> override;
+  auto dropLocalShard(const std::string& collectionId) -> Result override;
 
  private:
   GlobalLogIdentifier _gid;

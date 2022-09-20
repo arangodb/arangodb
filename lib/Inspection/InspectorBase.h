@@ -28,6 +28,7 @@
 #include <functional>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 #include <variant>
 
 #include <velocypack/Iterator.h>
@@ -71,6 +72,9 @@ struct InspectorBase : detail::ContextContainer<Context> {
   template<class T>
   struct Object;
 
+  template<class T>
+  struct Enum;
+
   template<class... Ts>
   struct Variant;
 
@@ -103,6 +107,12 @@ struct InspectorBase : detail::ContextContainer<Context> {
   template<class T>
   [[nodiscard]] Object<T> object(T& o) noexcept {
     return Object<T>{self(), o};
+  }
+
+  template<class T>
+  [[nodiscard]] Enum<T> enumeration(T& e) noexcept {
+    static_assert(std::is_enum_v<T>);
+    return Enum<T>{self(), e};
   }
 
   template<class... Ts>
@@ -397,11 +407,118 @@ struct InspectorBase : detail::ContextContainer<Context> {
 
    private:
     friend struct InspectorBase;
-    explicit Object(Derived& inspector, T& o)
-        : inspector(inspector), object(o) {}
+    Object(Derived& inspector, T& o) : inspector(inspector), object(o) {}
 
     Derived& inspector;
     T& object;
+  };
+
+  template<class T>
+  struct Enum {
+    template<class... Args>
+    [[nodiscard]] Status values(Args&&... args) {
+      if constexpr (Derived::isLoading) {
+        constexpr bool hasStringValues =
+            (std::is_constructible_v<std::string, Args> || ...);
+        constexpr bool hasIntValues =
+            (std::is_constructible_v<std::uint64_t, Args> || ...);
+        static_assert(
+            hasStringValues || hasIntValues,
+            "Enum values can only be mapped to string or unsigned values");
+        Status res;
+        bool retryDifferentType = false;
+        if constexpr (hasStringValues) {
+          // TODO - read std::string_view
+          res = load<std::string>(retryDifferentType,
+                                  std::forward<Args>(args)...);
+          TRI_ASSERT(retryDifferentType == false || !res.ok());
+        }
+        if constexpr (hasIntValues) {
+          if (!hasStringValues || retryDifferentType) {
+            retryDifferentType = false;
+            res = load<std::uint64_t>(retryDifferentType,
+                                      std::forward<Args>(args)...);
+            if (hasStringValues && retryDifferentType) {
+              return Status{"Expecting type String or Int"};
+            }
+          }
+        }
+        return res;
+      } else {
+        return store(std::forward<Args>(args)...);
+      }
+    }
+
+   private:
+    friend struct InspectorBase;
+    Enum(Derived& inspector, T& v) : _inspector(inspector), _value(v) {}
+
+    template<class Arg, class... Args>
+    static void checkType() {
+      static_assert(
+          std::is_constructible_v<std::string, Arg> || std::is_integral_v<Arg>,
+          "Enum values can only be mapped to string or unsigned values");
+    }
+
+    template<class ValueType, class... Args>
+    Status load(bool& retryDifferentType, Args&&... args) {
+      ValueType read;
+      auto result = _inspector.apply(read);
+      if (!result.ok()) {
+        retryDifferentType = true;
+        return result;
+      }
+      if (loadValue(read, std::forward<Args>(args)...)) {
+        return Status{};
+      } else if constexpr (std::is_integral_v<ValueType>) {
+        return {"Unknown enum value " + std::to_string(read)};
+      } else {
+        return {"Unknown enum value " + read};
+      }
+    }
+
+    template<class ValueType, class Arg, class... Args>
+    bool loadValue(ValueType const& read, T v, Arg&& a, Args&&... args) {
+      checkType<Arg>();
+      if constexpr (std::is_constructible_v<ValueType, Arg>) {
+        if (read == static_cast<ValueType>(a)) {
+          this->_value = v;
+          return true;
+        }
+      }
+
+      if constexpr (sizeof...(args) > 0) {
+        return loadValue(read, std::forward<Args>(args)...);
+      } else {
+        return false;
+      }
+    }
+
+    template<class Arg, class... Args>
+    Status store(T v, Arg&& a, Args&&... args) {
+      checkType<Arg>();
+      if (_value == v) {
+        return _inspector.apply(convert(std::forward<Arg>(a)));
+      }
+      return store(std::forward<Args>(args)...);
+    }
+
+    Status store() {
+      return {"Unknown enum value " +
+              std::to_string(static_cast<std::size_t>(_value))};
+    }
+
+    template<std::size_t N>
+    std::string_view convert(char const (&v)[N]) {
+      return std::string_view(v, N - 1);
+    }
+    template<class TT>
+    auto convert(TT&& v) {
+      return std::forward<TT>(v);
+    }
+
+    Derived& _inspector;
+    T& _value;
   };
 
   template<template<class...> class DerivedVariant, class... Ts>
@@ -411,7 +528,8 @@ struct InspectorBase : detail::ContextContainer<Context> {
 
     template<class... Args>
     auto alternatives(Args&&... args) && {
-      // TODO - check that args cover all types and that there are no duplicates
+      // TODO - check that args cover all types and that there are no
+      // duplicates
       return inspector.processVariant(
           static_cast<DerivedVariant<Ts...>&>(*this),
           std::forward<Args>(args)...);

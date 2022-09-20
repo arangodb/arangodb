@@ -48,8 +48,8 @@ function EscapeControlTrueSuite() {
 
   return {
     testEscapeControlTrue: function() {
-      const visibleCharCodes = ['\x0a', '\x0d', '\x09'];
-      const visibleChars = ['\\n', '\\r', '\\t'];
+      const visibleCharCodes = ['\x0a', '\x0d', '\x09', '\x08', '\x0C'];
+      const visibleChars = ['\\n', '\\r', '\\t', '\\b', '\\f'];
       const escapeCharsLength = 31;
       const res = arango.POST("/_admin/execute", `   
         require('console').log("testmann: start");
@@ -84,7 +84,7 @@ function EscapeControlTrueSuite() {
       }
       assertEqual(escapeCharsLength + 2, filtered.length);
 
-      assertTrue(filtered[0].match(/testmann: start/));
+      assertMatch(/testmann: start/, filtered[0]);
       for (let i = 1; i < escapeCharsLength + 1; ++i) {
         const msg = filtered[i];
 
@@ -99,7 +99,7 @@ function EscapeControlTrueSuite() {
           assertTrue(msg.endsWith(matchMsg));
         }
       }
-      assertTrue(filtered[escapeCharsLength + 1].match(/testmann: done/));
+      assertMatch(/testmann: done/, filtered[escapeCharsLength + 1]);
 
     },
 

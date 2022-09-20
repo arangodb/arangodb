@@ -185,9 +185,6 @@ class GeneralRequest {
     return _arrayValues;
   }
 
-  std::shared_ptr<velocypack::Builder> toVelocyPackBuilderPtr(
-      bool strictValidation = true);
-
   /// @brief returns parsed value, returns valueNotFound if parameter was not
   /// found
   template<typename T>

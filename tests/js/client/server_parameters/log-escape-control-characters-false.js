@@ -82,12 +82,12 @@ function EscapeControlFalseSuite() {
       }
       assertEqual(escapeCharsLength + 2, filtered.length);
 
-      assertTrue(filtered[0].match(/testmann: start/));
+      assertMatch(/testmann: start/, filtered[0]);
       for (let i = 1; i < escapeCharsLength + 1; ++i) {
         const msg = filtered[i];
         assertTrue(msg.endsWith("testmann: testi  abc123"));
       }
-      assertTrue(filtered[escapeCharsLength + 1].match(/testmann: done/));
+      assertMatch(/testmann: done/, filtered[escapeCharsLength + 1]);
 
     },
 
