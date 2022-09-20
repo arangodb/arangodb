@@ -536,7 +536,7 @@ static bool startProcess(ExternalProcess* external, HANDLE rd, HANDLE wr) {
   siStartInfo.dwFlags = STARTF_USESTDHANDLES;
   siStartInfo.hStdInput = rd ? rd : nullptr;
   siStartInfo.hStdOutput = wr ? wr : GetStdHandle(STD_OUTPUT_HANDLE);
-  siStartInfo.hStdError = er ? er : GetStdHandle(STD_ERROR_HANDLE);
+  siStartInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
 
   // create the child process
   bFuncRetn = CreateProcessW(NULL,
