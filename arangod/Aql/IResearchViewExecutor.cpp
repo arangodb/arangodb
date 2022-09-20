@@ -742,9 +742,8 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
 
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so can't be a temporary.
-    FieldMeta::Analyzer const identity{IResearchAnalyzerFeature::identity()};
     AnalyzerProvider* fieldAnalyzerProvider = nullptr;
-    auto const* contextAnalyzer = &identity;
+    auto const* contextAnalyzer = &FieldMeta::identity();
     if (!infos().isOldMangling()) {
       fieldAnalyzerProvider = &_provider;
       contextAnalyzer = &emptyAnalyzer();

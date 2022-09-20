@@ -104,25 +104,33 @@ Result fromFuncMinHashMatch(char const* funcName, irs::boolean_filter* filter,
                             aql::AstNode const& args);
 
 FieldMeta::Analyzer const& FilterContext::fieldAnalyzer(
-    std::string_view name, Result& r) const noexcept {
+    std::string_view name, aql::ExpressionContext* ctx) const noexcept {
+  // FIXME(gnusi): refactor this function
+
   if (!fieldAnalyzerProvider) {
-    if (ADB_UNLIKELY(!contextAnalyzer)) {
-      TRI_ASSERT(false);
-      r = {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
-    }
+    // Only possible with ArangoSearch view
     return contextAnalyzer;
   }
+
+  auto registerWarning = [ctx](std::string_view error) {
+    if (ctx) {
+      ctx->registerWarning(TRI_ERROR_BAD_PARAMETER, error);
+    }
+  };
+
   auto const& analyzer = (*fieldAnalyzerProvider)(name);
+  if (!analyzer) {
+    // Only possible with SearchAlias views
+    registerWarning(absl::StrCat("Analyzer for field '", name, "' isn't set"));
+    return FieldMeta::identity();
+  }
   if (ADB_UNLIKELY(contextAnalyzer &&
                    contextAnalyzer._pool != analyzer._pool)) {
-    r = {TRI_ERROR_BAD_PARAMETER,
-         absl::StrCat("Context analyzer '", contextAnalyzer->name(),
-                      "' doesn't match field '", name, "' analyzer '",
-                      analyzer ? analyzer->name() : "", "'")};
-  }
-  if (!analyzer) {
-    r = {TRI_ERROR_BAD_PARAMETER,
-         absl::StrCat("Analyzer for field '", name, "' isn't set")};
+    // Only possible with SearchAlias views
+    registerWarning(absl::StrCat("Context analyzer '", contextAnalyzer->name(),
+                                 "' doesn't match field '", name,
+                                 "' analyzer '",
+                                 analyzer ? analyzer->name() : "", "'"));
   }
   return analyzer;
 }
@@ -293,12 +301,10 @@ Result byTerm(irs::by_term* filter, std::string&& name,
           return {TRI_ERROR_BAD_PARAMETER, "could not get string value"};
         }
 
-        Result r;
-        auto& analyzer = filterCtx.fieldAnalyzer(name, r);
-        if (!r.ok()) {
-          return r;
+        auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
+        if (!analyzer) {
+          return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
         }
-        TRI_ASSERT(analyzer);
 
         kludge::mangleField(name, ctx.isOldMangling, analyzer);
         *filter->mutable_field() = std::move(name);
@@ -479,12 +485,10 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
           return {TRI_ERROR_BAD_PARAMETER, "failed to get string value"};
         }
 
-        Result r;
-        auto& analyzer = filterCtx.fieldAnalyzer(name, r);
-        if (!r.ok()) {
-          return r;
+        auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
+        if (!analyzer) {
+          return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
         }
-        TRI_ASSERT(analyzer);
 
         auto& range = filter->add<irs::by_range>();
         kludge::mangleField(name, ctx.isOldMangling, analyzer);
@@ -644,12 +648,10 @@ Result byRange(irs::boolean_filter* filter, std::string name,
           return {TRI_ERROR_BAD_PARAMETER, "could not parse string value"};
         }
 
-        Result r;
-        auto& analyzer = filterCtx.fieldAnalyzer(name, r);
-        if (!r.ok()) {
-          return r;
+        auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
+        if (!analyzer) {
+          return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
         }
-        TRI_ASSERT(analyzer);
 
         irs::by_range* range{nullptr};
         if (ctx.isSearchQuery || Min) {
@@ -819,12 +821,10 @@ Result fromFuncGeoInRange(char const* funcName, irs::boolean_filter* filter,
     return error::failedToGenerateName(funcName, fieldNodeIdx);
   }
   if (filter) {
-    Result r;
-    auto& analyzer = filterCtx.fieldAnalyzer(name, r);
-    if (!r.ok()) {
-      return r;
+    auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
+    if (!analyzer) {
+      return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
     }
-    TRI_ASSERT(analyzer);
 
     auto& geo_filter = filter->add<GeoDistanceFilter>();
     geo_filter.boost(filterCtx.boost);
@@ -927,12 +927,10 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
     return error::failedToGenerateName(GEO_DISTANCE_FUNC, fieldNodeIdx);
   }
   if (filter) {
-    Result r;
-    auto& analyzer = filterCtx.fieldAnalyzer(name, r);
-    if (!r.ok()) {
-      return r;
+    auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
+    if (!analyzer) {
+      return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
     }
-    TRI_ASSERT(analyzer);
 
     auto& geo_filter =
         (aql::NODE_TYPE_OPERATOR_BINARY_NE == node.cmp
@@ -2014,7 +2012,7 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
   }
 
   // default analyzer
-  FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
+  FieldMeta::Analyzer analyzer{FieldMeta::identity()};
   if (filter || analyzerIdValue.isConstant()) {
     TRI_ASSERT(ctx.trx);
     auto& vocbase = ctx.trx->vocbase();
@@ -2147,12 +2145,10 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
     return error::failedToGenerateName(funcName, 1);
   }
 
-  Result r;
-  auto analyzer = filterCtx.fieldAnalyzer(fieldName, r);
-  if (!r.ok()) {
-    return r;
+  auto analyzer = filterCtx.fieldAnalyzer(fieldName, ctx.ctx);
+  if (!analyzer) {
+    return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
   }
-  TRI_ASSERT(analyzer);
 
   if (argc > 1) {
     // 2nd argument defines a type (if present)
@@ -3309,12 +3305,10 @@ Result fromFuncPhrase(char const* funcName, irs::boolean_filter* filter,
     // now get the actual analyzer for the known field name if it is not
     // overridden
     if (!analyzerPool._pool) {
-      Result r;
-      analyzerPool = filterCtx.fieldAnalyzer(name, r);
-      if (!r.ok()) {
-        return r;
+      analyzerPool = filterCtx.fieldAnalyzer(name, ctx.ctx);
+      if (!analyzerPool) {
+        return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
       }
-      TRI_ASSERT(analyzerPool);
     }
 
     analyzer = analyzerPool->get();
@@ -3471,12 +3465,10 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
 
   if (filter) {
     if (!analyzerPool) {
-      Result r;
-      analyzerPool = filterCtx.fieldAnalyzer(name, r);
-      if (!r.ok()) {
-        return r;
+      analyzerPool = filterCtx.fieldAnalyzer(name, ctx.ctx);
+      if (!analyzerPool) {
+        return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
       }
-      TRI_ASSERT(analyzerPool);
     }
 
     auto analyzer = analyzerPool->get();
@@ -3639,12 +3631,10 @@ Result fromFuncStartsWith(char const* funcName, irs::boolean_filter* filter,
   }
 
   if (filter) {
-    Result r;
-    auto& analyzer = filterCtx.fieldAnalyzer(name, r);
-    if (!r.ok()) {
-      return r;
+    auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
+    if (!analyzer) {
+      return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
     }
-    TRI_ASSERT(analyzer);
     kludge::mangleField(name, ctx.isOldMangling, analyzer);
 
     // Try to optimize us away
@@ -3754,12 +3744,10 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
   }
 
   if (filter) {
-    Result r;
-    auto& analyzer = filterCtx.fieldAnalyzer(name, r);
-    if (!r.ok()) {
-      return r;
+    auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
+    if (!analyzer) {
+      return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
     }
-    TRI_ASSERT(analyzer);
 
     auto& wildcardFilter = filter->add<irs::by_wildcard>();
     kludge::mangleField(name, ctx.isOldMangling, analyzer);
@@ -3799,12 +3787,10 @@ Result fromFuncLevenshteinMatch(char const* funcName,
   }
 
   if (filter) {
-    Result r;
-    auto& analyzer = filterCtx.fieldAnalyzer(name, r);
-    if (!r.ok()) {
-      return r;
+    auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
+    if (!analyzer) {
+      return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
     }
-    TRI_ASSERT(analyzer);
 
     auto& levenshtein_filter = filter->add<irs::by_edit_distance>();
     levenshtein_filter.boost(filterCtx.boost);
@@ -3912,12 +3898,10 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
   }
 
   if (filter) {
-    Result r;
-    auto& analyzer = filterCtx.fieldAnalyzer(name, r);
-    if (!r.ok()) {
-      return r;
+    auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
+    if (!analyzer) {
+      return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
     }
-    TRI_ASSERT(analyzer);
 
     auto& geo_filter = filter->add<GeoFilter>();
     geo_filter.boost(filterCtx.boost);

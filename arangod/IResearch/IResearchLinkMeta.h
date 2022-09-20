@@ -111,6 +111,8 @@ struct FieldMeta {
     bool _storeValues;
   };
 
+  [[nodiscard]] static Analyzer const& identity();
+
   FieldMeta() = default;
   FieldMeta(FieldMeta const&) = default;
   FieldMeta(FieldMeta&&) = default;
