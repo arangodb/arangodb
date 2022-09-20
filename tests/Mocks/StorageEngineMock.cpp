@@ -296,6 +296,7 @@ class EdgeIndexMock final : public arangodb::Index {
   }
 
   Index::FilterCosts supportsFilterCondition(
+      arangodb::transaction::Methods& /*trx*/,
       std::vector<std::shared_ptr<arangodb::Index>> const& /*allIndexes*/,
       arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const* reference,
@@ -345,7 +346,7 @@ class EdgeIndexMock final : public arangodb::Index {
   }
 
   arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode* node,
+      arangodb::transaction::Methods& /*trx*/, arangodb::aql::AstNode* node,
       arangodb::aql::Variable const* reference) const override {
     arangodb::SimpleAttributeEqualityMatcher matcher(IndexAttributes);
 
@@ -836,6 +837,7 @@ class HashIndexMock final : public arangodb::Index {
   }
 
   Index::FilterCosts supportsFilterCondition(
+      arangodb::transaction::Methods& /*trx*/,
       std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
       arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const* reference,
@@ -853,7 +855,7 @@ class HashIndexMock final : public arangodb::Index {
   }
 
   arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode* node,
+      arangodb::transaction::Methods& /*trx*/, arangodb::aql::AstNode* node,
       arangodb::aql::Variable const* reference) const override {
     return arangodb::SortedIndexAttributeMatcher::specializeCondition(
         this, node, reference);
