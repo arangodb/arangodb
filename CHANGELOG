@@ -1,6 +1,8 @@
 v3.9.4 (XXXX-XX-XX)
 -------------------
 
+* Updated ArangoDB Starter to 0.15.5.
+
 * Fixed SEARCH-374: Fixed ArangoSearch seek iteration over documents in sparse
   bitset.
 
