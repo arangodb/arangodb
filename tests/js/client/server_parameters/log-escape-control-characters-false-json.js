@@ -37,7 +37,9 @@ if (getOptions === true) {
     'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.foreground-tty': 'false',
     'log.level': 'debug',
+    'log.escape-unicode-chars': 'false',
     'log.escape-control-chars': 'false',
+    'log.use-json-format': 'true',
   };
 }
 
@@ -48,15 +50,17 @@ function EscapeControlFalseSuite() {
 
   return {
     testEscapeControlFalse: function() {
-      const escapeCharsLength = 31;
-      const res = arango.POST("/_admin/execute", `
-        require('console').log("testmann: start");
+      const controlCharsLength = 31;
+      const request = `require('console').log("testmann: start");
         for (let i = 1; i <= 31; ++i) {
-          require('console').log("testmann: testi" + String.fromCharCode(i) + " abc123");
+          let controlChar = '"\\\\u' + i.toString(16).padStart(4, '0') + '"';
+          controlChar = JSON.parse(controlChar);
+          require('console').log("testmann: testi \\u0008\\u0009\\u000A\\u000B\\u000C" + controlChar + " \\u00B0\\ud83e\\uddd9\\uf0f9\\u9095\\uf0f9\\u90b6abc123");
         }
         require('console').log("testmann: done");
-        return require('internal').options()["log.output"];
-     `);
+        return require('internal').options()["log.output"];`;
+
+      const res = arango.POST("/_admin/execute", request);
 
       assertTrue(Array.isArray(res));
       assertTrue(res.length > 0);
@@ -67,28 +71,28 @@ function EscapeControlFalseSuite() {
       let tries = 0;
       let filtered = [];
       while (++tries < 60) {
-        let content = fs.readFileSync(logfile, 'ascii');
+        let content = fs.readFileSync(logfile, 'utf-8');
         let lines = content.split('\n');
 
         filtered = lines.filter((line) => {
           return line.match(/testmann: /);
         });
 
-        if (filtered.length === escapeCharsLength + 2) {
+        if (filtered.length === controlCharsLength + 2) {
           break;
         }
 
         require("internal").sleep(0.5);
       }
-      assertEqual(escapeCharsLength + 2, filtered.length);
 
+      assertEqual(controlCharsLength + 2, filtered.length);
       assertMatch(/testmann: start/, filtered[0]);
-      for (let i = 1; i < escapeCharsLength + 1; ++i) {
-        const msg = filtered[i];
-        assertTrue(msg.endsWith("testmann: testi  abc123"));
+      for (let i = 1; i < controlCharsLength + 1; ++i) {
+        const parsedRes = JSON.parse(filtered[i]);
+        assertTrue(parsedRes.hasOwnProperty("message"));
+        assertEqual(parsedRes.message, "testmann: testi        \u00B0\ud83e\uddd9\uf0f9\u9095\uf0f9\u90b6abc123");
       }
-      assertMatch(/testmann: done/, filtered[escapeCharsLength + 1]);
-
+      assertMatch(/testmann: done/, filtered[controlCharsLength + 1]);
     },
 
   };
