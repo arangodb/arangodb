@@ -1,6 +1,8 @@
 v3.8.8 (XXXX-XX-XX)
 -------------------
 
+* Updated ArangoDB Starter to 0.15.5.
+
 * Do not drop follower shard after too many failed shard synchronization
   attempts.
 
