@@ -149,6 +149,18 @@ struct IResearchInvertedIndexMetaIndexingContext {
 
   void addField(InvertedIndexField const& field, bool nested);
 
+  void setFeatures(Features const& features);
+
+  irs::features_t fieldFeatures() const noexcept {
+    return {_fieldFeatures.data(), _fieldFeatures.size()};
+  }
+  irs::IndexFeatures indexFeatures() const noexcept {
+    return features().indexFeatures();
+  }
+
+  Features const& features() const noexcept { return _features;
+  }
+
   absl::flat_hash_map<std::string_view,
                       IResearchInvertedIndexMetaIndexingContext>
       _fields;
@@ -163,11 +175,16 @@ struct IResearchInvertedIndexMetaIndexingContext {
   IResearchInvertedIndexSort const& _sort;
   IResearchViewStoredValues const& _storedValues;
   MissingFieldsMap _missingFieldsMap;
+  
   bool _isArray{false};
   bool _hasNested;
   bool _includeAllFields;
   bool _trackListPositions;
   bool _isSearchField;
+
+ private:
+  Features _features;
+  std::vector<irs::type_info::type_id> _fieldFeatures;
 };
 
 struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,

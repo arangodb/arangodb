@@ -618,8 +618,14 @@ bool FieldIterator<IndexMetaStruct>::setValue(
         iresearch::kludge::mangleField(_nameBuffer, true, valueAnalyzer);
       }
       _value._analyzer = std::move(analyzer);
-      _value._fieldFeatures = pool->fieldFeatures();
-      _value._indexFeatures = pool->indexFeatures();
+      if constexpr (std::is_same_v<IndexMetaStruct,
+                                   IResearchInvertedIndexMetaIndexingContext>) {
+        _value._fieldFeatures = top().meta->fieldFeatures();
+        _value._indexFeatures = top().meta->indexFeatures();
+      } else {
+        _value._fieldFeatures = pool->fieldFeatures();
+        _value._indexFeatures = pool->indexFeatures();
+      }
       _value._name = _nameBuffer;
     } break;
   }

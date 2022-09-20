@@ -958,9 +958,16 @@ IResearchInvertedIndexMetaIndexingContext::
       _includeAllFields(field->_includeAllFields),
       _trackListPositions(field->_trackListPositions),
       _isSearchField(field->_isSearchField) {
+  setFeatures(field->_features);
   if (add) {
     addField(*field, false);
   }
+}
+
+void IResearchInvertedIndexMetaIndexingContext::setFeatures(
+  Features const& features) {
+  _features = features;
+  _fieldFeatures = _features.fieldFeatures(static_cast<LinkVersion>(_meta->_version));
 }
 
 void IResearchInvertedIndexMetaIndexingContext::addField(
@@ -987,6 +994,7 @@ void IResearchInvertedIndexMetaIndexingContext::addField(
         current->_includeAllFields = f._includeAllFields;
         current->_trackListPositions = f._trackListPositions;
         current->_isSearchField = f._isSearchField;
+        current->setFeatures(f._features);
       }
     }
 #ifdef USE_ENTERPRISE
