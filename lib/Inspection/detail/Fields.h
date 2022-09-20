@@ -28,6 +28,8 @@
 #include <utility>
 #include <variant>
 
+#include "Inspection/Status.h"
+
 namespace arangodb::inspection::detail {
 
 #ifdef _MSC_VER
@@ -258,12 +260,22 @@ struct EmbeddedFieldsImpl : EmbeddedFields<Inspector> {
 
   Status apply(Inspector& inspector,
                typename Inspector::EmbeddedParam& param) override {
-    return [&inspector, &param, this]<std::size_t... I>(std::index_sequence<I...>) {
-      return inspector.processEmbeddedFields(param, std::get<I>(std::move(fields))...);
-    }(std::make_index_sequence<sizeof...(Ts)>{});
+    return Applier{}(inspector, param, fields,
+                     std::make_index_sequence<sizeof...(Ts)>{});
   }
 
  private:
+  // clang-format can't handle lambdas with explicit template parameters, so we
+  // have to do this by hand...
+  struct Applier {
+    template<class Param, class Fields, std::size_t... I>
+    auto operator()(Inspector& inspector, Param& param, Fields& fields,
+                    std::index_sequence<I...>) {
+      return inspector.processEmbeddedFields(param,
+                                             std::get<I>(std::move(fields))...);
+    }
+  };
+
   std::tuple<Ts...> fields;
 };
 
