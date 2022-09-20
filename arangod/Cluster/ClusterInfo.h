@@ -476,7 +476,7 @@ class ClusterInfo final {
       double timeout,  // request timeout
       bool isNewDatabase,
       std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
-      replication::Version replicationVersion = replication::Version::ONE);
+      replication::Version replicationVersion);
 
   /// @brief this method does an atomic check of the preconditions for the
   /// collections to be created, using the currently loaded plan.

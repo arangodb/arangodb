@@ -3060,7 +3060,7 @@ Result Features::fromVelocyPack(VPackSlice slice) {
                   .append(std::to_string(subItr.index()))};
     }
   }
-  return {};
+  return validate();
 }
 
 bool Features::add(irs::string_ref featureName) {

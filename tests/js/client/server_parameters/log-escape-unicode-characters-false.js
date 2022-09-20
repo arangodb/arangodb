@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, arango, assertEqual */
+/* global getOptions, assertTrue, arango, assertEqual, assertMatch */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for server startup options
@@ -85,12 +85,12 @@ function EscapeUnicodeFalseSuite() {
       }
       assertEqual(testValues.length + 2, filtered.length);
 
-      assertTrue(filtered[0].match(/testmann: start/));
+      assertMatch(/testmann: start/, filtered[0]);
       for (let i = 1; i < testValues.length + 1; ++i) {
         const msg = filtered[i];
         assertTrue(msg.endsWith("testmann: testi " + testValues[i - 1] + " abc123"));
       }
-      assertTrue(filtered[testValues.length + 1].match(/testmann: done/));
+      assertMatch(/testmann: done/, filtered[testValues.length + 1]);
 
     },
 
