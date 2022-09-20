@@ -967,9 +967,10 @@ IResearchInvertedIndexMetaIndexingContext::
 }
 
 void IResearchInvertedIndexMetaIndexingContext::setFeatures(
-  Features const& features) {
+    Features const& features) {
   _features = features;
-  _fieldFeatures = _features.fieldFeatures(static_cast<LinkVersion>(_meta->_version));
+  _fieldFeatures =
+      _features.fieldFeatures(static_cast<LinkVersion>(_meta->_version));
 }
 
 void IResearchInvertedIndexMetaIndexingContext::addField(

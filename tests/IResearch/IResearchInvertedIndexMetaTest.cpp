@@ -898,7 +898,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
     ASSERT_FALSE(meta._analyzers.empty());
     ASSERT_EQ(meta._analyzers[0]._shortName, "identity");
     ASSERT_EQ(meta._features,
-              arangodb::iresearch::Features(FieldFeatures::NORM, irs::IndexFeatures::FREQ));
+              arangodb::iresearch::Features(FieldFeatures::NORM,
+                                            irs::IndexFeatures::FREQ));
     ASSERT_FALSE(meta._isSearchField);
   }
   // with active vocbase
@@ -925,8 +926,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
     ASSERT_FALSE(meta._analyzers.empty());
     ASSERT_EQ(meta._analyzers[0]._shortName, "identity");
     ASSERT_EQ(meta._features,
-              Features(
-                  FieldFeatures::NORM, irs::IndexFeatures::FREQ));
+              Features(FieldFeatures::NORM, irs::IndexFeatures::FREQ));
     ASSERT_FALSE(meta._isSearchField);
   }
 }
