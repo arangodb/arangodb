@@ -593,4 +593,8 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
   endif()
 endforeach()
 
+# Discover all tests supplied by the arangodbtests binary
+include(GoogleTest)
+gtest_discover_tests(arangodbtests NO_PRETTY_TYPES NO_PRETTY_VALUES)
+
 add_subdirectory(sepp)

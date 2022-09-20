@@ -270,6 +270,9 @@ else ()
   project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 endif ()
 
+# enable CMake's testing support
+enable_testing()
+
 set(BUILD_SHARED_LIBS OFF)
 
 # required for clang completion in editors - must be set after creating project
