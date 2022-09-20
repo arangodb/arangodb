@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.15.5.
+
 * Updated arangosync to v2.12.0-preview-14.
 
 * Fixed BTS-1017: Fixed a graph search issue, where subqueries lead to
