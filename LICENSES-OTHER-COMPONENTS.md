@@ -349,10 +349,10 @@ _Enterprise Edition only_
 ### Google Test
 
 * Name: Google Test (gtest)
-* Version: 1.8.1
-* Date: 2018-08-31 15:53:24Z
+* Version: 1.12.1
+* Date: 2022-06-30 10:14:00Z
 * Project Home: https://github.com/google/googletest
-* License: https://raw.githubusercontent.com/abseil/googletest/master/googletest/LICENSE
+* License: https://raw.githubusercontent.com/google/googletest/release-1.12.1/LICENSE 
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 

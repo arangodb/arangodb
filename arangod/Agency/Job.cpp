@@ -44,6 +44,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
+#include "Helpers.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -1113,4 +1114,12 @@ void Job::addPreconditionServerWriteLocked(Builder& pre,
     VPackObjectBuilder shardLockEmpty(&pre);
     pre.add(PREC_IS_WRITE_LOCKED, VPackValue(jobId));
   }
+}
+
+auto Job::isReplication2Database(std::string_view database) -> bool {
+  auto dbs = _snapshot.hasAsChildren(PLAN_DATABASES);
+  if (!dbs) {
+    return false;
+  }
+  return isReplicationTwoDB(dbs->get(), std::string{database});
 }
