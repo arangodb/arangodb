@@ -22,7 +22,7 @@ Storing::~Storing() {
 
 auto Storing::_store() -> StoredFuture {
   auto results = std::vector<futures::Future<ResultT<Stored>>>{};
-  for (auto&& [_, worker] : conductor.workers) {
+  for (auto&& [_, worker] : conductor._workers) {
     results.emplace_back(worker.store(Store{}));
   }
   return futures::collectAll(results);
@@ -30,14 +30,14 @@ auto Storing::_store() -> StoredFuture {
 
 auto Storing::_cleanup() -> CleanupFuture {
   auto results = std::vector<futures::Future<ResultT<CleanupFinished>>>{};
-  for (auto&& [_, worker] : conductor.workers) {
+  for (auto&& [_, worker] : conductor._workers) {
     results.emplace_back(worker.cleanup(Cleanup{}));
   }
   return futures::collectAll(results);
 }
 
 auto Storing::run() -> std::optional<std::unique_ptr<State>> {
-  conductor.cleanup();
+  conductor._cleanup();
 
   return _store()
       .thenValue([&](auto results) -> std::unique_ptr<State> {

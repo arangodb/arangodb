@@ -22,7 +22,7 @@ Canceled::Canceled(Conductor& conductor, std::chrono::seconds const& ttl)
 
 auto Canceled::_cleanup() -> CleanupFuture {
   auto results = std::vector<futures::Future<ResultT<CleanupFinished>>>{};
-  for (auto&& [_, worker] : conductor.workers) {
+  for (auto&& [_, worker] : conductor._workers) {
     results.emplace_back(worker.cleanup(Cleanup{}));
   }
   return futures::collectAll(results);
@@ -30,7 +30,7 @@ auto Canceled::_cleanup() -> CleanupFuture {
 
 auto Canceled::_cleanupUntilTimeout(std::chrono::steady_clock::time_point start)
     -> futures::Future<Result> {
-  conductor.cleanup();
+  conductor._cleanup();
 
   if (conductor._feature.isStopping()) {
     LOG_PREGEL_CONDUCTOR("bd540", DEBUG)

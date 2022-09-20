@@ -82,6 +82,9 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   friend struct conductor::InError;
   friend struct conductor::FatalError;
 
+  std::unordered_map<ServerID, conductor::WorkerApi> _workers;
+  std::unique_ptr<conductor::State> _state =
+      std::make_unique<conductor::Initial>(*this);
   PregelFeature& _feature;
   std::chrono::system_clock::time_point _created;
   std::chrono::seconds _ttl = std::chrono::seconds(300);
@@ -143,17 +146,15 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   using GraphLoadedFuture = futures::Future<std::vector<
       futures::Try<arangodb::ResultT<arangodb::pregel::GraphLoaded>>>>;
 
+  auto _changeState(std::unique_ptr<conductor::State> newState) -> void;
+  auto _initializeWorkers(VPackSlice additional) -> GraphLoadedFuture;
+  auto _preGlobalSuperStep() -> bool;
   auto _postGlobalSuperStep(VPackBuilder messagesFromWorkers)
       -> PostGlobalSuperStepResult;
-  auto _preGlobalSuperStep() -> bool;
-  auto _initializeWorkers(VPackSlice additional) -> GraphLoadedFuture;
-  template<typename InType>
-  auto _sendToAllDBServers(InType const& message)
-      -> ResultT<std::vector<ModernMessage>>;
-  void _ensureUniqueResponse(std::string const& body);
+  void _cleanup();
 
   // === REST callbacks ===
-  void workerStatusUpdate(StatusUpdated const& data);
+  void _workerStatusUpdate(StatusUpdated const& data);
 
   std::vector<ShardID> getShardIds(ShardID const& collection) const;
 
@@ -177,14 +178,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   bool canBeGarbageCollected() const;
 
   ExecutionNumber executionNumber() const { return _executionNumber; }
-
- private:
-  std::unordered_map<ServerID, conductor::WorkerApi> workers;
-  void cleanup();
-
-  std::unique_ptr<conductor::State> state =
-      std::make_unique<conductor::Initial>(*this);
-  auto changeState(std::unique_ptr<conductor::State> newState) -> void;
 };
 }  // namespace pregel
 }  // namespace arangodb

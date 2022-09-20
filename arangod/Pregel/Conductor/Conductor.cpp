@@ -87,7 +87,8 @@ template<class... Ts>
 struct overloaded : Ts... {
   using Ts::operator()...;
 };
-template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+template<class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
 }  // namespace
 
 #define LOG_PREGEL(logId, level)          \
@@ -178,13 +179,13 @@ Conductor::~Conductor() {
 void Conductor::start() {
   MUTEX_LOCKER(guard, _callbackMutex);
   _timing.total.start();
-  changeState(std::make_unique<conductor::Loading>(*this));
+  _changeState(std::make_unique<conductor::Loading>(*this));
 }
 
 auto Conductor::process(MessagePayload const& message) -> Result {
   return std::visit(
       overloaded{[&](StatusUpdated const& x) -> Result {
-                   workerStatusUpdate(x);
+                   _workerStatusUpdate(x);
                    return {};
                  },
                  [](auto const& x) -> Result {
@@ -251,7 +252,7 @@ auto Conductor::_preGlobalSuperStep() -> bool {
 
 // The worker can (and should) periodically call back
 // to update its status
-void Conductor::workerStatusUpdate(StatusUpdated const& data) {
+void Conductor::_workerStatusUpdate(StatusUpdated const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   // TODO: for these updates we do not care about uniqueness of responses
   // _ensureUniqueResponse(data);
@@ -266,8 +267,8 @@ void Conductor::workerStatusUpdate(StatusUpdated const& data) {
 
 void Conductor::cancel() {
   MUTEX_LOCKER(guard, _callbackMutex);
-  if (state->canBeCanceled()) {
-    changeState(std::make_unique<conductor::Canceled>(*this, _ttl));
+  if (_state->canBeCanceled()) {
+    _changeState(std::make_unique<conductor::Canceled>(*this, _ttl));
   }
 }
 
@@ -347,7 +348,7 @@ auto Conductor::_initializeWorkers(VPackSlice additional) -> GraphLoadedFuture {
     TRI_ASSERT(vertexMap.size() == 1);
     auto [server, _] = *vertexMap.begin();
     _dbServers.push_back(server);
-    workers.emplace(
+    _workers.emplace(
         server, conductor::WorkerApi{server, _executionNumber,
                                      std::make_unique<DirectConnection>(
                                          _feature, _vocbaseGuard.database())});
@@ -357,12 +358,12 @@ auto Conductor::_initializeWorkers(VPackSlice additional) -> GraphLoadedFuture {
       network::RequestOptions reqOpts;
       reqOpts.timeout = network::Timeout(5.0 * 60.0);
       reqOpts.database = _vocbaseGuard.database().name();
-      workers.emplace(server,
-                      conductor::WorkerApi{
-                          server, _executionNumber,
-                          std::make_unique<NetworkConnection>(
-                              Utils::baseUrl(Utils::workerPrefix),
-                              std::move(reqOpts), _vocbaseGuard.database())});
+      _workers.emplace(server,
+                       conductor::WorkerApi{
+                           server, _executionNumber,
+                           std::make_unique<NetworkConnection>(
+                               Utils::baseUrl(Utils::workerPrefix),
+                               std::move(reqOpts), _vocbaseGuard.database())});
     }
   }
   _status = ConductorStatus::forWorkers(_dbServers);
@@ -440,12 +441,12 @@ auto Conductor::_initializeWorkers(VPackSlice additional) -> GraphLoadedFuture {
     b.close();
 
     auto graph = LoadGraph{.details = b};
-    results.emplace_back(workers[server].loadGraph(graph));
+    results.emplace_back(_workers[server].loadGraph(graph));
   }
   return futures::collectAll(results);
 }
 
-void Conductor::cleanup() {
+void Conductor::_cleanup() {
   if (_masterContext) {
     _masterContext->postApplication();
   }
@@ -461,7 +462,7 @@ bool Conductor::canBeGarbageCollected() const {
     return false;
   }
 
-  auto expiration = state->getExpiration();
+  auto expiration = _state->getExpiration();
   return expiration.has_value() &&
          expiration.value() <= std::chrono::system_clock::now();
 }
@@ -473,7 +474,7 @@ auto Conductor::collectAQLResults(bool withId) -> ResultT<PregelResults> {
     { VPackArrayBuilder ab(&results); }
     return PregelResults{results};
   }
-  return state->getResults(withId);
+  return _state->getResults(withId);
 }
 
 void Conductor::toVelocyPack(VPackBuilder& result) const {
@@ -486,11 +487,11 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
     result.add("algorithm", VPackValue(_algorithm->name()));
   }
   result.add("created", VPackValue(timepointToString(_created)));
-  if (auto expiration = state->getExpiration(); expiration.has_value()) {
+  if (auto expiration = _state->getExpiration(); expiration.has_value()) {
     result.add("expires", VPackValue(timepointToString(expiration.value())));
   }
   result.add("ttl", VPackValue(_ttl.count()));
-  result.add("state", VPackValue(state->name()));
+  result.add("state", VPackValue(_state->name()));
   result.add("gss", VPackValue(_globalSuperstep));
 
   if (_timing.total.hasStarted()) {
@@ -539,88 +540,6 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   result.close();
 }
 
-// currently: returns immediate - blocking - messages
-template<typename InType>
-auto Conductor::_sendToAllDBServers(InType const& message)
-    -> ResultT<std::vector<ModernMessage>> {
-  _respondedServers.clear();
-
-  auto modernMessage =
-      ModernMessage{.executionNumber = _executionNumber, .payload = message};
-  VPackBuilder in;
-  serialize(in, modernMessage);
-
-  // to support the single server case, we handle it without optimizing it
-  if (!ServerState::instance()->isRunningInCluster()) {
-    // blocking at the moment
-    VPackBuilder out;
-    _feature.handleWorkerRequest(_vocbaseGuard.database(),
-                                 Utils::modernMessagingPath, in.slice(), out);
-    auto result = deserialize<ModernMessage>(out.slice());
-    return {{result}};
-  }
-
-  if (_dbServers.empty()) {
-    LOG_PREGEL("a14fa", WARN) << "No servers registered";
-    return Result{TRI_ERROR_FAILED, "No servers registered"};
-  }
-
-  std::string base = Utils::baseUrl(Utils::workerPrefix);
-
-  VPackBuffer<uint8_t> buffer;
-  buffer.append(in.slice().begin(), in.slice().byteSize());
-
-  network::RequestOptions reqOpts;
-  reqOpts.database = _vocbaseGuard.database().name();
-  reqOpts.timeout = network::Timeout(5.0 * 60.0);
-  reqOpts.skipScheduler = true;
-
-  auto const& nf =
-      _vocbaseGuard.database().server().getFeature<NetworkFeature>();
-  network::ConnectionPool* pool = nf.pool();
-  std::vector<futures::Future<network::Response>> responses;
-
-  for (auto const& server : _dbServers) {
-    responses.emplace_back(network::sendRequestRetry(
-        pool, "server:" + server, fuerte::RestVerb::Post,
-        base + Utils::modernMessagingPath, buffer, reqOpts));
-  }
-
-  std::vector<ModernMessage> workerResponses;
-  futures::collectAll(responses)
-      .thenValue([&](auto results) {
-        for (auto const& tryRes : results) {
-          network::Response const& res = tryRes.get();
-          if (res.ok() && res.statusCode() < 400) {
-            try {
-              auto response = deserialize<ModernMessage>(res.slice());
-              workerResponses.emplace_back(response);
-            } catch (Exception& e) {
-              LOG_PREGEL("56187", ERR)
-                  << "Conductor received unknown message: " << e.message();
-            }
-          }
-        }
-        return workerResponses;
-      })
-      .wait();
-
-  if (workerResponses.size() != responses.size()) {
-    return Result{TRI_ERROR_FAILED, "Not all workers responded"};
-  }
-
-  return {workerResponses};
-}
-
-void Conductor::_ensureUniqueResponse(std::string const& sender) {
-  // check if this the only time we received this
-  if (_respondedServers.find(sender) != _respondedServers.end()) {
-    LOG_PREGEL("c38b8", ERR) << "Received response already from " << sender;
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CONFLICT);
-  }
-  _respondedServers.insert(sender);
-}
-
 std::vector<ShardID> Conductor::getShardIds(ShardID const& collection) const {
   TRI_vocbase_t& vocbase = _vocbaseGuard.database();
   ClusterInfo& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
@@ -642,14 +561,10 @@ std::vector<ShardID> Conductor::getShardIds(ShardID const& collection) const {
   return result;
 }
 
-auto Conductor::changeState(std::unique_ptr<conductor::State> newState)
-    -> void {
-  state = std::move(newState);
-  auto nextState = state->run();
+auto Conductor::_changeState(std::unique_ptr<conductor::State> state) -> void {
+  _state = std::move(state);
+  auto nextState = _state->run();
   if (nextState.has_value()) {
-    changeState(std::move(nextState.value()));
+    _changeState(std::move(nextState.value()));
   }
 }
-
-template auto Conductor::_sendToAllDBServers(
-    CollectPregelResults const& message) -> ResultT<std::vector<ModernMessage>>;

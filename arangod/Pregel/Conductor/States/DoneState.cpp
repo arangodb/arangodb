@@ -48,7 +48,7 @@ auto Done::run() -> std::optional<std::unique_ptr<State>> {
 
 auto Done::_results(bool withId) -> ResultsFuture {
   auto results = std::vector<futures::Future<ResultT<PregelResults>>>{};
-  for (auto&& [_, worker] : conductor.workers) {
+  for (auto&& [_, worker] : conductor._workers) {
     results.emplace_back(
         worker.results(CollectPregelResults{.withId = withId}));
   }

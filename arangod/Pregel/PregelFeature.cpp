@@ -754,11 +754,11 @@ uint64_t PregelFeature::numberOfActiveConductors() const {
   uint64_t nr{0};
   for (auto const& p : _conductors) {
     auto const& c = p.second.conductor;
-    if (c->state->isRunning()) {
+    if (c->_state->isRunning()) {
       ++nr;
       LOG_TOPIC("41564", WARN, Logger::PREGEL)
           << fmt::format("Conductor for executionNumber {} is in state {}.",
-                         c->_executionNumber, c->state->name());
+                         c->_executionNumber, c->_state->name());
     }
   }
   return nr;
