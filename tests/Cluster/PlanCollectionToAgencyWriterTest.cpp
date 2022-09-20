@@ -24,6 +24,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyPaths.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/Utils/PlanCollectionToAgencyWriter.h"
 #include "VocBase/Properties/PlanCollection.h"
 
@@ -34,19 +35,24 @@
 
 namespace arangodb::tests {
 
+namespace {
+auto extractCollectionEntry(VPackSlice agencyOperation, std::string const& key)
+    -> VPackSlice {
+  return agencyOperation.get(std::vector<std::string>{key, "new"});
+}
+}  // namespace
+
 class PlanCollectionToAgencyWriterTest : public ::testing::Test {
  protected:
-  std::string const& dbName() {
-    return databaseName;
-  }
+  std::string const& dbName() { return databaseName; }
 
   std::string collectionPlanPath(PlanCollection const& col) {
     return cluster::paths::root()
-                                    ->arango()
-                                    ->plan()
-                                    ->collections()
-                                    ->database(dbName())
-                                    ->collection(col.internalProperties.id)
+        ->arango()
+        ->plan()
+        ->collections()
+        ->database(dbName())
+        ->collection(col.internalProperties.id)
         ->str();
   }
 
@@ -88,6 +94,172 @@ TEST_F(PlanCollectionToAgencyWriterTest, can_produce_agency_operation) {
   LOG_DEVEL << b.toJson();
 }
 
+/**
+ * SECTION - Basic tests to make sure at least one property per component is
+ * serialized
+ */
+
+TEST_F(PlanCollectionToAgencyWriterTest,
+       default_agency_operation_has_a_constant_property_entry) {
+  PlanCollection col{};
+  col.mutableProperties.name = "test";
+  PlanCollectionToAgencyWriter writer{col};
+  AgencyOperation operation = writer.prepareOperation(dbName());
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bodyBuilder{&b};
+    operation.toVelocyPack(b);
+  }
+  auto entry = extractCollectionEntry(b.slice(), collectionPlanPath(col));
+  ASSERT_TRUE(entry.hasKey(StaticStrings::ShardKeys));
+  auto keys = entry.get(StaticStrings::ShardKeys);
+  ASSERT_TRUE(keys.isArray());
+  EXPECT_EQ(keys.length(), 1);
+  ASSERT_TRUE(keys.at(0).isString());
+  EXPECT_EQ(keys.at(0).copyString(), StaticStrings::KeyString);
+}
+
+TEST_F(PlanCollectionToAgencyWriterTest,
+       default_agency_operation_has_a_mutable_property_entry) {
+  PlanCollection col{};
+  col.mutableProperties.name = "test";
+  PlanCollectionToAgencyWriter writer{col};
+  AgencyOperation operation = writer.prepareOperation(dbName());
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bodyBuilder{&b};
+    operation.toVelocyPack(b);
+  }
+  auto entry = extractCollectionEntry(b.slice(), collectionPlanPath(col));
+  EXPECT_EQ(basics::VelocyPackHelper::getStringValue(
+                entry, StaticStrings::DataSourceName, "notFound"),
+            "test");
+  EXPECT_EQ(basics::VelocyPackHelper::getBooleanValue(
+                entry, StaticStrings::WaitForSyncString, true),
+            false);
+}
+
+TEST_F(PlanCollectionToAgencyWriterTest, default_agency_operation_has_indexes) {
+  PlanCollection col{};
+  col.mutableProperties.name = "test";
+  PlanCollectionToAgencyWriter writer{col};
+  AgencyOperation operation = writer.prepareOperation(dbName());
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bodyBuilder{&b};
+    operation.toVelocyPack(b);
+  }
+
+  auto entry = extractCollectionEntry(b.slice(), collectionPlanPath(col));
+  ASSERT_TRUE(entry.hasKey(StaticStrings::Indexes));
+  auto indexes = entry.get(StaticStrings::Indexes);
+  ASSERT_TRUE(indexes.isArray());
+  EXPECT_EQ(indexes.length(), 1);
+  auto prim = indexes.at(0);
+  ASSERT_TRUE(prim.isObject());
+  EXPECT_EQ(basics::VelocyPackHelper::getStringValue(
+                prim, StaticStrings::IndexName, "notFound"),
+            "primary");
+}
+
+TEST_F(PlanCollectionToAgencyWriterTest, default_agency_operation_has_shards) {
+  PlanCollection col{};
+  col.mutableProperties.name = "test";
+  PlanCollectionToAgencyWriter writer{col};
+  AgencyOperation operation = writer.prepareOperation(dbName());
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bodyBuilder{&b};
+    operation.toVelocyPack(b);
+  }
+  auto entry = extractCollectionEntry(b.slice(), collectionPlanPath(col));
+  ASSERT_TRUE(entry.hasKey("shards"));
+  auto shards = entry.get("shards");
+  ASSERT_TRUE(shards.isObject());
+  ASSERT_TRUE(false) << "Test is not implemented completely";
+  // TODO: Need to assert some values inside the shards.
+}
+
+/**
+ * SECTION - Some selected tests that are not straight-forward with inspect
+ */
+TEST_F(PlanCollectionToAgencyWriterTest,
+       default_agency_operation_has_no_distributeShardsLike) {
+  PlanCollection col{};
+  col.mutableProperties.name = "test";
+  PlanCollectionToAgencyWriter writer{col};
+  AgencyOperation operation = writer.prepareOperation(dbName());
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bodyBuilder{&b};
+    operation.toVelocyPack(b);
+  }
+  auto entry = extractCollectionEntry(b.slice(), collectionPlanPath(col));
+  // Default of Inspect would be to set it to `null`
+  EXPECT_FALSE(entry.hasKey(StaticStrings::DistributeShardsLike));
+}
+
+TEST_F(PlanCollectionToAgencyWriterTest,
+       default_agency_operation_has_no_smartGraphAttribute) {
+  PlanCollection col{};
+  col.mutableProperties.name = "test";
+  PlanCollectionToAgencyWriter writer{col};
+  AgencyOperation operation = writer.prepareOperation(dbName());
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bodyBuilder{&b};
+    operation.toVelocyPack(b);
+  }
+  auto entry = extractCollectionEntry(b.slice(), collectionPlanPath(col));
+  // Default of Inspect would be to set it to `null`
+  EXPECT_FALSE(entry.hasKey(StaticStrings::GraphSmartGraphAttribute));
+}
+
+TEST_F(PlanCollectionToAgencyWriterTest,
+       default_agency_operation_has_no_smartJoinAttribute) {
+  PlanCollection col{};
+  col.mutableProperties.name = "test";
+  PlanCollectionToAgencyWriter writer{col};
+  AgencyOperation operation = writer.prepareOperation(dbName());
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bodyBuilder{&b};
+    operation.toVelocyPack(b);
+  }
+  auto entry = extractCollectionEntry(b.slice(), collectionPlanPath(col));
+  // Default of Inspect would be to set it to `null`
+  EXPECT_FALSE(entry.hasKey(StaticStrings::SmartJoinAttribute));
+}
+
+TEST_F(PlanCollectionToAgencyWriterTest,
+       default_agency_operation_has_status_and_statusString) {
+  PlanCollection col{};
+  col.mutableProperties.name = "test";
+  PlanCollectionToAgencyWriter writer{col};
+  AgencyOperation operation = writer.prepareOperation(dbName());
+
+  VPackBuilder b;
+  {
+    VPackObjectBuilder bodyBuilder{&b};
+    operation.toVelocyPack(b);
+  }
+  auto entry = extractCollectionEntry(b.slice(), collectionPlanPath(col));
+  // Default of Inspect would be to set it to `null`
+  EXPECT_EQ(basics::VelocyPackHelper::getStringValue(entry, "statusString",
+                                                     "notFound"),
+            "test");
+  EXPECT_EQ(basics::VelocyPackHelper::getNumericValue<TRI_vocbase_col_status_e>(
+                entry, "status", TRI_VOC_COL_STATUS_CORRUPTED),
+            TRI_VOC_COL_STATUS_LOADED);
+}
+
 TEST_F(PlanCollectionToAgencyWriterTest, can_produce_agency_callback) {}
 
-}
+}  // namespace arangodb::tests

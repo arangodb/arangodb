@@ -61,7 +61,7 @@ struct CollectionConstantProperties {
   bool isDisjoint = false;
   bool cacheEnabled = false;
 
-  std::string smartGraphAttribute = StaticStrings::Empty;
+  std::optional<std::string> smartGraphAttribute = std::nullopt;
 
   // TODO: Maybe this is better off with a transformator Uint -> col_type_e
   [[nodiscard]] TRI_col_type_e getType() const noexcept {
@@ -75,19 +75,29 @@ struct CollectionConstantProperties {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionConstantProperties& props) {
+  auto distShardsLikeField = std::invoke([&]() {
+    // Make the Inspector ignore distributeShardsLike on write
+    // if there is no value.
+    auto field = f.field("distributeShardsLike", props.distributeShardsLike)
+                     .invariant(UtilityInvariants::isNonEmptyIfPresent);
+    if constexpr (!Inspector::isLoading) {
+      return field;
+    } else {
+      return std::move(field).fallback(f.keep());
+    }
+  });
+
   return f.object(props).fields(
       f.field("isSystem", props.isSystem).fallback(f.keep()),
       f.field("isSmart", props.isSmart).fallback(f.keep()),
       f.field("isDisjoint", props.isDisjoint).fallback(f.keep()),
       f.field("cacheEnabled", props.cacheEnabled).fallback(f.keep()),
       f.field("smartGraphAttribute", props.smartGraphAttribute)
-          .fallback(f.keep()),
+          .invariant(UtilityInvariants::isNonEmptyIfPresent),
       f.field("numberOfShards", props.numberOfShards)
           .fallback(f.keep())
           .invariant(UtilityInvariants::isGreaterZero),
-      f.field("distributeShardsLike", props.distributeShardsLike)
-          .fallback(f.keep())
-          .invariant(UtilityInvariants::isNonEmptyIfPresent),
+      distShardsLikeField,
       f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute)
           .invariant(UtilityInvariants::isNonEmptyIfPresent),
       f.field("shardingStrategy", props.shardingStrategy)

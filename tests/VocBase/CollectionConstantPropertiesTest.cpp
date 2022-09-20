@@ -107,7 +107,7 @@ TEST_F(CollectionConstantPropertiesTest, test_minimal_user_input) {
   }
   EXPECT_FALSE(testee->isSmart);
   EXPECT_FALSE(testee->isDisjoint);
-  EXPECT_EQ(testee->smartGraphAttribute, "");
+  EXPECT_FALSE(testee->smartGraphAttribute.has_value());
 }
 
 TEST_F(CollectionConstantPropertiesTest, test_collection_type) {
@@ -173,11 +173,11 @@ GenerateBoolAttributeTest(CollectionConstantPropertiesTest, cacheEnabled);
 
 GeneratePositiveIntegerAttributeTest(CollectionConstantPropertiesTest,
                                      numberOfShards);
-GenerateStringAttributeTest(CollectionConstantPropertiesTest,
-                            smartGraphAttribute);
+GenerateOptionalStringAttributeTest(CollectionConstantPropertiesTest,
+                                    smartGraphAttribute);
 
-GenerateStringAttributeTest(CollectionConstantPropertiesTest,
-                            distributeShardsLike);
+GenerateOptionalStringAttributeTest(CollectionConstantPropertiesTest,
+                                    distributeShardsLike);
 GenerateOptionalStringAttributeTest(CollectionConstantPropertiesTest,
                                     smartJoinAttribute);
 
