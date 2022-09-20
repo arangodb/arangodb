@@ -63,7 +63,7 @@
       ]
     },
 
-    nodeColorAttributes: [],
+    nodeColorAttributes: new Map(),
 
     activeNodes: [],
     selectedNodes: {},
@@ -1665,19 +1665,13 @@
 
         if (found === false) {
           if(ajaxData.nodeColorAttribute !== undefined && ajaxData.nodeColorAttribute !== '') {
-            if(!self.nodeColorAttributes.some(node => node.name === newNode.nodeColorAttributeValue)) {
+          let color = self.nodeColorAttributes.get(newNode.nodeColorAttributeValue);
+          if(!color) {
               const tempNodeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
-              const nodeColorAttributeObj = {
-                'name': newNode.nodeColorAttributeValue || '',
-                'color': tempNodeColor
-              };
-              self.nodeColorAttributes.push(nodeColorAttributeObj);
+              self.nodeColorAttributes.set(newNode.nodeColorAttributeValue, tempNodeColor);
+              color = tempNodeColor;
             }
-
-            const categoryColor = self.nodeColorAttributes.find(object => object.name === newNode.nodeColorAttributeValue) ? '#' + self.nodeColorAttributes.find(object => object.name === newNode.nodeColorAttributeValue).color : '#00f';
-            //if(self.nodeColorAttributes.find(object => object.name === newNode.nodeColorAttributeValue)) {
-              newNode.color = categoryColor;
-            //}
+            newNode.color = '#' + color;
           }
           self.currentGraph.graph.addNode(newNode);
           newNodeCounter++;
@@ -1922,16 +1916,14 @@
       var self = this;
           
       s.graph.nodes().forEach(function (n) {
-        if(!self.nodeColorAttributes.some(node => node.name === n.nodeColorAttributeValue)) {
+        let color = self.nodeColorAttributes.get(n.nodeColorAttributeValue);
+        if(!color) {
           const tempNodeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
-          const nodeColorAttributeObj = {
-            'name': n.nodeColorAttributeValue || '',
-            'color': tempNodeColor
-          };
-          self.nodeColorAttributes.push(nodeColorAttributeObj);
+          self.nodeColorAttributes.set(n.nodeColorAttributeValue, tempNodeColor);
+          color = tempNodeColor;
         }
-        const categoryColor = self.nodeColorAttributes.find(object => object.name === n.nodeColorAttributeValue) ? '#' + self.nodeColorAttributes.find(object => object.name === n.nodeColorAttributeValue).color : '#f00';
-        n.color = categoryColor;
+
+        n.color = '#' + color;
       });
       s.refresh();
     },
