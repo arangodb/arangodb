@@ -120,17 +120,19 @@ Index::SortCosts IResearchInvertedIndexMock::supportsSortCondition(
 }
 
 Index::FilterCosts IResearchInvertedIndexMock::supportsFilterCondition(
+    transaction::Methods& trx,
     std::vector<std::shared_ptr<Index>> const& allIndexes,
     aql::AstNode const* node, aql::Variable const* reference,
     size_t itemsInIndex) const {
   return IResearchInvertedIndex::supportsFilterCondition(
-      IResearchDataStore::id(), _fields, allIndexes, node, reference,
+      trx, IResearchDataStore::id(), _fields, allIndexes, node, reference,
       itemsInIndex);
 }
 
 aql::AstNode* IResearchInvertedIndexMock::specializeCondition(
-    aql::AstNode* node, aql::Variable const* reference) const {
-  return IResearchInvertedIndex::specializeCondition(node, reference);
+    transaction::Methods& trx, aql::AstNode* node,
+    aql::Variable const* reference) const {
+  return IResearchInvertedIndex::specializeCondition(trx, node, reference);
 }
 
 Result IResearchInvertedIndexMock::insert(transaction::Methods& trx,
