@@ -43,6 +43,7 @@
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralRequest.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
 #include "RestServer/ServerFeature.h"
@@ -1343,6 +1344,10 @@ bool AgencyComm::tryInitializeStructure() {
           VPackObjectBuilder d2(&builder);
           builder.add("name", VPackValue("_system"));
           builder.add("id", VPackValue("1"));
+          builder.add("replicationVersion",
+                      arangodb::replication::versionToString(
+                          _server.getFeature<DatabaseFeature>()
+                              .defaultReplicationVersion()));
         }
       }
       builder.add("Lock", VPackValue("UNLOCKED"));
