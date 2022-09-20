@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue */
+/*global assertEqual, assertNotEqual, assertTrue, print */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the deadlock detection
@@ -150,7 +150,6 @@ function ExclusiveSuite () {
           }
 
           db._executeTransaction({
-            print(Date() + ' TASK transaction');
             collections: { exclusive: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
             action: function () {
               let db = require("internal").db;
