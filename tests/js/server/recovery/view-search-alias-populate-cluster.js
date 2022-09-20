@@ -154,7 +154,7 @@ function recoverySuite() {
         figures = db._collection('UnitTestsRecoveryDummy').getIndexes(true, true)
           .find(e => e.name === "i1")
           .figures;
-        if (figures.numDocs > 0) {
+        if (figures.numDocs > 500) {
           break;
         }
       }
