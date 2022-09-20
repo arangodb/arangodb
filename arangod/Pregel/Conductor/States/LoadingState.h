@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <optional>
 #include "State.h"
 
 namespace arangodb::pregel {
@@ -36,6 +35,7 @@ struct Loading : State {
   Loading(Conductor& conductor);
   ~Loading();
   auto run() -> std::optional<std::unique_ptr<State>> override;
+  auto canBeCanceled() -> bool override { return false; }
   auto name() const -> std::string override { return "loading"; };
   auto isRunning() const -> bool override { return true; }
   auto getExpiration() const

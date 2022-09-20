@@ -41,6 +41,7 @@ struct InError : State {
   auto run() -> std::optional<std::unique_ptr<State>> override {
     return std::nullopt;
   };
+  auto canBeCanceled() -> bool override { return true; }
   auto name() const -> std::string override { return "in error"; };
   auto isRunning() const -> bool override { return false; }
   auto getExpiration() const

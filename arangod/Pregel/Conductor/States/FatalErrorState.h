@@ -40,6 +40,7 @@ struct FatalError : State {
   auto run() -> std::optional<std::unique_ptr<State>> override {
     return std::nullopt;
   };
+  auto canBeCanceled() -> bool override { return true; }
   auto getResults(bool withId) -> ResultT<PregelResults> override;
   auto name() const -> std::string override { return "fatal error"; };
   auto isRunning() const -> bool override { return false; }

@@ -167,12 +167,10 @@ Conductor::Conductor(
 }
 
 Conductor::~Conductor() {
-  if (_state != ExecutionState::CANCELED && _state != ExecutionState::DEFAULT) {
-    try {
-      this->cancel();
-    } catch (...) {
-      // must not throw exception from here
-    }
+  try {
+    this->cancel();
+  } catch (...) {
+    // must not throw exception from here
   }
   _feature.metrics()->pregelConductorsNumber->fetch_sub(1);
 }
@@ -268,7 +266,9 @@ void Conductor::workerStatusUpdate(StatusUpdated const& data) {
 
 void Conductor::cancel() {
   MUTEX_LOCKER(guard, _callbackMutex);
-  changeState(std::make_unique<conductor::Canceled>(*this, _ttl));
+  if (state->canBeCanceled()) {
+    changeState(std::make_unique<conductor::Canceled>(*this, _ttl));
+  }
 }
 
 // resolves into an ordered list of shards for each collection on each

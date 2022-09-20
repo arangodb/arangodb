@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <chrono>
-
 #include "State.h"
 
 namespace arangodb::pregel {
@@ -38,6 +36,7 @@ struct Done : State {
   Done(Conductor& conductor, std::chrono::seconds const& ttl);
   ~Done() = default;
   auto run() -> std::optional<std::unique_ptr<State>> override;
+  auto canBeCanceled() -> bool override { return true; }
   auto getResults(bool withId) -> ResultT<PregelResults> override;
   auto name() const -> std::string override { return "done"; };
   auto isRunning() const -> bool override { return false; }
