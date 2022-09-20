@@ -946,7 +946,7 @@ authRouter.get('/graph/:name', function (req, res) {
             }
           } else if (config.nodeColorAttribute !== '') {
             var attr = node[config.nodeColorAttribute];
-            if (attr !== '') {
+            if (attr !== undefined && attr !== null) {
                 nodeObj['nodeColorAttributeKey'] = config.nodeColorAttribute;
                 nodeObj['nodeColorAttributeValue'] = attr;
                 nodeObj.color = tmpObjNodes[attr];
