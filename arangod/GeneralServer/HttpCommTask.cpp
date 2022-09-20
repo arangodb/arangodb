@@ -510,9 +510,25 @@ void HttpCommTask<T>::doProcessRequest() {
     this->_generalServerFeature.countHttp1Request(body.size());
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
+      std::string bodyForLogging;
+      try {
+        velocypack::Slice s = _request->payload(false);
+        if (!s.isNone()) {
+          // "none" can happen if the content-type is neither JSON nor vpack
+          bodyForLogging = StringUtils::escapeUnicode(s.toJson());
+        }
+      } catch (...) {
+        // cannot stringify request body
+      }
+
+      if (bodyForLogging.empty() && !body.empty()) {
+        bodyForLogging = "potential binary data";
+      }
+
       LOG_TOPIC("b9e76", TRACE, Logger::REQUESTS)
           << "\"http-request-body\",\"" << (void*)this << "\",\""
-          << StringUtils::escapeUnicode(std::string(body)) << "\"";
+          << rest::contentTypeToString(_request->contentType()) << "\",\""
+          << _request->contentLength() << "\",\"" << bodyForLogging << "\"";
     }
   }
 

@@ -174,6 +174,30 @@ function ViewSearchAliasSuite() {
       }
     },
 
+    testFullUpdateProperties: function () {
+      var c1 = db._create("c1");
+      c1.ensureIndex({name: "i1", type: "inverted", fields: ["a"]});
+      var v1 = db._createView("v1", "search-alias", {});
+      try {
+        assertEqual(v1.name(), "v1");
+        var idxs = [{collection: "c1", index: "i1"}];
+        v1.properties({indexes: idxs}, true);  // default
+        assertEqual(v1.properties().indexes, idxs);
+        v1.properties({indexes: idxs}, false);
+        assertEqual(v1.properties().indexes, idxs);
+        v1.properties({indexes: idxs}, false);
+        assertEqual(v1.properties().indexes, idxs);
+        c1.drop();
+      } finally {
+        assertEqual(v1.properties().indexes, []);
+        v1.drop();
+        try {
+          c1.drop();
+        } catch (_) {
+        }
+      }
+    },
+
     testAddNonCompatibleIndexesSameCollection1: function () {
       var c1 = db._create("c1");
       c1.ensureIndex({name: "i1", type: "inverted", fields: ["c", "e"]});
@@ -254,7 +278,7 @@ function ViewSearchAliasSuite() {
     testAddNonCompatibleIndexes3: function () {
       var c1 = db._create("c1");
       var c2 = db._create("c2");
-      c1.ensureIndex({name: "i1", type: "inverted", fields: [{name: "a.b.c", analyzer: "text_en", searchField:true}]});
+      c1.ensureIndex({name: "i1", type: "inverted", fields: [{name: "a.b.c", analyzer: "text_en", searchField: true}]});
       c2.ensureIndex({name: "i2", type: "inverted", fields: [{name: "a.b.c", analyzer: "text_en"}]});
       var v1 = db._createView("v1", "search-alias", {});
       try {
@@ -344,11 +368,11 @@ function ViewSearchAliasSuite() {
     },
     testQuerySearchField: function () {
       var c1 = db._create("c1");
-      c1.save({i:1, a:"aaa"});
-      c1.save({i:2, a:["aaa", "bbb"]});
-      c1.save({i:3, a:["ccc", "bbb"]});
-      c1.save({i:4, a:1});
-      c1.ensureIndex({name: "i1", type: "inverted", fields: [{name: "a", analyzer: "text_en", searchField:true}]});
+      c1.save({i: 1, a: "aaa"});
+      c1.save({i: 2, a: ["aaa", "bbb"]});
+      c1.save({i: 3, a: ["ccc", "bbb"]});
+      c1.save({i: 4, a: 1});
+      c1.ensureIndex({name: "i1", type: "inverted", fields: [{name: "a", analyzer: "text_en", searchField: true}]});
       var v1 = db._createView("v1", "search-alias", {});
       try {
         v1.properties({indexes: [{collection: "c1", index: "i1"}]});
@@ -363,11 +387,11 @@ function ViewSearchAliasSuite() {
     },
     testQuerySearchFieldSubfield: function () {
       var c1 = db._create("c1");
-      c1.save({i:1, a:[{b:"aaa"}]});
-      c1.save({i:2, a:[{b:"bbb"}, {b:"aaa"}]});
-      c1.save({i:3, a:[{b:"ccc"}, {b:"bbb"}]});
-      c1.save({i:4, a:1});
-      c1.ensureIndex({name: "i1", type: "inverted", searchField:true, fields: [{name: "a.b", analyzer: "text_en"}]});
+      c1.save({i: 1, a: [{b: "aaa"}]});
+      c1.save({i: 2, a: [{b: "bbb"}, {b: "aaa"}]});
+      c1.save({i: 3, a: [{b: "ccc"}, {b: "bbb"}]});
+      c1.save({i: 4, a: 1});
+      c1.ensureIndex({name: "i1", type: "inverted", searchField: true, fields: [{name: "a.b", analyzer: "text_en"}]});
       var v1 = db._createView("v1", "search-alias", {});
       try {
         v1.properties({indexes: [{collection: "c1", index: "i1"}]});

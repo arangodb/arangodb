@@ -950,12 +950,16 @@ class instance {
         print(Date() + ' Server "' + this.name + '" shutdown: detected irregular death by monitor: pid', this.pid);
       }
       if (this.exitStatus.status === 'TERMINATED') {
-        return;
+        return true;
       }
       sleep(1);
       timeout--;
     }
     this.shutDownOneInstance({nonAgenciesCount: 1}, true, 0);
+    crashUtils.aggregateDebugger(this, this.options);
+    this.waitForExitAfterDebugKill();
+    this.pid = null;
+    return false;
   }
 
   shutDownOneInstance(counters, forceTerminate, timeout) {

@@ -27,7 +27,7 @@
 #include "Aql/AttributeNamePath.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
@@ -478,8 +478,8 @@ CostEstimate IndexNode::estimateCost() const {
 
     if (root != nullptr && root->numMembers() > i) {
       auto const* condition = _allCoveredByOneIndex ? root : root->getMember(i);
-      costs = _indexes[i]->supportsFilterCondition({}, condition, _outVariable,
-                                                   itemsInCollection);
+      costs = _indexes[i]->supportsFilterCondition(
+          trx, {}, condition, _outVariable, itemsInCollection);
     }
 
     totalItems += costs.estimatedItems;
