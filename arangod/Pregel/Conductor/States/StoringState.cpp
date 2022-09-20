@@ -46,7 +46,7 @@ auto Storing::run() -> std::optional<std::unique_ptr<State>> {
             LOG_PREGEL_CONDUCTOR("bc495", ERR) << fmt::format(
                 "Got unsuccessful response from worker while storing graph: {}",
                 result.get().errorMessage());
-            return std::make_unique<InError>(conductor, conductor._ttl);
+            return std::make_unique<FatalError>(conductor, conductor._ttl);
           }
           auto reports = result.get().get().reports.slice();
           if (reports.isArray()) {
@@ -63,7 +63,8 @@ auto Storing::run() -> std::optional<std::unique_ptr<State>> {
                       "Got unsuccessful response from worker while cleaning "
                       "up: {}",
                       result.get().errorMessage());
-                  return std::make_unique<InError>(conductor, conductor._ttl);
+                  return std::make_unique<FatalError>(conductor,
+                                                      conductor._ttl);
                 }
               }
               if (conductor._inErrorAbort) {

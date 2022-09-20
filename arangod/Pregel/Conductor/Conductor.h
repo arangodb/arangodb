@@ -40,7 +40,6 @@
 #include "Pregel/Conductor/States/ComputingState.h"
 #include "Pregel/Conductor/States/DoneState.h"
 #include "Pregel/Conductor/States/FatalErrorState.h"
-#include "Pregel/Conductor/States/InErrorState.h"
 #include "Pregel/Conductor/States/InitialState.h"
 #include "Pregel/Conductor/States/LoadingState.h"
 #include "Pregel/Conductor/States/State.h"
@@ -79,7 +78,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   friend struct conductor::Storing;
   friend struct conductor::Canceled;
   friend struct conductor::Done;
-  friend struct conductor::InError;
   friend struct conductor::FatalError;
 
   std::unordered_map<ServerID, conductor::WorkerApi> _workers;

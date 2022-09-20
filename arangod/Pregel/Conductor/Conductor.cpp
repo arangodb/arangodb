@@ -41,7 +41,6 @@
 #include "Pregel/Conductor/States/ComputingState.h"
 #include "Pregel/Conductor/States/DoneState.h"
 #include "Pregel/Conductor/States/FatalErrorState.h"
-#include "Pregel/Conductor/States/InErrorState.h"
 #include "Pregel/Conductor/States/LoadingState.h"
 #include "Pregel/Conductor/States/State.h"
 #include "Pregel/Conductor/States/StoringState.h"

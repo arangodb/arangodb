@@ -3,7 +3,6 @@
 #include "Pregel/Conductor/Conductor.h"
 #include "Metrics/Gauge.h"
 #include "Pregel/Conductor/States/FatalErrorState.h"
-#include "Pregel/Conductor/States/InErrorState.h"
 #include "Pregel/Conductor/States/State.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
@@ -102,7 +101,8 @@ auto Computing::run() -> std::optional<std::unique_ptr<State>> {
                       "preparing global super step: "
                       "{}\n",
                       result.get().errorMessage());
-                  return std::make_unique<InError>(conductor, conductor._ttl);
+                  return std::make_unique<FatalError>(conductor,
+                                                      conductor._ttl);
                 }
                 auto gssPrepared = result.get().get();
                 conductor._aggregators->aggregateValues(
@@ -137,8 +137,8 @@ auto Computing::run() -> std::optional<std::unique_ptr<State>> {
                         LOG_PREGEL_CONDUCTOR("f34bb", ERR)
                             << "Conductor could not start GSS "
                             << conductor._globalSuperstep;
-                        return std::make_unique<InError>(conductor,
-                                                         conductor._ttl);
+                        return std::make_unique<FatalError>(conductor,
+                                                            conductor._ttl);
                       }
                       auto finished = result.get().get();
                       conductor._statistics.accumulateMessageStats(

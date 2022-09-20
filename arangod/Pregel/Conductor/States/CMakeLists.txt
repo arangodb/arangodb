@@ -5,5 +5,4 @@ target_sources(arango_pregel PRIVATE
   StoringState.cpp
   CanceledState.cpp
   DoneState.cpp
-  InErrorState.cpp
   FatalErrorState.cpp)
