@@ -549,7 +549,7 @@ auto InspectorBase<Derived, Context, TargetInspector>::embedFields(
       return p->self().parent();
     }
   }();
-  auto insp = [this, &parentInspector]() {
+  auto insp = [&]() {
     if constexpr (InspectorBase::hasContext) {
       return detail::EmbeddedFieldInspector<TargetInspector, Context>(
           parentInspector, this->getContext());
