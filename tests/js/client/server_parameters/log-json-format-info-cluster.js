@@ -112,13 +112,13 @@ function LoggerSuite() {
       }
       assertEqual(3, filtered.length);
 
-      assertTrue(filtered[0].match(/testmann: start/));
+      assertMatch(/testmann: start/, filtered[0]);
       const parsedRes = JSON.parse(filtered[1]);
       const parsedMsg = JSON.parse(parsedRes.message.substring(parsedRes.message.indexOf("{")));
 
       assertEqual(res1, parsedMsg);
 
-      assertTrue(filtered[2].match(/testmann: done/));
+      assertMatch(/testmann: done/, filtered[2]);
     },
   };
 }

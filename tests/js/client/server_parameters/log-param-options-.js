@@ -85,7 +85,7 @@ function LoggerSuite() {
       }
       assertEqual(52, filtered.length);
 
-      assertTrue(filtered[0].match(/testmann: start/));
+      assertMatch(/testmann: start/, filtered[0]);
       for (let i = 1; i < 51; ++i) {
         const msg = filtered[i];
         assertTrue(msg.startsWith("HOSTNAME"));
@@ -94,7 +94,7 @@ function LoggerSuite() {
         assertMatch(/testmann: testi\d+/, msg);
 
       }
-      assertTrue(filtered[51].match(/testmann: done/));
+      assertMatch(/testmann: done/, filtered[51]);
 
       res = arango.GET("/_admin/log?returnBodyAsJSON=true");
       assertTrue(res.hasOwnProperty("totalAmount"));
@@ -105,10 +105,10 @@ function LoggerSuite() {
       assertTrue(res.hasOwnProperty("text"));
 
       for (let i = 0; i < res.totalAmount; ++i) {
-        assertMatch(/\d+/, res.lid[i]);
+        assertMatch(/^\d+$/, res.lid[i]);
         assertMatch(/^[A-Za-z]{1,}$/, res.topic[i]);
-        assertMatch(/\d+/, res.level[i]);
-        assertMatch(/\d+/, res.timestamp[i]);
+        assertMatch(/^\d+$/, res.level[i]);
+        assertMatch(/^\d+$/, res.timestamp[i]);
       }
     },
 
