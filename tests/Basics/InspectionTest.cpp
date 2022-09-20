@@ -571,7 +571,7 @@ TEST_F(VPackSaveInspectorTest, store_empty_object) {
   auto result = inspector.apply(empty);
   EXPECT_TRUE(result.ok());
   EXPECT_TRUE(builder.slice().isObject());
-  EXPECT_EQ(0, builder.slice().length());
+  EXPECT_EQ(0u, builder.slice().length());
 }
 
 TEST_F(VPackSaveInspectorTest, store_int) {
@@ -663,14 +663,14 @@ TEST_F(VPackSaveInspectorTest, store_list) {
   ASSERT_TRUE(slice.isObject());
   auto list = slice["vec"];
   ASSERT_TRUE(list.isArray());
-  ASSERT_EQ(3, list.length());
+  ASSERT_EQ(3u, list.length());
   EXPECT_EQ(l.vec[0].i.value, list[0]["i"].getInt());
   EXPECT_EQ(l.vec[1].i.value, list[1]["i"].getInt());
   EXPECT_EQ(l.vec[2].i.value, list[2]["i"].getInt());
 
   list = slice["list"];
   ASSERT_TRUE(list.isArray());
-  ASSERT_EQ(2, list.length());
+  ASSERT_EQ(2u, list.length());
   auto it = l.list.begin();
   EXPECT_EQ(*it++, list[0].getInt());
   EXPECT_EQ(*it++, list[1].getInt());
@@ -689,14 +689,14 @@ TEST_F(VPackSaveInspectorTest, store_map) {
   ASSERT_TRUE(slice.isObject());
   auto obj = slice["map"];
   ASSERT_TRUE(obj.isObject());
-  ASSERT_EQ(3, obj.length());
+  ASSERT_EQ(3u, obj.length());
   EXPECT_EQ(m.map["1"].i.value, obj["1"]["i"].getInt());
   EXPECT_EQ(m.map["2"].i.value, obj["2"]["i"].getInt());
   EXPECT_EQ(m.map["3"].i.value, obj["3"]["i"].getInt());
 
   obj = slice["unordered"];
   ASSERT_TRUE(obj.isObject());
-  ASSERT_EQ(2, obj.length());
+  ASSERT_EQ(2u, obj.length());
   EXPECT_EQ(m.unordered["4"], obj["4"].getInt());
   EXPECT_EQ(m.unordered["5"], obj["5"].getInt());
 }
@@ -715,23 +715,23 @@ TEST_F(VPackSaveInspectorTest, store_tuples) {
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
   auto list = slice["tuple"];
-  ASSERT_EQ(3, list.length());
+  ASSERT_EQ(3u, list.length());
   EXPECT_EQ(std::get<0>(t.tuple), list[0].copyString());
   EXPECT_EQ(std::get<1>(t.tuple), list[1].getInt());
   EXPECT_EQ(std::get<2>(t.tuple), list[2].getDouble());
 
   list = slice["pair"];
-  ASSERT_EQ(2, list.length());
+  ASSERT_EQ(2u, list.length());
   EXPECT_EQ(std::get<0>(t.pair), list[0].getInt());
   EXPECT_EQ(std::get<1>(t.pair), list[1].copyString());
 
   list = slice["array1"];
-  ASSERT_EQ(2, list.length());
+  ASSERT_EQ(2u, list.length());
   EXPECT_EQ(t.array1[0], list[0].copyString());
   EXPECT_EQ(t.array1[1], list[1].copyString());
 
   list = slice["array2"];
-  ASSERT_EQ(3, list.length());
+  ASSERT_EQ(3u, list.length());
   EXPECT_EQ(t.array2[0], list[0].getInt());
   EXPECT_EQ(t.array2[1], list[1].getInt());
   EXPECT_EQ(t.array2[2], list[2].getInt());
@@ -753,7 +753,7 @@ TEST_F(VPackSaveInspectorTest, store_optional) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(5, slice.length());
+  EXPECT_EQ(5u, slice.length());
   // a and b have fallbacks, so we need to serialize them explicitly as null
   EXPECT_TRUE(slice["a"].isNull());
   EXPECT_TRUE(slice["b"].isNull());
@@ -761,14 +761,14 @@ TEST_F(VPackSaveInspectorTest, store_optional) {
 
   auto vec = slice["vec"];
   ASSERT_TRUE(vec.isArray());
-  ASSERT_EQ(3, vec.length());
+  ASSERT_EQ(3u, vec.length());
   EXPECT_EQ(1, vec[0].getInt());
   EXPECT_TRUE(vec[1].isNull());
   EXPECT_EQ(3, vec[2].getInt());
 
   auto map = slice["map"];
   ASSERT_TRUE(map.isObject());
-  ASSERT_EQ(3, map.length());
+  ASSERT_EQ(3u, map.length());
   EXPECT_EQ(1, map["1"].getInt());
   EXPECT_TRUE(map["2"].isNull());
   EXPECT_EQ(3, map["3"].getInt());
@@ -794,12 +794,12 @@ TEST_F(VPackSaveInspectorTest, store_optional_pointer) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(5, slice.length());
+  EXPECT_EQ(5u, slice.length());
   EXPECT_EQ(42, slice["b"].getInt());
   EXPECT_EQ(43, slice["d"]["i"].getInt());
   auto vec = slice["vec"];
   EXPECT_TRUE(vec.isArray());
-  EXPECT_EQ(3, vec.length());
+  EXPECT_EQ(3u, vec.length());
   EXPECT_EQ(1, vec[0].getInt());
   EXPECT_TRUE(vec[1].isNull());
   EXPECT_EQ(2, vec[2].getInt());
@@ -857,7 +857,7 @@ TEST_F(VPackSaveInspectorTest, store_object_with_optional_field_transform) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(2, slice.length());
+  EXPECT_EQ(2u, slice.length());
   EXPECT_EQ("1", slice["x"].copyString());
   EXPECT_EQ("3", slice["z"].copyString());
 }
@@ -880,7 +880,7 @@ TEST_F(VPackSaveInspectorTest, store_type_with_explicitly_ignored_fields) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(1, slice.length());
+  EXPECT_EQ(1u, slice.length());
 }
 
 TEST_F(VPackSaveInspectorTest, store_type_with_unsafe_fields) {
@@ -939,19 +939,19 @@ TEST_F(VPackSaveInspectorTest, store_unqualified_variant) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(1, slice["a"].length());
+  EXPECT_EQ(1u, slice["a"].length());
   EXPECT_EQ("foobar", slice["a"]["string"].stringView());
 
-  EXPECT_EQ(1, slice["b"].length());
+  EXPECT_EQ(1u, slice["b"].length());
   EXPECT_EQ(42, slice["b"]["int"].getInt());
 
-  EXPECT_EQ(1, slice["c"].length());
+  EXPECT_EQ(1u, slice["c"].length());
   EXPECT_EQ(1, slice["c"]["Struct1"]["v"].getInt());
 
-  EXPECT_EQ(1, slice["d"].length());
+  EXPECT_EQ(1u, slice["d"].length());
   EXPECT_EQ(2, slice["d"]["Struct2"]["v"].getInt());
 
-  EXPECT_EQ(1, slice["e"].length());
+  EXPECT_EQ(1u, slice["e"].length());
   EXPECT_TRUE(slice["e"]["nil"].isEmptyObject());
 }
 
@@ -963,7 +963,7 @@ TEST_F(VPackSaveInspectorTest, store_string_enum) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isArray());
-  ASSERT_EQ(3, slice.length());
+  ASSERT_EQ(3u, slice.length());
   EXPECT_EQ("value1", slice[0].copyString());
   EXPECT_EQ("value2", slice[1].copyString());
   EXPECT_EQ("value2", slice[2].copyString());
@@ -977,7 +977,7 @@ TEST_F(VPackSaveInspectorTest, store_int_enum) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isArray());
-  ASSERT_EQ(3, slice.length());
+  ASSERT_EQ(3u, slice.length());
   EXPECT_EQ(1, slice[0].getInt());
   EXPECT_EQ(2, slice[1].getInt());
   EXPECT_EQ(2, slice[2].getInt());
@@ -990,7 +990,7 @@ TEST_F(VPackSaveInspectorTest, store_mixed_enum) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isArray());
-  ASSERT_EQ(2, slice.length());
+  ASSERT_EQ(2u, slice.length());
   EXPECT_EQ("value1", slice[0].copyString());
   EXPECT_EQ("value2", slice[1].copyString());
 }
@@ -1163,7 +1163,7 @@ TEST_F(VPackLoadInspectorTest, load_list) {
   auto result = inspector.apply(l);
   ASSERT_TRUE(result.ok());
 
-  EXPECT_EQ(3, l.vec.size());
+  EXPECT_EQ(3u, l.vec.size());
   EXPECT_EQ(1, l.vec[0].i.value);
   EXPECT_EQ(2, l.vec[1].i.value);
   EXPECT_EQ(3, l.vec[2].i.value);
@@ -1333,7 +1333,7 @@ TEST_F(VPackLoadInspectorTest, load_optional_pointer) {
   ASSERT_NE(nullptr, p.d);
   EXPECT_EQ(43, p.d->i.value);
 
-  ASSERT_EQ(3, p.vec.size());
+  ASSERT_EQ(3u, p.vec.size());
   ASSERT_NE(nullptr, p.vec[0]);
   EXPECT_EQ(1, *p.vec[0]);
   EXPECT_EQ(nullptr, p.vec[1]);
@@ -2150,7 +2150,7 @@ TEST_F(VPackLoadInspectorTest, load_string_enum) {
   std::vector<MyStringEnum> enums;
   auto result = inspector.apply(enums);
   ASSERT_TRUE(result.ok());
-  ASSERT_EQ(2, enums.size());
+  ASSERT_EQ(2u, enums.size());
   EXPECT_EQ(MyStringEnum::kValue1, enums[0]);
   EXPECT_EQ(MyStringEnum::kValue2, enums[1]);
 }
@@ -2165,7 +2165,7 @@ TEST_F(VPackLoadInspectorTest, load_int_enum) {
   std::vector<MyIntEnum> enums;
   auto result = inspector.apply(enums);
   ASSERT_TRUE(result.ok());
-  ASSERT_EQ(2, enums.size());
+  ASSERT_EQ(2u, enums.size());
   EXPECT_EQ(MyIntEnum::kValue1, enums[0]);
   EXPECT_EQ(MyIntEnum::kValue2, enums[1]);
 }
@@ -2182,7 +2182,7 @@ TEST_F(VPackLoadInspectorTest, load_mixed_enum) {
   std::vector<MyMixedEnum> enums;
   auto result = inspector.apply(enums);
   ASSERT_TRUE(result.ok());
-  ASSERT_EQ(4, enums.size());
+  ASSERT_EQ(4u, enums.size());
   EXPECT_EQ(MyMixedEnum::kValue1, enums[0]);
   EXPECT_EQ(MyMixedEnum::kValue1, enums[1]);
   EXPECT_EQ(MyMixedEnum::kValue2, enums[2]);
