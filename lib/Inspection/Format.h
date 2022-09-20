@@ -63,7 +63,7 @@ struct fmt::formatter<VPackSlice> {
       case Presentation::NotPretty:
       default:
         return fmt::format_to(ctx.out(), "{}", slice.toJson());
-     }
+    }
   }
 };
 
