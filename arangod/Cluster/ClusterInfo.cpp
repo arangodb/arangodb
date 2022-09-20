@@ -6003,8 +6003,9 @@ std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
 
   while (true) {
     {
-      READ_LOCKER(readLocker, _currentProt.lock);
       {
+        // TODO: do we need to check here if _planProt is valid?
+        READ_LOCKER(readLocker, _planProt.lock);
         // if we find a replicated log for this shard, then this is a
         // replication 2.0 db, in which case we want to use the participant
         // information from the log instead
@@ -6022,9 +6023,11 @@ std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
               result->emplace_back(k);
             }
           }
+          return result;
         }
       }
 
+      READ_LOCKER(readLocker, _currentProt.lock);
       // _shardIds is a map-type <ShardId,
       // std::shared_ptr<std::vector<ServerId>>>
       auto it = _shardIds.find(shardID);
@@ -6068,18 +6071,13 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
   TRI_ASSERT(!shardIds.empty());
 
   containers::FlatHashMap<ShardID, ServerID> result;
-  int tries = 0;
-
-  if (!_currentProt.isValid) {
-    Result r = waitForCurrent(1).get();
-    if (r.fail()) {
-      THROW_ARANGO_EXCEPTION(r);
-    }
-  }
 
   {
-    READ_LOCKER(readLocker, _currentProt.lock);
+    // TODO: do we need to check here if _planProt is valid?
     bool isReplicationTwo = false;
+
+    READ_LOCKER(readLocker, _planProt.lock);
+
     for (auto const& shardId : shardIds) {
       auto logId = LogicalCollection::tryShardIdToStateId(shardId);
       if (!logId.has_value()) {
@@ -6107,6 +6105,17 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
     }
     if (isReplicationTwo) {
       return result;
+    }
+
+    // fall through to non-replication2 handling
+  }
+
+  int tries = 0;
+
+  if (!_currentProt.isValid) {
+    Result r = waitForCurrent(1).get();
+    if (r.fail()) {
+      THROW_ARANGO_EXCEPTION(r);
     }
   }
 
