@@ -37,13 +37,17 @@
 #include <velocypack/velocypack-memory.h>
 
 #include "Inspection/Access.h"
-#include "Inspection/ValidateInspector.h"
+#include "Inspection/Format.h"
+#include "Inspection/VPack.h"
 #include "Inspection/VPackLoadInspector.h"
 #include "Inspection/VPackSaveInspector.h"
-#include "Inspection/VPack.h"
+#include "Inspection/ValidateInspector.h"
 #include "velocypack/Builder.h"
 
 #include "Logger/LogMacros.h"
+
+#include <fmt/core.h>
+#include <fmt/ostream.h>
 
 namespace {
 
@@ -366,6 +370,9 @@ auto inspect(Inspector& f, AnEmptyObject& x) {
 }
 
 }  // namespace
+
+template<>
+struct fmt::formatter<Dummy> : arangodb::inspection::inspection_formatter {};
 
 namespace arangodb::inspection {
 template<>
@@ -2225,6 +2232,35 @@ TEST_F(VPackInspectionTest, serialize) {
   EXPECT_EQ(d.d, slice["d"].getDouble());
   EXPECT_EQ(d.b, slice["b"].getBool());
   EXPECT_EQ(d.s, slice["s"].copyString());
+}
+
+TEST_F(VPackInspectionTest, serialize_to_builder) {
+  Dummy const d{.i = 42, .d = 123.456, .b = true, .s = "cheese"};
+  auto sharedSlice = arangodb::velocypack::serialize(d);
+
+  ASSERT_TRUE(sharedSlice.isObject());
+  EXPECT_EQ(d.i, sharedSlice["i"].getInt());
+  EXPECT_EQ(d.d, sharedSlice["d"].getDouble());
+  EXPECT_EQ(d.b, sharedSlice["b"].getBool());
+  EXPECT_EQ(d.s, sharedSlice["s"].copyString());
+}
+
+TEST_F(VPackInspectionTest, formatter) {
+  auto d = Dummy{.i = 42, .d = 123.456, .b = true, .s = "cheese"};
+
+  auto def = fmt::format("My name is {}", d);
+  EXPECT_EQ(def,
+            "My name is {\"i\":42,\"d\":123.456,\"b\":true,\"s\":\"cheese\"}");
+
+  auto notPretty = fmt::format("My name is {:u}", d);
+  EXPECT_EQ(notPretty,
+            "My name is {\"i\":42,\"d\":123.456,\"b\":true,\"s\":\"cheese\"}");
+  EXPECT_EQ(def, notPretty);
+
+  auto pretty = fmt::format("My name is {:p}", d);
+  EXPECT_EQ(pretty,
+            "My name is {\n  \"i\" : 42,\n  \"d\" : 123.456,\n  \"b\" : "
+            "true,\n  \"s\" : \"cheese\"\n}");
 }
 
 TEST_F(VPackInspectionTest, deserialize) {
