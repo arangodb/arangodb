@@ -33,7 +33,7 @@ namespace conductor {
 struct Done : State {
   std::chrono::system_clock::time_point expiration;
   Conductor& conductor;
-  Done(Conductor& conductor, std::chrono::seconds const& ttl);
+  Done(Conductor& conductor);
   ~Done() = default;
   auto run() -> std::optional<std::unique_ptr<State>> override;
   auto canBeCanceled() -> bool override { return true; }

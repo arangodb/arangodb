@@ -1,16 +1,13 @@
 #include "FatalErrorState.h"
 
-#include <chrono>
-
 #include "Pregel/Conductor/Conductor.h"
 #include "Pregel/WorkerConductorMessages.h"
 #include "velocypack/Builder.h"
 
 using namespace arangodb::pregel::conductor;
 
-FatalError::FatalError(Conductor& conductor, std::chrono::seconds const& ttl)
-    : conductor{conductor} {
-  expiration = std::chrono::system_clock::now() + ttl;
+FatalError::FatalError(Conductor& conductor) : conductor{conductor} {
+  expiration = std::chrono::system_clock::now() + conductor._ttl;
   if (not conductor._timing.total.hasFinished()) {
     conductor._timing.total.finish();
   }

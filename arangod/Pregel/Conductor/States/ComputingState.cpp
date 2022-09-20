@@ -2,7 +2,6 @@
 
 #include "Pregel/Conductor/Conductor.h"
 #include "Metrics/Gauge.h"
-#include "Pregel/Conductor/States/FatalErrorState.h"
 #include "Pregel/Conductor/States/State.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
@@ -101,8 +100,7 @@ auto Computing::run() -> std::optional<std::unique_ptr<State>> {
                       "preparing global super step: "
                       "{}\n",
                       result.get().errorMessage());
-                  return std::make_unique<FatalError>(conductor,
-                                                      conductor._ttl);
+                  return std::make_unique<FatalError>(conductor);
                 }
                 auto gssPrepared = result.get().get();
                 conductor._aggregators->aggregateValues(
@@ -119,14 +117,13 @@ auto Computing::run() -> std::optional<std::unique_ptr<State>> {
                   return std::make_unique<Storing>(conductor);
                 }
                 if (conductor._inErrorAbort) {
-                  return std::make_unique<FatalError>(conductor,
-                                                      conductor._ttl);
+                  return std::make_unique<FatalError>(conductor);
                 }
-                return std::make_unique<Done>(conductor, conductor._ttl);
+                return std::make_unique<Done>(conductor);
               }
               bool preGlobalSuperStep = conductor._preGlobalSuperStep();
               if (!preGlobalSuperStep) {
-                return std::make_unique<FatalError>(conductor, conductor._ttl);
+                return std::make_unique<FatalError>(conductor);
               }
 
               return _runGlobalSuperStep(post.activateAll)
@@ -137,8 +134,7 @@ auto Computing::run() -> std::optional<std::unique_ptr<State>> {
                         LOG_PREGEL_CONDUCTOR("f34bb", ERR)
                             << "Conductor could not start GSS "
                             << conductor._globalSuperstep;
-                        return std::make_unique<FatalError>(conductor,
-                                                            conductor._ttl);
+                        return std::make_unique<FatalError>(conductor);
                       }
                       auto finished = result.get().get();
                       conductor._statistics.accumulateMessageStats(

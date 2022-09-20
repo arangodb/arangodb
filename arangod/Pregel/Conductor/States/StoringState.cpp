@@ -2,7 +2,6 @@
 
 #include "Pregel/Conductor/Conductor.h"
 #include "Metrics/Gauge.h"
-#include "Pregel/Conductor/States/FatalErrorState.h"
 #include "Pregel/Conductor/States/State.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
@@ -46,7 +45,7 @@ auto Storing::run() -> std::optional<std::unique_ptr<State>> {
             LOG_PREGEL_CONDUCTOR("bc495", ERR) << fmt::format(
                 "Got unsuccessful response from worker while storing graph: {}",
                 result.get().errorMessage());
-            return std::make_unique<FatalError>(conductor, conductor._ttl);
+            return std::make_unique<FatalError>(conductor);
           }
           auto reports = result.get().get().reports.slice();
           if (reports.isArray()) {
@@ -63,14 +62,13 @@ auto Storing::run() -> std::optional<std::unique_ptr<State>> {
                       "Got unsuccessful response from worker while cleaning "
                       "up: {}",
                       result.get().errorMessage());
-                  return std::make_unique<FatalError>(conductor,
-                                                      conductor._ttl);
+                  return std::make_unique<FatalError>(conductor);
                 }
               }
               if (conductor._inErrorAbort) {
-                return std::make_unique<FatalError>(conductor, conductor._ttl);
+                return std::make_unique<FatalError>(conductor);
               }
-              return std::make_unique<Done>(conductor, conductor._ttl);
+              return std::make_unique<Done>(conductor);
             })
             .get();
       })

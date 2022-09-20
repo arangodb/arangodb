@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <chrono>
-
 #include "State.h"
 
 namespace arangodb::pregel {
@@ -35,8 +33,8 @@ namespace conductor {
 struct FatalError : State {
   std::chrono::system_clock::time_point expiration;
   Conductor& conductor;
-  FatalError(Conductor& conductor, std::chrono::seconds const& ttl);
-  ~FatalError(){};
+  FatalError(Conductor& conductor);
+  ~FatalError() = default;
   auto run() -> std::optional<std::unique_ptr<State>> override {
     return std::nullopt;
   };

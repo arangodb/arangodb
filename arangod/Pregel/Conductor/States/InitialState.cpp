@@ -1,6 +1,5 @@
 #include "InitialState.h"
 #include "Pregel/Conductor/Conductor.h"
-#include "Pregel/WorkerConductorMessages.h"
 
 using namespace arangodb::pregel::conductor;
 

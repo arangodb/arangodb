@@ -267,7 +267,7 @@ void Conductor::_workerStatusUpdate(StatusUpdated const& data) {
 void Conductor::cancel() {
   MUTEX_LOCKER(guard, _callbackMutex);
   if (_state->canBeCanceled()) {
-    _changeState(std::make_unique<conductor::Canceled>(*this, _ttl));
+    _changeState(std::make_unique<conductor::Canceled>(*this));
   }
 }
 

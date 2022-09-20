@@ -33,7 +33,7 @@ namespace conductor {
 struct Initial : State {
   Conductor& conductor;
   Initial(Conductor& conductor);
-  ~Initial(){};
+  ~Initial() = default;
   auto run() -> std::optional<std::unique_ptr<State>> override;
   auto canBeCanceled() -> bool override { return false; }
   auto name() const -> std::string override { return "initial"; };

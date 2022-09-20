@@ -8,9 +8,8 @@
 
 using namespace arangodb::pregel::conductor;
 
-Done::Done(Conductor& conductor, std::chrono::seconds const& ttl)
-    : conductor{conductor} {
-  expiration = std::chrono::system_clock::now() + ttl;
+Done::Done(Conductor& conductor) : conductor{conductor} {
+  expiration = std::chrono::system_clock::now() + conductor._ttl;
   if (!conductor._timing.total.hasFinished()) {
     conductor._timing.total.finish();
   }

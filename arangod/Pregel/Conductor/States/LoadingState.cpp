@@ -5,7 +5,6 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Metrics/Gauge.h"
-#include "Pregel/Conductor/States/CanceledState.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/WorkerConductorMessages.h"
@@ -32,7 +31,7 @@ auto Loading::run() -> std::optional<std::unique_ptr<State>> {
                 "Got unsuccessful response from worker while loading graph: "
                 "{}\n",
                 result.get().errorMessage());
-            return std::make_unique<Canceled>(conductor, conductor._ttl);
+            return std::make_unique<Canceled>(conductor);
           }
           auto graphLoaded = result.get().get();
           conductor._totalVerticesCount += graphLoaded.vertexCount;
