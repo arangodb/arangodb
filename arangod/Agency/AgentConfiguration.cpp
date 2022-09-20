@@ -385,11 +385,10 @@ bool config_t::updateEndpoint(std::string const& id, std::string const& ep) {
   return false;
 }
 
-void config_t::update(query_t const& message) {
-  VPackSlice slice = message->slice();
+void config_t::update(velocypack::Slice message) {
   std::unordered_map<std::string, std::string> pool;
   bool changed = false;
-  for (auto const& p : VPackObjectIterator(slice.get(poolStr))) {
+  for (auto p : VPackObjectIterator(message.get(poolStr))) {
     auto const& id = p.key.copyString();
     if (id != _id) {
       pool[id] = p.value.copyString();
@@ -398,12 +397,12 @@ void config_t::update(query_t const& message) {
     }
   }
   std::vector<std::string> active;
-  for (auto const& a : VPackArrayIterator(slice.get(activeStr))) {
+  for (auto a : VPackArrayIterator(message.get(activeStr))) {
     active.push_back(a.copyString());
   }
-  double minPing = slice.get(minPingStr).getNumber<double>();
-  double maxPing = slice.get(maxPingStr).getNumber<double>();
-  int64_t timeoutMult = slice.get(timeoutMultStr).getNumber<int64_t>();
+  double minPing = message.get(minPingStr).getNumber<double>();
+  double maxPing = message.get(maxPingStr).getNumber<double>();
+  int64_t timeoutMult = message.get(timeoutMultStr).getNumber<int64_t>();
   WRITE_LOCKER(writeLocker, _lock);
   if (pool != _pool) {
     _pool = pool;
@@ -686,13 +685,13 @@ bool config_t::merge(VPackSlice const& conf) {
   return true;
 }
 
-void config_t::updateConfiguration(VPackSlice const& other) {
+void config_t::updateConfiguration(velocypack::Slice other) {
   WRITE_LOCKER(writeLocker, _lock);
 
   auto pool = other.get(poolStr);
   TRI_ASSERT(pool.isObject());
   _pool.clear();
-  for (auto const p : VPackObjectIterator(pool)) {
+  for (auto p : VPackObjectIterator(pool)) {
     _pool[p.key.copyString()] = p.value.copyString();
   }
   _poolSize = _pool.size();
@@ -700,7 +699,7 @@ void config_t::updateConfiguration(VPackSlice const& other) {
   auto active = other.get(activeStr);
   TRI_ASSERT(active.isArray());
   _active.clear();
-  for (auto const id : VPackArrayIterator(active)) {
+  for (auto id : VPackArrayIterator(active)) {
     _active.push_back(id.copyString());
   }
   _agencySize = _pool.size();
