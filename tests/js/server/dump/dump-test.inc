@@ -808,7 +808,7 @@
           figures = collection.getIndexes(true, true)
             .find(e => e.name === "searchIndex")
             .figures;
-          if (figures.numDocs > 0) {
+          if (figures.numDocs > 5000) {
             break;
           }
         }
