@@ -71,7 +71,7 @@ irs::bytes_ref refFromSlice(VPackSlice slice) {
 }
 
 bool supportsFilterNode(
-    IndexId id,
+    transaction::Methods& trx, IndexId id,
     std::vector<std::vector<basics::AttributeName>> const& /*fields*/,
     aql::AstNode const* node, aql::Variable const* reference,
     std::vector<InvertedIndexField> const& metaFields,
@@ -83,8 +83,10 @@ bool supportsFilterNode(
   // attributes access/values. Otherwise if we have say d[a.smth] where 'a' is a
   // variable from the upstream loop we may get here a field we don`t have in
   // the index.
-  QueryContext const queryCtx{
-      .ref = reference, .isSearchQuery = false, .isOldMangling = false};
+  QueryContext const queryCtx{.trx = &trx,
+                              .ref = reference,
+                              .isSearchQuery = false,
+                              .isOldMangling = false};
 
   // The analyzer is referenced in the FilterContext and used during the
   // following ::makeFilter() call, so may not be a temporary.
@@ -978,7 +980,8 @@ Index::SortCosts IResearchInvertedIndex::supportsSortCondition(
 }
 
 Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
-    IndexId id, std::vector<std::vector<basics::AttributeName>> const& fields,
+    transaction::Methods& trx, IndexId id,
+    std::vector<std::vector<basics::AttributeName>> const& fields,
     std::vector<std::shared_ptr<Index>> const& /*allIndexes*/,
     aql::AstNode const* node, aql::Variable const* reference,
     size_t itemsInIndex) const {
@@ -998,7 +1001,7 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
   AnalyzerProvider analyzerProvider = makeAnalyzerProvider(_meta);
 
   // at first try to cover whole node
-  if (supportsFilterNode(id, fields, node, reference, _meta._fields,
+  if (supportsFilterNode(trx, id, fields, node, reference, _meta._fields,
                          &analyzerProvider)) {
     filterCosts.supportsCondition = true;
     filterCosts.coveredAttributes = node->numMembers();
@@ -1008,7 +1011,7 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
     size_t const n = node->numMembers();
     for (size_t i = 0; i < n; ++i) {
       auto part = node->getMemberUnchecked(i);
-      if (supportsFilterNode(id, fields, part, reference, _meta._fields,
+      if (supportsFilterNode(trx, id, fields, part, reference, _meta._fields,
                              &analyzerProvider)) {
         filterCosts.supportsCondition = true;
         ++filterCosts.coveredAttributes;
@@ -1024,19 +1027,20 @@ void IResearchInvertedIndex::invalidateQueryCache(TRI_vocbase_t* vocbase) {
 }
 
 aql::AstNode* IResearchInvertedIndex::specializeCondition(
-    aql::AstNode* node, aql::Variable const* reference) const {
+    transaction::Methods& trx, aql::AstNode* node,
+    aql::Variable const* reference) const {
   auto indexedFields = fields(_meta);
 
   AnalyzerProvider analyzerProvider = makeAnalyzerProvider(_meta);
 
-  if (!supportsFilterNode(id(), indexedFields, node, reference, _meta._fields,
-                          &analyzerProvider)) {
+  if (!supportsFilterNode(trx, id(), indexedFields, node, reference,
+                          _meta._fields, &analyzerProvider)) {
     TRI_ASSERT(node->type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
     std::vector<aql::AstNode const*> children;
     size_t const n = node->numMembers();
     for (size_t i = 0; i < n; ++i) {
       auto part = node->getMemberUnchecked(i);
-      if (supportsFilterNode(id(), indexedFields, part, reference,
+      if (supportsFilterNode(trx, id(), indexedFields, part, reference,
                              _meta._fields, &analyzerProvider)) {
         children.push_back(part);
       }
@@ -1058,9 +1062,9 @@ void IResearchInvertedClusterIndex::toVelocyPack(
   auto const forPersistence =
       Index::hasFlag(flags, Index::Serialize::Internals);
   VPackObjectBuilder objectBuilder(&builder);
-  IResearchInvertedIndex::toVelocyPack(
-      IResearchDataStore::collection().vocbase().server(),
-      &IResearchDataStore::collection().vocbase(), builder, forPersistence);
+  auto& vocbase = IResearchDataStore::collection().vocbase();
+  IResearchInvertedIndex::toVelocyPack(vocbase.server(), &vocbase, builder,
+                                       forPersistence);
   // can't use Index::toVelocyPack as it will try to output 'fields'
   // but we have custom storage format
   builder.add(arangodb::StaticStrings::IndexId,
