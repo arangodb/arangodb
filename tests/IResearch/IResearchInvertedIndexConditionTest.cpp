@@ -171,8 +171,8 @@ class IResearchInvertedIndexConditionTest
 
     // optimization time
     {
-      auto costs = index->supportsFilterCondition(id, indexFields, {},
-                                                  filterNode, ref, 0);
+      auto costs = index->supportsFilterCondition(
+          query->trxForOptimization(), id, indexFields, {}, filterNode, ref, 0);
       ASSERT_EQ(expectedCosts.supportsCondition, costs.supportsCondition);
     }
     // runtime is not intended - we must decide during optimize time!
