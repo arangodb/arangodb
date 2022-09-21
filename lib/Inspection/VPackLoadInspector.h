@@ -192,53 +192,6 @@ struct VPackLoadInspectorImpl
            | [&]() { return endArray(); };          //
   }
 
-  [[nodiscard]] Status::Success parseField(velocypack::Slice,
-                                           typename Base::IgnoreField&&) {
-    return {};
-  }
-
-  template<class T>
-  [[nodiscard]] Status parseField(velocypack::Slice slice, T&& field) {
-    auto ff = make(slice);
-    auto name = Base::getFieldName(field);
-    auto& value = Base::getFieldValue(field);
-    auto load = [&]() -> Status {
-      auto isPresent = !slice.isNone();
-      using FallbackField = decltype(Base::getFallbackField(field));
-      if constexpr (!std::is_void_v<FallbackField>) {
-        auto applyFallback = [&](auto& val) {
-          Base::getFallbackField(field).apply(val);
-        };
-        if constexpr (!std::is_void_v<decltype(Base::getTransformer(field))>) {
-          return loadTransformedField(ff, name, isPresent, value,
-                                      std::move(applyFallback),
-                                      Base::getTransformer(field));
-        } else {
-          return loadField(ff, name, isPresent, value,
-                           std::move(applyFallback));
-        }
-      } else {
-        if (!isPresent && _options.ignoreMissingFields) {
-          return {};
-        }
-        if constexpr (!std::is_void_v<decltype(Base::getTransformer(field))>) {
-          return loadTransformedField(ff, name, isPresent, value,
-                                      Base::getTransformer(field));
-        } else {
-          return loadField(ff, name, isPresent, value);
-        }
-      }
-    };
-
-    auto res = load()                                      //
-               | [&]() { return checkInvariant(field); };  //
-
-    if (!res.ok()) {
-      return {std::move(res), name, Status::AttributeTag{}};
-    }
-    return res;
-  }
-
   velocypack::Slice slice() noexcept { return _slice; }
 
   ParseOptions options() const noexcept { return _options; }
@@ -291,27 +244,24 @@ struct VPackLoadInspectorImpl
     explicit InvariantContainer(Invariant&& invariant)
         : invariantFunc(std::move(invariant)) {}
     Invariant invariantFunc;
-
-    static constexpr const char InvariantFailedError[] =
-        "Field invariant failed";
   };
 
   template<class... Args>
   Status applyFields(Args&&... args) {
-    std::array<std::string_view, sizeof...(args)> names{
-        Base::getFieldName(args)...};
-    std::array<velocypack::Slice, sizeof...(args)> slices;
+    FieldsMap fields;
     for (auto [k, v] : VPackObjectIterator(slice())) {
-      auto it = std::find(names.begin(), names.end(), k.stringView());
-      if (it != names.end()) {
-        slices[std::distance(names.begin(), it)] = v;
-      } else if (_options.ignoreUnknownFields) {
-        continue;
-      } else {
-        return {"Found unexpected attribute '" + k.copyString() + "'"};
+      fields.emplace(k.stringView(), std::make_pair(v, false));
+    }
+
+    auto result = parseFields(fields, std::forward<Args>(args)...);
+    if (result.ok() && !_options.ignoreUnknownFields) {
+      for (auto& [k, v] : fields) {
+        if (!v.second) {
+          return {"Found unexpected attribute '" + std::string(k) + "'"};
+        }
       }
     }
-    return parseFields(slices.data(), std::forward<Args>(args)...);
+    return result;
   }
 
   template<class... Ts, class... Args>
@@ -362,7 +312,36 @@ struct VPackLoadInspectorImpl
            | [&]() { return endObject(); };  //
   }
 
- protected:
+  template<class Invariant, class T>
+  Status objectInvariant(T& object, Invariant&& func, Status result) {
+    if (result.ok()) {
+      result =
+          Base::template checkInvariant<detail::ObjectInvariantFailedError>(
+              std::forward<Invariant>(func), object);
+    }
+    return result;
+  }
+
+ private:
+  template<class>
+  friend struct detail::EmbeddedFields;
+  template<class, class...>
+  friend struct detail::EmbeddedFieldsImpl;
+  template<class, class, class>
+  friend struct detail::EmbeddedFieldsWithObjectInvariant;
+  template<class, class>
+  friend struct detail::EmbeddedFieldInspector;
+
+  using FieldsMap =
+      std::unordered_map<std::string_view, std::pair<velocypack::Slice, bool>>;
+
+  using EmbeddedParam = FieldsMap;
+
+  template<class... Args>
+  Status processEmbeddedFields(EmbeddedParam& fields, Args&&... args) {
+    return parseFields(fields, std::forward<Args>(args)...);
+  }
+
   auto make(velocypack::Slice slice) {
     if constexpr (Base::hasContext) {
       return VPackLoadInspectorImpl(slice, _options, this->getContext());
@@ -370,19 +349,88 @@ struct VPackLoadInspectorImpl
       return VPackLoadInspectorImpl(slice, _options);
     }
   }
-  Status::Success parseFields(velocypack::Slice* slices) {
-    return Status::Success{};
-  }
+
+  Status::Success parseFields(FieldsMap&) { return Status::Success{}; }
 
   template<class Arg>
-  Status parseFields(velocypack::Slice* slices, Arg&& arg) {
-    return parseField(*slices, std::forward<Arg>(arg));
+  Status parseFields(FieldsMap& fields, Arg&& arg) {
+    return parseField(fields, std::forward<Arg>(arg));
   }
 
   template<class Arg, class... Args>
-  Status parseFields(velocypack::Slice* slices, Arg&& arg, Args&&... args) {
-    return parseField(*slices, std::forward<Arg>(arg)) |
-           [&]() { return parseFields(++slices, std::forward<Args>(args)...); };
+  Status parseFields(FieldsMap& fields, Arg&& arg, Args&&... args) {
+    return parseField(fields, std::forward<Arg>(arg)) |
+           [&]() { return parseFields(fields, std::forward<Args>(args)...); };
+  }
+
+  [[nodiscard]] Status parseField(
+      FieldsMap& fields,
+      std::unique_ptr<detail::EmbeddedFields<VPackLoadInspectorImpl>>&&
+          embeddedFields) {
+    return embeddedFields->apply(*this, fields)  //
+           | [&]() { return embeddedFields->checkInvariant(); };
+  }
+
+  [[nodiscard]] Status::Success parseField(FieldsMap& fields,
+                                           typename Base::IgnoreField&& field) {
+    if (auto it = fields.find(field.name); it != fields.end()) {
+      TRI_ASSERT(!it->second.second)
+          << "field " << field.name << " processed twice during inspection. "
+          << "Make sure field names are unique!";
+      it->second.second = true;  // mark the field as processed
+    }
+    return {};
+  }
+
+  template<class T>
+  [[nodiscard]] Status parseField(FieldsMap& fields, T&& field) {
+    auto name = Base::getFieldName(field);
+    velocypack::Slice slice;
+    bool isPresent = false;
+    if (auto it = fields.find(name); it != fields.end()) {
+      TRI_ASSERT(!it->second.second)
+          << "field " << name << " processed twice during inspection. "
+          << "Make sure field names are unique!";
+      isPresent = true;
+      slice = it->second.first;
+      it->second.second = true;  // mark the field as processed
+    }
+    auto ff = make(slice);
+    auto& value = Base::getFieldValue(field);
+    auto load = [&]() -> Status {
+      using FallbackField = decltype(Base::getFallbackField(field));
+      if constexpr (!std::is_void_v<FallbackField>) {
+        auto applyFallback = [&](auto& val) {
+          Base::getFallbackField(field).apply(val);
+        };
+        if constexpr (!std::is_void_v<decltype(Base::getTransformer(field))>) {
+          return loadTransformedField(ff, name, isPresent, value,
+                                      std::move(applyFallback),
+                                      Base::getTransformer(field));
+        } else {
+          return loadField(ff, name, isPresent, value,
+                           std::move(applyFallback));
+        }
+      } else {
+        if (!isPresent && _options.ignoreMissingFields) {
+          return {};
+        }
+        if constexpr (!std::is_void_v<decltype(Base::getTransformer(field))>) {
+          return loadTransformedField(ff, name, isPresent, value,
+                                      Base::getTransformer(field));
+        } else {
+          return loadField(ff, name, isPresent, value);
+        }
+      }
+    };
+
+    auto res = load()                                      //
+               | [&]() { return checkInvariant(field); };  //
+
+    if (!res.ok()) {
+      return {std::move(res), name, Status::AttributeTag{}};
+    }
+    return res;
   }
 
   template<class... Ts, class Arg, class... Args>
@@ -438,14 +486,13 @@ struct VPackLoadInspectorImpl
 
   template<class T, class U>
   Status checkInvariant(typename Base::template InvariantField<T, U>& field) {
-    using Field = typename Base::template InvariantField<T, U>;
-    return Base::template checkInvariant<Field, Field::InvariantFailedError>(
+    return Base::template checkInvariant<detail::FieldInvariantFailedError>(
         field.invariantFunc, Base::getFieldValue(field));
   }
 
   template<class T>
   auto checkInvariant(T& field) {
-    if constexpr (!Base::template IsRawField<std::remove_cvref_t<T>>::value) {
+    if constexpr (!detail::IsRawField<std::remove_cvref_t<T>>::value) {
       return checkInvariant(field.inner);
     } else {
       return Status::Success{};
