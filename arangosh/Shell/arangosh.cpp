@@ -28,6 +28,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/FileSystemFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
@@ -82,6 +83,7 @@ int main(int argc, char* argv[]) {
       server.addFeature<ClientFeature, HttpEndpointProvider>(true);
       server.addFeature<ConfigFeature>(name);
       server.addFeature<ConsoleFeature>();
+      server.addFeature<FileSystemFeature>();
       server.addFeature<LanguageFeature>();
       server.addFeature<LoggerFeature>(false);
       server.addFeature<RandomFeature>();
