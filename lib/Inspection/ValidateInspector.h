@@ -177,7 +177,6 @@ struct ValidateInspector : InspectorBase<ValidateInspector<Context>, Context> {
 
   template<class T, class U>
   Status checkInvariant(typename Base::template InvariantField<T, U>& field) {
-    using Field = typename Base::template InvariantField<T, U>;
     return Base::template checkInvariant<detail::FieldInvariantFailedError>(
         field.invariantFunc, Base::getFieldValue(field));
   }
