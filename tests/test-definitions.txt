@@ -10,15 +10,15 @@ BackupNoAuthNoSysTests single
 BackupNoAuthSysTests single
 
 # Single Server Replication Tests
-replication_fuzz priority=500 parallelity=2 single -- --extraArgs:log.level replication=trace
-replication_ongoing priority=500 parallelity=2 single -- --extraArgs:log.level replication=trace
-replication_ongoing_frompresent parallelity=2 single -- --extraArgs:log.level replication=trace
-replication_ongoing_global priority=500 parallelity=2 single -- --extraArgs:log.level replication=trace
-replication_ongoing_global_spec parallelity=2 single -- --extraArgs:log.level replication=trace
-replication_static priority=500 parallelity=2 single -- --extraArgs:log.level replication=trace
-replication_sync priority=500 parallelity=2 single -- --extraArgs:log.level replication=trace
-shell_replication parallelity=2 single 
-http_replication priority=500 parallelity=2 single
+replication_fuzz priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
+replication_ongoing priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
+replication_ongoing_frompresent parallelity=3 single -- --extraArgs:log.level replication=trace
+replication_ongoing_global priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
+replication_ongoing_global_spec parallelity=3 single -- --extraArgs:log.level replication=trace
+replication_static priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
+replication_sync priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
+shell_replication parallelity=3 single 
+http_replication priority=500 parallelity=3 single
 
 # Misc single server tests
 active_failover parallelity=3 single
@@ -30,7 +30,7 @@ authentication priority=1000 single
 endpoints single -- --skipEndpointsIpv6 true
 paths_server priority=500 single
 permissions priority=500 single
-recovery priority=2000 buckets=4 single
+recovery priority=2000 buckets=4 parallelity=3 single
 version single
 
 shell_api priority=500 single suffix=http -- $EncryptionAtRest

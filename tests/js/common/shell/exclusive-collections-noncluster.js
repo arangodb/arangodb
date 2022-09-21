@@ -83,36 +83,36 @@ function ExclusiveSuite () {
             action: function () {
               let db = require("internal").db;
               for (let i = 0; i < 100000; ++i) {
-                print(Date() + ' task');
+                //print(Date() + ' task');
                 db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner1" });
               }
-              print(Date() + ' task delete');
+              //print(Date() + ' task delete');
               db.UnitTestsExclusiveCollection2.update("runner1", { value: true });
-              print(Date() + ' task done');
+              //print(Date() + ' task done');
             }
           });
         }
       });
 
-      print(Date() + ' main');
+      //print(Date() + ' main');
       db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
       while (!db.UnitTestsExclusiveCollection2.exists("runner1")) {
         require("internal").sleep(0.02);
       }
 
       try {
-        print(Date() + ' main transaction');
+        //print(Date() + ' main transaction');
         db._executeTransaction({
           collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ], exclusive: [ ] },
           action: function () {
             let db = require("internal").db;
             for (let i = 0; i < 100000; ++i) {
-              print(Date() + ' main insert');
+              // print(Date() + ' main insert');
               db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner2" });
             }
-            print(Date() + ' main insert done');
+            // print(Date() + ' main insert done');
             db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
-            print(Date() + ' done');
+            //print(Date() + ' done');
           }
         });
       } catch (err) {
@@ -128,7 +128,7 @@ function ExclusiveSuite () {
           break;
         }
       }
-      print(Date() + ' main task done');
+      //print(Date() + ' main task done');
 
       // only one transaction should have succeeded
       assertEqual(2, c2.count());
@@ -138,12 +138,12 @@ function ExclusiveSuite () {
 
     testExclusiveExpectNoConflict : function () {
       assertEqual(0, c2.count());
-      print(Date() + ' main');
+      // // print(Date() + ' main');
       c1.insert({ "_key" : "XXX" , "name" : "initial" });
       let task = tasks.register({
         command: function() {
           let db = require("internal").db;
-          print(Date() + ' task');
+          // print(Date() + ' task');
           db.UnitTestsExclusiveCollection2.insert({ _key: "runner1", value: false });
           while (!db.UnitTestsExclusiveCollection2.exists("runner2")) {
             require("internal").sleep(0.02);
@@ -154,36 +154,36 @@ function ExclusiveSuite () {
             action: function () {
               let db = require("internal").db;
               for (let i = 0; i < 100000; ++i) {
-                print(Date() + ' task insert');
+                // print(Date() + ' task insert');
                 db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner1" });
               }
-              print(Date() + ' task insert 2');
+              // print(Date() + ' task insert 2');
               db.UnitTestsExclusiveCollection2.update("runner1", { value: true });
-              print(Date() + ' task done');
+              // print(Date() + ' task done');
             }
           });
         }
       });
 
-      print(Date() + ' main before insert');
+      // print(Date() + ' main before insert');
       db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
-      print(Date() + ' main before waitloop');
+      // print(Date() + ' main before waitloop');
       while (!db.UnitTestsExclusiveCollection2.exists("runner1")) {
         require("internal").sleep(0.02);
       }
-      print(Date() + ' main transaction');
+      // print(Date() + ' main transaction');
 
       db._executeTransaction({
         collections: { exclusive: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
         action: function () {
           let db = require("internal").db;
           for (let i = 0; i < 100000; ++i) {
-            print(Date() + ' main transaction insert');
+            // print(Date() + ' main transaction insert');
             db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner2" });
           }
-          print(Date() + ' main after loop');
+          // print(Date() + ' main after loop');
           db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
-          print(Date() + ' done');
+          // print(Date() + ' done');
         }
       });
 
@@ -197,7 +197,7 @@ function ExclusiveSuite () {
         }
       }
       
-      print(Date() + ' main task done');
+      // print(Date() + ' main task done');
       // both transactions should have succeeded
       assertEqual(2, c2.count());
       let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
@@ -206,42 +206,42 @@ function ExclusiveSuite () {
     },
 
     testExclusiveExpectConflictAQL : function () {
-      print(Date() + ' main');
+      // print(Date() + ' main');
       c1.insert({ "_key" : "XXX" , "name" : "initial" });
       let task = tasks.register({
         command: function() {
           let db = require("internal").db;
-          print(Date() + ' task');
+          //// print(Date() + ' task');
           db.UnitTestsExclusiveCollection2.insert({ _key: "runner1", value: false });
-          print(Date() + ' task3');
+          //// print(Date() + ' task3');
           while (!db.UnitTestsExclusiveCollection2.exists("runner2")) {
             require("internal").sleep(0.02);
           }
           for (let i = 0; i < 10000; ++i) {
             db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner1' } UPDATE { name: 'runner1' } IN UnitTestsExclusiveCollection1");
-            print(Date() + ' task upsert');
+            //// print(Date() + ' task upsert');
           }
           db.UnitTestsExclusiveCollection2.update("runner1", { value: true });
-          print(Date() + ' task done');
+          //// print(Date() + ' task done');
         }
       });
 
       try {
-        print(Date() + ' main');
+        //// print(Date() + ' main');
         db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
         while (!db.UnitTestsExclusiveCollection2.exists("runner1")) {
           require("internal").sleep(0.02);
         }
         for (let i = 0; i < 10000; i++) {
           db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner2' } UPDATE { name: 'runner2' } IN UnitTestsExclusiveCollection1");
-         print(Date() + ' main upsert');
+         //// print(Date() + ' main upsert');
        }
         db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
-        print(Date() + ' main upsert21');
+        //// print(Date() + ' main upsert21');
       } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
-      print(Date() + ' main task donexx');
+      //// print(Date() + ' main task donexx');
 
       while (true) {
         try {
@@ -253,7 +253,7 @@ function ExclusiveSuite () {
         }
       }
 
-      print(Date() + ' main task done');
+      //// print(Date() + ' main task done');
       // only one transaction should have succeeded
       assertEqual(2, c2.count());
       let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
@@ -265,35 +265,35 @@ function ExclusiveSuite () {
       let task = tasks.register({
         command: function() {
           let db = require("internal").db;
-          print(Date() + ' task');
+          // print(Date() + ' task');
           db.UnitTestsExclusiveCollection2.insert({ _key: "runner1", value: false });
           while (!db.UnitTestsExclusiveCollection2.exists("runner2")) {
             require("internal").sleep(0.02);
           }
           for (let i = 0; i < 10000; ++i) {
-            print(Date() + ' task upsert');
+            // print(Date() + ' task upsert');
             db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner1' } UPDATE { name: 'runner1' } IN UnitTestsExclusiveCollection1 OPTIONS { exclusive: true }");
           }
-          print(Date() + ' task upsert loop done');
+          // print(Date() + ' task upsert loop done');
           db.UnitTestsExclusiveCollection2.update("runner1", { value: true });
-          print(Date() + ' task upsert done');
+          // print(Date() + ' task upsert done');
         }
       });
 
-      print(Date() + ' main insert');
+      // print(Date() + ' main insert');
       db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
       while (!db.UnitTestsExclusiveCollection2.exists("runner1")) {
         require("internal").sleep(0.02);
       }
-      print(Date() + ' main before upsert loop');
+      // print(Date() + ' main before upsert loop');
       for (let i = 0; i < 10000; i++) {
         db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner2' } UPDATE { name: 'runner2' } IN UnitTestsExclusiveCollection1 OPTIONS { exclusive: true }");
-        print(Date() + ' main upsert loop');
+        // print(Date() + ' main upsert loop');
         
       }
-      print(Date() + ' main update');
+      // print(Date() + ' main update');
       db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
-      print(Date() + ' main update done');
+      // print(Date() + ' main update done');
 
       while (true) {
         try {
@@ -305,7 +305,7 @@ function ExclusiveSuite () {
         }
       }
 
-      print(Date() + ' main task done');
+      // print(Date() + ' main task done');
       // both transactions should have succeeded
       assertEqual(2, c2.count());
       let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
