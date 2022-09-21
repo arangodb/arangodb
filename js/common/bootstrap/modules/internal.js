@@ -1758,12 +1758,14 @@ global.DEFINE_MODULE('internal', (function () {
   let testsBasePathsEnterprise = {};
   exports.pathForTesting = function (path, prefix = 'js', enterprise = false) {
     let fs = require('fs');
+    let dict = null;
+    let preprefix = null;
     if(enterprise){
-      var dict = testsBasePathsEnterprise;
-      var preprefix = fs.join('enterprise', 'tests');
+      dict = testsBasePathsEnterprise;
+      preprefix = fs.join('enterprise', 'tests');
     } else {
-      var dict = testsBasePaths;
-      var preprefix = fs.join('tests');
+      dict = testsBasePaths;
+      preprefix = fs.join('tests');
     }
     if (!dict.hasOwnProperty(prefix)) {
       // first invocation
