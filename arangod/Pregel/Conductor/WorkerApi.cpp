@@ -6,10 +6,6 @@
 
 using namespace arangodb::pregel::conductor;
 
-// This template enforces In and Out type of the function:
-// 'In' enforces which type of message is sent
-// 'Out' defines the expected response type:
-// The function returns an error if this expectation is not fulfilled
 template<typename Out, typename In>
 auto WorkerApi::sendToAll(In const& in) const -> FutureOfWorkerResults<Out> {
   auto results = std::vector<futures::Future<ResultT<Out>>>{};
