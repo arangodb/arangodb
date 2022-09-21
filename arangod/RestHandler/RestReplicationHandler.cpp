@@ -1920,6 +1920,12 @@ Result RestReplicationHandler::processRestoreIndexes(
         if (e.code() == TRI_ERROR_NOT_IMPLEMENTED) {
           continue;
         }
+        if (auto const& message = e.message();
+            message.find("arangodb_search_num_failed_commits") !=
+            std::string::npos) {
+          // TODO(MBkkt) Fix it! Now it's single correct and simple way :(
+          continue;
+        }
 
         std::string errorMsg = "could not create index: " + e.message();
         fres.reset(e.code(), errorMsg);

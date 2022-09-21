@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Containers/MerkleTree.h"
 #include "Indexes/IndexIterator.h"
 #include "Replication/SyncerId.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
@@ -238,6 +239,12 @@ class RocksDBReplicationContext {
 
   void removeBlocker(std::string const& dbName, std::string const& collection);
 
+  // Ask the context to get the RevisionTree for the specified collectionName
+  // in the vocbase. If this is done successfully, one can (once only!) get
+  // the tree using `getPrefetchedRevisionTree` below.
+  std::unique_ptr<containers::RevisionTree> getPrefetchedRevisionTree(
+      std::string const& collectionName);
+
  private:
   template<typename T>
   bool findCollection(
@@ -289,6 +296,14 @@ class RocksDBReplicationContext {
   /// @brief number of concurrent users, updated under lock by
   /// ReplicationManager
   size_t _users;
+
+  /// A context can hold a single revision tree for some collection, if it
+  /// is told so. This is used during `SynchronizeShard` to make sure the
+  /// leader actually has the revision tree available for the snapshot
+  /// in the context. This happens in `bindCollectionIncremental`. The value
+  /// of the string is a guid, that is a globally unique name of the shard.
+  std::string _collectionGuidOfPrefetchedRevisionTree;
+  std::unique_ptr<containers::RevisionTree> _prefetchedRevisionTree;
 };
 
 }  // namespace arangodb

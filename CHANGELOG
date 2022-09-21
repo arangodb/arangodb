@@ -1,6 +1,151 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Fixed SEARCH-392 Fixed field features propagation.
+
+* Fixed SEARCH-388 Fixed handling nested subfields.
+
+* Fixed SEARCH-379 Transaction is properly set to index during optimization.
+
+* Fixed issue BTS-1018: Improve logging of binary velocypack request data.
+
+* Updated ArangoDB Starter to 0.15.5.
+
+* Fixed BTS-1017: Fixed a graph search issue, where subqueries lead to incorrect
+  results when they have been pushed down fully onto a DBServer when they are in
+  a Hybrid Disjoint SmartGraph context and SatelliteCollections were part of it.
+
+* Fixed issue BTS-1023:
+  Added Linux-specific startup option `--use-splice-syscall` to control whether
+  the Linux-specific splice() syscall should be used for copying file contents.
+  While the syscall is generally available since Linux 2.6.x, it is also
+  required that the underlying filesystem supports the splice operation. This is
+  not true for some encrypted filesystems, on which splice() calls thus fail.
+  By setting the startup option `--use-splice-syscall` to `false`, a less
+  efficient, but more portable user-space file copying method will be used
+  instead, which should work on all filesystems.
+  The startup option is not available on other operating systems than Linux.
+
+* Fixed SEARCH-386 Fixed disjunction coverage in the inverted index with
+  non-default analyzers.
+
+* Fixed SEARCH-373  Fixed indexing same field as nested and as non-nested.
+
+
+v3.10.0-beta.1 (2022-09-14)
+---------------------------
+
+* Display progress during Arangosearch link and inverted index recovery.
+
+* Fixed SEARCH-374 and SEARCH-358 Fixed a rare case of wrong seek operation in
+  the sparse_bitset during query ArangoSearch execution.
+
+* Updated arangosync to v2.12.0-preview-12.
+
+* Updated ArangoDB Starter to 0.15.5-preview-3.
+
+* Fixed a rare occuring issue where paths inside a DisjointSmart traversal
+  containing only satellite relevant nodes were not returned properly (ES-1265).
+
+* Implement prefetch for revision trees, in case a batch is created with a
+  distinguished collection as for `SynchronizeShard`. This ensures that the
+  revision tree for the batch will be available when needed, even though the
+  revision tree for the collection might already have advanced beyond the
+  sequence number of the snapshot in the batch. This ensures that shards can get
+  in sync more reliably and more quickly.
+
+* Added startup option `--rocksdb.periodic-compaction-ttl`.
+  This option controls the TTL (in seconds) for periodic compaction of .sst
+  files in RocksDB, based on the .sst file age. The default value from RocksDB
+  is ~30 days. To avoid periodic auto-compaction, the option can be set to 0.
+
+* Fixed SEARCH-366: Fixed extracting sub-attributes using projections for the
+  `_id` attribute (e.g. `RETURN doc.sub._id`).
+
+* Fixed SEARCH-368: Fixed handling of array comparison for inverted index.
+
+* Fix get snapshot on single server for search-alias view when index was removed.
+
+* Fix waitForSync options for SEARCH in non-maintainer build.
+
+* Fix SEARCH-340 and SEARCH-341: add stats and metrics for inverted index.
+
+* Fixed SEARCH-334 Added searchField option for inverted index.
+
+* Fixed SEARCH-376 Assertion fixed for non-array value in array comparison.
+
+* Fixed BTS-926: UI showing the "create index" form to non-admin users.
+
+* Added startup option `--arangosearch.skip-recovery` to skip the recovery of
+  arangosearch view links or inverted indexes.
+  The startup option can be specified multiple times and is expected to either
+  contain the string `all` (will skip the recovery for all view links and
+  inverted indexes) or a collection name + link id/name pair (e.g.
+  `testCollection/123456`, where `123456` is a link/index id or an index name).
+  This new startup option is an emergency means to speed up lengthy recovery
+  procedures when there is a large WAL backlog to replay. The normal recovery
+  will still take place even with the option set, but recovery data for
+  links/indexes can be skipped. This can improve the recovery speed and reduce
+  memory usage during the recovery process.
+  All links or inverted indexes that are marked as to-be-skipped via the option,
+  but for which there is recovery data, will be marked as "out of sync" at the
+  end of the recovery.
+  The recovery procedure will also print a list of links/indexes which it has
+  marked as out-of-sync.
+  Additionally, if committing data for a link/index fails for whatever reason,
+  the link/index is also marked as being out-of-sync.
+
+  If an out-of-sync link or index can be used in queries depends on another new
+  startup option `--arangosearch.fail-queries-on-out-of-sync`. It defaults to
+  `false`, meaning that out-of-sync links/indexes can still be queried. If the
+  option is set to `true`, queries on such links/indexes will fail with error
+  "collection/view is out of sync" (error code 1481).
+
+  Links/indexes that are marked out-of-sync will keep the out-of-sync flag until
+  they are dropped. To get rid of an out-of-sync link/index, it is recommended
+  to manually drop and recreate it. As recreating a link/index may cause high
+  load, this is not done automatically but requires explicit user opt-in.
+
+  The number of out-of-sync links/indexes is also observable via a new metric
+  `arangodb_search_num_out_of_sync_links`.
+
+* Moved extensive log message down to DEBUG level.
+
+* Updated Views UI with all changes necessary for the 3.10.0 launch.
+
+* Fixed SEARCH-343 Fixed iterating all documents with nested fields.
+
+* Fixed SEARCH-322 Fixed executing empty nested condition.
+
+* Do not drop follower shard after too many failed shard synchronization
+  attempts.
+
+* Disable optimization rule to avoid crash (BTS-951).
+
+* Fixed SEARCH-369: add a compatibility check to the search-alias view for
+  indexes from the same collection.
+
+* Fixed BTS-959: no one call shutdown and delete datastore for the inverted
+  index in some C++ tests.
+
+* Fix SEARCH-350: Crash during consolidation.
+
+* When using `SHORTEST_PATH`, `K_SHORTEST_PATHS`, `ALL_SHORTEST_PATHS`, or
+  `K_PATHS` in an AQL Query and the query itself produced warnings during
+  execution, the type has been wrongly reported. It reported always with
+  `SHORTEST_PATH` and not the specific used one.
+
+* Fixed SEARCH-368 Fixed handling of array comparison for inverted index.
+
+* SEARCH-357: Added SUBSTRING_BYTES function.
+
+* Fixed SEARCH-347 Cycle variable reference in nested search query is properly
+  detected and rejected.
+  
+* Fixed SEARCH-364 Fixed index fields match check for inverted index.
+
+* Web UI: Reduce size and initial render height of a modal (fixes BTS-940).
+
 * Fix comparison of JSON schemas on DB servers after there was a schema change
   via a coordinator: the schema comparison previously did not take into account
   that some ArangoDB versions store an internal `{"type":"json"}` attribute in
@@ -26,8 +171,6 @@ v3.10.0 (XXXX-XX-XX)
 
 * Fixed SEARCH-346. If index creation is aborted due to existing same index new
   index is properly dropped if it was already instantiated.
-
-* Updated ArangoDB Starter to 0.15.5-preview-2.
 
 * Add progress reporting to RocksDB WAL recovery, in case there are many WAL
   files to recover.
