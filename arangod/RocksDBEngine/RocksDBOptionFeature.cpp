@@ -58,14 +58,34 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 namespace {
+// compression
+std::string const kCompressionTypeSnappy = "snappy";
+std::string const kCompressionTypeLZ4 = "lz4";
+std::string const kCompressionTypeLZ4HC = "lz4hc";
+std::string const kCompressionTypeNone = "none";
+
+std::unordered_set<std::string> const compressionTypes = {
+    {kCompressionTypeSnappy},
+    {kCompressionTypeLZ4},
+    {kCompressionTypeLZ4HC},
+    {kCompressionTypeNone}};
+
+// type of block cache
 std::string const kBlockCacheTypeLRU = "lru";
 std::string const kBlockCacheTypeHyperClock = "hyper-clock";
 
-std::unordered_set<std::string> const compressionTypes = {
-    {"snappy"}, {"lz4"}, {"lz4hc"}, {"none"}};
-
 std::unordered_set<std::string> const blockCacheTypes = {
     {kBlockCacheTypeLRU}, {kBlockCacheTypeHyperClock}};
+
+// checksums
+std::string const kChecksumTypeCRC32C = "crc32c";
+std::string const kChecksumTypeXXHash = "xxHash";
+std::string const kChecksumTypeXXHash64 = "xxHash64";
+std::string const kChecksumTypeXXH3 = "XXH3";
+
+std::unordered_set<std::string> const checksumTypes = {
+    kChecksumTypeCRC32C, kChecksumTypeXXHash, kChecksumTypeXXHash64,
+    kChecksumTypeXXH3};
 
 rocksdb::TransactionDBOptions rocksDBTrxDefaults;
 rocksdb::Options rocksDBDefaults;
@@ -146,7 +166,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _transactionLockStripes(
           std::max(NumberOfCores::getValue(), std::size_t(16))),
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
-      _compressionType("lz4"),
+      _compressionType(::kCompressionTypeLZ4),
       _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
       _maxWriteBufferNumber(8 + 2),  // number of column families plus 2
@@ -184,7 +204,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       // kAdjustedTtl):
       _periodicCompactionTtl(30 * 24 * 60 * 60),
       _blockCacheType(::kBlockCacheTypeLRU),
-      _checksumType("xxHash64"),
+      _checksumType(::kChecksumTypeXXHash64),
       _compactionStyle("level"),
       _formatVersion(5),
       _enableIndexCompression(
@@ -280,6 +300,7 @@ void RocksDBOptionFeature::collectOptions(
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30701);
 
+  TRI_ASSERT(::compressionTypes.contains(_compressionType));
   options
       ->addOption("--rocksdb.compression-type",
                   "compression algorithm to use within RocksDB",
@@ -665,6 +686,7 @@ void RocksDBOptionFeature::collectOptions(
                          arangodb::options::Flags::OnDBServer,
                          arangodb::options::Flags::OnSingle));
 
+  TRI_ASSERT(::blockCacheTypes.contains(_blockCacheType));
   options
       ->addOption("--rocksdb.block-cache-type", "block cache type to use",
                   new DiscreteValuesParameter<StringParameter>(
@@ -829,14 +851,12 @@ void RocksDBOptionFeature::collectOptions(
       .setIntroducedIn(30504)
       .setDeprecatedIn(30800);
 
-  std::unordered_set<std::string> checksumTypes = {"crc32c", "xxHash",
-                                                   "xxHash64", "XXH3"};
-  TRI_ASSERT(checksumTypes.contains(_checksumType));
+  TRI_ASSERT(::checksumTypes.contains(_checksumType));
   options
       ->addOption("--rocksdb.checksum-type",
                   "checksum type to use for table files",
                   new DiscreteValuesParameter<StringParameter>(&_checksumType,
-                                                               checksumTypes),
+                                                               ::checksumTypes),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnAgent,
@@ -1013,7 +1033,8 @@ void RocksDBOptionFeature::validateOptions(
   if (_blockCacheType == ::kBlockCacheTypeHyperClock) {
     if (_blockCacheEstimatedEntryCharge == 0) {
       LOG_TOPIC("0ffa2", FATAL, arangodb::Logger::FIXME)
-          << "invalid value for '--rocksdb.block-cache-estimated-entry-charge'";
+          << "value of option '--rocksdb.block-cache-estimated-entry-charge' "
+             "must be set when using hyper-clock cache";
       FATAL_ERROR_EXIT();
     }
   } else {
@@ -1215,13 +1236,13 @@ rocksdb::Options RocksDBOptionFeature::doGetOptions() const {
   result.use_fsync = _useFSync;
 
   rocksdb::CompressionType compressionType = rocksdb::kNoCompression;
-  if (_compressionType == "none") {
+  if (_compressionType == ::kCompressionTypeNone) {
     compressionType = rocksdb::kNoCompression;
-  } else if (_compressionType == "snappy") {
+  } else if (_compressionType == kCompressionTypeSnappy) {
     compressionType = rocksdb::kSnappyCompression;
-  } else if (_compressionType == "lz4") {
+  } else if (_compressionType == kCompressionTypeLZ4) {
     compressionType = rocksdb::kLZ4Compression;
-  } else if (_compressionType == "lz4hc") {
+  } else if (_compressionType == kCompressionTypeLZ4HC) {
     compressionType = rocksdb::kLZ4HCCompression;
   } else {
     TRI_ASSERT(false);
@@ -1355,6 +1376,8 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
           _blockCacheSize, static_cast<int>(_blockCacheShardBits),
           /*strict_capacity_limit*/ _enforceBlockCacheSizeLimit);
     } else if (_blockCacheType == ::kBlockCacheTypeHyperClock) {
+      TRI_ASSERT(_blockCacheEstimatedEntryCharge > 0);
+
       rocksdb::HyperClockCacheOptions cco(
           _blockCacheSize, _blockCacheEstimatedEntryCharge,
           static_cast<int>(_blockCacheShardBits), _enforceBlockCacheSizeLimit);
