@@ -2710,6 +2710,31 @@ RestAdminClusterHandler::collectRebalanceInformation(
   cluster::rebalance::AutoRebalanceProblem p;
   p.zones.emplace_back(cluster::rebalance::Zone{.id = "ZONE"});
 
+  std::string const leaderPath = "Plan/AsyncReplication/Leader";
+  std::string const healthPath = "Supervision/Health";
+
+  auto& cache = server().getFeature<ClusterFeature>().agencyCache();
+  auto [acb, idx] = cache.read(std::vector<std::string>{
+      AgencyCommHelper::path(healthPath), AgencyCommHelper::path(leaderPath)});
+  auto agencyCacheInfo = acb->slice();
+
+  if (!agencyCacheInfo.isArray()) {
+    generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  "Failed to acquire endpoints from agency cache");
+  }
+
+  auto serversHealthInfo =
+      agencyCacheInfo[0].get({"arango", "Supervision", "Health"});
+
+  std::unordered_set<std::string> activeServers;
+  for (auto const it : velocypack::ObjectIterator(serversHealthInfo)) {
+    if (it.value.get("Status").toString() == "GOOD") {
+      activeServers.emplace(it.key.toString());
+    }
+  }
+
+  p.setServersHealthInfo(activeServers);
+
   std::unordered_map<ServerID, std::uint32_t> serverToIndex;
 
   auto const getDBServerIndex =
