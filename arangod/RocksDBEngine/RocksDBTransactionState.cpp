@@ -309,7 +309,11 @@ Result RocksDBTransactionState::addOperation(
 
 Result RocksDBTransactionState::performIntermediateCommitIfRequired(
     DataSourceId cid) {
-  return rocksdbMethods(cid)->checkIntermediateCommit();
+  auto* methods = rocksdbMethods(cid);
+  if (methods->checkIntermediateCommit()) {
+    return methods->triggerIntermediateCommit();
+  }
+  return {};
 }
 
 RocksDBTransactionCollection::TrackedOperations&
