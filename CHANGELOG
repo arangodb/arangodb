@@ -1,6 +1,8 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Fixed issue BTS-1018: Improve logging of binary velocypack request data.
+
 * Updated ArangoDB Starter to 0.15.5.
 
 * Fixed BTS-1017: Fixed a graph search issue, where subqueries lead to incorrect
