@@ -1,7 +1,12 @@
 devel
 -----
 
+* Expose BlobDB-related options in RocksDB for use with the documents
+  column family. Usage of BlobDB is turned off by default.
+
 * Upgrade bundled version of RocksDB to 7.7.
+
+* Fixed issue BTS-1018: Improve logging of binary velocypack request data.
 
 * BTS-477: added integration tests for covering log parameters.
 
