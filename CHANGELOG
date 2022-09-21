@@ -1,6 +1,10 @@
 devel
 -----
 
+* BTS-969: Added restriction for HTTP request `/cluster/rebalance`not to 
+  consider servers that have failed status as a possible target for rebalancing
+  shards in its execution plan.
+
 * BTS-477: added integration tests for covering log parameters.
 
 * Moved the handling of escaping control and unicode chars in the log to 
