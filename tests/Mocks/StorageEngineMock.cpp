@@ -2067,6 +2067,11 @@ arangodb::Result TransactionStateMock::commitTransaction(
   return arangodb::Result();
 }
 
+arangodb::Result TransactionStateMock::performIntermediateCommitIfRequired(
+    arangodb::DataSourceId cid) {
+  return arangodb::Result();
+}
+
 uint64_t TransactionStateMock::numCommits() const {
   return commitTransactionCount;
 }
