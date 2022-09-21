@@ -54,7 +54,7 @@ using namespace arangodb;
 using namespace arangodb::iresearch;
 
 InvertedIndexField const* findMatchingSubField(InvertedIndexField const& root,
-                                         std::string_view fieldPath) {
+                                               std::string_view fieldPath) {
   for (auto const& field : root._fields) {
     if (field.path() == fieldPath) {
       return &field;
@@ -73,10 +73,9 @@ AnalyzerProvider makeAnalyzerProvider(IResearchInvertedIndexMeta const& meta) {
   static FieldMeta::Analyzer const defaultAnalyzer{
       IResearchAnalyzerFeature::identity()};
   return [&meta](std::string_view fieldPath) -> FieldMeta::Analyzer const& {
-
     auto subfield = findMatchingSubField(meta, fieldPath);
 
-    return subfield? subfield->analyzer() : defaultAnalyzer;
+    return subfield ? subfield->analyzer() : defaultAnalyzer;
   };
 }
 
