@@ -106,33 +106,9 @@ Result fromFuncMinHashMatch(char const* funcName, irs::boolean_filter* filter,
 FieldMeta::Analyzer const& FilterContext::fieldAnalyzer(
     std::string_view name, aql::ExpressionContext* ctx) const noexcept {
   // FIXME(gnusi): refactor this function
-
-  if (!fieldAnalyzerProvider) {
-    // Only possible with ArangoSearch view
-    return contextAnalyzer;
-  }
-
-  auto registerWarning = [ctx](std::string_view error) {
-    if (ctx) {
-      ctx->registerWarning(TRI_ERROR_BAD_PARAMETER, error);
-    }
-  };
-
-  auto const& analyzer = (*fieldAnalyzerProvider)(name);
-  if (!analyzer) {
-    // Only possible with SearchAlias views
-    registerWarning(absl::StrCat("Analyzer for field '", name, "' isn't set"));
-    return FieldMeta::identity();
-  }
-  if (ADB_UNLIKELY(contextAnalyzer &&
-                   contextAnalyzer._pool != analyzer._pool)) {
-    // Only possible with SearchAlias views
-    registerWarning(absl::StrCat("Context analyzer '", contextAnalyzer->name(),
-                                 "' doesn't match field '", name,
-                                 "' analyzer '",
-                                 analyzer ? analyzer->name() : "", "'"));
-  }
-  return analyzer;
+  return fieldAnalyzerProvider
+             ? (*fieldAnalyzerProvider)(name, ctx, contextAnalyzer)
+             : contextAnalyzer;  // Only possible with ArangoSearch view
 }
 
 }  // namespace arangodb::iresearch
@@ -3261,7 +3237,7 @@ Result fromFuncPhrase(char const* funcName, irs::boolean_filter* filter,
   // last odd argument defines an analyzer
   // ...........................................................................
 
-  auto analyzerPool = emptyAnalyzer();
+  auto analyzerPool = makeEmptyAnalyzer();
 
   if (0 != (argc & 1)) {  // override analyzer
     --argc;
@@ -3371,7 +3347,7 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
   }
 
   auto threshold = FilterConstants::DefaultNgramMatchThreshold;
-  auto analyzerPool = emptyAnalyzer();
+  auto analyzerPool = makeEmptyAnalyzer();
 
   if (argc > 3) {  // 4 args given. 3rd is threshold
     ScopedAqlValue tmpValue;

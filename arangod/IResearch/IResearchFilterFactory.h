@@ -54,8 +54,8 @@ namespace iresearch {
 
 struct QueryContext;
 
-using AnalyzerProvider =
-    fu2::unique_function<FieldMeta::Analyzer const&(std::string_view)>;
+using AnalyzerProvider = fu2::unique_function<FieldMeta::Analyzer const&(
+    std::string_view, aql::ExpressionContext*, FieldMeta::Analyzer const&)>;
 
 struct FilterContext {
   FieldMeta::Analyzer const& fieldAnalyzer(
