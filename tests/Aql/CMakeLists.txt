@@ -1,0 +1,113 @@
+
+add_executable(arangodbtests_aql
+  ../../cmake/activeCodePage.manifest
+  ${ARANGODB_TESTS_COMMON_SOURCES}
+  AqlCallListTest.cpp
+  AqlExecutorTestCase.cpp
+  AqlHelper.cpp
+  AqlItemBlockInputRangeTest.cpp
+  AqlItemBlockTest.cpp
+  AqlItemMatrixTest.cpp
+  AqlItemRowPrinter.cpp
+  AqlItemRowTest.cpp
+  AqlShadowRowTest.cpp
+  AqlValueMemoryLayoutTest.cpp
+  AstResourcesTest.cpp
+  AttributeNamePathTest.cpp
+  BitFunctionsTest.cpp
+  BlockCollector.cpp
+  CalculationExecutorTest.cpp
+  CountCollectExecutorTest.cpp
+  DateFunctionsTest.cpp
+  FixedOutputExecutionBlockMock.cpp
+  InRangeFunctionTest.cpp
+  MinHashFunctionsTest.cpp
+  JaccardFunctionTest.cpp
+  LevenshteinMatchFunctionTest.cpp
+  DependencyProxyMock.cpp
+  DistinctCollectExecutorTest.cpp
+  EngineInfoContainerCoordinatorTest.cpp
+  EnumerateCollectionExecutorTest.cpp
+  EnumerateListExecutorTest.cpp
+  ExecutionBlockImplTest.cpp
+  ExecutionNodeTest.cpp
+  ExecutorTestHelper.cpp
+  FilterExecutorTest.cpp
+  GatherExecutorCommonTest.cpp
+  HashedCollectExecutorTest.cpp
+  IdExecutorTest.cpp
+  IndexNodeTest.cpp
+  InputRangeTest.cpp
+  InsertExecutorTest.cpp
+  EnumeratePathsExecutorTest.cpp
+  EnumeratePathsNodeTest.cpp
+  LimitExecutorTest.cpp
+  MockTypedNode.cpp
+  NgramMatchFunctionTest.cpp
+  NgramSimilarityFunctionTest.cpp
+  NgramPosSimilarityFunctionTest.cpp
+  NodeWalkerTest.cpp
+  NoResultsExecutorTest.cpp
+  ProjectionsTest.cpp
+  QueryCursorTest.cpp
+  QueryHelper.cpp
+  QueryLimitsTest.cpp
+  RegisterPlanTest.cpp
+  RemoteExecutorTest.cpp
+  RemoveExecutorTest.cpp
+  ReplaceExecutorTest.cpp
+  ReturnExecutorTest.cpp
+  RowFetcherHelper.cpp
+  ScatterExecutorTest.cpp
+  ShortestPathExecutorTest.cpp
+  ShortestPathNodeTest.cpp
+  SkipResultTest.cpp
+  SortedCollectExecutorTest.cpp
+  SortExecutorTest.cpp
+  SortLimitTest.cpp
+  SpliceSubqueryOptimizerRuleTest.cpp
+  SplicedSubqueryIntegrationTest.cpp
+  SubqueryEndExecutorTest.cpp
+  SubqueryStartExecutorTest.cpp
+  TestEmptyExecutorHelper.cpp
+  TestLambdaExecutor.cpp
+  TraversalNodeTest.cpp
+  UpdateExecutorTest.cpp
+  UpsertExecutorTest.cpp
+  VelocyPackHelper.cpp
+  WaitingExecutionBlockMock.cpp
+  WindowExecutorTest.cpp
+  DecaysFunctionTest.cpp
+  DistanceFunctionTest.cpp
+  ../main.cpp)
+
+target_link_libraries(arangodbtests_aql
+  arango_agency
+  arango_cluster_engine
+  arango_rocksdb
+  arango_v8server
+  arangoserver
+  arango_restore
+  fuerte
+  rocksdb
+  snappy
+  gtest
+  boost_boost
+  fmt
+)
+
+target_include_directories(arangodbtests_aql PRIVATE
+  ${PROJECT_SOURCE_DIR}/arangod
+  ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
+  ../
+)
+
+target_include_directories(arangodbtests_aql SYSTEM PRIVATE
+  ${V8_INTERNAL_INCLUDE_DIR}
+  ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
+  ${CMAKE_SOURCE_DIR}/${GOOGLETEST_ROOT}/include
+  ${CMAKE_SOURCE_DIR}/${GOOGLEMOCK_ROOT}/include
+)
+

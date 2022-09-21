@@ -30,7 +30,7 @@
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 
-#include "./MockGraph.h"
+#include "Mocks/MockGraph.h"
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
