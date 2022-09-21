@@ -153,8 +153,7 @@ class GraphProviderTest : public ::testing::Test {
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
             server.getSystemDatabase());
-        auto fakeQuery =
-            arangodb::aql::Query::create(ctx, queryString, nullptr);
+        auto fakeQuery = std::make_shared<MockQuery>(ctx, queryString);
         try {
           fakeQuery->collections().add("s9880", AccessMode::Type::READ,
                                        arangodb::aql::Collection::Hint::Shard);
@@ -220,7 +219,7 @@ class GraphProviderTest : public ::testing::Test {
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
             server->getSystemDatabase());
-        query = arangodb::aql::Query::create(ctx, queryString, nullptr);
+        query = std::make_shared<MockQuery>(ctx, queryString);
 
         query->collections().add("v", AccessMode::Type::READ,
                                  arangodb::aql::Collection::Hint::Collection);
