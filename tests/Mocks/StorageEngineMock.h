@@ -138,9 +138,9 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
       arangodb::ManagedDocumentResult& previous) override;
   virtual arangodb::RevisionId revision(
       arangodb::transaction::Methods* trx) const override;
-  virtual arangodb::Result truncate(
-      arangodb::transaction::Methods& trx,
-      arangodb::OperationOptions& options) override;
+  virtual arangodb::Result truncate(arangodb::transaction::Methods& trx,
+                                    arangodb::OperationOptions& options,
+                                    bool& usedRangeDelete) override;
   virtual void compact() override {}
   virtual arangodb::Result update(
       arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
