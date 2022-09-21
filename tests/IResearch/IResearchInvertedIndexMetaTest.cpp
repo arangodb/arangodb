@@ -750,7 +750,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitions) {
       ASSERT_TRUE(res);
     }
     ASSERT_TRUE(errorString.empty());
-    ASSERT_EQ(0, metaLhs._analyzerDefinitions.size());
+    ASSERT_EQ(1, metaLhs._analyzerDefinitions.size());
 
     VPackBuilder b;
     {
@@ -778,7 +778,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitions) {
       ASSERT_TRUE(res);
     }
     ASSERT_TRUE(errorString.empty());
-    ASSERT_EQ(0, metaRhs._analyzerDefinitions.size());
+    ASSERT_EQ(1, metaRhs._analyzerDefinitions.size());
 
     VPackBuilder b;
     {
@@ -883,21 +883,23 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
     ASSERT_TRUE(meta.init(server.server(), json->slice(), false, errorString,
                           irs::string_ref::NIL));
     ASSERT_TRUE(errorString.empty());
-    ASSERT_EQ(0, meta._analyzerDefinitions.size());
+    ASSERT_EQ(1, meta._analyzerDefinitions.size());
     ASSERT_EQ(1, meta._fields.size());
     ASSERT_EQ("dummy", meta._fields.front().toString());
     ASSERT_TRUE(meta._sort.empty());
     ASSERT_TRUE(meta._storedValues.empty());
     ASSERT_EQ(irs::type<irs::compression::lz4>::id(),
               meta._sort.sortCompression());
-    ASSERT_TRUE(meta._analyzerDefinitions.empty());
+    ASSERT_EQ(1, meta._analyzerDefinitions.size());
     ASSERT_FALSE(meta.dense());
     ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
               meta._version);
     ASSERT_EQ(Consistency::kEventual, meta._consistency);
     ASSERT_FALSE(meta._analyzers.empty());
     ASSERT_EQ(meta._analyzers[0]._shortName, "identity");
-    ASSERT_EQ(meta._features, arangodb::iresearch::Features());
+    ASSERT_EQ(meta._features,
+              arangodb::iresearch::Features(FieldFeatures::NORM,
+                                            irs::IndexFeatures::FREQ));
     ASSERT_FALSE(meta._isSearchField);
   }
   // with active vocbase
@@ -909,21 +911,22 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
     ASSERT_TRUE(meta.init(server.server(), json->slice(), false, errorString,
                           irs::string_ref(vocbase.name())));
     ASSERT_TRUE(errorString.empty());
-    ASSERT_EQ(0, meta._analyzerDefinitions.size());
+    ASSERT_EQ(1, meta._analyzerDefinitions.size());
     ASSERT_EQ(1, meta._fields.size());
     ASSERT_EQ("dummy", meta._fields.front().toString());
     ASSERT_TRUE(meta._sort.empty());
     ASSERT_TRUE(meta._storedValues.empty());
     ASSERT_EQ(irs::type<irs::compression::lz4>::id(),
               meta._sort.sortCompression());
-    ASSERT_TRUE(meta._analyzerDefinitions.empty());
+    ASSERT_EQ(1, meta._analyzerDefinitions.size());
     ASSERT_FALSE(meta.dense());
     ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
               meta._version);
     ASSERT_EQ(Consistency::kEventual, meta._consistency);
     ASSERT_FALSE(meta._analyzers.empty());
     ASSERT_EQ(meta._analyzers[0]._shortName, "identity");
-    ASSERT_EQ(meta._features, arangodb::iresearch::Features());
+    ASSERT_EQ(meta._features,
+              Features(FieldFeatures::NORM, irs::IndexFeatures::FREQ));
     ASSERT_FALSE(meta._isSearchField);
   }
 }
@@ -962,7 +965,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
     ASSERT_TRUE(res);
   }
   ASSERT_TRUE(errorString.empty());
-  ASSERT_EQ(0, meta._analyzerDefinitions.size());
+  ASSERT_EQ(1, meta._analyzerDefinitions.size());
   ASSERT_EQ(1, meta._fields.size());
   ASSERT_TRUE(meta._sort.empty());
   ASSERT_TRUE(meta._storedValues.empty());
@@ -974,7 +977,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
   ASSERT_EQ(meta._consistency, Consistency::kEventual);
   ASSERT_FALSE(meta._analyzers.empty());
   ASSERT_EQ(meta._analyzers[0]._shortName, "identity");
-  ASSERT_EQ(meta._features, arangodb::iresearch::Features());
+  ASSERT_EQ(meta._features,
+            Features(FieldFeatures::NORM, irs::IndexFeatures::FREQ));
   ASSERT_EQ(meta._writebufferActive, 10);
   ASSERT_EQ(meta._writebufferIdle, 11);
   ASSERT_EQ(meta._writebufferSizeMax, 12);

@@ -378,8 +378,8 @@ function createView() {
       }
     });
 
-    c.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
     c.save({value: -1, text: "the red foxx jumps over the pond"});
+    c.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
   } catch (err) {
   }
 
@@ -412,8 +412,8 @@ function createSearch() {
   let search = db._createView("searchSearch", "search-alias",
    { indexes: [ { collection: collection.name(), index: index.name } ] });
 
-  collection.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
   collection.save({value: -1, text: "the red foxx jumps over the pond"});
+  collection.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
 }
 
 function createReplicationFactors() {

@@ -1,6 +1,12 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Fixed SEARCH-392 Fixed field features propagation.
+
+* Fixed SEARCH-388 Fixed handling nested subfields.
+
+* Fixed SEARCH-379 Transaction is properly set to index during optimization.
+
 * Fixed issue BTS-1018: Improve logging of binary velocypack request data.
 
 * Updated ArangoDB Starter to 0.15.5.

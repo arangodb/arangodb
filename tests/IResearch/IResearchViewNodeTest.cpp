@@ -34,6 +34,7 @@
 #include "Mocks/IResearchLinkMock.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
+#include "Mocks/MockQuery.h"
 #include "Mocks/StorageEngineMock.h"
 #include "IResearch/MakeViewSnapshot.h"
 
@@ -84,6 +85,8 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+using namespace arangodb::tests::mocks;
+
 namespace {
 
 class IResearchViewNodeTest
@@ -104,25 +107,6 @@ class IResearchViewNodeTest
         dbPathFeature);  // ensure test data is stored in a unique directory
   }
 };  // IResearchViewNodeSetup
-
-struct MockQuery final : arangodb::aql::Query {
-  MockQuery(std::shared_ptr<arangodb::transaction::Context> const& ctx,
-            arangodb::aql::QueryString const& queryString)
-      : arangodb::aql::Query{ctx, queryString, nullptr, {}} {}
-
-  ~MockQuery() final {
-    // Destroy this query, otherwise it's still
-    // accessible while the query is being destructed,
-    // which can result in a data race on the vptr
-    destroy();
-  }
-
-  arangodb::transaction::Methods& trxForOptimization() final {
-    // original version contains an assertion
-    return *_trx;
-  }
-};
-
 }  // namespace
 
 TEST_F(IResearchViewNodeTest, constructSortedView) {
