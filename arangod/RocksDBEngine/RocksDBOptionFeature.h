@@ -105,6 +105,8 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _targetFileSizeMultiplier;
   uint64_t _blockCacheSize;
   int64_t _blockCacheShardBits;
+  // only used for HyperClockCache
+  uint64_t _blockCacheEstimatedEntryCharge;
   uint64_t _tableBlockSize;
   uint64_t _compactionReadaheadSize;
   int64_t _level0CompactionTrigger;
@@ -113,6 +115,7 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _pendingCompactionBytesSlowdownTrigger;
   uint64_t _pendingCompactionBytesStopTrigger;
   uint64_t _periodicCompactionTtl;
+  std::string _blockCacheType;
   std::string _checksumType;
   std::string _compactionStyle;
   uint32_t _formatVersion;

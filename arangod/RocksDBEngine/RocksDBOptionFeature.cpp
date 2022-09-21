@@ -58,8 +58,14 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 namespace {
+std::string const kBlockCacheTypeLRU = "lru";
+std::string const kBlockCacheTypeHyperClock = "hyper-clock";
+
 std::unordered_set<std::string> const compressionTypes = {
     {"snappy"}, {"lz4"}, {"lz4hc"}, {"none"}};
+
+std::unordered_set<std::string> const blockCacheTypes = {
+    {kBlockCacheTypeLRU}, {kBlockCacheTypeHyperClock}};
 
 rocksdb::TransactionDBOptions rocksDBTrxDefaults;
 rocksdb::Options rocksDBDefaults;
@@ -162,6 +168,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _targetFileSizeMultiplier(rocksDBDefaults.target_file_size_multiplier),
       _blockCacheSize(::defaultBlockCacheSize()),
       _blockCacheShardBits(-1),
+      _blockCacheEstimatedEntryCharge(0),
       _tableBlockSize(std::max(
           rocksDBTableOptionsDefaults.block_size,
           static_cast<decltype(rocksDBTableOptionsDefaults.block_size)>(16 *
@@ -176,6 +183,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       // note: this is a default value from RocksDB (db/column_family.cc,
       // kAdjustedTtl):
       _periodicCompactionTtl(30 * 24 * 60 * 60),
+      _blockCacheType(::kBlockCacheTypeLRU),
       _checksumType("xxHash64"),
       _compactionStyle("level"),
       _formatVersion(5),
@@ -284,6 +292,7 @@ void RocksDBOptionFeature::collectOptions(
                   "Number of lock stripes to use for transaction locks",
                   new UInt64Parameter(&_transactionLockStripes),
                   arangodb::options::makeFlags(
+                      arangodb::options::Flags::Dynamic,
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
@@ -635,6 +644,18 @@ void RocksDBOptionFeature::collectOptions(
           arangodb::options::Flags::OnDBServer,
           arangodb::options::Flags::OnSingle));
 
+  options
+      ->addOption(
+          "--rocksdb.block-cache-estimated-entry-charge",
+          "estimated charge of cache entries (in bytes) for hyper-clock cache",
+          new UInt64Parameter(&_blockCacheEstimatedEntryCharge),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31100);
+
   options->addOption("--rocksdb.enforce-block-cache-size-limit",
                      "if true, strictly enforces the block cache size limit",
                      new BooleanParameter(&_enforceBlockCacheSizeLimit),
@@ -643,6 +664,12 @@ void RocksDBOptionFeature::collectOptions(
                          arangodb::options::Flags::OnAgent,
                          arangodb::options::Flags::OnDBServer,
                          arangodb::options::Flags::OnSingle));
+
+  options
+      ->addOption("--rocksdb.block-cache-type", "block cache type to use",
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_blockCacheType, ::blockCacheTypes))
+      .setIntroducedIn(31100);
 
   options
       ->addOption(
@@ -983,6 +1010,22 @@ void RocksDBOptionFeature::validateOptions(
     }
   }
 
+  if (_blockCacheType == ::kBlockCacheTypeHyperClock) {
+    if (_blockCacheEstimatedEntryCharge == 0) {
+      LOG_TOPIC("0ffa2", FATAL, arangodb::Logger::FIXME)
+          << "invalid value for '--rocksdb.block-cache-estimated-entry-charge'";
+      FATAL_ERROR_EXIT();
+    }
+  } else {
+    TRI_ASSERT(_blockCacheType == ::kBlockCacheTypeLRU);
+    if (options->processingResult().touched(
+            "--rocksdb.block-cache-estimated-entry-charge")) {
+      LOG_TOPIC("a527b", WARN, arangodb::Logger::FIXME)
+          << "Setting value of '--rocksdb.block-cache-estimated-entry-charge' "
+             "has no effect when using LRU block cache";
+    }
+  }
+
   if (_enforceBlockCacheSizeLimit && !options->processingResult().touched(
                                          "--rocksdb.block-cache-shard-bits")) {
     // if block cache size limit is enforced, and the number of shard bits for
@@ -1000,6 +1043,8 @@ void RocksDBOptionFeature::validateOptions(
         int64_t(std::floor(
             std::log2(static_cast<double>(_blockCacheSize) / ::minShardSize))),
         int64_t(1), int64_t(10));
+
+    // TODO: hyper clock cache probably doesn't need as many shards. check this.
   }
 }
 
@@ -1071,8 +1116,11 @@ void RocksDBOptionFeature::start() {
       << ", target_file_size_multiplier: " << _targetFileSizeMultiplier
       << ", num_threads_high: " << _numThreadsHigh
       << ", num_threads_low: " << _numThreadsLow
+      << ", block_cache_type: " << _blockCacheType
       << ", block_cache_size: " << _blockCacheSize
       << ", block_cache_shard_bits: " << _blockCacheShardBits
+      << ", block_cache_estimated_entry_charge: "
+      << _blockCacheEstimatedEntryCharge
       << ", block_cache_strict_capacity_limit: " << std::boolalpha
       << _enforceBlockCacheSizeLimit
       << ", cache_index_and_filter_blocks: " << std::boolalpha
@@ -1302,15 +1350,22 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
   rocksdb::BlockBasedTableOptions result;
 
   if (_blockCacheSize > 0) {
-    result.block_cache = rocksdb::NewLRUCache(
-        _blockCacheSize, static_cast<int>(_blockCacheShardBits),
-        /*strict_capacity_limit*/ _enforceBlockCacheSizeLimit);
-    // result.cache_index_and_filter_blocks =
-    // result.pin_l0_filter_and_index_blocks_in_cache
-    // _compactionReadaheadSize > 0;
+    if (_blockCacheType == ::kBlockCacheTypeLRU) {
+      result.block_cache = rocksdb::NewLRUCache(
+          _blockCacheSize, static_cast<int>(_blockCacheShardBits),
+          /*strict_capacity_limit*/ _enforceBlockCacheSizeLimit);
+    } else if (_blockCacheType == ::kBlockCacheTypeHyperClock) {
+      rocksdb::HyperClockCacheOptions cco(
+          _blockCacheSize, _blockCacheEstimatedEntryCharge,
+          static_cast<int>(_blockCacheShardBits), _enforceBlockCacheSizeLimit);
+      result.block_cache = cco.MakeSharedCache();
+    } else {
+      TRI_ASSERT(false);
+    }
   } else {
     result.no_block_cache = true;
   }
+
   result.cache_index_and_filter_blocks = _cacheIndexAndFilterBlocks;
   result.cache_index_and_filter_blocks_with_high_priority =
       _cacheIndexAndFilterBlocksWithHighPriority;

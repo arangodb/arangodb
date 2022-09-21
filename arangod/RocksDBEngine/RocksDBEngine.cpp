@@ -2865,6 +2865,10 @@ DECLARE_GAUGE(rocksdb_block_cache_capacity, uint64_t,
 DECLARE_GAUGE(rocksdb_block_cache_pinned_usage, uint64_t,
               "rocksdb_block_cache_pinned_usage");
 DECLARE_GAUGE(rocksdb_block_cache_usage, uint64_t, "rocksdb_block_cache_usage");
+DECLARE_GAUGE(rocksdb_block_cache_occupancy_count, uint64_t,
+              "rocksdb_block_cache_occupancy_count");
+DECLARE_GAUGE(rocksdb_block_cache_charge_per_entry, uint64_t,
+              "rocksdb_block_cache_charge_per_entry");
 DECLARE_GAUGE(rocksdb_compaction_pending, uint64_t,
               "rocksdb_compaction_pending");
 DECLARE_GAUGE(rocksdb_compression_ratio_at_level0, uint64_t,
@@ -3073,6 +3077,29 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addInt(rocksdb::DB::Properties::kBlockCacheCapacity);
   addInt(rocksdb::DB::Properties::kBlockCacheUsage);
   addInt(rocksdb::DB::Properties::kBlockCachePinnedUsage);
+
+  auto const& tableOptions = _optionsProvider.getTableOptions();
+  if (tableOptions.block_cache != nullptr) {
+    auto const& cache = tableOptions.block_cache;
+    auto usage = cache->GetUsage();
+    auto occupancyCount = cache->GetOccupancyCount();
+    if (occupancyCount > 0) {
+      builder.add("rocksdb.block-cache-charge-per-entry",
+                  VPackValue(static_cast<uint64_t>(usage / occupancyCount)));
+    } else {
+      builder.add("rocksdb.block-cache-charge-per-entry", VPackValue(0));
+    }
+    builder.add("rocksdb.block-cache-occupancy-count",
+                VPackValue(occupancyCount));
+  } else {
+    builder.add("rocksdb.block-cache-occupancy-count", VPackValue(0));
+    builder.add("rocksdb.block-cache-charge-per-entry", VPackValue(0));
+  }
+
+  addInt(rocksdb::DB::Properties::kBlobCacheCapacity);
+  addInt(rocksdb::DB::Properties::kBlobCacheUsage);
+  addInt(rocksdb::DB::Properties::kBlobCachePinnedUsage);
+
   addIntAllCf(rocksdb::DB::Properties::kTotalSstFilesSize);
   addInt(rocksdb::DB::Properties::kActualDelayedWriteRate);
   addInt(rocksdb::DB::Properties::kIsWriteStopped);
