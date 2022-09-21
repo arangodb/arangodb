@@ -1,6 +1,8 @@
 v3.9.4 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue BTS-1018: Improve logging of binary velocypack request data.
+
 * Fixed issue BTS-1023:
   Added Linux-specific startup option `--use-splice-syscall` to control whether
   the Linux-specific splice() syscall should be used for copying file contents.
