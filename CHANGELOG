@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgrade bundled version of RocksDB to 7.7.
+
 * BTS-477: added integration tests for covering log parameters.
 
 * Moved the handling of escaping control and unicode chars in the log to 
