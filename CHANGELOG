@@ -2,7 +2,7 @@ devel
 -----
 
 * Improve upload and download speed of hotbackup by changing the way we use
-  rclone. empty hash files are now uploaded or downloaded by pattern, and
+  rclone. Empty hash files are now uploaded or downloaded by pattern, and
   all other files are done in batches without remote directory listing,
   which allows rclone to parallelize and avoid a lot of unnecessary network
   traffic. The format of hotbackups does not change at all.
