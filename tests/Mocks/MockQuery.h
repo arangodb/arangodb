@@ -26,8 +26,6 @@
 
 namespace arangodb::tests::mocks {
 
-// using namespace arangodb;
-
 struct MockQuery final : aql::Query {
   MockQuery(std::shared_ptr<transaction::Context> const& ctx,
             aql::QueryString const& queryString)
