@@ -46,6 +46,7 @@
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 
 #include <rocksdb/advanced_options.h>
+#include <rocksdb/cache.h>
 #include <rocksdb/filter_policy.h>
 #include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
@@ -181,10 +182,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _enableIndexCompression(
           rocksDBTableOptionsDefaults.enable_index_compression),
       _prepopulateBlockCache(false),
-      _reserveTableBuilderMemory(
-          rocksDBTableOptionsDefaults.reserve_table_builder_memory),
-      _reserveTableReaderMemory(
-          rocksDBTableOptionsDefaults.reserve_table_reader_memory),
+      _reserveTableBuilderMemory(false),
+      _reserveTableReaderMemory(false),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _enforceBlockCacheSizeLimit(true),
       _cacheIndexAndFilterBlocks(true),
@@ -1327,8 +1326,17 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
       _prepopulateBlockCache
           ? rocksdb::BlockBasedTableOptions::PrepopulateBlockCache::kFlushOnly
           : rocksdb::BlockBasedTableOptions::PrepopulateBlockCache::kDisable;
-  result.reserve_table_builder_memory = _reserveTableBuilderMemory;
-  result.reserve_table_reader_memory = _reserveTableReaderMemory;
+  result.cache_usage_options.options_overrides.insert(
+      {rocksdb::CacheEntryRole::kFilterConstruction,
+       {/*.charged = */ _reserveTableBuilderMemory
+            ? rocksdb::CacheEntryRoleOptions::Decision::kEnabled
+            : rocksdb::CacheEntryRoleOptions::Decision::kDisabled}});
+  result.cache_usage_options.options_overrides.insert(
+      {rocksdb::CacheEntryRole::kBlockBasedTableReader,
+       {/*.charged = */ _reserveTableReaderMemory
+            ? rocksdb::CacheEntryRoleOptions::Decision::kEnabled
+            : rocksdb::CacheEntryRoleOptions::Decision::kDisabled}});
+
   result.block_align = _blockAlignDataBlocks;
 
   if (_checksumType == "crc32c") {

@@ -40,6 +40,7 @@
 
 #include <absl/strings/str_cat.h>
 
+#include <rocksdb/cache.h>
 #include <rocksdb/comparator.h>
 #include <rocksdb/db.h>
 #include <rocksdb/env.h>
@@ -193,9 +194,6 @@ Result RocksDBTempStorage::init() {
         (level >= 2 ? rocksdb::kLZ4Compression : rocksdb::kNoCompression);
   }
 
-  // try to avoid having a WAL as much as possible
-  options.manual_wal_flush = true;
-
   // speed up write performance at the expense of snapshot consistency.
   // this implies that we cannot use snapshots in this instance to get
   // repeatable reads
@@ -228,8 +226,12 @@ Result RocksDBTempStorage::init() {
   tableOptions.cache_index_and_filter_blocks_with_high_priority = true;
   tableOptions.pin_l0_filter_and_index_blocks_in_cache = true;
   tableOptions.pin_top_level_index_and_filter = true;
-  tableOptions.reserve_table_builder_memory = true;
-  tableOptions.reserve_table_reader_memory = true;
+  tableOptions.cache_usage_options.options_overrides.insert(
+      {rocksdb::CacheEntryRole::kFilterConstruction,
+       {/*.charged = */ rocksdb::CacheEntryRoleOptions::Decision::kEnabled}});
+  tableOptions.cache_usage_options.options_overrides.insert(
+      {rocksdb::CacheEntryRole::kBlockBasedTableReader,
+       {/*.charged = */ rocksdb::CacheEntryRoleOptions::Decision::kEnabled}});
   // use 16KB block size as a starting point
   tableOptions.block_size = 16 * 1024;
   tableOptions.checksum = rocksdb::ChecksumType::kxxHash64;
