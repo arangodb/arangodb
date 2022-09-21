@@ -84,7 +84,6 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _transactionLockStripes;
   int64_t _transactionLockTimeout;
   std::string _walDirectory;
-  std::string _compressionType;
   uint64_t _totalWriteBufferSize;
   uint64_t _writeBufferSize;
   // Update max_write_buffer_number above if you change number of families used
@@ -107,6 +106,13 @@ class RocksDBOptionFeature final : public ArangodFeature,
   int64_t _blockCacheShardBits;
   // only used for HyperClockCache
   uint64_t _blockCacheEstimatedEntryCharge;
+  uint64_t _minBlobSize;
+  uint64_t _blobFileSize;
+  uint32_t _blobFileStartingLevel;
+  bool _enableBlobFiles;
+  bool _enableBlobCache;
+  double _blobGarbageCollectionAgeCutoff;
+  double _blobGarbageCollectionForceThreshold;
   uint64_t _tableBlockSize;
   uint64_t _compactionReadaheadSize;
   int64_t _level0CompactionTrigger;
@@ -115,14 +121,18 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _pendingCompactionBytesSlowdownTrigger;
   uint64_t _pendingCompactionBytesStopTrigger;
   uint64_t _periodicCompactionTtl;
+  std::string _compressionType;
+  std::string _blobCompressionType;
   std::string _blockCacheType;
   std::string _checksumType;
   std::string _compactionStyle;
   uint32_t _formatVersion;
   bool _enableIndexCompression;
   bool _prepopulateBlockCache;
+  bool _prepopulateBlobCache;
   bool _reserveTableBuilderMemory;
   bool _reserveTableReaderMemory;
+  bool _reserveFileMetadataMemory;
   bool _recycleLogFileNum;
   bool _enforceBlockCacheSizeLimit;
   bool _cacheIndexAndFilterBlocks;
@@ -141,8 +151,8 @@ class RocksDBOptionFeature final : public ArangodFeature,
   bool _useFileLogging;
   bool _limitOpenFilesAtStartup;
   bool _allowFAllocate;
+  bool _enableBlobGarbageCollection;
   bool _exclusiveWrites;
-
   bool _minWriteBufferNumberToMergeTouched;
 
   /// per column family write buffer limits
