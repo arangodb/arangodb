@@ -2369,15 +2369,29 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       *collection, "truncate", VPackSlice::noneSlice(), options,
       replicationType, followers);
 
-  if (res.fail()) {
+  // will be populated by the call to truncate()
+  bool usedRangeDelete = false;
+
+  if (res.ok()) {
+    TRI_IF_FAILURE("LogicalCollection::truncate") {
+      return futures::makeFuture(
+          OperationResult(Result(TRI_ERROR_DEBUG), options));
+    }
+
+    res = collection->getPhysical()->truncate(*this, options, usedRangeDelete);
+  }
+
+  if (res.fail() || !usedRangeDelete) {
+    // we must exit here if we didn't perform a range delete.
+    // this is because the non-range delete version of truncate
+    // removes documents one by one, and also _replicates_ these
+    // removal operations.
     return futures::makeFuture(OperationResult(std::move(res), options));
   }
 
-  res = collection->truncate(*this, options);
-
-  if (res.fail()) {
-    return futures::makeFuture(OperationResult(res, options));
-  }
+  // range delete version of truncate. we are responsible for the
+  // replication ourselves
+  TRI_ASSERT(usedRangeDelete);
 
   // Now see whether or not we have to do synchronous replication:
   if (replicationType == ReplicationType::LEADER && !followers->empty()) {
