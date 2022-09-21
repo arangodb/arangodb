@@ -37,13 +37,17 @@
 #include <velocypack/velocypack-memory.h>
 
 #include "Inspection/Access.h"
-#include "Inspection/ValidateInspector.h"
+#include "Inspection/Format.h"
+#include "Inspection/VPack.h"
 #include "Inspection/VPackLoadInspector.h"
 #include "Inspection/VPackSaveInspector.h"
-#include "Inspection/VPack.h"
+#include "Inspection/ValidateInspector.h"
 #include "velocypack/Builder.h"
 
 #include "Logger/LogMacros.h"
+
+#include <fmt/core.h>
+#include <fmt/ostream.h>
 
 namespace {
 
@@ -367,6 +371,9 @@ auto inspect(Inspector& f, AnEmptyObject& x) {
 
 }  // namespace
 
+template<>
+struct fmt::formatter<Dummy> : arangodb::inspection::inspection_formatter {};
+
 namespace arangodb::inspection {
 template<>
 struct Access<Specialization> : AccessBase<Specialization> {
@@ -477,6 +484,44 @@ template<class Inspector>
 auto inspect(Inspector& f, Struct2& x) {
   return f.object(x).fields(f.field("v", x.v));
 }
+
+enum class MyStringEnum {
+  kValue1,
+  kValue2,
+  kValue3 = kValue2,
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, MyStringEnum& x) {
+  return f.enumeration(x).values(MyStringEnum::kValue1, "value1",  //
+                                 MyStringEnum::kValue2, "value2");
+}
+
+enum class MyIntEnum {
+  kValue1,
+  kValue2,
+  kValue3 = kValue2,
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, MyIntEnum& x) {
+  return f.enumeration(x).values(MyIntEnum::kValue1, 1,  //
+                                 MyIntEnum::kValue2, 2);
+}
+
+enum class MyMixedEnum {
+  kValue1,
+  kValue2,
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, MyMixedEnum& x) {
+  return f.enumeration(x).values(MyMixedEnum::kValue1, "value1",  //
+                                 MyMixedEnum::kValue1, 1,         //
+                                 MyMixedEnum::kValue2, "value2",  //
+                                 MyMixedEnum::kValue2, 2);
+}
+
 }  // namespace
 
 namespace {
@@ -876,6 +921,69 @@ TEST_F(VPackSaveInspectorTest, store_unqualified_variant) {
 
   EXPECT_EQ(1, slice["e"].length());
   EXPECT_TRUE(slice["e"]["nil"].isEmptyObject());
+}
+
+TEST_F(VPackSaveInspectorTest, store_string_enum) {
+  std::vector<MyStringEnum> enums{MyStringEnum::kValue1, MyStringEnum::kValue2,
+                                  MyStringEnum::kValue3};
+  auto result = inspector.apply(enums);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isArray());
+  ASSERT_EQ(3, slice.length());
+  EXPECT_EQ("value1", slice[0].copyString());
+  EXPECT_EQ("value2", slice[1].copyString());
+  EXPECT_EQ("value2", slice[2].copyString());
+}
+
+TEST_F(VPackSaveInspectorTest, store_int_enum) {
+  std::vector<MyIntEnum> enums{MyIntEnum::kValue1, MyIntEnum::kValue2,
+                               MyIntEnum::kValue3};
+  auto result = inspector.apply(enums);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isArray());
+  ASSERT_EQ(3, slice.length());
+  EXPECT_EQ(1, slice[0].getInt());
+  EXPECT_EQ(2, slice[1].getInt());
+  EXPECT_EQ(2, slice[2].getInt());
+}
+
+TEST_F(VPackSaveInspectorTest, store_mixed_enum) {
+  std::vector<MyMixedEnum> enums{MyMixedEnum::kValue1, MyMixedEnum::kValue2};
+  auto result = inspector.apply(enums);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isArray());
+  ASSERT_EQ(2, slice.length());
+  EXPECT_EQ("value1", slice[0].copyString());
+  EXPECT_EQ("value2", slice[1].copyString());
+}
+
+TEST_F(VPackSaveInspectorTest,
+       store_string_enum_returns_error_for_unknown_value) {
+  MyStringEnum val = static_cast<MyStringEnum>(42);
+  auto result = inspector.apply(val);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Unknown enum value 42", result.error());
+}
+
+TEST_F(VPackSaveInspectorTest, store_int_enum_returns_error_for_unknown_value) {
+  MyIntEnum val = static_cast<MyIntEnum>(42);
+  auto result = inspector.apply(val);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Unknown enum value 42", result.error());
+}
+
+TEST_F(VPackSaveInspectorTest,
+       store_mixed_enum_returns_error_for_unknown_value) {
+  MyMixedEnum val = static_cast<MyMixedEnum>(42);
+  auto result = inspector.apply(val);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Unknown enum value 42", result.error());
 }
 
 struct VPackLoadInspectorTest : public ::testing::Test {
@@ -1986,6 +2094,131 @@ TEST_F(VPackLoadInspectorTest, load_type_with_unsafe_fields) {
   EXPECT_EQ(builder.slice()["hashed"].stringView().data(), u.hashed.data());
 }
 
+TEST_F(VPackLoadInspectorTest, load_string_enum) {
+  builder.openArray();
+  builder.add(VPackValue("value1"));
+  builder.add(VPackValue("value2"));
+  builder.close();
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+  std::vector<MyStringEnum> enums;
+  auto result = inspector.apply(enums);
+  ASSERT_TRUE(result.ok());
+  ASSERT_EQ(2, enums.size());
+  EXPECT_EQ(MyStringEnum::kValue1, enums[0]);
+  EXPECT_EQ(MyStringEnum::kValue2, enums[1]);
+}
+
+TEST_F(VPackLoadInspectorTest, load_int_enum) {
+  builder.openArray();
+  builder.add(VPackValue(1));
+  builder.add(VPackValue(2));
+  builder.close();
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+  std::vector<MyIntEnum> enums;
+  auto result = inspector.apply(enums);
+  ASSERT_TRUE(result.ok());
+  ASSERT_EQ(2, enums.size());
+  EXPECT_EQ(MyIntEnum::kValue1, enums[0]);
+  EXPECT_EQ(MyIntEnum::kValue2, enums[1]);
+}
+
+TEST_F(VPackLoadInspectorTest, load_mixed_enum) {
+  builder.openArray();
+  builder.add(VPackValue("value1"));
+  builder.add(VPackValue(1));
+  builder.add(VPackValue("value2"));
+  builder.add(VPackValue(2));
+  builder.close();
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+  std::vector<MyMixedEnum> enums;
+  auto result = inspector.apply(enums);
+  ASSERT_TRUE(result.ok());
+  ASSERT_EQ(4, enums.size());
+  EXPECT_EQ(MyMixedEnum::kValue1, enums[0]);
+  EXPECT_EQ(MyMixedEnum::kValue1, enums[1]);
+  EXPECT_EQ(MyMixedEnum::kValue2, enums[2]);
+  EXPECT_EQ(MyMixedEnum::kValue2, enums[3]);
+}
+
+TEST_F(VPackLoadInspectorTest, load_string_enum_returns_error_when_not_string) {
+  builder.add(VPackValue(42));
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+  MyStringEnum myEnum;
+  auto result = inspector.apply(myEnum);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ("Expecting type String", result.error());
+}
+
+TEST_F(VPackLoadInspectorTest, load_int_enum_returns_error_when_not_int) {
+  builder.add(VPackValue("foobar"));
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+  MyIntEnum myEnum;
+  auto result = inspector.apply(myEnum);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ("Expecting type UInt", result.error());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_mixed_enum_returns_error_when_not_string_or_int) {
+  builder.add(VPackValue(false));
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+  MyMixedEnum myEnum;
+  auto result = inspector.apply(myEnum);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ("Expecting type String or Int", result.error());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_string_enum_returns_error_when_value_is_unknown) {
+  builder.add(VPackValue("unknownValue"));
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+  MyStringEnum myEnum;
+  auto result = inspector.apply(myEnum);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ("Unknown enum value unknownValue", result.error());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_int_enum_returns_error_when_value_is_unknown) {
+  builder.add(VPackValue(42));
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+  MyIntEnum myEnum;
+  auto result = inspector.apply(myEnum);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ("Unknown enum value 42", result.error());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_mixed_enum_returns_error_when_value_is_unknown) {
+  {
+    builder.add(VPackValue("unknownValue"));
+    arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+    MyMixedEnum myEnum;
+    auto result = inspector.apply(myEnum);
+    EXPECT_FALSE(result.ok());
+    EXPECT_EQ("Unknown enum value unknownValue", result.error());
+  }
+  {
+    builder.clear();
+    builder.add(VPackValue(42));
+    arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+    MyMixedEnum myEnum;
+    auto result = inspector.apply(myEnum);
+    EXPECT_FALSE(result.ok());
+    EXPECT_EQ("Unknown enum value 42", result.error());
+  }
+}
+
 struct VPackInspectionTest : public ::testing::Test {};
 
 TEST_F(VPackInspectionTest, serialize) {
@@ -1999,6 +2232,35 @@ TEST_F(VPackInspectionTest, serialize) {
   EXPECT_EQ(d.d, slice["d"].getDouble());
   EXPECT_EQ(d.b, slice["b"].getBool());
   EXPECT_EQ(d.s, slice["s"].copyString());
+}
+
+TEST_F(VPackInspectionTest, serialize_to_builder) {
+  Dummy const d{.i = 42, .d = 123.456, .b = true, .s = "cheese"};
+  auto sharedSlice = arangodb::velocypack::serialize(d);
+
+  ASSERT_TRUE(sharedSlice.isObject());
+  EXPECT_EQ(d.i, sharedSlice["i"].getInt());
+  EXPECT_EQ(d.d, sharedSlice["d"].getDouble());
+  EXPECT_EQ(d.b, sharedSlice["b"].getBool());
+  EXPECT_EQ(d.s, sharedSlice["s"].copyString());
+}
+
+TEST_F(VPackInspectionTest, formatter) {
+  auto d = Dummy{.i = 42, .d = 123.456, .b = true, .s = "cheese"};
+
+  auto def = fmt::format("My name is {}", d);
+  EXPECT_EQ(def,
+            "My name is {\"i\":42,\"d\":123.456,\"b\":true,\"s\":\"cheese\"}");
+
+  auto notPretty = fmt::format("My name is {:u}", d);
+  EXPECT_EQ(notPretty,
+            "My name is {\"i\":42,\"d\":123.456,\"b\":true,\"s\":\"cheese\"}");
+  EXPECT_EQ(def, notPretty);
+
+  auto pretty = fmt::format("My name is {:p}", d);
+  EXPECT_EQ(pretty,
+            "My name is {\n  \"i\" : 42,\n  \"d\" : 123.456,\n  \"b\" : "
+            "true,\n  \"s\" : \"cheese\"\n}");
 }
 
 TEST_F(VPackInspectionTest, deserialize) {

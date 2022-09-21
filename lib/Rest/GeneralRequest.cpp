@@ -305,11 +305,6 @@ template auto GeneralRequest::parsedValue<uint64_t>(std::string const&,
 template auto GeneralRequest::parsedValue<double>(std::string const&, double)
     -> double;
 
-std::shared_ptr<VPackBuilder> GeneralRequest::toVelocyPackBuilderPtr(
-    bool strictValidation) {
-  return std::make_shared<VPackBuilder>(payload(strictValidation));
-}
-
 /// @brief get VelocyPack options for validation. effectively turns off
 /// validation if strictValidation is false. This optimization can be used for
 /// internal requests

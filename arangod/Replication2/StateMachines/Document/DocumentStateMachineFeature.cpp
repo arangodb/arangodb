@@ -27,6 +27,8 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "RestServer/DatabaseFeature.h"
 
 #include "Replication2/StateMachines/Document/DocumentStateMachineFeature.h"
@@ -50,7 +52,8 @@ void DocumentStateMachineFeature::start() {
   replicatedStateFeature.registerStateType<DocumentState>(
       std::string{DocumentState::NAME},
       std::make_shared<DocumentStateHandlersFactory>(
-          s, clusterFeature, maintenanceFeature, databaseFeature));
+          s, clusterFeature, maintenanceFeature, databaseFeature),
+      *transaction::ManagerFeature::manager());
 }
 
 DocumentStateMachineFeature::DocumentStateMachineFeature(Server& server)
