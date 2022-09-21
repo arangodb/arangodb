@@ -111,6 +111,8 @@ struct FieldMeta {
     bool _storeValues;
   };
 
+  [[nodiscard]] static Analyzer const& identity();
+
   FieldMeta() = default;
   FieldMeta(FieldMeta const&) = default;
   FieldMeta(FieldMeta&&) = default;
@@ -188,10 +190,7 @@ struct FieldMeta {
 #endif
 };
 
-inline FieldMeta::Analyzer const& emptyAnalyzer() noexcept {
-  static FieldMeta::Analyzer const empty{{}, {}};
-  return empty;
-}
+inline FieldMeta::Analyzer makeEmptyAnalyzer() { return {{}, {}}; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief metadata describing how to process a field in a collection
