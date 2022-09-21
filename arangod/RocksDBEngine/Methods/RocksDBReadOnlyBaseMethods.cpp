@@ -78,7 +78,6 @@ void RocksDBReadOnlyBaseMethods::rollbackOperation(
 }
 
 Result RocksDBReadOnlyBaseMethods::addOperation(
-    DataSourceId collectionId, RevisionId revisionId,
     TRI_voc_document_operation_e opType) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }

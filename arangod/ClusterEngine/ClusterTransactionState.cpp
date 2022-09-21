@@ -163,6 +163,12 @@ Result ClusterTransactionState::abortTransaction(
   return {};
 }
 
+Result ClusterTransactionState::performIntermediateCommitIfRequired(
+    DataSourceId cid) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "unexpected intermediate commit");
+}
+
 /// @brief return number of commits
 uint64_t ClusterTransactionState::numCommits() const {
   // there are no intermediate commits for a cluster transaction, so we can

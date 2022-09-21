@@ -99,12 +99,15 @@ void RocksDBTrxMethods::rollbackOperation(
   }
 }
 
-Result RocksDBTrxMethods::checkIntermediateCommit(
-    bool& hasPerformedIntermediateCommit) {
-  // perform an intermediate commit if necessary
-  size_t currentSize =
-      _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
-  return checkIntermediateCommit(currentSize, hasPerformedIntermediateCommit);
+Result RocksDBTrxMethods::checkIntermediateCommit() {
+  Result res;
+  if (hasIntermediateCommitsEnabled()) {
+    // perform an intermediate commit if necessary
+    size_t currentSize =
+        _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
+    res.reset(checkIntermediateCommit(currentSize));
+  }
+  return res;
 }
 
 rocksdb::Status RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
@@ -187,10 +190,7 @@ void RocksDBTrxMethods::createTransaction() {
   ++_numLogdata;
 }
 
-Result RocksDBTrxMethods::triggerIntermediateCommit(
-    bool& hasPerformedIntermediateCommit) {
-  TRI_ASSERT(!hasPerformedIntermediateCommit);
-
+Result RocksDBTrxMethods::triggerIntermediateCommit() {
   TRI_IF_FAILURE("FailBeforeIntermediateCommit") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -209,7 +209,6 @@ Result RocksDBTrxMethods::triggerIntermediateCommit(
     return res;
   }
 
-  hasPerformedIntermediateCommit = true;
   ++_state->statistics()._intermediateCommits;
 
   // reset counters for DML operations, but intentionally don't reset
@@ -233,23 +232,22 @@ Result RocksDBTrxMethods::triggerIntermediateCommit(
   return TRI_ERROR_NO_ERROR;
 }
 
-Result RocksDBTrxMethods::checkIntermediateCommit(
-    uint64_t newSize, bool& hasPerformedIntermediateCommit) {
-  hasPerformedIntermediateCommit = false;
+Result RocksDBTrxMethods::checkIntermediateCommit(uint64_t newSize) {
+  TRI_ASSERT(hasIntermediateCommitsEnabled());
 
-  TRI_IF_FAILURE("noIntermediateCommits") { return TRI_ERROR_NO_ERROR; }
+  TRI_IF_FAILURE("noIntermediateCommits") { return {}; }
 
-  if (hasIntermediateCommitsEnabled()) {
-    auto numOperations = this->numOperations();
-    // perform an intermediate commit
-    // this will be done if either the "number of operations" or the
-    // "transaction size" counters have reached their limit
-    if (_state->options().intermediateCommitCount <= numOperations ||
-        _state->options().intermediateCommitSize <= newSize) {
-      return triggerIntermediateCommit(hasPerformedIntermediateCommit);
-    }
+  Result res;
+  auto numOperations = this->numOperations();
+  // perform an intermediate commit
+  // this will be done if either the "number of operations" or the
+  // "transaction size" counters have reached their limit
+  if (_state->options().intermediateCommitCount <= numOperations ||
+      _state->options().intermediateCommitSize <= newSize) {
+    res.reset(triggerIntermediateCommit());
   }
-  return TRI_ERROR_NO_ERROR;
+
+  return res;
 }
 
 bool RocksDBTrxMethods::hasIntermediateCommitsEnabled() const noexcept {
