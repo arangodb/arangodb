@@ -200,7 +200,8 @@ struct AutoRebalanceProblem {
       bool considerLeaderChanges, bool considerFollowerMoves,
       bool considerLeaderMoves) const;
 
-  void setServersHealthInfo(std::unordered_set<std::string> const& serversInfo) {
+  void setServersHealthInfo(
+      std::unordered_set<std::string> const& serversInfo) {
     serversHealthInfo = serversInfo;
   }
 };
