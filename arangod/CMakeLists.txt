@@ -780,10 +780,13 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/MaintenanceFeature.cpp
   Cluster/MaintenanceRestHandler.cpp
   Cluster/MaintenanceWorker.cpp
+  Cluster/Utils/DistributeShardsLike.cpp
+  Cluster/Utils/EvenDistribution.cpp
+  Cluster/Utils/SatelliteDistribution.cpp
   Cluster/Utils/IShardDistributionFactory.cpp
-  Cluster/Utils/ShardDistribution.cpp
   Cluster/Utils/PlanCollectionEntry.cpp
   Cluster/Utils/PlanCollectionToAgencyWriter.cpp
+  Cluster/Utils/ShardDistribution.cpp
   Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
   Cluster/ResignShardLeadership.cpp
@@ -943,6 +946,7 @@ set(LIB_ARANGO_COMMON_REST_HANDLER_SOURCES
 
 set(LIB_ARANGO_CLUSTER_METHODS_SOURCES
   Cluster/ClusterMethods.cpp
+  Cluster/ClusterCollectionMethods.cpp
   Cluster/ClusterTtlMethods.cpp
 )
 

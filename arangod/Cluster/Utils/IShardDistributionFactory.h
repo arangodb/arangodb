@@ -28,6 +28,8 @@
 
 namespace arangodb {
 
+class Result;
+
 struct PlanShardToServerMapping;
 
 struct IShardDistributionFactory {
@@ -39,7 +41,7 @@ struct IShardDistributionFactory {
    * it is supposed to be used whenever we could not create shards
    * due to server errors.
    */
-  virtual auto shuffle() -> void = 0;
+  virtual auto shuffle(std::vector<ServerID> availableServers) -> Result = 0;
 
   /**
    * @brief Get the List of server for the given ShardIndex

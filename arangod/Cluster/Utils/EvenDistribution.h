@@ -25,8 +25,16 @@
 #include "Cluster/Utils/IShardDistributionFactory.h"
 
 namespace arangodb {
-class EvenDistribution : public IShardDistributionFactory {
-  void shuffle() override;
+
+struct EvenDistribution : public IShardDistributionFactory {
+  EvenDistribution(uint64_t numberOfShards, uint64_t replicationFactor, std::vector<ServerID> avoidServers);
+
+  Result shuffle(std::vector<ServerID> availableServers) override;
+
+ private:
+  uint64_t _numberOfShards;
+  uint64_t _replicationFactor;
+  std::vector<ServerID> _avoidServers
 };
 
 }  // namespace arangodb
