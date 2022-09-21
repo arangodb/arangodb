@@ -315,8 +315,11 @@ AnalyzerProvider SearchMeta::createProvider(
   };
   containers::FlatHashMap<std::string_view, Field> analyzers;
   for (auto const& [name, field] : fieldToAnalyzer) {
-    analyzers.emplace(
-        name, Field{getAnalyzer(field.analyzer), field.includeAllFields});
+    auto analyzer = getAnalyzer(field.analyzer);
+    if (analyzer) {
+      analyzers.emplace(name,
+                        Field{std::move(analyzer), field.includeAllFields});
+    }
   }
   VectorFst const* fst = getFst();
   TRI_ASSERT(fst);
