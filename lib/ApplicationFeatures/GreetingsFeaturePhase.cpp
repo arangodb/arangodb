@@ -24,6 +24,7 @@
 #include "GreetingsFeaturePhase.h"
 
 #include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/FileSystemFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
@@ -39,6 +40,7 @@ GreetingsFeaturePhase::GreetingsFeaturePhase(ApplicationServer& server,
   setOptional(false);
 
   startsAfter<ConfigFeature>();
+  startsAfter<FileSystemFeature>();
   startsAfter<LoggerFeature>();
   startsAfter<RandomFeature>();
   startsAfter<ShellColorsFeature>();

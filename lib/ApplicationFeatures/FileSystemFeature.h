@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,24 +21,30 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ProgramOptions/Parameters.h"
+#pragma once
 
-#include <regex>
+#include "ApplicationFeatures/ApplicationFeature.h"
 
-namespace arangodb::options {
-
-std::string removeCommentsFromNumber(std::string const& value) {
-  // note:
-  // this function is already called during static initialization.
-  // the following regex objects are function-local statics, because
-  // we cannot have them statically initialized on the TU level.
-  static std::regex const removeComments("#.*$", std::regex::ECMAScript);
-  static std::regex const removeTabs("^[ \t]+|[ \t]+$", std::regex::ECMAScript);
-
-  // replace trailing comments
-  auto noComment = std::regex_replace(value, removeComments, "");
-  // replace leading spaces, replace trailing spaces
-  return std::regex_replace(noComment, removeTabs, "");
+namespace arangodb {
+namespace options {
+class ProgramOptions;
 }
 
-}  // namespace arangodb::options
+class LoggerFeature;
+
+class FileSystemFeature final
+    : public application_features::ApplicationFeature {
+ public:
+  explicit FileSystemFeature(application_features::ApplicationServer& server);
+
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+
+ private:
+  // whether or not to use the splice() syscall on Linux
+#ifdef __linux__
+  bool _useSplice = true;
+#endif
+};
+
+}  // namespace arangodb

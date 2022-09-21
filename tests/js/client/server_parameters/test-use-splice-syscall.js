@@ -29,10 +29,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
-  return {
+  let args = {
     'javascript.copy-installation': 'true',
     'javascript.allow-admin-execute': 'true',
   };
+  if (require("internal").platform === 'linux') {
+    // turn off splicing. this is a linux-specific startup option
+    args['use-splice-syscall'] =  'false';
+  }
+  return args;
 }
 
 const db = require("@arangodb").db;

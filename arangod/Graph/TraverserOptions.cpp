@@ -752,6 +752,16 @@ auto TraverserOptions::isSatelliteLeader() const -> bool {
   TRI_ASSERT(false);
   return false;
 }
+
+auto TraverserOptions::setClusterOneShardRule() -> void {
+  // Can only be called in Enterprise code.
+  TRI_ASSERT(false);
+}
+
+auto TraverserOptions::isClusterOneShardRuleEnabled() const -> bool {
+  return false;
+}
+
 #endif
 
 auto TraverserOptions::getEdgeDestination(

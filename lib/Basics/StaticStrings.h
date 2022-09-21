@@ -148,6 +148,9 @@ class StaticStrings {
   static std::string const IndexHintOption;
   static std::string const IndexHintOptionForce;
 
+  // query options
+  static std::string const ForceOneShardAttributeValue;
+
   // HTTP headers
   static std::string const Accept;
   static std::string const AcceptEncoding;
