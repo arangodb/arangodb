@@ -331,7 +331,7 @@ AnalyzerProvider SearchMeta::createProvider(
          -> FieldMeta::Analyzer const& {
     auto registerWarning = [ctx](std::string_view error) {
       if (ctx) {
-        ctx->registerWarning(TRI_ERROR_BAD_PARAMETER, error);
+        ctx->registerWarning(TRI_ERROR_BAD_PARAMETER, error.data());
       }
     };
 
