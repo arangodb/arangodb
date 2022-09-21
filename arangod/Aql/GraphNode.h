@@ -125,6 +125,10 @@ class GraphNode : public ExecutionNode {
   /// only!)
   bool isDisjoint() const;
 
+  /// @brief flag, if the graph is a Hybrid Disjoint SmartGraph
+  /// (Enterprise Edition only!)
+  bool isHybridDisjoint() const;
+
   /// @brief return the database
   TRI_vocbase_t* vocbase() const;
 
