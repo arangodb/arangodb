@@ -268,7 +268,7 @@ std::string check(SearchMeta const& search,
   return {};
 }
 
-void add(SearchMeta::Map& search, IResearchInvertedIndexMeta const& index) {
+void add(SearchMeta::Map& search, InvertedIndexField const& index) {
   for (auto const& field : index._fields) {
     auto it = search.lower_bound(field.path());
     if (it == search.end() || it->first != field.path()) {
@@ -279,6 +279,9 @@ void add(SearchMeta::Map& search, IResearchInvertedIndexMeta const& index) {
     } else {
       it->second.includeAllFields |= field._includeAllFields;
     }
+#ifdef USE_ENTERPRISE
+    add(search, field);
+#endif
   }
   if (index._includeAllFields) {
     search.emplace("", SearchMeta::Field{index.analyzer()._shortName, true,

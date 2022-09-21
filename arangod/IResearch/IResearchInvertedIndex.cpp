@@ -53,16 +53,30 @@ namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
+InvertedIndexField const* findMatchingSubField(InvertedIndexField const& root,
+                                         std::string_view fieldPath) {
+  for (auto const& field : root._fields) {
+    if (field.path() == fieldPath) {
+      return &field;
+    }
+    if (fieldPath.starts_with(field.path())) {
+      auto tmp = findMatchingSubField(field, fieldPath);
+      if (tmp) {
+        return tmp;
+      }
+    }
+  }
+  return nullptr;
+}
+
 AnalyzerProvider makeAnalyzerProvider(IResearchInvertedIndexMeta const& meta) {
   static FieldMeta::Analyzer const defaultAnalyzer{
       IResearchAnalyzerFeature::identity()};
   return [&meta](std::string_view fieldPath) -> FieldMeta::Analyzer const& {
-    for (auto const& field : meta._fields) {
-      if (field.path() == fieldPath) {
-        return field.analyzer();
-      }
-    }
-    return defaultAnalyzer;
+
+    auto subfield = findMatchingSubField(meta, fieldPath);
+
+    return subfield? subfield->analyzer() : defaultAnalyzer;
   };
 }
 
