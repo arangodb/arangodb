@@ -34,8 +34,8 @@ struct Computing : State {
   Conductor& conductor;
   Computing(Conductor& conductor);
   ~Computing();
-  auto run() -> void override;
-  auto receive(Message const& message) -> void override{};
+  auto run() -> std::optional<std::unique_ptr<State>> override;
+  auto canBeCanceled() -> bool override { return true; }
   auto name() const -> std::string override { return "running"; };
   auto isRunning() const -> bool override { return true; }
   auto getExpiration() const

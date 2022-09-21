@@ -1,6 +1,5 @@
 #include "DoneState.h"
 
-#include <chrono>
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Pregel/WorkerConductorMessages.h"
@@ -9,16 +8,14 @@
 
 using namespace arangodb::pregel::conductor;
 
-Done::Done(Conductor& conductor, std::chrono::seconds const& ttl)
-    : conductor{conductor} {
-  conductor.updateState(ExecutionState::DONE);
-  expiration = std::chrono::system_clock::now() + ttl;
+Done::Done(Conductor& conductor) : conductor{conductor} {
+  expiration = std::chrono::system_clock::now() + conductor._ttl;
   if (!conductor._timing.total.hasFinished()) {
     conductor._timing.total.finish();
   }
 }
 
-auto Done::run() -> void {
+auto Done::run() -> std::optional<std::unique_ptr<State>> {
   VPackBuilder debugOut;
   debugOut.openObject();
   debugOut.add("stats", VPackValue(VPackValueType::Object));
@@ -45,17 +42,12 @@ auto Done::run() -> void {
       << ", overall: " << conductor._timing.total.elapsedSeconds().count()
       << "s"
       << ", stats: " << debugOut.slice().toJson();
-}
-
-auto Done::receive(Message const& message) -> void {
-  LOG_PREGEL_CONDUCTOR("88f66", WARN)
-      << "When done, we expect no messages, but received message type "
-      << static_cast<int>(message.type());
+  return std::nullopt;
 }
 
 auto Done::_results(bool withId) -> ResultsFuture {
   auto results = std::vector<futures::Future<ResultT<PregelResults>>>{};
-  for (auto&& [_, worker] : conductor.workers) {
+  for (auto&& [_, worker] : conductor._workers) {
     results.emplace_back(
         worker.results(CollectPregelResults{.withId = withId}));
   }

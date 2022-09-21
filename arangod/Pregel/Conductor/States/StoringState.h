@@ -34,8 +34,8 @@ struct Storing : State {
   Conductor& conductor;
   Storing(Conductor& conductor);
   ~Storing();
-  auto run() -> void override;
-  auto receive(Message const& message) -> void override{};
+  auto run() -> std::optional<std::unique_ptr<State>> override;
+  auto canBeCanceled() -> bool override { return true; }
   auto name() const -> std::string override { return "storing"; };
   auto isRunning() const -> bool override { return true; }
   auto getExpiration() const

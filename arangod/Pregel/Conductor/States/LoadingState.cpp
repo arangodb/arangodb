@@ -1,6 +1,7 @@
 #include "LoadingState.h"
 
 #include <fmt/format.h>
+#include <memory>
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Metrics/Gauge.h"
@@ -11,7 +12,6 @@
 using namespace arangodb::pregel::conductor;
 
 Loading::Loading(Conductor& conductor) : conductor{conductor} {
-  conductor.updateState(ExecutionState::LOADING);
   conductor._timing.loading.start();
   conductor._feature.metrics()->pregelConductorsLoadingNumber->fetch_add(1);
 }
@@ -21,24 +21,23 @@ Loading::~Loading() {
   conductor._feature.metrics()->pregelConductorsLoadingNumber->fetch_sub(1);
 }
 
-auto Loading::run() -> void {
+auto Loading::run() -> std::optional<std::unique_ptr<State>> {
   LOG_PREGEL_CONDUCTOR("3a255", DEBUG) << "Telling workers to load the data";
-  conductor._initializeWorkers(VPackSlice())
-      .thenValue([&](auto results) {
+  return conductor._initializeWorkers(VPackSlice())
+      .thenValue([&](auto results) -> std::unique_ptr<State> {
         for (auto const& result : results) {
           if (result.get().fail()) {
             LOG_PREGEL_CONDUCTOR("8e855", ERR) << fmt::format(
                 "Got unsuccessful response from worker while loading graph: "
                 "{}\n",
                 result.get().errorMessage());
-            conductor.changeState(StateType::Canceled);
+            return std::make_unique<Canceled>(conductor);
           }
           auto graphLoaded = result.get().get();
           conductor._totalVerticesCount += graphLoaded.vertexCount;
           conductor._totalEdgesCount += graphLoaded.edgeCount;
         }
-      })
-      .thenValue([&](auto _) {
+
         LOG_PREGEL_CONDUCTOR("76631", INFO)
             << "Running Pregel " << conductor._algorithm->name() << " with "
             << conductor._totalVerticesCount << " vertices, "
@@ -48,7 +47,7 @@ auto Loading::run() -> void {
                                                conductor._totalEdgesCount,
                                                conductor._aggregators.get());
         }
-        conductor.changeState(StateType::Computing);
+        return std::make_unique<Computing>(conductor);
       })
-      .wait();
+      .get();
 }

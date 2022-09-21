@@ -40,7 +40,6 @@
 #include "Pregel/Conductor/States/ComputingState.h"
 #include "Pregel/Conductor/States/DoneState.h"
 #include "Pregel/Conductor/States/FatalErrorState.h"
-#include "Pregel/Conductor/States/InErrorState.h"
 #include "Pregel/Conductor/States/InitialState.h"
 #include "Pregel/Conductor/States/LoadingState.h"
 #include "Pregel/Conductor/States/State.h"
@@ -56,17 +55,6 @@
 
 namespace arangodb {
 namespace pregel {
-
-enum ExecutionState {
-  DEFAULT = 0,  // before calling start
-  LOADING,      // load graph into memory
-  RUNNING,      // during normal operation
-  STORING,      // store results
-  DONE,         // after everyting is done
-  CANCELED,     // after an terminal error or manual canceling
-  IN_ERROR,     // after an error which should allow recovery
-  FATAL_ERROR,  // execution can not continue because of errors
-};
 
 class PregelFeature;
 class MasterContext;
@@ -90,10 +78,11 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   friend struct conductor::Storing;
   friend struct conductor::Canceled;
   friend struct conductor::Done;
-  friend struct conductor::InError;
   friend struct conductor::FatalError;
 
-  ExecutionState _state = ExecutionState::DEFAULT;
+  std::unordered_map<ServerID, conductor::WorkerApi> _workers;
+  std::unique_ptr<conductor::State> _state =
+      std::make_unique<conductor::Initial>(*this);
   PregelFeature& _feature;
   std::chrono::system_clock::time_point _created;
   std::chrono::seconds _ttl = std::chrono::seconds(300);
@@ -155,17 +144,15 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   using GraphLoadedFuture = futures::Future<std::vector<
       futures::Try<arangodb::ResultT<arangodb::pregel::GraphLoaded>>>>;
 
+  auto _changeState(std::unique_ptr<conductor::State> newState) -> void;
+  auto _initializeWorkers(VPackSlice additional) -> GraphLoadedFuture;
+  auto _preGlobalSuperStep() -> bool;
   auto _postGlobalSuperStep(VPackBuilder messagesFromWorkers)
       -> PostGlobalSuperStepResult;
-  auto _preGlobalSuperStep() -> bool;
-  auto _initializeWorkers(VPackSlice additional) -> GraphLoadedFuture;
-  template<typename InType>
-  auto _sendToAllDBServers(InType const& message)
-      -> ResultT<std::vector<ModernMessage>>;
-  void _ensureUniqueResponse(std::string const& body);
+  void _cleanup();
 
   // === REST callbacks ===
-  void workerStatusUpdate(StatusUpdated const& data);
+  void _workerStatusUpdate(StatusUpdated const& data);
 
   std::vector<ShardID> getShardIds(ShardID const& collection) const;
 
@@ -189,17 +176,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   bool canBeGarbageCollected() const;
 
   ExecutionNumber executionNumber() const { return _executionNumber; }
-
- private:
-  std::unordered_map<ServerID, conductor::WorkerApi> workers;
-  void updateState(ExecutionState state);
-  void cleanup();
-
-  std::unique_ptr<conductor::State> state =
-      std::make_unique<conductor::Initial>(*this);
-  auto changeState(conductor::StateType name) -> void;
-  auto run() -> void { state->run(); }
-  auto receive(Message const& message) -> void { state->receive(message); }
 };
 }  // namespace pregel
 }  // namespace arangodb

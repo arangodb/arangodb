@@ -35,10 +35,10 @@ namespace conductor {
 struct Canceled : State {
   std::chrono::system_clock::time_point expiration;
   Conductor& conductor;
-  Canceled(Conductor& conductor, std::chrono::seconds const& ttl);
+  Canceled(Conductor& conductor);
   ~Canceled() = default;
-  auto run() -> void override;
-  auto receive(Message const& message) -> void override{};
+  auto run() -> std::optional<std::unique_ptr<State>> override;
+  auto canBeCanceled() -> bool override { return false; }
   auto name() const -> std::string override { return "canceled"; };
   auto isRunning() const -> bool override { return false; }
   auto getExpiration() const

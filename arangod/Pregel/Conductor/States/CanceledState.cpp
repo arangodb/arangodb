@@ -1,19 +1,14 @@
 #include "CanceledState.h"
-#include <chrono>
 #include "fmt/chrono.h"
-
 #include "Basics/FunctionUtils.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Pregel/WorkerConductorMessages.h"
 #include "Pregel/PregelFeature.h"
-#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb::pregel::conductor;
 
-Canceled::Canceled(Conductor& conductor, std::chrono::seconds const& ttl)
-    : conductor{conductor} {
-  conductor.updateState(ExecutionState::CANCELED);
-  expiration = std::chrono::system_clock::now() + ttl;
+Canceled::Canceled(Conductor& conductor) : conductor{conductor} {
+  expiration = std::chrono::system_clock::now() + conductor._ttl;
   if (not conductor._timing.total.hasFinished()) {
     conductor._timing.total.finish();
   }
@@ -21,7 +16,7 @@ Canceled::Canceled(Conductor& conductor, std::chrono::seconds const& ttl)
 
 auto Canceled::_cleanup() -> CleanupFuture {
   auto results = std::vector<futures::Future<ResultT<CleanupFinished>>>{};
-  for (auto&& [_, worker] : conductor.workers) {
+  for (auto&& [_, worker] : conductor._workers) {
     results.emplace_back(worker.cleanup(Cleanup{}));
   }
   return futures::collectAll(results);
@@ -29,7 +24,7 @@ auto Canceled::_cleanup() -> CleanupFuture {
 
 auto Canceled::_cleanupUntilTimeout(std::chrono::steady_clock::time_point start)
     -> futures::Future<Result> {
-  conductor.cleanup();
+  conductor._cleanup();
 
   if (conductor._feature.isStopping()) {
     LOG_PREGEL_CONDUCTOR("bd540", DEBUG)
@@ -59,23 +54,24 @@ auto Canceled::_cleanupUntilTimeout(std::chrono::steady_clock::time_point start)
   });
 }
 
-auto Canceled::run() -> void {
+auto Canceled::run() -> std::optional<std::unique_ptr<State>> {
   LOG_PREGEL_CONDUCTOR("dd721", WARN)
       << "Execution was canceled, conductor and workers are discarded.";
 
-  _cleanupUntilTimeout(std::chrono::steady_clock::now())
-      .thenValue([&](auto result) {
+  return _cleanupUntilTimeout(std::chrono::steady_clock::now())
+      .thenValue([&](auto result) -> std::optional<std::unique_ptr<State>> {
         if (result.fail()) {
           LOG_PREGEL_CONDUCTOR("f8b3c", ERR) << result.errorMessage();
-          return;
+          return std::nullopt;
         }
 
         if (conductor._inErrorAbort) {
-          conductor.changeState(StateType::FatalError);
-          return;
+          return std::make_unique<FatalError>(conductor);
         }
 
         LOG_PREGEL_CONDUCTOR("6928f", DEBUG) << "Conductor is erased";
         conductor._feature.cleanupConductor(conductor._executionNumber);
-      });
+        return std::nullopt;
+      })
+      .get();
 }
