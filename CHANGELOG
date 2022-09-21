@@ -1,6 +1,8 @@
 devel
 -----
 
+* BTS-477: added integration tests for covering log parameters.
+
 * Moved the handling of escaping control and unicode chars in the log to 
   the Logger instead of LogAppenderFile.
 

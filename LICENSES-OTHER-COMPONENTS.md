@@ -583,8 +583,8 @@ can be found [here](https://github.com/arangodb/arangodb/blob/devel/3rdParty/ire
 ### fmt
 
 * Name: fmt
-* Version: 8.1.1
-* Date: 2022-01-06
+* Version: 9.1.0
+* Date: 2022-08-27 08:57:10-0700
 * Project Home: https://fmt.dev/
 * License: https://github.com/fmtlib/fmt/blob/master/LICENSE.rst
 * License Name: MIT
