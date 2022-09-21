@@ -5998,13 +5998,15 @@ std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
   if (!_currentProt.isValid) {
     tries++;
   }
+  if (!_planProt.isValid) {
+    tries++;
+  }
 
   auto logId = LogicalCollection::shardIdToStateId(shardID);
 
   while (true) {
     {
       {
-        // TODO: do we need to check here if _planProt is valid?
         READ_LOCKER(readLocker, _planProt.lock);
         // if we find a replicated log for this shard, then this is a
         // replication 2.0 db, in which case we want to use the participant
@@ -6073,7 +6075,12 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
   containers::FlatHashMap<ShardID, ServerID> result;
 
   {
-    // TODO: do we need to check here if _planProt is valid?
+    if (!_planProt.isValid) {
+      Result r = waitForPlan(1).get();
+      if (r.fail()) {
+        THROW_ARANGO_EXCEPTION(r);
+      }
+    }
     bool isReplicationTwo = false;
 
     READ_LOCKER(readLocker, _planProt.lock);
