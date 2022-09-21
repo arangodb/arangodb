@@ -190,6 +190,9 @@ const getArrayElements = function(logs, opType, name) {
   return entries.filter(entry => entry.name === name);
 };
 
+/**
+ * This test suite validates the correctness of most basic operations, checking replicated log entries.
+ */
 const replicatedStateDocumentStoreSuiteReplication2 = function () {
   let collection = null;
   let shards = null;
@@ -352,6 +355,19 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       }
       assertEqual(found.length, 2, `Dumping combined log entries: ${JSON.stringify(allEntries)}`);
     },
+
+    testReplicateOperationsIntermediateCommits: function() {
+      const keyName = "ICTest";
+      const opType = "Truncate";
+      let documents = [...Array(10).keys()].map(i => {return {name: keyName, baz: i};});
+      db._query(`FOR i in 0..9 INSERT {_key: CONCAT('test', i), name: '${keyName}', baz: i} INTO ${collectionName}`, {},
+        {intermediateCommitCount: 2});
+      let result = getArrayElements(logs, opType, keyName);
+      //require("internal").print(result);
+      for (const doc of documents) {
+        assertTrue(result.find(entry => entry.baz === doc.baz) !== undefined);
+      }
+    }
   };
 };
 
@@ -456,6 +472,9 @@ const replicatedStateFollowerSuite = function (dbParams) {
   };
 };
 
+/**
+ * This test suite checks that everything is left clean after dropping a database.
+ */
 const replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2 = function () {
   let previousDatabase, databaseExisted = true;
   return {
@@ -579,6 +598,9 @@ const replicatedStateRecoverySuite = function () {
   };
 };
 
+/**
+ * This test suite checks that replication2 leaves no side effects when creating a replication1 DB.
+ */
 const replicatedStateDocumentStoreSuiteReplication1 = function () {
   const {setUpAll, tearDownAll, setUp, tearDown} =
     lh.testHelperFunctions(database, {replicationVersion: "1"});
