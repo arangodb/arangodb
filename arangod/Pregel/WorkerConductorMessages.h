@@ -38,22 +38,14 @@
 
 namespace arangodb::pregel {
 
-enum class MessageType { GraphLoaded, CleanupFinished, GssFinished };
-
-struct Message {
-  virtual auto type() const -> MessageType = 0;
-  virtual ~Message(){};
-};
-
 // ------ events sent from worker to conductor -------
 
-struct GraphLoaded : Message {
+struct GraphLoaded {
   uint64_t vertexCount;
   uint64_t edgeCount;
   GraphLoaded() noexcept = default;
   GraphLoaded(uint64_t vertexCount, uint64_t edgeCount)
       : vertexCount{vertexCount}, edgeCount{edgeCount} {}
-  auto type() const -> MessageType override { return MessageType::GraphLoaded; }
 };
 
 template<typename Inspector>
@@ -89,19 +81,18 @@ auto inspect(Inspector& f, GlobalSuperStepPrepared& x) {
       f.field("messages", x.messages), f.field("aggregators", x.aggregators));
 }
 
-struct GlobalSuperStepFinished : Message {
+struct GlobalSuperStepFinished {
   std::string senderId;
   uint64_t gss;
   VPackBuilder messageStats;
   VPackBuilder aggregators;
-  GlobalSuperStepFinished() noexcept {};
+  GlobalSuperStepFinished() noexcept = default;
   GlobalSuperStepFinished(std::string senderId, uint64_t gss,
                           VPackBuilder messageStats, VPackBuilder aggregators)
       : senderId{std::move(senderId)},
         gss{gss},
         messageStats{std::move(messageStats)},
         aggregators{std::move(aggregators)} {}
-  auto type() const -> MessageType override { return MessageType::GssFinished; }
 };
 
 template<typename Inspector>
@@ -118,11 +109,8 @@ auto inspect(Inspector& f, Stored& x) {
   return f.object(x).fields();
 }
 
-struct CleanupFinished : Message {
+struct CleanupFinished {
   CleanupFinished() noexcept = default;
-  auto type() const -> MessageType override {
-    return MessageType::CleanupFinished;
-  }
 };
 template<typename Inspector>
 auto inspect(Inspector& f, CleanupFinished& x) {
