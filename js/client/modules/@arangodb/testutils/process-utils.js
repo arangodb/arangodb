@@ -303,6 +303,7 @@ let serverFailMessagesLocal = "";
 let cleanupDirectories = [];
 let isEnterpriseClient = false;
 
+let BUILD_DIR;
 let BIN_DIR;
 let ARANGOBACKUP_BIN;
 let ARANGOBENCH_BIN;
@@ -368,6 +369,8 @@ function setupBinaries (builddir, buildType, configDir) {
       };
     }
   }
+
+  BUILD_DIR = builddir;
 
   BIN_DIR = fs.join(builddir, 'bin');
   if (!fs.exists(BIN_DIR)) {
@@ -916,6 +919,7 @@ Object.defineProperty(exports, 'ARANGOSH_BIN', {get: () => ARANGOSH_BIN});
 Object.defineProperty(exports, 'ARANGO_SECURE_INSTALLATION_BIN', {get: () => ARANGO_SECURE_INSTALLATION_BIN});
 Object.defineProperty(exports, 'CONFIG_DIR', {get: () => CONFIG_DIR});
 Object.defineProperty(exports, 'TOP_DIR', {get: () => TOP_DIR});
+Object.defineProperty(exports, 'BUILD_DIR', {get: () => BUILD_DIR});
 Object.defineProperty(exports, 'LOGS_DIR', {get: () => LOGS_DIR});
 Object.defineProperty(exports, 'UNITTESTS_DIR', {get: () => UNITTESTS_DIR});
 Object.defineProperty(exports, 'BIN_DIR', {get: () => BIN_DIR});

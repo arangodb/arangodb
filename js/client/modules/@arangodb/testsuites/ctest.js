@@ -41,17 +41,17 @@ const testPaths = {
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 
-function getGTestResults(fileName, defaultResults) {
+function getCTestResults(fileName, defaultResults) {
   let results = defaultResults;
   if (! fs.exists(fileName)) {
     defaultResults.failed += 1;
     print(RED + "No testresult file found at: " + fileName + RESET);    
     return defaultResults;
   }
-  let gTestResults = JSON.parse(fs.read(fileName));
-  results.failed = gTestResults.failures + gTestResults.errors;
-  results.status = (gTestResults.errors === 0) || (gTestResults.failures === 0);
-  gTestResults.testsuites.forEach(function(testSuite) {
+  let cTestResults = JSON.parse(fs.read(fileName));
+  results.failed = cTestResults.failures + gTestResults.errors;
+  results.status = (cTestResults.errors === 0) || (cTestResults.failures === 0);
+  cTestResults.testsuites.forEach(function(testSuite) {
     results[testSuite.name] = {
       failed: testSuite.failures + testSuite.errors,
       status: (testSuite.failures + testSuite.errors ) === 0,
@@ -72,7 +72,7 @@ function getGTestResults(fileName, defaultResults) {
   return results;
 }
 
-function gtestRunner (testname, options) {
+function ctestRunner (options) {
   let results = { failed: 0 };
   let rootDir = fs.join(fs.getTempPath(), 'ctest');
   let testResultJUnitFile = fs.join(rootDir, 'testResults.xml');
@@ -95,7 +95,7 @@ function gtestRunner (testname, options) {
     if (!results.basics.status) {
       results.failed += 1;
     }
-    results = getGTestResults(testResultJUnitFile, results);
+    results = getCTestResults(testResultJUnitFile, results);
     tmpMgr.destructor((results.failed === 0) && options.cleanup);
   }
   return results;
@@ -103,7 +103,7 @@ function gtestRunner (testname, options) {
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
-  testFns['ctest'] = x => gtestRunner('arangodbtests', x);
+  testFns['ctest'] = ctestRunner;
 
   defaultFns.push('ctest');
 
