@@ -33,6 +33,7 @@
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/ExpressionContext.h"
 #include "Aql/QueryCache.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/Result.h"
@@ -314,26 +315,53 @@ AnalyzerProvider SearchMeta::createProvider(
   };
   containers::FlatHashMap<std::string_view, Field> analyzers;
   for (auto const& [name, field] : fieldToAnalyzer) {
-    analyzers.emplace(
-        name, Field{getAnalyzer(field.analyzer), field.includeAllFields});
+    auto analyzer = getAnalyzer(field.analyzer);
+    if (analyzer) {
+      analyzers.emplace(name,
+                        Field{std::move(analyzer), field.includeAllFields});
+    }
   }
   VectorFst const* fst = getFst();
   TRI_ASSERT(fst);
   // we don't use provider in parallel, so create matcher here is thread safe
   auto matcher = std::make_unique<ExplicitMatcher>(fst, fst::MATCH_INPUT);
   return [analyzers = std::move(analyzers), matcher = std::move(matcher)](
-             std::string_view field) mutable -> FieldMeta::Analyzer const& {
+             std::string_view field, aql::ExpressionContext* ctx,
+             FieldMeta::Analyzer const& contextAnalyzer) mutable
+         -> FieldMeta::Analyzer const& {
+    auto registerWarning = [ctx](std::string_view error) {
+      if (ctx) {
+        ctx->registerWarning(TRI_ERROR_BAD_PARAMETER, error);
+      }
+    };
+
     auto it = analyzers.find(field);  // fast-path O(1)
-    if (it != analyzers.end()) {
-      return it->second.analyzer;
+
+    if (it == analyzers.end()) {
+      // Omega(prefix.size())
+      auto const prefix = findLongestCommonPrefix(*matcher, field);
+      it = analyzers.find(prefix);
+      if (it != analyzers.end() && !it->second.includeAllFields) {
+        it = analyzers.end();
+      }
     }
-    // Omega(prefix.size())
-    auto const prefix = findLongestCommonPrefix(*matcher, field);
-    it = analyzers.find(prefix);
-    if (it != analyzers.end() && it->second.includeAllFields) {
-      return it->second.analyzer;
+
+    if (it == analyzers.end()) {
+      registerWarning(
+          absl::StrCat("Analyzer for field '", field, "' isn't set"));
+      return contextAnalyzer ? contextAnalyzer : FieldMeta::identity();
     }
-    return emptyAnalyzer();
+
+    auto& analyzer = it->second.analyzer;
+    if (ADB_UNLIKELY(contextAnalyzer &&
+                     contextAnalyzer._pool != analyzer._pool)) {
+      registerWarning(
+          absl::StrCat("Context analyzer '", contextAnalyzer->name(),
+                       "' doesn't match field '", field, "' analyzer '",
+                       analyzer ? analyzer->name() : "", "'"));
+    }
+
+    return analyzer;
   };
 }
 
