@@ -231,6 +231,15 @@ void ReplicatedRocksDBTransactionState::addIntermediateCommits(uint64_t value) {
                                  "invalid call to addIntermediateCommits");
 }
 
+Result ReplicatedRocksDBTransactionState::performIntermediateCommitIfRequired(
+    DataSourceId cid) {
+  auto* methods = rocksdbMethods(cid);
+  if (methods->checkIntermediateCommit()) {
+    return methods->triggerIntermediateCommit();
+  }
+  return {};
+}
+
 bool ReplicatedRocksDBTransactionState::hasOperations() const noexcept {
   return std::any_of(
       _collections.begin(), _collections.end(), [](auto const& col) {
