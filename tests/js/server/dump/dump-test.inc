@@ -87,6 +87,9 @@
     const satgm = (isEnterprise) ? require("@arangodb/satellite-graph") : {};
     const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
     const {map, zipObject} = require('lodash');
+    const isServer = require("@arangodb").isServer;
+    const request = require("@arangodb/request");
+    const {getRawMetric, getEndpointsByType} = require("@arangodb/test-helper");
 
     console.info("Test suite arguments: " + JSON.stringify(args));
 
@@ -746,16 +749,7 @@
         // we cannot expect that the data is immediately visible. We can only
         // hope that the data will be there in due course:
 
-        var startTime = new Date();
-        var res;
-        while (new Date() - startTime < 60000) {
-          res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
-          if (res.length === 5000) {
-            break;
-          }
-          console.log("Waiting for arangosearch index to be built...");
-          internal.wait(1);
-        }
+        let res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
         assertEqual(5000, res.length);
 
         res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
@@ -791,17 +785,38 @@
         // we cannot expect that the data is immediately visible. We can only
         // hope that the data will be there in due course:
 
-        var startTime = new Date();
-        var res;
-        while (new Date() - startTime < 60000) {
-          res = db._query("FOR doc IN " + search.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
-          if (res.length === 5000) {
+        let res = db._query("FOR doc IN " + search.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
+        assertEqual(5000, res.length);
+
+        if (isServer) {
+          request({
+            method: "get",
+            url: "/_db/_system/_admin/metrics?mode=trigger_global",
+            headers: {accept: "application/json"},
+            body: {}
+          });
+        } else {
+          let coordinators = getEndpointsByType("coordinator");
+          for (let i = 0; i < coordinators.length; i++) {
+            let c = coordinators[i];
+            getRawMetric(c, '?mode=trigger_global');
+          }
+        }
+        let figures;
+        for (let i = 0; i < 100; ++i) {
+          require("internal").sleep(0.5);
+          figures = collection.getIndexes(true, true)
+            .find(e => e.name === "searchIndex")
+            .figures;
+          if (figures.numDocs > 5000) {
             break;
           }
-          console.log("Waiting for inverted index to be built...");
-          internal.wait(1);
         }
-        assertEqual(5000, res.length);
+        assertEqual(figures.numDocs, 5001);
+        assertEqual(figures.numLiveDocs, 5001);
+        assertTrue(figures.numSegments >= 1);
+        assertTrue(figures.numFiles >= 7);
+        assertTrue(figures.indexSize > 0);
 
         res = db._query("FOR doc IN " + search.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
         assertEqual(2500, res.length);

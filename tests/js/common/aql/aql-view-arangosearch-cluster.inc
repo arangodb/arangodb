@@ -174,6 +174,7 @@
         db.UnitTestsCollection.ensureIndex({ 
           type: "inverted",
           name: "invertedIndex",
+          includeAllFields:true,
           fields: [ { name: "text", analyzer: "text_en" } ] });
         db._dropView("UnitTestsViewAlias");
         db._createView("UnitTestsViewAlias", "search-alias", { 
@@ -687,6 +688,9 @@
             assertEqual(v.message, "Analyzer for field 'missingField' isn't set");
           });
         }
+  
+        assertEqual(result1i.length, 1);
+        assertEqual(result1i[0].name, 'full');
 
         var result1 = db._query("FOR doc IN UnitTestsViewAlias SEARCH PHRASE(doc.text, [ 'quick brown fox jumps' ], 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
   
