@@ -26,7 +26,9 @@
 #include <array>
 #include <cstddef>
 #include <functional>
+#include <memory>
 #include <string_view>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -35,6 +37,7 @@
 
 #include "Inspection/Access.h"
 #include "Inspection/Types.h"
+#include "Inspection/detail/Fields.h"
 
 namespace arangodb::inspection {
 
@@ -66,7 +69,7 @@ struct EMPTY_BASE ContextContainer<NoContext> {
 };
 }  // namespace detail
 
-template<class Derived, class Context>
+template<class Derived, class Context, class TargetInspector = Derived>
 struct InspectorBase : detail::ContextContainer<Context> {
  protected:
   template<class T>
@@ -78,18 +81,35 @@ struct InspectorBase : detail::ContextContainer<Context> {
   template<class... Ts>
   struct Variant;
 
-  template<typename T>
-  struct RawField;
-
-  struct IgnoreField;
-
-  struct Keep {};
-
   // TODO - support virtual fields with getter/setter
   // template<typename T>
   // struct VirtualField : BasicField<VirtualField<T>> {
   //   using value_type = T;
   // };
+
+  using Keep = detail::Keep;
+
+  using IgnoreField = detail::IgnoreField;
+
+  template<class T>
+  using RawField = detail::RawField<TargetInspector, T>;
+
+  template<class InnerField, class Transformer>
+  using TransformField =
+      detail::TransformField<TargetInspector, InnerField, Transformer>;
+
+  template<class InnerField, class FallbackValue>
+  using FallbackField =
+      detail::FallbackField<TargetInspector, InnerField, FallbackValue>;
+
+  template<class InnerField, class FallbackFactory>
+  using FallbackFactoryField =
+      detail::FallbackFactoryField<TargetInspector, InnerField,
+                                   FallbackFactory>;
+
+  template<class InnerField, class Invariant>
+  using InvariantField =
+      detail::InvariantField<TargetInspector, InnerField, Invariant>;
 
  public:
   InspectorBase() = default;
@@ -134,42 +154,19 @@ struct InspectorBase : detail::ContextContainer<Context> {
     return RawField<T>{{name}, value};
   }
 
+  template<class T>
+  [[nodiscard]] auto embedFields(T& value) const;
+
   [[nodiscard]] IgnoreField ignoreField(std::string_view name) const noexcept {
     return IgnoreField{name};
   }
 
  protected:
-  template<class InnerField, class Transformer>
-  struct TransformField;
-
-  template<class InnerField, class FallbackValue>
-  struct FallbackField;
-
-  template<class InnerField, class FallbackFactory>
-  struct FallbackFactoryField;
-
   Derived& self() { return static_cast<Derived&>(*this); }
 
   template<class T>
-  struct IsRawField : std::false_type {};
-  template<class T>
-  struct IsRawField<RawField<T>> : std::true_type {};
-
-  template<class T>
-  struct IsTransformField : std::false_type {};
-  template<class T, class U>
-  struct IsTransformField<TransformField<T, U>> : std::true_type {};
-
-  template<class T>
-  struct IsFallbackField : std::false_type {};
-  template<class T, class U>
-  struct IsFallbackField<FallbackField<T, U>> : std::true_type {};
-  template<class T, class Fn>
-  struct IsFallbackField<FallbackFactoryField<T, Fn>> : std::true_type {};
-
-  template<class T>
   static std::string_view getFieldName(T& field) noexcept {
-    if constexpr (IsRawField<std::remove_cvref_t<T>>::value ||
+    if constexpr (detail::IsRawField<std::remove_cvref_t<T>>::value ||
                   std::is_same_v<IgnoreField, std::remove_cvref_t<T>>) {
       return field.name;
     } else {
@@ -179,7 +176,7 @@ struct InspectorBase : detail::ContextContainer<Context> {
 
   template<class T>
   static auto& getFieldValue(T& field) noexcept {
-    if constexpr (IsRawField<std::remove_cvref_t<T>>::value) {
+    if constexpr (detail::IsRawField<std::remove_cvref_t<T>>::value) {
       return field.value;
     } else {
       return getFieldValue(field.inner);
@@ -189,9 +186,9 @@ struct InspectorBase : detail::ContextContainer<Context> {
   template<class T>
   static decltype(auto) getFallbackField(T& field) noexcept {
     using TT = std::remove_cvref_t<T>;
-    if constexpr (IsFallbackField<TT>::value) {
+    if constexpr (detail::IsFallbackField<TT>::value) {
       return field;
-    } else if constexpr (!IsRawField<TT>::value) {
+    } else if constexpr (!detail::IsRawField<TT>::value) {
       return getFallbackField(field.inner);
     }
   }
@@ -199,197 +196,33 @@ struct InspectorBase : detail::ContextContainer<Context> {
   template<class T>
   static decltype(auto) getTransformer(T& field) noexcept {
     using TT = std::remove_cvref_t<T>;
-    if constexpr (IsTransformField<TT>::value) {
+    if constexpr (detail::IsTransformField<TT>::value) {
       auto& result = field.transformer;  // We want to return a reference!
       return result;
-    } else if constexpr (!IsRawField<TT>::value) {
+    } else if constexpr (!detail::IsRawField<TT>::value) {
       return getTransformer(field.inner);
     }
   }
 
- private:
-  template<class Field>
-  struct EMPTY_BASE InvariantMixin {
-    template<class Predicate>
-    [[nodiscard]] auto invariant(Predicate predicate) && {
-      return InvariantField<Field, Predicate>(
-          std::move(static_cast<Field&>(*this)), std::move(predicate));
-    }
-  };
-
-  template<class Field, class = void>
-  struct HasInvariantMethod : std::false_type {};
-
-  struct AlwaysTrue {
-    template<class... Ts>
-    [[nodiscard]] constexpr bool operator()(Ts&&...) const noexcept {
-      return true;
-    }
-  };
-
-  template<class Field>
-  struct HasInvariantMethod<
-      Field,
-      std::void_t<decltype(std::declval<Field>().invariant(AlwaysTrue{}))>>
-      : std::true_type {};
-
-  template<class Inner>
-  using WithInvariant =
-      std::conditional_t<HasInvariantMethod<Inner>::value, std::monostate,
-                         InvariantMixin<Inner>>;
-
-  template<class Field>
-  struct EMPTY_BASE FallbackMixin {
-    template<class U>
-    [[nodiscard]] auto fallback(U&& val) && {
-      static_assert(std::is_constructible_v<typename Field::value_type, U> ||
-                    std::is_same_v<Keep, U>);
-
-      return FallbackField<Field, U>(std::move(static_cast<Field&>(*this)),
-                                     std::forward<U>(val));
-    }
-
-    template<class Fn>
-    [[nodiscard]] auto fallbackFactory(Fn&& fn) && {
-      static_assert(std::is_constructible_v<typename Field::value_type,
-                                            std::invoke_result_t<Fn>>);
-
-      return FallbackFactoryField<Field, Fn>(
-          std::move(static_cast<Field&>(*this)), std::forward<Fn>(fn));
-    }
-  };
-
-  template<class Field, class = void>
-  struct HasFallbackMethod : std::false_type {};
-
-  template<class Field>
-  struct HasFallbackMethod<Field,
-                           std::void_t<decltype(std::declval<Field>().fallback(
-                               std::declval<typename Field::value_type>()))>>
-      : std::true_type {};
-
-  template<class Inner>
-  using WithFallback = std::conditional_t<HasFallbackMethod<Inner>::value,
-                                          std::monostate, FallbackMixin<Inner>>;
-
-  template<class Field>
-  struct EMPTY_BASE TransformMixin {
-    template<class T>
-    [[nodiscard]] auto transformWith(T transformer) && {
-      return TransformField<Field, T>(std::move(static_cast<Field&>(*this)),
-                                      std::move(transformer));
-    }
-  };
-
-  template<class Field, class = void>
-  struct HasTransformMethod : std::false_type {};
-
-  template<class Field>
-  struct HasTransformMethod<
-      Field, std::void_t<decltype(std::declval<Field>().transformWith)>>
-      : std::true_type {};
-
-  template<class Inner>
-  using WithTransform =
-      std::conditional_t<HasTransformMethod<Inner>::value, std::monostate,
-                         TransformMixin<Inner>>;
-
  protected:
-  template<class InnerField, class FallbackValue>
-  struct EMPTY_BASE FallbackField
-      : Derived::template FallbackContainer<FallbackValue>,
-        WithInvariant<FallbackField<InnerField, FallbackValue>>,
-        WithTransform<FallbackField<InnerField, FallbackValue>> {
-    FallbackField(InnerField inner, FallbackValue&& val)
-        : Derived::template FallbackContainer<FallbackValue>(std::move(val)),
-          inner(std::move(inner)) {}
-    using value_type = typename InnerField::value_type;
-    InnerField inner;
-  };
-
-  template<class InnerField, class FallbackFactory>
-  struct EMPTY_BASE FallbackFactoryField
-      : Derived::template FallbackFactoryContainer<FallbackFactory>,
-        WithInvariant<FallbackFactoryField<InnerField, FallbackFactory>>,
-        WithTransform<FallbackFactoryField<InnerField, FallbackFactory>> {
-    FallbackFactoryField(InnerField inner, FallbackFactory&& fn)
-        : Derived::template FallbackFactoryContainer<FallbackFactory>(
-              std::move(fn)),
-          inner(std::move(inner)) {}
-    using value_type = typename InnerField::value_type;
-    InnerField inner;
-  };
-
-  template<class InnerField, class Invariant>
-  struct EMPTY_BASE InvariantField
-      : Derived::template InvariantContainer<Invariant>,
-        WithFallback<InvariantField<InnerField, Invariant>>,
-        WithTransform<InvariantField<InnerField, Invariant>> {
-    InvariantField(InnerField inner, Invariant&& invariant)
-        : Derived::template InvariantContainer<Invariant>(std::move(invariant)),
-          inner(std::move(inner)) {}
-    using value_type = typename InnerField::value_type;
-    InnerField inner;
-  };
-
-  template<class InnerField, class Transformer>
-  struct EMPTY_BASE TransformField
-      : WithInvariant<TransformField<InnerField, Transformer>>,
-        WithFallback<TransformField<InnerField, Transformer>> {
-    TransformField(InnerField inner, Transformer&& transformer)
-        : inner(std::move(inner)), transformer(std::move(transformer)) {}
-    using value_type = typename InnerField::value_type;
-    InnerField inner;
-    Transformer transformer;
-  };
-
-  template<typename DerivedField>
-  struct EMPTY_BASE BasicField : InvariantMixin<DerivedField>,
-                                 FallbackMixin<DerivedField>,
-                                 TransformMixin<DerivedField> {
-    explicit BasicField(std::string_view name) : name(name) {}
-    std::string_view name;
-  };
-
-  template<typename T>
-  struct EMPTY_BASE RawField : BasicField<RawField<T>> {
-    RawField(std::string_view name, T& value)
-        : BasicField<RawField>(name), value(value) {}
-    using value_type = T;
-    T& value;
-  };
-
-  struct IgnoreField {
-    explicit IgnoreField(std::string_view name) : name(name) {}
-    std::string_view name;
-  };
-
   template<class T>
   struct FieldsResult {
     template<class Invariant>
-    Status invariant(Invariant&& func) {
-      if constexpr (Derived::isLoading) {
-        if (!result.ok()) {
-          return std::move(result);
-        }
-        return checkInvariant<FieldsResult, FieldsResult::InvariantFailedError>(
-            std::forward<Invariant>(func), object);
-      } else {
-        return std::move(result);
-      }
+    auto invariant(Invariant&& func) {
+      return inspector.objectInvariant(object, std::forward<Invariant>(func),
+                                       std::move(result));
     }
-    operator Status() && { return std::move(result); }
 
-    static constexpr const char InvariantFailedError[] =
-        "Object invariant failed";
+    operator Status() && { return std::move(result); }
 
    private:
     template<class TT>
     friend struct Object;
-    FieldsResult(Status&& res, T& object)
-        : result(std::move(res)), object(object) {}
+    FieldsResult(Status&& res, T& object, Derived& inspector)
+        : result(std::move(res)), object(object), inspector(inspector) {}
     Status result;
     T& object;
+    Derived& inspector;
   };
 
   template<class T>
@@ -402,7 +235,7 @@ struct InspectorBase : detail::ContextContainer<Context> {
           | [&]() { return i.applyFields(std::forward<Args>(args)...); }  //
           | [&]() { return i.endObject(); };                              //
 
-      return {std::move(res), object};
+      return {std::move(res), object, inspector};
     }
 
    private:
@@ -575,7 +408,7 @@ struct InspectorBase : detail::ContextContainer<Context> {
     std::variant<Ts...>& _value;
   };
 
-  template<class T, const char ErrorMsg[], class Func, class... Args>
+  template<const char ErrorMsg[], class Func, class... Args>
   static Status checkInvariant(Func&& func, Args&&... args) {
     using result_t = std::invoke_result_t<Func, Args...>;
     if constexpr (std::is_same_v<result_t, bool>) {
@@ -590,7 +423,145 @@ struct InspectorBase : detail::ContextContainer<Context> {
       return std::invoke(std::forward<Func>(func), std::forward<Args>(args)...);
     }
   }
+
+  template<class, class, class>
+  friend struct detail::EmbeddedFieldsWithObjectInvariant;
 };
+
+namespace detail {
+template<class Parent, class Context>
+struct EmbeddedFieldInspector
+    : InspectorBase<EmbeddedFieldInspector<Parent, Context>, Context, Parent> {
+  using Base =
+      InspectorBase<EmbeddedFieldInspector<Parent, Context>, Context, Parent>;
+
+  static constexpr bool isLoading = Parent::isLoading;
+
+  explicit EmbeddedFieldInspector(Parent& parent) : Base(), _parent(parent) {}
+
+  explicit EmbeddedFieldInspector(Parent& parent, Context const& context)
+      : Base(context), _parent(parent) {}
+
+  [[nodiscard]] Status::Success beginObject() { return {}; }
+
+  [[nodiscard]] Status::Success endObject() { return {}; }
+
+  template<class T>
+  auto value(T&) {
+    return fail();
+  }
+
+  auto beginArray() { return fail(); }
+
+  auto endArray() { return fail(); }
+
+  template<class T>
+  auto list(T& list) {
+    return fail();
+  }
+
+  template<class T>
+  auto map(T& map) {
+    return fail();
+  }
+
+  template<class T>
+  auto tuple(T& data) {
+    return fail();
+  }
+
+  template<class... Args>
+  Status applyFields(Args&&... args) {
+    fields = std::make_unique<EmbeddedFieldsImpl<Parent, Args...>>(
+        std::forward<Args>(args)...);
+    return {};
+  }
+
+  template<class... Ts, class... Args>
+  auto processVariant(
+      typename Base::template UnqualifiedVariant<Ts...>& variant,
+      Args&&... args) {
+    return fail();
+  }
+
+  template<class... Ts, class... Args>
+  auto processVariant(typename Base::template QualifiedVariant<Ts...>& variant,
+                      Args&&... args) {
+    return fail();
+  }
+
+  template<class U>
+  using FallbackContainer = typename Parent::template FallbackContainer<U>;
+
+  template<class Fn>
+  using FallbackFactoryContainer =
+      typename Parent::template FallbackFactoryContainer<Fn>;
+
+  template<class Invariant>
+  using InvariantContainer =
+      typename Parent::template InvariantContainer<Invariant>;
+
+ private:
+  template<class, class, class>
+  friend struct ::arangodb::inspection::InspectorBase;
+
+  using EmbeddedParam = typename Parent::EmbeddedParam;
+
+  template<class... Args>
+  auto processEmbeddedFields(EmbeddedParam& param, Args&&... args) {
+    return _parent.processEmbeddedFields(param, std::forward<Args>(args)...);
+  }
+
+  template<class Fn, class T>
+  Status objectInvariant(T& object, Fn&& invariant, Status result) {
+    TRI_ASSERT(result.ok())
+        << "embedded inspection failed with error " << result.error();
+    fields = std::make_unique<EmbeddedFieldsWithObjectInvariant<Parent, T, Fn>>(
+        object, std::forward<Fn>(invariant), std::move(fields));
+    return result;
+  }
+
+  Parent& parent() { return _parent; }
+
+  template<bool Fail = true>
+  Status::Success fail() {
+    static_assert(!Fail, "embedFields can only be used for objects");
+    return {};
+  }
+
+  std::unique_ptr<EmbeddedFields<Parent>> fields;
+
+  Parent& _parent;
+};
+
+}  // namespace detail
+
+template<class Derived, class Context, class TargetInspector>
+template<class T>
+auto InspectorBase<Derived, Context, TargetInspector>::embedFields(
+    T& value) const {
+  auto& parentInspector =
+      [p = const_cast<InspectorBase*>(this)]() -> decltype(auto) {
+    if constexpr (std::is_same_v<Derived, TargetInspector>) {
+      return p->self();
+    } else {
+      // we are an embedded inspector
+      return p->self().parent();
+    }
+  }();
+  auto insp = [&]() {
+    if constexpr (InspectorBase::hasContext) {
+      return detail::EmbeddedFieldInspector<TargetInspector, Context>(
+          parentInspector, this->getContext());
+    } else {
+      return detail::EmbeddedFieldInspector<TargetInspector, Context>(
+          parentInspector);
+    }
+  }();
+  auto res = insp.apply(value);
+  TRI_ASSERT(res.ok());
+  return std::move(insp.fields);
+}
 
 #undef EMPTY_BASE
 
