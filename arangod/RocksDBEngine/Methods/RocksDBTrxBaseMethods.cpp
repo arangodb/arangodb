@@ -29,6 +29,7 @@
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Statistics/ServerStatistics.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 #include <rocksdb/utilities/write_batch_with_index.h>
 
@@ -115,7 +116,6 @@ rocksdb::SequenceNumber RocksDBTrxBaseMethods::GetSequenceNumber()
 
 /// @brief add an operation for a transaction collection
 Result RocksDBTrxBaseMethods::addOperation(
-    DataSourceId cid, RevisionId revisionId,
     TRI_voc_document_operation_e operationType) {
   TRI_IF_FAILURE("addOperationSizeError") {
     return Result(TRI_ERROR_RESOURCE_LIMIT);
@@ -129,7 +129,7 @@ Result RocksDBTrxBaseMethods::addOperation(
         "aborting transaction because maximal transaction size limit of " +
         std::to_string(_state->options().maxTransactionSize) +
         " bytes is reached";
-    return Result(TRI_ERROR_RESOURCE_LIMIT, message);
+    return Result(TRI_ERROR_RESOURCE_LIMIT, std::move(message));
   }
 
   switch (operationType) {
