@@ -126,11 +126,12 @@ const IResearchInvertedIndexMeta& IResearchInvertedIndexMeta::DEFAULT() {
   return meta;
 }
 
-IResearchInvertedIndexMeta::IResearchInvertedIndexMeta() {
-  _analyzers[0] = IResearchAnalyzerFeature::identity();
-  _primitiveOffset = 1;
-  _indexingContext =
-      std::make_unique<IResearchInvertedIndexMetaIndexingContext>(this, false);
+IResearchInvertedIndexMeta::IResearchInvertedIndexMeta()
+    : _indexingContext{
+          std::make_unique<IResearchInvertedIndexMetaIndexingContext>(this,
+                                                                      false)} {
+  _analyzers[0] = FieldMeta::identity();
+  _primitiveOffset = _analyzers.size();
 }
 
 // FIXME(Dronplane): make all constexpr defines consistent
