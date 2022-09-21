@@ -44,13 +44,8 @@ struct Storing : State {
   }
 
  private:
-  using StoredFuture = futures::Future<
-      std::vector<futures::Try<arangodb::ResultT<arangodb::pregel::Stored>>>>;
-  auto _store() -> StoredFuture;
-  using CleanupFuture = futures::Future<std::vector<
-      futures::Try<arangodb::ResultT<arangodb::pregel::CleanupFinished>>>>;
-  auto _cleanup() -> CleanupFuture;
+  auto _store() -> futures::Future<Result>;
+  auto _cleanup() -> futures::Future<Result>;
 };
-
 }  // namespace conductor
 }  // namespace arangodb::pregel

@@ -14,12 +14,22 @@ Canceled::Canceled(Conductor& conductor) : conductor{conductor} {
   }
 }
 
-auto Canceled::_cleanup() -> CleanupFuture {
-  auto results = std::vector<futures::Future<ResultT<CleanupFinished>>>{};
-  for (auto&& [_, worker] : conductor._workers) {
-    results.emplace_back(worker.cleanup(Cleanup{}));
-  }
-  return futures::collectAll(results);
+auto Canceled::run() -> std::optional<std::unique_ptr<State>> {
+  LOG_PREGEL_CONDUCTOR("dd721", WARN)
+      << "Execution was canceled, conductor and workers are discarded.";
+
+  return _cleanupUntilTimeout(std::chrono::steady_clock::now())
+      .thenValue([&](auto result) -> std::optional<std::unique_ptr<State>> {
+        if (result.fail()) {
+          LOG_PREGEL_CONDUCTOR("f8b3c", ERR) << result.errorMessage();
+          return std::nullopt;
+        }
+
+        LOG_PREGEL_CONDUCTOR("6928f", DEBUG) << "Conductor is erased";
+        conductor._feature.cleanupConductor(conductor._executionNumber);
+        return std::nullopt;
+      })
+      .get();
 }
 
 auto Canceled::_cleanupUntilTimeout(std::chrono::steady_clock::time_point start)
@@ -34,7 +44,7 @@ auto Canceled::_cleanupUntilTimeout(std::chrono::steady_clock::time_point start)
   }
 
   LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Cleanup workers";
-  return _cleanup().thenValue([&](auto results) {
+  return conductor._workers.cleanup(Cleanup{}).thenValue([&](auto results) {
     for (auto const& result : results) {
       if (result.get().fail()) {
         LOG_PREGEL_CONDUCTOR("1c495", ERR) << fmt::format(
@@ -50,28 +60,10 @@ auto Canceled::_cleanupUntilTimeout(std::chrono::steady_clock::time_point start)
         return _cleanupUntilTimeout(start).get();
       }
     }
+
+    if (conductor._inErrorAbort) {
+      return Result{TRI_ERROR_INTERNAL, "Conductor in error"};
+    }
     return Result{};
   });
-}
-
-auto Canceled::run() -> std::optional<std::unique_ptr<State>> {
-  LOG_PREGEL_CONDUCTOR("dd721", WARN)
-      << "Execution was canceled, conductor and workers are discarded.";
-
-  return _cleanupUntilTimeout(std::chrono::steady_clock::now())
-      .thenValue([&](auto result) -> std::optional<std::unique_ptr<State>> {
-        if (result.fail()) {
-          LOG_PREGEL_CONDUCTOR("f8b3c", ERR) << result.errorMessage();
-          return std::nullopt;
-        }
-
-        if (conductor._inErrorAbort) {
-          return std::make_unique<FatalError>(conductor);
-        }
-
-        LOG_PREGEL_CONDUCTOR("6928f", DEBUG) << "Conductor is erased";
-        conductor._feature.cleanupConductor(conductor._executionNumber);
-        return std::nullopt;
-      })
-      .get();
 }

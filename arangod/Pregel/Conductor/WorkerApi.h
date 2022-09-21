@@ -32,33 +32,50 @@
 
 namespace arangodb::pregel::conductor {
 
-struct WorkerApi : NewIWorker {
+template<typename T>
+using FutureOfWorkerResults =
+    futures::Future<std::vector<futures::Try<ResultT<T>>>>;
+
+struct WorkerApi {
   WorkerApi() = default;
-  WorkerApi(ServerID server, ExecutionNumber executionNumber,
+  WorkerApi(std::vector<ServerID> servers, ExecutionNumber executionNumber,
             std::unique_ptr<Connection> connection)
-      : _server{std::move(server)},
+      : _servers{std::move(servers)},
         _executionNumber{std::move(executionNumber)},
-        _connection{std::move(connection)} {}
+        _connection{std::move(connection)},
+        _loadGraphIterator{_servers.begin()} {}
   [[nodiscard]] auto loadGraph(LoadGraph const& graph)
-      -> futures::Future<ResultT<GraphLoaded>> override;
+      -> futures::Future<ResultT<GraphLoaded>>;
   [[nodiscard]] auto prepareGlobalSuperStep(PrepareGlobalSuperStep const& data)
-      -> futures::Future<ResultT<GlobalSuperStepPrepared>> override;
+      -> FutureOfWorkerResults<GlobalSuperStepPrepared>;
   [[nodiscard]] auto runGlobalSuperStep(RunGlobalSuperStep const& data)
-      -> futures::Future<ResultT<GlobalSuperStepFinished>> override;
+      -> FutureOfWorkerResults<GlobalSuperStepFinished>;
   [[nodiscard]] auto store(Store const& message)
-      -> futures::Future<ResultT<Stored>> override;
+      -> FutureOfWorkerResults<Stored>;
   [[nodiscard]] auto cleanup(Cleanup const& message)
-      -> futures::Future<ResultT<CleanupFinished>> override;
+      -> FutureOfWorkerResults<CleanupFinished>;
   [[nodiscard]] auto results(CollectPregelResults const& message) const
-      -> futures::Future<ResultT<PregelResults>> override;
+      -> FutureOfWorkerResults<PregelResults>;
 
  private:
-  ServerID _server;
+  std::vector<ServerID> _servers;
   ExecutionNumber _executionNumber;
   std::unique_ptr<Connection> _connection;
+  std::vector<ServerID>::iterator _loadGraphIterator;
 
+  // TODO accumulate results inside and return Future<ResultT<Out>> directly.
+  // This can be done when AggregatorHandler, StatsManager and ReportManager can
+  // be accumulated propertly
   template<typename Out, typename In>
-  auto execute(In const& in) const -> futures::Future<ResultT<Out>>;
+  auto sendToAll(In const& in) const -> FutureOfWorkerResults<Out>;
+
+  // This template enforces In and Out type of the function:
+  // 'In' enforces which type of message is sent
+  // 'Out' defines the expected response type:
+  // The function returns an error if this expectation is not fulfilled
+  template<typename Out, typename In>
+  auto send(ServerID const& server, In const& in) const
+      -> futures::Future<ResultT<Out>>;
 };
 
 }  // namespace arangodb::pregel::conductor

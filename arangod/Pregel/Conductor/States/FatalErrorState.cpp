@@ -13,17 +13,8 @@ FatalError::FatalError(Conductor& conductor) : conductor{conductor} {
   }
 }
 
-auto FatalError::_results(bool withId) -> ResultsFuture {
-  auto results = std::vector<futures::Future<ResultT<PregelResults>>>{};
-  for (auto&& [_, worker] : conductor._workers) {
-    results.emplace_back(
-        worker.results(CollectPregelResults{.withId = withId}));
-  }
-  return futures::collectAll(results);
-}
-
 auto FatalError::getResults(bool withId) -> ResultT<PregelResults> {
-  return _results(withId)
+  return conductor._workers.results(CollectPregelResults{.withId = withId})
       .thenValue([&](auto responses) -> ResultT<PregelResults> {
         VPackBuilder pregelResults;
         {

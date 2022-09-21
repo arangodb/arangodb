@@ -79,7 +79,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   friend struct conductor::Done;
   friend struct conductor::FatalError;
 
-  std::unordered_map<ServerID, conductor::WorkerApi> _workers;
+  conductor::WorkerApi _workers;
   std::unique_ptr<conductor::State> _state =
       std::make_unique<conductor::Initial>(*this);
   PregelFeature& _feature;
@@ -94,7 +94,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   std::vector<CollectionID> _vertexCollections;
   std::vector<CollectionID> _edgeCollections;
-  std::vector<ServerID> _dbServers;
   std::vector<ShardID> _allShards;  // persistent shard list
 
   // maps from vertex collection name to a list of edge collections that this

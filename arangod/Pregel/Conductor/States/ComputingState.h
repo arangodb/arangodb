@@ -44,14 +44,9 @@ struct Computing : State {
   }
 
  private:
-  using GlobalSuperStepPreparedFuture =
-      futures::Future<std::vector<futures::Try<
-          arangodb::ResultT<arangodb::pregel::GlobalSuperStepPrepared>>>>;
-  auto _prepareGlobalSuperStep() -> GlobalSuperStepPreparedFuture;
-
-  using GlobalSuperStepFinishedFuture = futures::Future<
-      std::vector<futures::Try<ResultT<GlobalSuperStepFinished>>>>;
-  auto _runGlobalSuperStep(bool activateAll) -> GlobalSuperStepFinishedFuture;
+  auto _prepareGlobalSuperStep() -> futures::Future<ResultT<VPackBuilder>>;
+  auto _runGlobalSuperStepCommand(bool activateAll) -> RunGlobalSuperStep;
+  auto _runGlobalSuperStep(bool activateAll) -> futures::Future<Result>;
 };
 
 }  // namespace conductor
