@@ -218,15 +218,25 @@ std::string abstractCheckFields(auto const& lhs, auto const& rhs,
   return {};
 }
 
-auto createSortedFields(IResearchInvertedIndexMeta const& index) {
-  std::vector<std::pair<std::string, SearchMeta::Field>> fields;
-  fields.reserve(index._fields.size() + index._includeAllFields);
+using FieldsVector = std::vector<std::pair<std::string, SearchMeta::Field>>;
+
+void addFields(InvertedIndexField const& index, FieldsVector& fields) {
   for (auto const& field : index._fields) {
     fields.emplace_back(
         field.path(),
         SearchMeta::Field{field.analyzer()._shortName, field._includeAllFields,
                           field._isSearchField});
+#ifdef USE_ENTERPRISE
+    addFields(field, fields);
+#endif
   }
+}
+
+auto createSortedFields(IResearchInvertedIndexMeta const& index) {
+  FieldsVector fields;
+  fields.reserve(index._fields.size() + index._includeAllFields);
+  addFields(index, fields);
+
   if (index._includeAllFields) {
     fields.emplace_back("", SearchMeta::Field{index.analyzer()._shortName, true,
                                               index._isSearchField});

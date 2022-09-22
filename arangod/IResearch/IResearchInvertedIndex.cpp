@@ -59,12 +59,14 @@ InvertedIndexField const* findMatchingSubField(InvertedIndexField const& root,
     if (field.path() == fieldPath) {
       return &field;
     }
-    if (fieldPath.starts_with(field.path())) {
+#ifdef USE_ENTERPRISE
+    if (!field._fields.empty() && fieldPath.starts_with(field.path())) {
       auto tmp = findMatchingSubField(field, fieldPath);
       if (tmp) {
         return tmp;
       }
     }
+#endif
   }
   return nullptr;
 }
@@ -74,7 +76,6 @@ AnalyzerProvider makeAnalyzerProvider(IResearchInvertedIndexMeta const& meta) {
       IResearchAnalyzerFeature::identity()};
   return [&meta](std::string_view fieldPath) -> FieldMeta::Analyzer const& {
     auto subfield = findMatchingSubField(meta, fieldPath);
-
     return subfield ? subfield->analyzer() : defaultAnalyzer;
   };
 }
