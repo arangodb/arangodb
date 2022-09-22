@@ -30,7 +30,6 @@
 
 #include "Basics/operating-system.h"
 
-#include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Utilities/Completer.h"
 #include "Utilities/LinenoiseShell.h"
@@ -127,12 +126,12 @@ std::string ShellBase::prompt(std::string const& prompt,
     // remove any prompt at the beginning of the line
     size_t pos = std::string::npos;
 
-    if (StringUtils::isPrefix(line, plain)) {
+    if (line.starts_with(plain)) {
       pos = line.find('>');
       // The documentation has this, so we ignore it:
-    } else if (StringUtils::isPrefix(line, "arangosh>")) {
+    } else if (line.starts_with("arangosh>")) {
       pos = line.find('>');
-    } else if (StringUtils::isPrefix(line, "...")) {
+    } else if (line.starts_with("...")) {
       pos = line.find('>');
     }
 
