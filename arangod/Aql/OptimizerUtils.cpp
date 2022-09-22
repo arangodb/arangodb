@@ -530,6 +530,7 @@ bool accessesNonRegisterVariable(AstNode const* node) {
       return true;
     }
   }
+  return false;
 }
 
 /**
