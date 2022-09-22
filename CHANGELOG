@@ -1,6 +1,22 @@
 devel
 -----
 
+* Fixed issue BTS-1018: Improve logging of binary velocypack request data.
+
+* BTS-477: added integration tests for covering log parameters.
+
+* Moved the handling of escaping control and unicode chars in the log to 
+  the Logger instead of LogAppenderFile.
+
+* Updated ArangoDB Starter to 0.15.5.
+
+* Updated arangosync to v2.12.0-preview-14.
+
+* Fixed BTS-1017: Fixed a graph search issue, where subqueries lead to
+  incorrect results when they have been pushed down fully onto a DBServer
+  when they are in a Hybrid Disjoint SmartGraph context and
+  SatelliteCollections were part of it.
+
 * Fixed issue BTS-1023:
   Added Linux-specific startup option `--use-splice-syscall` to control
   whether the Linux-specific splice() syscall should be used for copying

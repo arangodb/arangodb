@@ -30,9 +30,9 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <utility>
 
-namespace arangodb {
-namespace pregel {
+namespace arangodb::pregel {
 
 typedef uint16_t PregelShard;
 const PregelShard InvalidPregelShard = -1;
@@ -41,8 +41,8 @@ struct PregelID {
   std::string key;    // std::string 24
   PregelShard shard;  // uint16_t
 
-  PregelID() : key(""), shard(InvalidPregelShard) {}
-  PregelID(PregelShard s, std::string const& k) : key(k), shard(s) {}
+  PregelID() : shard(InvalidPregelShard) {}
+  PregelID(PregelShard s, std::string k) : key(std::move(k)), shard(s) {}
 
   bool operator==(const PregelID& rhs) const {
     return shard == rhs.shard && key == rhs.key;
@@ -56,7 +56,9 @@ struct PregelID {
     return shard < rhs.shard || (shard == rhs.shard && key < rhs.key);
   }
 
-  bool isValid() const { return shard != InvalidPregelShard && !key.empty(); }
+  [[nodiscard]] bool isValid() const {
+    return shard != InvalidPregelShard && !key.empty();
+  }
 };
 
 template<typename V, typename E>
@@ -76,9 +78,13 @@ class Edge {
 
  public:
   void setToKey(std::string_view toKey) { _toKey = toKey; }
-  std::string_view toKey() const { return std::string_view(_toKey); }
+  [[nodiscard]] std::string_view toKey() const {
+    return std::string_view(_toKey);
+  }
   void setTargetShard(PregelShard targetShard) { _targetShard = targetShard; }
-  PregelShard targetShard() const noexcept { return _targetShard; }
+  [[nodiscard]] PregelShard targetShard() const noexcept {
+    return _targetShard;
+  }
 
   E& data() noexcept { return _data; }
 };
@@ -143,7 +149,7 @@ class Vertex {
   }
 
   // returns the number of associated edges
-  size_t getEdgeCount() const noexcept {
+  [[nodiscard]] size_t getEdgeCount() const noexcept {
     return static_cast<size_t>(_edgeCount);
   }
 
@@ -158,10 +164,10 @@ class Vertex {
     TRI_ASSERT((bb && active()) || (!bb && !active()));
   }
 
-  bool active() const noexcept { return _active == 1; }
+  [[nodiscard]] bool active() const noexcept { return _active == 1; }
 
   void setShard(PregelShard shard) noexcept { _shard = shard; }
-  PregelShard shard() const noexcept { return _shard; }
+  [[nodiscard]] PregelShard shard() const noexcept { return _shard; }
 
   void setKey(std::string_view key) noexcept { _key = key; }
   void setKey(char const* key, uint16_t keyLength) noexcept {
@@ -169,19 +175,18 @@ class Vertex {
     _key = std::string(key, keyLength);
   }
 
-  uint16_t keyLength() const noexcept {
+  [[nodiscard]] uint16_t keyLength() const noexcept {
     return static_cast<uint16_t>(_key.size());
   }
 
-  std::string_view key() const { return std::string_view(_key); }
+  [[nodiscard]] std::string_view key() const { return std::string_view(_key); }
   V const& data() const& { return _data; }
   V& data() & { return _data; }
 
-  PregelID pregelId() const { return PregelID(_shard, _key); }
+  [[nodiscard]] PregelID pregelId() const { return PregelID(_shard, _key); }
 };
 
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel
 
 namespace std {
 template<>

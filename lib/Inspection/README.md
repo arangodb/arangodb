@@ -206,6 +206,49 @@ auto inspect(Inspector& f, LogTargetConfig& x) {
 }
 ```
 
+### Embedded fields
+
+In some cases we may want to "reuse" the inspect function of some type, e.g.,
+in case of inheritance. This can be achieved using "field embedding":
+```cpp
+struct Inner {
+  string s;
+};
+template<class Inspector>
+auto inspect(Inspector& f, Inner& v) {
+  return f.object(v).fields(f.field("s", v.s));
+}
+
+struct Base {
+  int x;
+};
+template<class Inspector>
+auto inspect(Inspector& f, Base& v) {
+  return f.object(v).fields(f.field("x", v.x));
+}
+
+struct Derived : Base {
+  int y;
+  Inner i;
+};
+template<class Inspector>
+auto inspect(Inspector& f, Derived& v) {
+  return f.object(v).fields(
+    f.embedFields(static_cast<Base&>(*this)),
+    f.field("y", v.y),
+    f.embedFields(v.i));
+}
+```
+Here the `inspect` function for `Derived` embeds the fields for `Base` and
+`Inner`, so we end up with an object description that looks like this:
+```
+  object(type: "Derived") {
+    field(name: "x")
+    field(name: "y")
+    field(name: "s")
+  }
+```
+
 ### Specializing `Access`
 
 Instead of writing `inspect` functions one can specialize
@@ -310,6 +353,49 @@ Then the generated result would instead look like this:
   "string": "foobar"
 }
 ```
+
+### Enums
+
+There is a separate inspect API to define value mappings for enum types.
+```cpp
+
+enum class MyStringEnum {
+  kValue1,
+  kValue2,
+  kValue3 = kValue2,
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, MyStringEnum& x) {
+  return f.enumeration(x).values(MyStringEnum::kValue1, "value1",  //
+                                 MyStringEnum::kValue2, "value2");
+}
+```
+The call to values takes an arbitrary number of arguments, but is consumed
+pairwise where the first value is the enum value, and the second one that value
+that it is mapped to.
+
+Enum values can be mapped to strings or integers. It is also possible to map one
+enum value to multiple different strings and/or ints (i.e., you can mix the
+target types). For example:
+```cpp
+enum class MyMixedEnum {
+  kValue1,
+  kValue2,
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, MyMixedEnum& x) {
+  return f.enumeration(x).values(MyMixedEnum::kValue1, "value1",  //
+                                 MyMixedEnum::kValue1, 1,         //
+                                 MyMixedEnum::kValue2, "value2",  //
+                                 MyMixedEnum::kValue2, 2);
+}
+```
+In this case both enum values are mapped to both, a string and an integer value.
+This means we can load both, string and int values and map them do our enum.
+When saving, the _first_ mapping will be used, so in this example both values
+would be saved as a string.
 
 ### Transformers
 

@@ -125,8 +125,8 @@ function recoverySuite () {
       let queries = [
         "FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length",
         "FOR doc IN UnitTestsRecoveryView2 SEARCH doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length",
-        "FOR doc IN UnitTestsRecoveryView3 SEARCH doc.c >= 0 AND STARTS_WITH(doc._id, 'UnitTestsRecoveryDummy') COLLECT WITH COUNT INTO length RETURN length",
-        "FOR doc IN UnitTestsRecoveryView4 SEARCH doc.c >= 0 OPTIONS {waitFoSync:true} COLLECT WITH COUNT INTO length RETURN length",
+        "FOR doc IN UnitTestsRecoveryView3 SEARCH doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length",
+        "FOR doc IN UnitTestsRecoveryView4 SEARCH doc.c >= 0 OPTIONS {waitForSync:true} COLLECT WITH COUNT INTO length RETURN length",
         "FOR doc IN UnitTestsRecoveryView5 SEARCH doc.c >= 0 || STARTS_WITH(doc._id, 'UnitTestsRecoveryDummy') COLLECT WITH COUNT INTO length RETURN length"
       ];
 

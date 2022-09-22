@@ -31,8 +31,7 @@
 #include <map>
 #include <string>
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 struct config_t {
  private:
@@ -108,7 +107,7 @@ struct config_t {
   config_t& operator=(config_t&&);
 
   /// @brief update leadership changes
-  void update(query_t const&);
+  void update(velocypack::Slice message);
 
   /// @brief agent id
   std::string id() const;
@@ -244,7 +243,7 @@ struct config_t {
   bool updateEndpoint(std::string const&, std::string const&);
 
   /// @brief Update configuration with an other
-  void updateConfiguration(VPackSlice const& other);
+  void updateConfiguration(velocypack::Slice other);
 };
-}  // namespace consensus
-}  // namespace arangodb
+
+}  // namespace arangodb::consensus
