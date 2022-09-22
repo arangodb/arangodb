@@ -35,7 +35,6 @@
 #include "Utilities/LinenoiseShell.h"
 
 using namespace arangodb;
-using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a shell
