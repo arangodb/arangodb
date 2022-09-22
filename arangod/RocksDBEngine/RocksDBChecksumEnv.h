@@ -30,6 +30,10 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 
+#include <string>
+#include <string_view>
+
+// necessary, because Windows API defines a DeleteFile macro
 #undef DeleteFile
 
 namespace arangodb::checksum {
@@ -38,8 +42,8 @@ class ChecksumCalculator {
  public:
   ChecksumCalculator();
   void computeFinalChecksum();
-  void updateIncrementalChecksum(char const* buffer, size_t n);
-  void updateEVPWithContent(char const* buffer, size_t n);
+  void updateIncrementalChecksum(char const* buffer, size_t n) noexcept;
+  void updateEVPWithContent(char const* buffer, size_t n) noexcept;
   [[nodiscard]] std::string getChecksum() const { return _checksum; }
   ~ChecksumCalculator();
 
@@ -51,11 +55,12 @@ class ChecksumCalculator {
 class ChecksumHelper {
  public:
   explicit ChecksumHelper(std::string const& rootPath) : _rootPath{rootPath} {}
-  [[nodiscard]] static bool isFileNameSst(std::string const& fileName);
+  [[nodiscard]] static bool isSstFile(std::string_view fileName) noexcept;
+  [[nodiscard]] static bool isBlobFile(std::string_view fileName) noexcept;
   // writeShaFile() also inserts the .sst file name and the checksum in the
   // _fileNamesToHashes table
   bool writeShaFile(std::string const& fileName, std::string const& checksum);
-  [[nodiscard]] static std::string buildShaFileNameFromSst(
+  [[nodiscard]] static std::string buildShaFileNameFromSstOrBlob(
       std::string const& fileName, std::string const& checksum);
   [[nodiscard]] std::string removeFromTable(std::string const& fileName);
   void checkMissingShaFiles();
@@ -92,11 +97,11 @@ class ChecksumEnv : public rocksdb::EnvWrapper {
       : EnvWrapper(t), _helper{std::make_shared<ChecksumHelper>(path)} {}
 
   rocksdb::Status NewWritableFile(
-      const std::string& fileName,
+      std::string const& fileName,
       std::unique_ptr<rocksdb::WritableFile>* result,
-      const rocksdb::EnvOptions& options) override;
+      rocksdb::EnvOptions const& options) override;
 
-  rocksdb::Status DeleteFile(const std::string& fileName) override;
+  rocksdb::Status DeleteFile(std::string const& fileName) override;
 
   std::shared_ptr<ChecksumHelper> getHelper() const { return _helper; }
 
