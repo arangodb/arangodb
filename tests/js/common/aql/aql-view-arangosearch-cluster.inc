@@ -174,7 +174,6 @@
         db.UnitTestsCollection.ensureIndex({ 
           type: "inverted",
           name: "invertedIndex",
-          includeAllFields:true,
           fields: [ { name: "text", analyzer: "text_en" } ] });
         db._dropView("UnitTestsViewAlias");
         db._createView("UnitTestsViewAlias", "search-alias", { 
