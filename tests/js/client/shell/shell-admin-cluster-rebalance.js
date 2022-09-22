@@ -212,9 +212,10 @@ function clusterRebalanceOtherOptionsSuite() {
         assertNotEqual(serverHealth, "GOOD");
         result = getRebalancePlan(true, true, true);
         let moves = result.result.moves;
-        assertTrue(moves.length > 0);
-        for (const job of moves) {
-          assertNotEqual(job.to, dbServer.id);
+        if (moves.length > 0) {
+          for (const job of moves) {
+            assertNotEqual(job.to, dbServer.id);
+          }
         }
         assertTrue(continueExternal(dbServer.pid));
         dbServer.suspended = false;

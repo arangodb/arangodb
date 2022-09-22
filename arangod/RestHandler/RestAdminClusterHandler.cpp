@@ -2710,12 +2710,11 @@ RestAdminClusterHandler::collectRebalanceInformation(
   cluster::rebalance::AutoRebalanceProblem p;
   p.zones.emplace_back(cluster::rebalance::Zone{.id = "ZONE"});
 
-  std::string const leaderPath = "Plan/AsyncReplication/Leader";
   std::string const healthPath = "Supervision/Health";
 
   auto& cache = server().getFeature<ClusterFeature>().agencyCache();
-  auto [acb, idx] = cache.read(std::vector<std::string>{
-      AgencyCommHelper::path(healthPath), AgencyCommHelper::path(leaderPath)});
+  auto [acb, idx] =
+      cache.read(std::vector<std::string>{AgencyCommHelper::path(healthPath)});
   auto agencyCacheInfo = acb->slice();
 
   if (!agencyCacheInfo.isArray()) {
