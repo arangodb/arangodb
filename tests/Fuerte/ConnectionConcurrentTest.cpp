@@ -101,10 +101,10 @@ TEST_P(ConcurrentConnectionF, ApiVersionParallel) {
   ASSERT_TRUE(wg->wait_for(
       std::chrono::seconds(300)));  // wait for all threads to return
 
-  guard.fire();
-
   // wait for all threads to end
   joins.joinAll();
+
+  guard.fire();
 
   ASSERT_EQ(repeat() * threads(), counter);
 }
@@ -164,10 +164,10 @@ TEST_P(ConcurrentConnectionF, CreateDocumentsParallel) {
   ASSERT_TRUE(wg->wait_for(
       std::chrono::seconds(300)));  // wait for all threads to return
 
-  guard.fire();
-
   // wait for all threads to end
   joins.joinAll();
+
+  guard.fire();
 
   ASSERT_EQ(repeat() * threads(), counter);
 }
