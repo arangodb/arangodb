@@ -34,6 +34,7 @@ var ArangoView = arangodb.ArangoView;
 var testHelper = require("@arangodb/test-helper").Helper;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
+const isEnterprise = require("internal").isEnterprise();
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -294,6 +295,9 @@ function ViewSearchAliasSuite() {
       }
     },
     testAddNonCompatibleIndexes4: function () {
+      if (!isEnterprise) {
+        return;
+      }
       var c1 = db._create("c1");
       var c2 = db._create("c2");
       c1.ensureIndex({name: "i1", type: "inverted", fields: [{name: "a.b.c", nested: [{name:"foo", analyzer: "text_en"}]}]});
