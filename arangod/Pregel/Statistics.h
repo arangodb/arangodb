@@ -79,7 +79,7 @@ struct MessageStats {
 
 struct StatsManager {
   void accumulateActiveCounts(std::string const& sender, uint64_t count) {
-    _activeStats[sender] += count;
+    _activeCounts += count;
   }
 
   void accumulateMessageStats(std::string const& senderId, VPackSlice data) {
@@ -116,27 +116,16 @@ struct StatsManager {
   }
 
   /// tests if active count is greater 0
-  bool noActiveVertices() const {
-    for (auto const& pair : _activeStats) {
-      if (pair.second > 0) {
-        return false;
-      }
-    }
-    return true;
-  }
+  bool noActiveVertices() const { return _activeCounts == 0; }
 
-  void resetActiveCount() {
-    for (auto& pair : _activeStats) {
-      pair.second = 0;
-    }
-  }
+  void resetActiveCount() { _activeCounts = 0; }
 
   void reset() { _serverStats.clear(); }
 
   size_t clientCount() const { return _serverStats.size(); }
 
  private:
-  std::map<std::string, uint64_t> _activeStats;
+  uint64_t _activeCounts;
   std::map<std::string, MessageStats> _serverStats;
 };
 }  // namespace pregel
