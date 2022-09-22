@@ -51,6 +51,11 @@ namespace aql {
 class OptimizerRulesFeature;
 }
 
+namespace futures {
+template<typename T>
+class Future;
+}
+
 }  // namespace arangodb
 
 class PhysicalCollectionMock : public arangodb::PhysicalCollection {
@@ -208,8 +213,8 @@ class TransactionStateMock : public arangodb::TransactionState {
       arangodb::transaction::Hints hints) override;
   virtual arangodb::futures::Future<arangodb::Result> commitTransaction(
       arangodb::transaction::Methods* trx) override;
-  virtual arangodb::Result performIntermediateCommitIfRequired(
-      arangodb::DataSourceId cid) override;
+  virtual arangodb::futures::Future<arangodb::Result>
+  performIntermediateCommitIfRequired(arangodb::DataSourceId cid) override;
   virtual uint64_t numCommits() const noexcept override;
   virtual uint64_t numIntermediateCommits() const noexcept override;
   virtual void addIntermediateCommits(uint64_t value) override;
