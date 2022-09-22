@@ -72,9 +72,10 @@ InvertedIndexField const* findMatchingSubField(InvertedIndexField const& root,
 }
 
 AnalyzerProvider makeAnalyzerProvider(IResearchInvertedIndexMeta const& meta) {
-  return [&meta](std::string_view fieldPath) -> FieldMeta::Analyzer const& {
+  return [&meta](std::string_view fieldPath, aql::ExpressionContext*,
+                 FieldMeta::Analyzer const&) -> FieldMeta::Analyzer const& {
     auto subfield = findMatchingSubField(meta, fieldPath);
-    return subfield ? subfield->analyzer() : FieldMeta::identity();;
+    return subfield ? subfield->analyzer() : FieldMeta::identity();
   };
 }
 
