@@ -137,11 +137,8 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   // with the Inspecotr framework
   ConductorStatus _status;
 
-  using GraphLoadedFuture = futures::Future<std::vector<
-      futures::Try<arangodb::ResultT<arangodb::pregel::GraphLoaded>>>>;
-
   auto _changeState(std::unique_ptr<conductor::State> newState) -> void;
-  auto _initializeWorkers() -> GraphLoadedFuture;
+  auto _initializeWorkers() -> futures::Future<ResultT<WorkerCreated>>;
   auto _preGlobalSuperStep() -> bool;
   auto _postGlobalSuperStep(VPackBuilder messagesFromWorkers)
       -> PostGlobalSuperStepResult;

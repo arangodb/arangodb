@@ -42,7 +42,7 @@ WorkerConfig::WorkerConfig(TRI_vocbase_t* vocbase) : _vocbase(vocbase) {}
 std::string const& WorkerConfig::database() const { return _vocbase->name(); }
 
 void WorkerConfig::updateConfig(PregelFeature& feature,
-                                LoadGraph const& params) {
+                                CreateWorker const& params) {
   _executionNumber = params.executionNumber;
   _coordinatorId = params.coordinatorId;
   _useMemoryMaps = params.useMemoryMaps;

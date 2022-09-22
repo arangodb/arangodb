@@ -95,7 +95,7 @@ std::function<void()> Worker<V, E, M>::_makeStatusCallback() {
 
 template<typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
-                        LoadGraph const& initConfig, PregelFeature& feature)
+                        CreateWorker const& initConfig, PregelFeature& feature)
     : _feature(feature),
       _state(WorkerState::IDLE),
       _config(&vocbase),

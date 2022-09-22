@@ -40,14 +40,14 @@ struct AlgoRegistry {
       application_features::ApplicationServer& server,
       std::string const& algorithm, VPackSlice userParams);
   static std::shared_ptr<IWorker> createWorker(TRI_vocbase_t& vocbase,
-                                               LoadGraph const& body,
+                                               CreateWorker const& body,
                                                PregelFeature& feature);
 
  private:
   template<typename V, typename E, typename M>
   static std::shared_ptr<IWorker> createWorker(TRI_vocbase_t& vocbase,
                                                Algorithm<V, E, M>* algo,
-                                               LoadGraph const& body,
+                                               CreateWorker const& body,
                                                PregelFeature& feature);
 };
 

@@ -10,13 +10,15 @@ using namespace arangodb::pregel;
 auto DirectConnection::send(Destination const& destination,
                             ModernMessage&& message) const
     -> futures::Future<ResultT<ModernMessage>> {
-  if (std::holds_alternative<LoadGraph>(message.payload)) {
+  if (std::holds_alternative<CreateWorker>(message.payload)) {
     try {
       auto created = AlgoRegistry::createWorker(
-          _vocbaseGuard.database(), std::get<LoadGraph>(message.payload),
+          _vocbaseGuard.database(), std::get<CreateWorker>(message.payload),
           _feature);
       TRI_ASSERT(created.get() != nullptr);
       _feature.addWorker(std::move(created), message.executionNumber);
+      return ModernMessage{.executionNumber = message.executionNumber,
+                           .payload = WorkerCreated{}};
     } catch (basics::Exception& e) {
       return Result{e.code(), e.message()};
     }

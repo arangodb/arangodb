@@ -42,10 +42,12 @@ struct WorkerApi {
             std::unique_ptr<Connection> connection)
       : _servers{std::move(servers)},
         _executionNumber{std::move(executionNumber)},
-        _connection{std::move(connection)},
-        _loadGraphIterator{_servers.begin()} {}
+        _connection{std::move(connection)} {}
+  [[nodiscard]] auto createWorkers(
+      std::unordered_map<ServerID, CreateWorker> const& data)
+      -> futures::Future<ResultT<WorkerCreated>>;
   [[nodiscard]] auto loadGraph(LoadGraph const& graph)
-      -> futures::Future<ResultT<GraphLoaded>>;
+      -> FutureOfWorkerResults<GraphLoaded>;
   [[nodiscard]] auto prepareGlobalSuperStep(PrepareGlobalSuperStep const& data)
       -> FutureOfWorkerResults<GlobalSuperStepPrepared>;
   [[nodiscard]] auto runGlobalSuperStep(RunGlobalSuperStep const& data)
@@ -61,7 +63,6 @@ struct WorkerApi {
   std::vector<ServerID> _servers;
   ExecutionNumber _executionNumber;
   std::unique_ptr<Connection> _connection;
-  std::vector<ServerID>::iterator _loadGraphIterator;
 
   // TODO accumulate results inside and return Future<ResultT<Out>> directly.
   // This can be done when AggregatorHandler, StatsManager and ReportManager can

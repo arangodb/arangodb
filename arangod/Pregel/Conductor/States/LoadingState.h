@@ -42,6 +42,10 @@ struct Loading : State {
       -> std::optional<std::chrono::system_clock::time_point> override {
     return std::nullopt;
   }
+
+ private:
+  auto _createWorkers() -> futures::Future<Result>;
+  auto _loadGraph() -> futures::Future<Result>;
 };
 
 }  // namespace conductor

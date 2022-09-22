@@ -174,7 +174,7 @@ class Worker : public IWorker {
 
  public:
   Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,
-         LoadGraph const& params, PregelFeature& feature);
+         CreateWorker const& params, PregelFeature& feature);
   ~Worker();
 
   // ====== called by rest handler =====

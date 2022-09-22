@@ -93,13 +93,13 @@ IAlgorithm* AlgoRegistry::createAlgorithm(
 
 template<typename V, typename E, typename M>
 /*static*/ std::shared_ptr<IWorker> AlgoRegistry::createWorker(
-    TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo, LoadGraph const& body,
+    TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo, CreateWorker const& body,
     PregelFeature& feature) {
   return std::make_shared<Worker<V, E, M>>(vocbase, algo, body, feature);
 }
 
 /*static*/ std::shared_ptr<IWorker> AlgoRegistry::createWorker(
-    TRI_vocbase_t& vocbase, LoadGraph const& data, PregelFeature& feature) {
+    TRI_vocbase_t& vocbase, CreateWorker const& data, PregelFeature& feature) {
   auto userParams = data.userParameters.slice();
   auto algorithm = data.algorithm;
   std::transform(algorithm.begin(), algorithm.end(), algorithm.begin(),

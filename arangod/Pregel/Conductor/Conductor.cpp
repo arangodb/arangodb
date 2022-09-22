@@ -320,7 +320,8 @@ static void resolveInfo(
 }
 
 /// should cause workers to start a new execution
-auto Conductor::_initializeWorkers() -> GraphLoadedFuture {
+auto Conductor::_initializeWorkers()
+    -> futures::Future<ResultT<WorkerCreated>> {
   _callbackMutex.assertLockedByCurrentThread();
 
   // int64_t vertexCount = 0, edgeCount = 0;
@@ -362,25 +363,23 @@ auto Conductor::_initializeWorkers() -> GraphLoadedFuture {
   }
   _status = ConductorStatus::forWorkers(servers);
 
-  auto results = std::vector<futures::Future<ResultT<GraphLoaded>>>{};
-
+  auto createWorkers = std::unordered_map<ServerID, CreateWorker>{};
   for (auto const& [server, vertexShards] : vertexMap) {
     auto const& edgeShards = edgeMap[server];
-
-    auto graph =
-        LoadGraph{.executionNumber = _executionNumber,
-                  .algorithm = _algorithm->name(),
-                  .userParameters = _userParams,
-                  .coordinatorId = ServerState::instance()->getId(),
-                  .useMemoryMaps = _useMemoryMaps,
-                  .edgeCollectionRestrictions = _edgeCollectionRestrictions,
-                  .vertexShards = vertexShards,
-                  .edgeShards = edgeShards,
-                  .collectionPlanIds = collectionPlanIdMap,
-                  .allShards = shardList};
-    results.emplace_back(_workers.loadGraph(graph));
+    createWorkers.emplace(
+        server,
+        CreateWorker{.executionNumber = _executionNumber,
+                     .algorithm = _algorithm->name(),
+                     .userParameters = _userParams,
+                     .coordinatorId = ServerState::instance()->getId(),
+                     .useMemoryMaps = _useMemoryMaps,
+                     .edgeCollectionRestrictions = _edgeCollectionRestrictions,
+                     .vertexShards = vertexShards,
+                     .edgeShards = edgeShards,
+                     .collectionPlanIds = collectionPlanIdMap,
+                     .allShards = shardList});
   }
-  return futures::collectAll(results);
+  return _workers.createWorkers(createWorkers);
 }
 
 void Conductor::_cleanup() {
