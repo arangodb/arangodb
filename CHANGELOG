@@ -7,6 +7,10 @@ devel
   which allows rclone to parallelize and avoid a lot of unnecessary network
   traffic. The format of hotbackups does not change at all.
 
+* Fixed issue BTS-1018: Improve logging of binary velocypack request data.
+
+* BTS-477: added integration tests for covering log parameters.
+
 * Moved the handling of escaping control and unicode chars in the log to 
   the Logger instead of LogAppenderFile.
 

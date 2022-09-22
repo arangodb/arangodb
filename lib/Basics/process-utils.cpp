@@ -34,6 +34,7 @@
 #include <type_traits>
 
 #include "process-utils.h"
+#include "signals.h"
 #include "Basics/system-functions.h"
 
 #if defined(TRI_HAVE_MACOS_MEM_STATS)
@@ -310,6 +311,8 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes,
     for (auto const& it : additionalEnv) {
       putenv(TRI_DuplicateString(it.c_str(), it.size()));
     }
+
+    arangodb::signals::unmaskAllSignals();
 
     // execute worker
     execvp(external->_executable.c_str(), external->_arguments);
