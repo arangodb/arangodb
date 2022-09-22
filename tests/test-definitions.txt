@@ -151,7 +151,7 @@ wal_cleanup full cluster priority=2500 -- --dumpAgencyOnError true
 
 # Common Full Tests
 communication full priority=1000 parallelity=2 single
-communication_ssl full priority=1000 parallelity==2 single
+communication_ssl full priority=1000 parallelity=2 single
 
 communication full priority=1000 parallelity=4 cluster
 communication_ssl full priority=1000 parallelity=4 cluster
