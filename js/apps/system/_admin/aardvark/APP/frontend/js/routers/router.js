@@ -61,7 +61,8 @@
       'logs': 'logger',
       'helpus': 'helpUs',
       'views': 'views',
-      'view/:name': 'viewSettings',
+      'view/:name': 'view',
+      //'view/:name': 'viewSettings',
       // 'view/:name/info': 'viewInfo',
       // 'view/:name/consolidation': 'viewConsolidation',
       'view/:name/links': 'viewLinks',
@@ -1327,6 +1328,27 @@
           });
         }
         this.userManagementView.render(true);
+      });
+    },
+
+    view: function (name) {
+      const self = this;
+      this.checkUser();
+
+      this.init.then(() => {
+        if (this.viewView) {
+          this.viewView.remove();
+        }
+
+        this.arangoViewsStore.fetch({
+          success: function () {
+            self.viewView = new window.ViewView({
+              model: self.arangoViewsStore.get(name),
+              name: name
+            });
+            self.viewView.render();
+          }
+        });
       });
     },
 
