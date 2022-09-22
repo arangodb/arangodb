@@ -443,7 +443,8 @@ arangodb::Result fetchRevisions(
       shoppingLists.pop_front();
       TRI_ASSERT(futures.size() == shoppingLists.size());
 
-      auto fut = trx.state()->performIntermediateCommitIfRequired(collection.id());
+      auto fut =
+          trx.state()->performIntermediateCommitIfRequired(collection.id());
       TRI_ASSERT(fut.isReady());
       res = fut.get();
 
