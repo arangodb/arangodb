@@ -240,10 +240,9 @@ auto Worker<V, E, M>::_prepareGlobalSuperStepFct(
     VPackObjectBuilder ob(&aggregators);
     _workerAggregators->serializeValues(aggregators);
   }
-  return GlobalSuperStepPrepared{
-      ServerState::instance()->getId(), _activeCount,
-      _graphStore->localVertexCount(),  _graphStore->localEdgeCount(),
-      std::move(messageToMaster),       aggregators};
+  return GlobalSuperStepPrepared{_activeCount, _graphStore->localVertexCount(),
+                                 _graphStore->localEdgeCount(),
+                                 std::move(messageToMaster), aggregators};
 }
 
 template<typename V, typename E, typename M>
@@ -497,7 +496,8 @@ auto Worker<V, E, M>::_finishProcessing() -> ResultT<GlobalSuperStepFinished> {
   // only set the state here, because _processVertices checks for it
   _state = WorkerState::IDLE;
 
-  GlobalSuperStepFinished gssFinishedEvent = _gssFinishedEvent();
+  GlobalSuperStepFinished gssFinishedEvent =
+      GlobalSuperStepFinished{_messageStats};
   VPackBuilder event;
   serialize(event, gssFinishedEvent);
   LOG_PREGEL("2de5b", DEBUG) << "Finished GSS: " << event.toJson();
@@ -509,15 +509,6 @@ auto Worker<V, E, M>::_finishProcessing() -> ResultT<GlobalSuperStepFinished> {
   LOG_PREGEL("13dbf", DEBUG) << "Message batch size: " << _messageBatchSize;
 
   return gssFinishedEvent;
-}
-
-template<typename V, typename E, typename M>
-auto Worker<V, E, M>::_gssFinishedEvent() const -> GlobalSuperStepFinished {
-  VPackBuilder aggregators;
-  { VPackObjectBuilder ob(&aggregators); }
-  return GlobalSuperStepFinished{ServerState::instance()->getId(),
-                                 _config.globalSuperstep(), _messageStats,
-                                 std::move(aggregators)};
 }
 
 template<typename V, typename E, typename M>
