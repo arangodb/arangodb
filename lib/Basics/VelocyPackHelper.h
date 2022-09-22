@@ -53,6 +53,10 @@ class LoggerStream;
 namespace velocypack {
 struct AttributeExcludeHandler;
 class AttributeTranslator;
+
+SharedSlice vpackFromJsonString(char const* c);
+SharedSlice operator"" _vpack(const char* json, size_t);
+
 }  // namespace velocypack
 
 namespace basics {
