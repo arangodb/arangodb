@@ -26,6 +26,7 @@
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/Graph.h"
+#include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Utils.h"
 #include "VocBase/Methods/Tasks.h"
@@ -83,11 +84,11 @@ auto inspect(Inspector& f, GlobalSuperStepPrepared& x) {
 struct GlobalSuperStepFinished {
   std::string senderId;
   uint64_t gss;
-  VPackBuilder messageStats;
+  MessageStats messageStats;
   VPackBuilder aggregators;
   GlobalSuperStepFinished() noexcept = default;
   GlobalSuperStepFinished(std::string senderId, uint64_t gss,
-                          VPackBuilder messageStats, VPackBuilder aggregators)
+                          MessageStats messageStats, VPackBuilder aggregators)
       : senderId{std::move(senderId)},
         gss{gss},
         messageStats{std::move(messageStats)},

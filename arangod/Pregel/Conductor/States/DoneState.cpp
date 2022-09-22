@@ -17,12 +17,11 @@ Done::Done(Conductor& conductor) : conductor{conductor} {
 
 auto Done::run() -> std::optional<std::unique_ptr<State>> {
   VPackBuilder debugOut;
-  debugOut.openObject();
-  debugOut.add("stats", VPackValue(VPackValueType::Object));
-  conductor._statistics.serializeValues(debugOut);
-  debugOut.close();
-  conductor._aggregators->serializeValues(debugOut);
-  debugOut.close();
+  {
+    VPackObjectBuilder ob(&debugOut);
+    conductor._aggregators->serializeValues(debugOut);
+  }
+  auto stats = velocypack::serialize(conductor._statistics);
 
   LOG_PREGEL_CONDUCTOR("063b5", INFO)
       << "Done. We did " << conductor._globalSuperstep << " rounds."
@@ -41,7 +40,8 @@ auto Done::run() -> std::optional<std::unique_ptr<State>> {
               : "")
       << ", overall: " << conductor._timing.total.elapsedSeconds().count()
       << "s"
-      << ", stats: " << debugOut.slice().toJson();
+      << ", stats: " << stats.toJson()
+      << ", aggregators: " << debugOut.toJson();
   return std::nullopt;
 }
 

@@ -505,7 +505,7 @@ auto Worker<V, E, M>::_finishProcessing() -> ResultT<GlobalSuperStepFinished> {
   uint64_t tn = _config.parallelism();
   uint64_t s = _messageStats.sendCount / tn / 2UL;
   _messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
-  _messageStats.resetTracking();
+  _messageStats.reset();
   LOG_PREGEL("13dbf", DEBUG) << "Message batch size: " << _messageBatchSize;
 
   return gssFinishedEvent;
@@ -513,16 +513,11 @@ auto Worker<V, E, M>::_finishProcessing() -> ResultT<GlobalSuperStepFinished> {
 
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::_gssFinishedEvent() const -> GlobalSuperStepFinished {
-  VPackBuilder messageStats;
-  {
-    VPackObjectBuilder ob(&messageStats);
-    _messageStats.serializeValues(messageStats);
-  }
   VPackBuilder aggregators;
   { VPackObjectBuilder ob(&aggregators); }
-  return GlobalSuperStepFinished{
-      ServerState::instance()->getId(), _config.globalSuperstep(),
-      std::move(messageStats), std::move(aggregators)};
+  return GlobalSuperStepFinished{ServerState::instance()->getId(),
+                                 _config.globalSuperstep(), _messageStats,
+                                 std::move(aggregators)};
 }
 
 template<typename V, typename E, typename M>

@@ -27,6 +27,7 @@
 #include <velocypack/Slice.h>
 #include <cstdint>
 
+#include "Inspection/VPack.h"
 #include "Pregel/Utils.h"
 #include "Logger/LogMacros.h"
 
@@ -39,7 +40,6 @@ struct MessageStats {
   double superstepRuntimeSecs = 0;
 
   MessageStats() = default;
-  explicit MessageStats(VPackSlice statValues) { accumulate(statValues); }
   MessageStats(size_t s, size_t r) : sendCount(s), receivedCount(r) {}
 
   void accumulate(MessageStats const& other) {
@@ -48,85 +48,52 @@ struct MessageStats {
     superstepRuntimeSecs += other.superstepRuntimeSecs;
   }
 
-  void accumulate(VPackSlice statValues) {
-    VPackSlice p = statValues.get(Utils::sendCountKey);
-    if (p.isInteger()) {
-      sendCount += p.getUInt();
-    }
-    p = statValues.get(Utils::receivedCountKey);
-    if (p.isInteger()) {
-      receivedCount += p.getUInt();
-    }
-    // p = statValues.get(Utils::superstepRuntimeKey);
-    // if (p.isNumber()) {
-    //  superstepRuntimeSecs += p.getNumber<double>();
-    //}
-  }
-
-  void serializeValues(VPackBuilder& b) const {
-    b.add(Utils::sendCountKey, VPackValue(sendCount));
-    b.add(Utils::receivedCountKey, VPackValue(receivedCount));
-  }
-
-  void resetTracking() {
+  void reset() {
     sendCount = 0;
     receivedCount = 0;
     superstepRuntimeSecs = 0;
   }
 
-  bool allMessagesProcessed() { return sendCount == receivedCount; }
+  bool allMessagesProcessed() const { return sendCount == receivedCount; }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, MessageStats& x) {
+  return f.object(x).fields(
+      f.field("sendCount", x.sendCount),
+      f.field("receivedCount", x.receivedCount),
+      f.field("superstepRuntimeInSeconds", x.superstepRuntimeSecs));
+}
 
 struct StatsManager {
-  void accumulateActiveCounts(std::string const& sender, uint64_t count) {
-    _activeCounts += count;
-  }
+  void accumulate(MessageStats const& data) { _stats.accumulate(data); }
+  void accumulateActiveCounts(uint64_t counts) { _activeCounts += counts; }
 
-  void accumulateMessageStats(std::string const& senderId, VPackSlice data) {
-    // inserts senderId into map if it does not exist
-    _serverStats[senderId].accumulate(data);
-  }
+  bool allMessagesProcessed() const { return _stats.allMessagesProcessed(); }
 
-  void serializeValues(VPackBuilder& b) const {
-    MessageStats stats;
-    for (auto const& pair : _serverStats) {
-      stats.accumulate(pair.second);
-    }
-    stats.serializeValues(b);
-  }
-
-  /// Test if all messages were processed
-  bool allMessagesProcessed() const {
-    uint64_t send = 0, received = 0;
-    for (auto const& pair : _serverStats) {
-      send += pair.second.sendCount;
-      received += pair.second.receivedCount;
-    }
-    return send == received;
-  }
-
-  void debugOutput() const {
-    uint64_t send = 0, received = 0;
-    for (auto const& pair : _serverStats) {
-      send += pair.second.sendCount;
-      received += pair.second.receivedCount;
-    }
-    LOG_TOPIC("26dad", TRACE, Logger::PREGEL)
-        << send << " - " << received << " : " << send - received;
-  }
-
-  /// tests if active count is greater 0
   bool noActiveVertices() const { return _activeCounts == 0; }
 
   void resetActiveCount() { _activeCounts = 0; }
 
-  void reset() { _serverStats.clear(); }
+  void reset() { _stats.reset(); }
 
-  size_t clientCount() const { return _serverStats.size(); }
+  void debugOutput() const {
+    VPackBuilder v;
+    serialize(v, _stats);
+    LOG_TOPIC("26dad", TRACE, Logger::PREGEL) << v.toJson();
+  }
+
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, StatsManager& x);
 
  private:
   uint64_t _activeCounts;
-  std::map<std::string, MessageStats> _serverStats;
+  MessageStats _stats;
 };
+
+template<typename Inspector>
+auto inspect(Inspector& f, StatsManager& x) {
+  return f.object(x).fields(f.field("activeCounts", x._activeCounts),
+                            f.field("statistics", x._stats));
+}
 }  // namespace pregel
 }  // namespace arangodb
