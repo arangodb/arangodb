@@ -1755,19 +1755,29 @@ global.DEFINE_MODULE('internal', (function () {
   }
 
   let testsBasePaths = {};
-  exports.pathForTesting = function(path, prefix = 'js') {
+  let testsBasePathsEnterprise = {};
+  exports.pathForTesting = function (path, prefix = 'js', enterprise = false) {
     let fs = require('fs');
-    if (!testsBasePaths.hasOwnProperty(prefix)) {
+    let dict = null;
+    let preprefix = null;
+    if(enterprise){
+      dict = testsBasePathsEnterprise;
+      preprefix = fs.join('enterprise', 'tests');
+    } else {
+      dict = testsBasePaths;
+      preprefix = fs.join('tests');
+    }
+    if (!dict.hasOwnProperty(prefix)) {
       // first invocation
-      testsBasePaths[prefix] = fs.join('tests', prefix);
+      dict[prefix] = fs.join(preprefix, prefix);
       // build path with version number contained
       let versionString = exports.version.replace(/-.*$/, '');
-      if (fs.isDirectory(fs.join(testsBasePaths[prefix], versionString))) {
-        testsBasePaths[prefix] = fs.join(testsBasePaths[prefix], versionString);
+      if (fs.isDirectory(fs.join(dict[prefix], versionString))) {
+        dict[prefix] = fs.join(dict[prefix], versionString);
       }
     }
 
-    return fs.join(testsBasePaths[prefix], path);
+    return fs.join(dict[prefix], path);
   };
 
   // //////////////////////////////////////////////////////////////////////////////

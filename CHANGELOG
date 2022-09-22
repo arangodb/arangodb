@@ -5,6 +5,12 @@ devel
   consider servers that have failed status as a possible target for rebalancing
   shards in its execution plan.
 
+* Improve upload and download speed of hotbackup by changing the way we use
+  rclone. Empty hash files are now uploaded or downloaded by pattern, and
+  all other files are done in batches without remote directory listing,
+  which allows rclone to parallelize and avoid a lot of unnecessary network
+  traffic. The format of hotbackups does not change at all.
+
 * Fixed issue BTS-1018: Improve logging of binary velocypack request data.
 
 * BTS-477: added integration tests for covering log parameters.
