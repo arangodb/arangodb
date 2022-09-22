@@ -442,7 +442,11 @@ arangodb::Result fetchRevisions(
       futures.pop_front();
       shoppingLists.pop_front();
       TRI_ASSERT(futures.size() == shoppingLists.size());
-      res = trx.state()->performIntermediateCommitIfRequired(collection.id());
+
+      auto fut = trx.state()->performIntermediateCommitIfRequired(collection.id());
+      TRI_ASSERT(fut.isReady());
+      res = fut.get();
+
       if (res.fail()) {
         return res;
       }
@@ -2047,7 +2051,9 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       }
       toFetch.clear();
 
-      res = trx->state()->performIntermediateCommitIfRequired(coll->id());
+      auto fut = trx->state()->performIntermediateCommitIfRequired(coll->id());
+      TRI_ASSERT(fut.isReady());
+      res = fut.get();
 
       if (res.fail()) {
         return res;

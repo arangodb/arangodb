@@ -186,3 +186,12 @@ SimpleRocksDBTransactionState::createTransactionCollection(
   return std::unique_ptr<TransactionCollection>(
       new RocksDBTransactionCollection(this, cid, accessType));
 }
+
+futures::Future<Result>
+SimpleRocksDBTransactionState::performIntermediateCommitIfRequired(
+    DataSourceId cid) {
+  if (_rocksMethods->checkIntermediateCommit()) {
+    return _rocksMethods->triggerIntermediateCommit();
+  }
+  return Result{};
+}

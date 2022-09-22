@@ -56,7 +56,7 @@ class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
 
   void addIntermediateCommits(uint64_t value) override;
 
-  [[nodiscard]] Result performIntermediateCommitIfRequired(
+  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId collectionId) override;
 
   bool hasOperations() const noexcept override;

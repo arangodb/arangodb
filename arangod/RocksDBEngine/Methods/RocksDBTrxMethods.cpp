@@ -243,7 +243,6 @@ bool RocksDBTrxMethods::checkIntermediateCommit(uint64_t newSize) {
 
   TRI_IF_FAILURE("noIntermediateCommits") { return false; }
 
-  Result res;
   auto numOperations = this->numOperations();
   // perform an intermediate commit if either the "number of operations" or the
   // "transaction size" counters have reached their limit

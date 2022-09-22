@@ -67,6 +67,9 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState {
 
   rocksdb::SequenceNumber beginSeq() const override;
 
+  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
+      DataSourceId collectionId) override;
+
  protected:
   std::unique_ptr<TransactionCollection> createTransactionCollection(
       DataSourceId cid, AccessMode::Type accessType) override;

@@ -171,8 +171,8 @@ Result ClusterTransactionState::abortTransaction(
   return {};
 }
 
-Result ClusterTransactionState::performIntermediateCommitIfRequired(
-    DataSourceId cid) {
+futures::Future<Result>
+ClusterTransactionState::performIntermediateCommitIfRequired(DataSourceId cid) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "unexpected intermediate commit");
 }

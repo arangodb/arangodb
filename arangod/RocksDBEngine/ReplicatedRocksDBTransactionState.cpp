@@ -108,8 +108,11 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
     return true;
   });
 
+  // We are capturing a shared pointer to this state so we prevent reclamation
+  // while we are waiting for the commit operations.
   return futures::collectAll(commits).thenValue(
-      [](std::vector<futures::Try<Result>>&& results) -> Result {
+      [self = shared_from_this()](
+          std::vector<futures::Try<Result>>&& results) -> Result {
         for (auto& res : results) {
           auto result = res.get();
           if (result.fail()) {
@@ -231,13 +234,12 @@ void ReplicatedRocksDBTransactionState::addIntermediateCommits(uint64_t value) {
                                  "invalid call to addIntermediateCommits");
 }
 
-Result ReplicatedRocksDBTransactionState::performIntermediateCommitIfRequired(
+futures::Future<Result>
+ReplicatedRocksDBTransactionState::performIntermediateCommitIfRequired(
     DataSourceId cid) {
-  auto* methods = rocksdbMethods(cid);
-  if (methods->checkIntermediateCommit()) {
-    return methods->triggerIntermediateCommit();
-  }
-  return {};
+  auto* coll =
+      static_cast<ReplicatedRocksDBTransactionCollection*>(findCollection(cid));
+  return coll->performIntermediateCommitIfRequired();
 }
 
 bool ReplicatedRocksDBTransactionState::hasOperations() const noexcept {

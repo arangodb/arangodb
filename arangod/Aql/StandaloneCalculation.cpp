@@ -92,10 +92,10 @@ class CalculationTransactionState final : public arangodb::TransactionState {
     return {};
   }
 
-  [[nodiscard]] arangodb::Result performIntermediateCommitIfRequired(
+  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
       arangodb::DataSourceId collectionId) override {
     // Analyzers do not write. so do nothing
-    return {};
+    return Result{};
   }
 
   [[nodiscard]] bool hasFailedOperations() const noexcept override {

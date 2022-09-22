@@ -993,7 +993,8 @@ Result RocksDBCollection::truncate(transaction::Methods& trx,
         }
 
         res =
-            state->performIntermediateCommitIfRequired(_logicalCollection.id());
+            state->performIntermediateCommitIfRequired(_logicalCollection.id())
+                .get();
       }
     }
 

@@ -3577,7 +3577,8 @@ futures::Future<OperationResult> Methods::countInternal(
 
 // perform a (deferred) intermediate commit if required
 Result Methods::performIntermediateCommitIfRequired(DataSourceId collectionId) {
-  return _state->performIntermediateCommitIfRequired(collectionId);
+  // TODO return future
+  return _state->performIntermediateCommitIfRequired(collectionId).get();
 }
 
 #ifndef USE_ENTERPRISE

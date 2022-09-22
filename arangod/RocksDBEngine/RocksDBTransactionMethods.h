@@ -56,7 +56,9 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   virtual Result abortTransaction() = 0;
 
   // Only relevant for RocksDBTrxMethods
+  // TODO rename
   virtual bool checkIntermediateCommit() { return false; }
+  // TODO throw an exception
   virtual Result triggerIntermediateCommit() { return {}; };
 
   /// @returns tick of last operation in a transaction
