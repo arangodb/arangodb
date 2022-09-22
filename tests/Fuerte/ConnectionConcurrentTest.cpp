@@ -104,8 +104,6 @@ TEST_P(ConcurrentConnectionF, ApiVersionParallel) {
   // wait for all threads to end
   joins.joinAll();
 
-  guard.fire();
-
   ASSERT_EQ(repeat() * threads(), counter);
 }
 
@@ -166,8 +164,6 @@ TEST_P(ConcurrentConnectionF, CreateDocumentsParallel) {
 
   // wait for all threads to end
   joins.joinAll();
-
-  guard.fire();
 
   ASSERT_EQ(repeat() * threads(), counter);
 }
