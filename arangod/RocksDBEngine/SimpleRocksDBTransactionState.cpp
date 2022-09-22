@@ -190,7 +190,7 @@ SimpleRocksDBTransactionState::createTransactionCollection(
 futures::Future<Result>
 SimpleRocksDBTransactionState::performIntermediateCommitIfRequired(
     DataSourceId cid) {
-  if (_rocksMethods->checkIntermediateCommit()) {
+  if (_rocksMethods->isIntermediateCommitNeeded()) {
     return _rocksMethods->triggerIntermediateCommit();
   }
   return Result{};

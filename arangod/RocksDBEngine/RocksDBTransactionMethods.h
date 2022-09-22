@@ -56,10 +56,10 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   virtual Result abortTransaction() = 0;
 
   // Only relevant for RocksDBTrxMethods
-  // TODO rename
-  virtual bool checkIntermediateCommit() { return false; }
-  // TODO throw an exception
-  virtual Result triggerIntermediateCommit() { return {}; };
+  virtual bool isIntermediateCommitNeeded() { return false; }
+  virtual Result triggerIntermediateCommit() {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  };
 
   /// @returns tick of last operation in a transaction
   /// @note the value is guaranteed to be valid only after

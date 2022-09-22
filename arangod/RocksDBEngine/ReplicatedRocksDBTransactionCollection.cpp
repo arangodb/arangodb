@@ -195,7 +195,7 @@ auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
 
 futures::Future<Result>
 ReplicatedRocksDBTransactionCollection::performIntermediateCommitIfRequired() {
-  if (_rocksMethods->checkIntermediateCommit()) {
+  if (_rocksMethods->isIntermediateCommitNeeded()) {
     auto leader = leaderState();
     auto operation = replication2::replicated_state::document::OperationType::
         kIntermediateCommit;

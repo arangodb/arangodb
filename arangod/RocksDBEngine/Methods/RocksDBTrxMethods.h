@@ -50,7 +50,7 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   void rollbackOperation(TRI_voc_document_operation_e operationType) override;
 
   /// @brief checks if an intermediate commit is necessary
-  bool checkIntermediateCommit() override;
+  bool isIntermediateCommitNeeded() override;
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
                       rocksdb::PinnableSlice*, ReadOwnWrites) override;

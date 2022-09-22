@@ -100,7 +100,7 @@ void RocksDBTrxMethods::rollbackOperation(
   }
 }
 
-bool RocksDBTrxMethods::checkIntermediateCommit() {
+bool RocksDBTrxMethods::isIntermediateCommitNeeded() {
   if (hasIntermediateCommitsEnabled()) {
     size_t currentSize =
         _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
