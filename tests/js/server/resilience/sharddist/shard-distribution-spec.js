@@ -26,13 +26,13 @@
 const expect = require('chai').expect;
 const assert = require('chai').assert;
 const internal = require('internal');
-const download = require('internal').download;
 const colName = "UnitTestDistributionTest";
 const _ = require("lodash");
 const wait = require("internal").wait;
 const request = require('@arangodb/request');
 const endpointToURL = require("@arangodb/cluster").endpointToURL;
 const coordinatorName = "Coordinator0001";
+const dbname = "shardDistDB";
 
 let coordinator = instanceManager.arangods.filter(arangod => {
   return arangod.instanceRole === 'coordinator';
@@ -45,16 +45,27 @@ let dbServerCount = instanceManager.arangods.filter(arangod => {
 describe('Shard distribution', function () {
 
   before(function() {
+    internal.db._createDatabase(dbname, {replicationVersion: "2"});
+    internal.db._useDatabase(dbname);
     internal.db._drop(colName);
+    print("database created");
+  });
+
+  after(function () {
+    print("try to drop database");
+    internal.db._useDatabase("_system");
+    internal.db._dropDatabase(dbname);
   });
 
   afterEach(function() {
+    print("afterEach");
     internal.db._drop(colName);
+    print("collection dropped");
   });
 
   it('should properly distribute a collection', function() {
     internal.db._create(colName, {replicationFactor: 2, numberOfShards: 16});
-    var d = request.get(coordinator.url + '/_admin/cluster/shardDistribution');
+    var d = request.get(coordinator.url + '/_db/' + dbname  + '/_admin/cluster/shardDistribution');
     let distribution = JSON.parse(d.body).results;
     
     let leaders = Object.keys(distribution[colName].Current).reduce((current, shardKey) => {
@@ -96,7 +107,7 @@ describe('Shard distribution', function () {
         require("internal").wait(1);
       }
       internal.db._create(colName, {replicationFactor: dbServerCount, numberOfShards: nrShards});
-      var d = request.get(coordinator.url + '/_admin/cluster/shardDistribution');
+      var d = request.get(coordinator.url + '/_db/' + dbname  + '/_admin/cluster/shardDistribution');
       distribution = JSON.parse(d.body).results[colName];
       assert.isObject(distribution, 'The distribution for each collection has to be an object');
     });
@@ -181,7 +192,7 @@ describe('Shard distribution', function () {
     };
 
     const compareDistributions = function() {
-      const all = request.get(coordinator.url + '/_admin/cluster/shardDistribution');
+      const all = request.get(coordinator.url + '/_db/' + dbname + '/_admin/cluster/shardDistribution');
       const dist = JSON.parse(all.body).results;
       const orig = dist[colName].Current;
       const fol = dist[followCollection].Current;
@@ -289,14 +300,14 @@ describe('Shard distribution', function () {
       const waitForSynchronousReplication = function (collection) {
         global.ArangoClusterInfo.flush();
         var cinfo = global.ArangoClusterInfo.getCollectionInfo(
-          "_system", collection);
+          dbname, collection);
         var shards = Object.keys(cinfo.shards);
         var replFactor = cinfo.shards[shards[0]].length;
         var count = 0;
         while (++count <= 600) {
           var ccinfo = shards.map(
             s => global.ArangoClusterInfo.getCollectionInfoCurrent(
-              "_system", collection, s)
+              dbname, collection, s)
           );
           let replicas = ccinfo.map(s => s.servers);
           if (_.every(replicas, x => x.length === replFactor)) {
