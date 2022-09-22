@@ -1,7 +1,7 @@
 name: rocksdb_block_cache_charge_per_entry
 introducedIn: "3.11"
 help: |
-  Average size of entries in RocksDB block cache
+  Average size of entries in RocksDB block cache.
 unit: bytes
 type: gauge
 category: RocksDB
