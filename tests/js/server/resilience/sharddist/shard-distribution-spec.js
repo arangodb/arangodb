@@ -48,19 +48,15 @@ describe('Shard distribution', function () {
     internal.db._createDatabase(dbname, {replicationVersion: "2"});
     internal.db._useDatabase(dbname);
     internal.db._drop(colName);
-    print("database created");
   });
 
   after(function () {
-    print("try to drop database");
     internal.db._useDatabase("_system");
     internal.db._dropDatabase(dbname);
   });
 
   afterEach(function() {
-    print("afterEach");
     internal.db._drop(colName);
-    print("collection dropped");
   });
 
   it('should properly distribute a collection', function() {
