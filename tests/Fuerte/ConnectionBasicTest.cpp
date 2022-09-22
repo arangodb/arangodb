@@ -39,7 +39,7 @@ TEST_P(ConnectionTestF, ApiVersionSync) {
     auto version = slice.get("version").copyString();
     auto server = slice.get("server").copyString();
     ASSERT_EQ(server, "arango");
-    ASSERT_EQ(version[0], majorArangoVersion);
+    ASSERT_EQ(version[0], kMajorArangoVersion);
   }
 }
 
@@ -56,7 +56,7 @@ TEST_P(ConnectionTestF, ApiVersionASync) {
       auto version = slice.get("version").copyString();
       auto server = slice.get("server").copyString();
       ASSERT_EQ(server, "arango");
-      ASSERT_EQ(version[0], majorArangoVersion);
+      ASSERT_EQ(version[0], kMajorArangoVersion);
     }
   };
   for (size_t rep = 0; rep < repeat(); rep++) {
