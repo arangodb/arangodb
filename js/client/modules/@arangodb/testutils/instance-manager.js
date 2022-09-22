@@ -294,6 +294,7 @@ class instanceManager {
             count === this.agencyConfig.agencySize) {
           this.detectAgencyAlive();
         }
+        sleep(1);
       });
       if (this.options.cluster) {
         this.checkClusterAlive();
