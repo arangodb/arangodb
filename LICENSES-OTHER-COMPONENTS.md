@@ -612,6 +612,26 @@ License: https://raw.githubusercontent.com/unicode-org/cldr/master/ICU-LICENSE
 License Name: ICU License
 License Id: ICU
 
+#### The Project Gutenberg eBook, Children of the Frost, by Jack London
+
+Name: The Project Gutenberg eBook, Children of the Frost, by Jack London
+Version: N/A
+Date: N/A
+Project Home: https://www.gutenberg.org/ebooks/10736
+License: https://www.gutenberg.org/policy/license.html
+License Name: The Project Gutenberg License
+License Id: -
+
+#### The Project Gutenberg eBook of A Dream Of Red Mansions, by Xueqin Cao
+
+Name: The Project Gutenberg eBook of A Dream Of Red Mansions, by Xueqin Cao
+Version: N/A
+Date: N/A
+Project Home: https://www.gutenberg.org/ebooks/24264
+License: https://www.gutenberg.org/policy/license.html
+License Name: The Project Gutenberg License
+License Id: -
+
 ## JavaScript
 
 ### Node core modules
