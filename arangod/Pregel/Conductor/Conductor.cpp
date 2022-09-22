@@ -320,8 +320,7 @@ static void resolveInfo(
 }
 
 /// should cause workers to start a new execution
-auto Conductor::_initializeWorkers()
-    -> futures::Future<ResultT<WorkerCreated>> {
+auto Conductor::_initializeWorkers() -> futures::Future<Result> {
   _callbackMutex.assertLockedByCurrentThread();
 
   // int64_t vertexCount = 0, edgeCount = 0;
@@ -346,22 +345,22 @@ auto Conductor::_initializeWorkers()
   for (auto const& [server, _] : vertexMap) {
     servers.push_back(server);
   }
+  _status = ConductorStatus::forWorkers(servers);
+
   if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
     TRI_ASSERT(servers.size() == 1);
     _workers = conductor::WorkerApi{
-        servers, _executionNumber,
+        _executionNumber,
         std::make_unique<DirectConnection>(_feature, _vocbaseGuard.database())};
   } else {
     network::RequestOptions reqOpts;
     reqOpts.timeout = network::Timeout(5.0 * 60.0);
     reqOpts.database = _vocbaseGuard.database().name();
-    _workers =
-        conductor::WorkerApi{servers, _executionNumber,
-                             std::make_unique<NetworkConnection>(
-                                 Utils::baseUrl(Utils::workerPrefix),
-                                 std::move(reqOpts), _vocbaseGuard.database())};
+    _workers = conductor::WorkerApi{
+        _executionNumber, std::make_unique<NetworkConnection>(
+                              Utils::baseUrl(Utils::workerPrefix),
+                              std::move(reqOpts), _vocbaseGuard.database())};
   }
-  _status = ConductorStatus::forWorkers(servers);
 
   auto createWorkers = std::unordered_map<ServerID, CreateWorker>{};
   for (auto const& [server, vertexShards] : vertexMap) {

@@ -138,7 +138,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   ConductorStatus _status;
 
   auto _changeState(std::unique_ptr<conductor::State> newState) -> void;
-  auto _initializeWorkers() -> futures::Future<ResultT<WorkerCreated>>;
+  auto _initializeWorkers() -> futures::Future<Result>;
   auto _preGlobalSuperStep() -> bool;
   auto _postGlobalSuperStep(VPackBuilder messagesFromWorkers)
       -> PostGlobalSuperStepResult;

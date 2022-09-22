@@ -36,10 +36,10 @@ struct Destination {
 
  private:
   Type _type;
-  ServerID _id;
   const char* typeString[2] = {"server", "shard"};
 
  public:
+  ServerID _id;
   Destination(Type type, ServerID id) : _type{type}, _id{std::move(id)} {}
   auto toString() const -> std::string;
 };

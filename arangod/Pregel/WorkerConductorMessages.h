@@ -40,10 +40,12 @@ namespace arangodb::pregel {
 
 // ------ events sent from worker to conductor -------
 
-struct WorkerCreated {};
+struct WorkerCreated {
+  ServerID senderId;
+};
 template<typename Inspector>
 auto inspect(Inspector& f, WorkerCreated& x) {
-  return f.object(x).fields();
+  return f.object(x).fields(f.field("onServer", x.senderId));
 }
 
 struct GraphLoaded {

@@ -40,24 +40,23 @@ auto WorkerApi::send(ServerID const& server, In const& in) const
 
 auto WorkerApi::createWorkers(
     std::unordered_map<ServerID, CreateWorker> const& data)
-    -> futures::Future<ResultT<WorkerCreated>> {
+    -> futures::Future<Result> {
   auto results = std::vector<futures::Future<ResultT<WorkerCreated>>>{};
   for (auto const& [server, message] : data) {
-    results.emplace_back(send<WorkerCreated>(server, message));
+    results.emplace_back(send<WorkerCreated, CreateWorker>(server, message));
   }
-  return futures::collectAll(results).thenValue(
-      [](auto results) -> ResultT<WorkerCreated> {
-        for (auto const& result : results) {
-          if (result.get().fail()) {
-            return Result{
-                result.get().errorNumber(),
-                fmt::format(
-                    "Got unsuccessful response while creating worker: {}",
-                    result.get().errorMessage())};
-          }
-        }
-        return WorkerCreated{};
-      });
+  return futures::collectAll(results).thenValue([&](auto results) -> Result {
+    for (auto const& result : results) {
+      if (result.get().fail()) {
+        return Result{
+            result.get().errorNumber(),
+            fmt::format("Got unsuccessful response while creating worker: {}",
+                        result.get().errorMessage())};
+      }
+      _servers.emplace_back(result.get().get().senderId);
+    }
+    return Result{};
+  });
 }
 
 auto WorkerApi::loadGraph(LoadGraph const& data)

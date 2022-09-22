@@ -702,7 +702,8 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
                   vocbase, std::get<CreateWorker>(message.payload), *this),
               message.executionNumber);
     auto workerCreated = ModernMessage{
-        .executionNumber = message.executionNumber, .payload = WorkerCreated{}};
+        .executionNumber = message.executionNumber,
+        .payload = WorkerCreated{.senderId = ServerState::instance()->getId()}};
     serialize(outBuilder, workerCreated);
     return;
   }

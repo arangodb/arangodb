@@ -17,8 +17,9 @@ auto DirectConnection::send(Destination const& destination,
           _feature);
       TRI_ASSERT(created.get() != nullptr);
       _feature.addWorker(std::move(created), message.executionNumber);
-      return ModernMessage{.executionNumber = message.executionNumber,
-                           .payload = WorkerCreated{}};
+      return ModernMessage{
+          .executionNumber = message.executionNumber,
+          .payload = WorkerCreated{.senderId = destination._id}};
     } catch (basics::Exception& e) {
       return Result{e.code(), e.message()};
     }

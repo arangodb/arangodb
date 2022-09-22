@@ -38,14 +38,13 @@ using FutureOfWorkerResults =
 
 struct WorkerApi {
   WorkerApi() = default;
-  WorkerApi(std::vector<ServerID> servers, ExecutionNumber executionNumber,
+  WorkerApi(ExecutionNumber executionNumber,
             std::unique_ptr<Connection> connection)
-      : _servers{std::move(servers)},
-        _executionNumber{std::move(executionNumber)},
+      : _executionNumber{std::move(executionNumber)},
         _connection{std::move(connection)} {}
   [[nodiscard]] auto createWorkers(
       std::unordered_map<ServerID, CreateWorker> const& data)
-      -> futures::Future<ResultT<WorkerCreated>>;
+      -> futures::Future<Result>;
   [[nodiscard]] auto loadGraph(LoadGraph const& graph)
       -> FutureOfWorkerResults<GraphLoaded>;
   [[nodiscard]] auto prepareGlobalSuperStep(PrepareGlobalSuperStep const& data)
@@ -60,7 +59,7 @@ struct WorkerApi {
       -> FutureOfWorkerResults<PregelResults>;
 
  private:
-  std::vector<ServerID> _servers;
+  std::vector<ServerID> _servers = {};
   ExecutionNumber _executionNumber;
   std::unique_ptr<Connection> _connection;
 
