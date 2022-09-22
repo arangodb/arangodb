@@ -49,7 +49,7 @@ struct ConnectionTestParams {
 // connection tests. You can configure it using the ConnectionTestParams struct.
 class ConnectionTestF : public ::testing::TestWithParam<ConnectionTestParams> {
  public:
-  const char _major_arango_version = '3';
+  static constexpr char majorArangoVersion = '3';
 
  protected:
   ConnectionTestF() {}

@@ -65,7 +65,7 @@ TEST_P(ConcurrentConnectionF, ApiVersionParallel) {
       auto version = slice.get("version").copyString();
       auto server = slice.get("server").copyString();
       ASSERT_EQ(server, "arango");
-      ASSERT_EQ(version[0], _major_arango_version);
+      ASSERT_EQ(version[0], majorArangoVersion);
       counter.fetch_add(1, std::memory_order_relaxed);
     }
   };
