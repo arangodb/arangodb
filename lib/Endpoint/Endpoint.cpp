@@ -65,17 +65,17 @@ Endpoint::Endpoint(DomainType domainType, EndpointType type,
 }
 
 std::string Endpoint::uriForm(std::string const& endpoint) {
-  if (StringUtils::isPrefix(endpoint, "http+tcp://")) {
+  if (endpoint.starts_with("http+tcp://")) {
     return "http://" + endpoint.substr(11);
-  } else if (StringUtils::isPrefix(endpoint, "http+ssl://")) {
+  } else if (endpoint.starts_with("http+ssl://")) {
     return "https://" + endpoint.substr(11);
-  } else if (StringUtils::isPrefix(endpoint, "tcp://")) {
+  } else if (endpoint.starts_with("tcp://")) {
     return "http://" + endpoint.substr(6);
-  } else if (StringUtils::isPrefix(endpoint, "ssl://")) {
+  } else if (endpoint.starts_with("ssl://")) {
     return "https://" + endpoint.substr(6);
-  } else if (StringUtils::isPrefix(endpoint, "unix://")) {
+  } else if (endpoint.starts_with("unix://")) {
     return endpoint;
-  } else if (StringUtils::isPrefix(endpoint, "http+unix://")) {
+  } else if (endpoint.starts_with("http+unix://")) {
     return "unix://" + endpoint.substr(12);
   } else {
     return StaticStrings::Empty;
@@ -109,22 +109,21 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
   std::string schema = StringUtils::tolower(copy.substr(0, pos + 3));
 
   // read protocol from string
-  if (StringUtils::isPrefix(schema, "http+") ||
-      StringUtils::isPrefix(schema, "http@")) {
+  if (schema.starts_with("http+") || schema.starts_with("http@")) {
     protocol = TransportType::HTTP;
     prefix = "http+";
     copy = copy.substr(5);
     schema = schema.substr(5);
   }
 
-  if (StringUtils::isPrefix(schema, "vst+")) {
+  if (schema.starts_with("vst+")) {
     protocol = TransportType::VST;
     prefix = "vst+";
     copy = copy.substr(4);
     schema = schema.substr(4);
   }
 
-  if (StringUtils::isPrefix(schema, "unix://")) {
+  if (schema.starts_with("unix://")) {
 #if ARANGODB_HAVE_DOMAIN_SOCKETS
     return prefix + schema + copy.substr(7);
 #else
@@ -133,7 +132,7 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
 #endif
   }
 
-  if (StringUtils::isPrefix(schema, "srv://")) {
+  if (schema.starts_with("srv://")) {
 #ifndef _WIN32
     return prefix + schema + copy.substr(6);
 #else
@@ -142,9 +141,9 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
   }
 
   // strip tcp:// or ssl://
-  if (StringUtils::isPrefix(schema, "ssl://")) {
+  if (schema.starts_with("ssl://")) {
     prefix.append("ssl://");
-  } else if (StringUtils::isPrefix(schema, "tcp://")) {
+  } else if (schema.starts_with("tcp://")) {
     prefix.append("tcp://");
   } else {
     return StaticStrings::Empty;
@@ -239,7 +238,7 @@ Endpoint* Endpoint::factory(Endpoint::EndpointType type,
   std::string copy = unifiedForm(specification);
   TransportType protocol = TransportType::HTTP;
 
-  if (StringUtils::isPrefix(copy, "http+")) {
+  if (copy.starts_with("http+")) {
     copy = copy.substr(5);
   } else {
     // invalid protocol
@@ -248,7 +247,7 @@ Endpoint* Endpoint::factory(Endpoint::EndpointType type,
 
   EncryptionType encryption = EncryptionType::NONE;
 
-  if (StringUtils::isPrefix(copy, "unix://")) {
+  if (copy.starts_with("unix://")) {
 #if ARANGODB_HAVE_DOMAIN_SOCKETS
     return new EndpointUnixDomain(type, listenBacklog, copy.substr(7));
 #else
@@ -257,7 +256,7 @@ Endpoint* Endpoint::factory(Endpoint::EndpointType type,
 #endif
   }
 
-  if (StringUtils::isPrefix(copy, "srv://")) {
+  if (copy.starts_with("srv://")) {
     if (type != EndpointType::CLIENT) {
       return nullptr;
     }
@@ -269,9 +268,9 @@ Endpoint* Endpoint::factory(Endpoint::EndpointType type,
 #endif
   }
 
-  if (StringUtils::isPrefix(copy, "ssl://")) {
+  if (copy.starts_with("ssl://")) {
     encryption = EncryptionType::SSL;
-  } else if (!StringUtils::isPrefix(copy, "tcp://")) {
+  } else if (!copy.starts_with("tcp://")) {
     // invalid type
     return nullptr;
   }
