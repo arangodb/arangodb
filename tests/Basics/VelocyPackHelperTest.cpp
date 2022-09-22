@@ -30,6 +30,7 @@
 #include <velocypack/Parser.h>
 
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/VelocyPackStringLiteral.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros

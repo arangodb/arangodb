@@ -889,17 +889,3 @@ arangodb::LoggerStream& operator<<(arangodb::LoggerStream& logger,
   }
   return logger;
 }
-
-auto arangodb::velocypack::vpackFromJsonString(char const* c) -> SharedSlice {
-  VPackOptions options;
-  options.checkAttributeUniqueness = true;
-  VPackParser parser(&options);
-  parser.parse(c);
-
-  return std::move(parser.builder()).sharedSlice();
-}
-
-auto arangodb::velocypack::operator"" _vpack(const char* json, size_t)
-    -> SharedSlice {
-  return vpackFromJsonString(json);
-}
