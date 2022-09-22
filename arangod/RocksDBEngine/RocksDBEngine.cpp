@@ -3077,9 +3077,6 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addInt(rocksdb::DB::Properties::kBlockCacheCapacity);
   addInt(rocksdb::DB::Properties::kBlockCacheUsage);
   addInt(rocksdb::DB::Properties::kBlockCachePinnedUsage);
-  addIntAllCf(rocksdb::DB::Properties::kBlobCacheCapacity);
-  addIntAllCf(rocksdb::DB::Properties::kBlobCacheUsage);
-  addIntAllCf(rocksdb::DB::Properties::kBlobCachePinnedUsage);
 
   auto const& tableOptions = _optionsProvider.getTableOptions();
   if (tableOptions.block_cache != nullptr) {
