@@ -36,12 +36,12 @@ version single
 shell_api priority=500 single suffix=http -- $EncryptionAtRest
 shell_api priority=500 single suffix=https -- $EncryptionAtRest --protocol ssl
 # Shell client tests Single Server; distribute evenly
-shell_client priority=500 parallelity=2 single suffix=http -- $EncryptionAtRest
+shell_client priority=250 parallelity=2 single suffix=http -- $EncryptionAtRest
 shell_client priority=1500 parallelity=2 single suffix=http2 -- --http2 true
 shell_client priority=2500 parallelity=2 single suffix=vst -- --vst true
-shell_client_transaction priority=500 single suffix=http -- $EncryptionAtRest
-shell_client_transaction priority=1500 single suffix=http2 -- --http2 true
-shell_client_transaction priority=2500 single suffix=vst -- --vst true
+shell_client_transaction priority=750 single suffix=http -- $EncryptionAtRest
+shell_client_transaction priority=1750 single suffix=http2 -- --http2 true
+shell_client_transaction priority=2750 single suffix=vst -- --vst true
 
 shell_client_aql priority=250  single suffix=http
 shell_client_aql priority=500  single suffix=http2 -- --http2 true
