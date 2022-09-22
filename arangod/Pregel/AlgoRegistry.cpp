@@ -39,6 +39,7 @@
 #include "Pregel/Algos/WCC.h"
 #include "Pregel/Utils.h"
 #include "VocBase/vocbase.h"
+#include "Pregel/WorkerConductorMessages.h"
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
 #include "Pregel/Algos/ReadWrite.h"
 #endif
@@ -92,77 +93,70 @@ IAlgorithm* AlgoRegistry::createAlgorithm(
 
 template<typename V, typename E, typename M>
 /*static*/ std::shared_ptr<IWorker> AlgoRegistry::createWorker(
-    TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo, VPackSlice body,
+    TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo, LoadGraph const& body,
     PregelFeature& feature) {
   return std::make_shared<Worker<V, E, M>>(vocbase, algo, body, feature);
 }
 
 /*static*/ std::shared_ptr<IWorker> AlgoRegistry::createWorker(
-    TRI_vocbase_t& vocbase, VPackSlice body, PregelFeature& feature) {
-  VPackSlice algoSlice = body.get(Utils::algorithmKey);
-
-  if (!algoSlice.isString()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "Supplied bad parameters to worker");
-  }
-
-  VPackSlice userParams = body.get(Utils::userParametersKey);
-  std::string algorithm = algoSlice.copyString();
+    TRI_vocbase_t& vocbase, LoadGraph const& data, PregelFeature& feature) {
+  auto userParams = data.userParameters.slice();
+  auto algorithm = data.algorithm;
   std::transform(algorithm.begin(), algorithm.end(), algorithm.begin(),
                  ::tolower);
 
   auto& server = vocbase.server();
   if (algorithm == "sssp") {
     return createWorker(vocbase, new algos::SSSPAlgorithm(server, userParams),
-                        body, feature);
+                        data, feature);
   } else if (algorithm == "pagerank") {
-    return createWorker(vocbase, new algos::PageRank(server, userParams), body,
+    return createWorker(vocbase, new algos::PageRank(server, userParams), data,
                         feature);
   } else if (algorithm == "recoveringpagerank") {
     return createWorker(vocbase,
-                        new algos::RecoveringPageRank(server, userParams), body,
+                        new algos::RecoveringPageRank(server, userParams), data,
                         feature);
   } else if (algorithm == "shortestpath") {
     return createWorker(vocbase,
                         new algos::ShortestPathAlgorithm(server, userParams),
-                        body, feature);
+                        data, feature);
   } else if (algorithm == "linerank") {
-    return createWorker(vocbase, new algos::LineRank(server, userParams), body,
+    return createWorker(vocbase, new algos::LineRank(server, userParams), data,
                         feature);
   } else if (algorithm == "effectivecloseness") {
     return createWorker(vocbase,
-                        new algos::EffectiveCloseness(server, userParams), body,
+                        new algos::EffectiveCloseness(server, userParams), data,
                         feature);
   } else if (algorithm == "connectedcomponents") {
     return createWorker(vocbase,
                         new algos::ConnectedComponents(server, userParams),
-                        body, feature);
+                        data, feature);
   } else if (algorithm == "scc") {
-    return createWorker(vocbase, new algos::SCC(server, userParams), body,
+    return createWorker(vocbase, new algos::SCC(server, userParams), data,
                         feature);
   } else if (algorithm == "hits") {
-    return createWorker(vocbase, new algos::HITS(server, userParams), body,
+    return createWorker(vocbase, new algos::HITS(server, userParams), data,
                         feature);
   } else if (algorithm == "hitskleinberg") {
     return createWorker(vocbase, new algos::HITSKleinberg(server, userParams),
-                        body, feature);
+                        data, feature);
   } else if (algorithm == "labelpropagation") {
     return createWorker(vocbase,
-                        new algos::LabelPropagation(server, userParams), body,
+                        new algos::LabelPropagation(server, userParams), data,
                         feature);
   } else if (algorithm == "slpa") {
-    return createWorker(vocbase, new algos::SLPA(server, userParams), body,
+    return createWorker(vocbase, new algos::SLPA(server, userParams), data,
                         feature);
   } else if (algorithm == "dmid") {
-    return createWorker(vocbase, new algos::DMID(server, userParams), body,
+    return createWorker(vocbase, new algos::DMID(server, userParams), data,
                         feature);
   } else if (algorithm == "wcc") {
-    return createWorker(vocbase, new algos::WCC(server, userParams), body,
+    return createWorker(vocbase, new algos::WCC(server, userParams), data,
                         feature);
   }
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
   else if (algorithm == "readwrite") {
-    return createWorker(vocbase, new algos::ReadWrite(server, userParams), body,
+    return createWorker(vocbase, new algos::ReadWrite(server, userParams), data,
                         feature);
   }
 #endif

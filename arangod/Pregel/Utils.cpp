@@ -28,6 +28,7 @@
 #include "Logger/LogMacros.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+#include "Pregel/Worker/WorkerConfig.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;

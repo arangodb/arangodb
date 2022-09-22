@@ -31,6 +31,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/Graph.h"
+#include "Pregel/WorkerConductorMessages.h"
 
 struct TRI_vocbase_t;
 
@@ -49,7 +50,7 @@ class WorkerConfig {
 
  public:
   explicit WorkerConfig(TRI_vocbase_t* vocbase);
-  void updateConfig(PregelFeature& feature, VPackSlice updated);
+  void updateConfig(PregelFeature& feature, LoadGraph const& updated);
 
   // get effective parallelism from Pregel feature and params
   static size_t parallelism(PregelFeature& feature, VPackSlice params);

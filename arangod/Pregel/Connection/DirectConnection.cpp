@@ -13,8 +13,8 @@ auto DirectConnection::send(Destination const& destination,
   if (std::holds_alternative<LoadGraph>(message.payload)) {
     try {
       auto created = AlgoRegistry::createWorker(
-          _vocbaseGuard.database(),
-          std::get<LoadGraph>(message.payload).details.slice(), _feature);
+          _vocbaseGuard.database(), std::get<LoadGraph>(message.payload),
+          _feature);
       TRI_ASSERT(created.get() != nullptr);
       _feature.addWorker(std::move(created), message.executionNumber);
     } catch (basics::Exception& e) {

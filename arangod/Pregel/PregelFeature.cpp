@@ -699,8 +699,7 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
   auto message = deserialize<ModernMessage>(body);
   if (std::holds_alternative<LoadGraph>(message.payload)) {
     addWorker(AlgoRegistry::createWorker(
-                  vocbase, std::get<LoadGraph>(message.payload).details.slice(),
-                  *this),
+                  vocbase, std::get<LoadGraph>(message.payload), *this),
               message.executionNumber);
   }
   auto w = worker(message.executionNumber);

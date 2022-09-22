@@ -23,7 +23,7 @@ Loading::~Loading() {
 
 auto Loading::run() -> std::optional<std::unique_ptr<State>> {
   LOG_PREGEL_CONDUCTOR("3a255", DEBUG) << "Telling workers to load the data";
-  return conductor._initializeWorkers(VPackSlice())
+  return conductor._initializeWorkers()
       .thenValue([&](auto results) -> std::unique_ptr<State> {
         for (auto const& result : results) {
           if (result.get().fail()) {

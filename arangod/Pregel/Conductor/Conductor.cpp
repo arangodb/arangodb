@@ -273,7 +273,7 @@ void Conductor::cancel() {
 // server
 static void resolveInfo(
     TRI_vocbase_t* vocbase, CollectionID const& collectionID,
-    std::map<CollectionID, std::string>& collectionPlanIdMap,
+    std::unordered_map<CollectionID, std::string>& collectionPlanIdMap,
     std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>>& serverMap,
     std::vector<ShardID>& allShards) {
   ServerState* ss = ServerState::instance();
@@ -320,11 +320,11 @@ static void resolveInfo(
 }
 
 /// should cause workers to start a new execution
-auto Conductor::_initializeWorkers(VPackSlice additional) -> GraphLoadedFuture {
+auto Conductor::_initializeWorkers() -> GraphLoadedFuture {
   _callbackMutex.assertLockedByCurrentThread();
 
   // int64_t vertexCount = 0, edgeCount = 0;
-  std::map<CollectionID, std::string> collectionPlanIdMap;
+  std::unordered_map<CollectionID, std::string> collectionPlanIdMap;
   std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap,
       edgeMap;
   std::vector<ShardID> shardList;
@@ -361,79 +361,23 @@ auto Conductor::_initializeWorkers(VPackSlice additional) -> GraphLoadedFuture {
                                  std::move(reqOpts), _vocbaseGuard.database())};
   }
   _status = ConductorStatus::forWorkers(servers);
-  // do not reload all shard id's, this list must stay in the same order
-  if (_allShards.size() == 0) {
-    _allShards = shardList;
-  }
 
-  std::string coordinatorId = ServerState::instance()->getId();
   auto results = std::vector<futures::Future<ResultT<GraphLoaded>>>{};
 
-  for (auto const& it : vertexMap) {
-    std::map<CollectionID, std::vector<ShardID>> const& vertexShardMap =
-        it.second;
-    std::map<CollectionID, std::vector<ShardID>> const& edgeShardMap =
-        edgeMap[it.first];
+  for (auto const& [server, vertexShards] : vertexMap) {
+    auto const& edgeShards = edgeMap[server];
 
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder b(buffer);
-    b.openObject();
-    b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
-    b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-    b.add(Utils::algorithmKey, VPackValue(_algorithm->name()));
-    b.add(Utils::userParametersKey, _userParams.slice());
-    b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
-    b.add(Utils::useMemoryMapsKey, VPackValue(_useMemoryMaps));
-    if (additional.isObject()) {
-      for (auto pair : VPackObjectIterator(additional)) {
-        b.add(pair.key.copyString(), pair.value);
-      }
-    }
-
-    // edge collection restrictions
-    b.add(Utils::edgeCollectionRestrictionsKey,
-          VPackValue(VPackValueType::Object));
-    for (auto const& pair : _edgeCollectionRestrictions) {
-      b.add(pair.first, VPackValue(VPackValueType::Array));
-      for (ShardID const& shard : pair.second) {
-        b.add(VPackValue(shard));
-      }
-      b.close();
-    }
-    b.close();
-
-    b.add(Utils::vertexShardsKey, VPackValue(VPackValueType::Object));
-    for (auto const& pair : vertexShardMap) {
-      b.add(pair.first, VPackValue(VPackValueType::Array));
-      for (ShardID const& shard : pair.second) {
-        b.add(VPackValue(shard));
-      }
-      b.close();
-    }
-    b.close();
-    b.add(Utils::edgeShardsKey, VPackValue(VPackValueType::Object));
-    for (auto const& pair : edgeShardMap) {
-      b.add(pair.first, VPackValue(VPackValueType::Array));
-      for (ShardID const& shard : pair.second) {
-        b.add(VPackValue(shard));
-      }
-      b.close();
-    }
-
-    b.close();
-    b.add(Utils::collectionPlanIdMapKey, VPackValue(VPackValueType::Object));
-    for (auto const& pair : collectionPlanIdMap) {
-      b.add(pair.first, VPackValue(pair.second));
-    }
-    b.close();
-    b.add(Utils::globalShardListKey, VPackValue(VPackValueType::Array));
-    for (std::string const& shard : _allShards) {
-      b.add(VPackValue(shard));
-    }
-    b.close();
-    b.close();
-
-    auto graph = LoadGraph{.details = b};
+    auto graph =
+        LoadGraph{.executionNumber = _executionNumber,
+                  .algorithm = _algorithm->name(),
+                  .userParameters = _userParams,
+                  .coordinatorId = ServerState::instance()->getId(),
+                  .useMemoryMaps = _useMemoryMaps,
+                  .edgeCollectionRestrictions = _edgeCollectionRestrictions,
+                  .vertexShards = vertexShards,
+                  .edgeShards = edgeShards,
+                  .collectionPlanIds = collectionPlanIdMap,
+                  .allShards = shardList};
     results.emplace_back(_workers.loadGraph(graph));
   }
   return futures::collectAll(results);
