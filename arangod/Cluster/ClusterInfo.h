@@ -1133,6 +1133,7 @@ class ClusterInfo final {
   using ReplicatedLogsMap = containers::FlatHashMap<
       replication2::LogId,
       std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
+  // note: protected by _planProt!
   ReplicatedLogsMap _replicatedLogs;
 
   using CollectionGroupMap = containers::FlatHashMap<
