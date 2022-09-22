@@ -2865,8 +2865,8 @@ DECLARE_GAUGE(rocksdb_block_cache_capacity, uint64_t,
 DECLARE_GAUGE(rocksdb_block_cache_pinned_usage, uint64_t,
               "rocksdb_block_cache_pinned_usage");
 DECLARE_GAUGE(rocksdb_block_cache_usage, uint64_t, "rocksdb_block_cache_usage");
-DECLARE_GAUGE(rocksdb_block_cache_occupancy_count, uint64_t,
-              "rocksdb_block_cache_occupancy_count");
+DECLARE_GAUGE(rocksdb_block_cache_entries, uint64_t,
+              "rocksdb_block_cache_entries");
 DECLARE_GAUGE(rocksdb_block_cache_charge_per_entry, uint64_t,
               "rocksdb_block_cache_charge_per_entry");
 DECLARE_GAUGE(rocksdb_compaction_pending, uint64_t,
@@ -2956,12 +2956,12 @@ void RocksDBEngine::getStatistics(std::string& result) const {
   getStatistics(stats);
   VPackSlice sslice = stats.slice();
   TRI_ASSERT(sslice.isObject());
-  for (auto const& a : VPackObjectIterator(sslice)) {
+  for (auto a : VPackObjectIterator(sslice)) {
     if (a.value.isNumber()) {
       std::string name = a.key.copyString();
       std::replace(name.begin(), name.end(), '.', '_');
       std::replace(name.begin(), name.end(), '-', '_');
-      if (name.front() != 'r') {
+      if (!name.empty() && name.front() != 'r') {
         name = std::string{kEngineName}.append("_").append(name);
       }
       result += "\n# HELP " + name + " " + name + "\n# TYPE " + name +
@@ -3000,9 +3000,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
         // -1 returned for somethings that are valid property but no value
         if (0 < temp) {
           sum += temp;
-        }  // if
-      }    // if
-    }      // for
+        }
+      }
+    }
     builder.add(s, VPackValue(sum));
   };
 
@@ -3077,28 +3077,26 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addInt(rocksdb::DB::Properties::kBlockCacheCapacity);
   addInt(rocksdb::DB::Properties::kBlockCacheUsage);
   addInt(rocksdb::DB::Properties::kBlockCachePinnedUsage);
+  addIntAllCf(rocksdb::DB::Properties::kBlobCacheCapacity);
+  addIntAllCf(rocksdb::DB::Properties::kBlobCacheUsage);
+  addIntAllCf(rocksdb::DB::Properties::kBlobCachePinnedUsage);
 
   auto const& tableOptions = _optionsProvider.getTableOptions();
   if (tableOptions.block_cache != nullptr) {
     auto const& cache = tableOptions.block_cache;
     auto usage = cache->GetUsage();
-    auto occupancyCount = cache->GetOccupancyCount();
-    if (occupancyCount > 0) {
+    auto entries = cache->GetOccupancyCount();
+    if (entries > 0) {
       builder.add("rocksdb.block-cache-charge-per-entry",
-                  VPackValue(static_cast<uint64_t>(usage / occupancyCount)));
+                  VPackValue(static_cast<uint64_t>(usage / entries)));
     } else {
       builder.add("rocksdb.block-cache-charge-per-entry", VPackValue(0));
     }
-    builder.add("rocksdb.block-cache-occupancy-count",
-                VPackValue(occupancyCount));
+    builder.add("rocksdb.block-cache-entries", VPackValue(entries));
   } else {
-    builder.add("rocksdb.block-cache-occupancy-count", VPackValue(0));
+    builder.add("rocksdb.block-cache-entries", VPackValue(0));
     builder.add("rocksdb.block-cache-charge-per-entry", VPackValue(0));
   }
-
-  addInt(rocksdb::DB::Properties::kBlobCacheCapacity);
-  addInt(rocksdb::DB::Properties::kBlobCacheUsage);
-  addInt(rocksdb::DB::Properties::kBlobCachePinnedUsage);
 
   addIntAllCf(rocksdb::DB::Properties::kTotalSstFilesSize);
   addInt(rocksdb::DB::Properties::kActualDelayedWriteRate);
@@ -3164,13 +3162,14 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf(RocksDBColumnFamilyManager::Family::VPackIndex);
   addCf(RocksDBColumnFamilyManager::Family::GeoIndex);
   addCf(RocksDBColumnFamilyManager::Family::FulltextIndex);
+  addCf(RocksDBColumnFamilyManager::Family::ZkdIndex);
   addCf(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   builder.close();
 
   if (_throttleListener) {
     builder.add("rocksdb_engine.throttle.bps",
                 VPackValue(_throttleListener->getThrottle()));
-  }  // if
+  }
 
   {
     // total disk space in database directory
