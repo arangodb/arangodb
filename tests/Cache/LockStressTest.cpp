@@ -34,18 +34,27 @@
 #include "Cache/Rebalancer.h"
 #include "Random/RandomGenerator.h"
 
+#include "Mocks/Servers.h"
+
 #include "MockScheduler.h"
 #include "TransactionalStore.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
+using namespace arangodb::tests::mocks;
 
 // long-running
 
 TEST(CacheLockStressTest, test_transactionality_for_mixed_load) {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   MockScheduler scheduler(4);
-  Manager manager(scheduler.ioService(), 32 * 1024 * 1024);
+  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+    scheduler.post(fn);
+    return true;
+  };
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 16 * 1024 * 1024);
   TransactionalStore store(&manager);
   std::uint64_t totalDocuments = 1000000;
   std::uint64_t readBatchSize = 10000;
