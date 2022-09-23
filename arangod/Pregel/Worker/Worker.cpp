@@ -607,13 +607,10 @@ auto Worker<V, E, M>::_resultsFct(CollectPregelResults const& message) const
                        VPackValueType::String));
 
     V const& data = vertexEntry->data();
-    // bool store =
-    if (auto res = _graphStore->graphFormat()->buildVertexDocumentWithResult(
-            result, &data);
-        res.fail()) {
-      return Result{TRI_ERROR_AIR_EXECUTION_ERROR,
-                    fmt::format("Failed to build vertex document: {}",
-                                res.error().toString())};
+    if (auto res =
+            _graphStore->graphFormat()->buildVertexDocument(result, &data);
+        !res) {
+      return Result{TRI_ERROR_INTERNAL, "Failed to build vertex document"};
     }
     result.close();
   }
