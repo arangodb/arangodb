@@ -834,26 +834,44 @@
       ////////////////////////////////////////////////////////////////////////////////
 
       testSearch: function () {
-        let collection = db._collection("searchCollection");
+        let collection1 = db._collection("searchCollection");
         assertNotEqual(null, collection);
 
-        let index = collection.index("searchIndex");
-        assertTrue(index.includeAllFields);
-        assertEqual(index.consolidationIntervalMsec, 0);
-        assertEqual(index.cleanupIntervalStep, 42);
+        let collection2 = db._collection("v_collection_documents_0_all");
+        assertNotEqual(null, collection);
 
-        let search = db._view("searchSearch");
-        assertNotEqual(null, search);
-        assertEqual("searchSearch", search.name());
-        let props = search.properties();
+        let index1 = collection1.index("searchIndex");
+        assertTrue(index1.includeAllFields);
+        assertEqual(index1.consolidationIntervalMsec, 0);
+        assertEqual(index1.cleanupIntervalStep, 42);
+
+        let index2 = collection2.index("collection_documents_0_all");
+        assertTrue(index2.includeAllFields);
+        assertEqual(index2.consolidationIntervalMsec, 0);
+        assertEqual(index2.cleanupIntervalStep, 42);
+
+        let search1 = db._view("searchSearch");
+        assertNotEqual(null, search1);
+        assertEqual("searchSearch", search1.name());
+        let props = search1.properties();
         assertEqual(props.indexes, [{ collection: "searchCollection", index: "searchIndex" }]);
+
+        let search2 = db._view("v_collection_documents_0_all");
+        assertNotEqual(null, search2);
+        assertEqual("v_collection_documents_0_all", search2.name());
+        let props = search2.properties();
+        assertEqual(props.indexes, [ { 'collection': 'collection_documents_0', 'index': 'collection_documents_0_all' }]);
 
         // After a restore, the Inverted index needs to be rebuilt, therefore
         // we cannot expect that the data is immediately visible. We can only
         // hope that the data will be there in due course:
 
-        let res = db._query("FOR doc IN " + search.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
+        let res1 = db._query("FOR doc IN " + search1.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
         assertEqual(5000, res.length);
+
+        let res2 = db._query("FOR doc IN " + search2.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
+        assertEqual(5000, res.length);
+
 
         if (isServer) {
           request({
@@ -869,29 +887,48 @@
             getRawMetric(c, '?mode=trigger_global');
           }
         }
-        let figures;
+        let figures1;
+        let figures2;
         for (let i = 0; i < 100; ++i) {
           require("internal").sleep(0.5);
-          figures = collection.getIndexes(true, true)
+          figures1 = collection.getIndexes(true, true)
             .find(e => e.name === "searchIndex")
+            .figures;
+          figures2 = collection.getIndexes(true, true)
+            .find(e => e.name === "collection_documents_0_all")
             .figures;
           if (figures.numDocs > 5000) {
             break;
           }
         }
-        assertEqual(figures.numDocs, 5001);
-        assertEqual(figures.numLiveDocs, 5001);
-        assertTrue(figures.numSegments >= 1);
-        assertTrue(figures.numFiles >= 7);
-        assertTrue(figures.indexSize > 0);
+        assertEqual(figures1.numDocs, 5001);
+        assertEqual(figures1.numLiveDocs, 5001);
+        assertTrue(figures1.numSegments >= 1);
+        assertTrue(figures1.numFiles >= 7);
+        assertTrue(figures1.indexSize > 0);
 
-        res = db._query("FOR doc IN " + search.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
+        assertEqual(figures2.numDocs, 5001);
+        assertEqual(figures2.numLiveDocs, 5001);
+        assertTrue(figures2.numSegments >= 1);
+        assertTrue(figures2.numFiles >= 7);
+        assertTrue(figures2.indexSize > 0);
+
+        res = db._query("FOR doc IN " + search1.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
         assertEqual(2500, res.length);
 
-        res = db._query("FOR doc IN " + search.name() + " SEARCH doc.value >= 5000 RETURN doc").toArray();
+        res = db._query("FOR doc IN " + search1.name() + " SEARCH doc.value >= 5000 RETURN doc").toArray();
         assertEqual(0, res.length);
 
-        res = db._query("FOR doc IN " + search.name() + " SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en') RETURN doc").toArray();
+        res = db._query("FOR doc IN " + search1.name() + " SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en') RETURN doc").toArray();
+        assertEqual(1, res.length);
+      
+        res = db._query("FOR doc IN " + search2.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
+        assertEqual(2500, res.length);
+
+        res = db._query("FOR doc IN " + search2.name() + " SEARCH doc.value >= 5000 RETURN doc").toArray();
+        assertEqual(0, res.length);
+
+        res = db._query("FOR doc IN " + search2.name() + " SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en') RETURN doc").toArray();
         assertEqual(1, res.length);
       },
 
