@@ -19,4 +19,3 @@ endif()
 
 add_subdirectory(DMID)
 add_subdirectory(EffectiveCloseness)
-add_subdirectory(AIR)

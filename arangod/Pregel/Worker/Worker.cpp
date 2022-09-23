@@ -28,7 +28,6 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/RequestLane.h"
 #include "Pregel/Aggregator.h"
-#include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/WorkerConductorMessages.h"
 #include "Pregel/IncomingCache.h"
@@ -827,6 +826,3 @@ template class arangodb::pregel::Worker<ECValue, int8_t, HLLCounter>;
 template class arangodb::pregel::Worker<DMIDValue, float, DMIDMessage>;
 template class arangodb::pregel::Worker<LPValue, int8_t, uint64_t>;
 template class arangodb::pregel::Worker<SLPAValue, int8_t, uint64_t>;
-
-using namespace arangodb::pregel::algos::accumulators;
-template class arangodb::pregel::Worker<VertexData, EdgeData, MessageData>;

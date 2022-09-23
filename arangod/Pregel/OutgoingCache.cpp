@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/OutgoingCache.h"
-#include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/Graph.h"
 #include "Pregel/IncomingCache.h"
@@ -291,8 +290,3 @@ template class arangodb::pregel::CombiningOutCache<DMIDMessage>;
 template class arangodb::pregel::OutCache<HLLCounter>;
 template class arangodb::pregel::ArrayOutCache<HLLCounter>;
 template class arangodb::pregel::CombiningOutCache<HLLCounter>;
-
-using namespace arangodb::pregel::algos::accumulators;
-template class arangodb::pregel::OutCache<MessageData>;
-template class arangodb::pregel::ArrayOutCache<MessageData>;
-template class arangodb::pregel::CombiningOutCache<MessageData>;
