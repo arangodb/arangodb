@@ -1193,7 +1193,8 @@ function BaseTestConfig () {
         function () { },
         function (state) {
           let view = db._view('UnitTestsSyncView');
-          assertTrue(view !== null);
+          assertNotNull(view);
+          assertEqual("arangosearch", view.type());
           let props = view.properties();
           assertEqual(Object.keys(props.links).length, 1);
           assertTrue(props.hasOwnProperty('links'));
@@ -1222,7 +1223,7 @@ function BaseTestConfig () {
         function () { },
         function (state) {
           let view = db._view('UnitTestsSyncView');
-          assertTrue(view !== null);
+          assertNotNull(view);
           let props = view.properties();
           assertEqual(Object.keys(props.links).length, 1);
           assertTrue(props.hasOwnProperty('links'));
@@ -1284,7 +1285,7 @@ function BaseTestConfig () {
           let view = db._view('UnitTestsSyncView');
           view.rename('UnitTestsSyncViewRenamed');
           view = db._view('UnitTestsSyncViewRenamed');
-          assertTrue(view !== null);
+          assertNotNull(view);
           let props = view.properties();
           assertEqual(Object.keys(props.links).length, 1);
           assertTrue(props.hasOwnProperty('links'));
@@ -1293,7 +1294,7 @@ function BaseTestConfig () {
         function (state) { },
         function (state) {
           let view = db._view('UnitTestsSyncViewRenamed');
-          assertTrue(view !== null);
+          assertNotNull(view);
           let props = view.properties();
           assertEqual(Object.keys(props.links).length, 1);
           assertTrue(props.hasOwnProperty('links'));
@@ -1333,7 +1334,7 @@ function BaseTestConfig () {
           assertEqual(1, idx.length); // primary
 
           let view = db._view(cn + 'View');
-          assertTrue(view !== null);
+          assertNotNull(view);
           let props = view.properties();
           assertTrue(props.hasOwnProperty('links'));
           assertEqual(Object.keys(props.links).length, 1);
@@ -1410,7 +1411,7 @@ function BaseTestConfig () {
         },
         function (state) { // followerFuncOngoing
           let view = db._view(cn + 'View');
-          assertTrue(view !== null);
+          assertNotNull(view);
           let props = view.properties();
           assertTrue(props.hasOwnProperty('links'));
           assertEqual(Object.keys(props.links).length, 1);
@@ -1423,7 +1424,7 @@ function BaseTestConfig () {
           assertEqual(1, idx.length); // primary
 
           let view = db._view(cn + 'View');
-          assertTrue(view !== null);
+          assertNotNull(view);
           let props = view.properties();
           assertTrue(props.hasOwnProperty('links'));
           assertEqual(Object.keys(props.links).length, 1);
@@ -1436,6 +1437,7 @@ function BaseTestConfig () {
           assertEqual(1, res.length);
         });
     },
+    
     testViewDataCustomAnalyzer: function () {
       connectToLeader();
       compare(
@@ -1543,6 +1545,7 @@ function ReplicationSuite () {
       connectToLeader();
 
       db._dropView('UnitTestsSyncView');
+      db._dropView('UnitTestsSyncSearchAlias');
       db._dropView('UnitTestsSyncViewRenamed');
       db._dropView(cn + 'View');
       db._drop(cn);
@@ -1556,6 +1559,7 @@ function ReplicationSuite () {
       replication.applier.forget();
 
       db._dropView('UnitTestsSyncView');
+      db._dropView('UnitTestsSyncSearchAlias');
       db._dropView('UnitTestsSyncViewRenamed');
       db._dropView(cn + 'View');
       db._drop(cn);
