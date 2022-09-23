@@ -33,6 +33,7 @@
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/ExpressionContext.h"
 #include "Aql/QueryCache.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/Result.h"
@@ -218,15 +219,25 @@ std::string abstractCheckFields(auto const& lhs, auto const& rhs,
   return {};
 }
 
-auto createSortedFields(IResearchInvertedIndexMeta const& index) {
-  std::vector<std::pair<std::string, SearchMeta::Field>> fields;
-  fields.reserve(index._fields.size() + index._includeAllFields);
+using FieldsVector = std::vector<std::pair<std::string, SearchMeta::Field>>;
+
+void addFields(InvertedIndexField const& index, FieldsVector& fields) {
   for (auto const& field : index._fields) {
     fields.emplace_back(
         field.path(),
         SearchMeta::Field{field.analyzer()._shortName, field._includeAllFields,
                           field._isSearchField});
+#ifdef USE_ENTERPRISE
+    addFields(field, fields);
+#endif
   }
+}
+
+auto createSortedFields(IResearchInvertedIndexMeta const& index) {
+  FieldsVector fields;
+  fields.reserve(index._fields.size() + index._includeAllFields);
+  addFields(index, fields);
+
   if (index._includeAllFields) {
     fields.emplace_back("", SearchMeta::Field{index.analyzer()._shortName, true,
                                               index._isSearchField});
@@ -268,7 +279,7 @@ std::string check(SearchMeta const& search,
   return {};
 }
 
-void add(SearchMeta::Map& search, IResearchInvertedIndexMeta const& index) {
+void add(SearchMeta::Map& search, InvertedIndexField const& index) {
   for (auto const& field : index._fields) {
     auto it = search.lower_bound(field.path());
     if (it == search.end() || it->first != field.path()) {
@@ -279,6 +290,9 @@ void add(SearchMeta::Map& search, IResearchInvertedIndexMeta const& index) {
     } else {
       it->second.includeAllFields |= field._includeAllFields;
     }
+#ifdef USE_ENTERPRISE
+    add(search, field);
+#endif
   }
   if (index._includeAllFields) {
     search.emplace("", SearchMeta::Field{index.analyzer()._shortName, true,
@@ -314,26 +328,53 @@ AnalyzerProvider SearchMeta::createProvider(
   };
   containers::FlatHashMap<std::string_view, Field> analyzers;
   for (auto const& [name, field] : fieldToAnalyzer) {
-    analyzers.emplace(
-        name, Field{getAnalyzer(field.analyzer), field.includeAllFields});
+    auto analyzer = getAnalyzer(field.analyzer);
+    if (analyzer) {
+      analyzers.emplace(name,
+                        Field{std::move(analyzer), field.includeAllFields});
+    }
   }
   VectorFst const* fst = getFst();
   TRI_ASSERT(fst);
   // we don't use provider in parallel, so create matcher here is thread safe
   auto matcher = std::make_unique<ExplicitMatcher>(fst, fst::MATCH_INPUT);
   return [analyzers = std::move(analyzers), matcher = std::move(matcher)](
-             std::string_view field) mutable -> FieldMeta::Analyzer const& {
+             std::string_view field, aql::ExpressionContext* ctx,
+             FieldMeta::Analyzer const& contextAnalyzer) mutable
+         -> FieldMeta::Analyzer const& {
+    auto registerWarning = [ctx](std::string_view error) {
+      if (ctx) {
+        ctx->registerWarning(TRI_ERROR_BAD_PARAMETER, error.data());
+      }
+    };
+
     auto it = analyzers.find(field);  // fast-path O(1)
-    if (it != analyzers.end()) {
-      return it->second.analyzer;
+
+    if (it == analyzers.end()) {
+      // Omega(prefix.size())
+      auto const prefix = findLongestCommonPrefix(*matcher, field);
+      it = analyzers.find(prefix);
+      if (it != analyzers.end() && !it->second.includeAllFields) {
+        it = analyzers.end();
+      }
     }
-    // Omega(prefix.size())
-    auto const prefix = findLongestCommonPrefix(*matcher, field);
-    it = analyzers.find(prefix);
-    if (it != analyzers.end() && it->second.includeAllFields) {
-      return it->second.analyzer;
+
+    if (it == analyzers.end()) {
+      registerWarning(
+          absl::StrCat("Analyzer for field '", field, "' isn't set"));
+      return contextAnalyzer ? contextAnalyzer : FieldMeta::identity();
     }
-    return emptyAnalyzer();
+
+    auto& analyzer = it->second.analyzer;
+    if (ADB_UNLIKELY(contextAnalyzer &&
+                     contextAnalyzer._pool != analyzer._pool)) {
+      registerWarning(
+          absl::StrCat("Context analyzer '", contextAnalyzer->name(),
+                       "' doesn't match field '", field, "' analyzer '",
+                       analyzer ? analyzer->name() : "", "'"));
+    }
+
+    return analyzer;
   };
 }
 

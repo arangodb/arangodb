@@ -29,6 +29,7 @@
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
+#include "Mocks/MockQuery.h"
 
 #include "./MockGraph.h"
 
@@ -63,6 +64,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
 using namespace arangodb::velocypack;
+using namespace arangodb::tests::mocks;
 
 namespace arangodb {
 namespace tests {
@@ -227,7 +229,7 @@ struct MockGraphDatabase {
 
     auto ctx =
         std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-    auto query = arangodb::aql::Query::create(ctx, queryString, nullptr);
+    auto query = std::make_shared<MockQuery>(ctx, queryString);
     for (auto const& c : collections) {
       query->collections().add(c, AccessMode::Type::READ,
                                arangodb::aql::Collection::Hint::Collection);

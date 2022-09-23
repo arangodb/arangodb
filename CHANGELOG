@@ -1,6 +1,30 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Fixed SEARCH-399 Rule `restrict-to-single-shard` now works properly with
+  inverted index.
+
+* Fixed SEARCH-393 fixed analyzer setting for nested fields.
+
+* APM-517: Add tooltips with values of the displayed properties after clicking a
+  node or an edge in the graph viewer.
+
+* Updated arangosync to v2.12.0.
+
+* Improve upload and download speed of hotbackup by changing the way we use
+  rclone. Empty hash files are now uploaded or downloaded by pattern, and
+  all other files are done in batches without remote directory listing,
+  which allows rclone to parallelize and avoid a lot of unnecessary network
+  traffic. The format of hotbackups does not change at all.
+
+* Fixed SEARCH-392 Fixed field features propagation.
+
+* Fixed SEARCH-388 Fixed handling nested subfields.
+
+* Fixed SEARCH-379 Transaction is properly set to index during optimization.
+
+* Fixed issue BTS-1018: Improve logging of binary velocypack request data.
+
 * Updated ArangoDB Starter to 0.15.5.
 
 * Fixed BTS-1017: Fixed a graph search issue, where subqueries lead to incorrect
