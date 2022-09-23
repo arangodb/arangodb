@@ -34,6 +34,7 @@ var ArangoView = arangodb.ArangoView;
 var testHelper = require("@arangodb/test-helper").Helper;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
+const isEnterprise = require("internal").isEnterprise();
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -280,6 +281,27 @@ function ViewSearchAliasSuite() {
       var c2 = db._create("c2");
       c1.ensureIndex({name: "i1", type: "inverted", fields: [{name: "a.b.c", analyzer: "text_en", searchField: true}]});
       c2.ensureIndex({name: "i2", type: "inverted", fields: [{name: "a.b.c", analyzer: "text_en"}]});
+      var v1 = db._createView("v1", "search-alias", {});
+      try {
+        assertEqual(v1.name(), "v1");
+        v1.properties({indexes: [{collection: "c1", index: "i1"}, {collection: "c2", index: "i2"}]});
+      } catch (e) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, e.errorNum);
+      } finally {
+        assertEqual(v1.properties().indexes, []);
+        v1.drop();
+        c1.drop();
+        c2.drop();
+      }
+    },
+    testAddNonCompatibleIndexes4: function () {
+      if (!isEnterprise) {
+        return;
+      }
+      var c1 = db._create("c1");
+      var c2 = db._create("c2");
+      c1.ensureIndex({name: "i1", type: "inverted", fields: [{name: "a.b.c", nested: [{name:"foo", analyzer: "text_en"}]}]});
+      c2.ensureIndex({name: "i2", type: "inverted", fields: [{name: "a.b.c", nested: [{name:"foo", analyzer: "text_de"}]}]});
       var v1 = db._createView("v1", "search-alias", {});
       try {
         assertEqual(v1.name(), "v1");
