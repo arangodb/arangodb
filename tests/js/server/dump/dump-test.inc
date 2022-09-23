@@ -279,7 +279,7 @@
         db._useDatabase("_system");
         try {
           db._useDatabase("UnitTestsDumpProperties1");
-          let props = db._properties();
+          var props = db._properties();
           assertEqual(1, props.replicationFactor);
           assertEqual(1, props.writeConcern);
           db._useDatabase("UnitTestsDumpProperties2");
