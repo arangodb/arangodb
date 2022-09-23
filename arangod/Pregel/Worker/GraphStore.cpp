@@ -672,13 +672,13 @@ auto GraphStore<V, E>::storeVertices(
     }
 
     std::string_view const key = it->key();
-    V const& data = it->data();
 
     builder.openObject(true);
     builder.add(StaticStrings::KeyString,
                 VPackValuePair(key.data(), key.size(), VPackValueType::String));
-    {
-      auto result = _graphFormat->buildVertexDocumentWithResult(builder, &data);
+    V const& data = it->data();
+    if (auto res = _graphFormat->buildVertexDocument(builder, &data); !res) {
+      return Result{TRI_ERROR_INTERNAL, "Failed to build vertex document"};
     }
     builder.close();
     ++numDocs;

@@ -535,9 +535,6 @@ AqlValue SchemaGet(arangodb::aql::ExpressionContext*, AstNode const&,
 AqlValue SchemaValidate(arangodb::aql::ExpressionContext*, AstNode const&,
                         VPackFunctionParametersView);
 
-AqlValue CallGreenspun(arangodb::aql::ExpressionContext*, AstNode const&,
-                       VPackFunctionParametersView);
-
 AqlValue MakeDistributeInput(arangodb::aql::ExpressionContext*, AstNode const&,
                              VPackFunctionParametersView);
 AqlValue MakeDistributeInputWithKeyCreation(arangodb::aql::ExpressionContext*,
