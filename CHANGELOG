@@ -1,6 +1,12 @@
 v3.9.4 (XXXX-XX-XX)
 -------------------
 
+* Improve upload and download speed of hotbackup by changing the way we use
+  rclone. Empty hash files are now uploaded or downloaded by pattern, and all
+  other files are done in batches without remote directory listing, which allows
+  rclone to parallelize and avoid a lot of unnecessary network traffic. The
+  format of hotbackups does not change at all.
+
 * Updated arangosync to v2.12.0.
 
 * Fixed BTS-905 regarding read-only mode for expired license.
