@@ -33,7 +33,7 @@
 const jsunity = require('jsunity');
 const {assertEqual, assertTrue, assertFalse, fail} = jsunity.jsUnity.assertions;
 
-var _ = require('lodash');
+
 const internal = require('internal');
 const db = internal.db;
 const errors = require('@arangodb').errors;

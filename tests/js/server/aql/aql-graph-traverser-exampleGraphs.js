@@ -42,7 +42,7 @@ const en = 'UnitTestEdgeCollection';
 
 
 
-var _ = require('lodash');
+
 
 
 

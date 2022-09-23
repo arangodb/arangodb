@@ -45,7 +45,7 @@ const en = 'UnitTestEdgeCollection';
 const gh = require('@arangodb/graph/helpers');
 
 
-var _ = require('lodash');
+
 
 
 

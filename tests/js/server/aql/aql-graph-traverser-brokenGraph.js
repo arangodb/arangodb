@@ -41,7 +41,7 @@ const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
 
-var _ = require('lodash');
+
 const gh = require('@arangodb/graph/helpers');
 
 function brokenGraphSuite() {
