@@ -279,7 +279,7 @@
         db._useDatabase("_system");
         try {
           db._useDatabase("UnitTestsDumpProperties1");
-          var props = db._properties();
+          let props = db._properties();
           assertEqual(1, props.replicationFactor);
           assertEqual(1, props.writeConcern);
           db._useDatabase("UnitTestsDumpProperties2");
@@ -859,7 +859,7 @@
         let search2 = db._view("v_collection_documents_0_all");
         assertNotEqual(null, search2);
         assertEqual("v_collection_documents_0_all", search2.name());
-        let props = search2.properties();
+        props = search2.properties();
         assertEqual(props.indexes, [ { 'collection': 'collection_documents_0', 'index': 'collection_documents_0_all' }]);
 
         // After a restore, the Inverted index needs to be rebuilt, therefore
