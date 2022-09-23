@@ -34,7 +34,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Indexes/IndexIterator.h"
 #include "Metrics/Gauge.h"
-#include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/IndexHelpers.h"
 #include "Pregel/PregelFeature.h"
@@ -653,7 +652,7 @@ auto GraphStore<V, E>::storeVertices(
   for (; it.hasMore(); ++it) {
     if (it->shard() != currentShard || numDocs >= 1000) {
       auto result = commitTransaction();
-      if (result.fail()){
+      if (result.fail()) {
         return result;
       }
 
@@ -697,7 +696,7 @@ auto GraphStore<V, E>::storeVertices(
   // commit the remainders in our buffer
   // will throw if it fails
   auto result = commitTransaction();
-  if (result.fail()){
+  if (result.fail()) {
     return result;
   }
   return Result{};
@@ -734,16 +733,15 @@ auto GraphStore<V, E>::storeResults(
     RangeIterator<Vertex<V, E>> it = vertexIterator(startI, endI);
     storedVertices.emplace_back(futures::makeFutureWith([&]() {
       return storeVertices(_config->globalShardIDs(), it, i,
-                            statusUpdateCallback);
+                           statusUpdateCallback);
     }));
     // TODO can't just write edges with SmartGraphs
   }
 
   return futures::collectAll(storedVertices).thenValue([&](auto results) {
-    for (auto&& result : results){
+    for (auto&& result : results) {
       if (result.hasException()) {
-        return Result{TRI_ERROR_INTERNAL,
-          "Storing vertex data failed"};
+        return Result{TRI_ERROR_INTERNAL, "Storing vertex data failed"};
       }
       if (result.get().fail()) {
         return Result{result.get().errorNumber(),
@@ -774,6 +772,3 @@ template class arangodb::pregel::GraphStore<HITSKleinbergValue, int8_t>;
 template class arangodb::pregel::GraphStore<DMIDValue, float>;
 template class arangodb::pregel::GraphStore<LPValue, int8_t>;
 template class arangodb::pregel::GraphStore<SLPAValue, int8_t>;
-
-using namespace arangodb::pregel::algos::accumulators;
-template class arangodb::pregel::GraphStore<VertexData, EdgeData>;
