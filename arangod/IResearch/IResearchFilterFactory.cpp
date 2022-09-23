@@ -111,6 +111,23 @@ FieldMeta::Analyzer const& FilterContext::fieldAnalyzer(
              : contextAnalyzer;  // Only possible with ArangoSearch view
 }
 
+irs::boolean_filter::AllDocsProvider allFilterProvider(bool hasNestedFields) {
+  if (hasNestedFields) {
+    return [](irs::score_t boost) {
+      auto filter = std::make_unique<irs::by_column_existence>();
+      filter->boost(boost);
+      *filter->mutable_field() = DocumentPrimaryKey::PK();
+      return filter;
+    };
+  }
+
+  return [](irs::score_t boost) {
+    auto filter = std::make_unique<irs::all>();
+    filter->boost(boost);
+    return filter;
+  };
+}
+
 }  // namespace arangodb::iresearch
 
 namespace {
@@ -121,6 +138,24 @@ using namespace arangodb::iresearch;
 constexpr char const* GEO_INTERSECT_FUNC = "GEO_INTERSECTS";
 constexpr char const* GEO_DISTANCE_FUNC = "GEO_DISTANCE";
 constexpr char const* TERMS_FUNC = "TERMS";
+
+template<typename Filter, typename Source>
+Filter& appendGroup(Source& filter, bool hasNestedFields) {
+  static_assert(std::is_same_v<Filter, irs::Or> ||
+                std::is_same_v<Filter, irs::And>);
+
+  Filter* group;
+  if constexpr (std::is_same_v<irs::Not, Source>) {
+    group = &filter.template filter<Filter>();
+  } else {
+    group = &filter.template add<Filter>();
+  }
+
+  if (hasNestedFields) {
+    group->all_docs_provider(allFilterProvider(hasNestedFields));
+  }
+  return *group;
+}
 
 void setupAllTypedFilter(irs::Or& disjunction, std::string&& mangledName,
                          irs::score_t boost) {
@@ -546,7 +581,7 @@ Result byRange(irs::boolean_filter* filter, std::string name,
         if (ctx.isSearchQuery || !Min) {
           range = &filter->add<irs::by_range>();
         } else {
-          auto& rangeOr = filter->add<irs::Or>();
+          auto& rangeOr = appendGroup<irs::Or>(*filter, ctx.hasNestedFields);
           range = &rangeOr.add<irs::by_range>();
           setupTypeOrderRangeFilter<Min, 0>(rangeOr, name, filterCtx.boost);
         }
@@ -567,7 +602,7 @@ Result byRange(irs::boolean_filter* filter, std::string name,
         if (ctx.isSearchQuery) {
           range = &filter->add<irs::by_range>();
         } else {
-          auto& rangeOr = filter->add<irs::Or>();
+          auto& rangeOr = appendGroup<irs::Or>(*filter, ctx.hasNestedFields);
           range = &rangeOr.add<irs::by_range>();
           setupTypeOrderRangeFilter<Min, 1>(rangeOr, name, filterCtx.boost);
         }
@@ -597,7 +632,7 @@ Result byRange(irs::boolean_filter* filter, std::string name,
         if (ctx.isSearchQuery) {
           range = &filter->add<irs::by_granular_range>();
         } else {
-          auto& rangeOr = filter->add<irs::Or>();
+          auto& rangeOr = appendGroup<irs::Or>(*filter, ctx.hasNestedFields);
           range = &rangeOr.add<irs::by_granular_range>();
           setupTypeOrderRangeFilter<Min, 2>(rangeOr, name, filterCtx.boost);
         }
@@ -633,7 +668,7 @@ Result byRange(irs::boolean_filter* filter, std::string name,
         if (ctx.isSearchQuery || Min) {
           range = &filter->add<irs::by_range>();
         } else {
-          auto& rangeOr = filter->add<irs::Or>();
+          auto& rangeOr = appendGroup<irs::Or>(*filter, ctx.hasNestedFields);
           range = &rangeOr.add<irs::by_range>();
           setupTypeOrderRangeFilter<Min, 3>(rangeOr, name, filterCtx.boost);
         }
@@ -1154,44 +1189,39 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
             if (filter) {
-              filter =
-                  static_cast<irs::boolean_filter*>(&filter->add<irs::And>());
+              filter = &appendGroup<irs::And>(*filter, ctx.hasNestedFields);
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_EQ;
             break;
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
             if (filter) {
-              filter = static_cast<irs::boolean_filter*>(
-                  &filter->add<irs::Not>().filter<irs::Or>());
+              filter = &appendGroup<irs::Or>(filter->add<irs::Not>(),
+                                             ctx.hasNestedFields);
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_EQ;
             break;
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
             if (filter) {
-              filter =
-                  static_cast<irs::boolean_filter*>(&filter->add<irs::And>());
+              filter = &appendGroup<irs::And>(*filter, ctx.hasNestedFields);
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_GT;
             break;
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
             if (filter) {
-              filter =
-                  static_cast<irs::boolean_filter*>(&filter->add<irs::And>());
+              filter = &appendGroup<irs::And>(*filter, ctx.hasNestedFields);
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_GE;
             break;
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
             if (filter) {
-              filter =
-                  static_cast<irs::boolean_filter*>(&filter->add<irs::And>());
+              filter = &appendGroup<irs::And>(*filter, ctx.hasNestedFields);
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_LT;
             break;
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
             if (filter) {
-              filter =
-                  static_cast<irs::boolean_filter*>(&filter->add<irs::And>());
+              filter = &appendGroup<irs::And>(*filter, ctx.hasNestedFields);
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_LE;
             break;
@@ -1208,49 +1238,44 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
             if (filter) {
-              filter = static_cast<irs::boolean_filter*>(
-                  &filter->add<irs::Or>().min_match_count(
-                      static_cast<size_t>(atLeastCount)));
+              filter = &appendGroup<irs::Or>(*filter, ctx.hasNestedFields)
+                            .min_match_count(static_cast<size_t>(atLeastCount));
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_EQ;
             break;
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
             if (filter) {
-              filter = static_cast<irs::boolean_filter*>(
-                  &filter->add<irs::Not>().filter<irs::And>());
+              filter = &appendGroup<irs::And>(filter->add<irs::Not>(),
+                                              ctx.hasNestedFields);
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_EQ;
             break;
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
             if (filter) {
-              filter = static_cast<irs::boolean_filter*>(
-                  &filter->add<irs::Or>().min_match_count(
-                      static_cast<size_t>(atLeastCount)));
+              filter = &appendGroup<irs::Or>(*filter, ctx.hasNestedFields)
+                            .min_match_count(static_cast<size_t>(atLeastCount));
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_LT;
             break;
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
             if (filter) {
-              filter = static_cast<irs::boolean_filter*>(
-                  &filter->add<irs::Or>().min_match_count(
-                      static_cast<size_t>(atLeastCount)));
+              filter = &appendGroup<irs::Or>(*filter, ctx.hasNestedFields)
+                            .min_match_count(static_cast<size_t>(atLeastCount));
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_LE;
             break;
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
             if (filter) {
-              filter = static_cast<irs::boolean_filter*>(
-                  &filter->add<irs::Or>().min_match_count(
-                      static_cast<size_t>(atLeastCount)));
+              filter = &appendGroup<irs::Or>(*filter, ctx.hasNestedFields)
+                            .min_match_count(static_cast<size_t>(atLeastCount));
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_GT;
             break;
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
             if (filter) {
-              filter = static_cast<irs::boolean_filter*>(
-                  &filter->add<irs::Or>().min_match_count(
-                      static_cast<size_t>(atLeastCount)));
+              filter = &appendGroup<irs::Or>(*filter, ctx.hasNestedFields)
+                            .min_match_count(static_cast<size_t>(atLeastCount));
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_GE;
             break;
@@ -1268,9 +1293,8 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
             if (filter) {
-              filter = static_cast<irs::boolean_filter*>(
-                  &filter->add<irs::Or>().min_match_count(
-                      static_cast<size_t>(atLeastCount)));
+              filter = &appendGroup<irs::Or>(*filter, ctx.hasNestedFields)
+                            .min_match_count(static_cast<size_t>(atLeastCount));
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_NE;
             break;
@@ -1304,8 +1328,9 @@ class ByTermSubFilterFactory {
     irs::by_term* termFilter = nullptr;
     if (filter) {
       if (aql::NODE_TYPE_OPERATOR_BINARY_NE == node.cmp) {
-        termFilter =
-            &filter->add<irs::And>().add<irs::Not>().filter<irs::by_term>();
+        termFilter = &appendGroup<irs::And>(*filter, ctx.hasNestedFields)
+                          .add<irs::Not>()
+                          .filter<irs::by_term>();
       } else {
         termFilter = &filter->add<irs::by_term>();
       }
@@ -1324,8 +1349,9 @@ class ByTermSubFilterFactory {
     irs::by_term* termFilter = nullptr;
     if (filter) {
       if (aql::NODE_TYPE_OPERATOR_BINARY_NE == arrayExpansionNodeType) {
-        termFilter =
-            &filter->add<irs::And>().add<irs::Not>().filter<irs::by_term>();
+        termFilter = &appendGroup<irs::And>(*filter, ctx.hasNestedFields)
+                          .add<irs::Not>()
+                          .filter<irs::by_term>();
       } else {
         termFilter = &filter->add<irs::by_term>();
       }
@@ -1625,9 +1651,10 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
 
   if (filter) {
     filter = aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type
-                 ? &static_cast<irs::boolean_filter&>(
-                       filter->add<irs::Not>().filter<irs::Or>())
-                 : &static_cast<irs::boolean_filter&>(filter->add<irs::Or>());
+                 ? &static_cast<irs::boolean_filter&>(appendGroup<irs::Or>(
+                       filter->add<irs::Not>(), ctx.hasNestedFields))
+                 : &static_cast<irs::boolean_filter&>(
+                       appendGroup<irs::Or>(*filter, ctx.hasNestedFields));
     filter->boost(filterCtx.boost);
   }
 
@@ -1748,7 +1775,8 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
 
     if (aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type) {
       // handle negation
-      filter = &filter->add<irs::Not>().filter<irs::Or>();
+      filter =
+          &appendGroup<irs::Or>(filter->add<irs::Not>(), ctx.hasNestedFields);
     }
 
     return byRange(filter, *attributeNode, *range, ctx, filterCtx);
@@ -1779,9 +1807,10 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
       }
 
       filter = aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type
-                   ? &static_cast<irs::boolean_filter&>(
-                         filter->add<irs::Not>().filter<irs::Or>())
-                   : &static_cast<irs::boolean_filter&>(filter->add<irs::Or>());
+                   ? &static_cast<irs::boolean_filter&>(appendGroup<irs::Or>(
+                         filter->add<irs::Not>(), ctx.hasNestedFields))
+                   : &static_cast<irs::boolean_filter&>(
+                         appendGroup<irs::Or>(*filter, ctx.hasNestedFields));
       filter->boost(filterCtx.boost);
 
       FilterContext const subFilterCtx{
@@ -1815,7 +1844,8 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
 
       if (aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type) {
         // handle negation
-        filter = &filter->add<irs::Not>().filter<irs::Or>();
+        filter =
+            &appendGroup<irs::Or>(filter->add<irs::Not>(), ctx.hasNestedFields);
       }
 
       return byRange(filter, *attributeNode, *range, ctx, filterCtx);
@@ -1846,7 +1876,7 @@ Result fromNegation(irs::boolean_filter* filter, QueryContext const& ctx,
     auto& notFilter = filter->add<irs::Not>();
     notFilter.boost(filterCtx.boost);
 
-    filter = &notFilter.filter<irs::And>();
+    filter = &appendGroup<irs::And>(notFilter, ctx.hasNestedFields);
   }
 
   FilterContext const subFilterCtx{
@@ -1929,7 +1959,7 @@ Result fromGroup(irs::boolean_filter* filter, QueryContext const& ctx,
   // translates to 'a OR (OR NOT b)'
 
   if (filter) {
-    filter = &filter->add<Filter>();
+    filter = &appendGroup<Filter>(*filter, ctx.hasNestedFields);
     filter->boost(filterCtx.boost);
   }
 
@@ -2280,7 +2310,7 @@ Result fromFuncMinMatch(char const* funcName, irs::boolean_filter* filter,
   }
 
   if (filter) {
-    auto& minMatchFilter = filter->add<irs::Or>();
+    auto& minMatchFilter = appendGroup<irs::Or>(*filter, ctx.hasNestedFields);
     minMatchFilter.min_match_count(static_cast<size_t>(minMatchCount));
     minMatchFilter.boost(filterCtx.boost);
 
@@ -2307,7 +2337,8 @@ Result fromFuncMinMatch(char const* funcName, irs::boolean_filter* filter,
               .append("'")};
     }
 
-    irs::boolean_filter* subFilter = filter ? &filter->add<irs::Or>() : nullptr;
+    irs::boolean_filter* subFilter =
+        filter ? &appendGroup<irs::Or>(*filter, ctx.hasNestedFields) : nullptr;
 
     rv = makeFilter(subFilter, ctx, subFilterCtx, *subFilterExpression);
     if (rv.fail()) {
@@ -3621,7 +3652,7 @@ Result fromFuncStartsWith(char const* funcName, irs::boolean_filter* filter,
     }
 
     if (isMultiPrefix) {
-      auto& minMatchFilter = filter->add<irs::Or>();
+      auto& minMatchFilter = appendGroup<irs::Or>(*filter, ctx.hasNestedFields);
       minMatchFilter.min_match_count(static_cast<size_t>(minMatchCount));
       minMatchFilter.boost(filterCtx.boost);
       // become a new root
