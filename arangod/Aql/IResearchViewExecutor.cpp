@@ -751,13 +751,8 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
     }
     FilterContext const filterCtx{
         .fieldAnalyzerProvider = fieldAnalyzerProvider,
-        .contextAnalyzer = *contextAnalyzer,
-        .fields =
-            infos().meta()
-                ? std::span<InvertedIndexField const>{infos()
-                                                          .meta()
-                                                          ->aggregatedFields}
-                : std::span<InvertedIndexField const>{}};
+        .contextAnalyzer = *contextAnalyzer};
+
     auto const rv = FilterFactory::filter(&root, queryCtx, filterCtx,
                                           infos().filterCondition());
 

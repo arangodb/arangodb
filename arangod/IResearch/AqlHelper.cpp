@@ -760,12 +760,10 @@ bool nameFromAttributeAccess(
   auto visitRes = visitAttributeAccess(head, &node, builder) && head &&
                   aql::NODE_TYPE_REFERENCE == head->type;
 
-  if (visitRes) {
+  if (visitRes && !ctx.isSearchQuery) {
     auto it = getNested(name, fields);
-    if (!ctx.isSearchQuery) {
-      visitRes = it != std::end(fields) && !it->_isSearchField;
-    }
-    if (it != std::end(fields) && subFields) {
+    visitRes = it != std::end(fields) && !it->_isSearchField;
+    if (visitRes && subFields) {
       *subFields = it->_fields;
     }
   }

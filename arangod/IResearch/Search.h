@@ -59,9 +59,6 @@ class SearchMeta final {
   using Map = std::map<std::string, Field, std::less<>>;
   Map fieldToAnalyzer;
 
-  using AggregatedFields = std::vector<InvertedIndexField>;
-  AggregatedFields aggregatedFields;
-
   [[nodiscard]] static std::shared_ptr<SearchMeta> make();
 
   void createFst();
