@@ -151,9 +151,7 @@ Filter& appendGroup(Source& filter, bool hasNestedFields) {
     group = &filter.template add<Filter>();
   }
 
-  if (hasNestedFields) {
-    group->all_docs_provider(allFilterProvider(hasNestedFields));
-  }
+  group->all_docs_provider(allFilterProvider(hasNestedFields));
   return *group;
 }
 
