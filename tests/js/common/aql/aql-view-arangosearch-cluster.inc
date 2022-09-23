@@ -174,7 +174,6 @@
         db.UnitTestsCollection.ensureIndex({ 
           type: "inverted",
           name: "invertedIndex",
-          includeAllFields:true,
           fields: [ { name: "text", analyzer: "text_en" } ] });
         db._dropView("UnitTestsViewAlias");
         db._createView("UnitTestsViewAlias", "search-alias", { 
@@ -674,10 +673,24 @@
         assertEqual(result0[0].name, 'full');
   
         var result1i = db._query("FOR doc IN UnitTestsCollection OPTIONS { indexHint: 'invertedIndex', waitForSync : true } FILTER PHRASE(doc.text, [ 'quick brown fox jumps' ], 'text_en') RETURN doc").toArray();
+        assertEqual(result1i.length, 1);
+        assertEqual(result1i[0].name, 'full');
+
+        // non-indexed field
+        {
+          let emptyResult = db._query("FOR doc IN UnitTestsViewAlias SEARCH doc.missingField == TOKENS('quick')[0] OPTIONS { waitForSync : true } RETURN doc");
+          assertEqual(emptyResult.toArray().length, 0);
+          let warnings = emptyResult.getExtra().warnings;
+          assertNotEqual(warnings.length, 0);
+          warnings.forEach(v => {
+            assertEqual(v.code, 10);
+            assertEqual(v.message, "Analyzer for field 'missingField' isn't set");
+          });
+        }
   
         assertEqual(result1i.length, 1);
         assertEqual(result1i[0].name, 'full');
-  
+
         var result1 = db._query("FOR doc IN UnitTestsViewAlias SEARCH PHRASE(doc.text, [ 'quick brown fox jumps' ], 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
   
         assertEqual(result1.length, 1);
