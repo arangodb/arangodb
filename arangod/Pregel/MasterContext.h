@@ -27,7 +27,6 @@
 #include <cstdint>
 #include "Basics/Common.h"
 #include "Pregel/AggregatorHandler.h"
-#include "Reports.h"
 
 namespace arangodb {
 namespace pregel {
@@ -43,7 +42,6 @@ class MasterContext {
   // Should cause the master to tell everyone to enter the next phase
   bool _enterNextGSS = false;
   AggregatorHandler* _aggregators = nullptr;
-  ReportManager* _reports;
 
  public:
   MasterContext() {}
@@ -124,8 +122,6 @@ class MasterContext {
   }
 
   virtual void postApplication() {}
-
-  ReportManager& getReportManager() { return *_reports; }
 
   virtual void serializeValues(VPackBuilder& b) {}
 

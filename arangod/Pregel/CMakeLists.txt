@@ -7,8 +7,6 @@ add_library(arango_pregel STATIC
   OutgoingCache.cpp
   PregelFeature.cpp
   PregelMetrics.cpp
-  Reports.cpp
-  Reports.h
   Utils.cpp)
 
 target_link_libraries(arango_pregel

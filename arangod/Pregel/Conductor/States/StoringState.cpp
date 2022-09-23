@@ -47,10 +47,6 @@ auto Storing::run() -> std::optional<std::unique_ptr<State>> {
                 result.get().errorMessage());
             return std::make_unique<FatalError>(conductor);
           }
-          auto reports = result.get().get().reports.slice();
-          if (reports.isArray()) {
-            conductor._reports.appendFromSlice(reports);
-          }
         }
 
         LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Cleanup workers";

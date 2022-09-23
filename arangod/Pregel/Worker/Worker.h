@@ -36,7 +36,6 @@
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/Worker/WorkerContext.h"
 #include "Pregel/WorkerInterface.h"
-#include "Pregel/Reports.h"
 #include "Scheduler/Scheduler.h"
 
 struct TRI_vocbase_t;
@@ -92,7 +91,6 @@ struct VerticesProcessed {
   VPackBuilder aggregator;
   MessageStats stats;
   size_t activeCount;
-  ReportManager reports;
 };
 
 template<typename V, typename E, typename M>
@@ -143,7 +141,6 @@ class Worker : public IWorker {
 
   /// Stats about the CURRENT gss
   MessageStats _messageStats;
-  ReportManager _reports;
   /// valid after _finishedProcessing was called
   uint64_t _activeCount = 0;
   /// current number of running threads

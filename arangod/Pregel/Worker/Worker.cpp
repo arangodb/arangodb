@@ -61,7 +61,8 @@ template<class... Ts>
 struct overloaded : Ts... {
   using Ts::operator()...;
 };
-template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+template<class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
 }  // namespace
 
 #define LOG_PREGEL(logId, level)          \
@@ -280,7 +281,6 @@ auto Worker<V, E, M>::_preGlobalSuperStep(RunGlobalSuperStep const& message)
   if (_workerContext) {
     _workerContext->_vertexCount = message.vertexCount;
     _workerContext->_edgeCount = message.edgeCount;
-    _workerContext->_reports = &this->_reports;
     _workerContext->preGlobalSuperstep(gss);
     _workerContext->preGlobalSuperstepMasterMessage(
         message.toWorkerMessages.slice());
@@ -325,7 +325,6 @@ auto Worker<V, E, M>::runGlobalSuperStep(RunGlobalSuperStep const& message)
               verticesProcessed.aggregator.slice());
           _messageStats.accumulate(verticesProcessed.stats);
           _activeCount += verticesProcessed.activeCount;
-          _reports.append(verticesProcessed.reports);
         }
         return _finishProcessing();
       });
@@ -463,7 +462,7 @@ auto Worker<V, E, M>::_processVertices(
     workerAggregator.serializeValues(aggregatorVPack);
   }
   return VerticesProcessed{std::move(aggregatorVPack), std::move(stats),
-                           activeCount, std::move(vertexComputation->_reports)};
+                           activeCount};
 }
 
 // called at the end of a worker thread, needs mutex
@@ -504,7 +503,6 @@ auto Worker<V, E, M>::_finishProcessing() -> ResultT<GlobalSuperStepFinished> {
   VPackBuilder event;
   serialize(event, gssFinishedEvent);
   LOG_PREGEL("2de5b", DEBUG) << "Finished GSS: " << event.toJson();
-  _reports.clear();
 
   uint64_t tn = _config.parallelism();
   uint64_t s = _messageStats.sendCount / tn / 2UL;
@@ -517,12 +515,6 @@ auto Worker<V, E, M>::_finishProcessing() -> ResultT<GlobalSuperStepFinished> {
 
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::_gssFinishedEvent() const -> GlobalSuperStepFinished {
-  VPackBuilder reports;
-  {
-    VPackObjectBuilder o(&reports);
-    reports.add(VPackValue(Utils::reportsKey));
-    _reports.intoBuilder(reports);
-  }
   VPackBuilder messageStats;
   {
     VPackObjectBuilder ob(&messageStats);
@@ -532,7 +524,7 @@ auto Worker<V, E, M>::_gssFinishedEvent() const -> GlobalSuperStepFinished {
   { VPackObjectBuilder ob(&aggregators); }
   return GlobalSuperStepFinished{
       ServerState::instance()->getId(), _config.globalSuperstep(),
-      std::move(reports), std::move(messageStats), std::move(aggregators)};
+      std::move(messageStats), std::move(aggregators)};
 }
 
 template<typename V, typename E, typename M>
@@ -541,7 +533,6 @@ auto Worker<V, E, M>::store(Store const& message)
   _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
   LOG_PREGEL("91264", DEBUG) << "Storing results";
   // tell graphstore to remove read locks
-  _graphStore->_reports = &this->_reports;
   return _graphStore->storeResults(&_config, _makeStatusCallback())
       .thenValue([&](auto result) -> ResultT<Stored> {
         _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
@@ -551,13 +542,7 @@ auto Worker<V, E, M>::store(Store const& message)
 
         _state = WorkerState::DONE;
 
-        VPackBuilder reports;
-        {
-          VPackObjectBuilder o(&reports);
-          reports.add(VPackValue(Utils::reportsKey));
-          _reports.intoBuilder(reports);
-        }
-        return Stored{std::move(reports)};
+        return Stored{};
       });
 }
 

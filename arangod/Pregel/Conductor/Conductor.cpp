@@ -206,7 +206,6 @@ auto Conductor ::_postGlobalSuperStep(VPackBuilder messagesFromWorkers)
       _globalSuperstep > 0) {  // ask algorithm to evaluate aggregated values
     _masterContext->_globalSuperstep = _globalSuperstep - 1;
     _masterContext->_enterNextGSS = false;
-    _masterContext->_reports = &_reports;
     _masterContext->postGlobalSuperstepMessage(messagesFromWorkers.slice());
     proceed = _masterContext->postGlobalSuperstep();
     if (!proceed) {
@@ -241,7 +240,6 @@ auto Conductor::_preGlobalSuperStep() -> bool {
     _masterContext->_globalSuperstep = _globalSuperstep;
     _masterContext->_vertexCount = _totalVerticesCount;
     _masterContext->_edgeCount = _totalEdgesCount;
-    _masterContext->_reports = &_reports;
     return _masterContext->preGlobalSuperstepWithResult();
   }
   return true;
@@ -518,8 +516,6 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   }
   _aggregators->serializeValues(result);
   _statistics.serializeValues(result);
-  result.add(VPackValue("reports"));
-  _reports.intoBuilder(result);
   result.add("vertexCount", VPackValue(_totalVerticesCount));
   result.add("edgeCount", VPackValue(_totalEdgesCount));
   VPackSlice p = _userParams.slice().get(Utils::parallelismKey);
