@@ -1103,6 +1103,73 @@ function BaseTestConfig () {
         }
       );
     },
+    
+    testSearchAliasWithLinks: function () {
+      connectToLeader();
+      const idxName = "inverted_idx";
+
+      compare(
+        function (state) {
+          let c = db._create(cn);
+          let idx = c.ensureIndex({ type: "inverted", name: idxName, fields: [ { name: "value" } ] });
+          let view = db._createView('UnitTestsSyncSearchAlias', 'search-alias', {
+            indexes: [
+              {
+                collection: cn,
+                index: idxName,
+              }
+            ]
+          });
+          assertEqual(1, view.properties().indexes.length);
+        },
+        function () { },
+        function () { },
+        function (state) {
+          let view = db._view('UnitTestsSyncSearchAlias');
+          assertNotNull(view);
+          assertEqual("search-alias", view.type());
+          let props = view.properties();
+          assertEqual(1, props.indexes.length);
+          assertEqual({ collection: cn, index: idxName }, props.indexes[0]);
+        },
+        {}
+      );
+    },
+    
+    testSearchAliasWithLinksAddedLater: function () {
+      connectToLeader();
+      const idxName = "inverted_idx";
+
+      compare(
+        function (state) {
+          let c = db._create(cn);
+          let idx = c.ensureIndex({ type: "inverted", name: idxName, fields: [ { name: "value" } ] });
+          let view = db._createView('UnitTestsSyncSearchAlias', 'search-alias', {});
+          assertEqual(0, view.properties().indexes.length);
+        },
+        function () { 
+          let view = db._view('UnitTestsSyncSearchAlias');
+          view.properties({
+            indexes: [
+              {
+                collection: cn,
+                index: idxName,
+              }
+            ]
+          });
+        },
+        function () { },
+        function (state) {
+          let view = db._view('UnitTestsSyncSearchAlias');
+          assertNotNull(view);
+          assertEqual("search-alias", view.type());
+          let props = view.properties();
+          assertEqual(1, props.indexes.length);
+          assertEqual({ collection: cn, index: idxName }, props.indexes[0]);
+        },
+        {}
+      );
+    },
 
     testViewBasic: function () {
       connectToLeader();
@@ -1133,7 +1200,8 @@ function BaseTestConfig () {
           }
 
           let view = db._view('UnitTestsSyncView');
-          assertTrue(view !== null);
+          assertNotNull(view);
+          assertEqual("arangosearch", view.type());
           let props = view.properties();
           assertEqual(Object.keys(props.links).length, 1);
           assertTrue(props.hasOwnProperty('links'));
@@ -1169,7 +1237,7 @@ function BaseTestConfig () {
           }
 
           let view = db._view('UnitTestsSyncView');
-          assertTrue(view !== null);
+          assertNotNull(view);
           let props = view.properties();
           assertEqual(Object.keys(props.links).length, 1);
           assertTrue(props.hasOwnProperty('links'));
@@ -1208,7 +1276,7 @@ function BaseTestConfig () {
           let view = db._view('UnitTestsSyncView');
           view.rename('UnitTestsSyncViewRenamed');
           view = db._view('UnitTestsSyncViewRenamed');
-          assertTrue(view !== null);
+          assertNotNull(view);
           let props = view.properties();
           assertEqual(Object.keys(props.links).length, 1);
           assertTrue(props.hasOwnProperty('links'));
@@ -1221,7 +1289,7 @@ function BaseTestConfig () {
           }
 
           let view = db._view('UnitTestsSyncViewRenamed');
-          assertTrue(view !== null);
+          assertNotNull(view);
           let props = view.properties();
           assertEqual(Object.keys(props.links).length, 1);
           assertTrue(props.hasOwnProperty('links'));
@@ -1273,7 +1341,7 @@ function BaseTestConfig () {
           assertEqual(1, idx.length); // primary
 
           let view = db._view(cn + 'View');
-          assertTrue(view !== null);
+          assertNotNull(view);
           let props = view.properties();
           assertTrue(props.hasOwnProperty('links'));
           assertEqual(Object.keys(props.links).length, 1);
@@ -1372,7 +1440,7 @@ function BaseTestConfig () {
             return;
           }
           let view = db._view(cn + 'View');
-          assertTrue(view !== null);
+          assertNotNull(view);
           let props = view.properties();
           assertTrue(props.hasOwnProperty('links'));
           assertEqual(Object.keys(props.links).length, 1);
@@ -1389,7 +1457,7 @@ function BaseTestConfig () {
           assertEqual(1, idx.length); // primary
 
           let view = db._view(cn + 'View');
-          assertTrue(view !== null);
+          assertNotNull(view);
           let props = view.properties();
           assertTrue(props.hasOwnProperty('links'));
           assertEqual(Object.keys(props.links).length, 1);
@@ -1402,6 +1470,7 @@ function BaseTestConfig () {
           assertEqual(1, res.length);
         });
     },
+    
     testViewDataCustomAnalyzer: function () {
       connectToLeader();
       compare(
@@ -1526,6 +1595,7 @@ function ReplicationSuite () {
       connectToLeader();
 
       db._dropView('UnitTestsSyncView');
+      db._dropView('UnitTestsSyncSearchAlias');
       db._dropView('UnitTestsSyncViewRenamed');
       db._dropView(cn + 'View');
       db._drop(cn);
@@ -1539,6 +1609,7 @@ function ReplicationSuite () {
       replication.applier.forget();
 
       db._dropView('UnitTestsSyncView');
+      db._dropView('UnitTestsSyncSearchAlias');
       db._dropView('UnitTestsSyncViewRenamed');
       db._dropView(cn + 'View');
       db._drop(cn);
