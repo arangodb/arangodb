@@ -52,15 +52,29 @@ namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
+InvertedIndexField const* findMatchingSubField(InvertedIndexField const& root,
+                                               std::string_view fieldPath) {
+  for (auto const& field : root._fields) {
+    if (field.path() == fieldPath) {
+      return &field;
+    }
+#ifdef USE_ENTERPRISE
+    if (!field._fields.empty() && fieldPath.starts_with(field.path())) {
+      auto tmp = findMatchingSubField(field, fieldPath);
+      if (tmp) {
+        return tmp;
+      }
+    }
+#endif
+  }
+  return nullptr;
+}
+
 AnalyzerProvider makeAnalyzerProvider(IResearchInvertedIndexMeta const& meta) {
   return [&meta](std::string_view fieldPath, aql::ExpressionContext*,
                  FieldMeta::Analyzer const&) -> FieldMeta::Analyzer const& {
-    for (auto const& field : meta._fields) {
-      if (field.path() == fieldPath) {
-        return field.analyzer();
-      }
-    }
-    return FieldMeta::identity();
+    auto subfield = findMatchingSubField(meta, fieldPath);
+    return subfield ? subfield->analyzer() : FieldMeta::identity();
   };
 }
 
