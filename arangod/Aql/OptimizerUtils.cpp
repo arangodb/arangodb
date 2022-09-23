@@ -39,6 +39,7 @@
 #include "Aql/Variable.h"
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
+#include "IResearch/IResearchFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -516,6 +517,22 @@ bool accessesVariable(AstNode const* node, Variable const* var) {
   return false;
 }
 
+bool accessesNonRegisterVariable(AstNode const* node) {
+  auto varNode = node->getAttributeAccessForVariable(true);
+  if (varNode) {
+    auto var = static_cast<Variable const*>(varNode->getData());
+    return var && !var->needsRegister();
+  }
+  for (size_t i = 0; i < node->numMembers(); i++) {
+    // Recursivley test if one of our subtrees accesses the variable
+    if (accessesNonRegisterVariable(node->getMemberUnchecked(i))) {
+      // One of them is enough
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * @brief Captures the given expression into the NonConstExpressionContainer for
  * later execution. Extracts all required variables and retains their registers,
@@ -565,7 +582,8 @@ void captureFCallArgumentExpressions(
 
   for (size_t k = 0; k < array->numMembers(); k++) {
     AstNode* child = array->getMemberUnchecked(k);
-    if (!child->isConstant() && !accessesVariable(child, indexVariable)) {
+    if (!child->isConstant() && !accessesVariable(child, indexVariable) &&
+        !accessesNonRegisterVariable(child)) {
       std::vector<size_t> idx = selectedMembersFromRoot;
       idx.emplace_back(k);
       captureNonConstExpression(ast, varInfo, child, std::move(idx), result);
@@ -625,12 +643,17 @@ void captureArrayFilterArgumentExpressions(
             // never dive into attribute access
             return false;
           } else if (node->type == NODE_TYPE_FCALL) {
-            if (!evaluateFCalls) {
-              // FIXME(Dronplane): we should never execute
-              // index-backed functions. But how to track
-              // it? -> execute only functions that does
-              // not touch index variable and local temp
-              // variables!
+            auto const* fn = static_cast<aql::Function*>(node->getData());
+            if (ADB_UNLIKELY(!fn || node->numMembers() != 1)) {
+              // malformed node? Better abort here
+              TRI_ASSERT(false);
+              return false;
+            }
+            // TODO(Dronplane): currently only inverted index supports
+            // array filter. But if other index will start to support
+            // it we need here to have index type and check supported
+            // functions accordingly
+            if (!evaluateFCalls || iresearch::isFilter(*fn)) {
               captureFCallArgumentExpressions(ast, varInfo, node, path,
                                               indexVariable, result);
             } else {
