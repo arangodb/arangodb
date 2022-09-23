@@ -37,8 +37,8 @@ const internal = require('internal');
 const db = internal.db;
 const errors = require('@arangodb').errors;
 const gm = require('@arangodb/general-graph');
-const isCluster = require('@arangodb/cluster').isCluster();
-const removeCost = require('@arangodb/aql-helper').removeCost;
+
+
 
 const gh = require("@arangodb/graph/helpers");
 
