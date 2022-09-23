@@ -4035,6 +4035,9 @@ void appendExpression(irs::boolean_filter& filter, aql::AstNode const& node,
   auto& exprFilter = filter.add<ByExpression>();
   exprFilter.init(*ctx.ast, const_cast<aql::AstNode&>(node));
   exprFilter.boost(filterCtx.boost);
+#ifdef USE_ENTERPRISE
+  exprFilter.hasNested(ctx.hasNestedFields);
+#endif
 }
 
 Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,

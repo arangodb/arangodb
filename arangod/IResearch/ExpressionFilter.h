@@ -105,6 +105,9 @@ class ByExpression final : public irs::filter {
 
   explicit operator bool() const noexcept { return bool(_ctx); }
 
+  bool hasNested() const noexcept { return _hasNested; }
+  void hasNested(bool hasNested) noexcept { _hasNested = hasNested; }
+
  protected:
   virtual bool equals(irs::filter const& rhs) const noexcept override;
 
