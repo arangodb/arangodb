@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Utils.h"
-#include "Pregel/Reports.h"
 
 namespace arangodb {
 namespace pregel {
@@ -39,7 +38,6 @@ class WorkerContext {
   uint64_t _vertexCount, _edgeCount;
   AggregatorHandler* _readAggregators;
   AggregatorHandler* _writeAggregators;
-  ReportManager* _reports;
 
  protected:
   template<typename T>
@@ -61,8 +59,6 @@ class WorkerContext {
   virtual void postGlobalSuperstep(uint64_t gss) {}
   virtual void postGlobalSuperstepMasterMessage(VPackBuilder& msg) {}
   virtual void postApplication() {}
-
-  ReportManager& getReportManager() const { return *_reports; }
 
  public:
   WorkerContext()

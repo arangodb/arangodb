@@ -679,10 +679,6 @@ auto GraphStore<V, E>::storeVertices(
                 VPackValuePair(key.data(), key.size(), VPackValueType::String));
     {
       auto result = _graphFormat->buildVertexDocumentWithResult(builder, &data);
-      if (result.fail()) {
-        _reports->report(ReportLevel::ERR)
-            << "building vertex document failed: " << result.error().toString();
-      }
     }
     builder.close();
     ++numDocs;

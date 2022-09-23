@@ -29,7 +29,6 @@
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Iterators.h"
-#include "Pregel/Reports.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/TypedBuffer.h"
 #include "Pregel/Worker/WorkerConfig.h"
@@ -150,8 +149,6 @@ class GraphStore final {
                     std::function<void()> const& statusUpdateCallback)
       -> futures::Future<Result>;
 
-  ReportManager* _reports;
-
  private:
   void loadVertices(ShardID const& vertexShard,
                     std::vector<ShardID> const& edgeShards,
@@ -161,10 +158,10 @@ class GraphStore final {
                  std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>& edges,
                  uint64_t numVertices, traverser::EdgeCollectionInfo& info);
 
-  auto storeVertices(
-    std::vector<ShardID> const& globalShards, RangeIterator<Vertex<V, E>>& it,
-    size_t threadNumber, std::function<void()> const& statusUpdateCallback)
-    -> Result;
+  auto storeVertices(std::vector<ShardID> const& globalShards,
+                     RangeIterator<Vertex<V, E>>& it, size_t threadNumber,
+                     std::function<void()> const& statusUpdateCallback)
+      -> Result;
   uint64_t determineVertexIdRangeStart(uint64_t numVertices);
 
   constexpr size_t vertexSegmentSize() const {

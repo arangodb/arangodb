@@ -29,7 +29,6 @@
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterTypes.h"
-#include "Pregel/Reports.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/WorkerConductorMessages.h"
 #include "Scheduler/Scheduler.h"
@@ -126,7 +125,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   /// persistent tracking of active vertices, send messages, runtimes
   StatsManager _statistics;
-  ReportManager _reports;
   /// Current number of vertices
   uint64_t _totalVerticesCount = 0;
   uint64_t _totalEdgesCount = 0;

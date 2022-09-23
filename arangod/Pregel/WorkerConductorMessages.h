@@ -92,16 +92,13 @@ auto inspect(Inspector& f, GlobalSuperStepPrepared& x) {
 struct GlobalSuperStepFinished : Message {
   std::string senderId;
   uint64_t gss;
-  VPackBuilder reports;
   VPackBuilder messageStats;
   VPackBuilder aggregators;
   GlobalSuperStepFinished() noexcept {};
   GlobalSuperStepFinished(std::string senderId, uint64_t gss,
-                          VPackBuilder reports, VPackBuilder messageStats,
-                          VPackBuilder aggregators)
+                          VPackBuilder messageStats, VPackBuilder aggregators)
       : senderId{std::move(senderId)},
         gss{gss},
-        reports{std::move(reports)},
         messageStats{std::move(messageStats)},
         aggregators{std::move(aggregators)} {}
   auto type() const -> MessageType override { return MessageType::GssFinished; }
@@ -111,19 +108,14 @@ template<typename Inspector>
 auto inspect(Inspector& f, GlobalSuperStepFinished& x) {
   return f.object(x).fields(f.field(Utils::senderKey, x.senderId),
                             f.field(Utils::globalSuperstepKey, x.gss),
-                            f.field("reports", x.reports),
                             f.field("messageStats", x.messageStats),
                             f.field("aggregators", x.aggregators));
 }
 
-struct Stored {
-  VPackBuilder reports;
-  Stored() noexcept = default;
-  Stored(VPackBuilder reports) : reports{std::move(reports)} {}
-};
+struct Stored {};
 template<typename Inspector>
 auto inspect(Inspector& f, Stored& x) {
-  return f.object(x).fields(f.field("reports", x.reports));
+  return f.object(x).fields();
 }
 
 struct CleanupFinished : Message {
