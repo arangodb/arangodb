@@ -395,7 +395,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
            collection.hasAsChildren("shards").value().get()) {
         // Only shards, which are affected
         int found = -1;
-        if (isRepl2) {
+        if (!isRepl2) {
           int count = 0;
           for (VPackSlice dbserver :
                VPackArrayIterator(shard.second->slice())) {
