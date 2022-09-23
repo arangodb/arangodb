@@ -37,7 +37,7 @@ var _ = require('lodash');
 const internal = require('internal');
 const db = internal.db;
 const errors = require('@arangodb').errors;
-const gm = require('@arangodb/general-graph');
+
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 const isCluster = require('@arangodb/cluster').isCluster();
