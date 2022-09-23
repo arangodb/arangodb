@@ -40,6 +40,40 @@ using namespace std::string_literals;
 
 namespace arangodb::iresearch {
 
+irs::filter::ptr makeAll(bool hasNested);
+
+template<typename Filter, typename Source>
+Filter& append(Source& parent, bool hasNestedFields) {
+  static_assert(!std::is_same_v<Filter, irs::all>);
+
+  Filter* filter;
+  if constexpr (std::is_same_v<irs::Not, Source>) {
+    filter = &parent.template filter<Filter>();
+  } else {
+    filter = &parent.template add<Filter>();
+  }
+
+#ifdef USE_ENTERPRISE
+  if constexpr (std::is_same_v<Filter, irs::Not> ||
+                std::is_same_v<Filter, irs::Or> ||
+                std::is_same_v<Filter, irs::And>) {
+    filter->SetProvider([hasNestedFields](irs::score_t boost) {
+      auto filter = makeAll(hasNestedFields);
+      filter->boost(boost);
+      return filter;
+    });
+  }
+#endif
+
+  return *filter;
+}
+
+template<typename Filter, typename Source>
+Filter& appendNot(Source& parent, bool hasNestedFields) {
+  return append<Filter>(append<irs::Not>(parent, hasNestedFields),
+                        hasNestedFields);
+}
+
 namespace error {
 
 template<size_t Min, size_t Max>

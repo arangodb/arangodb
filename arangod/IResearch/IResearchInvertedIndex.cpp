@@ -415,7 +415,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       }
     } else {
       // sorting case
-      addAllFilter(root, _indexMeta->hasNested());
+      appendAll(root, _indexMeta->hasNested());
     }
     _filter = root.prepare(*_reader, _order, irs::kNoBoost, nullptr);
     TRI_ASSERT(_filter);

@@ -111,6 +111,10 @@ FieldMeta::Analyzer const& FilterContext::fieldAnalyzer(
              : contextAnalyzer;  // Only possible with ArangoSearch view
 }
 
+#ifndef USE_ENTERPRISE
+irs::filter::ptr makeAll(bool) { return std::make_unique<irs::all>(); }
+#endif
+
 }  // namespace arangodb::iresearch
 
 namespace {
@@ -122,30 +126,9 @@ constexpr char const* GEO_INTERSECT_FUNC = "GEO_INTERSECTS";
 constexpr char const* GEO_DISTANCE_FUNC = "GEO_DISTANCE";
 constexpr char const* TERMS_FUNC = "TERMS";
 
-template<typename Filter, typename Source>
-Filter& append(Source& parent, bool hasNestedFields) {
-  Filter* filter;
-  if constexpr (std::is_same_v<irs::Not, Source>) {
-    filter = &parent.template filter<Filter>();
-  } else {
-    filter = &parent.template add<Filter>();
-  }
-
-#ifdef USE_ENTERPRISE
-  if constexpr (std::is_same_v<Filter, irs::Not> ||
-                std::is_same_v<Filter, irs::Or> ||
-                std::is_same_v<Filter, irs::And>) {
-    filter->SetProvider(allFilterProvider(hasNestedFields));
-  }
-#endif
-
-  return *filter;
-}
-
-template<typename Filter, typename Source>
-Filter& appendNot(Source& parent, bool hasNestedFields) {
-  return append<Filter>(append<irs::Not>(parent, hasNestedFields),
-                        hasNestedFields);
+irs::filter& appendAll(irs::boolean_filter& filter,
+                       [[maybe_unused]] bool hasNestedFields) {
+  return filter.add<irs::filter>(makeAll(hasNestedFields));
 }
 
 void setupAllTypedFilter(irs::Or& disjunction, std::string&& mangledName,
@@ -1052,7 +1035,7 @@ Result fromRange(irs::boolean_filter* filter, QueryContext const& ctx,
 
   // ranges are always true
   if (filter) {
-    addAllFilter(*filter, ctx.hasNestedFields).boost(filterCtx.boost);
+    appendAll(*filter, ctx.hasNestedFields).boost(filterCtx.boost);
   }
 
   return {};
@@ -1119,7 +1102,7 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
       case aql::Quantifier::Type::kAll:
       case aql::Quantifier::Type::kNone:
         if (filter) {
-          addAllFilter(*filter, ctx.hasNestedFields);
+          appendAll(*filter, ctx.hasNestedFields);
         }
         break;
       case aql::Quantifier::Type::kAtLeast:
@@ -1127,7 +1110,7 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
           if (atLeastCount > 0) {
             filter->add<irs::empty>();
           } else {
-            addAllFilter(*filter, ctx.hasNestedFields);
+            appendAll(*filter, ctx.hasNestedFields);
           }
         }
         break;
@@ -1628,7 +1611,7 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
     if (filter) {
       if (aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type) {
         // not in [] means 'all'
-        addAllFilter(*filter, ctx.hasNestedFields).boost(filterCtx.boost);
+        appendAll(*filter, ctx.hasNestedFields).boost(filterCtx.boost);
       } else {
         filter->add<irs::empty>();
       }
@@ -1784,8 +1767,8 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
 
       if (!n) {
         if (aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type) {
-          addAllFilter(*filter, ctx.hasNestedFields)
-              .boost(filterCtx.boost);  // not in [] means 'all'
+          // not in [] means 'all'
+          appendAll(*filter, ctx.hasNestedFields).boost(filterCtx.boost);
         } else {
           filter->add<irs::empty>();
         }
@@ -4047,16 +4030,6 @@ Result fromExpansion(irs::boolean_filter* filter, QueryContext const& ctx,
 namespace arangodb {
 namespace iresearch {
 
-irs::filter& addAllFilter(irs::boolean_filter& filter, bool hasNestedFields) {
-  if (hasNestedFields) {
-    auto& pkFilter = filter.add<irs::by_column_existence>();
-    *pkFilter.mutable_field() = DocumentPrimaryKey::PK();
-    return pkFilter;
-  } else {
-    return filter.add<irs::all>();
-  }
-}
-
 void appendExpression(irs::boolean_filter& filter, aql::AstNode const& node,
                       QueryContext const& ctx, FilterContext const& filterCtx) {
   auto& exprFilter = filter.add<ByExpression>();
@@ -4101,7 +4074,7 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
   }
 
   if (result) {
-    addAllFilter(*filter, ctx.hasNestedFields).boost(filterCtx.boost);
+    appendAll(*filter, ctx.hasNestedFields).boost(filterCtx.boost);
   } else {
     filter->add<irs::empty>();
   }
