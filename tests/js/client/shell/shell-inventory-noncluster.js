@@ -393,6 +393,13 @@ function inventorySuite () {
         view = results.views[2];
         assertEqual("search-alias", view.type);
         assertEqual("UnitTestsDumpViewSearchAlias", view.name);
+        assertEqual(1, view.indexes.length);
+        assertEqual("UnitTestsDumpSearchAliasCollection", view.indexes[0].collection);
+        
+        view = results.views[3];
+        assertEqual("search-alias", view.type);
+        assertEqual("UnitTestsDumpViewSearchAlias2", view.name);
+        assertEqual("UnitTestsDumpSearchAliasCollection2", view.indexes[0].collection);
       } finally {
         arango.DELETE("/_api/replication/batch" + batchId);
       }
