@@ -5,6 +5,8 @@ devel
   consider servers that have failed status as a possible target for rebalancing
   shards in its execution plan.
 
+* Updated arangosync to v2.12.0.
+
 * Improve upload and download speed of hotbackup by changing the way we use
   rclone. Empty hash files are now uploaded or downloaded by pattern, and
   all other files are done in batches without remote directory listing,
