@@ -92,6 +92,11 @@ class CalculationTransactionState final : public arangodb::TransactionState {
     return {};
   }
 
+  Result triggerIntermediateCommit() {
+    TRI_ASSERT(false); // should never be called!
+    return {};
+  }
+
   [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
       arangodb::DataSourceId collectionId) override {
     // Analyzers do not write. so do nothing

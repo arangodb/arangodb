@@ -2112,6 +2112,11 @@ TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
   return arangodb::Result();
 }
 
+arangodb::Result TransactionStateMock::triggerIntermediateCommit() {
+  TRI_ASSERT(false);  // should never be called!
+  return {};
+}
+
 arangodb::futures::Future<arangodb::Result>
 TransactionStateMock::performIntermediateCommitIfRequired(
     arangodb::DataSourceId cid) {

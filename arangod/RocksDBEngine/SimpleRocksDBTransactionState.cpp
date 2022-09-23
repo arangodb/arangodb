@@ -187,6 +187,10 @@ SimpleRocksDBTransactionState::createTransactionCollection(
       new RocksDBTransactionCollection(this, cid, accessType));
 }
 
+arangodb::Result SimpleRocksDBTransactionState::triggerIntermediateCommit() {
+  return _rocksMethods->triggerIntermediateCommit();
+}
+
 futures::Future<Result>
 SimpleRocksDBTransactionState::performIntermediateCommitIfRequired(
     DataSourceId cid) {

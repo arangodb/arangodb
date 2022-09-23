@@ -3007,7 +3007,7 @@ Future<Result> Methods::replicateOperations(
             operation),
         state()->id(),
         replication2::replicated_state::document::ReplicationOptions{});
-    return Result{};
+    return performIntermediateCommitIfRequired(collection->id());
   }
 
   // path and requestType are different for insert/remove/modify.
@@ -3579,6 +3579,10 @@ futures::Future<OperationResult> Methods::countInternal(
 Result Methods::performIntermediateCommitIfRequired(DataSourceId collectionId) {
   // TODO return future
   return _state->performIntermediateCommitIfRequired(collectionId).get();
+}
+
+Result Methods::triggerIntermediateCommit() {
+  return _state->triggerIntermediateCommit();
 }
 
 #ifndef USE_ENTERPRISE

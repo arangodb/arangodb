@@ -171,6 +171,11 @@ Result ClusterTransactionState::abortTransaction(
   return {};
 }
 
+arangodb::Result ClusterTransactionState::triggerIntermediateCommit() {
+  TRI_ASSERT(false);  // should never be called!
+  return {};
+}
+
 futures::Future<Result>
 ClusterTransactionState::performIntermediateCommitIfRequired(DataSourceId cid) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

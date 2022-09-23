@@ -65,6 +65,10 @@ auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
   }
 }
 
+auto DocumentStateTransaction::intermediateCommit() -> Result {
+  return _methods->triggerIntermediateCommit();
+}
+
 auto DocumentStateTransaction::commit() -> Result { return _methods->commit(); }
 
 auto DocumentStateTransaction::abort() -> Result { return _methods->abort(); }

@@ -234,6 +234,12 @@ void ReplicatedRocksDBTransactionState::addIntermediateCommits(uint64_t value) {
                                  "invalid call to addIntermediateCommits");
 }
 
+arangodb::Result
+ReplicatedRocksDBTransactionState::triggerIntermediateCommit() {
+  TRI_ASSERT(false);  // should never be called!
+  return {};
+}
+
 futures::Future<Result>
 ReplicatedRocksDBTransactionState::performIntermediateCommitIfRequired(
     DataSourceId cid) {

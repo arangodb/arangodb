@@ -134,8 +134,7 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
       case OperationType::kAbortAllOngoingTrx:
         TRI_ASSERT(false);  // should never happen as it should be handled above
       case OperationType::kIntermediateCommit:
-        // TODO: implement intermediate commit
-        return Result{};
+        return trx->intermediateCommit();
       default:
         THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
     }

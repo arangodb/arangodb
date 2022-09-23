@@ -52,6 +52,8 @@ class ClusterTransactionState final : public TransactionState {
   /// @brief abort a transaction
   [[nodiscard]] Result abortTransaction(transaction::Methods* trx) override;
 
+  virtual arangodb::Result triggerIntermediateCommit() override;
+
   [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId cid) override;
 
