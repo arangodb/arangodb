@@ -300,6 +300,8 @@ void add(SearchMeta::Map& search, SearchMeta::AggregatedFields* fieldsAggregate,
       if (aggrIt == std::end(*fieldsAggregate)) {
         fieldsAggregate->push_back(field);
         subAggregate = &fieldsAggregate->back()._fields;
+      } else {
+        subAggregate = &aggrIt->_fields;
       }
     }
 #ifdef USE_ENTERPRISE
