@@ -38,7 +38,7 @@ const internal = require('internal');
 const db = internal.db;
 const isCluster = require('@arangodb/cluster').isCluster();
 
-const gm = require('@arangodb/general-graph');
+
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 

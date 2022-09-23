@@ -37,7 +37,7 @@ var _ = require('lodash');
 const internal = require('internal');
 const db = internal.db;
 
-const gm = require('@arangodb/general-graph');
+
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
