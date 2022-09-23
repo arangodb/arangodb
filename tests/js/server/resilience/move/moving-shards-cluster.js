@@ -612,7 +612,7 @@ function MovingShardsSuite({useData, replVersion}) {
 
       wait(1.0);
     }
-    console.error("Failed to cancel job" + id + ", job not visible to coordinator.")
+    console.error("Failed to cancel job" + id + ", job not visible to coordinator.");
     return false;
   }
 

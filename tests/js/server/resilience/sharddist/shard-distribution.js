@@ -73,7 +73,6 @@ function ShardDistributionTest({replVersion}) {
       }
       require("internal").wait(1);
     }
-    print("create collection with " + dbServerCount);
     internal.db._create(colName, {replicationFactor: dbServerCount, numberOfShards: nrShards});
     var d = request.get(coordinator.url + '/_db/' + dbname + '/_admin/cluster/shardDistribution');
     distribution = JSON.parse(d.body).results[colName];
