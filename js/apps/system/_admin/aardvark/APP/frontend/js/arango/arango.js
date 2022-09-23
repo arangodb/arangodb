@@ -993,8 +993,8 @@
       // timezone can see that it is UTC time
     },
 
-    escapeHtml: function (val) {
-      if (typeof val !== 'string') {
+    escapeHtml: function (val, stringify = true) {
+      if (typeof val !== 'string' && stringify) {
         val = JSON.stringify(val, null, 2);
       }
 
