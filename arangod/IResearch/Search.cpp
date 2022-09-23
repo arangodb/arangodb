@@ -279,10 +279,12 @@ std::string check(SearchMeta const& search,
   return {};
 }
 
-void add(SearchMeta::Map& search, InvertedIndexField const& index) {
+void add(SearchMeta::Map& search, SearchMeta::AggregatedFields* fieldsAggregate,
+         InvertedIndexField const& index) {
   for (auto const& field : index._fields) {
-    auto it = search.lower_bound(field.path());
-    if (it == search.end() || it->first != field.path()) {
+    auto path = field.path();
+    auto it = search.lower_bound(path);
+    if (it == search.end() || it->first != path) {
       search.emplace_hint(
           it, field.path(),
           SearchMeta::Field{field.analyzer()._shortName,
@@ -290,8 +292,18 @@ void add(SearchMeta::Map& search, InvertedIndexField const& index) {
     } else {
       it->second.includeAllFields |= field._includeAllFields;
     }
+    SearchMeta::AggregatedFields* subAggregate{nullptr};
+    if (fieldsAggregate) {
+      auto aggrIt =
+          std::find_if(std::begin(*fieldsAggregate), std::end(*fieldsAggregate),
+                       [path](auto const& f) { return f.path() == path; });
+      if (aggrIt == std::end(*fieldsAggregate)) {
+        fieldsAggregate->push_back(field);
+        subAggregate = &fieldsAggregate->back()._fields;
+      }
+    }
 #ifdef USE_ENTERPRISE
-    add(search, field);
+    add(search, subAggregate, field);
 #endif
   }
   if (index._includeAllFields) {
@@ -781,7 +793,7 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
             basics::downCast<IResearchInvertedIndex>(*index.get());
         auto const& indexMeta = inverted.meta();
         if (first) {
-          add(merged, indexMeta);
+          add(merged, nullptr, indexMeta);
           first = false;
         } else if (auto error = checkFieldsSameCollection(merged, indexMeta);
                    !error.empty()) {
@@ -791,7 +803,7 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
                       " if them index the same fields. Error for: ",
                       error, inverted.collection().name(), "'")};
         } else {
-          add(merged, indexMeta);
+          add(merged, nullptr, indexMeta);
         }
       }
     }
@@ -799,18 +811,21 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
   }
   // TODO(MBkkt) missed optimization: I check that inverted index not intersects
   // at all, so I can merge indexes meta to same collection without this check
-  r = iterate([&](auto const& indexMeta) { add(merged, indexMeta); },
-              [&](auto const& indexMeta) {
-                auto error = checkFieldsDifferentCollections(merged, indexMeta);
-                if (error.empty()) {
-                  add(merged, indexMeta);
-                }
-                return error;
-              });
+  SearchMeta::AggregatedFields mergedFields;
+  r = iterate(
+      [&](auto const& indexMeta) { add(merged, &mergedFields, indexMeta); },
+      [&](auto const& indexMeta) {
+        auto error = checkFieldsDifferentCollections(merged, indexMeta);
+        if (error.empty()) {
+          add(merged, &mergedFields, indexMeta);
+        }
+        return error;
+      });
   if (!r.ok()) {
     return r;
   }
   searchMeta->fieldToAnalyzer = std::move(merged);
+  searchMeta->aggregatedFields = std::move(mergedFields);
   if (ServerState::instance()->isSingleServer()) {
     searchMeta->createFst();
   }  // else we don't create provider from this SearchMeta
