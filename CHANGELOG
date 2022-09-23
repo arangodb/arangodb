@@ -1,6 +1,14 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Fixed SEARCH-399 Rule `restrict-to-single-shard` now works properly with
+  inverted index.
+
+* Fixed SEARCH-393 fixed analyzer setting for nested fields.
+
+* APM-517: Add tooltips with values of the displayed properties after clicking a
+  node or an edge in the graph viewer.
+
 * Updated arangosync to v2.12.0.
 
 * Improve upload and download speed of hotbackup by changing the way we use
