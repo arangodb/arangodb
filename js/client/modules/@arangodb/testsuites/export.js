@@ -65,7 +65,7 @@ class exportRunner extends tu.runInArangoshRunner {
   }
 
   run() {
-    const timeout = 20;
+    const timeout = 40;
     const tmpPath = fs.join(this.options.testOutputDirectory, 'export');
     const DOMParser = new xmldom.DOMParser({
       locator: {},
