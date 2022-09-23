@@ -51,33 +51,33 @@ function ShardDistributionTest({replVersion}) {
   const nrShards = 16;
 
   function waitForClusterHealth() {
-      // First wait until the cluster is complete, otherwise the creation
-      // of the collection with replicationFactor dbServerCount will
-      // fail, we use the health api:
-      let count = 0;
-      while (true) {
-        if (++count >= 300) {
-          throw "Did not find " + dbServerCount + " dbServers within 5 mins.";
-        }
-        let health = JSON.parse(request.get(coordinator.url + '/_admin/cluster/health').body);
-        let serverCount = 0;
-        let serverIds = Object.keys(health.Health);
-        for (let i = 0; i < serverIds.length; ++i) {
-          if (serverIds[i].slice(0, 4) === "PRMR" &&
-              health.Health[serverIds[i]].Status === "GOOD") {
-            serverCount += 1;
-          }
-        }
-        if (serverCount >= dbServerCount) {
-          break;
-        }
-        require("internal").wait(1);
+    // First wait until the cluster is complete, otherwise the creation
+    // of the collection with replicationFactor dbServerCount will
+    // fail, we use the health api:
+    let count = 0;
+    while (true) {
+      if (++count >= 300) {
+        throw "Did not find " + dbServerCount + " dbServers within 5 mins.";
       }
-      print("create collection with " + dbServerCount);
-      internal.db._create(colName, {replicationFactor: dbServerCount, numberOfShards: nrShards});
-      var d = request.get(coordinator.url + '/_db/' + dbname  + '/_admin/cluster/shardDistribution');
-      distribution = JSON.parse(d.body).results[colName];
-      assert.isObject(distribution, 'The distribution for each collection has to be an object');
+      let health = JSON.parse(request.get(coordinator.url + '/_admin/cluster/health').body);
+      let serverCount = 0;
+      let serverIds = Object.keys(health.Health);
+      for (let i = 0; i < serverIds.length; ++i) {
+        if (serverIds[i].slice(0, 4) === "PRMR" &&
+            health.Health[serverIds[i]].Status === "GOOD") {
+          serverCount += 1;
+        }
+      }
+      if (serverCount >= dbServerCount) {
+        break;
+      }
+      require("internal").wait(1);
+    }
+    print("create collection with " + dbServerCount);
+    internal.db._create(colName, {replicationFactor: dbServerCount, numberOfShards: nrShards});
+    var d = request.get(coordinator.url + '/_db/' + dbname + '/_admin/cluster/shardDistribution');
+    distribution = JSON.parse(d.body).results[colName];
+    assert.isObject(distribution, 'The distribution for each collection has to be an object');
   }
 
   const followCollection = 'UnitTestDistributionFollower';
@@ -100,7 +100,7 @@ function ShardDistributionTest({replVersion}) {
     return shardNumber(l) - shardNumber(r);
   };
 
-  const compareDistributions = function() {
+  const compareDistributions = function () {
     const all = request.get(coordinator.url + '/_db/' + dbname + '/_admin/cluster/shardDistribution');
     const dist = JSON.parse(all.body).results;
     const orig = dist[colName].Current;
@@ -133,9 +133,11 @@ function ShardDistributionTest({replVersion}) {
     var url = endpointToURL(coordEndpoint);
     var body = {"server": id};
     try {
-      return request({ method: "POST",
+      return request({
+        method: "POST",
         url: url + "/_admin/cluster/cleanOutServer",
-        body: JSON.stringify(body) });
+        body: JSON.stringify(body)
+      });
     } catch (err) {
       console.error(
           "Exception for POST /_admin/cluster/cleanOutServer:", err.stack);
@@ -150,7 +152,7 @@ function ShardDistributionTest({replVersion}) {
 
     try {
       const envelope =
-          { method: "GET", url: url + "/_admin/cluster/numberOfServers" };
+          {method: "GET", url: url + "/_admin/cluster/numberOfServers"};
       let res = request(envelope);
       if (res.statusCode !== 200) {
         return {cleanedServers: []};
@@ -162,7 +164,7 @@ function ShardDistributionTest({replVersion}) {
       if (typeof body !== "object" ||
           !body.hasOwnProperty("cleanedServers") ||
           typeof body.cleanedServers !== "object") {
-        return {cleanedServers:[]};
+        return {cleanedServers: []};
       }
       return body;
     } catch (err) {
@@ -178,7 +180,7 @@ function ShardDistributionTest({replVersion}) {
       let obj = getCleanedOutServers();
       if (obj.cleanedServers.indexOf(id) >= 0) {
         console.info(
-            "Success: Server " + id + " cleaned out after " + (600-count) + " seconds");
+            "Success: Server " + id + " cleaned out after " + (600 - count) + " seconds");
         return true;
       }
       wait(1.0);
@@ -225,7 +227,9 @@ function ShardDistributionTest({replVersion}) {
       internal.db._createDatabase(dbname, {replicationVersion: replVersion});
       internal.db._useDatabase(dbname);
       internal.db._drop(colName);
-      waitForClusterHealth();
+      if (replVersion !== "2") {
+        waitForClusterHealth();
+      }
     },
     tearDownAll: function () {
       internal.db._useDatabase("_system");
@@ -239,7 +243,7 @@ function ShardDistributionTest({replVersion}) {
     testProperlyDistributeShards: function () {
       internal.db._drop(colName);
       internal.db._create(colName, {replicationFactor: 2, numberOfShards: 16});
-      var d = request.get(coordinator.url + '/_db/' + dbname  + '/_admin/cluster/shardDistribution');
+      var d = request.get(coordinator.url + '/_db/' + dbname + '/_admin/cluster/shardDistribution');
       let distribution = JSON.parse(d.body).results;
 
       let leaders = Object.keys(distribution[colName].Current).reduce((current, shardKey) => {
@@ -253,19 +257,31 @@ function ShardDistributionTest({replVersion}) {
     },
 
     testCurrentPlanTopLevel: function () {
+      if (replVersion === "2") {
+        return;
+      }
+
       expect(distribution).to.have.all.keys(["Current", "Plan"]);
       assert.isObject(distribution.Current, 'The Current has to be an object');
       assert.isObject(distribution.Plan, 'The Current has to be an object');
     },
 
-    testIdenticalShardsPlanCurrent: function() {
+    testIdenticalShardsPlanCurrent: function () {
+      if (replVersion === "2") {
+        return;
+      }
+
       let keys = Object.keys(distribution.Plan);
       expect(keys.length).to.equal(nrShards);
       // Check that keys (shardnames) are identical
       expect(distribution.Current).to.have.all.keys(distribution.Plan);
     },
 
-    testShardPlanFormat: function() {
+    testShardPlanFormat: function () {
+      if (replVersion === "2") {
+        return;
+      }
+
       _.forEach(distribution.Plan, function (info, shard) {
         if (info.hasOwnProperty('progress')) {
           expect(info).to.have.all.keys(['leader', 'progress', 'followers']);
@@ -285,7 +301,11 @@ function ShardDistributionTest({replVersion}) {
       });
     },
 
-    testShardCurrentFormat: function() {
+    testShardCurrentFormat: function () {
+      if (replVersion === "2") {
+        return;
+      }
+
       _.forEach(distribution.Current, function (info, shard) {
         expect(info).to.have.all.keys(['leader', 'followers']);
 
@@ -300,7 +320,11 @@ function ShardDistributionTest({replVersion}) {
       });
     },
 
-    testShouldDistributeAcrossAllServers: function() {
+    testShouldDistributeAcrossAllServers: function () {
+      if (replVersion === "2") {
+        return;
+      }
+
       let leaders = new Set();
       _.forEach(distribution.Plan, function (info, shard) {
         leaders.add(info.leader);
@@ -308,7 +332,7 @@ function ShardDistributionTest({replVersion}) {
       expect(leaders.size).to.equal(Math.min(dbServerCount, nrShards));
     },
 
-    testDistributeShardsLikeDistribution: function() {
+    testDistributeShardsLikeDistribution: function () {
       cleanUp();
       internal.db._create(colName, {replicationFactor, numberOfShards});
       internal.db._create(followCollection, {replicationFactor, numberOfShards, distributeShardsLike: colName});
