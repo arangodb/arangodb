@@ -650,7 +650,7 @@ class instanceManager {
       print(Date() + ' If cluster - will now start killing the rest.');
       this.arangods.forEach((arangod) => {
         print(Date() + " Killing in the name of: ");
-        arangod.killWithCoreDump();
+        arangod.killWithCoreDump("health check failed, aborting everything");
       });
       this.arangods.forEach((arangod) => {
         crashUtils.aggregateDebugger(arangod, this.options);
@@ -726,7 +726,7 @@ class instanceManager {
   // / @brief shuts down an instance
   // //////////////////////////////////////////////////////////////////////////////
 
-  shutdownInstance (forceTerminate) {
+  shutdownInstance (forceTerminate, moreReason="") {
     if (forceTerminate === undefined) {
       forceTerminate = false;
     }
@@ -738,7 +738,7 @@ class instanceManager {
     }
     try {
       if (forceTerminate) {
-        return this._forceTerminate();
+        return this._forceTerminate(moreReason);
       } else {
         return this._shutdownInstance();
       }
@@ -757,10 +757,10 @@ class instanceManager {
     }
   }
 
-  _forceTerminate() {
+  _forceTerminate(moreReason="") {
     print("Aggregating coredumps");
     this.arangods.forEach((arangod) => {
-      arangod.killWithCoreDump('forced shutdown');
+      arangod.killWithCoreDump('forced shutdown because of: ' + moreReason);
       arangod.serverCrashedLocal = true;
     });
     this.arangods.forEach((arangod) => {
@@ -772,7 +772,7 @@ class instanceManager {
     return true;
   }
 
-  _shutdownInstance () {
+  _shutdownInstance (moreReason="") {
     let forceTerminate = false;  
     let crashed = false;
     let shutdownSuccess = !forceTerminate;
@@ -782,6 +782,7 @@ class instanceManager {
       let d = this.detectCurrentLeader();
       if (this.endpoint !== d.endpoint) {
         print(Date() + ' failover has happened, leader is no more! Marking Crashy!');
+        moreReason += "failover has happened, leader is no more!";
         d.serverCrashedLocal = true;
         forceTerminate = true;
         shutdownSuccess = false;
@@ -862,7 +863,7 @@ class instanceManager {
       this.dumpAgency();
     }
     if (forceTerminate) {
-      return this._forceTerminate();
+      return this._forceTerminate(moreReason);
     }
 
     var shutdownTime = internal.time();
@@ -904,7 +905,7 @@ class instanceManager {
             this.dumpAgency();
             arangod.serverCrashedLocal = true;
             shutdownSuccess = false;
-            arangod.killWithCoreDump('forced shutdown');
+            arangod.killWithCoreDump('forced shutdown because of timeout during shutdown');
             crashUtils.aggregateDebugger(arangod, this.options);
             crashed = true;
             if (!arangod.isAgent()) {
