@@ -39,9 +39,6 @@ class ExecutionPlan;
 
 namespace iresearch {
 
-///////////////////////////////////////////////////////////////////////////////
-/// @struct ExpressionCompilationContext
-///////////////////////////////////////////////////////////////////////////////
 struct ExpressionCompilationContext {
   bool operator==(ExpressionCompilationContext const& rhs) const noexcept {
     return ast == rhs.ast && node == rhs.node;
@@ -55,13 +52,10 @@ struct ExpressionCompilationContext {
 
   size_t hash() const noexcept;
 
-  arangodb::aql::Ast* ast{};
-  std::shared_ptr<arangodb::aql::AstNode> node{};
-};  // ExpressionCompilationContext
+  aql::Ast* ast{};
+  std::shared_ptr<aql::AstNode> node{};
+};
 
-///////////////////////////////////////////////////////////////////////////////
-/// @struct ExpressionExecutionContext
-///////////////////////////////////////////////////////////////////////////////
 struct ExpressionExecutionContext final : irs::attribute {
   static const irs::string_ref type_name() noexcept {
     return "arangodb::iresearch::ExpressionExecutionContext";
@@ -69,8 +63,7 @@ struct ExpressionExecutionContext final : irs::attribute {
 
   ExpressionExecutionContext() = default;
 
-  ExpressionExecutionContext(
-      arangodb::iresearch::ViewExpressionContextBase& ctx) noexcept
+  ExpressionExecutionContext(ViewExpressionContextBase& ctx) noexcept
       : ctx(&ctx) {}
 
   explicit operator bool() const noexcept { return ctx; }
@@ -78,13 +71,10 @@ struct ExpressionExecutionContext final : irs::attribute {
   // FIXME change 'ctx' to be 'arangodb::aql::ExpressionContext'
   // once IResearchView will be able to evaluate epxressions
   // with loop variable in SEARCH expressions
-  arangodb::iresearch::ViewExpressionContextBase* ctx{};
-};  // ExpressionFilterContext
+  ViewExpressionContextBase* ctx{};
+};
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class ByExpression
-/// @brief user-side filter based on arbitrary ArangoDB `Expression`
-///////////////////////////////////////////////////////////////////////////////
+// User-side filter based on arbitrary ArangoDB `Expression`.
 class ByExpression final : public irs::filter {
  public:
   static const irs::string_ref type_name() noexcept {
@@ -93,13 +83,12 @@ class ByExpression final : public irs::filter {
 
   ByExpression() noexcept;
 
-  void init(aql::Ast& ast, arangodb::aql::AstNode& node) noexcept {
+  void init(aql::Ast& ast, aql::AstNode& node) noexcept {
     _ctx.ast = &ast;
-    _ctx.node.reset(&node, [](arangodb::aql::AstNode*) {});
+    _ctx.node.reset(&node, [](aql::AstNode*) {});
   }
 
-  void init(aql::Ast& ast,
-            std::shared_ptr<arangodb::aql::AstNode>&& node) noexcept {
+  void init(aql::Ast& ast, std::shared_ptr<aql::AstNode>&& node) noexcept {
     _ctx.ast = &ast;
     _ctx.node = std::move(node);
   }
@@ -121,7 +110,7 @@ class ByExpression final : public irs::filter {
 
  private:
   ExpressionCompilationContext _ctx;
-};  // ByExpression
+};
 
 }  // namespace iresearch
 }  // namespace arangodb
