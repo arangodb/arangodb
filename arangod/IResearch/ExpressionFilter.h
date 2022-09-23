@@ -110,6 +110,7 @@ class ByExpression final : public irs::filter {
 
  private:
   ExpressionCompilationContext _ctx;
+  bool _hasNested{false};
 };
 
 }  // namespace iresearch

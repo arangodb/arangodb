@@ -27,9 +27,9 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
+#include "IResearch/IResearchFilterFactoryCommon.hpp"
 
 #include "formats/empty_term_reader.hpp"
-#include "search/all_filter.hpp"
 #include "search/all_iterator.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/memory.hpp"
@@ -57,6 +57,7 @@ inline irs::filter::prepared::ptr compileQuery(
   return irs::memory::make_managed<type_t>(ctx, std::move(stats), boost);
 }
 
+// FIXME(gnusi): use correct iterator in nested case
 class NondeterministicExpressionIterator final : public irs::doc_iterator {
  public:
   NondeterministicExpressionIterator(irs::sub_reader const& reader,
@@ -204,6 +205,7 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
     aql::AqlValueGuard guard(value, mustDestroy);
 
     if (value.toBoolean()) {
+      // FIXME(gnusi): use correct iterator in nested case
       auto& segment = ctx.segment;
       return irs::memory::make_managed<irs::all_iterator>(
           segment, stats_.c_str(), ctx.scorers, segment.docs_count(), boost());
@@ -230,7 +232,7 @@ size_t ExpressionCompilationContext::hash() const noexcept {
 }
 
 ByExpression::ByExpression() noexcept
-    : irs::filter(irs::type<ByExpression>::get()) {}
+    : irs::filter{irs::type<ByExpression>::get()} {}
 
 bool ByExpression::equals(irs::filter const& rhs) const noexcept {
   auto const& typed = static_cast<ByExpression const&>(rhs);
@@ -272,8 +274,11 @@ irs::filter::prepared::ptr ByExpression::prepare(
   auto value = expr.execute(execCtx->ctx, mustDestroy);
   aql::AqlValueGuard guard(value, mustDestroy);
 
-  return value.toBoolean() ? irs::all().prepare(index, order, filter_boost)
-                           : irs::filter::prepared::empty();
+  if (!value.toBoolean()) {
+    return irs::filter::prepared::empty();
+  }
+
+  return makeAll(_hasNested)->prepare(index, order, filter_boost);
 }
 
 }  // namespace iresearch

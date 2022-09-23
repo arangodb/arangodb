@@ -40,10 +40,12 @@ using namespace std::string_literals;
 
 namespace arangodb::iresearch {
 
+class ByExpression;
+
 irs::filter::ptr makeAll(bool hasNested);
 
 template<typename Filter, typename Source>
-Filter& append(Source& parent, bool hasNestedFields) {
+Filter& append(Source& parent, [[maybe_unused]] bool hasNestedFields) {
   static_assert(!std::is_same_v<Filter, irs::all>);
 
   Filter* filter;
