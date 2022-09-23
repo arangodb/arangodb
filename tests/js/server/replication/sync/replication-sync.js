@@ -1275,7 +1275,48 @@ function BaseTestConfig () {
     // / @brief test with search-alias views
     // //////////////////////////////////////////////////////////////////////////////
 
-    testSyncSearchAliasView: function () {
+    testSyncSearchAliasViewWithIndexes: function () {
+      connectToLeader();
+
+      //  create view & collection on leader
+      db._flushCache();
+      let c = db._create(cn);
+      let idx = c.ensureIndex({ type: "inverted", fields: [ { name: "value" } ], name: "inverted_idx" });
+      let view = db._createView(cn + 'View', 'search-alias', {
+        indexes: [
+          { 
+            collection: cn,
+            index: idx.name
+          }
+        ]
+      });
+      assertEqual(1, view.properties().indexes.length);
+
+      db._flushCache();
+      connectToFollower();
+      internal.wait(0.1, false);
+      //  sync on follower
+      replication.sync({ endpoint: leaderEndpoint });
+
+      db._flushCache();
+      {
+        //  check state is the same
+        let view = db._view(cn + 'View');
+        assertNotNull(view);
+        assertEqual(cn + "View", view.name());
+        assertEqual("search-alias", view.type());
+        let props = view.properties();
+        assertTrue(props.hasOwnProperty('indexes'));
+        assertEqual(1, props.indexes.length);
+        assertEqual({ collection: cn, index: idx.name }, props.indexes[0]);
+      }
+    },
+    
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test with search-alias views
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testSyncSearchAliasViewChange: function () {
       connectToLeader();
 
       //  create view & collection on leader
