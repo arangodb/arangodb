@@ -746,6 +746,7 @@ class instanceManager {
     let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
     if (timeoutReached) {
       print(RED + Date() + ' Deadline reached! Forcefully shutting down!' + RESET);
+      moreReason += "Deadline reached! ";
       this.arangods.forEach(arangod => { arangod.serverCrashedLocal = true;});
       forceTerminate = true;
     }
@@ -761,8 +762,9 @@ class instanceManager {
         let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
         if (timeoutReached) {
           print(RED + Date() + ' Deadline reached during shutdown! Forcefully shutting down NOW!' + RESET);
+          moreReason += "Deadline reached! ";
         }
-        return this._forceTerminate(true);
+        return this._forceTerminate(true, moreReason);
       } else {
         print("caught error during shutdown: " + e);
         print(e.stack);
@@ -930,7 +932,7 @@ class instanceManager {
             this.dumpAgency();
             arangod.serverCrashedLocal = true;
             shutdownSuccess = false;
-            arangod.killWithCoreDump('forced shutdown because of timeout during shutdown');
+            arangod.killWithCoreDump(`taking coredump because of timeout ${internal.time()} - ${shutdownTime}) > ${localTimeout} during shutdown`);
             crashUtils.aggregateDebugger(arangod, this.options);
             crashed = true;
             if (!arangod.isAgent()) {
