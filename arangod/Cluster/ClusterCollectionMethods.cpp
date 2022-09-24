@@ -22,43 +22,66 @@
 
 #include "ClusterCollectionMethods.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/Utils/DistributeShardsLike.h"
+#include "Cluster/Utils/EvenDistribution.h"
 #include "Cluster/Utils/IShardDistributionFactory.h"
 #include "Cluster/Utils/PlanCollectionEntry.h"
+#include "Cluster/Utils/PlanCollectionToAgencyWriter.h"
+#include "Cluster/Utils/SatelliteDistribution.h"
+#include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Properties/PlanCollection.h"
 #include "VocBase/vocbase.h"
 
 // TODO: TEMPORARY!
 #include "Cluster/ClusterMethods.h"
-#include "Cluster/Utils/SatelliteDistribution.h"
-#include "Cluster/Utils/EvenDistribution.h"
-#include "Cluster/Utils/DistributeShardsLike.h"
 
 using namespace arangodb;
 
+#if false
+// Plan for implementation
+
 namespace {
-ResultT<std::vector<std::shared_ptr<LogicalCollection>>>
-persistCollectionsInAgency(ClusterFeature& feature,
-                           std::vector<arangodb::PlanCollection>& collections,
-                           bool ignoreDistributeShardsLikeErrors,
-                           bool waitForSyncReplication,
-                           bool enforceReplicationFactor, bool isNewDatabase) {
 
-}
+Result impl(ClusterInfo& ci, std::string_view databaseName,
+            PlanCollectionToAgencyWriter writer) {
+  std::vector<std::string> collectionNames{};
+  while (true) {
+    ci.loadCurrentDBServers();
+    auto planVersion =
+        ci.checkDataSourceNamesAvailable(databaseName, collectionNames);
+    if (planVersion.fail()) {
+      return planVersion.result();
+    }
+    std::vector<ServerID> availableServers = ci.getCurrentDBServers();
+    auto agencyTrx = writer.prepareTransaction(databaseName, planVersion.get(),
+                                               availableServers);
+  }
 }
 
-[[nodiscard]] auto ClusterCollectionMethods::toPlanEntry(PlanCollection col, std::vector<ShardID> shardNames, std::shared_ptr<IShardDistributionFactory> distributeType) -> PlanCollectionEntry {
-  return {std::move(col), ShardDistribution{std::move(shardNames), std::move(distributeType)}};
+}  // namespace
+
+#endif
+
+[[nodiscard]] auto ClusterCollectionMethods::toPlanEntry(
+    PlanCollection col, std::vector<ShardID> shardNames,
+    std::shared_ptr<IShardDistributionFactory> distributeType)
+    -> PlanCollectionEntry {
+  return {std::move(col),
+          ShardDistribution{std::move(shardNames), std::move(distributeType)}};
 }
 
-[[nodiscard]] auto ClusterCollectionMethods::generateShardNames(ClusterInfo& ci, uint64_t numberOfShards) -> std::vector<ShardID> {
+[[nodiscard]] auto ClusterCollectionMethods::generateShardNames(
+    ClusterInfo& ci, uint64_t numberOfShards) -> std::vector<ShardID> {
   if (numberOfShards == 0) {
     // If we do not have shards, we do only need an empty vector and no ids.
     return {};
   }
-  // Reserve ourselves the next numberOfShards many ids to use them for shardNames
+  // Reserve ourselves the next numberOfShards many ids to use them for
+  // shardNames
   uint64_t const id = ci.uniqid(numberOfShards);
   std::vector<ShardID> shardNames;
   shardNames.reserve(numberOfShards);
@@ -71,7 +94,8 @@ persistCollectionsInAgency(ClusterFeature& feature,
 [[nodiscard]] auto ClusterCollectionMethods::selectDistributeType(ClusterInfo& ci, PlanCollection const& col, std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>& allUsedDistrbitions) -> std::shared_ptr<IShardDistributionFactory> {
   if (col.constantProperties.distributeShardsLike.has_value()) {
     auto distLike = col.constantProperties.distributeShardsLike.value();
-    // Empty value has to be rejected by invariants beforehand, assert here just in case.
+    // Empty value has to be rejected by invariants beforehand, assert here just
+    // in case.
     TRI_ASSERT(!distLike.empty());
     if (allUsedDistrbitions.contains(distLike)) {
       // We are already set, use the other one.
@@ -137,17 +161,6 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   }
   // Protection, all entries have been moved
   collections.clear();
-
-  while (true) {
-    // Get list of available servers
-    std::vector<ServerID> availableServers{};
-    for (auto& [_, dist] : shardDistributionList) {
-      // Select a distribution based on the available servers
-      dist->shuffle(availableServers);
-    }
-
-  }
-
 
   /// Code from here is copy pasted from original create and
   /// has not been refactored yet.

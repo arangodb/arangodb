@@ -20,29 +20,21 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ShardDistribution.h"
-#include "PlanShardToServerMappping.h"
+#pragma once
 
-using namespace arangodb;
+#include "Cluster/ClusterTypes.h"
 
-ShardDistribution::ShardDistribution(
-    std::vector<ShardID> shardNames,
-    std::shared_ptr<IShardDistributionFactory> distributeType)
-    : _shardNames{std::move(shardNames)},
-      _distributeType{std::move(distributeType)} {}
+namespace arangodb {
+struct ResponsibleServerList {
+  std::vector<ServerID> servers;
 
-/**
- * @brief Get a full map of shard to Server Distribution, using the given Shards
- * list and the current shardToServerMapping.
- * @param shardIds list of shardIds, expected to be in correct alphabetical
- * order.
- */
-auto ShardDistribution::getDistributionForShards() const
-    -> PlanShardToServerMapping {
-  PlanShardToServerMapping res;
-  for (size_t i = 0; i < _shardNames.size(); ++i) {
-    res.shards.emplace(_shardNames[i],
-                       _distributeType->getServersForShardIndex(i));
-  }
-  return res;
+  [[nodiscard]] ServerID const& getLeader() const;
+
+  bool operator==(ResponsibleServerList const& other);
+};
+
+template <class Inspector>
+auto inspect(Inspector& f, ResponsibleServerList& list) {
+  return f.apply(list.servers);
+}
 }

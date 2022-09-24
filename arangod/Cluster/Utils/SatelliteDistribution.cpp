@@ -31,13 +31,19 @@ using namespace arangodb;
 SatelliteDistribution::SatelliteDistribution() {
   _shardToServerMapping.reserve(1);
 }
-Result SatelliteDistribution::shuffle(std::vector<ServerID> availableServers) {
+Result SatelliteDistribution::planShardsOnServers(
+    std::vector<ServerID> availableServers,
+    std::unordered_set<ServerID>& serversPlanned) {
   // Caller needs to ensure we have something to place shards on
   TRI_ASSERT(!availableServers.empty());
   _shardToServerMapping.clear();
   std::random_device rd;
   std::mt19937 g(rd());
   std::shuffle(availableServers.begin(), availableServers.end(), g);
+  for (auto const& s : availableServers) {
+    // Satellites use all!
+    serversPlanned.emplace(s);
+  }
   // We simply place ourselfs on all servers, a random one shall be the leader
   _shardToServerMapping.emplace_back(std::move(availableServers));
   // This can never fail.

@@ -2237,6 +2237,33 @@ RebootTracker const& ClusterInfo::rebootTracker() const noexcept {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief Test if all names (Collection & Views) are available  in the given
+/// database and return the planVersion this can be guaranteed on.
+//////////////////////////////////////////////////////////////////////////////
+
+ResultT<uint64_t> ClusterInfo::checkDataSourceNamesAvailable(
+    std::string_view databaseName, std::vector<std::string> const& names) {
+  READ_LOCKER(readLocker, _planProt.lock);
+  // Load all collections of the Database
+  auto const& colList = _plannedCollections.find(databaseName);
+  if (colList == _plannedCollections.end()) {
+    // If there are no collections in the Database, it is not there.
+    return Result{TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
+  }
+
+  auto const& viewList = _plannedViews.find(databaseName);
+  for (auto const& name : names) {
+    if (colList->second->contains(name) ||
+        (viewList != _plannedViews.end() && viewList->second.contains(name))) {
+      // Either a Collection or a view is known with this name. Disallow it.
+      return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
+                    std::string("duplicate collection name '") + name + "'");
+    }
+  }
+  return {_planVersion};
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief ask about a view
 /// If it is not found in the cache, the cache is reloaded once. The second
 /// argument can be a view ID or a view name (both cluster-wide).

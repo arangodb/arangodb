@@ -59,6 +59,8 @@ struct CollectionMutableProperties {
           SerializedType const& v, MemoryType& result);
     };
   };
+
+  bool operator==(CollectionMutableProperties const&) const;
 };
 
 template<class Inspector>

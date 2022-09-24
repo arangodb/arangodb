@@ -23,7 +23,9 @@
 #pragma once
 
 #include "Cluster/ClusterTypes.h"
+#include "Cluster/Utils/ResponsibleServerList.h"
 
+#include <unordered_set>
 #include <vector>
 
 namespace arangodb {
@@ -36,21 +38,23 @@ struct IShardDistributionFactory {
   virtual ~IShardDistributionFactory() = default;
 
   /**
-   * @brief Reshuffle shard -> [servers] mapping.
-   * This should be used to re-calculate on new healthy servers
-   * it is supposed to be used whenever we could not create shards
-   * due to server errors.
+   * @brief Plan shard -> [servers] mapping.
+   * This has te be called once before we send the request to the agency.
+   * It can be called again to select other servers in case the operation needs
+   * to be retried.
    */
-  virtual auto shuffle(std::vector<ServerID> availableServers) -> Result = 0;
+  [[nodiscard]] virtual auto planShardsOnServers(
+      std::vector<ServerID> availableServers,
+      std::unordered_set<ServerID>& serversPlanned) -> Result = 0;
 
   /**
-   * @brief Get the List of server for the given ShardIndex
+   * @brief Get the List of servers for the given ShardIndex
    * @param index
    */
-  auto getServerForShardIndex(size_t index) const -> std::vector<ServerID>;
+  [[nodiscard]] auto getServersForShardIndex(size_t index) const
+      -> ResponsibleServerList;
 
  protected:
-
-  std::vector<std::vector<ServerID>> _shardToServerMapping{};
+  std::vector<ResponsibleServerList> _shardToServerMapping{};
 };
 }

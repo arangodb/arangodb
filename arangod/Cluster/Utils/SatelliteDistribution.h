@@ -28,7 +28,9 @@ namespace arangodb {
 struct SatelliteDistribution : public IShardDistributionFactory {
   SatelliteDistribution();
 
-  Result shuffle(std::vector<ServerID> availableServers) override;
+  Result planShardsOnServers(
+      std::vector<ServerID> availableServers,
+      std::unordered_set<ServerID>& serversPlanned) override;
 };
 
 }

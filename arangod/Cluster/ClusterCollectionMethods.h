@@ -26,7 +26,7 @@
 #include <vector>
 #include <memory>
 
-class TRI_vocbase_t;
+struct TRI_vocbase_t;
 
 namespace arangodb {
 
@@ -37,7 +37,7 @@ struct PlanCollection;
 struct PlanCollectionEntry;
 class LogicalCollection;
 class ClusterInfo;
-class IShardDistributionFactory;
+struct IShardDistributionFactory;
 
 struct ClusterCollectionMethods {
   // static only class, never initialize

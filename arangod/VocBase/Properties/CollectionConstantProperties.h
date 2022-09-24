@@ -68,6 +68,8 @@ struct CollectionConstantProperties {
     return TRI_col_type_e(type);
   }
 
+  bool operator==(CollectionConstantProperties const&) const;
+
  private:
   static arangodb::velocypack::Builder defaultKeyOptions();
   static std::string defaultShardingStrategy();

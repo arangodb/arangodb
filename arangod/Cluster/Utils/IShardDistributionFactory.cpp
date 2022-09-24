@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IShardDistributionFactory.h"
-#include "Cluster/Utils/PlanShardToServerMappping.h"
 #include "Basics/debugging.h"
 
 using namespace arangodb;
@@ -30,8 +29,8 @@ using namespace arangodb;
  * @brief Get the List of server for the given ShardIndex
  * @param index The index of the shard (in alphabetical order)
  */
-auto IShardDistributionFactory::getServerForShardIndex(size_t index) const
-    -> std::vector<ServerID> {
+auto IShardDistributionFactory::getServersForShardIndex(size_t index) const
+    -> ResponsibleServerList {
   TRI_ASSERT(!_shardToServerMapping.empty());
   TRI_ASSERT(_shardToServerMapping.size() > index);
   return _shardToServerMapping.at(index);

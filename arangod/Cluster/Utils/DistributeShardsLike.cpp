@@ -27,6 +27,57 @@
 using namespace arangodb;
 
 DistributeShardsLike::DistributeShardsLike() {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-};
-Result DistributeShardsLike::shuffle(std::vector<ServerID> availableServers) {};
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+Result DistributeShardsLike::planShardsOnServers(
+    std::vector<ServerID> availableServers,
+    std::unordered_set<ServerID>& serversPlanned) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+#if false
+// Precondition for DistributeShardsLike
+ auto const otherCidString = basics::VelocyPackHelper::getStringValue(
+   info.json, StaticStrings::DistributeShardsLike, StaticStrings::Empty);
+if (!otherCidString.empty() &&
+   conditions.find(otherCidString) == conditions.end()) {
+ // Distribute shards like case.
+ // Precondition: Master collection is not moving while we create this
+ // collection We only need to add these once for every Master, we cannot
+ // add multiple because we will end up with duplicate entries.
+ // NOTE: We do not need to add all collections created here, as they will
+ // not succeed In callbacks if they are moved during creation. If they are
+ // moved after creation was reported success they are under protection by
+ // Supervision.
+ conditions.emplace(otherCidString);
+ if (colToDistributeShardsLike != nullptr) {
+   otherCidShardMap = colToDistributeShardsLike->shardIds();
+ } else {
+   otherCidShardMap =
+       getCollection(databaseName, otherCidString)->shardIds();
+ }
+
+ auto const dslProtoColPath = paths::root()
+                                  ->arango()
+                                  ->plan()
+                                  ->collections()
+                                  ->database(databaseName)
+                                  ->collection(otherCidString);
+ // The distributeShardsLike prototype collection should exist in the
+ // plan...
+ precs.emplace_back(AgencyPrecondition(
+     dslProtoColPath, AgencyPrecondition::Type::EMPTY, false));
+ // ...and should not still be in creation.
+ precs.emplace_back(AgencyPrecondition(dslProtoColPath->isBuilding(),
+                                       AgencyPrecondition::Type::EMPTY,
+                                       true));
+
+ // Any of the shards locked?
+ for (auto const& shard : *otherCidShardMap) {
+   precs.emplace_back(
+       AgencyPrecondition("Supervision/Shards/" + shard.first,
+                          AgencyPrecondition::Type::EMPTY, true));
+ }
+
+#endif

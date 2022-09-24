@@ -32,6 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
+#include "Cluster/ClusterCollectionMethods.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -690,7 +691,7 @@ Collections::create(         // create collection
   if (ServerState::instance()->isCoordinator()) {
     // Here we do have a cluster setup. In that case, we will create many
     // collections in one go (batch-wise).
-    results = ClusterMethods::createCollectionsOnCoordinator(
+    results = ClusterCollectionMethods::createCollectionsOnCoordinator(
         vocbase, collections, false, createWaitsForSyncReplication,
         enforceReplicationFactor, isNewDatabase);
     if (results.fail()) {

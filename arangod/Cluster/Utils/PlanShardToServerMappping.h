@@ -23,16 +23,17 @@
 #pragma once
 
 #include "Cluster/ClusterTypes.h"
+#include "Cluster/Utils/ResponsibleServerList.h"
 #include "Containers/FlatHashMap.h"
 
-
 namespace arangodb {
+
 struct PlanShardToServerMapping {
-  containers::FlatHashMap<ShardID, std::vector<ServerID>> shards;
+  containers::FlatHashMap<ShardID, ResponsibleServerList> shards;
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, PlanShardToServerMapping& mapping) {
   return f.object(mapping).fields(f.field("shards", mapping.shards));
 }
-}
+}  // namespace arangodb

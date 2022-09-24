@@ -47,11 +47,14 @@ struct PlanCollectionEntry {
   // To be replaced by Inspect below, as soon as same-level fields are merged.
   [[nodiscard]] velocypack::Builder toVPackDeprecated() const;
 
+  // Remove the isBuilding flags, call it if we are completed
+  void removeBuildingFlags();
+
  private:
   CollectionConstantProperties _constantProperties{};
   CollectionMutableProperties _mutableProperties{};
   CollectionInternalProperties _internalProperties{};
-  AgencyIsBuildingFlags _buildingFlags{};
+  std::optional<AgencyIsBuildingFlags> _buildingFlags{AgencyIsBuildingFlags{}};
   CollectionIndexesProperties _indexProperties{};
   ShardDistribution _shardDistribution;
 };

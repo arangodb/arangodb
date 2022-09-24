@@ -20,29 +20,31 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ShardDistribution.h"
-#include "PlanShardToServerMappping.h"
+#pragma once
 
-using namespace arangodb;
+#include "Cluster/ClusterTypes.h"
+#include "Cluster/Utils/ResponsibleServerList.h"
+#include "Containers/FlatHashMap.h"
 
-ShardDistribution::ShardDistribution(
-    std::vector<ShardID> shardNames,
-    std::shared_ptr<IShardDistributionFactory> distributeType)
-    : _shardNames{std::move(shardNames)},
-      _distributeType{std::move(distributeType)} {}
+namespace arangodb {
+// TODO: Move Out
+struct ShardError {
 
-/**
- * @brief Get a full map of shard to Server Distribution, using the given Shards
- * list and the current shardToServerMapping.
- * @param shardIds list of shardIds, expected to be in correct alphabetical
- * order.
- */
-auto ShardDistribution::getDistributionForShards() const
-    -> PlanShardToServerMapping {
-  PlanShardToServerMapping res;
-  for (size_t i = 0; i < _shardNames.size(); ++i) {
-    res.shards.emplace(_shardNames[i],
-                       _distributeType->getServersForShardIndex(i));
-  }
-  return res;
+};
+
+
+struct CurrentCollectionEntry {
+  using ResponsibleServersOrError = std::variant<ResponsibleServerList, ShardError>;
+  containers::FlatHashMap<ShardID, ResponsibleServersOrError> shards;
+
+
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, CurrentCollectionEntry::ResponsibleServersOrError& x) {
+  return f.variant(x).unqualified().alternatives(
+      inspection::type<ResponsibleServerList>("string"),
+      inspection::type<ShardError>(error));
+}
+
 }

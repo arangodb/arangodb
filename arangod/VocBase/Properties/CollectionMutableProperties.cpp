@@ -22,10 +22,36 @@
 
 #include "CollectionMutableProperties.h"
 
+#include "Basics/VelocyPackHelper.h"
 #include "Inspection/VPack.h"
 #include <velocypack/Builder.h>
 
 using namespace arangodb;
+
+bool CollectionMutableProperties::operator==(
+    CollectionMutableProperties const& other) const {
+  if (name != other.name) {
+    return false;
+  }
+  if (waitForSync != other.waitForSync) {
+    return false;
+  }
+  if (replicationFactor != other.replicationFactor) {
+    return false;
+  }
+  if (writeConcern != other.writeConcern) {
+    return false;
+  }
+  if (!basics::VelocyPackHelper::equal(computedValues.slice(),
+                                       other.computedValues.slice(), true)) {
+    return false;
+  }
+  if (!basics::VelocyPackHelper::equal(schema.slice(), other.schema.slice(),
+                                       true)) {
+    return false;
+  }
+  return true;
+}
 
 auto CollectionMutableProperties::Transformers::ReplicationSatellite::
     toSerialized(MemoryType v, SerializedType& result)

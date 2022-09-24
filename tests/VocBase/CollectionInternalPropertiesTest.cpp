@@ -75,6 +75,12 @@ class CollectionInternalPropertiesTest : public ::testing::Test {
       return Result{TRI_ERROR_INTERNAL, e.what()};
     }
   }
+
+  static VPackBuilder serialize(CollectionInternalProperties testee) {
+    VPackBuilder result;
+    velocypack::serialize(result, testee);
+    return result;
+  }
 };
 
 TEST_F(CollectionInternalPropertiesTest, test_minimal_user_input) {

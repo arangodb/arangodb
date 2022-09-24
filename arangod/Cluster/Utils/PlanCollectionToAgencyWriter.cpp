@@ -22,14 +22,182 @@
 
 #include "PlanCollectionToAgencyWriter.h"
 #include "Agency/AgencyComm.h"
+#include "Cluster/Utils/PlanCollectionEntry.h"
+
 #include "Agency/AgencyPaths.h"
+/*
 #include "Inspection/VPack.h"
-#include "VocBase/Properties/PlanCollection.h"
 
 #include "Logger/LogMacros.h"
-
+*/
 using namespace arangodb;
 
+namespace {
+// Copy paste from ClusterInfo
+// TODO: make it dry
+inline arangodb::AgencyOperation IncreaseVersion() {
+  return arangodb::AgencyOperation{
+      "Plan/Version", arangodb::AgencySimpleOperationType::INCREMENT_OP};
+}
+
+inline auto pathCollectioInPlan(std::string_view databaseName) {
+  return cluster::paths::root()->arango()->plan()->collections()->database(
+      std::string{databaseName});
+}
+
+}  // namespace
+
+PlanCollectionToAgencyWriter::PlanCollectionToAgencyWriter(
+    std::vector<arangodb::PlanCollectionEntry> collectionPlanEntries,
+    std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>
+        shardDistributionsUsed)
+    : _collectionPlanEntries{std::move(collectionPlanEntries)},
+      _shardDistributionsUsed{std::move(shardDistributionsUsed)} {}
+
+[[nodiscard]] ResultT<AgencyWriteTransaction>
+PlanCollectionToAgencyWriter::prepareStartBuildingTransaction(
+    std::string_view databaseName, uint64_t planVersion,
+    std::vector<std::string> serversAvailable) const {
+  // Distribute Shards onto servers
+  std::unordered_set<ServerID> serversPlanned;
+  for (auto& [_, dist] : _shardDistributionsUsed) {
+    auto res = dist->planShardsOnServers(serversAvailable, serversPlanned);
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  std::vector<AgencyOperation> opers{};
+  std::vector<AgencyPrecondition> precs{};
+  // One per collection, and the update on plan version
+  opers.reserve(_collectionPlanEntries.size() + 1);
+
+  // One per collection, the plan version, and the checks that servers
+  // are not to be cleaned.
+  precs.reserve(_collectionPlanEntries.size() + 3);
+
+  // General Preconditions
+  // TODO: beautify:
+  // create a builder with just the version number for comparison
+  VPackBuilder versionBuilder;
+  versionBuilder.add(VPackValue(planVersion));
+
+  VPackBuilder serversBuilder;
+  {
+    VPackArrayBuilder a(&serversBuilder);
+    for (auto const& i : serversPlanned) {
+      serversBuilder.add(VPackValue(i));
+    }
+  }
+  // * plan version unchanged
+  precs.emplace_back(AgencyPrecondition(
+      "Plan/Version", AgencyPrecondition::Type::VALUE, versionBuilder.slice()));
+  // * not in to be cleaned server list
+  precs.emplace_back(AgencyPrecondition(
+      "Target/ToBeCleanedServers", AgencyPrecondition::Type::INTERSECTION_EMPTY,
+      serversBuilder.slice()));
+  // * not in cleaned server list
+  precs.emplace_back(AgencyPrecondition(
+      "Target/CleanedServers", AgencyPrecondition::Type::INTERSECTION_EMPTY,
+      serversBuilder.slice()));
+
+  // TODO: End of to beatuify
+
+  opers.emplace_back(IncreaseVersion());
+
+  auto const baseCollectionPath = pathCollectioInPlan(databaseName);
+  for (auto const& entry : _collectionPlanEntries) {
+    auto const collectionPath = baseCollectionPath->collection(entry.getCID());
+    // TODO: This is temporary
+    auto builder = std::make_shared<VPackBuilder>(entry.toVPackDeprecated());
+    // velocypack::serialize(*builder, _entry);
+
+    // Create the operation to place our collection here
+    opers.emplace_back(AgencyOperation{
+        collectionPath, AgencyValueOperationType::SET, std::move(builder)});
+
+    // Add a precondition that no other code has occupied the spot.
+    precs.emplace_back(AgencyPrecondition{
+        collectionPath, AgencyPrecondition::Type::EMPTY, true});
+  }
+
+  // TODO: Check ownership
+  return AgencyWriteTransaction{opers, precs};
+}
+
+[[nodiscard]] AgencyWriteTransaction
+PlanCollectionToAgencyWriter::prepareUndoTransaction(
+    std::string_view databaseName) const {
+  std::vector<AgencyOperation> opers{};
+  std::vector<AgencyPrecondition> precs{};
+
+  // One per Collection, and the PlanVersion
+  opers.reserve(_collectionPlanEntries.size() + 1);
+  // One per Collection
+  precs.reserve(_collectionPlanEntries.size());
+
+  opers.push_back(IncreaseVersion());
+
+  auto const baseCollectionPath = pathCollectioInPlan(databaseName);
+  for (auto& entry : _collectionPlanEntries) {
+    auto const collectionPath = baseCollectionPath->collection(entry.getCID());
+
+    // Add a precondition that we are still building
+    precs.emplace_back(AgencyPrecondition{
+        collectionPath->isBuilding(), AgencyPrecondition::Type::EMPTY, false});
+
+    // Remove the entry
+    opers.emplace_back(
+        AgencyOperation{collectionPath, AgencySimpleOperationType::DELETE_OP});
+  }
+
+  // TODO: Check ownership
+  return AgencyWriteTransaction{opers, precs};
+}
+
+[[nodiscard]] AgencyWriteTransaction
+PlanCollectionToAgencyWriter::prepareCompletedTransaction(
+    std::string_view databaseName) {
+  std::vector<AgencyOperation> opers{};
+  std::vector<AgencyPrecondition> precs{};
+
+  // One per Collection, and the PlanVersion
+  opers.reserve(_collectionPlanEntries.size() + 1);
+  // One per Collection
+  precs.reserve(_collectionPlanEntries.size());
+
+  opers.push_back(IncreaseVersion());
+
+  auto const baseCollectionPath = pathCollectioInPlan(databaseName);
+  for (auto& entry : _collectionPlanEntries) {
+    auto const collectionPath = baseCollectionPath->collection(entry.getCID());
+    {
+      // TODO: This is temporary
+      auto builder = std::make_shared<VPackBuilder>(entry.toVPackDeprecated());
+      // velocypack::serialize(*builder, _entry);
+      // Add a precondition that no other code has modified our collection.
+      // Especially no failover has happend
+      precs.emplace_back(AgencyPrecondition{
+          collectionPath, AgencyPrecondition::Type::VALUE, true});
+    }
+    // Get out of is Building mode
+    entry.removeBuildingFlags();
+    {
+      // TODO: This is temporary
+      auto builder = std::make_shared<VPackBuilder>(entry.toVPackDeprecated());
+      // velocypack::serialize(*builder, _entry);
+
+      // Create the operation to place our collection here
+      opers.emplace_back(AgencyOperation{
+          collectionPath, AgencyValueOperationType::SET, std::move(builder)});
+    }
+  }
+
+  // TODO: Check ownership
+  return AgencyWriteTransaction{opers, precs};
+}
+
+/*
 PlanCollectionToAgencyWriter::PlanCollectionToAgencyWriter(
     PlanCollection col, ShardDistribution shardDistribution)
     : _entry(std::move(col), std::move(shardDistribution)) {}
@@ -48,3 +216,4 @@ PlanCollectionToAgencyWriter::PlanCollectionToAgencyWriter(
   return AgencyOperation{collectionPath, AgencyValueOperationType::SET,
                          std::move(builder)};
 }
+*/

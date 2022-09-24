@@ -41,7 +41,21 @@
  *  // Tries to parse the given body and returns a ResulT of your Type under
  *  //test.
  *   ResultT<YourStructToTest> parse(VPackSlice body);
+ *
+ *  // Tries to serialize the given object of your type and returns
+ *   // a filled VPackBuilder
+ *   VPackBuilder serialize(YourStructToTest testee);
  *********************/
+
+#define __HELPER_equalsAfterSerializeParseCircle(testee)               \
+  {                                                                    \
+    auto body = serialize(testee);                                     \
+    auto parsed = parse(body.slice());                                 \
+    ASSERT_TRUE(parsed.ok())                                           \
+        << "Failed to deserialize " << parsed.result().errorMessage(); \
+    EXPECT_EQ(testee, parsed.get())                                    \
+        << "SerializeCircle failed on " << body.toJson();              \
+  }
 
 #define __HELPER_assertParsingThrows(attributeName, value)            \
   {                                                                   \
@@ -88,6 +102,7 @@
       auto testee = parse(body.slice());                                      \
       EXPECT_EQ(testee->attributeName, expected)                              \
           << "Parsing error in " << body.toJson();                            \
+      __HELPER_equalsAfterSerializeParseCircle(testee.get())                  \
     };                                                                        \
     shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, true),  \
                         true);                                                \
@@ -107,6 +122,7 @@
       auto testee = parse(body.slice());                                       \
       EXPECT_EQ(testee->attributeName, expected)                               \
           << "Parsing error in " << body.toJson();                             \
+      __HELPER_equalsAfterSerializeParseCircle(testee.get())                   \
     };                                                                         \
     shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, "test"), \
                         "test");                                               \
@@ -128,6 +144,7 @@
           << "Parsing error in " << body.toJson();                             \
       EXPECT_EQ(testee->attributeName.value(), expected)                       \
           << "Parsing error in " << body.toJson();                             \
+      __HELPER_equalsAfterSerializeParseCircle(testee.get())                   \
     };                                                                         \
     shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, "test"), \
                         "test");                                               \
@@ -153,6 +170,7 @@
       auto testee = parse(body.slice());                                       \
       EXPECT_EQ(testee->valueName, expected)                                   \
           << "Parsing error in " << body.toJson();                             \
+      __HELPER_equalsAfterSerializeParseCircle(testee.get())                   \
     };                                                                         \
     shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 2), 2);  \
     shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 42),     \
@@ -188,6 +206,7 @@
       EXPECT_TRUE(testee.ok())                                                 \
           << "Parsing error in " << body.toJson() << " attribute: '"           \
           << #attributeName << "' should be ignored";                          \
+      __HELPER_equalsAfterSerializeParseCircle(testee.get())                   \
     };                                                                         \
     shouldPass(createMinimumBodyWithOneValue(#attributeName, 2));              \
     shouldPass(createMinimumBodyWithOneValue(#attributeName, -1));             \

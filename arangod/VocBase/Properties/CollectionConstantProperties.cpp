@@ -22,9 +22,54 @@
 
 #include "CollectionConstantProperties.h"
 
+#include "Basics/VelocyPackHelper.h"
+
 #include <velocypack/Builder.h>
 
 using namespace arangodb;
+
+bool CollectionConstantProperties::operator==(
+    CollectionConstantProperties const& other) const {
+  if (type != other.type) {
+    return false;
+  }
+  if (isSystem != other.isSystem) {
+    return false;
+  }
+  if (numberOfShards != other.numberOfShards) {
+    return false;
+  }
+  if (distributeShardsLike != other.distributeShardsLike) {
+    return false;
+  }
+  if (shardingStrategy != other.shardingStrategy) {
+    return false;
+  }
+  if (smartJoinAttribute != other.smartJoinAttribute) {
+    return false;
+  }
+  if (shardKeys != other.shardKeys) {
+    return false;
+  }
+  if (isSmart != other.isSmart) {
+    return false;
+  }
+  if (isDisjoint != other.isDisjoint) {
+    return false;
+  }
+  if (cacheEnabled != other.cacheEnabled) {
+    return false;
+  }
+  if (smartGraphAttribute != other.smartGraphAttribute) {
+    return false;
+  }
+  if (!basics::VelocyPackHelper::equal(keyOptions.slice(),
+                                       other.keyOptions.slice(), true)) {
+    return false;
+  }
+  return true;
+}
+
 VPackBuilder CollectionConstantProperties::defaultKeyOptions() {
   // NOTE: Only required until keyGenerator has it's own inspection
   VPackBuilder defaultEntry;

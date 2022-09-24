@@ -56,10 +56,7 @@ struct CollectionInternalProperties {
   std::underlying_type_t<TRI_vocbase_col_status_e> status =
       TRI_VOC_COL_STATUS_LOADED;
 
-  /* Still needed? Especially in Agency
-  std::underlying_type<TRI_vocbase_col_status_e> status =
-      TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED;
-  */
+  bool operator==(CollectionInternalProperties const&) const = default;
 };
 
 template<class Inspector>

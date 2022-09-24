@@ -27,7 +27,9 @@
 namespace arangodb {
 struct DistributeShardsLike : public IShardDistributionFactory {
   DistributeShardsLike();
-  Result shuffle(std::vector<ServerID> availableServers) override;
+  Result planShardsOnServers(
+      std::vector<ServerID> availableServers,
+      std::unordered_set<ServerID>& serversPlanned) override;
 };
 
 }

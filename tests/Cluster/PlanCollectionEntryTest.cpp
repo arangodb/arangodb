@@ -58,16 +58,21 @@ struct TestShardDistribution : public IShardDistributionFactory {
     }
   }
 
-  auto shuffle() -> void override {
+  auto planShardsOnServers(std::vector<ServerID>,
+                           std::unordered_set<ServerID>& serversPlanned)
+      -> Result override {
     // We increase the index of the shuffle generation.
     ++_shuffleGeneration;
     for (uint64_t s = 0; s < _shardToServerMapping.size(); ++s) {
-      std::vector<ServerID>& servers = _shardToServerMapping[s];
-      for (uint64_t r = 0; r < servers.size(); ++r) {
-        servers[r] = generateServerName(s, r, _shuffleGeneration);
+      ResponsibleServerList& servers = _shardToServerMapping[s];
+      for (uint64_t r = 0; r < servers.servers.size(); ++r) {
+        // We fake all servers here, and do not use the handed in list
+        servers.servers[r] = generateServerName(s, r, _shuffleGeneration);
+        serversPlanned.emplace(servers.servers[r]);
       }
       _shardToServerMapping.emplace_back(std::move(servers));
     }
+    return {};
   }
 
  private:

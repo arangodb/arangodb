@@ -79,6 +79,12 @@ class CollectionMutablePropertiesTest : public ::testing::Test {
       return Result{TRI_ERROR_INTERNAL, e.what()};
     }
   }
+
+  static VPackBuilder serialize(CollectionMutableProperties testee) {
+    VPackBuilder result;
+    velocypack::serialize(result, testee);
+    return result;
+  }
 };
 
 TEST_F(CollectionMutablePropertiesTest, test_requires_some_input) {

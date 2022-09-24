@@ -27,14 +27,17 @@
 namespace arangodb {
 
 struct EvenDistribution : public IShardDistributionFactory {
-  EvenDistribution(uint64_t numberOfShards, uint64_t replicationFactor, std::vector<ServerID> avoidServers);
+  EvenDistribution(uint64_t numberOfShards, uint64_t replicationFactor,
+                   std::vector<ServerID> avoidServers);
 
-  Result shuffle(std::vector<ServerID> availableServers) override;
+  Result planShardsOnServers(
+      std::vector<ServerID> availableServers,
+      std::unordered_set<ServerID>& serversPlanned) override;
 
  private:
   uint64_t _numberOfShards;
   uint64_t _replicationFactor;
-  std::vector<ServerID> _avoidServers
+  std::vector<ServerID> _avoidServers;
 };
 
 }  // namespace arangodb

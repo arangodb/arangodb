@@ -36,7 +36,9 @@ EvenDistribution::EvenDistribution(uint64_t numberOfShards,
       _replicationFactor(replicationFactor),
       _avoidServers{std::move(avoidServers)} {}
 
-Result EvenDistribution::shuffle(std::vector<ServerID> availableServers) {
+Result EvenDistribution::planShardsOnServers(
+    std::vector<ServerID> availableServers,
+    std::unordered_set<ServerID>& serversPlanned) {
   // Caller needs to ensure we have something to place shards on
   TRI_ASSERT(!availableServers.empty());
   if (availableServers.size() < _replicationFactor) {
@@ -98,7 +100,10 @@ Result EvenDistribution::shuffle(std::vector<ServerID> availableServers) {
         } while (candidate == serverIds[0]);  // mop: ignore leader
       }
       serverIds.push_back(candidate);
+      // remember that we use this server
+      serversPlanned.emplace(candidate);
     }
     _shardToServerMapping.emplace_back(std::move(serverIds));
   }
+  return {TRI_ERROR_NO_ERROR};
 }

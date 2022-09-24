@@ -437,6 +437,14 @@ class ClusterInfo final {
   cluster::RebootTracker const& rebootTracker() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Test if all names (Collection & Views) are available  in the given
+  /// database and return the planVersion this can be guaranteed on.
+  //////////////////////////////////////////////////////////////////////////////
+
+  ResultT<uint64_t> checkDataSourceNamesAvailable(
+      std::string_view databaseName, std::vector<std::string> const& names);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief create database in coordinator
   ///
   /// A database is first created in the isBuilding state, and therefore not

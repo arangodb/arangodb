@@ -22,24 +22,42 @@
 
 #pragma once
 
-#include "Cluster/Utils/PlanCollectionEntry.h"
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace arangodb {
 
-class AgencyOperation;
-struct PlanCollection;
-struct ShardDistribution;
+template<typename T>
+class ResultT;
+struct AgencyWriteTransaction;
+struct PlanCollectionEntry;
+struct IShardDistributionFactory;
 
 struct PlanCollectionToAgencyWriter {
-  explicit PlanCollectionToAgencyWriter(PlanCollection col,
-                                        ShardDistribution shardDistribution);
+  PlanCollectionToAgencyWriter(
+      std::vector<arangodb::PlanCollectionEntry> collectionPlanEntries,
+      std::unordered_map<std::string,
+                         std::shared_ptr<IShardDistributionFactory>>
+          shardDistributionsUsed);
 
-  [[nodiscard]] AgencyOperation prepareOperation(
-      std::string const& databaseName) const;
+  [[nodiscard]] AgencyWriteTransaction prepareUndoTransaction(
+      std::string_view databaseName) const;
+
+  [[nodiscard]] ResultT<AgencyWriteTransaction> prepareStartBuildingTransaction(
+      std::string_view databaseName, uint64_t planVersion,
+      std::vector<std::string> serversAvailable) const;
+
+  [[nodiscard]] AgencyWriteTransaction prepareCompletedTransaction(
+      std::string_view databaseName);
 
  private:
-  // Information required for the collection to write
-  PlanCollectionEntry _entry;
+  // Information required for the collections to write
+
+  std::vector<arangodb::PlanCollectionEntry> _collectionPlanEntries;
+  std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>
+      _shardDistributionsUsed;
 };
 
 }  // namespace arangodb

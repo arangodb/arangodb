@@ -57,7 +57,11 @@ VPackBuilder PlanCollectionEntry::toVPackDeprecated() const {
   VPackBuilder internals;
   velocypack::serialize(internals, _internalProperties);
   VPackBuilder flags;
-  velocypack::serialize(flags, _buildingFlags);
+  if (_buildingFlags.has_value()) {
+    velocypack::serialize(flags, _buildingFlags.value());
+  } else {
+    VPackObjectBuilder flagGuard(&flags);
+  }
   auto intFlags =
       VPackCollection::merge(internals.slice(), flags.slice(), false, false);
 
@@ -72,4 +76,9 @@ VPackBuilder PlanCollectionEntry::toVPackDeprecated() const {
       VPackCollection::merge(shards.slice(), indexes.slice(), false, false);
   return VPackCollection::merge(manyFlags.slice(), shardsAndIndexes.slice(),
                                 false, false);
+}
+
+// Remove the isBuilding flags, call it if we are completed
+void PlanCollectionEntry::removeBuildingFlags() {
+  _buildingFlags = std::nullopt;
 }
