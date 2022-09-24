@@ -1,6 +1,8 @@
 v3.10.0 (XXXX-XX-XX)
 --------------------
 
+* Temporary fix for BTS-1006 (hides new view types).
+
 * Fixed SEARCH-399 Rule `restrict-to-single-shard` now works properly with
   inverted index.
 
