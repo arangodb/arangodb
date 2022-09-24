@@ -112,7 +112,7 @@ completely transparent to inspectors. This can be achieved by writing the
 
 ```cpp
   template <class Inspector>
-  bool inspect(Inspector& f, Identifier& x) {
+  auto inspect(Inspector& f, Identifier& x) {
     return f.apply(x.id);
   }
 ```
