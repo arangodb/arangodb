@@ -36,6 +36,8 @@
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 
+#include "search/all_filter.hpp"
+
 using namespace std::string_literals;
 
 namespace arangodb::iresearch {
@@ -56,9 +58,7 @@ Filter& append(Source& parent, [[maybe_unused]] bool hasNestedFields) {
   }
 
 #ifdef USE_ENTERPRISE
-  if constexpr (std::is_same_v<Filter, irs::Not> ||
-                std::is_same_v<Filter, irs::Or> ||
-                std::is_same_v<Filter, irs::And>) {
+  if constexpr (std::is_base_of_v<irs::AllDocsProvider, Filter>) {
     filter->SetProvider([hasNestedFields](irs::score_t boost) {
       auto filter = makeAll(hasNestedFields);
       filter->boost(boost);

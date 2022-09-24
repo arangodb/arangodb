@@ -113,7 +113,7 @@ class NondeterministicExpressionIterator final
                                      ExpressionExecutionContext const& ectx)
       : NondeterministicExpressionIteratorBase{cctx, ectx},
         _it{std::move(it)},
-        _doc{irs::get<irs::document>(it)} {
+        _doc{irs::get<irs::document>(*it)} {
     TRI_ASSERT(_it);
     TRI_ASSERT(_doc);
   }
