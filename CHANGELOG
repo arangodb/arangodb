@@ -1,5 +1,6 @@
 devel
 -----
+* Temporary fix for BTS-1006 (hides new view types).
 
 * Updated arangosync to v2.12.0.
 
