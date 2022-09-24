@@ -70,15 +70,13 @@ struct FilterContext {
 };
 
 struct FilterFactory {
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief determine if the 'node' can be converted into an iresearch filter
-  ///        if 'filter' != nullptr then also append the iresearch filter there
-  ////////////////////////////////////////////////////////////////////////////////
+  // Determine if the 'node' can be converted into an iresearch filter
+  // if 'filter' != nullptr then also append the iresearch filter there
   static arangodb::Result filter(irs::boolean_filter* filter,
                                  QueryContext const& ctx,
                                  FilterContext const& filterCtx,
                                  arangodb::aql::AstNode const& node);
-};  // FilterFactory
+};
 
 struct FilterConstants {
   // Defaults
@@ -90,6 +88,8 @@ struct FilterConstants {
 
 void appendExpression(irs::boolean_filter& filter, aql::AstNode const& node,
                       QueryContext const& ctx, FilterContext const& filterCtx);
+
+irs::filter& appendAll(irs::boolean_filter& filter, bool hasNestedFields);
 
 }  // namespace iresearch
 }  // namespace arangodb

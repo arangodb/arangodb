@@ -128,7 +128,7 @@ constexpr char const* TERMS_FUNC = "TERMS";
 
 irs::filter& appendAll(irs::boolean_filter& filter,
                        [[maybe_unused]] bool hasNestedFields) {
-  return filter.add<irs::filter>(makeAll(hasNestedFields));
+  return filter.add(makeAll(hasNestedFields));
 }
 
 void setupAllTypedFilter(irs::Or& disjunction, std::string&& mangledName,
