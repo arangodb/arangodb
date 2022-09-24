@@ -74,21 +74,91 @@ irs::filter::prepared::ptr compileQuery(ExpressionCompilationContext const& ctx,
                                            hasNested);
 }
 
-// FIXME(gnusi): use correct iterator in nested case
-class NondeterministicExpressionIterator final : public irs::doc_iterator {
+class NondeterministicExpressionIteratorBase : public irs::doc_iterator {
  public:
-  NondeterministicExpressionIterator(irs::sub_reader const& reader,
-                                     irs::byte_type const* stats,
-                                     irs::Order const& order,
-                                     uint64_t docs_count,
-                                     ExpressionCompilationContext const& cctx,
-                                     ExpressionExecutionContext const& ectx,
-                                     irs::score_t boost)
-      : max_doc_(irs::doc_id_t(irs::doc_limits::min() + docs_count - 1)),
-        expr_(cctx.ast, cctx.node.get()),
-        ctx_(ectx) {
-    TRI_ASSERT(ctx_.ctx);
+  virtual ~NondeterministicExpressionIteratorBase() noexcept { destroy(); }
 
+ protected:
+  NondeterministicExpressionIteratorBase(
+      ExpressionCompilationContext const& cctx,
+      ExpressionExecutionContext const& ectx)
+      : _expr{cctx.ast, cctx.node.get()}, _ctx{ectx} {
+    TRI_ASSERT(_ctx.ctx);
+  }
+
+  bool evaluate() {
+    destroy();  // destroy old value before assignment
+    _val = _expr.execute(_ctx.ctx, _destroy);
+    return _val.toBoolean();
+  }
+
+ private:
+  FORCE_INLINE void destroy() noexcept {
+    if (_destroy) {
+      _val.destroy();
+    }
+  }
+
+  aql::Expression _expr;
+  aql::AqlValue _val;
+  ExpressionExecutionContext _ctx;
+  bool _destroy{false};
+};
+
+class NondeterministicExpressionIterator final
+    : public NondeterministicExpressionIteratorBase {
+ public:
+  NondeterministicExpressionIterator(irs::doc_iterator::ptr&& it,
+                                     ExpressionCompilationContext const& cctx,
+                                     ExpressionExecutionContext const& ectx)
+      : NondeterministicExpressionIteratorBase{cctx, ectx},
+        _it{std::move(it)},
+        _doc{irs::get<irs::document>(it)} {
+    TRI_ASSERT(_it);
+    TRI_ASSERT(_doc);
+  }
+
+  bool next() override {
+    while (_it->next()) {
+      if (evaluate()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  irs::attribute* get_mutable(irs::type_info::type_id id) noexcept final {
+    return _it->get_mutable(id);
+  }
+
+  irs::doc_id_t seek(irs::doc_id_t target) override {
+    auto const doc = _it->seek(target);
+
+    if (irs::doc_limits::eof(doc) || evaluate()) {
+      return doc;
+    }
+
+    next();
+    return _doc->value;
+  }
+
+  irs::doc_id_t value() const noexcept override { return _doc->value; }
+
+ private:
+  irs::doc_iterator::ptr _it;
+  irs::document const* _doc;
+};
+
+class NondeterministicExpressionAllIterator final
+    : public NondeterministicExpressionIteratorBase {
+ public:
+  NondeterministicExpressionAllIterator(
+      irs::sub_reader const& reader, irs::byte_type const* stats,
+      irs::Order const& order, uint64_t docs_count,
+      ExpressionCompilationContext const& cctx,
+      ExpressionExecutionContext const& ectx, irs::score_t boost)
+      : NondeterministicExpressionIteratorBase{cctx, ectx},
+        max_doc_{irs::doc_id_t(irs::doc_limits::min() + docs_count - 1)} {
     std::get<irs::cost>(attrs_).reset(max_doc_);
 
     // set scorers
@@ -100,8 +170,6 @@ class NondeterministicExpressionIterator final : public irs::doc_iterator {
                                 *this, boost);
     }
   }
-
-  virtual ~NondeterministicExpressionIterator() noexcept { destroy(); }
 
   bool next() override {
     auto& doc = std::get<irs::document>(attrs_);
@@ -116,10 +184,7 @@ class NondeterministicExpressionIterator final : public irs::doc_iterator {
     auto& doc = std::get<irs::document>(attrs_);
 
     while (target <= max_doc_) {
-      destroy();  // destroy old value before assignment
-      val_ = expr_.execute(ctx_.ctx, destroy_);
-
-      if (val_.toBoolean()) {
+      if (evaluate()) {
         break;
       }
 
@@ -136,31 +201,38 @@ class NondeterministicExpressionIterator final : public irs::doc_iterator {
   }
 
  private:
-  FORCE_INLINE void destroy() noexcept {
-    if (destroy_) {
-      val_.destroy();
-    }
-  }
-
   using attributes = std::tuple<irs::document, irs::cost, irs::score>;
 
   irs::doc_id_t max_doc_;  // largest valid doc_id
   attributes attrs_;
-  aql::Expression expr_;
-  aql::AqlValue val_;
-  ExpressionExecutionContext ctx_;
-  bool destroy_{false};
 };
 
-class NondeterministicExpressionQuery final : public irs::filter::prepared {
+irs::doc_iterator::ptr makeNonDeterministicAllIterator(
+    ExpressionCompilationContext const& cctx,
+    ExpressionExecutionContext const& ectx, irs::sub_reader const& segment,
+    irs::bytes_ref stats, const irs::Order& scorers, irs::score_t boost,
+    [[maybe_unused]] bool hasNested) {
+#ifdef USE_ENTERPRISE
+  if (hasNested) {
+    return irs::memory::make_managed<NondeterministicExpressionIterator>(
+        makeAllIterator(segment, stats, scorers, boost, true), cctx, ectx);
+  }
+#endif
+
+  return irs::memory::make_managed<NondeterministicExpressionAllIterator>(
+      segment, stats.c_str(), scorers, segment.docs_count(), cctx, ectx, boost);
+}
+
+class NondeterministicExpressionQuery final : public irs::filter::prepared,
+                                              private HasNested {
  public:
   explicit NondeterministicExpressionQuery(
       ExpressionCompilationContext const& ctx, irs::bstring&& stats,
       irs::score_t boost, bool hasNested) noexcept
       : irs::filter::prepared{boost},
+        HasNested{hasNested},
         _ctx{ctx},
-        _stats{std::move(stats)},
-        _hasNested{hasNested} {}
+        _stats{std::move(stats)} {}
 
   irs::doc_iterator::ptr execute(
       irs::ExecutionContext const& ctx) const override {
@@ -179,10 +251,8 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared {
     // set expression for troubleshooting purposes
     execCtx->ctx->_expr = _ctx.node.get();
 
-    auto& segment = ctx.segment;
-    return irs::memory::make_managed<NondeterministicExpressionIterator>(
-        segment, _stats.c_str(), ctx.scorers, segment.docs_count(), _ctx,
-        *execCtx, boost());
+    return makeNonDeterministicAllIterator(_ctx, *execCtx, ctx.segment, _stats,
+                                           ctx.scorers, boost(), hasNested());
   }
 
   void visit(irs::sub_reader const&, irs::PreparedStateVisitor&,
@@ -193,19 +263,19 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared {
  private:
   ExpressionCompilationContext _ctx;
   irs::bstring _stats;
-  bool _hasNested;
 };
 
-class DeterministicExpressionQuery final : public irs::filter::prepared {
+class DeterministicExpressionQuery final : public irs::filter::prepared,
+                                           private HasNested {
  public:
   explicit DeterministicExpressionQuery(ExpressionCompilationContext const& ctx,
                                         irs::bstring&& stats,
                                         irs::score_t boost,
                                         bool hasNested) noexcept
       : irs::filter::prepared{boost},
+        HasNested{hasNested},
         _ctx{ctx},
-        _stats{std::move(stats)},
-        _hasNested{hasNested} {}
+        _stats{std::move(stats)} {}
 
   irs::doc_iterator::ptr execute(
       irs::ExecutionContext const& ctx) const override {
@@ -231,7 +301,7 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
 
     if (value.toBoolean()) {
       return makeAllIterator(ctx.segment, _stats, ctx.scorers, boost(),
-                             _hasNested);
+                             hasNested());
     }
 
     return irs::doc_iterator::empty();
@@ -245,7 +315,6 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
  private:
   ExpressionCompilationContext _ctx;
   irs::bstring _stats;
-  bool _hasNested;
 };
 
 }  // namespace
@@ -256,7 +325,7 @@ size_t ExpressionCompilationContext::hash() const noexcept {
 }
 
 ByExpression::ByExpression() noexcept
-    : irs::filter{irs::type<ByExpression>::get()} {}
+    : irs::filter{irs::type<ByExpression>::get()}, HasNested{false} {}
 
 bool ByExpression::equals(irs::filter const& rhs) const noexcept {
   auto const& typed = static_cast<ByExpression const&>(rhs);
@@ -278,15 +347,15 @@ irs::filter::prepared::ptr ByExpression::prepare(
   if (!_ctx.node->isDeterministic()) {
     // non-deterministic expression, make non-deterministic query
     return compileQuery<NondeterministicExpressionQuery>(
-        _ctx, index, order, filter_boost, _hasNested);
+        _ctx, index, order, filter_boost, hasNested());
   }
 
   auto* execCtx = ctx ? irs::get<ExpressionExecutionContext>(*ctx) : nullptr;
 
   if (!execCtx || !static_cast<bool>(*execCtx)) {
     // no execution context provided, make deterministic query
-    return compileQuery<DeterministicExpressionQuery>(_ctx, index, order,
-                                                      filter_boost, _hasNested);
+    return compileQuery<DeterministicExpressionQuery>(
+        _ctx, index, order, filter_boost, hasNested());
   }
 
   // set expression for troubleshooting purposes
@@ -302,7 +371,7 @@ irs::filter::prepared::ptr ByExpression::prepare(
     return irs::filter::prepared::empty();
   }
 
-  return makeAll(_hasNested)->prepare(index, order, filter_boost);
+  return makeAll(hasNested())->prepare(index, order, filter_boost);
 }
 
 }  // namespace iresearch

@@ -74,8 +74,31 @@ struct ExpressionExecutionContext final : irs::attribute {
   ViewExpressionContextBase* ctx{};
 };
 
+class HasNested {
+ public:
+  explicit HasNested([[maybe_unused]] bool hasNested) noexcept
+#ifdef USE_ENTERPRISE
+      : _hasNested{hasNested}
+#endif
+  {
+  }
+
+  bool hasNested() const noexcept {
+#ifdef USE_ENTERPRISE
+    return _hasNested;
+#else
+    return false;
+#endif
+  }
+
+ private:
+#ifdef USE_ENTERPRISE
+  bool _hasNested;
+#endif
+};
+
 // User-side filter based on arbitrary ArangoDB `Expression`.
-class ByExpression final : public irs::filter {
+class ByExpression final : public irs::filter, private HasNested {
  public:
   static const irs::string_ref type_name() noexcept {
     return "arangodb::iresearch::ByExpression";
@@ -105,15 +128,18 @@ class ByExpression final : public irs::filter {
 
   explicit operator bool() const noexcept { return bool(_ctx); }
 
-  bool hasNested() const noexcept { return _hasNested; }
-  void hasNested(bool hasNested) noexcept { _hasNested = hasNested; }
+  using HasNested::hasNested;
+  void hasNested([[maybe_unused]] bool hasNested) noexcept {
+#ifdef USE_ENTERPRISE
+    static_cast<HasNested&>(*this) = HasNested{hasNested};
+#endif
+  }
 
  protected:
   virtual bool equals(irs::filter const& rhs) const noexcept override;
 
  private:
   ExpressionCompilationContext _ctx;
-  bool _hasNested{false};
 };
 
 }  // namespace iresearch
