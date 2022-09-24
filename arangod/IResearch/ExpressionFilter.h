@@ -94,7 +94,6 @@ class HasNested {
  protected:
   ~HasNested() = default;
 
- private:
 #ifdef USE_ENTERPRISE
   bool _hasNested;
 #endif
@@ -134,7 +133,7 @@ class ByExpression final : public irs::filter, public HasNested {
   using HasNested::hasNested;
   void hasNested([[maybe_unused]] bool hasNested) noexcept {
 #ifdef USE_ENTERPRISE
-    static_cast<HasNested&>(*this) = HasNested{hasNested};
+    _hasNested = hasNested;
 #endif
   }
 
