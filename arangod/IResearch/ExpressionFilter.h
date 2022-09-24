@@ -91,6 +91,9 @@ class HasNested {
 #endif
   }
 
+ protected:
+  ~HasNested() = default;
+
  private:
 #ifdef USE_ENTERPRISE
   bool _hasNested;
@@ -98,7 +101,7 @@ class HasNested {
 };
 
 // User-side filter based on arbitrary ArangoDB `Expression`.
-class ByExpression final : public irs::filter, private HasNested {
+class ByExpression final : public irs::filter, public HasNested {
  public:
   static const irs::string_ref type_name() noexcept {
     return "arangodb::iresearch::ByExpression";

@@ -47,7 +47,7 @@ class ByExpression;
 irs::filter::ptr makeAll(bool hasNested);
 
 template<typename Filter, typename Source>
-Filter& append(Source& parent, [[maybe_unused]] bool hasNestedFields) {
+Filter& append(Source& parent, [[maybe_unused]] QueryContext const& ctx) {
   static_assert(!std::is_same_v<Filter, irs::all>);
 
   Filter* filter;
@@ -59,11 +59,12 @@ Filter& append(Source& parent, [[maybe_unused]] bool hasNestedFields) {
 
 #ifdef USE_ENTERPRISE
   if constexpr (std::is_base_of_v<irs::AllDocsProvider, Filter>) {
-    filter->SetProvider([hasNestedFields](irs::score_t boost) {
-      auto filter = makeAll(hasNestedFields);
-      filter->boost(boost);
-      return filter;
-    });
+    filter->SetProvider(
+        [hasNestedFields = ctx.hasNestedFields](irs::score_t boost) {
+          auto filter = makeAll(hasNestedFields);
+          filter->boost(boost);
+          return filter;
+        });
   }
 #endif
 
@@ -71,9 +72,8 @@ Filter& append(Source& parent, [[maybe_unused]] bool hasNestedFields) {
 }
 
 template<typename Filter, typename Source>
-Filter& appendNot(Source& parent, bool hasNestedFields) {
-  return append<Filter>(append<irs::Not>(parent, hasNestedFields),
-                        hasNestedFields);
+Filter& appendNot(Source& parent, QueryContext const& ctx) {
+  return append<Filter>(append<irs::Not>(parent, ctx), ctx);
 }
 
 namespace error {
