@@ -105,7 +105,6 @@ Result fromFuncMinHashMatch(char const* funcName, irs::boolean_filter* filter,
 
 FieldMeta::Analyzer const& FilterContext::fieldAnalyzer(
     std::string_view name, aql::ExpressionContext* ctx) const noexcept {
-  // FIXME(gnusi): refactor this function
   return fieldAnalyzerProvider
              ? (*fieldAnalyzerProvider)(name, ctx, contextAnalyzer)
              : contextAnalyzer;  // Only possible with ArangoSearch view
