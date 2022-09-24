@@ -55,6 +55,7 @@
 #include "gtest/gtest.h"
 
 #include "index/index_reader.hpp"
+#include "search/all_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/column_existence_filter.hpp"
 #include "search/range_filter.hpp"
