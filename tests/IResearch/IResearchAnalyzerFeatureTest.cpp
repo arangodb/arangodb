@@ -1975,7 +1975,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_add_new_records) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      EXPECT_TRUE(collection->truncate(trx, options).ok());
+      bool usedRangeDelete;
+      EXPECT_TRUE(collection->getPhysical()
+                      ->truncate(trx, options, usedRangeDelete)
+                      .ok());
     }
 
     {
