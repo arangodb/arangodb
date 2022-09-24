@@ -115,6 +115,11 @@ FieldMeta::Analyzer const& FilterContext::fieldAnalyzer(
 irs::filter::ptr makeAll(bool) { return std::make_unique<irs::all>(); }
 #endif
 
+irs::filter& appendAll(irs::boolean_filter& filter,
+                       [[maybe_unused]] bool hasNestedFields) {
+  return filter.add(makeAll(hasNestedFields));
+}
+
 }  // namespace arangodb::iresearch
 
 namespace {
@@ -125,11 +130,6 @@ using namespace arangodb::iresearch;
 constexpr char const* GEO_INTERSECT_FUNC = "GEO_INTERSECTS";
 constexpr char const* GEO_DISTANCE_FUNC = "GEO_DISTANCE";
 constexpr char const* TERMS_FUNC = "TERMS";
-
-irs::filter& appendAll(irs::boolean_filter& filter,
-                       [[maybe_unused]] bool hasNestedFields) {
-  return filter.add(makeAll(hasNestedFields));
-}
 
 void setupAllTypedFilter(irs::Or& disjunction, std::string&& mangledName,
                          irs::score_t boost) {
