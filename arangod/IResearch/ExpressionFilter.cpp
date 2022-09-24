@@ -38,15 +38,31 @@
 
 namespace arangodb {
 namespace iresearch {
+
+irs::doc_iterator::ptr makeAllIterator(irs::sub_reader const& segment,
+                                       irs::bytes_ref stats,
+                                       const irs::Order& scorers,
+                                       irs::score_t boost, bool);
+
+#ifndef USE_ENTERPRISE
+irs::doc_iterator::ptr makeAllIterator(irs::sub_reader const& segment,
+                                       irs::bytes_ref stats,
+                                       const irs::Order& scorers,
+                                       irs::score_t boost, bool) {
+  return irs::memory::make_managed<irs::all_iterator>(
+      segment, stats.c_str(), scorers, segment.docs_count(), boost);
+}
+#endif
+
 namespace {
 
 template<typename T>
-inline irs::filter::prepared::ptr compileQuery(
-    ExpressionCompilationContext const& ctx, irs::index_reader const& index,
-    irs::Order const& order, irs::score_t boost) {
-  typedef
-      typename std::enable_if<std::is_base_of<irs::filter::prepared, T>::value,
-                              T>::type type_t;
+irs::filter::prepared::ptr compileQuery(ExpressionCompilationContext const& ctx,
+                                        irs::index_reader const& index,
+                                        irs::Order const& order,
+                                        irs::score_t boost, bool hasNested) {
+  using type_t =
+      typename std::enable_if_t<std::is_base_of_v<irs::filter::prepared, T>, T>;
 
   irs::bstring stats(order.stats_size(), 0);
   auto* stats_buf = const_cast<irs::byte_type*>(stats.data());
@@ -54,7 +70,8 @@ inline irs::filter::prepared::ptr compileQuery(
   // skip filed-level/term-level statistics because there are no fields/terms
   irs::PrepareCollectors(order.buckets(), stats_buf, index);
 
-  return irs::memory::make_managed<type_t>(ctx, std::move(stats), boost);
+  return irs::memory::make_managed<type_t>(ctx, std::move(stats), boost,
+                                           hasNested);
 }
 
 // FIXME(gnusi): use correct iterator in nested case
@@ -139,8 +156,11 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared {
  public:
   explicit NondeterministicExpressionQuery(
       ExpressionCompilationContext const& ctx, irs::bstring&& stats,
-      irs::score_t boost) noexcept
-      : irs::filter::prepared(boost), _ctx(ctx), stats_(std::move(stats)) {}
+      irs::score_t boost, bool hasNested) noexcept
+      : irs::filter::prepared{boost},
+        _ctx{ctx},
+        _stats{std::move(stats)},
+        _hasNested{hasNested} {}
 
   irs::doc_iterator::ptr execute(
       irs::ExecutionContext const& ctx) const override {
@@ -161,7 +181,7 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared {
 
     auto& segment = ctx.segment;
     return irs::memory::make_managed<NondeterministicExpressionIterator>(
-        segment, stats_.c_str(), ctx.scorers, segment.docs_count(), _ctx,
+        segment, _stats.c_str(), ctx.scorers, segment.docs_count(), _ctx,
         *execCtx, boost());
   }
 
@@ -172,15 +192,20 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared {
 
  private:
   ExpressionCompilationContext _ctx;
-  irs::bstring stats_;
+  irs::bstring _stats;
+  bool _hasNested;
 };
 
 class DeterministicExpressionQuery final : public irs::filter::prepared {
  public:
   explicit DeterministicExpressionQuery(ExpressionCompilationContext const& ctx,
                                         irs::bstring&& stats,
-                                        irs::score_t boost) noexcept
-      : irs::filter::prepared(boost), _ctx(ctx), stats_(std::move(stats)) {}
+                                        irs::score_t boost,
+                                        bool hasNested) noexcept
+      : irs::filter::prepared{boost},
+        _ctx{ctx},
+        _stats{std::move(stats)},
+        _hasNested{hasNested} {}
 
   irs::doc_iterator::ptr execute(
       irs::ExecutionContext const& ctx) const override {
@@ -205,10 +230,8 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
     aql::AqlValueGuard guard(value, mustDestroy);
 
     if (value.toBoolean()) {
-      // FIXME(gnusi): use correct iterator in nested case
-      auto& segment = ctx.segment;
-      return irs::memory::make_managed<irs::all_iterator>(
-          segment, stats_.c_str(), ctx.scorers, segment.docs_count(), boost());
+      return makeAllIterator(ctx.segment, _stats, ctx.scorers, boost(),
+                             _hasNested);
     }
 
     return irs::doc_iterator::empty();
@@ -221,7 +244,8 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
 
  private:
   ExpressionCompilationContext _ctx;
-  irs::bstring stats_;
+  irs::bstring _stats;
+  bool _hasNested;
 };
 
 }  // namespace
@@ -253,8 +277,8 @@ irs::filter::prepared::ptr ByExpression::prepare(
 
   if (!_ctx.node->isDeterministic()) {
     // non-deterministic expression, make non-deterministic query
-    return compileQuery<NondeterministicExpressionQuery>(_ctx, index, order,
-                                                         filter_boost);
+    return compileQuery<NondeterministicExpressionQuery>(
+        _ctx, index, order, filter_boost, _hasNested);
   }
 
   auto* execCtx = ctx ? irs::get<ExpressionExecutionContext>(*ctx) : nullptr;
@@ -262,7 +286,7 @@ irs::filter::prepared::ptr ByExpression::prepare(
   if (!execCtx || !static_cast<bool>(*execCtx)) {
     // no execution context provided, make deterministic query
     return compileQuery<DeterministicExpressionQuery>(_ctx, index, order,
-                                                      filter_boost);
+                                                      filter_boost, _hasNested);
   }
 
   // set expression for troubleshooting purposes
