@@ -53,6 +53,14 @@ namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
+struct EmptyAttributeProvider final : irs::attribute_provider {
+  irs::attribute* get_mutable(irs::type_info::type_id) override {
+    return nullptr;
+  }
+};
+
+EmptyAttributeProvider const kEmptyAttributeProvider;
+
 InvertedIndexField const* findMatchingSubField(InvertedIndexField const& root,
                                                std::string_view fieldPath) {
   for (auto const& field : root._fields) {
@@ -431,7 +439,8 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       // sorting case
       appendAll(root, _indexMeta->hasNested());
     }
-    _filter = root.prepare(*_reader, _order, irs::kNoBoost, nullptr);
+    _filter = root.prepare(*_reader, irs::Order::kUnordered, irs::kNoBoost,
+                           &kEmptyAttributeProvider);
     TRI_ASSERT(_filter);
     if (ADB_UNLIKELY(!_filter)) {
       if (condition) {
@@ -447,7 +456,6 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
   }
 
   irs::filter::prepared::ptr _filter;
-  irs::Order _order;
   irs::index_reader const* _reader;
   IResearchSnapshotState::ImmutablePartCache* _immutablePartCache;
   IResearchInvertedIndexMeta const* _indexMeta;
@@ -520,7 +528,11 @@ class IResearchInvertedIndexIterator final
           continue;
         }
         _projections.reset(segmentReader);
-        _itr = segmentReader.mask(_filter->execute(segmentReader));
+
+        _itr = segmentReader.mask(_filter->execute(
+            irs::ExecutionContext{.segment = segmentReader,
+                                  .scorers = irs::Order::kUnordered,
+                                  .ctx = &kEmptyAttributeProvider}));
         _doc = irs::get<irs::document>(*_itr);
       } else {
         if constexpr (produce) {
