@@ -2,10 +2,12 @@ v3.8.8 (XXXX-XX-XX)
 -------------------
 
 * Improve upload and download speed of hotbackup by changing the way we use
-  rclone. Empty hash files are now uploaded or downloaded by pattern, and
-  all other files are done in batches without remote directory listing,
-  which allows rclone to parallelize and avoid a lot of unnecessary network
-  traffic. The format of hotbackups does not change at all.
+  rclone. Empty hash files are now uploaded or downloaded by pattern, and all
+  other files are done in batches without remote directory listing, which allows
+  rclone to parallelize and avoid a lot of unnecessary network traffic. The
+  format of hotbackups does not change at all.
+
+* Updated arangosync to v2.12.0.
 
 * Updated ArangoDB Starter to 0.15.5.
 
@@ -73,8 +75,6 @@ v3.8.8 (XXXX-XX-XX)
   could fail with error "invalid operand to FOR loop, expecting Array".
 
 * Updated OpenSSL to 1.1.1q and OpenLDAP to 2.6.3.
-
-* Updated arangosync to v2.11.0.
 
 * Changed default macOS CI compiler to LLVM clang-12.
 
