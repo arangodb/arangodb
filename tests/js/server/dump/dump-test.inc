@@ -835,10 +835,10 @@
 
       testSearch: function () {
         let collection1 = db._collection("searchCollection");
-        assertNotEqual(null, collection);
+        assertNotEqual(null, collection1);
 
         let collection2 = db._collection("v_collection_documents_0_all");
-        assertNotEqual(null, collection);
+        assertNotEqual(null, collection2);
 
         let index1 = collection1.index("searchIndex");
         assertTrue(index1.includeAllFields);
@@ -859,7 +859,7 @@
         let search2 = db._view("v_collection_documents_0_all");
         assertNotEqual(null, search2);
         assertEqual("v_collection_documents_0_all", search2.name());
-        let props = search2.properties();
+        props = search2.properties();
         assertEqual(props.indexes, [ { 'collection': 'collection_documents_0', 'index': 'collection_documents_0_all' }]);
 
         // After a restore, the Inverted index needs to be rebuilt, therefore
@@ -867,10 +867,10 @@
         // hope that the data will be there in due course:
 
         let res1 = db._query("FOR doc IN " + search1.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
-        assertEqual(5000, res.length);
+        assertEqual(5000, res1.length);
 
         let res2 = db._query("FOR doc IN " + search2.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
-        assertEqual(5000, res.length);
+        assertEqual(5000, res2.length);
 
 
         if (isServer) {
@@ -891,13 +891,13 @@
         let figures2;
         for (let i = 0; i < 100; ++i) {
           require("internal").sleep(0.5);
-          figures1 = collection.getIndexes(true, true)
+          figures1 = collection1.getIndexes(true, true)
             .find(e => e.name === "searchIndex")
             .figures;
-          figures2 = collection.getIndexes(true, true)
+          figures2 = collection2.getIndexes(true, true)
             .find(e => e.name === "collection_documents_0_all")
             .figures;
-          if (figures.numDocs > 5000) {
+          if (figures1.numDocs > 5000 && figures2.numDocs > 5000) {
             break;
           }
         }
@@ -913,7 +913,7 @@
         assertTrue(figures2.numFiles >= 7);
         assertTrue(figures2.indexSize > 0);
 
-        res = db._query("FOR doc IN " + search1.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
+        let res = db._query("FOR doc IN " + search1.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
         assertEqual(2500, res.length);
 
         res = db._query("FOR doc IN " + search1.name() + " SEARCH doc.value >= 5000 RETURN doc").toArray();
