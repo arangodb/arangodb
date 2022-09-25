@@ -1,6 +1,8 @@
 devel
 -----
 
+* Temporary fix for BTS-1006 (hides new view types).
+
 * Updated arangosync to v2.12.0.
 
 * Improve upload and download speed of hotbackup by changing the way we use
