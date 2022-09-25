@@ -451,7 +451,7 @@ template<class Inspector>
 auto inspect(Inspector& f, MyQualifiedVariant& x) {
   namespace insp = arangodb::inspection;
   return f.variant(x).qualified("t", "v").alternatives(
-      insp::type<std::string>("string"),   //
+      insp::inlineType<std::string>(),     //
       insp::type<int>("int"),              //
       insp::type<Struct1>("Struct1"),      //
       insp::type<Struct2>("Struct2"),      //
@@ -481,7 +481,7 @@ auto inspect(Inspector& f, MyUnqualifiedVariant& x) {
   namespace insp = arangodb::inspection;
   return f.variant(x).unqualified().alternatives(
       insp::type<std::string>("string"),   //
-      insp::type<int>("int"),              //
+      insp::inlineType<int>(),             //
       insp::type<Struct1>("Struct1"),      //
       insp::type<Struct2>("Struct2"),      //
       insp::type<std::monostate>("nil"));  //
@@ -494,25 +494,50 @@ auto inspect(Inspector& f, UnqualifiedVariant& x) {
                             f.field("e", x.e));
 }
 
-struct MyEmbeddedVariant : std::variant<Struct1, Struct2, Struct3> {};
+struct MyEmbeddedVariant : std::variant<Struct1, Struct2, Struct3, bool> {};
 
 struct EmbeddedVariant {
   MyEmbeddedVariant a;
   MyEmbeddedVariant b;
   MyEmbeddedVariant c;
+  MyEmbeddedVariant d;
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, MyEmbeddedVariant& x) {
   namespace insp = arangodb::inspection;
   return f.variant(x).embedded("t").alternatives(
-      insp::type<Struct1>("Struct1"),   //
-      insp::type<Struct2>("Struct2"),   //
-      insp::type<Struct3>("Struct3"));  //
+      insp::type<Struct1>("Struct1"),  //
+      insp::type<Struct2>("Struct2"),  //
+      insp::type<Struct3>("Struct3"),  //
+      insp::inlineType<bool>());       //
 }
 
 template<class Inspector>
 auto inspect(Inspector& f, EmbeddedVariant& x) {
+  return f.object(x).fields(f.field("a", x.a), f.field("b", x.b),
+                            f.field("c", x.c), f.field("d", x.d));
+}
+
+struct MyInlineVariant : std::variant<std::string, int, bool> {};
+
+struct InlineVariant {
+  MyInlineVariant a;
+  MyInlineVariant b;
+  MyInlineVariant c;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, MyInlineVariant& x) {
+  namespace insp = arangodb::inspection;
+  return f.variant(x).unqualified().alternatives(
+      insp::inlineType<std::string>(),  //
+      insp::inlineType<int>(),          //
+      insp::inlineType<bool>());        //
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, InlineVariant& x) {
   return f.object(x).fields(f.field("a", x.a), f.field("b", x.b),
                             f.field("c", x.c));
 }
@@ -951,8 +976,7 @@ TEST_F(VPackSaveInspectorTest, store_qualified_variant) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ("string", slice["a"]["t"].stringView());
-  EXPECT_EQ("foobar", slice["a"]["v"].stringView());
+  EXPECT_EQ("foobar", slice["a"].stringView());
 
   EXPECT_EQ("int", slice["b"]["t"].stringView());
   EXPECT_EQ(42, slice["b"]["v"].getInt());
@@ -981,8 +1005,7 @@ TEST_F(VPackSaveInspectorTest, store_unqualified_variant) {
   EXPECT_EQ(1u, slice["a"].length());
   EXPECT_EQ("foobar", slice["a"]["string"].stringView());
 
-  EXPECT_EQ(1u, slice["b"].length());
-  EXPECT_EQ(42, slice["b"]["int"].getInt());
+  EXPECT_EQ(42, slice["b"].getInt());
 
   EXPECT_EQ(1u, slice["c"].length());
   EXPECT_EQ(1, slice["c"]["Struct1"]["v"].getInt());
@@ -992,6 +1015,18 @@ TEST_F(VPackSaveInspectorTest, store_unqualified_variant) {
 
   EXPECT_EQ(1u, slice["e"].length());
   EXPECT_TRUE(slice["e"]["nil"].isEmptyObject());
+}
+
+TEST_F(VPackSaveInspectorTest, store_inline_variant) {
+  InlineVariant d{.a = {"foobar"}, .b = {42}, .c = {true}};
+  auto result = inspector.apply(d);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  EXPECT_EQ("foobar", slice["a"].stringView());
+  EXPECT_EQ(42, slice["b"].getInt());
+  EXPECT_EQ(true, slice["c"].getBoolean());
 }
 
 TEST_F(VPackSaveInspectorTest, store_string_enum) {
@@ -1058,8 +1093,10 @@ TEST_F(VPackSaveInspectorTest,
 }
 
 TEST_F(VPackSaveInspectorTest, store_embedded_variant) {
-  EmbeddedVariant d{
-      .a = {Struct1{1}}, .b = {Struct2{2}}, .c = {Struct3{.a = 1, .b = 2}}};
+  EmbeddedVariant d{.a = {Struct1{1}},
+                    .b = {Struct2{2}},
+                    .c = {Struct3{.a = 1, .b = 2}},
+                    .d = {true}};
   auto result = inspector.apply(d);
   ASSERT_TRUE(result.ok());
 
@@ -1075,6 +1112,8 @@ TEST_F(VPackSaveInspectorTest, store_embedded_variant) {
   EXPECT_EQ("Struct3", slice["c"]["t"].stringView());
   EXPECT_EQ(1, slice["c"]["a"].getInt());
   EXPECT_EQ(2, slice["c"]["b"].getInt());
+
+  EXPECT_EQ(true, slice["d"].getBoolean());
 }
 
 TEST_F(VPackSaveInspectorTest, store_embedded_fields) {
@@ -1937,11 +1976,7 @@ TEST_F(VPackLoadInspectorTest, load_type_with_explicitly_ignored_fields) {
 
 TEST_F(VPackLoadInspectorTest, load_qualified_variant) {
   builder.openObject();
-  builder.add(VPackValue("a"));
-  builder.openObject();
-  builder.add("t", "string");
-  builder.add("v", "foobar");
-  builder.close();
+  builder.add("a", VPackValue("foobar"));
 
   builder.add(VPackValue("b"));
   builder.openObject();
@@ -2015,8 +2050,8 @@ TEST_F(VPackLoadInspectorTest,
   builder.openObject();
   builder.add(VPackValue("a"));
   builder.openObject();
-  builder.add("t", "string");
-  builder.add("v", 42);
+  builder.add("t", "int");
+  builder.add("v", "blubb");
   builder.close();
   builder.close();
   VPackLoadInspector inspector{builder};
@@ -2024,7 +2059,7 @@ TEST_F(VPackLoadInspectorTest,
   QualifiedVariant v;
   auto result = inspector.apply(v);
   ASSERT_FALSE(result.ok());
-  EXPECT_EQ("Expecting type String", result.error());
+  EXPECT_EQ("Expecting type Int", result.error());
   EXPECT_EQ("a.v", result.path());
 }
 
@@ -2086,10 +2121,7 @@ TEST_F(VPackLoadInspectorTest, load_unqualified_variant) {
   builder.add("string", "foobar");
   builder.close();
 
-  builder.add(VPackValue("b"));
-  builder.openObject();
-  builder.add("int", 42);
-  builder.close();
+  builder.add("b", VPackValue(42));
 
   builder.add(VPackValue("c"));
   builder.openObject();
@@ -2181,6 +2213,55 @@ TEST_F(VPackLoadInspectorTest,
   EXPECT_EQ("a", result.path());
 }
 
+TEST_F(VPackLoadInspectorTest,
+       error_when_parsing_unqualified_variant_with_more_than_one_field) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("string", VPackValue("foobar"));
+  builder.add("blubb", VPackValue("blubb"));
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  UnqualifiedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Unqualified variant data has too many fields", result.error());
+  EXPECT_EQ("a", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest, load_inline_variant) {
+  builder.openObject();
+  builder.add("a", "foobar");
+  builder.add("b", 42);
+  builder.add("c", true);
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  InlineVariant v{.a = {0}, .b = {0}, .c = {0}};
+  auto result = inspector.apply(v);
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ("foobar", std::get<std::string>(v.a));
+  EXPECT_EQ(42, std::get<int>(v.b));
+  EXPECT_EQ(true, std::get<bool>(v.c));
+}
+
+TEST_F(VPackLoadInspectorTest, error_unknown_type_when_loading_inline_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  InlineVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Could not find matching inline type", result.error());
+  EXPECT_EQ("a", result.path());
+}
+
 TEST_F(VPackLoadInspectorTest, load_embedded_variant) {
   builder.openObject();
   builder.add(VPackValue("a"));
@@ -2201,16 +2282,19 @@ TEST_F(VPackLoadInspectorTest, load_embedded_variant) {
   builder.add("a", 1);
   builder.add("b", 2);
   builder.close();
+
+  builder.add("d", VPackValue(true));
   builder.close();
   VPackLoadInspector inspector{builder};
 
-  EmbeddedVariant v{.a = {}, .b = {}, .c = {}};
+  EmbeddedVariant v{.a = {}, .b = {}, .c = {}, .d = {}};
   auto result = inspector.apply(v);
-  ASSERT_TRUE(result.ok());
+  ASSERT_TRUE(result.ok()) << result.error();
   EXPECT_EQ(1, std::get<Struct1>(v.a).v);
   EXPECT_EQ(2, std::get<Struct2>(v.b).v);
   EXPECT_EQ(1, std::get<Struct3>(v.c).a);
   EXPECT_EQ(2, std::get<Struct3>(v.c).b);
+  EXPECT_EQ(true, std::get<bool>(v.d));
 }
 
 TEST_F(VPackLoadInspectorTest,
