@@ -281,7 +281,8 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/LogicalDataSource-test.cpp
   VocBase/LogicalView-test.cpp
   VocBase/VersionTest.cpp
-  VPackDeserializer/BasicTests.cpp)
+  VPackDeserializer/BasicTests.cpp
+  ${ADDITIONAL_TEST_SOURCES})
 
 if (USE_FAILURE_TESTS)
   # add test that depends on USE_FAILURE_TESTS
