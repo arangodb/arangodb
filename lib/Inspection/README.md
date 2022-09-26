@@ -112,7 +112,7 @@ completely transparent to inspectors. This can be achieved by writing the
 
 ```cpp
   template <class Inspector>
-  bool inspect(Inspector& f, Identifier& x) {
+  auto inspect(Inspector& f, Identifier& x) {
     return f.apply(x.id);
   }
 ```
@@ -248,6 +248,9 @@ Here the `inspect` function for `Derived` embeds the fields for `Base` and
     field(name: "s")
   }
 ```
+A type that is used in `embedFields` must be inspected as an object, i.e., its
+inspect function must use `object(..).fields(...)`. If this requirement is not
+met the compiler should fail with a static_assert that points that out.
 
 ### Specializing `Access`
 
@@ -325,18 +328,19 @@ auto inspect(Inspector& f, MyVariant& x) {
 }
 ```
 This serializes/deserializes the variant in "qualified form". At the moment
-there are two supported forms - "qualified" and "unqualified". In qualified
-form the variant is serialized as an object with two attributes as specified
-in the `qualified` call. For example:
+there are three supported forms - "qualified", "unqualified" and "embedded".
+
+In "qualified" form the variant is serialized as an object with two attributes
+as specified in the `qualified` call. For example:
 ```
 {
   "type": "string",
   "value: "foobar"
 }
 ```
-In unqualified form the variant is also serialized as an object but only uses
-a single attribute with the type name. Suppose we would write the `inspect`
-function as follows:
+In "unqualified" form the variant is also serialized as an object, but only
+uses a single attribute with the type name. Suppose we would write the
+`inspect` function as follows:
 ```cpp
 template<class Inspector>
 auto inspect(Inspector& f, MyVariant& x) {
@@ -351,6 +355,30 @@ Then the generated result would instead look like this:
 ```
 {
   "string": "foobar"
+}
+```
+The "embedded" form can only be used if all types in the variant are inspected
+as objects. In this form the type indicator field is then serialized on the
+same level as the object fields:
+```cpp
+struct Struct1 { int a; }:
+struct Struct2 { int b; }:
+using MyEmbeddedVariant = std::variant<Struct1, Struct2> {};
+
+template<class Inspector>
+auto inspect(Inspector& f, MyEmbeddedVariant& x) {
+  namespace insp = arangodb::inspection;
+  return f.variant(x).embedded("type").alternatives(
+      insp::type<Struct1>("Struct1"),
+      insp::type<Struct2>("Struct2"));
+}
+```
+If we were to serialize a `Struct2{.a = 42}` this would generate the following
+result:
+```
+{
+  "type": "Struct1",
+  "a": 42
 }
 ```
 
@@ -449,7 +477,7 @@ custom functions:
 
 ```cpp
 template <class Inspector>
-bool inspect(Inspector& f, my_class& x) {
+auto inspect(Inspector& f, my_class& x) {
   if constexpr (Inspector::isLoading) {
     return load(f, x);
   } else {
