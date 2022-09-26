@@ -233,7 +233,11 @@ Result RocksDBTrxMethods::triggerIntermediateCommit() {
 
   createTransaction();
   _readOptions.snapshot = _rocksTransaction->GetSnapshot();
-  TRI_ASSERT(_iteratorReadSnapshot != nullptr);
+  // read snapshots are only required for AQL queries. But since on followers we
+  // do not run AQL queries, we can have intermediate commits _without_ read
+  // snapshots.
+  TRI_ASSERT(_iteratorReadSnapshot != nullptr ||
+             _state->options().isFollowerTransaction);
   TRI_ASSERT(_readOptions.snapshot != nullptr);
   return TRI_ERROR_NO_ERROR;
 }

@@ -27,6 +27,7 @@
 const jsunity = require('jsunity');
 const arangodb = require("@arangodb");
 const _ = require('lodash');
+const internal = require('internal');
 const db = arangodb.db;
 const helper = require('@arangodb/test-helper');
 const lh = require("@arangodb/testutils/replicated-logs-helper");
@@ -80,7 +81,7 @@ const syncShardsWithLogs = function(dbn) {
 };
 
 /**
- * Checks if a given key exists (or not) on all followers.
+ * Checks if a given key exists (or not) on all servers.
  */
 const checkFollowersValue = function (servers, shardId, key, value, isReplication2) {
   let localValues = {};
@@ -354,20 +355,110 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
         }
       }
       assertEqual(found.length, 2, `Dumping combined log entries: ${JSON.stringify(allEntries)}`);
+    }
+  };
+};
+
+/**
+ * This test suite intentionally triggers intermediate commit operations and validates their execution.
+ */
+const replicatedStateIntermediateCommitsSuite = function() {
+  const rc = lh.dbservers.length;
+  const servers = Object.assign({}, ...lh.dbservers.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
+  let collection = null;
+  let shards = null;
+  let shardId = null;
+  let logs = null;
+
+  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+    lh.testHelperFunctions(database, {replicationVersion: "2"});
+
+  return {
+    setUpAll,
+    tearDownAll,
+    setUp: setUpAnd(() => {
+      const props = {numberOfShards: 1, writeConcern: rc, replicationFactor: rc};
+      collection = db._create(collectionName, props);
+      shards = collection.shards();
+      shardId = shards[0];
+      logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+    }),
+    tearDown: tearDownAnd(() => {
+      if (collection !== null) {
+        collection.drop();
+      }
+      collection = null;
+    }),
+
+    testIntermediateCommitsNoLogEntries: function(testName) {
+      db._query(`FOR i in 0..10 INSERT {_key: CONCAT('test', i), name: '${testName}', baz: i} INTO ${collectionName}`);
+      let intermediateCommitEntries = getDocumentEntries(mergeLogs(logs), "IntermediateCommit");
+      assertEqual(intermediateCommitEntries.length, 0);
     },
 
-    testReplicateOperationsIntermediateCommits: function() {
-      const keyName = "ICTest";
-      const opType = "Truncate";
-      let documents = [...Array(10).keys()].map(i => {return {name: keyName, baz: i};});
-      db._query(`FOR i in 0..9 INSERT {_key: CONCAT('test', i), name: '${keyName}', baz: i} INTO ${collectionName}`, {},
-        {intermediateCommitCount: 2});
-      let result = getArrayElements(logs, opType, keyName);
-      //require("internal").print(result);
-      for (const doc of documents) {
-        assertTrue(result.find(entry => entry.baz === doc.baz) !== undefined);
+    testIntermediateCommitsLogEntries: function(testName) {
+      db._query(`FOR i in 0..1000 INSERT {_key: CONCAT('test', i), name: '${testName}', baz: i} INTO ${collectionName}`,
+        {}, {intermediateCommitCount: 1});
+      let intermediateCommitEntries = getDocumentEntries(mergeLogs(logs), "IntermediateCommit");
+      assertEqual(intermediateCommitEntries.length, 2);
+    },
+
+    testIntermediateCommitsFull: function(testName) {
+      db._query(`
+      FOR i in 0..2000 
+      INSERT {_key: CONCAT('test', i), name: '${testName}', value: i} INTO ${collectionName}`,
+        {}, {intermediateCommitCount: 1});
+
+      let keys = [];
+      for (let i = 0; i <= 2000; ++i) {
+        keys.push(`test${i}`);
       }
-    }
+
+      // Wait for the last key to be applied on all servers
+      checkFollowersValue(servers, shardId, `test2000`, 2000, true);
+
+      // Check that all keys are applied on all servers
+      for (let server of Object.values(servers)) {
+        let bulk = sh.getBulkDocuments(server, database, shardId, keys);
+        let keysSet = new Set(keys);
+        for (let doc of bulk) {
+          assertTrue(keysSet.has(doc._key));
+          keysSet.delete(doc._key);
+        }
+      }
+    },
+
+    testIntermediateCommitsPartial: function(testName) {
+      // Intentionally fail the query after an intermediate commit
+      try {
+        db._query(`
+        FOR i in 0..2000
+        FILTER ASSERT(i < 1500, "was erlaube")
+        INSERT {_key: CONCAT('test', i), name: '${testName}', value: i} INTO ${collectionName}`, {},
+          {intermediateCommitCount: 1});
+      } catch (err) {
+        assertEqual(err.errorNum, internal.errors.ERROR_QUERY_USER_ASSERT.code);
+      }
+
+      // AQL operates in batches of 1000 documents. Each batch is processed in a single babies operation.
+      // Intermediate commits are only performed after a babies operation.
+      // The first 1000 documents are part of the first intermediate commit, after which the query fails.
+      let keys = [];
+      for (let i = 0; i <= 2000; ++i) {
+        keys.push(`test${i}`);
+      }
+
+      // Wait for the last key to be applied on all servers
+      checkFollowersValue(servers, shardId, `test999`, 999, true);
+
+      // Check that first batch of keys is applied on all servers
+      for (let server of Object.values(servers)) {
+        let bulk = sh.getBulkDocuments(server, database, shardId, keys);
+        for (let doc of bulk) {
+          assertEqual(doc.value < 1000, doc._key !== undefined);
+        }
+      }
+    },
   };
 };
 
@@ -627,6 +718,7 @@ function replicatedStateFollowerSuiteV2() { return makeTestSuites(replicatedStat
 jsunity.run(replicatedStateDocumentStoreSuiteReplication2);
 jsunity.run(replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2);
 jsunity.run(replicatedStateDocumentStoreSuiteReplication1);
+jsunity.run(replicatedStateIntermediateCommitsSuite);
 jsunity.run(replicatedStateFollowerSuiteV1);
 jsunity.run(replicatedStateFollowerSuiteV2);
 jsunity.run(replicatedStateRecoverySuite);
