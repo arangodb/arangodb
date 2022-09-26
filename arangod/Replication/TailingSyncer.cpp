@@ -970,8 +970,9 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
   if (properties.isObject()) {
     // do a partial update only for views of type "arangosearch".
     // for "search-alias" views, always do a full update.
-    bool partialUpdate = properties.get("type").stringView() !=
-                         iresearch::StaticStrings::ViewSearchAliasType;
+    bool const partialUpdate =
+        properties.get(StaticStrings::DataSourceType).stringView() !=
+        iresearch::StaticStrings::ViewSearchAliasType;
     return view->properties(properties, false, partialUpdate);
   }
 
