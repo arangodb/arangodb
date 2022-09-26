@@ -1614,6 +1614,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
              resultBuilder.slice().length() == value.length());
 
   std::shared_ptr<VPackBufferUInt8> resDocs = resultBuilder.steal();
+  auto intermediateCommit = futures::makeFuture(res);
   if (res.ok()) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
     StorageEngine& engine = collection->vocbase()
@@ -1654,15 +1655,20 @@ Future<OperationResult> transaction::Methods::insertLocal(
     }
 
     // execute a deferred intermediate commit, if required.
-    res = performIntermediateCommitIfRequired(collection->id());
+    intermediateCommit = performIntermediateCommitIfRequired(collection->id());
   }
 
   if (options.silent && errorCounter.empty()) {
     // We needed the results, but do not want to report:
     resDocs->clear();
   }
-  return futures::makeFuture(OperationResult(std::move(res), std::move(resDocs),
-                                             options, std::move(errorCounter)));
+
+  return std::move(intermediateCommit)
+      .thenValue([options, errorCounter = std::move(errorCounter),
+                  resDocs = std::move(resDocs)](auto&& res) mutable {
+        return OperationResult(res, std::move(resDocs), options,
+                               std::move(errorCounter));
+      });
 }
 
 Result transaction::Methods::insertLocalHelper(
@@ -1970,6 +1976,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
              resultBuilder.slice().length() == newValue.length());
 
   auto resDocs = resultBuilder.steal();
+  auto intermediateCommit = futures::makeFuture(res);
   if (res.ok()) {
     if (replicationType == ReplicationType::LEADER &&
         (!followers->empty() ||
@@ -2004,7 +2011,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     }
 
     // execute a deferred intermediate commit, if required.
-    res = performIntermediateCommitIfRequired(collection->id());
+    intermediateCommit = performIntermediateCommitIfRequired(collection->id());
   }
 
   if (options.silent && errorCounter.empty()) {
@@ -2012,8 +2019,12 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     resDocs->clear();
   }
 
-  return OperationResult(std::move(res), std::move(resDocs), std::move(options),
-                         std::move(errorCounter));
+  return std::move(intermediateCommit)
+      .thenValue([options, errorCounter = std::move(errorCounter),
+                  resDocs = std::move(resDocs)](auto&& res) mutable {
+        return OperationResult(res, std::move(resDocs), options,
+                               std::move(errorCounter));
+      });
 }
 
 Result transaction::Methods::modifyLocalHelper(
@@ -2309,6 +2320,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
              resultBuilder.slice().length() == value.length());
 
   auto resDocs = resultBuilder.steal();
+  auto intermediateCommit = futures::makeFuture(res);
   if (res.ok()) {
     auto replicationVersion = collection->replicationVersion();
     if (replicationType == ReplicationType::LEADER &&
@@ -2340,7 +2352,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
     }
 
     // execute a deferred intermediate commit, if required.
-    res = performIntermediateCommitIfRequired(collection->id());
+    intermediateCommit = performIntermediateCommitIfRequired(collection->id());
   }
 
   if (options.silent && errorCounter.empty()) {
@@ -2348,8 +2360,12 @@ Future<OperationResult> transaction::Methods::removeLocal(
     resDocs->clear();
   }
 
-  return OperationResult(std::move(res), std::move(resDocs), std::move(options),
-                         std::move(errorCounter));
+  return std::move(intermediateCommit)
+      .thenValue([options, errorCounter = std::move(errorCounter),
+                  resDocs = std::move(resDocs)](auto&& res) mutable {
+        return OperationResult(res, std::move(resDocs), options,
+                               std::move(errorCounter));
+      });
 }
 
 Result transaction::Methods::removeLocalHelper(
@@ -3139,9 +3155,8 @@ Future<Result> Methods::replicateOperations(
   // we continue with the operation, since most likely, the follower was
   // simply dropped in the meantime.
   // In any case, we drop the follower here (just in case).
-  auto cb =
-      [=, this](
-          std::vector<futures::Try<network::Response>>&& responses) -> Result {
+  auto cb = [=, this](std::vector<futures::Try<network::Response>>&& responses)
+      -> futures::Future<Result> {
     auto duration = std::chrono::steady_clock::now() - startTimeReplication;
     auto& replMetrics =
         vocbase().server().getFeature<ReplicationMetricsFeature>();
@@ -3258,14 +3273,12 @@ Future<Result> Methods::replicateOperations(
       }
     }
 
-    Result res;
     if (didRefuse) {  // case (1), caller may abort this transaction
-      res.reset(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+      return Result{TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
     } else {
       // execute a deferred intermediate commit, if required.
-      res = performIntermediateCommitIfRequired(collection->id());
+      return performIntermediateCommitIfRequired(collection->id());
     }
-    return res;
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
@@ -3576,9 +3589,9 @@ futures::Future<OperationResult> Methods::countInternal(
 }
 
 // perform a (deferred) intermediate commit if required
-Result Methods::performIntermediateCommitIfRequired(DataSourceId collectionId) {
-  // TODO return future
-  return _state->performIntermediateCommitIfRequired(collectionId).get();
+futures::Future<Result> Methods::performIntermediateCommitIfRequired(
+    DataSourceId collectionId) {
+  return _state->performIntermediateCommitIfRequired(collectionId);
 }
 
 Result Methods::triggerIntermediateCommit() {
