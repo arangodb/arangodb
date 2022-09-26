@@ -35,6 +35,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchCommon.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Replication/InitialSyncer.h"
@@ -903,15 +904,15 @@ Result TailingSyncer::truncateCollection(
 /// based on the VelocyPack provided
 Result TailingSyncer::changeView(VPackSlice const& slice) {
   if (!slice.isObject()) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  "view marker slice is no object");
+    return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+            "view marker slice is no object"};
   }
 
   VPackSlice data = slice.get("data");
 
   if (!data.isObject()) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  "data slice is no object in view change marker");
+    return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+            "data slice is no object in view change marker"};
   }
 
   VPackSlice d = data.get("deleted");
@@ -923,16 +924,16 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
     if (isDeleted) {
       // not a problem if a view that is going to be deleted anyway
       // does not exist on follower
-      return Result();
+      return {};
     }
-    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
   }
 
   VPackSlice guidSlice = data.get(StaticStrings::DataSourceGuid);
 
   if (!guidSlice.isString() || guidSlice.getStringLength() == 0) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  "no guid specified for view");
+    return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+            "no guid specified for view"};
   }
 
   auto view = vocbase->lookupView(guidSlice.copyString());
@@ -941,10 +942,10 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
     if (isDeleted) {
       // not a problem if a collection that is going to be deleted anyway
       // does not exist on follower
-      return Result();
+      return {};
     }
 
-    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
   VPackSlice nameSlice = data.get(StaticStrings::DataSourceName);
@@ -957,11 +958,21 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
     }
   }
 
+  // nowadays, the view properties are contained directly inside the
+  // "data" attribute. it is unclear if this was ever different, but
+  // we used to check inside the "properties" attribute as well. so
+  // let's check both
   VPackSlice properties = data.get("properties");
+  if (!properties.isObject()) {
+    properties = data;
+  }
 
   if (properties.isObject()) {
-    // always a full-update
-    return view->properties(properties, false, false);
+    // do a partial update only for views of type "arangosearch".
+    // for "search-alias" views, always do a full update.
+    bool partialUpdate = properties.get("type").stringView() !=
+                         iresearch::StaticStrings::ViewSearchAliasType;
+    return view->properties(properties, false, partialUpdate);
   }
 
   return {};
