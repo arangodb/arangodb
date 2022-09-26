@@ -96,6 +96,16 @@ struct Options {
   /// the server id and reboot id are intentionally empty in single server
   /// case.
   arangodb::cluster::RebootTracker::PeerState origin;
+
+  /// @brief determines whether this transaction requires the changes to be
+  /// replicated. E.g., transactions that _must not_ be replicated are those
+  /// that create/drop indexes.
+  /// This option should be set to false for read-only transactions, because
+  /// it allows us to use a the more efficient SimpleRocksDBTransactionState
+  /// on the leader.
+  ///
+  /// This option is only relevant for replication 2.0
+  bool requiresReplication = true;
 };
 
 struct AllowImplicitCollectionsSwitcher {

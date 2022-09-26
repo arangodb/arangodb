@@ -43,6 +43,17 @@
 #include "Logger/LoggerStream.h"
 
 namespace arangodb {
+namespace replication2 {
+class LogId;
+namespace replicated_state::agency {
+struct Target;
+struct Plan;
+}  // namespace replicated_state::agency
+namespace agency {
+struct LogPlanSpecification;
+struct LogTarget;
+}  // namespace agency
+}  // namespace replication2
 namespace consensus {
 class Node;
 
@@ -171,6 +182,27 @@ struct Job {
   static std::string findNonblockedCommonHealthyInSyncFollower(
       Node const& snap, std::string const& db, std::string const& col,
       std::string const& shrd, std::string const& serverToAvoid);
+
+  static std::string findOtherHealthyParticipant(
+      Node const& snap, std::string const& db, replication2::LogId stateId,
+      std::string const& serverToAvoid);
+
+  static bool isServerLeaderForState(Node const& snap, std::string const& db,
+                                     replication2::LogId stateId,
+                                     std::string const& server);
+  static bool isServerParticipantForState(Node const& snap,
+                                          std::string const& db,
+                                          replication2::LogId stateId,
+                                          std::string const& server);
+
+  static std::optional<replication2::replicated_state::agency::Target>
+  readStateTarget(Node const& snap, std::string const& db,
+                  replication2::LogId stateId);
+  static std::optional<replication2::replicated_state::agency::Plan>
+  readStatePlan(Node const& snap, std::string const& db,
+                replication2::LogId stateId);
+  static std::optional<replication2::agency::LogPlanSpecification> readLogPlan(
+      Node const& snap, std::string const& db, replication2::LogId logId);
 
   /// @brief The shard must be one of a collection without
   /// `distributeShardsLike`. This returns all servers which
