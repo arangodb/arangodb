@@ -93,7 +93,7 @@ class CalculationTransactionState final : public arangodb::TransactionState {
   }
 
   Result triggerIntermediateCommit() {
-    TRI_ASSERT(false); // should never be called!
+    TRI_ASSERT(false);  // should never be called!
     return {};
   }
 
