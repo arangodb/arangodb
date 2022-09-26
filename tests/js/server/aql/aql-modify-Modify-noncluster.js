@@ -35,16 +35,102 @@ const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const getModifyQueryResults = helper.getModifyQueryResults;
 const getModifyQueryResultsRaw = helper.getModifyQueryResultsRaw;
-const sanitizeStats = helper.sanitizeStats;
 const isEqual = helper.isEqual;
 const assertQueryError = helper.assertQueryError;
 const errors = internal.errors;
+
+let sanitizeStats = function (stats) {
+  // remove these members from the stats because they don't matter
+  // for the comparisons
+  delete stats.scannedFull;
+  delete stats.scannedIndex;
+  delete stats.cursorsCreated;
+  delete stats.cursorsRearmed;
+  delete stats.cacheHits;
+  delete stats.cacheMisses;
+  delete stats.filtered;
+  delete stats.executionTime;
+  delete stats.httpRequests;
+  delete stats.fullCount;
+  delete stats.peakMemoryUsage;
+  delete stats.intermediateCommits;
+  return stats;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 
+////////////////////////////////////////////////////////////////////////////////
+
+var validateDocuments = function (documents, isEdgeCollection) {
+  var index;
+  for (index in documents) {
+    if (documents.hasOwnProperty(index)) {
+      assertTrue(documents[index].hasOwnProperty('_id'));
+      assertTrue(documents[index].hasOwnProperty('_key'));
+      assertTrue(documents[index].hasOwnProperty('_rev'));
+      if (isEdgeCollection) {
+        assertTrue(documents[index].hasOwnProperty('_from'));
+        assertTrue(documents[index].hasOwnProperty('_to'));
+      }
+    }
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the documents inserted are equal on the db.
+////////////////////////////////////////////////////////////////////////////////
+
+var validateModifyResultInsert = function (collection, results) {
+  var index;
+  for (index in results) {
+    if (results.hasOwnProperty(index)){
+      assertTrue(isEqual(collection.document(results[index]._key), results[index]));
+    }
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the documents reported deleted are really gone
+////////////////////////////////////////////////////////////////////////////////
+
+var validateDeleteGone = function (collection, results) {
+  var index;
+  for (index in results) {
+    if (results.hasOwnProperty(index)){
+      try {
+        assertEqual(collection.document(results[index]._key), {});
+        fail();
+      }
+      catch (e) {
+        assertTrue(e.errorNum !== undefined, "unexpected error format while calling checking for deleted entry");
+        assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, e.errorNum, "unexpected error code (" + e.errorMessage + "): ");
+      }
+    }
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert flat document database to an associative array with the keys
+///        as object
+////////////////////////////////////////////////////////////////////////////////
+
+var wrapToKeys = function (results) {
+  var keyArray = {};
+  var index;
+  for (index in results) {
+    if (results.hasOwnProperty(index)){
+      keyArray[results[index]._key] = results[index];
+    }    
+  }
+  return keyArray;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlModifySuite () {
+  var errors = internal.errors;
   const cn1 = "UnitTestsAhuacatlModify1";
   const cn2 = "UnitTestsAhuacatlModify2";
   const cn3 = "UnitTestsAhuacatlModify3";
@@ -52,6 +138,10 @@ function ahuacatlModifySuite () {
   let c1, c2, c3;
 
   return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
       db._drop(cn1);
@@ -69,6 +159,10 @@ function ahuacatlModifySuite () {
       }
       c3.insert(docs);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       db._drop(cn1);
@@ -774,5 +868,12 @@ function ahuacatlModifySuite () {
   };
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the test suites
+////////////////////////////////////////////////////////////////////////////////
+
 jsunity.run(ahuacatlModifySuite);
+
 return jsunity.done();
+
