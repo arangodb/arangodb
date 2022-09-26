@@ -414,6 +414,25 @@ namespace arangodb {
 
 namespace tests {
 
+void checkQuery(TRI_vocbase_t& vocbase,
+                std::span<const velocypack::Slice> expected,
+                std::string const& query) {
+  auto result = tests::executeQuery(vocbase, query);
+  SCOPED_TRACE(testing::Message("Error: ") << result.errorMessage());
+  ASSERT_TRUE(result.result.ok());
+  auto slice = result.data->slice();
+  EXPECT_TRUE(slice.isArray());
+  size_t i = 0;
+
+  for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+    auto const resolved = itr.value().resolveExternals();
+    EXPECT_TRUE(i < expected.size());
+    EXPECT_EQUAL_SLICES(expected[i++], resolved);
+  }
+
+  EXPECT_EQ(i, expected.size());
+}
+
 std::string const AnalyzerCollectionName("_analyzers");
 
 std::string testResourceDir;
