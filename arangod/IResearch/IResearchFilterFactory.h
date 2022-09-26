@@ -88,7 +88,5 @@ struct FilterConstants {
 void appendExpression(irs::boolean_filter& filter, aql::AstNode const& node,
                       QueryContext const& ctx, FilterContext const& filterCtx);
 
-irs::filter& appendAll(irs::boolean_filter& filter, bool hasNestedFields);
-
 }  // namespace iresearch
 }  // namespace arangodb

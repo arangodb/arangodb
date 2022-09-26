@@ -33,9 +33,10 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
-#include "IResearchDocument.h"
-#include "IResearchFilterFactory.h"
-#include "IResearchIdentityAnalyzer.h"
+#include "IResearch/IResearchDocument.h"
+#include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchFilterFactoryCommon.hpp"
+#include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchMetricStats.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Transaction/Methods.h"
@@ -362,10 +363,10 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
         irs::boolean_filter* conditionJoiner{nullptr};
 
         if (condition->type == aql::NODE_TYPE_OPERATOR_NARY_AND) {
-          conditionJoiner = &root.add<irs::And>();
+          conditionJoiner = &append<irs::And>(root, queryCtx);
         } else {
           TRI_ASSERT((condition->type == aql::NODE_TYPE_OPERATOR_NARY_OR));
-          conditionJoiner = &root.add<irs::Or>();
+          conditionJoiner = &append<irs::Or>(root, queryCtx);
         }
 
         auto emptyAnalyzer = makeEmptyAnalyzer();
@@ -374,7 +375,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
             .contextAnalyzer = emptyAnalyzer,
             .fields = _indexMeta->_fields};
 
-        auto& mutable_root = conditionJoiner->add<irs::Or>();
+        auto& mutable_root = append<irs::Or>(*conditionJoiner, queryCtx);
         auto rv =
             FilterFactory::filter(&mutable_root, queryCtx, filterCtx,
                                   *condition->getMember(_mutableConditionIdx));
@@ -388,7 +389,8 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
                            builder.toJson(), "': ", rv.errorMessage()));
         }
 
-        auto& proxy_filter = conditionJoiner->add<irs::proxy_filter>();
+        auto& proxy_filter =
+            append<irs::proxy_filter>(*conditionJoiner, queryCtx);
         auto existingCache = _immutablePartCache->find(condition);
         if (existingCache != _immutablePartCache->end()) {
           proxy_filter.set_cache(existingCache->second);
@@ -418,7 +420,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
           for (int64_t i = 0; i < conditionSize; ++i) {
             if (i != _mutableConditionIdx) {
-              auto& tmp_root = immutableRoot->add<irs::Or>();
+              auto& tmp_root = append<irs::Or>(*immutableRoot, queryCtx);
               auto rv = FilterFactory::filter(&tmp_root, queryCtx, filterCtx,
                                               *condition->getMember(i));
               if (rv.fail()) {
@@ -437,7 +439,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       }
     } else {
       // sorting case
-      appendAll(root, _indexMeta->hasNested());
+      append<irs::all>(root, queryCtx);
     }
     _filter = root.prepare(*_reader, irs::Order::kUnordered, irs::kNoBoost,
                            &kEmptyAttributeProvider);

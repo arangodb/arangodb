@@ -47,28 +47,40 @@ class ByExpression;
 irs::filter::ptr makeAll(bool hasNested);
 
 template<typename Filter, typename Source>
-Filter& append(Source& parent, [[maybe_unused]] QueryContext const& ctx) {
-  static_assert(!std::is_same_v<Filter, irs::all>);
-
-  Filter* filter;
-  if constexpr (std::is_same_v<irs::Not, Source>) {
-    filter = &parent.template filter<Filter>();
+auto& append(Source& parent, [[maybe_unused]] QueryContext const& ctx) {
+  if constexpr (std::is_same_v<Filter, irs::all>) {
+    static_assert(std::is_base_of_v<irs::boolean_filter, Source>);
+#ifdef USE_ENTERPRISE
+    return parent.add(makeAll(ctx.hasNestedFields));
+#else
+    return parent.template add<irs::all>();
+#endif
   } else {
-    filter = &parent.template add<Filter>();
-  }
+    auto* filter = [&] {
+      if constexpr (std::is_same_v<irs::Not, Source>) {
+        return &parent.template filter<Filter>();
+      } else {
+        return &parent.template add<Filter>();
+      }
+    }();
 
 #ifdef USE_ENTERPRISE
-  if constexpr (std::is_base_of_v<irs::AllDocsProvider, Filter>) {
-    filter->SetProvider(
-        [hasNestedFields = ctx.hasNestedFields](irs::score_t boost) {
-          auto filter = makeAll(hasNestedFields);
-          filter->boost(boost);
-          return filter;
-        });
-  }
+    if constexpr (std::is_base_of_v<irs::AllDocsProvider, Filter>) {
+      filter->SetProvider(
+          [hasNestedFields = ctx.hasNestedFields](irs::score_t boost) {
+            auto filter = makeAll(hasNestedFields);
+            filter->boost(boost);
+            return filter;
+          });
+    }
+
+    if constexpr (std::is_same_v<Filter, ByExpression>) {
+      filter->hasNested(ctx.hasNestedFields);
+    }
 #endif
 
-  return *filter;
+    return *filter;
+  }
 }
 
 template<typename Filter, typename Source>

@@ -114,11 +114,6 @@ FieldMeta::Analyzer const& FilterContext::fieldAnalyzer(
 irs::filter::ptr makeAll(bool) { return std::make_unique<irs::all>(); }
 #endif
 
-irs::filter& appendAll(irs::boolean_filter& filter,
-                       [[maybe_unused]] bool hasNestedFields) {
-  return filter.add(makeAll(hasNestedFields));
-}
-
 }  // namespace arangodb::iresearch
 
 namespace {
@@ -130,9 +125,9 @@ constexpr char const* GEO_INTERSECT_FUNC = "GEO_INTERSECTS";
 constexpr char const* GEO_DISTANCE_FUNC = "GEO_DISTANCE";
 constexpr char const* TERMS_FUNC = "TERMS";
 
-void setupAllTypedFilter(irs::Or& disjunction, std::string&& mangledName,
-                         irs::score_t boost) {
-  auto& allDocs = disjunction.add<irs::by_column_existence>();
+void setupAllTypedFilter(irs::Or& disjunction, QueryContext const& ctx,
+                         std::string&& mangledName, irs::score_t boost) {
+  auto& allDocs = append<irs::by_column_existence>(disjunction, ctx);
   *allDocs.mutable_field() = std::move(mangledName);
   allDocs.boost(boost);
   auto* opts = allDocs.mutable_options();
@@ -498,45 +493,49 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
   }
 }
 
-using TypeRangeHandler = void (*)(irs::Or& rangeOr, std::string_view name,
-                                  irs::score_t boost);
+using TypeRangeHandler = void (*)(irs::Or& rangeOr, QueryContext const& ctx,
+                                  std::string_view name, irs::score_t boost);
 
 std::array<TypeRangeHandler, 4> constexpr kTypeRangeHandlers{
-    {[](irs::Or& rangeOr, std::string_view name, irs::score_t boost) {
+    {[](irs::Or& rangeOr, QueryContext const& ctx, std::string_view name,
+        irs::score_t boost) {
        std::string nullName{name};  // intentional copy as mangling is inplace!
        kludge::mangleNull(nullName);
-       setupAllTypedFilter(rangeOr, std::move(nullName), boost);
+       setupAllTypedFilter(rangeOr, ctx, std::move(nullName), boost);
      },
-     [](irs::Or& rangeOr, std::string_view name, irs::score_t boost) {
+     [](irs::Or& rangeOr, QueryContext const& ctx, std::string_view name,
+        irs::score_t boost) {
        std::string boolName{name};  // intentional copy as mangling is inplace!
        kludge::mangleBool(boolName);
-       setupAllTypedFilter(rangeOr, std::move(boolName), boost);
+       setupAllTypedFilter(rangeOr, ctx, std::move(boolName), boost);
      },
-     [](irs::Or& rangeOr, std::string_view name, irs::score_t boost) {
+     [](irs::Or& rangeOr, QueryContext const& ctx, std::string_view name,
+        irs::score_t boost) {
        std::string numberName{
            name};  // intentional copy as mangling is inplace!
        kludge::mangleNumeric(numberName);
-       setupAllTypedFilter(rangeOr, std::move(numberName), boost);
+       setupAllTypedFilter(rangeOr, ctx, std::move(numberName), boost);
      },
-     [](irs::Or& rangeOr, std::string_view name, irs::score_t boost) {
+     [](irs::Or& rangeOr, QueryContext const& ctx, std::string_view name,
+        irs::score_t boost) {
        std::string stringName{
            name};  // intentional copy as mangling is inplace!
        kludge::mangleString(stringName);
-       setupAllTypedFilter(rangeOr, std::move(stringName), boost);
+       setupAllTypedFilter(rangeOr, ctx, std::move(stringName), boost);
      }}};
 
 template<bool Min, size_t typeIdx>
-void setupTypeOrderRangeFilter(irs::Or& rangeOr, std::string_view name,
-                               irs::score_t boost) {
+void setupTypeOrderRangeFilter(irs::Or& rangeOr, QueryContext const& ctx,
+                               std::string_view name, irs::score_t boost) {
   static_assert(typeIdx < kTypeRangeHandlers.size());
   static_assert(typeIdx >= 0);
   if constexpr (Min) {
     for (size_t i = typeIdx + 1; i < kTypeRangeHandlers.size(); ++i) {
-      kTypeRangeHandlers[i](rangeOr, name, boost);
+      kTypeRangeHandlers[i](rangeOr, ctx, name, boost);
     }
   } else if constexpr (typeIdx > 0) {
     for (size_t i = 0; i < typeIdx; ++i) {
-      kTypeRangeHandlers[i](rangeOr, name, boost);
+      kTypeRangeHandlers[i](rangeOr, ctx, name, boost);
     }
   }
 }
@@ -555,8 +554,9 @@ Result byRange(irs::boolean_filter* filter, std::string name,
           range = &append<irs::by_range>(*filter, ctx);
         } else {
           auto& rangeOr = append<irs::Or>(*filter, ctx);
-          range = &rangeOr.add<irs::by_range>();
-          setupTypeOrderRangeFilter<Min, 0>(rangeOr, name, filterCtx.boost);
+          range = &append<irs::by_range>(rangeOr, ctx);
+          setupTypeOrderRangeFilter<Min, 0>(rangeOr, ctx, name,
+                                            filterCtx.boost);
         }
         kludge::mangleNull(name);
         *range->mutable_field() = std::move(name);
@@ -576,8 +576,9 @@ Result byRange(irs::boolean_filter* filter, std::string name,
           range = &append<irs::by_range>(*filter, ctx);
         } else {
           auto& rangeOr = append<irs::Or>(*filter, ctx);
-          range = &rangeOr.add<irs::by_range>();
-          setupTypeOrderRangeFilter<Min, 1>(rangeOr, name, filterCtx.boost);
+          range = &append<irs::by_range>(rangeOr, ctx);
+          setupTypeOrderRangeFilter<Min, 1>(rangeOr, ctx, name,
+                                            filterCtx.boost);
         }
         TRI_ASSERT(range);
         kludge::mangleBool(name);
@@ -606,8 +607,9 @@ Result byRange(irs::boolean_filter* filter, std::string name,
           range = &append<irs::by_granular_range>(*filter, ctx);
         } else {
           auto& rangeOr = append<irs::Or>(*filter, ctx);
-          range = &rangeOr.add<irs::by_granular_range>();
-          setupTypeOrderRangeFilter<Min, 2>(rangeOr, name, filterCtx.boost);
+          range = &append<irs::by_granular_range>(rangeOr, ctx);
+          setupTypeOrderRangeFilter<Min, 2>(rangeOr, ctx, name,
+                                            filterCtx.boost);
         }
         irs::numeric_token_stream stream;
 
@@ -642,8 +644,9 @@ Result byRange(irs::boolean_filter* filter, std::string name,
           range = &append<irs::by_range>(*filter, ctx);
         } else {
           auto& rangeOr = append<irs::Or>(*filter, ctx);
-          range = &rangeOr.add<irs::by_range>();
-          setupTypeOrderRangeFilter<Min, 3>(rangeOr, name, filterCtx.boost);
+          range = &append<irs::by_range>(rangeOr, ctx);
+          setupTypeOrderRangeFilter<Min, 3>(rangeOr, ctx, name,
+                                            filterCtx.boost);
         }
         kludge::mangleField(name, ctx.isOldMangling, analyzer);
         *range->mutable_field() = std::move(name);
@@ -1033,7 +1036,7 @@ Result fromRange(irs::boolean_filter* filter, QueryContext const& ctx,
 
   // ranges are always true
   if (filter) {
-    appendAll(*filter, ctx.hasNestedFields).boost(filterCtx.boost);
+    append<irs::all>(*filter, ctx).boost(filterCtx.boost);
   }
 
   return {};
@@ -1076,7 +1079,7 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
 
     if (arraySize < static_cast<size_t>(atLeastCount)) {
       if (filter) {
-        filter->add<irs::empty>();
+        append<irs::empty>(*filter, ctx);
       }
       return {Result(), aql::NODE_TYPE_ROOT};
     } else if (static_cast<size_t>(atLeastCount) == arraySize) {
@@ -1094,21 +1097,21 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
     switch (quantifierType) {
       case aql::Quantifier::Type::kAny:
         if (filter) {
-          filter->add<irs::empty>();
+          append<irs::empty>(*filter, ctx);
         }
         break;
       case aql::Quantifier::Type::kAll:
       case aql::Quantifier::Type::kNone:
         if (filter) {
-          appendAll(*filter, ctx.hasNestedFields);
+          append<irs::all>(*filter, ctx);
         }
         break;
       case aql::Quantifier::Type::kAtLeast:
         if (filter) {
           if (atLeastCount > 0) {
-            filter->add<irs::empty>();
+            append<irs::empty>(*filter, ctx);
           } else {
-            appendAll(*filter, ctx.hasNestedFields);
+            append<irs::all>(*filter, ctx);
           }
         }
         break;
@@ -1607,9 +1610,9 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
     if (filter) {
       if (aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type) {
         // not in [] means 'all'
-        appendAll(*filter, ctx.hasNestedFields).boost(filterCtx.boost);
+        append<irs::all>(*filter, ctx).boost(filterCtx.boost);
       } else {
-        filter->add<irs::empty>();
+        append<irs::empty>(*filter, ctx);
       }
     }
 
@@ -1764,9 +1767,9 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
       if (!n) {
         if (aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type) {
           // not in [] means 'all'
-          appendAll(*filter, ctx.hasNestedFields).boost(filterCtx.boost);
+          append<irs::all>(*filter, ctx).boost(filterCtx.boost);
         } else {
-          filter->add<irs::empty>();
+          append<irs::empty>(*filter, ctx);
         }
 
         // nothing to do more
@@ -4028,10 +4031,9 @@ namespace iresearch {
 
 void appendExpression(irs::boolean_filter& filter, aql::AstNode const& node,
                       QueryContext const& ctx, FilterContext const& filterCtx) {
-  auto& exprFilter = filter.add<ByExpression>();
+  auto& exprFilter = append<ByExpression>(filter, ctx);
   exprFilter.init(*ctx.ast, const_cast<aql::AstNode&>(node));
   exprFilter.boost(filterCtx.boost);
-  exprFilter.hasNested(ctx.hasNestedFields);
 }
 
 Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
@@ -4071,9 +4073,9 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
   }
 
   if (result) {
-    appendAll(*filter, ctx.hasNestedFields).boost(filterCtx.boost);
+    append<irs::all>(*filter, ctx).boost(filterCtx.boost);
   } else {
-    filter->add<irs::empty>();
+    append<irs::empty>(*filter, ctx);
   }
 
   return {};
