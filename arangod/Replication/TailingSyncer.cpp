@@ -963,7 +963,7 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
   bool const partialUpdate =
       data.get(StaticStrings::DataSourceType).stringView() !=
       iresearch::StaticStrings::ViewSearchAliasType;
-  return view->properties(properties, false, partialUpdate);
+  return view->properties(data, false, partialUpdate);
 }
 
 /// @brief apply a single marker from the continuous log
