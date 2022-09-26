@@ -176,6 +176,22 @@ struct VPackSaveInspector
            | [&]() { return endObject(); };
   }
 
+  template<class... Ts, class... Args>
+  auto processVariant(typename Base::template EmbeddedVariant<Ts...>& variant,
+                      Args&&... args) {
+    return beginObject()  //
+           |
+           [&]() {
+             return std::visit(
+                 overload{[this, &variant, &args](typename Args::Type& v) {
+                   return applyFields(this->field(variant.typeField, args.tag),
+                                      this->embedFields(v));
+                 }...},
+                 variant.value);
+           }  //
+           | [&]() { return endObject(); };
+  }
+
   velocypack::Builder& builder() noexcept { return _builder; }
 
   template<class U>
