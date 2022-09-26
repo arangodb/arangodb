@@ -29,9 +29,9 @@ auto Loading::run() -> std::optional<std::unique_ptr<State>> {
   }
 
   LOG_PREGEL_CONDUCTOR("3a255", DEBUG) << "Telling workers to load the data";
-  auto loadGraph = _loadGraph().get();
-  if (loadGraph.fail()) {
-    LOG_PREGEL_CONDUCTOR("8e855", ERR) << loadGraph.errorMessage();
+  auto graphLoaded = _loadGraph().get();
+  if (graphLoaded.fail()) {
+    LOG_PREGEL_CONDUCTOR("8e855", ERR) << graphLoaded.errorMessage();
     return std::make_unique<Canceled>(conductor);
   }
 
@@ -60,6 +60,7 @@ auto Loading::_createWorkers() -> futures::Future<Result> {
 auto Loading::_loadGraph() -> futures::Future<Result> {
   return conductor._workers.loadGraph(LoadGraph{})
       .thenValue([&](auto results) -> Result {
+        auto graphLoaded = GraphLoaded{};
         for (auto const& result : results) {
           if (result.get().fail()) {
             return Result{result.get().errorNumber(),
@@ -68,10 +69,10 @@ auto Loading::_loadGraph() -> futures::Future<Result> {
                                       "{}\n",
                                       result.get().errorMessage())};
           }
-          auto graphLoaded = result.get().get();
-          conductor._totalVerticesCount += graphLoaded.vertexCount;
-          conductor._totalEdgesCount += graphLoaded.edgeCount;
+          graphLoaded.add(result.get().get());
         }
+        conductor._totalVerticesCount += graphLoaded.vertexCount;
+        conductor._totalEdgesCount += graphLoaded.edgeCount;
         return Result{};
       });
 }
