@@ -26,7 +26,7 @@
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 
-auto arangodb::velocypack::vpackFromJsonString(char const *c) -> SharedSlice {
+auto arangodb::velocypack::vpackFromJsonString(char const* c) -> SharedSlice {
   VPackOptions options;
   options.checkAttributeUniqueness = true;
   VPackParser parser(&options);
@@ -35,7 +35,7 @@ auto arangodb::velocypack::vpackFromJsonString(char const *c) -> SharedSlice {
   return std::move(parser.builder()).sharedSlice();
 }
 
-auto arangodb::velocypack::operator"" _vpack(const char *json, size_t)
+auto arangodb::velocypack::operator"" _vpack(const char* json, size_t)
     -> SharedSlice {
   return vpackFromJsonString(json);
 }
