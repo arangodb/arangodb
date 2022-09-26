@@ -1119,7 +1119,7 @@ function BaseTestConfig () {
               }
             ]
           });
-          assertEqual(1, view.properties().indexes.length);
+          assertEqual([{ collection: cn, index: idxName }], view.properties().indexes);
         },
         function () { },
         function () { },
@@ -1127,9 +1127,7 @@ function BaseTestConfig () {
           let view = db._view('UnitTestsSyncSearchAlias');
           assertNotNull(view);
           assertEqual("search-alias", view.type());
-          let props = view.properties();
-          assertEqual(1, props.indexes.length);
-          assertEqual({ collection: cn, index: idxName }, props.indexes[0]);
+          assertEqual([{ collection: cn, index: idxName }], view.properties().indexes);
         },
         {}
       );
@@ -1144,7 +1142,7 @@ function BaseTestConfig () {
           let c = db._create(cn);
           let idx = c.ensureIndex({ type: "inverted", name: idxName, fields: [ { name: "value" } ] });
           let view = db._createView('UnitTestsSyncSearchAlias', 'search-alias', {});
-          assertEqual(0, view.properties().indexes.length);
+          assertEqual([], view.properties().indexes);
         },
         function () { 
           let view = db._view('UnitTestsSyncSearchAlias');
@@ -1156,7 +1154,7 @@ function BaseTestConfig () {
               }
             ]
           });
-          assertEqual(1, view.properties().indexes.length);
+          assertEqual([{ collection: cn, index: idxName }], view.properties().indexes);
         },
         function () { },
         function (state) {
