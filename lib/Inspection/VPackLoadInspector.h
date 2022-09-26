@@ -275,7 +275,12 @@ struct VPackLoadInspectorImpl
       }
       auto [type, value] = *it;
       TRI_ASSERT(type.isString());
-      return parseType(type.stringView(), value, variant.value,
+      auto parser = [this, value = value](auto& v) {
+        auto inspector = make(value);
+        return inspector.apply(v);
+      };
+      auto fieldName = [](auto const& arg) { return arg.tag; };
+      return parseType(type.stringView(), parser, fieldName, variant.value,
                        std::forward<Args>(args)...);
     };
     return beginObject()                     //
@@ -286,30 +291,46 @@ struct VPackLoadInspectorImpl
   template<class... Ts, class... Args>
   auto processVariant(typename Base::template QualifiedVariant<Ts...>& variant,
                       Args&&... args) {
+    std::string_view type;
     auto loadVariant = [&]() -> Status {
-      auto type = slice()[variant.typeField];
-      if (!type.isString()) {
-        if (type.isNone()) {
-          return {"Variant type field \"" + std::string(variant.typeField) +
-                  "\" is missing"};
-        } else {
-          return {"Variant type field \"" + std::string(variant.typeField) +
-                  "\" must be a string"};
-        }
-      }
-
       auto value = slice()[variant.valueField];
       if (value.isNone()) {
         return {"Variant value field \"" + std::string(variant.valueField) +
                 "\" is missing"};
       }
 
-      return parseType(type.stringView(), value, variant.value,
+      auto parser = [this, value](auto& v) {
+        auto inspector = make(value);
+        return inspector.apply(v);
+      };
+      auto fieldName = [&variant](auto const& arg) {
+        return variant.valueField;
+      };
+      return parseType(type, parser, fieldName, variant.value,
                        std::forward<Args>(args)...);
     };
-    return beginObject()                     //
-           | loadVariant                     //
-           | [&]() { return endObject(); };  //
+    return beginObject()                                               //
+           | [&]() { return loadTypeField(variant.typeField, type); }  //
+           | loadVariant                                               //
+           | [&]() { return endObject(); };                            //
+  }
+
+  template<class... Ts, class... Args>
+  auto processVariant(typename Base::template EmbeddedVariant<Ts...>& variant,
+                      Args&&... args) {
+    std::string_view type;
+    auto loadVariant = [&]() -> Status {
+      auto parser = [this, &variant](auto& v) {
+        return applyFields(this->ignoreField(variant.typeField),
+                           this->embedFields(v));
+      };
+      return parseType(type, parser, std::monostate{}, variant.value,
+                       std::forward<Args>(args)...);
+    };
+    return beginObject()                                               //
+           | [&]() { return loadTypeField(variant.typeField, type); }  //
+           | loadVariant                                               //
+           | [&]() { return endObject(); };                            //
   }
 
   template<class Invariant, class T>
@@ -348,6 +369,20 @@ struct VPackLoadInspectorImpl
     } else {
       return VPackLoadInspectorImpl(slice, _options);
     }
+  }
+
+  Status loadTypeField(std::string_view fieldName, std::string_view& result) {
+    auto v = slice()[fieldName];
+    if (!v.isString()) {
+      if (v.isNone()) {
+        return {"Variant type field \"" + std::string(fieldName) +
+                "\" is missing"};
+      }
+      return {"Variant type field \"" + std::string(fieldName) +
+              "\" must be a string"};
+    }
+    result = v.stringView();
+    return {};
   }
 
   Status::Success parseFields(FieldsMap&) { return Status::Success{}; }
@@ -433,24 +468,26 @@ struct VPackLoadInspectorImpl
     return res;
   }
 
-  template<class... Ts, class Arg, class... Args>
-  Status parseType(std::string_view tag, velocypack::Slice value,
+  template<class ParseFn, class FieldNameFn, class... Ts, class Arg,
+           class... Args>
+  Status parseType(std::string_view tag, ParseFn parse, FieldNameFn fieldName,
                    std::variant<Ts...>& result, Arg&& arg, Args&&... args) {
     if (arg.tag == tag) {
-      auto inspector = make(value);
       typename Arg::Type v;
-      auto res = inspector.apply(v);
+      auto res = parse(v);
       if (res.ok()) {
         result = v;
-        return res;
-      } else {
-        return {std::move(res), "value", Status::AttributeTag{}};
+      } else if constexpr (!std::is_same_v<FieldNameFn, std::monostate>) {
+        return {std::move(res), fieldName(arg), Status::AttributeTag{}};
       }
+      return res;
     } else {
       if constexpr (sizeof...(Args) == 0) {
         return {"Found invalid type: " + std::string(tag)};
       } else {
-        return parseType(tag, value, result, std::forward<Args>(args)...);
+        return parseType(tag, std::forward<ParseFn>(parse),
+                         std::forward<FieldNameFn>(fieldName), result,
+                         std::forward<Args>(args)...);
       }
     }
   }
