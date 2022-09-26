@@ -38,6 +38,7 @@
 
 #include "Inspection/Access.h"
 #include "Inspection/Format.h"
+#include "Inspection/Types.h"
 #include "Inspection/VPack.h"
 #include "Inspection/VPackLoadInspector.h"
 #include "Inspection/VPackSaveInspector.h"
@@ -519,27 +520,30 @@ auto inspect(Inspector& f, EmbeddedVariant& x) {
                             f.field("c", x.c), f.field("d", x.d));
 }
 
-struct MyInlineVariant : std::variant<std::string, int, bool> {};
+struct MyInlineVariant
+    : std::variant<std::string, Struct1, std::vector<int>, TypedInt> {};
 
 struct InlineVariant {
   MyInlineVariant a;
   MyInlineVariant b;
   MyInlineVariant c;
+  MyInlineVariant d;
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, MyInlineVariant& x) {
   namespace insp = arangodb::inspection;
   return f.variant(x).unqualified().alternatives(
-      insp::inlineType<std::string>(),  //
-      insp::inlineType<int>(),          //
-      insp::inlineType<bool>());        //
+      insp::inlineType<std::string>(),       //
+      insp::inlineType<Struct1>(),           //
+      insp::inlineType<std::vector<int>>(),  //
+      insp::inlineType<TypedInt>());         //
 }
 
 template<class Inspector>
 auto inspect(Inspector& f, InlineVariant& x) {
   return f.object(x).fields(f.field("a", x.a), f.field("b", x.b),
-                            f.field("c", x.c));
+                            f.field("c", x.c), f.field("d", x.d));
 }
 
 enum class MyStringEnum {
@@ -1018,15 +1022,28 @@ TEST_F(VPackSaveInspectorTest, store_unqualified_variant) {
 }
 
 TEST_F(VPackSaveInspectorTest, store_inline_variant) {
-  InlineVariant d{.a = {"foobar"}, .b = {42}, .c = {true}};
+  InlineVariant d{.a = {"foobar"},
+                  .b = {Struct1{.v = 42}},
+                  .c = {std::vector<int>{1, 2, 3}},
+                  .d = {TypedInt{.value = 123}}};
   auto result = inspector.apply(d);
   ASSERT_TRUE(result.ok());
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
   EXPECT_EQ("foobar", slice["a"].stringView());
-  EXPECT_EQ(42, slice["b"].getInt());
-  EXPECT_EQ(true, slice["c"].getBoolean());
+
+  EXPECT_TRUE(slice["b"].isObject());
+  EXPECT_EQ(1u, slice["b"].length());
+  EXPECT_EQ(42, slice["b"]["v"].getInt());
+
+  EXPECT_TRUE(slice["c"].isArray());
+  EXPECT_EQ(3u, slice["c"].length());
+  EXPECT_EQ(1, slice["c"][0].getInt());
+  EXPECT_EQ(2, slice["c"][1].getInt());
+  EXPECT_EQ(3, slice["c"][2].getInt());
+
+  EXPECT_EQ(123, slice["d"].getInt());
 }
 
 TEST_F(VPackSaveInspectorTest, store_string_enum) {
@@ -2234,17 +2251,31 @@ TEST_F(VPackLoadInspectorTest,
 TEST_F(VPackLoadInspectorTest, load_inline_variant) {
   builder.openObject();
   builder.add("a", "foobar");
-  builder.add("b", 42);
-  builder.add("c", true);
+
+  builder.add(VPackValue("b"));
+  builder.openObject();
+  builder.add("v", VPackValue(42));
+  builder.close();
+
+  builder.add(VPackValue("c"));
+  builder.openArray();
+  builder.add(VPackValue(1));
+  builder.add(VPackValue(2));
+  builder.add(VPackValue(3));
+  builder.close();
+
+  builder.add("d", VPackValue(123));
+
   builder.close();
   VPackLoadInspector inspector{builder};
 
-  InlineVariant v{.a = {0}, .b = {0}, .c = {0}};
+  InlineVariant v{.a = {""}, .b = {""}, .c = {""}, .d{""}};
   auto result = inspector.apply(v);
-  ASSERT_TRUE(result.ok());
+  ASSERT_TRUE(result.ok()) << result.error();
   EXPECT_EQ("foobar", std::get<std::string>(v.a));
-  EXPECT_EQ(42, std::get<int>(v.b));
-  EXPECT_EQ(true, std::get<bool>(v.c));
+  EXPECT_EQ(42, std::get<Struct1>(v.b).v);
+  EXPECT_EQ(std::vector<int>({1, 2, 3}), std::get<std::vector<int>>(v.c));
+  EXPECT_EQ(123, std::get<TypedInt>(v.d).value);
 }
 
 TEST_F(VPackLoadInspectorTest, error_unknown_type_when_loading_inline_variant) {
@@ -2607,17 +2638,17 @@ TEST_F(VPackInspectionTest, formatter) {
 
   auto def = fmt::format("My name is {}", d);
   EXPECT_EQ(def,
-            "My name is {\"i\":42,\"d\":123.456,\"b\":true,\"s\":\"cheese\"}");
+            "My name is {\"b\":true,\"d\":123.456,\"i\":42,\"s\":\"cheese\"}");
 
   auto notPretty = fmt::format("My name is {:u}", d);
   EXPECT_EQ(notPretty,
-            "My name is {\"i\":42,\"d\":123.456,\"b\":true,\"s\":\"cheese\"}");
+            "My name is {\"b\":true,\"d\":123.456,\"i\":42,\"s\":\"cheese\"}");
   EXPECT_EQ(def, notPretty);
 
   auto pretty = fmt::format("My name is {:p}", d);
   EXPECT_EQ(pretty,
-            "My name is {\n  \"i\" : 42,\n  \"d\" : 123.456,\n  \"b\" : "
-            "true,\n  \"s\" : \"cheese\"\n}");
+            "My name is {\n  \"b\" : true,\n  \"d\" : 123.456,\n  \"i\" : "
+            "42,\n  \"s\" : \"cheese\"\n}");
 }
 
 TEST_F(VPackInspectionTest, deserialize) {
