@@ -32,6 +32,7 @@ ServerID const& ResponsibleServerList::getLeader() const {
   return servers.front();
 }
 
-bool ResponsibleServerList::operator==(ResponsibleServerList const& other) {
+bool ResponsibleServerList::operator==(
+    ResponsibleServerList const& other) const {
   return ClusterHelpers::compareServerLists(servers, other.servers);
 }

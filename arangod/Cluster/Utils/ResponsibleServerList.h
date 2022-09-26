@@ -30,7 +30,7 @@ struct ResponsibleServerList {
 
   [[nodiscard]] ServerID const& getLeader() const;
 
-  bool operator==(ResponsibleServerList const& other);
+  bool operator==(ResponsibleServerList const& other) const;
 };
 
 template <class Inspector>

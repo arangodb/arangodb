@@ -942,6 +942,7 @@ set(LIB_ARANGO_CLUSTER_METHODS_SOURCES
   Cluster/ClusterCollectionMethods.cpp
   Cluster/ClusterTtlMethods.cpp
   Cluster/Utils/DistributeShardsLike.cpp
+  Cluster/Utils/CurrentCollectionEntry.cpp
   Cluster/Utils/EvenDistribution.cpp
   Cluster/Utils/SatelliteDistribution.cpp
   Cluster/Utils/IShardDistributionFactory.cpp
