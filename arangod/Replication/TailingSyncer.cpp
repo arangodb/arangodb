@@ -958,25 +958,12 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
     }
   }
 
-  // nowadays, the view properties are contained directly inside the
-  // "data" attribute. it is unclear if this was ever different, but
-  // we used to check inside the "properties" attribute as well. so
-  // let's check both
-  VPackSlice properties = data.get("properties");
-  if (!properties.isObject()) {
-    properties = data;
-  }
-
-  if (properties.isObject()) {
-    // do a partial update only for views of type "arangosearch".
-    // for "search-alias" views, always do a full update.
-    bool const partialUpdate =
-        properties.get(StaticStrings::DataSourceType).stringView() !=
-        iresearch::StaticStrings::ViewSearchAliasType;
-    return view->properties(properties, false, partialUpdate);
-  }
-
-  return {};
+  // do a partial update only for views of type "arangosearch".
+  // for "search-alias" views, always do a full update.
+  bool const partialUpdate =
+      data.get(StaticStrings::DataSourceType).stringView() !=
+      iresearch::StaticStrings::ViewSearchAliasType;
+  return view->properties(data, false, partialUpdate);
 }
 
 /// @brief apply a single marker from the continuous log
