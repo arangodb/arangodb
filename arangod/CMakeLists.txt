@@ -395,15 +395,6 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   RestHandler/RestPrototypeStateHandler.cpp
 )
 
-set (LIB_ARANGO_METRICS_SOURCES
-  Metrics/Builder.cpp
-  Metrics/Counter.cpp
-  Metrics/Metric.cpp
-  Metrics/MetricsFeature.cpp
-  Metrics/ClusterMetricsFeature.cpp
-  RestHandler/RestMetricsHandler.cpp
-  )
-
 set(LIB_ARANGO_V8SERVER_SOURCES
   Cluster/v8-cluster.cpp
   Transaction/V8Context.cpp
@@ -689,10 +680,6 @@ add_library(arango_replication2 STATIC
   ${LIB_ARANGO_REPLICATION2_SOURCES}
 )
 
-add_library(arango_metrics STATIC
-  ${LIB_ARANGO_METRICS_SOURCES}
-)
-
 add_library(arangoserver STATIC
   ${LIB_ARANGOSERVER_SOURCES}
 )
@@ -776,12 +763,6 @@ target_link_libraries(arango_indexes date_interface)
 target_link_libraries(arango_iresearch arango_indexes)
 target_link_libraries(arango_iresearch arango_cluster_engine)
 target_link_libraries(arango_iresearch arango_vocbase)
-
-target_link_libraries(arango_metrics arango)
-target_link_libraries(arango_metrics arango::validation)
-target_link_libraries(arango_metrics arango_replication2)
-target_link_libraries(arango_metrics immer)
-target_link_libraries(arango_metrics rocksdb_interface)
 
 target_link_libraries(arango_network boost_boost)
 target_link_libraries(arango_network fuerte)
@@ -918,7 +899,6 @@ foreach(TARGET
   arango_graph
   arango_indexes
   arango_iresearch
-  arango_metrics
   arango_network
   arango_replication
   arango_replication2
@@ -961,5 +941,7 @@ install_config(arango-init-database)
 add_subdirectory(Agency)
 add_subdirectory(Aql)
 add_subdirectory(Cache)
+add_subdirectory(Metrics)
 add_subdirectory(Pregel)
 add_subdirectory(StorageEngine)
+
