@@ -99,6 +99,7 @@
 using namespace arangodb::basics;
 using namespace arangodb;
 
+// this comment will trigger the execution of the clang-format workflow.
 namespace {
 
 // whether or not we can use the splice system call on Linux

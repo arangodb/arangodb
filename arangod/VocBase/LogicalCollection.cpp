@@ -69,6 +69,7 @@
 using namespace arangodb;
 using Helper = basics::VelocyPackHelper;
 
+// this comment will trigger the execution of the clang-format workflow.
 namespace {
 
 static std::string translateStatus(TRI_vocbase_col_status_e status) {
