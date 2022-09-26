@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,17 +17,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
-/// @author Michael Hackstein
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-
-// Macro defined to avoid duplicate symbols when linking
-#define ARANGODB_INCLUDED_FROM_GTESTS
-#include "Aql/ExecutionBlockImpl.cpp"
-#undef ARANGODB_INCLUDED_FROM_GTESTS
-
-#include "TestEmptyExecutorHelper.h"
-#include "TestLambdaExecutor.h"
-
-template class ::arangodb::aql::ExecutionBlockImpl<TestLambdaExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<TestLambdaSkipExecutor>;
+#include "PersistedStateInfo.h"

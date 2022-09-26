@@ -427,6 +427,7 @@ void LoggerFeature::prepare() {
   Logger::setTimeFormat(LogTimeFormats::formatFromName(_timeFormatString));
   Logger::setUseControlEscaped(_useControlEscaped);
   Logger::setUseUnicodeEscaped(_useUnicodeEscaped);
+  Logger::setEscaping();
   Logger::setShowLineNumber(_lineNumber);
   Logger::setShortenFilenames(_shortenFilenames);
   Logger::setShowProcessIdentifier(_processId);
@@ -439,7 +440,7 @@ void LoggerFeature::prepare() {
   Logger::setUseJson(_useJson);
 
   for (auto const& definition : _output) {
-    if (_supervisor && StringUtils::isPrefix(definition, "file://")) {
+    if (_supervisor && definition.starts_with("file://")) {
       LogAppender::addAppender(Logger::defaultLogGroup(),
                                definition + ".supervisor");
     } else {

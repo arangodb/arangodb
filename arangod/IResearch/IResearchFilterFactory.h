@@ -36,7 +36,7 @@
 
 namespace iresearch {
 
-class boolean_filter;  // forward declaration
+class boolean_filter;
 
 }  // namespace iresearch
 
@@ -45,7 +45,8 @@ class Result;
 
 namespace aql {
 
-struct AstNode;  // forward declaration
+struct AstNode;
+class ExpressionContext;
 
 }  // namespace aql
 
@@ -53,12 +54,12 @@ namespace iresearch {
 
 struct QueryContext;
 
-using AnalyzerProvider =
-    fu2::unique_function<FieldMeta::Analyzer const&(std::string_view)>;
+using AnalyzerProvider = fu2::unique_function<FieldMeta::Analyzer const&(
+    std::string_view, aql::ExpressionContext*, FieldMeta::Analyzer const&)>;
 
 struct FilterContext {
-  FieldMeta::Analyzer const& fieldAnalyzer(std::string_view name,
-                                           Result& r) const noexcept;
+  FieldMeta::Analyzer const& fieldAnalyzer(
+      std::string_view name, aql::ExpressionContext* ctx) const noexcept;
 
   AnalyzerProvider* fieldAnalyzerProvider{};
   // need shared_ptr since pool could be deleted from the feature

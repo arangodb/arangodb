@@ -33,6 +33,7 @@
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/ExpressionContext.h"
 #include "Aql/QueryCache.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/Result.h"
@@ -110,30 +111,13 @@ using VectorFst = fst::VectorFst<Arc>;
 using FstBuilder = irs::fst_builder<char, VectorFst>;
 using ExplicitMatcher = fst::explicit_matcher<fst::SortedMatcher<VectorFst>>;
 
-std::shared_ptr<LogicalCollection> getCollection(
-    CollectionNameResolver& resolver, velocypack::Slice cidOrName) {
-  if (cidOrName.isString()) {
-    return resolver.getCollection(cidOrName.stringView());
-  } else if (cidOrName.isNumber<DataSourceId::BaseType>()) {
-    auto const cid = cidOrName.getNumber<DataSourceId::BaseType>();
-    absl::AlphaNum const cidStr{cid};  // TODO make resolve by id?
-    return resolver.getCollection(cidStr.Piece());
-  }
-  return nullptr;
-}
-
 std::shared_ptr<Index> getIndex(LogicalCollection const& collection,
-                                velocypack::Slice index) {
+                                std::string_view indexNameOrId) {
+  if (auto handle = collection.lookupIndex(indexNameOrId); handle) {
+    return handle;
+  }
   auto indexId = IndexId::none().id();
-  if (index.isString()) {
-    auto const indexNameOrId = index.stringView();
-    if (auto handle = collection.lookupIndex(indexNameOrId); handle) {
-      return handle;
-    } else if (absl::SimpleAtoi(indexNameOrId, &indexId)) {
-      return collection.lookupIndex(IndexId{indexId});
-    }
-  } else if (index.isNumber<IndexId::BaseType>()) {
-    indexId = index.getNumber<IndexId::BaseType>();
+  if (absl::SimpleAtoi(indexNameOrId, &indexId)) {
     return collection.lookupIndex(IndexId{indexId});
   }
   return nullptr;
@@ -331,26 +315,53 @@ AnalyzerProvider SearchMeta::createProvider(
   };
   containers::FlatHashMap<std::string_view, Field> analyzers;
   for (auto const& [name, field] : fieldToAnalyzer) {
-    analyzers.emplace(
-        name, Field{getAnalyzer(field.analyzer), field.includeAllFields});
+    auto analyzer = getAnalyzer(field.analyzer);
+    if (analyzer) {
+      analyzers.emplace(name,
+                        Field{std::move(analyzer), field.includeAllFields});
+    }
   }
   VectorFst const* fst = getFst();
   TRI_ASSERT(fst);
   // we don't use provider in parallel, so create matcher here is thread safe
   auto matcher = std::make_unique<ExplicitMatcher>(fst, fst::MATCH_INPUT);
   return [analyzers = std::move(analyzers), matcher = std::move(matcher)](
-             std::string_view field) mutable -> FieldMeta::Analyzer const& {
+             std::string_view field, aql::ExpressionContext* ctx,
+             FieldMeta::Analyzer const& contextAnalyzer) mutable
+         -> FieldMeta::Analyzer const& {
+    auto registerWarning = [ctx](std::string_view error) {
+      if (ctx) {
+        ctx->registerWarning(TRI_ERROR_BAD_PARAMETER, error);
+      }
+    };
+
     auto it = analyzers.find(field);  // fast-path O(1)
-    if (it != analyzers.end()) {
-      return it->second.analyzer;
+
+    if (it == analyzers.end()) {
+      // Omega(prefix.size())
+      auto const prefix = findLongestCommonPrefix(*matcher, field);
+      it = analyzers.find(prefix);
+      if (it != analyzers.end() && !it->second.includeAllFields) {
+        it = analyzers.end();
+      }
     }
-    // Omega(prefix.size())
-    auto const prefix = findLongestCommonPrefix(*matcher, field);
-    it = analyzers.find(prefix);
-    if (it != analyzers.end() && it->second.includeAllFields) {
-      return it->second.analyzer;
+
+    if (it == analyzers.end()) {
+      registerWarning(
+          absl::StrCat("Analyzer for field '", field, "' isn't set"));
+      return contextAnalyzer ? contextAnalyzer : FieldMeta::identity();
     }
-    return emptyAnalyzer();
+
+    auto& analyzer = it->second.analyzer;
+    if (ADB_UNLIKELY(contextAnalyzer &&
+                     contextAnalyzer._pool != analyzer._pool)) {
+      registerWarning(
+          absl::StrCat("Context analyzer '", contextAnalyzer->name(),
+                       "' doesn't match field '", field, "' analyzer '",
+                       analyzer ? analyzer->name() : "", "'"));
+    }
+
+    return analyzer;
   };
 }
 
@@ -573,23 +584,27 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
     }
     for (auto& [cid, handles] : _indexes) {
       for (auto& handle : handles) {
-        if (auto index = handle->lock(); index) {
-          if (ctx == Serialization::Properties) {
-            auto collectionName = resolver.getCollectionNameCluster(cid);
-            // TODO(MBkkt) remove dynamic_cast
-            auto* rawIndex = dynamic_cast<Index*>(index.get());
-            if (collectionName.empty() || !rawIndex) {
-              TRI_ASSERT(false);
-              continue;
-            }
+        if (auto inverted = handle->lock(); inverted) {
+          auto* index = dynamic_cast<Index*>(inverted.get());
+          if (!index) {
+            TRI_ASSERT(false);
+            continue;
+          }
+          auto collection = resolver.getCollection(cid);
+          if (!collection) {
+            continue;
+          }
+          if (ctx == Serialization::Properties ||
+              ctx == Serialization::Inventory) {
             build.add(velocypack::Value{velocypack::ValueType::Object});
-            build.add("collection", velocypack::Value{collectionName});
-            build.add("index", velocypack::Value{rawIndex->name()});
+            build.add("collection", velocypack::Value{collection->name()});
+            build.add("index", velocypack::Value{index->name()});
           } else {
             build.add(velocypack::Value{velocypack::ValueType::Object});
-            build.add("collection", velocypack::Value{cid.id()});
-            // TODO Maybe guid or planId?
-            build.add("index", velocypack::Value{index->id().id()});
+            absl::AlphaNum collectionId{collection->id().id()};
+            build.add("collection", velocypack::Value{collectionId.Piece()});
+            absl::AlphaNum indexId{index->id().id()};
+            build.add("index", velocypack::Value{indexId.Piece()});
           }
           build.close();
         }
@@ -642,7 +657,11 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
       frozen::make_unordered_set<frozen::string>({"", "add", "del"});
   for (; it.valid(); ++it) {
     auto value = *it;
-    auto collection = getCollection(resolver, value.get("collection"));
+    auto collectionSlice = value.get("collection");
+    if (!collectionSlice.isString()) {
+      return {TRI_ERROR_BAD_PARAMETER, "'index' should be a string"};
+    }
+    auto collection = resolver.getCollection(collectionSlice.stringView());
     if (!collection) {
       if (!isUserRequest) {
         continue;
@@ -671,7 +690,11 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
                 "Cannot find collection for index to delete"};
       }
     }
-    auto index = getIndex(*collection, value.get("index"));
+    auto indexSlice = value.get("index");
+    if (!indexSlice.isString()) {
+      return {TRI_ERROR_BAD_PARAMETER, "'index' should be a string"};
+    }
+    auto index = getIndex(*collection, indexSlice.stringView());
     // TODO Remove dynamic_cast
     auto* inverted = dynamic_cast<IResearchInvertedIndex*>(index.get());
     if (!inverted) {

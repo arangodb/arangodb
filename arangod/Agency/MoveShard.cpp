@@ -28,11 +28,17 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
 #include "Cluster/ClusterHelpers.h"
+#include "Inspection/VPack.h"
+#include "Logger/LogMacros.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
 
 constexpr auto PARENT_JOB_ID = "parentJob";
+constexpr auto EXPECTED_TARGET_VERSION = "expectedTargetVersion";
 
 MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
                      std::string const& jobId, std::string const& creator,
@@ -80,6 +86,7 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
   auto tmp_remainsFollower = _snapshot.hasAsSlice(path + "remainsFollower");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
   auto tmp_parent = _snapshot.hasAsString(path + PARENT_JOB_ID);
+  auto tmp_targetVersion = _snapshot.hasAsUInt(path + EXPECTED_TARGET_VERSION);
 
   if (tmp_database && tmp_collection && tmp_from && tmp_to && tmp_shard &&
       tmp_creator && tmp_isLeader) {
@@ -96,6 +103,9 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
     _creator = tmp_creator.value();
     if (tmp_parent) {
       _parentJobId = std::move(*tmp_parent);
+    }
+    if (tmp_targetVersion) {
+      _expectedTargetVersion = *tmp_targetVersion;
     }
   } else {
     std::stringstream err;
@@ -297,6 +307,11 @@ bool MoveShard::start(bool&) {
                       "toServer must not be in `Target/FailedServers`");
       return false;
     }
+  }
+
+  // REPLICATION 2 CHANGES HERE
+  if (isReplication2Database(_database)) {
+    return startReplication2();
   }
 
   // Look at Plan:
@@ -511,6 +526,111 @@ bool MoveShard::start(bool&) {
   return false;
 }
 
+bool MoveShard::startReplication2() {
+  // do the following checks:
+  // - check if _to is not part of the replicated state
+  // - check if _from is part of the replicated state
+  // then perform the following:
+  // - remove _from from target
+  // - add _to to target
+  // - update the targetVersion
+  // - if leader move shard, set leader, otherwise if _from is leader, clear
+  // Preconditions:
+  //  - target version is as expected
+  using TargetType = replication2::replicated_state::agency::Target;
+  auto stateId = LogicalCollection::shardIdToStateId(_shard);
+  auto targetPath =
+      "/Target/ReplicatedStates/" + _database + "/" + to_string(stateId);
+  auto& targetNode = _snapshot.get(targetPath).value().get();
+  auto target =
+      velocypack::deserialize<TargetType>(targetNode.toBuilder().slice());
+
+  bool const containsTo = target.participants.contains(_to);
+  bool const containsFrom = target.participants.contains(_from);
+
+  // if not change-leader-only move shard
+  if (not(containsTo and containsFrom and _isLeader)) {
+    // update target
+    if (containsTo) {
+      moveShardFinish(false, false,
+                      "toServer must not be a follower in plan for shard");
+      return false;
+    }
+
+    if (not containsFrom) {
+      moveShardFinish(false, false,
+                      "fromServer must be a follower in plan for shard");
+      return false;
+    }
+
+    target.participants.erase(_from);
+    target.participants.emplace(_to, TargetType::Participant{});
+  }
+
+  auto oldTargetVersion = target.version;
+  auto expected = target.version.value_or(1) + 1;
+  target.version = expected;
+  if (_isLeader) {
+    target.leader = _to;
+  } else if (target.leader == _from) {
+    target.leader.reset();
+  }
+
+  // write back to agency
+  auto oldJob = _snapshot.hasAsBuilder(toDoPrefix + _jobId).value();
+  Builder newJob;
+  {
+    VPackObjectBuilder ob(&newJob);
+    newJob.add(EXPECTED_TARGET_VERSION, VPackValue(expected));
+    newJob.add(VPackObjectIterator(oldJob.slice()));
+  }
+
+  Builder trx;
+  {
+    VPackArrayBuilder a(&trx);
+    {
+      VPackObjectBuilder b(&trx);
+      addPutJobIntoSomewhere(trx, "Pending", newJob.slice());
+      addRemoveJobFromSomewhere(trx, "ToDo", _jobId);
+
+      addBlockShard(trx, _shard, _jobId);
+      addMoveShardToServerLock(trx);
+      addMoveShardFromServerLock(trx);
+      trx.add(VPackValue(targetPath));
+      velocypack::serialize(trx, target);
+    }
+    {
+      VPackObjectBuilder b(&trx);
+      addPreconditionShardNotBlocked(trx, _shard);
+      addMoveShardToServerCanLock(trx);
+      addMoveShardFromServerCanLock(trx);
+      addPreconditionServerHealth(trx, _to, "GOOD");
+
+      {
+        VPackObjectBuilder ob(&trx, targetPath + "/version");
+        if (oldTargetVersion) {
+          trx.add("old", VPackValue(*oldTargetVersion));
+        } else {
+          trx.add("oldEmpty", VPackValue(true));
+        }
+      }
+    }
+  }
+
+  // Transact to agency:
+  write_ret_t res = singleWriteTransaction(_agent, trx, false);
+
+  if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
+    LOG_TOPIC("4512d", DEBUG, Logger::SUPERVISION)
+        << "Pending: Move shard " + _shard + " from " + _from + " to " + _to;
+    return true;
+  }
+
+  LOG_TOPIC("0a92d", DEBUG, Logger::SUPERVISION)
+      << "Start precondition failed for MoveShard job " + _jobId;
+  return false;
+}
+
 JOB_STATUS MoveShard::status() {
   if (_status == PENDING || _status == TODO) {
     if (considerCancellation()) {
@@ -530,7 +650,67 @@ JOB_STATUS MoveShard::status() {
     return FINISHED;
   }
 
+  // REPLICATION 2 WAIT FOR CURRENT VERSION
+  if (isReplication2Database(_database)) {
+    return pendingReplication2();
+  }
+
   return (_isLeader) ? pendingLeader() : pendingFollower();
+}
+
+std::optional<std::uint64_t> MoveShard::getShardSupervisionVersion() {
+  // read
+  // arango/Current/ReplicatedState/<database>/<replicated-state-id>/supervision/version
+  auto stateId = LogicalCollection::shardIdToStateId(_shard);
+  return _snapshot.hasAsUInt("Current/ReplicatedStates/" + _database + "/" +
+                             to_string(stateId) + "/supervision/version");
+}
+
+JOB_STATUS MoveShard::pendingReplication2() {
+  // check if Current/Supervision/Version is bigger or equal to
+  // _expectedTargetVersion.
+  // if so, move job to done.
+  // TODO if it was a leader move shard, clear leader?
+
+  //_snapshot.hasAsUInt();
+  auto currentSupervisionVersion = getShardSupervisionVersion();
+  if (currentSupervisionVersion < _expectedTargetVersion) {
+    return PENDING;  // not yet converged
+  }
+
+  Builder trx;
+  {
+    VPackArrayBuilder a(&trx);
+    {
+      VPackObjectBuilder b(&trx);
+      addRemoveJobFromSomewhere(trx, "Pending", _jobId);
+      addMoveShardToServerUnLock(trx);
+      addMoveShardFromServerUnLock(trx);
+      addPutJobIntoSomewhere(
+          trx, "Finished",
+          _snapshot.hasAsBuilder(pendingPrefix + _jobId).value().slice(), "");
+      addReleaseShard(trx, _shard);
+    }
+    {
+      VPackObjectBuilder b(&trx);
+      addPreconditionCollectionStillThere(trx, _database, _collection);
+      addMoveShardToServerCanUnLock(trx);
+      addMoveShardFromServerCanUnLock(trx);
+    }
+  }
+
+  // Transact to agency:
+  write_ret_t res = singleWriteTransaction(_agent, trx, false);
+
+  if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
+    LOG_TOPIC("f8c21", DEBUG, Logger::SUPERVISION)
+        << "Pending: Move shard " + _shard + " from " + _from + " to " + _to;
+    return FINISHED;
+  }
+
+  LOG_TOPIC("521eb", DEBUG, Logger::SUPERVISION)
+      << "Precondition failed for MoveShard job " + _jobId;
+  return PENDING;
 }
 
 JOB_STATUS MoveShard::pendingLeader() {
@@ -864,12 +1044,12 @@ JOB_STATUS MoveShard::pendingLeader() {
   write_ret_t res = singleWriteTransaction(_agent, trx, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC("f8c21", DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("ffc21", DEBUG, Logger::SUPERVISION)
         << "Pending: Move shard " + _shard + " from " + _from + " to " + _to;
     return (finishedAfterTransaction ? FINISHED : PENDING);
   }
 
-  LOG_TOPIC("521eb", DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("52feb", DEBUG, Logger::SUPERVISION)
       << "Precondition failed for MoveShard job " + _jobId;
   return PENDING;
 }

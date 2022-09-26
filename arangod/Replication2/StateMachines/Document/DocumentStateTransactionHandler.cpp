@@ -26,17 +26,58 @@
 #include "Logger/LogContextKeys.h"
 #include "Replication2/LoggerContext.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
-#include "RocksDBEngine/SimpleRocksDBTransactionState.h"
 #include "Transaction/ReplicatedContext.h"
+#include "DocumentStateHandlersFactory.h"
+
+namespace {
+
+auto shouldIgnoreError(arangodb::OperationResult const& res) noexcept -> bool {
+  auto ignoreError = [](ErrorCode code) {
+    return code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+  };
+
+  if (res.fail() && !ignoreError(res.errorNumber())) {
+    return false;
+  }
+
+  for (auto const& [code, cnt] : res.countErrorCodes) {
+    if (!ignoreError(code)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+auto makeResultFromOperationResult(arangodb::OperationResult const& res,
+                                   arangodb::TransactionId tid)
+    -> arangodb::Result {
+  ErrorCode e{res.result.errorNumber()};
+  std::stringstream msg;
+  if (!res.countErrorCodes.empty()) {
+    if (e == TRI_ERROR_NO_ERROR) {
+      e = TRI_ERROR_TRANSACTION_INTERNAL;
+    }
+    msg << "Transaction " << tid << ": ";
+    for (auto const& it : res.countErrorCodes) {
+      msg << it.first << ' ';
+    }
+  }
+  return arangodb::Result{e, std::move(msg).str()};
+}
+
+}  // namespace
 
 namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(
-    GlobalLogIdentifier gid, DatabaseFeature& databaseFeature)
-    : _gid(std::move(gid)), _db(databaseFeature, _gid.database) {}
+    GlobalLogIdentifier gid, std::unique_ptr<IDatabaseGuard> dbGuard,
+    std::shared_ptr<IDocumentStateHandlersFactory> factory)
+    : _gid(std::move(gid)),
+      _dbGuard(std::move(dbGuard)),
+      _factory(std::move(factory)) {}
 
 auto DocumentStateTransactionHandler::getTrx(TransactionId tid)
-    -> std::shared_ptr<DocumentStateTransaction> {
+    -> std::shared_ptr<IDocumentStateTransaction> {
   auto it = _transactions.find(tid);
   if (it == _transactions.end()) {
     return nullptr;
@@ -51,6 +92,8 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
     return Result{};
   }
 
+  TRI_ASSERT(doc.tid.isFollowerTransactionId());
+
   try {
     auto trx = ensureTransaction(doc);
     TRI_ASSERT(trx != nullptr);
@@ -60,19 +103,23 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
       case OperationType::kReplace:
       case OperationType::kRemove:
       case OperationType::kTruncate: {
-        auto res = trx->apply(doc);
-        if (res.fail() && res.ignoreDuringRecovery()) {
+        auto opRes = trx->apply(doc);
+        auto res = opRes.fail() ? opRes.result
+                                : makeResultFromOperationResult(opRes, doc.tid);
+        if (res.fail() && shouldIgnoreError(opRes)) {
           LoggerContext logContext =
               LoggerContext(Logger::REPLICATED_STATE)
                   .with<logContextKeyDatabaseName>(_gid.database)
                   .with<logContextKeyLogId>(_gid.id);
+
           LOG_CTX("0da00", INFO, logContext)
               << "Result ignored while applying transaction " << doc.tid
               << " with operation " << to_string(doc.operation) << " on shard "
-              << doc.shardId << ": " << res.result();
+              << doc.shardId << ": " << res;
+          ;
           return Result{};
         }
-        return res.result();
+        return res;
       }
       case OperationType::kCommit: {
         auto res = trx->commit();
@@ -89,7 +136,6 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
       default:
         THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
     }
-
   } catch (basics::Exception& e) {
     return Result{e.code(), e.message()};
   } catch (std::exception& e) {
@@ -97,45 +143,30 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
   }
 }
 
-auto DocumentStateTransactionHandler::ensureTransaction(DocumentLogEntry doc)
-    -> std::shared_ptr<IDocumentStateTransaction> {
+auto DocumentStateTransactionHandler::ensureTransaction(
+    DocumentLogEntry const& doc) -> std::shared_ptr<IDocumentStateTransaction> {
   auto tid = doc.tid;
   auto trx = getTrx(tid);
   if (trx != nullptr) {
     return trx;
   }
 
-  TRI_ASSERT(doc.operation != OperationType::kCommit &&
-             doc.operation != OperationType::kAbort);
+  TRI_ASSERT(doc.operation != OperationType::kCommit);
+  TRI_ASSERT(doc.operation != OperationType::kAbort);
+  TRI_ASSERT(doc.operation != OperationType::kAbortAllOngoingTrx);
 
-  auto options = transaction::Options();
-  options.isFollowerTransaction = true;
-  options.allowImplicitCollectionsForWrite = true;
-
-  auto state = std::make_shared<SimpleRocksDBTransactionState>(_db.database(),
-                                                               tid, options);
-
-  auto ctx = std::make_shared<transaction::ReplicatedContext>(tid, state);
-
-  auto methods = std::make_unique<transaction::Methods>(
-      std::move(ctx), doc.shardId, AccessMode::Type::WRITE);
-
-  // TODO Why is GLOBAL_MANAGED necessary?
-  methods->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-
-  auto res = methods->begin();
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  trx = std::make_shared<DocumentStateTransaction>(std::move(methods));
+  trx = _factory->createTransaction(doc, *_dbGuard);
   _transactions.emplace(tid, trx);
-
   return trx;
 }
 
 void DocumentStateTransactionHandler::removeTransaction(TransactionId tid) {
   _transactions.erase(tid);
+}
+
+auto DocumentStateTransactionHandler::getActiveTransactions() const
+    -> TransactionMap const& {
+  return _transactions;
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

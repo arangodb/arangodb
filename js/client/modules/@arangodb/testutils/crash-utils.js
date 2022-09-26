@@ -565,6 +565,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
 }
 
 function generateCrashDump (binary, instanceInfo, options, checkStr) {
+  GDB_OUTPUT += `${instanceInfo.pid}: ${checkStr}\n`;
   if (instanceInfo.hasOwnProperty('debuggerInfo')) {
     throw new Error("this process is already debugged: " + JSON.stringify(instanceInfo.getStructure()));
   }
@@ -575,7 +576,7 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
     stats.residentSize < 140000000
   ) || stats.virtualSize === 0;
   if (options.test !== undefined) {
-    print(CYAN + this.name + " - in single test mode, hard killing." + RESET);
+    print(CYAN + instanceInfo.name + " - in single test mode, hard killing." + RESET);
     instanceInfo.exitStatus = killExternal(instanceInfo.pid, termSignal);
   } else if (platform.substr(0, 3) === 'win') {
     if (!options.disableMonitor) {
@@ -652,4 +653,4 @@ exports.runProcdump = runProcdump;
 exports.stopProcdump = stopProcdump;
 exports.isEnabledWindowsMonitor = isEnabledWindowsMonitor;
 exports.calculateMonitorValues = calculateMonitorValues;
-Object.defineProperty(exports, 'GDB_OUTPUT', {get: () => GDB_OUTPUT});
+Object.defineProperty(exports, 'GDB_OUTPUT', { get: () => GDB_OUTPUT, set: (value) => { GDB_OUTPUT = value; }});
