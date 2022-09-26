@@ -750,7 +750,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitions) {
       ASSERT_TRUE(res);
     }
     ASSERT_TRUE(errorString.empty());
-    ASSERT_EQ(0, metaLhs._analyzerDefinitions.size());
+    ASSERT_EQ(1, metaLhs._analyzerDefinitions.size());
 
     VPackBuilder b;
     {
@@ -778,7 +778,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitions) {
       ASSERT_TRUE(res);
     }
     ASSERT_TRUE(errorString.empty());
-    ASSERT_EQ(0, metaRhs._analyzerDefinitions.size());
+    ASSERT_EQ(1, metaRhs._analyzerDefinitions.size());
 
     VPackBuilder b;
     {
@@ -811,7 +811,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testDefaults) {
   ASSERT_EQ(irs::type<irs::compression::lz4>::id(),
             meta._sort.sortCompression());
   ASSERT_FALSE(meta.dense());
-  ASSERT_EQ(arangodb::iresearch::LinkVersion::MAX, meta._version);
+  ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
+            meta._version);
   ASSERT_EQ(2, meta._cleanupIntervalStep);
   ASSERT_EQ(1000, meta._commitIntervalMsec);
   ASSERT_EQ(1000, meta._consolidationIntervalMsec);
@@ -882,16 +883,17 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
     ASSERT_TRUE(meta.init(server.server(), json->slice(), false, errorString,
                           irs::string_ref::NIL));
     ASSERT_TRUE(errorString.empty());
-    ASSERT_EQ(0, meta._analyzerDefinitions.size());
+    ASSERT_EQ(1, meta._analyzerDefinitions.size());
     ASSERT_EQ(1, meta._fields.size());
     ASSERT_EQ("dummy", meta._fields.front().toString());
     ASSERT_TRUE(meta._sort.empty());
     ASSERT_TRUE(meta._storedValues.empty());
     ASSERT_EQ(irs::type<irs::compression::lz4>::id(),
               meta._sort.sortCompression());
-    ASSERT_TRUE(meta._analyzerDefinitions.empty());
+    ASSERT_EQ(1, meta._analyzerDefinitions.size());
     ASSERT_FALSE(meta.dense());
-    ASSERT_EQ(arangodb::iresearch::LinkVersion::MAX, meta._version);
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
+              meta._version);
     ASSERT_EQ(Consistency::kEventual, meta._consistency);
     ASSERT_FALSE(meta._analyzers.empty());
     ASSERT_EQ(meta._analyzers[0]._shortName, "identity");
@@ -907,16 +909,17 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
     ASSERT_TRUE(meta.init(server.server(), json->slice(), false, errorString,
                           irs::string_ref(vocbase.name())));
     ASSERT_TRUE(errorString.empty());
-    ASSERT_EQ(0, meta._analyzerDefinitions.size());
+    ASSERT_EQ(1, meta._analyzerDefinitions.size());
     ASSERT_EQ(1, meta._fields.size());
     ASSERT_EQ("dummy", meta._fields.front().toString());
     ASSERT_TRUE(meta._sort.empty());
     ASSERT_TRUE(meta._storedValues.empty());
     ASSERT_EQ(irs::type<irs::compression::lz4>::id(),
               meta._sort.sortCompression());
-    ASSERT_TRUE(meta._analyzerDefinitions.empty());
+    ASSERT_EQ(1, meta._analyzerDefinitions.size());
     ASSERT_FALSE(meta.dense());
-    ASSERT_EQ(arangodb::iresearch::LinkVersion::MAX, meta._version);
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
+              meta._version);
     ASSERT_EQ(Consistency::kEventual, meta._consistency);
     ASSERT_FALSE(meta._analyzers.empty());
     ASSERT_EQ(meta._analyzers[0]._shortName, "identity");
@@ -959,14 +962,15 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
     ASSERT_TRUE(res);
   }
   ASSERT_TRUE(errorString.empty());
-  ASSERT_EQ(0, meta._analyzerDefinitions.size());
+  ASSERT_EQ(1, meta._analyzerDefinitions.size());
   ASSERT_EQ(1, meta._fields.size());
   ASSERT_TRUE(meta._sort.empty());
   ASSERT_TRUE(meta._storedValues.empty());
   ASSERT_EQ(meta._sort.sortCompression(),
             irs::type<irs::compression::lz4>::id());
   ASSERT_FALSE(meta.dense());
-  ASSERT_EQ(arangodb::iresearch::LinkVersion::MAX, meta._version);
+  ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
+            meta._version);
   ASSERT_EQ(meta._consistency, Consistency::kEventual);
   ASSERT_FALSE(meta._analyzers.empty());
   ASSERT_EQ(meta._analyzers[0]._shortName, "identity");
