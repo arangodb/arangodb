@@ -112,7 +112,7 @@ completely transparent to inspectors. This can be achieved by writing the
 
 ```cpp
   template <class Inspector>
-  bool inspect(Inspector& f, Identifier& x) {
+  auto inspect(Inspector& f, Identifier& x) {
     return f.apply(x.id);
   }
 ```
@@ -206,6 +206,52 @@ auto inspect(Inspector& f, LogTargetConfig& x) {
 }
 ```
 
+### Embedded fields
+
+In some cases we may want to "reuse" the inspect function of some type, e.g.,
+in case of inheritance. This can be achieved using "field embedding":
+```cpp
+struct Inner {
+  string s;
+};
+template<class Inspector>
+auto inspect(Inspector& f, Inner& v) {
+  return f.object(v).fields(f.field("s", v.s));
+}
+
+struct Base {
+  int x;
+};
+template<class Inspector>
+auto inspect(Inspector& f, Base& v) {
+  return f.object(v).fields(f.field("x", v.x));
+}
+
+struct Derived : Base {
+  int y;
+  Inner i;
+};
+template<class Inspector>
+auto inspect(Inspector& f, Derived& v) {
+  return f.object(v).fields(
+    f.embedFields(static_cast<Base&>(*this)),
+    f.field("y", v.y),
+    f.embedFields(v.i));
+}
+```
+Here the `inspect` function for `Derived` embeds the fields for `Base` and
+`Inner`, so we end up with an object description that looks like this:
+```
+  object(type: "Derived") {
+    field(name: "x")
+    field(name: "y")
+    field(name: "s")
+  }
+```
+A type that is used in `embedFields` must be inspected as an object, i.e., its
+inspect function must use `object(..).fields(...)`. If this requirement is not
+met the compiler should fail with a static_assert that points that out.
+
 ### Specializing `Access`
 
 Instead of writing `inspect` functions one can specialize
@@ -282,18 +328,19 @@ auto inspect(Inspector& f, MyVariant& x) {
 }
 ```
 This serializes/deserializes the variant in "qualified form". At the moment
-there are two supported forms - "qualified" and "unqualified". In qualified
-form the variant is serialized as an object with two attributes as specified
-in the `qualified` call. For example:
+there are three supported forms - "qualified", "unqualified" and "embedded".
+
+In "qualified" form the variant is serialized as an object with two attributes
+as specified in the `qualified` call. For example:
 ```
 {
   "type": "string",
   "value: "foobar"
 }
 ```
-In unqualified form the variant is also serialized as an object but only uses
-a single attribute with the type name. Suppose we would write the `inspect`
-function as follows:
+In "unqualified" form the variant is also serialized as an object, but only
+uses a single attribute with the type name. Suppose we would write the
+`inspect` function as follows:
 ```cpp
 template<class Inspector>
 auto inspect(Inspector& f, MyVariant& x) {
@@ -310,6 +357,73 @@ Then the generated result would instead look like this:
   "string": "foobar"
 }
 ```
+The "embedded" form can only be used if all types in the variant are inspected
+as objects. In this form the type indicator field is then serialized on the
+same level as the object fields:
+```cpp
+struct Struct1 { int a; }:
+struct Struct2 { int b; }:
+using MyEmbeddedVariant = std::variant<Struct1, Struct2> {};
+
+template<class Inspector>
+auto inspect(Inspector& f, MyEmbeddedVariant& x) {
+  namespace insp = arangodb::inspection;
+  return f.variant(x).embedded("type").alternatives(
+      insp::type<Struct1>("Struct1"),
+      insp::type<Struct2>("Struct2"));
+}
+```
+If we were to serialize a `Struct2{.a = 42}` this would generate the following
+result:
+```
+{
+  "type": "Struct1",
+  "a": 42
+}
+```
+
+### Enums
+
+There is a separate inspect API to define value mappings for enum types.
+```cpp
+
+enum class MyStringEnum {
+  kValue1,
+  kValue2,
+  kValue3 = kValue2,
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, MyStringEnum& x) {
+  return f.enumeration(x).values(MyStringEnum::kValue1, "value1",  //
+                                 MyStringEnum::kValue2, "value2");
+}
+```
+The call to values takes an arbitrary number of arguments, but is consumed
+pairwise where the first value is the enum value, and the second one that value
+that it is mapped to.
+
+Enum values can be mapped to strings or integers. It is also possible to map one
+enum value to multiple different strings and/or ints (i.e., you can mix the
+target types). For example:
+```cpp
+enum class MyMixedEnum {
+  kValue1,
+  kValue2,
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, MyMixedEnum& x) {
+  return f.enumeration(x).values(MyMixedEnum::kValue1, "value1",  //
+                                 MyMixedEnum::kValue1, 1,         //
+                                 MyMixedEnum::kValue2, "value2",  //
+                                 MyMixedEnum::kValue2, 2);
+}
+```
+In this case both enum values are mapped to both, a string and an integer value.
+This means we can load both, string and int values and map them do our enum.
+When saving, the _first_ mapping will be used, so in this example both values
+would be saved as a string.
 
 ### Transformers
 
@@ -363,7 +477,7 @@ custom functions:
 
 ```cpp
 template <class Inspector>
-bool inspect(Inspector& f, my_class& x) {
+auto inspect(Inspector& f, my_class& x) {
   if constexpr (Inspector::isLoading) {
     return load(f, x);
   } else {

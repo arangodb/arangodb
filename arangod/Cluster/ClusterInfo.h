@@ -476,7 +476,7 @@ class ClusterInfo final {
       double timeout,  // request timeout
       bool isNewDatabase,
       std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
-      replication::Version replicationVersion = replication::Version::ONE);
+      replication::Version replicationVersion);
 
   /// @brief this method does an atomic check of the preconditions for the
   /// collections to be created, using the currently loaded plan.
@@ -1062,7 +1062,8 @@ class ClusterInfo final {
   // responsible and Current contains the actual current responsibility.
 
   // The Plan state:
-  AllCollections _plannedCollections;  // from Plan/Collections/
+  AllCollections _plannedCollections;     // from Plan/Collections/
+  AllCollections _newPlannedCollections;  // TODO
   containers::FlatHashMap<CollectionID,
                           std::shared_ptr<std::vector<std::string>>>
       _shards;  // from Plan/Collections/
@@ -1132,6 +1133,7 @@ class ClusterInfo final {
   using ReplicatedLogsMap = containers::FlatHashMap<
       replication2::LogId,
       std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
+  // note: protected by _planProt!
   ReplicatedLogsMap _replicatedLogs;
 
   using CollectionGroupMap = containers::FlatHashMap<

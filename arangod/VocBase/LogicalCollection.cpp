@@ -1289,7 +1289,7 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
                      "Replicated state {} is not available as leader, accessed "
                      "from {}/{}. Status is {}.",
                      shardIdToStateId(name()), vocbase().name(), name(),
-                     *status);
+                     fmt::streamed(*status));
   }
 
   auto leader = stateMachine->getLeader();

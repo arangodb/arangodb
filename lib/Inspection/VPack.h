@@ -42,10 +42,24 @@ void serialize(Builder& builder, T& value) {
   }
 }
 
+template<class T>
+[[nodiscard]] auto serialize(T& value) -> SharedSlice {
+  auto builder = Builder();
+  serialize(builder, value);
+  return std::move(builder).sharedSlice();
+}
+
 namespace detail {
+
+template<class Inspector, class T>
+[[nodiscard]] inspection::Status deserializeWithStatus(Inspector& inspector,
+                                                       T& result) {
+  return inspector.apply(result);
+}
+
 template<class Inspector, class T>
 void deserialize(Inspector& inspector, T& result) {
-  if (auto res = inspector.apply(result); !res.ok()) {
+  if (auto res = deserializeWithStatus(inspector, result); !res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, std::string{"Error while parsing VelocyPack: "} +
                                 res.error() + "\nPath: " + res.path());
@@ -79,6 +93,22 @@ T deserialize(Slice slice, inspection::ParseOptions options,
   detail::deserialize<Inspector, T>(slice, result, options, context);
   return result;
 }
+
+template<class Inspector, class T>
+[[nodiscard]] inspection::Status deserializeWithStatus(
+    Slice slice, T& result, inspection::ParseOptions options) {
+  Inspector inspector(slice, options);
+  return deserializeWithStatus(inspector, result);
+}
+
+template<class Inspector, class T, class Context>
+[[nodiscard]] inspection::Status deserializeWithStatus(
+    Slice slice, T& result, inspection::ParseOptions options,
+    Context const& context) {
+  Inspector inspector(slice, options, context);
+  return deserializeWithStatus(inspector, result);
+}
+
 }  // namespace detail
 
 template<class T>
@@ -91,6 +121,21 @@ template<class T, class Context>
 void deserialize(Slice slice, T& result, inspection::ParseOptions options,
                  Context const& context) {
   detail::deserialize<inspection::VPackLoadInspector<Context>>(
+      slice, result, options, context);
+}
+
+template<class T>
+[[nodiscard]] inspection::Status deserializeWithStatus(
+    Slice slice, T& result, inspection::ParseOptions options = {}) {
+  return detail::deserializeWithStatus<inspection::VPackLoadInspector<>>(
+      slice, result, options);
+}
+
+template<class T, class Context>
+[[nodiscard]] inspection::Status deserializeWithStatus(
+    Slice slice, T& result, inspection::ParseOptions options,
+    Context const& context) {
+  return detail::deserializeWithStatus<inspection::VPackLoadInspector<Context>>(
       slice, result, options, context);
 }
 

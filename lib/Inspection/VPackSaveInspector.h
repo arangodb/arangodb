@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <memory>
 #include <optional>
 #include <string_view>
 #include <tuple>
@@ -175,6 +176,22 @@ struct VPackSaveInspector
            | [&]() { return endObject(); };
   }
 
+  template<class... Ts, class... Args>
+  auto processVariant(typename Base::template EmbeddedVariant<Ts...>& variant,
+                      Args&&... args) {
+    return beginObject()  //
+           |
+           [&]() {
+             return std::visit(
+                 overload{[this, &variant, &args](typename Args::Type& v) {
+                   return applyFields(this->field(variant.typeField, args.tag),
+                                      this->embedFields(v));
+                 }...},
+                 variant.value);
+           }  //
+           | [&]() { return endObject(); };
+  }
+
   velocypack::Builder& builder() noexcept { return _builder; }
 
   template<class U>
@@ -190,7 +207,35 @@ struct VPackSaveInspector
     explicit InvariantContainer(Fn&&) {}
   };
 
+  template<class Fn, class T>
+  Status objectInvariant(T& object, Fn&&, Status result) {
+    return result;
+  }
+
  private:
+  template<class>
+  friend struct detail::EmbeddedFields;
+  template<class, class...>
+  friend struct detail::EmbeddedFieldsImpl;
+  template<class, class, class>
+  friend struct detail::EmbeddedFieldsWithObjectInvariant;
+  template<class, class>
+  friend struct detail::EmbeddedFieldInspector;
+
+  using EmbeddedParam = std::monostate;
+
+  template<class... Args>
+  auto processEmbeddedFields(EmbeddedParam&, Args&&... args) {
+    return applyFields(std::forward<Args>(args)...);
+  }
+
+  [[nodiscard]] auto applyField(
+      std::unique_ptr<detail::EmbeddedFields<VPackSaveInspector>> const&
+          fields) {
+    EmbeddedParam param;
+    return fields->apply(*this, param);
+  }
+
   template<class T>
   [[nodiscard]] auto applyField(T const& field) {
     if constexpr (std::is_same_v<typename Base::IgnoreField, T>) {

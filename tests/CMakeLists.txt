@@ -39,10 +39,12 @@ target_include_directories(fuertetest SYSTEM PRIVATE
   ${V8_INTERNAL_INCLUDE_DIR}
   ${INCLUDE_DIRECTORIES}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
-  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/third-party/gtest-1.8.1/fused-src
+  ${CMAKE_SOURCE_DIR}/${GOOGLETEST_ROOT}/include
   ${CMAKE_SOURCE_DIR}/3rdParty/fuerte/src
 )
 
+
+add_subdirectory(Zkd)
 
 # ----------------------------------------
 # Link directories
@@ -206,6 +208,7 @@ set(ARANGODB_TESTS_SOURCES
   Cache/BucketState.cpp
   Cache/CachedValue.cpp
   Cache/FrequencyBuffer.cpp
+  Cache/LockStressTest.cpp
   Cache/Manager.cpp
   Cache/Metadata.cpp
   Cache/MockScheduler.cpp
@@ -290,6 +293,7 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp
   VocBase/LogicalViewTest.cpp
+  VocBase/PlanCollectionTest.cpp
   VocBase/VersionTest.cpp
   VocBase/VocbaseTest.cpp
   VPackDeserializer/BasicTests.cpp
@@ -351,16 +355,17 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
   Replication2/ReplicatedLog/UpdateReplicatedLogTests.cpp
   Replication2/ReplicatedLog/WaitForSyncTest.cpp
+  Replication2/ReplicatedState/DocumentStateMachineTest.cpp
   Replication2/ReplicatedState/FollowerSnapshotTest.cpp
   Replication2/ReplicatedState/FollowerWaitForTest.cpp
   Replication2/ReplicatedState/LeaderRecoveryTest.cpp
   Replication2/ReplicatedState/LeaderResignTest.cpp
   Replication2/ReplicatedState/MaintenanceTest.cpp
-  Replication2/ReplicatedState/DocumentStateMachineTest.cpp
   Replication2/ReplicatedState/PrototypeConcurrencyTest.cpp
   Replication2/ReplicatedState/PrototypeStateMachineTest.cpp
   Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp
   Replication2/ReplicatedState/ReplicatedStateTest.cpp
+  Replication2/ReplicatedState/StateCleanupTest.cpp
   Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
   Replication2/ReplicatedState/SupervisionModelChecker.cpp
   Replication2/ReplicatedState/SupervisionTest.cpp
@@ -374,7 +379,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedState/ReplicatedStateMetricsTest.cpp
   Replication2/ReplicatedLog/MetricsTest.cpp
   Replication2/ReplicatedState/FollowerResignTest.cpp
-)
+        Replication2/Mocks/MockStatePersistorInterface.cpp Replication2/Mocks/MockStatePersistorInterface.h)
 
 set(ARANGODB_GRAPH_TEST_SOURCES
   Graph/ClusterTraverserCacheTest.cpp
@@ -550,21 +555,23 @@ endif()
 target_include_directories(arangodbtests SYSTEM PRIVATE
   ${V8_INTERNAL_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
-  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/third-party/gtest-1.8.1/fused-src
+  ${CMAKE_SOURCE_DIR}/${GOOGLETEST_ROOT}/include
+  ${CMAKE_SOURCE_DIR}/${GOOGLEMOCK_ROOT}/include
 )
 
 target_link_libraries(arangodbtests v8_interface)
 
 if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   target_include_directories(arangodbtests_replication2 SYSTEM PRIVATE
-    ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/third-party/gtest-1.8.1/fused-src
-  )
+  ${CMAKE_SOURCE_DIR}/${GOOGLETEST_ROOT}/include
+  ${CMAKE_SOURCE_DIR}/${GOOGLEMOCK_ROOT}/include
+)
 endif()
 
 if (USE_SEPARATE_GRAPH_TESTS_BINARY)
   target_include_directories(arangodbtests_graph SYSTEM PRIVATE
-          ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
-          )
+  ${CMAKE_SOURCE_DIR}/${GOOGLETEST_ROOT}/include
+)
 endif()
 
 if (USE_JEMALLOC)

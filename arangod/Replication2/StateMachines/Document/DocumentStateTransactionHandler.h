@@ -35,34 +35,42 @@
 namespace arangodb::replication2::replicated_state::document {
 
 struct IDocumentStateTransaction;
+struct IDocumentStateHandlersFactory;
 class DocumentStateTransaction;
 
 struct IDocumentStateTransactionHandler {
+  using TransactionMap =
+      std::unordered_map<TransactionId,
+                         std::shared_ptr<IDocumentStateTransaction>>;
+
   virtual ~IDocumentStateTransactionHandler() = default;
   virtual auto applyEntry(DocumentLogEntry doc) -> Result = 0;
-  virtual auto ensureTransaction(DocumentLogEntry doc)
+  virtual auto ensureTransaction(DocumentLogEntry const& doc)
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
   virtual void removeTransaction(TransactionId tid) = 0;
+  virtual auto getActiveTransactions() const -> TransactionMap const& = 0;
 };
 
 class DocumentStateTransactionHandler
     : public IDocumentStateTransactionHandler {
  public:
-  explicit DocumentStateTransactionHandler(GlobalLogIdentifier gid,
-                                           DatabaseFeature& databaseFeature);
+  explicit DocumentStateTransactionHandler(
+      GlobalLogIdentifier gid, std::unique_ptr<IDatabaseGuard> dbGuard,
+      std::shared_ptr<IDocumentStateHandlersFactory> factory);
   auto applyEntry(DocumentLogEntry doc) -> Result override;
-  auto ensureTransaction(DocumentLogEntry doc)
+  auto ensureTransaction(DocumentLogEntry const& doc)
       -> std::shared_ptr<IDocumentStateTransaction> override;
   void removeTransaction(TransactionId tid) override;
+  auto getActiveTransactions() const -> TransactionMap const& override;
 
  private:
-  auto getTrx(TransactionId tid) -> std::shared_ptr<DocumentStateTransaction>;
+  auto getTrx(TransactionId tid) -> std::shared_ptr<IDocumentStateTransaction>;
 
  private:
   GlobalLogIdentifier _gid;
-  DatabaseGuard _db;
-  std::unordered_map<TransactionId, std::shared_ptr<DocumentStateTransaction>>
-      _transactions;
+  std::unique_ptr<IDatabaseGuard> _dbGuard;
+  std::shared_ptr<IDocumentStateHandlersFactory> _factory;
+  TransactionMap _transactions;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

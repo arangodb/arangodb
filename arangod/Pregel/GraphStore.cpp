@@ -807,6 +807,7 @@ template class arangodb::pregel::GraphStore<uint64_t, uint8_t>;
 template class arangodb::pregel::GraphStore<float, float>;
 template class arangodb::pregel::GraphStore<double, float>;
 template class arangodb::pregel::GraphStore<double, double>;
+template class arangodb::pregel::GraphStore<float, uint8_t>;
 
 // specific algo combos
 template class arangodb::pregel::GraphStore<WCCValue, uint64_t>;
