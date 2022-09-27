@@ -95,10 +95,8 @@ jsUnity.results.fail = function (index, testName, message) {
 
   ++testCount;
 
-  if (RESULTS[testName] === undefined)
-  {
-    if (testCount === 1)
-    {
+  if (RESULTS[testName] === undefined) {
+    if (testCount === 1) {
       print(newtime.toISOString() + internal.COLORS.COLOR_RED + " [   FAILED   ] " + currentSuiteName +
            internal.COLORS.COLOR_RESET + " (setUpAll: " + (jsUnity.env.getDate() - STARTTEST) + "ms)");
 
@@ -115,19 +113,28 @@ jsUnity.results.fail = function (index, testName, message) {
 
   RESULTS[testName].status = false;
   RESULTS[testName].message = message;
-  RESULTS[testName].duration = (ENDTEST - STARTTEST);
 
-  if (RESULTS[testName].setUpDuration === undefined)
-  {
+  RESULTS[testName].duration = (ENDTEST - STARTTEST);
+  if (RESULTS[testName].duration < 0) {
+    // if ENDTEST not set...
+    RESULTS[testName].duration = 0;
+  }
+
+  if (RESULTS[testName].setUpDuration === undefined) {
     RESULTS[testName].setUpDuration = newtime - SETUPS;
     RESULTS[testName].duration = 0;
+    RESULTS[testName].tearDownDuration = 0;
+  }
+  
+  if (RESULTS[testName].tearDownDuration === undefined) {
+    RESULTS[testName].tearDownDuration = 0;
   }
 
   print(newtime.toISOString() + internal.COLORS.COLOR_RED + " [   FAILED   ] " +
        testName + internal.COLORS.COLOR_RESET +
        ' (setUp: ' + RESULTS[testName].setUpDuration + 'ms,' +
        ' test: ' + RESULTS[testName].duration + 'ms,' +
-       ' tearDown: ' +  (newtime - ENDTEST) + 'ms)\n' +
+       ' tearDown: ' +  RESULTS[testName].tearDownDuration + 'ms)\n' +
        internal.COLORS.COLOR_RED + message + internal.COLORS.COLOR_RESET);
 
   STARTTEST = newtime;

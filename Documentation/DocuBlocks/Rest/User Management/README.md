@@ -65,9 +65,9 @@ Returned if a user with the same name already exists.
 @RESTHEADER{PUT /_api/user/{user}/database/{dbname}, Set the database access level}
 
 @RESTBODYPARAM{grant,string,required,string}
-Use "rw" to set the database access level to *Administrate*.<br>
-Use "ro" to set the database access level to *Access*.<br>
-Use "none" to set the database access level to *No access*.
+- Use "rw" to set the database access level to *Administrate*.
+- Use "ro" to set the database access level to *Access*.
+- Use "none" to set the database access level to *No access*.
 
 @RESTURLPARAMETERS
 

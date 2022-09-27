@@ -29,7 +29,7 @@ const request = require('@arangodb/request');
 const getMetric = require('@arangodb/test-helper').getMetric;
 
 function getEndpointsByType(type) {
-  const isType = (d) => (d.role.toLowerCase() === type);
+  const isType = (d) => (d.instanceRole === type);
   const toEndpoint = (d) => (d.endpoint);
   const endpointToURL = (endpoint) => {
     if (endpoint.substr(0, 6) === 'ssl://') {
@@ -42,8 +42,8 @@ function getEndpointsByType(type) {
     return 'http' + endpoint.substr(pos);
   };
 
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(isType)
+  const instanceManager = JSON.parse(internal.env.INSTANCEINFO);
+  return instanceManager.arangods.filter(isType)
                               .map(toEndpoint)
                               .map(endpointToURL);
 }

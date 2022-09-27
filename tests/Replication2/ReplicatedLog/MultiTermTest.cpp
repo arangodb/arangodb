@@ -115,6 +115,54 @@ TEST_F(MultiTermTest, resign_leader_wait_for) {
   }
 }
 
+TEST_F(MultiTermTest, resign_leader_release) {
+  auto leaderLog = makeReplicatedLog(LogId{1});
+  auto followerLog = makeReplicatedLog(LogId{2});
+  {
+    auto follower =
+        followerLog->becomeFollower("follower", LogTerm{1}, "leader");
+    auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
+
+    auto idx = leader->insert(LogPayload::createFromString("first entry"),
+                              false, LogLeader::doNotTriggerAsyncReplication);
+    auto f = leader->waitFor(idx);
+    EXPECT_FALSE(f.isReady());
+    leader->triggerAsyncReplication();
+    follower->runAsyncAppendEntries();
+    auto newLeader =
+        leaderLog->becomeLeader("leader", LogTerm{2}, {follower}, 2);
+    ASSERT_TRUE(f.isReady());
+    ASSERT_FALSE(f.hasException());
+    auto res = leader->release(idx);
+    EXPECT_EQ(res.errorNumber(),
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+  }
+}
+
+TEST_F(MultiTermTest, resign_follower_release) {
+  auto leaderLog = makeReplicatedLog(LogId{1});
+  auto followerLog = makeReplicatedLog(LogId{2});
+  {
+    auto follower =
+        followerLog->becomeFollower("follower", LogTerm{1}, "leader");
+    auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
+
+    auto idx = leader->insert(LogPayload::createFromString("first entry"),
+                              false, LogLeader::doNotTriggerAsyncReplication);
+    auto f = follower->waitFor(idx);
+    EXPECT_FALSE(f.isReady());
+    leader->triggerAsyncReplication();
+    follower->runAllAsyncAppendEntries();
+    auto newFollower =
+        followerLog->becomeFollower("follower", LogTerm{2}, "leader");
+    ASSERT_TRUE(f.isReady());
+    ASSERT_FALSE(f.hasException());
+    auto res = follower->release(idx);
+    EXPECT_EQ(res.errorNumber(),
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+  }
+}
+
 TEST_F(MultiTermTest, resign_follower_wait_for) {
   auto leaderLog = makeReplicatedLog(LogId{1});
   auto followerLog = makeReplicatedLog(LogId{2});

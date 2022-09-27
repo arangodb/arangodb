@@ -541,8 +541,11 @@ var jsUnity = exports.jsUnity = (function () {
               try {
                 if (!didSetUp && !skipTest) {
                   this.results.beginSetUp(suite.scope, test.name);
-                  setUp(test.name);
-                  this.results.endSetUp(suite.scope, test.name);
+                  try {
+                    setUp(test.name);
+                  } finally {
+                    this.results.endSetUp(suite.scope, test.name);
+                  }
                   didSetUp = true;
                 }
                 if (!didTest && !skipTest) {
@@ -551,8 +554,11 @@ var jsUnity = exports.jsUnity = (function () {
                 }
                 if (!didTearDown && !skipTest) {
                   this.results.beginTeardown(suite.scope, test.name);
-                  tearDown(test.name);
-                  this.results.endTeardown(suite.scope, test.name);
+                  try {
+                    tearDown(test.name);
+                  } finally {
+                    this.results.endTeardown(suite.scope, test.name);
+                  }
                   didTearDown = true;
                 }
 

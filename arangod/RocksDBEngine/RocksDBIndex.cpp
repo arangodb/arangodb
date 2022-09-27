@@ -306,11 +306,10 @@ size_t RocksDBIndex::memory() const {
   TRI_ASSERT(_cf == bounds.columnFamily());
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out;
-  db->GetApproximateSizes(
-      _cf, &r, 1, &out,
-      static_cast<uint8_t>(
-          rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
-          rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+
+  rocksdb::SizeApproximationOptions options{.include_memtables = true,
+                                            .include_files = true};
+  db->GetApproximateSizes(options, _cf, &r, 1, &out);
   return static_cast<size_t>(out);
 }
 

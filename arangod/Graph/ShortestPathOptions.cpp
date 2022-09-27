@@ -59,6 +59,7 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
   TRI_ASSERT(type.isString());
   TRI_ASSERT(type.isEqualString("shortestPath"));
 #endif
+  parseShardIndependentFlags(info);
   minDepth = VPackHelper::getNumericValue<uint64_t>(info, "minDepth", 1);
   maxDepth = VPackHelper::getNumericValue<uint64_t>(info, "maxDepth", 1);
 
@@ -126,12 +127,12 @@ bool ShortestPathOptions::useWeight() const {
 
 void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
+  toVelocyPackBase(builder);
   builder.add("minDepth", VPackValue(minDepth));
   builder.add("maxDepth", VPackValue(maxDepth));
   builder.add("weightAttribute", VPackValue(getWeightAttribute()));
   builder.add("defaultWeight", VPackValue(getDefaultWeight()));
   builder.add("type", VPackValue("shortestPath"));
-  builder.add(StaticStrings::GraphRefactorFlag, VPackValue(refactor()));
 }
 
 void ShortestPathOptions::toVelocyPackIndexes(VPackBuilder& builder) const {

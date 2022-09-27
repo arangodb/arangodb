@@ -42,8 +42,9 @@ std::vector<std::string> servers{"XXX-XXX-XXX", "XXX-XXX-XXY"};
 
 TEST(SupervisionTest, checking_for_the_delete_transaction_0_servers) {
   std::vector<std::string> todelete;
-  auto const& transaction = removeTransactionBuilder(todelete);
-  auto const& slice = transaction->slice();
+  velocypack::Builder builder;
+  Supervision::removeTransactionBuilder(builder, todelete);
+  auto slice = builder.slice();
 
   ASSERT_TRUE(slice.isArray());
   ASSERT_EQ(slice.length(), 1);
@@ -55,8 +56,9 @@ TEST(SupervisionTest, checking_for_the_delete_transaction_0_servers) {
 
 TEST(SupervisionTest, checking_for_the_delete_transaction_1_server) {
   std::vector<std::string> todelete{servers[0]};
-  auto const& transaction = removeTransactionBuilder(todelete);
-  auto const& slice = transaction->slice();
+  velocypack::Builder builder;
+  Supervision::removeTransactionBuilder(builder, todelete);
+  auto slice = builder.slice();
 
   ASSERT_TRUE(slice.isArray());
   ASSERT_EQ(slice.length(), 1);
@@ -76,8 +78,9 @@ TEST(SupervisionTest, checking_for_the_delete_transaction_1_server) {
 
 TEST(SupervisionTest, checking_for_the_delete_transaction_2_servers) {
   std::vector<std::string> todelete = servers;
-  auto const& transaction = removeTransactionBuilder(todelete);
-  auto const& slice = transaction->slice();
+  velocypack::Builder builder;
+  Supervision::removeTransactionBuilder(builder, todelete);
+  auto slice = builder.slice();
 
   ASSERT_TRUE(slice.isArray());
   ASSERT_EQ(slice.length(), 1);
@@ -165,6 +168,11 @@ static char const* skeleton =
             ]
           }
         }
+      }
+    },
+    "Databases": {
+      "database": {
+        "replicationVersion": "two"
       }
     },
     "DBServers": {
@@ -379,6 +387,18 @@ TEST_F(SupervisionTestClass, schedule_addfollower_bad_server) {
                       "s1");
   checkSupervisionJob(todo[table["124"]], "addFollower", "database", "124",
                       "s2");
+}
+
+TEST_F(SupervisionTestClass, schedule_addfollower_bad_server_but_maintenance) {
+  _snapshot.getOrCreate("/Supervision/Health/follower1") =
+      createNode(R"=("FAILED")=");
+  _snapshot.getOrCreate("/Current/MaintenanceDBServers/follower1") =
+      createNode(R"=({"Mode":"maintenance"})=");
+
+  std::shared_ptr<VPackBuilder> envelope = runEnforceReplication(_snapshot);
+  VPackSlice todo = envelope->slice();
+  // we expect no job to be created
+  EXPECT_EQ(todo.length(), 0);
 }
 
 TEST_F(SupervisionTestClass, no_remove_follower_loop) {

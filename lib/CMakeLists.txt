@@ -52,23 +52,19 @@ else()
   message(STATUS "Will not compile in hand-optimized assembler code for CRC32.")
 endif()
 
-if (USE_LOCAL_CLOCK_GETTIME)
-  set(LIB_CLOCK_GETTIME Utilities/clock_gettime.cpp)
-endif ()
-
 add_library(arango STATIC
   ${LIB_ARANGO_APPLE}
   ${LIB_ARANGO_MSVC}
   ${LIB_ARANGO_POSIX}
   ${LIB_ARANGO_LINENOISE}
   ${LIB_ARANGO_DATE}
-  ${LIB_CLOCK_GETTIME}
   ${LIB_ASM_SOURCES}
   ApplicationFeatures/ApplicationFeature.cpp
   ApplicationFeatures/ApplicationFeaturePhase.cpp
   ApplicationFeatures/ApplicationServer.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
+  ApplicationFeatures/FileSystemFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/ShellColorsFeature.cpp
@@ -87,8 +83,8 @@ add_library(arango STATIC
   Basics/EncodingUtils.cpp
   Basics/ErrorCode.cpp
   Basics/FeatureFlags.cpp
-  Basics/ResultError.cpp
-  Basics/Exceptions.cpp
+  Basics/ResultError.cpp Basics/ResultError.tpp Basics/ResultError.h
+  Basics/Exceptions.cpp Basics/Exceptions.tpp Basics/Exceptions.h
   Basics/FileUtils.cpp
   Basics/FunctionUtils.cpp
   Basics/GlobalResourceMonitor.cpp
@@ -119,6 +115,7 @@ add_library(arango STATIC
   Basics/UnshackledMutex.cpp
   Basics/Utf8Helper.cpp
   Basics/VelocyPackHelper.cpp
+  Basics/VelocyPackStringLiteral.cpp
   Basics/application-exit.cpp
   Basics/CleanupFunctions.cpp
   Basics/conversions.cpp
@@ -200,7 +197,6 @@ add_library(arango STATIC
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp
-  ${ADDITIONAL_LIB_ARANGO_SOURCES}
 )
 
 # The following is necessary to compile MerkleTree.cpp without RTTI.
@@ -223,7 +219,7 @@ else()
 endif()
 
 
-target_link_libraries(arango
+target_link_libraries(arango PUBLIC
   s2
   boost_system
   boost_boost
@@ -234,6 +230,8 @@ target_link_libraries(arango
   ${SYSTEM_LIBRARIES}
   ${ICU_LIBS}
 )
+
+target_link_libraries(arango PUBLIC fmt::fmt)
 
 # this is "."
 target_include_directories(arango PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -246,9 +244,9 @@ target_include_directories(arango SYSTEM PUBLIC ${PROJECT_SOURCE_DIR}/3rdParty/f
 target_include_directories(arango SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
 target_include_directories(arango SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
 
-target_link_libraries(arango rocksdb_interface)
-target_link_libraries(arango zlib_interface)
-target_link_libraries(arango v8_interface)
+target_link_libraries(arango PUBLIC rocksdb_interface)
+target_link_libraries(arango PUBLIC zlib_interface)
+target_link_libraries(arango PUBLIC v8_interface)
 
 add_dependencies(arango v8_build)
 
@@ -260,12 +258,12 @@ target_include_directories(arango
 )
 
 add_dependencies(arango snappy)
-target_link_libraries(arango snappy)
+target_link_libraries(arango PUBLIC snappy)
 
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 
 if (USE_LIBUNWIND)
-  target_link_libraries(arango ${LIBUNWIND_LIB})
+  target_link_libraries(arango PUBLIC ${LIBUNWIND_LIB})
   target_include_directories(arango PRIVATE "${LIBUNWIND_HOME}/include")
   add_dependencies(arango libunwind_build)
 endif ()
@@ -367,6 +365,7 @@ target_link_libraries(arango_v8
   boost_boost
   velocypack
   )
+target_link_libraries(arango_v8 arango)
 
 target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_BINARY_DIR})

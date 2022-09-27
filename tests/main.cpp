@@ -80,6 +80,10 @@ char const* ARGV0 = "";
 
 int main(int argc, char* argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
+  // our gtest version is old and doesn't have the GTEST_FLAG_SET macro yet,
+  // thus this funny workaround for now.
+  // GTEST_FLAG_SET(death_test_style, "threadsafe");
+  (void)(::testing::GTEST_FLAG(death_test_style) = "threadsafe");
 
   TRI_GET_ARGV(argc, argv);
   int subargc = 0;

@@ -29,24 +29,44 @@
 namespace arangodb {
 namespace iresearch {
 
+class IResearchRocksDBInvertedIndexFactory : public IndexTypeFactory {
+ public:
+  explicit IResearchRocksDBInvertedIndexFactory(ArangodServer& server);
+
+  bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
+             std::string const& dbname) const override;
+
+  /// @brief instantiate an Index definition
+  std::shared_ptr<Index> instantiate(LogicalCollection& collection,
+                                     velocypack::Slice definition, IndexId id,
+                                     bool isClusterConstructor) const override;
+
+  /// @brief normalize an Index definition prior to instantiation/persistence
+  Result normalize(velocypack::Builder& normalized,
+                   velocypack::Slice definition, bool isCreation,
+                   TRI_vocbase_t const& vocbase) const override;
+
+  bool attributeOrderMatters() const override { return false; }
+};
+
 class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
                                             public RocksDBIndex {
  public:
   IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection,
-                                uint64_t objectId, std::string const& name,
-                                IResearchInvertedIndexMeta&& meta);
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  virtual ~IResearchRocksDBInvertedIndex() {
-    // if triggered  - no unload was called prior to deleting index object
-    TRI_ASSERT(!_dataStore);
-  }
-#else
-  virtual ~IResearchRocksDBInvertedIndex() = default;
-#endif
+                                uint64_t objectId, std::string const& name);
 
   Index::IndexType type() const override {
     return Index::TRI_IDX_TYPE_INVERTED_INDEX;
+  }
+
+  std::string getCollectionName() const;
+  std::string const& getShardName() const noexcept;
+
+  void insertMetrics() final;
+  void removeMetrics() final;
+
+  void toVelocyPackFigures(velocypack::Builder& builder) const final {
+    IResearchDataStore::toVelocyPackStats(builder);
   }
 
   void toVelocyPack(
@@ -69,7 +89,7 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
     return IResearchInvertedIndex::inProgress();
   }
 
-  bool covers(arangodb::aql::Projections& projections) const override {
+  bool covers(aql::Projections& projections) const override {
     return IResearchInvertedIndex::covers(projections);
   }
 
@@ -78,8 +98,11 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
   void load() override {}
   void unload() override;
 
-  bool matchesDefinition(
-      arangodb::velocypack::Slice const& other) const override;
+  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override {
+    IResearchDataStore::afterTruncate(tick, trx);
+  }
+
+  bool matchesDefinition(velocypack::Slice const& other) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
       transaction::Methods* trx, aql::AstNode const* node,
@@ -100,52 +123,45 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
   }
 
   Index::FilterCosts supportsFilterCondition(
+      transaction::Methods& trx,
       std::vector<std::shared_ptr<Index>> const& allIndexes,
       aql::AstNode const* node, aql::Variable const* reference,
       size_t itemsInIndex) const override {
     return IResearchInvertedIndex::supportsFilterCondition(
-        IResearchDataStore::id(), RocksDBIndex::fields(), allIndexes, node,
+        trx, IResearchDataStore::id(), RocksDBIndex::fields(), allIndexes, node,
         reference, itemsInIndex);
   }
 
   aql::AstNode* specializeCondition(
-      aql::AstNode* node, aql::Variable const* reference) const override {
-    return IResearchInvertedIndex::specializeCondition(node, reference);
+      transaction::Methods& trx, aql::AstNode* node,
+      aql::Variable const* reference) const override {
+    return IResearchInvertedIndex::specializeCondition(trx, node, reference);
   }
 
   Result insert(transaction::Methods& trx, RocksDBMethods* /*methods*/,
                 LocalDocumentId const& documentId, VPackSlice doc,
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) override {
-    return IResearchDataStore::insert<InvertedIndexFieldIterator,
-                                      IResearchInvertedIndexMeta>(
-        trx, documentId, doc, meta());
+    return IResearchDataStore::insert<
+        FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
+        IResearchInvertedIndexMetaIndexingContext>(trx, documentId, doc,
+                                                   *meta()._indexingContext);
   }
 
   Result remove(transaction::Methods& trx, RocksDBMethods*,
                 LocalDocumentId const& documentId, VPackSlice) override {
-    return IResearchDataStore::remove(trx, documentId);
+    return IResearchDataStore::remove(trx, documentId, meta().hasNested());
   }
-};
 
-class IResearchRocksDBInvertedIndexFactory : public IndexTypeFactory {
- public:
-  explicit IResearchRocksDBInvertedIndexFactory(ArangodServer& server);
+ private:
+  // required for calling initFields()
+  friend class iresearch::IResearchRocksDBInvertedIndexFactory;
 
-  bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
-             std::string const& dbname) const override;
-
-  /// @brief instantiate an Index definition
-  std::shared_ptr<Index> instantiate(LogicalCollection& collection,
-                                     velocypack::Slice definition, IndexId id,
-                                     bool isClusterConstructor) const override;
-
-  /// @brief normalize an Index definition prior to instantiation/persistence
-  Result normalize(velocypack::Builder& normalized,
-                   velocypack::Slice definition, bool isCreation,
-                   TRI_vocbase_t const& vocbase) const override;
-
-  bool attributeOrderMatters() const override { return false; }
+  void initFields() {
+    TRI_ASSERT(_fields.empty());
+    *const_cast<std::vector<std::vector<basics::AttributeName>>*>(&_fields) =
+        IResearchInvertedIndex::fields(meta());
+  }
 };
 
 }  // namespace iresearch

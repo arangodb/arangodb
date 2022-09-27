@@ -23,17 +23,14 @@
 
 #pragma once
 
-#include "analysis/analyzer.hpp"
-#include "analysis/token_attributes.hpp"
+#include "analysis/token_streams.hpp"
 #include "velocypack/Slice.h"
 
 namespace arangodb {
 namespace iresearch {
 
-class IdentityAnalyzer final : public irs::analysis::analyzer {
+class IdentityAnalyzer final : public irs::string_token_stream {
  public:
-  static constexpr irs::string_ref type_name() noexcept { return "identity"; }
-
   static bool normalize(irs::string_ref /*args*/, std::string& out);
 
   static ptr make(irs::string_ref /*args*/);
@@ -41,32 +38,7 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
   static bool normalize_json(irs::string_ref /*args*/, std::string& out);
 
   static ptr make_json(irs::string_ref /*args*/);
-
-  IdentityAnalyzer() noexcept;
-
-  virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override;
-
-  virtual bool next() noexcept override {
-    auto const empty = _empty;
-
-    _empty = true;
-
-    return !empty;
-  }
-
-  virtual bool reset(irs::string_ref data) noexcept override {
-    _empty = false;
-    _term.value = irs::ref_cast<irs::byte_type>(data);
-
-    return true;
-  }
-
- private:
-  irs::term_attribute _term;
-  irs::increment _inc;
-  bool _empty;
-};  // IdentityAnalyzer
+};
 
 }  // namespace iresearch
 }  // namespace arangodb

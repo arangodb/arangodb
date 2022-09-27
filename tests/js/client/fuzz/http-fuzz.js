@@ -111,6 +111,7 @@ function httpRequestsFuzzerTestSuite() {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
+//the fuzzer is only compiled if failure points are enabled
 if (internal.debugCanUseFailAt()) {
   jsunity.run(httpRequestsFuzzerTestSuite);
 }

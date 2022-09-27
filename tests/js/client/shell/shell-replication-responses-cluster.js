@@ -28,7 +28,7 @@ const internal = require('internal');
 const arangodb = require('@arangodb');
 const _ = require('lodash');
 const db = arangodb.db;
-const { debugCanUseFailAt, debugClearFailAt, debugSetFailAt, getEndpointById, getEndpointsByType } = require('@arangodb/test-helper');
+const { debugCanUseFailAt, debugClearFailAt, debugSetFailAt, getEndpointById, getUrlById, getEndpointsByType } = require('@arangodb/test-helper');
 const request = require('@arangodb/request');
 
 function followerResponsesSuite() {
@@ -57,12 +57,13 @@ function followerResponsesSuite() {
       let follower = servers[1];
       
       let endpoint = getEndpointById(follower);
+      let url = getUrlById(follower);
       debugSetFailAt(endpoint, "synchronousReplication::neverRefuseOnFollower");
 
       // send a single document replication insert request
       let response = request({
         method: "post",
-        url: endpoint + "/_api/document/" + shard + "?isSynchronousReplication=" + encodeURIComponent(leader),
+        url: url + "/_api/document/" + shard + "?isSynchronousReplication=" + encodeURIComponent(leader),
         body: { _key: "test1" },
         json: true
       });
@@ -73,7 +74,7 @@ function followerResponsesSuite() {
       // send multi document replication insert request
       response = request({
         method: "post",
-        url: endpoint + "/_api/document/" + shard + "?isSynchronousReplication=" + encodeURIComponent(leader),
+        url: url + "/_api/document/" + shard + "?isSynchronousReplication=" + encodeURIComponent(leader),
         body: [ { _key: "test2" }, { _key: "test3" } ],
         json: true
       });
@@ -98,12 +99,13 @@ function followerResponsesSuite() {
       let follower = servers[1];
       
       let endpoint = getEndpointById(follower);
+      let url = getUrlById(follower);
       debugSetFailAt(endpoint, "synchronousReplication::neverRefuseOnFollower");
 
       // send a single document replication update request
       let response = request({
         method: "patch",
-        url: endpoint + "/_api/document/" + shard + "/test1?isSynchronousReplication=" + encodeURIComponent(leader),
+        url: url + "/_api/document/" + shard + "/test1?isSynchronousReplication=" + encodeURIComponent(leader),
         body: { _key: "test1" },
         json: true
       });
@@ -114,7 +116,7 @@ function followerResponsesSuite() {
       // send multi document replication update request
       response = request({
         method: "patch",
-        url: endpoint + "/_api/document/" + shard + "?isSynchronousReplication=" + encodeURIComponent(leader),
+        url: url + "/_api/document/" + shard + "?isSynchronousReplication=" + encodeURIComponent(leader),
         body: [ { _key: "test2" }, { _key: "test3" } ],
         json: true
       });
@@ -139,12 +141,13 @@ function followerResponsesSuite() {
       let follower = servers[1];
       
       let endpoint = getEndpointById(follower);
+      let url = getUrlById(follower);
       debugSetFailAt(endpoint, "synchronousReplication::neverRefuseOnFollower");
 
       // send a single document replication remove request
       let response = request({
         method: "delete",
-        url: endpoint + "/_api/document/" + shard + "/test1?isSynchronousReplication=" + encodeURIComponent(leader),
+        url: url + "/_api/document/" + shard + "/test1?isSynchronousReplication=" + encodeURIComponent(leader),
         body: {},
         json: true
       });
@@ -155,7 +158,7 @@ function followerResponsesSuite() {
       // send multi document replication remove request
       response = request({
         method: "delete",
-        url: endpoint + "/_api/document/" + shard + "?isSynchronousReplication=" + encodeURIComponent(leader),
+        url: url + "/_api/document/" + shard + "?isSynchronousReplication=" + encodeURIComponent(leader),
         body: [ { _key: "test2" }, { _key: "test3" } ],
         json: true
       });

@@ -57,7 +57,7 @@ TEST(PregelTypedBufferTest, test_with_malloc) {
 TEST(PregelTypedBufferTest, test_with_mmap) {
   arangodb::ArangodServer server(nullptr, nullptr);
 
-  MappedFileBuffer<int64_t> mapped(1024, "");
+  MappedFileBuffer<int64_t> mapped(/*tempPath*/ "", 1024, "");
   ASSERT_EQ(mapped.size(), 0);
   ASSERT_EQ(mapped.capacity(), 1024);
   ASSERT_EQ(mapped.remainingCapacity(), 1024);

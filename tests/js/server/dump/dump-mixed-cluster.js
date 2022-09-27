@@ -52,7 +52,6 @@ jsunity.run(function dump_single_testsuite() {
       // tests not supported by mixed setups:
       "testDatabaseProperties",
       "testShards",
-      "testKeygenAutoInc",
 
       // cluster tests:
       "testDatabaseProperties",

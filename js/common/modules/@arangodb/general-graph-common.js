@@ -578,8 +578,8 @@ var updateBindCollections = function (graph) {
 };
 
 // @brief Class Graph. Defines a graph in the Database.
-class Graph {
-  constructor (info) {
+class AbstractGraph {
+  constructor(info) {
     // We assume well-formedness of the input.
     // User cannot directly call this constructor.
     let vertexCollections = {};
@@ -641,7 +641,7 @@ class Graph {
 // / @brief return all vertex collections of the graph.
 // //////////////////////////////////////////////////////////////////////////////
 
-  _vertexCollections (excludeOrphans) {
+  _vertexCollections(excludeOrphans) {
     if (excludeOrphans) {
       return this.__vertexCollections;
     }
@@ -652,12 +652,17 @@ class Graph {
     return _.union(_.values(this.__vertexCollections), orphans);
   }
 
+  __updateDefinitions(edgeDefs, orphans) {
+    this.__edgeDefinitions = edgeDefs;
+    this.__orphanCollections = orphans;
+  }
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief _EDGES(vertexId).
 // //////////////////////////////////////////////////////////////////////////////
 
   // might be needed from AQL itself
-  _EDGES (vertexId) {
+  _EDGES(vertexId) {
     if (vertexId.indexOf('/') === -1) {
       let err = new ArangoError();
       err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_FOUND.code;
@@ -1512,38 +1517,6 @@ exports._relation = function (relationName, fromVertexCollections, toVertexColle
   };
 };
 
-exports._graph = function (graphName) {
-  let gdb = getGraphCollection();
-  let g;
-
-  try {
-    g = gdb.document(graphName);
-  } catch (e) {
-    if (e.errorNum !== arangodb.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
-      throw e;
-    }
-    let err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_FOUND.code;
-    err.errorMessage = arangodb.errors.ERROR_GRAPH_NOT_FOUND.message;
-    throw err;
-  }
-  if (g.isSmart) {
-    let err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_GRAPH.code;
-    err.errorMessage = 'The graph you requested is a SmartGraph (Enterprise Edition only)';
-    throw err;
-  }
-  if (g.isSatellite) {
-    let err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_GRAPH.code;
-    err.errorMessage = 'The graph you requested is a SatelliteGraph (Enterprise Edition only)';
-    throw err;
-  }
-
-  findCollectionsByEdgeDefinitions(g.edgeDefinitions);
-  return new Graph(g);
-};
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_general_graph_edge_definitions
 // //////////////////////////////////////////////////////////////////////////////
@@ -1604,110 +1577,85 @@ exports._listObjects = function () {
 exports._registerCompatibilityFunctions = function () {
   const aqlfunctions = require('@arangodb/aql/functions');
   aqlfunctions.register('arangodb::GRAPH_EDGES', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph-common');
+    var gm = require('@arangodb/general-graph');
     var g = gm._graph(graphName);
     return g._edges(vertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_VERTICES', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph-common');
+    var gm = require('@arangodb/general-graph');
     var g = gm._graph(graphName);
     return g._vertices(vertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_NEIGHBORS', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph-common');
+    var gm = require('@arangodb/general-graph');
     var g = gm._graph(graphName);
     return g._neighbors(vertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_COMMON_NEIGHBORS', function (graphName, vertex1Example, vertex2Example, options1, options2) {
-    var gm = require('@arangodb/general-graph-common');
+    var gm = require('@arangodb/general-graph');
     var g = gm._graph(graphName);
     return g._commonNeighbors(vertex1Example, vertex2Example, options1, options2);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_COMMON_PROPERTIES', function (graphName, vertex1Example, vertex2Example, options) {
-    var gm = require('@arangodb/general-graph-common');
+    var gm = require('@arangodb/general-graph');
     var g = gm._graph(graphName);
     return g._commonProperties(vertex1Example, vertex2Example, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_PATHS', function (graphName, options) {
-    var gm = require('@arangodb/general-graph-common');
+    var gm = require('@arangodb/general-graph');
     var g = gm._graph(graphName);
     return g._paths(options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_SHORTEST_PATH', function (graphName, startVertexExample, edgeVertexExample, options) {
-    var gm = require('@arangodb/general-graph-common');
+    var gm = require('@arangodb/general-graph');
     var g = gm._graph(graphName);
     return g._shortestPath(startVertexExample, edgeVertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_DISTANCE_TO', function (graphName, startVertexExample, edgeVertexExample, options) {
-    var gm = require('@arangodb/general-graph-common');
+    var gm = require('@arangodb/general-graph');
     var g = gm._graph(graphName);
     return g._distanceTo(startVertexExample, edgeVertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_ABSOLUTE_ECCENTRICITY', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph-common');
+    var gm = require('@arangodb/general-graph');
     var g = gm._graph(graphName);
     return g._absoluteEccentricity(vertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_ECCENTRICITY', function (graphName, options) {
-    var gm = require('@arangodb/general-graph-common');
+    var gm = require('@arangodb/general-graph');
     var g = gm._graph(graphName);
     return g._eccentricity(options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_ABSOLUTE_CLOSENESS', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph-common');
+    var gm = require('@arangodb/general-graph');
     var g = gm._graph(graphName);
     return g._farness(vertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_CLOSENESS', function (graphName, options) {
-    var gm = require('@arangodb/general-graph-common');
+    var gm = require('@arangodb/general-graph');
     var g = gm._graph(graphName);
     return g._closeness(options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_ABSOLUTE_BETWEENNESS', function (graphName, vertexExample, options) {
-    var gm = require('@arangodb/general-graph-common');
+    var gm = require('@arangodb/general-graph');
     var g = gm._graph(graphName);
     return g._absoluteBetweenness(vertexExample, options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_BETWEENNESS', function (graphName, options) {
-    var gm = require('@arangodb/general-graph-common');
+    var gm = require('@arangodb/general-graph');
     var g = gm._graph(graphName);
     return g._betweenness(options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_RADIUS', function (graphName, options) {
-    var gm = require('@arangodb/general-graph-common');
+    var gm = require('@arangodb/general-graph');
     var g = gm._graph(graphName);
     return g._radius(options);
   }, false);
   aqlfunctions.register('arangodb::GRAPH_DIAMETER', function (graphName, options) {
-    var gm = require('@arangodb/general-graph-common');
+    var gm = require('@arangodb/general-graph');
     var g = gm._graph(graphName);
     return g._diameter(options);
   }, false);
 };
 
-exports.__GraphClass = Graph;
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_vertex_collection_save
-// //////////////////////////////////////////////////////////////////////////////
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_vertex_collection_replace
-// //////////////////////////////////////////////////////////////////////////////
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_vertex_collection_update
-// //////////////////////////////////////////////////////////////////////////////
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_vertex_collection_remove
-// //////////////////////////////////////////////////////////////////////////////
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_edge_collection_save
-// //////////////////////////////////////////////////////////////////////////////
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_edge_collection_replace
-// //////////////////////////////////////////////////////////////////////////////
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_edge_collection_update
-// //////////////////////////////////////////////////////////////////////////////
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_edge_collection_remove
-// //////////////////////////////////////////////////////////////////////////////
+exports.__GraphClass = AbstractGraph;

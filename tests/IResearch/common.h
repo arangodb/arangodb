@@ -56,6 +56,7 @@ class Isolate;  // forward declaration
 
 namespace arangodb {
 
+class IndexId;
 class DatabasePathFeature;  // forward declaration
 
 namespace application_features {
@@ -134,6 +135,11 @@ void expectEqualSlices_(const velocypack::Slice& lhs,
 }  // namespace tests
 }  // namespace arangodb
 
+namespace iresearch {
+std::string to_string(irs::filter const& f);
+}
+
+std::string mangleNested(std::string name);
 std::string mangleType(std::string name);
 std::string mangleAnalyzer(std::string name);
 std::string mangleBool(std::string name);
@@ -155,7 +161,7 @@ inline arangodb::aql::AstNode* wrappedExpressionExtractor(
 
 void assertExpressionFilter(
     TRI_vocbase_t& vocbase, std::string const& queryString,
-    irs::boost_t boost = irs::no_boost(),
+    irs::score_t boost = irs::kNoBoost,
     std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const&
         expressionExtractor = &defaultExpressionExtractor,
     std::string const& refName = "d");
@@ -175,7 +181,8 @@ void assertFilter(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d",
     arangodb::iresearch::FilterOptimization filterOptimization =
-        arangodb::iresearch::FilterOptimization::NONE);
+        arangodb::iresearch::FilterOptimization::NONE,
+    bool searchQuery = true, bool oldMangling = true, bool hasNested = false);
 
 void assertFilterSuccess(
     TRI_vocbase_t& vocbase, std::string const& queryString,
@@ -184,7 +191,8 @@ void assertFilterSuccess(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d",
     arangodb::iresearch::FilterOptimization filterOptimization =
-        arangodb::iresearch::FilterOptimization::NONE);
+        arangodb::iresearch::FilterOptimization::NONE,
+    bool searchQuery = true, bool oldMangling = true, bool hasNested = false);
 
 void assertFilterFail(
     TRI_vocbase_t& vocbase, std::string const& queryString,
@@ -222,7 +230,8 @@ inline VPackBuilder dbArgsBuilder(std::string const& name = "_system") {
 VPackBuilder getInvertedIndexPropertiesSlice(
     arangodb::IndexId iid, std::vector<std::string> const& fields,
     std::vector<std::vector<std::string>> const* storedFields = nullptr,
-    std::vector<std::pair<std::string, bool>> const* sortedFields = nullptr);
+    std::vector<std::pair<std::string, bool>> const* sortedFields = nullptr,
+    std::string_view name = "");
 
 arangodb::CreateDatabaseInfo createInfo(arangodb::ArangodServer& server,
                                         std::string const& name, uint64_t id);

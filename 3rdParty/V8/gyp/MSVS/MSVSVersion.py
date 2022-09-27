@@ -9,7 +9,7 @@ import glob
 from gyp.MSVS import TryQueryRegistryValue
 
 msvs_version_map = {
-  'auto': ('16.0', '15.0', '14.0', '12.0', '10.0', '9.0', '8.0', '11.0'),
+  'auto': ('17.0', '16.0', '15.0', '14.0', '12.0', '10.0', '9.0', '8.0', '11.0'),
   '2005': ('8.0',),
   '2005e': ('8.0',),
   '2008': ('9.0',),
@@ -23,6 +23,7 @@ msvs_version_map = {
   '2015': ('14.0',),
   '2017': ('15.0',),
   '2019': ('16.0',),
+  '2022': ('17.0',),
 }
 version_to_year = {
   '8.0': '2005',
@@ -33,6 +34,7 @@ version_to_year = {
   '14.0': '2015',
   '15.0': '2017',
   '16.0': '2019',
+  '17.0': '2022',
 }
 
 def _JoinPath(*args):
@@ -130,6 +132,15 @@ class VisualStudioVersion(object):
 
 
 MSVS_VERSIONS = {
+  '2022':
+    VisualStudioVersion(
+      short_name='2022',
+      description='Visual Studio 2022',
+      solution_version='12.00',
+      project_version='15.0',
+      default_toolset='v143',
+      compatible_sdks='10.0'
+    ),
   '2019':
     VisualStudioVersion(
       short_name='2019',
@@ -300,6 +311,9 @@ def _DetectVisualStudioVersion(wanted_version, force_express):
       elif version == '16.0':
         if os.path.exists(path):
           return _CreateVersion('2019', path)
+      elif version == '17.0':
+        if os.path.exists(path):
+          return _CreateVersion('2022', path)
       elif version != '14.0':  # There is no Express edition for 2015.
         return _CreateVersion(version_to_year[version] + 'e', os.path.join(path, '..'), sdk_based=True)
 

@@ -66,7 +66,7 @@ auto MultiAqlItemBlockInputRange::resizeOnce(MainQueryState state,
 }
 
 auto MultiAqlItemBlockInputRange::upstreamState(
-    size_t const dependency) const noexcept -> ExecutorState {
+    size_t dependency) const noexcept -> ExecutorState {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).upstreamState();
 }
@@ -83,37 +83,37 @@ auto MultiAqlItemBlockInputRange::hasDataRow() const noexcept -> bool {
       [](AqlItemBlockInputRange const& i) -> bool { return i.hasDataRow(); });
 }
 
-auto MultiAqlItemBlockInputRange::hasDataRow(
-    size_t const dependency) const noexcept -> bool {
+auto MultiAqlItemBlockInputRange::hasDataRow(size_t dependency) const noexcept
+    -> bool {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).hasDataRow();
 }
 
-auto MultiAqlItemBlockInputRange::rangeForDependency(size_t const dependency)
+auto MultiAqlItemBlockInputRange::rangeForDependency(size_t dependency)
     -> AqlItemBlockInputRange& {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency);
 }
 
-auto MultiAqlItemBlockInputRange::peekDataRow(size_t const dependency) const
+auto MultiAqlItemBlockInputRange::peekDataRow(size_t dependency) const
     -> std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).peekDataRow();
 }
 
-auto MultiAqlItemBlockInputRange::skipAll(size_t const dependency) noexcept
+auto MultiAqlItemBlockInputRange::skipAll(size_t dependency) noexcept
     -> std::size_t {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).skipAll();
 }
 
 auto MultiAqlItemBlockInputRange::skippedInFlight(
-    size_t const dependency) const noexcept -> std::size_t {
+    size_t dependency) const noexcept -> std::size_t {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).skippedInFlight();
 }
 
-auto MultiAqlItemBlockInputRange::nextDataRow(size_t const dependency)
+auto MultiAqlItemBlockInputRange::nextDataRow(size_t dependency)
     -> std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).nextDataRow();
@@ -220,14 +220,14 @@ auto MultiAqlItemBlockInputRange::nextShadowRow()
   return {state, std::move(shadowRow)};
 }
 
-auto MultiAqlItemBlockInputRange::getBlock(
-    size_t const dependency) const noexcept -> SharedAqlItemBlockPtr {
+auto MultiAqlItemBlockInputRange::getBlock(size_t dependency) const noexcept
+    -> SharedAqlItemBlockPtr {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs[dependency].getBlock();
 }
 
 auto MultiAqlItemBlockInputRange::setDependency(
-    size_t const dependency, AqlItemBlockInputRange const& range) -> void {
+    size_t dependency, AqlItemBlockInputRange const& range) -> void {
   TRI_ASSERT(dependency < _inputs.size());
   _inputs.at(dependency) = range;
 }
@@ -267,14 +267,14 @@ auto MultiAqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth)
 }
 
 // Subtract up to count rows from the local _skipped state
-auto MultiAqlItemBlockInputRange::skipForDependency(size_t const dependency,
+auto MultiAqlItemBlockInputRange::skipForDependency(size_t dependency,
                                                     size_t count) -> size_t {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).skip(count);
 }
 
 // Skip all that is available
-auto MultiAqlItemBlockInputRange::skipAllForDependency(size_t const dependency)
+auto MultiAqlItemBlockInputRange::skipAllForDependency(size_t dependency)
     -> size_t {
   TRI_ASSERT(dependency < _inputs.size());
   return _inputs.at(dependency).skipAll();

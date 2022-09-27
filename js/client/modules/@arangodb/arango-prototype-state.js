@@ -78,6 +78,9 @@ ArangoPrototypeState.prototype._readInternal = function (keys, options) {
   if (options.readFrom !== undefined) {
     query += `&readFrom=${encodeURIComponent(options.readFrom)}`;
   }
+  if (options.allowDirtyRead !== undefined) {
+    query += `&allowDirtyRead=${options.allowDirtyRead}`;
+  }
   let requestResult = this._database._connection.POST(this._baseurl() + query, keys);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
@@ -96,6 +99,12 @@ ArangoPrototypeState.prototype.getSnapshot = function (waitForIndex) {
 ArangoPrototypeState.prototype.waitForApplied = function (waitForIndex) {
   let query = `/wait-for-applied/${waitForIndex}`;
   let requestResult = this._database._connection.GET(this._baseurl() + query);
+  arangosh.checkRequestResult(requestResult);
+  return requestResult.result;
+};
+
+ArangoPrototypeState.prototype.drop = function () {
+  let requestResult = this._database._connection.DELETE(this._baseurl());
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };

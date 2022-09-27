@@ -26,6 +26,7 @@
 
 #include <cstdint>
 #include <string>
+#include <memory>
 
 #include "Basics/debugging.h"
 #include "Cache/BinaryKeyHasher.h"

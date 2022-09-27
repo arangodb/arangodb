@@ -33,6 +33,7 @@ const optionsDocumentation = [];
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const im = require('@arangodb/testutils/instance-manager');
 const xmldom = require('@xmldom/xmldom');
 const zlib = require('zlib');
 
@@ -52,11 +53,12 @@ class exportRunner extends tu.runInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "runExport";
+    this.instanceManage = null;
   }
   
   shutdown (results) {
     print(CYAN + 'Shutting down...' + RESET);
-    results['shutdown'] = pu.shutdownInstance(this.instanceInfo, this.options);
+    results['shutdown'] = this.instanceManager.shutdownInstance(false);
     print(CYAN + 'done.' + RESET);
     print();
     return results;
@@ -82,9 +84,10 @@ class exportRunner extends tu.runInArangoshRunner {
 
     print(CYAN + 'export tests...' + RESET);
 
-    this.instanceInfo = pu.startInstance('tcp', this.options, {}, 'export');
-
-    if (this.instanceInfo === false) {
+    this.instanceManager = new im.instanceManager('tcp', this.options, {}, 'export');
+    this.instanceManager.prepareInstance();
+    this.instanceManager.launchTcpDump("");
+    if (!this.instanceManager.launchInstance()) {
       return {
         export: {
           status: false,
@@ -92,6 +95,7 @@ class exportRunner extends tu.runInArangoshRunner {
         }
       };
     }
+    this.instanceManager.reconnect();
 
     print(CYAN + Date() + ': Setting up' + RESET);
 
@@ -99,7 +103,7 @@ class exportRunner extends tu.runInArangoshRunner {
 
     results.setup = this.runOneTest(tu.makePathUnix(tu.pathForTesting('server/export/export-setup.js')));
     results.setup.failed = 0;
-    if (!pu.arangod.check.instanceAlive(this.instanceInfo, this.options) || results.setup.status !== true) {
+    if (!this.instanceManager.checkInstanceAlive() || results.setup.status !== true) {
       results.setup.failed = 1;
       results.failed += 1;
       return this.shutdown(results);
@@ -111,7 +115,7 @@ class exportRunner extends tu.runInArangoshRunner {
       let version = global.ARANGODB_CLIENT_VERSION(true);
       if (version.hasOwnProperty('enterprise-version')) {
         skipEncrypt = false;
-        keyfile = fs.join(this.instanceInfo.rootDir, 'secret-key');
+        keyfile = fs.join(this.instanceManager.rootDir, 'secret-key');
         fs.write(keyfile, 'DER-HUND-der-hund-der-hund-der-h'); // must be exactly 32 chars long
       }
     }
@@ -133,7 +137,7 @@ class exportRunner extends tu.runInArangoshRunner {
         'configuration': fs.join(pu.CONFIG_DIR, 'arangoexport.conf'),
         'server.username': this.options.username,
         'server.password': this.options.password,
-        'server.endpoint': this.instanceInfo.endpoint,
+        'server.endpoint': this.instanceManager.endpoint,
         'server.database': name,
         'overwrite': true,
         'output-directory': tmpPath

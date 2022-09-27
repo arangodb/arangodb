@@ -1,4 +1,4 @@
-/*global describe, it, ArangoAgency, after, afterEach, instanceInfo, fail */
+/*global describe, it, ArangoAgency, after, afterEach, instanceManager, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cluster collection creation tests
@@ -34,10 +34,9 @@ const expect = require('chai').expect;
 const internal = require('internal');
 const db = internal.db;
 const heartbeatInterval = 1; // 1 second
-
-let isCluster = instanceInfo.arangods.length > 1;
+let isCluster = instanceManager.arangods.length > 1;
 let download = require('internal').download;
-let endpoint = instanceInfo.url; 
+let endpoint = instanceManager.url;
 
 const waitForHeartbeat = function () {
   internal.wait(3 * heartbeatInterval, false); 
@@ -122,7 +121,7 @@ describe('Readonly mode api', function() {
     expect(resp.code).to.equal(200);
     waitForHeartbeat();
     
-    let res = instanceInfo.arangods.filter(arangod => arangod.role === 'single' || arangod.role === 'coordinator' || arangod.role === 'primary')
+    let res = instanceManager.arangods.filter(arangod => arangod.role === 'single' || arangod.role === 'coordinator' || arangod.role === 'primary')
     .every(arangod => {
       let resp = download(arangod.url + '/_admin/server/mode');
       if (resp.code === 503) {

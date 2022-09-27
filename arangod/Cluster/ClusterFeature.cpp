@@ -29,7 +29,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Basics/MutexLocker.h"
 #include "Cluster/AgencyCache.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Endpoint/Endpoint.h"
@@ -107,7 +109,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                              true);
   options->addObsoleteOption("--cluster.disable-dispatcher-frontend",
                              "The dispatcher feature isn't available anymore; "
-                             "Use ArangoDBStarter for this now!",
+                             "Use ArangoDB Starter for this now!",
                              true);
   options->addObsoleteOption(
       "--cluster.dbserver-config",
@@ -289,7 +291,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
           "cluster.disable-dispatcher-frontend")) {
     LOG_TOPIC("33707", FATAL, arangodb::Logger::CLUSTER)
         << "The dispatcher feature isn't available anymore. Use "
-        << "ArangoDBStarter for this now! See "
+        << "ArangoDB Starter for this now! See "
         << "https://github.com/arangodb-helper/arangodb/ for more "
         << "details.";
     FATAL_ERROR_EXIT();
@@ -570,6 +572,10 @@ DECLARE_COUNTER(arangodb_sync_wrong_checksum_total,
 DECLARE_COUNTER(arangodb_sync_rebuilds_total,
                 "Number of times a follower shard needed to be completely "
                 "rebuilt because of too many synchronization failures");
+DECLARE_COUNTER(arangodb_potentially_dirty_document_reads_total,
+                "Number of document reads which could be dirty");
+DECLARE_COUNTER(arangodb_dirty_read_queries_total,
+                "Number of queries which could be doing dirty reads");
 
 // IMPORTANT: Please read the first comment block a couple of lines down, before
 // Adding code to this section.
@@ -646,6 +652,11 @@ void ClusterFeature::start() {
         &_metrics.add(arangodb_sync_wrong_checksum_total{});
     _followersTotalRebuildCounter =
         &_metrics.add(arangodb_sync_rebuilds_total{});
+  } else if (role == ServerState::RoleEnum::ROLE_COORDINATOR) {
+    _potentiallyDirtyDocumentReadsCounter =
+        &_metrics.add(arangodb_potentially_dirty_document_reads_total{});
+    _dirtyReadQueriesCounter =
+        &_metrics.add(arangodb_dirty_read_queries_total{});
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
@@ -808,6 +819,10 @@ void ClusterFeature::startHeartbeatThread(
     // wait until heartbeat is ready
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
+}
+
+void ClusterFeature::pruneAsyncAgencyConnectionPool() {
+  _asyncAgencyCommPool->pruneConnections();
 }
 
 void ClusterFeature::shutdownHeartbeatThread() {

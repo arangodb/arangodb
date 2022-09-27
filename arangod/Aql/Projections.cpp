@@ -96,13 +96,22 @@ bool Projections::isCoveringIndexPosition(uint16_t position) noexcept {
   return position != kNoCoveringIndexPosition;
 }
 
+void Projections::clear() noexcept {
+  _projections.clear();
+  _datasourceId = DataSourceId::none();
+  _index.reset();
+}
+
 /// @brief set the index context for projections using an index
 void Projections::setCoveringContext(
     DataSourceId const& id, std::shared_ptr<arangodb::Index> const& index) {
-  TRI_ASSERT(_index == nullptr);
-
   _datasourceId = id;
   _index = index;
+}
+
+bool Projections::contains(Projection const& other) const noexcept {
+  return std::any_of(_projections.begin(), _projections.end(),
+                     [&](Projection const& p) { return p.path == other.path; });
 }
 
 /// @brief checks if we have a single attribute projection on the attribute
@@ -141,6 +150,7 @@ void Projections::toVelocyPackFromDocument(
       TRI_ASSERT(it.path.size() == 1);
       b.add(it.path[0], VPackValue(transaction::helpers::extractIdString(
                             trxPtr->resolver(), slice, slice)));
+
     } else if (it.type == AttributeNamePath::Type::KeyAttribute) {
       // projection for "_key"
       TRI_ASSERT(it.path.size() == 1);
@@ -177,10 +187,12 @@ void Projections::toVelocyPackFromDocument(
       TRI_ASSERT(it.path.size() > 1);
       size_t level = 0;
       VPackSlice found = slice;
+      VPackSlice prev;
       size_t const n = it.path.size();
       while (level < n) {
         // look up attribute/sub-attribute
         found = found.get(it.path[level]);
+
         if (found.isNone()) {
           // not found. we can exit early
           b.add(it.path[level], VPackValue(VPackValueType::Null));
@@ -194,13 +206,20 @@ void Projections::toVelocyPackFromDocument(
         }
         if (level == n - 1) {
           // target value
-          b.add(it.path[level], found);
+          if (found.isCustom()) {
+            b.add(it.path[level],
+                  VPackValue(transaction::helpers::extractIdString(
+                      trxPtr->resolver(), found, prev)));
+          } else {
+            b.add(it.path[level], found);
+          }
           break;
         }
         // recurse into sub-attribute object
         TRI_ASSERT(level < n - 1);
         b.add(it.path[level], VPackValue(VPackValueType::Object));
         ++level;
+        prev = found;
       }
 
       // close all that we opened ourselves, so that the next projection can
@@ -264,7 +283,12 @@ void Projections::toVelocyPackFromIndex(
 }
 
 void Projections::toVelocyPack(arangodb::velocypack::Builder& b) const {
-  b.add(::projectionsKey, VPackValue(VPackValueType::Array));
+  toVelocyPack(b, ::projectionsKey);
+}
+
+void Projections::toVelocyPack(arangodb::velocypack::Builder& b,
+                               std::string_view key) const {
+  b.add(key, VPackValue(VPackValueType::Array));
   for (auto const& it : _projections) {
     if (it.path.size() == 1) {
       // projection on a top-level attribute. will be returned as a string
@@ -285,9 +309,14 @@ void Projections::toVelocyPack(arangodb::velocypack::Builder& b) const {
 
 /*static*/ Projections Projections::fromVelocyPack(
     arangodb::velocypack::Slice slice) {
+  return fromVelocyPack(slice, ::projectionsKey);
+}
+
+/*static*/ Projections Projections::fromVelocyPack(
+    arangodb::velocypack::Slice slice, std::string_view key) {
   std::vector<arangodb::aql::AttributeNamePath> projections;
 
-  VPackSlice p = slice.get(::projectionsKey);
+  VPackSlice p = slice.get(key);
   if (p.isArray()) {
     for (auto const& it : arangodb::velocypack::ArrayIterator(p)) {
       if (it.isString()) {

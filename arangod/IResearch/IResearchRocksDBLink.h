@@ -81,7 +81,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
 
   Result remove(transaction::Methods& trx, RocksDBMethods*,
                 LocalDocumentId const& documentId, VPackSlice) override {
-    return IResearchLink::remove(trx, documentId);
+    return IResearchLink::remove(trx, documentId, hasNested());
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -94,8 +94,8 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
       VPackBuilder& builder,
       std::underlying_type<Index::Serialize>::type flags) const override;
 
-  void toVelocyPackFigures(VPackBuilder& builder) const override {
-    IResearchLink::toVelocyPackStats(builder);
+  void toVelocyPackFigures(velocypack::Builder& builder) const final {
+    IResearchDataStore::toVelocyPackStats(builder);
   }
 
   IndexType type() const override { return IResearchLink::type(); }

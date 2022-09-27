@@ -72,7 +72,7 @@ const toggleHeaderDropdown = () => {
 const facets = ['db', 'name', 'type'];
 
 const AnalyzersReactView = () => {
-  const { data } = useSWR('/analyzer', (path) => getApiRouteForCurrentDB().get(path));
+  const { data } = useSWR('/analyzer', path => getApiRouteForCurrentDB().get(path));
   const permissions = usePermissions();
 
   const [filterExpr, setFilterExpr] = useState('');
@@ -169,13 +169,13 @@ const AnalyzersReactView = () => {
               <tbody>
               {
                 filteredAnalyzers.length
-                  ? filteredAnalyzers.map((analyzer, idx) => (
+                  ? filteredAnalyzers.map(analyzer => (
                     <tr key={analyzer.name}>
                       <ArangoTD seq={0}>{analyzer.db}</ArangoTD>
                       <ArangoTD seq={1}>{analyzer.name}</ArangoTD>
                       <ArangoTD seq={2}>{typeNameMap[analyzer.type]}</ArangoTD>
                       <ArangoTD seq={3}>
-                        <Actions analyzer={analyzer} permission={permissions} modalCidSuffix={idx}/>
+                        <Actions analyzer={analyzer} permission={permissions} modalCidSuffix={analyzer.name}/>
                       </ArangoTD>
                     </tr>
                   ))

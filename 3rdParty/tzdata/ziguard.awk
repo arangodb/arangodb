@@ -104,24 +104,31 @@ DATAFORM != "main" {
   }
   if (!vanguard && $1 == "Rule" && $2 == "Morocco" && 2019 <= $3) {
     if ($9 == "0") {
+      last_std_date = $3 " " $6 " " $7 "  " $8
       sub(/\t0\t/, "\t1:00\t")
     } else {
       sub(/\t-1:00\t/, "\t0\t")
     }
   }
   if (!vanguard && $1 == "1:00" && $2 == "Morocco" && $3 == "+01/+00") {
-    sub(/1:00\tMorocco\t\+01\/\+00$/, "0:00\tMorocco\t+00/+01")
+    # This introduces a transition from 01:59:59 +00 to 03:00:00 +01
+    # with both times being standard (i.e., a change to standard UT offset).
+    # This is rearguard's way to approximate the actual prediction,
+    # which is that of an ordinary transition from DST to standard time.
+    sub(/1:00\tMorocco\t\+01\/\+00$/,
+	"0:00\tMorocco\t+00/+01\t" last_std_date "\n\t\t\t 1:00\t-\t+01")
   }
 }
 
-# If a Link line is followed by a Zone line for the same data, comment
+# If a Link line is followed by a Link or Zone line for the same data, comment
 # out the Link line.  This can happen if backzone overrides a Link
-# with a Zone.
-/^Link/ {
-  linkline[$3] = NR
-}
+# with a Zone or a different Link.
 /^Zone/ {
   sub(/^Link/, "#Link", line[linkline[$2]])
+}
+/^Link/ {
+  sub(/^Link/, "#Link", line[linkline[$3]])
+  linkline[$3] = NR
 }
 
 { line[NR] = $0 }

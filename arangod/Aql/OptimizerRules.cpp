@@ -27,12 +27,14 @@
 #include "Aql/Aggregator.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstHelper.h"
+#include "Aql/AttributeNamePath.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
 #include "Aql/CollectOptions.h"
 #include "Aql/Collection.h"
 #include "Aql/ConditionFinder.h"
 #include "Aql/DocumentProducingNode.h"
+#include "Aql/EnumeratePathsNode.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
@@ -40,10 +42,10 @@
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IndexNode.h"
-#include "Aql/KShortestPathsNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
@@ -59,7 +61,6 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallUnorderedMap.h"
@@ -122,7 +123,7 @@ bool accessesCollectionVariable(arangodb::aql::ExecutionPlan const* plan,
         setter->getType() == EN::ENUMERATE_IRESEARCH_VIEW ||
         setter->getType() == EN::SUBQUERY ||
         setter->getType() == EN::TRAVERSAL ||
-        setter->getType() == EN::K_SHORTEST_PATHS ||
+        setter->getType() == EN::ENUMERATE_PATHS ||
         setter->getType() == EN::SHORTEST_PATH) {
       return true;
     }
@@ -151,7 +152,7 @@ arangodb::aql::Collection const* getCollection(
       return ExecutionNode::castTo<arangodb::aql::IndexNode const*>(node)
           ->collection();
     case EN::TRAVERSAL:
-    case EN::K_SHORTEST_PATHS:
+    case EN::ENUMERATE_PATHS:
     case EN::SHORTEST_PATH:
       return ExecutionNode::castTo<arangodb::aql::GraphNode const*>(node)
           ->collection();
@@ -453,7 +454,7 @@ class RestrictToSingleShardChecker final
 
     switch (en->getType()) {
       case EN::TRAVERSAL:
-      case EN::K_SHORTEST_PATHS:
+      case EN::ENUMERATE_PATHS:
       case EN::SHORTEST_PATH: {
         _stop = true;
         return true;  // abort enumerating, we are done already!
@@ -466,13 +467,9 @@ class RestrictToSingleShardChecker final
         break;
       }
 
-      case EN::ENUMERATE_COLLECTION: {
-        handleSourceNode(en);
-        break;
-      }
-
+      case EN::ENUMERATE_COLLECTION:
       case EN::INDEX: {
-        handleIndexNode(en);
+        handleDocumentNode(en);
         handleSourceNode(en);
         break;
       }
@@ -525,7 +522,10 @@ class RestrictToSingleShardChecker final
     }
   }
 
-  void handleIndexNode(arangodb::aql::ExecutionNode const* en) {
+  void handleDocumentNode(arangodb::aql::ExecutionNode const* en) {
+    TRI_ASSERT(en->getType() == arangodb::aql::ExecutionNode::INDEX ||
+               en->getType() ==
+                   arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION);
     auto collection = ::getCollection(en);
     auto variable = ::getOutVariable(en);
     auto shardId = ::getSingleShardId(_plan, en, collection, variable);
@@ -686,14 +686,18 @@ std::string getSingleShardId(
     return std::string();
   }
 
-  TRI_ASSERT(node->getType() == EN::INDEX || node->getType() == EN::FILTER ||
-             node->getType() == EN::INSERT || node->getType() == EN::UPDATE ||
-             node->getType() == EN::REPLACE || node->getType() == EN::REMOVE);
+  TRI_ASSERT(node->getType() == EN::INDEX ||
+             node->getType() == EN::ENUMERATE_COLLECTION ||
+             node->getType() == EN::FILTER || node->getType() == EN::INSERT ||
+             node->getType() == EN::UPDATE || node->getType() == EN::REPLACE ||
+             node->getType() == EN::REMOVE);
 
   arangodb::aql::Variable const* inputVariable = nullptr;
-  if (node->getType() == EN::INDEX) {
-    inputVariable = ExecutionNode::castTo<arangodb::aql::IndexNode const*>(node)
-                        ->outVariable();
+  if (node->getType() == EN::INDEX ||
+      node->getType() == EN::ENUMERATE_COLLECTION) {
+    inputVariable =
+        ExecutionNode::castTo<arangodb::aql::DocumentProducingNode const*>(node)
+            ->outVariable();
   } else if (node->getType() == EN::FILTER) {
     inputVariable =
         ExecutionNode::castTo<arangodb::aql::FilterNode const*>(node)
@@ -806,12 +810,21 @@ std::string getSingleShardId(
     }
     auto const* condition = c->condition();
 
-    if (condition == nullptr) {
-      return std::string();
+    if (condition != nullptr) {
+      arangodb::aql::AstNode const* root = condition->root();
+      ::findShardKeysInExpression(root, inputVariable, toFind, builder);
     }
+  }
 
-    arangodb::aql::AstNode const* root = condition->root();
-    ::findShardKeysInExpression(root, inputVariable, toFind, builder);
+  if (!toFind.empty() && (node->getType() == EN::INDEX ||
+                          node->getType() == EN::ENUMERATE_COLLECTION)) {
+    auto en = dynamic_cast<arangodb::aql::DocumentProducingNode const*>(node);
+    TRI_ASSERT(en != nullptr);
+
+    if (en->hasFilter()) {
+      arangodb::aql::AstNode const* root = en->filter()->node();
+      ::findShardKeysInExpression(root, inputVariable, toFind, builder);
+    }
   }
 
   builder.close();
@@ -870,6 +883,85 @@ bool shouldApplyHeapOptimization(arangodb::aql::SortNode& sortNode,
   return (0.25 * N * lgM + M * lgM) < (N * lgN);
 }
 
+bool applyGraphProjections(arangodb::aql::TraversalNode* traversal) {
+  auto* options =
+      static_cast<arangodb::traverser::TraverserOptions*>(traversal->options());
+  std::unordered_set<arangodb::aql::AttributeNamePath> attributes;
+  bool modified = false;
+  size_t maxProjections = options->getMaxProjections();
+  auto pathOutVariable = traversal->pathOutVariable();
+
+  // find projections for vertex output variable
+  bool useVertexProjections = true;
+
+  // if the path does not include vertices, we can restrict the vertex
+  // gathering to only the required attributes
+  if (traversal->vertexOutVariable() != nullptr) {
+    useVertexProjections = arangodb::aql::utils::findProjections(
+        traversal, traversal->vertexOutVariable(), /*expectedAttribute*/ "",
+        /*excludeStartNodeFilterCondition*/ false, attributes);
+  }
+
+  if (useVertexProjections && options->producePathsVertices() &&
+      pathOutVariable != nullptr) {
+    useVertexProjections = arangodb::aql::utils::findProjections(
+        traversal, pathOutVariable, arangodb::StaticStrings::GraphQueryVertices,
+        /*excludeStartNodeFilterCondition*/ false, attributes);
+  }
+
+  if (useVertexProjections && !attributes.empty() &&
+      attributes.size() <= maxProjections) {
+    traversal->setVertexProjections(
+        arangodb::aql::Projections(std::move(attributes)));
+    modified = true;
+  }
+
+  // find projections for edge output variable
+  attributes.clear();
+  bool useEdgeProjections = true;
+
+  if (traversal->edgeOutVariable() != nullptr) {
+    useEdgeProjections = arangodb::aql::utils::findProjections(
+        traversal, traversal->edgeOutVariable(), /*expectedAttribute*/ "",
+        /*excludeStartNodeFilterCondition*/ false, attributes);
+  }
+
+  if (useEdgeProjections && options->producePathsEdges() &&
+      pathOutVariable != nullptr) {
+    useEdgeProjections = arangodb::aql::utils::findProjections(
+        traversal, pathOutVariable, arangodb::StaticStrings::GraphQueryEdges,
+        /*excludeStartNodeFilterCondition*/ false, attributes);
+  }
+
+  if (useEdgeProjections) {
+    // if we found any projections, make sure that they include _from
+    // and _to, as the traversal code will refer to these attributes later.
+    if (arangodb::ServerState::instance()->isCoordinator() &&
+        !traversal->isSmart() && !traversal->isLocalGraphNode() &&
+        !traversal->isUsedAsSatellite()) {
+      // On cluster community variant we will also need the ID value on the
+      // coordinator to uniquely identify edges
+      attributes.emplace(arangodb::StaticStrings::IdString);
+      // Also the community variant needs to transport weight, as the
+      // coordinator will do the searching.
+      if (traversal->options()->mode ==
+          arangodb::traverser::TraverserOptions::Order::WEIGHTED) {
+        attributes.emplace(traversal->options()->weightAttribute);
+      }
+    }
+    attributes.emplace(arangodb::StaticStrings::FromString);
+    attributes.emplace(arangodb::StaticStrings::ToString);
+
+    if (attributes.size() <= maxProjections) {
+      traversal->setEdgeProjections(
+          arangodb::aql::Projections(std::move(attributes)));
+      modified = true;
+    }
+  }
+
+  return modified;
+}
+
 }  // namespace
 
 using namespace arangodb;
@@ -901,84 +993,92 @@ bool optimizeTraversalPathVariable(
                                /*weights*/ false);
       traversal->setPathOutput(nullptr);
       return true; /*modified*/
-    } else {
-      // we still need to build the path because PRUNE relies on it
-      // TODO: this can potentially be optimized in the future.
-      options->setProducePaths(/*vertices*/ true, /*edges*/ true,
-                               /*weights*/ true);
-      return false; /*modified*/
-    }
-  } else {
-    // path is used later, but lets check which of its sub-attributes
-    // "vertices" or "edges" are in use (or the complete path)
-    std::unordered_set<std::string> attributes;
-    VarSet vars;
-    bool canOptimize = true;
-
-    ExecutionNode* current = traversal->getFirstParent();
-    while (current != nullptr && canOptimize) {
-      switch (current->getType()) {
-        case EN::CALCULATION: {
-          vars.clear();
-          current->getVariablesUsedHere(vars);
-          if (vars.find(variable) != vars.end()) {
-            // path variable used here
-            Expression* exp =
-                ExecutionNode::castTo<CalculationNode*>(current)->expression();
-            AstNode const* node = exp->node();
-            if (!Ast::getReferencedAttributes(node, variable, attributes)) {
-              // full path variable is used, or accessed in a way that we don't
-              // understand, e.g. "p" or "p[0]" or "p[*]..."
-              canOptimize = false;
-            }
-          }
-          break;
-        }
-        default: {
-          // if the path is used by any other node type, we don't know what to
-          // do and will not optimize parts of it away
-          vars.clear();
-          current->getVariablesUsedHere(vars);
-          if (vars.find(variable) != vars.end()) {
-            canOptimize = false;
-          }
-          break;
-        }
-      }
-      current = current->getFirstParent();
     }
 
-    if (canOptimize) {
-      // check which attributes from the path are actually used
-      bool producePathsVertices =
-          (attributes.find(StaticStrings::GraphQueryVertices) !=
-           attributes.end());
-      bool producePathsEdges =
-          (attributes.find(StaticStrings::GraphQueryEdges) != attributes.end());
-      bool producePathsWeights =
-          (attributes.find(StaticStrings::GraphQueryWeights) !=
-           attributes.end()) &&
-          (options->mode == traverser::TraverserOptions::Order::WEIGHTED);
+    // we still need to build the path because PRUNE relies on it
+    // TODO: this can potentially be optimized in the future.
+    options->setProducePaths(/*vertices*/ true, /*edges*/ true,
+                             /*weights*/ true);
+    return false; /*modified*/
+  }
 
-      if (!producePathsVertices && !producePathsEdges && !producePathsWeights &&
-          !attributes.empty()) {
-        // none of the existing path attributes is actually accessed - but a
-        // different (non-existing) attribute is accessed, e.g. `p.whatever`. in
-        // order to not optimize away our path variable, and then being unable
-        // to access the non-existing attribute, we simply activate the
-        // production of vertices. this prevents us from running into errors
-        // trying to access an attribute of an optimzed-away variable later
-        producePathsVertices = true;
-      }
+  // path is used later, but lets check which of its sub-attributes
+  // "vertices" or "edges" are in use (or the complete path)
+  std::unordered_set<AttributeNamePath> attributes;
+  VarSet vars;
 
-      if (!producePathsVertices || !producePathsEdges || !producePathsWeights) {
-        // pass the info to the traversal
-        options->setProducePaths(producePathsVertices, producePathsEdges,
-                                 producePathsWeights);
-        return true; /*modified*/
+  ExecutionNode* current = traversal->getFirstParent();
+  while (current != nullptr) {
+    switch (current->getType()) {
+      case EN::CALCULATION: {
+        vars.clear();
+        current->getVariablesUsedHere(vars);
+        if (vars.find(variable) != vars.end()) {
+          // path variable used here
+          Expression* exp =
+              ExecutionNode::castTo<CalculationNode*>(current)->expression();
+          AstNode const* node = exp->node();
+          if (!Ast::getReferencedAttributesRecursive(
+                  node, variable, /*expectedAttribute*/ "", attributes)) {
+            // full path variable is used, or accessed in a way that we don't
+            // understand, e.g. "p" or "p[0]" or "p[*]..."
+            return false;
+          }
+        }
+        break;
       }
+      default: {
+        // if the path is used by any other node type, we don't know what to
+        // do and will not optimize parts of it away
+        vars.clear();
+        current->getVariablesUsedHere(vars);
+        if (vars.find(variable) != vars.end()) {
+          return false;
+        }
+        break;
+      }
+    }
+    current = current->getFirstParent();
+  }
+
+  // check which attributes from the path are actually used
+  bool producePathsVertices = false;
+  bool producePathsEdges = false;
+  bool producePathsWeights = false;
+
+  for (auto const& it : attributes) {
+    TRI_ASSERT(!it.path.empty());
+    if (!producePathsVertices &&
+        it.path[0] == StaticStrings::GraphQueryVertices) {
+      producePathsVertices = true;
+    } else if (!producePathsEdges &&
+               it.path[0] == StaticStrings::GraphQueryEdges) {
+      producePathsEdges = true;
+    } else if (!producePathsWeights &&
+               options->mode == traverser::TraverserOptions::Order::WEIGHTED &&
+               it.path[0] == StaticStrings::GraphQueryWeights) {
+      producePathsWeights = true;
     }
   }
+
+  if (!producePathsVertices && !producePathsEdges && !producePathsWeights &&
+      !attributes.empty()) {
+    // none of the existing path attributes is actually accessed - but a
+    // different (non-existing) attribute is accessed, e.g. `p.whatever`. in
+    // order to not optimize away our path variable, and then being unable
+    // to access the non-existing attribute, we simply activate the
+    // production of vertices. this prevents us from running into errors
+    // trying to access an attribute of an optimzed-away variable later
+    producePathsVertices = true;
+  }
+
+  if (!producePathsVertices || !producePathsEdges || !producePathsWeights) {
+    // pass the info to the traversal
+    options->setProducePaths(producePathsVertices, producePathsEdges,
+                             producePathsWeights);
+    return true; /*modified*/
+  }
+
   return false; /*modified*/
 }
 
@@ -1245,6 +1345,7 @@ void arangodb::aql::removeRedundantSortsRule(
           auto other =
               ExecutionNode::castTo<SortNode*>(current)->getSortInformation();
 
+          bool canContinueSearch = true;
           switch (sortInfo.isCoveredBy(other)) {
             case SortInformation::unequal: {
               // different sort criteria
@@ -1254,20 +1355,25 @@ void arangodb::aql::removeRedundantSortsRule(
 
                 if (!other.isDeterministic) {
                   // if the sort is non-deterministic, we must not remove it
+                  canContinueSearch = false;
                   break;
                 }
 
                 if (sortNode->isStable()) {
-                  // we should not optimize predecessors of a stable sort (used
-                  // in a COLLECT node)
+                  // we should not optimize predecessors of a stable sort
+                  // (used in a COLLECT node)
                   // the stable sort is for a reason, and removing any
-                  // predecessors sorts might
-                  // change the result
+                  // predecessors sorts might change the result.
+                  // We're not allowed to continue our search for further
+                  // redundant SORTS in this iteration.
+                  canContinueSearch = false;
                   break;
                 }
 
                 // remove sort that is a direct predecessor of a sort
                 toUnlink.emplace(current);
+              } else {
+                canContinueSearch = false;
               }
               break;
             }
@@ -1280,7 +1386,9 @@ void arangodb::aql::removeRedundantSortsRule(
             case SortInformation::ourselvesLessAccurate: {
               // the sort at the start of the pipeline makes the sort at the end
               // superfluous, so we'll remove it
+              // Related to: BTS-937
               toUnlink.emplace(n);
+              canContinueSearch = false;
               break;
             }
 
@@ -1290,6 +1398,9 @@ void arangodb::aql::removeRedundantSortsRule(
               toUnlink.emplace(current);
               break;
             }
+          }
+          if (!canContinueSearch) {
+            break;
           }
         } else if (current->getType() == EN::FILTER) {
           // ok: a filter does not depend on sort order
@@ -1302,7 +1413,7 @@ void arangodb::aql::removeRedundantSortsRule(
         } else if (current->getType() == EN::ENUMERATE_LIST ||
                    current->getType() == EN::ENUMERATE_COLLECTION ||
                    current->getType() == EN::TRAVERSAL ||
-                   current->getType() == EN::K_SHORTEST_PATHS ||
+                   current->getType() == EN::ENUMERATE_PATHS ||
                    current->getType() == EN::SHORTEST_PATH) {
           // ok, but we cannot remove two different sorts if one of these node
           // types is between them
@@ -2000,7 +2111,7 @@ void arangodb::aql::moveCalculationsDownRule(
                  currentType == EN::ENUMERATE_LIST ||
                  currentType == EN::TRAVERSAL ||
                  currentType == EN::SHORTEST_PATH ||
-                 currentType == EN::K_SHORTEST_PATHS ||
+                 currentType == EN::ENUMERATE_PATHS ||
                  currentType == EN::COLLECT || currentType == EN::NORESULTS) {
         // we will not push further down than such nodes
         break;
@@ -3295,7 +3406,7 @@ struct SortToIndexNode final
   bool before(ExecutionNode* en) override final {
     switch (en->getType()) {
       case EN::TRAVERSAL:
-      case EN::K_SHORTEST_PATHS:
+      case EN::ENUMERATE_PATHS:
       case EN::SHORTEST_PATH:
       case EN::ENUMERATE_LIST:
       case EN::ENUMERATE_IRESEARCH_VIEW:
@@ -3435,16 +3546,11 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
 
     size_t const n = condition.root()->numMembers();
 
-    if (n != 1) {
-      // either no condition or multiple ORed conditions...
-      continue;
-    }
-
     bool handled = false;
     auto current = node;
     while (current != nullptr) {
       if (current->getType() == EN::INDEX) {
-        auto indexNode = ExecutionNode::castTo<IndexNode const*>(current);
+        auto indexNode = ExecutionNode::castTo<IndexNode*>(current);
 
         // found an index node, now check if the expression is covered by the
         // index
@@ -3457,6 +3563,11 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
             // single index. this is something that we can handle
             AstNode* newNode{nullptr};
             if (!indexNode->isAllCoveredByOneIndex()) {
+              if (n != 1) {
+                // either no condition or multiple ORed conditions
+                // and index has not covered entire condition.
+                break;
+              }
               newNode = condition.removeIndexCondition(
                   plan.get(), indexNode->outVariable(), indexCondition->root(),
                   indexesUsed[0].get());
@@ -3473,10 +3584,9 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
               // some condition is left, but it is a different one than
               // the one from the FILTER node
               auto expr = std::make_unique<Expression>(plan->getAst(), newNode);
-              CalculationNode* cn = new CalculationNode(
+              CalculationNode* cn = plan->createNode<CalculationNode>(
                   plan.get(), plan->nextId(), std::move(expr),
                   calculationNode->outVariable());
-              plan->registerNode(cn);
               plan->replaceNode(setter, cn);
               modified = true;
               handled = true;
@@ -4023,7 +4133,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
   auto collection = static_cast<Collection const*>(nullptr);
   auto inputVariable = static_cast<Variable const*>(nullptr);
 
-  bool isGraphNode = false;
+  bool isTraversalNode = false;
   // TODO: this seems a bit verbose, but is at least local & simple
   //       the modification nodes are all collectionaccessing, the graph nodes
   //       are currently assumed to be disjoint, and hence smart, so all
@@ -4060,17 +4170,15 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
       TRI_ASSERT(traversalNode->isDisjoint());
       collection = traversalNode->collection();
       inputVariable = traversalNode->inVariable();
-      isGraphNode = true;
+      isTraversalNode = true;
     } break;
-    case ExecutionNode::K_SHORTEST_PATHS: {
-      auto kShortestPathsNode =
-          ExecutionNode::castTo<KShortestPathsNode const*>(node);
-      TRI_ASSERT(kShortestPathsNode->isDisjoint());
-      collection = kShortestPathsNode->collection();
-      // Subtle: KShortestPathsNode uses a reference when returning
+    case ExecutionNode::ENUMERATE_PATHS: {
+      auto pathsNode = ExecutionNode::castTo<EnumeratePathsNode const*>(node);
+      TRI_ASSERT(pathsNode->isDisjoint());
+      collection = pathsNode->collection();
+      // Subtle: EnumeratePathsNode uses a reference when returning
       // startInVariable
-      inputVariable = &kShortestPathsNode->startInVariable();
-      isGraphNode = true;
+      inputVariable = &pathsNode->startInVariable();
     } break;
     case ExecutionNode::SHORTEST_PATH: {
       auto shortestPathNode =
@@ -4078,7 +4186,6 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
       TRI_ASSERT(shortestPathNode->isDisjoint());
       collection = shortestPathNode->collection();
       inputVariable = shortestPathNode->startInVariable();
-      isGraphNode = true;
     } break;
     default: {
       TRI_ASSERT(false);
@@ -4101,10 +4208,11 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
       &plan, plan.nextId(), ScatterNode::ScatterType::SHARD, collection,
       inputVariable, node->id());
 
-  if (isGraphNode) {
+  if (isTraversalNode) {
 #ifdef USE_ENTERPRISE
     // Only relevant for Disjoint Smart Graphs that can only be part of the
     // Enterprise version
+    // ShortestPath, and K_SHORTEST_PATH will handle satellites differently.
     auto graphNode = ExecutionNode::castTo<GraphNode const*>(node);
     auto vertices = graphNode->vertexColls();
     for (auto const& it : vertices) {
@@ -4224,7 +4332,7 @@ auto extractSmartnessAndCollection(ExecutionNode* node)
 
   if (nodeType == ExecutionNode::TRAVERSAL ||
       nodeType == ExecutionNode::SHORTEST_PATH ||
-      nodeType == ExecutionNode::K_SHORTEST_PATHS) {
+      nodeType == ExecutionNode::ENUMERATE_PATHS) {
     auto const* graphNode = ExecutionNode::castTo<GraphNode*>(node);
 
     isSmart = graphNode->isSmart();
@@ -4259,7 +4367,7 @@ auto extractSmartnessAndCollection(ExecutionNode* node)
 auto isGraphNode(ExecutionNode::NodeType nodeType) noexcept -> bool {
   return nodeType == ExecutionNode::TRAVERSAL ||
          nodeType == ExecutionNode::SHORTEST_PATH ||
-         nodeType == ExecutionNode::K_SHORTEST_PATHS;
+         nodeType == ExecutionNode::ENUMERATE_PATHS;
 }
 
 auto isModificationNode(ExecutionNode::NodeType nodeType) noexcept -> bool {
@@ -4466,11 +4574,10 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
                 auto collections = viewNode.collections();
                 auto const collCount = collections.size();
                 TRI_ASSERT(collCount > 0);
-                if (collCount > 1) {
-                  hasFoundMultipleShards = true;
-                } else if (1 == collCount) {
+                hasFoundMultipleShards = collCount > 0;
+                if (collCount == 1) {
                   hasFoundMultipleShards =
-                      collections.front().get().numberOfShards() > 1;
+                      collections.front().first.get().numberOfShards() > 1;
                 }
               } break;
               default:
@@ -4763,7 +4870,7 @@ void arangodb::aql::distributeFilterCalcToClusterRule(
         case EN::INDEX:
         case EN::ENUMERATE_COLLECTION:
         case EN::TRAVERSAL:
-        case EN::K_SHORTEST_PATHS:
+        case EN::ENUMERATE_PATHS:
         case EN::SHORTEST_PATH:
         case EN::SUBQUERY:
         case EN::ENUMERATE_IRESEARCH_VIEW:
@@ -4772,6 +4879,7 @@ void arangodb::aql::distributeFilterCalcToClusterRule(
           stopSearching = true;
           break;
 
+        case EN::OFFSET_INFO_MATERIALIZE:
         case EN::CALCULATION:
         case EN::FILTER: {
           if (inspectNode->getType() == EN::CALCULATION) {
@@ -4886,11 +4994,12 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::LIMIT:
         case EN::INDEX:
         case EN::TRAVERSAL:
-        case EN::K_SHORTEST_PATHS:
+        case EN::ENUMERATE_PATHS:
         case EN::SHORTEST_PATH:
         case EN::REMOTESINGLE:
         case EN::ENUMERATE_IRESEARCH_VIEW:
         case EN::WINDOW:
+        case EN::OFFSET_INFO_MATERIALIZE:
 
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -4973,7 +5082,8 @@ void arangodb::aql::removeUnnecessaryRemoteScatterRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
-  plan->findNodesOfType(nodes, EN::REMOTE, true);
+  plan->findNodesOfType(nodes, EN::REMOTE,
+                        false /* do not go into Subqueries */);
 
   ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
 
@@ -5175,22 +5285,37 @@ void arangodb::aql::restrictToSingleShardRule(
         }
       } else if (currentType == ExecutionNode::INDEX ||
                  currentType == ExecutionNode::ENUMERATE_COLLECTION) {
-        auto collection = ::getCollection(current);
-        auto collectionVariable = ::getOutVariable(current);
-        std::string shardId = finder.getShard(collectionVariable);
+        bool disable = false;
+        if (currentType == ExecutionNode::INDEX) {
+          // Custom analyzer on inverted indexes might be incompatible with
+          // shard key distribution.
+          for (auto& index :
+               ExecutionNode::castTo<aql::IndexNode*>(current)->getIndexes()) {
+            if (Index::TRI_IDX_TYPE_INVERTED_INDEX == index->type()) {
+              disable = true;
+              break;
+            }
+          }
+        }
 
-        if (finder.isSafeForOptimization(collectionVariable) &&
-            !shardId.empty()) {
-          wasModified = true;
-          ::restrictToShard(current, shardId);
-          forwardRestrictionToPrototype(current, shardId);
-        } else if (finder.isSafeForOptimization(collection)) {
-          auto& shards = modificationRestrictions[collection];
-          if (shards.size() == 1) {
+        if (!disable) {
+          auto collection = ::getCollection(current);
+          auto collectionVariable = ::getOutVariable(current);
+          std::string shardId = finder.getShard(collectionVariable);
+
+          if (finder.isSafeForOptimization(collectionVariable) &&
+              !shardId.empty()) {
             wasModified = true;
-            shardId = *shards.begin();
             ::restrictToShard(current, shardId);
             forwardRestrictionToPrototype(current, shardId);
+          } else if (finder.isSafeForOptimization(collection)) {
+            auto& shards = modificationRestrictions[collection];
+            if (shards.size() == 1) {
+              wasModified = true;
+              shardId = *shards.begin();
+              ::restrictToShard(current, shardId);
+              forwardRestrictionToPrototype(current, shardId);
+            }
           }
         }
       } else if (currentType == ExecutionNode::UPSERT ||
@@ -5287,7 +5412,7 @@ class RemoveToEnumCollFinder final
             std::vector<std::string> shardKeys =
                 rn->collection()->shardKeys(false);
             if (shardKeys.size() != 1 ||
-                shardKeys[0] != StaticStrings::KeyString) {
+                shardKeys[0] != arangodb::StaticStrings::KeyString) {
               break;  // abort . . .
             }
 
@@ -5314,7 +5439,7 @@ class RemoveToEnumCollFinder final
             }
             // for REMOVE, we must also know the _key value, otherwise
             // REMOVE will not work
-            toFind.emplace(StaticStrings::KeyString);
+            toFind.emplace(arangodb::StaticStrings::KeyString);
 
             // go through the input object attribute by attribute
             // and look for our shard keys
@@ -5377,7 +5502,7 @@ class RemoveToEnumCollFinder final
 
         auto const& projections =
             dynamic_cast<DocumentProducingNode const*>(enumColl)->projections();
-        if (projections.isSingle(StaticStrings::KeyString)) {
+        if (projections.isSingle(arangodb::StaticStrings::KeyString)) {
           // cannot handle projections
           break;
         }
@@ -5454,7 +5579,7 @@ class RemoveToEnumCollFinder final
       case EN::LIMIT:
       case EN::SORT:
       case EN::TRAVERSAL:
-      case EN::K_SHORTEST_PATHS:
+      case EN::ENUMERATE_PATHS:
       case EN::SHORTEST_PATH: {
         // if we meet any of the above, then we abort . . .
         break;
@@ -5874,7 +5999,7 @@ struct RemoveRedundantOr {
             type == NODE_TYPE_OPERATOR_BINARY_LE);
   }
 
-  int isCompatibleBound(AstNodeType type, AstNode const* value) {
+  int isCompatibleBound(AstNodeType type, AstNode const*) {
     if ((comparison == NODE_TYPE_OPERATOR_BINARY_LE ||
          comparison == NODE_TYPE_OPERATOR_BINARY_LT) &&
         (type == NODE_TYPE_OPERATOR_BINARY_LE ||
@@ -6104,17 +6229,24 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     return;
   }
 
+  std::unordered_set<arangodb::aql::AttributeNamePath> attributes;
   bool modified = false;
 
   // first make a pass over all traversal nodes and remove unused
   // variables from them
+  // While on it, pick up possible projections on the vertex and edge documents
   for (auto const& n : tNodes) {
-    TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
+    auto* traversal = ExecutionNode::castTo<TraversalNode*>(n);
     auto* options = static_cast<arangodb::traverser::TraverserOptions*>(
         traversal->options());
 
     std::vector<Variable const*> pruneVars;
     traversal->getPruneVariables(pruneVars);
+
+    // optimize path output variable
+    auto pathOutVariable = traversal->pathOutVariable();
+    modified |=
+        optimizeTraversalPathVariable(pathOutVariable, traversal, pruneVars);
 
     // note that we can NOT optimize away the vertex output variable
     // yet, as many traversal internals depend on the number of vertices
@@ -6126,36 +6258,41 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     // later (note that the path out variable can contain the "vertices" sub
     // attribute)
     auto outVariable = traversal->vertexOutVariable();
-
-    if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
-        std::find(pruneVars.begin(), pruneVars.end(), outVariable) ==
-            pruneVars.end()) {
-      outVariable = traversal->pathOutVariable();
-      if (outVariable == nullptr ||
-          (!n->isVarUsedLater(outVariable) &&
-           std::find(pruneVars.begin(), pruneVars.end(), outVariable) ==
-               pruneVars.end())) {
-        // both traversal vertex and path outVariables not used later
-        options->setProduceVertices(false);
-        modified = true;
+    if (outVariable != nullptr) {
+      if (!n->isVarUsedLater(outVariable) &&
+          std::find(pruneVars.begin(), pruneVars.end(), outVariable) ==
+              pruneVars.end()) {
+        outVariable = traversal->pathOutVariable();
+        if (outVariable == nullptr ||
+            ((!n->isVarUsedLater(outVariable) ||
+              !options->producePathsVertices()) &&
+             std::find(pruneVars.begin(), pruneVars.end(), outVariable) ==
+                 pruneVars.end())) {
+          // both traversal vertex and path outVariables not used later
+          options->setProduceVertices(false);
+          modified = true;
+        }
       }
     }
 
     outVariable = traversal->edgeOutVariable();
-    if (outVariable != nullptr && !n->isVarUsedLater(outVariable)) {
-      // traversal edge outVariable not used later
-      options->setProduceEdges(false);
-      if (std::find(pruneVars.begin(), pruneVars.end(), outVariable) ==
-          pruneVars.end()) {
-        traversal->setEdgeOutput(nullptr);
+    if (outVariable != nullptr) {
+      if (!n->isVarUsedLater(outVariable)) {
+        // traversal edge outVariable not used later
+        options->setProduceEdges(false);
+        if (std::find(pruneVars.begin(), pruneVars.end(), outVariable) ==
+            pruneVars.end()) {
+          traversal->setEdgeOutput(nullptr);
+        }
+        modified = true;
       }
-      modified = true;
     }
 
-    // path
-    outVariable = traversal->pathOutVariable();
-    modified |=
-        optimizeTraversalPathVariable(outVariable, traversal, pruneVars);
+    // handle projections (must be done after path variable optimization)
+    bool appliedProjections = applyGraphProjections(traversal);
+    if (appliedProjections) {
+      modified = true;
+    }
 
     // check if we can make use of the optimized neighbors enumerator
     if (!options->isDisjoint()) {
@@ -6314,6 +6451,7 @@ void arangodb::aql::removeTraversalPathVariable(
   bool modified = false;
   // first make a pass over all traversal nodes and remove unused
   // variables from them
+
   for (auto const& n : tNodes) {
     TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
     auto outVariable = traversal->pathOutVariable();
@@ -7087,7 +7225,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
         info.sorted) {
       // hack to pass on the sort-to-point info
       AstNodeType t = NODE_TYPE_OPERATOR_BINARY_LT;
-      std::string const& u = StaticStrings::Unlimited;
+      std::string const& u = arangodb::StaticStrings::Unlimited;
       AstNode* cc = ast->createNodeValueString(u.c_str(), u.length());
       cond->andCombine(ast->createNodeBinaryOperator(t, func, cc));
     }
@@ -7252,7 +7390,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
                  current->getType() == EN::ENUMERATE_LIST ||
                  current->getType() == EN::ENUMERATE_IRESEARCH_VIEW ||
                  current->getType() == EN::TRAVERSAL ||
-                 current->getType() == EN::K_SHORTEST_PATHS ||
+                 current->getType() == EN::ENUMERATE_PATHS ||
                  current->getType() == EN::SHORTEST_PATH) {
         // invalidate limit and sort. filters can still be used
         limit = nullptr;
@@ -7277,6 +7415,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
 static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
   switch (node->getType()) {
     case ExecutionNode::CALCULATION:
+    case ExecutionNode::OFFSET_INFO_MATERIALIZE:
     case ExecutionNode::SUBQUERY:
     case ExecutionNode::REMOTE:
     case ExecutionNode::ASYNC:
@@ -7303,7 +7442,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
     case ExecutionNode::SHORTEST_PATH:
-    case ExecutionNode::K_SHORTEST_PATHS:
+    case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::RETURN:
     case ExecutionNode::DISTRIBUTE:
@@ -7767,7 +7906,7 @@ struct ParallelizableFinder final
 
     if (node->getType() == ExecutionNode::TRAVERSAL ||
         node->getType() == ExecutionNode::SHORTEST_PATH ||
-        node->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+        node->getType() == ExecutionNode::ENUMERATE_PATHS) {
       auto* gn = ExecutionNode::castTo<GraphNode*>(node);
       if (!gn->isLocalGraphNode()) {
         _isParallelizable = false;
@@ -8032,7 +8171,7 @@ void arangodb::aql::optimizeCountRule(Optimizer* opt,
         case EN::ENUMERATE_LIST:
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
-        case EN::K_SHORTEST_PATHS:
+        case EN::ENUMERATE_PATHS:
         case EN::ENUMERATE_IRESEARCH_VIEW: {
           // we don't handle nested FOR loops
           found = nullptr;
@@ -8156,8 +8295,7 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
       // find all graph nodes and make sure that they all are using satellite
       nodes.clear();
       plan->findNodesOfType(
-          nodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::K_SHORTEST_PATHS},
-          true);
+          nodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::ENUMERATE_PATHS}, true);
       bool const allSatellite =
           std::all_of(nodes.begin(), nodes.end(), [](auto n) {
             GraphNode* graphNode = ExecutionNode::castTo<GraphNode*>(n);
@@ -8510,6 +8648,8 @@ void arangodb::aql::decayUnnecessarySortedGather(
   opt->addPlan(std::move(plan), rule, modified);
 }
 
+enum class DistributeType { DOCUMENT, TRAVERSAL, PATH };
+
 void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan.findNodesOfType(nodes, ExecutionNode::DISTRIBUTE, true);
@@ -8528,9 +8668,11 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
     auto allowKeyConversionToObject = bool{false};
     auto allowSpecifiedKeys = bool{false};
 
-    auto fixupGraphInput = bool{false};
+    DistributeType fixupGraphInput = DistributeType::DOCUMENT;
 
     std::function<void(Variable * variable)> setInVariable;
+    std::function<void(Variable * variable)> setTargetVariable;
+    std::function<void(Variable * variable)> setDistributeVariable;
     bool ignoreErrors = false;
 
     // TODO: this seems a bit verbose, but is at least local & simple
@@ -8603,24 +8745,33 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
         inputVariable = traversalNode->inVariable();
         allowKeyConversionToObject = true;
         createKeys = false;
-        fixupGraphInput = true;
+        fixupGraphInput = DistributeType::TRAVERSAL;
         setInVariable = [traversalNode](Variable* var) {
           traversalNode->setInVariable(var);
         };
       } break;
-      case ExecutionNode::K_SHORTEST_PATHS: {
-        auto* kShortestPathsNode =
-            ExecutionNode::castTo<KShortestPathsNode*>(targetNode);
-        TRI_ASSERT(kShortestPathsNode->isDisjoint());
-        collection = kShortestPathsNode->collection();
-        // Subtle: KShortestPathsNode uses a reference when returning
+      case ExecutionNode::ENUMERATE_PATHS: {
+        auto* pathsNode =
+            ExecutionNode::castTo<EnumeratePathsNode*>(targetNode);
+        TRI_ASSERT(pathsNode->isDisjoint());
+        collection = pathsNode->collection();
+        // Subtle: EnumeratePathsNode uses a reference when returning
         // startInVariable
-        inputVariable = &kShortestPathsNode->startInVariable();
+        TRI_ASSERT(pathsNode->usesStartInVariable());
+        inputVariable = &pathsNode->startInVariable();
+        TRI_ASSERT(pathsNode->usesTargetInVariable());
+        alternativeVariable = &pathsNode->targetInVariable();
         allowKeyConversionToObject = true;
         createKeys = false;
-        fixupGraphInput = true;
-        setInVariable = [kShortestPathsNode](Variable* var) {
-          kShortestPathsNode->setStartInVariable(var);
+        fixupGraphInput = DistributeType::PATH;
+        setInVariable = [pathsNode](Variable* var) {
+          pathsNode->setStartInVariable(var);
+        };
+        setTargetVariable = [pathsNode](Variable* var) {
+          pathsNode->setTargetInVariable(var);
+        };
+        setDistributeVariable = [pathsNode](Variable* var) {
+          pathsNode->setDistributeVariable(var);
         };
       } break;
       case ExecutionNode::SHORTEST_PATH: {
@@ -8628,12 +8779,21 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
             ExecutionNode::castTo<ShortestPathNode*>(targetNode);
         TRI_ASSERT(shortestPathNode->isDisjoint());
         collection = shortestPathNode->collection();
+        TRI_ASSERT(shortestPathNode->usesStartInVariable());
         inputVariable = shortestPathNode->startInVariable();
+        TRI_ASSERT(shortestPathNode->usesTargetInVariable());
+        alternativeVariable = shortestPathNode->targetInVariable();
         allowKeyConversionToObject = true;
         createKeys = false;
-        fixupGraphInput = true;
+        fixupGraphInput = DistributeType::PATH;
         setInVariable = [shortestPathNode](Variable* var) {
           shortestPathNode->setStartInVariable(var);
+        };
+        setTargetVariable = [shortestPathNode](Variable* var) {
+          shortestPathNode->setTargetInVariable(var);
+        };
+        setDistributeVariable = [shortestPathNode](Variable* var) {
+          shortestPathNode->setDistributeVariable(var);
         };
       } break;
       default: {
@@ -8661,66 +8821,126 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
       // If our input variable is set by a collection/index enumeration, it is
       // guaranteed to be an object with a _key attribute, so we don't need to
       // do anything.
-      return;
+      if (!createKeys || collection->usesDefaultSharding()) {
+        // no need to insert an extra calculation node in this case.
+        return;
+      }
+      // in case we have a collection that is not sharded by _key,
+      // the keys need to be created/validated by the coordinator.
     }
-
-    // We insert an additional calculation node to create the input for our
-    // distribute node.
-    Variable* variable = plan.getAst()->variables()->createTemporaryVariable();
-
-    // update the targetNode so that it uses the same input variable as our
-    // distribute node
-    setInVariable(variable);
 
     auto* ast = plan.getAst();
     auto args = ast->createNodeArray();
     char const* function;
     args->addMember(ast->createNodeReference(inputVariable));
-    if (fixupGraphInput) {
-      function = "MAKE_DISTRIBUTE_GRAPH_INPUT";
-    } else {
-      if (createKeys) {
-        function = "MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION";
-        if (alternativeVariable) {
-          args->addMember(ast->createNodeReference(alternativeVariable));
+    switch (fixupGraphInput) {
+      case DistributeType::TRAVERSAL:
+      case DistributeType::PATH: {
+        function = "MAKE_DISTRIBUTE_GRAPH_INPUT";
+        break;
+      }
+      case DistributeType::DOCUMENT: {
+        if (createKeys) {
+          function = "MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION";
+          if (alternativeVariable) {
+            args->addMember(ast->createNodeReference(alternativeVariable));
+          } else {
+            args->addMember(ast->createNodeValueNull());
+          }
+          auto flags = ast->createNodeObject();
+          flags->addMember(ast->createNodeObjectElement(
+              "allowSpecifiedKeys",
+              ast->createNodeValueBool(allowSpecifiedKeys)));
+          flags->addMember(ast->createNodeObjectElement(
+              "ignoreErrors", ast->createNodeValueBool(ignoreErrors)));
+          auto const& collectionName = collection->name();
+          flags->addMember(ast->createNodeObjectElement(
+              "collection",
+              ast->createNodeValueString(collectionName.c_str(),
+                                         collectionName.length())));
+
+          args->addMember(flags);
         } else {
-          args->addMember(ast->createNodeValueNull());
+          function = "MAKE_DISTRIBUTE_INPUT";
+          auto flags = ast->createNodeObject();
+          flags->addMember(ast->createNodeObjectElement(
+              "allowKeyConversionToObject",
+              ast->createNodeValueBool(allowKeyConversionToObject)));
+          flags->addMember(ast->createNodeObjectElement(
+              "ignoreErrors", ast->createNodeValueBool(ignoreErrors)));
+          bool canUseCustomKey =
+              collection->getCollection()->usesDefaultShardKeys() ||
+              allowSpecifiedKeys;
+          flags->addMember(ast->createNodeObjectElement(
+              "canUseCustomKey", ast->createNodeValueBool(canUseCustomKey)));
+
+          args->addMember(flags);
         }
-        auto flags = ast->createNodeObject();
-        flags->addMember(ast->createNodeObjectElement(
-            "allowSpecifiedKeys",
-            ast->createNodeValueBool(allowSpecifiedKeys)));
-        flags->addMember(ast->createNodeObjectElement(
-            "ignoreErrors", ast->createNodeValueBool(ignoreErrors)));
-        auto const& collectionName = collection->name();
-        flags->addMember(ast->createNodeObjectElement(
-            "collection", ast->createNodeValueString(collectionName.c_str(),
-                                                     collectionName.length())));
-
-        args->addMember(flags);
-      } else {
-        function = "MAKE_DISTRIBUTE_INPUT";
-        auto flags = ast->createNodeObject();
-        flags->addMember(ast->createNodeObjectElement(
-            "allowKeyConversionToObject",
-            ast->createNodeValueBool(allowKeyConversionToObject)));
-        flags->addMember(ast->createNodeObjectElement(
-            "ignoreErrors", ast->createNodeValueBool(ignoreErrors)));
-        bool canUseCustomKey =
-            collection->getCollection()->usesDefaultShardKeys() ||
-            allowSpecifiedKeys;
-        flags->addMember(ast->createNodeObjectElement(
-            "canUseCustomKey", ast->createNodeValueBool(canUseCustomKey)));
-
-        args->addMember(flags);
       }
     }
 
-    auto expr = std::make_unique<Expression>(
-        ast, ast->createNodeFunctionCall(function, args, true));
-    calcNode = plan.createNode<CalculationNode>(&plan, plan.nextId(),
-                                                std::move(expr), variable);
-    distributeNode->setVariable(variable);
+    if (fixupGraphInput == DistributeType::PATH) {
+      // We need to insert two additional calculation nodes
+      // on for source, one for target.
+      // Both nodes are then piped into the SelectSmartDistributeGraphInput
+      // which selects the smart input side.
+
+      Variable* sourceVariable =
+          plan.getAst()->variables()->createTemporaryVariable();
+      auto sourceExpr = std::make_unique<Expression>(
+          ast, ast->createNodeFunctionCall(function, args, true));
+      auto sourceCalcNode = plan.createNode<CalculationNode>(
+          &plan, plan.nextId(), std::move(sourceExpr), sourceVariable);
+
+      Variable* targetVariable =
+          plan.getAst()->variables()->createTemporaryVariable();
+      auto targetArgs = ast->createNodeArray();
+      TRI_ASSERT(alternativeVariable != nullptr);
+      targetArgs->addMember(ast->createNodeReference(alternativeVariable));
+      TRI_ASSERT(args->numMembers() == targetArgs->numMembers());
+      auto targetExpr = std::make_unique<Expression>(
+          ast, ast->createNodeFunctionCall(function, targetArgs, true));
+      auto targetCalcNode = plan.createNode<CalculationNode>(
+          &plan, plan.nextId(), std::move(targetExpr), targetVariable);
+
+      // update the target node with in and out variables
+      setInVariable(sourceVariable);
+      setTargetVariable(targetVariable);
+
+      auto selectInputArgs = ast->createNodeArray();
+      selectInputArgs->addMember(ast->createNodeReference(sourceVariable));
+      selectInputArgs->addMember(ast->createNodeReference(targetVariable));
+
+      Variable* variable =
+          plan.getAst()->variables()->createTemporaryVariable();
+      auto expr = std::make_unique<Expression>(
+          ast,
+          ast->createNodeFunctionCall("SELECT_SMART_DISTRIBUTE_GRAPH_INPUT",
+                                      selectInputArgs, true));
+      calcNode = plan.createNode<CalculationNode>(&plan, plan.nextId(),
+                                                  std::move(expr), variable);
+      distributeNode->setVariable(variable);
+      setDistributeVariable(variable);
+      // Inject the calculations before the distributeNode
+      plan.insertBefore(distributeNode, sourceCalcNode);
+      plan.insertBefore(distributeNode, targetCalcNode);
+    } else {
+      // We insert an additional calculation node to create the input for our
+      // distribute node.
+      Variable* variable =
+          plan.getAst()->variables()->createTemporaryVariable();
+
+      // update the targetNode so that it uses the same input variable as our
+      // distribute node
+      setInVariable(variable);
+
+      auto expr = std::make_unique<Expression>(
+          ast, ast->createNodeFunctionCall(function, args, true));
+      calcNode = plan.createNode<CalculationNode>(&plan, plan.nextId(),
+                                                  std::move(expr), variable);
+      distributeNode->setVariable(variable);
+    }
+
     plan.insertBefore(distributeNode, calcNode);
     plan.clearVarUsageComputed();
     plan.findVarUsage();

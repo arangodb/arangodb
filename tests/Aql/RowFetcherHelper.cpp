@@ -27,7 +27,6 @@
 #include "RowFetcherHelper.h"
 #include "VelocyPackHelper.h"
 
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/FilterExecutor.h"

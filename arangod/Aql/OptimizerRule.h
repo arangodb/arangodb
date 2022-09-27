@@ -252,10 +252,6 @@ struct OptimizerRule {
     // make operations on sharded collections use scatter / gather / remote
     scatterInClusterRule,
 
-    // FIXME order-???
-    // make operations on sharded IResearch views use scatter / gather / remote
-    scatterIResearchViewInClusterRule,
-
 #ifdef USE_ENTERPRISE
     // move traversal on SatelliteGraph to db server and add scatter / gather /
     // remote
@@ -273,6 +269,13 @@ struct OptimizerRule {
     removeDistributeNodesRule,
 #endif
 
+#ifdef USE_ENTERPRISE
+    // move OffsetInfoMaterialize in between
+    // scatter(remote) <-> gather(remote) so they're
+    // distributed to the cluster nodes.
+    distributeOffsetInfoToClusterRule,
+#endif
+
     // move FilterNodes & Calculation nodes in between
     // scatter(remote) <-> gather(remote) so they're
     // distributed to the cluster nodes.
@@ -281,6 +284,10 @@ struct OptimizerRule {
     // move SortNodes into the distribution.
     // adjust gathernode to also contain the sort criteria.
     distributeSortToClusterRule,
+
+    // moves filters on collection data into EnumerateCollection/Index to
+    // avoid copying large amounts of unneeded documents
+    moveFiltersIntoEnumerateRule,
 
     // remove calculations that are redundant
     // this is hidden and disabled by default version
@@ -303,16 +310,12 @@ struct OptimizerRule {
     // optimizations
     applySortLimitRule,
 
-    // try to restrict fragments to a single shard if possible
-    restrictToSingleShardRule,
-
     // simplify an EnumerationCollectionNode that fetches an
     // entire document to a projection of this document
     reduceExtractionToProjectionRule,
 
-    // moves filters on collection data into EnumerateCollection/Index to
-    // avoid copying large amounts of unneeded documents
-    moveFiltersIntoEnumerateRule,
+    // try to restrict fragments to a single shard if possible
+    restrictToSingleShardRule,
 
     // turns LENGTH(FOR doc IN collection ... RETURN doc) into an optimized
     // count
@@ -346,6 +349,10 @@ struct OptimizerRule {
     // needs to take into account query distribution across cluster nodes
     // for index
     lateDocumentMaterializationRule,
+
+#ifdef USE_ENTERPRISE
+    lateMaterialiationOffsetInfoRule,
+#endif
 
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode

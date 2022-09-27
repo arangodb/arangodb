@@ -45,31 +45,31 @@ jsunity.run(function dump_single_testsuite() {
 
   deriveTestSuite(
     baseTests({
-    // testEmpty
-    emptyIndexes: 1,
-    // testMany
-    manyIndexes: 1,
-    manyCountStart: 0,
-    manyCount: 100000,
-    manyCountInc: 1,
-    // testEdges
-    edgesIndexCount: 2,
-    edgeIndexLoopCount: 10,
-    edgeIndexLoopInc: 1,
-    // testRemoved
-    removedCount: 9000,
-    removedSingleIndices: 1,
-    removedModulo: 10,
-    // testIndexes
-    indexesCount: 9,
-    // testKeygenAutoInc
-    keygenAutoInc: 42049,
-    autoIncDocCount: 1000, // this one is special
-    // testKeygenPadded
-    paddedDocCount: 1001,
-    // testKeygenUuid
-    uuidDocCount: 1001,
-  }),
+      // testEmpty
+      emptyIndexes: 1,
+      // testMany
+      manyIndexes: 1,
+      manyCountStart: 0,
+      manyCount: 100000,
+      manyCountInc: 1,
+      // testEdges
+      edgesIndexCount: 2,
+      edgeIndexLoopCount: 10,
+      edgeIndexLoopInc: 1,
+      // testRemoved
+      removedCount: 9000,
+      removedSingleIndices: 1,
+      removedModulo: 10,
+      // testIndexes
+      indexesCount: 9,
+      // testKeygenAutoInc
+      keygenAutoInc: 42049,
+      autoIncDocCount: 1000, // this one is special
+      // testKeygenPadded
+      paddedDocCount: 1001,
+      // testKeygenUuid
+      uuidDocCount: 1001,
+    }),
     suite,
     "_multiple",
     [
@@ -87,7 +87,7 @@ jsunity.run(function dump_single_testsuite() {
       "testIndexAnalyzerCollection",
       "testJobsAndQueues",
       "testReplicationFactor",
-      
+
       // enterprise graph tests:
       "testVertices",
       "testVerticesAqlRead",

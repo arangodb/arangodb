@@ -81,7 +81,7 @@ std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
   std::lock_guard lock{_mutex};
   if (!_registry.try_emplace(key, metric).second) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   std::string{builder.type()} +
+                                   std::string{builder.type()} + " " +
                                        std::string{builder.name()} +
                                        " already exists");
   }
@@ -111,12 +111,7 @@ void MetricsFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
   }
 }
 
-void MetricsFeature::toPrometheus(std::string& result) const {
-  auto& cm = server().getFeature<ClusterMetricsFeature>();
-  if (cm.isEnabled()) {
-    cm.asyncUpdate();
-  }
-
+void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
   // minimize reallocs
   result.reserve(32768);
 
@@ -152,10 +147,15 @@ void MetricsFeature::toPrometheus(std::string& result) const {
   if (es.typeName() == RocksDBEngine::kEngineName) {
     es.getStatistics(result);
   }
-  if (hasGlobals && cm.isEnabled()) {
+  auto& cm = server().getFeature<ClusterMetricsFeature>();
+  if (hasGlobals && cm.isEnabled() && mode != CollectMode::Local) {
     cm.toPrometheus(result, _globals);
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// Sets metrics that can be collected by ClusterMetricsFeature
+////////////////////////////////////////////////////////////////////////////////
 constexpr auto kCoordinatorBatch = frozen::make_unordered_set<frozen::string>({
     "arangodb_search_link_stats",
 });

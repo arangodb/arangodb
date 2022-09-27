@@ -42,6 +42,7 @@
 #include "Futures/Utilities.h"
 #include "Graph/ClusterGraphDatalake.h"
 #include "Graph/ClusterTraverserCache.h"
+#include "Metrics/Counter.h"
 #include "Network/ClusterUtils.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -67,6 +68,7 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Version.h"
 #include "VocBase/ticks.h"
+#include "VocBase/vocbase.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
@@ -89,6 +91,7 @@
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/Common.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Metrics/Types.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -139,21 +142,33 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
   TRI_ASSERT(state.isCoordinator());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 
-  std::shared_ptr<ShardMap> shardMap = coll.shardIds();
-  ClusterTrxMethods::SortedServersSet leaders{};
+  ClusterTrxMethods::SortedServersSet servers{};
 
-  for (auto const& pair : shards) {
-    auto const& it = shardMap->find(pair.first);
-    if (it->second.empty()) {
-      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;  // something is broken
+  if (state.options().allowDirtyReads) {
+    // In this case we do not always choose the leader, but take the
+    // choice stored in the TransactionState. We might hit some followers
+    // in this case, but this is the purpose of `allowDirtyReads`.
+    for (auto const& pair : shards) {
+      ServerID const& replica = state.whichReplica(pair.first);
+      if (!state.knowsServer(replica)) {
+        servers.emplace(replica);
+      }
     }
-    // now we got the shard leader
-    std::string const& leader = it->second[0];
-    if (!state.knowsServer(leader)) {
-      leaders.emplace(leader);
+  } else {
+    std::shared_ptr<ShardMap> shardMap = coll.shardIds();
+    for (auto const& pair : shards) {
+      auto const& it = shardMap->find(pair.first);
+      if (it->second.empty()) {
+        return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;  // something is broken
+      }
+      // now we got the shard leader
+      std::string const& leader = it->second[0];
+      if (!state.knowsServer(leader)) {
+        servers.emplace(leader);
+      }
     }
   }
-  return ClusterTrxMethods::beginTransactionOnLeaders(state, leaders, api);
+  return ClusterTrxMethods::beginTransactionOnLeaders(state, servers, api);
 }
 
 // begin transaction on shard leaders
@@ -162,14 +177,26 @@ Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx,
                                             transaction::MethodsApi api) {
   TRI_ASSERT(trx.state()->isCoordinator());
   TRI_ASSERT(trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED));
-  ClusterTrxMethods::SortedServersSet leaders{};
-  for (auto const& shardServers : shards) {
-    ServerID const& srv = shardServers.second.at(0);
-    if (!trx.state()->knowsServer(srv)) {
-      leaders.emplace(srv);
+  ClusterTrxMethods::SortedServersSet servers{};
+  if (trx.state()->options().allowDirtyReads) {
+    // In this case we do not always choose the leader, but take the
+    // choice stored in the TransactionState. We might hit some followers
+    // in this case, but this is the purpose of `allowDirtyReads`.
+    for (auto const& pair : shards) {
+      ServerID const& replica = trx.state()->whichReplica(pair.first);
+      if (!trx.state()->knowsServer(replica)) {
+        servers.emplace(replica);
+      }
+    }
+  } else {
+    for (auto const& shardServers : shards) {
+      ServerID const& srv = shardServers.second.at(0);
+      if (!trx.state()->knowsServer(srv)) {
+        servers.emplace(srv);
+      }
     }
   }
-  return ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), leaders,
+  return ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), servers,
                                                       api);
 }
 
@@ -183,17 +210,27 @@ void addTransactionHeaderForShard(transaction::Methods const& trx,
     return;  // no need
   }
 
-  auto const& it = shardMap.find(shard);
-  if (it != shardMap.end()) {
-    if (it->second.empty()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
-    }
-    ServerID const& leader = it->second[0];
-    ClusterTrxMethods::addTransactionHeader(trx, leader, headers);
+  // If we are in a reading transaction and are supposed to read from followers
+  // then we need to send transaction begin headers not only to leaders, but
+  // sometimes also to followers. The `TransactionState` knows this and so
+  // we must consult `whichReplica` instead of blindly taking the leader.
+  // Note that this essentially only happens in `getDocumentOnCoordinator`.
+  if (trx.state()->options().allowDirtyReads) {
+    ServerID const& server = trx.state()->whichReplica(shard);
+    ClusterTrxMethods::addTransactionHeader(trx, server, headers);
   } else {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "couldnt find shard in shardMap");
+    auto const& it = shardMap.find(shard);
+    if (it != shardMap.end()) {
+      if (it->second.empty()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+      }
+      ServerID const& leader = it->second[0];
+      ClusterTrxMethods::addTransactionHeader(trx, leader, headers);
+    } else {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "couldn't find shard in shardMap");
+    }
   }
 }
 
@@ -223,14 +260,12 @@ OperationResult handleResponsesFromAllShards(
   if (!result.fail()) {
     for (Try<arangodb::network::Response> const& tryRes : responses) {
       network::Response const& res = tryRes.get();  // throws exceptions upwards
-      ShardID sId = res.destinationShard();
-      auto commError = network::fuerteToArangoErrorCode(res);
-      if (commError != TRI_ERROR_NO_ERROR) {
-        result.reset(commError);
-      } else {
+
+      TRI_ASSERT(result.ok());
+      result = res.combinedResult();
+      if (result.ok()) {
         TRI_ASSERT(res.error == fuerte::Error::NoError);
-        VPackSlice answer = res.slice();
-        handler(result, builder, sId, answer);
+        handler(result, builder, res.destinationShard(), res.slice());
       }
 
       if (result.fail()) {
@@ -773,88 +808,6 @@ static std::shared_ptr<ShardMap> CloneShardDistribution(
 
 namespace arangodb {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a list of attributes have the same values in two vpack
-/// documents
-////////////////////////////////////////////////////////////////////////////////
-
-bool shardKeysChanged(LogicalCollection const& collection,
-                      VPackSlice const& oldValue, VPackSlice const& newValue,
-                      bool isPatch) {
-  if (!oldValue.isObject() || !newValue.isObject()) {
-    // expecting two objects. everything else is an error
-    return true;
-  }
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  if (collection.vocbase().name() == "sync-replication-test") {
-    return false;
-  }
-#endif
-
-  std::vector<std::string> const& shardKeys = collection.shardKeys();
-
-  for (const auto& shardKey : shardKeys) {
-    if (shardKey == StaticStrings::KeyString) {
-      continue;
-    }
-
-    VPackSlice n = newValue.get(shardKey);
-
-    if (n.isNone() && isPatch) {
-      // attribute not set in patch document. this means no update
-      continue;
-    }
-
-    VPackSlice o = oldValue.get(shardKey);
-
-    if (o.isNone()) {
-      // if attribute is undefined, use "null" instead
-      o = arangodb::velocypack::Slice::nullSlice();
-    }
-
-    if (n.isNone()) {
-      // if attribute is undefined, use "null" instead
-      n = arangodb::velocypack::Slice::nullSlice();
-    }
-
-    if (!Helper::equal(n, o, false)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-bool smartJoinAttributeChanged(LogicalCollection const& collection,
-                               VPackSlice const& oldValue,
-                               VPackSlice const& newValue, bool isPatch) {
-  if (!collection.hasSmartJoinAttribute()) {
-    return false;
-  }
-  if (!oldValue.isObject() || !newValue.isObject()) {
-    // expecting two objects. everything else is an error
-    return true;
-  }
-
-  std::string const& s = collection.smartJoinAttribute();
-
-  VPackSlice n = newValue.get(s);
-  if (!n.isString()) {
-    if (isPatch && n.isNone()) {
-      // attribute not set in patch document. this means no update
-      return false;
-    }
-
-    // no string value... invalid!
-    return true;
-  }
-
-  VPackSlice o = oldValue.get(s);
-  TRI_ASSERT(o.isString());
-
-  return !Helper::equal(n, o, false);
-}
-
 void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart,
                              VPackSlice value, VPackBuilder& builder) {
   TRI_ASSERT(value.isObject());
@@ -1030,11 +983,11 @@ futures::Future<OperationResult> revisionOnCoordinator(
                 builder.clear();
                 builder.add(VPackValue(cmp.id()));
               }
+              return;
             }
-          } else {
-            // didn't get the expected response
-            result.reset(TRI_ERROR_INTERNAL);
           }
+          // didn't get the expected response
+          result.reset(TRI_ERROR_INTERNAL);
         });
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
@@ -1228,21 +1181,16 @@ futures::Future<OperationResult> figuresOnCoordinator(
     auto handler = [details](Result& result, VPackBuilder& builder,
                              ShardID const&,
                              VPackSlice answer) mutable -> void {
-      if (!answer.isObject()) {
-        // didn't get the expected response
-        result.reset(TRI_ERROR_INTERNAL);
-      } else if (!result.fail()) {
-        Result r = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
-        if (r.fail()) {
-          result.reset(r);
-        } else {
-          VPackSlice figures = answer.get("figures");
-          // add to the total
-          if (figures.isObject()) {
-            aggregateClusterFigures(details, false, figures, builder);
-          }
+      if (answer.isObject()) {
+        VPackSlice figures = answer.get("figures");
+        // add to the total
+        if (figures.isObject()) {
+          aggregateClusterFigures(details, false, figures, builder);
+          return;
         }
       }
+      // didn't get the expected response
+      result.reset(TRI_ERROR_INTERNAL);
     };
     auto pre = [](Result&, VPackBuilder& builder) -> void {
       // initialize to empty object
@@ -1324,15 +1272,16 @@ futures::Future<OperationResult> countOnCoordinator(
                       ShardID const& shardId,
                       VPackSlice answer) mutable -> void {
       if (answer.isObject()) {
-        // add to the total
-        VPackArrayBuilder array(&builder);
-        array->add(VPackValue(shardId));
-        array->add(
-            VPackValue(Helper::getNumericValue<uint64_t>(answer, "count", 0)));
-      } else {
-        // didn't get the expected response
-        result.reset(TRI_ERROR_INTERNAL);
+        if (VPackSlice count = answer.get("count"); count.isNumber()) {
+          // add to the total
+          VPackArrayBuilder array(&builder);
+          array->add(VPackValue(shardId));
+          array->add(count);
+          return;
+        }
       }
+      // didn't get the expected response
+      result.reset(TRI_ERROR_INTERNAL);
     };
     auto pre = [](Result&, VPackBuilder& builder) -> void {
       builder.openArray();
@@ -1354,8 +1303,9 @@ futures::Future<OperationResult> countOnCoordinator(
 /// @brief gets the metrics from DBServers
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<metrics::RawDBServers> metricsOnCoordinator(
+futures::Future<metrics::RawDBServers> metricsOnLeader(
     NetworkFeature& network, ClusterFeature& cluster) {
+  LOG_TOPIC("badf0", TRACE, Logger::CLUSTER) << "Start collect metrics";
   auto* pool = network.pool();
   auto serverIds = cluster.clusterInfo().getCurrentDBServers();
 
@@ -1367,15 +1317,17 @@ futures::Future<metrics::RawDBServers> metricsOnCoordinator(
                     StaticStrings::MimeTypeJsonNoEncoding);
     futures.push_back(network::sendRequest(
         pool, "server:" + id, fuerte::RestVerb::Get, "/_admin/metrics", {},
-        network::RequestOptions{}.param("type", "json"), std::move(headers)));
+        network::RequestOptions{}.param("type", metrics::kDBJson),
+        std::move(headers)));
   }
-  return collectAll(futures).thenValue(
-      [](std::vector<Try<network::Response>>&& responses) {
+  return collectAll(futures).then(
+      [](Try<std::vector<Try<network::Response>>>&& responses) {
+        TRI_ASSERT(responses.hasValue());  // collectAll always return value
         metrics::RawDBServers metrics;
-        metrics.reserve(responses.size());
-        for (auto& response : responses) {
-          if (!response.hasValue() || response->fail() ||
-              !response->hasResponse()) {
+        metrics.reserve(responses->size());
+        for (auto& response : *responses) {
+          if (!response.hasValue() || !response->hasResponse() ||
+              response->fail()) {
             continue;  // Shit happens, just ignore it
           }
           auto payload = response->response().stealPayload();
@@ -1395,6 +1347,33 @@ futures::Future<metrics::RawDBServers> metricsOnCoordinator(
         }
         return metrics;
       });
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the metrics from leader Coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+futures::Future<metrics::LeaderResponse> metricsFromLeader(
+    NetworkFeature& network, ClusterFeature& cluster, std::string_view leader,
+    std::string serverId, uint64_t rebootId, uint64_t version) {
+  LOG_TOPIC("badf1", TRACE, Logger::CLUSTER) << "Start receive metrics";
+  auto* pool = network.pool();
+  network::Headers headers;
+  headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeJsonNoEncoding);
+  auto options = network::RequestOptions{}
+                     .param("type", metrics::kCDJson)
+                     .param("MetricsServerId", std::move(serverId))
+                     .param("MetricsRebootId", std::to_string(rebootId))
+                     .param("MetricsVersion", std::to_string(version));
+  auto future = network::sendRequest(
+      pool, absl::StrCat("server:", leader), fuerte::RestVerb::Get,
+      "/_admin/metrics", {}, std::move(options), std::move(headers));
+  return std::move(future).then([](Try<network::Response>&& response) {
+    if (!response.hasValue() || !response->hasResponse() || response->fail()) {
+      return metrics::LeaderResponse{};
+    }
+    return response->response().stealPayload();
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1622,6 +1601,10 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
       }
 
       network::Headers headers;
+      // Just make sure that no dirty read flag makes it here, since we
+      // are writing and then `addTransactionHeaderForShard` might
+      // misbehave!
+      TRI_ASSERT(!trx.state()->options().allowDirtyReads);
       addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first, headers);
       auto future = network::sendRequestRetry(
           pool, "shard:" + it.first, fuerte::RestVerb::Post,
@@ -1757,6 +1740,10 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
             }
 
             network::Headers headers;
+            // Just make sure that no dirty read flag makes it here, since we
+            // are writing and then `addTransactionHeaderForShard` might
+            // misbehave!
+            TRI_ASSERT(!trx.state()->options().allowDirtyReads);
             addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first,
                                          headers);
             futures.emplace_back(network::sendRequestRetry(
@@ -1824,6 +1811,10 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
         for (auto const& shardServers : *shardIds) {
           ShardID const& shard = shardServers.first;
           network::Headers headers;
+          // Just make sure that no dirty read flag makes it here, since we
+          // are writing and then `addTransactionHeaderForShard` might
+          // misbehave!
+          TRI_ASSERT(!trx.state()->options().allowDirtyReads);
           addTransactionHeaderForShard(trx, *shardIds, shard, headers);
           futures.emplace_back(network::sendRequestRetry(
               pool, "shard:" + shard, fuerte::RestVerb::Delete,
@@ -1896,6 +1887,10 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
     builder.close();
 
     network::Headers headers;
+    // Just make sure that no dirty read flag makes it here, since we
+    // are writing and then `addTransactionHeaderForShard` might
+    // misbehave!
+    TRI_ASSERT(!trx.state()->options().allowDirtyReads);
     addTransactionHeaderForShard(trx, *shardIds, /*shard*/ p.first, headers);
     auto future = network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Put,
@@ -1909,12 +1904,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
           std::vector<Try<network::Response>>&& results) -> OperationResult {
     return handleResponsesFromAllShards(
         options, results,
-        [](Result& result, VPackBuilder&, ShardID const&,
-           VPackSlice answer) -> void {
-          if (Helper::getBooleanValue(answer, StaticStrings::Error, false)) {
-            result = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
-          }
-        });
+        [](Result&, VPackBuilder&, ShardID const&, VPackSlice) -> void {});
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
@@ -1958,6 +1948,7 @@ Future<OperationResult> getDocumentOnCoordinator(
   // lazily begin transactions on leaders
   bool const isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  bool const allowDirtyReads = trx.state()->options().allowDirtyReads;
 
   // Some stuff to prepare cluster-internal requests:
 
@@ -2041,6 +2032,12 @@ Future<OperationResult> getDocumentOnCoordinator(
           }
           builder.close();
         }
+        if (allowDirtyReads) {
+          auto& cf = trx.vocbase().server().getFeature<ClusterFeature>();
+          ++cf.potentiallyDirtyDocumentReadsCounter();
+          reqOpts.overrideDestination = trx.state()->whichReplica(it.first);
+          headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
+        }
         futures.emplace_back(network::sendRequestRetry(
             pool, "shard:" + it.first, restVerb, std::move(url),
             std::move(buffer), reqOpts, std::move(headers)));
@@ -2086,7 +2083,9 @@ Future<OperationResult> getDocumentOnCoordinator(
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
 
-  auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
+  auto& cf = trx.vocbase().server().getFeature<ClusterFeature>();
+  auto& nf = trx.vocbase().server().getFeature<NetworkFeature>();
+  auto* pool = nf.pool();
   const size_t expectedLen = useMultiple ? slice.length() : 0;
   if (!useMultiple) {
     std::string_view const key(
@@ -2108,6 +2107,12 @@ Future<OperationResult> getDocumentOnCoordinator(
         headers.try_emplace(StaticStrings::AqlDocumentCall, "true");
       }
 
+      if (allowDirtyReads) {
+        ++cf.potentiallyDirtyDocumentReadsCounter();
+        reqOpts.overrideDestination = trx.state()->whichReplica(shard);
+        headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
+      }
+
       futures.emplace_back(network::sendRequestRetry(
           pool, "shard:" + shard, restVerb,
           "/_api/document/" + StringUtils::urlEncode(shard) + "/" +
@@ -2121,6 +2126,13 @@ Future<OperationResult> getDocumentOnCoordinator(
       ShardID const& shard = shardServers.first;
       network::Headers headers;
       addTransactionHeaderForShard(trx, *shardIds, shard, headers);
+
+      if (allowDirtyReads) {
+        ++cf.potentiallyDirtyDocumentReadsCounter();
+        reqOpts.overrideDestination = trx.state()->whichReplica(shard);
+        headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
+      }
+
       futures.emplace_back(network::sendRequestRetry(
           pool, "shard:" + shard, restVerb,
           "/_api/document/" + StringUtils::urlEncode(shard),
@@ -2409,19 +2421,22 @@ void fetchVerticesFromEngines(
     for (auto pair : VPackObjectIterator(resSlice, /*sequential*/ true)) {
       arangodb::velocypack::HashedStringRef key(pair.key);
       if (ADB_UNLIKELY(vertexIds.erase(key) == 0)) {
-        // We either found the same vertex twice,
-        // or found a vertex we did not request.
-        // Anyways something somewhere went seriously wrong
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
+        // This case is unlikely and can only happen for
+        // Satellite Vertex collections. There it is expected.
+        // If we fix above todo (fast-path) this case should
+        // be impossible.
+        TRI_ASSERT(result.find(key) != result.end());
+        TRI_ASSERT(VelocyPackHelper::equal(result.find(key)->second, pair.value,
+                                           true));
+      } else {
+        TRI_ASSERT(result.find(key) == result.end());
+        if (!cached) {
+          travCache.datalake().add(std::move(payload));
+          cached = true;
+        }
+        // Protected by datalake
+        result.try_emplace(key, pair.value);
       }
-
-      TRI_ASSERT(result.find(key) == result.end());
-      if (!cached) {
-        travCache.datalake().add(std::move(payload));
-        cached = true;
-      }
-      // Protected by datalake
-      result.try_emplace(key, pair.value);
     }
   }
 
@@ -2587,6 +2602,10 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
             }
 
             network::Headers headers;
+            // Just make sure that no dirty read flag makes it here, since we
+            // are writing and then `addTransactionHeaderForShard` might
+            // misbehave!
+            TRI_ASSERT(!trx.state()->options().allowDirtyReads);
             addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first,
                                          headers);
             futures.emplace_back(network::sendRequestRetry(
@@ -2640,6 +2659,10 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
         for (auto const& shardServers : *shardIds) {
           ShardID const& shard = shardServers.first;
           network::Headers headers;
+          // Just make sure that no dirty read flag makes it here, since we
+          // are writing and then `addTransactionHeaderForShard` might
+          // misbehave!
+          TRI_ASSERT(!trx.state()->options().allowDirtyReads);
           addTransactionHeaderForShard(trx, *shardIds, shard, headers);
 
           std::string url;
@@ -2808,6 +2831,8 @@ ClusterMethods::persistCollectionsInAgency(
   // support cross-database operations and they cannot be triggered by
   // users)
   auto const dbName = collections[0]->vocbase().name();
+  auto const replicationVersion =
+      collections[0]->vocbase().replicationVersion();
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ClusterCollectionCreationInfo> infos;
@@ -2926,7 +2951,8 @@ ClusterMethods::persistCollectionsInAgency(
 
     // pass in the *endTime* here, not a timeout!
     Result res = ci.createCollectionsCoordinator(
-        dbName, infos, endTime, isNewDatabase, colToDistributeLike);
+        dbName, infos, endTime, isNewDatabase, colToDistributeLike,
+        replicationVersion);
 
     if (res.ok()) {
       // success! exit the loop and go on

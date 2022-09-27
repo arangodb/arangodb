@@ -31,7 +31,37 @@ collections in very special occasions, but normally a regular collection will do
 @RESTBODYPARAM{schema,object,optional,}
 Optional object that specifies the collection level schema for
 documents. The attribute keys `rule`, `level` and `message` must follow the
-rules documented in [Document Schema Validation](https://www.arangodb.com/docs/stable/document-schema-validation.html)
+rules documented in [Document Schema Validation](https://www.arangodb.com/docs/stable/documents-schema-validation.html)
+
+@RESTBODYPARAM{computedValues,array,optional,post_api_collection_computed_field}
+An optional list of objects, each representing a computed value.
+
+@RESTSTRUCT{name,post_api_collection_computed_field,string,required,}
+The name of the target attribute. Can only be a top-level attribute, but you
+may return a nested object. Cannot be `_key`, `_id`, `_rev`, `_from`, `_to`,
+or a shard key attribute.
+
+@RESTSTRUCT{expression,post_api_collection_computed_field,string,required,}
+An AQL `RETURN` operation with an expression that computes the desired value.
+See [Computed Value Expressions](https://www.arangodb.com/docs/devel/data-modeling-documents-computed-values.html#computed-value-expressions) for details.
+
+@RESTSTRUCT{overwrite,post_api_collection_computed_field,boolean,required,}
+Whether the computed value shall take precedence over a user-provided or
+existing attribute.
+
+@RESTSTRUCT{computeOn,post_api_collection_computed_field,array,optional,string}
+An array of strings to define on which write operations the value shall be
+computed. The possible values are `"insert"`, `"update"`, and `"replace"`.
+The default is `["insert", "update", "replace"]`.
+
+@RESTSTRUCT{keepNull,post_api_collection_computed_field,boolean,optional,}
+Whether the target attribute shall be set if the expression evaluates to `null`.
+You can set the option to `false` to not set (or unset) the target attribute if
+the expression returns `null`. The default is `true`.
+
+@RESTSTRUCT{failOnWarning,post_api_collection_computed_field,boolean,optional,}
+Whether to let the write operation fail if the expression produces a warning.
+The default is `false`.
 
 @RESTBODYPARAM{keyOptions,object,optional,post_api_collection_opts}
 additional options for key generation. If specified, then `keyOptions`
@@ -39,24 +69,36 @@ should be a JSON object containing the following attributes:
 
 @RESTSTRUCT{type,post_api_collection_opts,string,required,string}
 specifies the type of the key generator. The currently available generators are
-`traditional`, `autoincrement`, `uuid` and `padded`.<br>
-The `traditional` key generator generates numerical keys in ascending order.
-The sequence of keys is not guaranteed to be gap-free.<br>
-The `autoincrement` key generator generates numerical keys in ascending order,
-the initial offset and the spacing can be configured (**note**: `autoincrement`
-is currently only supported for non-sharded collections).
-The sequence of generated keys is not guaranteed to be gap-free, because a new key
-will be generated on every document insert attempt, not just for successful
-inserts.<br>
-The `padded` key generator generates keys of a fixed length (16 bytes) in
-ascending lexicographical sort order. This is ideal for usage with the _RocksDB_
-engine, which will slightly benefit keys that are inserted in lexicographically
-ascending order. The key generator can be used in a single-server or cluster.
-The sequence of generated keys is not guaranteed to be gap-free.<br>
-The `uuid` key generator generates universally unique 128 bit keys, which
-are stored in hexadecimal human-readable format. This key generator can be used
-in a single-server or cluster to generate "seemingly random" keys. The keys
-produced by this key generator are not lexicographically sorted.
+`traditional`, `autoincrement`, `uuid` and `padded`.
+
+- The `traditional` key generator generates numerical keys in ascending order.
+  The sequence of keys is not guaranteed to be gap-free.
+
+- The `autoincrement` key generator generates numerical keys in ascending order,
+  the initial offset and the spacing can be configured (**note**: `autoincrement`
+  is currently only supported for non-sharded collections).
+  The sequence of generated keys is not guaranteed to be gap-free, because a new key
+  will be generated on every document insert attempt, not just for successful
+  inserts.
+
+- The `padded` key generator generates keys of a fixed length (16 bytes) in
+  ascending lexicographical sort order. This is ideal for usage with the _RocksDB_
+  engine, which will slightly benefit keys that are inserted in lexicographically
+  ascending order. The key generator can be used in a single-server or cluster.
+  The sequence of generated keys is not guaranteed to be gap-free.
+
+- The `uuid` key generator generates universally unique 128 bit keys, which
+  are stored in hexadecimal human-readable format. This key generator can be used
+  in a single-server or cluster to generate "seemingly random" keys. The keys
+  produced by this key generator are not lexicographically sorted.
+
+Please note that keys are only guaranteed to be truly ascending in single
+server deployments and for collections that only have a single shard (that includes
+collections in a OneShard database).
+The reason is that for collections with more than a single shard, document keys
+are generated on coordinator(s). For collections with a single shard, the document
+keys are generated on the leader DB server, which has full control over the key
+sequence.
 
 @RESTSTRUCT{allowUserKeys,post_api_collection_opts,boolean,required,}
 if set to `true`, then it is allowed to supply own key values in the
@@ -74,13 +116,14 @@ Not used for other key generator types.
 
 @RESTBODYPARAM{type,integer,optional,int64}
 (The default is `2`): the type of the collection to create.
-The following values for `type` are valid:<br>
- - `2`: document collection
- - `3`: edge collection
+The following values for `type` are valid:
+
+- `2`: document collection
+- `3`: edge collection
 
 @RESTBODYPARAM{cacheEnabled,boolean,optional,}
 Whether the in-memory hash cache for documents should be enabled for this
-collection (default: `true`). Can be controlled globally with the `--cache.size`
+collection (default: `false`). Can be controlled globally with the `--cache.size`
 startup option. The cache can speed up repeated reads of the same documents via
 their document keys. If the same documents are not fetched often or are
 modified frequently, then you may disable the cache to avoid the maintenance

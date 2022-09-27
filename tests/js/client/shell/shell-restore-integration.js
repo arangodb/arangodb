@@ -34,9 +34,17 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const db = arangodb.db;
 const isCluster = require("internal").isCluster();
-const dbs = [{"name": "maçã", "id": "9999994", "isUnicode": true}, {"name": "cachorro", "id": "9999995", "isUnicode": false}, {"name": "testName", "id": "9999996", "isUnicode": false}, {"name": "😀", "id": "9999997", "isUnicode": true}, {"name": "かわいい犬", "id": "9999998"}, {"name": "ﻚﻠﺑ ﻞﻄﻴﻓ", "id": "9999999", "isUnicode": true}];
+const dbs = [{"name": "maçã", "id": "9999994", "isUnicode": true}, {
+  "name": "cachorro",
+  "id": "9999995",
+  "isUnicode": false
+}, {"name": "testName", "id": "9999996", "isUnicode": false}, {
+  "name": "😀",
+  "id": "9999997",
+  "isUnicode": true
+}, {"name": "かわいい犬", "id": "9999998"}, {"name": "ﻚﻠﺑ ﻞﻄﻴﻓ", "id": "9999999", "isUnicode": true}];
 
-function createCollectionFiles (path, cn) {
+function createCollectionFiles(path, cn) {
   let fn = fs.join(path, cn + ".structure.json");
   fs.write(fn, JSON.stringify({
     indexes: [],
@@ -49,7 +57,7 @@ function createCollectionFiles (path, cn) {
 
   let data = [];
   for (let i = 0; i < 1000; ++i) {
-    data.push({ type: 2300, data: { _key: "test" + i, value: i} });
+    data.push({type: 2300, data: {_key: "test" + i, value: i}});
   }
 
   fn = fs.join(path, cn + ".data.json");
@@ -57,7 +65,7 @@ function createCollectionFiles (path, cn) {
   return data;
 }
 
-function createDumpJsonFile (path, databaseName, id) {  
+function createDumpJsonFile(path, databaseName, id) {
   let fn = fs.join(path, "dump.json");
   fs.write(fn, JSON.stringify({
     database: databaseName,
@@ -68,7 +76,7 @@ function createDumpJsonFile (path, databaseName, id) {
   }));
 }
 
-function restoreIntegrationSuite () {
+function restoreIntegrationSuite() {
   'use strict';
   const cn = 'UnitTestsRestore';
   const arangorestore = pu.ARANGORESTORE_BIN;
@@ -79,7 +87,7 @@ function restoreIntegrationSuite () {
     let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
     args.push('--server.endpoint');
     args.push(endpoint);
-    if(args.indexOf("--all-databases") === -1 && args.indexOf("--server.database") === -1) {
+    if (args.indexOf("--all-databases") === -1 && args.indexOf("--server.database") === -1) {
       args.push('--server.database');
       args.push(arango.getDatabaseName());
     }
@@ -99,25 +107,20 @@ function restoreIntegrationSuite () {
 
   return {
 
-    setUp: function () {
+    setUp: function() {
       db._drop(cn);
     },
 
-    tearDown: function () {
+    tearDown: function() {
       db._drop(cn);
       db._databases().forEach((database) => {
-        if(database !== "_system") {
+        if (database !== "_system") {
           db._dropDatabase(database);
         }
       });
     },
-    
-    testRestoreAutoIncrementKeyGenerator: function () {
-      if (isCluster) {
-        // auto-increment key-generator not supported on cluster
-        return;
-      }
 
+    testRestoreAutoIncrementKeyGenerator: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -127,14 +130,14 @@ function restoreIntegrationSuite () {
           indexes: [],
           parameters: {
             name: cn,
-            numberOfShards: 3,
+            numberOfShards: 1,
             type: 2,
-            keyOptions: { type: "autoincrement", lastValue: 12345, increment: 3, offset: 19 }
+            keyOptions: {type: "autoincrement", lastValue: 12345, increment: 3, offset: 19}
           }
         }));
 
         let args = ['--collection', cn, '--import-data', 'false'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         let p = c.properties();
@@ -148,17 +151,20 @@ function restoreIntegrationSuite () {
           c.insert({});
           p = c.properties();
           let newLastValue = p.keyOptions.lastValue;
-          assertTrue(newLastValue > lastValue);
+          if (!isCluster) {
+            assertTrue(newLastValue > lastValue);
+          }
           lastValue = newLastValue;
         }
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
-    
-    testRestorePaddedKeyGenerator: function () {
+
+    testRestorePaddedKeyGenerator: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -170,12 +176,12 @@ function restoreIntegrationSuite () {
             name: cn,
             numberOfShards: 3,
             type: 2,
-            keyOptions: { type: "padded", lastValue: 12345 }
+            keyOptions: {type: "padded", lastValue: 12345}
           }
         }));
 
         let args = ['--collection', cn, '--import-data', 'false'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         let p = c.properties();
@@ -193,11 +199,12 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
-    
-    testRestoreWithRepeatedDocuments: function () {
+
+    testRestoreWithRepeatedDocuments: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -215,14 +222,14 @@ function restoreIntegrationSuite () {
         let data = [];
         for (let i = 0; i < 1000; ++i) {
           // will generate keys such as test0, test0, test1, test1 etc.
-          data.push({ type: 2300, data: { _key: "test" + Math.floor(i / 2), value: i, overwrite: (i % 2 === 1) } });
+          data.push({type: 2300, data: {_key: "test" + Math.floor(i / 2), value: i, overwrite: (i % 2 === 1)}});
         }
 
         fn = fs.join(path, cn + ".data.json");
         fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
-        
+
         let args = ['--collection', cn, '--import-data', 'true'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         assertEqual(data.length / 2, c.count());
@@ -234,11 +241,12 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
-    
-    testRestoreInsertRemove: function () {
+
+    testRestoreInsertRemove: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -255,20 +263,20 @@ function restoreIntegrationSuite () {
 
         let data = [];
         for (let i = 0; i < 10; ++i) {
-          data.push({ type: 2300, data: { _key: "test" + i, value: i, old: true } });
+          data.push({type: 2300, data: {_key: "test" + i, value: i, old: true}});
         }
         for (let i = 0; i < 6; ++i) {
-          data.push({ type: 2302, key: "test" + i });
+          data.push({type: 2302, key: "test" + i});
         }
         for (let i = 4; i < 7; ++i) {
-          data.push({ type: 2300, data: { _key: "test" + i, value: i * 2, overwrite: true } });
+          data.push({type: 2300, data: {_key: "test" + i, value: i * 2, overwrite: true}});
         }
 
         fn = fs.join(path, cn + ".data.json");
         fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
-        
+
         let args = ['--collection', cn, '--import-data', 'true', '--overwrite', 'true'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn), count = c.count();
         assertEqual(6, count);
@@ -286,15 +294,76 @@ function restoreIntegrationSuite () {
           assertEqual(i, doc.value);
           assertTrue(doc.old);
           assertFalse(doc.hasOwnProperty('overwrite'));
-        }  
+        }
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
-    
-    testRestoreWithLineBreaksInData: function () {
+
+    testRestoreWithComputedValues: function() {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+        let numShards = 1;
+        if (isCluster) {
+          numShards = 3;
+        }
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            name: cn,
+            numberOfShards: numShards,
+            type: 2,
+            computedValues: [{
+              name: "value3",
+              expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+              computeOn: ["insert"],
+              overwrite: false,
+              failOnWarning: false
+            }, {
+              name: "value4",
+              expression: "RETURN CONCAT(@doc.value2, ' ', @doc.value1)",
+              computeOn: ["insert"],
+              overwrite: true,
+              failOnWarning: false
+            }]
+          }
+        }));
+
+        let data = [];
+        for (let i = 0; i < 1000; ++i) {
+          data.push({type: 2300, data: {_key: "test" + i, value1: i, value2: "abc", value3: i + "+abc", value4: "abc " + i}});
+        }
+
+        fn = fs.join(path, cn + ".data.json");
+        fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
+
+        let args = ['--collection', cn, '--import-data', 'true'];
+        runRestore(path, args, 0);
+
+        let c = db._collection(cn);
+        assertEqual(data.length, c.count());
+        for (let i = 0; i < data.length; ++i) {
+          let doc = c.document("test" + i);
+          assertEqual(doc.value1, i);
+          assertEqual(doc.value2, "abc");
+          assertEqual(doc.value3, doc.value1 + "+" + doc.value2);
+          assertEqual(doc.value4, doc.value2 + " " + doc.value1);
+        }
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {
+        }
+      }
+    },
+
+
+    testRestoreWithLineBreaksInData: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -311,14 +380,14 @@ function restoreIntegrationSuite () {
 
         let data = [];
         for (let i = 0; i < 1000; ++i) {
-          data.push({ type: 2300, data: { _key: "test" + i, value: i } });
+          data.push({type: 2300, data: {_key: "test" + i, value: i}});
         }
 
         fn = fs.join(path, cn + ".data.json");
         fs.write(fn, data.map((d) => '\n' + JSON.stringify(d)).join('\n\n'));
-        
+
         let args = ['--collection', cn, '--import-data', 'true'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         assertEqual(data.length, c.count());
@@ -329,11 +398,12 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
-    
-    testRestoreWithEnvelopesWithDumpJsonFile: function () {
+
+    testRestoreWithEnvelopesWithDumpJsonFile: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -350,19 +420,19 @@ function restoreIntegrationSuite () {
 
         let data = [];
         for (let i = 0; i < 5000; ++i) {
-          data.push({ type: 2300, data: { _key: "test" + i, value: i } });
+          data.push({type: 2300, data: {_key: "test" + i, value: i}});
         }
 
         fn = fs.join(path, cn + ".data.json");
         fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
-        
+
         fn = fs.join(path, "dump.json");
         fs.write(fn, JSON.stringify({
           useEnvelopes: true
         }));
-        
+
         let args = ['--collection', cn, '--import-data', 'true'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         assertEqual(data.length, c.count());
@@ -373,11 +443,12 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
-    
-    testRestoreWithEnvelopesNoDumpJsonFile: function () {
+
+    testRestoreWithEnvelopesNoDumpJsonFile: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -394,14 +465,14 @@ function restoreIntegrationSuite () {
 
         let data = [];
         for (let i = 0; i < 5000; ++i) {
-          data.push({ type: 2300, data: { _key: "test" + i, value: i } });
+          data.push({type: 2300, data: {_key: "test" + i, value: i}});
         }
 
         fn = fs.join(path, cn + ".data.json");
         fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
-        
+
         let args = ['--collection', cn, '--import-data', 'true'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         assertEqual(data.length, c.count());
@@ -412,30 +483,31 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
 
-    testRestoreWithAllDatabasesUnicodeNoCollections: function () {
+    testRestoreWithAllDatabasesUnicodeNoCollections: function() {
       let path = fs.getTempFile();
       fs.makeDirectory(path);
       let args = ['--all-databases', 'true', '--create-database', 'true'];
       try {
         let subdir = "";
         dbs.forEach((database) => {
-          if(database["isUnicode"]) {
+          if (database["isUnicode"]) {
             subdir = database["id"];
           } else {
             subdir = database["name"];
           }
           let dbPath = fs.join(path, subdir);
           fs.makeDirectory(dbPath);
-          createDumpJsonFile(dbPath, database["name"], database["id"]);  
+          createDumpJsonFile(dbPath, database["name"], database["id"]);
         });
         runRestore(path, args, 0);
         dbs.forEach((database) => {
           db._useDatabase(database["name"]);
-          if(database["isUnicode"]) {
+          if (database["isUnicode"]) {
             subdir = database["id"];
           } else {
             subdir = database["name"];
@@ -450,30 +522,30 @@ function restoreIntegrationSuite () {
       }
     },
 
-    testRestoreWithSomeAlreadyExistingDatabasesUnicodeNoCollections: function () {
+    testRestoreWithSomeAlreadyExistingDatabasesUnicodeNoCollections: function() {
       let path = fs.getTempFile();
       fs.makeDirectory(path);
       let args = ['--all-databases', 'true', '--create-database', 'true'];
       try {
         let subdir = "";
         dbs.forEach((database, index) => {
-          if(database["isUnicode"]) {
+          if (database["isUnicode"]) {
             subdir = database["id"];
           } else {
             subdir = database["name"];
           }
           let dbPath = fs.join(path, subdir);
           fs.makeDirectory(dbPath);
-          if(index % 2 === 0) {
+          if (index % 2 === 0) {
             db._createDatabase(database["name"]);
           }
-          createDumpJsonFile(dbPath, database["name"], database["id"]);  
+          createDumpJsonFile(dbPath, database["name"], database["id"]);
         });
         assertTrue(db._databases().length > 2);
         runRestore(path, args, 0);
         dbs.forEach((database) => {
           db._useDatabase(database["name"]);
-          if(database["isUnicode"]) {
+          if (database["isUnicode"]) {
             subdir = database["id"];
           } else {
             subdir = database["name"];
@@ -488,20 +560,20 @@ function restoreIntegrationSuite () {
       }
     },
 
-    testRestoreCollectionDatabasesUnicode: function () {
+    testRestoreCollectionDatabasesUnicode: function() {
       let path = fs.getTempFile();
       fs.makeDirectory(path);
       try {
         let subdir = "";
         dbs.forEach((database) => {
-          if(database["isUnicode"]) {
+          if (database["isUnicode"]) {
             subdir = database["id"];
           } else {
             subdir = database["name"];
           }
           let dbPath = fs.join(path, subdir);
           fs.makeDirectory(dbPath);
-          createDumpJsonFile(dbPath, database["name"], database["id"]);  
+          createDumpJsonFile(dbPath, database["name"], database["id"]);
           let data = createCollectionFiles(dbPath, cn);
           let args = ['--collection', cn, '--import-data', 'true', '--create-database', 'true', '--server.database', database["name"]];
           runRestore(dbPath, args, 0);
@@ -511,48 +583,48 @@ function restoreIntegrationSuite () {
           for (let i = 0; i < data.length; ++i) {
             let doc = c.document("test" + i);
             assertEqual(i, doc.value);
-          } 
+          }
         });
       } finally {
         db._useDatabase("_system");
         fs.removeDirectoryRecursive(path, true);
       }
-    }, 
-    
-    testRestoreCollectionWithAllDatabasesUnicode: function () {
+    },
+
+    testRestoreCollectionWithAllDatabasesUnicode: function() {
       let path = fs.getTempFile();
       fs.makeDirectory(path);
       try {
         let subdir = "";
         dbs.forEach((database) => {
-          if(database["isUnicode"]) {
+          if (database["isUnicode"]) {
             subdir = database["id"];
           } else {
             subdir = database["name"];
           }
           let dbPath = fs.join(path, subdir);
           fs.makeDirectory(dbPath);
-          createDumpJsonFile(dbPath, database["name"], database["id"]);  
+          createDumpJsonFile(dbPath, database["name"], database["id"]);
           createCollectionFiles(dbPath, cn);
         });
         let args = ['--collection', cn, '--import-data', 'true', '--create-database', 'true', '--all-databases', 'true'];
         runRestore(path, args, 0);
-        dbs.forEach((database) => { 
+        dbs.forEach((database) => {
           db._useDatabase(database["name"]);
           let c = db._collection(cn);
           assertEqual(1000, c.count());
           for (let i = 0; i < 1000; ++i) {
             let doc = c.document("test" + i);
             assertEqual(i, doc.value);
-          } 
-        });  
+          }
+        });
       } finally {
         db._useDatabase("_system");
         fs.removeDirectoryRecursive(path, true);
       }
     },
 
-    testRestoreWithoutEnvelopesWithDumpJsonFile: function () {
+    testRestoreWithoutEnvelopesWithDumpJsonFile: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -569,19 +641,19 @@ function restoreIntegrationSuite () {
 
         let data = [];
         for (let i = 0; i < 5000; ++i) {
-          data.push({ _key: "test" + i, value: i });
+          data.push({_key: "test" + i, value: i});
         }
 
         fn = fs.join(path, cn + ".data.json");
         fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
-        
+
         fn = fs.join(path, "dump.json");
         fs.write(fn, JSON.stringify({
           useEnvelopes: false
         }));
-        
+
         let args = ['--collection', cn, '--import-data', 'true'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         assertEqual(data.length, c.count());
@@ -592,11 +664,12 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
-    
-    testRestoreWithoutEnvelopesNoDumpJsonFile: function () {
+
+    testRestoreWithoutEnvelopesNoDumpJsonFile: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -613,14 +686,14 @@ function restoreIntegrationSuite () {
 
         let data = [];
         for (let i = 0; i < 5000; ++i) {
-          data.push({ _key: "test" + i, value: i });
+          data.push({_key: "test" + i, value: i});
         }
 
         fn = fs.join(path, cn + ".data.json");
         fs.write(fn, data.map((d) => JSON.stringify(d)).join('\n'));
-        
+
         let args = ['--collection', cn, '--import-data', 'true'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         assertEqual(data.length, c.count());
@@ -631,11 +704,12 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
-    
-    testRestoreWithoutUsesRevisions: function () {
+
+    testRestoreWithoutUsesRevisions: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -650,7 +724,7 @@ function restoreIntegrationSuite () {
         }));
 
         let args = ['--collection', cn, '--import-data', 'false'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         let props = c.properties();
@@ -659,11 +733,12 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
-    
-    testRestoreWithUsesRevisionsFalse: function () {
+
+    testRestoreWithUsesRevisionsFalse: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -679,7 +754,7 @@ function restoreIntegrationSuite () {
         }));
 
         let args = ['--collection', cn, '--import-data', 'false'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         let props = c.properties();
@@ -688,11 +763,12 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
-    
-    testRestoreWithUsesRevisionsTrue: function () {
+
+    testRestoreWithUsesRevisionsTrue: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -708,7 +784,7 @@ function restoreIntegrationSuite () {
         }));
 
         let args = ['--collection', cn, '--import-data', 'false'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         let props = c.properties();
@@ -717,11 +793,12 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
-    
-    testRestoreNumericGloballyUniqueId: function () {
+
+    testRestoreNumericGloballyUniqueId: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -738,18 +815,19 @@ function restoreIntegrationSuite () {
         }));
 
         let args = ['--collection', cn, '--import-data', 'false'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         assertNotEqual("123456789012", c.properties().globallyUniqueId);
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
-    
-    testRestoreIndexesOldFormat: function () {
+
+    testRestoreIndexesOldFormat: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -759,9 +837,9 @@ function restoreIntegrationSuite () {
           indexes: [],
           parameters: {
             indexes: [
-              { id: "0", fields: ["_key"], type: "primary", unique: true },
-              { id: "95", fields: ["loc"], type: "geo", geoJson: false },
-              { id: "295", fields: ["value"], type: "skiplist", sparse: true },
+              {id: "0", fields: ["_key"], type: "primary", unique: true},
+              {id: "95", fields: ["loc"], type: "geo", geoJson: false},
+              {id: "295", fields: ["value"], type: "skiplist", sparse: true},
             ],
             name: cn,
             numberOfShards: 3,
@@ -770,7 +848,7 @@ function restoreIntegrationSuite () {
         }));
 
         let args = ['--collection', cn, '--import-data', 'false'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         let indexes = c.indexes();
@@ -785,7 +863,7 @@ function restoreIntegrationSuite () {
 
         // test if the indexes work
         for (let i = 0; i < 100; ++i) {
-          c.insert({ _key: "test" + i, value: 42 });
+          c.insert({_key: "test" + i, value: 42});
         }
         for (let i = 0; i < 100; ++i) {
           assertEqual("test" + i, c.document("test" + i)._key);
@@ -795,11 +873,12 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
-    
-    testRestoreIndexesOldFormatGeo1: function () {
+
+    testRestoreIndexesOldFormatGeo1: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -809,7 +888,7 @@ function restoreIntegrationSuite () {
           indexes: [],
           parameters: {
             indexes: [
-              { id: "95", fields: ["loc"], type: "geo1", geoJson: false },
+              {id: "95", fields: ["loc"], type: "geo1", geoJson: false},
             ],
             name: cn,
             numberOfShards: 3,
@@ -818,7 +897,7 @@ function restoreIntegrationSuite () {
         }));
 
         let args = ['--collection', cn, '--import-data', 'false'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         let indexes = c.indexes();
@@ -831,11 +910,12 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
-    
-    testRestoreIndexesOldFormatGeo2: function () {
+
+    testRestoreIndexesOldFormatGeo2: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -845,7 +925,7 @@ function restoreIntegrationSuite () {
           indexes: [],
           parameters: {
             indexes: [
-              { id: "95", fields: ["a", "b"], type: "geo2", geoJson: false },
+              {id: "95", fields: ["a", "b"], type: "geo2", geoJson: false},
             ],
             name: cn,
             numberOfShards: 3,
@@ -854,7 +934,7 @@ function restoreIntegrationSuite () {
         }));
 
         let args = ['--collection', cn, '--import-data', 'false'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         let indexes = c.indexes();
@@ -867,11 +947,12 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
 
-    testRestoreIndexesFulltextLengthZero: function () {
+    testRestoreIndexesFulltextLengthZero: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -881,7 +962,7 @@ function restoreIntegrationSuite () {
           indexes: [],
           parameters: {
             indexes: [
-              { id: "95", fields: ["text"], type: "fulltext", minLength: 0 },
+              {id: "95", fields: ["text"], type: "fulltext", minLength: 0},
             ],
             name: cn,
             numberOfShards: 3,
@@ -890,7 +971,7 @@ function restoreIntegrationSuite () {
         }));
 
         let args = ['--collection', cn, '--import-data', 'false'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         let indexes = c.indexes();
@@ -903,11 +984,12 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
-    
-    testRestoreIndexesNewFormat: function () {
+
+    testRestoreIndexesNewFormat: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -915,8 +997,8 @@ function restoreIntegrationSuite () {
 
         fs.write(fn, JSON.stringify({
           indexes: [
-            { id: "95", fields: ["loc"], type: "geo", geoJson: false },
-            { id: "295", fields: ["value"], type: "skiplist", sparse: true },
+            {id: "95", fields: ["loc"], type: "geo", geoJson: false},
+            {id: "295", fields: ["value"], type: "skiplist", sparse: true},
           ],
           parameters: {
             name: cn,
@@ -926,7 +1008,7 @@ function restoreIntegrationSuite () {
         }));
 
         let args = ['--collection', cn, '--import-data', 'false'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         let indexes = c.indexes();
@@ -941,7 +1023,7 @@ function restoreIntegrationSuite () {
 
         // test if the indexes work
         for (let i = 0; i < 100; ++i) {
-          c.insert({ _key: "test" + i, value: 42 });
+          c.insert({_key: "test" + i, value: 42});
         }
         for (let i = 0; i < 100; ++i) {
           assertEqual("test" + i, c.document("test" + i)._key);
@@ -951,11 +1033,12 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
 
-    testRestoreEdgeIndexOldFormat: function () {
+    testRestoreEdgeIndexOldFormat: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -965,9 +1048,9 @@ function restoreIntegrationSuite () {
           indexes: [],
           parameters: {
             indexes: [
-              { id: "0", fields: ["_key"], type: "primary", unique: true },
-              { id: "1", fields: ["_from", "_to"], type: "edge" },
-              { id: "95", fields: ["value"], type: "hash" },
+              {id: "0", fields: ["_key"], type: "primary", unique: true},
+              {id: "1", fields: ["_from", "_to"], type: "edge"},
+              {id: "95", fields: ["value"], type: "hash"},
             ],
             name: cn,
             numberOfShards: 3,
@@ -976,7 +1059,7 @@ function restoreIntegrationSuite () {
         }));
 
         let args = ['--collection', cn, '--import-data', 'false'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         let indexes = c.indexes();
@@ -990,7 +1073,7 @@ function restoreIntegrationSuite () {
 
         // test if the indexes work
         for (let i = 0; i < 100; ++i) {
-          c.insert({ _key: "test" + i, _from: "v/" + i, _to: "v/" + i, value: 42 });
+          c.insert({_key: "test" + i, _from: "v/" + i, _to: "v/" + i, value: 42});
         }
         for (let i = 0; i < 100; ++i) {
           assertEqual("test" + i, c.document("test" + i)._key);
@@ -999,7 +1082,7 @@ function restoreIntegrationSuite () {
           let inEdges = c.inEdges("v/" + i);
           assertEqual(1, inEdges.length);
           assertEqual("test" + i, inEdges[0]._key);
-          
+
           let outEdges = c.outEdges("v/" + i);
           assertEqual(1, outEdges.length);
           assertEqual("test" + i, outEdges[0]._key);
@@ -1009,11 +1092,12 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
-    
-    testRestoreEdgeIndexWrongCollectionType: function () {
+
+    testRestoreEdgeIndexWrongCollectionType: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -1023,8 +1107,8 @@ function restoreIntegrationSuite () {
           indexes: [],
           parameters: {
             indexes: [
-              { id: "0", fields: ["_key"], type: "primary", unique: true },
-              { id: "1", fields: ["_from", "_to"], type: "edge" },
+              {id: "0", fields: ["_key"], type: "primary", unique: true},
+              {id: "1", fields: ["_from", "_to"], type: "edge"},
             ],
             name: cn,
             numberOfShards: 3,
@@ -1033,7 +1117,7 @@ function restoreIntegrationSuite () {
         }));
 
         let args = ['--collection', cn, '--import-data', 'false'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         let indexes = c.indexes();
@@ -1043,7 +1127,7 @@ function restoreIntegrationSuite () {
 
         // test if the index works
         for (let i = 0; i < 100; ++i) {
-          c.insert({ _key: "test" + i });
+          c.insert({_key: "test" + i});
         }
         for (let i = 0; i < 100; ++i) {
           assertEqual("test" + i, c.document("test" + i)._key);
@@ -1051,11 +1135,12 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
-    
-    testRestoreEdgeIndexNewFormat: function () {
+
+    testRestoreEdgeIndexNewFormat: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -1071,7 +1156,7 @@ function restoreIntegrationSuite () {
         }));
 
         let args = ['--collection', cn, '--import-data', 'false'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         let indexes = c.indexes();
@@ -1083,7 +1168,7 @@ function restoreIntegrationSuite () {
 
         // test if the indexes work
         for (let i = 0; i < 100; ++i) {
-          c.insert({ _key: "test" + i, _from: "v/" + i, _to: "v/" + i, value: 42 });
+          c.insert({_key: "test" + i, _from: "v/" + i, _to: "v/" + i, value: 42});
         }
         for (let i = 0; i < 100; ++i) {
           assertEqual("test" + i, c.document("test" + i)._key);
@@ -1092,7 +1177,7 @@ function restoreIntegrationSuite () {
           let inEdges = c.inEdges("v/" + i);
           assertEqual(1, inEdges.length);
           assertEqual("test" + i, inEdges[0]._key);
-          
+
           let outEdges = c.outEdges("v/" + i);
           assertEqual(1, outEdges.length);
           assertEqual("test" + i, outEdges[0]._key);
@@ -1100,11 +1185,12 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
     },
 
-    testRestoreRegressionDistributeShardsLike: function () {
+    testRestoreRegressionDistributeShardsLike: function() {
       const collectionsJson = [
         {"parameters": {"name": "Comment_hasTag_Tag_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
         {"parameters": {"name": "Comment_Smart", "type": 2, "distributeShardsLike": "Person_Smart"}},
@@ -1128,7 +1214,9 @@ function restoreIntegrationSuite () {
         {"parameters": {"name": "Tag", "type": 2}},
       ];
       // satisfy the file format requirements by adding indexes
-      collectionsJson.forEach(col => { col.indexes = []; });
+      collectionsJson.forEach(col => {
+        col.indexes = [];
+      });
 
       const path = fs.getTempFile();
       try {
@@ -1163,7 +1251,7 @@ function restoreIntegrationSuite () {
       }
     },
 
-    testRestoreEnableRevisionTreesTrue: function () {
+    testRestoreEnableRevisionTreesTrue: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -1178,7 +1266,7 @@ function restoreIntegrationSuite () {
         }));
 
         let args = ['--collection', cn, '--import-data', 'false', '--enable-revision-trees', 'true'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         let props = c.properties();
@@ -1187,11 +1275,12 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
-    },    
-    
-    testRestoreEnableRevisionTreesFalse1: function () {
+    },
+
+    testRestoreEnableRevisionTreesFalse1: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -1207,7 +1296,7 @@ function restoreIntegrationSuite () {
         }));
 
         let args = ['--collection', cn, '--import-data', 'false', '--enable-revision-trees', 'false'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         let props = c.properties();
@@ -1216,11 +1305,12 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
-    },    
-    
-    testRestoreEnableRevisionTreesFalse2: function () {
+    },
+
+    testRestoreEnableRevisionTreesFalse2: function() {
       let path = fs.getTempFile();
       try {
         fs.makeDirectory(path);
@@ -1237,7 +1327,7 @@ function restoreIntegrationSuite () {
         }));
 
         let args = ['--collection', cn, '--import-data', 'false', '--enable-revision-trees', 'false'];
-        runRestore(path, args, 0); 
+        runRestore(path, args, 0);
 
         let c = db._collection(cn);
         let props = c.properties();
@@ -1246,9 +1336,10 @@ function restoreIntegrationSuite () {
       } finally {
         try {
           fs.removeDirectory(path);
-        } catch (err) {}
+        } catch (err) {
+        }
       }
-    },    
+    },
   };
 }
 

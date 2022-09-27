@@ -61,13 +61,13 @@ class FlushFeatureTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::ENGINES,
                                             arangodb::LogLevel::FATAL> {
  protected:
-  StorageEngineMock engine;
   arangodb::ArangodServer server;
+  StorageEngineMock engine;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
       features;
 
-  FlushFeatureTest() : engine(server), server(nullptr, nullptr) {
+  FlushFeatureTest() : server(nullptr, nullptr), engine(server) {
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(),

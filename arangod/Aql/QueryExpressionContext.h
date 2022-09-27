@@ -30,13 +30,15 @@
 
 #include <velocypack/Slice.h>
 
+#include <string_view>
+
 namespace arangodb {
 struct ValidatorBase;
 namespace aql {
 class QueryContext;
 class AqlFunctionsInternalCache;
 
-class QueryExpressionContext : public ExpressionContext {
+class QueryExpressionContext : public aql::ExpressionContext {
  public:
   QueryExpressionContext(QueryExpressionContext const&) = delete;
   QueryExpressionContext& operator=(QueryExpressionContext const&) = delete;
@@ -49,19 +51,20 @@ class QueryExpressionContext : public ExpressionContext {
         _query(query),
         _aqlFunctionsInternalCache(cache) {}
 
-  void registerWarning(ErrorCode errorCode, char const* msg) override final;
-  void registerError(ErrorCode errorCode, char const* msg) override final;
+  void registerWarning(ErrorCode errorCode,
+                       std::string_view msg) override final;
+  void registerError(ErrorCode errorCode, std::string_view msg) override final;
 
-  icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
+  icu::RegexMatcher* buildRegexMatcher(std::string_view expr,
                                        bool caseInsensitive) override final;
-  icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
+  icu::RegexMatcher* buildLikeMatcher(std::string_view expr,
                                       bool caseInsensitive) override final;
   icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression,
                                        velocypack::Options const* opts,
                                        bool& isEmptyExpression) override final;
 
   arangodb::ValidatorBase* buildValidator(
-      arangodb::velocypack::Slice const&) override final;
+      arangodb::velocypack::Slice) override final;
 
   TRI_vocbase_t& vocbase() const override final;
   // may be inaccessible on some platforms

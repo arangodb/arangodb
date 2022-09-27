@@ -100,24 +100,28 @@ function shellClientReplicationApi (options) {
 class replicationRunner extends tu.runInArangoshRunner {
   constructor(options, testname, serverOptions, startReplication=false) {
     super(options, testname, serverOptions);
+    this.options.singles = 2;
     this.follower = undefined;
     this.addArgs = {};
     this.startReplication = startReplication;
   }
 
+  preStart() {
+    // our tests lean on accessing the `_users` collection, hence no auth for secondary
+    this.instanceManager.arangods[1].args['server.authentication'] = false;
+    return {
+      message: '',
+      state: true,
+    };
+  }
   postStart() {
     let message;
-    print("starting replication slave: ");
-    this.follower = pu.startInstance('tcp', this.options, {}, 'slave_fuzz');
-    let state = (typeof this.follower === 'object');
-
-    if (state) {
-      message = 'failed to start slave instance!';
-    }
-    this.follower['isSlaveInstance'] = true;
-    this.addArgs['flatCommands'] = [ this.follower.endpoint];
+    print("starting replication follower: ");
+    let state = true;
+    this.addArgs['flatCommands'] = [this.instanceManager.arangods[1].endpoint];
     if (this.startReplication) {
-      let res = pu.run.arangoshCmd(this.options, this.instanceInfo, {}, [
+      let res = pu.run.arangoshCmd(this.options, this.instanceManager,
+                                   {}, [
         '--javascript.execute-string',
         `
           var users = require("@arangodb/users");
@@ -127,49 +131,13 @@ class replicationRunner extends tu.runInArangoshRunner {
           users.reload();
           `
       ],
-                               this.options.coreCheck);
-
+                                   this.options.coreCheck);
       state = res.status;
-      if (!state) {
-        message = 'failed to setup slave connection' + res.message;
-        let shutdownState = pu.shutdownInstance(this.follower, this.options);
-      }
-
     }
     return {
       message: message,
       state: state,
     };
-  }
-
-  alive() {
-    return pu.arangod.check.instanceAlive(this.follower, this.options);
-  }
-
-  preStop() {
-    if (pu.arangod.check.instanceAlive(this.follower, this.options)) {
-      if (!pu.shutdownInstance(this.follower, this.options)) {
-        return {
-          state: false,
-          shutdown: false,
-          message: " failed to shutdown other instance"
-        };
-      }
-      else { return {}; }
-    } else {
-      return {
-        state: false,
-        shutdown: false,
-        message: " alive check of other instance failed"
-      };
-    }
-  }
-
-  postStop() {
-    if (this.options.cleanup) {
-      pu.cleanupLastDirectory(this.options);
-    }
-    return { state: true };
   }
 };
 

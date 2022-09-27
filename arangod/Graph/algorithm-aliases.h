@@ -40,23 +40,38 @@
 
 namespace arangodb::graph {
 
-// K_PATH implementation
 template<class Provider>
-using KPathEnumerator = TwoSidedEnumerator<
+using TwoSidedEnumeratorWithProvider = TwoSidedEnumerator<
     FifoQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
     Provider,
     PathValidator<Provider, PathStore<typename Provider::Step>,
                   VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
-// K_PATH implementation using Tracing
 template<class Provider>
-using TracedKPathEnumerator = TwoSidedEnumerator<
+using TracedTwoSidedEnumeratorWithProvider = TwoSidedEnumerator<
     QueueTracer<FifoQueue<typename Provider::Step>>,
     PathStoreTracer<PathStore<typename Provider::Step>>,
     ProviderTracer<Provider>,
     PathValidator<ProviderTracer<Provider>,
                   PathStoreTracer<PathStore<typename Provider::Step>>,
                   VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+
+// K_PATH implementation
+template<class Provider>
+using KPathEnumerator = TwoSidedEnumeratorWithProvider<Provider>;
+
+// K_PATH implementation using Tracing
+template<class Provider>
+using TracedKPathEnumerator = TracedTwoSidedEnumeratorWithProvider<Provider>;
+
+// ALL_SHORTEST_PATHS implementation
+template<class Provider>
+using AllShortestPathsEnumerator = TwoSidedEnumeratorWithProvider<Provider>;
+
+// ALL_SHORTEST_PATHS implementation using Tracing
+template<class Provider>
+using TracedAllShortestPathsEnumerator =
+    TracedTwoSidedEnumeratorWithProvider<Provider>;
 
 template<class ProviderType, VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness, bool useTracing>

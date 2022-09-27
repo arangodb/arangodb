@@ -27,6 +27,7 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
 
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 namespace arangodb::replication2 {
@@ -57,7 +58,7 @@ auto operator==(LogPayload const&, LogPayload const&) -> bool;
 struct LogMetaPayload {
   struct FirstEntryOfTerm {
     ParticipantId leader;
-    ParticipantsConfig participants;
+    agency::ParticipantsConfig participants;
 
     static auto fromVelocyPack(velocypack::Slice) -> FirstEntryOfTerm;
     void toVelocyPack(velocypack::Builder&) const;
@@ -67,10 +68,11 @@ struct LogMetaPayload {
   };
 
   static auto withFirstEntryOfTerm(ParticipantId leader,
-                                   ParticipantsConfig config) -> LogMetaPayload;
+                                   agency::ParticipantsConfig config)
+      -> LogMetaPayload;
 
   struct UpdateParticipantsConfig {
-    ParticipantsConfig participants;
+    agency::ParticipantsConfig participants;
 
     static auto fromVelocyPack(velocypack::Slice) -> UpdateParticipantsConfig;
     void toVelocyPack(velocypack::Builder&) const;
@@ -80,7 +82,7 @@ struct LogMetaPayload {
         -> bool = default;
   };
 
-  static auto withUpdateParticipantsConfig(ParticipantsConfig config)
+  static auto withUpdateParticipantsConfig(agency::ParticipantsConfig config)
       -> LogMetaPayload;
 
   static auto fromVelocyPack(velocypack::Slice) -> LogMetaPayload;

@@ -30,7 +30,6 @@
 #include "Aql/QueryContext.h"
 #include "Containers/FlatHashMap.h"
 #include "Indexes/IndexIterator.h"
-#include "Transaction/Methods.h"
 
 // Note: only used for NonConstExpressionContainer
 // Could be extracted to it's own file.
@@ -53,6 +52,10 @@ namespace velocypack {
 class Builder;
 class HashedStringRef;
 }  // namespace velocypack
+
+namespace transaction {
+class Methods;
+}
 
 namespace graph {
 struct IndexAccessor;
@@ -135,6 +138,8 @@ class RefactoredSingleServerEdgeCursor {
 
   bool evaluateEdgeExpression(arangodb::aql::Expression* expression,
                               VPackSlice value);
+
+  bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
  private:
   auto getLookupInfos(uint64_t depth) -> std::vector<LookupInfo>&;

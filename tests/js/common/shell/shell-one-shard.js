@@ -40,7 +40,7 @@ const request = require('@arangodb/request');
 const defaultReplicationFactor = db._properties().replicationFactor;
 
 function getEndpointsByType(type) {
-  const isType = (d) => (d.role.toLowerCase() === type);
+  const isType = (d) => (d.instanceRole === type);
   const toEndpoint = (d) => (d.endpoint);
   const endpointToURL = (endpoint) => {
     if (endpoint.substr(0, 6) === 'ssl://') {
@@ -53,8 +53,8 @@ function getEndpointsByType(type) {
     return 'http' + endpoint.substr(pos);
   };
 
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(isType)
+  const instanceManager = JSON.parse(internal.env.INSTANCEINFO);
+  return instanceManager.arangods.filter(isType)
                               .map(toEndpoint)
                               .map(endpointToURL);
 }
@@ -157,22 +157,6 @@ function OneShardPropertiesSuite () {
       }
         
       assertTrue(db._createDatabase(dn, { replicationFactor: 2, minReplicationFactor: 2, writeConcern: 2, sharding: "flexible" }));
-    },
-    
-    testDeviatingWriteConcernAndMinReplicationFactorForCollection : function () {
-      if (!isCluster) {
-        return;
-      }
-      assertTrue(db._createDatabase(dn, { sharding: "flexible" }));
-      db._useDatabase(dn);
-      try {
-        db._create("test", { replicationFactor: 2, minReplicationFactor: 1, writeConcern: 2 });
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-      }
-        
-      db._create("test", { replicationFactor: 2, minReplicationFactor: 2, writeConcern: 2 });
     },
     
     testNormalDBAndTooManyServers : function () {

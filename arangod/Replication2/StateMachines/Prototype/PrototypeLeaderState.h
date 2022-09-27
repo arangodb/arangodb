@@ -46,11 +46,16 @@ struct PrototypeLeaderState
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
       -> futures::Future<Result> override;
 
-  void onSnapshotCompleted() override;
+  void onSnapshotCompleted() noexcept override;
 
   auto set(std::unordered_map<std::string, std::string> entries,
            PrototypeStateMethods::PrototypeWriteOptions)
       -> futures::Future<LogIndex>;
+
+  auto compareExchange(std::string key, std::string oldValue,
+                       std::string newValue,
+                       PrototypeStateMethods::PrototypeWriteOptions options)
+      -> futures::Future<ResultT<LogIndex>>;
 
   auto remove(std::string key, PrototypeStateMethods::PrototypeWriteOptions)
       -> futures::Future<LogIndex>;
@@ -71,6 +76,9 @@ struct PrototypeLeaderState
   LoggerContext const loggerContext;
 
  private:
+  auto executeOp(PrototypeLogEntry const&,
+                 PrototypeStateMethods::PrototypeWriteOptions)
+      -> futures::Future<LogIndex>;
   auto pollNewEntries();
   void handlePollResult(
       futures::Future<std::unique_ptr<EntryIterator>>&& pollFuture);

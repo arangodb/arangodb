@@ -35,31 +35,34 @@ bool ClusterHelpers::compareServerLists(VPackSlice plan, VPackSlice current) {
   std::vector<std::string> p;
   for (VPackSlice srv : VPackArrayIterator(plan)) {
     if (srv.isString()) {
-      p.push_back(srv.copyString());
+      p.emplace_back(srv.copyString());
     }
   }
   std::vector<std::string> c;
   for (VPackSlice srv : VPackArrayIterator(current)) {
     if (srv.isString()) {
-      c.push_back(srv.copyString());
+      c.emplace_back(srv.copyString());
     }
   }
-  return compareServerLists(p, c);
+  return compareServerLists(std::move(p), std::move(c));
 }
 
 bool ClusterHelpers::compareServerLists(std::vector<std::string> planned,
                                         std::vector<std::string> current) {
   bool equalLeader = !planned.empty() && !current.empty() &&
                      planned.front() == current.front();
+  if (!equalLeader) {
+    return false;
+  }
   std::sort(planned.begin(), planned.end());
   std::sort(current.begin(), current.end());
-  return equalLeader && current == planned;
+  return current == planned;
 }
 
 bool ClusterHelpers::isCoordinatorName(ServerID const& serverId) {
-  return serverId.compare(0, 5, "CRDN-", 5) == 0;
+  return serverId.starts_with("CRDN-");
 }
 
 bool ClusterHelpers::isDBServerName(ServerID const& serverId) {
-  return serverId.compare(0, 5, "PRMR-", 5) == 0;
+  return serverId.starts_with("PRMR-");
 }

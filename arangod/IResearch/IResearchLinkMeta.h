@@ -54,21 +54,21 @@ namespace iresearch {
 // Possible ways to store values in the view.
 enum class ValueStorage : uint32_t {
   NONE = 0,  // do not store values in the view
-  ID,        // only store value existance
+  ID,        // only store value existence
   VALUE      // store full value in the view
 };
 
 struct FieldMeta {
   // can't use FieldMeta as value type since it's incomplete type so far
-  typedef UnorderedRefKeyMap<char, UniqueHeapInstance<FieldMeta>> Fields;
+  using Fields = UnorderedRefKeyMap<char, UniqueHeapInstance<FieldMeta>>;
 
   struct Analyzer {
     Analyzer(AnalyzerPool::ptr const& pool)
-        : Analyzer(pool, pool ? std::string{pool->name()} : std::string{}) {}
+        : Analyzer{pool, pool ? std::string{pool->name()} : std::string{}} {}
     Analyzer(AnalyzerPool::ptr const& pool, std::string&& shortName) noexcept
         : _pool(pool), _shortName(std::move(shortName)) {}
 
-    operator bool() const noexcept { return false == !_pool; }
+    explicit operator bool() const noexcept { return _pool != nullptr; }
 
     AnalyzerPool const* operator->() const noexcept { return _pool.get(); }
     AnalyzerPool* operator->() noexcept { return _pool.get(); }
@@ -111,6 +111,8 @@ struct FieldMeta {
     bool _storeValues;
   };
 
+  [[nodiscard]] static Analyzer const& identity();
+
   FieldMeta() = default;
   FieldMeta(FieldMeta const&) = default;
   FieldMeta(FieldMeta&&) = default;
@@ -150,10 +152,9 @@ struct FieldMeta {
   ///        return success or set TRI_set_errno(...) and return false
   /// @param server underlying application server
   /// @param builder output buffer
+  /// @param ignoreEqual values to ignore if equal
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
-  /// @param ignoreEqual values to ignore if equal
-  /// @param defaultVocbase fallback vocbase
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
   bool json(ArangodServer& server, velocypack::Builder& builder,
@@ -172,6 +173,11 @@ struct FieldMeta {
   size_t _primitiveOffset{0};
   // Explicit list of fields to be indexed with optional overrides.
   Fields _fields;
+
+#ifdef USE_ENTERPRISE
+  // List of nested fields to be indexed with optional overrides.
+  Fields _nested;
+#endif
   // How values should be stored inside the view.
   ValueStorage _storeValues{ValueStorage::NONE};
   // Include all fields or only fields listed in '_fields'.
@@ -179,7 +185,12 @@ struct FieldMeta {
   // Append relative offset in list to attribute name (as opposed to without
   // offset).
   bool _trackListPositions{false};
+#ifdef USE_ENTERPRISE
+  bool _hasNested{false};
+#endif
 };
+
+inline FieldMeta::Analyzer makeEmptyAnalyzer() { return {{}, {}}; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief metadata describing how to process a field in a collection
@@ -212,8 +223,8 @@ struct IResearchLinkMeta : public FieldMeta {
   uint32_t _version;
 
   // Linked collection name. Stored here for cluster deployment only.
-  // For sigle server collection could be renamed so can`t store it here or
-  // syncronisation will be needed. For cluster rename is not possible so
+  // For single server collection could be renamed so can`t store it here or
+  // synchronisation will be needed. For cluster rename is not possible so
   // there is no problem but solved recovery issue - we will be able to index
   // _id attribute without doing agency request for collection name
   std::string _collectionName;
@@ -235,7 +246,7 @@ struct IResearchLinkMeta : public FieldMeta {
   ///        return success or set 'errorField' to specific field with error
   ///        on failure state is undefined
   /// @param slice definition
-  /// @param erroField field causing error (out-param)
+  /// @param errorField field causing error (out-param)
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
   /// @param defaultVersion fallback version if not present in definition

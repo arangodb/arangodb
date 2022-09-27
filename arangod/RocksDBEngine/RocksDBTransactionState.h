@@ -57,6 +57,7 @@ struct Transaction;
 }
 
 class LogicalCollection;
+class LogicalDataSource;
 class RocksDBTransactionMethods;
 
 /// @brief transaction type
@@ -72,7 +73,8 @@ class RocksDBTransactionState : public TransactionState {
   [[nodiscard]] Result beginTransaction(transaction::Hints hints) override;
 
   /// @brief commit a transaction
-  [[nodiscard]] Result commitTransaction(transaction::Methods* trx) override;
+  [[nodiscard]] futures::Future<Result> commitTransaction(
+      transaction::Methods* trx) override;
 
   /// @brief abort a transaction
   [[nodiscard]] Result abortTransaction(transaction::Methods* trx) override;
@@ -81,7 +83,7 @@ class RocksDBTransactionState : public TransactionState {
 
   [[nodiscard]] virtual uint64_t numOperations() const noexcept = 0;
 
-  [[nodiscard]] bool hasFailedOperations() const override;
+  [[nodiscard]] bool hasFailedOperations() const noexcept override;
 
   [[nodiscard]] bool iteratorMustCheckBounds(DataSourceId cid,
                                              ReadOwnWrites readOwnWrites) const;
@@ -149,7 +151,7 @@ class RocksDBTransactionState : public TransactionState {
 #endif
 
  protected:
-  virtual Result doCommit() = 0;
+  virtual futures::Future<Result> doCommit() = 0;
   virtual Result doAbort() = 0;
 
  private:

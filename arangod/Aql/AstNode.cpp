@@ -160,10 +160,11 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
      "array compare not in"},
     {static_cast<int>(NODE_TYPE_QUANTIFIER), "quantifier"},
     {static_cast<int>(NODE_TYPE_SHORTEST_PATH), "shortest path"},
-    {static_cast<int>(NODE_TYPE_K_SHORTEST_PATHS), "k-shortest paths"},
+    {static_cast<int>(NODE_TYPE_ENUMERATE_PATHS), "enumerate paths"},
     {static_cast<int>(NODE_TYPE_VIEW), "view"},
     {static_cast<int>(NODE_TYPE_PARAMETER_DATASOURCE), "datasource parameter"},
     {static_cast<int>(NODE_TYPE_FOR_VIEW), "view enumeration"},
+    {static_cast<int>(NODE_TYPE_ARRAY_FILTER), "array filter"},
 };
 
 /// @brief names for AST node value types
@@ -505,6 +506,10 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     }
     case NODE_TYPE_EXPANSION: {
       setIntValue(slice.get("levels").getNumericValue<int64_t>());
+      VPackSlice b = slice.get("booleanize");
+      if (b.isBoolean() && b.getBoolean()) {
+        setFlag(FLAG_BOOLEAN_EXPANSION);
+      }
       break;
     }
     case NODE_TYPE_OPERATOR_BINARY_IN:
@@ -527,7 +532,8 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
       break;
     }
     case NODE_TYPE_QUANTIFIER: {
-      setIntValue(Quantifier::fromString(slice.get("quantifier").copyString()));
+      setIntValue(static_cast<int64_t>(
+          Quantifier::fromString(slice.get("quantifier").stringView())));
       break;
     }
     case NODE_TYPE_OPERATOR_BINARY_EQ:
@@ -591,7 +597,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     case NODE_TYPE_DISTINCT:
     case NODE_TYPE_TRAVERSAL:
     case NODE_TYPE_SHORTEST_PATH:
-    case NODE_TYPE_K_SHORTEST_PATHS:
+    case NODE_TYPE_ENUMERATE_PATHS:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_OPERATOR_NARY_AND:
@@ -599,6 +605,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     case NODE_TYPE_WITH:
     case NODE_TYPE_FOR_VIEW:
     case NODE_TYPE_WINDOW:
+    case NODE_TYPE_ARRAY_FILTER:
       break;
   }
 
@@ -1056,8 +1063,9 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
     builder.add("sorted", VPackValue(getBoolValue()));
   }
   if (type == NODE_TYPE_QUANTIFIER) {
-    std::string const quantifier(Quantifier::stringify(getIntValue(true)));
-    builder.add("quantifier", VPackValue(quantifier));
+    builder.add("quantifier",
+                VPackValue(Quantifier::stringify(
+                    static_cast<Quantifier::Type>(getIntValue(true)))));
   }
 
   if (type == NODE_TYPE_VARIABLE || type == NODE_TYPE_REFERENCE) {
@@ -1070,6 +1078,7 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
 
   if (type == NODE_TYPE_EXPANSION) {
     builder.add("levels", VPackValue(getIntValue(true)));
+    builder.add("booleanize", VPackValue(hasFlag(FLAG_BOOLEAN_EXPANSION)));
   }
 
   // dump sub-nodes
@@ -1434,7 +1443,7 @@ bool AstNode::isSimple() const {
 
   if (type == NODE_TYPE_ARRAY || type == NODE_TYPE_OBJECT ||
       type == NODE_TYPE_EXPANSION || type == NODE_TYPE_ITERATOR ||
-      type == NODE_TYPE_ARRAY_LIMIT ||
+      type == NODE_TYPE_ARRAY_LIMIT || type == NODE_TYPE_ARRAY_FILTER ||
       type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT ||
       type == NODE_TYPE_OPERATOR_TERNARY ||
       type == NODE_TYPE_OPERATOR_NARY_AND ||
@@ -2063,6 +2072,16 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
     return;
   }
 
+  if (type == NODE_TYPE_ARRAY_FILTER) {
+    // not used by V8
+    buffer.append("_FILTER(");
+    getMember(0)->stringify(buffer, failIfLong);
+    buffer.push_back(',');
+    getMember(1)->stringify(buffer, failIfLong);
+    buffer.push_back(')');
+    return;
+  }
+
   if (type == NODE_TYPE_EXPANSION) {
     // not used by V8
     buffer.append("_EXPANSION(");
@@ -2161,7 +2180,8 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
 
     getMember(0)->stringify(buffer, failIfLong);
     buffer.push_back(' ');
-    buffer.append(Quantifier::stringify(getMember(2)->getIntValue(true)));
+    buffer.append(Quantifier::stringify(
+        static_cast<Quantifier::Type>(getMember(2)->getIntValue(true))));
     buffer.push_back(' ');
     buffer.append((*it).second);
     buffer.push_back(' ');
@@ -2299,8 +2319,12 @@ bool AstNode::hasFlag(AstNodeFlagType flag) const noexcept {
 }
 
 void AstNode::clearFlags() noexcept {
-  // clear all flags but this one
-  flags &= AstNodeFlagType::FLAG_INTERNAL_CONST;
+  // clear all flags but these ones
+  flags &= (AstNodeFlagType::FLAG_INTERNAL_CONST |
+            AstNodeFlagType::FLAG_BOOLEAN_EXPANSION |
+            AstNodeFlagType::FLAG_BIND_PARAMETER |
+            AstNodeFlagType::FLAG_SUBQUERY_REFERENCE |
+            AstNodeFlagType::FLAG_KEEP_VARIABLENAME);
 }
 
 void AstNode::setFlag(AstNodeFlagType flag) const noexcept { flags |= flag; }

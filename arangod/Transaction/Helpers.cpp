@@ -22,17 +22,40 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Helpers.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/encoding.h"
+#include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/TransactionState.h"
+#include "Transaction/BatchOptions.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
+#include "VocBase/ComputedValues.h"
+#include "VocBase/KeyGenerator.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 
 using namespace arangodb;
+
+namespace {
+
+bool isSystemAttribute(std::string_view key) noexcept {
+  return key.size() >= 3 && key[0] == '_' &&
+         (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
+          key == StaticStrings::RevString || key == StaticStrings::FromString ||
+          key == StaticStrings::ToString);
+}
+
+}  // namespace
 
 /// @brief quick access to the _key attribute in a database document
 /// the document must have at least two attributes, and _key is supposed to
@@ -108,8 +131,7 @@ std::string_view transaction::helpers::extractKeyPart(std::string_view key) {
 /// @brief extract the _id attribute from a slice, and convert it into a
 /// string, static method
 std::string transaction::helpers::extractIdString(
-    CollectionNameResolver const* resolver, VPackSlice slice,
-    VPackSlice const& base) {
+    CollectionNameResolver const* resolver, VPackSlice slice, VPackSlice base) {
   VPackSlice id;
 
   slice = slice.resolveExternal();
@@ -396,8 +418,7 @@ OperationResult transaction::helpers::buildCountResult(
 
 /// @brief creates an id string from a custom _id value and the _key string
 std::string transaction::helpers::makeIdFromCustom(
-    CollectionNameResolver const* resolver, VPackSlice const& id,
-    VPackSlice const& key) {
+    CollectionNameResolver const* resolver, VPackSlice id, VPackSlice key) {
   TRI_ASSERT(id.isCustom() && id.head() == 0xf3);
   TRI_ASSERT(key.isString());
 
@@ -409,7 +430,7 @@ std::string transaction::helpers::makeIdFromCustom(
 /// @brief creates an id string from a collection name and the _key string
 std::string transaction::helpers::makeIdFromParts(
     CollectionNameResolver const* resolver, DataSourceId const& cid,
-    VPackSlice const& key) {
+    VPackSlice key) {
   TRI_ASSERT(key.isString());
 
   std::string resolved = resolver->getCollectionNameCluster(cid);
@@ -431,6 +452,459 @@ std::string transaction::helpers::makeIdFromParts(
   resolved.push_back('/');
   resolved.append(p, static_cast<size_t>(keyLength));
   return resolved;
+}
+
+/// @brief merge two objects for update, oldValue must have correctly set
+/// _key and _id attributes
+Result transaction::helpers::mergeObjectsForUpdate(
+    transaction::Methods& trx, LogicalCollection& collection,
+    velocypack::Slice oldValue, velocypack::Slice newValue, bool isNoOpUpdate,
+    RevisionId previousRevisionId, RevisionId& revisionId,
+    velocypack::Builder& builder, OperationOptions const& options,
+    transaction::BatchOptions& batchOptions) {
+  transaction::BuilderLeaser b(&trx);
+  b->openObject();
+
+  VPackSlice keySlice = oldValue.get(StaticStrings::KeyString);
+  VPackSlice idSlice = oldValue.get(StaticStrings::IdString);
+  TRI_ASSERT(!keySlice.isNone());
+  TRI_ASSERT(!idSlice.isNone());
+
+  // Find the attributes in the newValue object:
+  VPackSlice fromSlice;
+  VPackSlice toSlice;
+
+  containers::FlatHashMap<std::string_view, VPackSlice> newValues;
+  {
+    VPackObjectIterator it(newValue, true);
+    while (it.valid()) {
+      auto current = *it;
+      auto key = current.key.stringView();
+      if (::isSystemAttribute(key)) {
+        // note _from and _to and ignore _id, _key and _rev
+        if (collection.type() == TRI_COL_TYPE_EDGE) {
+          if (key == StaticStrings::FromString) {
+            fromSlice = current.value;
+          } else if (key == StaticStrings::ToString) {
+            toSlice = current.value;
+          }
+        }  // else do nothing
+      } else {
+        // regular attribute
+        newValues.emplace(key, current.value);
+      }
+
+      it.next();
+    }
+  }
+
+  // add system attributes first, in this order:
+  // _key, _id, _from, _to, _rev
+
+  // _key
+  b->add(StaticStrings::KeyString, keySlice);
+
+  // _id
+  b->add(StaticStrings::IdString, idSlice);
+
+  // _from, _to
+  if (collection.type() == TRI_COL_TYPE_EDGE) {
+    auto& server = trx.vocbase().server();
+    bool extendedNames =
+        server.hasFeature<DatabaseFeature>() &&
+        server.getFeature<DatabaseFeature>().extendedNamesForCollections();
+
+    if (fromSlice.isNone()) {
+      fromSlice = oldValue.get(StaticStrings::FromString);
+    } else if (!isValidEdgeAttribute(fromSlice, extendedNames)) {
+      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    }
+    if (toSlice.isNone()) {
+      toSlice = oldValue.get(StaticStrings::ToString);
+    } else if (!isValidEdgeAttribute(toSlice, extendedNames)) {
+      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    }
+
+    TRI_ASSERT(fromSlice.isString());
+    TRI_ASSERT(toSlice.isString());
+    b->add(StaticStrings::FromString, fromSlice);
+    b->add(StaticStrings::ToString, toSlice);
+  }
+
+  // _rev
+  bool handled = false;
+  if (isNoOpUpdate) {
+    // an update that doesn't update anything - reuse revision id
+    char ridBuffer[arangodb::basics::maxUInt64StringSize];
+    b->add(StaticStrings::RevString, previousRevisionId.toValuePair(ridBuffer));
+    revisionId = previousRevisionId;
+    handled = true;
+  } else if (options.isRestore) {
+    // copy revision id verbatim
+    VPackSlice s = newValue.get(StaticStrings::RevString);
+    if (s.isString()) {
+      b->add(StaticStrings::RevString, s);
+      VPackValueLength l;
+      char const* p = s.getStringUnchecked(l);
+      revisionId = RevisionId::fromString(p, l, false);
+      handled = true;
+    }
+  }
+  if (!handled) {
+    // temporary buffer for stringifying revision ids
+    char ridBuffer[arangodb::basics::maxUInt64StringSize];
+    revisionId = collection.newRevisionId();
+    b->add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
+  }
+
+  containers::FlatHashSet<std::string_view> keysWritten;
+
+  // add other attributes after the system attributes
+  {
+    VPackObjectIterator it(oldValue, true);
+    while (it.valid()) {
+      auto current = (*it);
+      auto key = current.key.stringView();
+      // exclude system attributes in old value now
+      if (::isSystemAttribute(key)) {
+        it.next();
+        continue;
+      }
+
+      auto found = newValues.find(key);
+
+      if (found == newValues.end()) {
+        // use old value
+        b->addUnchecked(key, current.value);
+        if (batchOptions.computedValues != nullptr) {
+          keysWritten.emplace(key);
+        }
+      } else if (options.mergeObjects && current.value.isObject() &&
+                 (*found).second.isObject()) {
+        // merge both values
+        auto& value = (*found).second;
+        if (options.keepNull || (!value.isNone() && !value.isNull())) {
+          b->add(VPackValue(key, VPackValueType::String));
+          VPackCollection::merge(*b, current.value, value, true,
+                                 !options.keepNull);
+          if (batchOptions.computedValues != nullptr) {
+            keysWritten.emplace(key);
+          }
+        }
+        // clear the value in the map so its not added again
+        (*found).second = VPackSlice();
+      } else {
+        // use new value
+        auto& value = (*found).second;
+        if (options.keepNull || (!value.isNone() && !value.isNull())) {
+          b->addUnchecked(key, value);
+          if (batchOptions.computedValues != nullptr) {
+            keysWritten.emplace(key);
+          }
+        }
+        // clear the value in the map so its not added again
+        (*found).second = VPackSlice();
+      }
+      it.next();
+    }
+  }
+
+  // add remaining values that were only in new object
+  for (auto const& it : newValues) {
+    VPackSlice s = it.second;
+    if (s.isNone()) {
+      continue;
+    }
+    if (!options.keepNull && s.isNull()) {
+      continue;
+    }
+    if (!options.keepNull && s.isObject()) {
+      b->add(VPackValue(it.first));
+      VPackCollection::merge(*b, VPackSlice::emptyObjectSlice(), s, true, true);
+    } else {
+      b->addUnchecked(it.first, s);
+    }
+
+    if (batchOptions.computedValues != nullptr) {
+      keysWritten.emplace(it.first);
+    }
+  }
+
+  b->close();
+
+  if (batchOptions.computedValues != nullptr) {
+    // add all remaining computed attributes, if we need to
+    batchOptions.ensureComputedValuesContext(trx, collection);
+    batchOptions.computedValues->mergeComputedAttributes(
+        *batchOptions.computedValuesContext, trx, b->slice(), keysWritten,
+        ComputeValuesOn::kUpdate, builder);
+  } else {
+    // add document as is
+    builder.add(b->slice());
+  }
+
+  TRI_ASSERT(revisionId.isSet());
+  return {};
+}
+
+/// @brief new object for insert, computes the hash of the key
+Result transaction::helpers::newObjectForInsert(
+    transaction::Methods& trx, LogicalCollection& collection,
+    velocypack::Slice value, RevisionId& revisionId,
+    velocypack::Builder& builder, OperationOptions const& options,
+    transaction::BatchOptions& batchOptions) {
+  transaction::BuilderLeaser b(&trx);
+
+  b->openObject();
+
+  // add system attributes first, in this order:
+  // _key, _id, _from, _to, _rev
+
+  // _key
+  VPackSlice s = value.get(StaticStrings::KeyString);
+  if (s.isNone()) {
+    TRI_ASSERT(!options.isRestore);  // need key in case of restore
+    auto keyString = collection.keyGenerator().generate(value);
+
+    if (keyString.empty()) {
+      return Result(TRI_ERROR_ARANGO_OUT_OF_KEYS);
+    }
+
+    b->add(StaticStrings::KeyString, VPackValue(keyString));
+  } else if (!s.isString()) {
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+  } else {
+    TRI_ASSERT(s.isString());
+
+    // validate and track the key just used
+    auto res = collection.keyGenerator().validate(s.stringView(), value,
+                                                  options.isRestore);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return Result(res);
+    }
+
+    b->add(StaticStrings::KeyString, s);
+  }
+
+  // _id
+  uint8_t* p = b->add(StaticStrings::IdString,
+                      VPackValuePair(9ULL, VPackValueType::Custom));
+
+  *p++ = 0xf3;  // custom type for _id
+
+  if (trx.state()->isDBServer() && !collection.system()) {
+    // db server in cluster, note: the local collections _statistics,
+    // _statisticsRaw and _statistics15 (which are the only system
+    // collections)
+    // must not be treated as shards but as local collections
+    encoding::storeNumber<uint64_t>(p, collection.planId().id(),
+                                    sizeof(uint64_t));
+  } else {
+    // local server
+    encoding::storeNumber<uint64_t>(p, collection.id().id(), sizeof(uint64_t));
+  }
+
+  // _from and _to
+  if (collection.type() == TRI_COL_TYPE_EDGE) {
+    auto& server = trx.vocbase().server();
+    bool extendedNames =
+        server.hasFeature<DatabaseFeature>() &&
+        server.getFeature<DatabaseFeature>().extendedNamesForCollections();
+
+    VPackSlice fromSlice = value.get(StaticStrings::FromString);
+    if (!isValidEdgeAttribute(fromSlice, extendedNames)) {
+      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    }
+
+    VPackSlice toSlice = value.get(StaticStrings::ToString);
+    if (!isValidEdgeAttribute(toSlice, extendedNames)) {
+      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    }
+
+    TRI_ASSERT(fromSlice.isString());
+    TRI_ASSERT(toSlice.isString());
+    b->add(StaticStrings::FromString, fromSlice);
+    b->add(StaticStrings::ToString, toSlice);
+  }
+
+  // _rev
+  bool handled = false;
+  bool isRestore = options.isRestore;
+  TRI_IF_FAILURE("Insert::useRev") { isRestore = true; }
+  if (isRestore) {
+    // copy revision id verbatim
+    s = value.get(StaticStrings::RevString);
+    if (s.isString()) {
+      b->add(StaticStrings::RevString, s);
+      VPackValueLength l;
+      char const* str = s.getStringUnchecked(l);
+      revisionId = RevisionId::fromString(str, l, false);
+      handled = true;
+    }
+  }
+  if (!handled) {
+    // temporary buffer for stringifying revision ids
+    char ridBuffer[arangodb::basics::maxUInt64StringSize];
+    revisionId = collection.newRevisionId();
+    b->add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
+  }
+
+  containers::FlatHashSet<std::string_view> keysWritten;
+
+  // add other attributes after the system attributes
+  VPackObjectIterator it(value, true);
+  while (it.valid()) {
+    auto key = it.key().stringView();
+    // _id, _key, _rev, _from, _to. minimum size here is 3
+    if (key.size() < 3 || key[0] != '_' ||
+        (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
+         key != StaticStrings::RevString && key != StaticStrings::FromString &&
+         key != StaticStrings::ToString)) {
+      b->add(key, it.value());
+      if (batchOptions.computedValues != nullptr) {
+        // track which attributes we have produced so that they are not
+        // added again by the computed attributes later.
+        keysWritten.emplace(key);
+      }
+    }
+    it.next();
+  }
+
+  b->close();
+
+  if (batchOptions.computedValues != nullptr) {
+    // add all remaining computed attributes, if we need to
+    batchOptions.ensureComputedValuesContext(trx, collection);
+    batchOptions.computedValues->mergeComputedAttributes(
+        *batchOptions.computedValuesContext, trx, b->slice(), keysWritten,
+        ComputeValuesOn::kInsert, builder);
+  } else {
+    // add document as is
+    builder.add(b->slice());
+  }
+
+  TRI_ASSERT(revisionId.isSet());
+  return {};
+}
+
+/// @brief new object for replace, oldValue must have _key and _id correctly
+/// set
+Result transaction::helpers::newObjectForReplace(
+    transaction::Methods& trx, LogicalCollection& collection,
+    VPackSlice oldValue, VPackSlice newValue, RevisionId& revisionId,
+    VPackBuilder& builder, OperationOptions const& options,
+    transaction::BatchOptions& batchOptions) {
+  transaction::BuilderLeaser b(&trx);
+  b->openObject();
+
+  // add system attributes first, in this order:
+  // _key, _id, _from, _to, _rev
+
+  // _key
+  VPackSlice s = oldValue.get(StaticStrings::KeyString);
+  TRI_ASSERT(!s.isNone());
+  b->add(StaticStrings::KeyString, s);
+
+  // _id
+  s = oldValue.get(StaticStrings::IdString);
+  TRI_ASSERT(!s.isNone());
+  b->add(StaticStrings::IdString, s);
+
+  // _from and _to
+  if (collection.type() == TRI_COL_TYPE_EDGE) {
+    auto& server = trx.vocbase().server();
+    bool extendedNames =
+        server.hasFeature<DatabaseFeature>() &&
+        server.getFeature<DatabaseFeature>().extendedNamesForCollections();
+
+    VPackSlice fromSlice = newValue.get(StaticStrings::FromString);
+    if (!isValidEdgeAttribute(fromSlice, extendedNames)) {
+      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    }
+
+    VPackSlice toSlice = newValue.get(StaticStrings::ToString);
+    if (!isValidEdgeAttribute(toSlice, extendedNames)) {
+      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    }
+
+    TRI_ASSERT(fromSlice.isString());
+    TRI_ASSERT(toSlice.isString());
+    b->add(StaticStrings::FromString, fromSlice);
+    b->add(StaticStrings::ToString, toSlice);
+  }
+
+  // _rev
+  bool handled = false;
+  if (options.isRestore) {
+    // copy revision id verbatim
+    s = newValue.get(StaticStrings::RevString);
+    if (s.isString()) {
+      b->add(StaticStrings::RevString, s);
+      VPackValueLength l;
+      char const* p = s.getStringUnchecked(l);
+      revisionId = RevisionId::fromString(p, l, false);
+      handled = true;
+    }
+  }
+  if (!handled) {
+    // temporary buffer for stringifying revision ids
+    char ridBuffer[arangodb::basics::maxUInt64StringSize];
+    revisionId = collection.newRevisionId();
+    b->add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
+  }
+
+  containers::FlatHashSet<std::string_view> keysWritten;
+
+  // add other attributes after the system attributes
+  VPackObjectIterator it(newValue, true);
+  while (it.valid()) {
+    auto key = it.key().stringView();
+
+    // _id, _key, _rev, _from, _to. minimum size here is 3
+    if (key.size() < 3 || key[0] != '_' ||
+        (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
+         key != StaticStrings::RevString && key != StaticStrings::FromString &&
+         key != StaticStrings::ToString)) {
+      b->add(key, it.value());
+      if (batchOptions.computedValues != nullptr) {
+        // track which attributes we have produced so that they are not
+        // added again by the computed attributes later.
+        keysWritten.emplace(key);
+      }
+    }
+    it.next();
+  }
+
+  b->close();
+
+  if (batchOptions.computedValues != nullptr) {
+    // add all remaining computed attributes, if we need to
+    batchOptions.ensureComputedValuesContext(trx, collection);
+    batchOptions.computedValues->mergeComputedAttributes(
+        *batchOptions.computedValuesContext, trx, b->slice(), keysWritten,
+        ComputeValuesOn::kReplace, builder);
+  } else {
+    // add document as is
+    builder.add(b->slice());
+  }
+
+  TRI_ASSERT(revisionId.isSet());
+  return {};
+}
+
+bool transaction::helpers::isValidEdgeAttribute(velocypack::Slice slice,
+                                                bool allowExtendedNames) {
+  if (!slice.isString()) {
+    return false;
+  }
+
+  // validate id string
+  VPackValueLength len;
+  char const* docId = slice.getStringUnchecked(len);
+  [[maybe_unused]] size_t split = 0;
+  return KeyGeneratorHelper::validateId(docId, static_cast<size_t>(len),
+                                        allowExtendedNames, split);
 }
 
 // ============== StringLeaser ==============

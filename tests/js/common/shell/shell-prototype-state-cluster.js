@@ -54,7 +54,6 @@ const {setUpAll, tearDownAll} = (function () {
 function PrototypeStateTestSuite() {
 
   const config = {
-    replicationFactor: 3,
     writeConcern: 2,
     softWriteConcern: 2,
     waitForSync: true
@@ -71,6 +70,7 @@ function PrototypeStateTestSuite() {
       const state = db._createPrototypeState({config});
       const same = db._prototypeState(state.id());
       assertEqual(state.id(), same.id());
+      state.drop();
     },
 
     testWriteEntries: function () {
@@ -126,7 +126,8 @@ function PrototypeStateTestSuite() {
       const status = db._replicatedLog(state.id()).status();
       const follower = _.sample(_.without(Object.keys(status.participants), status.leaderId));
 
-      const {A: valueA, B: valueB, C: valueC} = state.read(["A", "B", "C"], {waitForApplied: idx, readFrom: follower});
+      const {A: valueA, B: valueB, C: valueC} = state.read(["A", "B", "C"],
+        {waitForApplied: idx, allowDirtyRead: true, readFrom: follower});
       assertEqual(valueA, "1");
       assertEqual(valueB, "2");
       assertEqual(valueC, "3");

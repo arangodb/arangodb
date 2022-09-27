@@ -153,34 +153,79 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(oldCount, db._analyzers.count());
       }
       {
-        try {analyzers.remove("classificationPropAnalyzer"); } catch (e) {}
-        let oldCount = db._analyzers.count();
-        const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
-        const modelFile = require("path").resolve(filePath);
-        let analyzer = analyzers.save("classificationPropAnalyzer", "classification", { "model_location": modelFile, "invalid_param": true});
-        try {
-          assertEqual(oldCount + 1, db._analyzers.count());
-          assertNotNull(analyzer);
-          assertUndefined(analyzer.properties.invalid_param);
-        } finally {
-          analyzers.remove("classificationPropAnalyzer", true);
+        if (!isEnterprise) {
+          try {
+            analyzers.save("minHashAnalyzer", "minhash", { analyzer: { type: "delimiter", properties: { delimiter:"-" } }, numHashes: 5 }); 
+            assertTrue(false);
+          } catch (e) {
+            assertEqual(9, e.errorNum);
+            assertEqual("Not implemented analyzer type 'minhash'.", e.errorMessage);
+          }
+        } else {
+          try {analyzers.remove("minHashAnalyzer"); } catch (e) {}
+          let oldCount = db._analyzers.count();
+          let analyzer = analyzers.save("minHashAnalyzer", "minhash", { analyzer: { type: "delimiter", properties: { delimiter:"-" } }, numHashes: 5, invalid_param: true }); 
+          try {
+            assertEqual(oldCount + 1, db._analyzers.count());
+            assertNotNull(analyzer);
+            assertUndefined(analyzer.properties.invalid_param);
+          } finally {
+            analyzers.remove("minHashAnalyzer", true);
+          }
+          assertEqual(oldCount, db._analyzers.count());
         }
-        assertEqual(oldCount, db._analyzers.count());
       }
       {
-        try {analyzers.remove("nearestNeighborsPropAnalyzer"); } catch (e) {}
-        let oldCount = db._analyzers.count();
         const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
         const modelFile = require("path").resolve(filePath);
-        let analyzer = analyzers.save("nearestNeighborsPropAnalyzer", "nearest_neighbors", { "model_location": modelFile, "invalid_param": true});
-        try {
-          assertEqual(oldCount + 1, db._analyzers.count());
-          assertNotNull(analyzer);
-          assertUndefined(analyzer.properties.invalid_param);
-        } finally {
-          analyzers.remove("nearestNeighborsPropAnalyzer", true);
+
+        if (!isEnterprise) {
+          try {
+            analyzers.save("classificationPropAnalyzer", "classification", { "model_location": modelFile, "invalid_param": true}); 
+            assertTrue(false);
+          } catch (e) {
+            assertEqual(9, e.errorNum);
+            assertEqual("Not implemented analyzer type 'classification'.", e.errorMessage);
+          }
+        } else {
+          try {analyzers.remove("classificationPropAnalyzer"); } catch (e) {}
+          let oldCount = db._analyzers.count();
+          let analyzer = analyzers.save("classificationPropAnalyzer", "classification", { "model_location": modelFile, "invalid_param": true});
+          try {
+            assertEqual(oldCount + 1, db._analyzers.count());
+            assertNotNull(analyzer);
+            assertUndefined(analyzer.properties.invalid_param);
+          } finally {
+            analyzers.remove("classificationPropAnalyzer", true);
+          }
+          assertEqual(oldCount, db._analyzers.count());
         }
-        assertEqual(oldCount, db._analyzers.count());
+      }
+      {
+        const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
+        const modelFile = require("path").resolve(filePath);
+
+        if (!isEnterprise) {
+          try { 
+            analyzers.save("nearestNeighborsPropAnalyzer", "nearest_neighbors", { "model_location": modelFile, "invalid_param": true});
+            assertTrue(false);
+          } catch (e) {
+            assertEqual(9, e.errorNum);
+            assertEqual("Not implemented analyzer type 'nearest_neighbors'.", e.errorMessage);
+          }
+        } else {
+          try {analyzers.remove("nearestNeighborsPropAnalyzer"); } catch (e) {}
+          let oldCount = db._analyzers.count();
+          let analyzer = analyzers.save("nearestNeighborsPropAnalyzer", "nearest_neighbors", { "model_location": modelFile, "invalid_param": true});
+          try {
+            assertEqual(oldCount + 1, db._analyzers.count());
+            assertNotNull(analyzer);
+            assertUndefined(analyzer.properties.invalid_param);
+          } finally {
+            analyzers.remove("nearestNeighborsPropAnalyzer", true);
+          }
+          assertEqual(oldCount, db._analyzers.count());
+        }
       }
     },
 
@@ -1605,6 +1650,10 @@ function iResearchFeatureAqlTestSuite () {
     },
 
     testCustomClassificationAnalyzer : function() {
+      if (!isEnterprise) {
+        return;
+      }
+
       let analyzerName = "classificationUnderTest";
       const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
       const modelFile = require("path").resolve(filePath);
@@ -1712,6 +1761,11 @@ function iResearchFeatureAqlTestSuite () {
     },
 
     testCustomNearestNeighborsAnalyzer: function() {
+      if (!isEnterprise) {
+        return;
+      }
+
+
       let analyzerName = "nearestNeighborsUnderTest";
       const filePath = require("fs").join(internal.pathForTesting('common'), 'aql', 'iresearch', `model_cooking.bin`);
       const modelFile = require("path").resolve(filePath);

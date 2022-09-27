@@ -224,10 +224,9 @@ bool RestBatchHandler::executeNextHandler() {
     auto response =
         std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR, 1,
                                        std::make_unique<StringBuffer>(false));
-    auto& factory =
-        server().getFeature<GeneralServerFeature>().handlerFactory();
-    handler = factory.createHandler(server(), std::move(request),
-                                    std::move(response));
+    auto factory = server().getFeature<GeneralServerFeature>().handlerFactory();
+    handler = factory->createHandler(server(), std::move(request),
+                                     std::move(response));
 
     if (handler == nullptr) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,

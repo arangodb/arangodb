@@ -213,6 +213,78 @@ TEST_F(WeightedQueueTest, it_should_pop_all_loose_ends) {
   EXPECT_FALSE(queue.hasProcessableElement());
 }
 
+TEST_F(WeightedQueueTest, it_should_allow_to_inject_many_start_vertices) {
+  auto queue = WeightedQueue<Step>(_resourceMonitor);
+  std::vector<Step> input;
+  input.emplace_back(Step{1, 1, false});
+  input.emplace_back(Step{2, 2, false});
+  input.emplace_back(Step{3, 3, false});
+  input.emplace_back(Step{4, 4, false});
+  auto memorySizeBefore = _resourceMonitor.current();
+  queue.setStartContent(std::move(input));
+  // Account for all 4 added steps.
+  EXPECT_EQ(memorySizeBefore + sizeof(Step) * 4, _resourceMonitor.current());
+  ASSERT_EQ(queue.size(), 4);
+  ASSERT_TRUE(queue.hasProcessableElement());
+
+  size_t id = 1;
+  // We assume the above ordering to be in LIFO already
+  // So do not revert it,but just run from first to last
+  while (!queue.isEmpty()) {
+    auto step = queue.pop();
+    ASSERT_EQ(step.id(), id);
+    id++;
+  }
+  ASSERT_EQ(queue.size(), 0);
+  // Memory is reduced fully again
+  EXPECT_EQ(memorySizeBefore, _resourceMonitor.current());
+}
+
+TEST_F(WeightedQueueTest,
+       on_many_start_vertices_it_should_handle_appends_correctly) {
+  auto queue = WeightedQueue<Step>(_resourceMonitor);
+  std::vector<Step> input;
+  input.emplace_back(Step{1, 1, false});
+  input.emplace_back(Step{2, 2, false});
+  input.emplace_back(Step{6, 6, false});
+  input.emplace_back(Step{7, 7, false});
+  auto memorySizeBefore = _resourceMonitor.current();
+  queue.setStartContent(std::move(input));
+  // Account for all 4 added steps.
+  EXPECT_EQ(memorySizeBefore + sizeof(Step) * 4, _resourceMonitor.current());
+  ASSERT_EQ(queue.size(), 4);
+  ASSERT_TRUE(queue.hasProcessableElement());
+
+  size_t id = 1;
+  {
+    // Pop First entry, add two more new ones
+    auto step = queue.pop();
+    ASSERT_EQ(step.id(), id);
+    id++;
+    queue.append(Step{8, 8, false});
+    queue.append(Step{4, 4, false});
+  }
+  {
+    // Pop Second entry, add two more new ones
+    auto step = queue.pop();
+    ASSERT_EQ(step.id(), id);
+    id++;
+    queue.append(Step{5, 5, false});
+    queue.append(Step{3, 3, false});
+  }
+  // Ids are increasing in order of FIFO sorting.
+  // so lets now pull everything from queue in expected order
+  ASSERT_EQ(queue.size(), 6);
+  while (!queue.isEmpty()) {
+    auto step = queue.pop();
+    ASSERT_EQ(step.id(), id);
+    id++;
+  }
+  ASSERT_EQ(queue.size(), 0);
+  // Memory is reduced fully again
+  EXPECT_EQ(memorySizeBefore, _resourceMonitor.current());
+}
+
 }  // namespace weighted_queue_graph_cache_test
 }  // namespace tests
 }  // namespace arangodb

@@ -47,6 +47,7 @@ const RESET = internal.COLORS.COLOR_RESET;
 const YELLOW = internal.COLORS.COLOR_YELLOW;
 
 const internalMembers = [
+  'crashreport',
   'code',
   'error',
   'status',
@@ -546,7 +547,9 @@ function formatNone(str) {
 function formatTimeMS(ts) {
   return fancyTimeFormat(ts / 1000);
 }
-
+function formatNetStat(val) {
+  return JSON.stringify(summarizeStats(val['processStats']));
+}
 function unitTestTabularPrintResults (options, results, otherResults) {
   let tableColumns = [];
   let tableColumnVectors = [];
@@ -565,6 +568,8 @@ function unitTestTabularPrintResults (options, results, otherResults) {
   tableColumns.forEach(colName => {
     if (timeFormatColumns.find(val => {return val === colName; })) {
       tableFormaters.push(fancyTimeFormat);
+    } else if (colName === 'netstat') {
+      tableFormaters.push(formatNetStat);
     } else {
       tableFormaters.push(formatNone);
     }
@@ -609,7 +614,7 @@ function unitTestTabularPrintResults (options, results, otherResults) {
         });
       }
       let hasSetupAll = setupAllDuration !== 0;
-      
+      let stats = summarizeStats(testSuite['processStats']);
       if (testSuite.hasOwnProperty('totalSetUp') &&
           testSuite.hasOwnProperty('totalTearDown')) {
         sortedByDuration.push({
@@ -618,6 +623,7 @@ function unitTestTabularPrintResults (options, results, otherResults) {
           duration: testSuite.duration,
           hasSetupAll: hasSetupAll,
           count: Object.keys(testSuite).filter(testCase => ! skipInternalMember(testSuite, testCase)).length,
+          netstat: JSON.stringify(stats.netstat)
         });
       } else {
         if (!durationBlacklist.find(item => { return item === currentTestrun; }) &&
@@ -664,6 +670,33 @@ function unitTestTabularPrintResults (options, results, otherResults) {
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief creates a chartlist of the longest running tests
 // //////////////////////////////////////////////////////////////////////////////
+function summarizeStats(deltaStats) {
+  let sumStats = {};
+  for (let instance in deltaStats) {
+    sumStats['netstat'] = {};
+    if (instance === 'netstat') {
+      for (let nsInstance in deltaStats[instance]) {
+        for (const dir of ['in', 'out']) {
+          for (let type in deltaStats[instance][nsInstance][dir]) {
+            if (!sumStats['netstat'].hasOwnProperty(type)) {
+              sumStats['netstat'][type] = deltaStats[instance][nsInstance][dir][type];
+            } else {
+              sumStats['netstat'][type] += deltaStats[instance][nsInstance][dir][type];
+            }
+          }
+        }
+      }
+    } else {
+      for (let key in deltaStats[instance]) {
+        if (!sumStats.hasOwnProperty(key)) {
+          sumStats[key] = 0;
+        }
+        sumStats[key] += deltaStats[instance][key];
+      }
+    }
+  }
+  return sumStats;
+}
 
 function locateLongRunning(options, results, otherResults) {
   let testRunStatistics = "";
@@ -789,7 +822,7 @@ function locateLongRunning(options, results, otherResults) {
               testCases[j].testName);
         }
         results[key] = {
-          'processStatistics': pu.summarizeStats(thisTestSuite.test['processStats']),
+          'processStatistics': summarizeStats(thisTestSuite.test['processStats']),
           'stats': statistics
         };
         if (setupStatistics.length > 0) {
@@ -972,6 +1005,9 @@ function dumpAllResults(options, results) {
   let j;
 
   try {
+    if (cu.GDB_OUTPUT !== '') {
+      results['crashreport'] = cu.GDB_OUTPUT;
+    }
     j = JSON.stringify(results);
   } catch (err) {
     j = inspect(results);

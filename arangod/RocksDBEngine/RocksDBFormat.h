@@ -27,9 +27,8 @@
 #include "Basics/Endian.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
-namespace arangodb {
+namespace arangodb::rocksutils {
 
-namespace rocksutils {
 extern RocksDBEndianness rocksDBEndianness;
 
 /* function pointers to serialization implementation */
@@ -76,16 +75,14 @@ template<typename T>
 inline void uintToPersistentLittleEndian(std::string& p, T value) {
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
   value = basics::hostToLittle(value);
-  p.append(reinterpret_cast<const char*>(&value), sizeof(T));
+  p.append(reinterpret_cast<char const*>(&value), sizeof(T));
 }
 
 template<typename T>
 inline void uintToPersistentBigEndian(std::string& p, T value) {
-  // uintToPersistentLittleEndian<T>(p, basics::hostToBig(value));
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
   value = basics::hostToBig(value);
-  p.append(reinterpret_cast<const char*>(&value), sizeof(T));
+  p.append(reinterpret_cast<char const*>(&value), sizeof(T));
 }
 
-}  // namespace rocksutils
-}  // namespace arangodb
+}  // namespace arangodb::rocksutils

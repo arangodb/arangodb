@@ -43,7 +43,7 @@ struct gtest_predicate : private F {
   auto check(S const& state) const {
     static_assert(std::is_invocable_r_v<void, F const&, S const&>);
     F::operator()(state);
-    if (testing::Test::HasFailure()) {
+    if (::testing::Test::HasFailure()) {
       return CheckResult::withError(Location::annotate("GTest failed"));
     }
     return CheckResult::withOk();
@@ -241,20 +241,33 @@ combined(Os...) -> combined<Os...>;
 
 }  // namespace arangodb::test::model_checker
 
-template<const char File[], std::size_t Line>
+template<char... Chars>
+struct Str {
+  static constexpr char value[sizeof...(Chars)] = {Chars...};
+};
+
+template<const char File[], typename>
+struct StringBuffer;
+template<const char File[], std::size_t... Idxs>
+struct StringBuffer<File, std::index_sequence<Idxs...>> {
+  using Data = Str<File[Idxs]...>;
+};
+
+template<const char File[], std::size_t FileLen, std::size_t Line>
 struct FileLineType {
-  static inline constexpr auto filename = File;
+  static inline constexpr auto filename =
+      StringBuffer<File, std::make_index_sequence<FileLen>>::Data::value;
   static inline constexpr std::size_t line = Line;
 
   static auto annotate(std::string_view message) -> std::string {
-    return fmt::format("{}:{}: {}", filename, line, message);
+    return fmt::format("{}:{}:{}", filename, line, message);
   }
 };
 
-#define MC_HERE                              \
-  ([] {                                      \
-    static constexpr char data[] = __FILE__; \
-    return ::FileLineType<data, __LINE__>{}; \
+#define MC_HERE                                                \
+  ([] {                                                        \
+    static constexpr char data[sizeof(__FILE__)] = __FILE__;   \
+    return ::FileLineType<data, sizeof(__FILE__), __LINE__>{}; \
   }())
 
 #define MC_GTEST_PRED(name, pred)           \

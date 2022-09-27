@@ -1,4 +1,4 @@
-/* global describe, beforeEach, afterEach, it, instanceInfo, before */
+/* global describe, beforeEach, afterEach, it, instanceManager, before */
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -34,12 +34,12 @@ const request = require('@arangodb/request');
 const endpointToURL = require("@arangodb/cluster").endpointToURL;
 const coordinatorName = "Coordinator0001";
 
-let coordinator = instanceInfo.arangods.filter(arangod => {
-  return arangod.role === 'coordinator';
+let coordinator = instanceManager.arangods.filter(arangod => {
+  return arangod.instanceRole === 'coordinator';
 })[0];
 
-let dbServerCount = instanceInfo.arangods.filter(arangod => {
-  return arangod.role === 'dbserver';
+let dbServerCount = instanceManager.arangods.filter(arangod => {
+  return arangod.instanceRole === 'dbserver';
 }).length;
 
 describe('Shard distribution', function () {

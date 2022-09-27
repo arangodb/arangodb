@@ -428,8 +428,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
     AstNode* q2 = other.operatorNode->getMemberUnchecked(2);
     TRI_ASSERT(q2->type == NODE_TYPE_QUANTIFIER);
     // do only cover ALL and NONE when both sides have same quantifier
-    if (q1->getIntValue() != q2->getIntValue() ||
-        q1->getIntValue() == Quantifier::ANY) {
+    if (q1->getIntValue() != q2->getIntValue() || Quantifier::isAny(q1)) {
       return false;
     }
 
@@ -665,8 +664,8 @@ std::pair<bool, bool> Condition::findIndexes(
   }
 
   return arangodb::aql::utils::getBestIndexHandlesForFilterCondition(
-      coll, _ast, _root, reference, sortCondition, itemsInIndex, node->hint(),
-      usedIndexes, _isSorted, isAllCoveredByIndex);
+      trx, coll, _ast, _root, reference, sortCondition, itemsInIndex,
+      node->hint(), usedIndexes, _isSorted, isAllCoveredByIndex);
 }
 
 /// @brief get the attributes for a sub-condition that are const

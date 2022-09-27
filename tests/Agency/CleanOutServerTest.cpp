@@ -32,6 +32,7 @@
 #include "Agency/AgentInterface.h"
 #include "Agency/CleanOutServer.h"
 #include "Agency/Node.h"
+#include "Basics/TimeString.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb;
@@ -76,15 +77,15 @@ VPackBuilder createMoveShardJob() {
   return builder;
 }
 
-void checkFailed(JOB_STATUS status, query_t const& q) {
-  ASSERT_EQ(std::string(q->slice().typeName()), "array");
-  ASSERT_EQ(q->slice().length(), 1);
-  ASSERT_EQ(std::string(q->slice()[0].typeName()), "array");
-  ASSERT_EQ(q->slice()[0].length(),
+void checkFailed(JOB_STATUS status, velocypack::Slice q) {
+  ASSERT_EQ(std::string(q.typeName()), "array");
+  ASSERT_EQ(q.length(), 1);
+  ASSERT_EQ(std::string(q[0].typeName()), "array");
+  ASSERT_EQ(q[0].length(),
             1);  // we always simply override! no preconditions...
-  ASSERT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+  ASSERT_EQ(std::string(q[0][0].typeName()), "object");
 
-  auto writes = q->slice()[0][0];
+  auto writes = q[0][0];
   if (status == JOB_STATUS::PENDING) {
     ASSERT_TRUE(std::string(writes.get("/arango/Supervision/DBServers/leader")
                                 .get("op")
@@ -220,7 +221,7 @@ TEST_F(CleanOutServerTest,
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
         checkFailed(JOB_STATUS::TODO, q);
         return fakeWriteResult;
@@ -347,7 +348,7 @@ TEST_F(CleanOutServerTest,
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
         checkFailed(JOB_STATUS::TODO, q);
         return fakeWriteResult;
@@ -391,7 +392,7 @@ TEST_F(CleanOutServerTest,
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
         checkFailed(JOB_STATUS::TODO, q);
         return fakeWriteResult;
@@ -437,7 +438,7 @@ TEST_F(CleanOutServerTest,
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
         checkFailed(JOB_STATUS::TODO, q);
         return fakeWriteResult;
@@ -484,7 +485,7 @@ TEST_F(CleanOutServerTest,
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
         checkFailed(JOB_STATUS::TODO, q);
         return fakeWriteResult;
@@ -531,7 +532,7 @@ TEST_F(CleanOutServerTest,
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
         checkFailed(JOB_STATUS::TODO, q);
         return fakeWriteResult;
@@ -572,15 +573,15 @@ TEST_F(CleanOutServerTest, cleanout_server_job_should_move_into_pending_if_ok) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        EXPECT_EQ(std::string(q->slice().typeName()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
-        EXPECT_EQ(q->slice()[0].length(), 2);  // we have preconditions
-        EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+        EXPECT_EQ(std::string(q.typeName()), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(std::string(q[0].typeName()), "array");
+        EXPECT_EQ(q[0].length(), 2);  // we have preconditions
+        EXPECT_EQ(std::string(q[0][0].typeName()), "object");
 
-        auto writes = q->slice()[0][0];
+        auto writes = q[0][0];
         EXPECT_TRUE(
             std::string(writes.get("/arango/Target/ToDo/1").typeName()) ==
             "object");
@@ -613,8 +614,10 @@ TEST_F(CleanOutServerTest, cleanout_server_job_should_move_into_pending_if_ok) {
         EXPECT_TRUE(writes.get("/arango/Target/ToDo/1-0")
                         .get("toServer")
                         .copyString() == "free");
+        // second collection is not touched because of replicationVersion == 2
+        EXPECT_TRUE(writes.get("/arango/Target/ToDo/1-1").isNone());
 
-        auto preconditions = q->slice()[0][1];
+        auto preconditions = q[0][1];
         EXPECT_TRUE(preconditions.get("/arango/Supervision/DBServers/leader")
                         .get("oldEmpty")
                         .getBool() == true);
@@ -677,18 +680,18 @@ TEST_F(CleanOutServerTest, test_cancel_pending_job) {
   int qCount = 0;
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .AlwaysDo([&](query_t const& q,
+      .AlwaysDo([&](velocypack::Slice q,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
         if (qCount++ == 0) {
           // first the moveShard job should be aborted
-          EXPECT_EQ(std::string(q->slice().typeName()), "array");
-          EXPECT_EQ(q->slice().length(), 1);
-          EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
-          EXPECT_EQ(q->slice()[0].length(),
+          EXPECT_EQ(std::string(q.typeName()), "array");
+          EXPECT_EQ(q.length(), 1);
+          EXPECT_EQ(std::string(q[0].typeName()), "array");
+          EXPECT_EQ(q[0].length(),
                     2);  // precondition that still in ToDo
-          EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+          EXPECT_EQ(std::string(q[0][0].typeName()), "object");
 
-          auto writes = q->slice()[0][0];
+          auto writes = q[0][0];
           EXPECT_TRUE(
               std::string(writes.get("/arango/Target/ToDo/1-0").typeName()) ==
               "object");
@@ -702,7 +705,7 @@ TEST_F(CleanOutServerTest, test_cancel_pending_job) {
           // a not yet started job will be moved to finished
           EXPECT_TRUE(std::string(writes.get("/arango/Target/Finished/1-0")
                                       .typeName()) == "object");
-          auto preconds = q->slice()[0][1];
+          auto preconds = q[0][1];
           EXPECT_TRUE(preconds.get("/arango/Target/ToDo/1-0")
                           .get("oldEmpty")
                           .isFalse());
@@ -764,7 +767,7 @@ TEST_F(CleanOutServerTest, test_cancel_todo_job) {
   int qCount = 0;
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .AlwaysDo([&](query_t const& q,
+      .AlwaysDo([&](velocypack::Slice q,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
         if (qCount++ == 0) {
           checkFailed(JOB_STATUS::TODO, q);
@@ -851,16 +854,16 @@ TEST_F(CleanOutServerTest,
   };
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        EXPECT_EQ(std::string(q->slice().typeName()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
-        EXPECT_EQ(q->slice()[0].length(),
+        EXPECT_EQ(std::string(q.typeName()), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(std::string(q[0].typeName()), "array");
+        EXPECT_EQ(q[0].length(),
                   1);  // we always simply override! no preconditions...
-        EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+        EXPECT_EQ(std::string(q[0][0].typeName()), "object");
 
-        auto writes = q->slice()[0][0];
+        auto writes = q[0][0];
         EXPECT_TRUE(
             std::string(writes.get("/arango/Supervision/DBServers/leader")
                             .get("op")
@@ -921,7 +924,7 @@ TEST_F(CleanOutServerTest, failed_subjob_should_also_fail_job) {
   };
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
         checkFailed(JOB_STATUS::PENDING, q);
         return fakeWriteResult;
@@ -966,18 +969,18 @@ TEST_F(CleanOutServerTest,
   Mock<AgentInterface> mockAgent;
   int qCount = 0;
   When(Method(mockAgent, write))
-      .AlwaysDo([&](query_t const& q,
+      .AlwaysDo([&](velocypack::Slice q,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
         if (qCount++ == 0) {
           // first the moveShard job should be aborted
-          EXPECT_EQ(std::string(q->slice().typeName()), "array");
-          EXPECT_EQ(q->slice().length(), 1);
-          EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
-          EXPECT_EQ(q->slice()[0].length(),
+          EXPECT_EQ(std::string(q.typeName()), "array");
+          EXPECT_EQ(q.length(), 1);
+          EXPECT_EQ(std::string(q[0].typeName()), "array");
+          EXPECT_EQ(q[0].length(),
                     2);  // precondition that still in ToDo
-          EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+          EXPECT_EQ(std::string(q[0][0].typeName()), "object");
 
-          auto writes = q->slice()[0][0];
+          auto writes = q[0][0];
           EXPECT_TRUE(
               std::string(writes.get("/arango/Target/ToDo/1-0").typeName()) ==
               "object");
@@ -992,7 +995,7 @@ TEST_F(CleanOutServerTest,
           EXPECT_TRUE(
               std::string(writes.get("/arango/Target/Failed/1-0").typeName()) ==
               "object");
-          auto preconds = q->slice()[0][1];
+          auto preconds = q[0][1];
           EXPECT_TRUE(preconds.get("/arango/Target/ToDo/1-0")
                           .get("oldEmpty")
                           .isFalse());

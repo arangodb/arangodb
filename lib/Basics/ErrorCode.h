@@ -35,14 +35,16 @@ class Value;
 
 class ErrorCode {
  public:
+  using ValueType = int;
+
   ErrorCode() = delete;
-  constexpr explicit ErrorCode(int value) : _value(value) {}
+  constexpr explicit ErrorCode(ValueType value) : _value(value) {}
   constexpr ErrorCode(ErrorCode const&) noexcept = default;
   constexpr ErrorCode(ErrorCode&&) noexcept = default;
   constexpr auto operator=(ErrorCode const&) noexcept -> ErrorCode& = default;
   constexpr auto operator=(ErrorCode&&) noexcept -> ErrorCode& = default;
 
-  [[nodiscard]] constexpr explicit operator int() const noexcept {
+  [[nodiscard]] constexpr explicit operator ValueType() const noexcept {
     return _value;
   }
 
@@ -63,8 +65,11 @@ class ErrorCode {
 
   friend auto to_string(::ErrorCode value) -> std::string;
 
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, ErrorCode& x);
+
  private:
-  int _value;
+  ValueType _value;
 };
 
 namespace std {
@@ -77,3 +82,17 @@ struct hash<ErrorCode> {
 }  // namespace std
 
 auto operator<<(std::ostream& out, ::ErrorCode const& res) -> std::ostream&;
+
+template<typename Inspector>
+auto inspect(Inspector& f, ErrorCode& x) {
+  if constexpr (Inspector::isLoading) {
+    auto v = 0;
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = ErrorCode{v};
+    }
+    return res;
+  } else {
+    return f.apply(x._value);
+  }
+}

@@ -89,6 +89,8 @@ function optimizerRuleTestSuite () {
         "FOR doc IN " + cn + " FOR s IN OUTBOUND SHORTEST_PATH doc._id TO '" + cn + "/2' " + en + " RETURN s",
         "FOR s IN OUTBOUND K_SHORTEST_PATHS '" + cn + "/1' TO '" + cn + "/2' " + en + " RETURN s",
         "FOR doc IN " + cn + " FOR s IN OUTBOUND K_SHORTEST_PATHS doc._id TO '" + cn + "/2' " + en + " RETURN s",
+        "FOR s IN OUTBOUND ALL_SHORTEST_PATHS '" + cn + "/1' TO '" + cn + "/2' " + en + " RETURN s",
+        "FOR doc IN " + cn + " FOR s IN OUTBOUND ALL_SHORTEST_PATHS doc._id TO '" + cn + "/2' " + en + " RETURN s",
       ];
 
       queries.forEach(function(query) {

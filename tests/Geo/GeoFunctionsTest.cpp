@@ -77,7 +77,7 @@ class GeoEqualsTest : public ::testing::Test {
       : expressionContext(expressionContextMock.get()),
         trx(trxMock.get()),
         context(contextMock.get()),
-        equalsFun("GEO_EQUALS", &Functions::GeoEquals),
+        equalsFun("GEO_EQUALS", &functions::GeoEquals),
         equalsFunNode(NODE_TYPE_FCALL) {
     equalsFunNode.setData(static_cast<void const*>(&equalsFun));
 
@@ -105,7 +105,7 @@ namespace geo_equals_point {
 struct GeoEqualsPointTest : public GeoEqualsTest {
   GeoEqualsPointTest()
       : GeoEqualsTest(),
-        fun("GEO_POiNT", &Functions::GeoPoint),
+        fun("GEO_POiNT", &functions::GeoPoint),
         funNode(NODE_TYPE_FCALL) {
     funNode.setData(static_cast<void const*>(&fun));
   }
@@ -122,14 +122,14 @@ TEST_F(GeoEqualsPointTest, checking_two_equal_points) {
   foo.close();
   paramsA.emplace_back(foo.slice().at(0));
   paramsA.emplace_back(foo.slice().at(1));
-  AqlValue pointA = Functions::GeoPoint(&expressionContext, funNode, paramsA);
+  AqlValue pointA = functions::GeoPoint(&expressionContext, funNode, paramsA);
 
   paramsC.emplace_back(pointA.clone());
   paramsC.emplace_back(pointA.clone());
   pointA.destroy();
 
   AqlValue resC =
-      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+      functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
 }
@@ -142,7 +142,7 @@ TEST_F(GeoEqualsPointTest, checking_two_unequal_points) {
   foo.close();
   paramsA.emplace_back(foo.slice().at(0));
   paramsA.emplace_back(foo.slice().at(1));
-  AqlValue pointA = Functions::GeoPoint(&expressionContext, funNode, paramsA);
+  AqlValue pointA = functions::GeoPoint(&expressionContext, funNode, paramsA);
   paramsC.emplace_back(pointA.clone());
   pointA.destroy();
 
@@ -153,12 +153,12 @@ TEST_F(GeoEqualsPointTest, checking_two_unequal_points) {
   bar.close();
   paramsB.emplace_back(bar.slice().at(0));
   paramsB.emplace_back(bar.slice().at(1));
-  AqlValue pointB = Functions::GeoPoint(&expressionContext, funNode, paramsB);
+  AqlValue pointB = functions::GeoPoint(&expressionContext, funNode, paramsB);
   paramsC.emplace_back(pointB.clone());
   pointB.destroy();
 
   AqlValue resC =
-      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+      functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
@@ -169,7 +169,7 @@ namespace geo_equals_multipoint {
 struct GeoEqualsMultipointTest : public GeoEqualsTest {
   GeoEqualsMultipointTest()
       : GeoEqualsTest(),
-        fun("GEO_MULTIPOiNT", &Functions::GeoMultiPoint),
+        fun("GEO_MULTIPOiNT", &functions::GeoMultiPoint),
         funNode(NODE_TYPE_FCALL) {
     funNode.setData(static_cast<void const*>(&fun));
   }
@@ -188,13 +188,13 @@ TEST_F(GeoEqualsMultipointTest, checking_two_equal_multipoints) {
   paramsA.emplace_back(jsonA);
 
   AqlValue resA =
-      Functions::GeoMultiPoint(&expressionContext, funNode, paramsA);
+      functions::GeoMultiPoint(&expressionContext, funNode, paramsA);
   paramsC.emplace_back(resA.clone());
   paramsC.emplace_back(resA.clone());
   resA.destroy();
 
   AqlValue resC =
-      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+      functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
 }
@@ -214,14 +214,14 @@ TEST_F(GeoEqualsMultipointTest, checking_two_unequal_multipoints) {
   paramsB.emplace_back(jsonB);
 
   AqlValue resA =
-      Functions::GeoMultiPoint(&expressionContext, funNode, paramsA);
+      functions::GeoMultiPoint(&expressionContext, funNode, paramsA);
   paramsC.emplace_back(resA);
   AqlValue resB =
-      Functions::GeoMultiPoint(&expressionContext, funNode, paramsB);
+      functions::GeoMultiPoint(&expressionContext, funNode, paramsB);
   paramsC.emplace_back(resB);
 
   AqlValue resC =
-      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+      functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
@@ -232,7 +232,7 @@ namespace geo_equals_polygon {
 struct GeoEqualsPolygonTest : public GeoEqualsTest {
   GeoEqualsPolygonTest()
       : GeoEqualsTest(),
-        fun("GEO_POLYGON", &Functions::GeoPolygon),
+        fun("GEO_POLYGON", &functions::GeoPolygon),
         funNode(NODE_TYPE_FCALL) {
     funNode.setData(static_cast<void const*>(&fun));
   }
@@ -250,13 +250,13 @@ TEST_F(GeoEqualsPolygonTest, checking_two_equal_polygons) {
 
   paramsA.emplace_back(jsonA);
 
-  AqlValue resA = Functions::GeoPolygon(&expressionContext, funNode, paramsA);
+  AqlValue resA = functions::GeoPolygon(&expressionContext, funNode, paramsA);
   paramsC.emplace_back(resA.clone());
   paramsC.emplace_back(resA.clone());
   resA.destroy();
 
   AqlValue resC =
-      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+      functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   resC.destroy();
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
@@ -277,13 +277,13 @@ TEST_F(GeoEqualsPolygonTest, checking_two_equal_more_detailed_polygons) {
 
   paramsA.emplace_back(jsonA);
 
-  AqlValue resA = Functions::GeoPolygon(&expressionContext, funNode, paramsA);
+  AqlValue resA = functions::GeoPolygon(&expressionContext, funNode, paramsA);
   paramsC.emplace_back(resA.clone());
   paramsC.emplace_back(resA.clone());
   resA.destroy();
 
   AqlValue resC =
-      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+      functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
 }
@@ -302,13 +302,13 @@ TEST_F(GeoEqualsPolygonTest, checking_two_unequal_polygons) {
   paramsA.emplace_back(jsonA);
   paramsB.emplace_back(jsonB);
 
-  AqlValue resA = Functions::GeoPolygon(&expressionContext, funNode, paramsA);
+  AqlValue resA = functions::GeoPolygon(&expressionContext, funNode, paramsA);
   paramsC.emplace_back(resA);
-  AqlValue resB = Functions::GeoPolygon(&expressionContext, funNode, paramsB);
+  AqlValue resB = functions::GeoPolygon(&expressionContext, funNode, paramsB);
   paramsC.emplace_back(resB);
 
   AqlValue resC =
-      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+      functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
@@ -324,13 +324,13 @@ TEST_F(GeoEqualsPolygonTest, checking_two_nested_equal_polygons) {
 
   paramsA.emplace_back(jsonA);
 
-  AqlValue resA = Functions::GeoPolygon(&expressionContext, funNode, paramsA);
+  AqlValue resA = functions::GeoPolygon(&expressionContext, funNode, paramsA);
   paramsC.emplace_back(resA.clone());
   paramsC.emplace_back(resA.clone());
   resA.destroy();
 
   AqlValue resC =
-      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+      functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
 }
@@ -354,13 +354,13 @@ TEST_F(GeoEqualsPolygonTest,
   paramsA.emplace_back(jsonA);
   paramsB.emplace_back(jsonB);
 
-  AqlValue resA = Functions::GeoPolygon(&expressionContext, funNode, paramsA);
+  AqlValue resA = functions::GeoPolygon(&expressionContext, funNode, paramsA);
   paramsC.emplace_back(resA);
-  AqlValue resB = Functions::GeoPolygon(&expressionContext, funNode, paramsB);
+  AqlValue resB = functions::GeoPolygon(&expressionContext, funNode, paramsB);
   paramsC.emplace_back(resB);
 
   AqlValue resC =
-      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+      functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
@@ -384,13 +384,13 @@ TEST_F(GeoEqualsPolygonTest,
   paramsA.emplace_back(jsonA);
   paramsB.emplace_back(jsonB);
 
-  AqlValue resA = Functions::GeoPolygon(&expressionContext, funNode, paramsA);
+  AqlValue resA = functions::GeoPolygon(&expressionContext, funNode, paramsA);
   paramsC.emplace_back(resA);
-  AqlValue resB = Functions::GeoPolygon(&expressionContext, funNode, paramsB);
+  AqlValue resB = functions::GeoPolygon(&expressionContext, funNode, paramsB);
   paramsC.emplace_back(resB);
 
   AqlValue resC =
-      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+      functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
@@ -414,20 +414,20 @@ TEST_F(GeoEqualsPolygonTest,
   paramsA.emplace_back(jsonA);
   paramsB.emplace_back(jsonB);
 
-  AqlValue resA = Functions::GeoPolygon(&expressionContext, funNode, paramsA);
+  AqlValue resA = functions::GeoPolygon(&expressionContext, funNode, paramsA);
   paramsC.emplace_back(resA);
-  AqlValue resB = Functions::GeoPolygon(&expressionContext, funNode, paramsB);
+  AqlValue resB = functions::GeoPolygon(&expressionContext, funNode, paramsB);
   paramsC.emplace_back(resB);
 
   AqlValue resC =
-      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+      functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
 
 TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_first_parameter) {
   fakeit::When(Method(expressionContextMock, registerWarning))
-      .Do([&](ErrorCode code, char const* msg) -> void {
+      .Do([&](ErrorCode code, std::string_view) -> void {
         ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -444,18 +444,18 @@ TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_first_parameter) {
 
   paramsA.emplace_back(jsonA);
 
-  AqlValue resA = Functions::GeoPolygon(&expressionContext, funNode, paramsA);
+  AqlValue resA = functions::GeoPolygon(&expressionContext, funNode, paramsA);
   paramsC.emplace_back(resA);
   paramsC.emplace_back(jsonB);
 
   AqlValue resC =
-      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+      functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isNull());
 }
 
 TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_second_parameter) {
   fakeit::When(Method(expressionContextMock, registerWarning))
-      .Do([&](ErrorCode code, char const* msg) -> void {
+      .Do([&](ErrorCode code, std::string_view) -> void {
         ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -472,12 +472,12 @@ TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_second_parameter) {
 
   paramsA.emplace_back(jsonA);
 
-  AqlValue resA = Functions::GeoPolygon(&expressionContext, funNode, paramsA);
+  AqlValue resA = functions::GeoPolygon(&expressionContext, funNode, paramsA);
   paramsC.emplace_back(jsonB);
   paramsC.emplace_back(resA);
 
   AqlValue resC =
-      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+      functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isNull());
 }
 }  // namespace geo_equals_polygon
@@ -486,7 +486,7 @@ namespace geo_equals_linestring {
 struct GeoEqualsLinestringTest : public GeoEqualsTest {
   GeoEqualsLinestringTest()
       : GeoEqualsTest(),
-        fun("GEO_LINESTRING", &Functions::GeoLinestring),
+        fun("GEO_LINESTRING", &functions::GeoLinestring),
         funNode(NODE_TYPE_FCALL) {
     funNode.setData(static_cast<void const*>(&fun));
   }
@@ -505,14 +505,14 @@ TEST_F(GeoEqualsLinestringTest, checking_two_equal_linestrings) {
   paramsA.emplace_back(jsonA);
 
   AqlValue resA =
-      Functions::GeoLinestring(&expressionContext, funNode, paramsA);
+      functions::GeoLinestring(&expressionContext, funNode, paramsA);
 
   paramsC.emplace_back(resA.clone());
   paramsC.emplace_back(resA.clone());
   resA.destroy();
 
   AqlValue resC =
-      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+      functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
 }
@@ -532,15 +532,15 @@ TEST_F(GeoEqualsLinestringTest, checking_two_unequal_linestrings) {
   paramsB.emplace_back(jsonB);
 
   AqlValue resA =
-      Functions::GeoLinestring(&expressionContext, funNode, paramsA);
+      functions::GeoLinestring(&expressionContext, funNode, paramsA);
   AqlValue resB =
-      Functions::GeoLinestring(&expressionContext, funNode, paramsB);
+      functions::GeoLinestring(&expressionContext, funNode, paramsB);
 
   paramsC.emplace_back(resA);
   paramsC.emplace_back(resB);
 
   AqlValue resC =
-      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+      functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
@@ -551,7 +551,7 @@ namespace geo_equals_multilinestring {
 struct GeoEqualsMultilinestringTest : public GeoEqualsTest {
   GeoEqualsMultilinestringTest()
       : GeoEqualsTest(),
-        fun("GEO_MULTILINESTRING", &Functions::GeoMultiLinestring),
+        fun("GEO_MULTILINESTRING", &functions::GeoMultiLinestring),
         funNode(NODE_TYPE_FCALL) {
     funNode.setData(static_cast<void const*>(&fun));
   }
@@ -570,13 +570,13 @@ TEST_F(GeoEqualsMultilinestringTest, checking_two_equal_multilinestrings) {
   paramsA.emplace_back(jsonA);
 
   AqlValue resA =
-      Functions::GeoMultiLinestring(&expressionContext, funNode, paramsA);
+      functions::GeoMultiLinestring(&expressionContext, funNode, paramsA);
   paramsC.emplace_back(resA.clone());
   paramsC.emplace_back(resA.clone());
   resA.destroy();
 
   AqlValue resC =
-      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+      functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_TRUE(resC.slice().getBool());
 }
@@ -596,15 +596,15 @@ TEST_F(GeoEqualsMultilinestringTest, checking_two_unequal_multilinestrings) {
   paramsB.emplace_back(jsonB);
 
   AqlValue resA =
-      Functions::GeoMultiLinestring(&expressionContext, funNode, paramsA);
+      functions::GeoMultiLinestring(&expressionContext, funNode, paramsA);
   AqlValue resB =
-      Functions::GeoMultiLinestring(&expressionContext, funNode, paramsB);
+      functions::GeoMultiLinestring(&expressionContext, funNode, paramsB);
 
   paramsC.emplace_back(resA);
   paramsC.emplace_back(resB);
 
   AqlValue resC =
-      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+      functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
@@ -618,7 +618,7 @@ struct GeoEqualsMixedTypeTest : public GeoEqualsTest {
 
 TEST_F(GeoEqualsMixedTypeTest, checking_polygon_with_multilinestring) {
   fakeit::When(Method(expressionContextMock, registerWarning))
-      .Do([&](ErrorCode code, char const* msg) -> void {
+      .Do([&](ErrorCode code, std::string_view) -> void {
         ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -635,31 +635,31 @@ TEST_F(GeoEqualsMixedTypeTest, checking_polygon_with_multilinestring) {
   paramsA.emplace_back(jsonA);
   paramsB.emplace_back(jsonB);
 
-  arangodb::aql::Function f1("GEO_POLYGON", &Functions::GeoPolygon);
+  arangodb::aql::Function f1("GEO_POLYGON", &functions::GeoPolygon);
   arangodb::aql::AstNode node1(NODE_TYPE_FCALL);
   node1.setData(static_cast<void const*>(&f1));
 
   arangodb::aql::Function f2("GEO_MULTILINESTRING",
-                             &Functions::GeoMultiLinestring);
+                             &functions::GeoMultiLinestring);
   arangodb::aql::AstNode node2(NODE_TYPE_FCALL);
   node2.setData(static_cast<void const*>(&f2));
 
-  AqlValue resA = Functions::GeoPolygon(&expressionContext, node1, paramsA);
+  AqlValue resA = functions::GeoPolygon(&expressionContext, node1, paramsA);
   AqlValue resB =
-      Functions::GeoMultiLinestring(&expressionContext, node2, paramsB);
+      functions::GeoMultiLinestring(&expressionContext, node2, paramsB);
 
   paramsC.emplace_back(resA);
   paramsC.emplace_back(resB);
 
   AqlValue resC =
-      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+      functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
 
 TEST_F(GeoEqualsMixedTypeTest, checking_multipoint_with_multilinestring) {
   fakeit::When(Method(expressionContextMock, registerWarning))
-      .Do([&](ErrorCode code, char const* msg) -> void {
+      .Do([&](ErrorCode code, std::string_view) -> void {
         ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -676,23 +676,23 @@ TEST_F(GeoEqualsMixedTypeTest, checking_multipoint_with_multilinestring) {
   paramsA.emplace_back(jsonA);
   paramsB.emplace_back(jsonB);
 
-  arangodb::aql::Function f1("GEO_MULTIPOINT", &Functions::GeoMultiPoint);
+  arangodb::aql::Function f1("GEO_MULTIPOINT", &functions::GeoMultiPoint);
   arangodb::aql::AstNode node1(NODE_TYPE_FCALL);
   node1.setData(static_cast<void const*>(&f1));
 
   arangodb::aql::Function f2("GEO_MULTILINESTRING",
-                             &Functions::GeoMultiLinestring);
+                             &functions::GeoMultiLinestring);
   arangodb::aql::AstNode node2(NODE_TYPE_FCALL);
   node2.setData(static_cast<void const*>(&f2));
 
-  AqlValue resA = Functions::GeoMultiPoint(&expressionContext, node1, paramsA);
+  AqlValue resA = functions::GeoMultiPoint(&expressionContext, node1, paramsA);
   paramsC.emplace_back(resA);
   AqlValue resB =
-      Functions::GeoMultiLinestring(&expressionContext, node2, paramsB);
+      functions::GeoMultiLinestring(&expressionContext, node2, paramsB);
   paramsC.emplace_back(resB);
 
   AqlValue resC =
-      Functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
+      functions::GeoEquals(&expressionContext, equalsFunNode, paramsC);
   EXPECT_TRUE(resC.slice().isBoolean());
   EXPECT_FALSE(resC.slice().getBool());
 }
@@ -717,7 +717,7 @@ TEST(GeoInRangeTest, test) {
   fakeit::When(Method(expressionContextMock, trx))
       .AlwaysDo([&]() -> transaction::Methods& { return trxMock.get(); });
 
-  arangodb::aql::Function f("GEO_IN_RANGE", &Functions::GeoInRange);
+  arangodb::aql::Function f("GEO_IN_RANGE", &functions::GeoInRange);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
 
@@ -730,7 +730,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
         });
 
@@ -749,7 +749,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
         });
     containers::SmallVector<AqlValue, 4> params = {
@@ -769,7 +769,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
         });
 
@@ -791,7 +791,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
         });
 
@@ -1128,7 +1128,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
         });
 
@@ -1156,7 +1156,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
@@ -1187,7 +1187,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
@@ -1214,7 +1214,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
@@ -1245,7 +1245,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
@@ -1272,7 +1272,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
@@ -1299,7 +1299,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
@@ -1326,7 +1326,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
@@ -1353,7 +1353,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 

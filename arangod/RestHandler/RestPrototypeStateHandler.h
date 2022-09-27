@@ -49,6 +49,12 @@ class RestPrototypeStateHandler : public RestVocbaseBaseHandler {
       replication2::PrototypeStateMethods const& methods);
   RestStatus handleDeleteRequest(
       replication2::PrototypeStateMethods const& methods);
+  RestStatus handlePutRequest(
+      replication2::PrototypeStateMethods const& methods);
+
+  RestStatus handlePutCompareExchange(
+      replication2::PrototypeStateMethods const& methods,
+      replication2::LogId logId, velocypack::Slice payload);
 
   RestStatus handlePostInsert(
       replication2::PrototypeStateMethods const& methods,

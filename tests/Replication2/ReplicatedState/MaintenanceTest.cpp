@@ -46,7 +46,7 @@ auto decodeFromString(std::string_view src) -> std::optional<T> {
   auto buffer = arangodb::basics::StringUtils::decodeBase64(src);
   auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(buffer.c_str()));
   if (!slice.isNone()) {
-    return T::fromVelocyPack(slice);
+    return velocypack::deserialize<T>(slice);
   }
 
   return std::nullopt;
@@ -58,11 +58,12 @@ TEST_F(ReplicatedStateMaintenanceTest, create_state_test_without_local_log) {
    * Test that the maintenance waits for the replicated log to be present first
    * before creating a replicated state.
    */
-  auto const participantsConfig = ParticipantsConfig{.generation = 1,
-                                                     .participants = {
-                                                         {serverId, {}},
-                                                         {"otherServer", {}},
-                                                     }};
+  auto const participantsConfig =
+      agency::ParticipantsConfig{.generation = 1,
+                                 .participants = {
+                                     {serverId, {}},
+                                     {"otherServer", {}},
+                                 }};
   auto const localLogs = ReplicatedLogStatusMap{};
   auto const localStates = ReplicatedStateStatusMap{};
   auto const planLogs = ReplicatedLogSpecMap{
@@ -90,11 +91,12 @@ TEST_F(ReplicatedStateMaintenanceTest, create_state_test_with_local_log) {
   /*
    * Test that the maintenance create an action to create the replicated state.
    */
-  auto const participantsConfig = ParticipantsConfig{.generation = 1,
-                                                     .participants = {
-                                                         {serverId, {}},
-                                                         {"otherServer", {}},
-                                                     }};
+  auto const participantsConfig =
+      agency::ParticipantsConfig{.generation = 1,
+                                 .participants = {
+                                     {serverId, {}},
+                                     {"otherServer", {}},
+                                 }};
   auto const localLogs = ReplicatedLogStatusMap{
       {logId,
        replicated_log::QuickLogStatus{
@@ -140,11 +142,12 @@ TEST_F(ReplicatedStateMaintenanceTest,
    * Test that the maintenance creates a replicated state and forwards the
    * current entry into the action.
    */
-  auto const participantsConfig = ParticipantsConfig{.generation = 1,
-                                                     .participants = {
-                                                         {serverId, {}},
-                                                         {"otherServer", {}},
-                                                     }};
+  auto const participantsConfig =
+      agency::ParticipantsConfig{.generation = 1,
+                                 .participants = {
+                                     {serverId, {}},
+                                     {"otherServer", {}},
+                                 }};
   auto const localLogs = ReplicatedLogStatusMap{
       {logId,
        replicated_log::QuickLogStatus{
@@ -198,11 +201,12 @@ TEST_F(ReplicatedStateMaintenanceTest, do_nothing_if_stable) {
   /*
    * Check that if the configuration is stable, nothing happens.
    */
-  auto const participantsConfig = ParticipantsConfig{.generation = 1,
-                                                     .participants = {
-                                                         {serverId, {}},
-                                                         {"otherServer", {}},
-                                                     }};
+  auto const participantsConfig =
+      agency::ParticipantsConfig{.generation = 1,
+                                 .participants = {
+                                     {serverId, {}},
+                                     {"otherServer", {}},
+                                 }};
   auto const localLogs = ReplicatedLogStatusMap{
       {logId,
        replicated_log::QuickLogStatus{
@@ -251,11 +255,12 @@ TEST_F(ReplicatedStateMaintenanceTest, check_resync_if_generation_changes) {
   /*
    * Check that the maintenance triggers a resync if the generation changes.
    */
-  auto const participantsConfig = ParticipantsConfig{.generation = 1,
-                                                     .participants = {
-                                                         {serverId, {}},
-                                                         {"otherServer", {}},
-                                                     }};
+  auto const participantsConfig =
+      agency::ParticipantsConfig{.generation = 1,
+                                 .participants = {
+                                     {serverId, {}},
+                                     {"otherServer", {}},
+                                 }};
   auto const localLogs = ReplicatedLogStatusMap{
       {logId,
        replicated_log::QuickLogStatus{

@@ -23,11 +23,9 @@
 
 #include "QueryOptions.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
-#include "RestServer/QueryRegistryFeature.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -40,10 +38,12 @@ size_t QueryOptions::defaultMaxNumberOfPlans = 128;
 #ifdef __APPLE__
 // On OSX the default stack size for worker threads (non-main thread) is 512kb
 // which is rather low, so we have to use a lower default
-size_t QueryOptions::defaultMaxNodesPerCallstack = 200;
+size_t QueryOptions::defaultMaxNodesPerCallstack = 150;
 #else
 size_t QueryOptions::defaultMaxNodesPerCallstack = 250;
 #endif
+size_t QueryOptions::defaultSpillOverThresholdNumRows = 5000000;
+size_t QueryOptions::defaultSpillOverThresholdMemoryUsage = 128 * 1024 * 1024;
 double QueryOptions::defaultMaxRuntime = 0.0;
 double QueryOptions::defaultTtl;
 bool QueryOptions::defaultFailOnWarning = false;
@@ -54,6 +54,9 @@ QueryOptions::QueryOptions()
       maxNumberOfPlans(QueryOptions::defaultMaxNumberOfPlans),
       maxWarningCount(10),
       maxNodesPerCallstack(QueryOptions::defaultMaxNodesPerCallstack),
+      spillOverThresholdNumRows(QueryOptions::defaultSpillOverThresholdNumRows),
+      spillOverThresholdMemoryUsage(
+          QueryOptions::defaultSpillOverThresholdMemoryUsage),
       maxRuntime(0.0),
       satelliteSyncWait(60.0),
       ttl(QueryOptions::defaultTtl),  // get global default ttl
@@ -141,6 +144,16 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
     maxNodesPerCallstack = value.getNumber<size_t>();
   }
 
+  value = slice.get("spillOverThresholdNumRows");
+  if (value.isNumber()) {
+    spillOverThresholdNumRows = value.getNumber<size_t>();
+  }
+
+  value = slice.get("spillOverThresholdMemoryUsage");
+  if (value.isNumber()) {
+    spillOverThresholdMemoryUsage = value.getNumber<size_t>();
+  }
+
   value = slice.get("maxRuntime");
   if (value.isNumber()) {
     maxRuntime = value.getNumber<double>();
@@ -208,7 +221,8 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   // note: skipAudit is intentionally not read here.
   // the end user cannot override this setting
 
-  if (value = slice.get("forceOneShardAttributeValue"); value.isString()) {
+  if (value = slice.get(StaticStrings::ForceOneShardAttributeValue);
+      value.isString()) {
     forceOneShardAttributeValue = value.copyString();
   }
 
@@ -261,6 +275,10 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
   builder.add("maxNumberOfPlans", VPackValue(maxNumberOfPlans));
   builder.add("maxWarningCount", VPackValue(maxWarningCount));
   builder.add("maxNodesPerCallstack", VPackValue(maxNodesPerCallstack));
+  builder.add("spillOverThresholdNumRows",
+              VPackValue(spillOverThresholdNumRows));
+  builder.add("spillOverThresholdMemoryUsage",
+              VPackValue(spillOverThresholdMemoryUsage));
   builder.add("maxRuntime", VPackValue(maxRuntime));
   builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
   builder.add("ttl", VPackValue(ttl));
@@ -277,7 +295,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
   builder.add("fullCount", VPackValue(fullCount));
   builder.add("count", VPackValue(count));
   if (!forceOneShardAttributeValue.empty()) {
-    builder.add("forceOneShardAttributeValue",
+    builder.add(StaticStrings::ForceOneShardAttributeValue,
                 VPackValue(forceOneShardAttributeValue));
   }
 

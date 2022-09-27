@@ -79,6 +79,12 @@ void ShardingFeature::prepare() {
         return std::make_unique<ShardingStrategyEnterpriseHashSmartEdge>(
             sharding);
       });
+  registerFactory(
+      ShardingStrategyEnterpriseHexSmartVertex::NAME,
+      [](ShardingInfo* sharding) {
+        return std::make_unique<ShardingStrategyEnterpriseHexSmartVertex>(
+            sharding);
+      });
 #else
   // in the Community Edition register some stand-ins for the sharding
   // strategies only available in the Enterprise Edition
@@ -133,7 +139,7 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::fromVelocyPack(
     if (s.isString()) {
       name = s.copyString();
     } else {
-      name = getDefaultShardingStrategy(sharding);
+      name = getDefaultShardingStrategyForNewCollection(slice);
     }
   }
 
@@ -154,28 +160,6 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::create(
   return (*it).second(sharding);
 }
 
-std::string ShardingFeature::getDefaultShardingStrategy(
-    ShardingInfo const* sharding) const {
-  TRI_ASSERT(ServerState::instance()->isRunningInCluster());
-  // TODO change these to use better algorithms when we no longer
-  //      need to support collections created before 3.4
-
-  // before 3.4, there were only hard-coded sharding strategies
-
-  // no sharding strategy found in collection meta data
-#ifdef USE_ENTERPRISE
-  if (sharding->collection()->isSmart() &&
-      sharding->collection()->type() == TRI_COL_TYPE_EDGE) {
-    // smart edge collection
-    return ShardingStrategyEnterpriseSmartEdgeCompat::NAME;
-  }
-
-  return ShardingStrategyEnterpriseCompat::NAME;
-#else
-  return ShardingStrategyCommunityCompat::NAME;
-#endif
-}
-
 std::string ShardingFeature::getDefaultShardingStrategyForNewCollection(
     VPackSlice const& properties) const {
   // from 3.4 onwards, the default sharding strategy for new collections is
@@ -186,12 +170,30 @@ std::string ShardingFeature::getDefaultShardingStrategyForNewCollection(
   bool isEdge =
       TRI_COL_TYPE_EDGE == VelocyPackHelper::getNumericValue<uint32_t>(
                                properties, "type", TRI_COL_TYPE_DOCUMENT);
-  if (isSmart && isEdge) {
-    // smart edge collection
-    return ShardingStrategyEnterpriseHashSmartEdge::NAME;
+  if (isSmart) {
+    if (isEdge) {
+      // Smart Edge Collection
+      return ShardingStrategyEnterpriseHashSmartEdge::NAME;
+    } else {
+      // Smart Vertex Collection
+      // We need to differentiate between SmartGraphs and EnterpriseGraphs here.
+      VPackSlice sga = properties.get(StaticStrings::GraphSmartGraphAttribute);
+      if (sga.isNone()) {
+        // Means we're in the EnterpriseGraph Case.
+        // In case we do have a SmartVertex collection without a
+        // SmartGraphAttribute given, we use a different sharding strategy.
+        // In case it is given, we fall back to the default ShardingStrategyHash
+        // strategy.
+        return ShardingStrategyEnterpriseHexSmartVertex::NAME;
+      } else {
+        // Means we're in the SmartGraph case.
+        return ShardingStrategyHash::NAME;
+      }
+    }
   }
 #endif
 
+  // Info: Satellite collections will use this ShardingStrategy as well.
   return ShardingStrategyHash::NAME;
 }
 

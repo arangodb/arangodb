@@ -30,31 +30,38 @@
 #include "Logger/LogContextKeys.h"
 #include "Logger/LogMacros.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
+#include "Metrics/MetricsFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 
 auto replicated_state::ReplicatedStateFeature::createReplicatedState(
     std::string_view name, std::shared_ptr<replicated_log::ReplicatedLog> log,
+    std::shared_ptr<StatePersistorInterface> persistor,
     LoggerContext const& loggerContext)
     -> std::shared_ptr<ReplicatedStateBase> {
   auto name_str = std::string{name};
-  if (auto iter = factories.find(name_str); iter != std::end(factories)) {
+  if (auto iter = implementations.find(name_str);
+      iter != std::end(implementations)) {
     auto logId = log->getId();
     auto lc = loggerContext.with<logContextKeyStateImpl>(name_str)
                   .with<logContextKeyLogId>(logId);
     LOG_CTX("24af7", TRACE, lc)
         << "Creating replicated state of type `" << name << "`.";
-    return iter->second->createReplicatedState(std::move(log), std::move(lc));
+    return iter->second.factory->createReplicatedState(
+        std::move(log), std::move(persistor), std::move(lc),
+        iter->second.metrics);
   }
   THROW_ARANGO_EXCEPTION(
       TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);  // TODO fix error code
 }
 
 auto replicated_state::ReplicatedStateFeature::createReplicatedState(
-    std::string_view name, std::shared_ptr<replicated_log::ReplicatedLog> log)
+    std::string_view name, std::shared_ptr<replicated_log::ReplicatedLog> log,
+    std::shared_ptr<StatePersistorInterface> persistor)
     -> std::shared_ptr<ReplicatedStateBase> {
-  return createReplicatedState(name, std::move(log),
+  return createReplicatedState(name, std::move(log), std::move(persistor),
                                LoggerContext(Logger::REPLICATED_STATE));
 }
 
@@ -67,6 +74,26 @@ void replicated_state::ReplicatedStateFeature::assertWasInserted(
   }
 }
 
+auto replicated_state::ReplicatedStateFeature::createMetricsObject(
+    std::string_view name) -> std::shared_ptr<ReplicatedStateMetrics> {
+  struct ReplicatedStateMetricsMock : ReplicatedStateMetrics {
+    explicit ReplicatedStateMetricsMock(std::string_view name)
+        : ReplicatedStateMetrics(nullptr, name) {}
+  };
+
+  return std::make_shared<ReplicatedStateMetricsMock>(name);
+}
+
 replicated_state::ReplicatedStateAppFeature::ReplicatedStateAppFeature(
     Server& server)
-    : ArangodFeature{server, *this} {}
+    : ArangodFeature{server, *this} {
+  setOptional(true);
+  startsAfter<ReplicatedLogFeature>();
+  onlyEnabledWith<ReplicatedLogFeature>();
+}
+
+auto replicated_state::ReplicatedStateAppFeature::createMetricsObject(
+    std::string_view impl) -> std::shared_ptr<ReplicatedStateMetrics> {
+  return std::make_shared<ReplicatedStateMetrics>(
+      this->server().getFeature<metrics::MetricsFeature>(), impl);
+}

@@ -167,9 +167,9 @@ auto MultiDependencySingleRowFetcher::executeForDependency(
   }
   TRI_ASSERT(block != nullptr);
   auto [start, end] = block->getRelevantRange();
-  return {
-      state, skipped,
-      AqlItemBlockInputRange{execState, skipped.getSkipCount(), block, start}};
+  return {state, skipped,
+          AqlItemBlockInputRange{execState, skipped.getSkipCount(),
+                                 std::move(block), start}};
 }
 
 auto MultiDependencySingleRowFetcher::execute(AqlCallStack const& stack,

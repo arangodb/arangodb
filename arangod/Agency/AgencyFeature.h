@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Agency/Agent.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -36,6 +35,7 @@ class AgencyFeature : public ArangodFeature {
   static constexpr std::string_view name() { return "Agency"; }
 
   explicit AgencyFeature(Server& server);
+  ~AgencyFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

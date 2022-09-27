@@ -39,19 +39,17 @@ class EndpointFeature final : public HttpEndpointProvider {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  void start() override final;
 
- private:
-  std::vector<std::string> _endpoints;
-  bool _reuseAddress;
-  uint64_t _backlogSize;
-
- public:
   std::vector<std::string> httpEndpoints() override;
+  EndpointList& endpointList() { return _endpointList; }
   EndpointList const& endpointList() const { return _endpointList; }
 
  private:
   void buildEndpointLists();
+
+  std::vector<std::string> _endpoints;
+  bool _reuseAddress;
+  uint64_t _backlogSize;
 
   EndpointList _endpointList;
 };

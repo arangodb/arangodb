@@ -91,7 +91,7 @@ AqlValue evaluateDistanceFunction(std::span<AqlValue const> params,
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
   fakeit::When(Method(expressionContextMock, registerWarning))
-      .AlwaysDo([](ErrorCode, char const*) {});
+      .AlwaysDo([](ErrorCode, std::string_view) {});
 
   VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;
@@ -181,7 +181,7 @@ void assertDistanceFunctionFail(char const* x, char const* y,
 TEST(DistanceFuncton, CosineSimilarityTest) {
   // preparing
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
-  arangodb::aql::Function f("COSINE_SIMILARITY", &Functions::CosineSimilarity);
+  arangodb::aql::Function f("COSINE_SIMILARITY", &functions::CosineSimilarity);
   node.setData(static_cast<void const*>(&f));
 
   // correct result
@@ -192,6 +192,8 @@ TEST(DistanceFuncton, CosineSimilarityTest) {
                          "[0.89, 0.19, 1000, 1]", node);
   assertDistanceFunction("0.7817515661170301", "[3456, 191, -90, 500, 0.32]",
                          "[713, 201, 508, -0.5, 0.75]", node);
+  assertDistanceFunction("1.0", "[0,1,3,4]", "[0,1,3,4]", node);
+  assertDistanceFunction("-1.0", "[0,-1,-3,-4]", "[0,1,3,4]", node);
   assertDistanceFunction("-1", "[2]", "[-1]", node);
   assertDistanceFunction("1", "[1]", "[1]", node);
   assertDistanceFunction("-1", "[-1,0]", "[1,0]", node);
@@ -249,7 +251,7 @@ TEST(DistanceFuncton, CosineSimilarityTest) {
 TEST(DistanceFuncton, L1DistanceTest) {
   // preparing
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
-  arangodb::aql::Function f("L1_DISTANCE", &Functions::L1Distance);
+  arangodb::aql::Function f("L1_DISTANCE", &functions::L1Distance);
   node.setData(static_cast<void const*>(&f));
 
   // correct result
@@ -274,7 +276,7 @@ TEST(DistanceFuncton, L1DistanceTest) {
 TEST(DistanceFuncton, L2DistanceTest) {
   // preparing
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
-  arangodb::aql::Function f("L2_DISTANCE", &Functions::L2Distance);
+  arangodb::aql::Function f("L2_DISTANCE", &functions::L2Distance);
   node.setData(static_cast<void const*>(&f));
 
   // correct result

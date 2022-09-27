@@ -67,6 +67,7 @@ class AqlExecutorTestCase : public ::testing::Test {
   virtual ~AqlExecutorTestCase();
 
   auto manager() const -> AqlItemBlockManager&;
+  auto query() const -> std::shared_ptr<arangodb::aql::Query>;
   /**
    * @brief Creates and manages a ExecutionNode.
    *        These nodes can be used to create the Executors

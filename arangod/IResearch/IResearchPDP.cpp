@@ -63,7 +63,7 @@ irs::parametric_description readParametricDescription(
   return irs::read(in);
 }
 
-irs::parametric_description const DESCRIPTIONS[] = {
+irs::parametric_description const kDescriptions[] = {
     // distance 0
     irs::make_parametric_description(0, false),
     irs::make_parametric_description(0, true),
@@ -101,12 +101,12 @@ const irs::parametric_description& getParametricDescription(
     irs::byte_type distance, bool with_transpositions) {
   const size_t idx = args2index(distance, with_transpositions);
 
-  if (idx < IRESEARCH_COUNTOF(DESCRIPTIONS)) {
-    return DESCRIPTIONS[idx];
+  if (idx < std::size(kDescriptions)) {
+    return kDescriptions[idx];
   }
 
-  static const irs::parametric_description INVALID;
-  return INVALID;
+  static const irs::parametric_description kInvalid;
+  return kInvalid;
 }
 
 }  // namespace iresearch

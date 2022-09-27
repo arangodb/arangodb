@@ -126,7 +126,7 @@ describe('Rule optimize-traversals', () => {
       [ `FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN [p]`, true, [ true, false, true ] ],
       [ `FOR v, e IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN [v, e]`, false, [ true, true, false ] ],
       [ `FOR v, e IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN [v]`, true, [ true, false, false ] ],
-      [ `FOR v IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN [v]`, false, [ true, false, false ] ]
+      [ `FOR v IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN [v]`, true, [ true, false, false ] ]
     ];
 
     queries.forEach((query) => {

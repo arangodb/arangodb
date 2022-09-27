@@ -43,6 +43,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/Methods/RocksDBReadOnlyMethods.cpp
   RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.cpp
   RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.cpp
+  RocksDBEngine/Methods/RocksDBSstFileMethods.cpp
   RocksDBEngine/Methods/RocksDBTrxBaseMethods.cpp
   RocksDBEngine/Methods/RocksDBTrxMethods.cpp
   RocksDBEngine/RocksDBBackgroundThread.cpp
@@ -69,6 +70,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBMetadata.cpp
   RocksDBEngine/RocksDBOptimizerRules.cpp
   RocksDBEngine/RocksDBOptionFeature.cpp
+  RocksDBEngine/RocksDBOptionsProvider.cpp
   RocksDBEngine/RocksDBPersistedLog.cpp
   RocksDBEngine/RocksDBPrimaryIndex.cpp
   RocksDBEngine/RocksDBRecoveryManager.cpp
@@ -84,6 +86,8 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBSavePoint.cpp
   RocksDBEngine/RocksDBSettingsManager.cpp
   RocksDBEngine/RocksDBSyncThread.cpp
+  RocksDBEngine/RocksDBSortedRowsStorageContext.cpp
+  RocksDBEngine/RocksDBTempStorage.cpp
   RocksDBEngine/RocksDBTransactionCollection.cpp
   RocksDBEngine/RocksDBTransactionMethods.cpp
   RocksDBEngine/RocksDBTransactionState.cpp
@@ -98,5 +102,6 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/ReplicatedRocksDBTransactionCollection.cpp
   RocksDBEngine/ReplicatedRocksDBTransactionState.cpp
   RocksDBEngine/SimpleRocksDBTransactionState.cpp
+  RocksDBEngine/SortedRowsStorageBackendRocksDB.cpp
 )
 set(ROCKSDB_SOURCES ${ROCKSDB_SOURCES} PARENT_SCOPE)

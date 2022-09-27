@@ -30,12 +30,15 @@
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionInfoCurrent.h"
+#include "Containers/SmallVector.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
-#include "ShardDistributionReporter.h"
+#include "Sharding/ShardDistributionReporter.h"
+#include "Sharding/ShardingInfo.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -95,7 +98,7 @@ static inline bool TestIsShardInSync(std::vector<ServerID> plannedServers,
 //////////////////////////////////////////////////////////////////////////////
 
 static void ReportShardNoProgress(
-    std::string const& shardId, std::vector<ServerID> const& respServers,
+    std::string_view shardId, std::vector<ServerID> const& respServers,
     containers::FlatHashMap<ServerID, std::string> const& aliases,
     VPackBuilder& result) {
   TRI_ASSERT(result.isOpenObject());
@@ -192,12 +195,24 @@ static void ReportShardProgress(
 //////////////////////////////////////////////////////////////////////////////
 
 static void ReportPartialNoProgress(
-    ShardMap const* shardIds,
+    ShardMap const& shardIds,
     containers::FlatHashMap<ServerID, std::string> const& aliases,
     VPackBuilder& result) {
+  // create a sorted list of shards, so that the callers will get the
+  // shard list in a deterministic order (this is very useful for the UI).
+  containers::SmallVector<std::string_view, 8> sortedShards;
+  sortedShards.reserve(shardIds.size());
+
+  for (auto const& s : shardIds) {
+    sortedShards.emplace_back(s.first);
+  }
+  // sorts sortedShards in place in a deterministic order
+  ShardingInfo::sortShardNamesNumerically(sortedShards);
+
   TRI_ASSERT(result.isOpenObject());
-  for (auto const& s : *shardIds) {
-    ReportShardNoProgress(s.first, s.second, aliases, result);
+
+  for (auto const& s : sortedShards) {
+    ReportShardNoProgress(s, shardIds.at(s), aliases, result);
   }
 }
 
@@ -219,7 +234,7 @@ static void ReportInSync(
     // Add Plan
     result.add(VPackValue("Plan"));
     result.openObject();
-    ReportPartialNoProgress(shardIds, aliases, result);
+    ReportPartialNoProgress(*shardIds, aliases, result);
     result.close();
   }
 
@@ -227,7 +242,7 @@ static void ReportInSync(
     // Add Current
     result.add(VPackValue("Current"));
     result.openObject();
-    ReportPartialNoProgress(shardIds, aliases, result);
+    ReportPartialNoProgress(*shardIds, aliases, result);
     result.close();
   }
   result.close();

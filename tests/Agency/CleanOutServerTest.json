@@ -29,6 +29,26 @@ R"=(
               ]
             }
           }
+        },
+        "database2": {
+          "collection2": {
+            "replicationFactor": 3,
+            "shards": {
+              "shard": [
+                "leader",
+                "follower1",
+                "follower2"
+              ]
+            }
+          }
+        }
+      },
+      "Databases": {
+        "database": {
+          "replicationVersion": "1"
+        },
+        "database2": {
+          "replicationVersion": "2"
         }
       },
       "DBServers": {

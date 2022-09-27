@@ -35,7 +35,6 @@ const replicatedLogCreateSuite = function () {
   const targetConfig = {
     writeConcern: 2,
     softWriteConcern: 2,
-    replicationFactor: 3,
     waitForSync: false,
   };
 
@@ -83,6 +82,13 @@ const replicatedLogCreateSuite = function () {
       const log = db._createReplicatedLog({servers, config: targetConfig});
       const status = log.status();
       assertEqual(Object.keys(status.participants).sort(), servers.sort());
+    },
+
+    testCreateWithNumberOfServers: function () {
+      const servers = _.sampleSize(lh.dbservers, 3);
+      const log = db._createReplicatedLog({servers, config: targetConfig, numberOfServers: 4});
+      const status = log.status();
+      assertEqual(Object.keys(status.participants).length, 4);
     },
   };
 };

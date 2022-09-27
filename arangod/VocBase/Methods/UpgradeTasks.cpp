@@ -25,12 +25,14 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "Containers/SmallVector.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
@@ -102,10 +104,10 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
 Result upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
   auto collections = vocbase.collections(false);
 
-  for (auto collection : collections) {
+  for (auto const& collection : collections) {
     auto indexes = collection->getIndexes();
-    for (auto index : indexes) {
-      RocksDBIndex* rIndex = static_cast<RocksDBIndex*>(index.get());
+    for (auto const& index : indexes) {
+      auto* rIndex = basics::downCast<RocksDBIndex>(index.get());
       if (index->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
           index->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
         LOG_TOPIC("5e53d", INFO, Logger::STARTUP)
@@ -127,18 +129,13 @@ Result upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
 Result createSystemCollections(
     TRI_vocbase_t& vocbase,
     std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
-  typedef std::function<void(std::shared_ptr<LogicalCollection> const&)>
-      FuncCallback;
-  FuncCallback const noop =
-      [](std::shared_ptr<LogicalCollection> const&) -> void {};
   OperationOptions options(ExecContext::current());
 
   std::vector<CollectionCreationInfo> systemCollectionsToCreate;
   // the order of systemCollections is important. If we're in _system db, the
   // UsersCollection needs to be first, otherwise, the GraphsCollection must be
   // first.
-  std::vector<std::string> systemCollections;
-  systemCollections.reserve(10);
+  containers::SmallVector<std::string, 12> systemCollections;
   std::shared_ptr<LogicalCollection> colToDistributeShardsLike;
   Result res;
 
@@ -149,7 +146,7 @@ Result createSystemCollections(
                                        coll);
     if (res.ok()) {
       TRI_ASSERT(coll);
-      if (coll && coll.get()->distributeShardsLike().empty()) {
+      if (coll && coll->distributeShardsLike().empty()) {
         // We have a graphs collection, and this is not sharded by something
         // else.
         colToDistributeShardsLike = std::move(coll);
@@ -250,7 +247,7 @@ Result createSystemCollections(
 
   // We capture the vector of created LogicalCollections here
   // to use it to create indices later.
-  if (systemCollectionsToCreate.size() > 0) {
+  if (!systemCollectionsToCreate.empty()) {
     std::vector<std::shared_ptr<LogicalCollection>> cols;
 
     res = methods::Collections::create(
@@ -271,24 +268,17 @@ Result createSystemStatisticsCollections(
     TRI_vocbase_t& vocbase,
     std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
   if (vocbase.isSystem()) {
-    typedef std::function<void(std::shared_ptr<LogicalCollection> const&)>
-        FuncCallback;
-    FuncCallback const noop =
-        [](std::shared_ptr<LogicalCollection> const&) -> void {};
-
     std::vector<CollectionCreationInfo> systemCollectionsToCreate;
     // the order of systemCollections is important. If we're in _system db, the
     // UsersCollection needs to be first, otherwise, the GraphsCollection must
     // be first.
-    std::vector<std::string> systemCollections;
-
-    Result res;
-    systemCollections.push_back(StaticStrings::StatisticsCollection);
-    systemCollections.push_back(StaticStrings::Statistics15Collection);
-    systemCollections.push_back(StaticStrings::StatisticsRawCollection);
-
+    std::array<std::string, 3> systemCollections{
+        StaticStrings::StatisticsCollection,
+        StaticStrings::Statistics15Collection,
+        StaticStrings::StatisticsRawCollection,
+    };
     std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> buffers;
-
+    Result res;
     for (auto const& collection : systemCollections) {
       std::shared_ptr<LogicalCollection> col;
       res = methods::Collections::lookup(vocbase, collection, col);
@@ -311,7 +301,7 @@ Result createSystemStatisticsCollections(
 
     // We capture the vector of created LogicalCollections here
     // to use it to create indices later.
-    if (systemCollectionsToCreate.size() > 0) {
+    if (!systemCollectionsToCreate.empty()) {
       std::vector<std::shared_ptr<LogicalCollection>> cols;
       OperationOptions options(ExecContext::current());
       res = methods::Collections::create(
@@ -328,7 +318,7 @@ Result createSystemStatisticsCollections(
   return {TRI_ERROR_NO_ERROR};
 }
 
-static Result createIndex(
+Result createIndex(
     std::string const& name, Index::IndexType type,
     std::vector<std::string> const& fields, bool unique, bool sparse,
     std::vector<std::shared_ptr<LogicalCollection>>& collections) {
@@ -342,8 +332,8 @@ static Result createIndex(
                      return col->name() == name;
                    });
   if (colIt == collections.end()) {
-    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                  "Collection " + name + " not found");
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+            "Collection " + name + " not found"};
   }
   return methods::Indexes::createIndex(colIt->get(), type, fields, unique,
                                        sparse, false /*estimates*/);
@@ -615,7 +605,7 @@ bool UpgradeTasks::renameReplicationApplierStateFiles(
               << "' to '" << dest << "'";
           result = false;
         }
-        return Result();
+        return {};
       });
   if (res.fail()) {
     return false;

@@ -75,6 +75,8 @@ class GraphProviderTest : public ::testing::Test {
   std::unique_ptr<arangodb::aql::FixedVarExpressionContext> _expressionContext;
 
   std::unordered_map<std::string, std::vector<std::string>> _emptyShardMap{};
+  aql::Projections _vertexProjections{};
+  aql::Projections _edgeProjections{};
 
   GraphProviderTest() {}
   ~GraphProviderTest() {}
@@ -132,7 +134,8 @@ class GraphProviderTest : public ::testing::Test {
           std::make_pair(
               std::move(usedIndexes),
               std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
-          *_expressionContext.get(), {}, _emptyShardMap);
+          *_expressionContext.get(), {}, _emptyShardMap, _vertexProjections,
+          _edgeProjections);
       return SingleServerProvider<SingleServerProviderStep>(
           *query.get(), std::move(opts), resourceMonitor);
     }
@@ -142,7 +145,7 @@ class GraphProviderTest : public ::testing::Test {
       std::vector<arangodb::tests::PreparedRequestResponse> preparedResponses;
       uint64_t engineId = 0;
       {
-        arangodb::tests::mocks::MockDBServer server{true, true};
+        arangodb::tests::mocks::MockDBServer server{"PRMR_0001", true, true};
         graph.prepareServer(server);
 
         auto queryString =
@@ -200,7 +203,8 @@ class GraphProviderTest : public ::testing::Test {
 #endif
       }
 
-      server = std::make_unique<mocks::MockCoordinator>(true, false);
+      server =
+          std::make_unique<mocks::MockCoordinator>("CRDN_0001", true, false);
       mocks::MockCoordinator* srv =
           static_cast<mocks::MockCoordinator*>(server.get());
       graph.prepareServer(*srv);

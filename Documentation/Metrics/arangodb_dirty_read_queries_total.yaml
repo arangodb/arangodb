@@ -1,0 +1,15 @@
+name: arangodb_dirty_read_queries_total
+introducedIn: "3.10.0"
+help: |
+  Number of AQL queries which have been executed with dirty reads.
+unit: number
+type: counter
+category: AQL
+complexity: simple
+exposedBy:
+  - coordinator
+description: |
+  This counter exposes the number of AQL queries which have been executed
+  with "dirty reads". A dirty read is one which may also use follower shards
+  and not only leader shards. Note that it is the transaction in the context
+  of which the AQL runs which determines, if dirty reads are allowed.

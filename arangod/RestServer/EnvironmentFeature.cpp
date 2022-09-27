@@ -35,6 +35,7 @@
 #include "Basics/PhysicalMemory.h"
 #include "Basics/Result.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Logger/LogMacros.h"
@@ -177,10 +178,11 @@ void EnvironmentFeature::prepare() {
           }
         }
         while (end < cpuAlignment.size()) {
-          ++end;
           if (cpuAlignment[end] < '0' || cpuAlignment[end] > '9') {
+            ++end;
             break;
           }
+          ++end;
         }
 
         int64_t alignment =
@@ -430,10 +432,10 @@ void EnvironmentFeature::prepare() {
       //    4 = Zone reclaim swaps pages
       //
       // https://www.poempelfox.de/blog/2010/03/19/
-      LOG_TOPIC("7a7af", WARN, Logger::PERFORMANCE)
+      LOG_TOPIC("7a7af", WARN, Logger::MEMORY)
           << "/proc/sys/vm/zone_reclaim_mode is set to '" << v
           << "'. It is recommended to set it to a value of 0";
-      LOG_TOPIC("11b2b", WARN, Logger::PERFORMANCE)
+      LOG_TOPIC("11b2b", WARN, Logger::MEMORY)
           << "execute 'sudo bash -c \"echo 0 > "
              "/proc/sys/vm/zone_reclaim_mode\"'";
     }
@@ -480,7 +482,7 @@ void EnvironmentFeature::prepare() {
         auto where = first.find(' ');
 
         if (where != std::string::npos &&
-            !StringUtils::isPrefix(first.substr(where), " interleave")) {
+            !first.substr(where).starts_with(" interleave")) {
           LOG_TOPIC("3e451", WARN, Logger::MEMORY)
               << "It is recommended to set NUMA to interleaved.";
           LOG_TOPIC("b25a4", WARN, Logger::MEMORY)

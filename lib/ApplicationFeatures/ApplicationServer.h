@@ -24,14 +24,18 @@
 #pragma once
 
 #include <atomic>
+#include <cstddef>
 #include <functional>
 #include <memory>
+#include <mutex>
+#include <span>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <typeindex>
 #include <unordered_map>
+#include <utility>
 #include <vector>
-#include <span>
 #include <boost/type_index/ctti_type_index.hpp>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
@@ -144,7 +148,10 @@ class ApplicationServer {
   bool helpShown() const { return !_helpSection.empty(); }
 
   /// @brief stringify the internal state
-  char const* stringifyState() const;
+  std::string_view stringifyState() const;
+
+  /// @brief stringify the given state
+  static std::string_view stringifyState(State state);
 
   /// @brief whether or not the server has made it as least as far as the
   /// IN_START state
@@ -186,12 +193,15 @@ class ApplicationServer {
     return _state.load(std::memory_order_acquire);
   }
 
+  // return the current progress, as string values (phase, feature name)
+  std::pair<std::string, std::string> progressInfo() const;
+
   void addReporter(ProgressHandler reporter) {
-    _progressReports.emplace_back(reporter);
+    _progressReports.emplace_back(std::move(reporter));
   }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  void setBinaryPath(const char* path) { _binaryPath = path; }
+  void setBinaryPath(char const* path) { _binaryPath = path; }
 #endif
 
   char const* getBinaryPath() const { return _binaryPath; }
@@ -221,6 +231,9 @@ class ApplicationServer {
 
  private:
   friend class ApplicationFeature;
+
+  // set the current progress (string versions)
+  void progressInfo(std::string_view phase, std::string_view feature);
 
   // checks for the existence of a feature by type. will not throw when used
   // for a non-existing feature
@@ -296,6 +309,14 @@ class ApplicationServer {
 
   // reporter for progress
   std::vector<ProgressHandler> _progressReports;
+
+  // mutex for protecting _progressPhase and _progressFeature
+  mutable std::mutex _progressMutex;
+
+  // stringified progress value (phase)
+  std::string _progressPhase;
+  // stringified progress value (feature name)
+  std::string _progressFeature;
 
   // callbacks that are called after start
   std::vector<std::function<void()>> _startupCallbacks;

@@ -151,8 +151,7 @@ class IResearchFilterArrayIntervalTest
 
 namespace {
 // Auxilary check lambdas. Need them to check by_range part of expected filter
-auto checkLess = [](irs::boolean_filter::const_iterator& filter,
-                    irs::bytes_ref term, irs::string_ref field) {
+auto checkLess = [](auto& filter, irs::bytes_ref term, irs::string_ref field) {
   ASSERT_EQ(irs::type<irs::by_range>::id(), filter->type());
   auto& actual = dynamic_cast<irs::by_range const&>(*filter);
   irs::by_range expected;
@@ -162,8 +161,8 @@ auto checkLess = [](irs::boolean_filter::const_iterator& filter,
   EXPECT_EQ(expected, actual);
 };
 
-auto checkLessEqual = [](irs::boolean_filter::const_iterator& filter,
-                         irs::bytes_ref term, irs::string_ref field) {
+auto checkLessEqual = [](auto& filter, irs::bytes_ref term,
+                         irs::string_ref field) {
   ASSERT_EQ(irs::type<irs::by_range>::id(), filter->type());
   auto& actual = dynamic_cast<irs::by_range const&>(*filter);
   irs::by_range expected;
@@ -173,8 +172,8 @@ auto checkLessEqual = [](irs::boolean_filter::const_iterator& filter,
   EXPECT_EQ(expected, actual);
 };
 
-auto checkGreaterEqual = [](irs::boolean_filter::const_iterator& filter,
-                            irs::bytes_ref term, irs::string_ref field) {
+auto checkGreaterEqual = [](auto& filter, irs::bytes_ref term,
+                            irs::string_ref field) {
   ASSERT_EQ(irs::type<irs::by_range>::id(), filter->type());
   auto& actual = dynamic_cast<irs::by_range const&>(*filter);
   irs::by_range expected;
@@ -184,8 +183,8 @@ auto checkGreaterEqual = [](irs::boolean_filter::const_iterator& filter,
   EXPECT_EQ(expected, actual);
 };
 
-auto checkGreater = [](irs::boolean_filter::const_iterator& filter,
-                       irs::bytes_ref term, irs::string_ref field) {
+auto checkGreater = [](auto& filter, irs::bytes_ref term,
+                       irs::string_ref field) {
   ASSERT_EQ(irs::type<irs::by_range>::id(), filter->type());
   auto& actual = dynamic_cast<irs::by_range const&>(*filter);
   irs::by_range expected;
@@ -196,7 +195,7 @@ auto checkGreater = [](irs::boolean_filter::const_iterator& filter,
 };
 
 // Auxilary check lambdas. Need them to check root part of expected filter
-auto checkAny = [](irs::Or& actual, iresearch::boost_t boost) {
+auto checkAny = [](irs::Or& actual, irs::score_t boost) {
   EXPECT_EQ(1, actual.size());
   EXPECT_EQ(irs::type<irs::Or>::id(), actual.begin()->type());
   auto& root = dynamic_cast<const irs::Or&>(*actual.begin());
@@ -204,7 +203,7 @@ auto checkAny = [](irs::Or& actual, iresearch::boost_t boost) {
   EXPECT_EQ(boost, root.boost());
   return root.begin();
 };
-auto checkAll = [](irs::Or& actual, iresearch::boost_t boost) {
+auto checkAll = [](irs::Or& actual, irs::score_t boost) {
   EXPECT_EQ(1, actual.size());
   EXPECT_EQ(irs::type<irs::And>::id(), actual.begin()->type());
   auto& root = dynamic_cast<const irs::And&>(*actual.begin());
@@ -212,7 +211,7 @@ auto checkAll = [](irs::Or& actual, iresearch::boost_t boost) {
   EXPECT_EQ(boost, root.boost());
   return root.begin();
 };
-auto checkNone = [](irs::Or& actual, iresearch::boost_t boost) {
+auto checkNone = [](irs::Or& actual, irs::score_t boost) {
   // none for now is like All but with inverted interval check
   EXPECT_EQ(1, actual.size());
   EXPECT_EQ(irs::type<irs::And>::id(), actual.begin()->type());
@@ -221,13 +220,14 @@ auto checkNone = [](irs::Or& actual, iresearch::boost_t boost) {
   EXPECT_EQ(boost, root.boost());
   return root.begin();
 };
-std::vector<
-    std::pair<std::string,
-              std::pair<std::function<irs::boolean_filter::const_iterator(
-                            irs::Or&, iresearch::boost_t)>,
-                        std::function<void(irs::boolean_filter::const_iterator&,
-                                           irs::bytes_ref const&,
-                                           irs::string_ref const&)>>>>
+
+using iterator =
+    irs::ptr_iterator<std::vector<irs::filter::ptr>::const_iterator>;
+
+std::vector<std::pair<
+    std::string, std::pair<std::function<iterator(irs::Or&, irs::score_t)>,
+                           std::function<void(iterator&, irs::bytes_ref const&,
+                                              irs::string_ref const&)>>>>
     intervalOperations = {{"ANY >", {checkAny, checkGreater}},
                           {"ANY >=", {checkAny, checkGreaterEqual}},
                           {"ANY <", {checkAny, checkLess}},

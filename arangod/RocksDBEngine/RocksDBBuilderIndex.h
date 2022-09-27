@@ -23,12 +23,51 @@
 
 #pragma once
 
+#include "Basics/Result.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionCollection.h"
 
 #include <atomic>
-#include <mutex>
 
 namespace arangodb {
+
+namespace trx {
+struct BuilderTrx : public arangodb::transaction::Methods {
+  BuilderTrx(
+      std::shared_ptr<arangodb::transaction::Context> const& transactionContext,
+      arangodb::LogicalDataSource const& collection,
+      arangodb::AccessMode::Type type)
+      : arangodb::transaction::Methods(transactionContext),
+        _cid(collection.id()) {
+    // add the (sole) data-source
+    addCollection(collection.id(), collection.name(), type);
+    addHint(arangodb::transaction::Hints::Hint::NO_DLD);
+  }
+
+  /// @brief get the underlying transaction collection
+  arangodb::RocksDBTransactionCollection* resolveTrxCollection() {
+    return static_cast<arangodb::RocksDBTransactionCollection*>(
+        trxCollection(_cid));
+  }
+
+ private:
+  arangodb::DataSourceId _cid;
+};
+}  // namespace trx
+
+Result partiallyCommitInsertions(rocksdb::WriteBatchBase& batch,
+                                 rocksdb::DB* rootDB,
+                                 RocksDBTransactionCollection* trxColl,
+                                 std::atomic<uint64_t>& docsProcessed,
+                                 RocksDBIndex& ridx, bool isForeground);
+
+Result fillIndexSingleThreaded(
+    bool foreground, RocksDBMethods& batched, rocksdb::Options const& dbOptions,
+    rocksdb::WriteBatchBase& batch, std::atomic<std::uint64_t>& docsProcessed,
+    trx::BuilderTrx& trx, RocksDBIndex& ridx, rocksdb::Snapshot const* snap,
+    rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> it);
 
 class RocksDBCollection;
 
@@ -38,7 +77,7 @@ class RocksDBCollection;
 class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
  public:
   explicit RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex>,
-                               uint64_t numDocsHint);
+                               uint64_t numDocsHint, size_t parallelism);
 
   /// @brief return a VelocyPack representation of the index
   void toVelocyPack(
@@ -122,8 +161,13 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   Result fillIndexBackground(Locker& locker);
 
  private:
+  static constexpr uint64_t kThreadBatchSize = 100000;
+  static constexpr size_t kSingleThreadThreshold = 120000;
+
   std::shared_ptr<arangodb::RocksDBIndex> _wrapped;
-  std::uint64_t _numDocsHint;
   std::atomic<uint64_t> _docsProcessed;
+  uint64_t const _numDocsHint;
+  size_t const _numThreads;
 };
+
 }  // namespace arangodb

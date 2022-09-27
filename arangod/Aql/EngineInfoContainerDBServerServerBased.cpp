@@ -101,7 +101,7 @@ void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node,
   switch (node->getType()) {
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::SHORTEST_PATH:
-    case ExecutionNode::K_SHORTEST_PATHS: {
+    case ExecutionNode::ENUMERATE_PATHS: {
       auto* const graphNode = ExecutionNode::castTo<GraphNode*>(node);
       graphNode->prepareOptions();
       break;
@@ -199,8 +199,10 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
   network::Headers headers;
   ClusterTrxMethods::addAQLTransactionHeader(trx, server, headers);
 
-  TRI_ASSERT(infoSlice.isObject() && infoSlice.get("clusterQueryId").isUInt());
-  QueryId globalId = infoSlice.get("clusterQueryId").getNumber<QueryId>();
+  TRI_ASSERT(infoSlice.isObject()) << valueTypeName(infoSlice.type());
+  TRI_ASSERT(infoSlice.get("clusterQueryId").isNumber<QueryId>())
+      << "unexpected clusterQueryId: " << infoSlice.toJson();
+  auto const globalId = infoSlice.get("clusterQueryId").getNumber<QueryId>();
 
   auto buildCallback =
       [this, server, didCreateEngine = std::move(didCreateEngine),

@@ -136,14 +136,14 @@ TEST(DateFunctionsTest, IS_DATESTRING) {
 #include "IS_DATESTRING.testcases"
   };
 
-  arangodb::aql::Function fun("IS_DATESTRING", &Functions::IsDatestring);
+  arangodb::aql::Function fun("IS_DATESTRING", &functions::IsDatestring);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&fun));
 
   containers::SmallVector<AqlValue, 4> params;
   for (auto const& testee : testees) {
     testee.buildParams(params);
-    AqlValue res = Functions::IsDatestring(&expressionContext, node, params);
+    AqlValue res = functions::IsDatestring(&expressionContext, node, params);
     testee.validateResult(res);
 
     // Free input parameters
@@ -196,14 +196,14 @@ TEST(DateFunctionsTest, DATE_COMPARE) {
 #include "DATE_COMPARE.testcases"
   };
 
-  arangodb::aql::Function fun("DATE_COMPARE", &Functions::DateCompare);
+  arangodb::aql::Function fun("DATE_COMPARE", &functions::DateCompare);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&fun));
 
   containers::SmallVector<AqlValue, 4> params;
   for (auto const& testee : testees) {
     testee.buildParams(params);
-    AqlValue res = Functions::DateCompare(&expressionContext, node, params);
+    AqlValue res = functions::DateCompare(&expressionContext, node, params);
     testee.validateResult(res);
     // Free input parameters
     for (auto& it : params) {
@@ -257,7 +257,7 @@ class DateFunctionsTestDateDiff : public ::testing::Test {
   }
 
   void testCombinations(std::string const& f, double expected) {
-    arangodb::aql::Function fun("DATE_DIFF", &Functions::DateDiff);
+    arangodb::aql::Function fun("DATE_DIFF", &functions::DateDiff);
     arangodb::aql::AstNode node(NODE_TYPE_FCALL);
     node.setData(static_cast<void const*>(&fun));
 
@@ -271,7 +271,7 @@ class DateFunctionsTestDateDiff : public ::testing::Test {
       params.emplace_back(flagBuilder.slice());
       switchBuilder.add(VPackValue(true));
       params.emplace_back(switchBuilder.slice());
-      AqlValue res = Functions::DateDiff(&expressionContext, node, params);
+      AqlValue res = functions::DateDiff(&expressionContext, node, params);
       ASSERT_TRUE(res.isNumber());
       double out = res.toDouble();
       ASSERT_GE(out, expected - eps);
@@ -289,7 +289,7 @@ class DateFunctionsTestDateDiff : public ::testing::Test {
       params.emplace_back(flagBuilder.slice());
       switchBuilder.add(VPackValue(false));
       params.emplace_back(switchBuilder.slice());
-      AqlValue res = Functions::DateDiff(&expressionContext, node, params);
+      AqlValue res = functions::DateDiff(&expressionContext, node, params);
       ASSERT_TRUE(res.isNumber());
       ASSERT_EQ(std::round(res.toDouble()), std::round(expected));
       for (auto& it : params) {
@@ -306,7 +306,7 @@ class DateFunctionsTestDateDiff : public ::testing::Test {
       params.emplace_back(flagBuilder.slice());
       switchBuilder.add(VPackValue(true));
       params.emplace_back(switchBuilder.slice());
-      AqlValue res = Functions::DateDiff(&expressionContext, node, params);
+      AqlValue res = functions::DateDiff(&expressionContext, node, params);
       ASSERT_TRUE(res.isNumber());
       double out = res.toDouble();
       ASSERT_GE(out, -(expected + eps));
@@ -324,7 +324,7 @@ class DateFunctionsTestDateDiff : public ::testing::Test {
       params.emplace_back(flagBuilder.slice());
       switchBuilder.add(VPackValue(false));
       params.emplace_back(switchBuilder.slice());
-      AqlValue res = Functions::DateDiff(&expressionContext, node, params);
+      AqlValue res = functions::DateDiff(&expressionContext, node, params);
       ASSERT_TRUE(res.isNumber());
       ASSERT_EQ(std::round(res.toDouble()), -std::round(expected));
       for (auto& it : params) {
@@ -455,14 +455,14 @@ TEST(DateFunctionsTest, DATE_SUBTRACT) {
 #include "DATE_SUBTRACT.testcases"
   };
 
-  arangodb::aql::Function fun("DATE_SUBTRACT", &Functions::DateSubtract);
+  arangodb::aql::Function fun("DATE_SUBTRACT", &functions::DateSubtract);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&fun));
 
   for (auto const& testee : testees) {
     containers::SmallVector<AqlValue, 4> params;
     testee.buildParams(params);
-    AqlValue res = Functions::DateSubtract(&expressionContext, node, params);
+    AqlValue res = functions::DateSubtract(&expressionContext, node, params);
     testee.validateResult(res);
     res.destroy();
     // Free input parameters

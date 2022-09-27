@@ -71,6 +71,7 @@ TRI_v8_global_t::TRI_v8_global_t(
       PutConstant(),
 
       AddressKey(),
+      AllowDirtyReadsKey(),
       AllowUseDatabaseKey(),
       AuthorizedKey(),
       BodyFromFileKey(),
@@ -173,6 +174,8 @@ TRI_v8_global_t::TRI_v8_global_t(
   PutConstant.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "PUT"));
 
   AddressKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "address"));
+  AllowDirtyReadsKey.Reset(isolate,
+                           TRI_V8_ASCII_STRING(isolate, "allowDirtyReads"));
   AllowUseDatabaseKey.Reset(isolate,
                             TRI_V8_ASCII_STRING(isolate, "allowUseDatabase"));
   AuthorizedKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "authorized"));

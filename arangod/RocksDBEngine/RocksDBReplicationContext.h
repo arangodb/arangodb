@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Containers/MerkleTree.h"
 #include "Indexes/IndexIterator.h"
 #include "Replication/SyncerId.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
@@ -37,6 +38,7 @@
 #include "VocBase/vocbase.h"
 
 #include <rocksdb/options.h>
+#include <rocksdb/types.h>
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
@@ -88,8 +90,10 @@ class RocksDBReplicationContext {
     uint64_t numberDocuments;
     /// @brief number of documents we iterated over in /dump
     uint64_t numberDocumentsDumped;
-    /// @brief snapshot and number documents were fetched exclusively
-    bool isNumberDocumentsExclusive;
+    /// @brief if > 0, then snapshot and number documents were fetched
+    /// exclusively. this ticket is also later used to update the collection
+    /// count on the leader if it is considered to be wrong.
+    uint64_t documentCountAdjustmentTicket;
 
     rocksdb::ReadOptions const& readOptions() const { return _readOptions; }
     bool sorted() const { return _sortedIterator; }
@@ -235,6 +239,12 @@ class RocksDBReplicationContext {
 
   void removeBlocker(std::string const& dbName, std::string const& collection);
 
+  // Ask the context to get the RevisionTree for the specified collectionName
+  // in the vocbase. If this is done successfully, one can (once only!) get
+  // the tree using `getPrefetchedRevisionTree` below.
+  std::unique_ptr<containers::RevisionTree> getPrefetchedRevisionTree(
+      std::string const& collectionName);
+
  private:
   template<typename T>
   bool findCollection(
@@ -250,7 +260,11 @@ class RocksDBReplicationContext {
 
   void releaseDumpIterator(CollectionIterator*);
 
- private:
+  void handleCollectionCountAdjustment(uint64_t documentCountAdjustmentTicket,
+                                       int64_t adjustment,
+                                       rocksdb::SequenceNumber blockerSeq,
+                                       CollectionIterator* cIter);
+
   RocksDBEngine& _engine;
   TRI_voc_tick_t const _id;  // batch id
   mutable Mutex _contextLock;
@@ -282,6 +296,14 @@ class RocksDBReplicationContext {
   /// @brief number of concurrent users, updated under lock by
   /// ReplicationManager
   size_t _users;
+
+  /// A context can hold a single revision tree for some collection, if it
+  /// is told so. This is used during `SynchronizeShard` to make sure the
+  /// leader actually has the revision tree available for the snapshot
+  /// in the context. This happens in `bindCollectionIncremental`. The value
+  /// of the string is a guid, that is a globally unique name of the shard.
+  std::string _collectionGuidOfPrefetchedRevisionTree;
+  std::unique_ptr<containers::RevisionTree> _prefetchedRevisionTree;
 };
 
 }  // namespace arangodb

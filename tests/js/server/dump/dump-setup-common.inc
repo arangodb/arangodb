@@ -36,9 +36,11 @@ const isEnterprise = require("internal").isEnterprise();
 
 let sgm;
 let satgm;
+let egm;
 if (isEnterprise) {
   sgm = require("@arangodb/smart-graph");
   satgm = require("@arangodb/satellite-graph");
+  egm = require("@arangodb/enterprise-graph");
 }
 
 
@@ -178,6 +180,27 @@ function createMultiShard() {
     l.push({_key: String(7 + (i * 42)), value: i, more: {value: [i, i]}});
   }
   c.save(l);
+}
+
+function createComputedValues() {
+  db._useDatabase("UnitTestsDumpSrc");
+   let c = db._create("UnitTestsComputedValues", {
+    computedValues: [{
+      name: "value3",
+      expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
+      overwrite: false
+    },
+    {
+      name: "value4",
+      expression: "RETURN CONCAT(@doc.value2, ' ', @doc.value1)",
+      overwrite: true
+    }]
+   });
+   let docs = [];
+    for (let i = 0; i < 1000; ++i) {
+      docs.push({value1: "test" + i, value2: "abc", value4: false});
+    }
+    c.insert(docs);
 }
 
 function createAutoIncKeyGen() {
@@ -340,7 +363,7 @@ function createView() {
 
     let view = db._createView("UnitTestsDumpView", "arangosearch", {});
     view.properties({
-      // choose non default values to check if they are corretly dumped and imported
+      // choose non default values to check if they are correctly dumped and imported
       cleanupIntervalStep: 456,
       consolidationPolicy: {
         threshold: 0.3,
@@ -357,8 +380,8 @@ function createView() {
       }
     });
 
-    c.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
     c.save({value: -1, text: "the red foxx jumps over the pond"});
+    c.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
   } catch (err) {
   }
 
@@ -374,6 +397,25 @@ function createView() {
     });
   } catch (err) {
   }
+}
+
+function createSearch() {
+  db._useDatabase("UnitTestsDumpSrc");
+
+  let collection = db._create("searchCollection");
+  let index = collection.ensureIndex({
+    type: "inverted",
+    name: "searchIndex",
+    cleanupIntervalStep: 42,
+    consolidationIntervalMsec: 0,
+    includeAllFields: true,
+    analyzer: "text_en"
+  });
+  let search = db._createView("searchSearch", "search-alias",
+   { indexes: [ { collection: collection.name(), index: index.name } ] });
+
+  collection.save({value: -1, text: "the red foxx jumps over the pond"});
+  collection.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
 }
 
 function createReplicationFactors() {
@@ -436,6 +478,8 @@ function chooseGraphModule(kind) {
       return sgm;
     case "Satellite":
       return satgm;
+    case "EnterpriseGraph":
+      return egm;
     default:
       throw "A wrong parameter in the test!";
   }
@@ -466,6 +510,9 @@ function createEmptyGraph(kind, options) {
       break;
     case "Disjoint":
       graphName = "UnitTestsDumpEmptyDisjointGraph";
+      break;
+    case "EnterpriseGraph":
+      graphName = "UnitTestsDumpEmptyEnterpriseGraph";
   }
 
   if (graphModule._exists(graphName)) {
@@ -485,6 +532,18 @@ function createEmptySmartGraph() {
     numberOfShards: 5,
     replicationFactor: 2,
     smartGraphAttribute: "value"
+  });
+}
+
+/**
+ * @brief Only if enterprise mode:
+ *        Creates an empty EnterpriseGraph, with no edge relations.
+ */
+function createEmptyEnterpriseGraph() {
+  createEmptyGraph("EnterpriseGraph", {
+    numberOfShards: 5,
+    replicationFactor: 2,
+    isSmart: true
   });
 }
 
@@ -555,6 +614,48 @@ function createSmartGraph() {
 }
 
 /**
+ * @brief Only if enterprise mode:
+ *        Creates an EnterpriseGraph
+ *        That has 100 vertices (value 0 -> 99)
+ *        That has 100 orphans (value 0 -> 99)
+ *        That has 300 edges, for each value i:
+ *          Connect i -> i
+ *          Connect i - 1 <- i
+ *          Connect i -> i + 1
+ */
+function createEnterpriseGraph() {
+  if (!isEnterprise) {
+    return;
+  }
+
+  const enterpriseGraphName = "UnitTestDumpEnterpriseGraph";
+  const edges = "UnitTestDumpEnterpriseEdges";
+  const vertices = "UnitTestDumpEnterpriseVertices";
+  const orphans = "UnitTestDumpEnterpriseOrphans";
+  if (egm._exists(enterpriseGraphName)) {
+    assertTrue(false, "Graph already exists. Please check setup configuration.");
+  }
+  assertCollectionsAreNew([edges, vertices, orphans]);
+
+  egm._create(enterpriseGraphName, [sgm._relation(edges, vertices, vertices)],
+    [orphans], {numberOfShards: 5, isSmart: true});
+
+  let vDocs = [];
+  for (let i = 0; i < 100; ++i) {
+    vDocs.push({value: String(i), _key: String(i)});
+  }
+  let saved = db[vertices].save(vDocs).map(v => v._id);
+  let eDocs = [];
+  for (let i = 0; i < 100; ++i) {
+    eDocs.push({_from: saved[(i + 1) % 100], _to: saved[i], value: String(i)});
+    eDocs.push({_from: saved[i], _to: saved[i], value: String(i)});
+    eDocs.push({_from: saved[i], _to: saved[(i + 1) % 100], value: String(i)});
+  }
+  db[edges].save(eDocs);
+  db[orphans].save(vDocs);
+}
+
+/**
  * A cycle of length 100 with a symmetric edge relation and self-loops on every vertex
  */
 function createSmartGraphSingleServer() {
@@ -583,6 +684,41 @@ function createSmartGraphSingleServer() {
   const size = 100;
 
   let docs = fillAndSaveVDocs(size, vertices);
+  let eDocs = fillEDocs([docs.saved]);
+
+  db[edges].save(eDocs);
+  db[orphans].save(docs.vDocs);
+}
+
+/**
+ * A cycle of length 100 with a symmetric edge relation and self-loops on every vertex
+ */
+function createEnterpriseGraphSingleServer() {
+  if (!isEnterprise) {
+    return;
+  }
+
+  const enterpriseGraphName = "UnitTestDumpEnterpriseGraphSingleServer";
+  const edges = "UnitTestDumpEnterpriseEdgesSingleServer";
+  const vertices = "UnitTestDumpEnterpriseVerticesSingleServer";
+  const orphans = "UnitTestDumpEnterpriseOrphansSingleServer";
+
+  createGraphWithoutData({
+    smartGraphName: enterpriseGraphName,
+    edges: edges,
+    fromVertices: [vertices],
+    toVertices: [vertices],
+    orphans: [orphans]
+  }, undefined, "EnterpriseGraph");
+
+  let properties = db[edges].properties();
+  assertTrue(properties.isSmart);
+  properties = db[vertices].properties();
+  assertTrue(properties.isSmart);
+
+  const size = 100;
+
+  let docs = fillAndSaveVDocs(size, vertices, true);
   let eDocs = fillEDocs([docs.saved]);
 
   db[edges].save(eDocs);
@@ -806,11 +942,15 @@ function createDisjointGraphWithoutData() {
  * @param verticesName: the name of the collection to save the numbers
  * @returns {{saved, vDocs: *[]}}
  */
-function fillAndSaveVDocs(size, verticesName) {
+function fillAndSaveVDocs(size, verticesName, setKeyValue) {
   let vDocs = [];
   const startValue = db[verticesName] ? db[verticesName].count() : 0;
   for (let i = startValue; i < startValue + size; ++i) {
-    vDocs.push({value: String(i)});
+    if (setKeyValue) {
+      vDocs.push({value: String(i), _key: String(i)});
+    } else {
+      vDocs.push({value: String(i)});
+    }
   }
 
   return {saved: db[verticesName].save(vDocs).map(v => v._id), vDocs: vDocs};
@@ -856,7 +996,7 @@ function fillEDocs(savedVDocsColls = [], isDisjoint = false) {
  * numberOfShards (default: 5), smartGraphAttribute (default: "values"), isDisjoint (default: false),
  * isSatellite (default: false), satellites (not contained by default), isSmart (default: true)
  */
-function createGraphWithoutData(names, options = undefined) {
+function createGraphWithoutData(names, options = undefined, kind) {
   if (!isEnterprise) {
     return;
   }
@@ -866,19 +1006,39 @@ function createGraphWithoutData(names, options = undefined) {
     assertTrue(false, "Names property is not set!");
   }
 
+
+  // prepare graph module
+  let graphKind;
+  if (kind) {
+    graphKind = kind;
+  } else {
+    if (options && options.isSatellite) {
+      graphKind = "Satellite";
+    } else {
+      graphKind = "SmartGraph";
+    }
+  }
+  const graphModule = chooseGraphModule(graphKind);
+
   // set default options if not given as a parameter
   if (options === undefined) {
     options = {
       numberOfShards: 5,
-      smartGraphAttribute: "value",
       replicationFactor: 2
     };
+    if (graphKind !== "EnterpriseGraph") {
+      options.smartGraphAttribute = "value";
+    } else {
+      options.isSmart = true;
+    }
   } else {
     if (options.numberOfShards === undefined) {
       options.numberOfShards = 5;
     }
     if (options.smartGraphAttribute === undefined) {
-      options.smartGraphAttribute = "value";
+      if (graphKind !== "EnterpriseGraph") {
+        options.smartGraphAttribute = "value";
+      }
     }
     if (options.isDisjoint === undefined) {
       options.isDisjoint = false;
@@ -886,14 +1046,10 @@ function createGraphWithoutData(names, options = undefined) {
     if (options.isSatellite === undefined) {
       options.isSatellite = false;
     }
-    if (options.isSmart === undefined) {
+    if (options.isSmart === undefined || graphKind === "EnterpriseGraph") {
       options.isSmart = true;
     }
   }
-
-  // prepare graph module
-  const kind = options.isSatellite ? "Satellite" : "SmartGraph";
-  const graphModule = chooseGraphModule(kind);
 
   assertCollectionsAreNew([names.edges, names.fromVertices, names.toVertices, names.orphans]);
 
@@ -927,6 +1083,29 @@ function createSmartGraphWithoutData() {
   };
 
   createGraphWithoutData(names);
+}
+
+function createEnterpriseGraphWithoutData() {
+  // External method for dump-setup-mixed.js to create a default SmartGraph
+  // Using helper graph creation method defined above: createGraphWithoutData
+  if (!isEnterprise) {
+    return;
+  }
+
+  const enterpriseGraphName = "UnitTestDumpEnterpriseGraphWithoutData";
+  const edges = "UnitTestDumpEnterpriseEdgesWithoutData";
+  const vertices = "UnitTestDumpEnterpriseVerticesWithoutData";
+  const orphans = "UnitTestDumpEnterpriseOrphansWithoutData";
+
+  const names = {
+    smartGraphName: enterpriseGraphName,
+    edges: edges,
+    fromVertices: [vertices],
+    toVertices: [vertices],
+    orphans: [orphans]
+  };
+
+  createGraphWithoutData(names, undefined, "EnterpriseGraph");
 }
 
 /**
@@ -1114,16 +1293,19 @@ function createSmartGraphRegressionTest() {
 }
 
 exports.createEmptySmartGraph = createEmptySmartGraph;
+exports.createEmptyEnterpriseGraph = createEmptyEnterpriseGraph;
 exports.createEmptySatelliteGraph = createEmptySatelliteGraph;
 exports.createEmptyDisjointGraph = createEmptyDisjointGraph;
 
 exports.createSmartGraphWithoutData = createSmartGraphWithoutData;
+exports.createEnterpriseGraphWithoutData = createEnterpriseGraphWithoutData;
 exports.createSatelliteGraphWithoutData = createSatelliteGraphWithoutData;
 exports.createDisjointGraphWithoutData = createDisjointGraphWithoutData;
 
 exports.createSmartGraph = createSmartGraph;
 
 exports.createSmartGraphSingleServer = createSmartGraphSingleServer;
+exports.createEnterpriseGraphSingleServer = createEnterpriseGraphSingleServer;
 exports.createSatelliteGraphSingleServer = createSatelliteGraphSingleServer;
 exports.createDisjointGraphSingleServer = createDisjointGraphSingleServer;
 exports.createHybridSmartGraphSingleServer = createHybridSmartGraphSingleServer;
@@ -1141,6 +1323,7 @@ exports.createMany = createMany;
 exports.createOrder = createOrder;
 exports.createModifyCollection = createModifyCollection;
 exports.createMultiShard = createMultiShard;
+exports.createComputedValues = createComputedValues;
 exports.createAutoIncKeyGen = createAutoIncKeyGen;
 exports.createPaddedKeyGen = createPaddedKeyGen;
 exports.createUUIDKeyGen = createUUIDKeyGen;
@@ -1148,6 +1331,7 @@ exports.createStrings = createStrings;
 exports.createTransactional = createTransactional;
 exports.createPersistent = createPersistent;
 exports.createView = createView;
+exports.createSearch = createSearch;
 exports.createReplicationFactors = createReplicationFactors;
 exports.createJobs = createJobs;
 exports.createFoxx = createFoxx;

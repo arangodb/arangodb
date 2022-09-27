@@ -149,7 +149,7 @@ CloneWorker::CloneWorker(ExecutionNode* root, GatherNode* internalGather,
       _nodeAliases{nodeAliases} {}
 
 void CloneWorker::process() {
-  _root->walk(*this);
+  _root->flatWalk(*this, true);
 
   // Home-brew early cancel: We collect the processed nodes on a stack
   // and process them in reverse order in processAfter
@@ -164,7 +164,7 @@ void CloneWorker::setUsedShardsOnClone(ExecutionNode* node,
   if (permuter != _localExpansions.end()) {
     if (clone->getType() == ExecutionNode::TRAVERSAL ||
         clone->getType() == ExecutionNode::SHORTEST_PATH ||
-        clone->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+        clone->getType() == ExecutionNode::ENUMERATE_PATHS) {
       // GraphNodes handle multiple collections
       auto graphNode = dynamic_cast<GraphNode*>(clone);
       if (graphNode != nullptr) {
@@ -208,14 +208,31 @@ bool CloneWorker::before(ExecutionNode* node) {
   // We don't clone the DistributeConsumerNode, but create a new one instead
   // This will get `internalScatter` as its sole dependency
   if (node->getType() == ExecutionNode::DISTRIBUTE_CONSUMER) {
-    auto consumer = createConsumerNode(plan, _internalScatter, _distId);
-    consumer->isResponsibleForInitializeCursor(false);
-    _nodeAliases.try_emplace(consumer->id(), ExecutionNodeId::InternalNode);
-    _originalToClone.try_emplace(node, consumer);
+    if (node->hasDependency() &&
+        node->getFirstDependency()->getType() == ExecutionNode::MUTEX) {
+      auto clone = node->clone(plan, false, false);
 
-    // Stop here. Note that we do things special here and don't really
-    // use the WalkerWorker!
-    return true;
+      // set the used shards on the clone just created. We have
+      // to handle graph nodes specially as they have multiple
+      // collections associated with them
+      setUsedShardsOnClone(node, clone);
+
+      TRI_ASSERT(clone->id() != node->id());
+      _originalToClone.try_emplace(node, clone);
+      _nodeAliases.try_emplace(clone->id(), node->id());
+      _stack.push_back(node);
+
+      return false;
+    } else {
+      auto consumer = createConsumerNode(plan, _internalScatter, _distId);
+      consumer->isResponsibleForInitializeCursor(false);
+      _nodeAliases.try_emplace(consumer->id(), ExecutionNodeId::InternalNode);
+      _originalToClone.try_emplace(node, consumer);
+
+      // Stop here. Note that we do things special here and don't really
+      // use the WalkerWorker!
+      return true;
+    }
   } else if (node == _internalGather || node == _internalScatter) {
     // Never clone these nodes. We should never run into this case.
     TRI_ASSERT(false);
@@ -243,6 +260,8 @@ void CloneWorker::processAfter(ExecutionNode* node) {
 
   auto deps = node->getDependencies();
   for (auto d : deps) {
+    VPackBuilder builder;
+    d->toVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
     TRI_ASSERT(_originalToClone.count(d) == 1);
     auto depClone = _originalToClone.at(d);
     clone->addDependency(depClone);
@@ -287,7 +306,7 @@ void QuerySnippet::addNode(ExecutionNode* node) {
     }
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::SHORTEST_PATH:
-    case ExecutionNode::K_SHORTEST_PATHS: {
+    case ExecutionNode::ENUMERATE_PATHS: {
       auto* graphNode = ExecutionNode::castTo<GraphNode*>(node);
       bool const isSatellite = graphNode->isUsedAsSatellite();
       _expansions.emplace_back(node, !isSatellite, isSatellite);
@@ -505,7 +524,7 @@ void QuerySnippet::serializeIntoBuilder(
 
     // We do not need to copy the first stream, we can use the one we have.
     // We only need copies for the other streams.
-    internalGather->addDependency(_nodes.front());
+    plan->insertAfter(_nodes.front(), internalGather);
 
     // NOTE: We will copy over the entire snippet stream here.
     // We will inject the permuted shards on the way.
@@ -543,6 +562,9 @@ void QuerySnippet::serializeIntoBuilder(
     }
     if (internalScatter != nullptr) {
       plan->unlinkNode(internalScatter);
+    }
+    if (internalGather != nullptr) {
+      plan->unlinkNode(internalGather);
     }
 
     if (_remoteNode != nullptr) {
@@ -589,23 +611,24 @@ auto QuerySnippet::prepareFirstBranch(
       viewShards.clear();
 
       auto collections = viewNode->collections();
-      for (aql::Collection const& c : collections) {
-        auto const& shards = shardLocking.shardsForSnippet(id(), &c);
-        for (auto const& s : shards) {
-          auto check = shardMapping.find(s);
+      for (auto const& [collection, indexes] : collections) {
+        auto const& shards =
+            shardLocking.shardsForSnippet(id(), &(collection.get()));
+        for (auto const& shard : shards) {
+          auto check = shardMapping.find(shard);
           // If we find a shard here that is not in this mapping,
           // we have 1) a problem with locking before that should have thrown
           // 2) a problem with shardMapping lookup that should have thrown
           // before
           TRI_ASSERT(check != shardMapping.end());
           if (check->second == server) {
-            viewShards.insert(s);
+            viewShards[shard] = indexes;
           }
         }
       }
     } else if (exp.node->getType() == ExecutionNode::TRAVERSAL ||
                exp.node->getType() == ExecutionNode::SHORTEST_PATH ||
-               exp.node->getType() == ExecutionNode::K_SHORTEST_PATHS) {
+               exp.node->getType() == ExecutionNode::ENUMERATE_PATHS) {
 #ifndef USE_ENTERPRISE
       // These can only ever be LocalGraphNodes, which are only available in
       // Enterprise. This should never happen without enterprise optimization,

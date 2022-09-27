@@ -215,6 +215,13 @@ class ClusterEngine final : public StorageEngine {
           arangodb::replication2::replicated_log::PersistedLog> const&)
       -> Result override;
 
+  auto updateReplicatedState(
+      TRI_vocbase_t& vocbase,
+      replication2::replicated_state::PersistedStateInfo const& info)
+      -> Result override;
+  auto dropReplicatedState(TRI_vocbase_t& vocbase,
+                           arangodb::replication2::LogId id) -> Result override;
+
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
 

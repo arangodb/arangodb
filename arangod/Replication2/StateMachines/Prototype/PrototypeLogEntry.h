@@ -43,8 +43,9 @@ inline constexpr std::string_view kOp = "op";
 inline constexpr std::string_view kType = "type";
 
 // Operation names
-inline constexpr std::string_view kDelete = "delete";
-inline constexpr std::string_view kInsert = "insert";
+inline constexpr std::string_view kDelete = "Delete";
+inline constexpr std::string_view kInsert = "Insert";
+inline constexpr std::string_view kCompareExchange = "CompareExchange";
 
 struct PrototypeLogEntry {
   struct InsertOperation {
@@ -53,10 +54,21 @@ struct PrototypeLogEntry {
   struct DeleteOperation {
     std::vector<std::string> keys;
   };
+  struct CompareExchangeOperation {
+    std::string key;
+    std::string oldValue;
+    std::string newValue;
+  };
 
-  std::variant<DeleteOperation, InsertOperation> op;
+  std::variant<DeleteOperation, InsertOperation, CompareExchangeOperation> op;
 
   auto getType() noexcept -> std::string_view;
+
+  static auto createInsert(std::unordered_map<std::string, std::string> map)
+      -> PrototypeLogEntry;
+  static auto createDelete(std::vector<std::string> keys) -> PrototypeLogEntry;
+  static auto createCompareExchange(std::string key, std::string oldValue,
+                                    std::string newValue) -> PrototypeLogEntry;
 };
 
 template<class Inspector>
@@ -67,6 +79,13 @@ auto inspect(Inspector& f, PrototypeLogEntry::InsertOperation& x) {
 template<class Inspector>
 auto inspect(Inspector& f, PrototypeLogEntry::DeleteOperation& x) {
   return f.object(x).fields(f.field("keys", x.keys));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, PrototypeLogEntry::CompareExchangeOperation& x) {
+  return f.object(x).fields(f.field("key", x.key),
+                            f.field("oldValue", x.oldValue),
+                            f.field("newValue", x.newValue));
 }
 
 template<class Inspector>
@@ -89,6 +108,8 @@ auto inspect(Inspector& f, PrototypeLogEntry& x) {
       return opLoader(PrototypeLogEntry::InsertOperation{});
     } else if (typeSlice.isEqualString(kDelete)) {
       return opLoader(PrototypeLogEntry::DeleteOperation{});
+    } else if (typeSlice.isEqualString(kCompareExchange)) {
+      return opLoader(PrototypeLogEntry::CompareExchangeOperation{});
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,

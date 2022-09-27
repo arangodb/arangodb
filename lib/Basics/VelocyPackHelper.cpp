@@ -35,6 +35,7 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
+#include <velocypack/Sink.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-common.h>
 
@@ -53,7 +54,6 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
-#include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/memory.h"
@@ -505,24 +505,22 @@ VPackBuilder VelocyPackHelper::velocyPackFromFile(std::string const& path) {
   THROW_ARANGO_EXCEPTION(TRI_errno());
 }
 
-static bool PrintVelocyPack(int fd, VPackSlice const& slice,
-                            bool appendNewline) {
+static bool PrintVelocyPack(int fd, VPackSlice slice, bool appendNewline) {
   if (slice.isNone()) {
     return false;
   }
 
-  arangodb::basics::StringBuffer buffer(false);
-  arangodb::basics::VPackStringBufferAdapter bufferAdapter(
-      buffer.stringBuffer());
+  std::string buffer;
+  velocypack::StringSink sink(&buffer);
   try {
-    VPackDumper dumper(&bufferAdapter);
+    velocypack::Dumper dumper(&sink);
     dumper.dump(slice);
   } catch (...) {
     // Writing failed
     return false;
   }
 
-  if (buffer.length() == 0) {
+  if (buffer.empty()) {
     // should not happen
     return false;
   }
@@ -530,14 +528,14 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
   if (appendNewline) {
     // add the newline here so we only need one write operation in the ideal
     // case
-    buffer.appendChar('\n');
+    buffer.push_back('\n');
   }
 
-  char const* p = buffer.begin();
-  size_t n = buffer.length();
+  char const* p = buffer.data();
+  size_t n = buffer.size();
 
   while (0 < n) {
-    ssize_t m = TRI_WRITE(fd, p, static_cast<TRI_write_t>(n));
+    auto m = TRI_WRITE(fd, p, static_cast<TRI_write_t>(n));
 
     if (m <= 0) {
       return false;

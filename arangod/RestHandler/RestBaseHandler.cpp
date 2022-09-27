@@ -39,7 +39,7 @@ using namespace arangodb::rest;
 
 RestBaseHandler::RestBaseHandler(ArangodServer& server, GeneralRequest* request,
                                  GeneralResponse* response)
-    : RestHandler(server, request, response) {}
+    : RestHandler(server, request, response), _potentialDirtyReads(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the body as VelocyPack
@@ -94,6 +94,9 @@ void RestBaseHandler::generateResult(
     rest::ResponseCode code, Payload&& payload,
     std::shared_ptr<transaction::Context> context) {
   resetResponse(code);
+  if (_potentialDirtyReads) {
+    _response->setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
+  }
   writeResult(std::forward<Payload>(payload), *(context->getVPackOptions()));
 }
 
@@ -146,6 +149,24 @@ void RestBaseHandler::generateOk(rest::ResponseCode code,
 
 void RestBaseHandler::generateCanceled() {
   return generateError(rest::ResponseCode::GONE, TRI_ERROR_REQUEST_CANCELED);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates not implemented
+////////////////////////////////////////////////////////////////////////////////
+
+void RestBaseHandler::generateNotImplemented(std::string const& path) {
+  generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+                "'" + path + "' not implemented");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates forbidden
+////////////////////////////////////////////////////////////////////////////////
+
+void RestBaseHandler::generateForbidden() {
+  generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                "operation forbidden");
 }
 
 //////////////////////////////////////////////////////////////////////////////

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:4000 */
-/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertTypeOf, assertUndefined, arango */
+/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertTypeOf, assertUndefined, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dump/reload
@@ -32,6 +32,7 @@
 (function () {
   const _ = require('lodash');
   const fs = require('fs');
+  const arangodb = require("@arangodb");
   const internal = require("internal");
   const jsunity = require("jsunity");
   const users = require("@arangodb/users");
@@ -87,6 +88,9 @@
     const satgm = (isEnterprise) ? require("@arangodb/satellite-graph") : {};
     const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
     const {map, zipObject} = require('lodash');
+    const isServer = require("@arangodb").isServer;
+    const request = require("@arangodb/request");
+    const {getRawMetric, getEndpointsByType} = require("@arangodb/test-helper");
 
     console.info("Test suite arguments: " + JSON.stringify(args));
 
@@ -96,6 +100,14 @@
       assertEqual(graph.replicationFactor, 2);
       assertEqual(graph.numberOfShards, 5);
       assertEqual(graph.smartGraphAttribute, 'value');
+    }
+
+    function assertCommonEnterpriseGraphProperties(graph) {
+      assertTrue(graph.isSmart);
+      assertFalse(graph.isSatellite);
+      assertEqual(graph.replicationFactor, 2);
+      assertEqual(graph.numberOfShards, 5);
+      assertFalse(graph.smartGraphAttribute);
     }
 
     function assertCommonSatelliteGraphProperties(graph) {
@@ -122,15 +134,15 @@
 
       for (const collName of [vertexCollName, orphanCollName]) {
         const vColl = db._collection(collName);
-        const properties = vColl.properties();
+        const vCollProperties = vColl.properties();
 
-        assertTrue(properties.isSmart);
-        assertEqual(properties.isDisjoint, isDisjoint);
-        assertEqual(properties.smartGraphAttribute, 'value');
-        assertEqual(properties.numberOfShards, 5);
-        assertEqual(properties.replicationFactor, 2);
+        assertTrue(vCollProperties.isSmart);
+        assertEqual(vCollProperties.isDisjoint, isDisjoint);
+        assertEqual(vCollProperties.smartGraphAttribute, 'value');
+        assertEqual(vCollProperties.numberOfShards, 5);
+        assertEqual(vCollProperties.replicationFactor, 2);
         if (isCluster) {
-          assertEqual(properties.shardingStrategy, 'enterprise-compat');
+          assertEqual(vCollProperties.shardingStrategy, 'hash');
         }
       }
 
@@ -142,8 +154,66 @@
 
       assertEqual(properties.replicationFactor, 2);
       if (isCluster) {
-        assertEqual(properties.shardingStrategy, 'enterprise-smart-edge-compat');
+        assertEqual(properties.shardingStrategy, 'enterprise-hash-smart-edge');
         assertEqual(properties.numberOfShards, 0);
+
+        const eCollNameLocal = `_local_${edgeCollName}`;
+        const eCollNameFrom = `_from_${edgeCollName}`;
+        const eCollNameTo = `_to_${edgeCollName}`;
+        assertEqual(db._collection(eCollNameLocal).properties().shardingStrategy, 'hash');
+        if (!isDisjoint) {
+          assertEqual(db._collection(eCollNameFrom).properties().shardingStrategy, 'hash');
+          assertEqual(db._collection(eCollNameTo).properties().shardingStrategy, 'hash');
+        }
+
+      } else {
+        assertEqual(properties.numberOfShards, 5);
+      }
+    }
+
+    function assertEnterpriseCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, isDisjoint) {
+      assertEqual(graph.edgeDefinitions, [
+        {
+          "collection": edgeCollName,
+          "from": [vertexCollName],
+          "to": [vertexCollName]
+        }
+      ]);
+      assertEqual(graph.orphanCollections, [orphanCollName]);
+
+      for (const collName of [vertexCollName, orphanCollName]) {
+        const vColl = db._collection(collName);
+        const properties = vColl.properties();
+
+        assertTrue(properties.isSmart);
+        assertEqual(properties.isDisjoint, isDisjoint);
+        assertFalse(properties.smartGraphAttribute);
+        assertEqual(properties.numberOfShards, 5);
+        assertEqual(properties.replicationFactor, 2);
+        if (isCluster) {
+          assertEqual(properties.shardingStrategy, 'enterprise-hex-smart-vertex');
+        }
+      }
+
+      const eColl = db._collection(edgeCollName);
+      const properties = eColl.properties();
+
+      assertTrue(properties.isSmart);
+      assertEqual(properties.isDisjoint, isDisjoint);
+
+      assertEqual(properties.replicationFactor, 2);
+      if (isCluster) {
+        assertEqual(properties.shardingStrategy, 'enterprise-hash-smart-edge');
+        assertEqual(properties.numberOfShards, 0);
+
+        const eCollNameLocal = `_local_${edgeCollName}`;
+        const eCollNameFrom = `_from_${edgeCollName}`;
+        const eCollNameTo = `_to_${edgeCollName}`;
+        assertEqual(db._collection(eCollNameLocal).properties().shardingStrategy, 'hash');
+        if (!isDisjoint) {
+          assertEqual(db._collection(eCollNameFrom).properties().shardingStrategy, 'hash');
+          assertEqual(db._collection(eCollNameTo).properties().shardingStrategy, 'hash');
+        }
       } else {
         assertEqual(properties.numberOfShards, 5);
       }
@@ -168,7 +238,7 @@
         assertEqual(properties.numberOfShards, 1);
         assertEqual(properties.replicationFactor, 'satellite');
         if (isCluster) {
-          assertEqual(properties.shardingStrategy, 'enterprise-compat');
+          assertEqual(properties.shardingStrategy, 'hash');
         }
       }
 
@@ -180,7 +250,7 @@
       assertEqual(properties.numberOfShards, 1);
       assertEqual(properties.replicationFactor, 'satellite');
       if (isCluster) {
-        assertEqual(properties.shardingStrategy, 'enterprise-compat');
+        assertEqual(properties.shardingStrategy, 'hash');
       }
     }
 
@@ -452,6 +522,28 @@
       },
 
       ////////////////////////////////////////////////////////////////////////////////
+      /// @brief test computed values
+      ////////////////////////////////////////////////////////////////////////////////
+
+      testComputedValues: function () {
+        const c = db._collection("UnitTestsComputedValues");
+        const p = c.properties();
+
+        assertEqual(p.computedValues.length, 2);
+        assertEqual(p.computedValues[0].name, "value3");
+        assertEqual(p.computedValues[1].name, "value4");
+        assertFalse(p.computedValues[0].overwrite);
+        assertTrue(p.computedValues[1].overwrite);
+        assertEqual(p.computedValues[0].expression, "RETURN CONCAT(@doc.value1, '+', @doc.value2)");
+        assertEqual(p.computedValues[1].expression, "RETURN CONCAT(@doc.value2, ' ', @doc.value1)");
+
+        c.toArray().forEach(el => {
+          assertEqual(el.value3, el.value1 + "+" + el.value2);
+          assertEqual(el.value4, el.value2 + " " + el.value1);
+        });
+      },
+
+      ////////////////////////////////////////////////////////////////////////////////
       /// @brief test autoinc keygen
       ////////////////////////////////////////////////////////////////////////////////
 
@@ -462,7 +554,9 @@
         assertEqual(2, c.type()); // document
         assertFalse(p.waitForSync);
         assertEqual("autoincrement", p.keyOptions.type);
-        assertEqual(args.keygenAutoInc, p.keyOptions.lastValue);
+        if (!isCluster) {
+          assertEqual(args.keygenAutoInc, p.keyOptions.lastValue);
+        }
         assertFalse(p.keyOptions.allowUserKeys);
         assertEqual(7, p.keyOptions.offset);
         assertEqual(42, p.keyOptions.increment);
@@ -722,16 +816,7 @@
         // we cannot expect that the data is immediately visible. We can only
         // hope that the data will be there in due course:
 
-        var startTime = new Date();
-        var res;
-        while (new Date() - startTime < 60000) {
-          res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
-          if (res.length === 5000) {
-            break;
-          }
-          console.log("Waiting for arangosearch index to be built...");
-          internal.wait(1);
-        }
+        let res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
         assertEqual(5000, res.length);
 
         res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
@@ -741,6 +826,72 @@
         assertEqual(0, res.length);
 
         res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en') RETURN doc").toArray();
+        assertEqual(1, res.length);
+      },
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief test search-alias restoring
+      ////////////////////////////////////////////////////////////////////////////////
+
+      testSearch: function () {
+        let collection = db._collection("searchCollection");
+        assertNotEqual(null, collection);
+
+        let index = collection.index("searchIndex");
+        assertTrue(index.includeAllFields);
+        assertEqual(index.consolidationIntervalMsec, 0);
+        assertEqual(index.cleanupIntervalStep, 42);
+
+        let search = db._view("searchSearch");
+        assertNotEqual(null, search);
+        assertEqual("searchSearch", search.name());
+        let props = search.properties();
+        assertEqual(props.indexes, [{ collection: "searchCollection", index: "searchIndex" }]);
+
+        // After a restore, the Inverted index needs to be rebuilt, therefore
+        // we cannot expect that the data is immediately visible. We can only
+        // hope that the data will be there in due course:
+
+        let res = db._query("FOR doc IN " + search.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
+        assertEqual(5000, res.length);
+
+        if (isServer) {
+          request({
+            method: "get",
+            url: "/_db/_system/_admin/metrics?mode=trigger_global",
+            headers: {accept: "application/json"},
+            body: {}
+          });
+        } else {
+          let coordinators = getEndpointsByType("coordinator");
+          for (let i = 0; i < coordinators.length; i++) {
+            let c = coordinators[i];
+            getRawMetric(c, '?mode=trigger_global');
+          }
+        }
+        let figures;
+        for (let i = 0; i < 100; ++i) {
+          require("internal").sleep(0.5);
+          figures = collection.getIndexes(true, true)
+            .find(e => e.name === "searchIndex")
+            .figures;
+          if (figures.numDocs > 5000) {
+            break;
+          }
+        }
+        assertEqual(figures.numDocs, 5001);
+        assertEqual(figures.numLiveDocs, 5001);
+        assertTrue(figures.numSegments >= 1);
+        assertTrue(figures.numFiles >= 7);
+        assertTrue(figures.indexSize > 0);
+
+        res = db._query("FOR doc IN " + search.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
+        assertEqual(2500, res.length);
+
+        res = db._query("FOR doc IN " + search.name() + " SEARCH doc.value >= 5000 RETURN doc").toArray();
+        assertEqual(0, res.length);
+
+        res = db._query("FOR doc IN " + search.name() + " SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en') RETURN doc").toArray();
         assertEqual(1, res.length);
       },
 
@@ -1315,6 +1466,9 @@
       /// @brief test smart graph restores
       ////////////////////////////////////////////////////////////////////////////////
       testEmptySmartGraph: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const smartGraphName = "UnitTestsDumpEmptySmartGraph";
         const graphsColl = db._collection('_graphs');
         assertTrue(!!graphsColl.exists(smartGraphName));
@@ -1326,7 +1480,25 @@
         assertEqual(graph.orphanCollections.length, 0);
       },
 
+      testEmptyEnterpriseGraph: function () {
+        if (!isEnterprise) {
+          return;
+        }
+        const enterpriseGraphName = "UnitTestsDumpEmptyEnterpriseGraph";
+        const graphsColl = db._collection('_graphs');
+        assertTrue(!!graphsColl.exists(enterpriseGraphName));
+
+        const graph = graphsColl.document(enterpriseGraphName);
+        assertFalse(graph.isDisjoint);
+        assertCommonEnterpriseGraphProperties(graph);
+        assertEqual(graph.edgeDefinitions.length, 0);
+        assertEqual(graph.orphanCollections.length, 0);
+      },
+
       testEmptySatelliteGraph: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const smartGraphName = "UnitTestsDumpEmptySatelliteGraph";
         const graphsColl = db._collection('_graphs');
         assertTrue(!!graphsColl.exists(smartGraphName));
@@ -1338,6 +1510,9 @@
       },
 
       testEmptyDisjointGraph: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const smartGraphName = "UnitTestsDumpEmptyDisjointGraph";
         const graphsColl = db._collection('_graphs');
         assertTrue(!!graphsColl.exists(smartGraphName));
@@ -1349,6 +1524,9 @@
       },
 
       testSmartGraphWithoutData: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const smartGraphName = "UnitTestDumpSmartGraphWithoutData";
         const vertexCollName = 'UnitTestDumpSmartVerticesWithoutData';
         const edgeCollName = 'UnitTestDumpSmartEdgesWithoutData';
@@ -1363,7 +1541,28 @@
         assertSmartCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, false);
       },
 
+      testEnterpriseGraphWithoutData: function () {
+        if (!isEnterprise) {
+          return;
+        }
+        const enterpriseGraphName = "UnitTestDumpEnterpriseGraphWithoutData";
+        const vertexCollName = 'UnitTestDumpEnterpriseVerticesWithoutData';
+        const edgeCollName = 'UnitTestDumpEnterpriseEdgesWithoutData';
+        const orphanCollName = 'UnitTestDumpEnterpriseOrphansWithoutData';
+
+        const g = db._collection('_graphs');
+        assertTrue(!!g.exists(enterpriseGraphName));
+
+        const graph = g.document(enterpriseGraphName);
+        assertFalse(graph.isDisjoint);
+        assertCommonEnterpriseGraphProperties(graph);
+        assertEnterpriseCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, false);
+      },
+
       testSmartGraphSingleServer: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const smartGraphName = "UnitTestDumpSmartGraphSingleServer";
         const vertexCollName = 'UnitTestDumpSmartVerticesSingleServer';
         const edgeCollName = 'UnitTestDumpSmartEdgesSingleServer';
@@ -1385,13 +1584,69 @@
         assertEqual(vColl.count(), 100);
         assertEqual(oColl.count(), 100);
 
+        const getFromOrToSmartValue = (str) => {
+          return str.substring(
+            str.indexOf("/") + 1, str.lastIndexOf(":")
+          );
+        };
+
         for (const edge of eColl.toArray()) {
           assertTrue(!!edge._from);
           assertTrue(!!edge._to);
+
+          // Check that a well-formatted enterprise key exists (example: <fromSmart>:12345:<toSmart>);
+          const fromSmartValue = getFromOrToSmartValue(edge._from);
+          const toSmartValue = getFromOrToSmartValue(edge._to);
+          const keySplit = edge._key.split(':');
+          assertEqual(keySplit.length, 3);
+          assertEqual(keySplit[0], fromSmartValue);
+          assertEqual(keySplit[2], toSmartValue);
+        }
+      },
+
+      testEnterpriseGraphSingleServer: function () {
+        if (!isEnterprise) {
+          return;
+        }
+        const enterpriseGraphName = "UnitTestDumpEnterpriseGraphSingleServer";
+        const vertexCollName = 'UnitTestDumpEnterpriseVerticesSingleServer';
+        const edgeCollName = 'UnitTestDumpEnterpriseEdgesSingleServer';
+        const orphanCollName = 'UnitTestDumpEnterpriseOrphansSingleServer';
+
+        const g = db._collection('_graphs');
+        assertTrue(!!g.exists(enterpriseGraphName));
+
+        const graph = g.document(enterpriseGraphName);
+        assertFalse(graph.isDisjoint);
+        assertFalse(graph.smartGraphAttribute);
+        assertCommonEnterpriseGraphProperties(graph);
+        assertEnterpriseCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, false);
+
+        const vColl = db._collection(vertexCollName);
+        const eColl = db._collection(edgeCollName);
+        const oColl = db._collection(orphanCollName);
+
+        assertEqual(eColl.count(), 300);
+        assertEqual(vColl.count(), 100);
+        assertEqual(oColl.count(), 100);
+
+        for (const edge of eColl.toArray()) {
+          assertTrue(!!edge._key);
+          assertTrue(!!edge._from);
+          assertTrue(!!edge._to);
+
+          // Check that a well-formatted enterprise key exists (example: abc:12345:xyz)
+          const keySplit = edge._key.split(':');
+          assertEqual(keySplit.length, 3);
+          assertEqual(keySplit[0].length, 5);
+          assertEqual(keySplit[2].length, 5);
         }
       },
 
       testSatelliteSmartGraphSingleServer: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const satelliteGraphName = "UnitTestDumpSatelliteGraphSingleServer";
         const vertexCollName = 'UnitTestDumpSatelliteVerticesSingleServer';
         const edgeCollName = 'UnitTestDumpSatelliteEdgesSingleServer';
@@ -1420,6 +1675,9 @@
       },
 
       testDisjointGraphSingleServer: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const disjointGraphName = "UnitTestDumpDisjointGraphSingleServer";
         const vertexCollName = 'UnitTestDumpDisjointVerticesSingleServer';
         const edgeCollName = 'UnitTestDumpDisjointEdgesSingleServer';
@@ -1445,9 +1703,33 @@
           assertTrue(!!edge._from);
           assertTrue(!!edge._to);
         }
+
+        // Additional test-case:
+        // Add a non-disjoint edge to verify that this graph is properly created as a DisjointGraph
+        // SmartGraphAttribute: "value"
+        const firstVertex = vColl.save({value: "A"});
+        const secondVertex = vColl.save({value: "A"});
+        const thirdVertex = vColl.save({value: "B"});
+        assertEqual(vColl.count(), 103);
+
+        const firstEdge = eColl.save({_from: firstVertex._id, _to: secondVertex._id});
+        assertEqual(eColl.count(), 101);
+
+        try {
+          // MUST fail
+          eColl.save({_from: firstVertex._id, _to: thirdVertex._id});
+          fail();
+        } catch (err) {
+          assertEqual(arangodb.ERROR_INVALID_DISJOINT_SMART_EDGE, err.errorNum);
+        }
+
+        assertEqual(eColl.count(), 101);
       },
 
       testHybridSmartGraphSingleServer: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const hybridGraphName = "UnitTestDumpHybridSmartGraphSingleServer";
         const verticesNonSat = "UnitTestDumpHybridSmartVerticesNonSatSingleServer";
         const verticesSat = "UnitTestDumpHybridSmartVerticesSatSingleServer";
@@ -1483,7 +1765,7 @@
           assertEqual(properties.numberOfShards, 1);
           assertEqual(properties.replicationFactor, 2);
           if (isCluster) {
-            assertEqual(properties.shardingStrategy, 'enterprise-compat');
+            assertEqual(properties.shardingStrategy, 'hash');
           }
         }
 
@@ -1497,7 +1779,7 @@
           assertEqual(properties.numberOfShards, 1);
           assertEqual(properties.replicationFactor, 'satellite');
           if (isCluster) {
-            assertEqual(properties.shardingStrategy, 'enterprise-compat');
+            assertEqual(properties.shardingStrategy, 'hash');
           }
         }
 
@@ -1509,7 +1791,7 @@
         assertEqual(properties.numberOfShards, 1);
         assertEqual(properties.replicationFactor, 'satellite');
         if (isCluster) {
-          assertEqual(properties.shardingStrategy, 'enterprise-compat');
+          assertEqual(properties.shardingStrategy, 'hash');
         }
 
         // test data
@@ -1531,6 +1813,9 @@
       },
 
       testHybridDisjointSmartGraphSingleServer: function () {
+        if (!isEnterprise) {
+          return;
+        }
         const hybridGraphName = "UnitTestDumpHybridDisjointSmartGraphSingleServer";
         const verticesANonSat = "UnitTestDumpHybridDisjointSmartVerticesANonSatSingleServer";
         const verticesBNonSat = "UnitTestDumpHybridDisjointSmartVerticesBNonSatSingleServer";
@@ -1571,28 +1856,29 @@
         assertEqual(graph.orphanCollections, [orphans]);
 
         // check properties of vertex collections
-        const verticesANonSatProps = db._collection(verticesANonSat).properties();
-        const verticesBNonSatProps = db._collection(verticesBNonSat).properties();
-        const verticesSatProps = db._collection(verticesSat).properties();
-        const orphansProps = db._collection(orphans).properties();
+        const verticesANonSatCol = db._collection(verticesANonSat);
+        const verticesBNonSatCol = db._collection(verticesBNonSat);
+        const verticesSatCol = db._collection(verticesSat);
+        const orphansCol = db._collection(orphans);
 
         // properties common for all vertex collections (smart & satellite)
-        for (const properties of [verticesANonSatProps, verticesBNonSatProps, verticesSatProps, orphansProps]) {
-          assertEqual(properties.numberOfShards, 1);
+        for (const collection of [verticesANonSatCol, verticesBNonSatCol, verticesSatCol, orphansCol]) {
+          assertEqual(collection.properties().numberOfShards, 1);
           if (isCluster) {
-            assertEqual(properties.shardingStrategy, 'enterprise-compat');
+            assertEqual(collection.properties().shardingStrategy, 'hash', `Failed for collection: "${collection.name()}".`);
           }
         }
 
         // properties common for all vertex non-satellite collection
-        for (const properties of [verticesANonSatProps, verticesBNonSatProps, orphansProps]) {
-          assertTrue(properties.isSmart);
-          assertTrue(properties.isDisjoint);
-          assertEqual(verticesANonSatProps.smartGraphAttribute, 'value');
-          assertEqual(properties.replicationFactor, 2);
+        for (const collection of [verticesANonSatCol, verticesBNonSatCol, orphansCol]) {
+          assertTrue(collection.properties().isSmart);
+          assertTrue(collection.properties().isDisjoint);
+          assertEqual(collection.properties().smartGraphAttribute, 'value');
+          assertEqual(collection.properties().replicationFactor, 2);
         }
 
         // properties only for verticesSatProps (satellite collection)
+        const verticesSatProps = verticesSatCol.properties();
         assertFalse(verticesSatProps.isSmart);
         assertFalse(verticesSatProps.isDisjoint);
         assertEqual(verticesSatProps.smartGraphAttribute, undefined);
@@ -1607,7 +1893,7 @@
 
           if (isCluster) {
             assertEqual(properties.numberOfShards, 0);
-            assertEqual(properties.shardingStrategy, 'enterprise-smart-edge-compat');
+            assertEqual(properties.shardingStrategy, 'enterprise-hash-smart-edge');
           } else {
             assertEqual(properties.numberOfShards, 1);
           }

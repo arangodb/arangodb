@@ -12,7 +12,7 @@ fi
 PREFIX=`echo ${OUTPUT} | sed -e 's:\.cpp$::'`
 
 # clean up after ourselves
-trap "rm -f ${PREFIX}.tmp" EXIT SIGINT SIGTERM SIGHUP
+trap "rm -f ${PREFIX}.tmp" EXIT TERM HUP INT
 
 BISON_MAJOR_VER=`${BISON} --version |grep bison|sed -e "s;.* ;;" -e "s;\..*;;"`
 

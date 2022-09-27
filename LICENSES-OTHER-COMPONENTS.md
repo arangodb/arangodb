@@ -349,10 +349,10 @@ _Enterprise Edition only_
 ### Google Test
 
 * Name: Google Test (gtest)
-* Version: 1.8.1
-* Date: 2018-08-31 15:53:24Z
+* Version: 1.12.1
+* Date: 2022-06-30 10:14:00Z
 * Project Home: https://github.com/google/googletest
-* License: https://raw.githubusercontent.com/abseil/googletest/master/googletest/LICENSE
+* License: https://raw.githubusercontent.com/google/googletest/release-1.12.1/LICENSE 
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
@@ -454,10 +454,10 @@ _Enterprise Edition only_
 ### RocksDB
 
 * Name: RocksDB
-* Version: 6.29.0 (e8f116deabc601a5eae011f2fd8a38d02d87be8d)
-* Date: 2022-01-21 17:23:03 -0800
-* GitHub: https://github.com/facebook/rocksdb
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/rocksdb/6.29/README.md
+* Version: 7.2.0
+* Date: 2022-05-05
+* GitHub: https://github.com/arangodb/rocksdb
+* License: https://github.com/arangodb/rocksdb/blob/main/README.md
 * License Name: Apache License 2.0
 * License Id: Apache-2.0
 
@@ -583,8 +583,8 @@ can be found [here](https://github.com/arangodb/arangodb/blob/devel/3rdParty/ire
 ### fmt
 
 * Name: fmt
-* Version: 8.1.1
-* Date: 2022-01-06
+* Version: 9.1.0
+* Date: 2022-08-27 08:57:10-0700
 * Project Home: https://fmt.dev/
 * License: https://github.com/fmtlib/fmt/blob/master/LICENSE.rst
 * License Name: MIT
@@ -611,6 +611,26 @@ Project Home: https://github.com/unicode-org/cldr
 License: https://raw.githubusercontent.com/unicode-org/cldr/master/ICU-LICENSE
 License Name: ICU License
 License Id: ICU
+
+#### The Project Gutenberg eBook, Children of the Frost, by Jack London
+
+Name: The Project Gutenberg eBook, Children of the Frost, by Jack London
+Version: N/A
+Date: N/A
+Project Home: https://www.gutenberg.org/ebooks/10736
+License: https://www.gutenberg.org/policy/license.html
+License Name: The Project Gutenberg License
+License Id: -
+
+#### The Project Gutenberg eBook of A Dream Of Red Mansions, by Xueqin Cao
+
+Name: The Project Gutenberg eBook of A Dream Of Red Mansions, by Xueqin Cao
+Version: N/A
+Date: N/A
+Project Home: https://www.gutenberg.org/ebooks/24264
+License: https://www.gutenberg.org/policy/license.html
+License Name: The Project Gutenberg License
+License Id: -
 
 ## JavaScript
 
@@ -1387,15 +1407,6 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: BSD License
 License Id: BSD
 
-#### expect.js
-
-Name: expect.js
-Version: 0.3.1
-Project Home: https://github.com/LearnBoost/expect.js
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/expect.js/README.md
-License Name: MIT License
-License Id: MIT
-
 #### extendible
 
 Name: extendible
@@ -1684,6 +1695,15 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: MIT License
 License Id: MIT
 
+#### is-wsl
+
+* Name: is-wsl
+* Version: 2.2.0
+* Project Home: https://github.com/sindresorhus/is-wsl
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/node-netstat/node_modules/is-wsl/LICENSE
+* License Name: MIT License
+* License Id: MIT
+
 #### isemail
 
 Name: isemail
@@ -1810,6 +1830,15 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: BSD 3-clause "New" or "Revised" License
 License Id: BSD-3-Clause
 
+#### media-typer
+
+* Name: media-typer
+* Version: 0.3.0
+* Project Home: https://github.com/jshttp/media-typer
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/type-is/node_modules/media-typer/LICENSE
+* License Name: MIT License
+* License Id: MIT
+
 #### mime-db
 
 Name: mime-db
@@ -1917,6 +1946,16 @@ Project Home: https://github.com/electerious/nice-try
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/eslint/node_modules/nice-try/LICENSE
 License Name: MIT License
 License Id: MIT
+
+
+#### node-netstat
+
+Name: node-netstat
+Version: 1.8.0 + adjustments for ArangoDB
+Project Home: https://github.com/danielkrainas/node-netstat#readme
+License: http://unlicense.org/UNLICENSE
+License Name: Unlicense / Public Domain
+License Id: -
 
 #### once
 
@@ -2392,15 +2431,6 @@ Name: type-is
 Version: 1.6.16
 Project Home: https://github.com/jshttp/type-is
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/type-is/LICENSE
-License Name: MIT License
-License Id: MIT
-
-#### underscore
-
-Name: underscore
-Version: 1.13.1
-Project Home: https://github.com/jashkenas/underscore
-License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/underscore/LICENSE
 License Name: MIT License
 License Id: MIT
 

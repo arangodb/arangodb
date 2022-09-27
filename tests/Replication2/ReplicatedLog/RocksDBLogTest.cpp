@@ -30,6 +30,8 @@
 #include <RocksDBEngine/RocksDBFormat.h>
 #include <RocksDBEngine/RocksDBPersistedLog.h>
 
+#include "Replication2/ReplicatedLog/TestHelper.h"
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
@@ -89,29 +91,6 @@ std::string RocksDBLogTest::_path = {};
 rocksdb::DB* RocksDBLogTest::_db = nullptr;
 std::shared_ptr<RocksDBLogPersistor> RocksDBLogTest::_persistor = nullptr;
 
-namespace {
-template<typename I>
-struct SimpleIterator : PersistedLogIterator {
-  SimpleIterator(I begin, I end) : current(begin), end(end) {}
-  ~SimpleIterator() override = default;
-
-  auto next() -> std::optional<PersistingLogEntry> override {
-    if (current == end) {
-      return std::nullopt;
-    }
-
-    return *(current++);
-  }
-
-  I current, end;
-};
-
-template<typename C, typename Iter = typename C::const_iterator>
-auto make_iterator(C const& c) -> std::shared_ptr<SimpleIterator<Iter>> {
-  return std::make_shared<SimpleIterator<Iter>>(c.begin(), c.end());
-}
-}  // namespace
-
 TEST_F(RocksDBLogTest, insert_iterate) {
   auto log = createUniqueLog();
 
@@ -126,7 +105,7 @@ TEST_F(RocksDBLogTest, insert_iterate) {
         PersistingLogEntry{LogTerm{2}, LogIndex{1000},
                            LogPayload::createFromString("thousand")},
     };
-    auto iter = make_iterator(entries);
+    auto iter = test::make_iterator(entries);
 
     auto res = log->insert(*iter, {});
     ASSERT_TRUE(res.ok());
@@ -181,7 +160,7 @@ TEST_F(RocksDBLogTest, insert_remove_iterate) {
         PersistingLogEntry{LogTerm{2}, LogIndex{1000},
                            LogPayload::createFromString("thousand")},
     };
-    auto iter = make_iterator(entries);
+    auto iter = test::make_iterator(entries);
 
     auto res = log->insert(*iter, {});
     ASSERT_TRUE(res.ok());
@@ -223,7 +202,7 @@ TEST_F(RocksDBLogTest, insert_iterate_remove_iterate) {
         PersistingLogEntry{LogTerm{2}, LogIndex{1000},
                            LogPayload::createFromString("thousand")},
     };
-    auto iter = make_iterator(entries);
+    auto iter = test::make_iterator(entries);
 
     auto res = log->insert(*iter, {});
     ASSERT_TRUE(res.ok());
@@ -292,13 +271,14 @@ TEST_F(RocksDBLogTest, insert_iterate_with_meta) {
                            LogMetaPayload::withFirstEntryOfTerm("Foobar", {})},
         PersistingLogEntry{
             TermIndexPair{LogTerm{1}, LogIndex{2}},
-            LogMetaPayload::withUpdateParticipantsConfig(ParticipantsConfig{
-                .generation = 1,
-                .participants = {{"FooBar", {.allowedInQuorum = false}}}})},
+            LogMetaPayload::withUpdateParticipantsConfig(
+                agency::ParticipantsConfig{
+                    .generation = 1,
+                    .participants = {{"FooBar", {.allowedInQuorum = false}}}})},
         PersistingLogEntry{LogTerm{2}, LogIndex{3},
                            LogPayload::createFromString("third")},
     };
-    auto iter = make_iterator(entries);
+    auto iter = test::make_iterator(entries);
 
     auto res = log->insert(*iter, {});
     ASSERT_TRUE(res.ok());
@@ -326,7 +306,7 @@ TEST_F(RocksDBLogTest, insert_iterate_with_meta) {
     EXPECT_FALSE(entry->hasPayload());
     EXPECT_TRUE(entry->hasMeta());
     auto const expected =
-        LogMetaPayload::withUpdateParticipantsConfig(ParticipantsConfig{
+        LogMetaPayload::withUpdateParticipantsConfig(agency::ParticipantsConfig{
             .generation = 1,
             .participants = {{"FooBar", {.allowedInQuorum = false}}}});
     ASSERT_EQ(*entry->meta(), expected)

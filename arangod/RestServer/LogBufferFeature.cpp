@@ -250,12 +250,12 @@ LogBufferFeature::LogBufferFeature(Server& server)
 void LogBufferFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options
-      ->addOption(
-          "--log.in-memory",
-          "use in-memory log appender, which can be queried via API and web UI",
-          new BooleanParameter(&_useInMemoryAppender),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
+      ->addOption("--log.in-memory",
+                  "use in-memory log appender, which can be queried via the "
+                  "API and web interface",
+                  new BooleanParameter(&_useInMemoryAppender),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800);
 
   std::unordered_set<std::string> const logLevels = {

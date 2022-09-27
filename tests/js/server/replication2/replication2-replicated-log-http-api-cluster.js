@@ -31,75 +31,19 @@ const ERRORS = arangodb.errors;
 const _ = require('lodash');
 const db = arangodb.db;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
-const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
-const request = require('@arangodb/request');
-const {waitFor} = require("@arangodb/testutils/replicated-logs-helper");
 
 const database = "replication2_replicated_log_http_api_db";
 
-const logFunctions = {
-  head: function (server, database, logId, limit) {
-    let url = `${lh.getServerUrl(server)}/_db/${database}/_api/log/${logId}/head`;
-    if (limit !== undefined) {
-      url += `?limit=${limit}`;
-    }
-    return request.get(url).json;
-  },
+const logFunctions = require("@arangodb/testutils/replicated-logs-http-helper");
 
-  tail: function (server, database, logId, limit) {
-    let url = `${lh.getServerUrl(server)}/_db/${database}/_api/log/${logId}/tail`;
-    if (limit !== undefined) {
-      url += `?limit=${limit}`;
-    }
-    return request.get(url).json;
-  },
+const {setUpAll, tearDownAll, setUp, tearDown} = lh.testHelperFunctions(database);
 
-  slice: function (server, database, logId, start, stop) {
-    let url = `${lh.getServerUrl(server)}/_db/${database}/_api/log/${logId}/slice?start=${start}&stop=${stop}`;
-    return request.get(url).json;
-  },
-
-  at: function (server, database, logId, index) {
-    let url = `${lh.getServerUrl(server)}/_db/${database}/_api/log/${logId}/entry/${index}`;
-    return request.get(url).json;
-  },
-
-  listLogs: function (server, database) {
-    let url = `${lh.getServerUrl(server)}/_db/${database}/_api/log`;
-    require('internal').print(url);
-    return request.get(url).json;
-  }
-};
-
-const {setUpAll, tearDownAll} = (function () {
-  let previousDatabase, databaseExisted = true;
-  return {
-    setUpAll: function () {
-      previousDatabase = db._name();
-      if (!_.includes(db._databases(), database)) {
-        db._createDatabase(database);
-        databaseExisted = false;
-      }
-      db._useDatabase(database);
-    },
-
-    tearDownAll: function () {
-      db._useDatabase(previousDatabase);
-      if (!databaseExisted) {
-        db._dropDatabase(database);
-      }
-    },
-  };
-}());
-
-const readFollowerLogs = function () {
+const readFollowerLogsSuite = function () {
   const targetConfig = {
     writeConcern: 3,
     softWriteConcern: 3,
-    replicationFactor: 3,
     waitForSync: false,
   };
-
 
   const setupReplicatedLog = function () {
     const log = db._createReplicatedLog({config: targetConfig});
@@ -118,9 +62,7 @@ const readFollowerLogs = function () {
   };
 
   return {
-    setUpAll, tearDownAll,
-    setUp: lh.registerAgencyTestBegin,
-    tearDown: lh.registerAgencyTestEnd,
+    setUpAll, tearDownAll, setUp, tearDown,
 
     testFollowerHead: function () {
       const {log, followers} = setupReplicatedLog();
@@ -178,18 +120,15 @@ const readFollowerLogs = function () {
   };
 };
 
-const getLogInfo = function () {
+const logInfoSuite = function () {
   const targetConfig = {
     writeConcern: 3,
     softWriteConcern: 3,
-    replicationFactor: 3,
     waitForSync: false,
   };
 
   return {
-    setUpAll, tearDownAll,
-    setUp: lh.registerAgencyTestBegin,
-    tearDown: lh.registerAgencyTestEnd,
+    setUpAll, tearDownAll, setUp, tearDown,
 
     testApiLog: function () {
       const log1 = lh.createReplicatedLog(database, targetConfig);
@@ -213,6 +152,6 @@ const getLogInfo = function () {
   };
 };
 
-jsunity.run(readFollowerLogs);
-jsunity.run(getLogInfo);
+jsunity.run(readFollowerLogsSuite);
+jsunity.run(logInfoSuite);
 return jsunity.done();

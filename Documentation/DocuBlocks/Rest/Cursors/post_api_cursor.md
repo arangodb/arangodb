@@ -4,7 +4,19 @@
 
 @RESTHEADER{POST /_api/cursor, Create cursor, createQueryCursor}
 
-A JSON object describing the query and query parameters.
+@RESTHEADERPARAMETERS
+
+@RESTHEADERPARAM{x-arango-allow-dirty-read,boolean,optional}
+Set this header to `true` to allow the Coordinator to ask any shard replica for
+the data, not only the shard leader. This may result in "dirty reads".
+
+The header is ignored if this operation is part of a Stream Transaction
+(`x-arango-trx-id` header). The header set when creating the transaction decides
+about dirty reads for the entire transaction, not the individual read operations.
+
+@RESTHEADERPARAM{x-arango-trx-id,string,optional}
+To make this operation a part of a Stream Transaction, set this header to the
+transaction ID returned by the `POST /_api/transaction/begin` call.
 
 @RESTBODYPARAM{query,string,required,string}
 contains the query string to be executed
@@ -268,6 +280,11 @@ high level, not including any memory allocator overhead nor any memory used for 
 results calculations (e.g. memory allocated/deallocated inside AQL expressions and function 
 calls).
 
+@RESTSTRUCT{intermediateCommits,post_api_cursor_extra_stats,number,required,}
+The number of intermediate commits that were performed by the query. This will only be
+non-zero for write queries, and only for queries that reached either the `intermediateCommitSize`
+or `intermediateCommitCount` thresholds. Note: in the cluster, intermediate commits can happen
+on each participating DB server.
 @RESTSTRUCT{nodes,post_api_cursor_extra_stats,number,optional,}
 When the query was executed with the `profile` option set to at least `2`,
 then this value contains runtime statistics per query execution node. This field contains the
@@ -302,7 +319,8 @@ the HTTP status code
 the server error number
 
 @RESTREPLYBODY{errorMessage,string,required,string}
-a descriptive error message<br>
+A descriptive error message.
+
 If the query specification is complete, the server will process the query. If an
 error occurs during query processing, the server will respond with *HTTP 400*.
 Again, the body of the response will contain details about the error.

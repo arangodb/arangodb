@@ -45,12 +45,8 @@ HotBackup::HotBackup(ArangodServer& server)
 #endif
   if (ServerState::instance()->isCoordinator()) {
     _engine = BACKUP_ENGINE::CLUSTER;
-  } else if (server.getFeature<EngineSelectorFeature>().isRocksDB()) {
-    _engine = BACKUP_ENGINE::ROCKSDB;
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_NOT_IMPLEMENTED,
-        "hot backup not implemented for this storage engine");
+    _engine = BACKUP_ENGINE::ROCKSDB;
   }
 }
 
@@ -72,25 +68,23 @@ arangodb::Result HotBackup::executeRocksDB(std::string const& command,
                                            VPackSlice const payload,
                                            VPackBuilder& report) {
 #ifdef USE_ENTERPRISE
-  std::shared_ptr<RocksDBHotBackup> operation;
   auto& feature = _server.getFeature<HotBackupFeature>();
-  operation =
+  auto operation =
       RocksDBHotBackup::operationFactory(feature, command, payload, report);
 
   if (operation->valid()) {
     operation->execute();
-  }  // if
+  }
 
   operation->doAuditLog();
 
   // if !valid() then !success() already set
   if (!operation->success()) {
-    return arangodb::Result(operation->restResponseError(),
-                            operation->errorMessage());
+    return {operation->restResponseError(), operation->errorMessage()};
   }
 #endif
 
-  return arangodb::Result();
+  return {};
 }
 
 arangodb::Result HotBackup::executeCoordinator(std::string const& command,

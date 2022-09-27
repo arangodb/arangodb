@@ -23,6 +23,7 @@
 
 #include "RestReplicationHandler.h"
 
+#include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Basics/ConditionLocker.h"
@@ -37,7 +38,9 @@
 #include "Basics/hashes.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ResignShardLeadership.h"
@@ -1590,7 +1593,7 @@ Result RestReplicationHandler::parseBatch(
             checkRev = false;
 
             char ridBuffer[arangodb::basics::maxUInt64StringSize];
-            RevisionId newRid = physical->newRevisionId();
+            RevisionId newRid = collection->newRevisionId();
 
             documentsToInsert.add(it.key);
             documentsToInsert.add(newRid.toValuePair(ridBuffer));
@@ -1918,6 +1921,12 @@ Result RestReplicationHandler::processRestoreIndexes(
         idx = physical->createIndex(idxDef, /*restore*/ true, created);
       } catch (basics::Exception const& e) {
         if (e.code() == TRI_ERROR_NOT_IMPLEMENTED) {
+          continue;
+        }
+        if (auto const& message = e.message();
+            message.find("arangodb_search_num_failed_commits") !=
+            std::string::npos) {
+          // TODO(MBkkt) Fix it! Now it's single correct and simple way :(
           continue;
         }
 
@@ -3526,11 +3535,13 @@ ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
 }
 
 namespace {
-struct RebootCookie : public arangodb::TransactionState::Cookie {
-  RebootCookie(CallbackGuard&& g) : guard(std::move(g)) {}
-  ~RebootCookie() = default;
+
+struct RebootCookie final : public arangodb::TransactionState::Cookie {
+  explicit RebootCookie(CallbackGuard&& g) noexcept : guard{std::move(g)} {}
+
   CallbackGuard guard;
 };
+
 }  // namespace
 
 Result RestReplicationHandler::createBlockingTransaction(
@@ -3591,8 +3602,7 @@ Result RestReplicationHandler::createBlockingTransaction(
 
       auto rGuard =
           std::make_unique<RebootCookie>(ci.rebootTracker().callMeOnChange(
-              RebootTracker::PeerState(serverId, rebootId), std::move(f),
-              std::move(comment)));
+              {serverId, rebootId}, std::move(f), std::move(comment)));
       auto ctx = mgr->leaseManagedTrx(id, AccessMode::Type::WRITE,
                                       /*isSideUser*/ false);
 

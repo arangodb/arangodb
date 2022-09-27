@@ -39,7 +39,6 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include "velocypack/Builder.h"
 #include "velocypack/Collection.h"

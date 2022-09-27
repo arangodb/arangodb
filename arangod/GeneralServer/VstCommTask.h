@@ -25,6 +25,7 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralCommTask.h"
 #include "Rest/VstRequest.h"
 #include "Rest/VstResponse.h"
@@ -67,7 +68,8 @@ class VstCommTask final : public GeneralCommTask<T> {
   void doWrite();
 
   // process the VST 1000 request type
-  void handleVstAuthRequest(velocypack::Slice header, uint64_t messageId);
+  void handleVstAuthRequest(velocypack::Slice header, uint64_t messageId,
+                            ServerState::Mode mode);
 
  private:
   using MessageID = uint64_t;

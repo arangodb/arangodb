@@ -1,5 +1,6 @@
 race:boost/lockfree/queue.hpp
 race:boost/lockfree/detail/freelist.hpp
+race:boost::lockfree::queue
 
 # These operators contain an assertion that checks the refCount.
 # That read operation is racy, but since it is just an assert we don't care!
@@ -8,11 +9,16 @@ race:SharedAqlItemBlockPtr::operator->
 
 # logCrashInfo calls LOG_TOPIC which in turn calls std::string::reserve
 signal:lib/Basics/CrashHandler.cpp
+signal:crashHandlerSignalHandler
 
 # accesses to the function pointers can be racy
 # this is most likely benign, but strictly speaking it is still UB so should be
 # addressed eventually
 race:3rdParty/velocypack/src/asm-functions.cpp
+race:doInitCopy
+race:doInitCopyCheckUtf8
+race:doInitSkip
+race:doInitValidateUtf8String
 
 # A compiler optimization in DBImpl::ReleaseSnapshot() produces code where a
 # register is populated with different addresses based on some condition, and
@@ -24,3 +30,19 @@ race:VersionSet::SetLastSequence
 
 # TODO - this should be removed once BTS-685 is fixed
 race:AllowImplicitCollectionsSwitcher
+race:graph::RefactoredTraverserCache::appendVertex
+
+# Known false-positive, see https://github.com/google/sanitizers/issues/953
+race:absl/synchronization/internal/waiter.cc
+race:absl::synchronization_internal::Waiter
+
+# TODO Fix known thread leaks
+thread:ClusterFeature::startHeartbeatThread
+thread:CacheManagerFeature::start
+thread:DatabaseFeature::start
+
+# TODO Fix lock order inversion
+deadlock:consensus::Agent::setPersistedState
+
+# TODO Fix data race in arangodbtests
+race:DummyConnection::sendRequest

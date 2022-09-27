@@ -38,8 +38,6 @@ auto const String_InProgress = std::string_view{"InProgress"};
 auto const String_Completed = std::string_view{"Completed"};
 auto const String_Failed = std::string_view{"Failed"};
 auto const String_Uninitialized = std::string_view{"Uninitialized"};
-auto const String_Status = std::string_view{"status"};
-auto const String_Timestamp = std::string_view{"timestamp"};
 }  // namespace
 
 StateGeneration::operator arangodb::velocypack::Value() const noexcept {
@@ -117,17 +115,27 @@ auto replicated_state::to_string(StateGeneration g) -> std::string {
   return std::to_string(g.value);
 }
 
-void SnapshotInfo::toVelocyPack(velocypack::Builder& builder) const {
-  velocypack::ObjectBuilder ob(&builder);
-  TRI_ASSERT(!error.has_value());  // error not yet implemented
-  builder.add(String_Timestamp,
-              velocypack::Value(timepointToString(timestamp)));
-  builder.add(String_Status, velocypack::Value(to_string(status)));
+auto SnapshotStatusStringTransformer::toSerialized(SnapshotStatus source,
+                                                   std::string& target) const
+    -> inspection::Status {
+  target = to_string(source);
+  return {};
 }
 
-auto SnapshotInfo::fromVelocyPack(velocypack::Slice slice) -> SnapshotInfo {
-  SnapshotInfo info;
-  info.status = snapshotStatusFromString(slice.get(String_Status).stringView());
-  info.timestamp = stringToTimepoint(slice.get(String_Timestamp).stringView());
-  return info;
+auto SnapshotStatusStringTransformer::fromSerialized(
+    std::string const& source, SnapshotStatus& target) const
+    -> inspection::Status {
+  if (source == String_InProgress) {
+    target = SnapshotStatus::kInProgress;
+  } else if (source == String_Completed) {
+    target = SnapshotStatus::kCompleted;
+  } else if (source == String_Failed) {
+    target = SnapshotStatus::kFailed;
+  } else if (source == String_Uninitialized) {
+    target = SnapshotStatus::kUninitialized;
+  } else {
+    return inspection::Status{"Invalid status code name " +
+                              std::string{source}};
+  }
+  return {};
 }

@@ -22,6 +22,31 @@ if (${IPO_ENABLED})
 endif ()
 
 ################################################################################
+## gtest
+################################################################################
+
+set(GOOGLETEST_ROOT 3rdParty/gtest/googletest CACHE STRING "Google Test source root")
+set(GOOGLEMOCK_ROOT 3rdParty/gtest/googlemock CACHE STRING "Google Mock source root")
+
+set(GTEST_SOURCES
+        ${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}/src/gtest-all.cc
+        ${PROJECT_SOURCE_DIR}/${GOOGLEMOCK_ROOT}/src/gmock-all.cc
+        )
+
+foreach(_source ${GTEST_SOURCES})
+  set_source_files_properties(${_source} PROPERTIES GENERATED 1)
+endforeach()
+
+add_library(gtest ${GTEST_SOURCES})
+target_include_directories(gtest
+        PUBLIC
+        ${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}/include
+        ${PROJECT_SOURCE_DIR}/${GOOGLEMOCK_ROOT}/include
+        ${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}
+        ${PROJECT_SOURCE_DIR}/${GOOGLEMOCK_ROOT}
+        )
+
+################################################################################
 ## ZLIB
 ################################################################################
 
@@ -164,7 +189,7 @@ endif()
 set(USE_IPO ${IPO_ENABLED})
 set(ICU_STATIC_LIBS ${ICU_LIBS})
 set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
-set(LZ4_INCLUDE_DIR "${LZ4_ROOT}/lib" PARENT_SCOPE)
+set(LZ4_INCLUDE_DIR "${LZ4_ROOT}/lib")
 set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
 set(UNWIND_ROOT "invalid")
 set(BFD_ROOT "invalid")
@@ -207,11 +232,13 @@ unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
 ## ROCKSDB
 ################################################################################
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb)
-set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
+UpdateModule(${GIT_EXECUTABLE} "rocksdb" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb EXCLUDE_FROM_ALL)
 add_library(rocksdb_interface INTERFACE)
-target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/include)
-target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION})
+target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/include)
+target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb)
+list(APPEND LINK_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}/rocksdb")
 
 ################################################################################
 # llhttp

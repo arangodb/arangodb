@@ -73,13 +73,13 @@ class LogicalViewImpl : public arangodb::LogicalView {
 
 class LogicalDataSourceTest : public ::testing::Test {
  protected:
-  StorageEngineMock engine;
   arangodb::ArangodServer server;
+  StorageEngineMock engine;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
       features;
 
-  LogicalDataSourceTest() : engine(server), server(nullptr, nullptr) {
+  LogicalDataSourceTest() : server(nullptr, nullptr), engine(server) {
     // setup required application features
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector, false);

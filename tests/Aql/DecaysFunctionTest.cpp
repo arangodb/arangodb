@@ -92,7 +92,7 @@ AqlValue evaluateDecayFunction(std::span<AqlValue const> params,
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
   fakeit::When(Method(expressionContextMock, registerWarning))
-      .AlwaysDo([](ErrorCode, char const*) {});
+      .AlwaysDo([](ErrorCode, std::string_view) {});
 
   VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;
@@ -162,7 +162,7 @@ void assertDecayFunctionFail(char const* args,
 TEST(GaussDecayFunctionTest, test) {
   // preparing
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
-  arangodb::aql::Function f("DECAY_GAUSS", &Functions::DecayGauss);
+  arangodb::aql::Function f("DECAY_GAUSS", &functions::DecayGauss);
   node.setData(static_cast<void const*>(&f));
 
   // expecting 1
@@ -232,7 +232,7 @@ TEST(GaussDecayFunctionTest, test) {
 TEST(ExpDecayFunctionTest, test) {
   // preparing
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
-  arangodb::aql::Function f("DECAY_EXP", &Functions::DecayExp);
+  arangodb::aql::Function f("DECAY_EXP", &functions::DecayExp);
   node.setData(static_cast<void const*>(&f));
 
   // expecting 1
@@ -298,7 +298,7 @@ TEST(ExpDecayFunctionTest, test) {
 TEST(LinDecayFunctionTest, test) {
   // preparing
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
-  arangodb::aql::Function f("DECAY_LINEAR", &Functions::DecayLinear);
+  arangodb::aql::Function f("DECAY_LINEAR", &functions::DecayLinear);
   node.setData(static_cast<void const*>(&f));
 
   // expecting 1

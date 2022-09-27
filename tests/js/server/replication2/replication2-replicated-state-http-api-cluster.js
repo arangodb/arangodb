@@ -37,44 +37,18 @@ const {waitFor} = require("@arangodb/testutils/replicated-logs-helper");
 
 const database = "replication2_replicated_state_http_api_db";
 
-const sortedArrayEqualOrError = (left, right) => {
-  if (_.isEqual(left, right)) {
-    return true;
-  } else {
-    return Error(`Expected the following to be equal: ${JSON.stringify(left)} and ${JSON.stringify(right)}`);
-  }
-};
-
-const replaceParticipant = (database, logId, oldParticipant, newParticipant) => {
+const { setLeader, unsetLeader } = lh;
+const dropState = (database, logId) => {
   const url = lh.getServerUrl(_.sample(lh.coordinators));
-  const res = request.post(
-    `${url}/_db/${database}/_api/replicated-state/${logId}/participant/${oldParticipant}/replace-with/${newParticipant}`
-  );
+  const res = request.delete(`${url}/_db/${database}/_api/replicated-state/${logId}`);
   lh.checkRequestResult(res);
-  const {json: {result}} = res;
-  return result;
-};
-
-const setLeader = (database, logId, newLeader) => {
-  const url = lh.getServerUrl(_.sample(lh.coordinators));
-  const res = request.post(`${url}/_db/${database}/_api/replicated-state/${logId}/leader/${newLeader}`);
-  lh.checkRequestResult(res);
-  const {json: {result}} = res;
-  return result;
-};
-const unsetLeader = (database, logId) => {
-  const url = lh.getServerUrl(_.sample(lh.coordinators));
-  const res = request.delete(`${url}/_db/${database}/_api/replicated-state/${logId}/leader`);
-  lh.checkRequestResult(res);
-  const {json: {result}} = res;
-  return result;
+  return res.json;
 };
 
 const replicatedStateSuite = function (stateType) {
   const targetConfig = {
     writeConcern: 2,
     softWriteConcern: 2,
-    replicationFactor: 3,
     waitForSync: false,
   };
 
@@ -121,10 +95,11 @@ const replicatedStateSuite = function (stateType) {
       for (const server of followers) {
         const status = sh.getLocalStatus(server, database, stateId);
         assertEqual(status.role, "follower");
-        assertEqual(status.manager.managerState, "NothingToApply");
+        assertEqual(status.manager.managerState, "WaitForNewEntries");
         assertEqual(status.snapshot.status, "Completed");
         assertTrue(status.snapshot.timestamp !== undefined);
         assertEqual(status.generation, 1);
+        assertTrue(status.lastAppliedIndex !== undefined);
       }
     },
 
@@ -139,7 +114,7 @@ const replicatedStateSuite = function (stateType) {
       const newParticipant = _.sample(nonParticipants);
       const newParticipants = _.union(_.without(participants, oldParticipant), [newParticipant]).sort();
 
-      const result = replaceParticipant(database, stateId, oldParticipant, newParticipant);
+      const result = sh.replaceParticipant(database, stateId, oldParticipant, newParticipant);
       assertEqual({}, result);
       {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
@@ -148,12 +123,12 @@ const replicatedStateSuite = function (stateType) {
 
       waitFor(() => {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
-        return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+        return lh.sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
       });
       // Current won't be cleaned up yet.
       // waitFor(() => {
       //   const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
-      //   return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
+      //   return lh.sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
       // });
 
       const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
@@ -174,7 +149,7 @@ const replicatedStateSuite = function (stateType) {
       const newParticipant = _.sample(nonParticipants);
       const newParticipants = _.union(_.without(participants, oldParticipant), [newParticipant]).sort();
 
-      const result = replaceParticipant(database, stateId, oldParticipant, newParticipant);
+      const result = sh.replaceParticipant(database, stateId, oldParticipant, newParticipant);
       assertEqual({}, result);
       {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
@@ -183,12 +158,12 @@ const replicatedStateSuite = function (stateType) {
 
       waitFor(() => {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
-        return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+        return lh.sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
       });
       // Current won't be cleaned up yet.
       // waitFor(() => {
       //   const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
-      //   return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
+      //   return lh.sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
       // });
 
       const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
@@ -220,7 +195,7 @@ const replicatedStateSuite = function (stateType) {
       const newLeader = _.sample(nonParticipants);
       const newParticipants = _.union(_.without(participants, oldLeader), [newLeader]).sort();
 
-      const result = replaceParticipant(database, stateId, oldLeader, newLeader);
+      const result = sh.replaceParticipant(database, stateId, oldLeader, newLeader);
       assertEqual({}, result);
       {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
@@ -230,14 +205,14 @@ const replicatedStateSuite = function (stateType) {
       waitFor(spreds.replicatedStateTargetLeaderIs(database, stateId, newLeader));
       waitFor(() => {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
-        return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+        return lh.sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
       });
       waitFor(lpreds.replicatedLogLeaderTargetIs(database, stateId, newLeader));
       waitFor(lpreds.replicatedLogLeaderPlanIs(database, stateId, newLeader));
       // Current won't be cleaned up yet.
       // waitFor(() => {
       //   const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
-      //   return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
+      //   return lh.sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
       // });
 
       const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
@@ -256,7 +231,7 @@ const replicatedStateSuite = function (stateType) {
       const [oldParticipant, newParticipant] = _.sampleSize(nonParticipants, 2);
 
       try {
-        const result = replaceParticipant(database, stateId, oldParticipant, newParticipant);
+        const result = sh.replaceParticipant(database, stateId, oldParticipant, newParticipant);
         // noinspection ExceptionCaughtLocallyJS
         throw new Error(`replaceParticipant unexpectedly succeeded with ${JSON.stringify(result)}`);
       } catch (e) {
@@ -277,7 +252,7 @@ const replicatedStateSuite = function (stateType) {
       const [oldParticipant, newParticipant] = _.sampleSize(participants, 2);
 
       try {
-        const result = replaceParticipant(database, stateId, oldParticipant, newParticipant);
+        const result = sh.replaceParticipant(database, stateId, oldParticipant, newParticipant);
         // noinspection ExceptionCaughtLocallyJS
         throw new Error(`replaceParticipant unexpectedly succeeded with ${JSON.stringify(result)}`);
       } catch (e) {
@@ -361,6 +336,16 @@ const replicatedStateSuite = function (stateType) {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
         assertUndefined(stateAgencyContent.target.leader);
       }
+    },
+
+    testDropReplicatedState: function () {
+      const {stateId} = sh.createReplicatedStateTarget(database, targetConfig, stateType);
+
+      const res = dropState(database, stateId);
+      assertEqual(200, res.code);
+
+      lh.waitFor(spreds.replicatedStateIsGone(database, stateId));
+      lh.waitFor(lpreds.replicatedLogIsGone(database, stateId));
     },
   };
 };

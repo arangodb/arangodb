@@ -83,7 +83,10 @@ TransactionCollection* SingleCollectionTransaction::resolveTrxCollection() {
     }
   }
 
-  TRI_ASSERT(_trxCollection != nullptr);
+  if (_trxCollection == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+
   return _trxCollection;
 }
 
@@ -94,7 +97,11 @@ LogicalCollection* SingleCollectionTransaction::documentCollection() {
   if (_documentCollection == nullptr) {
     resolveTrxCollection();
   }
-  TRI_ASSERT(_documentCollection != nullptr);
+
+  if (_documentCollection == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+
   return _documentCollection;
 }
 
