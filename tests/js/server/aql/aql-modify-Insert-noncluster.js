@@ -115,6 +115,9 @@ function ahuacatlInsertSuite () {
         docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
       c1.insert(docs);
+      for (let i = 0; i < 50; ++i) {
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
+      }
       c2.insert(docs);
     },
 
