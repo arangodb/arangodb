@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
-#include "RocksDBEngine/RocksDBChecksumEnv.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/StorageEngine.h"
@@ -46,9 +45,9 @@
 #include <velocypack/Slice.h>
 
 namespace rocksdb {
-
-class TransactionDB;
 class EncryptionProvider;
+class Env;
+class TransactionDB;
 }  // namespace rocksdb
 
 namespace arangodb {
@@ -696,9 +695,6 @@ class RocksDBEngine final : public StorageEngine {
   // this is for when encryption is enabled, sha files will be created
   // after the encryption of the .sst and .blob files
   std::unique_ptr<rocksdb::Env> _checksumEnv;
-
-  std::unique_ptr<rocksdb::Env> NewChecksumEnv(rocksdb::Env* base_env,
-                                               std::string const& path);
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";

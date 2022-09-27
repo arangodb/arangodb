@@ -69,6 +69,7 @@
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
+#include "RocksDBEngine/RocksDBChecksumEnv.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -131,15 +132,21 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
-#ifdef USE_SST_INGESTION
 namespace {
+#ifdef USE_SST_INGESTION
 void cleanUpTempFiles(std::string_view path) {
   for (auto const& fileName : TRI_FullTreeDirectory(path.data())) {
     TRI_UnlinkFile(basics::FileUtils::buildFilename(path, fileName).data());
   }
 }
-}  // namespace
 #endif
+
+std::unique_ptr<rocksdb::Env> createChecksumEnv(rocksdb::Env* baseEnv,
+                                                std::string const& path) {
+  return std::make_unique<arangodb::checksum::ChecksumEnv>(baseEnv, path);
+}
+
+}  // namespace
 
 namespace arangodb {
 
@@ -289,11 +296,6 @@ RocksDBEngine::RocksDBEngine(Server& server,
 RocksDBEngine::~RocksDBEngine() {
   _recoveryHelpers.clear();
   shutdownRocksDBInstance();
-}
-
-std::unique_ptr<rocksdb::Env> RocksDBEngine::NewChecksumEnv(
-    rocksdb::Env* base_env, std::string const& path) {
-  return std::make_unique<arangodb::checksum::ChecksumEnv>(base_env, path);
 }
 
 /// shuts down the RocksDB instance. this is called from unprepare
@@ -783,7 +785,7 @@ void RocksDBEngine::start() {
   }
 
   if (_createShaFiles) {
-    _checksumEnv = NewChecksumEnv(rocksdb::Env::Default(), _path);
+    _checksumEnv = createChecksumEnv(rocksdb::Env::Default(), _path);
     _dbOptions.env = _checksumEnv.get();
     static_cast<checksum::ChecksumEnv*>(_checksumEnv.get())
         ->getHelper()

@@ -41,11 +41,13 @@ namespace arangodb::checksum {
 class ChecksumCalculator {
  public:
   ChecksumCalculator();
+  ~ChecksumCalculator();
+
   void computeFinalChecksum();
   void updateIncrementalChecksum(char const* buffer, size_t n) noexcept;
   void updateEVPWithContent(char const* buffer, size_t n) noexcept;
+
   [[nodiscard]] std::string getChecksum() const { return _checksum; }
-  ~ChecksumCalculator();
 
  private:
   EVP_MD_CTX* _context;
@@ -55,18 +57,23 @@ class ChecksumCalculator {
 class ChecksumHelper {
  public:
   explicit ChecksumHelper(std::string const& rootPath) : _rootPath{rootPath} {}
+
   [[nodiscard]] static bool isSstFile(std::string_view fileName) noexcept;
   [[nodiscard]] static bool isBlobFile(std::string_view fileName) noexcept;
+
+  void checkMissingShaFiles();
+
   // writeShaFile() also inserts the .sst file name and the checksum in the
   // _fileNamesToHashes table
   bool writeShaFile(std::string const& fileName, std::string const& checksum);
+
+  [[nodiscard]] std::string removeFromTable(std::string const& fileName);
+
   [[nodiscard]] static std::string buildShaFileNameFromSstOrBlob(
       std::string const& fileName, std::string const& checksum);
-  [[nodiscard]] std::string removeFromTable(std::string const& fileName);
-  void checkMissingShaFiles();
 
  private:
-  std::string _rootPath;
+  std::string const _rootPath;
 
   Mutex _calculatedHashesMutex;
   std::unordered_map<std::string, std::string> _fileNamesToHashes;
