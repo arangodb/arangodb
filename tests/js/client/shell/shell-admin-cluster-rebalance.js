@@ -38,7 +38,6 @@ const continueExternal = require("internal").continueExternal;
 const wait = require("internal").wait;
 let prevDB = null;
 let dbServer = null;
-let waitTime = null;
 
 function resignServer(server) {
   let res = arango.POST_RAW("/_admin/cluster/resignLeadership", {server});
@@ -207,18 +206,29 @@ function clusterRebalanceOtherOptionsSuite() {
       try {
         for (let i = 0; i < dbServers.length; ++i) {
           dbServer = dbServers[i];
-          waitTime = dbServer["args"]["agency.supervision-grace-period"];
           assertTrue(suspendExternal(dbServer.pid));
+          let serverHealth = null;
+          let startTime = Date.now();
+          let result = null;
+          do {
+            wait(2);
+            result = getServersHealth();
+            assertNotEqual(result, null);
+            serverHealth = result[dbServer.id].Status;
+            assertNotEqual(serverHealth, null);
+            const timeElapsed = (Date.now() - startTime) / 1000;
+            const seconds = Math.round(timeElapsed);
+            if (seconds > 300) {
+              throw new Error("Server expected status not acquired");
+            }
+          } while (serverHealth !== "FAILED");
           dbServer.suspended = true;
-          wait(Number(waitTime));
-          let result = getServersHealth();
-          let serverHealth = result[dbServer.id].Status;
           const serverShortName = result[dbServer.id].ShortName;
           assertNotEqual(serverHealth, "GOOD");
-          const startTime = Date.now();
+          startTime = Date.now();
           let serverUsed;
           do {
-            wait(10);
+            wait(2);
             serverUsed = false;
             for (let j = 0; j < 3; ++j) {
               result = arango.GET("/_admin/cluster/shardDistribution").results["col" + j].Plan;
@@ -239,7 +249,7 @@ function clusterRebalanceOtherOptionsSuite() {
               }
               const timeElapsed = (Date.now() - startTime) / 1000;
               const seconds = Math.round(timeElapsed);
-              if (seconds > 7200) {
+              if (seconds > 300) {
                 throw new Error("Moving shards from server in ill state not acquired");
               }
             }
@@ -253,22 +263,42 @@ function clusterRebalanceOtherOptionsSuite() {
             }
           }
           assertTrue(continueExternal(dbServer.pid));
+          do {
+            wait(2);
+            result = getServersHealth();
+            assertNotEqual(result, null);
+            serverHealth = result[dbServer.id].Status;
+            assertNotEqual(serverHealth, null);
+            const timeElapsed = (Date.now() - startTime) / 1000;
+            const seconds = Math.round(timeElapsed);
+            if (seconds > 300) {
+              throw new Error("Server expected status not acquired");
+            }
+          } while (serverHealth !== "GOOD");
           dbServer.suspended = false;
-          wait(Number(waitTime));
-          result = getServersHealth();
-          serverHealth = result[dbServer.id].Status;
-          assertEqual(serverHealth, "GOOD");
         }
       } catch (err) {
-        assertEqual(err.message, "Moving shards from server in ill state not acquired");
         assertNotEqual(dbServer, null);
         assertTrue(continueExternal(dbServer.pid));
-        dbServer.suspended = false;
-        assertNotEqual(waitTime, null);
-        wait(Number(waitTime));
-        const result = getServersHealth();
-        const serverHealth = result[dbServer.id].Status;
-        assertEqual(serverHealth, "GOOD");
+        try {
+          const startTime = Date.now();
+          let serverHealth = null;
+          do {
+            wait(2);
+            const result = getServersHealth();
+            assertNotEqual(result, null);
+            serverHealth = result[dbServer.id].Status;
+            assertNotEqual(serverHealth, null);
+            const timeElapsed = (Date.now() - startTime) / 1000;
+            const seconds = Math.round(timeElapsed);
+            if (seconds > 300) {
+              throw new Error("Server expected status not acquired");
+            }
+          } while (serverHealth !== "GOOD");
+          dbServer.suspended = false;
+        } catch (err) {
+          console.error("Unable to get server " + dbServer.id + " in good state");
+        }
       }
     },
 
