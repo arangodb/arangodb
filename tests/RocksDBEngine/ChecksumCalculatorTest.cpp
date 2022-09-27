@@ -30,10 +30,6 @@
 
 using namespace arangodb;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
 namespace {
 constexpr std::string_view contents =
     "Ein männlein steht im Walde, ganz still und stumm";
