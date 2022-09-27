@@ -492,7 +492,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
       'marking build as crashy.';
   pu.serverFailMessages = pu.serverFailMessages + '\n' + message;
 
-  if (!options.coreCheck) {
+  if (true) {
     instanceInfo.exitStatus['gdbHint'] = message;
     print(RESET);
     return;
@@ -570,10 +570,12 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
     pu.killRemainingProcesses({status: false});
     process.exit();
   }
-  GDB_OUTPUT += `Forced shutdown of ${instanceInfo.name} PID[${instanceInfo.pid}]: ${checkStr}\n`;
+  GDB_OUTPUT += `NOT Forced shutdown of ${instanceInfo.name} PID[${instanceInfo.pid}]: ${checkStr}\n`;
   if (instanceInfo.hasOwnProperty('debuggerInfo')) {
     throw new Error("this process is already debugged: " + JSON.stringify(instanceInfo.getStructure()));
   }
+  killExternal(instanceInfo.pid, 9);
+  return;
   const stats = statisticsExternal(instanceInfo.pid);
   // picking some arbitrary number of a running arangod doubling it
   const generateCoreDump = options.coreGen && ((
@@ -599,6 +601,7 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
 }
 
 function aggregateDebugger(instanceInfo, options) {
+  return "blarg";
   print("collecting debugger info for: " + JSON.stringify(instanceInfo.getStructure()));
   if (!instanceInfo.hasOwnProperty('debuggerInfo')) {
     print("No debugger info persisted to " + JSON.stringify(instanceInfo.getStructure()));
