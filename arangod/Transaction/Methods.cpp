@@ -2497,12 +2497,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(
   bool usedRangeDelete = false;
 
   if (res.ok()) {
-    TRI_IF_FAILURE("LogicalCollection::truncate") {
-      return futures::makeFuture(
-          OperationResult(Result(TRI_ERROR_DEBUG), options));
-    }
-
-    res = collection->getPhysical()->truncate(*this, options, usedRangeDelete);
+    res = collection->truncate(*this, options, usedRangeDelete);
   }
 
   if (res.fail() || !usedRangeDelete) {

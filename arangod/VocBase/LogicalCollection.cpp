@@ -1136,6 +1136,17 @@ void LogicalCollection::deferDropCollection(
   _physical->deferDropCollection(callback);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief processes a truncate operation
+////////////////////////////////////////////////////////////////////////////////
+
+Result LogicalCollection::truncate(transaction::Methods& trx,
+                                   OperationOptions& options,
+                                   bool& usedRangeDelete) {
+  TRI_IF_FAILURE("LogicalCollection::truncate") { return {TRI_ERROR_DEBUG}; }
+  return getPhysical()->truncate(trx, options, usedRangeDelete);
+}
+
 /// @brief compact-data operation
 void LogicalCollection::compact() { getPhysical()->compact(); }
 
