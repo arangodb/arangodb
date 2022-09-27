@@ -81,8 +81,7 @@ var validateDocuments = function (documents, isEdgeCollection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var validateModifyResultInsert = function (collection, results) {
-  var index;
-  for (index in results) {
+  for (let index in results) {
     if (results.hasOwnProperty(index)){
       assertTrue(isEqual(collection.document(results[index]._key), results[index]));
     }
