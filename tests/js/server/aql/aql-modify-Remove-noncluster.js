@@ -76,19 +76,6 @@ var validateDocuments = function (documents, isEdgeCollection) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether the documents inserted are equal on the db.
-////////////////////////////////////////////////////////////////////////////////
-
-var validateModifyResultInsert = function (collection, results) {
-  var index;
-  for (index in results) {
-    if (results.hasOwnProperty(index)){
-      assertTrue(isEqual(collection.document(results[index]._key), results[index]));
-    }
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the documents reported deleted are really gone
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -104,22 +91,6 @@ var validateDeleteGone = function (collection, results) {
       }
     }
   }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert flat document database to an associative array with the keys
-///        as object
-////////////////////////////////////////////////////////////////////////////////
-
-var wrapToKeys = function (results) {
-  var keyArray = {};
-  var index;
-  for (index in results) {
-    if (results.hasOwnProperty(index)){
-      keyArray[results[index]._key] = results[index];
-    }    
-  }
-  return keyArray;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

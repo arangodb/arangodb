@@ -88,26 +88,6 @@ var validateModifyResultInsert = function (collection, results) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether the documents reported deleted are really gone
-////////////////////////////////////////////////////////////////////////////////
-
-var validateDeleteGone = function (collection, results) {
-  var index;
-  for (index in results) {
-    if (results.hasOwnProperty(index)){
-      try {
-        assertEqual(collection.document(results[index]._key), {});
-        fail();
-      }
-      catch (e) {
-        assertTrue(e.errorNum !== undefined, "unexpected error format while calling checking for deleted entry");
-        assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, e.errorNum, "unexpected error code (" + e.errorMessage + "): ");
-      }
-    }
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert flat document database to an associative array with the keys
 ///        as object
 ////////////////////////////////////////////////////////////////////////////////
