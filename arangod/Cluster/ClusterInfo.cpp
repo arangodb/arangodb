@@ -5062,8 +5062,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
         VPackBuilder finishedPlanIndex;
         {
           VPackObjectBuilder o(&finishedPlanIndex);
-          for (auto const& entry :
-               VPackObjectIterator(newIndexBuilder.slice())) {
+          for (auto entry : VPackObjectIterator(newIndexBuilder.slice())) {
             auto const key = entry.key.stringView();
             // remove "isBuilding", "coordinatorId" and "rebootId", plus
             // "newlyCreated" from the final index
@@ -5071,7 +5070,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
                 key != StaticStrings::AttrCoordinator &&
                 key != StaticStrings::AttrCoordinatorRebootId &&
                 key != "isNewlyCreated") {
-              finishedPlanIndex.add(entry.key.copyString(), entry.value);
+              finishedPlanIndex.add(entry.key.stringView(), entry.value);
             }
           }
         }
