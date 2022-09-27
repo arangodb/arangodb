@@ -114,8 +114,7 @@ var validateDeleteGone = function (collection, results) {
 
 var wrapToKeys = function (results) {
   var keyArray = {};
-  var index;
-  for (index in results) {
+  for (let index in results) {
     if (results.hasOwnProperty(index)){
       keyArray[results[index]._key] = results[index];
     }    
