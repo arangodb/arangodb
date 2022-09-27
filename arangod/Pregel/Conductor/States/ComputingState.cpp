@@ -72,30 +72,23 @@ auto Computing::_prepareGlobalSuperStep()
           PrepareGlobalSuperStep{.gss = conductor._globalSuperstep,
                                  .vertexCount = conductor._totalVerticesCount,
                                  .edgeCount = conductor._totalEdgesCount})
-      .thenValue([&](auto results) -> ResultT<VPackBuilder> {
-        auto globalSuperStepPrepared = GlobalSuperStepPrepared{};
-        {
-          for (auto const& result : results) {
-            if (result.get().fail()) {
-              return Result{
-                  result.get().errorNumber(),
-                  fmt::format("Got unsuccessful response from worker "
-                              "while preparing global super step {}: {}\n",
-                              conductor._globalSuperstep,
-                              result.get().errorMessage())};
-            }
-            globalSuperStepPrepared.add(result.get().get());
-          }
+      .thenValue([&](auto globalSuperStepPrepared) -> ResultT<VPackBuilder> {
+        if (globalSuperStepPrepared.fail()) {
+          return Result{globalSuperStepPrepared.errorNumber(),
+                        fmt::format("While preparing global super step {}: {}",
+                                    conductor._globalSuperstep,
+                                    globalSuperStepPrepared.errorMessage())};
         }
-        auto aggregators = globalSuperStepPrepared.aggregators.slice();
-        for (auto aggregator : VPackArrayIterator(aggregators)) {
+        for (auto aggregator : VPackArrayIterator(
+                 globalSuperStepPrepared.get().aggregators.slice())) {
           conductor._aggregators->aggregateValues(aggregator);
         }
         conductor._statistics.accumulateActiveCounts(
-            globalSuperStepPrepared.activeCount);
-        conductor._totalVerticesCount += globalSuperStepPrepared.vertexCount;
-        conductor._totalEdgesCount += globalSuperStepPrepared.edgeCount;
-        return globalSuperStepPrepared.messages;
+            globalSuperStepPrepared.get().activeCount);
+        conductor._totalVerticesCount +=
+            globalSuperStepPrepared.get().vertexCount;
+        conductor._totalEdgesCount += globalSuperStepPrepared.get().edgeCount;
+        return globalSuperStepPrepared.get().messages;
       });
 }
 
@@ -131,19 +124,15 @@ auto Computing::_runGlobalSuperStep(bool activateAll)
   LOG_PREGEL_CONDUCTOR("d98de", DEBUG)
       << "Initiate starting GSS: " << startCommand.slice().toJson();
   return conductor._workers.runGlobalSuperStep(runGlobalSuperStepCommand)
-      .thenValue([&](auto results) -> Result {
-        auto globalSuperStepFinished = GlobalSuperStepFinished{};
-        for (auto const& result : results) {
-          if (result.get().fail()) {
-            return Result{result.get().errorNumber(),
-                          fmt::format("Got unsuccessful response from worker "
-                                      "while running global super step{}: {}\n",
-                                      conductor._globalSuperstep,
-                                      result.get().errorMessage())};
-          }
-          globalSuperStepFinished.add(result.get().get());
+      .thenValue([&](auto globalSuperStepFinished) -> Result {
+        if (globalSuperStepFinished.fail()) {
+          return Result{globalSuperStepFinished.errorNumber(),
+                        fmt::format("While running global super step {}: {}",
+                                    conductor._globalSuperstep,
+                                    globalSuperStepFinished.errorMessage())};
         }
-        conductor._statistics.accumulate(globalSuperStepFinished.messageStats);
+        conductor._statistics.accumulate(
+            globalSuperStepFinished.get().messageStats);
         conductor._timing.gss.back().finish();
         LOG_PREGEL_CONDUCTOR("39385", DEBUG)
             << "Finished gss " << conductor._globalSuperstep << " in "

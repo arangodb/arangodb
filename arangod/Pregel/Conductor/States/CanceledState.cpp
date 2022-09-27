@@ -44,26 +44,25 @@ auto Canceled::_cleanupUntilTimeout(std::chrono::steady_clock::time_point start)
   }
 
   LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Cleanup workers";
-  return conductor._workers.cleanup(Cleanup{}).thenValue([&](auto results) {
-    for (auto const& result : results) {
-      if (result.get().fail()) {
-        LOG_PREGEL_CONDUCTOR("1c495", ERR) << fmt::format(
-            "Got unsuccessful response from worker while cleaning up: {}",
-            result.get().errorMessage());
-        if (std::chrono::steady_clock::now() - start >= _timeout) {
-          return Result{
-              TRI_ERROR_INTERNAL,
-              fmt::format("Failed to cancel worker execution for {}, giving up",
-                          _timeout)};
+  return conductor._workers.cleanup(Cleanup{}).thenValue(
+      [&](auto cleanupFinished) {
+        if (cleanupFinished.fail()) {
+          LOG_PREGEL_CONDUCTOR("1c495", ERR) << fmt::format(
+              "While cleaning up: {}", cleanupFinished.errorMessage());
+          if (std::chrono::steady_clock::now() - start >= _timeout) {
+            return Result{
+                TRI_ERROR_INTERNAL,
+                fmt::format(
+                    "Failed to cancel worker execution for {}, giving up",
+                    _timeout)};
+          }
+          std::this_thread::sleep_for(_retryInterval);
+          return _cleanupUntilTimeout(start).get();
         }
-        std::this_thread::sleep_for(_retryInterval);
-        return _cleanupUntilTimeout(start).get();
-      }
-    }
 
-    if (conductor._inErrorAbort) {
-      return Result{TRI_ERROR_INTERNAL, "Conductor in error"};
-    }
-    return Result{};
-  });
+        if (conductor._inErrorAbort) {
+          return Result{TRI_ERROR_INTERNAL, "Conductor in error"};
+        }
+        return Result{};
+      });
 }

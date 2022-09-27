@@ -33,10 +33,11 @@
 namespace arangodb::pregel::conductor {
 
 template<typename T>
-using FutureOfWorkerResults =
-    futures::Future<std::vector<futures::Try<ResultT<T>>>>;
+concept Addable = requires(T a, T b) {
+  {a.add(b)};
+};
 
-struct WorkerApi {
+struct WorkerApi : NewIWorker {
   WorkerApi() = default;
   WorkerApi(ExecutionNumber executionNumber,
             std::unique_ptr<Connection> connection)
@@ -46,28 +47,25 @@ struct WorkerApi {
       std::unordered_map<ServerID, CreateWorker> const& data)
       -> futures::Future<Result>;
   [[nodiscard]] auto loadGraph(LoadGraph const& graph)
-      -> FutureOfWorkerResults<GraphLoaded>;
+      -> futures::Future<ResultT<GraphLoaded>> override;
   [[nodiscard]] auto prepareGlobalSuperStep(PrepareGlobalSuperStep const& data)
-      -> FutureOfWorkerResults<GlobalSuperStepPrepared>;
+      -> futures::Future<ResultT<GlobalSuperStepPrepared>> override;
   [[nodiscard]] auto runGlobalSuperStep(RunGlobalSuperStep const& data)
-      -> FutureOfWorkerResults<GlobalSuperStepFinished>;
+      -> futures::Future<ResultT<GlobalSuperStepFinished>> override;
   [[nodiscard]] auto store(Store const& message)
-      -> FutureOfWorkerResults<Stored>;
+      -> futures::Future<ResultT<Stored>> override;
   [[nodiscard]] auto cleanup(Cleanup const& message)
-      -> FutureOfWorkerResults<CleanupFinished>;
+      -> futures::Future<ResultT<CleanupFinished>> override;
   [[nodiscard]] auto results(CollectPregelResults const& message) const
-      -> FutureOfWorkerResults<PregelResults>;
+      -> futures::Future<ResultT<PregelResults>> override;
 
  private:
   std::vector<ServerID> _servers = {};
   ExecutionNumber _executionNumber;
   std::unique_ptr<Connection> _connection;
 
-  // TODO accumulate results inside and return Future<ResultT<Out>> directly.
-  // This can be done when AggregatorHandler, StatsManager and ReportManager can
-  // be accumulated propertly
-  template<typename Out, typename In>
-  auto sendToAll(In const& in) const -> FutureOfWorkerResults<Out>;
+  template<Addable Out, typename In>
+  auto sendToAll(In const& in) const -> futures::Future<ResultT<Out>>;
 
   // This template enforces In and Out type of the function:
   // 'In' enforces which type of message is sent

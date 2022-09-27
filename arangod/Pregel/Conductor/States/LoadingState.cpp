@@ -59,20 +59,14 @@ auto Loading::_createWorkers() -> futures::Future<Result> {
 
 auto Loading::_loadGraph() -> futures::Future<Result> {
   return conductor._workers.loadGraph(LoadGraph{})
-      .thenValue([&](auto results) -> Result {
-        auto graphLoaded = GraphLoaded{};
-        for (auto const& result : results) {
-          if (result.get().fail()) {
-            return Result{result.get().errorNumber(),
-                          fmt::format("Got unsuccessful response from worker "
-                                      "while loading graph: "
-                                      "{}\n",
-                                      result.get().errorMessage())};
-          }
-          graphLoaded.add(result.get().get());
+      .thenValue([&](auto graphLoaded) -> Result {
+        if (graphLoaded.fail()) {
+          return Result{graphLoaded.errorNumber(),
+                        fmt::format("While loading graph: {}",
+                                    graphLoaded.errorMessage())};
         }
-        conductor._totalVerticesCount += graphLoaded.vertexCount;
-        conductor._totalEdgesCount += graphLoaded.edgeCount;
+        conductor._totalVerticesCount += graphLoaded.get().vertexCount;
+        conductor._totalEdgesCount += graphLoaded.get().edgeCount;
         return Result{};
       });
 }
