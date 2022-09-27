@@ -66,6 +66,8 @@ class RocksDBLogValue {
                                      VPackSlice indexInfo);
   static RocksDBLogValue IndexDrop(TRI_voc_tick_t dbid, DataSourceId cid,
                                    IndexId indexId);
+  static RocksDBLogValue IndexChange(TRI_voc_tick_t dbid, DataSourceId cid,
+                                   IndexId indexId);
 
   static RocksDBLogValue ViewCreate(TRI_voc_tick_t, DataSourceId);
   static RocksDBLogValue ViewDrop(TRI_voc_tick_t, DataSourceId,

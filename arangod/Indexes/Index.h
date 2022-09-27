@@ -398,6 +398,10 @@ class Index {
 
   virtual bool canBeUpdated() const noexcept { return false; }
 
+  virtual Result updateProperties(VPackSlice) {
+    return {TRI_ERROR_NOT_IMPLEMENTED};
+  }
+
   /// @brief called after the collection was truncated
   /// @param tick at which truncate was applied
   virtual void afterTruncate(TRI_voc_tick_t, transaction::Methods*) {}

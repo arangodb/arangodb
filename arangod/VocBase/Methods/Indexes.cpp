@@ -748,23 +748,7 @@ arangodb::Result Indexes::update(LogicalCollection* collection,
       //                  res.errorNumber());
       return res;
     }
-
-    std::shared_ptr<Index> idx = collection->lookupIndex(iid);
-    if (!idx || idx->id().empty() || idx->id().isPrimary()) {
-      // FIXME: Do we need an event here?
-      //events::DropIndex(collection->vocbase().name(), collection->name(),
-      //                  std::to_string(iid.id()),
-      //                  TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
-      return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
-    }
-    if (!idx->canBeUpdated()) {
-      // FIXME: Do we need an event here?
-      //events::UpdateIndex(collection->vocbase().name(), collection->name(),
-      //                  std::to_string(iid.id()), TRI_ERROR_NOT_IMPLEMENTED);
-      return Result(TRI_ERROR_NOT_IMPLEMENTED);
-    }
-
-    res = col->updateIndex(idx->id(), body);
+    res = col->updateIndex(iid, body);
     // FIXME: Do we need an event here?
     //events::UpdateIndex(collection->vocbase().name(), collection->name(),
     //                  std::to_string(iid.id()), res.errorNumber());

@@ -95,6 +95,8 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
 
   bool canBeUpdated() const noexcept override { return true; }
 
+  Result updateProperties(VPackSlice slice) override;
+
   Result drop() override;
 
   void load() override {}

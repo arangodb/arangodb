@@ -326,7 +326,7 @@ RestStatus RestIndexHandler::updateIndex() {
 
   std::string const& iid = suffixes[1];
   VPackBuilder idBuilder;
-  if (::startsWith(iid, cName + TRI_INDEX_HANDLE_SEPARATOR_CHR)) {
+  if (iid.starts_with(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR)) {
     idBuilder.add(VPackValue(iid));
   } else {
     idBuilder.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));

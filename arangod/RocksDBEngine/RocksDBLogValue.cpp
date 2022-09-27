@@ -81,6 +81,11 @@ RocksDBLogValue RocksDBLogValue::IndexDrop(TRI_voc_tick_t dbid,
   return RocksDBLogValue(RocksDBLogType::IndexDrop, dbid, cid.id(), iid.id());
 }
 
+RocksDBLogValue RocksDBLogValue::IndexChange(TRI_voc_tick_t dbid,
+                                           DataSourceId cid, IndexId iid) {
+  return RocksDBLogValue(RocksDBLogType::IndexChange, dbid, cid.id(), iid.id());
+}
+
 RocksDBLogValue RocksDBLogValue::ViewCreate(TRI_voc_tick_t dbid,
                                             DataSourceId vid) {
   return RocksDBLogValue(RocksDBLogType::ViewCreate, dbid, vid.id());

@@ -91,6 +91,8 @@ class IResearchInvertedIndex : public IResearchDataStore {
 
   IResearchInvertedIndexMeta const& meta() const noexcept { return _meta; }
 
+  Result updateProperties(VPackSlice slice);
+
  protected:
   void invalidateQueryCache(TRI_vocbase_t* vocbase) override;
 
