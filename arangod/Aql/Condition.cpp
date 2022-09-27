@@ -664,8 +664,8 @@ std::pair<bool, bool> Condition::findIndexes(
   }
 
   return arangodb::aql::utils::getBestIndexHandlesForFilterCondition(
-      coll, _ast, _root, reference, sortCondition, itemsInIndex, node->hint(),
-      usedIndexes, _isSorted, isAllCoveredByIndex);
+      trx, coll, _ast, _root, reference, sortCondition, itemsInIndex,
+      node->hint(), usedIndexes, _isSorted, isAllCoveredByIndex);
 }
 
 /// @brief get the attributes for a sub-condition that are const

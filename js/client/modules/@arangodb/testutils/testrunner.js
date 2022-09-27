@@ -226,16 +226,24 @@ let databasesTest = {
     // TODO: we are currently filtering out the UnitTestDB here because it is 
     // created and not cleaned up by a lot of the `authentication` tests. This
     // should be fixed eventually
-    db._useDatabase('_system');
-    let databasesAfter = db._databases().filter((name) => name !== 'UnitTestDB');
-    if (databasesAfter.length !== 1 || databasesAfter[0] !== '_system') {
+    try {
+      db._useDatabase('_system');
+      let databasesAfter = db._databases().filter((name) => name !== 'UnitTestDB');
+      if (databasesAfter.length !== 1 || databasesAfter[0] !== '_system') {
+        obj.results[obj.translateResult(te)] = {
+          status: false,
+          message: 'Cleanup missing - test left over databases: ' + JSON.stringify(databasesAfter) + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
+        };
+        return false;
+      }
+      return true;
+    } catch (x) {
       obj.results[obj.translateResult(te)] = {
         status: false,
-        message: 'Cleanup missing - test left over databases: ' + JSON.stringify(databasesAfter) + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
+        message: 'failed to fetch the databases list: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
       };
-      return false;
     }
-    return true;
+    return false;
   }
 };
 
@@ -478,6 +486,7 @@ class testRunner {
     let serverDead = false;
     let count = 0;
     let forceTerminate = false;
+    let moreReason = "";
     for (let i = 0; i < this.testList.length; i++) {
       let te = this.testList[i];
       let filtered = {};
@@ -491,6 +500,7 @@ class testRunner {
           if (!this.continueTesting || !this.cleanupChecks[j].setUp(this, te)) {
             this.continueTesting = false;
             print(RED+'server pretest "' + this.cleanupChecks[j].name + '" failed!'+RESET);
+            moreReason += `server pretest '${this.cleanupChecks[j].name}' failed!`;
             j = this.cleanupChecks.length;
             continue;
           }
@@ -508,6 +518,7 @@ class testRunner {
           print('\n' + (new Date()).toISOString() + GREEN + " [============] " + this.info + ': Trying', te, '...', RESET);
           let reply = this.runOneTest(te);
           if (reply.hasOwnProperty('forceTerminate') && reply.forceTerminate) {
+            moreReason += "test told us that we should forceTerminate.";
             this.results[this.translateResult(te)] = reply;
             this.continueTesting = false;
             forceTerminate = true;
@@ -548,6 +559,7 @@ class testRunner {
             for (let j = 0; j < this.cleanupChecks.length; j++) {
               if (!this.continueTesting || !this.cleanupChecks[j].runCheck(this, te)) {
                 print(RED+'server posttest "' + this.cleanupChecks[j].name + '" failed!'+RESET);
+                moreReason += `server posttest '${this.cleanupChecks[j].name}' failed!`;
                 this.continueTesting = false;
                 j = this.cleanupChecks.length;
                 continue;
@@ -617,7 +629,7 @@ class testRunner {
     if (this.serverOptions['server.jwt-secret'] && !clonedOpts['server.jwt-secret']) {
       clonedOpts['server.jwt-secret'] = this.serverOptions['server.jwt-secret'];
     }
-    this.results.shutdown = this.results.shutdown && this.instanceManager.shutdownInstance(forceTerminate);
+    this.results.shutdown = this.results.shutdown && this.instanceManager.shutdownInstance(forceTerminate, moreReason);
     if (!this.results.shutdown) {
       this.results.status = false;
     }

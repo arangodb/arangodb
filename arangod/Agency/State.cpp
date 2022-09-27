@@ -1625,20 +1625,20 @@ query_t State::allLogs() const {
   return everything;
 }
 
-std::vector<index_t> State::inquire(query_t const& query) const {
-  if (!query->slice().isArray()) {
+std::vector<index_t> State::inquire(velocypack::Slice query) const {
+  if (!query.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_AGENCY_MALFORMED_INQUIRE_REQUEST,
         std::string(
             "Inquiry handles a list of string clientIds: [<clientId>] ") +
-            ". We got " + query->toJson());
+            ". We got " + query.toJson());
   }
 
   std::vector<index_t> result;
   size_t pos = 0;
 
   MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
-  for (auto const& i : VPackArrayIterator(query->slice())) {
+  for (auto i : VPackArrayIterator(query)) {
     if (!i.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_AGENCY_MALFORMED_INQUIRE_REQUEST,

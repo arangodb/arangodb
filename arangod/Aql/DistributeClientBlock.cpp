@@ -28,6 +28,7 @@
 #include "Aql/IdExecutor.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/ShadowAqlItemRow.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 
 using namespace arangodb;
 using namespace arangodb::aql;

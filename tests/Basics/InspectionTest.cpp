@@ -37,13 +37,17 @@
 #include <velocypack/velocypack-memory.h>
 
 #include "Inspection/Access.h"
-#include "Inspection/ValidateInspector.h"
+#include "Inspection/Format.h"
+#include "Inspection/VPack.h"
 #include "Inspection/VPackLoadInspector.h"
 #include "Inspection/VPackSaveInspector.h"
-#include "Inspection/VPack.h"
+#include "Inspection/ValidateInspector.h"
 #include "velocypack/Builder.h"
 
 #include "Logger/LogMacros.h"
+
+#include <fmt/core.h>
+#include <fmt/ostream.h>
 
 namespace {
 
@@ -174,13 +178,17 @@ struct Fallback {
   int i;
   std::string s;
   Dummy d = {.i = 1, .d = 4.2, .b = true, .s = "2"};
+  int dynamic;
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, Fallback& x) {
-  return f.object(x).fields(f.field("i", x.i).fallback(42),
-                            f.field("s", x.s).fallback("foobar"),
-                            f.field("d", x.d).fallback(f.keep()));
+  return f.object(x).fields(
+      f.field("i", x.i).fallback(42), f.field("s", x.s).fallback("foobar"),
+      f.field("d", x.d).fallback(f.keep()),
+      f.field("dynamic", x.dynamic).fallbackFactory([&x]() {
+        return x.i * 2;
+      }));
 }
 
 struct Invariant {
@@ -363,6 +371,9 @@ auto inspect(Inspector& f, AnEmptyObject& x) {
 
 }  // namespace
 
+template<>
+struct fmt::formatter<Dummy> : arangodb::inspection::inspection_formatter {};
+
 namespace arangodb::inspection {
 template<>
 struct Access<Specialization> : AccessBase<Specialization> {
@@ -405,6 +416,25 @@ struct Struct1 {
 struct Struct2 {
   int v;
 };
+struct Struct3 {
+  int a;
+  int b;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, Struct1& x) {
+  return f.object(x).fields(f.field("v", x.v));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, Struct2& x) {
+  return f.object(x).fields(f.field("v", x.v));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, Struct3& x) {
+  return f.object(x).fields(f.field("a", x.a), f.field("b", x.b));
+}
 
 struct MyQualifiedVariant
     : std::variant<std::string, int, Struct1, Struct2, std::monostate> {};
@@ -464,21 +494,111 @@ auto inspect(Inspector& f, UnqualifiedVariant& x) {
                             f.field("e", x.e));
 }
 
+struct MyEmbeddedVariant : std::variant<Struct1, Struct2, Struct3> {};
+
+struct EmbeddedVariant {
+  MyEmbeddedVariant a;
+  MyEmbeddedVariant b;
+  MyEmbeddedVariant c;
+};
+
 template<class Inspector>
-auto inspect(Inspector& f, Struct1& x) {
-  return f.object(x).fields(f.field("v", x.v));
+auto inspect(Inspector& f, MyEmbeddedVariant& x) {
+  namespace insp = arangodb::inspection;
+  return f.variant(x).embedded("t").alternatives(
+      insp::type<Struct1>("Struct1"),   //
+      insp::type<Struct2>("Struct2"),   //
+      insp::type<Struct3>("Struct3"));  //
 }
 
 template<class Inspector>
-auto inspect(Inspector& f, Struct2& x) {
-  return f.object(x).fields(f.field("v", x.v));
+auto inspect(Inspector& f, EmbeddedVariant& x) {
+  return f.object(x).fields(f.field("a", x.a), f.field("b", x.b),
+                            f.field("c", x.c));
 }
+
+enum class MyStringEnum {
+  kValue1,
+  kValue2,
+  kValue3 = kValue2,
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, MyStringEnum& x) {
+  return f.enumeration(x).values(MyStringEnum::kValue1, "value1",  //
+                                 MyStringEnum::kValue2, "value2");
+}
+
+enum class MyIntEnum {
+  kValue1,
+  kValue2,
+  kValue3 = kValue2,
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, MyIntEnum& x) {
+  return f.enumeration(x).values(MyIntEnum::kValue1, 1,  //
+                                 MyIntEnum::kValue2, 2);
+}
+
+enum class MyMixedEnum {
+  kValue1,
+  kValue2,
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, MyMixedEnum& x) {
+  return f.enumeration(x).values(MyMixedEnum::kValue1, "value1",  //
+                                 MyMixedEnum::kValue1, 1,         //
+                                 MyMixedEnum::kValue2, "value2",  //
+                                 MyMixedEnum::kValue2, 2);
+}
+
+struct Embedded {
+  int a;
+  InvariantAndFallback inner;
+  int b;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, Embedded& v) {
+  return f.object(v).fields(f.field("a", v.a), f.embedFields(v.inner),
+                            f.field("b", v.b));
+}
+
+struct NestedEmbedding : Embedded {};
+
+template<class Inspector>
+auto inspect(Inspector& f, NestedEmbedding& v) {
+  return f.object(v).fields(f.embedFields(static_cast<Embedded&>(v)));
+}
+
+struct EmbeddedObjectInvariant {
+  int a;
+  ObjectInvariant inner;
+  int b;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, EmbeddedObjectInvariant& v) {
+  return f.object(v).fields(f.field("a", v.a), f.embedFields(v.inner),
+                            f.field("b", v.b));
+}
+
+struct NestedEmbeddingWithObjectInvariant : EmbeddedObjectInvariant {};
+
+template<class Inspector>
+auto inspect(Inspector& f, NestedEmbeddingWithObjectInvariant& v) {
+  return f.object(v).fields(
+      f.embedFields(static_cast<EmbeddedObjectInvariant&>(v)));
+}
+
 }  // namespace
 
 namespace {
 using namespace arangodb;
-using VPackLoadInspector = inspection::VPackLoadInspector;
-using VPackSaveInspector = inspection::VPackSaveInspector;
+using VPackLoadInspector = inspection::VPackLoadInspector<>;
+using VPackSaveInspector = inspection::VPackSaveInspector<>;
 
 struct VPackSaveInspectorTest : public ::testing::Test {
   velocypack::Builder builder;
@@ -490,7 +610,7 @@ TEST_F(VPackSaveInspectorTest, store_empty_object) {
   auto result = inspector.apply(empty);
   EXPECT_TRUE(result.ok());
   EXPECT_TRUE(builder.slice().isObject());
-  EXPECT_EQ(0, builder.slice().length());
+  EXPECT_EQ(0u, builder.slice().length());
 }
 
 TEST_F(VPackSaveInspectorTest, store_int) {
@@ -582,14 +702,14 @@ TEST_F(VPackSaveInspectorTest, store_list) {
   ASSERT_TRUE(slice.isObject());
   auto list = slice["vec"];
   ASSERT_TRUE(list.isArray());
-  ASSERT_EQ(3, list.length());
+  ASSERT_EQ(3u, list.length());
   EXPECT_EQ(l.vec[0].i.value, list[0]["i"].getInt());
   EXPECT_EQ(l.vec[1].i.value, list[1]["i"].getInt());
   EXPECT_EQ(l.vec[2].i.value, list[2]["i"].getInt());
 
   list = slice["list"];
   ASSERT_TRUE(list.isArray());
-  ASSERT_EQ(2, list.length());
+  ASSERT_EQ(2u, list.length());
   auto it = l.list.begin();
   EXPECT_EQ(*it++, list[0].getInt());
   EXPECT_EQ(*it++, list[1].getInt());
@@ -608,14 +728,14 @@ TEST_F(VPackSaveInspectorTest, store_map) {
   ASSERT_TRUE(slice.isObject());
   auto obj = slice["map"];
   ASSERT_TRUE(obj.isObject());
-  ASSERT_EQ(3, obj.length());
+  ASSERT_EQ(3u, obj.length());
   EXPECT_EQ(m.map["1"].i.value, obj["1"]["i"].getInt());
   EXPECT_EQ(m.map["2"].i.value, obj["2"]["i"].getInt());
   EXPECT_EQ(m.map["3"].i.value, obj["3"]["i"].getInt());
 
   obj = slice["unordered"];
   ASSERT_TRUE(obj.isObject());
-  ASSERT_EQ(2, obj.length());
+  ASSERT_EQ(2u, obj.length());
   EXPECT_EQ(m.unordered["4"], obj["4"].getInt());
   EXPECT_EQ(m.unordered["5"], obj["5"].getInt());
 }
@@ -634,23 +754,23 @@ TEST_F(VPackSaveInspectorTest, store_tuples) {
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
   auto list = slice["tuple"];
-  ASSERT_EQ(3, list.length());
+  ASSERT_EQ(3u, list.length());
   EXPECT_EQ(std::get<0>(t.tuple), list[0].copyString());
   EXPECT_EQ(std::get<1>(t.tuple), list[1].getInt());
   EXPECT_EQ(std::get<2>(t.tuple), list[2].getDouble());
 
   list = slice["pair"];
-  ASSERT_EQ(2, list.length());
+  ASSERT_EQ(2u, list.length());
   EXPECT_EQ(std::get<0>(t.pair), list[0].getInt());
   EXPECT_EQ(std::get<1>(t.pair), list[1].copyString());
 
   list = slice["array1"];
-  ASSERT_EQ(2, list.length());
+  ASSERT_EQ(2u, list.length());
   EXPECT_EQ(t.array1[0], list[0].copyString());
   EXPECT_EQ(t.array1[1], list[1].copyString());
 
   list = slice["array2"];
-  ASSERT_EQ(3, list.length());
+  ASSERT_EQ(3u, list.length());
   EXPECT_EQ(t.array2[0], list[0].getInt());
   EXPECT_EQ(t.array2[1], list[1].getInt());
   EXPECT_EQ(t.array2[2], list[2].getInt());
@@ -672,7 +792,7 @@ TEST_F(VPackSaveInspectorTest, store_optional) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(5, slice.length());
+  EXPECT_EQ(5u, slice.length());
   // a and b have fallbacks, so we need to serialize them explicitly as null
   EXPECT_TRUE(slice["a"].isNull());
   EXPECT_TRUE(slice["b"].isNull());
@@ -680,14 +800,14 @@ TEST_F(VPackSaveInspectorTest, store_optional) {
 
   auto vec = slice["vec"];
   ASSERT_TRUE(vec.isArray());
-  ASSERT_EQ(3, vec.length());
+  ASSERT_EQ(3u, vec.length());
   EXPECT_EQ(1, vec[0].getInt());
   EXPECT_TRUE(vec[1].isNull());
   EXPECT_EQ(3, vec[2].getInt());
 
   auto map = slice["map"];
   ASSERT_TRUE(map.isObject());
-  ASSERT_EQ(3, map.length());
+  ASSERT_EQ(3u, map.length());
   EXPECT_EQ(1, map["1"].getInt());
   EXPECT_TRUE(map["2"].isNull());
   EXPECT_EQ(3, map["3"].getInt());
@@ -713,12 +833,12 @@ TEST_F(VPackSaveInspectorTest, store_optional_pointer) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(5, slice.length());
+  EXPECT_EQ(5u, slice.length());
   EXPECT_EQ(42, slice["b"].getInt());
   EXPECT_EQ(43, slice["d"]["i"].getInt());
   auto vec = slice["vec"];
   EXPECT_TRUE(vec.isArray());
-  EXPECT_EQ(3, vec.length());
+  EXPECT_EQ(3u, vec.length());
   EXPECT_EQ(1, vec[0].getInt());
   EXPECT_TRUE(vec[1].isNull());
   EXPECT_EQ(2, vec[2].getInt());
@@ -776,7 +896,7 @@ TEST_F(VPackSaveInspectorTest, store_object_with_optional_field_transform) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(2, slice.length());
+  EXPECT_EQ(2u, slice.length());
   EXPECT_EQ("1", slice["x"].copyString());
   EXPECT_EQ("3", slice["z"].copyString());
 }
@@ -799,7 +919,7 @@ TEST_F(VPackSaveInspectorTest, store_type_with_explicitly_ignored_fields) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(1, slice.length());
+  EXPECT_EQ(1u, slice.length());
 }
 
 TEST_F(VPackSaveInspectorTest, store_type_with_unsafe_fields) {
@@ -858,20 +978,117 @@ TEST_F(VPackSaveInspectorTest, store_unqualified_variant) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(1, slice["a"].length());
+  EXPECT_EQ(1u, slice["a"].length());
   EXPECT_EQ("foobar", slice["a"]["string"].stringView());
 
-  EXPECT_EQ(1, slice["b"].length());
+  EXPECT_EQ(1u, slice["b"].length());
   EXPECT_EQ(42, slice["b"]["int"].getInt());
 
-  EXPECT_EQ(1, slice["c"].length());
+  EXPECT_EQ(1u, slice["c"].length());
   EXPECT_EQ(1, slice["c"]["Struct1"]["v"].getInt());
 
-  EXPECT_EQ(1, slice["d"].length());
+  EXPECT_EQ(1u, slice["d"].length());
   EXPECT_EQ(2, slice["d"]["Struct2"]["v"].getInt());
 
-  EXPECT_EQ(1, slice["e"].length());
+  EXPECT_EQ(1u, slice["e"].length());
   EXPECT_TRUE(slice["e"]["nil"].isEmptyObject());
+}
+
+TEST_F(VPackSaveInspectorTest, store_string_enum) {
+  std::vector<MyStringEnum> enums{MyStringEnum::kValue1, MyStringEnum::kValue2,
+                                  MyStringEnum::kValue3};
+  auto result = inspector.apply(enums);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isArray());
+  ASSERT_EQ(3u, slice.length());
+  EXPECT_EQ("value1", slice[0].copyString());
+  EXPECT_EQ("value2", slice[1].copyString());
+  EXPECT_EQ("value2", slice[2].copyString());
+}
+
+TEST_F(VPackSaveInspectorTest, store_int_enum) {
+  std::vector<MyIntEnum> enums{MyIntEnum::kValue1, MyIntEnum::kValue2,
+                               MyIntEnum::kValue3};
+  auto result = inspector.apply(enums);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isArray());
+  ASSERT_EQ(3u, slice.length());
+  EXPECT_EQ(1, slice[0].getInt());
+  EXPECT_EQ(2, slice[1].getInt());
+  EXPECT_EQ(2, slice[2].getInt());
+}
+
+TEST_F(VPackSaveInspectorTest, store_mixed_enum) {
+  std::vector<MyMixedEnum> enums{MyMixedEnum::kValue1, MyMixedEnum::kValue2};
+  auto result = inspector.apply(enums);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isArray());
+  ASSERT_EQ(2u, slice.length());
+  EXPECT_EQ("value1", slice[0].copyString());
+  EXPECT_EQ("value2", slice[1].copyString());
+}
+
+TEST_F(VPackSaveInspectorTest,
+       store_string_enum_returns_error_for_unknown_value) {
+  MyStringEnum val = static_cast<MyStringEnum>(42);
+  auto result = inspector.apply(val);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Unknown enum value 42", result.error());
+}
+
+TEST_F(VPackSaveInspectorTest, store_int_enum_returns_error_for_unknown_value) {
+  MyIntEnum val = static_cast<MyIntEnum>(42);
+  auto result = inspector.apply(val);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Unknown enum value 42", result.error());
+}
+
+TEST_F(VPackSaveInspectorTest,
+       store_mixed_enum_returns_error_for_unknown_value) {
+  MyMixedEnum val = static_cast<MyMixedEnum>(42);
+  auto result = inspector.apply(val);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Unknown enum value 42", result.error());
+}
+
+TEST_F(VPackSaveInspectorTest, store_embedded_variant) {
+  EmbeddedVariant d{
+      .a = {Struct1{1}}, .b = {Struct2{2}}, .c = {Struct3{.a = 1, .b = 2}}};
+  auto result = inspector.apply(d);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+
+  EXPECT_EQ("Struct1", slice["a"]["t"].stringView());
+  EXPECT_EQ(1, slice["a"]["v"].getInt());
+
+  EXPECT_EQ("Struct2", slice["b"]["t"].stringView());
+  EXPECT_EQ(2, slice["b"]["v"].getInt());
+
+  EXPECT_EQ("Struct3", slice["c"]["t"].stringView());
+  EXPECT_EQ(1, slice["c"]["a"].getInt());
+  EXPECT_EQ(2, slice["c"]["b"].getInt());
+}
+
+TEST_F(VPackSaveInspectorTest, store_embedded_fields) {
+  NestedEmbedding const n{
+      Embedded{.a = 1, .inner = {.i = 42, .s = "foobar"}, .b = 2}};
+  auto result = inspector.apply(n);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  EXPECT_EQ(n.a, slice["a"].getInt());
+  EXPECT_EQ(n.inner.i, slice["i"].getInt());
+  EXPECT_EQ(n.inner.s, slice["s"].copyString());
+  EXPECT_EQ(n.b, slice["b"].getInt());
 }
 
 struct VPackLoadInspectorTest : public ::testing::Test {
@@ -1005,7 +1222,7 @@ TEST_F(VPackLoadInspectorTest, load_list) {
   auto result = inspector.apply(l);
   ASSERT_TRUE(result.ok());
 
-  EXPECT_EQ(3, l.vec.size());
+  EXPECT_EQ(3u, l.vec.size());
   EXPECT_EQ(1, l.vec[0].i.value);
   EXPECT_EQ(2, l.vec[1].i.value);
   EXPECT_EQ(3, l.vec[2].i.value);
@@ -1175,7 +1392,7 @@ TEST_F(VPackLoadInspectorTest, load_optional_pointer) {
   ASSERT_NE(nullptr, p.d);
   EXPECT_EQ(43, p.d->i.value);
 
-  ASSERT_EQ(3, p.vec.size());
+  ASSERT_EQ(3u, p.vec.size());
   ASSERT_NE(nullptr, p.vec[0]);
   EXPECT_EQ(1, *p.vec[0]);
   EXPECT_EQ(nullptr, p.vec[1]);
@@ -1524,6 +1741,7 @@ TEST_F(VPackLoadInspectorTest, load_object_with_fallbacks) {
   EXPECT_EQ(42, f.i);
   EXPECT_EQ("foobar", f.s);
   EXPECT_EQ(expected, f.d);
+  EXPECT_EQ(84, f.dynamic);  // f.i * 2
 }
 
 TEST_F(VPackLoadInspectorTest, load_object_with_fallback_reference) {
@@ -1807,7 +2025,7 @@ TEST_F(VPackLoadInspectorTest,
   auto result = inspector.apply(v);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Expecting type String", result.error());
-  EXPECT_EQ("a.value", result.path());
+  EXPECT_EQ("a.v", result.path());
 }
 
 TEST_F(VPackLoadInspectorTest,
@@ -1944,11 +2162,11 @@ TEST_F(VPackLoadInspectorTest,
   auto result = inspector.apply(v);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Expecting type String", result.error());
-  EXPECT_EQ("a.value", result.path());
+  EXPECT_EQ("a.string", result.path());
 }
 
 TEST_F(VPackLoadInspectorTest,
-       error_missing_data_when_parsing_qualified_variant) {
+       error_missing_data_when_parsing_unqualified_variant) {
   builder.openObject();
   builder.add(VPackValue("a"));
   builder.openObject();
@@ -1963,13 +2181,133 @@ TEST_F(VPackLoadInspectorTest,
   EXPECT_EQ("a", result.path());
 }
 
+TEST_F(VPackLoadInspectorTest, load_embedded_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("t", "Struct1");
+  builder.add("v", 1);
+  builder.close();
+
+  builder.add(VPackValue("b"));
+  builder.openObject();
+  builder.add("t", "Struct2");
+  builder.add("v", 2);
+  builder.close();
+
+  builder.add(VPackValue("c"));
+  builder.openObject();
+  builder.add("t", "Struct3");
+  builder.add("a", 1);
+  builder.add("b", 2);
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  EmbeddedVariant v{.a = {}, .b = {}, .c = {}};
+  auto result = inspector.apply(v);
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(1, std::get<Struct1>(v.a).v);
+  EXPECT_EQ(2, std::get<Struct2>(v.b).v);
+  EXPECT_EQ(1, std::get<Struct3>(v.c).a);
+  EXPECT_EQ(2, std::get<Struct3>(v.c).b);
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_unknown_type_tag_when_loading_embedded_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("t", "blubb");
+  builder.add("v", "");
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  EmbeddedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Found invalid type: blubb", result.error());
+  EXPECT_EQ("a", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_expecting_int_when_parsing_embedded_variant_value) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("t", "Struct1");
+  builder.add("v", "blubb");
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  EmbeddedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Expecting type Int", result.error());
+  EXPECT_EQ("a.v", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_missing_tag_when_parsing_embedded_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("v", 42);
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  EmbeddedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Variant type field \"t\" is missing", result.error());
+  EXPECT_EQ("a", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_invalid_tag_type_when_parsing_embedded_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("t", 42);
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  EmbeddedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Variant type field \"t\" must be a string", result.error());
+  EXPECT_EQ("a", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_missing_value_when_parsing_embedded_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("t", "Struct3");
+  builder.add("a", 1);
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  EmbeddedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Missing required attribute 'b'", result.error());
+  EXPECT_EQ("a.b", result.path());
+}
+
 TEST_F(VPackLoadInspectorTest, load_type_with_unsafe_fields) {
   builder.openObject();
   builder.add("view", VPackValue("foobar"));
   builder.add("slice", VPackValue("blubb"));
   builder.add("hashed", VPackValue("hashedString"));
   builder.close();
-  arangodb::inspection::VPackUnsafeLoadInspector inspector{builder};
+  arangodb::inspection::VPackUnsafeLoadInspector<> inspector{builder};
 
   Unsafe u;
   auto result = inspector.apply(u);
@@ -1979,6 +2317,179 @@ TEST_F(VPackLoadInspectorTest, load_type_with_unsafe_fields) {
   EXPECT_EQ(builder.slice()["slice"].start(), u.slice.start());
   EXPECT_EQ(builder.slice()["hashed"].stringView(), u.hashed.stringView());
   EXPECT_EQ(builder.slice()["hashed"].stringView().data(), u.hashed.data());
+}
+
+TEST_F(VPackLoadInspectorTest, load_string_enum) {
+  builder.openArray();
+  builder.add(VPackValue("value1"));
+  builder.add(VPackValue("value2"));
+  builder.close();
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+  std::vector<MyStringEnum> enums;
+  auto result = inspector.apply(enums);
+  ASSERT_TRUE(result.ok());
+  ASSERT_EQ(2u, enums.size());
+  EXPECT_EQ(MyStringEnum::kValue1, enums[0]);
+  EXPECT_EQ(MyStringEnum::kValue2, enums[1]);
+}
+
+TEST_F(VPackLoadInspectorTest, load_int_enum) {
+  builder.openArray();
+  builder.add(VPackValue(1));
+  builder.add(VPackValue(2));
+  builder.close();
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+  std::vector<MyIntEnum> enums;
+  auto result = inspector.apply(enums);
+  ASSERT_TRUE(result.ok());
+  ASSERT_EQ(2u, enums.size());
+  EXPECT_EQ(MyIntEnum::kValue1, enums[0]);
+  EXPECT_EQ(MyIntEnum::kValue2, enums[1]);
+}
+
+TEST_F(VPackLoadInspectorTest, load_mixed_enum) {
+  builder.openArray();
+  builder.add(VPackValue("value1"));
+  builder.add(VPackValue(1));
+  builder.add(VPackValue("value2"));
+  builder.add(VPackValue(2));
+  builder.close();
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+  std::vector<MyMixedEnum> enums;
+  auto result = inspector.apply(enums);
+  ASSERT_TRUE(result.ok());
+  ASSERT_EQ(4u, enums.size());
+  EXPECT_EQ(MyMixedEnum::kValue1, enums[0]);
+  EXPECT_EQ(MyMixedEnum::kValue1, enums[1]);
+  EXPECT_EQ(MyMixedEnum::kValue2, enums[2]);
+  EXPECT_EQ(MyMixedEnum::kValue2, enums[3]);
+}
+
+TEST_F(VPackLoadInspectorTest, load_string_enum_returns_error_when_not_string) {
+  builder.add(VPackValue(42));
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+  MyStringEnum myEnum;
+  auto result = inspector.apply(myEnum);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ("Expecting type String", result.error());
+}
+
+TEST_F(VPackLoadInspectorTest, load_int_enum_returns_error_when_not_int) {
+  builder.add(VPackValue("foobar"));
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+  MyIntEnum myEnum;
+  auto result = inspector.apply(myEnum);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ("Expecting type UInt", result.error());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_mixed_enum_returns_error_when_not_string_or_int) {
+  builder.add(VPackValue(false));
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+  MyMixedEnum myEnum;
+  auto result = inspector.apply(myEnum);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ("Expecting type String or Int", result.error());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_string_enum_returns_error_when_value_is_unknown) {
+  builder.add(VPackValue("unknownValue"));
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+  MyStringEnum myEnum;
+  auto result = inspector.apply(myEnum);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ("Unknown enum value unknownValue", result.error());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_int_enum_returns_error_when_value_is_unknown) {
+  builder.add(VPackValue(42));
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+  MyIntEnum myEnum;
+  auto result = inspector.apply(myEnum);
+  EXPECT_FALSE(result.ok());
+  EXPECT_EQ("Unknown enum value 42", result.error());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_mixed_enum_returns_error_when_value_is_unknown) {
+  {
+    builder.add(VPackValue("unknownValue"));
+    arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+    MyMixedEnum myEnum;
+    auto result = inspector.apply(myEnum);
+    EXPECT_FALSE(result.ok());
+    EXPECT_EQ("Unknown enum value unknownValue", result.error());
+  }
+  {
+    builder.clear();
+    builder.add(VPackValue(42));
+    arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+    MyMixedEnum myEnum;
+    auto result = inspector.apply(myEnum);
+    EXPECT_FALSE(result.ok());
+    EXPECT_EQ("Unknown enum value 42", result.error());
+  }
+}
+
+TEST_F(VPackLoadInspectorTest, load_embedded_object) {
+  builder.openObject();
+  builder.add("a", 1);
+  builder.add("b", 2);
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  NestedEmbedding n;
+  auto result = inspector.apply(n);
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(1, n.a);
+  EXPECT_EQ(42, n.inner.i);
+  EXPECT_EQ("foobar", n.inner.s);
+  EXPECT_EQ(2, n.b);
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_embedded_object_with_invariant_not_fulfilled) {
+  builder.openObject();
+  builder.add("a", 1);
+  builder.add("b", 2);
+  builder.add("i", 0);
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  NestedEmbedding n;
+  auto result = inspector.apply(n);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Field invariant failed", result.error());
+  EXPECT_EQ("i", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_embedded_object_with_object_invariant_not_fulfilled) {
+  builder.openObject();
+  builder.add("a", 1);
+  builder.add("b", 2);
+  builder.add("i", 42);
+  builder.add("s", "");
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  NestedEmbeddingWithObjectInvariant o;
+  auto result = inspector.apply(o);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Object invariant failed", result.error());
 }
 
 struct VPackInspectionTest : public ::testing::Test {};
@@ -1994,6 +2505,35 @@ TEST_F(VPackInspectionTest, serialize) {
   EXPECT_EQ(d.d, slice["d"].getDouble());
   EXPECT_EQ(d.b, slice["b"].getBool());
   EXPECT_EQ(d.s, slice["s"].copyString());
+}
+
+TEST_F(VPackInspectionTest, serialize_to_builder) {
+  Dummy const d{.i = 42, .d = 123.456, .b = true, .s = "cheese"};
+  auto sharedSlice = arangodb::velocypack::serialize(d);
+
+  ASSERT_TRUE(sharedSlice.isObject());
+  EXPECT_EQ(d.i, sharedSlice["i"].getInt());
+  EXPECT_EQ(d.d, sharedSlice["d"].getDouble());
+  EXPECT_EQ(d.b, sharedSlice["b"].getBool());
+  EXPECT_EQ(d.s, sharedSlice["s"].copyString());
+}
+
+TEST_F(VPackInspectionTest, formatter) {
+  auto d = Dummy{.i = 42, .d = 123.456, .b = true, .s = "cheese"};
+
+  auto def = fmt::format("My name is {}", d);
+  EXPECT_EQ(def,
+            "My name is {\"i\":42,\"d\":123.456,\"b\":true,\"s\":\"cheese\"}");
+
+  auto notPretty = fmt::format("My name is {:u}", d);
+  EXPECT_EQ(notPretty,
+            "My name is {\"i\":42,\"d\":123.456,\"b\":true,\"s\":\"cheese\"}");
+  EXPECT_EQ(def, notPretty);
+
+  auto pretty = fmt::format("My name is {:p}", d);
+  EXPECT_EQ(pretty,
+            "My name is {\n  \"i\" : 42,\n  \"d\" : 123.456,\n  \"b\" : "
+            "true,\n  \"s\" : \"cheese\"\n}");
 }
 
 TEST_F(VPackInspectionTest, deserialize) {
@@ -2166,7 +2706,7 @@ TEST_F(VPackInspectionTest, ResultTWithTInside) {
 }
 
 struct ValidateInspectorTest : public ::testing::Test {
-  arangodb::inspection::ValidateInspector inspector;
+  arangodb::inspection::ValidateInspector<> inspector;
 };
 
 TEST_F(ValidateInspectorTest, validate_object_with_invariant_fulfilled) {
@@ -2196,7 +2736,7 @@ TEST_F(ValidateInspectorTest, validate_object_with_invariant_not_fulfilled) {
 TEST_F(ValidateInspectorTest,
        validate_object_with_invariant_Result_not_fulfilled) {
   {
-    InvariantWithResult i{.i = 0};
+    InvariantWithResult i{.i = 0, .s = ""};
     auto result = inspector.apply(i);
     ASSERT_FALSE(result.ok());
     EXPECT_EQ("Must not be zero", result.error());
@@ -2234,6 +2774,115 @@ TEST_F(ValidateInspectorTest, validate_object_with_nested_invariant) {
     ASSERT_FALSE(result.ok());
     EXPECT_EQ("Object invariant failed", result.error());
     EXPECT_EQ("o", result.path());
+  }
+}
+
+TEST_F(ValidateInspectorTest, validate_embedded_object) {
+  NestedEmbedding n{
+      Embedded{.a = 1, .inner = {.i = 42, .s = "foobar"}, .b = 2}};
+  auto result = inspector.apply(n);
+  ASSERT_TRUE(result.ok());
+}
+
+TEST_F(ValidateInspectorTest,
+       validate_embedded_object_with_invariant_not_fulfilled) {
+  NestedEmbedding n{Embedded{.a = 1, .inner = {.i = 0, .s = "foobar"}, .b = 2}};
+  auto result = inspector.apply(n);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Field invariant failed", result.error());
+  EXPECT_EQ("i", result.path());
+}
+
+TEST_F(ValidateInspectorTest,
+       validate_embedded_object_with_object_invariant_not_fulfilled) {
+  NestedEmbeddingWithObjectInvariant o{
+      EmbeddedObjectInvariant{.a = 1, .inner = {.i = 42, .s = ""}, .b = 2}};
+  auto result = inspector.apply(o);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Object invariant failed", result.error());
+}
+
+struct WithContext {
+  int i;
+  std::string s;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, WithContext& v) {
+  auto& context = f.getContext();
+  return f.object(v).fields(
+      f.field("i", v.i).fallback(context.defaultInt).invariant([&](int v) {
+        return v > context.minInt;
+      }),
+      f.field("s", v.s).fallback(context.defaultString));
+}
+
+TEST(VPackLoadInspectorContext, deserialize_with_context) {
+  struct Context {
+    int defaultInt;
+    int minInt;
+    std::string defaultString;
+  };
+
+  velocypack::Builder builder;
+  builder.openObject();
+  builder.close();
+
+  {
+    Context ctxt{.defaultInt = 42, .minInt = 0, .defaultString = "foobar"};
+    auto data = velocypack::deserialize<WithContext>(builder.slice(), {}, ctxt);
+    EXPECT_EQ(42, data.i);
+    EXPECT_EQ("foobar", data.s);
+  }
+
+  {
+    Context ctxt{.defaultInt = -1, .minInt = -2, .defaultString = "blubb"};
+    auto data = velocypack::deserialize<WithContext>(builder.slice(), {}, ctxt);
+    EXPECT_EQ(-1, data.i);
+    EXPECT_EQ("blubb", data.s);
+  }
+}
+
+TEST(VPackSaveInspectorContext, serialize_with_context) {
+  struct Context {
+    int defaultInt;
+    int minInt;
+    std::string defaultString;
+  };
+
+  Context ctxt{};
+  velocypack::Builder builder;
+  inspection::VPackSaveInspector<Context> inspector(builder, ctxt);
+
+  WithContext data{.i = 42, .s = "foobar"};
+  auto res = inspector.apply(data);
+  ASSERT_TRUE(res.ok());
+  EXPECT_EQ(42, builder.slice()["i"].getInt());
+  EXPECT_EQ("foobar", builder.slice()["s"].copyString());
+}
+
+TEST(ValidateInspectorContext, validate_with_context) {
+  struct Context {
+    int defaultInt;
+    int minInt;
+    std::string defaultString;
+  };
+  Context ctxt{.defaultInt = 0, .minInt = 42, .defaultString = ""};
+
+  {
+    inspection::ValidateInspector<Context> inspector(ctxt);
+    WithContext data{.i = 43, .s = ""};
+    auto result = inspector.apply(data);
+    EXPECT_TRUE(result.ok());
+  }
+
+  {
+    inspection::ValidateInspector inspector(ctxt);
+    WithContext data{.i = 42, .s = ""};
+    auto result = inspector.apply(data);
+    ASSERT_FALSE(result.ok());
+    EXPECT_EQ("Field invariant failed", result.error());
+    EXPECT_EQ("i", result.path());
   }
 }
 
