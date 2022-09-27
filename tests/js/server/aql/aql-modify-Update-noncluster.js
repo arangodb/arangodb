@@ -142,7 +142,6 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      var i;
       db._drop(cn1);
       db._drop(cn2);
       db._drop(cn3);
@@ -150,13 +149,14 @@ function ahuacatlUpdateSuite () {
       c2 = db._create(cn2);
       c3 = db._create(cn3);
 
-      for (i = 0; i < 100; ++i) {
-        c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
-      }
-      for (i = 0; i < 50; ++i) {
-        c2.save({ _key: "test" + i, value1: i, value2: "test" + i });
-      }
       let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
+      }
+      c1.insert(docs);
+      c2.insert(docs.slice(0, 50));
+      
+      docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({name: `test${i}`});
       }
