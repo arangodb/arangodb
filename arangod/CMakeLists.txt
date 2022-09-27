@@ -196,59 +196,6 @@ else ()
   )
 endif ()
 
-set(LIB_ARANGO_GRAPH_SOURCES
-  Aql/PruneExpressionEvaluator.cpp
-  Cluster/CallbackGuard.cpp
-  Cluster/ClusterEdgeCursor.cpp
-  Cluster/ServerDefaults.cpp
-  Cluster/TraverserEngine.cpp
-  Graph/AttributeWeightShortestPathFinder.cpp
-  Graph/BaseOptions.cpp
-  Graph/ClusterGraphDatalake.cpp
-  Graph/ClusterTraverserCache.cpp
-  Graph/ConstantWeightShortestPathFinder.cpp
-  Graph/Graph.cpp
-  Graph/GraphManager.cpp
-  Graph/GraphOperations.cpp
-  Graph/KShortestPathsFinder.cpp
-  Graph/ShortestPathFinder.cpp
-  Graph/ShortestPathOptions.cpp
-  Graph/ShortestPathResult.cpp
-  Graph/PathType.cpp
-  Graph/SingleServerEdgeCursor.cpp
-  Graph/TraverserCache.cpp # maybe remove
-  Graph/TraverserCacheFactory.cpp
-  Graph/TraverserDocumentCache.cpp
-  Graph/TraverserOptions.cpp
-  Graph/Cursors/RefactoredSingleServerEdgeCursor.cpp
-  Graph/Cache/RefactoredTraverserCache.cpp
-  Graph/Cache/RefactoredClusterTraverserCache.cpp
-  Graph/Enumerators/OneSidedEnumerator.cpp
-  Graph/Enumerators/OneSidedEnumeratorInterface.cpp
-  Graph/Enumerators/TwoSidedEnumerator.cpp
-  Graph/Helpers/TraceEntry.cpp
-  Graph/Queues/QueueTracer.cpp
-  Graph/PathManagement/PathResult.cpp
-  Graph/PathManagement/SingleProviderPathResult.cpp
-  Graph/PathManagement/PathStore.cpp
-  Graph/PathManagement/PathStoreTracer.cpp
-  Graph/PathManagement/PathValidator.cpp
-  Graph/PathManagement/PathValidatorTracer.cpp
-  Graph/PathManagement/PathValidatorOptions.cpp
-  Graph/Options/OneSidedEnumeratorOptions.cpp
-  Graph/Options/TwoSidedEnumeratorOptions.cpp
-  Graph/Providers/ClusterProvider.cpp
-  Graph/Providers/SingleServerProvider.cpp
-  Graph/Providers/BaseProviderOptions.cpp
-  Graph/Providers/ProviderTracer.cpp
-  Graph/Steps/ClusterProviderStep.cpp
-  Graph/Steps/SingleServerProviderStep.cpp
-  Graph/Types/UniquenessLevel.cpp
-  Graph/Types/ValidationResult.cpp
-  InternalRestHandler/InternalRestTraverserHandler.cpp
-  RestHandler/RestGraphHandler.cpp
-)
-
 set(LIB_ARANGO_VOCBASE_SOURCES
   Aql/PlanCache.cpp
   Aql/QueryCursor.cpp
@@ -652,10 +599,6 @@ add_library(arango_restart_action STATIC
   RestServer/RestartAction.cpp
 )
 
-add_library(arango_graph STATIC
-  ${LIB_ARANGO_GRAPH_SOURCES}
-)
-
 add_library(arango_vocbase STATIC
   ${LIB_ARANGO_VOCBASE_SOURCES}
 )
@@ -746,12 +689,6 @@ target_link_libraries(arango_common_rest_handler arango_utils)
 target_link_libraries(arango_common_rest_handler arango_iresearch)
 
 target_link_libraries(arango_geo s2)
-
-target_link_libraries(arango_graph arango)
-target_link_libraries(arango_graph arango_aql)
-target_link_libraries(arango_graph arango_cache)
-target_link_libraries(arango_graph arango_vocbase)
-target_link_libraries(arango_graph boost_boost)
 
 target_link_libraries(arango_indexes arango_geo)
 target_link_libraries(arango_indexes boost_boost)
@@ -896,7 +833,6 @@ foreach(TARGET
   arango_cluster_engine
   arango_cluster_methods
   arango_common_rest_handler
-  arango_graph
   arango_indexes
   arango_iresearch
   arango_network
@@ -941,6 +877,7 @@ install_config(arango-init-database)
 add_subdirectory(Agency)
 add_subdirectory(Aql)
 add_subdirectory(Cache)
+add_subdirectory(Graph)
 add_subdirectory(Metrics)
 add_subdirectory(Pregel)
 add_subdirectory(StorageEngine)
