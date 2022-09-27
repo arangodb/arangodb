@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global assertTrue, assertEqual, assertNotEqual, assertFalse, arango, instanceManager */
+/* global assertTrue, assertEqual, assertNotEqual, assertNotNull, assertFalse, arango, instanceManager */
 'use strict';
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoDB Enterprise License Tests
@@ -36,8 +36,7 @@ const database = "cluster_rebalance_db";
 const suspendExternal = internal.suspendExternal;
 const continueExternal = require("internal").continueExternal;
 const wait = require("internal").wait;
-let prevDB = null;
-let dbServer = null;
+
 
 function resignServer(server) {
   let res = arango.POST_RAW("/_admin/cluster/resignLeadership", {server});
@@ -80,6 +79,7 @@ function getMovesWithAllFlagsTrue() {
 }
 
 function clusterRebalanceSuite() {
+  let prevDB = null;
   return {
     setUpAll: function () {
       prevDB = db._name();
@@ -176,129 +176,103 @@ function clusterRebalanceSuite() {
 }
 
 function clusterRebalanceOtherOptionsSuite() {
+  let prevDB = null;
+  let dbServer = null;
+  const numCols = 3;
+
   return {
 
     setUpAll: function () {
       prevDB = db._name();
       db._createDatabase(database);
       db._useDatabase(database);
-      for (let i = 0; i < 3; ++i) {
+      for (let i = 0; i < numCols; ++i) {
         db._create("col" + i, {numberOfShards: 2, replicationFactor: 2});
       }
-      for (let i = 0; i < 3; ++i) {
+
+      let docs = [];
+      for (let i = 0; i < numCols; ++i) {
         for (let j = 0; j < 1000; ++j) {
-          db["col" + i].insert({"value": j});
+          docs.push({"value": j});
+          if (docs.length > 100) {
+            db["col" + i].insert(docs);
+            docs = [];
+          }
         }
+        db["col" + i].insert(docs);
+        docs = [];
       }
     },
 
     tearDownAll: function () {
-      for (let i = 0; i < 3; i++) {
-        db._drop("col" + i);
-      }
       db._useDatabase(prevDB);
       db._dropDatabase(database);
     },
 
     testCalcRebalanceStopServer: function () {
-
       let dbServers = instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
-      try {
-        for (let i = 0; i < dbServers.length; ++i) {
-          dbServer = dbServers[i];
-          assertTrue(suspendExternal(dbServer.pid));
-          let serverHealth = null;
-          let startTime = Date.now();
-          let result = null;
-          do {
-            wait(2);
-            result = getServersHealth();
-            assertNotEqual(result, null);
-            serverHealth = result[dbServer.id].Status;
-            assertNotEqual(serverHealth, null);
-            const timeElapsed = (Date.now() - startTime) / 1000;
-            const seconds = Math.round(timeElapsed);
-            if (seconds > 300) {
-              throw new Error("Server expected status not acquired");
-            }
-          } while (serverHealth !== "FAILED");
-          dbServer.suspended = true;
-          const serverShortName = result[dbServer.id].ShortName;
-          assertNotEqual(serverHealth, "GOOD");
-          startTime = Date.now();
-          let serverUsed;
-          do {
-            wait(2);
-            serverUsed = false;
-            for (let j = 0; j < 3; ++j) {
-              result = arango.GET("/_admin/cluster/shardDistribution").results["col" + j].Plan;
-              for (let key of Object.keys(result)) {
-                if (result[key].leader === serverShortName) {
-                  serverUsed = true;
-                  break;
-                }
-                result[key].followers.forEach(follower => {
-                  if (follower === serverShortName) {
-                    serverUsed = true;
-                    return;
-                  }
-                });
-              }
-              if (serverUsed === true) {
+      assertNotEqual(dbServers.length, 0);
+      for (let i = 0; i < dbServers.length; ++i) {
+        dbServer = dbServers[i];
+        assertTrue(suspendExternal(dbServer.pid));
+        let serverHealth = null;
+        let startTime = Date.now();
+        let result = null;
+        do {
+          wait(2);
+          result = getServersHealth();
+          assertNotNull(result);
+          serverHealth = result[dbServer.id].Status;
+          assertNotNull(serverHealth);
+          const timeElapsed = (Date.now() - startTime) / 1000;
+          assertTrue(timeElapsed < 300, "Server expected status not acquired");
+        } while (serverHealth !== "FAILED");
+        dbServer.suspended = true;
+        const serverShortName = result[dbServer.id].ShortName;
+        assertEqual(serverHealth, "FAILED");
+        startTime = Date.now();
+        let serverUsed;
+        do {
+          wait(2);
+          serverUsed = false;
+          for (let j = 0; j < numCols; ++j) {
+            result = arango.GET("/_admin/cluster/shardDistribution").results["col" + j].Plan;
+            for (let key of Object.keys(result)) {
+              if (result[key].leader === serverShortName) {
+                serverUsed = true;
                 break;
               }
-              const timeElapsed = (Date.now() - startTime) / 1000;
-              const seconds = Math.round(timeElapsed);
-              if (seconds > 300) {
-                throw new Error("Moving shards from server in ill state not acquired");
-              }
+              result[key].followers.forEach(follower => {
+                if (follower === serverShortName) {
+                  serverUsed = true;
+                }
+              });
             }
-          } while (serverUsed);
-
-          result = getRebalancePlan(true, true, true);
-          let moves = result.result.moves;
-          if (moves.length > 0) {
-            for (const job of moves) {
-              assertNotEqual(job.to, dbServer.id);
+            if (serverUsed === true) {
+              break;
             }
+            const timeElapsed = (Date.now() - startTime) / 1000;
+            assertTrue(timeElapsed < 300, "Moving shards from server in ill state not acquired");
           }
-          assertTrue(continueExternal(dbServer.pid));
-          do {
-            wait(2);
-            result = getServersHealth();
-            assertNotEqual(result, null);
-            serverHealth = result[dbServer.id].Status;
-            assertNotEqual(serverHealth, null);
-            const timeElapsed = (Date.now() - startTime) / 1000;
-            const seconds = Math.round(timeElapsed);
-            if (seconds > 300) {
-              throw new Error("Server expected status not acquired");
-            }
-          } while (serverHealth !== "GOOD");
-          dbServer.suspended = false;
+        } while (serverUsed);
+
+        result = getRebalancePlan(true, true, true);
+        let moves = result.result.moves;
+        assertTrue(moves.length > 0);
+        for (const job of moves) {
+          assertNotEqual(job.to, dbServer.id);
         }
-      } catch (err) {
-        assertNotEqual(dbServer, null);
         assertTrue(continueExternal(dbServer.pid));
-        try {
-          const startTime = Date.now();
-          let serverHealth = null;
-          do {
-            wait(2);
-            const result = getServersHealth();
-            assertNotEqual(result, null);
-            serverHealth = result[dbServer.id].Status;
-            assertNotEqual(serverHealth, null);
-            const timeElapsed = (Date.now() - startTime) / 1000;
-            const seconds = Math.round(timeElapsed);
-            if (seconds > 300) {
-              throw new Error("Server expected status not acquired");
-            }
-          } while (serverHealth !== "GOOD");
-          dbServer.suspended = false;
-        } catch (err) {
-          console.error("Unable to get server " + dbServer.id + " in good state");
-        }
+        do {
+          wait(2);
+          result = getServersHealth();
+          assertNotNull(result);
+          serverHealth = result[dbServer.id].Status;
+          assertNotNull(serverHealth);
+          const timeElapsed = (Date.now() - startTime) / 1000;
+          assertTrue(timeElapsed < 300, "Unable to get server " + dbServer.id + " in good state");
+        } while (serverHealth !== "GOOD");
+        dbServer.suspended = false;
       }
     },
 
@@ -315,8 +289,7 @@ function clusterRebalanceOtherOptionsSuite() {
             leaderId = serverId;
           }
         });
-        assertNotEqual(leaderId, null);
-
+        assertNotNull(leaderId);
         result = getRebalancePlan(false, true, false);
         let moves = result.result.moves;
         const movesAllFlagsTrue = getMovesWithAllFlagsTrue();
@@ -345,10 +318,11 @@ function clusterRebalanceOtherOptionsSuite() {
             followerId = serverId;
           }
         });
-        assertNotEqual(followerId, null);
+        assertNotNull(followerId);
 
         result = getRebalancePlan(true, false, true);
         let moves = result.result.moves;
+        assertTrue(moves.length > 0);
         for (const job of moves) {
           if (job.shard === shardName) {
             assertNotEqual(job.from, followerId);
