@@ -1968,26 +1968,18 @@ function BaseTestConfig() {
     testViewBasic: function() {
       compare(
         function(state) {
-          try {
-            db._create(cn);
-            let view = db._createView('UnitTestsSyncView', 'arangosearch', {});
-            let links = {};
-            links[cn] = {
-              includeAllFields: true,
-              fields: {
-                text: {analyzers: ['text_en']}
-              }
-            };
-            view.properties({'links': links});
-            state.arangoSearchEnabled = true;
-          } catch (err) {
-          }
+          db._create(cn);
+          let view = db._createView('UnitTestsSyncView', 'arangosearch', {});
+          let links = {};
+          links[cn] = {
+            includeAllFields: true,
+            fields: {
+              text: {analyzers: ['text_en']}
+            }
+          };
+          view.properties({'links': links});
         },
         function(state) {
-          if (!state.arangoSearchEnabled) {
-            return;
-          }
-
           let view = db._view('UnitTestsSyncView');
           assertNotNull(view);
           let props = view.properties();

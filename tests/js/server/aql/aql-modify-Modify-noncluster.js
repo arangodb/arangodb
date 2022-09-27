@@ -35,34 +35,16 @@ const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const getModifyQueryResults = helper.getModifyQueryResults;
 const getModifyQueryResultsRaw = helper.getModifyQueryResultsRaw;
+const sanitizeStats = helper.sanitizeStats;
 const isEqual = helper.isEqual;
 const assertQueryError = helper.assertQueryError;
 const errors = internal.errors;
-
-let sanitizeStats = function (stats) {
-  // remove these members from the stats because they don't matter
-  // for the comparisons
-  delete stats.scannedFull;
-  delete stats.scannedIndex;
-  delete stats.cursorsCreated;
-  delete stats.cursorsRearmed;
-  delete stats.cacheHits;
-  delete stats.cacheMisses;
-  delete stats.filtered;
-  delete stats.executionTime;
-  delete stats.httpRequests;
-  delete stats.fullCount;
-  delete stats.peakMemoryUsage;
-  delete stats.intermediateCommits;
-  return stats;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlModifySuite () {
-  var errors = internal.errors;
   const cn1 = "UnitTestsAhuacatlModify1";
   const cn2 = "UnitTestsAhuacatlModify2";
   const cn3 = "UnitTestsAhuacatlModify3";
@@ -70,10 +52,6 @@ function ahuacatlModifySuite () {
   let c1, c2, c3;
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
       db._drop(cn1);
@@ -91,10 +69,6 @@ function ahuacatlModifySuite () {
       }
       c3.insert(docs);
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       db._drop(cn1);
