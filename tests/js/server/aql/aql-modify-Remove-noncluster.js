@@ -93,15 +93,13 @@ var validateModifyResultInsert = function (collection, results) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var validateDeleteGone = function (collection, results) {
-  var index;
-  for (index in results) {
-    if (results.hasOwnProperty(index)){
+  for (let index in results) {
+    if (results.hasOwnProperty(index)) {
       try {
         assertEqual(collection.document(results[index]._key), {});
         fail();
-      }
-      catch (e) {
-        assertTrue(e.errorNum !== undefined, "unexpected error format while calling checking for deleted entry");
+      } catch (e) {
+        assertNotUndefined(e.errorNum, "unexpected error format while calling checking for deleted entry");
         assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, e.errorNum, "unexpected error code (" + e.errorMessage + "): ");
       }
     }
