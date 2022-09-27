@@ -875,6 +875,9 @@ add_executable(${BIN_ARANGOD}
   ${ProductVersionFiles}
 )
 
+add_dependencies(${BIN_ARANGOD}
+  tzdata)
+
 target_link_libraries(${BIN_ARANGOD}
   arangoserver
 )
