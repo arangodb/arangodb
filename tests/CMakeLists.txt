@@ -44,6 +44,8 @@ target_include_directories(fuertetest SYSTEM PRIVATE
 )
 
 
+add_subdirectory(Zkd)
+
 # ----------------------------------------
 # Link directories
 # ----------------------------------------
@@ -206,6 +208,7 @@ set(ARANGODB_TESTS_SOURCES
   Cache/BucketState.cpp
   Cache/CachedValue.cpp
   Cache/FrequencyBuffer.cpp
+  Cache/LockStressTest.cpp
   Cache/Manager.cpp
   Cache/Metadata.cpp
   Cache/MockScheduler.cpp
