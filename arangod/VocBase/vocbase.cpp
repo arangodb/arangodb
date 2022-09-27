@@ -171,7 +171,14 @@ struct arangodb::VocBaseLogManager {
                                   id.id());
   }
 
-  auto resignStates() { _guardedData.getLockedGuard()->states.clear(); }
+  auto resignStates() {
+    _guardedData.doUnderLock([](auto& self) {
+      for (auto&& [id, state] : self.states) {
+        state->drop();
+      }
+      self.states.clear();
+    });
+  }
 
   auto resignAll() {
     auto guard = _guardedData.getLockedGuard();
