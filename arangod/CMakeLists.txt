@@ -196,45 +196,6 @@ else ()
   )
 endif ()
 
-set(LIB_ARANGO_VOCBASE_SOURCES
-  Aql/PlanCache.cpp
-  Aql/QueryCursor.cpp
-  Aql/StandaloneCalculation.cpp
-  Replication/DatabaseReplicationApplier.cpp
-  Utils/CollectionNameResolver.cpp
-  Utils/CursorRepository.cpp
-  Utils/DatabaseGuard.cpp
-  Utils/SingleCollectionTransaction.cpp
-  VocBase/ComputedValues.cpp
-  VocBase/Identifiers/DataSourceId.cpp
-  VocBase/Identifiers/IndexId.cpp
-  VocBase/Identifiers/LocalDocumentId.cpp
-  VocBase/Identifiers/RevisionId.cpp
-  VocBase/Identifiers/ServerId.cpp
-  VocBase/Identifiers/TransactionId.cpp
-  VocBase/KeyGenerator.cpp
-  VocBase/LogicalCollection.cpp
-  VocBase/LogicalDataSource.cpp
-  VocBase/LogicalView.cpp
-  VocBase/ManagedDocumentResult.cpp
-  VocBase/Methods/AqlUserFunctions.cpp
-  VocBase/Methods/Collections.cpp
-  VocBase/Methods/Databases.cpp
-  VocBase/Methods/Indexes.cpp
-  VocBase/Methods/Queries.cpp
-  VocBase/Methods/Tasks.cpp
-  VocBase/Methods/Transactions.cpp
-  VocBase/Methods/Ttl.cpp
-  VocBase/Methods/Upgrade.cpp
-  VocBase/Methods/UpgradeTasks.cpp
-  VocBase/Methods/Version.cpp
-  VocBase/Properties/PlanCollection.cpp
-  VocBase/Validators.cpp
-  VocBase/VocbaseInfo.cpp
-  VocBase/ticks.cpp
-  VocBase/vocbase.cpp
-)
-
 set(LIB_ARANGO_UTILS_SOURCES
   Utils/ExecContext.cpp
   Utils/OperationOptions.cpp
@@ -599,10 +560,6 @@ add_library(arango_restart_action STATIC
   RestServer/RestartAction.cpp
 )
 
-add_library(arango_vocbase STATIC
-  ${LIB_ARANGO_VOCBASE_SOURCES}
-)
-
 add_library(arango_v8server STATIC
   ${LIB_ARANGO_V8SERVER_SOURCES}
 )
@@ -748,14 +705,6 @@ target_link_libraries(arango_v8server arango_replication)
 target_link_libraries(arango_v8server arango_v8 arango_v8_no_deadline)
 target_link_libraries(arango_v8server ${V8_LIBS})
 
-target_link_libraries(arango_vocbase arango_agency)
-target_link_libraries(arango_vocbase arango_cluster_methods)
-target_link_libraries(arango_vocbase arango_indexes)
-target_link_libraries(arango_vocbase arango_replication)
-target_link_libraries(arango_vocbase arango_replication2)
-target_link_libraries(arango_vocbase boost_system)
-target_link_libraries(arango_vocbase arango::validation)
-
 target_link_libraries(arangoserver arango_agency)
 target_link_libraries(arangoserver arango_aql)
 target_link_libraries(arangoserver arango_cluster_engine)
@@ -841,7 +790,6 @@ foreach(TARGET
   arango_rocksdb
   arango_utils
   arango_v8server
-  arango_vocbase
   arangod
   arangoserver
 )
@@ -881,4 +829,4 @@ add_subdirectory(Graph)
 add_subdirectory(Metrics)
 add_subdirectory(Pregel)
 add_subdirectory(StorageEngine)
-
+add_subdirectory(VocBase)
