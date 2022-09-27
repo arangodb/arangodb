@@ -19,27 +19,28 @@ If omitted, a name is auto-generated so that it is unique with respect to the
 collection, e.g. `idx_832910498`.
 
 @RESTBODYPARAM{fields,array,required,post_api_index_inverted_fields}
-An array of attribute paths as strings to index the fields with the default
-options, or objects to specify options for the fields.
+An array of attribute paths. You can use strings to index the fields with the
+default options, or objects to specify options for the fields (with the
+attribute path in the `name` property), or a mix of both.
 
 @RESTSTRUCT{name,post_api_index_inverted_fields,string,required,}
 An attribute path. The `.` character denotes sub-attributes.
+You can expand one array with `[*]`.
 
 @RESTSTRUCT{analyzer,post_api_index_inverted_fields,string,optional,}
 The name of an Analyzer to use for this field.
-Default: the value defined by the top-level `analyzer` option, or if not set,
-the default `identity` Analyzer.
+
+Default: the value defined by the top-level `analyzer` option.
 
 @RESTSTRUCT{features,post_api_index_inverted_fields,array,optional,string}
-A list of Analyzer features to use for this field. They define what features are
-enabled for the `analyzer`. Possible features:
+A list of Analyzer features to use for this field. You can set this option to
+overwrite what features are enabled for the `analyzer`. Possible features:
 - `"frequency"`
 - `"norm"`
 - `"position"`
 - `"offset"`
 
-Default: the value of the top-level `features` option, or if not set, the
-features defined by the Analyzer itself.
+Default: the features as defined by the Analyzer itself.
 
 @RESTSTRUCT{includeAllFields,post_api_index_inverted_fields,boolean,optional,}
 This option only applies if you use the inverted index in a `search-alias` Views.
@@ -49,8 +50,9 @@ any sub-attributes that are configured separately by other elements in the
 `fields` array (and their sub-attributes). The `analyzer` and `features`
 properties apply to the sub-attributes.
 
-If set to `false`, then sub-attributes are ignored. The default value is defined
-by the top-level `includeAllFields` option, or `false` if not set.
+If set to `false`, then sub-attributes are ignored.
+
+Default: the value defined by the top-level `includeAllFields` option.
 
 @RESTSTRUCT{searchField,post_api_index_inverted_fields,boolean,optional,}
 This option only applies if you use the inverted index in a `search-alias` Views.
@@ -60,13 +62,12 @@ Views regarding the indexing of array values for this field. If enabled, both,
 array and primitive values (strings, numbers, etc.) are accepted. Every element
 of an array is indexed according to the `trackListPositions` option.
 
-If set to `false`, it depends on the attribute path. If it explicitly expand an
+If set to `false`, it depends on the attribute path. If it explicitly expands an
 array (`[*]`), then the elements are indexed separately. Otherwise, the array is
 indexed as a whole, but only `geopoint` and `aql` Analyzers accept array inputs.
 You cannot use an array expansion if `searchField` is enabled.
 
-Default: the value defined by the top-level `searchField` option, or `false` if
-not set.
+Default: the value defined by the top-level `searchField` option.
 
 @RESTSTRUCT{trackListPositions,post_api_index_inverted_fields,boolean,optional,}
 This option only applies if you use the inverted index in a `search-alias` Views.
@@ -79,8 +80,7 @@ If set to `false`, all values in an array are treated as equal alternatives.
 You don't specify an array element in queries, e.g. `doc.attr == "valueY"`, and
 all elements are searched for a match.
 
-Default: the value defined by the top-level `trackListPositions` option, or
-`false` if not set.
+Default: the value defined by the top-level `trackListPositions` option.
 
 @RESTSTRUCT{nested,post_api_index_inverted_fields,array,optional,post_api_index_inverted_nested}
 Index the specified sub-objects that are stored in an array. Other than with the
@@ -95,18 +95,17 @@ An attribute path. The `.` character denotes sub-attributes.
 
 @RESTSTRUCT{analyzer,post_api_index_inverted_nested,string,optional,}
 The name of an Analyzer to use for this field.
-Default: the value defined by the top-level `analyzer` option.
+Default: the value defined by the parent field, or the top-level `analyzer` option.
 
 @RESTSTRUCT{features,post_api_index_inverted_nested,array,optional,string}
-A list of Analyzer features to use for this field. They define what features are
-enabled for the `analyzer`. Possible features:
+A list of Analyzer features to use for this field. You can set this option to
+overwrite what features are enabled for the `analyzer`. Possible features:
 - `"frequency"`
 - `"norm"`
 - `"position"`
 - `"offset"`
 
-Default: the value of the top-level `features` option, or if not set, the
-features defined by the Analyzer itself.
+Default: the features as defined by the Analyzer itself.
 
 @RESTSTRUCT{searchField,post_api_index_inverted_nested,boolean,optional,}
 This option only applies if you use the inverted index in a `search-alias` Views.
@@ -116,12 +115,16 @@ Views regarding the indexing of array values for this field. If enabled, both,
 array and primitive values (strings, numbers, etc.) are accepted. Every element
 of an array is indexed according to the `trackListPositions` option.
 
-If set to `false`, it depends on the attribute path. If it explicitly expand an
+If set to `false`, it depends on the attribute path. If it explicitly expands an
 array (`[*]`), then the elements are indexed separately. Otherwise, the array is
 indexed as a whole, but only `geopoint` and `aql` Analyzers accept array inputs.
 You cannot use an array expansion if `searchField` is enabled.
 
 Default: the value defined by the top-level `searchField` option.
+
+@RESTSTRUCT{nested,post_api_index_inverted_nested,array,optional,object}
+You can recursively index sub-objects. See the above description of the
+`nested` option.
 
 @RESTBODYPARAM{searchField,boolean,optional,}
 This option only applies if you use the inverted index in a `search-alias` Views.
@@ -131,10 +134,12 @@ Views regarding the indexing of array values as the default. If enabled, both,
 array and primitive values (strings, numbers, etc.) are accepted. Every element
 of an array is indexed according to the `trackListPositions` option.
 
-If set to `false`, it depends on the attribute path. If it explicitly expand an
+If set to `false`, it depends on the attribute path. If it explicitly expands an
 array (`[*]`), then the elements are indexed separately. Otherwise, the array is
 indexed as a whole, but only `geopoint` and `aql` Analyzers accept array inputs.
 You cannot use an array expansion if `searchField` is enabled.
+
+Default: `false`
 
 @RESTBODYPARAM{storedValues,array,optional,post_api_index_inverted_storedvalues}
 The optional `storedValues` attribute can contain an array of paths to additional 
@@ -176,15 +181,17 @@ Defines how to compress the primary sort data. Possible values:
 The name of an Analyzer to use by default. This Analyzer is applied to the
 values of the indexed fields for which you don't define Analyzers explicitly.
 
+Default: `identity`
+
 @RESTBODYPARAM{features,array,optional,string}
-A list of Analyzer features to use by default. They define what features are
-enabled for the default `analyzer`. Possible features:
+A list of Analyzer features. You can set this option to overwrite what features
+are enabled for the default `analyzer`. Possible features:
 - `"frequency"`
 - `"norm"`
 - `"position"`
 - `"offset"`
 
-The default is an empty array.
+Default: the features as defined by the Analyzer itself.
 
 @RESTBODYPARAM{includeAllFields,boolean,optional,}
 This option only applies if you use the inverted index in a `search-alias` Views.
@@ -193,7 +200,7 @@ If set to `true`, then all document attributes are indexed, excluding any
 sub-attributes that are configured in the `fields` array (and their sub-attributes).
 The `analyzer` and `features` properties apply to the sub-attributes.
 
-The default is `false`.
+Default: `false`
 
 **Warning**: Using `includeAllFields` for a lot of attributes in combination
 with complex Analyzers may significantly slow down the indexing process.
