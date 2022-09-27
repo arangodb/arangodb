@@ -33,11 +33,16 @@
 const jsunity = require('jsunity');
 const {assertEqual, assertTrue, assertFalse, fail} = jsunity.jsUnity.assertions;
 
-var _ = require('lodash');
 const internal = require('internal');
 const db = internal.db;
 const errors = require('@arangodb').errors;
+const gm = require('@arangodb/general-graph');
+const isCluster = require('@arangodb/cluster').isCluster();
+const removeCost = require('@arangodb/aql-helper').removeCost;
+
 const gh = require("@arangodb/graph/helpers");
+
+var _ = require('lodash');
 
 function complexInternaSuite() {
   var ruleName = 'optimize-traversals';
