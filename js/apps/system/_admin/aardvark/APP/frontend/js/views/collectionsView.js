@@ -697,6 +697,14 @@
                 $(id).val('').focus().focusout();
               });
             });
+
+            $('#distribute-shards-like').on('input', function (element) {
+              if (element.target.value !== '') {
+                $('#new-collection-shards').prop('disabled', true);
+              } else {
+                $('#new-collection-shards').prop('disabled', false);
+              }
+            });
           }
         }
       }.bind(this);
