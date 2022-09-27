@@ -122,8 +122,12 @@ auto replicated_log::ReplicatedLog::becomeFollower(
                                std::move(logCore), term, std::move(leaderId));
     _participant = std::static_pointer_cast<ILogParticipant>(follower);
     _metrics->replicatedLogStartedFollowingNumber->operator++();
+
+    auto stateHandle = _guarded.getLockedGuard()->stateHandle;
+    stateHandle->becomeFollower();
     return std::make_tuple(follower, std::move(deferred));
   });
+
   return follower;
 }
 
@@ -180,4 +184,17 @@ auto replicated_log::ReplicatedLog::getId() const noexcept -> LogId {
 auto replicated_log::ReplicatedLog::getGlobalLogId() const noexcept
     -> GlobalLogIdentifier const& {
   return _logId;
+}
+
+auto replicated_log::ReplicatedLog::connect(
+    std::shared_ptr<IReplicatedStateHandle> stateHandle)
+    -> std::shared_ptr<IReplicatedLogHandle> {
+  auto guard = _guarded.getLockedGuard();
+  if (guard->stateHandle) {
+    // TODO
+    std::abort();
+  }
+
+  guard->stateHandle = std::move(stateHandle);
+  return nullptr;  // TODO
 }

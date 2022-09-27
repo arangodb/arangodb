@@ -48,6 +48,25 @@ struct LogCore;
 
 namespace arangodb::replication2::replicated_log {
 
+struct IReplicatedLogHandle {
+  virtual ~IReplicatedLogHandle() = default;
+  virtual auto getLogSnapshot() -> InMemoryLog = 0;
+  virtual auto insert(LogPayload) -> LogIndex = 0;
+  virtual auto snapshotCompleted() -> Result = 0;
+  virtual auto releaseIndex(LogIndex) -> void = 0;
+};
+
+struct IReplicatedStateHandle {
+  virtual ~IReplicatedStateHandle() = default;
+  virtual void becomeLeader() = 0;
+  virtual void recoverEntries(std::unique_ptr<LogIterator>) = 0;
+  virtual void becomeFollower() = 0;
+  virtual void acquireSnapshot(ServerID leader, LogIndex) = 0;
+  virtual void commitIndex(LogIndex) = 0;
+  // TODO
+  virtual void dropEntries() = 0;  // o.ä. (für waitForSync=false)
+};
+
 /**
  * @brief Container for a replicated log. These are managed by the responsible
  * vocbase. Exactly one instance exists for each replicated log this server is a
@@ -84,6 +103,9 @@ struct alignas(64) ReplicatedLog {
   ReplicatedLog(ReplicatedLog&&) = delete;
   auto operator=(ReplicatedLog const&) -> ReplicatedLog& = delete;
   auto operator=(ReplicatedLog&&) -> ReplicatedLog& = delete;
+
+  auto connect(std::shared_ptr<IReplicatedStateHandle>)
+      -> std::shared_ptr<IReplicatedLogHandle>;
 
   auto getId() const noexcept -> LogId;
   auto getGlobalLogId() const noexcept -> GlobalLogIdentifier const&;
@@ -123,6 +145,12 @@ struct alignas(64) ReplicatedLog {
   }
 
  private:
+  struct GuardedData {
+    std::shared_ptr<IReplicatedStateHandle> stateHandle;
+  };
+
+  Guarded<GuardedData> _guarded;
+
   GlobalLogIdentifier const _logId;
   LoggerContext const _logContext = LoggerContext(Logger::REPLICATION2);
   mutable std::mutex _mutex;

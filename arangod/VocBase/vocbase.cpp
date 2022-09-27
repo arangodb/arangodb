@@ -110,9 +110,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace {
-struct VocbaseStatePersistor
+struct VocbaseReplicatedStatePersistor
     : replication2 ::replicated_state::StatePersistorInterface {
-  explicit VocbaseStatePersistor(TRI_vocbase_t& vocbase) : vocbase(vocbase) {}
+  explicit VocbaseReplicatedStatePersistor(TRI_vocbase_t& vocbase)
+      : vocbase(vocbase) {}
   void updateStateInformation(
       replication2::replicated_state::PersistedStateInfo const& info) noexcept
       override {
@@ -138,7 +139,8 @@ struct arangodb::VocBaseLogManager {
         _logContext(
             LoggerContext{Logger::REPLICATION2}.with<logContextKeyDatabaseName>(
                 std::move(database))),
-        _statePersistor(std::make_shared<VocbaseStatePersistor>(vocbase)) {}
+        _statePersistor(
+            std::make_shared<VocbaseReplicatedStatePersistor>(vocbase)) {}
 
   [[nodiscard]] auto getReplicatedLogById(replication2::LogId id) const
       -> std::shared_ptr<replication2::replicated_log::ReplicatedLog const> {
@@ -348,7 +350,7 @@ struct arangodb::VocBaseLogManager {
   ArangodServer& _server;
   TRI_vocbase_t& _vocbase;
   LoggerContext const _logContext;
-  std::shared_ptr<VocbaseStatePersistor> const _statePersistor;
+  std::shared_ptr<VocbaseReplicatedStatePersistor> const _statePersistor;
 
   struct GuardedData {
     std::unordered_map<
