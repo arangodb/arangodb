@@ -39,6 +39,7 @@ struct ReplicatedStateTraits {
   using CoreType = typename S::CoreType;
   using Deserializer = EntryDeserializer<EntryType>;
   using Serializer = EntrySerializer<EntryType>;
+  using CleanupHandlerType = typename S::CleanupHandlerType;
 };
 
 }  // namespace arangodb::replication2::replicated_state

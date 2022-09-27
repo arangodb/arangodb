@@ -34,6 +34,7 @@
 #include "Aql/Collection.h"
 #include "Aql/ConditionFinder.h"
 #include "Aql/DocumentProducingNode.h"
+#include "Aql/EnumeratePathsNode.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
@@ -41,7 +42,6 @@
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IndexNode.h"
-#include "Aql/EnumeratePathsNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
@@ -61,7 +61,6 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallUnorderedMap.h"
@@ -3547,11 +3546,6 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
 
     size_t const n = condition.root()->numMembers();
 
-    if (n != 1) {
-      // either no condition or multiple ORed conditions...
-      continue;
-    }
-
     bool handled = false;
     auto current = node;
     while (current != nullptr) {
@@ -3569,6 +3563,11 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
             // single index. this is something that we can handle
             AstNode* newNode{nullptr};
             if (!indexNode->isAllCoveredByOneIndex()) {
+              if (n != 1) {
+                // either no condition or multiple ORed conditions
+                // and index has not covered entire condition.
+                break;
+              }
               newNode = condition.removeIndexCondition(
                   plan.get(), indexNode->outVariable(), indexCondition->root(),
                   indexesUsed[0].get());
@@ -5083,7 +5082,8 @@ void arangodb::aql::removeUnnecessaryRemoteScatterRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
-  plan->findNodesOfType(nodes, EN::REMOTE, true);
+  plan->findNodesOfType(nodes, EN::REMOTE,
+                        false /* do not go into Subqueries */);
 
   ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
 
@@ -5285,22 +5285,37 @@ void arangodb::aql::restrictToSingleShardRule(
         }
       } else if (currentType == ExecutionNode::INDEX ||
                  currentType == ExecutionNode::ENUMERATE_COLLECTION) {
-        auto collection = ::getCollection(current);
-        auto collectionVariable = ::getOutVariable(current);
-        std::string shardId = finder.getShard(collectionVariable);
+        bool disable = false;
+        if (currentType == ExecutionNode::INDEX) {
+          // Custom analyzer on inverted indexes might be incompatible with
+          // shard key distribution.
+          for (auto& index :
+               ExecutionNode::castTo<aql::IndexNode*>(current)->getIndexes()) {
+            if (Index::TRI_IDX_TYPE_INVERTED_INDEX == index->type()) {
+              disable = true;
+              break;
+            }
+          }
+        }
 
-        if (finder.isSafeForOptimization(collectionVariable) &&
-            !shardId.empty()) {
-          wasModified = true;
-          ::restrictToShard(current, shardId);
-          forwardRestrictionToPrototype(current, shardId);
-        } else if (finder.isSafeForOptimization(collection)) {
-          auto& shards = modificationRestrictions[collection];
-          if (shards.size() == 1) {
+        if (!disable) {
+          auto collection = ::getCollection(current);
+          auto collectionVariable = ::getOutVariable(current);
+          std::string shardId = finder.getShard(collectionVariable);
+
+          if (finder.isSafeForOptimization(collectionVariable) &&
+              !shardId.empty()) {
             wasModified = true;
-            shardId = *shards.begin();
             ::restrictToShard(current, shardId);
             forwardRestrictionToPrototype(current, shardId);
+          } else if (finder.isSafeForOptimization(collection)) {
+            auto& shards = modificationRestrictions[collection];
+            if (shards.size() == 1) {
+              wasModified = true;
+              shardId = *shards.begin();
+              ::restrictToShard(current, shardId);
+              forwardRestrictionToPrototype(current, shardId);
+            }
           }
         }
       } else if (currentType == ExecutionNode::UPSERT ||

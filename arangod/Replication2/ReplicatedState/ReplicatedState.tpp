@@ -36,6 +36,7 @@
 #include "Replication2/ReplicatedState/LeaderStateManager.h"
 #include "Replication2/ReplicatedState/FollowerStateManager.h"
 #include "Replication2/ReplicatedState/UnconfiguredStateManager.h"
+#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/Streams/LogMultiplexer.h"
 #include "Replication2/Streams/StreamSpecification.h"
 #include "Replication2/Streams/Streams.h"
@@ -94,13 +95,16 @@ template<typename S>
 ReplicatedState<S>::ReplicatedState(
     std::shared_ptr<replicated_log::ReplicatedLog> log,
     std::shared_ptr<Factory> factory, LoggerContext loggerContext,
-    std::shared_ptr<ReplicatedStateMetrics> metrics)
-    : factory(std::move(factory)),
+    std::shared_ptr<ReplicatedStateMetrics> metrics,
+    std::shared_ptr<StatePersistorInterface> persistor)
+    : persistor(std::move(persistor)),
+      factory(std::move(factory)),
       log(std::move(log)),
       guardedData(*this),
       loggerContext(std::move(loggerContext)),
       metrics(std::move(metrics)) {
   TRI_ASSERT(this->metrics != nullptr);
+  TRI_ASSERT(this->persistor != nullptr);
   this->metrics->replicatedStateNumber->fetch_add(1);
 }
 
@@ -174,24 +178,8 @@ template<typename S>
 void ReplicatedState<S>::start(
     std::unique_ptr<ReplicatedStateToken> token,
     std::optional<velocypack::SharedSlice> const& coreParameter) {
-  auto core = std::invoke([&]() {
-    if constexpr (std::is_void_v<typename S::CoreParameterType>) {
-      return factory->constructCore(log->getGlobalLogId());
-    } else {
-      if (!coreParameter.has_value()) {
-        auto const& gid = log->getGlobalLogId();
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_BAD_PARAMETER,
-            fmt::format("Cannot find core parameter for replicated state with "
-                        "ID {}, created in database {}, for {} state",
-                        gid.id, gid.database, S::NAME));
-      }
-      auto params = velocypack::deserialize<typename S::CoreParameterType>(
-          coreParameter->slice());
-      return factory->constructCore(log->getGlobalLogId(), std::move(params));
-    }
-  });
-
+  // persistor->updateStateInformation({});
+  auto core = buildCore(coreParameter);
   auto deferred =
       guardedData.getLockedGuard()->rebuild(std::move(core), std::move(token));
   // execute *after* the lock has been released
@@ -204,6 +192,59 @@ ReplicatedState<S>::~ReplicatedState() {
 }
 
 template<typename S>
+auto ReplicatedState<S>::buildCore(
+    const std::optional<velocypack::SharedSlice>& coreParameter) {
+  if constexpr (std::is_void_v<typename S::CoreParameterType>) {
+    return factory->constructCore(log->getGlobalLogId());
+  } else {
+    if (!coreParameter.has_value()) {
+      auto const& gid = log->getGlobalLogId();
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          fmt::format("Cannot find core parameter for replicated state with "
+                      "ID {}, created in database {}, for {} state",
+                      gid.id, gid.database, S::NAME));
+    }
+    auto params = velocypack::deserialize<typename S::CoreParameterType>(
+        coreParameter->slice());
+    PersistedStateInfo info;
+    info.stateId = log->getId();
+    info.specification.type = S::NAME;
+    info.specification.parameters = *coreParameter;
+    persistor->updateStateInformation(info);
+    return factory->constructCore(log->getGlobalLogId(), std::move(params));
+  }
+}
+
+template<typename S>
+void ReplicatedState<S>::drop() {
+  auto deferred = guardedData.doUnderLock([&](GuardedData& data) {
+    std::unique_ptr<CoreType> core;
+    DeferredAction action;
+    if (data.currentManager == nullptr) {
+      core = std::move(data.oldCore);
+    } else {
+      std::tie(core, std::ignore, action) =
+          std::move(*data.currentManager).resign();
+    }
+
+    using CleanupHandler =
+        typename ReplicatedStateTraits<S>::CleanupHandlerType;
+    if constexpr (not std::is_void_v<CleanupHandler>) {
+      static_assert(
+          std::is_invocable_r_v<std::shared_ptr<CleanupHandler>,
+                                decltype(&Factory::constructCleanupHandler),
+                                Factory>);
+      std::shared_ptr<CleanupHandler> cleanupHandler =
+          factory->constructCleanupHandler();
+      cleanupHandler->drop(std::move(core));
+    }
+    return action;
+  });
+  deferred.fire();
+}
+
+template<typename S>
 auto ReplicatedState<S>::GuardedData::rebuild(
     std::unique_ptr<CoreType> core,
     std::unique_ptr<ReplicatedStateToken> token) noexcept -> DeferredAction {
@@ -213,11 +254,12 @@ auto ReplicatedState<S>::GuardedData::rebuild(
   try {
     participant = _self.log->getParticipant();
   } catch (replicated_log::ParticipantResignedException const& ex) {
-    LOG_CTX("eacb9", TRACE, _self.loggerContext)
+    LOG_CTX("eacb9", INFO, _self.loggerContext)
         << "Replicated log participant is gone. Replicated state will go "
            "soon as well. Error code: "
         << ex.code();
     currentManager = nullptr;
+    oldCore = std::move(core);
     return {};
   }
   if (auto leader =
@@ -268,10 +310,12 @@ auto ReplicatedState<S>::GuardedData::runFollower(
   auto&& self = _self.shared_from_this();
   static_assert(noexcept(FollowerStateManager<S>(
       std::move(loggerCtx), std::move(self), std::move(logFollower),
-      std::move(core), std::move(token), _self.factory, _self.metrics)));
+      std::move(core), std::move(token), _self.factory, _self.metrics,
+      _self.persistor)));
   auto manager = std::make_shared<FollowerStateManager<S>>(
       std::move(loggerCtx), std::move(self), std::move(logFollower),
-      std::move(core), std::move(token), _self.factory, _self.metrics);
+      std::move(core), std::move(token), _self.factory, _self.metrics,
+      _self.persistor);
   currentManager = manager;
 
   static_assert(noexcept(manager->run()));
@@ -296,10 +340,12 @@ auto ReplicatedState<S>::GuardedData::runLeader(
   auto&& self = _self.shared_from_this();
   static_assert(noexcept(LeaderStateManager<S>(
       std::move(loggerCtx), std::move(self), std::move(logLeader),
-      std::move(core), std::move(token), _self.factory, _self.metrics)));
+      std::move(core), std::move(token), _self.factory, _self.metrics,
+      _self.persistor)));
   auto manager = std::make_shared<LeaderStateManager<S>>(
       std::move(loggerCtx), std::move(self), std::move(logLeader),
-      std::move(core), std::move(token), _self.factory, _self.metrics);
+      std::move(core), std::move(token), _self.factory, _self.metrics,
+      _self.persistor);
   currentManager = manager;
 
   static_assert(noexcept(manager->run()));

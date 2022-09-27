@@ -49,6 +49,7 @@ const setup = require(base);
   setup.createStrings();
   setup.createPersistent();
   setup.createView();
+  setup.createSearch();
   setup.createSmartGraph();
   setup.createSmartArangoSearch();
   setup.createSatelliteCollections();
@@ -61,12 +62,15 @@ const setup = require(base);
 
   // all types of enterprise related graphs
   setup.createEmptySmartGraph();
+  setup.createEmptyEnterpriseGraph();
   setup.createEmptySatelliteGraph();
   setup.createEmptyDisjointGraph();
   setup.createSmartGraphWithoutData();
+  setup.createEnterpriseGraphWithoutData();
   setup.createSatelliteGraphWithoutData();
   setup.createDisjointGraphWithoutData();
   setup.createSmartGraphSingleServer();
+  setup.createEnterpriseGraphSingleServer();
   setup.createSatelliteGraphSingleServer();
   setup.createDisjointGraphSingleServer();
   setup.createHybridSmartGraphSingleServer();

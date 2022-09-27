@@ -70,6 +70,7 @@
 #include "IResearch/IResearchFilterFactoryCommon.hpp"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterOptimization.h"
 #include "IResearch/IResearchIdentityAnalyzer.h"
@@ -103,27 +104,11 @@ Result fromFuncMinHashMatch(char const* funcName, irs::boolean_filter* filter,
                             aql::AstNode const& args);
 
 FieldMeta::Analyzer const& FilterContext::fieldAnalyzer(
-    std::string_view name, Result& r) const noexcept {
-  if (!fieldAnalyzerProvider) {
-    if (ADB_UNLIKELY(!contextAnalyzer)) {
-      TRI_ASSERT(false);
-      r = {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
-    }
-    return contextAnalyzer;
-  }
-  auto const& analyzer = (*fieldAnalyzerProvider)(name);
-  if (ADB_UNLIKELY(contextAnalyzer &&
-                   contextAnalyzer._pool != analyzer._pool)) {
-    r = {TRI_ERROR_BAD_PARAMETER,
-         absl::StrCat("Context analyzer '", contextAnalyzer->name(),
-                      "' doesn't match field '", name, "' analyzer '",
-                      analyzer ? analyzer->name() : "", "'")};
-  }
-  if (!analyzer) {
-    r = {TRI_ERROR_BAD_PARAMETER,
-         absl::StrCat("Analyzer for field '", name, "' isn't set")};
-  }
-  return analyzer;
+    std::string_view name, aql::ExpressionContext* ctx) const noexcept {
+  // FIXME(gnusi): refactor this function
+  return fieldAnalyzerProvider
+             ? (*fieldAnalyzerProvider)(name, ctx, contextAnalyzer)
+             : contextAnalyzer;  // Only possible with ArangoSearch view
 }
 
 }  // namespace arangodb::iresearch
@@ -239,15 +224,6 @@ void appendTerms(irs::by_phrase& filter, irs::string_ref value,
   }
 }
 
-FORCE_INLINE void appendExpression(irs::boolean_filter& filter,
-                                   aql::AstNode const& node,
-                                   QueryContext const& ctx,
-                                   FilterContext const& filterCtx) {
-  auto& exprFilter = filter.add<ByExpression>();
-  exprFilter.init(*ctx.ast, const_cast<aql::AstNode&>(node));
-  exprFilter.boost(filterCtx.boost);
-}
-
 Result byTerm(irs::by_term* filter, std::string&& name,
               ScopedAqlValue const& value, QueryContext const& ctx,
               FilterContext const& filterCtx) {
@@ -301,12 +277,10 @@ Result byTerm(irs::by_term* filter, std::string&& name,
           return {TRI_ERROR_BAD_PARAMETER, "could not get string value"};
         }
 
-        Result r;
-        auto& analyzer = filterCtx.fieldAnalyzer(name, r);
-        if (!r.ok()) {
-          return r;
+        auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
+        if (!analyzer) {
+          return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
         }
-        TRI_ASSERT(analyzer);
 
         kludge::mangleField(name, ctx.isOldMangling, analyzer);
         *filter->mutable_field() = std::move(name);
@@ -487,12 +461,10 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
           return {TRI_ERROR_BAD_PARAMETER, "failed to get string value"};
         }
 
-        Result r;
-        auto& analyzer = filterCtx.fieldAnalyzer(name, r);
-        if (!r.ok()) {
-          return r;
+        auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
+        if (!analyzer) {
+          return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
         }
-        TRI_ASSERT(analyzer);
 
         auto& range = filter->add<irs::by_range>();
         kludge::mangleField(name, ctx.isOldMangling, analyzer);
@@ -652,12 +624,10 @@ Result byRange(irs::boolean_filter* filter, std::string name,
           return {TRI_ERROR_BAD_PARAMETER, "could not parse string value"};
         }
 
-        Result r;
-        auto& analyzer = filterCtx.fieldAnalyzer(name, r);
-        if (!r.ok()) {
-          return r;
+        auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
+        if (!analyzer) {
+          return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
         }
-        TRI_ASSERT(analyzer);
 
         irs::by_range* range{nullptr};
         if (ctx.isSearchQuery || Min) {
@@ -827,12 +797,10 @@ Result fromFuncGeoInRange(char const* funcName, irs::boolean_filter* filter,
     return error::failedToGenerateName(funcName, fieldNodeIdx);
   }
   if (filter) {
-    Result r;
-    auto& analyzer = filterCtx.fieldAnalyzer(name, r);
-    if (!r.ok()) {
-      return r;
+    auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
+    if (!analyzer) {
+      return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
     }
-    TRI_ASSERT(analyzer);
 
     auto& geo_filter = filter->add<GeoDistanceFilter>();
     geo_filter.boost(filterCtx.boost);
@@ -935,12 +903,10 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
     return error::failedToGenerateName(GEO_DISTANCE_FUNC, fieldNodeIdx);
   }
   if (filter) {
-    Result r;
-    auto& analyzer = filterCtx.fieldAnalyzer(name, r);
-    if (!r.ok()) {
-      return r;
+    auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
+    if (!analyzer) {
+      return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
     }
-    TRI_ASSERT(analyzer);
 
     auto& geo_filter =
         (aql::NODE_TYPE_OPERATOR_BINARY_NE == node.cmp
@@ -1046,7 +1012,7 @@ Result fromBinaryEq(irs::boolean_filter* filter, QueryContext const& ctx,
   return byTerm(termFilter, normalized, ctx, filterCtx);
 }
 
-Result fromRange(irs::boolean_filter* filter, QueryContext const& /*ctx*/,
+Result fromRange(irs::boolean_filter* filter, QueryContext const& ctx,
                  FilterContext const& filterCtx, aql::AstNode const& node) {
   TRI_ASSERT(aql::NODE_TYPE_RANGE == node.type);
 
@@ -1060,7 +1026,7 @@ Result fromRange(irs::boolean_filter* filter, QueryContext const& /*ctx*/,
 
   // ranges are always true
   if (filter) {
-    filter->add<irs::all>().boost(filterCtx.boost);
+    addAllFilter(*filter, ctx.hasNestedFields).boost(filterCtx.boost);
   }
 
   return {};
@@ -1127,7 +1093,7 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
       case aql::Quantifier::Type::kAll:
       case aql::Quantifier::Type::kNone:
         if (filter) {
-          filter->add<irs::all>();
+          addAllFilter(*filter, ctx.hasNestedFields);
         }
         break;
       case aql::Quantifier::Type::kAtLeast:
@@ -1135,7 +1101,7 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
           if (atLeastCount > 0) {
             filter->add<irs::empty>();
           } else {
-            filter->add<irs::all>();
+            addAllFilter(*filter, ctx.hasNestedFields);
           }
         }
         break;
@@ -1647,7 +1613,7 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
     if (filter) {
       if (aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type) {
         // not in [] means 'all'
-        filter->add<irs::all>().boost(filterCtx.boost);
+        addAllFilter(*filter, ctx.hasNestedFields).boost(filterCtx.boost);
       } else {
         filter->add<irs::empty>();
       }
@@ -1802,8 +1768,8 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
 
       if (!n) {
         if (aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type) {
-          filter->add<irs::all>().boost(
-              filterCtx.boost);  // not in [] means 'all'
+          addAllFilter(*filter, ctx.hasNestedFields)
+              .boost(filterCtx.boost);  // not in [] means 'all'
         } else {
           filter->add<irs::empty>();
         }
@@ -2022,7 +1988,7 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
   }
 
   // default analyzer
-  FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
+  FieldMeta::Analyzer analyzer{FieldMeta::identity()};
   if (filter || analyzerIdValue.isConstant()) {
     TRI_ASSERT(ctx.trx);
     auto& vocbase = ctx.trx->vocbase();
@@ -2155,12 +2121,10 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
     return error::failedToGenerateName(funcName, 1);
   }
 
-  Result r;
-  auto analyzer = filterCtx.fieldAnalyzer(fieldName, r);
-  if (!r.ok()) {
-    return r;
+  auto analyzer = filterCtx.fieldAnalyzer(fieldName, ctx.ctx);
+  if (!analyzer) {
+    return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
   }
-  TRI_ASSERT(analyzer);
 
   if (argc > 1) {
     // 2nd argument defines a type (if present)
@@ -3273,7 +3237,7 @@ Result fromFuncPhrase(char const* funcName, irs::boolean_filter* filter,
   // last odd argument defines an analyzer
   // ...........................................................................
 
-  auto analyzerPool = emptyAnalyzer();
+  auto analyzerPool = makeEmptyAnalyzer();
 
   if (0 != (argc & 1)) {  // override analyzer
     --argc;
@@ -3317,12 +3281,10 @@ Result fromFuncPhrase(char const* funcName, irs::boolean_filter* filter,
     // now get the actual analyzer for the known field name if it is not
     // overridden
     if (!analyzerPool._pool) {
-      Result r;
-      analyzerPool = filterCtx.fieldAnalyzer(name, r);
-      if (!r.ok()) {
-        return r;
+      analyzerPool = filterCtx.fieldAnalyzer(name, ctx.ctx);
+      if (!analyzerPool) {
+        return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
       }
-      TRI_ASSERT(analyzerPool);
     }
 
     analyzer = analyzerPool->get();
@@ -3385,7 +3347,7 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
   }
 
   auto threshold = FilterConstants::DefaultNgramMatchThreshold;
-  auto analyzerPool = emptyAnalyzer();
+  auto analyzerPool = makeEmptyAnalyzer();
 
   if (argc > 3) {  // 4 args given. 3rd is threshold
     ScopedAqlValue tmpValue;
@@ -3479,12 +3441,10 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
 
   if (filter) {
     if (!analyzerPool) {
-      Result r;
-      analyzerPool = filterCtx.fieldAnalyzer(name, r);
-      if (!r.ok()) {
-        return r;
+      analyzerPool = filterCtx.fieldAnalyzer(name, ctx.ctx);
+      if (!analyzerPool) {
+        return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
       }
-      TRI_ASSERT(analyzerPool);
     }
 
     auto analyzer = analyzerPool->get();
@@ -3647,12 +3607,10 @@ Result fromFuncStartsWith(char const* funcName, irs::boolean_filter* filter,
   }
 
   if (filter) {
-    Result r;
-    auto& analyzer = filterCtx.fieldAnalyzer(name, r);
-    if (!r.ok()) {
-      return r;
+    auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
+    if (!analyzer) {
+      return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
     }
-    TRI_ASSERT(analyzer);
     kludge::mangleField(name, ctx.isOldMangling, analyzer);
 
     // Try to optimize us away
@@ -3762,12 +3720,10 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
   }
 
   if (filter) {
-    Result r;
-    auto& analyzer = filterCtx.fieldAnalyzer(name, r);
-    if (!r.ok()) {
-      return r;
+    auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
+    if (!analyzer) {
+      return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
     }
-    TRI_ASSERT(analyzer);
 
     auto& wildcardFilter = filter->add<irs::by_wildcard>();
     kludge::mangleField(name, ctx.isOldMangling, analyzer);
@@ -3807,12 +3763,10 @@ Result fromFuncLevenshteinMatch(char const* funcName,
   }
 
   if (filter) {
-    Result r;
-    auto& analyzer = filterCtx.fieldAnalyzer(name, r);
-    if (!r.ok()) {
-      return r;
+    auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
+    if (!analyzer) {
+      return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
     }
-    TRI_ASSERT(analyzer);
 
     auto& levenshtein_filter = filter->add<irs::by_edit_distance>();
     levenshtein_filter.boost(filterCtx.boost);
@@ -3920,12 +3874,10 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
   }
 
   if (filter) {
-    Result r;
-    auto& analyzer = filterCtx.fieldAnalyzer(name, r);
-    if (!r.ok()) {
-      return r;
+    auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
+    if (!analyzer) {
+      return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
     }
-    TRI_ASSERT(analyzer);
 
     auto& geo_filter = filter->add<GeoFilter>();
     geo_filter.boost(filterCtx.boost);
@@ -4077,6 +4029,23 @@ Result fromExpansion(irs::boolean_filter* filter, QueryContext const& ctx,
 namespace arangodb {
 namespace iresearch {
 
+irs::filter& addAllFilter(irs::boolean_filter& filter, bool hasNestedFields) {
+  if (hasNestedFields) {
+    auto& pkFilter = filter.add<irs::by_column_existence>();
+    *pkFilter.mutable_field() = DocumentPrimaryKey::PK();
+    return pkFilter;
+  } else {
+    return filter.add<irs::all>();
+  }
+}
+
+void appendExpression(irs::boolean_filter& filter, aql::AstNode const& node,
+                      QueryContext const& ctx, FilterContext const& filterCtx) {
+  auto& exprFilter = filter.add<ByExpression>();
+  exprFilter.init(*ctx.ast, const_cast<aql::AstNode&>(node));
+  exprFilter.boost(filterCtx.boost);
+}
+
 Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
                       FilterContext const& filterCtx,
                       aql::AstNode const& node) {
@@ -4114,7 +4083,7 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
   }
 
   if (result) {
-    filter->add<irs::all>().boost(filterCtx.boost);
+    addAllFilter(*filter, ctx.hasNestedFields).boost(filterCtx.boost);
   } else {
     filter->add<irs::empty>();
   }

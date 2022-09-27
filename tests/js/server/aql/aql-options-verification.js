@@ -90,13 +90,15 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ useCache: 'piff' } RETURN 1", "useCache"],
         [prefix + "{ lookahead: 'meow' } RETURN 1", "lookahead"],
         [prefix + "{ lookahead: false } RETURN 1", "lookahead"],
-        [prefix + "{ waitForSync: true } RETURN 1", "waitForSync"],
-        [prefix + "{ waitForSync: false } RETURN 1", "waitForSync"],
         [prefix + "{ waitForSync: +1 } RETURN 1", "waitForSync"],
         [prefix + "{ waitForSync: -1 } RETURN 1", "waitForSync"],
         [prefix + "{ method: 'hash' } RETURN 1", "method"],
         [prefix + "{ tititi: 'piff' } RETURN 1", "tititi"],
-        
+
+        // valid waitForSync option
+        [prefix + "{ waitForSync: true } RETURN 1"],
+        [prefix + "{ waitForSync: false } RETURN 1"],
+
         // valid combinations of indexHint and disableIndex
         [prefix + "{ indexHint: 'primary', disableIndex: false } RETURN 1"],
         [prefix + "{ indexHint: ['primary'], disableIndex: false } RETURN 1"],

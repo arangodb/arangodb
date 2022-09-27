@@ -165,10 +165,14 @@ class FieldIterator {
                                          VPackSlice slice);
 
   enum class LevelType {
+    // emits regular fields
     kNormal = 0,
+    // emits nested parents
     kNestedRoot,
+    // enumerates "arrays" of nested documents
     kNestedFields,
-    kNestedObjects
+    // enumerates nested documents in the array
+    kNestedObjects,
   };
 
   struct Level {
@@ -219,7 +223,8 @@ class FieldIterator {
 
   void next();
   bool setValue(VPackSlice const value,
-                FieldMeta::Analyzer const& valueAnalyzer);
+                FieldMeta::Analyzer const& valueAnalyzer,
+                IndexMetaStruct const& context);
   void setNullValue(VPackSlice const value);
   void setNumericValue(VPackSlice const value);
   void setBoolValue(VPackSlice const value);

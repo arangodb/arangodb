@@ -215,13 +215,14 @@ class instance {
     if (process.env.hasOwnProperty('COREDIR')) {
       this.coreDirectory = process.env['COREDIR'];
     }
+    this.JWT = null;
+    this.jwtFiles = null;
     this._makeArgsArangod();
     
     this.name = instanceRole + ' - ' + this.port;
     this.pid = null;
     this.exitStatus = null;
     this.serverCrashedLocal = false;
-    this.JWT = null;
     this.netstat = {'in':{}, 'out': {}};
   }
 
@@ -248,6 +249,7 @@ class instance {
       pid: this.pid,
       id: this.id,
       JWT: this.JWT,
+      jwtFiles: this.jwtFiles,
       exitStatus: this.exitStatus,
       serverCrashedLocal: this.serverCrashedLocal
     };
@@ -274,6 +276,7 @@ class instance {
     this.pid = struct['pid'];
     this.id = struct['id'];
     this.JWT = struct['JWT'];
+    this.jwtFiles = struct['jwtFiles'];
     this.exitStatus = struct['exitStatus'];
     this.serverCrashedLocal = struct['serverCrashedLocal'];
   }
@@ -354,12 +357,15 @@ class instance {
     if (this.options.encryptionAtRest && !this.args.hasOwnProperty('rocksdb.encryption-keyfile')) {
       this.args['rocksdb.encryption-keyfile'] = this.restKeyFile;
     }
+
     if (this.restKeyFile && !this.args.hasOwnProperty('server.jwt-secret')) {
       this.args['server.jwt-secret'] = this.restKeyFile;
     }
-    //TODO server_secrets else if (addArgs['server.jwt-secret-folder'] && !instanceInfo.authOpts['server.jwt-secret-folder']) {
+    else if (this.options.hasOwnProperty('jwtFiles')) {
+      this.jwtFiles = this.options['jwtFiles'];
     // instanceInfo.authOpts['server.jwt-secret-folder'] = addArgs['server.jwt-secret-folder'];
-    //}
+    }
+
     this.args = Object.assign(this.args, this.options.extraArgs);
 
     if (this.options.verbose) {
@@ -395,13 +401,13 @@ class instance {
         let l = [];
         this.agencyConfig.agencyInstances.forEach(agentInstance => {
           l.push(agentInstance.endpoint);
+          this.agencyConfig.urls.push(agentInstance.url);
+          this.agencyConfig.endpoints.push(agentInstance.endpoint);
         });
         this.agencyConfig.agencyInstances.forEach(agentInstance => {
           agentInstance.args['agency.endpoint'] = _.clone(l);
         });
         this.agencyConfig.agencyEndpoint = this.agencyConfig.agencyInstances[0].endpoint;
-        this.agencyConfig.urls.push(this.url);
-        this.agencyConfig.endpoints.push(this.endpoint);
       }
     } else if (this.instanceRole === instanceRole.dbServer) {
       this.args = Object.assign(this.args, {
@@ -514,6 +520,14 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   readAssertLogLines () {
+    let size = fs.size(this.logFile);
+    if (this.options.maxLogFileSize !== 0 && size > this.options.maxLogFileSize) {
+      // File bigger 500k? this needs to be a bug in the tests.
+      let err=`ERROR: ${this.logFile} is bigger than ${this.options.maxLogFileSize/1024}kB! - ${size/1024} kBytes!`;
+      this.assertLines.push(err);
+      print(RED + err + RESET);
+      return;
+    }
     try {
       const buf = fs.readBuffer(this.logFile);
       let lineStart = 0;
@@ -535,8 +549,9 @@ class instance {
         }
       }
     } catch (ex) {
-      print("failed to read " + this.logFile + " -> " + ex);
-      this.assertLines.push("failed to read " + this.logFile + " -> " + ex);
+      let err="failed to read " + this.logFile + " -> " + ex;
+      this.assertLines.push(err);
+      print(RED+err+RESET);
     }
   }
   terminateInstance() {
@@ -685,6 +700,21 @@ class instance {
     this.url = pu.endpointToURL(this.endpoint);
   };
 
+  waitForExitAfterDebugKill() {
+    // Crashutils debugger kills our instance, but we neet to get
+    // testing.js sapwned-PID-monitoring adjusted.
+    print("waiting for exit - " + this.pid);
+    try {
+      let ret = statusExternal(this.pid, false);
+      // OK, something has gone wrong, process still alive. anounce and force kill:
+      print(RED+`was expecting the process ${this.pid} to be gone, but ${JSON.stringify(ret)}` + RESET);
+      killExternal(this.pid, abortSignal);
+      print(statusExternal(this.pid, true));
+    } catch(ex) {
+      print(ex);
+    }
+    print('done');
+  }
   waitForExit() {
     if (this.pid === null) {
       this.exitStatus = null;
@@ -787,16 +817,24 @@ class instance {
     }
     throw new Error(`unable to connect in ${count}s`);
   }
-
-  dumpAgent(path, method, fn) {
+  getAgent(path, method) {
     let opts = {
       method: method
     };
+
     if (this.args.hasOwnProperty('authOpts')) {
       opts['jwt'] = crypto.jwtEncode(this.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
+    } else if (this.args.hasOwnProperty('server.jwt-secret')) {
+      opts['jwt'] = crypto.jwtEncode(this.args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
+    } else if (this.jwtFiles) {
+      opts['jwt'] = crypto.jwtEncode(fs.read(this.jwtFiles[0]), {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
     }
+    return download(this.url + path, method === 'POST' ? '[["/"]]' : '', opts);
+  }
+
+  dumpAgent(path, method, fn) {
     print('--------------------------------- '+ fn + ' -----------------------------------------------');
-    let agencyReply = download(this.url + path, method === 'POST' ? '[["/"]]' : '', opts);
+    let agencyReply = this.getAgent(path, method);
     if (agencyReply.code === 200) {
       let agencyValue = JSON.parse(agencyReply.body);
       fs.write(fs.join(this.options.testOutputDirectory, fn + '_' + this.pid + ".json"), JSON.stringify(agencyValue, null, 2));
@@ -804,23 +842,12 @@ class instance {
       print(agencyReply);
     }
   }
-  killWithCoreDump () {
+  killWithCoreDump (message) {
     if (this.pid === null) {
       print(RED + Date() + this.name + " is not running, doesn't have a PID" + RESET);
       return;
     }
-    if (platform.substr(0, 3) === 'win') {
-      if (!this.options.disableMonitor) {
-        crashUtils.stopProcdump (this.options, this, true);
-      }
-      crashUtils.runProcdump (this.options, this, this.coreDirectory, this.pid, true);
-    }
-    if (this.options.test !== undefined) {
-      print(CYAN + this.name + " - in single test mode, hard killing." + RESET);
-      this.exitStatus = killExternal(this.pid, termSignal);
-    } else {
-      this.exitStatus = killExternal(this.pid, abortSignal);
-    }
+    crashUtils.generateCrashDump(pu.ARANGOD_BIN, this, this.options, message);
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief commands a server to shut down via webcall
@@ -847,8 +874,7 @@ class instance {
         (this.exitStatus.status === 'RUNNING')) {
       if (forceTerminate) {
         let sockStat = this.getSockStat("Force killing - sockstat before: ");
-        this.killWithCoreDump();
-        this.analyzeServerCrash('shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
+        this.killWithCoreDump('shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
         this.pid = null;
       } else if (this.options.useKillExternal) {
         let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
@@ -924,12 +950,16 @@ class instance {
         print(Date() + ' Server "' + this.name + '" shutdown: detected irregular death by monitor: pid', this.pid);
       }
       if (this.exitStatus.status === 'TERMINATED') {
-        return;
+        return true;
       }
       sleep(1);
       timeout--;
     }
     this.shutDownOneInstance({nonAgenciesCount: 1}, true, 0);
+    crashUtils.aggregateDebugger(this, this.options);
+    this.waitForExitAfterDebugKill();
+    this.pid = null;
+    return false;
   }
 
   shutDownOneInstance(counters, forceTerminate, timeout) {
@@ -967,11 +997,9 @@ class instance {
               ' after ' + timeout + 's grace period; marking crashy.');
         this.serverCrashedLocal = true;
         counters.shutdownSuccess = false;
-        this.killWithCoreDump();
-        this.analyzeServerCrash('shutdown timeout; instance "' +
-                                   this.name +
-                                   '" forcefully KILLED after 60s - ' +
-                                   this.exitStatus.signal);
+        this.killWithCoreDump('shutdown timeout; instance "' +
+                              this.name +
+                              '" forcefully KILLED after 60s');
         if (!this.isAgent()) {
           counters.nonAgenciesCount--;
         }

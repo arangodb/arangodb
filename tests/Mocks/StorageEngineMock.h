@@ -210,8 +210,10 @@ class TransactionStateMock : public arangodb::TransactionState {
       arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result performIntermediateCommitIfRequired(
       arangodb::DataSourceId cid) override;
-  virtual uint64_t numCommits() const override;
-  virtual bool hasFailedOperations() const override;
+  virtual uint64_t numCommits() const noexcept override;
+  virtual uint64_t numIntermediateCommits() const noexcept override;
+  virtual void addIntermediateCommits(uint64_t value) override;
+  virtual bool hasFailedOperations() const noexcept override;
   TRI_voc_tick_t lastOperationTick() const noexcept override;
 
   std::unique_ptr<arangodb::TransactionCollection> createTransactionCollection(
@@ -344,6 +346,14 @@ class StorageEngineMock : public arangodb::StorageEngine {
       TRI_vocbase_t& vocbase,
       std::shared_ptr<
           arangodb::replication2::replicated_log::PersistedLog> const& ptr)
+      -> arangodb::Result override;
+
+  auto updateReplicatedState(
+      TRI_vocbase_t& vocbase,
+      const arangodb::replication2::replicated_state::PersistedStateInfo& info)
+      -> arangodb::Result override;
+  auto dropReplicatedState(TRI_vocbase_t& vocbase,
+                           arangodb::replication2::LogId id)
       -> arangodb::Result override;
 
  private:

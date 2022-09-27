@@ -102,6 +102,7 @@ class H2CommTask final : public GeneralCommTask<T> {
 
     std::unique_ptr<HttpRequest> request;
     std::unique_ptr<H2Response> response;  // hold response memory
+    bool mustSendAuthHeader = true;
 
     size_t headerBuffSize = 0;  // total header size
     size_t responseOffset = 0;  // current offset in response body

@@ -35,6 +35,7 @@
 #include "Basics/PhysicalMemory.h"
 #include "Basics/Result.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Logger/LogMacros.h"
@@ -177,10 +178,11 @@ void EnvironmentFeature::prepare() {
           }
         }
         while (end < cpuAlignment.size()) {
-          ++end;
           if (cpuAlignment[end] < '0' || cpuAlignment[end] > '9') {
+            ++end;
             break;
           }
+          ++end;
         }
 
         int64_t alignment =
@@ -480,7 +482,7 @@ void EnvironmentFeature::prepare() {
         auto where = first.find(' ');
 
         if (where != std::string::npos &&
-            !StringUtils::isPrefix(first.substr(where), " interleave")) {
+            !first.substr(where).starts_with(" interleave")) {
           LOG_TOPIC("3e451", WARN, Logger::MEMORY)
               << "It is recommended to set NUMA to interleaved.";
           LOG_TOPIC("b25a4", WARN, Logger::MEMORY)

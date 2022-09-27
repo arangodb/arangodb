@@ -172,6 +172,9 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _level0StopTrigger(256),
       _pendingCompactionBytesSlowdownTrigger(128 * 1024ull),
       _pendingCompactionBytesStopTrigger(16 * 1073741824ull),
+      // note: this is a default value from RocksDB (db/column_family.cc,
+      // kAdjustedTtl):
+      _periodicCompactionTtl(30 * 24 * 60 * 60),
       _checksumType("xxHash64"),
       _compactionStyle("level"),
       _formatVersion(5),
@@ -893,6 +896,18 @@ void RocksDBOptionFeature::collectOptions(
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31000);
 
+  options
+      ->addOption("--rocksdb.periodic-compaction-ttl",
+                  "TTL (in seconds) for periodic compaction of .sst files, "
+                  "based on file age (0 = no periodic compaction)",
+                  new UInt64Parameter(&_periodicCompactionTtl),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30903);
+
   //////////////////////////////////////////////////////////////////////////////
   /// add column family-specific options now
   //////////////////////////////////////////////////////////////////////////////
@@ -1073,6 +1088,7 @@ void RocksDBOptionFeature::start() {
       << ", compaction_read_ahead_size: " << _compactionReadaheadSize
       << ", level0_compaction_trigger: " << _level0CompactionTrigger
       << ", level0_slowdown_trigger: " << _level0SlowdownTrigger
+      << ", periodic_compaction_ttl: " << _periodicCompactionTtl
       << ", checksum: " << _checksumType
       << ", format_version: " << _formatVersion
       << ", enable_index_compression: " << _enableIndexCompression

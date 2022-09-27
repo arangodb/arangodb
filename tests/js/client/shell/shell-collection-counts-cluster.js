@@ -935,7 +935,7 @@ function BaseTestConfig () {
       }
       assertEqual(2 * 101, total);
     },
-    
+   
     testWrongCountOnFollowerIncrementalSyncManyFailures : function () {
       let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 }); 
 
@@ -974,7 +974,6 @@ function BaseTestConfig () {
       assertEqual(200, result.status);
       assertEqual(0, result.json.count);
       
-      let rebuildFailuresBefore = getMetric(followerUrl, "arangodb_sync_rebuilds_total");
       let checksumFailuresBefore = getMetric(followerUrl, "arangodb_sync_wrong_checksum_total");
       
       // set a failure point on the leader to drop the follower
@@ -993,22 +992,35 @@ function BaseTestConfig () {
 
       assertEqual(101, c.toArray().length);
       assertEqual(101, c.count());
-    
+   
+      let cleanup = () => {
+        let result = request({ method: "DELETE", url: followerUrl + "/_admin/debug/failat/SynchronizeShard%3A%3AwrongChecksum" });
+        assertEqual(200, result.status);
+        result = request({ method: "DELETE", url: followerUrl + "/_admin/debug/failat/disableCountAdjustment" });
+        assertEqual(200, result.status);
+      };
+
       tries = 0;
-      let rebuildFailuresAfter;
-      let checksumFailuresAfter;
-      while (tries++ < 120) {
-        rebuildFailuresAfter = getMetric(followerUrl, "arangodb_sync_rebuilds_total");
-        checksumFailuresAfter = getMetric(followerUrl, "arangodb_sync_wrong_checksum_total");
+      try {
+        let checksumFailuresAfter;
+        while (tries++ < 120) {
+          checksumFailuresAfter = getMetric(followerUrl, "arangodb_sync_wrong_checksum_total");
 
-        if (rebuildFailuresAfter > rebuildFailuresBefore) {
-          break;
+          if (checksumFailuresAfter > checksumFailuresBefore) {
+            break;
+          }
+
+          if (tries === 15) {
+            cleanup();
+          }
+
+          require("internal").sleep(0.25);
         }
-        require("internal").sleep(0.25);
+          
+        assertTrue(checksumFailuresAfter > checksumFailuresBefore);
+      } finally {
+        cleanup();
       }
-
-      assertTrue(rebuildFailuresAfter > rebuildFailuresBefore);
-      assertTrue(checksumFailuresAfter > checksumFailuresBefore);
 
       // follower count must be ok now
       tries = 0;

@@ -56,6 +56,7 @@ class Isolate;  // forward declaration
 
 namespace arangodb {
 
+class IndexId;
 class DatabasePathFeature;  // forward declaration
 
 namespace application_features {
@@ -181,7 +182,7 @@ void assertFilter(
     std::string const& refName = "d",
     arangodb::iresearch::FilterOptimization filterOptimization =
         arangodb::iresearch::FilterOptimization::NONE,
-    bool searchQuery = true, bool oldMangling = true);
+    bool searchQuery = true, bool oldMangling = true, bool hasNested = false);
 
 void assertFilterSuccess(
     TRI_vocbase_t& vocbase, std::string const& queryString,
@@ -191,7 +192,7 @@ void assertFilterSuccess(
     std::string const& refName = "d",
     arangodb::iresearch::FilterOptimization filterOptimization =
         arangodb::iresearch::FilterOptimization::NONE,
-    bool searchQuery = true, bool oldMangling = true);
+    bool searchQuery = true, bool oldMangling = true, bool hasNested = false);
 
 void assertFilterFail(
     TRI_vocbase_t& vocbase, std::string const& queryString,
@@ -229,7 +230,8 @@ inline VPackBuilder dbArgsBuilder(std::string const& name = "_system") {
 VPackBuilder getInvertedIndexPropertiesSlice(
     arangodb::IndexId iid, std::vector<std::string> const& fields,
     std::vector<std::vector<std::string>> const* storedFields = nullptr,
-    std::vector<std::pair<std::string, bool>> const* sortedFields = nullptr);
+    std::vector<std::pair<std::string, bool>> const* sortedFields = nullptr,
+    std::string_view name = "");
 
 arangodb::CreateDatabaseInfo createInfo(arangodb::ArangodServer& server,
                                         std::string const& name, uint64_t id);

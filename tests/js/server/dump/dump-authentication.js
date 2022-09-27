@@ -62,6 +62,7 @@ jsunity.run(function dump_single_testsuite() {
       "testTransactionAbort",
       "testPersistent",
       "testView",
+      "testSearch",
       "testAnalyzers",
       "testIndexAnalyzerCollection",
       "testJobsAndQueues",
@@ -94,10 +95,13 @@ jsunity.run(function dump_single_testsuite() {
 
       // enterprise sharded graphs on single server tests
       "testEmptySmartGraph",
+      "testEmptyEnterpriseGraph",
       "testEmptySatelliteGraph",
       "testEmptyDisjointGraph",
       "testSmartGraphWithoutData",
+      "testEnterpriseGraphWithoutData",
       "testSmartGraphSingleServer",
+      "testEnterpriseGraphSingleServer",
       "testSatelliteSmartGraphSingleServer",
       "testDisjointGraphSingleServer",
       "testHybridSmartGraphSingleServer",

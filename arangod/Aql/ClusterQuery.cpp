@@ -246,6 +246,7 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(
     _execStats.requests += _numRequests.load(std::memory_order_relaxed);
     _execStats.setPeakMemoryUsage(_resourceMonitor.peak());
     _execStats.setExecutionTime(elapsedSince(_startTime));
+    _execStats.setIntermediateCommits(_trx->state()->numIntermediateCommits());
     _shutdownState.store(ShutdownState::Done);
 
     unregisterQueryInTransactionState();

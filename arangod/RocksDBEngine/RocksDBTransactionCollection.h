@@ -32,6 +32,7 @@
 #include "VocBase/voc-types.h"
 
 #include <rocksdb/types.h>
+#include <unordered_map>
 
 namespace arangodb {
 struct RocksDBDocumentOperation;
