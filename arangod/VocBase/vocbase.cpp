@@ -2178,141 +2178,144 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
 }
 
 using namespace arangodb::replication2;
-
-auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
-    -> std::shared_ptr<replicated_log::ReplicatedLog> {
-  return _logManager->getReplicatedLogById(id);
-}
-
-[[nodiscard]] auto TRI_vocbase_t::getReplicatedLogLeaderById(LogId id) const
-    -> std::shared_ptr<replicated_log::LogLeader> {
-  return getReplicatedLogById(id)->getLeader();
-}
-
-[[nodiscard]] auto TRI_vocbase_t::getReplicatedLogFollowerById(LogId id) const
-    -> std::shared_ptr<replication2::replicated_log::LogFollower> {
-  return getReplicatedLogById(id)->getFollower();
-}
-
-[[nodiscard]] auto TRI_vocbase_t::getReplicatedLogs() const
-    -> std::unordered_map<LogId, replicated_log::LogStatus> {
-  return _logManager->getReplicatedLogs();
-}
-
-[[nodiscard]] auto TRI_vocbase_t::getReplicatedLogsQuickStatus() const
-    -> std::unordered_map<LogId, replicated_log::QuickLogStatus> {
-  return _logManager->getReplicatedLogsQuickStatus();
-}
-
-auto TRI_vocbase_t::createReplicatedLog(
-    LogId id, std::optional<std::string> const& collectionName)
-    -> arangodb::ResultT<std::shared_ptr<replicated_log::ReplicatedLog>> {
-  return _logManager->createReplicatedLog(*this, id, collectionName);
-}
-
-auto TRI_vocbase_t::dropReplicatedLog(LogId id) -> arangodb::Result {
-  return _logManager->dropReplicatedLog(*this, id);
-}
-
-void TRI_vocbase_t::registerReplicatedLog(
-    LogId logId, std::shared_ptr<replicated_log::PersistedLog> persistedLog) {
-  _logManager->_guardedData.doUnderLock(
-      [&](VocBaseLogManager::GuardedData& data) {
-        auto core =
-            std::make_unique<replicated_log::LogCore>(std::move(persistedLog));
-        auto& feature = server().getFeature<ReplicatedLogFeature>();
-        auto [iter, inserted] = data.logs.try_emplace(
-            logId,
-            std::make_shared<replication2::replicated_log::ReplicatedLog>(
-                std::move(core), feature.metrics(), feature.options(),
-                LoggerContext(Logger::REPLICATION2)));
-        server()
-            .getFeature<ReplicatedLogFeature>()
-            .metrics()
-            ->replicatedLogNumber->fetch_add(1);
-        TRI_ASSERT(inserted);
-      });
-}
-
-void TRI_vocbase_t::registerReplicatedState(
-    arangodb::replication2::replicated_state::PersistedStateInfo const& info) {
-  using namespace arangodb::replication2::replicated_state;
-  auto& feature = _server.getFeature<
-      replication2::replicated_state::ReplicatedStateAppFeature>();
-  auto guard = _logManager->_guardedData.getLockedGuard();
-  auto result = guard->buildReplicatedState(
-      info.stateId, info.specification.type, feature,
-      _logManager->_logContext.withTopic(Logger::REPLICATED_STATE),
-      _logManager->_statePersistor);
-  if (result.ok()) {
-    auto state = result.get();
-    auto token = std::make_unique<ReplicatedStateToken>(
-        ReplicatedStateToken::withExplicitSnapshotStatus(info.generation,
-                                                         info.snapshot));
-    state->start(std::move(token), info.specification.parameters);
-  } else if (result.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND)) {
-    // replicated log is gone, delete the replicated state
-    TRI_ASSERT(false);  // TODO
-  } else {
-    VPackBuilder builder;
-    velocypack::serialize(builder, info);
-    LOG_CTX("e7f33", FATAL, _logManager->_logContext)
-        << "failed to create replicated state from persistence "
-        << builder.toJson() << " error: " << result.errorMessage();
-    FATAL_ERROR_EXIT();
-  }
-}
-
-auto TRI_vocbase_t::ensureReplicatedLog(
-    LogId id, std::optional<std::string> const& collectionName)
-    -> std::shared_ptr<replicated_log::ReplicatedLog> {
-  auto res = _logManager->ensureReplicatedLog(*this, id, collectionName);
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res.result());
-  }
-  return res.get();
-}
-
-std::shared_ptr<replicated_log::ILogParticipant> TRI_vocbase_t::lookupLog(
-    LogId id) const noexcept {
-  try {
-    if (auto log = getReplicatedLogById(id)) {
-      return log->getParticipant();
-    }
-  } catch (...) {
-  }
-  return nullptr;
-}
-
-auto TRI_vocbase_t::createReplicatedState(LogId id, std::string_view type)
-    -> arangodb::ResultT<
-        std::shared_ptr<replicated_state::ReplicatedStateBase>> {
-  return _logManager->createReplicatedState(id, type);
-}
-
-auto TRI_vocbase_t::ensureReplicatedState(LogId id, std::string_view type)
-    -> std::shared_ptr<replicated_state::ReplicatedStateBase> {
-  if (auto result = _logManager->ensureReplicatedState(id, type); result.ok()) {
-    return result.get();
-  } else {
-    THROW_ARANGO_EXCEPTION(result.result());
-  }
-}
-
-auto TRI_vocbase_t::dropReplicatedState(LogId id) -> arangodb::Result {
-  return _logManager->dropReplicatedState(id);
-}
-
-auto TRI_vocbase_t::getReplicatedStateStatus() const -> std::unordered_map<
-    arangodb::replication2::LogId,
-    std::optional<arangodb::replication2::replicated_state::StateStatus>> {
-  return _logManager->getReplicatedStateStatus();
-}
-auto TRI_vocbase_t::getReplicatedStateById(arangodb::replication2::LogId id)
-    const -> std::shared_ptr<
-        arangodb::replication2::replicated_state::ReplicatedStateBase> {
-  return _logManager->getReplicatedStateById(id);
-}
+//
+// auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id)
+// const
+//    -> std::shared_ptr<replicated_log::ReplicatedLog> {
+//  return _logManager->getReplicatedLogById(id);
+//}
+//
+//[[nodiscard]] auto TRI_vocbase_t::getReplicatedLogLeaderById(LogId id) const
+//    -> std::shared_ptr<replicated_log::LogLeader> {
+//  return getReplicatedLogById(id)->getLeader();
+//}
+//
+//[[nodiscard]] auto TRI_vocbase_t::getReplicatedLogFollowerById(LogId id) const
+//    -> std::shared_ptr<replication2::replicated_log::LogFollower> {
+//  return getReplicatedLogById(id)->getFollower();
+//}
+//
+//[[nodiscard]] auto TRI_vocbase_t::getReplicatedLogs() const
+//    -> std::unordered_map<LogId, replicated_log::LogStatus> {
+//  return _logManager->getReplicatedLogs();
+//}
+//
+//[[nodiscard]] auto TRI_vocbase_t::getReplicatedLogsQuickStatus() const
+//    -> std::unordered_map<LogId, replicated_log::QuickLogStatus> {
+//  return _logManager->getReplicatedLogsQuickStatus();
+//}
+//
+// auto TRI_vocbase_t::createReplicatedLog(
+//    LogId id, std::optional<std::string> const& collectionName)
+//    -> arangodb::ResultT<std::shared_ptr<replicated_log::ReplicatedLog>> {
+//  return _logManager->createReplicatedLog(*this, id, collectionName);
+//}
+//
+// auto TRI_vocbase_t::dropReplicatedLog(LogId id) -> arangodb::Result {
+//  return _logManager->dropReplicatedLog(*this, id);
+//}
+//
+// void TRI_vocbase_t::registerReplicatedLog(
+//    LogId logId, std::shared_ptr<replicated_log::PersistedLog> persistedLog) {
+//  _logManager->_guardedData.doUnderLock(
+//      [&](VocBaseLogManager::GuardedData& data) {
+//        auto core =
+//            std::make_unique<replicated_log::LogCore>(std::move(persistedLog));
+//        auto& feature = server().getFeature<ReplicatedLogFeature>();
+//        auto [iter, inserted] = data.logs.try_emplace(
+//            logId,
+//            std::make_shared<replication2::replicated_log::ReplicatedLog>(
+//                std::move(core), feature.metrics(), feature.options(),
+//                LoggerContext(Logger::REPLICATION2)));
+//        server()
+//            .getFeature<ReplicatedLogFeature>()
+//            .metrics()
+//            ->replicatedLogNumber->fetch_add(1);
+//        TRI_ASSERT(inserted);
+//      });
+//}
+//
+// void TRI_vocbase_t::registerReplicatedState(
+//    arangodb::replication2::replicated_state::PersistedStateInfo const& info)
+//    {
+//  using namespace arangodb::replication2::replicated_state;
+//  auto& feature = _server.getFeature<
+//      replication2::replicated_state::ReplicatedStateAppFeature>();
+//  auto guard = _logManager->_guardedData.getLockedGuard();
+//  auto result = guard->buildReplicatedState(
+//      info.stateId, info.specification.type, feature,
+//      _logManager->_logContext.withTopic(Logger::REPLICATED_STATE),
+//      _logManager->_statePersistor);
+//  if (result.ok()) {
+//    auto state = result.get();
+//    auto token = std::make_unique<ReplicatedStateToken>(
+//        ReplicatedStateToken::withExplicitSnapshotStatus(info.generation,
+//                                                         info.snapshot));
+//    state->start(std::move(token), info.specification.parameters);
+//  } else if (result.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND)) {
+//    // replicated log is gone, delete the replicated state
+//    TRI_ASSERT(false);  // TODO
+//  } else {
+//    VPackBuilder builder;
+//    velocypack::serialize(builder, info);
+//    LOG_CTX("e7f33", FATAL, _logManager->_logContext)
+//        << "failed to create replicated state from persistence "
+//        << builder.toJson() << " error: " << result.errorMessage();
+//    FATAL_ERROR_EXIT();
+//  }
+//}
+//
+// auto TRI_vocbase_t::ensureReplicatedLog(
+//    LogId id, std::optional<std::string> const& collectionName)
+//    -> std::shared_ptr<replicated_log::ReplicatedLog> {
+//  auto res = _logManager->ensureReplicatedLog(*this, id, collectionName);
+//  if (res.fail()) {
+//    THROW_ARANGO_EXCEPTION(res.result());
+//  }
+//  return res.get();
+//}
+//
+// std::shared_ptr<replicated_log::ILogParticipant> TRI_vocbase_t::lookupLog(
+//    LogId id) const noexcept {
+//  try {
+//    if (auto log = getReplicatedLogById(id)) {
+//      return log->getParticipant();
+//    }
+//  } catch (...) {
+//  }
+//  return nullptr;
+//}
+//
+// auto TRI_vocbase_t::createReplicatedState(LogId id, std::string_view type)
+//    -> arangodb::ResultT<
+//        std::shared_ptr<replicated_state::ReplicatedStateBase>> {
+//  return _logManager->createReplicatedState(id, type);
+//}
+//
+// auto TRI_vocbase_t::ensureReplicatedState(LogId id, std::string_view type)
+//    -> std::shared_ptr<replicated_state::ReplicatedStateBase> {
+//  if (auto result = _logManager->ensureReplicatedState(id, type); result.ok())
+//  {
+//    return result.get();
+//  } else {
+//    THROW_ARANGO_EXCEPTION(result.result());
+//  }
+//}
+//
+// auto TRI_vocbase_t::dropReplicatedState(LogId id) -> arangodb::Result {
+//  return _logManager->dropReplicatedState(id);
+//}
+//
+// auto TRI_vocbase_t::getReplicatedStateStatus() const -> std::unordered_map<
+//    arangodb::replication2::LogId,
+//    std::optional<arangodb::replication2::replicated_state::StateStatus>> {
+//  return _logManager->getReplicatedStateStatus();
+//}
+// auto TRI_vocbase_t::getReplicatedStateById(arangodb::replication2::LogId id)
+//    const -> std::shared_ptr<
+//        arangodb::replication2::replicated_state::ReplicatedStateBase> {
+//  return _logManager->getReplicatedStateById(id);
+//}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

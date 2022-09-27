@@ -26,7 +26,7 @@
 namespace arangodb::replication2::replicated_state {
 
 struct PersistedStateInfo {
-  LogId stateId;
+  LogId stateId;  // could be removed
   SnapshotInfo snapshot;
   StateGeneration generation;
   agency::ImplementationSpec specification;
@@ -44,6 +44,18 @@ struct StatePersistorInterface {
   virtual ~StatePersistorInterface() = default;
   virtual void updateStateInformation(PersistedStateInfo const&) noexcept = 0;
   virtual void deleteStateInformation(LogId stateId) noexcept = 0;
+};
+
+struct IStorageEngineMethods {
+  virtual ~IStorageEngineMethods() = default;
+  virtual auto drop() && -> void = 0;
+  virtual auto updateMetadata(PersistedStateInfo const&) -> Result = 0;
+  virtual auto readMetadata() -> ResultT<PersistedStateInfo> = 0;
+  virtual auto read(LogIndex first) -> PersistedLogIterator = 0;
+  virtual auto removeFront(LogIndex stop) -> futures::Future<Result> = 0;
+  virtual auto removeBack(LogIndex start) -> futures::Future<Result> = 0;
+  virtual auto getObjectId() -> std::uint64_t = 0;
+  virtual auto getLogId() -> LogId = 0;
 };
 
 }  // namespace arangodb::replication2::replicated_state
