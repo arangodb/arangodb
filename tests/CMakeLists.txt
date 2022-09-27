@@ -206,6 +206,7 @@ set(ARANGODB_TESTS_SOURCES
   Cache/BucketState.cpp
   Cache/CachedValue.cpp
   Cache/FrequencyBuffer.cpp
+  Cache/LockStressTest.cpp
   Cache/Manager.cpp
   Cache/Metadata.cpp
   Cache/MockScheduler.cpp
