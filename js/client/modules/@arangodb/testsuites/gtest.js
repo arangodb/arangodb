@@ -156,7 +156,9 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
 
   const tests = [ 'arangodbtests_zkd' ];
 
-  tests.forEach(name => testFns[name] = x => gtestRunner(name, x));
+  for(const test of tests) {
+    testFns[test] = x => gtestRunner(test, x);
+  }
   testFns['gtest'] = x => gtestRunner('arangodbtests', x);
 
   opts['skipGtest'] = false;
