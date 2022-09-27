@@ -62,8 +62,7 @@ let sanitizeStats = function (stats) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var validateDocuments = function (documents, isEdgeCollection) {
-  var index;
-  for (index in documents) {
+  for (let index in documents) {
     if (documents.hasOwnProperty(index)) {
       assertTrue(documents[index].hasOwnProperty('_id'));
       assertTrue(documents[index].hasOwnProperty('_key'));
