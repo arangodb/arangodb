@@ -8,6 +8,7 @@
 ///
 /// DISCLAIMER
 ///
+/// Copyright 2015-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2010-2014 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,37 +23,29 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-var errors = internal.errors;
-var db = require("@arangodb").db,
-  indexId;
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
 
-// This example was produced by Jan Steeman to reproduce a
-// crash in the TraversalExecutor code
 const movieCollectionName = "MOVIE";
 
-var cleanup = function() {
+const cleanup = function() {
   db._drop(movieCollectionName);
 };
 
-var createData = function() {
-  db._createDocumentCollection(movieCollectionName, {});
+const createData = function() {
+  let c = db._createDocumentCollection(movieCollectionName);
 
-  var data = [];
-
+  let data = [];
   for(let i = 1; i <= 321; i++) {
-    data.push({ test_node: null});
+    data.push({ test_node: null });
   }
   for(let i = 1; i <= 1679; i++) {
     data.push({ test_node: i});
   }
-  db._collection(movieCollectionName).save(data);
+  c.insert(data);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,9 +86,8 @@ function indexSkipRegressionSuite() {
         "value1": null
       };
 
-      var actual = db._query(query, bindVars);
-      var foo = actual.toArray();
-      assertEqual(foo.length, 0, "Expecting query result to contain 0 documents");
+      var actual = db._query(query, bindVars).toArray();
+      assertEqual(actual.length, 0, "Expecting query result to contain 0 documents");
     }
   };
 }
