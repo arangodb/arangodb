@@ -1927,7 +1927,7 @@ function BaseTestConfig () {
         }
       );
     },
-
+    
     testViewBasic: function () {
       compare(
         function (state) {
@@ -1951,7 +1951,7 @@ function BaseTestConfig () {
           }
 
           let view = db._view('UnitTestsSyncView');
-          assertTrue(view !== null);
+          assertNotNull(view);
           let props = view.properties();
           assertEqual(Object.keys(props.links).length, 1);
           assertTrue(props.hasOwnProperty('links'));
