@@ -42,137 +42,6 @@ if (CMAKE_COMPILER_IS_GNUCC)
 endif ()
 
 ################################################################################
-## IResearch
-################################################################################
-
-list(APPEND ARANGO_IRESEARCH_HEADERS
-  IResearch/ApplicationServerHelper.h
-  IResearch/AqlHelper.h
-  IResearch/ExpressionFilter.h
-  IResearch/Geo.h
-  IResearch/GeoAnalyzer.h
-  IResearch/GeoFilter.h
-  IResearch/IResearchAnalyzerFeature.h
-  IResearch/IResearchAqlAnalyzer.h
-  IResearch/IResearchCommon.h
-  IResearch/IResearchCompression.h
-  IResearch/IResearchDataStore.h
-  IResearch/IResearchDataStoreMeta.h
-  IResearch/IResearchDocument.h
-  IResearch/IResearchExpressionContext.h
-  IResearch/IResearchFeature.h
-  IResearch/IResearchFilterFactory.h
-  IResearch/IResearchFilterOptimization.h
-  IResearch/IResearchIdentityAnalyzer.h
-  IResearch/IResearchInvertedIndex.h
-  IResearch/IResearchInvertedIndexMeta.h
-  IResearch/IResearchKludge.h
-  IResearch/IResearchLink.h
-  IResearch/IResearchLinkCoordinator.h
-  IResearch/IResearchLinkHelper.h
-  IResearch/IResearchLinkMeta.h
-  IResearch/IResearchOrderFactory.h
-  IResearch/IResearchPDP.h
-  IResearch/IResearchPrimaryKeyFilter.h
-  IResearch/IResearchRocksDBEncryption.h
-  IResearch/IResearchRocksDBInvertedIndex.h
-  IResearch/IResearchRocksDBLink.h
-  IResearch/IResearchRocksDBRecoveryHelper.h
-  IResearch/IResearchVPackComparer.h
-  IResearch/IResearchView.h
-  IResearch/IResearchViewCoordinator.h
-  IResearch/IResearchViewMeta.h
-  IResearch/IResearchViewSort.h
-  IResearch/IResearchViewStoredValues.h
-  IResearch/Search.h
-  IResearch/VelocyPackHelper.h
-  IResearch/ViewSnapshot.h
-  RestHandler/RestAnalyzerHandler.h
-  )
-
-list(APPEND ARANGO_IRESEARCH_SOURCES
-  IResearch/ApplicationServerHelper.cpp
-  IResearch/AqlHelper.cpp
-  IResearch/ExpressionFilter.cpp
-  IResearch/Geo.cpp
-  IResearch/GeoAnalyzer.cpp
-  IResearch/GeoFilter.cpp
-  IResearch/IResearchAnalyzerFeature.cpp
-  IResearch/IResearchAqlAnalyzer.cpp
-  IResearch/IResearchCommon.cpp
-  IResearch/IResearchCompression.cpp
-  IResearch/IResearchDataStore.cpp
-  IResearch/IResearchDataStoreMeta.cpp
-  IResearch/IResearchDocument.cpp
-  IResearch/IResearchExpressionContext.cpp
-  IResearch/IResearchFeature.cpp
-  IResearch/IResearchFilterFactory.cpp
-  IResearch/IResearchFilterOptimization.cpp
-  IResearch/IResearchIdentityAnalyzer.cpp
-  IResearch/IResearchInvertedIndex.cpp
-  IResearch/IResearchInvertedIndexMeta.cpp
-  IResearch/IResearchKludge.cpp
-  IResearch/IResearchLink.cpp
-  IResearch/IResearchLinkCoordinator.cpp
-  IResearch/IResearchLinkHelper.cpp
-  IResearch/IResearchLinkMeta.cpp
-  IResearch/IResearchOrderFactory.cpp
-  IResearch/IResearchPDP.cpp
-  IResearch/IResearchPrimaryKeyFilter.cpp
-  IResearch/IResearchRocksDBEncryption.cpp
-  IResearch/IResearchRocksDBInvertedIndex.cpp
-  IResearch/IResearchRocksDBLink.cpp
-  IResearch/IResearchRocksDBRecoveryHelper.cpp
-  IResearch/IResearchVPackComparer.cpp
-  IResearch/IResearchView.cpp
-  IResearch/IResearchViewCoordinator.cpp
-  IResearch/IResearchViewMeta.cpp
-  IResearch/IResearchViewSort.cpp
-  IResearch/IResearchViewStoredValues.cpp
-  IResearch/Search.cpp
-  IResearch/VelocyPackHelper.cpp
-  IResearch/ViewSnapshot.cpp
-  RestHandler/RestAnalyzerHandler.cpp
-  )
-
-add_library(arango_iresearch STATIC
-  ${ARANGO_IRESEARCH_HEADERS}
-  ${ARANGO_IRESEARCH_SOURCES}
-  )
-
-target_compile_definitions(arango_iresearch
-  PUBLIC "$<$<CONFIG:Debug>:IRESEARCH_DEBUG=1>"
-)
-
-set(IRESEARCH_TARGET_DEPENDENCY iresearch-static) # use static to match ArangoDB
-
-
-get_target_property(IRESEARCH_INCLUDE
-  ${IRESEARCH_TARGET_DEPENDENCY} INCLUDE_DIRECTORIES)
-
-target_include_directories(arango_iresearch
-  PUBLIC ${IRESEARCH_INCLUDE}
-)
-
-if (USE_ENTERPRISE)
-  target_include_directories(arango_iresearch
-    PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}"
-  )
-endif()
-
-target_link_libraries(arango_iresearch
-  ${IRESEARCH_TARGET_DEPENDENCY}
-  s2 # needed for some includes
-  boost_locale # required by iResearch
-  boost_thread # required by IResearchView upgrade_mutex
-)
-
-add_dependencies(arango_iresearch
-  ${IRESEARCH_TARGET_DEPENDENCY}
-  v8_build # for ICU required by iResearch
-)
-
-################################################################################
 ## arangod
 ################################################################################
 
@@ -415,10 +284,6 @@ add_library(arangoserver STATIC
 
 target_link_libraries(arango_geo s2)
 
-target_link_libraries(arango_iresearch arango_indexes)
-target_link_libraries(arango_iresearch arango_cluster_engine)
-target_link_libraries(arango_iresearch arango_vocbase)
-
 target_link_libraries(arangoserver arango_agency)
 target_link_libraries(arangoserver arango_aql)
 target_link_libraries(arangoserver arango_cluster_engine)
@@ -489,7 +354,6 @@ if (USE_FAIL_ON_WARNINGS)
 endif ()
 
 foreach(TARGET
-  arango_iresearch
   arangod
   arangoserver
 )
@@ -522,6 +386,9 @@ install_command_alias(${BIN_ARANGOD}
 
 install_config(arango-init-database)
 
+get_target_property(IRESEARCH_INCLUDE
+  iresearch-static INCLUDE_DIRECTORIES)
+
 add_subdirectory(Agency)
 add_subdirectory(Aql)
 add_subdirectory(Cache)
@@ -529,6 +396,7 @@ add_subdirectory(Cluster)
 add_subdirectory(ClusterEngine)
 add_subdirectory(Graph)
 add_subdirectory(Indexes)
+add_subdirectory(IResearch)
 add_subdirectory(Metrics)
 add_subdirectory(Network)
 add_subdirectory(Pregel)
