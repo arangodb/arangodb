@@ -149,6 +149,27 @@ function clusterInventorySuite () {
         index.fields.forEach(function (field) {
           assertEqual("string", typeof field.name);
         });
+        assertEqual(index.analyzerDefinitions, [
+          {
+            "name": "custom",
+            "type": "delimiter",
+            "properties": {
+              "delimiter": " "
+            },
+            "features": [
+              "frequency"
+            ]
+          },
+          {
+            "name": "identity",
+            "type": "identity",
+            "properties": {},
+            "features": [
+              "frequency",
+              "norm"
+            ]
+          }
+        ]);
       } else {
         index.fields.forEach(function (field) {
           assertEqual("string", typeof field);
