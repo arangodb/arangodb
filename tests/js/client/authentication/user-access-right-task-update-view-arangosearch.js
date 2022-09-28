@@ -342,6 +342,52 @@ for (let testViewType of ["arangosearch", "search-alias"]) {
             }
           }
         },
+        
+        testViewByPropertiesRemoveFull : function() {
+          assertTrue(rootTestView(testViewName), 'Precondition failed, view was not found');
+          setKey(keySpaceId, key);
+          const taskId = 'task_update_view_properties_remove_full_' + key;
+          const task = {
+            id: taskId,
+            name: taskId,
+            command: `(function (params) {
+                  try {
+                    const db = require('@arangodb').db;
+                    db._view('${testViewName}').properties({}, false);
+                    global.KEY_SET('${keySpaceId}', '${key}_status', true);
+                  } catch (e) {
+                    global.KEY_SET('${keySpaceId}', '${key}_status', false);
+                  }finally {
+                    global.KEY_SET('${keySpaceId}', '${key}', true);
+                  }
+                })(params);`
+          };
+          if (dbLevel['rw'].has(name)) {
+            if (colLevel['rw'].has(name) || colLevel['ro'].has(name)) {
+              tasks.register(task);
+              wait(keySpaceId, key);
+              assertTrue(getKey(keySpaceId, `${key}_status`), `${name} could not update the view with sufficient rights`);
+              assertTrue(isEqual(rootGetViewProps(testViewName, true), rootGetDefaultViewProps(testViewType)),
+                'View properties update reported success, but properties were not updated');
+            } else {
+              tasks.register(task);
+              wait(keySpaceId, key);
+              assertFalse(getKey(keySpaceId, `${key}_status`), `${name} could update the view with insufficient rights`);
+            }
+          } else {
+            try {
+              tasks.register(task);
+              wait(keySpaceId, key);
+              assertFail(`${name} managed to register a task with insufficient rights`);
+            } catch (e) {
+              checkError(e);
+              return;
+            } finally {
+              assertFalse(getKey(keySpaceId, `${key}_status`), `${name} could update the view with insufficient rights`);
+            }
+          }
+        },
+
       };
 
       if (testViewType === 'arangosearch') {
@@ -419,51 +465,6 @@ for (let testViewType of ["arangosearch", "search-alias"]) {
               wait(keySpaceId, key);
               assertTrue(getKey(keySpaceId, `${key}_status`), `${name} could not update the view with sufficient rights`);
               assertEqual(rootGetViewProps(testViewName)["cleanupIntervalStep"], 1, 'View property update reported success, but property was not updated');
-            } else {
-              tasks.register(task);
-              wait(keySpaceId, key);
-              assertFalse(getKey(keySpaceId, `${key}_status`), `${name} could update the view with insufficient rights`);
-            }
-          } else {
-            try {
-              tasks.register(task);
-              wait(keySpaceId, key);
-              assertFail(`${name} managed to register a task with insufficient rights`);
-            } catch (e) {
-              checkError(e);
-              return;
-            } finally {
-              assertFalse(getKey(keySpaceId, `${key}_status`), `${name} could update the view with insufficient rights`);
-            }
-          }
-        };
-
-        suite.testViewByPropertiesRemoveFull = function() {
-          assertTrue(rootTestView(testViewName), 'Precondition failed, view was not found');
-          setKey(keySpaceId, key);
-          const taskId = 'task_update_view_properties_remove_full_' + key;
-          const task = {
-            id: taskId,
-            name: taskId,
-            command: `(function (params) {
-                  try {
-                    const db = require('@arangodb').db;
-                    db._view('${testViewName}').properties({}, false);
-                    global.KEY_SET('${keySpaceId}', '${key}_status', true);
-                  } catch (e) {
-                    global.KEY_SET('${keySpaceId}', '${key}_status', false);
-                  }finally {
-                    global.KEY_SET('${keySpaceId}', '${key}', true);
-                  }
-                })(params);`
-          };
-          if (dbLevel['rw'].has(name)) {
-            if (colLevel['rw'].has(name) || colLevel['ro'].has(name)) {
-              tasks.register(task);
-              wait(keySpaceId, key);
-              assertTrue(getKey(keySpaceId, `${key}_status`), `${name} could not update the view with sufficient rights`);
-              assertTrue(isEqual(rootGetViewProps(testViewName, true), rootGetDefaultViewProps(testViewType)),
-                'View properties update reported success, but properties were not updated');
             } else {
               tasks.register(task);
               wait(keySpaceId, key);
