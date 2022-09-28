@@ -929,13 +929,7 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
     }
   }
 
-  VPackSlice properties = data.get("properties");
-
-  if (properties.isObject()) {
-    return view->properties(properties, false);  // always a full-update
-  }
-
-  return {};
+  return view->properties(data, true);
 }
 
 /// @brief apply a single marker from the continuous log

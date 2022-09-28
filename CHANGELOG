@@ -1,6 +1,11 @@
 v3.8.8 (XXXX-XX-XX)
 -------------------
 
+* Fix an issue with replication of arangosearch view change entries in single
+  server replication and active failover. Previously, when changing the
+  properties of existing views, the changes were not properly picked up by
+  followers in these setups. Cluster setups were not affected.
+
 * Improve upload and download speed of hotbackup by changing the way we use
   rclone. Empty hash files are now uploaded or downloaded by pattern, and all
   other files are done in batches without remote directory listing, which allows
