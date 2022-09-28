@@ -27,9 +27,11 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/AgencyCache.h"
 #include "Metrics/MetricsFeature.h"
-#include "IResearch/AgencyMock.h"
-#include "IResearch/RestHandlerMock.h"
 #include "VocBase/vocbase.h"
+
+#include "AgencyMock.h"
+#include "RestHandlerMock.h"
+
 
 using namespace arangodb;
 using namespace arangodb::tests;

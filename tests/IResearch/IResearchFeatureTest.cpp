@@ -32,12 +32,13 @@
 #include "utils/version_defines.hpp"
 #include "utils/file_utils.hpp"
 
-#include "IResearch/AgencyMock.h"
+#include "Mocks/AgencyMock.h"
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 #include "Mocks/TemplateSpecializer.h"
+#include "TestLib/schmutz.h"
 
 #include "Agency/Store.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"

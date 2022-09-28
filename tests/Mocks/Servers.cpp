@@ -55,12 +55,12 @@
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
-#include "IResearch/AgencyMock.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/common.h"
+#include "TestLib/schmutz.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
@@ -82,7 +82,6 @@
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Servers.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
@@ -93,6 +92,10 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
+
+
+#include "AgencyMock.h"
+#include "Servers.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"

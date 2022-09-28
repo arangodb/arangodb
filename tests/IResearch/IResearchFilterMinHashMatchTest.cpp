@@ -39,7 +39,7 @@
 #include "Aql/Function.h"
 #include "IResearch/common.h"
 #include "IResearch/IResearchCommon.h"
-#include "IResearch/ExpressionContextMock.h"
+#include "Mocks/ExpressionContextMock.h"
 #include "RestServer/DatabaseFeature.h"
 #include "VocBase/Methods/Collections.h"
 

@@ -26,7 +26,7 @@
 #include "RestHandler/RestCursorHandler.h"
 #include "RestServer/QueryRegistryFeature.h"
 
-#include "IResearch/RestHandlerMock.h"
+#include "Mocks/RestHandlerMock.h"
 #include "Mocks/Servers.h"
 
 #include <velocypack/Builder.h>

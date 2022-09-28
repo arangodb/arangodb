@@ -25,7 +25,8 @@
 
 #include <gtest/gtest.h>
 
-#include "Aql/VelocyPackHelper.h"
+#include "TestLib/VelocyPackHelper.h"
+
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/types.h"
 

@@ -39,7 +39,7 @@
 #include "search/levenshtein_filter.hpp"
 #include "search/ngram_similarity_filter.hpp"
 
-#include "IResearch/ExpressionContextMock.h"
+#include "Mocks/ExpressionContextMock.h"
 #include "IResearch/IResearchPDP.h"
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"

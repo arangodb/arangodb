@@ -34,7 +34,7 @@
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchInvertedIndex.h"
-#include "IResearch/ExpressionContextMock.h"
+#include "Mocks/ExpressionContextMock.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"

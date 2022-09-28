@@ -28,7 +28,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 
-#include "Aql/VelocyPackHelper.h"
+#include "TestLib/VelocyPackHelper.h"
 
 #include "Basics/Common.h"
 #include "Basics/error.h"

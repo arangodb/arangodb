@@ -21,12 +21,13 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "../Mocks/Servers.h"
+#include "Mocks/Servers.h"
+#include "TestLib/VelocyPackHelper.h"
+
 #include "QueryHelper.h"
 #include "gtest/gtest.h"
 
 #include "Aql/Query.h"
-#include "Aql/VelocyPackHelper.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/FlushFeature.h"
 

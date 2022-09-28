@@ -29,7 +29,7 @@
 
 #include <velocypack/Parser.h>
 
-#include "IResearch/ExpressionContextMock.h"
+#include "Mocks/ExpressionContextMock.h"
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/StorageEngineMock.h"

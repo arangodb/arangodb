@@ -1,0 +1,42 @@
+add_library(arangodbtests_mocks
+  AgencyMock.cpp
+  AgencyMock.h
+  CMakeLists.txt
+  current_colls_db.h
+  current_dbs_db.h
+  Death_Test.h
+  ExpressionContextMock.cpp
+  ExpressionContextMock.h
+  IResearchInvertedIndexMock.cpp
+  IResearchInvertedIndexMock.h
+  IResearchLinkMock.cpp
+  IResearchLinkMock.h
+  LogLevels.cpp
+  LogLevels.h
+  MockGraph.cpp
+  MockGraph.h
+  MockGraphProvider.cpp
+  MockGraphProvider.h
+  plan_colls_db.h
+  plan_dbs_db.h
+  PreparedResponseConnectionPool.cpp
+  PreparedResponseConnectionPool.h
+  RestHandlerMock.cpp
+  RestHandlerMock.h
+  Servers.cpp
+  Servers.h
+  StorageEngineMock.cpp
+  StorageEngineMock.h
+  TemplateSpecializer.h)
+
+target_include_directories(arangodbtests_mocks
+  PUBLIC
+  ${CMAKE_SOURCE_DIR}/tests
+  ${CMAKE_SOURCE_DIR}/arangod
+  ${CMAKE_SOURCE_DIR}/lib
+  ${CMAKE_BINARY_DIR}/lib)
+
+target_link_libraries(arangodbtests_mocks
+  arangodbtests_lib
+  velocypack
+  gtest)

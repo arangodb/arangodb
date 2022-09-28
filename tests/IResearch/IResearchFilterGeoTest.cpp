@@ -30,7 +30,7 @@
 #include "analysis/token_streams.hpp"
 #include "search/boolean_filter.hpp"
 
-#include "IResearch/ExpressionContextMock.h"
+#include "Mocks/ExpressionContextMock.h"
 #include "IResearch/IResearchPDP.h"
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"

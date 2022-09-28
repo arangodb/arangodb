@@ -41,6 +41,7 @@
 #include "IResearch/IResearchMetricStats.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/common.h"
+#include "TestLib/schmutz.h"
 #include "IResearchTestCompressor.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"

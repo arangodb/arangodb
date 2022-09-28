@@ -29,12 +29,12 @@
 #include <s2/s2polyline.h>
 #include <velocypack/Builder.h>
 
-#include "Aql/VelocyPackHelper.h"
 #include "Basics/Common.h"
 #include "Basics/voc-errors.h"
 #include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"
 
+#include "TestLib/VelocyPackHelper.h"
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------

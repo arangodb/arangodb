@@ -121,8 +121,6 @@ std::shared_ptr<arangodb::aql::Query> prepareQuery(
 
 uint64_t getCurrentPlanVersion(arangodb::ArangodServer&);
 
-void setDatabasePath(arangodb::DatabasePathFeature& feature);
-
 #define EXPECT_EQUAL_SLICES_STRINGIFY(x) #x
 #define EXPECT_EQUAL_SLICES_EXPANDER(leftSlice, rightSlice, file, line) \
   arangodb::tests::expectEqualSlices_(                                  \

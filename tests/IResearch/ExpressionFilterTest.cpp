@@ -38,10 +38,12 @@
 
 #include "velocypack/Iterator.h"
 
-#include "IResearch/ExpressionContextMock.h"
+#include "TestLib/schmutz.h"
 #include "IResearch/common.h"
+
 #include "Mocks/LogLevels.h"
 #include "Mocks/StorageEngineMock.h"
+#include "Mocks/ExpressionContextMock.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlFunctionFeature.h"

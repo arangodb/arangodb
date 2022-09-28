@@ -49,6 +49,8 @@ add_subdirectory(TestLib)
 # Common main function for tests
 add_subdirectory(TestMain)
 
+add_subdirectory(Mocks)
+
 add_subdirectory(Zkd)
 
 # ----------------------------------------
@@ -63,27 +65,11 @@ if (WINDOWS)
   set(RCFILE Maintenance/json.rc)
 endif ()
 
-set(ARANGODB_TESTS_COMMON_SOURCES
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchLinkMock.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchInvertedIndexMock.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/LogLevels.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/PreparedResponseConnectionPool.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/StorageEngineMock.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Servers.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/MockGraph.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/MockGraphProvider.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Basics/icu-helper.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/AgencyMock.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/common.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/ExpressionContextMock.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/RestHandlerMock.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Aql/VelocyPackHelper.cpp
-)
-
 add_subdirectory(IResearch)
 
 set(ARANGODB_TESTS_SOURCES
-  ${ARANGODB_TESTS_COMMON_SOURCES}
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/common.cpp
+
   Agency/ActiveFailoverTest.cpp
   Agency/AddFollowerTest.cpp
   Agency/CleanOutServerTest.cpp
@@ -170,7 +156,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/TraversalNodeTest.cpp
   Aql/UpdateExecutorTest.cpp
   Aql/UpsertExecutorTest.cpp
-  Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
   Aql/WindowExecutorTest.cpp
   Aql/DecaysFunctionTest.cpp
@@ -455,6 +440,9 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 endif()
 
 target_link_libraries(arangodbtests
+  arangodbtests_lib
+  arangodbtests_mocks
+  arangodbtests_main
   arango_agency
   arango_cluster_engine
   arango_rocksdb
@@ -472,6 +460,9 @@ target_link_libraries(arangodbtests
 
 if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   target_link_libraries(arangodbtests_replication2
+    arangodbtests_lib
+    arangodbtests_mocks
+    arangodbtests_main
     gtest
     arango_agency
     arango_v8server
@@ -484,6 +475,9 @@ endif()
 
 if (USE_SEPARATE_GRAPH_TESTS_BINARY)
   target_link_libraries(arangodbtests_graph
+          arangodbtests_lib
+          arangodbtests_mocks
+          arangodbtests_main
           gtest
           arango_agency
           arango_v8server

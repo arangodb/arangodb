@@ -604,14 +604,6 @@ uint64_t getCurrentPlanVersion(arangodb::ArangodServer& server) {
   return planVersionSlice.getNumber<uint64_t>();
 }
 
-void setDatabasePath(arangodb::DatabasePathFeature& feature) {
-  irs::utf8_path path;
-
-  path /= TRI_GetTempPath();
-  path /= std::string("arangodb_tests.") + std::to_string(TRI_microtime());
-  const_cast<std::string&>(feature.directory()) = path.string();
-}
-
 void expectEqualSlices_(const VPackSlice& lhs, const VPackSlice& rhs,
                         const char* where) {
   SCOPED_TRACE(rhs.toString());

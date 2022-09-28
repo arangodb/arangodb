@@ -32,6 +32,8 @@
 #include "index/norm.hpp"
 #include "utils/utf8_path.hpp"
 
+
+#include "TestLib/schmutz.h"
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"

@@ -1,6 +1,8 @@
 add_library(arangodbtests_lib
   icu-helper.h
   icu-helper.cpp
+  VelocyPackHelper.h
+  VelocyPackHelper.cpp
   schmutz.h
   schmutz.cpp)
 

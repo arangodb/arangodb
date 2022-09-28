@@ -28,7 +28,7 @@
 #include "AqlItemBlockHelper.h"
 #include "Mocks/Servers.h"
 #include "RowFetcherHelper.h"
-#include "VelocyPackHelper.h"
+#include "TestLib/VelocyPackHelper.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/InputAqlItemRow.h"

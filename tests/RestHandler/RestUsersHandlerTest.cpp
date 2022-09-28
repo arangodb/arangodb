@@ -26,7 +26,7 @@
 
 #include "velocypack/Parser.h"
 
-#include "IResearch/RestHandlerMock.h"
+#include "Mocks/RestHandlerMock.h"
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"

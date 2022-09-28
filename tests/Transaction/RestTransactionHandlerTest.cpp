@@ -39,8 +39,9 @@
 
 #include "gtest/gtest.h"
 
-#include "../IResearch/common.h"
-#include "../IResearch/RestHandlerMock.h"
+#include "IResearch/common.h"
+#include "Mocks/RestHandlerMock.h"
+
 #include "ManagerSetup.h"
 
 using namespace arangodb;

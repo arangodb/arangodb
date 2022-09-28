@@ -22,11 +22,12 @@
 
 #include "MockGraph.h"
 #include <Aql/QueryRegistry.h>
-#include "IResearch/RestHandlerMock.h"
+
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 
 #include "gtest/gtest.h"
 
+#include "Mocks/RestHandlerMock.h"
 #include "Mocks/PreparedResponseConnectionPool.h"
 #include "Mocks/Servers.h"
 

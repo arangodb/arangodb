@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "IResearch/AgencyMock.h"
 #include "StorageEngineMock.h"
 
+#include "Mocks/AgencyMock.h"
 #include "Mocks/LogLevels.h"
 
 #include "Agency/Store.h"

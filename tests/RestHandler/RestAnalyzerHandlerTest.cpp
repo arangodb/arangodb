@@ -30,7 +30,7 @@
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 
-#include "IResearch/RestHandlerMock.h"
+#include "Mocks/RestHandlerMock.h"
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"

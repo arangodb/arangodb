@@ -32,10 +32,11 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Aql/VelocyPackHelper.h"
 #include "Basics/Common.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
+
+#include "TestLib/VelocyPackHelper.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>

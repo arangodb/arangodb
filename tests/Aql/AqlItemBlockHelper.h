@@ -33,7 +33,7 @@
 #include "Basics/overload.h"
 
 #include "AqlHelper.h"
-#include "VelocyPackHelper.h"
+#include "TestLib/VelocyPackHelper.h"
 
 #include <velocypack/Slice.h>
 
