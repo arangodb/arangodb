@@ -31,35 +31,32 @@
 #include "Aql/Function.h"
 #include "Aql/Variable.h"
 #include "Basics/fasthash.h"
-#include "IResearchCommon.h"
-#include "IResearchDocument.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchDocument.h"
+#include "IResearch/IResearchFilterContext.h"
 #include "Logger/LogMacros.h"
 #include "Misc.h"
 
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
+namespace arangodb {
+namespace iresearch {
 namespace {
 
-arangodb::aql::AstNodeType const CmpMap[]{
-    arangodb::aql::
-        NODE_TYPE_OPERATOR_BINARY_EQ,  // NODE_TYPE_OPERATOR_BINARY_EQ:
-                                       // 3 == a <==> a == 3
-    arangodb::aql::
-        NODE_TYPE_OPERATOR_BINARY_NE,  // NODE_TYPE_OPERATOR_BINARY_NE:
-                                       // 3 != a <==> a != 3
-    arangodb::aql::
-        NODE_TYPE_OPERATOR_BINARY_GT,  // NODE_TYPE_OPERATOR_BINARY_LT:
-                                       // 3 < a  <==> a > 3
-    arangodb::aql::
-        NODE_TYPE_OPERATOR_BINARY_GE,  // NODE_TYPE_OPERATOR_BINARY_LE:
-                                       // 3 <= a <==> a >= 3
-    arangodb::aql::
-        NODE_TYPE_OPERATOR_BINARY_LT,  // NODE_TYPE_OPERATOR_BINARY_GT:
-                                       // 3 > a  <==> a < 3
-    arangodb::aql::
-        NODE_TYPE_OPERATOR_BINARY_LE  // NODE_TYPE_OPERATOR_BINARY_GE:
-                                      // 3 >= a <==> a <= 3
+aql::AstNodeType constexpr kCmpMap[]{
+    aql::NODE_TYPE_OPERATOR_BINARY_EQ,  // NODE_TYPE_OPERATOR_BINARY_EQ:
+                                        // 3 == a <==> a == 3
+    aql::NODE_TYPE_OPERATOR_BINARY_NE,  // NODE_TYPE_OPERATOR_BINARY_NE:
+                                        // 3 != a <==> a != 3
+    aql::NODE_TYPE_OPERATOR_BINARY_GT,  // NODE_TYPE_OPERATOR_BINARY_LT:
+                                        // 3 < a  <==> a > 3
+    aql::NODE_TYPE_OPERATOR_BINARY_GE,  // NODE_TYPE_OPERATOR_BINARY_LE:
+                                        // 3 <= a <==> a >= 3
+    aql::NODE_TYPE_OPERATOR_BINARY_LT,  // NODE_TYPE_OPERATOR_BINARY_GT:
+                                        // 3 > a  <==> a < 3
+    aql::NODE_TYPE_OPERATOR_BINARY_LE   // NODE_TYPE_OPERATOR_BINARY_GE:
+                                        // 3 >= a <==> a <= 3
 };
 
 auto getNested(
@@ -74,9 +71,6 @@ auto getNested(
 }
 
 }  // namespace
-
-namespace arangodb {
-namespace iresearch {
 
 bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
   if (lhs == rhs) {
@@ -358,10 +352,6 @@ void visitReferencedVariables(
   aql::Ast::traverseReadOnly(&root, preVisitor, postVisitor);
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                    AqlValueTraits implementation
-// ----------------------------------------------------------------------------
-
 aql::AstNode const ScopedAqlValue::INVALID_NODE(aql::NODE_TYPE_ROOT);
 
 /*static*/ irs::string_ref ScopedAqlValue::typeString(
@@ -374,10 +364,6 @@ aql::AstNode const ScopedAqlValue::INVALID_NODE(aql::NODE_TYPE_ROOT);
 
   return kTypeNames[size_t(type)];
 }
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                    ScopedAqlValue implementation
-// ----------------------------------------------------------------------------
 
 bool ScopedAqlValue::execute(iresearch::QueryContext const& ctx) {
   if (_executed && _node->isDeterministic()) {
@@ -464,7 +450,7 @@ bool normalizeGeoDistanceCmpNode(aql::AstNode const& in,
     }
 
     std::swap(fcall, value);
-    cmp = CmpMap[cmp - aql::NODE_TYPE_OPERATOR_BINARY_EQ];
+    cmp = kCmpMap[cmp - aql::NODE_TYPE_OPERATOR_BINARY_EQ];
   }
 
   if (iresearch::findReference(*value, ref)) {
@@ -514,7 +500,7 @@ bool normalizeCmpNode(aql::AstNode const& in, aql::Variable const& ref,
     }
 
     std::swap(attribute, value);
-    cmp = CmpMap[cmp - aql::NODE_TYPE_OPERATOR_BINARY_EQ];
+    cmp = kCmpMap[cmp - aql::NODE_TYPE_OPERATOR_BINARY_EQ];
   }
 
   if (iresearch::findReference(*value, ref)) {

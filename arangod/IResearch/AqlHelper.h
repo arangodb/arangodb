@@ -62,6 +62,7 @@ class Methods;  // forward declaration
 namespace iresearch {
 
 struct IResearchInvertedIndexMeta;
+struct QueryContext;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @returns true if both nodes are equal, false otherwise
@@ -235,20 +236,6 @@ struct AqlValueTraits {
         return SCOPED_VALUE_TYPE_INVALID;
     }
   }
-};
-
-struct QueryContext {
-  transaction::Methods* trx{};
-  aql::Ast* ast{};
-  aql::ExpressionContext* ctx{};
-  irs::index_reader const* index{};
-  aql::Variable const* ref{};
-  // Allow optimize away/modify some conditions during filter building
-  FilterOptimization filterOptimization{FilterOptimization::MAX};
-  // The flag is set when a query is dedicated to a search view
-  bool isSearchQuery{true};
-  bool isOldMangling{true};
-  bool hasNestedFields{false};
 };
 
 ////////////////////////////////////////////////////////////////////////////////
