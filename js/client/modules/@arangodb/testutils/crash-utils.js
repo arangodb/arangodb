@@ -596,7 +596,7 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
 function aggregateDebugger(instanceInfo, options) {
   print("collecting debugger info for: " + JSON.stringify(instanceInfo.getStructure()));
   if (!instanceInfo.hasOwnProperty('debuggerInfo')) {
-    print("No debugger info persisted to " + instanceInfo.debuggerInfo.getStructure());
+    print("No debugger info persisted to " + instanceInfo.getStructure());
     return false;
   }
   print("waiting for debugger to terminate: " + JSON.stringify(instanceInfo.debuggerInfo));
