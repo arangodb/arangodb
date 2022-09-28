@@ -158,9 +158,6 @@ class Worker : public IWorker {
       -> ResultT<VerticesProcessed>;
   auto _finishProcessing() -> ResultT<GlobalSuperStepFinished>;
   void _callConductor(VPackBuilder const& message);
-  void _callConductorWithResponse(std::string const& path,
-                                  VPackBuilder const& message,
-                                  std::function<void(VPackSlice slice)> handle);
   [[nodiscard]] auto _observeStatus() -> Status const;
   [[nodiscard]] auto _makeStatusCallback() -> std::function<void()>;
 

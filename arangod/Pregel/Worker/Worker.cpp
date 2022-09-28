@@ -614,42 +614,6 @@ void Worker<V, E, M>::_callConductor(VPackBuilder const& message) {
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::_callConductorWithResponse(
-    std::string const& path, VPackBuilder const& message,
-    std::function<void(VPackSlice slice)> handle) {
-  LOG_PREGEL("6d349", TRACE) << "Calling the conductor";
-  if (ServerState::instance()->isRunningInCluster() == false) {
-    VPackBuilder response;
-    _feature.handleConductorRequest(*_config.vocbase(), path, message.slice(),
-                                    response);
-    handle(response.slice());
-  } else {
-    std::string baseUrl = Utils::baseUrl(Utils::conductorPrefix);
-
-    auto& server = _config.vocbase()->server();
-    auto const& nf = server.template getFeature<arangodb::NetworkFeature>();
-    network::ConnectionPool* pool = nf.pool();
-
-    VPackBuffer<uint8_t> buffer;
-    buffer.append(message.data(), message.size());
-
-    network::RequestOptions reqOpts;
-    reqOpts.database = _config.database();
-    reqOpts.skipScheduler = true;
-
-    network::Response r =
-        network::sendRequestRetry(pool, "server:" + _config.coordinatorId(),
-                                  fuerte::RestVerb::Post, baseUrl + path,
-                                  std::move(buffer), reqOpts)
-            .get();
-
-    if (handle) {
-      handle(r.slice());
-    }
-  }
-}
-
-template<typename V, typename E, typename M>
 auto Worker<V, E, M>::_observeStatus() -> Status const {
   auto currentGss = _currentGssObservables.observe();
   auto fullGssStatus = _allGssStatus.copy();
