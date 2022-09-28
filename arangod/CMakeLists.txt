@@ -188,75 +188,6 @@ if (MSVC AND NOT(SKIP_PACKAGING))
   )
 endif ()
 
-set(LIB_ARANGO_REPLICATION2_SOURCES
-  Replication2/AgencyCollectionSpecification.cpp
-  Replication2/AgencyMethods.cpp
-  Replication2/Exceptions/ParticipantResignedException.h
-  Replication2/Methods.cpp
-  Replication2/MetricsHelper.cpp
-  Replication2/ReplicatedLog/AgencyLogSpecification.cpp
-  Replication2/ReplicatedLog/AgencySpecificationInspectors.cpp
-  Replication2/ReplicatedLog/Algorithms.cpp
-  Replication2/ReplicatedLog/ILogInterfaces.cpp
-  Replication2/ReplicatedLog/InMemoryLog.cpp
-  Replication2/ReplicatedLog/LogCommon.cpp
-  Replication2/ReplicatedLog/LogCore.cpp
-  Replication2/ReplicatedLog/LogEntries.cpp
-  Replication2/ReplicatedLog/LogFollower.cpp
-  Replication2/ReplicatedLog/LogLeader.cpp
-  Replication2/ReplicatedLog/LogStatus.cpp
-  Replication2/ReplicatedLog/LogUnconfiguredParticipant.cpp
-  Replication2/ReplicatedLog/NetworkAttachedFollower.cpp
-  Replication2/ReplicatedLog/NetworkMessages.cpp
-  Replication2/ReplicatedLog/ReplicatedLog.cpp
-  Replication2/ReplicatedLog/ReplicatedLogFeature.cpp
-  Replication2/ReplicatedLog/ReplicatedLogMetrics.cpp
-  Replication2/ReplicatedLog/Supervision.cpp
-  Replication2/ReplicatedLog/SupervisionAction.cpp
-  Replication2/ReplicatedLog/WaitForBag.cpp
-  Replication2/ReplicatedLog/types.cpp
-  Replication2/ReplicatedState/AgencySpecification.cpp
-  Replication2/ReplicatedState/FollowerStateManager.tpp
-  Replication2/ReplicatedState/LeaderStateManager.tpp
-  Replication2/ReplicatedState/PersistedStateInfo.cpp
-  Replication2/ReplicatedState/ReplicatedStateFeature.cpp
-  Replication2/ReplicatedState/ReplicatedStateMetrics.cpp
-  Replication2/ReplicatedState/ReplicatedStateToken.cpp
-  Replication2/ReplicatedState/StateCommon.cpp
-  Replication2/ReplicatedState/StateStatus.cpp
-  Replication2/ReplicatedState/Supervision.cpp
-  Replication2/ReplicatedState/SupervisionAction.cpp
-  Replication2/ReplicatedState/UnconfiguredStateManager.tpp
-  Replication2/ReplicatedState/UpdateReplicatedState.cpp
-  Replication2/ReplicatedState/UpdateReplicatedState.h
-  Replication2/StateMachines/BlackHole/BlackHoleStateMachine.cpp
-  Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.cpp
-  Replication2/StateMachines/Document/DocumentCore.cpp
-  Replication2/StateMachines/Document/DocumentFollowerState.cpp
-  Replication2/StateMachines/Document/DocumentLeaderState.cpp
-  Replication2/StateMachines/Document/DocumentLogEntry.cpp
-  Replication2/StateMachines/Document/DocumentStateAgencyHandler.cpp
-  Replication2/StateMachines/Document/DocumentStateHandlersFactory.cpp
-  Replication2/StateMachines/Document/DocumentStateMachine.cpp
-  Replication2/StateMachines/Document/DocumentStateMachineFeature.cpp
-  Replication2/StateMachines/Document/DocumentStateShardHandler.cpp
-  Replication2/StateMachines/Document/DocumentStateTransaction.cpp
-  Replication2/StateMachines/Document/DocumentStateTransactionHandler.cpp
-  Replication2/StateMachines/Prototype/PrototypeLogEntry.cpp
-  Replication2/StateMachines/Prototype/PrototypeLeaderState.cpp
-  Replication2/StateMachines/Prototype/PrototypeCore.cpp
-  Replication2/StateMachines/Prototype/PrototypeFollowerState.cpp
-  Replication2/StateMachines/Prototype/PrototypeLeaderState.cpp
-  Replication2/StateMachines/Prototype/PrototypeLogEntry.cpp
-  Replication2/StateMachines/Prototype/PrototypeStateMachine.cpp
-  Replication2/StateMachines/Prototype/PrototypeStateMachineFeature.cpp
-  Replication2/StateMachines/Prototype/PrototypeStateMethods.cpp
-  Replication2/Version.cpp
-  RestHandler/RestLogHandler.cpp
-  RestHandler/RestLogInternalHandler.cpp
-  RestHandler/RestPrototypeStateHandler.cpp
-)
-
 set(LIB_ARANGOSERVER_SOURCES
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
@@ -465,10 +396,6 @@ add_library(arango_restart_action STATIC
   RestServer/RestartAction.cpp
 )
 
-add_library(arango_replication2 STATIC
-  ${LIB_ARANGO_REPLICATION2_SOURCES}
-)
-
 add_library(arangoserver STATIC
   ${LIB_ARANGOSERVER_SOURCES}
 )
@@ -491,12 +418,6 @@ target_link_libraries(arango_geo s2)
 target_link_libraries(arango_iresearch arango_indexes)
 target_link_libraries(arango_iresearch arango_cluster_engine)
 target_link_libraries(arango_iresearch arango_vocbase)
-
-target_link_libraries(arango_replication2 arango)
-target_link_libraries(arango_replication2 immer)
-target_link_libraries(arango_replication2 fmt)
-target_link_libraries(arango_replication2 arango_network)
-target_link_libraries(arango_replication2 arangoserver)
 
 target_link_libraries(arangoserver arango_agency)
 target_link_libraries(arangoserver arango_aql)
@@ -569,7 +490,6 @@ endif ()
 
 foreach(TARGET
   arango_iresearch
-  arango_replication2
   arangod
   arangoserver
 )
@@ -613,6 +533,7 @@ add_subdirectory(Metrics)
 add_subdirectory(Network)
 add_subdirectory(Pregel)
 add_subdirectory(Replication)
+add_subdirectory(Replication2)
 add_subdirectory(RestHandler)
 add_subdirectory(RocksDBEngine)
 add_subdirectory(StorageEngine)
