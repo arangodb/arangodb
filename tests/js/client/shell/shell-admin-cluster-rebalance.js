@@ -208,7 +208,7 @@ function clusterRebalanceOtherOptionsSuite() {
       const dbServers = instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
       assertNotEqual(dbServers.length, 0);
       for (let i = 0; i < dbServers.length; ++i) {
-        let dbServer = dbServers[i];
+        const dbServer = dbServers[i];
         assertTrue(suspendExternal(dbServer.pid));
         try {
           let serverHealth = null;
