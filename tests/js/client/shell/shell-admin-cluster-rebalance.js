@@ -258,8 +258,6 @@ function clusterRebalanceOtherOptionsSuite() {
           for (const job of moves) {
             assertNotEqual(job.to, dbServer.id);
           }
-        } catch (err) {
-
         } finally {
           assertTrue(continueExternal(dbServer.pid));
           let serverHealth = null;
