@@ -1,6 +1,10 @@
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
+* MDS-1016: When creating a new collection the fields "Number of Shards"
+  and "Replication factor" are greyed out now when the field "Distribute
+  shards like" is not empty.
+
 * Fix an issue with replication of arangosearch view change entries in single
   server replication and active failover. Previously, when changing the
   properties of existing views, the changes were not properly picked up by
