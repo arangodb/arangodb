@@ -355,8 +355,10 @@ else. But if none of these checks fail, we simply have to try to parse into an
 instance of the current target type, so we have to create a default constructed
 instance.
 
-Inline types are always checked first. Only if none of those could be parsed
-we move on to the non-inline types.
+Inline types are always checked first (and therefore also _must_ be listed
+before the non-inline types, otherwise you will get a compiler error pointing
+this out). Only if none of those could be parsed we move on to the non-inline
+types.
 
 In "qualified" form the variant is serialized as an object with two attributes
 as specified in the `qualified` call. For example:
