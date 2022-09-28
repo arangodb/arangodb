@@ -1,63 +1,6 @@
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
-
 ################################################################################
-## BISON/FLEX
+## define variables
 ################################################################################
-
-if (CMAKE_COMPILER_IS_GNUCC)
-  set_source_files_properties(Aql/tokens.cpp PROPERTIES COMPILE_FLAGS -Wno-sign-compare)
-endif ()
-
-################################################################################
-## arangod
-################################################################################
-
-if (MSVC AND NOT(SKIP_PACKAGING))
-  generate_product_version(ProductVersionFiles
-    NAME arangod
-    FILE_DESCRIPTION ${ARANGODB_FRIENDLY_STRING}
-    ICON ${ARANGO_ICON}
-    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
-    VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
-    VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
-    VERSION_REVISION ${BUILD_ID}
-  )
-endif ()
-
-################################################################################
-## other stuff
-################################################################################
-
-include(arangoserver.cmake)
-
-add_executable(${BIN_ARANGOD}
-  RestServer/arangod.cpp
-  ../cmake/activeCodePage.manifest
-  ${ProductVersionFiles}
-)
-
-target_link_libraries(${BIN_ARANGOD}
-  arangoserver
-)
-
-target_compile_features(${BIN_ARANGOD} PRIVATE cxx_constexpr)
-
-install(
-  TARGETS ${BIN_ARANGOD}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_SBINDIR}
-)
-
-install_config(arangod)
-
-if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangod zlibstatic v8_build arango_iresearch)
-else ()
-  add_dependencies(arangod zlibstatic arango_iresearch)
-endif ()
-
-if (USE_JEMALLOC)
-  add_dependencies(arangod jemalloc_build)
-endif ()
 
 # TODO move CMAKE_DEPRECATE_OPTIONS to presets
 if (USE_FAIL_ON_WARNINGS)
@@ -72,41 +15,80 @@ if (USE_FAIL_ON_WARNINGS)
   endif ()
 endif ()
 
-foreach(TARGET
-  arangod
+################################################################################
+## arangod executable
+################################################################################
+
+if (MSVC AND NOT(SKIP_PACKAGING))
+  generate_product_version(ProductVersionFiles
+    NAME ${BIN_ARANGOD}
+    FILE_DESCRIPTION ${ARANGODB_FRIENDLY_STRING}
+    ICON ${ARANGO_ICON}
+    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
+    VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
+    VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
+    VERSION_REVISION ${BUILD_ID}
+  )
+endif ()
+
+add_executable(${BIN_ARANGOD}
+  RestServer/arangod.cpp
+  ../cmake/activeCodePage.manifest
+  ${ProductVersionFiles}
 )
-  target_include_directories(${TARGET} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-  target_include_directories(${TARGET} PRIVATE "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
-  target_compile_options(${TARGET} PRIVATE
-	  ${CMAKE_DEPRECATE_OPTION})
-endforeach()
+target_link_libraries(${BIN_ARANGOD}
+  arangoserver
+  arango_iresearch)
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(${BIN_ARANGOD} zlibstatic v8_build)
+else ()
+  add_dependencies(${BIN_ARANGOD} zlibstatic)
+endif ()
+if (USE_JEMALLOC)
+  add_dependencies(${BIN_ARANGOD} jemalloc_build)
+endif ()
+
+target_include_directories(${BIN_ARANGOD} PRIVATE
+  "${PROJECT_SOURCE_DIR}/arangod"
+  "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+
+target_compile_options(${BIN_ARANGOD} PRIVATE
+	${CMAKE_DEPRECATE_OPTIONS})
+target_compile_features(${BIN_ARANGOD} PRIVATE cxx_constexpr)
 
 ################################################################################
-## arango-secure-installation
+## installation
 ################################################################################
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
+
+install(
+  TARGETS ${BIN_ARANGOD}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_SBINDIR}
+)
+install_config(arangod)
 
 install_command_alias(${BIN_ARANGOD}
   ${CMAKE_INSTALL_SBINDIR}
   arango-secure-installation
 )
-
 install_config(arango-secure-installation)
-
-################################################################################
-## arango-init-database
-################################################################################
 
 install_command_alias(${BIN_ARANGOD}
   ${CMAKE_INSTALL_SBINDIR}
   arango-init-database
 )
-
 install_config(arango-init-database)
+
+################################################################################
+## libraries
+################################################################################
 
 get_target_property(IRESEARCH_INCLUDE
   iresearch-static INCLUDE_DIRECTORIES)
 
+include(arangoserver.cmake)
 add_subdirectory(Agency)
 add_subdirectory(Aql)
 add_subdirectory(Cache)
