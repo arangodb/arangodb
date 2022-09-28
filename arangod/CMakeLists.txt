@@ -458,7 +458,6 @@ if (NOT MSVC)
 endif()
 
 include(ClusterEngine/CMakeLists.txt)
-include(RocksDBEngine/CMakeLists.txt)
 
 add_library(arango_zkd STATIC Zkd/ZkdHelper.cpp)
 
@@ -475,21 +474,6 @@ add_library(arango_replication2 STATIC
 add_library(arangoserver STATIC
   ${LIB_ARANGOSERVER_SOURCES}
 )
-
-add_library(arango_rocksdb STATIC
-  ${ROCKSDB_SOURCES}
-)
-target_link_libraries(arango_rocksdb arango_zkd)
-target_link_libraries(arango_rocksdb snappy)
-target_link_libraries(arango_rocksdb rocksdb)
-target_link_libraries(arango_rocksdb rocksdb_interface)
-
-set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
-target_include_directories(arango_rocksdb PUBLIC ${SNAPPY_INCLUDE_DIR})
-
-if ((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG) AND NOT BUILDING_FOR_ARM64)
-  target_compile_options(arango_rocksdb PUBLIC "-maes")
-endif ()
 
 add_library(arango_cluster_engine STATIC
   ${CLUSTER_ENGINE_SOURCES}
@@ -529,24 +513,6 @@ target_link_libraries(arango_replication2 fmt)
 target_link_libraries(arango_replication2 arango_network)
 target_link_libraries(arango_replication2 arangoserver)
 
-target_link_libraries(arango_rocksdb rocksdb)
-target_link_libraries(arango_rocksdb arango_cache)
-target_link_libraries(arango_rocksdb arango_common_rest_handler)
-target_link_libraries(arango_rocksdb arango_geo)
-target_link_libraries(arango_rocksdb arango_health)
-target_link_libraries(arango_rocksdb arango_indexes)
-target_link_libraries(arango_rocksdb arango_storage_engine_common)
-target_link_libraries(arango_rocksdb boost_boost)
-target_link_libraries(arango_rocksdb arango::validation)
-target_link_libraries(arango_rocksdb arango_restart_action)
-
-if (USE_ENTERPRISE)
-  # this is required for hotbackup. Views need to be flushed.
-  target_include_directories(arango_rocksdb
-    PUBLIC ${IRESEARCH_INCLUDE}
-  )
-endif()
-
 target_link_libraries(arangoserver arango_agency)
 target_link_libraries(arangoserver arango_aql)
 target_link_libraries(arangoserver arango_cluster_engine)
@@ -572,10 +538,6 @@ target_link_libraries(arangoserver
 
 if (MSVC)
   target_link_libraries(arangoserver Bcrypt.lib)
-endif()
-
-if (USE_ENTERPRISE)
-  target_link_libraries(arango_rocksdb arango_rclone)
 endif()
 
 add_executable(${BIN_ARANGOD}
@@ -624,7 +586,6 @@ foreach(TARGET
   arango_cluster_engine
   arango_iresearch
   arango_replication2
-  arango_rocksdb
   arangod
   arangoserver
 )
@@ -668,6 +629,7 @@ add_subdirectory(Network)
 add_subdirectory(Pregel)
 add_subdirectory(Replication)
 add_subdirectory(RestHandler)
+add_subdirectory(RocksDBEngine)
 add_subdirectory(StorageEngine)
 add_subdirectory(Utils)
 add_subdirectory(V8Server)
