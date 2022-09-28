@@ -975,7 +975,7 @@ void RocksDBEngine::start() {
   _settingsManager = std::make_unique<RocksDBSettingsManager>(*this);
   _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
 
-  struct SchedulerExecutor : RocksDBLogPersistor::Executor {
+  struct SchedulerExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
     explicit SchedulerExecutor(ArangodServer& server)
         : _scheduler(server.getFeature<SchedulerFeature>().SCHEDULER) {}
 
@@ -986,7 +986,7 @@ void RocksDBEngine::start() {
     Scheduler* _scheduler;
   };
 
-  _logPersistor = std::make_shared<RocksDBLogPersistor>(
+  _logPersistor = std::make_shared<RocksDBAsyncLogWriteBatcher>(
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::ReplicatedLogs),
       _db->GetRootDB(), std::make_shared<SchedulerExecutor>(server()),
@@ -1282,68 +1282,6 @@ ErrorCode RocksDBEngine::getCollectionsAndIndexes(
   result.close();
 
   return TRI_ERROR_NO_ERROR;
-}
-
-void RocksDBEngine::getReplicatedLogs(TRI_vocbase_t& vocbase,
-                                      arangodb::velocypack::Builder& result) {
-  rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(
-      readOptions, RocksDBColumnFamilyManager::get(
-                       RocksDBColumnFamilyManager::Family::Definitions)));
-
-  result.openArray();
-
-  auto rSlice = rocksDBSlice(RocksDBEntryType::ReplicatedLog);
-
-  for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice);
-       iter->Next()) {
-    if (vocbase.id() != RocksDBKey::databaseId(iter->key())) {
-      continue;
-    }
-
-    auto slice =
-        VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
-
-    if (arangodb::basics::VelocyPackHelper::getBooleanValue(
-            slice, StaticStrings::DataSourceDeleted, false)) {
-      continue;
-    }
-
-    result.add(slice);
-  }
-
-  result.close();
-}
-
-void RocksDBEngine::getReplicatedStates(TRI_vocbase_t& vocbase,
-                                        arangodb::velocypack::Builder& result) {
-  rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(
-      readOptions, RocksDBColumnFamilyManager::get(
-                       RocksDBColumnFamilyManager::Family::Definitions)));
-
-  result.openArray();
-
-  auto rSlice = rocksDBSlice(RocksDBEntryType::ReplicatedState);
-
-  for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice);
-       iter->Next()) {
-    if (vocbase.id() != RocksDBKey::databaseId(iter->key())) {
-      continue;
-    }
-
-    auto slice =
-        VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
-
-    if (arangodb::basics::VelocyPackHelper::getBooleanValue(
-            slice, StaticStrings::DataSourceDeleted, false)) {
-      continue;
-    }
-
-    result.add(slice);
-  }
-
-  result.close();
 }
 
 ErrorCode RocksDBEngine::getViews(TRI_vocbase_t& vocbase,
@@ -2739,49 +2677,8 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   // scan the database path for "arangosearch" views
   scanViews(iresearch::StaticStrings::ViewArangoSearchType);
 
-  // scan the database path for replicated logs
   try {
-    VPackBuilder builder;
-    getReplicatedLogs(*vocbase, builder);
-
-    VPackSlice const slice = builder.slice();
-    TRI_ASSERT(slice.isArray());
-
-    for (VPackSlice it : VPackArrayIterator(slice)) {
-      // we found a log that is still active
-      TRI_ASSERT(!it.get("id").isNone());
-
-      auto logId = arangodb::replication2::LogId{
-          it.get(StaticStrings::DataSourcePlanId).getNumericValue<uint64_t>()};
-      auto objectId =
-          it.get(StaticStrings::ObjectId).getNumericValue<uint64_t>();
-      auto log = std::make_shared<RocksDBPersistedLog>(
-          replication2::GlobalLogIdentifier(vocbase->name(), logId), objectId,
-          _logPersistor);
-      StorageEngine::registerReplicatedLog(*vocbase, logId, log);
-    }
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("554b1", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: " << ex.what();
-    throw;
-  } catch (...) {
-    LOG_TOPIC("5933d", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: unknown exception";
-    throw;
-  }
-
-  try {
-    VPackBuilder builder;
-    getReplicatedStates(*vocbase, builder);
-
-    VPackSlice const slice = builder.slice();
-    TRI_ASSERT(slice.isArray());
-
-    for (VPackSlice it : VPackArrayIterator(slice)) {
-      auto info = velocypack::deserialize<
-          replication2::replicated_state::PersistedStateInfo>(it);
-      StorageEngine::registerReplicatedState(*vocbase, info);
-    }
+    loadReplicatedStates(vocbase);
   } catch (std::exception const& ex) {
     LOG_TOPIC("554c1", ERR, arangodb::Logger::ENGINES)
         << "error while opening database: " << ex.what();
@@ -2842,6 +2739,33 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   }
 
   return vocbase;
+}
+
+void RocksDBEngine::loadReplicatedStates(
+    std::unique_ptr<TRI_vocbase_t> const& vocbase) {
+  rocksdb::ReadOptions readOptions;
+  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(
+      readOptions, RocksDBColumnFamilyManager::get(
+                       RocksDBColumnFamilyManager::Family::Definitions)));
+  auto rSlice = rocksDBSlice(RocksDBEntryType::ReplicatedState);
+  for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice);
+       iter->Next()) {
+    if (vocbase->id() != RocksDBKey::databaseId(iter->key())) {
+      continue;
+    }
+
+    auto slice =
+        VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
+    if (basics::VelocyPackHelper::getBooleanValue(
+            slice, StaticStrings::DataSourceDeleted, false)) {
+      continue;
+    }
+
+    auto info = velocypack::deserialize<RocksDBReplicatedStateInfo>(slice);
+    auto methods = std::make_unique<RocksDBLogStorageMethods>(
+        info.objectId, vocbase->id(), info.stateId, _logPersistor, _db);
+    registerReplicatedState(*vocbase, info.stateId, std::move(methods));
+  }
 }
 
 DECLARE_GAUGE(rocksdb_cache_active_tables, uint64_t,
@@ -3468,85 +3392,6 @@ void RocksDBEngine::waitForCompactionJobsToFinish() {
       << "giving up waiting for pending compaction job(s)";
 }
 
-auto RocksDBEngine::dropReplicatedLog(
-    TRI_vocbase_t& vocbase,
-    std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> const&
-        log) -> Result {
-  auto key = RocksDBKey{};
-  key.constructReplicatedLog(vocbase.id(), log->id());
-
-  auto s = _db->Delete(rocksdb::WriteOptions{},
-                       RocksDBColumnFamilyManager::get(
-                           RocksDBColumnFamilyManager::Family::Definitions),
-                       key.string());
-  return rocksutils::convertStatus(s);
-}
-
-auto RocksDBEngine::createReplicatedLog(TRI_vocbase_t& vocbase,
-                                        arangodb::replication2::LogId logId)
-    -> ResultT<
-        std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>> {
-  auto key = RocksDBKey{};
-  key.constructReplicatedLog(vocbase.id(), logId);
-
-  auto objectId = TRI_NewTickServer();
-
-  VPackBuilder valueBuilder;
-  {
-    VPackObjectBuilder ob(&valueBuilder);
-    valueBuilder.add(StaticStrings::DataSourceId, VPackValue(logId.id()));
-    valueBuilder.add(StaticStrings::DataSourcePlanId, VPackValue(logId.id()));
-    valueBuilder.add(StaticStrings::ObjectId, VPackValue(objectId));
-  }
-  auto value = RocksDBValue::ReplicatedLog(valueBuilder.slice());
-
-  rocksdb::WriteOptions opts;
-  auto s = _db->GetRootDB()->Put(
-      opts,
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Definitions),
-      key.string(), value.string());
-  if (s.ok()) {
-    return {std::make_shared<RocksDBPersistedLog>(
-        replication2::GlobalLogIdentifier(vocbase.name(), logId), objectId,
-        _logPersistor)};
-  }
-
-  return rocksutils::convertStatus(s);
-}
-
-Result RocksDBEngine::updateReplicatedState(
-    TRI_vocbase_t& vocbase,
-    replication2::replicated_state::PersistedStateInfo const& info) {
-  auto key = RocksDBKey{};
-  key.constructReplicatedState(vocbase.id(), info.stateId);
-
-  VPackBuilder valueBuilder;
-  velocypack::serialize(valueBuilder, info);
-  auto value = RocksDBValue::ReplicatedLog(valueBuilder.slice());
-
-  rocksdb::WriteOptions opts;
-  auto s = _db->GetRootDB()->Put(
-      opts,
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Definitions),
-      key.string(), value.string());
-
-  return rocksutils::convertStatus(s);
-}
-
-Result RocksDBEngine::dropReplicatedState(TRI_vocbase_t& vocbase,
-                                          arangodb::replication2::LogId id) {
-  auto key = RocksDBKey{};
-  key.constructReplicatedState(vocbase.id(), id);
-
-  auto s = _db->Delete(rocksdb::WriteOptions{},
-                       RocksDBColumnFamilyManager::get(
-                           RocksDBColumnFamilyManager::Family::Definitions),
-                       key.string());
-  return rocksutils::convertStatus(s);
-}
-
 bool RocksDBEngine::checkExistingDB(
     std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies) {
   bool dbExisted = false;
@@ -3628,5 +3473,49 @@ bool RocksDBEngine::checkExistingDB(
   }
 
   return dbExisted;
+}
+
+Result RocksDBEngine::dropReplicatedState(
+    TRI_vocbase_t& vocbase,
+    std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>
+        ptr) {
+  // make sure that all pending async operations have completed
+  auto& methods = dynamic_cast<RocksDBLogStorageMethods&>(*ptr);
+  methods.ctx.waitForCompletion();
+
+  rocksdb::WriteBatch batch;
+  auto key = RocksDBKey{};
+  key.constructReplicatedState(vocbase.id(), ptr->getLogId());
+  batch.Delete(RocksDBColumnFamilyManager::get(
+                   RocksDBColumnFamilyManager::Family::Definitions),
+               key.string());
+
+  auto logcf = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::ReplicatedLogs);
+  auto range = RocksDBKeyBounds::LogRange(ptr->getObjectId());
+  auto start = range.start();
+  auto end = range.end();
+  batch.DeleteRange(logcf, start, end);
+  if (auto s = _db->Write(rocksdb::WriteOptions{}, &batch); !s.ok()) {
+    return rocksutils::convertStatus(s);
+  }
+
+  std::ignore = _db->CompactRange(
+      rocksdb::CompactRangeOptions{.exclusive_manual_compaction = false,
+                                   .allow_write_stall = false},
+      logcf, &start, &end);
+  return {};
+}
+
+auto RocksDBEngine::createReplicatedState(
+    TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
+    replication2::replicated_state::PersistedStateInfo const& info)
+    -> ResultT<std::unique_ptr<
+        replication2::replicated_state::IStorageEngineMethods>> {
+  auto objectId = TRI_NewTickServer();
+  auto methods = std::make_unique<RocksDBLogStorageMethods>(
+      objectId, vocbase.id(), id, _logPersistor, _db);
+  methods->updateMetadata(info);
+  return {std::move(methods)};
 }
 }  // namespace arangodb

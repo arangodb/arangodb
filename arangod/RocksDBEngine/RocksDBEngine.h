@@ -53,7 +53,7 @@ class EncryptionProvider;
 
 namespace arangodb {
 
-struct RocksDBLogPersistor;
+struct RocksDBAsyncLogWriteBatcher;
 class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
@@ -182,10 +182,6 @@ class RocksDBEngine final : public StorageEngine {
                                      bool wasCleanShutdown,
                                      bool isUpgrade) override;
 
-  void getReplicatedLogs(TRI_vocbase_t& vocbase,
-                         arangodb::velocypack::Builder& result);
-  void getReplicatedStates(TRI_vocbase_t& vocbase,
-                           arangodb::velocypack::Builder& result);
   ErrorCode getViews(TRI_vocbase_t& vocbase,
                      arangodb::velocypack::Builder& result) override;
 
@@ -271,22 +267,16 @@ class RocksDBEngine final : public StorageEngine {
   void compactRange(RocksDBKeyBounds bounds);
   void processCompactions();
 
-  virtual auto createReplicatedLog(TRI_vocbase_t&,
-                                   arangodb::replication2::LogId)
-      -> ResultT<std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog>> override;
-  virtual auto dropReplicatedLog(
-      TRI_vocbase_t&,
-      std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog> const&)
-      -> Result override;
-
-  auto updateReplicatedState(
+  auto dropReplicatedState(
       TRI_vocbase_t& vocbase,
+      std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>
+          ptr) -> Result override;
+
+  auto createReplicatedState(
+      TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
       replication2::replicated_state::PersistedStateInfo const& info)
-      -> Result override;
-  auto dropReplicatedState(TRI_vocbase_t& vocbase,
-                           arangodb::replication2::LogId id) -> Result override;
+      -> ResultT<std::unique_ptr<
+          replication2::replicated_state::IStorageEngineMethods>> override;
 
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
@@ -459,6 +449,7 @@ class RocksDBEngine final : public StorageEngine {
 #endif
 
  private:
+  void loadReplicatedStates(std::unique_ptr<TRI_vocbase_t> const& vocbase);
   void shutdownRocksDBInstance() noexcept;
   void waitForCompactionJobsToFinish();
   velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key,
@@ -690,7 +681,7 @@ class RocksDBEngine final : public StorageEngine {
   metrics::Counter& _metricsTreeResurrections;
 
   // @brief persistor for replicated logs
-  std::shared_ptr<RocksDBLogPersistor> _logPersistor;
+  std::shared_ptr<RocksDBAsyncLogWriteBatcher> _logPersistor;
 
   // Checksum env for when creation of sha files is enabled
   // this is for when encryption is enabled, sha files will be created

@@ -489,7 +489,7 @@ struct TRI_vocbase_t {
   /// methods to access the storage engine
   void registerReplicatedState(
       arangodb::replication2::LogId,
-      std::shared_ptr<
+      std::unique_ptr<
           arangodb::replication2::replicated_state::IStorageEngineMethods>);
 };
 

@@ -49,14 +49,14 @@ struct RocksDBLogTest : testing::Test {
       THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
 
-    struct SyncExecutor : RocksDBLogPersistor::Executor {
+    struct SyncExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
       void operator()(
           fu2::unique_function<void() noexcept> f) noexcept override {
         std::move(f).operator()();
       }
     };
 
-    _persistor = std::make_shared<RocksDBLogPersistor>(
+    _persistor = std::make_shared<RocksDBAsyncLogWriteBatcher>(
         _db->DefaultColumnFamily(), _db, std::make_shared<SyncExecutor>(),
         std::make_shared<ReplicatedLogGlobalSettings>());
   }
@@ -83,13 +83,14 @@ struct RocksDBLogTest : testing::Test {
   static LogId _maxLogId;
   static std::string _path;
   static rocksdb::DB* _db;
-  static std::shared_ptr<RocksDBLogPersistor> _persistor;
+  static std::shared_ptr<RocksDBAsyncLogWriteBatcher> _persistor;
 };
 
 LogId RocksDBLogTest::_maxLogId = LogId{0};
 std::string RocksDBLogTest::_path = {};
 rocksdb::DB* RocksDBLogTest::_db = nullptr;
-std::shared_ptr<RocksDBLogPersistor> RocksDBLogTest::_persistor = nullptr;
+std::shared_ptr<RocksDBAsyncLogWriteBatcher> RocksDBLogTest::_persistor =
+    nullptr;
 
 TEST_F(RocksDBLogTest, insert_iterate) {
   auto log = createUniqueLog();

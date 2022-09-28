@@ -136,12 +136,6 @@ static rocksdb::Slice LogEntry(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&logEntry),
     1);
 
-static RocksDBEntryType replicatedLog = RocksDBEntryType::ReplicatedLog;
-static rocksdb::Slice ReplicatedLog(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &replicatedLog),
-    1);
-
 static RocksDBEntryType replicatedState = RocksDBEntryType::ReplicatedState;
 static rocksdb::Slice ReplicatedState(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
@@ -212,8 +206,6 @@ char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
       return "UniqueZkdIndexValue";
     case RocksDBEntryType::LogEntry:
       return "ReplicatedLogEntry";
-    case RocksDBEntryType::ReplicatedLog:
-      return "ReplicatedLog";
     case RocksDBEntryType::ReplicatedState:
       return "ReplicatedState";
   }
@@ -320,8 +312,6 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return UniqueZdkIndexValue;
     case RocksDBEntryType::LogEntry:
       return LogEntry;
-    case RocksDBEntryType::ReplicatedLog:
-      return ReplicatedLog;
     case RocksDBEntryType::ReplicatedState:
       return ReplicatedState;
   }

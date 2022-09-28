@@ -49,7 +49,6 @@ class RocksDBValue {
 
   static RocksDBValue Database(VPackSlice data);
   static RocksDBValue Collection(VPackSlice data);
-  static RocksDBValue ReplicatedLog(VPackSlice data);
   static RocksDBValue ReplicatedState(VPackSlice data);
   static RocksDBValue PrimaryIndexValue(LocalDocumentId const& docId,
                                         RevisionId revision);

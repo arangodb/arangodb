@@ -23,6 +23,15 @@
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/ReplicatedState/StateCommon.h"
 
+namespace arangodb::futures {
+struct Unit;
+template<typename T>
+class Future;
+}  // namespace arangodb::futures
+namespace arangodb::replication2 {
+struct PersistedLogIterator;
+}
+
 namespace arangodb::replication2::replicated_state {
 
 struct PersistedStateInfo {
@@ -48,14 +57,30 @@ struct StatePersistorInterface {
 
 struct IStorageEngineMethods {
   virtual ~IStorageEngineMethods() = default;
-  virtual auto drop() && -> void = 0;
-  virtual auto updateMetadata(PersistedStateInfo const&) -> Result = 0;
+  virtual auto updateMetadata(PersistedStateInfo) -> Result = 0;
   virtual auto readMetadata() -> ResultT<PersistedStateInfo> = 0;
-  virtual auto read(LogIndex first) -> PersistedLogIterator = 0;
-  virtual auto removeFront(LogIndex stop) -> futures::Future<Result> = 0;
-  virtual auto removeBack(LogIndex start) -> futures::Future<Result> = 0;
+  virtual auto read(LogIndex first)
+      -> std::unique_ptr<PersistedLogIterator> = 0;
+
+  struct WriteOptions {
+    bool waitForSync = false;
+  };
+
+  using SequenceNumber = std::uint64_t;
+
+  virtual auto insert(std::unique_ptr<PersistedLogIterator>,
+                      WriteOptions const&)
+      -> futures::Future<ResultT<SequenceNumber>> = 0;
+  virtual auto removeFront(LogIndex stop, WriteOptions const&)
+      -> futures::Future<ResultT<SequenceNumber>> = 0;
+  virtual auto removeBack(LogIndex start, WriteOptions const&)
+      -> futures::Future<ResultT<SequenceNumber>> = 0;
   virtual auto getObjectId() -> std::uint64_t = 0;
   virtual auto getLogId() -> LogId = 0;
+
+  virtual auto getSyncedSequenceNumber() -> SequenceNumber = 0;
+  virtual auto waitForSync(SequenceNumber)
+      -> futures::Future<futures::Unit> = 0;
 };
 
 }  // namespace arangodb::replication2::replicated_state
