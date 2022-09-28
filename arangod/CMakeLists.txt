@@ -257,14 +257,6 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   RestHandler/RestPrototypeStateHandler.cpp
 )
 
-set(LIB_ARANGO_NETWORK_SOURCES
-  Network/ClusterUtils.cpp
-  Network/ConnectionPool.cpp
-  Network/Methods.cpp
-  Network/NetworkFeature.cpp
-  Network/Utils.cpp
-)
-
 set(LIB_ARANGOSERVER_SOURCES
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
@@ -494,10 +486,6 @@ add_library(arangoserver STATIC
   ${LIB_ARANGOSERVER_SOURCES}
 )
 
-add_library(arango_network STATIC
-  ${LIB_ARANGO_NETWORK_SOURCES}
-)
-
 add_library(arango_rocksdb STATIC
   ${ROCKSDB_SOURCES}
 )
@@ -560,14 +548,6 @@ target_link_libraries(arango_geo s2)
 target_link_libraries(arango_iresearch arango_indexes)
 target_link_libraries(arango_iresearch arango_cluster_engine)
 target_link_libraries(arango_iresearch arango_vocbase)
-
-target_link_libraries(arango_network boost_boost)
-target_link_libraries(arango_network fuerte)
-target_link_libraries(arango_network llhttp)
-target_link_libraries(arango_network nghttp2)
-target_link_libraries(arango_network arango::validation)
-target_link_libraries(arango_network arango_replication2)
-target_link_libraries(arango_network immer)
 
 target_link_libraries(arango_replication2 arango)
 target_link_libraries(arango_replication2 immer)
@@ -671,7 +651,6 @@ foreach(TARGET
   arango_cluster_methods
   arango_common_rest_handler
   arango_iresearch
-  arango_network
   arango_replication2
   arango_rocksdb
   arangod
@@ -712,6 +691,7 @@ add_subdirectory(Cache)
 add_subdirectory(Graph)
 add_subdirectory(Indexes)
 add_subdirectory(Metrics)
+add_subdirectory(Network)
 add_subdirectory(Pregel)
 add_subdirectory(Replication)
 add_subdirectory(StorageEngine)
