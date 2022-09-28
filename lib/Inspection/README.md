@@ -340,7 +340,9 @@ straightforward, but for parsing we somehow have to determine the type based
 on the data. Basically how this is done is that we simply try to parse each of
 the inline types (in the order in which they are specified). If the parse was
 successful, then that is the type and value that we use, otherwise we continue
-with the next type.
+with the next type. So if you have two types `A` and `B` where `A` is a
+supertype of `B` (i.e., every possible value for `B` would also be a possible
+value for `A` - for example double/int), then `B` must be listed before `A`.
 
 Note: _any_ errors (including failed invariants) that occur while trying to
 parse inline types are _ignored_ and the type is dismissed!
