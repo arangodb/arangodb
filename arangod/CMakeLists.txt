@@ -257,32 +257,9 @@ if (NOT MSVC)
     RestServer/SupervisorFeature.cpp)
 endif()
 
-add_library(arango_zkd STATIC Zkd/ZkdHelper.cpp)
-
-target_link_libraries(arango_zkd arango)
-
-add_library(arango_restart_action STATIC
-  RestServer/RestartAction.cpp
-)
-
 add_library(arangoserver STATIC
   ${LIB_ARANGOSERVER_SOURCES}
 )
-
-# Note that arango_geo publicly exports the /J compile option for MSVC, because
-# s2 requires /J to be set on Windows.
-# /J makes char unsigned.
-# Thus all libraries depending on arango_geo will be compiled with /J (and need
-# to, if they include s2 headers).
-# I think it would safer to compile everything with /J, so we would not get a
-# mixture of signed and unsigned char interpretations in the same binary.
-# However, just setting
-#   add_compile_options(/J)
-# does not work, either, because
-# C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\include\atldef.h(94): fatal error C1189: #error:  ATL does not support compilation with /J or _CHAR_UNSIGNED flag enabled [C:\vm04-windows\oskar\work\ArangoDB\build\lib\arango.vcxproj]
-# .
-
-target_link_libraries(arango_geo s2)
 
 target_link_libraries(arangoserver arango_agency)
 target_link_libraries(arangoserver arango_aql)
@@ -403,8 +380,10 @@ add_subdirectory(Pregel)
 add_subdirectory(Replication)
 add_subdirectory(Replication2)
 add_subdirectory(RestHandler)
+add_subdirectory(RestServer)
 add_subdirectory(RocksDBEngine)
 add_subdirectory(StorageEngine)
 add_subdirectory(Utils)
 add_subdirectory(V8Server)
 add_subdirectory(VocBase)
+add_subdirectory(Zkd)
