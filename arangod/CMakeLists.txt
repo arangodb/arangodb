@@ -257,34 +257,6 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   RestHandler/RestPrototypeStateHandler.cpp
 )
 
-set(LIB_ARANGO_V8SERVER_SOURCES
-  Cluster/v8-cluster.cpp
-  Transaction/V8Context.cpp
-  V8Server/FoxxFeature.cpp
-  V8Server/V8Context.cpp
-  V8Server/V8DealerFeature.cpp
-  V8Server/v8-actions.cpp
-  V8Server/v8-analyzers.cpp
-  V8Server/v8-collection-util.cpp
-  V8Server/v8-collection.cpp
-  V8Server/v8-dispatcher.cpp
-  V8Server/v8-general-graph.cpp
-  V8Server/v8-prototype-states.cpp
-  V8Server/v8-query.cpp
-  V8Server/v8-replicated-logs.cpp
-  V8Server/v8-replication.cpp
-  V8Server/v8-statistics.cpp
-  V8Server/v8-ttl.cpp
-  V8Server/v8-user-functions.cpp
-  V8Server/v8-user-structures.cpp
-  V8Server/v8-users.cpp
-  V8Server/v8-util.cpp
-  V8Server/v8-views.cpp
-  V8Server/v8-vocbase.cpp
-  V8Server/v8-voccursor.cpp
-  V8Server/v8-vocindex.cpp
-)
-
 set(LIB_ARANGO_NETWORK_SOURCES
   Network/ClusterUtils.cpp
   Network/ConnectionPool.cpp
@@ -514,10 +486,6 @@ add_library(arango_restart_action STATIC
   RestServer/RestartAction.cpp
 )
 
-add_library(arango_v8server STATIC
-  ${LIB_ARANGO_V8SERVER_SOURCES}
-)
-
 add_library(arango_replication2 STATIC
   ${LIB_ARANGO_REPLICATION2_SOURCES}
 )
@@ -625,12 +593,6 @@ if (USE_ENTERPRISE)
   )
 endif()
 
-target_link_libraries(arango_v8server arango_agency)
-target_link_libraries(arango_v8server arango_iresearch)
-target_link_libraries(arango_v8server arango_replication)
-target_link_libraries(arango_v8server arango_v8 arango_v8_no_deadline)
-target_link_libraries(arango_v8server ${V8_LIBS})
-
 target_link_libraries(arangoserver arango_agency)
 target_link_libraries(arangoserver arango_aql)
 target_link_libraries(arangoserver arango_cluster_engine)
@@ -712,7 +674,6 @@ foreach(TARGET
   arango_network
   arango_replication2
   arango_rocksdb
-  arango_v8server
   arangod
   arangoserver
 )
@@ -755,4 +716,5 @@ add_subdirectory(Pregel)
 add_subdirectory(Replication)
 add_subdirectory(StorageEngine)
 add_subdirectory(Utils)
+add_subdirectory(V8Server)
 add_subdirectory(VocBase)
