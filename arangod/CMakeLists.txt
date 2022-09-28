@@ -446,11 +446,6 @@ if (MSVC)
   list(APPEND LIB_ARANGOSERVER_SOURCES RestServer/WindowsServiceFeature.cpp)
 endif()
 
-set(LIB_ARANGO_COMMON_REST_HANDLER_SOURCES
-  RestHandler/RestCollectionHandler.cpp
-  RestHandler/RestReplicationHandler.cpp
-)
-
 set(LIB_ARANGO_CLUSTER_METHODS_SOURCES
   Cluster/ClusterMethods.cpp
   Cluster/ClusterTtlMethods.cpp
@@ -505,10 +500,6 @@ add_library(arango_cluster_engine STATIC
   ${CLUSTER_ENGINE_SOURCES}
 )
 
-add_library(arango_common_rest_handler STATIC
-  ${LIB_ARANGO_COMMON_REST_HANDLER_SOURCES}
-)
-
 add_library(arango_cluster_methods STATIC
   ${LIB_ARANGO_CLUSTER_METHODS_SOURCES}
 )
@@ -538,10 +529,6 @@ target_include_directories(arango_cluster_engine
 target_link_libraries(arango_cluster_methods arango)
 target_link_libraries(arango_cluster_methods arango_network)
 target_link_libraries(arango_cluster_methods zlib_interface)
-
-target_link_libraries(arango_common_rest_handler arango_cluster_methods)
-target_link_libraries(arango_common_rest_handler arango_utils)
-target_link_libraries(arango_common_rest_handler arango_iresearch)
 
 target_link_libraries(arango_geo s2)
 
@@ -649,7 +636,6 @@ endif ()
 foreach(TARGET
   arango_cluster_engine
   arango_cluster_methods
-  arango_common_rest_handler
   arango_iresearch
   arango_replication2
   arango_rocksdb
@@ -694,6 +680,7 @@ add_subdirectory(Metrics)
 add_subdirectory(Network)
 add_subdirectory(Pregel)
 add_subdirectory(Replication)
+add_subdirectory(RestHandler)
 add_subdirectory(StorageEngine)
 add_subdirectory(Utils)
 add_subdirectory(V8Server)
