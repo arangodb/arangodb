@@ -40,6 +40,7 @@
 
 #include "Inspection/InspectorBase.h"
 #include "Inspection/Status.h"
+#include "Inspection/detail/traits.h"
 #include "velocypack/ValueType.h"
 
 namespace arangodb::inspection {
@@ -556,8 +557,10 @@ struct VPackLoadInspectorImpl
       return isInt(type);
     } else if constexpr (std::is_floating_point_v<T>) {
       return type == ValueType::Double || isInt(type);
-    } else if constexpr (detail::IsListLike<T>::value ||
-                         detail::IsTuple<T>::value) {
+    } else if constexpr (detail::IsTuple<T>::value) {
+      return type == ValueType::Array &&
+             detail::TupleSize<T>::value == _slice.length();
+    } else if constexpr (detail::IsListLike<T>::value) {
       return type == ValueType::Array;
     } else if constexpr (detail::IsMapLike<T>::value) {
       return type == ValueType::Object;
