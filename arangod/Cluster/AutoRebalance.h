@@ -201,8 +201,8 @@ struct AutoRebalanceProblem {
       bool considerLeaderMoves) const;
 
   void setServersHealthInfo(
-      std::unordered_set<std::string> const& serversInfo) {
-    serversHealthInfo = serversInfo;
+      std::unordered_set<std::string> serversInfo) {
+    serversHealthInfo = std::move(serversInfo);
   }
 };
 }  // namespace arangodb::cluster::rebalance
