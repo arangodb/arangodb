@@ -266,21 +266,15 @@ struct VPackLoadInspectorImpl
     return result;
   }
 
-  template<class T, class... Args>
-  auto processVariant(T& variant, Args&&... args) {
-    constexpr bool hasInlineTypes = (Args::isInlineType || ...);
-    constexpr bool hasNonInlineTypes = ((!Args::isInlineType) || ...);
-
-    if constexpr (hasInlineTypes) {
+  template<class T, class Arg, class... Args>
+  auto processVariant(T& variant, Arg&& arg, Args&&... args) {
+    if constexpr (Arg::isInlineType) {
       auto type = _slice.type();
-      auto res = parseInlineType<Args...>(type, variant.value);
-      if (res.ok() || !hasNonInlineTypes) {
-        return res;
-      }
-    }
-
-    if constexpr (hasNonInlineTypes) {
-      return parseNonInlineTypes(variant, std::forward<Args>(args)...);
+      return parseVariant(type, variant, std::forward<Arg>(arg),
+                          std::forward<Args>(args)...);
+    } else {
+      return parseNonInlineTypes(variant, std::forward<Arg>(arg),
+                                 std::forward<Args>(args)...);
     }
   }
 
@@ -319,6 +313,30 @@ struct VPackLoadInspectorImpl
       return VPackLoadInspectorImpl(slice, _options, this->getContext());
     } else {
       return VPackLoadInspectorImpl(slice, _options);
+    }
+  }
+
+  template<class T, class Arg, class... Args>
+  Status parseVariant(velocypack::ValueType type, T& variant, Arg&& arg,
+                      Args&&... args) {
+    if constexpr (Arg::isInlineType) {
+      if (shouldTryType<typename Arg::Type>(type)) {
+        typename Arg::Type v;
+        auto res = this->apply(v);
+        if (res.ok()) {
+          variant.value = std::move(v);
+          return res;
+        }
+      }
+
+      if constexpr (sizeof...(Args) == 0) {
+        return {"Could not find matching inline type"};
+      } else {
+        return parseVariant(type, variant, std::forward<Args>(args)...);
+      }
+    } else {
+      return parseNonInlineTypes(variant, std::forward<Arg>(arg),
+                                 std::forward<Args>(args)...);
     }
   }
 
@@ -496,17 +514,18 @@ struct VPackLoadInspectorImpl
            class... Args>
   Status parseType(std::string_view tag, ParseFn parse, FieldNameFn fieldName,
                    std::variant<Ts...>& result, Arg&& arg, Args&&... args) {
-    if constexpr (!Arg::isInlineType) {
-      if (arg.tag == tag) {
-        typename Arg::Type v;
-        auto res = parse(v);
-        if (res.ok()) {
-          result = v;
-        } else if constexpr (!std::is_same_v<FieldNameFn, std::monostate>) {
-          return {std::move(res), fieldName(arg), Status::AttributeTag{}};
-        }
-        return res;
+    static_assert(!Arg::isInlineType,
+                  "All inline types must be listed at the beginning of the "
+                  "alternatives list");
+    if (arg.tag == tag) {
+      typename Arg::Type v;
+      auto res = parse(v);
+      if (res.ok()) {
+        result = v;
+      } else if constexpr (!std::is_same_v<FieldNameFn, std::monostate>) {
+        return {std::move(res), fieldName(arg), Status::AttributeTag{}};
       }
+      return res;
     }
 
     if constexpr (sizeof...(Args) == 0) {
@@ -516,28 +535,6 @@ struct VPackLoadInspectorImpl
                        std::forward<FieldNameFn>(fieldName), result,
                        std::forward<Args>(args)...);
     }
-  }
-
-  template<class Arg, class... Args, class... Ts>
-  Status parseInlineType(velocypack::ValueType type,
-                         std::variant<Ts...>& result) {
-    if constexpr (Arg::isInlineType) {
-      if (shouldTryType<typename Arg::Type>(type)) {
-        typename Arg::Type v;
-        auto res = this->apply(v);
-        if (res.ok()) {
-          result = std::move(v);
-          return res;
-        }
-      }
-    }
-    return parseInlineType<Args...>(type, result);
-  }
-
-  template<class... Ts>
-  Status parseInlineType(velocypack::ValueType type,
-                         std::variant<Ts...>& result) {
-    return {"Could not find matching inline type"};
   }
 
   template<class T>

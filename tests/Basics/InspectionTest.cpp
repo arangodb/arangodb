@@ -481,8 +481,8 @@ template<class Inspector>
 auto inspect(Inspector& f, MyUnqualifiedVariant& x) {
   namespace insp = arangodb::inspection;
   return f.variant(x).unqualified().alternatives(
-      insp::type<std::string>("string"),   //
       insp::inlineType<int>(),             //
+      insp::type<std::string>("string"),   //
       insp::type<Struct1>("Struct1"),      //
       insp::type<Struct2>("Struct2"),      //
       insp::type<std::monostate>("nil"));  //
@@ -508,10 +508,10 @@ template<class Inspector>
 auto inspect(Inspector& f, MyEmbeddedVariant& x) {
   namespace insp = arangodb::inspection;
   return f.variant(x).embedded("t").alternatives(
-      insp::type<Struct1>("Struct1"),  //
-      insp::type<Struct2>("Struct2"),  //
-      insp::type<Struct3>("Struct3"),  //
-      insp::inlineType<bool>());       //
+      insp::inlineType<bool>(),         //
+      insp::type<Struct1>("Struct1"),   //
+      insp::type<Struct2>("Struct2"),   //
+      insp::type<Struct3>("Struct3"));  //
 }
 
 template<class Inspector>
