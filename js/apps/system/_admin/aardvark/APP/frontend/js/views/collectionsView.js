@@ -699,11 +699,7 @@
             });
 
             $('#distribute-shards-like').on('input', function (element) {
-              if (element.target.value !== '') {
-                $('#new-collection-shards').prop('disabled', true);
-              } else {
-                $('#new-collection-shards').prop('disabled', false);
-              }
+              $('#new-collection-shards').prop('disabled', element.target.value !== '');
             });
           }
         }
