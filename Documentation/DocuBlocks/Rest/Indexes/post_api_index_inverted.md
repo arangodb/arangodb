@@ -40,7 +40,9 @@ overwrite what features are enabled for the `analyzer`. Possible features:
 - `"position"`
 - `"offset"`
 
-Default: the features as defined by the Analyzer itself.
+Default: the features as defined by the Analyzer itself, or inherited from the
+top-level `features` option if the `analyzer` option adjacent to this option is
+not set.
 
 @RESTSTRUCT{includeAllFields,post_api_index_inverted_fields,boolean,optional,}
 This option only applies if you use the inverted index in a `search-alias` Views.
@@ -105,7 +107,9 @@ overwrite what features are enabled for the `analyzer`. Possible features:
 - `"position"`
 - `"offset"`
 
-Default: the features as defined by the Analyzer itself.
+Default: the features as defined by the Analyzer itself, or inherited from the
+the parent field's or top-level `features` option if no `analyzer` option is set
+at a deeper level, closer to this option.
 
 @RESTSTRUCT{searchField,post_api_index_inverted_nested,boolean,optional,}
 This option only applies if you use the inverted index in a `search-alias` Views.
