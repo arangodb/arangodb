@@ -457,8 +457,6 @@ if (NOT MSVC)
     RestServer/SupervisorFeature.cpp)
 endif()
 
-include(ClusterEngine/CMakeLists.txt)
-
 add_library(arango_zkd STATIC Zkd/ZkdHelper.cpp)
 
 target_link_libraries(arango_zkd arango)
@@ -475,10 +473,6 @@ add_library(arangoserver STATIC
   ${LIB_ARANGOSERVER_SOURCES}
 )
 
-add_library(arango_cluster_engine STATIC
-  ${CLUSTER_ENGINE_SOURCES}
-)
-
 # Note that arango_geo publicly exports the /J compile option for MSVC, because
 # s2 requires /J to be set on Windows.
 # /J makes char unsigned.
@@ -491,15 +485,6 @@ add_library(arango_cluster_engine STATIC
 # does not work, either, because
 # C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\atlmfc\include\atldef.h(94): fatal error C1189: #error:  ATL does not support compilation with /J or _CHAR_UNSIGNED flag enabled [C:\vm04-windows\oskar\work\ArangoDB\build\lib\arango.vcxproj]
 # .
-
-target_link_libraries(arango_cluster_engine arango_health)
-target_link_libraries(arango_cluster_engine arango_indexes)
-target_link_libraries(arango_cluster_engine boost_boost)
-target_link_libraries(arango_cluster_engine arango_v8 arango_v8_no_deadline)
-
-target_include_directories(arango_cluster_engine
-    PUBLIC ${IRESEARCH_INCLUDE}
-)
 
 target_link_libraries(arango_geo s2)
 
@@ -583,7 +568,6 @@ if (USE_FAIL_ON_WARNINGS)
 endif ()
 
 foreach(TARGET
-  arango_cluster_engine
   arango_iresearch
   arango_replication2
   arangod
@@ -622,6 +606,7 @@ add_subdirectory(Agency)
 add_subdirectory(Aql)
 add_subdirectory(Cache)
 add_subdirectory(Cluster)
+add_subdirectory(ClusterEngine)
 add_subdirectory(Graph)
 add_subdirectory(Indexes)
 add_subdirectory(Metrics)
