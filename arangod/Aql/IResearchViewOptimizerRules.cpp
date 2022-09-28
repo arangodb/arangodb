@@ -240,10 +240,11 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
 
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so may not be a temporary.
-    FilterContext const filterCtx{.contextAnalyzer = FieldMeta::identity()};
+    FilterContext const filterCtx{.query = ctx,
+                                  .contextAnalyzer = FieldMeta::identity()};
 
     auto filterCreated =
-        FilterFactory::filter(nullptr, ctx, filterCtx, *searchCondition.root());
+        FilterFactory::filter(nullptr, filterCtx, *searchCondition.root());
 
     if (filterCreated.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(

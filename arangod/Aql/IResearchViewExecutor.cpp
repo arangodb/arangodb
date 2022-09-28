@@ -727,8 +727,6 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
 
   // `_volatileSort` implies `_volatileFilter`
   if (infos().volatileFilter() || !_isInitialized) {
-    irs::Or root;
-
     iresearch::QueryContext queryCtx{
         .trx = &_trx,
         .ast = infos().plan().getAst(),
@@ -749,12 +747,15 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
       fieldAnalyzerProvider = &_provider;
       contextAnalyzer = &emptyAnalyzer;
     }
-    FilterContext const filterCtx{
-        .fieldAnalyzerProvider = fieldAnalyzerProvider,
-        .contextAnalyzer = *contextAnalyzer};
 
-    auto const rv = FilterFactory::filter(&root, queryCtx, filterCtx,
-                                          infos().filterCondition());
+    FilterContext const filterCtx{
+        .query = queryCtx,
+        .contextAnalyzer = *contextAnalyzer,
+        .fieldAnalyzerProvider = fieldAnalyzerProvider};
+
+    irs::Or root;
+    auto const rv =
+        FilterFactory::filter(&root, filterCtx, infos().filterCondition());
 
     if (rv.fail()) {
       arangodb::velocypack::Builder builder;
