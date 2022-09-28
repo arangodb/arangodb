@@ -2726,13 +2726,13 @@ RestAdminClusterHandler::collectRebalanceInformation(
       agencyCacheInfo[0].get({"arango", "Supervision", "Health"});
 
   std::unordered_set<std::string> activeServers;
-  for (auto const it : velocypack::ObjectIterator(serversHealthInfo)) {
-    if (it.value.get("Status").toString() == "GOOD") {
-      activeServers.emplace(it.key.toString());
+  for (auto it : velocypack::ObjectIterator(serversHealthInfo)) {
+    if (it.value.get("Status").stringView() == "GOOD") {
+      activeServers.emplace(it.key.copyString());
     }
   }
 
-  p.setServersHealthInfo(activeServers);
+  p.setServersHealthInfo(std::move(activeServers));
 
   std::unordered_map<ServerID, std::uint32_t> serverToIndex;
 
