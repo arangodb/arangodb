@@ -91,6 +91,23 @@ function inventorySuite () {
     });
   };
   
+  let validateSearchAliasAttributes = function (view) {
+    assertEqual("string", typeof view.globallyUniqueId);
+    assertEqual("string", typeof view.id);
+    assertEqual("string", typeof view.name);
+    assertEqual("string", typeof view.type);
+
+    assertTrue(Array.isArray(view.indexes));
+    view.indexes.forEach(function(index) {
+      assertEqual("string", typeof index.collection);
+      assertEqual(db._collection(index.collection).name(), index.collection);
+      let indexes = db._collection(index.collection).indexes().filter((idx) => idx.name === index.index);
+      assertEqual(1, indexes.length);
+      assertEqual(indexes[0].name, index.index);
+      assertEqual("inverted", indexes[0].type);
+    });
+  };
+  
   let validateCollectionAttributes = function (collection) {
     let parameters = collection.parameters;
     assertEqual("object", typeof parameters);
@@ -114,18 +131,47 @@ function inventorySuite () {
 
     let indexes = collection.indexes;
     assertTrue(Array.isArray(indexes));
+
     indexes.forEach(function (index) {
-      assertEqual("string", typeof index.id);
-      assertEqual("string", typeof index.type);
-      assertEqual("string", typeof index.name);
-      assertTrue(Array.isArray(index.fields));
-      index.fields.forEach(function (field) {
-        assertEqual("string", typeof field);
-      });
-      assertEqual("boolean", typeof index.unique);
-      assertEqual("boolean", typeof index.sparse);
+      assertEqual("string", typeof index.id, index);
+      assertEqual("string", typeof index.type, index);
+      assertEqual("string", typeof index.name, index);
+
+      assertTrue(Array.isArray(index.fields), index);
+      if (index.type === 'inverted') {
+        index.fields.forEach(function (field) {
+          assertEqual("string", typeof field.name);
+        });
+        assertEqual(index.analyzerDefinitions, [
+          {
+            "name": "custom",
+            "type": "delimiter",
+            "properties": {
+              "delimiter": " "
+            },
+            "features": [
+              "frequency"
+            ]
+          },
+          {
+            "name": "identity",
+            "type": "identity",
+            "properties": {},
+            "features": [
+              "frequency",
+              "norm"
+            ]
+          }
+        ]);
+      } else {
+        index.fields.forEach(function (field) {
+          assertEqual("string", typeof field);
+        });
+      }
+      assertEqual("boolean", typeof index.unique, index);
+      assertEqual("boolean", typeof index.sparse, index);
       if (index.hasOwnProperty("deduplicate")) {
-        assertEqual("boolean", typeof index.deduplicate);
+        assertEqual("boolean", typeof index.deduplicate, index);
       }
     });
 
@@ -186,6 +232,31 @@ function inventorySuite () {
             }
           }
         }
+      });
+
+      c = db._create("UnitTestsDumpSearchAliasCollection");
+      let idx = c.ensureIndex({ type: "inverted", fields: [{ name: "value" }] });
+     
+      view = db._createView("UnitTestsDumpViewSearchAlias", "search-alias", {});
+      view.properties({
+        indexes: [
+          {
+            "collection": c.name(),
+            "index": idx.name
+          }
+        ]
+      });
+      
+      c = db._create("UnitTestsDumpSearchAliasCollection2");
+      idx = c.ensureIndex({ type: "inverted", fields: [{ name: "value" }] });
+     
+      db._createView("UnitTestsDumpViewSearchAlias2", "search-alias", {
+        indexes: [
+          {
+            "collection": c.name(),
+            "index": idx.name
+          }
+        ]
       });
     },
     
@@ -257,10 +328,15 @@ function inventorySuite () {
         
         assertTrue(results.hasOwnProperty("views"));
         assertTrue(Array.isArray(results.views));
-        assertEqual(2, results.views.length);
+        assertEqual(4, results.views.length);
         
         results.views.forEach(function (view) {
-          validateViewAttributes(view);
+          assertTrue(view.type === "arangosearch" || view.type === "search-alias");
+          if (view.type === "arangosearch") {
+            validateViewAttributes(view);
+          } else if (view.type === "search-alias") {
+            validateSearchAliasAttributes(view);
+          }
         });
 
         // make view result order deterministic
@@ -334,6 +410,17 @@ function inventorySuite () {
         assertEqual(1000, view.consolidationIntervalMsec);
         assertEqual("tier", view.consolidationPolicy.type);
         assertEqual([], view.primarySort);
+        
+        view = results.views[2];
+        assertEqual("search-alias", view.type);
+        assertEqual("UnitTestsDumpViewSearchAlias", view.name);
+        assertEqual(1, view.indexes.length);
+        assertEqual("UnitTestsDumpSearchAliasCollection", view.indexes[0].collection);
+        
+        view = results.views[3];
+        assertEqual("search-alias", view.type);
+        assertEqual("UnitTestsDumpViewSearchAlias2", view.name);
+        assertEqual("UnitTestsDumpSearchAliasCollection2", view.indexes[0].collection);
       } finally {
         arango.DELETE("/_api/replication/batch" + batchId);
       }
