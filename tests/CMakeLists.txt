@@ -43,6 +43,11 @@ target_include_directories(fuertetest SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/fuerte/src
 )
 
+# Library of commonly used test utilities
+add_subdirectory(TestLib)
+
+# Common main function for tests
+add_subdirectory(TestMain)
 
 add_subdirectory(Zkd)
 
