@@ -2732,7 +2732,7 @@ RestAdminClusterHandler::collectRebalanceInformation(
     }
   }
 
-  p.setServersHealthInfo(activeServers);
+  p.setServersHealthInfo(std::move(activeServers));
 
   std::unordered_map<ServerID, std::uint32_t> serverToIndex;
 
