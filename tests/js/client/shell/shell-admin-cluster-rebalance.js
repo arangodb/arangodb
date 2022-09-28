@@ -194,10 +194,6 @@ function clusterRebalanceOtherOptionsSuite() {
       for (let i = 0; i < numCols; ++i) {
         for (let j = 0; j < 1000; ++j) {
           docs.push({"value": j});
-          if (docs.length > 100) {
-            db["col" + i].insert(docs);
-            docs = [];
-          }
         }
         db["col" + i].insert(docs);
         docs = [];
