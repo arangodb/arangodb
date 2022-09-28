@@ -35,11 +35,6 @@
 
 using namespace arangodb;
 
-namespace {
-constexpr std::string_view contents =
-    "Ein männlein steht im Walde, ganz still und stumm";
-}
-
 struct FileInfo {
   std::string name;
   std::size_t size;
