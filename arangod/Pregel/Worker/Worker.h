@@ -145,8 +145,6 @@ class Worker : public IWorker {
   uint64_t _activeCount = 0;
   /// current number of running threads
   size_t _runningThreads = 0;
-  /// if the worker has started sendng messages to the next GSS
-  std::atomic<bool> _requestedNextGSS;
   Scheduler::WorkHandle _workHandle;
 
   using VerticesProcessedFuture =

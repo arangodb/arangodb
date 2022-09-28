@@ -58,9 +58,6 @@ auto Storing::_cleanup() -> futures::Future<Result> {
                         fmt::format("While cleaning up: {}",
                                     cleanupFinished.errorMessage())};
         }
-        if (conductor._inErrorAbort) {
-          return Result{TRI_ERROR_INTERNAL, "Conductor in error"};
-        }
         return Result{};
       });
 }

@@ -65,7 +65,6 @@ struct Error {
 };
 
 struct PostGlobalSuperStepResult {
-  bool activateAll;
   bool finished;
 };
 
@@ -119,7 +118,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   uint64_t _maxSuperstep = 500;
   bool _useMemoryMaps = true;
   bool _storeResults = false;
-  bool _inErrorAbort = false;
 
   /// persistent tracking of active vertices, send messages, runtimes
   StatsManager _statistics;
@@ -139,9 +137,8 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   auto _changeState(std::unique_ptr<conductor::State> newState) -> void;
   auto _initializeWorkers() -> futures::Future<Result>;
-  auto _preGlobalSuperStep() -> bool;
-  auto _postGlobalSuperStep(VPackBuilder messagesFromWorkers)
-      -> PostGlobalSuperStepResult;
+  auto _preGlobalSuperStep() -> void;
+  auto _postGlobalSuperStep() -> PostGlobalSuperStepResult;
   void _cleanup();
 
   // === REST callbacks ===
