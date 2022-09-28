@@ -44,6 +44,8 @@ target_include_directories(fuertetest SYSTEM PRIVATE
 )
 
 
+add_subdirectory(Zkd)
+
 # ----------------------------------------
 # Link directories
 # ----------------------------------------
