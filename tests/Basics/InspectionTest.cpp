@@ -2658,17 +2658,17 @@ TEST_F(VPackInspectionTest, formatter) {
 
   auto def = fmt::format("My name is {}", d);
   EXPECT_EQ(def,
-            "My name is {\"b\":true,\"d\":123.456,\"i\":42,\"s\":\"cheese\"}");
+            "My name is {\"i\":42,\"d\":123.456,\"b\":true,\"s\":\"cheese\"}");
 
   auto notPretty = fmt::format("My name is {:u}", d);
   EXPECT_EQ(notPretty,
-            "My name is {\"b\":true,\"d\":123.456,\"i\":42,\"s\":\"cheese\"}");
+            "My name is {\"i\":42,\"d\":123.456,\"b\":true,\"s\":\"cheese\"}");
   EXPECT_EQ(def, notPretty);
 
   auto pretty = fmt::format("My name is {:p}", d);
   EXPECT_EQ(pretty,
-            "My name is {\n  \"b\" : true,\n  \"d\" : 123.456,\n  \"i\" : "
-            "42,\n  \"s\" : \"cheese\"\n}");
+            "My name is {\n  \"i\" : 42,\n  \"d\" : 123.456,\n  \"b\" : "
+            "true,\n  \"s\" : \"cheese\"\n}");
 }
 
 TEST_F(VPackInspectionTest, deserialize) {
