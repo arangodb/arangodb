@@ -188,21 +188,6 @@ if (MSVC AND NOT(SKIP_PACKAGING))
   )
 endif ()
 
-if (USE_ENTERPRISE)
-  set(ENTERPRISE_FILES "")
-else ()
-  set(ENTERPRISE_FILES
-    Utils/Events.cpp
-  )
-endif ()
-
-set(LIB_ARANGO_UTILS_SOURCES
-  Utils/ExecContext.cpp
-  Utils/OperationOptions.cpp
-  Utils/UrlHelper.cpp
-  ${ENTERPRISE_FILES}
-)
-
 set(LIB_ARANGO_INDEXES_SOURCES
   GeoIndex/Index.cpp
   GeoIndex/Covering.cpp
@@ -564,10 +549,6 @@ add_library(arango_v8server STATIC
   ${LIB_ARANGO_V8SERVER_SOURCES}
 )
 
-add_library(arango_utils STATIC
-  ${LIB_ARANGO_UTILS_SOURCES}
-)
-
 add_library(arango_indexes STATIC
   ${LIB_ARANGO_INDEXES_SOURCES}
 )
@@ -694,11 +675,6 @@ if (USE_ENTERPRISE)
   )
 endif()
 
-target_link_libraries(arango_utils boost_boost)
-target_link_libraries(arango_utils arango::validation)
-target_link_libraries(arango_utils arango_replication2)
-target_link_libraries(arango_utils immer)
-
 target_link_libraries(arango_v8server arango_agency)
 target_link_libraries(arango_v8server arango_iresearch)
 target_link_libraries(arango_v8server arango_replication)
@@ -788,7 +764,6 @@ foreach(TARGET
   arango_replication
   arango_replication2
   arango_rocksdb
-  arango_utils
   arango_v8server
   arangod
   arangoserver
@@ -829,4 +804,5 @@ add_subdirectory(Graph)
 add_subdirectory(Metrics)
 add_subdirectory(Pregel)
 add_subdirectory(StorageEngine)
+add_subdirectory(Utils)
 add_subdirectory(VocBase)
