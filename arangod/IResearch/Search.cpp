@@ -51,6 +51,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
+#include "Utils/ExecContext.h"
 #include "frozen/unordered_set.h"
 
 #ifdef USE_PLAN_CACHE
@@ -595,6 +596,14 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
     if (!safe) {
       sharedLock.lock();
     }
+
+    // we may need to check the permissions of the underlying
+    // collections
+    bool const checkPermissions =
+        ctx != Serialization::Persistence &&
+        ctx != Serialization::PersistenceWithInProgress &&
+        ctx != Serialization::Inventory;
+
     for (auto& [cid, handles] : _indexes) {
       for (auto& handle : handles) {
         if (auto inverted = handle->lock(); inverted) {
@@ -607,6 +616,18 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
           if (!collection) {
             continue;
           }
+
+          if (checkPermissions) {
+            if (auto const& ctx = ExecContext::current(); !ctx.isSuperuser()) {
+              if (!ctx.canUseCollection(vocbase().name(), collection->name(),
+                                        auth::Level::RO)) {
+                return {TRI_ERROR_FORBIDDEN,
+                        absl::StrCat("Current user cannot use collection '",
+                                     collection->name(), "'")};
+              }
+            }
+          }
+
           if (ctx == Serialization::Properties ||
               ctx == Serialization::Inventory) {
             build.add(velocypack::Value{velocypack::ValueType::Object});
@@ -627,6 +648,7 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
       }
     }
     build.close();
+
     return {};
   } catch (basics::Exception const& e) {
     return {
