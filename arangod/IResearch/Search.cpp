@@ -599,10 +599,9 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
 
     // we may need to check the permissions of the underlying
     // collections
+    auto const& execCtx = ExecContext::current();
     bool const checkPermissions =
-        ctx != Serialization::Persistence &&
-        ctx != Serialization::PersistenceWithInProgress &&
-        ctx != Serialization::Inventory;
+        ctx == Serialization::Properties && !execCtx.isSuperuser();
 
     for (auto& [cid, handles] : _indexes) {
       for (auto& handle : handles) {
@@ -617,15 +616,12 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
             continue;
           }
 
-          if (checkPermissions) {
-            if (auto const& ctx = ExecContext::current(); !ctx.isSuperuser()) {
-              if (!ctx.canUseCollection(vocbase().name(), collection->name(),
+          if (checkPermissions &&
+              !execCtx.canUseCollection(vocbase().name(), collection->name(),
                                         auth::Level::RO)) {
-                return {TRI_ERROR_FORBIDDEN,
-                        absl::StrCat("Current user cannot use collection '",
-                                     collection->name(), "'")};
-              }
-            }
+            return {TRI_ERROR_FORBIDDEN,
+                    absl::StrCat("Current user cannot use collection '",
+                                 collection->name(), "'")};
           }
 
           if (ctx == Serialization::Properties ||
