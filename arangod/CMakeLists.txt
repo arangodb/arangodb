@@ -446,11 +446,6 @@ if (MSVC)
   list(APPEND LIB_ARANGOSERVER_SOURCES RestServer/WindowsServiceFeature.cpp)
 endif()
 
-set(LIB_ARANGO_CLUSTER_METHODS_SOURCES
-  Cluster/ClusterMethods.cpp
-  Cluster/ClusterTtlMethods.cpp
-)
-
 if (USE_MAINTAINER_MODE)
   set(LIB_ARANGOSERVER_SOURCES ${LIB_ARANGOSERVER_SOURCES} RestHandler/RestTestHandler.cpp)
 endif()
@@ -500,10 +495,6 @@ add_library(arango_cluster_engine STATIC
   ${CLUSTER_ENGINE_SOURCES}
 )
 
-add_library(arango_cluster_methods STATIC
-  ${LIB_ARANGO_CLUSTER_METHODS_SOURCES}
-)
-
 # Note that arango_geo publicly exports the /J compile option for MSVC, because
 # s2 requires /J to be set on Windows.
 # /J makes char unsigned.
@@ -525,10 +516,6 @@ target_link_libraries(arango_cluster_engine arango_v8 arango_v8_no_deadline)
 target_include_directories(arango_cluster_engine
     PUBLIC ${IRESEARCH_INCLUDE}
 )
-
-target_link_libraries(arango_cluster_methods arango)
-target_link_libraries(arango_cluster_methods arango_network)
-target_link_libraries(arango_cluster_methods zlib_interface)
 
 target_link_libraries(arango_geo s2)
 
@@ -635,7 +622,6 @@ endif ()
 
 foreach(TARGET
   arango_cluster_engine
-  arango_cluster_methods
   arango_iresearch
   arango_replication2
   arango_rocksdb
@@ -674,6 +660,7 @@ install_config(arango-init-database)
 add_subdirectory(Agency)
 add_subdirectory(Aql)
 add_subdirectory(Cache)
+add_subdirectory(Cluster)
 add_subdirectory(Graph)
 add_subdirectory(Indexes)
 add_subdirectory(Metrics)
