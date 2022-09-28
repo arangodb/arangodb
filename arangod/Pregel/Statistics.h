@@ -66,7 +66,7 @@ auto inspect(Inspector& f, MessageStats& x) {
 
 struct StatsManager {
   void accumulate(MessageStats const& data) { _stats.accumulate(data); }
-  void accumulateActiveCounts(uint64_t counts) { _activeCounts += counts; }
+  void setActiveCounts(uint64_t counts) { _activeCounts = counts; }
 
   bool allMessagesProcessed() const { return _stats.allMessagesProcessed(); }
 

@@ -55,11 +55,6 @@ auto Computing::_prepareGlobalSuperStep() -> futures::Future<Result> {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 
-  conductor._aggregators->resetValues();
-  conductor._statistics.resetActiveCount();
-  conductor._totalVerticesCount = 0;
-  conductor._totalEdgesCount = 0;
-
   return conductor._workers
       .prepareGlobalSuperStep(
           PrepareGlobalSuperStep{.gss = conductor._globalSuperstep,
@@ -72,15 +67,16 @@ auto Computing::_prepareGlobalSuperStep() -> futures::Future<Result> {
                                     conductor._globalSuperstep,
                                     globalSuperStepPrepared.errorMessage())};
         }
+        conductor._aggregators->resetValues();
         for (auto aggregator : VPackArrayIterator(
                  globalSuperStepPrepared.get().aggregators.slice())) {
           conductor._aggregators->aggregateValues(aggregator);
         }
-        conductor._statistics.accumulateActiveCounts(
+        conductor._statistics.setActiveCounts(
             globalSuperStepPrepared.get().activeCount);
-        conductor._totalVerticesCount +=
+        conductor._totalVerticesCount =
             globalSuperStepPrepared.get().vertexCount;
-        conductor._totalEdgesCount += globalSuperStepPrepared.get().edgeCount;
+        conductor._totalEdgesCount = globalSuperStepPrepared.get().edgeCount;
         return Result{};
       });
 }
