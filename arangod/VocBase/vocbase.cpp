@@ -76,6 +76,7 @@
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/LogUnconfiguredParticipant.h"
+#include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
@@ -86,6 +87,8 @@
 #include "Replication2/Version.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
+#include "Network/ConnectionPool.h"
+#include "Network/NetworkFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -2157,6 +2160,59 @@ bool TRI_vocbase_t::visitDataSources(dataSourceVisitor const& visitor) {
   }
 
   return true;
+}
+
+// TODO Make this noexcept, do catchToResultT, and return all errors in the
+// Result?
+auto TRI_vocbase_t::updateReplicatedStateTerm(
+    arangodb::replication2::LogId logId,
+    replication2::agency::LogPlanSpecification const& spec)
+    -> futures::Future<arangodb::Result> {
+  // something has changed in the term volatile configuration
+  using namespace arangodb::replication2;
+  // TODO move code to algorithms for unit-testing?
+  //      is that really helpful, as this code contains no logic?
+
+  auto serverId = ServerState::instance()->getId();
+  auto rebootId = ServerState::instance()->getRebootId();
+  auto* pool = server().getFeature<NetworkFeature>().pool();
+
+  auto maybeLog =
+      _logManager->ensureReplicatedLog(*this, logId, std::nullopt /* TODO */);
+  if (maybeLog.fail()) {
+    THROW_ARANGO_EXCEPTION(maybeLog.result());
+  }
+  auto log = *maybeLog;
+
+  auto leader = log->getLeader();
+
+  TRI_ASSERT(leader != nullptr);
+  // Provide the leader with a way to build a follower
+  auto const buildFollower = [this, &logId,
+                              pool](ParticipantId const& participantId) {
+    return std::make_shared<replicated_log::NetworkAttachedFollower>(
+        pool, participantId, this->name(), logId);
+  };
+  auto index = leader->updateParticipantsConfig(
+      std::make_shared<agency::ParticipantsConfig const>(
+          spec.participantsConfig),
+      buildFollower);
+
+  return leader->waitFor(index).thenValue(
+      [](auto&& quorum) -> Result { return Result{TRI_ERROR_NO_ERROR}; });
+}
+
+auto TRI_vocbase_t::updateReplicatedStateConfig(
+    arangodb::replication2::LogId id,
+    replication2::agency::ParticipantsConfig const&) {
+  std::abort();  // TODO
+}
+
+auto TRI_vocbase_t::getReplicatedStatesQuickStatus() const
+    -> std::unordered_map<
+        arangodb::replication2::LogId,
+        arangodb::replication2::replicated_log::QuickLogStatus> {
+  std::abort();  // TODO
 }
 
 /// @brief sanitize an object, given as slice, builder must contain an

@@ -62,7 +62,7 @@ struct LogIndex;
 struct LogTerm;
 struct LogPayload;
 namespace agency {
-struct LogPlanTermSpecification;
+struct LogPlanSpecification;
 struct ParticipantsConfig;
 }  // namespace agency
 namespace replicated_log {
@@ -85,7 +85,10 @@ namespace velocypack {
 class Builder;
 class Slice;
 }  // namespace velocypack
-
+namespace futures {
+template<typename T>
+class Future;
+}
 class CursorRepository;
 struct DatabaseJavaScriptCache;
 class DatabaseReplicationApplier;
@@ -188,7 +191,8 @@ struct TRI_vocbase_t {
 
   auto updateReplicatedStateTerm(
       arangodb::replication2::LogId id,
-      arangodb::replication2::agency::LogPlanTermSpecification const&);
+      arangodb::replication2::agency::LogPlanSpecification const&)
+      -> arangodb::futures::Future<arangodb::Result>;
 
   auto updateReplicatedStateConfig(
       arangodb::replication2::LogId id,
