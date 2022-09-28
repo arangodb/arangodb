@@ -190,13 +190,14 @@ struct TRI_vocbase_t {
           arangodb::replication2::replicated_state::ReplicatedStateBase>>;
 
   auto updateReplicatedStateTerm(
-      arangodb::replication2::LogId id,
-      arangodb::replication2::agency::LogPlanSpecification const&)
+      arangodb::replication2::LogId logId,
+      arangodb::replication2::agency::LogPlanSpecification const& spec)
       -> arangodb::futures::Future<arangodb::Result>;
 
   auto updateReplicatedStateConfig(
       arangodb::replication2::LogId id,
-      arangodb::replication2::agency::ParticipantsConfig const&);
+      arangodb::replication2::agency::ParticipantsConfig const&)
+      -> futures::Future<arangodb::Result>;
 
   [[nodiscard]] auto getReplicatedStatesQuickStatus() const
       -> std::unordered_map<

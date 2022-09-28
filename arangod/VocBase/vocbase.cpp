@@ -63,6 +63,7 @@
 #include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
 #include "Containers/Helpers.h"
+#include "Cluster/FailureOracleFeature.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Logger/LogContextKeys.h"
@@ -71,6 +72,7 @@
 #include "Replication/ReplicationClients.h"
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
@@ -2163,10 +2165,60 @@ bool TRI_vocbase_t::visitDataSources(dataSourceVisitor const& visitor) {
 }
 
 // TODO Make this noexcept, do catchToResultT, and return all errors in the
-// Result?
+//      Result?
 auto TRI_vocbase_t::updateReplicatedStateTerm(
     arangodb::replication2::LogId logId,
     replication2::agency::LogPlanSpecification const& spec)
+    -> futures::Future<arangodb::Result> {
+  TRI_ASSERT(logId == spec.id);
+  TRI_ASSERT(spec.currentTerm.has_value());
+  using namespace arangodb::replication2;
+  auto myServerId = ServerState::instance()->getId();
+  auto myRebootId = ServerState::instance()->getRebootId();
+  auto* pool = server().getFeature<NetworkFeature>().pool();
+  auto& plannedLeader = spec.currentTerm->leader;
+  auto log = _logManager->getReplicatedLogById(logId);
+  auto failureOracle =
+      server().getFeature<cluster::FailureOracleFeature>().getFailureOracle();
+
+  if (plannedLeader.has_value() && plannedLeader->serverId == myServerId &&
+      plannedLeader->rebootId == myRebootId) {
+    auto followers = std::vector<
+        std::shared_ptr<replication2::replicated_log::AbstractFollower>>{};
+    for (auto const& [participant, data] :
+         spec.participantsConfig.participants) {
+      if (participant != myServerId) {
+        followers.emplace_back(
+            std::make_shared<replicated_log::NetworkAttachedFollower>(
+                pool, participant, this->name(), logId));
+      }
+    }
+
+    TRI_ASSERT(spec.participantsConfig.generation > 0);
+    auto newLeader = log->becomeLeader(
+        myServerId, spec.currentTerm->term, followers,
+        std::make_shared<agency::ParticipantsConfig>(spec.participantsConfig),
+        std::move(failureOracle));
+    newLeader->triggerAsyncReplication();  // TODO move this call into
+                                           // becomeLeader?
+    return newLeader->waitForLeadership().thenValue(
+        [](auto&& quorum) -> Result { return Result{TRI_ERROR_NO_ERROR}; });
+  } else {
+    auto leaderString = std::optional<ParticipantId>{};
+    if (spec.currentTerm->leader) {
+      leaderString = spec.currentTerm->leader->serverId;
+    }
+
+    std::ignore =
+        log->becomeFollower(myServerId, spec.currentTerm->term, leaderString);
+  }
+}
+
+// TODO Make this noexcept, do catchToResultT, and return all errors in the
+//      Result?
+auto TRI_vocbase_t::updateReplicatedStateConfig(
+    arangodb::replication2::LogId logId,
+    replication2::agency::ParticipantsConfig const& participantsConfig)
     -> futures::Future<arangodb::Result> {
   // something has changed in the term volatile configuration
   using namespace arangodb::replication2;
@@ -2177,6 +2229,7 @@ auto TRI_vocbase_t::updateReplicatedStateTerm(
   auto rebootId = ServerState::instance()->getRebootId();
   auto* pool = server().getFeature<NetworkFeature>().pool();
 
+  // TODO ensure or getReplicatedLogById?
   auto maybeLog =
       _logManager->ensureReplicatedLog(*this, logId, std::nullopt /* TODO */);
   if (maybeLog.fail()) {
@@ -2194,18 +2247,11 @@ auto TRI_vocbase_t::updateReplicatedStateTerm(
         pool, participantId, this->name(), logId);
   };
   auto index = leader->updateParticipantsConfig(
-      std::make_shared<agency::ParticipantsConfig const>(
-          spec.participantsConfig),
+      std::make_shared<agency::ParticipantsConfig const>(participantsConfig),
       buildFollower);
 
   return leader->waitFor(index).thenValue(
       [](auto&& quorum) -> Result { return Result{TRI_ERROR_NO_ERROR}; });
-}
-
-auto TRI_vocbase_t::updateReplicatedStateConfig(
-    arangodb::replication2::LogId id,
-    replication2::agency::ParticipantsConfig const&) {
-  std::abort();  // TODO
 }
 
 auto TRI_vocbase_t::getReplicatedStatesQuickStatus() const
