@@ -700,6 +700,7 @@
 
             $('#distribute-shards-like').on('input', function (element) {
               $('#new-collection-shards').prop('disabled', element.target.value !== '');
+              $('#new-replication-factor').prop('disabled', element.target.value !== '');
             });
           }
         }
