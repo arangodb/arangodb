@@ -206,69 +206,76 @@ function clusterRebalanceOtherOptionsSuite() {
     },
 
     testCalcRebalanceStopServer: function () {
-      let dbServers = instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
+      const dbServers = instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
       assertNotEqual(dbServers.length, 0);
       for (let i = 0; i < dbServers.length; ++i) {
         dbServer = dbServers[i];
         assertTrue(suspendExternal(dbServer.pid));
-        let serverHealth = null;
-        let startTime = Date.now();
-        let result = null;
-        do {
-          wait(2);
-          result = getServersHealth();
-          assertNotNull(result);
-          serverHealth = result[dbServer.id].Status;
-          assertNotNull(serverHealth);
-          const timeElapsed = (Date.now() - startTime) / 1000;
-          assertTrue(timeElapsed < 300, "Server expected status not acquired");
-        } while (serverHealth !== "FAILED");
-        dbServer.suspended = true;
-        const serverShortName = result[dbServer.id].ShortName;
-        assertEqual(serverHealth, "FAILED");
-        startTime = Date.now();
-        let serverUsed;
-        do {
-          wait(2);
-          serverUsed = false;
-          for (let j = 0; j < numCols; ++j) {
-            result = arango.GET("/_admin/cluster/shardDistribution").results["col" + j].Plan;
-            for (let key of Object.keys(result)) {
-              if (result[key].leader === serverShortName) {
-                serverUsed = true;
+        try {
+          let serverHealth = null;
+          let startTime = Date.now();
+          let result = null;
+          do {
+            wait(2);
+            result = getServersHealth();
+            assertNotNull(result);
+            serverHealth = result[dbServer.id].Status;
+            assertNotNull(serverHealth);
+            const timeElapsed = (Date.now() - startTime) / 1000;
+            assertTrue(timeElapsed < 300, "Server expected status not acquired");
+          } while (serverHealth !== "FAILED");
+          dbServer.suspended = true;
+          const serverShortName = result[dbServer.id].ShortName;
+          assertEqual(serverHealth, "FAILED");
+          startTime = Date.now();
+          let serverUsed;
+          do {
+            wait(2);
+            serverUsed = false;
+            for (let j = 0; j < numCols; ++j) {
+              result = arango.GET("/_admin/cluster/shardDistribution").results["col" + j].Plan;
+              for (let key of Object.keys(result)) {
+                if (result[key].leader === serverShortName) {
+                  serverUsed = true;
+                  break;
+                }
+                result[key].followers.forEach(follower => {
+                  if (follower === serverShortName) {
+                    serverUsed = true;
+                  }
+                });
+              }
+              if (serverUsed === true) {
                 break;
               }
-              result[key].followers.forEach(follower => {
-                if (follower === serverShortName) {
-                  serverUsed = true;
-                }
-              });
+              const timeElapsed = (Date.now() - startTime) / 1000;
+              assertTrue(timeElapsed < 300, "Moving shards from server in ill state not acquired");
             }
-            if (serverUsed === true) {
-              break;
-            }
-            const timeElapsed = (Date.now() - startTime) / 1000;
-            assertTrue(timeElapsed < 300, "Moving shards from server in ill state not acquired");
-          }
-        } while (serverUsed);
+          } while (serverUsed);
 
-        result = getRebalancePlan(true, true, true);
-        let moves = result.result.moves;
-        assertTrue(moves.length > 0);
-        for (const job of moves) {
-          assertNotEqual(job.to, dbServer.id);
+          result = getRebalancePlan(true, true, true);
+          let moves = result.result.moves;
+          assertTrue(moves.length > 0);
+          for (const job of moves) {
+            assertNotEqual(job.to, dbServer.id);
+          }
+        } catch (err) {
+
+        } finally {
+          assertTrue(continueExternal(dbServer.pid));
+          let serverHealth = null;
+          const startTime = Date.now();
+          do {
+            wait(2);
+            const result = getServersHealth();
+            assertNotNull(result);
+            serverHealth = result[dbServer.id].Status;
+            assertNotNull(serverHealth);
+            const timeElapsed = (Date.now() - startTime) / 1000;
+            assertTrue(timeElapsed < 300, "Unable to get server " + dbServer.id + " in good state");
+          } while (serverHealth !== "GOOD");
+          dbServer.suspended = false;
         }
-        assertTrue(continueExternal(dbServer.pid));
-        do {
-          wait(2);
-          result = getServersHealth();
-          assertNotNull(result);
-          serverHealth = result[dbServer.id].Status;
-          assertNotNull(serverHealth);
-          const timeElapsed = (Date.now() - startTime) / 1000;
-          assertTrue(timeElapsed < 300, "Unable to get server " + dbServer.id + " in good state");
-        } while (serverHealth !== "GOOD");
-        dbServer.suspended = false;
       }
     },
 
