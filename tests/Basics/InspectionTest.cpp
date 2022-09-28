@@ -521,29 +521,33 @@ auto inspect(Inspector& f, EmbeddedVariant& x) {
 }
 
 struct MyInlineVariant
-    : std::variant<std::string, Struct1, std::vector<int>, TypedInt> {};
+    : std::variant<std::string, Struct1, std::vector<int>, TypedInt,
+                   std::tuple<std::string, int, bool>> {};
 
 struct InlineVariant {
   MyInlineVariant a;
   MyInlineVariant b;
   MyInlineVariant c;
   MyInlineVariant d;
+  MyInlineVariant e;
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, MyInlineVariant& x) {
   namespace insp = arangodb::inspection;
   return f.variant(x).unqualified().alternatives(
-      insp::inlineType<std::string>(),       //
-      insp::inlineType<Struct1>(),           //
-      insp::inlineType<std::vector<int>>(),  //
-      insp::inlineType<TypedInt>());         //
+      insp::inlineType<std::string>(),                          //
+      insp::inlineType<Struct1>(),                              //
+      insp::inlineType<std::vector<int>>(),                     //
+      insp::inlineType<TypedInt>(),                             //
+      insp::inlineType<std::tuple<std::string, int, bool>>());  //
 }
 
 template<class Inspector>
 auto inspect(Inspector& f, InlineVariant& x) {
   return f.object(x).fields(f.field("a", x.a), f.field("b", x.b),
-                            f.field("c", x.c), f.field("d", x.d));
+                            f.field("c", x.c), f.field("d", x.d),
+                            f.field("e", x.e));
 }
 
 enum class MyStringEnum {
@@ -1025,7 +1029,8 @@ TEST_F(VPackSaveInspectorTest, store_inline_variant) {
   InlineVariant d{.a = {"foobar"},
                   .b = {Struct1{.v = 42}},
                   .c = {std::vector<int>{1, 2, 3}},
-                  .d = {TypedInt{.value = 123}}};
+                  .d = {TypedInt{.value = 123}},
+                  .e = {std::tuple{"blubb", 987, true}}};
   auto result = inspector.apply(d);
   ASSERT_TRUE(result.ok());
 
@@ -1044,6 +1049,12 @@ TEST_F(VPackSaveInspectorTest, store_inline_variant) {
   EXPECT_EQ(3, slice["c"][2].getInt());
 
   EXPECT_EQ(123, slice["d"].getInt());
+
+  EXPECT_TRUE(slice["e"].isArray());
+  EXPECT_EQ(3u, slice["e"].length());
+  EXPECT_EQ("blubb", slice["e"][0].stringView());
+  EXPECT_EQ(987, slice["e"][1].getInt());
+  EXPECT_EQ(true, slice["e"][2].getBoolean());
 }
 
 TEST_F(VPackSaveInspectorTest, store_string_enum) {
@@ -2266,16 +2277,25 @@ TEST_F(VPackLoadInspectorTest, load_inline_variant) {
 
   builder.add("d", VPackValue(123));
 
+  builder.add(VPackValue("e"));
+  builder.openArray();
+  builder.add(VPackValue("blubb"));
+  builder.add(VPackValue(987));
+  builder.add(VPackValue(true));
+  builder.close();
+
   builder.close();
   VPackLoadInspector inspector{builder};
 
-  InlineVariant v{.a = {""}, .b = {""}, .c = {""}, .d{""}};
+  InlineVariant v{.a = {}, .b = {}, .c = {}, .d{}, .e = {}};
   auto result = inspector.apply(v);
   ASSERT_TRUE(result.ok()) << result.error();
   EXPECT_EQ("foobar", std::get<std::string>(v.a));
   EXPECT_EQ(42, std::get<Struct1>(v.b).v);
   EXPECT_EQ(std::vector<int>({1, 2, 3}), std::get<std::vector<int>>(v.c));
   EXPECT_EQ(123, std::get<TypedInt>(v.d).value);
+  EXPECT_EQ(std::make_tuple("blubb", 987, true),
+            (std::get<std::tuple<std::string, int, bool>>(v.e)));
 }
 
 TEST_F(VPackLoadInspectorTest, error_unknown_type_when_loading_inline_variant) {
