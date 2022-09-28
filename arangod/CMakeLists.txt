@@ -188,26 +188,6 @@ if (MSVC AND NOT(SKIP_PACKAGING))
   )
 endif ()
 
-set(LIB_ARANGO_REPLICATION_SOURCES
-  Replication/DatabaseInitialSyncer.cpp
-  Replication/DatabaseTailingSyncer.cpp
-  Replication/GlobalInitialSyncer.cpp
-  Replication/GlobalReplicationApplier.cpp
-  Replication/GlobalTailingSyncer.cpp
-  Replication/InitialSyncer.cpp
-  Replication/ReplicationApplier.cpp
-  Replication/ReplicationApplierConfiguration.cpp
-  Replication/ReplicationApplierState.cpp
-  Replication/ReplicationClients.cpp
-  Replication/ReplicationFeature.cpp
-  Replication/ReplicationMetricsFeature.cpp
-  Replication/Syncer.cpp
-  Replication/SyncerId.cpp
-  Replication/TailingSyncer.cpp
-  Replication/common-defines.cpp
-  Replication/utilities.cpp
-  )
-
 set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/AgencyCollectionSpecification.cpp
   Replication2/AgencyMethods.cpp
@@ -538,10 +518,6 @@ add_library(arango_v8server STATIC
   ${LIB_ARANGO_V8SERVER_SOURCES}
 )
 
-add_library(arango_replication STATIC
-  ${LIB_ARANGO_REPLICATION_SOURCES}
-)
-
 add_library(arango_replication2 STATIC
   ${LIB_ARANGO_REPLICATION2_SOURCES}
 )
@@ -624,10 +600,6 @@ target_link_libraries(arango_network nghttp2)
 target_link_libraries(arango_network arango::validation)
 target_link_libraries(arango_network arango_replication2)
 target_link_libraries(arango_network immer)
-
-target_link_libraries(arango_replication arango_storage_engine)
-target_link_libraries(arango_replication arango_utils)
-target_link_libraries(arango_replication arango_vocbase)
 
 target_link_libraries(arango_replication2 arango)
 target_link_libraries(arango_replication2 immer)
@@ -738,7 +710,6 @@ foreach(TARGET
   arango_common_rest_handler
   arango_iresearch
   arango_network
-  arango_replication
   arango_replication2
   arango_rocksdb
   arango_v8server
@@ -781,6 +752,7 @@ add_subdirectory(Graph)
 add_subdirectory(Indexes)
 add_subdirectory(Metrics)
 add_subdirectory(Pregel)
+add_subdirectory(Replication)
 add_subdirectory(StorageEngine)
 add_subdirectory(Utils)
 add_subdirectory(VocBase)
