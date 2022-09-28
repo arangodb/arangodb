@@ -3,10 +3,6 @@
   assertNotEqual, assertUndefined, fail, AQL_EXECUTE, assertNotUndefined */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, bind parameters
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -35,33 +31,12 @@ const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const getModifyQueryResults = helper.getModifyQueryResults;
 const getModifyQueryResultsRaw = helper.getModifyQueryResultsRaw;
+const sanitizeStats = helper.sanitizeStats;
 const isEqual = helper.isEqual;
 const assertQueryError = helper.assertQueryError;
 const errors = internal.errors;
 
-let sanitizeStats = function (stats) {
-  // remove these members from the stats because they don't matter
-  // for the comparisons
-  delete stats.scannedFull;
-  delete stats.scannedIndex;
-  delete stats.cursorsCreated;
-  delete stats.cursorsRearmed;
-  delete stats.cacheHits;
-  delete stats.cacheMisses;
-  delete stats.filtered;
-  delete stats.executionTime;
-  delete stats.httpRequests;
-  delete stats.fullCount;
-  delete stats.peakMemoryUsage;
-  delete stats.intermediateCommits;
-  return stats;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 
-////////////////////////////////////////////////////////////////////////////////
-
-var validateDocuments = function (documents, isEdgeCollection) {
+let validateDocuments = function (documents, isEdgeCollection) {
   for (let index in documents) {
     if (documents.hasOwnProperty(index)) {
       assertTrue(documents[index].hasOwnProperty('_id'));
@@ -79,7 +54,7 @@ var validateDocuments = function (documents, isEdgeCollection) {
 /// @brief check whether the documents reported deleted are really gone
 ////////////////////////////////////////////////////////////////////////////////
 
-var validateDeleteGone = function (collection, results) {
+let validateDeleteGone = function (collection, results) {
   for (let index in results) {
     if (results.hasOwnProperty(index)) {
       try {
@@ -98,17 +73,12 @@ var validateDeleteGone = function (collection, results) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlRemoveSuite () {
-  const errors = internal.errors;
   const cn1 = "UnitTestsAhuacatlRemove1";
   const cn2 = "UnitTestsAhuacatlRemove2";
   let c1;
   let c2;
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
       db._drop(cn1);
@@ -123,10 +93,6 @@ function ahuacatlRemoveSuite () {
       c1.insert(docs);
       c2.insert(docs.slice(0, 50));
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       db._drop(cn1);

@@ -3,10 +3,6 @@
   assertNotEqual, assertUndefined, fail, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, bind parameters
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -35,33 +31,12 @@ const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const getModifyQueryResults = helper.getModifyQueryResults;
 const getModifyQueryResultsRaw = helper.getModifyQueryResultsRaw;
+const sanitizeStats = helper.sanitizeStats;
 const isEqual = helper.isEqual;
 const assertQueryError = helper.assertQueryError;
 const errors = internal.errors;
 
-let sanitizeStats = function (stats) {
-  // remove these members from the stats because they don't matter
-  // for the comparisons
-  delete stats.scannedFull;
-  delete stats.scannedIndex;
-  delete stats.cursorsCreated;
-  delete stats.cursorsRearmed;
-  delete stats.cacheHits;
-  delete stats.cacheMisses;
-  delete stats.filtered;
-  delete stats.executionTime;
-  delete stats.httpRequests;
-  delete stats.fullCount;
-  delete stats.peakMemoryUsage;
-  delete stats.intermediateCommits;
-  return stats;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 
-////////////////////////////////////////////////////////////////////////////////
-
-var validateDocuments = function (documents, isEdgeCollection) {
+let validateDocuments = function (documents, isEdgeCollection) {
   for (let index in documents) {
     if (documents.hasOwnProperty(index)) {
       assertTrue(documents[index].hasOwnProperty('_id'));
@@ -79,7 +54,7 @@ var validateDocuments = function (documents, isEdgeCollection) {
 /// @brief check whether the documents inserted are equal on the db.
 ////////////////////////////////////////////////////////////////////////////////
 
-var validateModifyResultInsert = function (collection, results) {
+let validateModifyResultInsert = function (collection, results) {
   for (let index in results) {
     if (results.hasOwnProperty(index)){
       assertTrue(isEqual(collection.document(results[index]._key), results[index]));
@@ -92,7 +67,6 @@ var validateModifyResultInsert = function (collection, results) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlInsertSuite () {
-  var errors = internal.errors;
   const cn1 = "UnitTestsAhuacatlInsert1";
   const cn2 = "UnitTestsAhuacatlInsert2";
   let c1;
@@ -761,7 +735,6 @@ function ahuacatlInsertSuite () {
 
   };
 }
-
 
 jsunity.run(ahuacatlInsertSuite);
 return jsunity.done();
