@@ -177,7 +177,6 @@ function clusterRebalanceSuite() {
 
 function clusterRebalanceOtherOptionsSuite() {
   let prevDB = null;
-  let dbServer = null;
   const numCols = 3;
 
   return {
@@ -209,7 +208,7 @@ function clusterRebalanceOtherOptionsSuite() {
       const dbServers = instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
       assertNotEqual(dbServers.length, 0);
       for (let i = 0; i < dbServers.length; ++i) {
-        dbServer = dbServers[i];
+        let dbServer = dbServers[i];
         assertTrue(suspendExternal(dbServer.pid));
         try {
           let serverHealth = null;
