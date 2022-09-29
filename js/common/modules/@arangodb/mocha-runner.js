@@ -93,11 +93,13 @@ function logSuite (suite, indentLevel) {
       }
     }
   }
-  for (let sub of suite.suites) {
-    logSuite(sub, indentLevel + 1);
-  }
-  if (suite.suites.length) {
-    print();
+  if (suite.suites != null && typeof suite.suites[Symbol.iterator] === 'function') {
+    for (let sub of suite.suites) {
+      logSuite(sub, indentLevel + 1);
+    }
+    if (suite.suites.length) {
+      print();
+    }
   }
 }
 
