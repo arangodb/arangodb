@@ -312,7 +312,11 @@ wrapped type is created and inspected recursively.
 
 Even though support for variants is built-in, the inspection library needs some
 additional information about the variant type. There is an API to describe
-variants - very similar to what we previously saw for objects.
+variants - very similar to what we previously saw for objects. There are
+different ways how a variant value can be encoded. There are inline types and
+non-inline types. The latter have a dedicated type indicator field while the
+first ones do not. Non-inline types can come in three different forms -
+"qualified", "unqualified" and "embedded".
 
 Consider the following example:
 ```cpp
@@ -322,20 +326,46 @@ template<class Inspector>
 auto inspect(Inspector& f, MyVariant& x) {
   namespace insp = arangodb::inspection;
   return f.variant(x).qualified("type", "value").alternatives(
-      insp::type<std::string>("string"),
+      insp::inlineType<std::string>(),
       insp::type<int>("int"),
       insp::type<Struct1>("Struct1"));
 }
 ```
-This serializes/deserializes the variant in "qualified form". At the moment
-there are three supported forms - "qualified", "unqualified" and "embedded".
+This serializes/deserializes the variant in "qualified form", where `string` is
+defined as an inline type, while `int` and `Struct1` are non-inline types.
+
+As already mentioned, inline types do not have a type indicator, but instead
+the values are just directly stored as-is. So writing inline types is very
+straightforward, but for parsing we somehow have to determine the type based
+on the data. Basically how this is done is that we simply try to parse each of
+the inline types (in the order in which they are specified). If the parse was
+successful, then that is the type and value that we use, otherwise we continue
+with the next type. So if you have two types `A` and `B` where `A` is a
+supertype of `B` (i.e., every possible value for `B` would also be a possible
+value for `A` - for example double/int), then `B` must be listed before `A`.
+
+Note: _any_ errors (including failed invariants) that occur while trying to
+parse inline types are _ignored_ and the type is dismissed!
+
+Inline types are primarily useful for scalar types like `string`, `int` or
+`bool`, but you can actually use it for arbitrary types. We try to be smart and
+rule out some cases that we know will fail to parse based on the velocypack
+type, e.g., if our target type is `string` and the velocypack type is something
+else. But if none of these checks fail, we simply have to try to parse into an
+instance of the current target type, so we have to create a default constructed
+instance.
+
+Inline types are always checked first (and therefore also _must_ be listed
+before the non-inline types, otherwise you will get a compiler error pointing
+this out). Only if none of those could be parsed we move on to the non-inline
+types.
 
 In "qualified" form the variant is serialized as an object with two attributes
 as specified in the `qualified` call. For example:
 ```
 {
-  "type": "string",
-  "value: "foobar"
+  "type": "int",
+  "value: 42
 }
 ```
 In "unqualified" form the variant is also serialized as an object, but only
@@ -357,9 +387,9 @@ Then the generated result would instead look like this:
   "string": "foobar"
 }
 ```
-The "embedded" form can only be used if all types in the variant are inspected
-as objects. In this form the type indicator field is then serialized on the
-same level as the object fields:
+The "embedded" form can only be used if all types (except for the inline types)
+in the variant are inspected as objects. In this form the type indicator field
+is then serialized on the same level as the object fields:
 ```cpp
 struct Struct1 { int a; }:
 struct Struct2 { int b; }:
