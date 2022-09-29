@@ -26,6 +26,7 @@
 #include <functional>
 #include <limits>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
@@ -39,6 +40,8 @@
 
 #include "Inspection/InspectorBase.h"
 #include "Inspection/Status.h"
+#include "Inspection/detail/traits.h"
+#include "velocypack/ValueType.h"
 
 namespace arangodb::inspection {
 
@@ -264,73 +267,16 @@ struct VPackLoadInspectorImpl
     return result;
   }
 
-  template<class... Ts, class... Args>
-  auto processVariant(
-      typename Base::template UnqualifiedVariant<Ts...>& variant,
-      Args&&... args) {
-    auto loadVariant = [&]() -> Status {
-      VPackObjectIterator it(_slice);
-      if (!it.valid()) {
-        return {"Missing unqualified variant data"};
-      }
-      auto [type, value] = *it;
-      TRI_ASSERT(type.isString());
-      auto parser = [this, value = value](auto& v) {
-        auto inspector = make(value);
-        return inspector.apply(v);
-      };
-      auto fieldName = [](auto const& arg) { return arg.tag; };
-      return parseType(type.stringView(), parser, fieldName, variant.value,
-                       std::forward<Args>(args)...);
-    };
-    return beginObject()                     //
-           | loadVariant                     //
-           | [&]() { return endObject(); };  //
-  }
-
-  template<class... Ts, class... Args>
-  auto processVariant(typename Base::template QualifiedVariant<Ts...>& variant,
-                      Args&&... args) {
-    std::string_view type;
-    auto loadVariant = [&]() -> Status {
-      auto value = slice()[variant.valueField];
-      if (value.isNone()) {
-        return {"Variant value field \"" + std::string(variant.valueField) +
-                "\" is missing"};
-      }
-
-      auto parser = [this, value](auto& v) {
-        auto inspector = make(value);
-        return inspector.apply(v);
-      };
-      auto fieldName = [&variant](auto const& arg) {
-        return variant.valueField;
-      };
-      return parseType(type, parser, fieldName, variant.value,
-                       std::forward<Args>(args)...);
-    };
-    return beginObject()                                               //
-           | [&]() { return loadTypeField(variant.typeField, type); }  //
-           | loadVariant                                               //
-           | [&]() { return endObject(); };                            //
-  }
-
-  template<class... Ts, class... Args>
-  auto processVariant(typename Base::template EmbeddedVariant<Ts...>& variant,
-                      Args&&... args) {
-    std::string_view type;
-    auto loadVariant = [&]() -> Status {
-      auto parser = [this, &variant](auto& v) {
-        return applyFields(this->ignoreField(variant.typeField),
-                           this->embedFields(v));
-      };
-      return parseType(type, parser, std::monostate{}, variant.value,
-                       std::forward<Args>(args)...);
-    };
-    return beginObject()                                               //
-           | [&]() { return loadTypeField(variant.typeField, type); }  //
-           | loadVariant                                               //
-           | [&]() { return endObject(); };                            //
+  template<class T, class Arg, class... Args>
+  auto processVariant(T& variant, Arg&& arg, Args&&... args) {
+    if constexpr (Arg::isInlineType) {
+      auto type = _slice.type();
+      return parseVariant(type, variant, std::forward<Arg>(arg),
+                          std::forward<Args>(args)...);
+    } else {
+      return parseNonInlineTypes(variant, std::forward<Arg>(arg),
+                                 std::forward<Args>(args)...);
+    }
   }
 
   template<class Invariant, class T>
@@ -369,6 +315,103 @@ struct VPackLoadInspectorImpl
     } else {
       return VPackLoadInspectorImpl(slice, _options);
     }
+  }
+
+  template<class T, class Arg, class... Args>
+  Status parseVariant(velocypack::ValueType type, T& variant, Arg&& arg,
+                      Args&&... args) {
+    if constexpr (Arg::isInlineType) {
+      if (shouldTryType<typename Arg::Type>(type)) {
+        typename Arg::Type v;
+        auto res = this->apply(v);
+        if (res.ok()) {
+          variant.value = std::move(v);
+          return res;
+        }
+      }
+
+      if constexpr (sizeof...(Args) == 0) {
+        return {"Could not find matching inline type"};
+      } else {
+        return parseVariant(type, variant, std::forward<Args>(args)...);
+      }
+    } else {
+      return parseNonInlineTypes(variant, std::forward<Arg>(arg),
+                                 std::forward<Args>(args)...);
+    }
+  }
+
+  template<class... Ts, class... Args>
+  auto parseNonInlineTypes(
+      typename Base::template UnqualifiedVariant<Ts...>& variant,
+      Args&&... args) {
+    auto loadVariant = [&]() -> Status {
+      if (_slice.length() > 1) {
+        return {"Unqualified variant data has too many fields"};
+      }
+      VPackObjectIterator it(_slice);
+      if (!it.valid()) {
+        return {"Missing unqualified variant data"};
+      }
+      auto [type, value] = *it;
+      TRI_ASSERT(type.isString());
+      auto parser = [this, value = value](auto& v) {
+        auto inspector = make(value);
+        return inspector.apply(v);
+      };
+      auto fieldName = [](auto const& arg) { return arg.tag; };
+      return parseType(type.stringView(), parser, fieldName, variant.value,
+                       std::forward<Args>(args)...);
+    };
+    return beginObject()                     //
+           | loadVariant                     //
+           | [&]() { return endObject(); };  //
+  }
+
+  template<class... Ts, class... Args>
+  auto parseNonInlineTypes(
+      typename Base::template QualifiedVariant<Ts...>& variant,
+      Args&&... args) {
+    std::string_view type;
+    auto loadVariant = [&]() -> Status {
+      auto value = slice()[variant.valueField];
+      if (value.isNone()) {
+        return {"Variant value field \"" + std::string(variant.valueField) +
+                "\" is missing"};
+      }
+
+      auto parser = [this, value](auto& v) {
+        auto inspector = make(value);
+        return inspector.apply(v);
+      };
+      auto fieldName = [&variant](auto const& arg) {
+        return variant.valueField;
+      };
+      return parseType(type, parser, fieldName, variant.value,
+                       std::forward<Args>(args)...);
+    };
+    return beginObject()                                               //
+           | [&]() { return loadTypeField(variant.typeField, type); }  //
+           | loadVariant                                               //
+           | [&]() { return endObject(); };                            //
+  }
+
+  template<class... Ts, class... Args>
+  auto parseNonInlineTypes(
+      typename Base::template EmbeddedVariant<Ts...>& variant, Args&&... args) {
+    std::string_view type;
+    auto loadVariant = [&]() -> Status {
+      auto parser = [this, &variant](auto& v) {
+        return applyFields(this->ignoreField(variant.typeField),
+                           this->embedFields(v));
+      };
+      return parseType(type, parser, std::monostate{}, variant.value,
+                       std::forward<Args>(args)...);
+    };
+    return beginObject()                                               //
+           | [&]() { return loadTypeField(variant.typeField, type); }  //
+           | loadVariant                                               //
+           | [&]() { return endObject(); };                            //
   }
 
   Status loadTypeField(std::string_view fieldName, std::string_view& result) {
@@ -472,6 +515,9 @@ struct VPackLoadInspectorImpl
            class... Args>
   Status parseType(std::string_view tag, ParseFn parse, FieldNameFn fieldName,
                    std::variant<Ts...>& result, Arg&& arg, Args&&... args) {
+    static_assert(!Arg::isInlineType,
+                  "All inline types must be listed at the beginning of the "
+                  "alternatives list");
     if (arg.tag == tag) {
       typename Arg::Type v;
       auto res = parse(v);
@@ -481,15 +527,45 @@ struct VPackLoadInspectorImpl
         return {std::move(res), fieldName(arg), Status::AttributeTag{}};
       }
       return res;
-    } else {
-      if constexpr (sizeof...(Args) == 0) {
-        return {"Found invalid type: " + std::string(tag)};
-      } else {
-        return parseType(tag, std::forward<ParseFn>(parse),
-                         std::forward<FieldNameFn>(fieldName), result,
-                         std::forward<Args>(args)...);
-      }
     }
+
+    if constexpr (sizeof...(Args) == 0) {
+      return {"Found invalid type: " + std::string(tag)};
+    } else {
+      return parseType(tag, std::forward<ParseFn>(parse),
+                       std::forward<FieldNameFn>(fieldName), result,
+                       std::forward<Args>(args)...);
+    }
+  }
+
+  template<class T>
+  bool shouldTryType(velocypack::ValueType type) {
+    using velocypack::ValueType;
+    auto isInt = [](ValueType type) {
+      return type == ValueType::Int || type == ValueType::UInt ||
+             type == ValueType::SmallInt;
+    };
+    // we try to rule out some cases where we know that the parse attempt will
+    // definitely fail, but if none of those match, we always need to simply
+    // try to parse the value
+    if constexpr (std::is_same_v<T, std::string> ||
+                  std::is_same_v<T, std::string_view>) {
+      return type == ValueType::String;
+    } else if constexpr (std::is_same_v<T, bool>) {
+      return type == ValueType::Bool;
+    } else if constexpr (std::is_integral_v<T>) {
+      return isInt(type);
+    } else if constexpr (std::is_floating_point_v<T>) {
+      return type == ValueType::Double || isInt(type);
+    } else if constexpr (detail::IsTuple<T>::value) {
+      return type == ValueType::Array &&
+             detail::TupleSize<T>::value == _slice.length();
+    } else if constexpr (detail::IsListLike<T>::value) {
+      return type == ValueType::Array;
+    } else if constexpr (detail::IsMapLike<T>::value) {
+      return type == ValueType::Object;
+    }
+    return true;
   }
 
   template<class T>
