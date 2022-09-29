@@ -732,27 +732,6 @@ std::string toupper(std::string_view str) {
 
 void toupperInPlace(std::string& str) { StringUtils::toupper(str, str); }
 
-bool isPrefix(std::string_view str, std::string_view prefix) {
-  if (prefix.length() > str.length()) {
-    return false;
-  } else if (prefix.length() == str.length()) {
-    return str == prefix;
-  } else {
-    return str.compare(0, prefix.length(), prefix) == 0;
-  }
-}
-
-bool isSuffix(std::string_view str, std::string_view postfix) {
-  if (postfix.length() > str.length()) {
-    return false;
-  } else if (postfix.length() == str.length()) {
-    return str == postfix;
-  } else {
-    return str.compare(str.size() - postfix.length(), postfix.length(),
-                       postfix) == 0;
-  }
-}
-
 std::string urlDecodePath(std::string_view str) {
   std::string result;
   // reserve enough room so we do not need to re-alloc
