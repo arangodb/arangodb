@@ -44,7 +44,6 @@
 #include "PrototypeLeaderState.h"
 #include "PrototypeStateMachine.h"
 #include "PrototypeStateMethods.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Inspection/VPack.h"
 
 using namespace arangodb;
@@ -179,7 +178,7 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
       -> std::shared_ptr<PrototypeLeaderState> {
     auto stateMachine =
         std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-            _vocbase.getReplicatedStateById(id));
+            _vocbase.getReplicatedStateById(id).get());
     if (stateMachine == nullptr) {
       using namespace fmt::literals;
       throw basics::Exception::fmt(

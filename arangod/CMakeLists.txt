@@ -353,7 +353,6 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/SupervisionAction.cpp
   Replication2/ReplicatedLog/WaitForBag.cpp
   Replication2/ReplicatedLog/types.cpp
-  Replication2/ReplicatedState/AgencySpecification.cpp
   Replication2/ReplicatedState/FollowerStateManager.tpp
   Replication2/ReplicatedState/LeaderStateManager.tpp
   Replication2/ReplicatedState/PersistedStateInfo.cpp
@@ -362,10 +361,8 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedState/ReplicatedStateToken.cpp
   Replication2/ReplicatedState/StateCommon.cpp
   Replication2/ReplicatedState/StateStatus.cpp
-  Replication2/ReplicatedState/Supervision.cpp
-  Replication2/ReplicatedState/SupervisionAction.cpp
   Replication2/ReplicatedState/UnconfiguredStateManager.tpp
-        Replication2/StateMachines/BlackHole/BlackHoleStateMachine.cpp
+  Replication2/StateMachines/BlackHole/BlackHoleStateMachine.cpp
   Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.cpp
   Replication2/StateMachines/Document/DocumentCore.cpp
   Replication2/StateMachines/Document/DocumentFollowerState.cpp

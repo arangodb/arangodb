@@ -171,7 +171,8 @@ struct LogCurrentSupervisionElection {
     OK = 0,
     SERVER_NOT_GOOD = 1,
     TERM_NOT_CONFIRMED = 2,
-    SERVER_EXCLUDED = 3
+    SERVER_EXCLUDED = 3,
+    SNAPSHOT_MISSING = 4,
   };
 
   LogTerm term;

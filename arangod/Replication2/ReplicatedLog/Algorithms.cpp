@@ -105,34 +105,6 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log,
   }
 }
 
-auto algorithms::updateReplicatedLog(
-    LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
-    LogId logId, agency::LogPlanSpecification const* spec,
-    std::shared_ptr<cluster::IFailureOracle const> failureOracle) noexcept
-    -> futures::Future<arangodb::Result> {
-  auto result = basics::catchToResultT([&]() -> futures::Future<
-                                                 arangodb::Result> {
-    if (spec == nullptr) {
-      return ctx.dropReplicatedState(logId);
-    }
-
-    TRI_ASSERT(logId == spec->id);
-    TRI_ASSERT(spec->currentTerm.has_value());
-    auto& plannedLeader = spec->currentTerm->leader;
-    auto& impl = spec->properties.implementation;
-    if (auto res = ctx.ensureReplicatedState(logId, impl.type,
-                                             impl.parameters.value().slice());
-        res.fail()) {
-      return res;
-    }
-};
-  if (result.ok()) {
-    return *std::move(result);
-  } else {
-    return futures::Future<arangodb::Result>{std::in_place, result.result()};
-  }
-}
-
 auto algorithms::operator<<(std::ostream& os,
                             ParticipantState const& p) noexcept
     -> std::ostream& {

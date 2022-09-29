@@ -76,6 +76,8 @@ auto agency::to_string(LogCurrentSupervisionElection::ErrorCode ec) noexcept
       return "the server has not (yet) confirmed the current term";
     case LogCurrentSupervisionElection::ErrorCode::SERVER_EXCLUDED:
       return "the server is configured as excluded";
+    case LogCurrentSupervisionElection::ErrorCode::SNAPSHOT_MISSING:
+      return "the server has no snapshot available";
   }
   LOG_TOPIC("7e572", FATAL, arangodb::Logger::REPLICATION2)
       << "Invalid LogCurrentSupervisionElection::ErrorCode "

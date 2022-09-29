@@ -89,15 +89,17 @@ struct AddLogToPlanAction {
   static constexpr std::string_view name = "AddLogToPlanAction";
 
   AddLogToPlanAction(LogId const id, ParticipantsFlagsMap participants,
-                     LogPlanConfig config,
+                     LogPlanConfig config, Properties properties,
                      std::optional<LogPlanTermSpecification::Leader> leader)
       : _id(id),
         _participants(std::move(participants)),
         _config(std::move(config)),
+        _properties(std::move(properties)),
         _leader(std::move(leader)){};
   LogId _id;
   ParticipantsFlagsMap _participants;
   LogPlanConfig _config;
+  Properties _properties;
   std::optional<LogPlanTermSpecification::Leader> _leader;
 
   auto execute(ActionContext& ctx) const -> void {
@@ -106,6 +108,7 @@ struct AddLogToPlanAction {
         ParticipantsConfig{
             .generation = 1, .participants = _participants, .config = _config});
     newPlan.owner = "target";
+    newPlan.properties = _properties;
     ctx.setValue<LogPlanSpecification>(std::move(newPlan));
 
     ctx.modifyOrCreate<LogCurrentSupervision>(

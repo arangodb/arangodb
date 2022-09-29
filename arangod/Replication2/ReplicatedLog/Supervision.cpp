@@ -138,6 +138,8 @@ auto computeReason(std::optional<LogCurrentLocalState> const& maybeStatus,
     return LogCurrentSupervisionElection::ErrorCode::SERVER_EXCLUDED;
   } else if (!maybeStatus or term != maybeStatus->term) {
     return LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED;
+  } else if (not maybeStatus->snapshotAvailable) {
+    return LogCurrentSupervisionElection::ErrorCode::SNAPSHOT_MISSING;
   } else {
     return LogCurrentSupervisionElection::ErrorCode::OK;
   }
@@ -197,6 +199,7 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
 //  * allowedAsLeader
 //  * not marked as failed
 //  * amongst the participant with the most recent TermIndex.
+//  * snapshot available
 //
 auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
                         ParticipantsHealth const& health) -> void {
@@ -506,7 +509,7 @@ auto pickLeader(std::optional<ParticipantId> targetLeader,
                 ParticipantsFlagsMap const& participants,
                 ParticipantsHealth const& health, uint64_t logId)
     -> std::optional<LogPlanTermSpecification::Leader> {
-  auto leaderId = targetLeader;
+  auto& leaderId = targetLeader;
 
   if (!leaderId) {
     leaderId = pickRandomParticipantToBeLeader(participants, health, logId);
@@ -539,7 +542,7 @@ auto checkLogExists(SupervisionContext& ctx, Log const& log,
       auto config =
           LogPlanConfig(effectiveWriteConcern, target.config.waitForSync);
       ctx.createAction<AddLogToPlanAction>(target.id, target.participants,
-                                           config, leader);
+                                           config, target.properties, leader);
     }
   }
 }
