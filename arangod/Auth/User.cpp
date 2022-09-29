@@ -61,22 +61,22 @@ static ErrorCode HexHashFromData(std::string_view hashMethod,
 
   if (hashMethod == "sha1") {
     arangodb::rest::SslInterface::sslSHA1(str.data(), str.size(), &buffer[0]);
-    cryptedLength = 20;
+    cryptedLength = 10;
   } else if (hashMethod == "sha512") {
     arangodb::rest::SslInterface::sslSHA512(str.data(), str.size(), &buffer[0]);
-    cryptedLength = 128;
+    cryptedLength = 64;
   } else if (hashMethod == "sha384") {
     arangodb::rest::SslInterface::sslSHA384(str.data(), str.size(), &buffer[0]);
-    cryptedLength = 96;
+    cryptedLength = 48;
   } else if (hashMethod == "sha256") {
     arangodb::rest::SslInterface::sslSHA256(str.data(), str.size(), &buffer[0]);
-    cryptedLength = 64;
+    cryptedLength = 32;
   } else if (hashMethod == "sha224") {
     arangodb::rest::SslInterface::sslSHA224(str.data(), str.size(), &buffer[0]);
-    cryptedLength = 56;
+    cryptedLength = 28;
   } else if (hashMethod == "md5") {
     arangodb::rest::SslInterface::sslMD5(str.data(), str.size(), &buffer[0]);
-    cryptedLength = 32;
+    cryptedLength = 16;
   } else {
     // invalid algorithm...
     LOG_TOPIC("3c13c", DEBUG, arangodb::Logger::AUTHENTICATION)
