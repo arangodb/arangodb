@@ -47,7 +47,7 @@ const {
 
 function AuthSuite() {
   'use strict';
-  var baseUrl = function() {
+  var baseUrl = function () {
     return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
   };
 
@@ -61,7 +61,7 @@ function AuthSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp: function() {
+    setUp: function () {
       arango.reconnect(arango.getEndpoint(), '_system', "root", "");
 
       try {
@@ -74,7 +74,7 @@ function AuthSuite() {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown: function() {
+    tearDown: function () {
       // our test temporarily disables access to the user collection,
       // so our request to clear the failure points must be authenticated
       // by a JWT.
@@ -99,7 +99,7 @@ function AuthSuite() {
       }
     },
 
-    testApiUserRW: function() {
+    testApiUserRW: function () {
       users.save(user, "foobar");
       users.grantDatabase(user, '_system');
       users.grantCollection(user, '_system', "*");
@@ -111,7 +111,7 @@ function AuthSuite() {
       assertEqual(user, result.user);
     },
 
-    testApiUserRO: function() {
+    testApiUserRO: function () {
       users.save(user, "foobar");
       users.grantDatabase(user, '_system', 'ro');
       users.reload();
@@ -122,7 +122,7 @@ function AuthSuite() {
       assertEqual(user, result.user);
     },
 
-    testApiUserWrongCredentials: function() {
+    testApiUserWrongCredentials: function () {
       users.save(user, "foobar");
       users.grantDatabase(user, '_system', 'ro');
       users.reload();
@@ -134,7 +134,7 @@ function AuthSuite() {
       assertEqual(401, result.code);
     },
 
-    testApiUserNone: function() {
+    testApiUserNone: function () {
       users.save(user, "foobar");
       users.grantDatabase(user, '_system', 'rw');
       users.reload();
@@ -150,7 +150,7 @@ function AuthSuite() {
       assertEqual(user, result.user);
     },
 
-    testApiUserDeleted: function() {
+    testApiUserDeleted: function () {
       users.save(user, "foobar");
       users.grantDatabase(user, '_system', 'rw');
       users.reload();
@@ -166,7 +166,7 @@ function AuthSuite() {
       assertEqual(401, result.code);
     },
 
-    testApiNonExistingUserRW: function() {
+    testApiNonExistingUserRW: function () {
       users.save(user, "foobar");
       users.grantDatabase(user, '_system');
       users.grantCollection(user, '_system', "*");
@@ -178,7 +178,7 @@ function AuthSuite() {
       assertEqual(404, result.code);
     },
 
-    testApiNonExistingUserRO: function() {
+    testApiNonExistingUserRO: function () {
       users.save(user, "foobar");
       users.grantDatabase(user, '_system', 'ro');
       users.reload();
@@ -189,7 +189,7 @@ function AuthSuite() {
       assertEqual(403, result.code);
     },
 
-    testApiNonExistingUserNone: function() {
+    testApiNonExistingUserNone: function () {
       users.save(user, "foobar");
       users.grantDatabase(user, '_system', 'rw');
       users.reload();
@@ -211,7 +211,7 @@ function AuthSuite() {
       assertEqual(403, result.code);
     },
 
-    testAuthenticationErrorDuringStartup: function() {
+    testAuthenticationErrorDuringStartup: function () {
       if (!debugCanUseFailAt(arango.getEndpoint())) {
         return;
       }
@@ -229,7 +229,7 @@ function AuthSuite() {
     /// @brief test creating a new user
     ////////////////////////////////////////////////////////////////////////////////
 
-    testNewUser: function() {
+    testNewUser: function () {
       let expectUser = user;
       users.save(user, "foobar");
       users.grantDatabase(user, db._name());
@@ -262,7 +262,7 @@ function AuthSuite() {
     /// @brief test creating a new user with empty password
     ////////////////////////////////////////////////////////////////////////////////
 
-    testEmptyPassword: function() {
+    testEmptyPassword: function () {
       users.save(user, "");
       users.grantDatabase(user, db._name());
       users.grantCollection(user, db._name(), "*");
@@ -283,7 +283,7 @@ function AuthSuite() {
       }
     },
 
-    testPasswordChange: function() {
+    testPasswordChange: function () {
       users.save(user, "");
       users.grantDatabase(user, db._name());
       users.grantCollection(user, db._name(), "*");
@@ -306,7 +306,7 @@ function AuthSuite() {
     /// @brief test creating a new user with case sensitive password
     ////////////////////////////////////////////////////////////////////////////////
 
-    testPasswordCase: function() {
+    testPasswordCase: function () {
       users.save(user, "FooBar");
       users.grantDatabase(user, db._name());
       users.grantCollection(user, db._name(), "*", "ro");
@@ -355,7 +355,7 @@ function AuthSuite() {
     /// @brief test creating a new user with colon in password
     ////////////////////////////////////////////////////////////////////////////////
 
-    testColon: function() {
+    testColon: function () {
       users.save(user, "fuxx::bar");
       users.grantDatabase(user, db._name());
       users.grantCollection(user, db._name(), "*", "ro");
@@ -403,7 +403,7 @@ function AuthSuite() {
     /// @brief test creating a new user with special chars in password
     ////////////////////////////////////////////////////////////////////////////////
 
-    testSpecialChars: function() {
+    testSpecialChars: function () {
       users.save(user, ":\\abc'def:foobar@04. x-a");
       users.grantDatabase(user, db._name());
       users.grantCollection(user, db._name(), "*", "ro");
@@ -447,14 +447,14 @@ function AuthSuite() {
       }
     },
 
-    testAuthOpen: function() {
+    testAuthOpen: function () {
       var res = request(baseUrl() + "/_open/auth");
       expect(res).to.be.an.instanceof(request.Response);
       // mop: GET is an unsupported method, but it is skipping auth
       expect(res).to.have.property('statusCode', 405);
     },
 
-    testAuth: function() {
+    testAuth: function () {
       var res = request.post({
         url: baseUrl() + "/_open/auth",
         body: JSON.stringify({"username": "root", "password": ""})
@@ -469,7 +469,7 @@ function AuthSuite() {
       expect(obj.jwt.split('.').length).to.be.equal(3);
     },
 
-    testAuthNewUser: function() {
+    testAuthNewUser: function () {
       users.save(user, "foobar");
       users.reload();
 
@@ -486,7 +486,7 @@ function AuthSuite() {
       expect(obj.jwt.split('.').length).to.be.equal(3);
     },
 
-    testAuthNewWrongPassword: function() {
+    testAuthNewWrongPassword: function () {
       users.save(user, "foobarJAJA");
       users.reload();
 
@@ -498,7 +498,7 @@ function AuthSuite() {
       expect(res).to.have.property('statusCode', 401);
     },
 
-    testAuthNoPassword: function() {
+    testAuthNoPassword: function () {
       var res = request.post({
         url: baseUrl() + "/_open/auth",
         body: JSON.stringify({"username": user, "passwordaa": "foobar"}),
@@ -507,7 +507,7 @@ function AuthSuite() {
       expect(res).to.have.property('statusCode', 400);
     },
 
-    testAuthNoUsername: function() {
+    testAuthNoUsername: function () {
       var res = request.post({
         url: baseUrl() + "/_open/auth",
         body: JSON.stringify({"usern": user, "password": "foobar"}),
@@ -516,13 +516,13 @@ function AuthSuite() {
       expect(res).to.have.property('statusCode', 400);
     },
 
-    testAuthRequired: function() {
+    testAuthRequired: function () {
       var res = request.get(baseUrl() + "/_api/version");
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 401);
     },
 
-    testFullAuthWorkflow: function() {
+    testFullAuthWorkflow: function () {
       var res = request.post({
         url: baseUrl() + "/_open/auth",
         body: JSON.stringify({"username": "root", "password": ""}),
@@ -540,7 +540,7 @@ function AuthSuite() {
       expect(res).to.have.property('statusCode', 200);
     },
 
-    testViaJS: function() {
+    testViaJS: function () {
       var jwt = crypto.jwtEncode(jwtSecret, {
         "preferred_username": "root",
         "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
@@ -556,7 +556,7 @@ function AuthSuite() {
       expect(res).to.have.property('statusCode', 200);
     },
 
-    testNoneAlgDisabled: function() {
+    testNoneAlgDisabled: function () {
       var jwt = (new Buffer(JSON.stringify({
         "typ": "JWT",
         "alg": "none"
@@ -575,7 +575,7 @@ function AuthSuite() {
       expect(res).to.have.property('statusCode', 401);
     },
 
-    testIssRequired: function() {
+    testIssRequired: function () {
       var jwt = crypto.jwtEncode(jwtSecret, {
         "preferred_username": "root",
         "exp": Math.floor(Date.now() / 1000) + 3600
@@ -591,7 +591,7 @@ function AuthSuite() {
       expect(res).to.have.property('statusCode', 401);
     },
 
-    testIssArangodb: function() {
+    testIssArangodb: function () {
       var jwt = crypto.jwtEncode(jwtSecret, {
         "preferred_username": "root",
         "iss": "arangodbaaa",
@@ -608,7 +608,7 @@ function AuthSuite() {
       expect(res).to.have.property('statusCode', 401);
     },
 
-    testExpOptional: function() {
+    testExpOptional: function () {
       var jwt = crypto.jwtEncode(jwtSecret, {
         "preferred_username": "root",
         "iss": "arangodb"
@@ -624,7 +624,7 @@ function AuthSuite() {
       expect(res).to.have.property('statusCode', 200);
     },
 
-    testExp: function() {
+    testExp: function () {
       var jwt = crypto.jwtEncode(jwtSecret, {
         "preferred_username": "root",
         "iss": "arangodbaaa",
@@ -641,7 +641,7 @@ function AuthSuite() {
       expect(res).to.have.property('statusCode', 401);
     },
 
-    testDatabaseGuessing: function() {
+    testDatabaseGuessing: function () {
       let jwt = crypto.jwtEncode(jwtSecret, {
         "preferred_username": "root",
         "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
@@ -664,7 +664,7 @@ function AuthSuite() {
       expect(res).to.have.property('statusCode', 401);
     },
 
-    testDatabaseGuessingSuperUser: function() {
+    testDatabaseGuessingSuperUser: function () {
       let jwt = crypto.jwtEncode(jwtSecret, {
         "server_id": "foo",
         "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
@@ -687,7 +687,7 @@ function AuthSuite() {
       expect(res).to.have.property('statusCode', 401);
     },
 
-    testDatabaseListNonSystem: function() {
+    testDatabaseListNonSystem: function () {
       let jwt = crypto.jwtEncode(jwtSecret, {
         "preferred_username": "root",
         "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
@@ -734,7 +734,7 @@ function UnauthorizedAccesSuite() {
 
   return {
 
-    setUpAll: function() {
+    setUpAll: function () {
       arango.reconnect(arango.getEndpoint(), "_system", "root", "");
       users.save(user, "abc");
       db._createDatabase("dbTest1");
@@ -746,7 +746,7 @@ function UnauthorizedAccesSuite() {
 
     },
 
-    tearDownAll: function() {
+    tearDownAll: function () {
       arango.reconnect(arango.getEndpoint(), "_system", "root", "");
       db._dropDatabase("dbTest1");
       db._dropDatabase("dbTest2");
@@ -754,7 +754,7 @@ function UnauthorizedAccesSuite() {
       users.remove(user);
     },
 
-    testUnauthorizedCurrent: function() {
+    testUnauthorizedCurrent: function () {
       arango.reconnect(arango.getEndpoint(), "dbTest1", user, "abc");
       let res = arango.GET_RAW("/_db/dbTest2/_api/database/current");
       assertEqual(200, res.code);
