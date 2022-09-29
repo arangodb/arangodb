@@ -237,7 +237,7 @@ void ReplicatedState<S>::drop() && {
                                 Factory>);
       std::shared_ptr<CleanupHandler> cleanupHandler =
           factory->constructCleanupHandler();
-      cleanupHandler->drop(std::move(core));
+      cleanupHandler->resign(std::move(core));
     }
     return action;
   });

@@ -50,7 +50,7 @@ TEST_F(WaitForResignTest, wait_for_resign_unconfigured_participant_resign) {
   participant->waitForResign().thenFinal(getSetResignStatusCallback());
 
   ASSERT_FALSE(resigned);
-  std::ignore = testLog->drop();
+  std::ignore = std::move(*testLog).resign();
   ASSERT_TRUE(resigned);
 }
 
@@ -94,7 +94,7 @@ TEST_F(WaitForResignTest, wait_for_resign_follower_resign) {
   participant->waitForResign().thenFinal(getSetResignStatusCallback());
 
   ASSERT_FALSE(resigned);
-  std::ignore = testLog->drop();
+  std::ignore = std::move(*testLog).resign();
   ASSERT_TRUE(resigned);
 }
 
@@ -139,7 +139,7 @@ TEST_F(WaitForResignTest, wait_for_resign_leader_resign) {
   participant->waitForResign().thenFinal(getSetResignStatusCallback());
 
   ASSERT_FALSE(resigned);
-  std::ignore = testLog->drop();
+  std::ignore = std::move(*testLog).resign();
   ASSERT_TRUE(resigned);
 }
 

@@ -166,7 +166,7 @@ auto replicated_log::ReplicatedLog::getFollower() const
   }
 }
 
-auto replicated_log::ReplicatedLog::drop() -> std::unique_ptr<LogCore> {
+auto replicated_log::ReplicatedLog::resign() -> std::unique_ptr<LogCore> {
   auto [core, deferred] = std::invoke([&] {
     std::unique_lock guard(_mutex);
     auto res = std::move(*_participant).resign();

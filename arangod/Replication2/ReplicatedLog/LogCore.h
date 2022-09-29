@@ -33,8 +33,10 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogEntries.h"
 
+namespace arangodb::replication2::replicated_state {
+struct IStorageEngineMethods;
+}
 namespace arangodb::replication2::replicated_log {
-struct PersistedLog;
 
 /**
  * @brief The persistent core of a replicated log. There must only ever by one
@@ -48,7 +50,7 @@ struct PersistedLog;
  * during startup, the LogCore is held by a LogUnconfiguredParticipant instance.
  */
 struct alignas(64) LogCore {
-  explicit LogCore(std::shared_ptr<PersistedLog> persistedLog);
+  explicit LogCore(replicated_state::IStorageEngineMethods& storage);
 
   // There must only be one LogCore per physical log
   LogCore() = delete;
@@ -65,13 +67,11 @@ struct alignas(64) LogCore {
   auto removeBack(LogIndex first) -> Result;
   auto removeFront(LogIndex stop) -> futures::Future<Result>;
 
-  auto releasePersistedLog() && -> std::shared_ptr<PersistedLog>;
-
   auto logId() const noexcept -> LogId;
   auto gid() const noexcept -> GlobalLogIdentifier const&;
 
  private:
-  std::shared_ptr<PersistedLog> _persistedLog;
+  replicated_state::IStorageEngineMethods& _storage;
   mutable basics::UnshackledMutex _operationMutex;
 };
 
