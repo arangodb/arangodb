@@ -814,110 +814,125 @@ std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
 ///////////////////////////////////
 
 Result RocksDBCollection::truncate(transaction::Methods& trx,
-                                   OperationOptions& options) {
-  TRI_ASSERT(!RocksDBTransactionState::toState(&trx)->isReadOnlyTransaction());
-
+                                   OperationOptions& options,
+                                   bool& usedRangeDelete) {
   ::TruncateTimeTracker timeTracker(
       _statistics._readWriteMetrics, options,
       [](TransactionStatistics::ReadWriteMetrics& metrics,
          float time) noexcept { metrics.rocksdb_truncate_sec.count(time); });
 
-  TRI_ASSERT(objectId() != 0);
   auto state = RocksDBTransactionState::toState(&trx);
-  RocksDBTransactionMethods* mthds =
-      state->rocksdbMethods(_logicalCollection.id());
+  TRI_ASSERT(!state->isReadOnlyTransaction());
 
   if (state->isOnlyExclusiveTransaction() &&
       state->hasHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE) &&
       this->canUseRangeDeleteInWal() && _meta.numberDocuments() >= 32 * 1024) {
-    // non-transactional truncate optimization. We perform a bunch of
-    // range deletes and circumvent the normal rocksdb::Transaction.
-    // no savepoint needed here
-    TRI_ASSERT(!state->hasOperations());  // not allowed
-
-    TRI_IF_FAILURE("RocksDBRemoveLargeRangeOn") {
-      return Result(TRI_ERROR_DEBUG);
-    }
-
-    RocksDBEngine& engine = _logicalCollection.vocbase()
-                                .server()
-                                .getFeature<EngineSelectorFeature>()
-                                .engine<RocksDBEngine>();
-    rocksdb::DB* db = engine.db()->GetRootDB();
-
-    TRI_IF_FAILURE("RocksDBCollection::truncate::forceSync") {
-      engine.settingsManager()->sync(/*force*/ false);
-    }
-
-    // pre commit sequence needed to place a blocker
-    RocksDBBlockerGuard blocker(&_logicalCollection);
-    blocker.placeBlocker(state->id());
-
-    rocksdb::WriteBatch batch;
-    // delete documents
-    RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId());
-    rocksdb::Status s =
-        batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
-    if (!s.ok()) {
-      return rocksutils::convertStatus(s);
-    }
-
-    // delete index values
-    {
-      RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-      for (std::shared_ptr<Index> const& idx : _indexes) {
-        RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-        bounds = ridx->getBounds();
-        s = batch.DeleteRange(bounds.columnFamily(), bounds.start(),
-                              bounds.end());
-        if (!s.ok()) {
-          return rocksutils::convertStatus(s);
-        }
-      }
-    }
-
-    // add the log entry so we can recover the correct count
-    auto log = RocksDBLogValue::CollectionTruncate(
-        trx.vocbase().id(), _logicalCollection.id(), objectId());
-
-    s = batch.PutLogData(log.slice());
-
-    if (!s.ok()) {
-      return rocksutils::convertStatus(s);
-    }
-
-    rocksdb::WriteOptions wo;
-
-    s = db->Write(wo, &batch);
-
-    if (!s.ok()) {
-      return rocksutils::convertStatus(s);
-    }
-
-    rocksdb::SequenceNumber seq =
-        db->GetLatestSequenceNumber() - 1;  // post commit sequence
-
-    uint64_t numDocs = _meta.numberDocuments();
-    _meta.adjustNumberDocuments(seq,
-                                /*revision*/ _logicalCollection.newRevisionId(),
-                                -static_cast<int64_t>(numDocs));
-
-    {
-      RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-      for (std::shared_ptr<Index> const& idx : _indexes) {
-        idx->afterTruncate(
-            seq, &trx);  // clears caches / clears links (if applicable)
-      }
-    }
-    bufferTruncate(seq);
-
-    TRI_ASSERT(!state->hasOperations());  // not allowed
-    return {};
+    // optimized truncate, using DeleteRange operations.
+    // this can only be used if the truncate is performed as a standalone
+    // operation (i.e. not part of a larger transaction)
+    usedRangeDelete = true;
+    return truncateWithRangeDelete(trx);
   }
 
+  // slow truncate that performs a document-by-document removal.
+  usedRangeDelete = false;
+  return truncateWithRemovals(trx, options);
+}
+
+Result RocksDBCollection::truncateWithRangeDelete(transaction::Methods& trx) {
+  // non-transactional truncate optimization. We perform a bunch of
+  // range deletes and circumvent the normal rocksdb::Transaction.
+  // no savepoint needed here
+  auto state = RocksDBTransactionState::toState(&trx);
+  TRI_ASSERT(!state->hasOperations());  // not allowed
+
+  TRI_ASSERT(objectId() != 0);
+
+  TRI_IF_FAILURE("RocksDBRemoveLargeRangeOn") {
+    return Result(TRI_ERROR_DEBUG);
+  }
+
+  RocksDBEngine& engine = _logicalCollection.vocbase()
+                              .server()
+                              .getFeature<EngineSelectorFeature>()
+                              .engine<RocksDBEngine>();
+  rocksdb::DB* db = engine.db()->GetRootDB();
+
+  TRI_IF_FAILURE("RocksDBCollection::truncate::forceSync") {
+    engine.settingsManager()->sync(/*force*/ false);
+  }
+
+  // pre commit sequence needed to place a blocker
+  RocksDBBlockerGuard blocker(&_logicalCollection);
+  blocker.placeBlocker(state->id());
+
+  rocksdb::WriteBatch batch;
+  // delete documents
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId());
+  rocksdb::Status s =
+      batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
+  if (!s.ok()) {
+    return rocksutils::convertStatus(s);
+  }
+
+  // delete index values
+  {
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+    for (std::shared_ptr<Index> const& idx : _indexes) {
+      RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
+      bounds = ridx->getBounds();
+      s = batch.DeleteRange(bounds.columnFamily(), bounds.start(),
+                            bounds.end());
+      if (!s.ok()) {
+        return rocksutils::convertStatus(s);
+      }
+    }
+  }
+
+  // add the log entry so we can recover the correct count
+  auto log = RocksDBLogValue::CollectionTruncate(
+      trx.vocbase().id(), _logicalCollection.id(), objectId());
+
+  s = batch.PutLogData(log.slice());
+  if (!s.ok()) {
+    return rocksutils::convertStatus(s);
+  }
+
+  rocksdb::WriteOptions wo;
+
+  s = db->Write(wo, &batch);
+
+  if (!s.ok()) {
+    return rocksutils::convertStatus(s);
+  }
+
+  rocksdb::SequenceNumber seq =
+      db->GetLatestSequenceNumber() - 1;  // post commit sequence
+
+  uint64_t numDocs = _meta.numberDocuments();
+  _meta.adjustNumberDocuments(seq,
+                              /*revision*/ _logicalCollection.newRevisionId(),
+                              -static_cast<int64_t>(numDocs));
+
+  {
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+    for (std::shared_ptr<Index> const& idx : _indexes) {
+      idx->afterTruncate(seq,
+                         &trx);  // clears caches / clears links (if applicable)
+    }
+  }
+  bufferTruncate(seq);
+
+  TRI_ASSERT(!state->hasOperations());  // not allowed
+  return {};
+}
+
+Result RocksDBCollection::truncateWithRemovals(transaction::Methods& trx,
+                                               OperationOptions& options) {
   TRI_IF_FAILURE("RocksDBRemoveLargeRangeOff") { return {TRI_ERROR_DEBUG}; }
 
-  // normal transactional truncate
+  TRI_ASSERT(objectId() != 0);
+
   RocksDBKeyBounds documentBounds =
       RocksDBKeyBounds::CollectionDocuments(objectId());
   rocksdb::Comparator const* cmp =
@@ -927,6 +942,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx,
   rocksdb::Slice const end = documentBounds.end();
 
   // avoid OOM error for truncate by committing earlier
+  auto state = RocksDBTransactionState::toState(&trx);
   uint64_t const prvICC = state->options().intermediateCommitCount;
   if (!state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     state->options().intermediateCommitCount =
@@ -941,9 +957,47 @@ Result RocksDBCollection::truncate(transaction::Methods& trx,
     state->options().intermediateCommitCount = prvICC;
   });
 
+  RocksDBTransactionMethods* mthds =
+      state->rocksdbMethods(_logicalCollection.id());
+
+  VPackBuilder keyBuffer;
+  keyBuffer.openArray();
   uint64_t found = 0;
 
-  VPackBuilder docBuffer;
+  auto removeBufferedDocuments = [this, &trx, &options](VPackBuilder& keyBuffer,
+                                                        uint64_t& found) {
+    TRI_ASSERT(found > 0);
+    keyBuffer.close();
+
+    TRI_ASSERT(keyBuffer.slice().isArray());
+    TRI_ASSERT(keyBuffer.slice().length() > 0);
+
+    // if waitForSync flag is set, update it for transaction and options
+    if (_logicalCollection.waitForSync() && !options.isRestore) {
+      options.waitForSync = true;
+    }
+
+    if (options.waitForSync) {
+      trx.state()->waitForSync(true);
+    }
+
+    OperationResult r =
+        trx.remove(_logicalCollection.name(), keyBuffer.slice(), options);
+
+    // reset everything
+    keyBuffer.clear();
+    keyBuffer.openArray();
+
+    found = 0;
+
+    if (!r.countErrorCodes.empty()) {
+      auto it = r.countErrorCodes.begin();
+      return Result((*it).first);
+    }
+
+    return r.result;
+  };
+
   auto iter =
       mthds->NewIterator(documentBounds.columnFamily(), [&](ReadOptions& ro) {
         ro.iterate_upper_bound = &end;
@@ -955,49 +1009,27 @@ Result RocksDBCollection::truncate(transaction::Methods& trx,
       });
   for (iter->Seek(documentBounds.start());
        iter->Valid() && cmp->Compare(iter->key(), end) < 0; iter->Next()) {
-    ++found;
     TRI_ASSERT(objectId() == RocksDBKey::objectId(iter->key()));
     VPackSlice document(reinterpret_cast<uint8_t const*>(iter->value().data()));
     TRI_ASSERT(document.isObject());
 
-    // tmp may contain a pointer into rocksdb::WriteBuffer::_rep. This is
-    // a 'std::string' which might be realloc'ed on any Put/Delete operation
-    docBuffer.clear();
-    docBuffer.add(document);
-
-    // To print the WAL we need key and RID
-    VPackSlice key;
-    RevisionId rid = RevisionId::none();
-    transaction::helpers::extractKeyAndRevFromDocument(document, key, rid);
+    // add key of to-be-deleted document
+    VPackSlice key = document.get(StaticStrings::KeyString);
     TRI_ASSERT(key.isString());
-    TRI_ASSERT(rid.isSet());
+    keyBuffer.add(key);
 
-    RocksDBSavePoint savepoint(_logicalCollection.id(), *state,
-                               TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-
-    LocalDocumentId docId = RocksDBKey::documentId(iter->key());
-    auto res =
-        removeDocument(&trx, savepoint, docId, docBuffer.slice(), options, rid);
-
-    if (res.ok()) {
-      res = savepoint.finish(_logicalCollection.newRevisionId());
-
-      if (res.ok()) {
-        // if waitForSync flag is set, update it for transaction and options
-        if (_logicalCollection.waitForSync() && !options.isRestore) {
-          options.waitForSync = true;
-        }
-
-        if (options.waitForSync) {
-          trx.state()->waitForSync(true);
-        }
-
-        res =
-            state->performIntermediateCommitIfRequired(_logicalCollection.id());
+    ++found;
+    if (found == 1000) {
+      Result res = removeBufferedDocuments(keyBuffer, found);
+      if (res.fail()) {
+        return res;
       }
     }
+  }
 
-    if (res.fail()) {  // Failed to remove document in truncate.
+  if (found > 0) {
+    Result res = removeBufferedDocuments(keyBuffer, found);
+    if (res.fail()) {
       return res;
     }
   }
