@@ -70,31 +70,36 @@ function logSuite (suite, indentLevel) {
       COLORS.COLOR_BOLD_WHITE}${suite.title}${COLORS.COLOR_RESET
     }`);
   }
-  for (let test of suite.tests) {
-    if (test.result === 'pass') {
-      print(`${indent(indentLevel)}${
-        COLORS.COLOR_GREEN}[PASS] ${test.title}${COLORS.COLOR_RESET
-      }`);
-    } else if (test.result === 'pending') {
-      print(`${indent(indentLevel)}${
-        COLORS.COLOR_CYAN}[SKIP] ${test.title}${COLORS.COLOR_RESET
-      }`);
-    } else {
-      print(`${indent(indentLevel)}${
-        COLORS.COLOR_RED}[${test.result.toUpperCase()}] ${test.title}${COLORS.COLOR_RESET
-      }`);
-      for (let line of test.err.stack.split(/\n/)) {
-        print(`${indent(indentLevel + 1)}${
-          COLORS.COLOR_RED}${line}${COLORS.COLOR_RESET
-        }`);
+
+  if (suite.tests) {
+    for (let test of suite.tests) {
+      if (test.result === 'pass') {
+        print(`${indent(indentLevel)}${
+          COLORS.COLOR_GREEN}[PASS] ${test.title}${COLORS.COLOR_RESET
+          }`);
+      } else if (test.result === 'pending') {
+        print(`${indent(indentLevel)}${
+          COLORS.COLOR_CYAN}[SKIP] ${test.title}${COLORS.COLOR_RESET
+          }`);
+      } else {
+        print(`${indent(indentLevel)}${
+          COLORS.COLOR_RED}[${test.result.toUpperCase()}] ${test.title}${COLORS.COLOR_RESET
+          }`);
+        for (let line of test.err.stack.split(/\n/)) {
+          print(`${indent(indentLevel + 1)}${
+            COLORS.COLOR_RED}${line}${COLORS.COLOR_RESET
+            }`);
+        }
       }
     }
   }
-  for (let sub of suite.suites) {
-    logSuite(sub, indentLevel + 1);
-  }
-  if (suite.suites.length) {
-    print();
+  if (suite.suites) {
+    for (let sub of suite.suites) {
+      logSuite(sub, indentLevel + 1);
+    }
+    if (suite.suites.length) {
+      print();
+    }
   }
 }
 
