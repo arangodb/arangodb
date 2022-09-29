@@ -68,14 +68,10 @@ function logSuite (suite, indentLevel) {
   if (suite.title) {
     print(`${indent(indentLevel - 1)}${
       COLORS.COLOR_BOLD_WHITE}${suite.title}${COLORS.COLOR_RESET
-    }`);
+      }`);
   }
 
-  if (suite.tests) {
-    if (suite.tests != null && typeof suite.tests[Symbol.iterator] !== 'function') {
-      console.error("suite.tests is not iterable: ", suite.tests, JSON.stringify(suite.tests));
-    }
-
+  if (suite.tests != null && typeof suite.tests[Symbol.iterator] === 'function') {
     for (let test of suite.tests) {
       if (test.result === 'pass') {
         print(`${indent(indentLevel)}${
@@ -97,13 +93,11 @@ function logSuite (suite, indentLevel) {
       }
     }
   }
-  if (suite.suites) {
-    for (let sub of suite.suites) {
-      logSuite(sub, indentLevel + 1);
-    }
-    if (suite.suites.length) {
-      print();
-    }
+  for (let sub of suite.suites) {
+    logSuite(sub, indentLevel + 1);
+  }
+  if (suite.suites.length) {
+    print();
   }
 }
 
