@@ -3,6 +3,11 @@ devel
 
 * Added new AQL function SHA256(value).
 
+* Added index cleanup in Supervision. If an index was not created successfully
+  and the coordinator which initiated the creation was rebooted or is dead,
+  then the agency Supervision will drop the index again. If it was created
+  successfully, the agency Supervision will finalize it.
+
 * BTS-742: Added restriction for, when in smart graph, not accepting satellites
   in invalid format when storing a graph (like `{satellites: null}`).
 

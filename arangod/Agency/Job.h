@@ -27,6 +27,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <velocypack/Builder.h>
@@ -190,10 +191,9 @@ struct Job {
       velocypack::Builder& pre, std::string const& database,
       std::string const& collection);
   static void addBlockServer(velocypack::Builder& trx,
-                             std::string const& server,
-                             std::string const& jobId);
+                             std::string const& server, std::string_view jobId);
   static void addBlockShard(velocypack::Builder& trx, std::string const& shard,
-                            std::string const& jobId);
+                            std::string_view jobId);
   static void addReadLockServer(velocypack::Builder& trx,
                                 std::string const& server,
                                 std::string const& jobId);
@@ -217,7 +217,7 @@ struct Job {
       std::vector<shard_t> const&, std::string const& server);
   static void addPreconditionServerHealth(velocypack::Builder& pre,
                                           std::string const& server,
-                                          std::string const& health);
+                                          std::string_view health);
   static void addPreconditionShardNotBlocked(velocypack::Builder& pre,
                                              std::string const& shard);
   static void addPreconditionServerReadLockable(velocypack::Builder& pre,
@@ -233,7 +233,7 @@ struct Job {
                                                std::string const& server,
                                                std::string const& jobId);
   static void addPreconditionUnchanged(velocypack::Builder& pre,
-                                       std::string const& key,
+                                       std::string_view key,
                                        velocypack::Slice value);
   static void addPreconditionJobStillInPending(velocypack::Builder& pre,
                                                std::string const& jobId);
