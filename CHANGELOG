@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added new AQL function SHA256(value).
+
 * BTS-742: Added restriction for, when in smart graph, not accepting satellites
   in invalid format when storing a graph (like `{satellites: null}`).
 
