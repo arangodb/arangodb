@@ -78,7 +78,7 @@ function indexCleanupSuite() {
 
     tearDown: function() {
       // Just in case we failed when maintenance mode was on:
-      res = arango.PUT(maintenanceURL, '"off"');
+      arango.PUT(maintenanceURL, '"off"');
       try {
         db._drop(collName);
       } catch(e) {
