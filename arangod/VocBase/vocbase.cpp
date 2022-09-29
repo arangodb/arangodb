@@ -2166,6 +2166,7 @@ bool TRI_vocbase_t::visitDataSources(dataSourceVisitor const& visitor) {
 
 // TODO Make this noexcept, do catchToResultT, and return all errors in the
 //      Result?
+// TODO Move the implementation into the LogManager
 auto TRI_vocbase_t::updateReplicatedStateTerm(
     arangodb::replication2::LogId logId,
     replication2::agency::LogPlanSpecification const& spec)
@@ -2176,7 +2177,7 @@ auto TRI_vocbase_t::updateReplicatedStateTerm(
   auto myServerId = ServerState::instance()->getId();
   auto myRebootId = ServerState::instance()->getRebootId();
   auto* pool = server().getFeature<NetworkFeature>().pool();
-  auto& plannedLeader = spec.currentTerm->leader;
+  auto const& plannedLeader = spec.currentTerm->leader;
   auto log = _logManager->getReplicatedLogById(logId);
   auto failureOracle =
       server().getFeature<cluster::FailureOracleFeature>().getFailureOracle();
@@ -2211,11 +2212,14 @@ auto TRI_vocbase_t::updateReplicatedStateTerm(
 
     std::ignore =
         log->becomeFollower(myServerId, spec.currentTerm->term, leaderString);
+
+    return futures::Future<arangodb::Result>{std::in_place};
   }
 }
 
 // TODO Make this noexcept, do catchToResultT, and return all errors in the
 //      Result?
+// TODO Move the implementation into the LogManager
 auto TRI_vocbase_t::updateReplicatedStateConfig(
     arangodb::replication2::LogId logId,
     replication2::agency::ParticipantsConfig const& participantsConfig)
@@ -2226,16 +2230,9 @@ auto TRI_vocbase_t::updateReplicatedStateConfig(
   //      is that really helpful, as this code contains no logic?
 
   auto serverId = ServerState::instance()->getId();
-  auto rebootId = ServerState::instance()->getRebootId();
   auto* pool = server().getFeature<NetworkFeature>().pool();
 
-  // TODO ensure or getReplicatedLogById?
-  auto maybeLog =
-      _logManager->ensureReplicatedLog(*this, logId, std::nullopt /* TODO */);
-  if (maybeLog.fail()) {
-    THROW_ARANGO_EXCEPTION(maybeLog.result());
-  }
-  auto log = *maybeLog;
+  auto log = _logManager->getReplicatedLogById(logId);
 
   auto leader = log->getLeader();
 
@@ -2258,7 +2255,7 @@ auto TRI_vocbase_t::getReplicatedStatesQuickStatus() const
     -> std::unordered_map<
         arangodb::replication2::LogId,
         arangodb::replication2::replicated_log::QuickLogStatus> {
-  std::abort();  // TODO
+  return _logManager->getReplicatedLogsQuickStatus();
 }
 
 /// @brief sanitize an object, given as slice, builder must contain an
