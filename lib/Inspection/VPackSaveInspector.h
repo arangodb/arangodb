@@ -150,7 +150,7 @@ struct VPackSaveInspector
       typename Base::template UnqualifiedVariant<Ts...>& variant,
       Args&&... args) {
     return std::visit(
-        overload{[this, &args](typename Args::Type& v) {
+        overload{[&](typename Args::Type& v) {
           if constexpr (Args::isInlineType) {
             return this->apply(v);
           } else {
@@ -165,7 +165,7 @@ struct VPackSaveInspector
   template<class... Ts, class... Args>
   auto processVariant(typename Base::template QualifiedVariant<Ts...>& variant,
                       Args&&... args) {
-    return std::visit(overload{[this, &args, &variant](typename Args::Type& v) {
+    return std::visit(overload{[&](typename Args::Type& v) {
                         if constexpr (Args::isInlineType) {
                           return this->apply(v);
                         } else {
@@ -185,7 +185,7 @@ struct VPackSaveInspector
   template<class... Ts, class... Args>
   auto processVariant(typename Base::template EmbeddedVariant<Ts...>& variant,
                       Args&&... args) {
-    return std::visit(overload{[this, &variant, &args](typename Args::Type& v) {
+    return std::visit(overload{[&](typename Args::Type& v) {
                         if constexpr (Args::isInlineType) {
                           return this->apply(v);
                         } else {
