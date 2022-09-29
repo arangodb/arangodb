@@ -26,7 +26,6 @@
 #include <fmt/ostream.h>
 
 #include "Replication2/Helper/AgencyLogBuilder.h"
-#include "Replication2/Helper/AgencyStateBuilder.h"
 #include "Replication2/ModelChecker/ActorModel.h"
 #include "Replication2/ModelChecker/ModelChecker.h"
 #include "Replication2/ModelChecker/Predicates.h"
@@ -58,8 +57,7 @@ struct ReplicatedLogSupervisionSimulationTest
   auto makeAgencyState(Log const& log,
                        replicated_log::ParticipantsHealth health)
       -> AgencyState {
-    return AgencyState{.replicatedState = std::nullopt,
-                       .replicatedLog = log,
+    return AgencyState{.replicatedLog = log,
                        .health = std::move(health),
                        .logLeaderWriteConcern = std::nullopt};
   }

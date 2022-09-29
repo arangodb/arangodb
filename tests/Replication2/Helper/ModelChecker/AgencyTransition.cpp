@@ -24,7 +24,6 @@
 #include <fmt/core.h>
 
 #include "Replication2/Helper/AgencyLogBuilder.h"
-#include "Replication2/Helper/AgencyStateBuilder.h"
 #include "Replication2/ModelChecker/ActorModel.h"
 #include "Replication2/ModelChecker/ModelChecker.h"
 #include "Replication2/ModelChecker/Predicates.h"
@@ -32,8 +31,6 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/ReplicatedState/Supervision.h"
 
 #include "Replication2/Helper/ModelChecker/AgencyState.h"
 #include "Replication2/Helper/ModelChecker/AgencyTransitions.h"
@@ -48,42 +45,8 @@ using namespace arangodb::test;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
 namespace RLA = arangodb::replication2::agency;
-namespace RSA = arangodb::replication2::replicated_state::agency;
 
 namespace arangodb::test {
-
-auto SupervisionStateAction::toString() const -> std::string {
-  return std::string{"Supervision "} +
-         std::visit(
-             [&](auto const& x) {
-               return boost::core::demangle(typeid(x).name());
-             },
-             _action);
-}
-
-SupervisionStateAction::SupervisionStateAction(replicated_state::Action action)
-    : _action(std::move(action)) {}
-
-void SupervisionStateAction::apply(AgencyState& agency) {
-  auto actionCtx =
-      executeAction(*agency.replicatedState, agency.replicatedLog, _action);
-  if (actionCtx.hasModificationFor<RLA::LogTarget>()) {
-    if (!agency.replicatedLog) {
-      agency.replicatedLog.emplace();
-    }
-    agency.replicatedLog->target = actionCtx.getValue<RLA::LogTarget>();
-  }
-  if (actionCtx.hasModificationFor<RSA::Plan>()) {
-    agency.replicatedState->plan = actionCtx.getValue<RSA::Plan>();
-  }
-  if (actionCtx.hasModificationFor<RSA::Current::Supervision>()) {
-    if (!agency.replicatedState->current) {
-      agency.replicatedState->current.emplace();
-    }
-    agency.replicatedState->current->supervision =
-        actionCtx.getValue<RSA::Current::Supervision>();
-  }
-}
 
 auto KillServerAction::toString() const -> std::string {
   return std::string{"kill "} + id;
@@ -129,22 +92,20 @@ void SupervisionLogAction::apply(AgencyState& agency) {
 }
 
 auto DBServerSnapshotCompleteAction::toString() const -> std::string {
-  return std::string{"Snapshot Complete for "} + name + "@" +
-         to_string(generation);
+  return std::string{"Snapshot Complete for "} + name;
 }
 
 void DBServerSnapshotCompleteAction::apply(AgencyState& agency) {
-  if (!agency.replicatedState->current) {
-    agency.replicatedState->current.emplace();
+  if (!agency.replicatedLog->current) {
+    agency.replicatedLog->current.emplace();
   }
-  auto& status = agency.replicatedState->current->participants[name];
-  status.generation = generation;
-  status.snapshot.status = SnapshotStatus::kCompleted;
+  auto& status = agency.replicatedLog->current->localState[name];
+  status.snapshotAvailable = true;
 }
 
 DBServerSnapshotCompleteAction::DBServerSnapshotCompleteAction(
-    ParticipantId name, StateGeneration generation)
-    : name(std::move(name)), generation(generation) {}
+    ParticipantId name)
+    : name(std::move(name)) {}
 
 auto DBServerReportTermAction::toString() const -> std::string {
   return std::string{"Report Term for "} + name + ", term" + to_string(term);
@@ -206,8 +167,8 @@ auto ReplaceServerTargetState::toString() const -> std::string {
 }
 
 void ReplaceServerTargetState::apply(AgencyState& agency) const {
-  TRI_ASSERT(agency.replicatedState.has_value());
-  auto& target = agency.replicatedState->target;
+  TRI_ASSERT(agency.replicatedLog.has_value());
+  auto& target = agency.replicatedLog->target;
   target.participants.erase(oldServer);
   target.participants[newServer];
   target.version.emplace(target.version.value_or(0) + 1);

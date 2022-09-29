@@ -23,11 +23,8 @@
 #pragma once
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/ReplicatedState/Supervision.h"
 
 namespace RLA = arangodb::replication2::agency;
-namespace RSA = arangodb::replication2::replicated_state::agency;
 
 namespace arangodb::test {
 
