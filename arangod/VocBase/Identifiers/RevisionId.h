@@ -29,6 +29,9 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Identifier.h"
 
+#include <cstdint>
+#include <string_view>
+
 namespace arangodb {
 class ClusterInfo;
 class LocalDocumentId;
@@ -86,18 +89,13 @@ class RevisionId final : public arangodb::basics::Identifier {
   static RevisionId createClusterWideUnique(ClusterInfo& ci);
 
   /// @brief Convert a string into a revision ID, returns none() if invalid
-  static RevisionId fromString(std::string const& ridStr);
+  static RevisionId fromString(std::string_view rid);
 
   /// @brief Convert a string into a revision ID, returns none() if invalid
-  static RevisionId fromString(std::string const& ridStr, bool& isOld,
-                               bool warn);
+  static RevisionId fromString(std::string_view rid, bool& isOld, bool warn);
 
   /// @brief Convert a string into a revision ID, no check variant
   static RevisionId fromString(char const* p, size_t len, bool warn);
-
-  /// @brief Convert a string into a revision ID, returns none() if invalid
-  static RevisionId fromString(char const* p, size_t len, bool& isOld,
-                               bool warn);
 
   /// @brief extract revision from slice; expects either an integer or string,
   /// or an object with a string or integer _rev attribute

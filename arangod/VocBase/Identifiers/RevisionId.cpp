@@ -107,33 +107,34 @@ RevisionId RevisionId::createClusterWideUnique(ClusterInfo& ci) {
 /// @brief Convert a string into a revision ID, no check variant
 RevisionId RevisionId::fromString(char const* p, size_t len, bool warn) {
   [[maybe_unused]] bool isOld;
-  return fromString(p, len, isOld, warn);
+  return fromString({p, len}, isOld, warn);
 }
 
 /// @brief Convert a string into a revision ID, returns 0 if format invalid
-RevisionId RevisionId::fromString(std::string const& ridStr) {
+RevisionId RevisionId::fromString(std::string_view rid) {
   [[maybe_unused]] bool isOld;
-  return fromString(ridStr.c_str(), ridStr.size(), isOld, false);
+  return fromString(rid, isOld, false);
 }
 
 /// @brief Convert a string into a revision ID, returns 0 if format invalid
-RevisionId RevisionId::fromString(std::string const& ridStr, bool& isOld,
+RevisionId RevisionId::fromString(std::string_view rid, bool& isOld,
                                   bool warn) {
-  return fromString(ridStr.c_str(), ridStr.size(), isOld, warn);
-}
-
-/// @brief Convert a string into a revision ID, returns 0 if format invalid
-RevisionId RevisionId::fromString(char const* p, size_t len, bool& isOld,
-                                  bool warn) {
+  char const* p = rid.data();
+  size_t len = rid.size();
   if (len > 0 && *p >= '1' && *p <= '9') {
-    BaseType r = NumberUtils::atoi_positive_unchecked<BaseType>(p, p + len);
-    if (warn && r > ::TickLimit) {
-      // An old tick value that could be confused with a time stamp
-      LOG_TOPIC("66a3a", WARN, arangodb::Logger::FIXME)
-          << "Saw old _rev value that could be confused with a time stamp!";
+    bool isValid = false;
+    BaseType r = NumberUtils::atoi_positive<BaseType>(p, p + len, isValid);
+    if (isValid) {
+      if (warn && r > ::TickLimit) {
+        // An old tick value that could be confused with a time stamp
+        LOG_TOPIC("66a3a", WARN, arangodb::Logger::FIXME)
+            << "Saw old _rev value that could be confused with a time stamp!";
+      }
+      isOld = true;
+      return RevisionId{r};
     }
-    isOld = true;
-    return RevisionId{r};
+    // value consists not only of numeric digits. now fall through to
+    // the string decoding
   }
   isOld = false;
   return RevisionId{basics::HybridLogicalClock::decodeTimeStamp(p, len)};
@@ -144,22 +145,17 @@ RevisionId RevisionId::fromString(char const* p, size_t len, bool& isOld,
 RevisionId RevisionId::fromSlice(velocypack::Slice slice) {
   slice = slice.resolveExternal();
 
+  if (slice.isObject()) {
+    slice = slice.get(StaticStrings::RevString);
+  }
+
   if (slice.isInteger()) {
     return RevisionId{slice.getNumber<BaseType>()};
-  } else if (slice.isString()) {
+  }
+  if (slice.isString()) {
     velocypack::ValueLength l;
     char const* p = slice.getStringUnchecked(l);
     return fromString(p, l, false);
-  } else if (slice.isObject()) {
-    velocypack::Slice r(slice.get(StaticStrings::RevString));
-    if (r.isString()) {
-      velocypack::ValueLength l;
-      char const* p = r.getStringUnchecked(l);
-      return fromString(p, l, false);
-    }
-    if (r.isInteger()) {
-      return RevisionId{r.getNumber<BaseType>()};
-    }
   }
 
   return RevisionId::none();
