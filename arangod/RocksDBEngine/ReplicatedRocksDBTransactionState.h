@@ -56,7 +56,7 @@ class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
 
   void addIntermediateCommits(uint64_t value) override;
 
-  virtual arangodb::Result triggerIntermediateCommit() override;
+  arangodb::Result triggerIntermediateCommit() override;
 
   [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId collectionId) override;

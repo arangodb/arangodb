@@ -2117,8 +2117,8 @@ TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
 }
 
 arangodb::Result TransactionStateMock::triggerIntermediateCommit() {
-  TRI_ASSERT(false);  // should never be called!
-  return {};
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "invalid call to triggerIntermediateCommit");
 }
 
 arangodb::futures::Future<arangodb::Result>

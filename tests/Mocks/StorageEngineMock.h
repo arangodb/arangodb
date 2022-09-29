@@ -213,7 +213,6 @@ class TransactionStateMock : public arangodb::TransactionState {
       arangodb::transaction::Hints hints) override;
   virtual arangodb::futures::Future<arangodb::Result> commitTransaction(
       arangodb::transaction::Methods* trx) override;
-  virtual arangodb::Result triggerIntermediateCommit() override;
   virtual arangodb::futures::Future<arangodb::Result>
   performIntermediateCommitIfRequired(arangodb::DataSourceId cid) override;
   virtual uint64_t numCommits() const noexcept override;
@@ -222,6 +221,7 @@ class TransactionStateMock : public arangodb::TransactionState {
   virtual bool hasFailedOperations() const noexcept override;
   TRI_voc_tick_t lastOperationTick() const noexcept override;
 
+  arangodb::Result triggerIntermediateCommit() override;
   std::unique_ptr<arangodb::TransactionCollection> createTransactionCollection(
       arangodb::DataSourceId cid,
       arangodb::AccessMode::Type accessType) override;
