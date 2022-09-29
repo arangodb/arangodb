@@ -40,12 +40,17 @@ struct PlanCollection;
 
 struct PlanCollectionEntry {
   PlanCollectionEntry(PlanCollection collection,
-                      ShardDistribution shardDistribution);
+                      ShardDistribution shardDistribution,
+                      AgencyIsBuildingFlags isBuildingFlags);
 
-  [[nodiscard]] std::string const& getCID() const;
+  [[nodiscard]] std::string getCID() const;
+
+  [[nodiscard]] std::string const& getName() const;
 
   // To be replaced by Inspect below, as soon as same-level fields are merged.
   [[nodiscard]] velocypack::Builder toVPackDeprecated() const;
+
+  [[nodiscard]] PlanShardToServerMapping getShardMapping() const;
 
   // Remove the isBuilding flags, call it if we are completed
   void removeBuildingFlags();

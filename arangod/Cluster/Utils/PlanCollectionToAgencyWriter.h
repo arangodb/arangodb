@@ -22,12 +22,22 @@
 
 #pragma once
 
+#include "Basics/Guarded.h"
+#include "Containers/FlatHashMap.h"
+
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 namespace arangodb {
+
+namespace velocypack {
+class Slice;
+}
+
+class Result;
 
 template<typename T>
 class ResultT;
@@ -42,6 +52,13 @@ struct PlanCollectionToAgencyWriter {
                          std::shared_ptr<IShardDistributionFactory>>
           shardDistributionsUsed);
 
+  [[nodiscard]] std::vector<
+      std::pair<std::string, std::function<bool(velocypack::Slice)>>>
+  prepareCurrentWatcher(
+      std::string_view databaseName, bool waitForSyncReplication,
+      std::shared_ptr<Guarded<absl::flat_hash_map<std::string, Result>>> const&
+          report) const;
+
   [[nodiscard]] AgencyWriteTransaction prepareUndoTransaction(
       std::string_view databaseName) const;
 
@@ -51,6 +68,8 @@ struct PlanCollectionToAgencyWriter {
 
   [[nodiscard]] AgencyWriteTransaction prepareCompletedTransaction(
       std::string_view databaseName);
+
+  [[nodiscard]] std::vector<std::string> collectionNames() const;
 
  private:
   // Information required for the collections to write

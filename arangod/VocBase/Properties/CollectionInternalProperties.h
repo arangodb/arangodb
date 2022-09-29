@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Basics/StaticStrings.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
 
 #include <string>
@@ -45,9 +46,20 @@ struct CollectionInternalProperties {
       static arangodb::inspection::Status fromSerialized(
           SerializedType const& v, MemoryType& result);
     };
+
+    struct IdIdentifier {
+      using MemoryType = DataSourceId;
+      using SerializedType = std::string;
+
+      static arangodb::inspection::Status toSerialized(MemoryType v,
+                                                       SerializedType& result);
+
+      static arangodb::inspection::Status fromSerialized(
+          SerializedType const& v, MemoryType& result);
+    };
   };
 
-  std::string id = StaticStrings::Empty;
+  DataSourceId id{0};
   bool syncByRevision = true;
   bool usesRevisionsAsDocumentIds = true;
   bool isSmartChild = false;
@@ -62,7 +74,10 @@ struct CollectionInternalProperties {
 template<class Inspector>
 auto inspect(Inspector& f, CollectionInternalProperties& props) {
   return f.object(props).fields(
-      f.field("id", props.id).fallback(f.keep()),
+      f.field("id", props.id)
+          .transformWith(
+              CollectionInternalProperties::Transformers::IdIdentifier{})
+          .fallback(f.keep()),
       f.field(StaticStrings::SyncByRevision, props.syncByRevision)
           .fallback(f.keep()),
       f.field(StaticStrings::UsesRevisionsAsDocumentIds,

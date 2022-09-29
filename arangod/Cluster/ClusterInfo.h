@@ -870,6 +870,14 @@ class ClusterInfo final {
 
   ArangodServer& server() const;
 
+  AgencyCallbackRegistry& agencyCallbackRegistry() const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get the poll interval
+  //////////////////////////////////////////////////////////////////////////////
+
+  static double getPollInterval() { return 5.0; }
+
  private:
   /// @brief worker function for dropIndexCoordinator
   Result dropIndexCoordinatorInner(std::string const& databaseName,
@@ -910,12 +918,6 @@ class ClusterInfo final {
   void triggerWaiting(
       std::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm,
       uint64_t commitIndex);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get the poll interval
-  //////////////////////////////////////////////////////////////////////////////
-
-  static double getPollInterval() { return 5.0; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the timeout for reloading the server list

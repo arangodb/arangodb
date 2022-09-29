@@ -23,38 +23,38 @@
 #pragma once
 
 #include "Basics/StaticStrings.h"
-#include "Cluster/ClusterTypes.h"
 #include "Cluster/Utils/ResponsibleServerList.h"
 #include "Containers/FlatHashMap.h"
 
 #include <string>
-// TODO: This file needs some rework.
-// Would like to get away with simple Inspect.
+
 namespace arangodb {
 
 struct PlanShardToServerMapping;
 
-template<typename T>
-class ResultT;
-
 // TODO: Move Out to own file
-struct ShardError {
-  // In case someone forgets to properly set this, we default to an internal
-  // error
-  ErrorCode errorNum{TRI_ERROR_INTERNAL};
-  bool isError{true};
+struct CurrentShardEntry {
+  std::optional<ResponsibleServerList> servers{std::nullopt};
+  std::optional<ResponsibleServerList> failoverCandidates{std::nullopt};
+  std::optional<velocypack::Builder> indexes{std::nullopt};
+
+  ErrorCode errorNum{TRI_ERROR_NO_ERROR};
+  bool isError{false};
   std::string errorMessage{StaticStrings::Empty};
 };
 
-struct ResponsibleServersOrError {
-  std::variant<ResponsibleServerList, ShardError> data;
-
-  static auto fromVPack(arangodb::velocypack::Slice body)
-      -> ResultT<ResponsibleServersOrError>;
-};
+template<class Inspector>
+auto inspect(Inspector& f, CurrentShardEntry& entry) {
+  return f.object(entry).fields(
+      f.field("servers", entry.servers), f.field("indexes", entry.indexes),
+      f.field(StaticStrings::FailoverCandidates, entry.failoverCandidates),
+      f.field(StaticStrings::Error, entry.isError),
+      f.field(StaticStrings::ErrorNum, entry.errorNum),
+      f.field(StaticStrings::ErrorMessage, entry.errorMessage));
+}
 
 struct CurrentCollectionEntry {
-  containers::FlatHashMap<ShardID, ResponsibleServersOrError> shards;
+  containers::FlatHashMap<ShardID, CurrentShardEntry> shards;
 
   /**
    * Quick check if any shard reported an error
@@ -94,15 +94,11 @@ struct CurrentCollectionEntry {
   // Cannot use built_in variant type here, as we have no field that denotes
   // which one is in use, they have different attributes each Would prefer to
   // use an inspect here as well.
-  static auto fromVPack(arangodb::velocypack::Slice body)
-      -> ResultT<CurrentCollectionEntry>;
 };
 
 template<class Inspector>
-auto inspect(Inspector& f, ShardError& x) {
-  return f.object(x).fields(
-      f.field(StaticStrings::Error, x.isError),
-      f.field(StaticStrings::ErrorNum, x.errorNum),
-      f.field(StaticStrings::ErrorMessage, x.errorMessage));
+auto inspect(Inspector& f, CurrentCollectionEntry& x) {
+  return f.apply(x.shards);
 }
+
 }  // namespace arangodb

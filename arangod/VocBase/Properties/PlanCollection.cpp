@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
@@ -136,6 +137,12 @@ ResultT<PlanCollection> parseAndValidate(
 
 }  // namespace
 
+#if ARANGODB_USE_GOOGLE_TESTS
+PlanCollection::DatabaseConfiguration::DatabaseConfiguration(
+    std::function<DataSourceId()> _idGenerator)
+    : idGenerator{std::move(_idGenerator)} {}
+#endif
+
 PlanCollection::DatabaseConfiguration::DatabaseConfiguration(
     TRI_vocbase_t const& vocbase) {
   auto& server = vocbase.server();
@@ -158,6 +165,13 @@ PlanCollection::DatabaseConfiguration::DatabaseConfiguration(
   } else {
     defaultDistributeShardsLike = "";
   }
+  if (!ServerState::instance()->isCoordinator() &&
+      !ServerState::instance()->isDBServer()) {
+    idGenerator = []() { return DataSourceId(TRI_NewTickServer()); };
+  } else {
+    auto& ci = cl.clusterInfo();
+    idGenerator = [&ci]() { return DataSourceId(ci.uniqid(1)); };
+  }
 }
 
 PlanCollection::PlanCollection() {}
@@ -169,8 +183,12 @@ ResultT<PlanCollection> PlanCollection::fromCreateAPIBody(
     // on "name"
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
-  return ::parseAndValidate(config, input, StaticStrings::Empty,
-                            [](PlanCollection&) {});
+  return ::parseAndValidate(
+      config, input, StaticStrings::Empty, [&config](PlanCollection& col) {
+        if (col.internalProperties.id.empty()) {
+          col.internalProperties.id = config.idGenerator();
+        }
+      });
 }
 
 ResultT<PlanCollection> PlanCollection::fromCreateAPIV8(
@@ -181,15 +199,17 @@ ResultT<PlanCollection> PlanCollection::fromCreateAPIV8(
     // on "name"
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
-  return ::parseAndValidate(config, properties, name,
-                            [&name, &type](PlanCollection& col) {
-                              // If we have given a type, it always wins.
-                              // As we hand in an enum the type has to be valid.
-                              // TODO: Should we silently do this?
-                              // or should we throw an illegal use error?
-                              col.constantProperties.type = type;
-                              col.mutableProperties.name = name;
-                            });
+  return ::parseAndValidate(config, properties, name, [&name, &type, &config](PlanCollection& col) {
+        // If we have given a type, it always wins.
+        // As we hand in an enum the type has to be valid.
+        // TODO: Should we silently do this?
+        // or should we throw an illegal use error?
+        col.constantProperties.type = type;
+        col.mutableProperties.name = name;
+        if (col.internalProperties.id.empty()) {
+          col.internalProperties.id = config.idGenerator();
+        }
+      });
 }
 
 arangodb::velocypack::Builder PlanCollection::toCreateCollectionProperties(

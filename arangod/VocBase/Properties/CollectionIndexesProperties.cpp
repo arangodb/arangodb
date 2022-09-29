@@ -60,7 +60,53 @@ CollectionIndexesProperties CollectionIndexesProperties::defaultIndexesForCollec
     result.indexes.emplace_back(std::move(primary));
   }
   if (type ==  TRI_col_type_e::TRI_COL_TYPE_EDGE) {
-    // TODO: Add EdgeIndex
+    VPackBuilder fromIndex;
+    {
+      VPackObjectBuilder guard(&fromIndex);
+      fromIndex.add(arangodb::StaticStrings::IndexId,
+                    arangodb::velocypack::Value(std::to_string(1)));
+      fromIndex.add(arangodb::StaticStrings::IndexType,
+                    arangodb::velocypack::Value("edge"));
+      fromIndex.add(arangodb::StaticStrings::IndexName,
+                    arangodb::velocypack::Value("edge"));
+
+      fromIndex.add(
+          arangodb::velocypack::Value(arangodb::StaticStrings::IndexFields));
+      {
+        VPackArrayBuilder keysArray(&fromIndex);
+        fromIndex.add(VPackValue(StaticStrings::FromString));
+      }
+
+      fromIndex.add(arangodb::StaticStrings::IndexSparse,
+                    arangodb::velocypack::Value(false));
+      fromIndex.add(arangodb::StaticStrings::IndexUnique,
+                    arangodb::velocypack::Value(false));
+    }
+    result.indexes.emplace_back(std::move(fromIndex));
+
+    VPackBuilder toIndex;
+    {
+      VPackObjectBuilder guard(&toIndex);
+      toIndex.add(arangodb::StaticStrings::IndexId,
+                  arangodb::velocypack::Value(std::to_string(2)));
+      toIndex.add(arangodb::StaticStrings::IndexType,
+                  arangodb::velocypack::Value("edge"));
+      toIndex.add(arangodb::StaticStrings::IndexName,
+                  arangodb::velocypack::Value("edge"));
+
+      toIndex.add(
+          arangodb::velocypack::Value(arangodb::StaticStrings::IndexFields));
+      {
+        VPackArrayBuilder keysArray(&toIndex);
+        toIndex.add(VPackValue(StaticStrings::ToString));
+      }
+
+      toIndex.add(arangodb::StaticStrings::IndexSparse,
+                  arangodb::velocypack::Value(false));
+      toIndex.add(arangodb::StaticStrings::IndexUnique,
+                  arangodb::velocypack::Value(false));
+    }
+    result.indexes.emplace_back(std::move(toIndex));
   }
 
   return result;

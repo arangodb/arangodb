@@ -31,6 +31,7 @@ using namespace arangodb;
 SatelliteDistribution::SatelliteDistribution() {
   _shardToServerMapping.reserve(1);
 }
+
 Result SatelliteDistribution::planShardsOnServers(
     std::vector<ServerID> availableServers,
     std::unordered_set<ServerID>& serversPlanned) {
@@ -45,7 +46,8 @@ Result SatelliteDistribution::planShardsOnServers(
     serversPlanned.emplace(s);
   }
   // We simply place ourselfs on all servers, a random one shall be the leader
-  _shardToServerMapping.emplace_back(std::move(availableServers));
+  _shardToServerMapping.emplace_back(
+      ResponsibleServerList{std::move(availableServers)});
   // This can never fail.
   return TRI_ERROR_NO_ERROR;
 }

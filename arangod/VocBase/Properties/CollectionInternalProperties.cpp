@@ -22,6 +22,7 @@
 
 #include "CollectionInternalProperties.h"
 
+#include "Basics/NumberUtils.h"
 #include "Inspection/Status.h"
 
 using namespace arangodb;
@@ -54,5 +55,20 @@ CollectionInternalProperties::Transformers::StatusString::fromSerialized(
     std::underlying_type_t<TRI_vocbase_col_status_e>& result) {
   // Just ignore the serialized variant, and take whatever is the default
   // We have stored the status entry as well.
+  return {};
+}
+
+inspection::Status
+CollectionInternalProperties::Transformers::IdIdentifier::toSerialized(
+    DataSourceId v, std::string& result) {
+  result = std::to_string(v.id());
+  return {};
+}
+
+inspection::Status
+CollectionInternalProperties::Transformers::IdIdentifier::fromSerialized(
+    std::string const& v, DataSourceId& result) {
+  char const* p = v.c_str();
+  result = DataSourceId{NumberUtils::atoi_zero<uint64_t>(p, p + v.length())};
   return {};
 }

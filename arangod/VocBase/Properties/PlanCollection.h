@@ -40,6 +40,8 @@
 #include <string>
 
 namespace arangodb {
+
+class DataSourceId;
 class Result;
 
 template<typename T>
@@ -58,7 +60,7 @@ struct PlanCollection {
     // Default constructor for testability.
     // In production, we need to use vocbase
     // constructor.
-    DatabaseConfiguration() = default;
+    DatabaseConfiguration(std::function<DataSourceId()> idGenerator);
 #endif
     explicit DatabaseConfiguration(TRI_vocbase_t const& database);
 
@@ -75,6 +77,8 @@ struct PlanCollection {
     uint64_t defaultWriteConcern = 1;
     std::string defaultDistributeShardsLike = "";
     bool isOneShardDB = false;
+
+    std::function<DataSourceId()> idGenerator;
   };
 
   PlanCollection();

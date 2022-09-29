@@ -79,9 +79,9 @@ Result EvenDistribution::planShardsOnServers(
   size_t followerIndex = 0;
   for (uint64_t i = 0; i < _numberOfShards; ++i) {
     // determine responsible server(s)
-    std::vector<std::string> serverIds;
+    std::vector<ServerID> serverIds;
     for (uint64_t j = 0; j < _replicationFactor; ++j) {
-      if (j >= _avoidServers.size()) {
+      if (j >= availableServers.size()) {
         break;
       }
       std::string candidate;
@@ -103,7 +103,9 @@ Result EvenDistribution::planShardsOnServers(
       // remember that we use this server
       serversPlanned.emplace(candidate);
     }
-    _shardToServerMapping.emplace_back(std::move(serverIds));
+
+    _shardToServerMapping.emplace_back(
+        ResponsibleServerList{std::move(serverIds)});
   }
   return {TRI_ERROR_NO_ERROR};
 }

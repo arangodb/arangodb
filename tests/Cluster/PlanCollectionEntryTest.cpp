@@ -54,7 +54,8 @@ struct TestShardDistribution : public IShardDistributionFactory {
       for (uint64_t r = 0; r < replicationFactor; ++r) {
         servers.emplace_back(generateServerName(s, r, 0));
       }
-      _shardToServerMapping.emplace_back(std::move(servers));
+      _shardToServerMapping.emplace_back(
+          ResponsibleServerList{std::move(servers)});
     }
   }
 
@@ -101,7 +102,10 @@ TEST_F(PlanCollectionEntryTest, default_values) {
       numberOfShards, col.mutableProperties.replicationFactor);
   auto shards = generateShardNames(numberOfShards);
   ShardDistribution dist{shards, distProto};
-  PlanCollectionEntry entry{col, std::move(dist)};
+  AgencyIsBuildingFlags buildingFlags;
+  buildingFlags.rebootId = RebootId(42);
+  buildingFlags.coordinatorName = "CRDN_123";
+  PlanCollectionEntry entry{col, std::move(dist), std::move(buildingFlags)};
 
   auto builder = entry.toVPackDeprecated();
   LOG_DEVEL << builder.toJson();

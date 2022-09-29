@@ -90,10 +90,37 @@ TEST_F(CollectionInternalPropertiesTest, test_minimal_user_input) {
   ASSERT_TRUE(testee.ok());
   EXPECT_TRUE(testee->syncByRevision);
   EXPECT_TRUE(testee->usesRevisionsAsDocumentIds);
-  EXPECT_EQ(testee->id, "");
+  EXPECT_EQ(testee->id.id(), 0);
   EXPECT_FALSE(testee->isSmartChild);
   EXPECT_FALSE(testee->deleted);
   EXPECT_EQ(testee->internalValidatorType, 0);
+}
+
+TEST_F(CollectionInternalPropertiesTest, test_id) {
+  auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,
+                                 DataSourceId const& expected) {
+    auto testee = parse(body.slice());
+    EXPECT_EQ(testee->id, expected) << "Parsing error in " << body.toJson();
+    __HELPER_equalsAfterSerializeParseCircle(testee.get())
+  };
+  shouldBeEvaluatedTo(createMinimumBodyWithOneValue("id", "test"),
+                      DataSourceId(0));
+  shouldBeEvaluatedTo(createMinimumBodyWithOneValue("id", "unknown"),
+                      DataSourceId(0));
+
+  shouldBeEvaluatedTo(createMinimumBodyWithOneValue("id", "123"),
+                      DataSourceId(123));
+  shouldBeEvaluatedTo(createMinimumBodyWithOneValue("id", "42"),
+                      DataSourceId(42));
+
+  shouldBeEvaluatedTo(createMinimumBodyWithOneValue("id", "4.2"),
+                      DataSourceId(0));
+
+  GenerateFailsOnBool(id);
+  GenerateFailsOnInteger(id);
+  GenerateFailsOnDouble(id);
+  GenerateFailsOnArray(id);
+  GenerateFailsOnObject(id);
 }
 
 // Covers a non-documented API
@@ -102,7 +129,6 @@ GenerateIgnoredAttributeTest(CollectionInternalPropertiesTest,
 GenerateBoolAttributeTest(CollectionInternalPropertiesTest, syncByRevision);
 GenerateBoolAttributeTest(CollectionInternalPropertiesTest,
                           usesRevisionsAsDocumentIds);
-GenerateStringAttributeTest(CollectionInternalPropertiesTest, id);
 
 GenerateBoolAttributeTest(CollectionInternalPropertiesTest, isSmartChild);
 GenerateBoolAttributeTest(CollectionInternalPropertiesTest, deleted);

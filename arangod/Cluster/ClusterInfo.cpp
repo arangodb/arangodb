@@ -2109,7 +2109,6 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNT(
       return (*it2).second.collection;
     }
   }
-
   return nullptr;
 }
 
@@ -6851,6 +6850,11 @@ Result ClusterInfo::agencyHotBackupUnlock(std::string_view backupId,
 }
 
 ArangodServer& ClusterInfo::server() const { return _server; }
+
+AgencyCallbackRegistry& ClusterInfo::agencyCallbackRegistry() const {
+  TRI_ASSERT(_agencyCallbackRegistry != nullptr);
+  return *_agencyCallbackRegistry;
+}
 
 ClusterInfo::ServersKnown::ServersKnown(
     VPackSlice const serversKnownSlice,

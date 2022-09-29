@@ -22,57 +22,24 @@
 
 #include "CurrentCollectionEntry.h"
 
-#include "Basics/ResultT.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/Utils/PlanShardToServerMappping.h"
 #include "Inspection/VPack.h"
 
 using namespace arangodb;
 
-ResultT<ResponsibleServersOrError> ResponsibleServersOrError::fromVPack(
-    VPackSlice body) {
-  if (!body.isObject()) {
-    return Result{TRI_ERROR_BAD_PARAMETER, "Shard information in current is not an object"};
-  }
-  auto isError = basics::VelocyPackHelper::getBooleanValue(
-      body, StaticStrings::Error, false);
-  if (isError) {
-    ShardError err;
-    auto status = velocypack::deserializeWithStatus(body, err);
-    if (!status.ok()) {
-      return Result{
-          TRI_ERROR_BAD_PARAMETER,
-          status.error() +
-              (status.path().empty() ? "" : " on path " + status.path())};
-    }
-    return ResponsibleServersOrError{err};
-  } else {
-    ResponsibleServerList servers;
-    auto status = velocypack::deserializeWithStatus(body, servers);
-    if (!status.ok()) {
-      return Result{
-          TRI_ERROR_BAD_PARAMETER,
-          status.error() +
-              (status.path().empty() ? "" : " on path " + status.path())};
-    }
-    return ResponsibleServersOrError{servers};
-  }
-  return {TRI_ERROR_NO_ERROR};
-}
-
 auto CurrentCollectionEntry::hasError() const noexcept -> bool {
   return std::ranges::any_of(shards, [](auto const& s) {
-    return holds_alternative<ShardError>(s.second.data);
+    return s.second.isError;
   });
 }
 
 auto CurrentCollectionEntry::createErrorReport() const noexcept -> std::string {
   std::string report;
   for (auto const& [shardId, maybeError] : shards) {
-    if (holds_alternative<ShardError>(maybeError.data)) {
-      auto const& err = get<ShardError>(maybeError.data);
-      report += " shardID:" + shardId + ": " + err.errorMessage +
-                " (errorNum=" + to_string(err.errorNum) + ")";
+    if (maybeError.isError) {;
+      report += " shardID:" + shardId + ": " + maybeError.errorMessage +
+                " (errorNum=" + to_string(maybeError.errorNum) + ")";
     }
   }
   return report;
@@ -95,8 +62,8 @@ auto CurrentCollectionEntry::doExpectedServersMatch(
 
   return std::ranges::all_of(shards, [&expected](auto const& s) {
     auto const& [shardId, maybeResponse] = s;
-    if (holds_alternative<ResponsibleServerList>(maybeResponse.data)) {
-      auto const& reportedList = get<ResponsibleServerList>(maybeResponse.data);
+    if (!maybeResponse.isError) {
+      TRI_ASSERT(maybeResponse.servers.has_value());
       auto const expectedListIt = expected.shards.find(shardId);
       if (expectedListIt == expected.shards.end()) {
         // Got report for a shard we did not expected
@@ -105,7 +72,7 @@ auto CurrentCollectionEntry::doExpectedServersMatch(
         TRI_ASSERT(false);
         return false;
       } else {
-        if (expectedListIt->second != reportedList) {
+        if (expectedListIt->second != maybeResponse.servers.value()) {
           return false;
         }
       }
@@ -114,20 +81,4 @@ auto CurrentCollectionEntry::doExpectedServersMatch(
     // we have an error here
     return false;
   });
-}
-
-ResultT<CurrentCollectionEntry> CurrentCollectionEntry::fromVPack(
-    VPackSlice body) {
-  if (!body.isObject()) {
-    return Result{TRI_ERROR_BAD_PARAMETER, "Shard response list in current is not an object"};
-  }
-  CurrentCollectionEntry result;
-  for (auto const& [shardId, value] : VPackObjectIterator(body)) {
-    auto info = ResponsibleServersOrError::fromVPack(value);
-    if (info.fail()) {
-      return info.result();
-    }
-    result.shards.emplace(shardId.copyString(), std::move(info.get()));
-  }
-  return result;
 }

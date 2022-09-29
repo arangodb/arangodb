@@ -57,7 +57,7 @@ class PlanCollectionToAgencyWriterTest : public ::testing::Test {
         ->plan()
         ->collections()
         ->database(dbName())
-        ->collection(col.internalProperties.id)
+        ->collection(std::to_string(col.internalProperties.id.id()))
         ->str();
   }
 
@@ -77,7 +77,7 @@ class PlanCollectionToAgencyWriterTest : public ::testing::Test {
     std::vector<ServerID> result;
     result.reserve(numberOfServers);
     for (uint64_t i = 0; i < numberOfServers; ++i) {
-      result.emplace_back("PRMR_" + std::to_string(numberOfServers));
+      result.emplace_back("PRMR_" + std::to_string(i));
     }
     return result;
   }
@@ -105,8 +105,12 @@ class PlanCollectionToAgencyWriterTest : public ::testing::Test {
     shardDistributionsUsed.emplace(col.mutableProperties.name, distribution);
 
     ShardDistribution dist{shards, distribution};
+    AgencyIsBuildingFlags buildingFlags;
+    buildingFlags.rebootId = RebootId{42};
+    buildingFlags.coordinatorName = "CRDN_123";
     return PlanCollectionToAgencyWriter{
-        {PlanCollectionEntry{std::move(col), std::move(dist)}},
+        {PlanCollectionEntry{std::move(col), std::move(dist),
+                             std::move(buildingFlags)}},
         std::move(shardDistributionsUsed)};
   }
 
@@ -121,6 +125,7 @@ TEST_F(PlanCollectionToAgencyWriterTest, can_produce_agency_precondition) {}
 TEST_F(PlanCollectionToAgencyWriterTest, can_produce_agency_operation) {
   PlanCollection col{};
   col.mutableProperties.name = "test";
+  col.internalProperties.id = DataSourceId(123);
 
   auto writer = createWriterWithTestSharding(col);
 

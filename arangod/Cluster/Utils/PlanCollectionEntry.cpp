@@ -31,18 +31,31 @@
 
 using namespace arangodb;
 PlanCollectionEntry::PlanCollectionEntry(PlanCollection col,
-                                         ShardDistribution shardDistribution)
+                                         ShardDistribution shardDistribution,
+                                         AgencyIsBuildingFlags isBuildingFlags)
     : _constantProperties{std::move(col.constantProperties)},
       _mutableProperties{std::move(col.mutableProperties)},
       _internalProperties{std::move(col.internalProperties)},
-      _buildingFlags{},
+      _buildingFlags{std::move(isBuildingFlags)},
       _indexProperties(
           CollectionIndexesProperties::defaultIndexesForCollectionType(
               _constantProperties.getType())),
       _shardDistribution(std::move(shardDistribution)) {}
 
-std::string const& PlanCollectionEntry::getCID() const {
-  return {_internalProperties.id};
+std::string PlanCollectionEntry::getCID() const {
+  TRI_ASSERT(!_internalProperties.id.empty());
+  return std::to_string(_internalProperties.id.id());
+}
+
+std::string const& PlanCollectionEntry::getName() const {
+  TRI_ASSERT(!_mutableProperties.name.empty());
+  return {_mutableProperties.name};
+}
+
+PlanShardToServerMapping PlanCollectionEntry::getShardMapping() const {
+  TRI_ASSERT(_shardDistribution.getDistributionForShards().shards.size() ==
+             _constantProperties.numberOfShards);
+  return _shardDistribution.getDistributionForShards();
 }
 
 VPackBuilder PlanCollectionEntry::toVPackDeprecated() const {
@@ -69,7 +82,7 @@ VPackBuilder PlanCollectionEntry::toVPackDeprecated() const {
       VPackCollection::merge(constMut.slice(), intFlags.slice(), false, false);
   VPackBuilder indexes;
   velocypack::serialize(indexes, _indexProperties);
-  auto shardMapping = _shardDistribution.getDistributionForShards();
+  auto shardMapping = getShardMapping();
   VPackBuilder shards;
   velocypack::serialize(shards, shardMapping);
   auto shardsAndIndexes =

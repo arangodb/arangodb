@@ -22,14 +22,13 @@
 
 #include "PlanCollectionToAgencyWriter.h"
 #include "Agency/AgencyComm.h"
-#include "Cluster/Utils/PlanCollectionEntry.h"
-
 #include "Agency/AgencyPaths.h"
-/*
+#include "Basics/Guarded.h"
+#include "Cluster/Utils/CurrentCollectionEntry.h"
+#include "Cluster/Utils/PlanCollectionEntry.h"
+#include "Cluster/Utils/PlanShardToServerMappping.h"
 #include "Inspection/VPack.h"
 
-#include "Logger/LogMacros.h"
-*/
 using namespace arangodb;
 
 namespace {
@@ -45,6 +44,13 @@ inline auto pathCollectioInPlan(std::string_view databaseName) {
       std::string{databaseName});
 }
 
+inline auto pathCollectioInCurrent(std::string_view databaseName) {
+  // Note: I cannot use the Path builder here, as the Callbacks do not start at
+  // ROOT
+  return "Current/Collections/" + std::string{databaseName} + "/";
+  ;
+}
+
 }  // namespace
 
 PlanCollectionToAgencyWriter::PlanCollectionToAgencyWriter(
@@ -54,7 +60,74 @@ PlanCollectionToAgencyWriter::PlanCollectionToAgencyWriter(
     : _collectionPlanEntries{std::move(collectionPlanEntries)},
       _shardDistributionsUsed{std::move(shardDistributionsUsed)} {}
 
-[[nodiscard]] ResultT<AgencyWriteTransaction>
+std::vector<std::pair<std::string, std::function<bool(velocypack::Slice)>>>
+PlanCollectionToAgencyWriter::prepareCurrentWatcher(
+    std::string_view databaseName, bool waitForSyncReplication,
+    std::shared_ptr<Guarded<absl::flat_hash_map<std::string, Result>>> const&
+        report) const {
+  std::vector<std::pair<std::string, std::function<bool(velocypack::Slice)>>>
+      result;
+  // One callback per collection
+  result.reserve(_collectionPlanEntries.size());
+  auto const baseCollectionPath = pathCollectioInCurrent(databaseName);
+  for (auto const& entry : _collectionPlanEntries) {
+    auto const collectionPath = baseCollectionPath + entry.getCID();
+    auto expectedShards = entry.getShardMapping();
+    auto cid = entry.getCID();
+
+    auto callback = [cid, expectedShards, waitForSyncReplication,
+                     report](VPackSlice result) -> bool {
+      if (report->doUnderLock([&cid](auto const& collectionReport) {
+            return collectionReport.find(cid) != collectionReport.end();
+          })) {
+        // This collection has already reported
+        return true;
+      }
+
+      CurrentCollectionEntry state;
+      auto status = velocypack::deserializeWithStatus(result, state);
+      // We ignore parsing errors here, only react on positive case
+      if (status.ok()) {
+        if (state.haveAllShardsReported(expectedShards.shards.size())) {
+          if (state.hasError()) {
+            // At least on shard has reported an error.
+            auto message = state.createErrorReport();
+            report->doUnderLock([&cid, message = std::move(message)](
+                                    auto& collectionReport) {
+              if (collectionReport.find(cid) != collectionReport.end()) {
+                // Avoid, races, we are the first one to report here
+                collectionReport.emplace(
+                    cid, Result{TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
+                                message});
+              }
+            });
+            return true;
+          } else if (!waitForSyncReplication ||
+                     state.doExpectedServersMatch(expectedShards)) {
+            // All servers reported back without error.
+            // If waitForSyncReplication is requested full server lists match
+            // Let us return done!
+            report->doUnderLock([&cid](auto& collectionReport) {
+              if (collectionReport.find(cid) == collectionReport.end()) {
+                // Avoid, races, we are the first one to report here
+                collectionReport.emplace(cid, Result{TRI_ERROR_NO_ERROR});
+              }
+            });
+            return true;
+          }
+        }
+      }
+      // TODO: Maybe we want to do trace-logging if current cannot be parsed?
+
+      return true;
+    };
+    result.emplace_back(collectionPath, callback);
+  }
+
+  return result;
+}
+
+ResultT<AgencyWriteTransaction>
 PlanCollectionToAgencyWriter::prepareStartBuildingTransaction(
     std::string_view databaseName, uint64_t planVersion,
     std::vector<std::string> serversAvailable) const {
@@ -178,7 +251,7 @@ PlanCollectionToAgencyWriter::prepareCompletedTransaction(
       // Add a precondition that no other code has modified our collection.
       // Especially no failover has happend
       precs.emplace_back(AgencyPrecondition{
-          collectionPath, AgencyPrecondition::Type::VALUE, true});
+          collectionPath, AgencyPrecondition::Type::VALUE, std::move(builder)});
     }
     // Get out of is Building mode
     entry.removeBuildingFlags();
@@ -195,6 +268,15 @@ PlanCollectionToAgencyWriter::prepareCompletedTransaction(
 
   // TODO: Check ownership
   return AgencyWriteTransaction{opers, precs};
+}
+
+std::vector<std::string> PlanCollectionToAgencyWriter::collectionNames() const {
+  std::vector<std::string> names;
+  names.reserve(_collectionPlanEntries.size());
+  for (auto& entry : _collectionPlanEntries) {
+    names.emplace_back(entry.getName());
+  }
+  return names;
 }
 
 /*

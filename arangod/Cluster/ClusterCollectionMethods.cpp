@@ -23,6 +23,10 @@
 #include "ClusterCollectionMethods.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ConditionLocker.h"
+#include "Basics/ScopeGuard.h"
+#include "Cluster/AgencyCallback.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/Utils/DistributeShardsLike.h"
@@ -41,15 +45,19 @@
 
 using namespace arangodb;
 
-#if false
-// Plan for implementation
-
 namespace {
 
-Result impl(ClusterInfo& ci, std::string_view databaseName,
-            PlanCollectionToAgencyWriter writer) {
-  std::vector<std::string> collectionNames{};
+Result impl(ClusterInfo& ci, ArangodServer& server,
+            std::string_view databaseName,
+            PlanCollectionToAgencyWriter& writer) {
+  AgencyComm ac(server);
+  double pollInterval = ci.getPollInterval();
+  AgencyCallbackRegistry& callbackRegistry = ci.agencyCallbackRegistry();
+
+  // TODO Timeout?
+  std::vector<std::string> collectionNames = writer.collectionNames();
   while (true) {
+    // TODO: Is this necessary?
     ci.loadCurrentDBServers();
     auto planVersion =
         ci.checkDataSourceNamesAvailable(databaseName, collectionNames);
@@ -57,21 +65,260 @@ Result impl(ClusterInfo& ci, std::string_view databaseName,
       return planVersion.result();
     }
     std::vector<ServerID> availableServers = ci.getCurrentDBServers();
-    auto agencyTrx = writer.prepareTransaction(databaseName, planVersion.get(),
-                                               availableServers);
+
+    auto buildingTransaction = writer.prepareStartBuildingTransaction(
+        databaseName, planVersion.get(), availableServers);
+    if (buildingTransaction.fail()) {
+      return buildingTransaction.result();
+    }
+    auto currentReport =
+        std::make_shared<Guarded<absl::flat_hash_map<std::string, Result>>>();
+    auto callbackInfos =
+        writer.prepareCurrentWatcher(databaseName, false, currentReport);
+
+    std::vector<std::pair<std::shared_ptr<AgencyCallback>, std::string>>
+        callbackList;
+    auto unregisterCallbacksGuard =
+        scopeGuard([&callbackList, &callbackRegistry]() noexcept {
+          try {
+            for (auto& [cb, _] : callbackList) {
+              callbackRegistry.unregisterCallback(cb);
+            }
+          } catch (std::exception const& ex) {
+            LOG_TOPIC("cc911", ERR, Logger::CLUSTER)
+                << "Failed to unregister agency callback: " << ex.what();
+          } catch (...) {
+            // Should never be thrown, we only throw exceptions
+          }
+        });
+
+    // First register all callbacks
+    for (auto const& [path, cb] : callbackInfos) {
+      auto agencyCallback =
+          std::make_shared<AgencyCallback>(server, path, cb, true, false);
+      Result r = callbackRegistry.registerCallback(agencyCallback);
+      if (r.fail()) {
+        return r;
+      }
+      // TODO Add CID
+      callbackList.emplace_back(
+          std::make_pair(std::move(agencyCallback), StaticStrings::Empty));
+    }
+    // Then send the transaction
+    auto res = ac.sendTransactionWithFailover(buildingTransaction.get());
+    if (res.successful()) {
+      // Collections ordered
+      // Prepare do undo if something fails now
+      auto undoCreationGuard = scopeGuard([&writer, &databaseName, &ci, &server,
+                                           &ac]() noexcept {
+        try {
+          auto undoTrx = writer.prepareUndoTransaction(databaseName);
+
+          // Retry loop to remove the collection
+          using namespace std::chrono;
+          using namespace std::chrono_literals;
+          auto const begin = steady_clock::now();
+          // After a shutdown, the supervision will clean the collections either
+          // due to the coordinator going into FAIL, or due to it changing its
+          // rebootId. Otherwise we must under no circumstance give up here,
+          // because noone else will clean this up.
+          while (!server.isStopping()) {
+            auto res = ac.sendTransactionWithFailover(undoTrx);
+            // If the collections were removed (res.ok()), we may abort. If we
+            // run into precondition failed, the collections were successfully
+            // created, so we're fine too.
+            if (res.successful()) {
+              if (VPackSlice resultsSlice = res.slice().get("results");
+                  resultsSlice.length() > 0) {
+                // Wait for updated plan to be loaded
+                [[maybe_unused]] Result r =
+                    ci.waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+              }
+              return;
+            } else if (res.httpCode() ==
+                       rest::ResponseCode::PRECONDITION_FAILED) {
+              return;
+            }
+
+            // exponential backoff, just to be safe,
+            auto const durationSinceStart = steady_clock::now() - begin;
+            auto constexpr maxWaitTime = 2min;
+            auto const waitTime =
+                std::min<std::common_type_t<decltype(durationSinceStart),
+                                            decltype(maxWaitTime)>>(
+                    durationSinceStart, maxWaitTime);
+            std::this_thread::sleep_for(waitTime);
+          }
+
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("57486", ERR, Logger::CLUSTER)
+              << "Failed to delete collection during rollback: " << ex.what();
+        } catch (...) {
+          // Just we do not crash, no one knowingly throws non exceptions.
+        }
+      });
+      // Let us wait until we have locally seen the plan
+      // TODO: Why? Can we just skip this?
+      if (VPackSlice resultsSlice = res.slice().get("results");
+          resultsSlice.length() > 0) {
+        Result r = ci.waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+        if (r.fail()) {
+          return r;
+        }
+
+        TRI_IF_FAILURE("ClusterInfo::createCollectionsCoordinator") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        LOG_TOPIC("98bca", DEBUG, Logger::CLUSTER)
+            << "createCollectionCoordinator, Plan changed, waiting for "
+               "success...";
+
+        // Now "busy-loop"
+        while (!server.isStopping()) {
+          auto maybeFinalResult = currentReport->doUnderLock(
+              [expected = collectionNames.size()](
+                  auto const& collectionReport) -> std::optional<Result> {
+                for (auto const& [_, result] : collectionReport) {
+                  // Test if there is an error reported
+                  if (!result.ok()) {
+                    return result;
+                  }
+                }
+                // If we get here, all reports are OK.
+                // let's check if we have all reports
+                if (collectionReport.size() == expected) {
+                  // We have all, complete the operation, no error
+                  return TRI_ERROR_NO_ERROR;
+                }
+                // Not yet complete, cannot report a Result.
+                return std::nullopt;
+              });
+          if (maybeFinalResult.has_value()) {
+            // We have a final result. we are complete
+            auto const& finalResult = maybeFinalResult.value();
+            if (finalResult.fail()) {
+              // Oh noes, something bad has happend.
+              // Abort
+              return finalResult;
+            }
+
+            // Collection Creation worked.
+            LOG_TOPIC("98bcb", DEBUG, Logger::CLUSTER)
+                << "createCollectionCoordinator, collections ok, removing "
+                   "isBuilding...";
+
+            // Let us remove the isBuilding flags.
+            auto removeIsBuilding =
+                writer.prepareCompletedTransaction(databaseName);
+
+            // This is a best effort, in the worst case the collection stays,
+            // but will be cleaned out by deleteCollectionGuard respectively the
+            // supervision. This removes *all* isBuilding flags from all
+            // collections. This is important so that the creation of all
+            // collections is atomic, and the deleteCollectionGuard relies on
+            // it, too.
+            auto removeBuildingResult =
+                ac.sendTransactionWithFailover(removeIsBuilding);
+
+            LOG_TOPIC("98bcc", DEBUG, Logger::CLUSTER)
+                << "createCollectionCoordinator, isBuilding removed, waiting "
+                   "for new "
+                   "Plan...";
+
+            TRI_IF_FAILURE(
+                "ClusterInfo::createCollectionsCoordinatorRemoveIsBuilding") {
+              removeBuildingResult.set(rest::ResponseCode::PRECONDITION_FAILED,
+                                       "Failed to mark collection ready");
+            }
+
+            if (removeBuildingResult.successful()) {
+              // We do not want to undo from here, cancel the guard
+              undoCreationGuard.cancel();
+
+              // Wait for Plan to updated
+              // TODO: Why?
+              if (resultsSlice = removeBuildingResult.slice().get("results");
+                  resultsSlice.length() > 0) {
+                r = ci.waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+                if (r.fail()) {
+                  return r;
+                }
+                LOG_TOPIC("98764", DEBUG, Logger::CLUSTER)
+                    << "Finished createCollectionsCoordinator for "
+                    << collectionNames.size() << " collections in database "
+                    << databaseName
+                    << " first collection name: " << collectionNames[0]
+                    << " result: " << TRI_ERROR_NO_ERROR;
+                return TRI_ERROR_NO_ERROR;
+              }
+
+            } else {
+              LOG_TOPIC("98675", WARN, Logger::CLUSTER)
+                  << "Failed createCollectionsCoordinator for "
+                  << collectionNames.size() << " collections in database "
+                  << databaseName
+                  << " first collection name: " << collectionNames[0]
+                  << " result: " << removeBuildingResult;
+              return {TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                      "A cluster backend which was required for the operation "
+                      "could not be reached"};
+            }
+          }
+          // We do not have a final result. Let's wait for more input
+          // Wait for the next incomplete callback
+          for (auto& [cb, cid] : callbackList) {
+            if (currentReport->doUnderLock([&cid = cid](
+                                               auto const& collectionReport) {
+                  return collectionReport.find(cid) == collectionReport.end();
+                })) {
+              // We do not have result for this collection, wait for it.
+              bool gotTimeout;
+              {
+                // This one has not responded, wait for it.
+                CONDITION_LOCKER(locker, cb->_cv);
+                gotTimeout = cb->executeByCallbackOrTimeout(pollInterval);
+              }
+              if (gotTimeout) {
+                // We got woken up by waittime, not by  callback.
+                // Let us check if we skipped other callbacks as well
+                for (auto& [cb2, cid2] : callbackList) {
+                  if (currentReport->doUnderLock(
+                          [&cid2 = cid2](auto const& collectionReport) {
+                            return collectionReport.find(cid2) ==
+                                   collectionReport.end();
+                          })) {
+                    // Only re check those where we have not yet found a result.
+                    cb2->refetchAndUpdate(true, false);
+                  }
+                }
+              }
+              // Break the callback loop,
+              // continue on the check if we completed loop
+              break;
+            }
+          }
+        }
+        // If we get here we are not allowed to retry.
+        // The loop above does not contain a break
+        TRI_ASSERT(server.isStopping());
+        return Result{TRI_ERROR_SHUTTING_DOWN};
+      }
+    } else {
+      // TODO: Clean this up should not return DEBUG here
+      return {TRI_ERROR_DEBUG, res.errorMessage()};
+    }
   }
 }
 
 }  // namespace
 
-#endif
-
 [[nodiscard]] auto ClusterCollectionMethods::toPlanEntry(
     PlanCollection col, std::vector<ShardID> shardNames,
-    std::shared_ptr<IShardDistributionFactory> distributeType)
-    -> PlanCollectionEntry {
+    std::shared_ptr<IShardDistributionFactory> distributeType,
+    AgencyIsBuildingFlags buildingFlags) -> PlanCollectionEntry {
   return {std::move(col),
-          ShardDistribution{std::move(shardNames), std::move(distributeType)}};
+          ShardDistribution{std::move(shardNames), std::move(distributeType)},
+          std::move(buildingFlags)};
 }
 
 [[nodiscard]] auto ClusterCollectionMethods::generateShardNames(
@@ -152,53 +399,44 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
 }
 
    */
-
-
+  auto serverState = ServerState::instance();
+  AgencyIsBuildingFlags buildingFlags;
+  buildingFlags.coordinatorName = serverState->getId();
+  buildingFlags.rebootId = serverState->getRebootId();
   for (auto& c : collections) {
-    auto shards = generateShardNames(feature.clusterInfo(), c.constantProperties.numberOfShards);
-    auto distributionType = selectDistributeType(feature.clusterInfo(), c, shardDistributionList);
-    collectionPlanEntries.emplace_back(toPlanEntry(std::move(c), std::move(shards), distributionType));
+    auto shards = generateShardNames(feature.clusterInfo(),
+                                     c.constantProperties.numberOfShards);
+    auto distributionType =
+        selectDistributeType(feature.clusterInfo(), c, shardDistributionList);
+    collectionPlanEntries.emplace_back(toPlanEntry(
+        std::move(c), std::move(shards), distributionType, buildingFlags));
   }
   // Protection, all entries have been moved
   collections.clear();
 
-  /// Code from here is copy pasted from original create and
-  /// has not been refactored yet.
-  VPackBuilder builder =
-      PlanCollection::toCreateCollectionProperties(collections);
+  PlanCollectionToAgencyWriter writer{std::move(collectionPlanEntries),
+                                      std::move(shardDistributionList)};
+  auto res = ::impl(feature.clusterInfo(), vocbase.server(),
+                    std::string_view{vocbase.name()}, writer);
+  if (res.fail()) {
+    // Something went wront, let's report
+    return res;
+  }
 
-  // TODO: Need to get rid of this collection. Distribute Shards like
-  // is now denoted inside the PlanCollection
-  std::shared_ptr<LogicalCollection> colToDistributeShardsLike;
-
-  VPackSlice infoSlice = builder.slice();
-
-  TRI_ASSERT(infoSlice.isArray());
-  TRI_ASSERT(infoSlice.length() >= 1);
-  TRI_ASSERT(infoSlice.length() == collections.size());
+  // Everything all right, collections shall now be there
 
   std::vector<std::shared_ptr<LogicalCollection>> results;
-  results.reserve(collections.size());
+  auto collectionNamesToLoad = writer.collectionNames();
+  results.reserve(collectionNamesToLoad.size());
 
-  try {
-    results = ClusterMethods::createCollectionsOnCoordinator(
-        vocbase, infoSlice, ignoreDistributeShardsLikeErrors,
-        waitForSyncReplication, enforceReplicationFactor, isNewDatabase,
-        colToDistributeShardsLike);
-
-    if (collections.empty()) {
-      for (auto const& info : collections) {
-        events::CreateCollection(vocbase.name(), info.mutableProperties.name,
-                                 TRI_ERROR_INTERNAL);
-      }
-      return Result(TRI_ERROR_INTERNAL, "createCollectionsOnCoordinator");
-    }
-  } catch (basics::Exception const& ex) {
-    return Result(ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    return Result(TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    return Result(TRI_ERROR_INTERNAL, "cannot create collection");
+  auto& ci = feature.clusterInfo();
+  for (auto const& name : collectionNamesToLoad) {
+    auto c = ci.getCollection(vocbase.name(), name);
+    TRI_ASSERT(c.get() != nullptr);
+    // We never get a nullptr here because an exception is thrown if the
+    // collection does not exist. Also, the create collection should have
+    // failed before.
+    results.emplace_back(std::move(c));
   }
   return {std::move(results)};
 }

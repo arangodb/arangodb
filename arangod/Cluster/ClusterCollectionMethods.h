@@ -33,6 +33,7 @@ namespace arangodb {
 template<typename T>
 class ResultT;
 
+struct AgencyIsBuildingFlags;
 struct PlanCollection;
 struct PlanCollectionEntry;
 class LogicalCollection;
@@ -62,7 +63,10 @@ struct ClusterCollectionMethods {
       bool enforceReplicationFactor, bool isNewDatabase) -> arangodb::ResultT<
       std::vector<std::shared_ptr<LogicalCollection>>>;
 
-  [[nodiscard]] static auto toPlanEntry(PlanCollection col, std::vector<ShardID> shardNames, std::shared_ptr<IShardDistributionFactory> distributeType) -> PlanCollectionEntry;
+  [[nodiscard]] static auto toPlanEntry(
+      PlanCollection col, std::vector<ShardID> shardNames,
+      std::shared_ptr<IShardDistributionFactory> distributeType,
+      AgencyIsBuildingFlags isBuildingFlags) -> PlanCollectionEntry;
 
   [[nodiscard]] static auto generateShardNames(ClusterInfo& ci, uint64_t numberOfShards) -> std::vector<ShardID>;
 
