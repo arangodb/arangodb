@@ -180,6 +180,7 @@ function BaseChaosSuite(testOpts) {
     
     testWorkInParallel: function () {
       let code = (testOpts) => {
+        const pid = require("internal").getPid();
         // The idea here is to use the birthday paradox and have a certain amount of collisions.
         // The babies API is supposed to go through and report individual collisions. Same with
         // removes,so we intentionally try to remove lots of documents which are not actually there.
@@ -222,18 +223,25 @@ function BaseChaosSuite(testOpts) {
         
         let query = (...args) => db._query(...args);
         let trx = null;
+        
+        const logAllOps = false; // can be set to true for debugging purposes
+        const log = (msg) => {
+          if (logAllOps) {
+            if (trx) {
+              console.info(`${pid}: TRX ${trx.id()}: ${msg}`);
+            } else {
+              console.info(`${pid}: ${msg}`);
+            }
+          }
+        };
+
         if (testOpts.withStreamingTransactions && Math.random() < 0.5) {
           trx = db._createTransaction({ collections: { write: [c.name()] } });
+          log(`CREATED TRX`);
           c = trx.collection(testOpts.collection);
           query = (...args) => trx.query(...args);
         }
 
-        const logAllOps = false; // can be set to true for debugging purposes
-        const log = (msg) => {
-          if (logAllOps) {
-            console.info(msg);
-          }
-        };
         const ops = trx === null ? 1 : Math.floor(Math.random() * 5) + 1;
         for (let op = 0; op < ops; ++op) {
           try {
@@ -286,8 +294,10 @@ function BaseChaosSuite(testOpts) {
         
         if (trx) {
           if (Math.random() < 0.2) {
+            log(`ABORTING`);
             trx.abort();
           } else {
+            log(`COMMITING`);
             trx.commit();
           }
         }
