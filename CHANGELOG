@@ -11,6 +11,10 @@ devel
   views, i.e. "search-alias" views are not shown and are not accessible for 
   users that don't have at least read permissions on the underlying collections.
 
+* BTS-969: Added restriction for HTTP request `/cluster/rebalance`not to 
+  consider servers that have failed status as a possible target for rebalancing
+  shards in its execution plan.
+
 * Added index cleanup in Supervision. If an index was not created successfully
   and the coordinator which initiated the creation was rebooted or is dead,
   then the agency Supervision will drop the index again. If it was created
