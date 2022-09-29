@@ -217,7 +217,7 @@ auto ReplicatedState<S>::buildCore(
 }
 
 template<typename S>
-void ReplicatedState<S>::drop() {
+void ReplicatedState<S>::drop() && {
   auto deferred = guardedData.doUnderLock([&](GuardedData& data) {
     std::unique_ptr<CoreType> core;
     DeferredAction action;
@@ -242,6 +242,25 @@ void ReplicatedState<S>::drop() {
     return action;
   });
   deferred.fire();
+}
+
+template<typename S>
+auto ReplicatedState<S>::resign() && -> std::unique_ptr<ReplicatedStateToken> {
+  auto token = std::unique_ptr<ReplicatedStateToken>();
+  auto action = DeferredAction();
+  std::tie(token, action) = guardedData.doUnderLock(
+      [](auto&& self)
+          -> std::pair<std::unique_ptr<ReplicatedStateToken>, DeferredAction> {
+        if (self.currentManager == nullptr) {
+          return {};
+        } else {
+          auto&& [core, token_, action_] =
+              std::move(*self.currentManager).resign();
+          return {std::move(token_), std::move(action_)};
+        }
+      });
+  action.fire();
+  return token;
 }
 
 template<typename S>

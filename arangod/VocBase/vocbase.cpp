@@ -267,7 +267,7 @@ struct arangodb::VocBaseLogManager {
         _server.getFeature<EngineSelectorFeature>().engine();
     return _guardedData.doUnderLock([&](GuardedData& data) {
       if (auto iter = data.states.find(id); iter != data.states.end()) {
-        iter->second->drop();
+        std::move(*iter->second).drop();
         auto res = engine.dropReplicatedState(_vocbase, id);
         if (res.fail()) {
           return res;
