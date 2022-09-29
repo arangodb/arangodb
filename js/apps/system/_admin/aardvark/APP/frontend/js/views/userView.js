@@ -303,16 +303,32 @@
         $('#editStatus').closest('th').css('backgroundColor', 'red');
         return;
       }
-      var user = this.collection.findWhere({'user': username});
-      const extra = user.get('extra');
-      user.save({'extra': Object.assign(extra, {'name': name}), 'active': status}, {
-        type: 'PATCH',
-        success: function () {
-          arangoHelper.arangoNotification('User', user.get('user') + ' updated.');
-        },
-        error: function () {
-          arangoHelper.arangoError('User', 'Could not update ' + user.get('user') + '.');
+
+      var self = this;
+      var userPromise = new Promise((resolve) => {
+        if (username === self.currentUser.get('user')) {
+          self.collection.fetch({
+            fetchAllUsers: false,
+            success: function (res) {
+              resolve(res.models[0]);
+            }
+          });
+        } else {
+          resolve(this.collection.findWhere({'user': username}));
         }
+      });
+
+      userPromise.then(user => {
+        const extra = user.get('extra');
+        user.save({'extra': Object.assign(extra, {'name': name}), 'active': status}, {
+          type: 'PATCH',
+          success: function () {
+            arangoHelper.arangoNotification('User', user.get('user') + ' updated.');
+          },
+          error: function () {
+            arangoHelper.arangoError('User', 'Could not update ' + user.get('user') + '.');
+          }
+        });
       });
     },
 
