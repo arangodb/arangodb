@@ -154,8 +154,7 @@ class GraphProviderTest : public ::testing::Test {
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
             server.getSystemDatabase());
-        auto fakeQuery =
-            std::make_shared<MockQuery>(ctx, queryString);
+        auto fakeQuery = std::make_shared<MockQuery>(ctx, queryString);
         try {
           fakeQuery->collections().add("s9880", AccessMode::Type::READ,
                                        arangodb::aql::Collection::Hint::Shard);
