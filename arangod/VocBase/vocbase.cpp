@@ -150,8 +150,9 @@ struct arangodb::VocBaseLogManager {
   [[nodiscard]] auto getReplicatedLogById(replication2::LogId id) const
       -> std::shared_ptr<replication2::replicated_log::ReplicatedLog const> {
     auto guard = _guardedData.getLockedGuard();
-    if (auto iter = guard->logs.find(id); iter != guard->logs.end()) {
-      return iter->second;
+    if (auto iter = guard->statesAndLogs.find(id);
+        iter != guard->statesAndLogs.end()) {
+      return iter->second.log;
     }
     throw basics::Exception::fmt(
         ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
@@ -160,8 +161,9 @@ struct arangodb::VocBaseLogManager {
   [[nodiscard]] auto getReplicatedLogById(replication2::LogId id)
       -> std::shared_ptr<replication2::replicated_log::ReplicatedLog> {
     auto guard = _guardedData.getLockedGuard();
-    if (auto iter = guard->logs.find(id); iter != guard->logs.end()) {
-      return iter->second;
+    if (auto iter = guard->statesAndLogs.find(id);
+        iter != guard->statesAndLogs.end()) {
+      return iter->second.log;
     }
     throw basics::Exception::fmt(
         ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
@@ -170,23 +172,33 @@ struct arangodb::VocBaseLogManager {
   [[nodiscard]] auto getReplicatedStateById(replication2::LogId id)
       -> std::shared_ptr<replication2::replicated_state::ReplicatedStateBase> {
     auto guard = _guardedData.getLockedGuard();
-    if (auto iter = guard->states.find(id); iter != guard->states.end()) {
-      return iter->second;
+    if (auto iter = guard->statesAndLogs.find(id);
+        iter != guard->statesAndLogs.end()) {
+      return iter->second.state;
     }
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                                   "replicated state %" PRIu64 " not found",
                                   id.id());
   }
 
-  auto resignStates() { _guardedData.getLockedGuard()->states.clear(); }
+  auto resignStates() {
+    _guardedData.doUnderLock([](auto& self) {
+      for (auto&& [id, state] : self.states) {
+        std::ignore = std::move(*state).resign();
+      }
+      self.states.clear();
+    });
+  }
 
   auto resignAll() {
     auto guard = _guardedData.getLockedGuard();
-    for (auto&& [id, log] : guard->logs) {
+    for (auto&& [id, val] : guard->statesAndLogs) {
+      auto&& [log, state] = val;
       auto core = log->drop();
       core.reset();
+      std::ignore = std::move(*state).resign();
     }
-    guard->logs.clear();
+    guard->statesAndLogs.clear();
   }
 
   [[nodiscard]] auto createReplicatedLog(
@@ -358,15 +370,15 @@ struct arangodb::VocBaseLogManager {
   std::shared_ptr<VocbaseReplicatedStatePersistor> const _statePersistor;
 
   struct GuardedData {
-    std::unordered_map<
-        arangodb::replication2::LogId,
-        std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>>
-        logs;
-    std::unordered_map<
-        arangodb::replication2::LogId,
-        std::shared_ptr<
-            arangodb::replication2::replicated_state::ReplicatedStateBase>>
-        states;
+    struct StateAndLog {
+      std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>
+          log;
+      std::shared_ptr<
+          arangodb::replication2::replicated_state::ReplicatedStateBase>
+          state;
+    };
+    absl::flat_hash_map<arangodb::replication2::LogId, StateAndLog>
+        statesAndLogs;
 
     auto buildReplicatedState(
         replication2::LogId id, std::string_view type,
