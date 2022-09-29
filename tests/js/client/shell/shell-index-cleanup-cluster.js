@@ -77,6 +77,8 @@ function indexCleanupSuite() {
     },
 
     tearDown: function() {
+      // Just in case we failed when maintenance mode was on:
+      res = arango.PUT(maintenanceURL, '"off"');
       try {
         db._drop(collName);
       } catch(e) {
@@ -127,7 +129,6 @@ function indexCleanupSuite() {
             !indexes[nrIndexes].hasOwnProperty("coordinatorRebootId")) {
           return;   // all good
         }
-        console.info("Indexes in plan:", indexes);
         wait(1);
       }
       throw "Lost patience with isBuilding flag in index";
@@ -174,7 +175,6 @@ function indexCleanupSuite() {
         if (indexes.length === nrIndexes) {
           return;   // all good, our index has vanished again
         }
-        console.info("Indexes in plan:", indexes);
         wait(1);
       }
       throw "Lost patience with isBuilding flag in index";
@@ -221,7 +221,6 @@ function indexCleanupSuite() {
         if (indexes.length === nrIndexes) {
           throw "Index was cleaned up, but coordinator still there!";
         }
-        console.info("Indexes in plan:", indexes);
         wait(1);
       }
       // All good here, no cleanup has happened for 10 seconds!
