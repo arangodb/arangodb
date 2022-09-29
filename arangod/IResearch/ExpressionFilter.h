@@ -74,33 +74,8 @@ struct ExpressionExecutionContext final : irs::attribute {
   ViewExpressionContextBase* ctx{};
 };
 
-class HasNested {
- public:
-  explicit HasNested([[maybe_unused]] bool hasNested) noexcept
-#ifdef USE_ENTERPRISE
-      : _hasNested{hasNested}
-#endif
-  {
-  }
-
-  bool hasNested() const noexcept {
-#ifdef USE_ENTERPRISE
-    return _hasNested;
-#else
-    return false;
-#endif
-  }
-
- protected:
-  ~HasNested() = default;
-
-#ifdef USE_ENTERPRISE
-  bool _hasNested;
-#endif
-};
-
 // User-side filter based on arbitrary ArangoDB `Expression`.
-class ByExpression final : public irs::filter, public HasNested {
+class ByExpression final : public irs::filter {
  public:
   static const irs::string_ref type_name() noexcept {
     return "arangodb::iresearch::ByExpression";
@@ -108,14 +83,18 @@ class ByExpression final : public irs::filter, public HasNested {
 
   ByExpression() noexcept;
 
-  void init(aql::Ast& ast, aql::AstNode& node) noexcept {
+  void init(std::string_view allColumn, aql::Ast& ast,
+            aql::AstNode& node) noexcept {
     _ctx.ast = &ast;
     _ctx.node.reset(&node, [](aql::AstNode*) {});
+    _allColumn = allColumn;
   }
 
-  void init(aql::Ast& ast, std::shared_ptr<aql::AstNode>&& node) noexcept {
+  void init(std::string_view allColumn, aql::Ast& ast,
+            std::shared_ptr<aql::AstNode>&& node) noexcept {
     _ctx.ast = &ast;
     _ctx.node = std::move(node);
+    _allColumn = allColumn;
   }
 
   using irs::filter::prepare;
@@ -130,18 +109,12 @@ class ByExpression final : public irs::filter, public HasNested {
 
   explicit operator bool() const noexcept { return bool(_ctx); }
 
-  using HasNested::hasNested;
-  void hasNested([[maybe_unused]] bool hasNested) noexcept {
-#ifdef USE_ENTERPRISE
-    _hasNested = hasNested;
-#endif
-  }
-
  protected:
   virtual bool equals(irs::filter const& rhs) const noexcept override;
 
  private:
   ExpressionCompilationContext _ctx;
+  std::string _allColumn;
 };
 
 }  // namespace iresearch

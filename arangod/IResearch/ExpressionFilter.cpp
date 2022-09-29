@@ -42,13 +42,13 @@ namespace iresearch {
 irs::doc_iterator::ptr makeAllIterator(irs::sub_reader const& segment,
                                        irs::bytes_ref stats,
                                        const irs::Order& scorers,
-                                       irs::score_t boost, bool);
+                                       irs::score_t boost, std::string_view);
 
 #ifndef USE_ENTERPRISE
 irs::doc_iterator::ptr makeAllIterator(irs::sub_reader const& segment,
                                        irs::bytes_ref stats,
                                        const irs::Order& scorers,
-                                       irs::score_t boost, bool) {
+                                       irs::score_t boost, std::string_view) {
   return irs::memory::make_managed<irs::all_iterator>(
       segment, stats.c_str(), scorers, segment.docs_count(), boost);
 }
@@ -60,7 +60,8 @@ template<typename T>
 irs::filter::prepared::ptr compileQuery(ExpressionCompilationContext const& ctx,
                                         irs::index_reader const& index,
                                         irs::Order const& order,
-                                        irs::score_t boost, bool hasNested) {
+                                        irs::score_t boost,
+                                        std::string_view allColumn) {
   using type_t =
       typename std::enable_if_t<std::is_base_of_v<irs::filter::prepared, T>, T>;
 
@@ -71,7 +72,7 @@ irs::filter::prepared::ptr compileQuery(ExpressionCompilationContext const& ctx,
   irs::PrepareCollectors(order.buckets(), stats_buf, index);
 
   return irs::memory::make_managed<type_t>(ctx, std::move(stats), boost,
-                                           hasNested);
+                                           allColumn);
 }
 
 class NondeterministicExpressionIteratorBase : public irs::doc_iterator {
@@ -211,11 +212,11 @@ irs::doc_iterator::ptr makeNonDeterministicAllIterator(
     ExpressionCompilationContext const& cctx,
     ExpressionExecutionContext const& ectx, irs::sub_reader const& segment,
     irs::bytes_ref stats, const irs::Order& scorers, irs::score_t boost,
-    [[maybe_unused]] bool hasNested) {
+    [[maybe_unused]] std::string_view allColumn) {
 #ifdef USE_ENTERPRISE
-  if (hasNested) {
+  if (!allColumn.empty()) {
     return irs::memory::make_managed<NondeterministicExpressionIterator>(
-        makeAllIterator(segment, stats, scorers, boost, true), cctx, ectx);
+        makeAllIterator(segment, stats, scorers, boost, allColumn), cctx, ectx);
   }
 #endif
 
@@ -223,15 +224,14 @@ irs::doc_iterator::ptr makeNonDeterministicAllIterator(
       segment, stats.c_str(), scorers, segment.docs_count(), cctx, ectx, boost);
 }
 
-class NondeterministicExpressionQuery final : public irs::filter::prepared,
-                                              private HasNested {
+class NondeterministicExpressionQuery final : public irs::filter::prepared {
  public:
   explicit NondeterministicExpressionQuery(
       ExpressionCompilationContext const& ctx, irs::bstring&& stats,
-      irs::score_t boost, bool hasNested) noexcept
+      irs::score_t boost, std::string_view allColumn) noexcept
       : irs::filter::prepared{boost},
-        HasNested{hasNested},
         _ctx{ctx},
+        _allColumn{allColumn},
         _stats{std::move(stats)} {}
 
   irs::doc_iterator::ptr execute(
@@ -252,7 +252,7 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared,
     execCtx->ctx->_expr = _ctx.node.get();
 
     return makeNonDeterministicAllIterator(_ctx, *execCtx, ctx.segment, _stats,
-                                           ctx.scorers, boost(), hasNested());
+                                           ctx.scorers, boost(), _allColumn);
   }
 
   void visit(irs::sub_reader const&, irs::PreparedStateVisitor&,
@@ -262,19 +262,19 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared,
 
  private:
   ExpressionCompilationContext _ctx;
+  std::string _allColumn;
   irs::bstring _stats;
 };
 
-class DeterministicExpressionQuery final : public irs::filter::prepared,
-                                           private HasNested {
+class DeterministicExpressionQuery final : public irs::filter::prepared {
  public:
   explicit DeterministicExpressionQuery(ExpressionCompilationContext const& ctx,
                                         irs::bstring&& stats,
                                         irs::score_t boost,
-                                        bool hasNested) noexcept
+                                        std::string_view allColumn) noexcept
       : irs::filter::prepared{boost},
-        HasNested{hasNested},
         _ctx{ctx},
+        _allColumn{allColumn},
         _stats{std::move(stats)} {}
 
   irs::doc_iterator::ptr execute(
@@ -301,7 +301,7 @@ class DeterministicExpressionQuery final : public irs::filter::prepared,
 
     if (value.toBoolean()) {
       return makeAllIterator(ctx.segment, _stats, ctx.scorers, boost(),
-                             hasNested());
+                             _allColumn);
     }
 
     return irs::doc_iterator::empty();
@@ -314,6 +314,7 @@ class DeterministicExpressionQuery final : public irs::filter::prepared,
 
  private:
   ExpressionCompilationContext _ctx;
+  std::string _allColumn;
   irs::bstring _stats;
 };
 
@@ -325,7 +326,7 @@ size_t ExpressionCompilationContext::hash() const noexcept {
 }
 
 ByExpression::ByExpression() noexcept
-    : irs::filter{irs::type<ByExpression>::get()}, HasNested{false} {}
+    : irs::filter{irs::type<ByExpression>::get()} {}
 
 bool ByExpression::equals(irs::filter const& rhs) const noexcept {
   auto const& typed = static_cast<ByExpression const&>(rhs);
@@ -347,15 +348,15 @@ irs::filter::prepared::ptr ByExpression::prepare(
   if (!_ctx.node->isDeterministic()) {
     // non-deterministic expression, make non-deterministic query
     return compileQuery<NondeterministicExpressionQuery>(
-        _ctx, index, order, filter_boost, hasNested());
+        _ctx, index, order, filter_boost, _allColumn);
   }
 
   auto* execCtx = ctx ? irs::get<ExpressionExecutionContext>(*ctx) : nullptr;
 
   if (!execCtx || !static_cast<bool>(*execCtx)) {
     // no execution context provided, make deterministic query
-    return compileQuery<DeterministicExpressionQuery>(
-        _ctx, index, order, filter_boost, hasNested());
+    return compileQuery<DeterministicExpressionQuery>(_ctx, index, order,
+                                                      filter_boost, _allColumn);
   }
 
   // set expression for troubleshooting purposes
@@ -371,7 +372,7 @@ irs::filter::prepared::ptr ByExpression::prepare(
     return irs::filter::prepared::empty();
   }
 
-  return makeAll(hasNested())->prepare(index, order, filter_boost);
+  return makeAll(_allColumn)->prepare(index, order, filter_boost);
 }
 
 }  // namespace iresearch

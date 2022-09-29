@@ -24,9 +24,9 @@
 
 #pragma once
 
-#include "IResearchFilterOptimization.h"
-#include "IResearchLinkMeta.h"
-#include "IResearchInvertedIndexMeta.h"
+#include "IResearch/IResearchFilterOptimization.h"
+#include "IResearch/IResearchLinkMeta.h"
+#include "IResearch/IResearchInvertedIndexMeta.h"
 
 #include "VocBase/voc-types.h"
 
@@ -53,26 +53,12 @@ class ExpressionContext;
 namespace iresearch {
 
 struct QueryContext;
-
-using AnalyzerProvider = fu2::unique_function<FieldMeta::Analyzer const&(
-    std::string_view, aql::ExpressionContext*, FieldMeta::Analyzer const&)>;
-
-struct FilterContext {
-  FieldMeta::Analyzer const& fieldAnalyzer(
-      std::string_view name, aql::ExpressionContext* ctx) const noexcept;
-
-  AnalyzerProvider* fieldAnalyzerProvider{};
-  // need shared_ptr since pool could be deleted from the feature
-  FieldMeta::Analyzer const& contextAnalyzer;
-  std::span<const InvertedIndexField> fields{};
-  std::string_view namePrefix{};  // field name prefix
-  irs::score_t boost{irs::kNoBoost};
-};
+struct FilterContext;
 
 struct FilterFactory {
   // Determine if the 'node' can be converted into an iresearch filter
   // if 'filter' != nullptr then also append the iresearch filter there
-  static Result filter(irs::boolean_filter* filter, QueryContext const& ctx,
+  static Result filter(irs::boolean_filter* filter,
                        FilterContext const& filterCtx,
                        aql::AstNode const& node);
 };
@@ -84,9 +70,6 @@ struct FilterConstants {
   static constexpr double_t DefaultNgramMatchThreshold{0.7};
   static constexpr int64_t DefaultStartsWithMinMatchCount{1};
 };
-
-void appendExpression(irs::boolean_filter& filter, aql::AstNode const& node,
-                      QueryContext const& ctx, FilterContext const& filterCtx);
 
 }  // namespace iresearch
 }  // namespace arangodb

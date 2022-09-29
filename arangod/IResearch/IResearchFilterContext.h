@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <string_view>
+
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchFilterOptimization.h"
 
@@ -40,6 +42,10 @@ namespace iresearch {
 
 struct InvertedIndexField;
 
+constexpr std::string_view nestedRoot(bool hasNested) noexcept {
+  return hasNested ? std::string_view{} : std::string_view{nullptr, 0};
+}
+
 struct QueryContext {
   transaction::Methods* trx{};
   aql::Ast* ast{};
@@ -52,7 +58,6 @@ struct QueryContext {
   // The flag is set when a query is dedicated to a search view
   bool isSearchQuery{true};
   bool isOldMangling{true};
-  bool hasNestedFields{false};
 };
 
 using AnalyzerProvider = fu2::unique_function<FieldMeta::Analyzer const&(

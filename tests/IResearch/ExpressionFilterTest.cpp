@@ -519,7 +519,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
-    filter.init(*ast, *expression);
+    filter.init({}, *ast, *expression);
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
@@ -593,7 +593,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
-    filter.init(*ast, *expression);
+    filter.init({}, *ast, *expression);
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
@@ -667,7 +667,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
-    filter.init(*ast, *expression);
+    filter.init({}, *ast, *expression);
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
@@ -762,7 +762,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
-    filter.init(*ast, *expression);
+    filter.init({}, *ast, *expression);
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
@@ -858,7 +858,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
-    filter.init(*ast, *expression);
+    filter.init({}, *ast, *expression);
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
@@ -953,7 +953,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
-    filter.init(*ast, *expression);
+    filter.init({}, *ast, *expression);
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
@@ -1029,7 +1029,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
-    filter.init(*ast, *expression);
+    filter.init({}, *ast, *expression);
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
@@ -1100,7 +1100,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
-    filter.init(*ast, *expression);
+    filter.init({}, *ast, *expression);
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
@@ -1240,7 +1240,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
-    filter.init(*ast, *expression);
+    filter.init({}, *ast, *expression);
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;
@@ -1366,7 +1366,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
-    filter.init(*ast, *expression);
+    filter.init({}, *ast, *expression);
     EXPECT_TRUE(filter);
 
     arangodb::iresearch::ExpressionExecutionContext execCtx;

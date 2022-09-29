@@ -735,8 +735,7 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
         .ref = &infos().outVariable(),
         .filterOptimization = infos().filterOptimization(),
         .isSearchQuery = true,
-        .isOldMangling = infos().isOldMangling(),
-        .hasNestedFields = _reader->hasNestedFields()};
+        .isOldMangling = infos().isOldMangling()};
 
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so can't be a temporary.
@@ -751,7 +750,8 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
     FilterContext const filterCtx{
         .query = queryCtx,
         .contextAnalyzer = *contextAnalyzer,
-        .fieldAnalyzerProvider = fieldAnalyzerProvider};
+        .fieldAnalyzerProvider = fieldAnalyzerProvider,
+        .namePrefix = nestedRoot(_reader->hasNestedFields())};
 
     irs::Or root;
     auto const rv =

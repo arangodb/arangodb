@@ -118,7 +118,8 @@ bool supportsFilterNode(
       .query = queryCtx,
       .contextAnalyzer = emptyAnalyzer,
       .fieldAnalyzerProvider = provider,
-  };
+      // we don't care here as we are checking condition in general
+      .namePrefix = nestedRoot(false)};
 
   auto rv = FilterFactory::filter(nullptr, filterCtx, *node);
 
@@ -324,15 +325,16 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
                                 .ref = _variable,
                                 .fields = _indexMeta->_fields,
                                 .isSearchQuery = false,
-                                .isOldMangling = false,
-                                .hasNestedFields = _indexMeta->hasNested()};
+                                .isOldMangling = false};
 
     // The analyzer is referenced in the FilterContext and used during the
     // following FilterFactory::::filter() call, so may not be a temporary.
     auto emptyAnalyzer = makeEmptyAnalyzer();
-    FilterContext const filterCtx{.query = queryCtx,
-                                  .contextAnalyzer = emptyAnalyzer,
-                                  .fieldAnalyzerProvider = &analyzerProvider};
+    FilterContext const filterCtx{
+        .query = queryCtx,
+        .contextAnalyzer = emptyAnalyzer,
+        .fieldAnalyzerProvider = &analyzerProvider,
+        .namePrefix = nestedRoot(_indexMeta->hasNested())};
 
     irs::Or root;
     if (condition) {

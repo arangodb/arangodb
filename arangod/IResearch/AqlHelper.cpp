@@ -654,8 +654,7 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
 
 bool nameFromAttributeAccess(
     std::string& name, aql::AstNode const& node, QueryContext const& ctx,
-    bool filter, std::span<InvertedIndexField const> fields,
-    std::span<InvertedIndexField const>* subFields /*= nullptr*/) {
+    bool filter, std::span<InvertedIndexField const>* subFields /*= nullptr*/) {
   class AttributeChecker {
    public:
     AttributeChecker(std::string& str, QueryContext const& ctx,
@@ -747,7 +746,8 @@ bool nameFromAttributeAccess(
                   aql::NODE_TYPE_REFERENCE == head->type;
 
   if (visitRes && !ctx.isSearchQuery) {
-    auto it = getNested(name, fields);
+    auto const fields = ctx.fields;
+    auto const it = getNested(name, fields);
     visitRes = it != std::end(fields) && !it->_isSearchField;
     if (visitRes && subFields) {
       *subFields = it->_fields;

@@ -200,6 +200,9 @@ TEST_P(IResearchQueryOrTest, test) {
     tests::checkQuery(
         vocbase, expectedDocs,
         R"(FOR d IN testView SEARCH d.name == 'A' OR NOT EXISTS(d.same) SORT d.seq DESC RETURN d)");
+    tests::checkQuery(
+        vocbase, expectedDocs,
+        R"(FOR d IN testView SEARCH d.name == 'A' OR NOT EXISTS(d.same) OPTIONS { conditionOptimization: "none" } SORT d.seq DESC RETURN d)");
   }
 
   // d.name == 'A' OR d.name == 'Q', d.seq DESC

@@ -527,8 +527,7 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
 ////////////////////////////////////////////////////////////////////////////////
 bool nameFromAttributeAccess(
     std::string& name, aql::AstNode const& node, QueryContext const& ctx,
-    bool filter, std::span<InvertedIndexField const> fields,
-    std::span<InvertedIndexField const>* subFields = nullptr);
+    bool filter, std::span<InvertedIndexField const>* subFields = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visit name produced by nameFromAttributeAccess

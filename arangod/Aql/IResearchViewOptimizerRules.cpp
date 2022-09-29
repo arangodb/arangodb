@@ -234,14 +234,15 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
         .trx = &query.trxForOptimization(),
         .ref = &viewNode.outVariable(),
         .isSearchQuery = true,
-        .isOldMangling = (viewNode.meta() == nullptr),
-        // we don't care here- we are checking condition in general
-        .hasNestedFields = false};
+        .isOldMangling = (viewNode.meta() == nullptr)};
 
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so may not be a temporary.
-    FilterContext const filterCtx{.query = ctx,
-                                  .contextAnalyzer = FieldMeta::identity()};
+    FilterContext const filterCtx{
+        .query = ctx,
+        .contextAnalyzer = FieldMeta::identity(),
+        // we don't care here as we are checking condition in general
+        .namePrefix = nestedRoot(false)};
 
     auto filterCreated =
         FilterFactory::filter(nullptr, filterCtx, *searchCondition.root());

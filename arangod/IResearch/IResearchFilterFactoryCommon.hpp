@@ -29,6 +29,7 @@
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchFilterContext.h"
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
 #include "RestServer/arangod.h"
@@ -44,14 +45,18 @@ namespace arangodb::iresearch {
 
 class ByExpression;
 
-irs::filter::ptr makeAll(bool hasNested);
+irs::filter::ptr makeAll(std::string_view field);
+
+std::string_view makeAllColumn(FilterContext const& ctx) noexcept;
+
+irs::AllDocsProvider::ProviderFunc makeAllProvider(FilterContext const& ctx);
 
 template<typename Filter, typename Source>
-auto& append(Source& parent, [[maybe_unused]] QueryContext const& ctx) {
+auto& append(Source& parent, [[maybe_unused]] FilterContext const& ctx) {
   if constexpr (std::is_same_v<Filter, irs::all>) {
     static_assert(std::is_base_of_v<irs::boolean_filter, Source>);
 #ifdef USE_ENTERPRISE
-    return parent.add(makeAll(ctx.hasNestedFields));
+    return parent.add(makeAll(makeAllColumn(ctx)));
 #else
     return parent.template add<irs::all>();
 #endif
@@ -66,16 +71,12 @@ auto& append(Source& parent, [[maybe_unused]] QueryContext const& ctx) {
 
 #ifdef USE_ENTERPRISE
     if constexpr (std::is_base_of_v<irs::AllDocsProvider, Filter>) {
-      filter->SetProvider(
-          [hasNestedFields = ctx.hasNestedFields](irs::score_t boost) {
-            auto filter = makeAll(hasNestedFields);
-            filter->boost(boost);
-            return filter;
-          });
+      filter->SetProvider(makeAllProvider(ctx));
     }
 
     if constexpr (std::is_same_v<Filter, ByExpression>) {
-      filter->hasNested(ctx.hasNestedFields);
+      // FIXME(gnusi)
+      // filter->hasNested(ctx.hasNestedFields);
     }
 #endif
 
@@ -84,7 +85,7 @@ auto& append(Source& parent, [[maybe_unused]] QueryContext const& ctx) {
 }
 
 template<typename Filter, typename Source>
-Filter& appendNot(Source& parent, QueryContext const& ctx) {
+Filter& appendNot(Source& parent, FilterContext const& ctx) {
   return append<Filter>(append<irs::Not>(parent, ctx), ctx);
 }
 
