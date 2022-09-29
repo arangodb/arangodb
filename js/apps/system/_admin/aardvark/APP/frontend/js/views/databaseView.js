@@ -310,10 +310,11 @@
         url: arangoHelper.databaseUrl('/_api/database/current', _.escape(dbName)),
         contentType: 'application/json',
         processData: false,
-        async: true,
+        async: false,
         success: function (data) {
         },
         error: function (ignore) {
+          arangoHelper.arangoError('DB', 'Could not get database properties for database ' + _.escape(dbName));
         }
       });
     },
@@ -323,29 +324,23 @@
       var tableContent = [];
 
       $.when(this.getDatabaseSettings(dbName)).done(function(response){
-        console.log("response.result: ", response.result);
+        tableContent.push(
+          window.modalView.createReadOnlyEntry('id_name', 'Name', _.escape(dbName), '')
+        );
+  
+        tableContent.push(
+          window.modalView.createReadOnlyEntry('replication_factor', 'Replication factor', response.result.replicationFactor, '')
+        );
+  
+        tableContent.push(
+          window.modalView.createReadOnlyEntry('write_concern', 'Write concern', response.result.writeConcern, '')
+        );
+  
+        tableContent.push(
+          window.modalView.createReadOnlyEntry('sharding', 'Sharding', response.result.sharding, '')
+        );
       });
 
-      tableContent.push(
-        window.modalView.createReadOnlyEntry('id_name', 'Name', _.escape(dbName), '')
-      );
-
-      tableContent.push(
-        window.modalView.createReadOnlyEntry('replication_factor', 'Replication factor', 'aaa', '')
-      );
-
-      tableContent.push(
-        window.modalView.createReadOnlyEntry('write_concern', 'Write concern', 'bbb', '')
-      );
-
-      tableContent.push(
-        window.modalView.createReadOnlyEntry('sharding', 'Sharding', 'ccc', '')
-      );
-
-      tableContent.push(
-        window.modalView.createReadOnlyEntry('username', 'Username', 'ddd', '')
-      );
-      
       if (isDeletable) {
         buttons.push(
           window.modalView.createDeleteButton(
