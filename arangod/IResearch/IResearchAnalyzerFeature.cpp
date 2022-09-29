@@ -44,6 +44,7 @@
 #include "utils/object_pool.hpp"
 #include "index/norm.hpp"
 
+#include "Agency/AgencyComm.h"
 #include "ApplicationServerHelper.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExpressionContext.h"
@@ -55,6 +56,7 @@
 #include "Basics/FunctionUtils.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/GeoAnalyzer.h"
@@ -2997,10 +2999,10 @@ void IResearchAnalyzerFeature::cleanupAnalyzers(irs::string_ref database) {
 void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
   WRITE_LOCKER(lock, _mutex);
   auto database = irs::string_ref(vocbase.name());
-  auto itr = _lastLoad.find(
-      static_cast<std::string>(  // FIXME: after C++20 remove cast and use
-                                 // heterogeneous lookup
-          irs::make_hashed_ref(database, std::hash<irs::string_ref>())));
+  // FIXME: after C++20 remove cast and use
+  // heterogeneous lookup
+  auto itr = _lastLoad.find(static_cast<std::string>(
+      irs::make_hashed_ref(database, std::hash<irs::string_ref>())));
   if (itr != _lastLoad.end()) {
     cleanupAnalyzers(database);
     _lastLoad.erase(itr);
@@ -3008,11 +3010,14 @@ void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
 }
 
 void Features::visit(std::function<void(std::string_view)> visitor) const {
-  if (irs::IndexFeatures::FREQ == (_indexFeatures & irs::IndexFeatures::FREQ)) {
+  if (hasFeatures(irs::IndexFeatures::FREQ)) {
     visitor(irs::type<irs::frequency>::name());
   }
-  if (irs::IndexFeatures::POS == (_indexFeatures & irs::IndexFeatures::POS)) {
+  if (hasFeatures(irs::IndexFeatures::POS)) {
     visitor(irs::type<irs::position>::name());
+  }
+  if (hasFeatures(irs::IndexFeatures::OFFS)) {
+    visitor(irs::type<irs::offset>::name());
   }
   if (FieldFeatures::NORM == (_fieldFeatures & FieldFeatures::NORM)) {
     visitor(irs::type<irs::Norm>::name());
@@ -3055,7 +3060,7 @@ Result Features::fromVelocyPack(VPackSlice slice) {
                   .append(std::to_string(subItr.index()))};
     }
   }
-  return {};
+  return validate();
 }
 
 bool Features::add(irs::string_ref featureName) {
@@ -3069,6 +3074,11 @@ bool Features::add(irs::string_ref featureName) {
     return true;
   }
 
+  if (featureName == irs::type<irs::offset>::name()) {
+    _indexFeatures |= irs::IndexFeatures::OFFS;
+    return true;
+  }
+
   if (featureName == irs::type<irs::Norm>::name()) {
     _fieldFeatures |= FieldFeatures::NORM;
     return true;
@@ -3078,17 +3088,25 @@ bool Features::add(irs::string_ref featureName) {
 }
 
 Result Features::validate() const {
-  if (irs::IndexFeatures::POS == (_indexFeatures & irs::IndexFeatures::POS)) {
-    if (irs::IndexFeatures::FREQ !=
-        (_indexFeatures & irs::IndexFeatures::FREQ)) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "missing feature 'frequency' required when 'position' feature is "
-              "specified"};
-    }
+  if (hasFeatures(irs::IndexFeatures::OFFS) &&
+      !hasFeatures(irs::IndexFeatures::POS)) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "missing feature 'position' required when 'offset' feature is "
+            "specified"};
   }
 
-  if ((irs::IndexFeatures::POS | irs::IndexFeatures::FREQ) !=
-      (_indexFeatures | irs::IndexFeatures::POS | irs::IndexFeatures::FREQ)) {
+  if (hasFeatures(irs::IndexFeatures::POS) &&
+      !hasFeatures(irs::IndexFeatures::FREQ)) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "missing feature 'frequency' required when 'position' feature is "
+            "specified"};
+  }
+
+  constexpr irs::IndexFeatures kSupportedFeatures = irs::IndexFeatures::OFFS |
+                                                    irs::IndexFeatures::POS |
+                                                    irs::IndexFeatures::FREQ;
+
+  if (kSupportedFeatures != (_indexFeatures | kSupportedFeatures)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Unsupported index features are specified: "s +
                 std::to_string(
@@ -3101,7 +3119,3 @@ Result Features::validate() const {
 
 }  // namespace iresearch
 }  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

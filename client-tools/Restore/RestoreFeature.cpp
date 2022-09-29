@@ -37,6 +37,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -819,20 +821,31 @@ arangodb::Result processInputDirectory(
       jobQueue.waitForIdle();
     }
 
-    // Step 5: create arangosearch views
-    if (options.importStructure && !views.empty()) {
-      LOG_TOPIC("f723c", INFO, Logger::RESTORE) << "# Creating views...";
+    auto createViews = [&](std::string_view type) {
+      if (options.importStructure && !views.empty()) {
+        LOG_TOPIC("f723c", INFO, Logger::RESTORE)
+            << "# Creating " << type << " views...";
 
-      for (auto const& viewDefinition : views) {
-        LOG_TOPIC("c608d", DEBUG, Logger::RESTORE)
-            << "# Creating view: " << viewDefinition.toJson();
-
-        auto res = ::restoreView(httpClient, options, viewDefinition.slice());
-
-        if (!res.ok()) {
-          return res;
+        for (auto const& viewDefinition : views) {
+          auto slice = viewDefinition.slice();
+          LOG_TOPIC("c608d", DEBUG, Logger::RESTORE)
+              << "# Creating view: " << slice.toJson();
+          if (auto viewType = slice.get("type");
+              !viewType.isString() || viewType.stringView() != type) {
+            continue;
+          }
+          if (auto r = ::restoreView(httpClient, options, slice); !r.ok()) {
+            return r;
+          }
         }
       }
+      return Result{};
+    };
+
+    // Step 5: create arangosearch views
+    auto r = createViews("arangosearch");
+    if (!r.ok()) {
+      return r;
     }
 
     // Step 6: fire up data transfer
@@ -881,6 +894,12 @@ arangodb::Result processInputDirectory(
 
     jobQueue.waitForIdle();
     jobs.clear();
+
+    // Step 7: create search-alias views
+    r = createViews("search-alias");
+    if (!r.ok()) {
+      return r;
+    }
 
     Result firstError = feature.getFirstError();
     if (firstError.fail()) {
@@ -1453,7 +1472,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
       return {TRI_ERROR_OUT_OF_MEMORY, "out of memory"};
     }
 
-    ssize_t numRead = datafile->read(buffer->end(), bufferSize);
+    auto numRead = datafile->read(buffer->end(), bufferSize);
     if (datafile->status().fail()) {  // error while reading
       return datafile->status();
     }
@@ -1753,9 +1772,9 @@ void RestoreFeature::collectOptions(
 
   options
       ->addOption("--enable-revision-trees",
-                  "enable revision trees for new collections if the collection "
-                  "attributes 'syncByRevision' and "
-                  "'usesRevisionsAsDocumentIds' are missing",
+                  "Enable revision trees for new collections if the collection "
+                  "attributes `syncByRevision` and "
+                  "`usesRevisionsAsDocumentIds` are missing.",
                   new BooleanParameter(&_options.enableRevisionTrees))
       .setIntroducedIn(30807);
 
@@ -2256,8 +2275,10 @@ ClientTaskQueue<RestoreFeature::RestoreJob>& RestoreFeature::taskQueue() {
 
 void RestoreFeature::reportError(Result const& error) {
   try {
-    MUTEX_LOCKER(lock, _workerErrorLock);
-    _workerErrors.emplace(error);
+    {
+      MUTEX_LOCKER(lock, _workerErrorLock);
+      _workerErrors.emplace_back(error);
+    }
     _clientTaskQueue.clearQueue();
   } catch (...) {
   }

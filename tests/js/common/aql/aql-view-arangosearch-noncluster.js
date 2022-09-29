@@ -161,6 +161,7 @@ function iResearchAqlTestSuite () {
       db._drop("TestsCollectionWithManyFields");
       db._dropView("WithStoredValues");
       db._dropView("WithLongPrimarySort");
+      db._dropView("UnitTestsViewAlias");
       db._drop("TestsCollectionWithLongFields");
       analyzers.remove("customAnalyzer", true);
     },
@@ -185,6 +186,14 @@ function iResearchAqlTestSuite () {
         }
       };
       v.properties(meta);
+
+      db.UnitTestsCollection.ensureIndex({ 
+        type: "inverted",
+        name: "invertedIndex",
+        fields: [ { name: "text", analyzer: "text_en" } ] });
+      db._dropView("UnitTestsViewAlias");
+      db._createView("UnitTestsViewAlias", "search-alias", { 
+          indexes : [ { collection: "UnitTestsCollection", index: "invertedIndex" } ] });
 
       db._dropView("CompoundView");
       v2 = db._createView("CompoundView", "arangosearch",
@@ -681,6 +690,90 @@ function iResearchAqlTestSuite () {
       }
     },
 
+    testPhraseFilterAlias : function () {
+      // inherit analyzer from field meta
+      var result0i = db._query("FOR doc IN UnitTestsCollection OPTIONS { indexHint: 'invertedIndex', waitForSync : true } FILTER PHRASE(doc.text, 'quick brown fox jumps') RETURN doc").toArray();
+      assertEqual(result0i.length, 1);
+      assertEqual(result0i[0].name, 'full');
+
+      // inherit analyzer from field meta
+      var result0 = db._query("FOR doc IN UnitTestsViewAlias SEARCH PHRASE(doc.text, 'quick brown fox jumps') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result0.length, 1);
+      assertEqual(result0[0].name, 'full');
+
+      var result1i = db._query("FOR doc IN UnitTestsCollection OPTIONS { indexHint: 'invertedIndex', waitForSync : true } FILTER PHRASE(doc.text, [ 'quick brown fox jumps' ], 'text_en') RETURN doc").toArray();
+
+      assertEqual(result1i.length, 1);
+      assertEqual(result1i[0].name, 'full');
+
+      var result1 = db._query("FOR doc IN UnitTestsViewAlias SEARCH PHRASE(doc.text, [ 'quick brown fox jumps' ], 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result1.length, 1);
+      assertEqual(result1[0].name, 'full');
+
+      // non-indexed field
+      {
+        let emptyResult = db._query("FOR doc IN UnitTestsViewAlias SEARCH doc.missingField == TOKENS('quick')[0] OPTIONS { waitForSync : true } RETURN doc");
+        assertEqual(emptyResult.toArray().length, 0);
+        let warnings = emptyResult.getExtra().warnings;
+        assertEqual(warnings.length, 1);
+        warnings.forEach(v => {
+          assertEqual(v.code, 10);
+          assertEqual(v.message, "Analyzer for field 'missingField' isn't set");
+        });
+      }
+
+      var result2 = db._query("FOR doc IN UnitTestsViewAlias SEARCH ANALYZER(PHRASE(doc.text, 'quick brown fox jumps'), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result2.length, 1);
+      assertEqual(result2[0].name, 'full');
+
+      var result3 = db._query("FOR doc IN UnitTestsViewAlias SEARCH ANALYZER(PHRASE(doc.text, [ 'quick brown fox jumps' ]), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result3.length, 1);
+      assertEqual(result3[0].name, 'full');
+      
+      var result4 = db._query("FOR doc IN UnitTestsViewAlias SEARCH ANALYZER(PHRASE(doc.text,  'quick ', 1, ' fox jumps'), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result4.length, 1);
+      assertEqual(result4[0].name, 'full');
+      
+      var result5 = db._query("FOR doc IN UnitTestsViewAlias SEARCH ANALYZER(PHRASE(doc.text, [ 'quick ', 1, ' fox jumps' ]), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result5.length, 1);
+      assertEqual(result5[0].name, 'full');
+      
+      var result6 = db._query("FOR doc IN UnitTestsViewAlias SEARCH ANALYZER(PHRASE(doc.text,  'quick ', 0, 'brown', 0, [' fox',  ' jumps']), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result6.length, 1);
+      assertEqual(result6[0].name, 'full');
+      
+      var result6v = db._query("LET phraseStruct = NOOPT([' fox',  ' jumps']) "
+                               + "FOR doc IN UnitTestsViewAlias SEARCH ANALYZER(PHRASE(doc.text,  'quick ', 0, 'brown', 0, phraseStruct), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result6v.length, 1);
+      assertEqual(result6v[0].name, 'full');
+      
+            
+      var result6v2 = db._query("LET phraseStruct = NOOPT(['quick ', 0, 'brown', 0, [' fox',  ' jumps']]) "
+                               + "FOR doc IN UnitTestsViewAlias SEARCH ANALYZER(PHRASE(doc.text, phraseStruct), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result6v2.length, 1);
+      assertEqual(result6v2[0].name, 'full');
+      
+      var result7 = db._query("FOR doc IN UnitTestsViewAlias SEARCH ANALYZER(PHRASE(doc.text, [ 'quick ', 'brown', ' fox jumps' ]), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result7.length, 1);
+      assertEqual(result7[0].name, 'full');
+      
+      var result7v = db._query("LET phraseStruct = NOOPT([ 'quick ', 'brown', ' fox jumps' ]) "
+                              + "FOR doc IN UnitTestsViewAlias SEARCH ANALYZER(PHRASE(doc.text, phraseStruct), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result7v.length, 1);
+      assertEqual(result7v[0].name, 'full');
+    },
+
     testPhraseFilter : function () {
       var result0 = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, 'quick brown fox jumps', 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
 
@@ -1115,8 +1208,6 @@ function iResearchAqlTestSuite () {
             "type": "bytes_accum",
             "threshold": 0.10000000149011612
           },
-          "globallyUniqueId": "hB4A95C21732A/218",
-          "id": "218",
           "writebufferActive": 0,
           "consolidationIntervalMsec": 60000,
           "cleanupIntervalStep": 10,
@@ -1141,8 +1232,6 @@ function iResearchAqlTestSuite () {
             "type": "bytes_accum",
             "threshold": 0.10000000149011612
           },
-          "globallyUniqueId": "hB4A95C21732A/181",
-          "id": "181",
           "writebufferActive": 0,
           "consolidationIntervalMsec": 60000,
           "cleanupIntervalStep": 10,
@@ -1603,6 +1692,82 @@ function iResearchAqlTestSuite () {
         let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo'] NONE NOT IN d.a OPTIONS { waitForSync : true } RETURN d").toArray();
         assertEqual(1, result.length);
         assertEqual(0, result[0].c);
+      }
+      {
+        let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'boo'] AT LEAST(2) IN d.a OPTIONS { waitForSync : true } RETURN d").toArray();
+        assertEqual(1, result.length);
+        assertEqual(0, result[0].c);
+      }
+      {
+        let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'boo'] AT LEAST(2) == d.a OPTIONS { waitForSync : true } RETURN d").toArray();
+        assertEqual(1, result.length);
+        assertEqual(0, result[0].c);
+      }
+      {
+        let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'boo', 'abaz', 'afoo'] AT LEAST(3) IN d.a OPTIONS { waitForSync : true } RETURN d").toArray();
+        assertEqual(0, result.length);
+      }
+      {
+        let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'abar', 'abaz'] AT LEAST(2) IN d.a OPTIONS { waitForSync : true } SORT d.c ASC RETURN d").toArray();
+        assertEqual(2, result.length);
+        assertEqual(0, result[0].c);
+        assertEqual(1, result[1].c);
+      }
+      {
+        let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'abar', 'abaz'] AT LEAST(2) > d.a OPTIONS { waitForSync : true } SORT d.c ASC RETURN d").toArray();
+        assertEqual(1, result.length);
+        assertEqual(1, result[0].c);
+      }
+      {
+        let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'abar', 'afoo'] AT LEAST(2) < d.a OPTIONS { waitForSync : true } SORT d.c ASC RETURN d").toArray();
+        assertEqual(1, result.length);
+        assertEqual(0, result[0].c);
+      }
+      {
+        let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'abar', 'abaz'] AT LEAST(2) >= d.a OPTIONS { waitForSync : true } SORT d.c ASC RETURN d").toArray();
+        assertEqual(2, result.length);
+        assertEqual(0, result[0].c);
+        assertEqual(1, result[1].c);
+      }
+      {
+        let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'abar', 'afoo'] AT LEAST(2) <= d.a OPTIONS { waitForSync : true } SORT d.c ASC RETURN d").toArray();
+        assertEqual(2, result.length);
+        assertEqual(0, result[0].c);
+        assertEqual(1, result[1].c);
+      }
+      {
+        let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'abar', 'abaz'] AT LEAST(3) NOT IN d.a OPTIONS { waitForSync : true } SORT d.c ASC RETURN d").toArray();
+        assertEqual(0, result.length);
+      }
+      {
+        let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'afoo', 'abar', 'abaz'] AT LEAST(3) NOT IN d.a OPTIONS { waitForSync : true } SORT d.c ASC RETURN d").toArray();
+        assertEqual(1, result.length);
+        assertEqual(0, result[0].c);
+      }
+      {
+        let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'afoo', 'abar', 'abaz'] AT LEAST(3) != d.a OPTIONS { waitForSync : true } SORT d.c ASC RETURN d").toArray();
+        assertEqual(1, result.length);
+        assertEqual(0, result[0].c);
+      }
+      {
+        let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'abar', 'abaz'] AT LEAST(2) NOT IN d.a OPTIONS { waitForSync : true } SORT d.c ASC RETURN d").toArray();
+        assertEqual(2, result.length);
+        assertEqual(0, result[0].c);
+        assertEqual(1, result[1].c);
+      }
+      {
+        let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'abar', 'abaz'] AT LEAST(0) IN d.a OPTIONS { waitForSync : true } SORT d.c ASC RETURN d").toArray();
+        assertEqual(2, result.length);
+        assertEqual(0, result[0].c);
+        assertEqual(1, result[1].c);
+      }
+      {
+        let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'abar', 'abaz'] AT LEAST(4) IN d.a OPTIONS { waitForSync : true } SORT d.c ASC RETURN d").toArray();
+        assertEqual(0, result.length);
+      }
+      {
+        let result = db._query("FOR d IN UnitTestsWithArrayView SEARCH  ['bar', 'foo', 'abar', 'abaz'] AT LEAST(5) IN d.a OPTIONS { waitForSync : true } SORT d.c ASC RETURN d").toArray();
+        assertEqual(0, result.length);
       }
     },
     testArrayComparsionOperatorsGreaterOnSimpleField : function() {

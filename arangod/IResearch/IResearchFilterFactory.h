@@ -32,9 +32,11 @@
 
 #include "search/filter.hpp"
 
+#include <function2.hpp>
+
 namespace iresearch {
 
-class boolean_filter;  // forward declaration
+class boolean_filter;
 
 }  // namespace iresearch
 
@@ -43,7 +45,8 @@ class Result;
 
 namespace aql {
 
-struct AstNode;  // forward declaration
+struct AstNode;
+class ExpressionContext;
 
 }  // namespace aql
 
@@ -51,36 +54,14 @@ namespace iresearch {
 
 struct QueryContext;
 
-using AnalyzerProvider =
-    std::function<FieldMeta::Analyzer const&(std::string_view)>;
-
-inline FieldMeta::Analyzer const& emptyAnalyzer() noexcept {
-  static FieldMeta::Analyzer const empty{{}, {}};
-  return empty;
-}
+using AnalyzerProvider = fu2::unique_function<FieldMeta::Analyzer const&(
+    std::string_view, aql::ExpressionContext*, FieldMeta::Analyzer const&)>;
 
 struct FilterContext {
-  FieldMeta::Analyzer const& fieldAnalyzer(std::string_view name,
-                                           Result& r) const noexcept {
-    if (ADB_UNLIKELY(!contextAnalyzer && !fieldAnalyzerProvider)) {
-      TRI_ASSERT(false);
-      r = {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
-    }
-    if (!fieldAnalyzerProvider) {
-      return contextAnalyzer;
-    }
+  FieldMeta::Analyzer const& fieldAnalyzer(
+      std::string_view name, aql::ExpressionContext* ctx) const noexcept;
 
-    auto const& analyzer = (*fieldAnalyzerProvider)(name);
-    // TODO(SEARCH-342) we want to return error if analyzers don't match
-    // if (ADB_UNLIKELY(contextAnalyzer && contextAnalyzer._pool !=
-    // analyzer._pool)) {
-    //   r = {TRI_ERROR_BAD_PARAMETER,
-    //        "Context analyzer doesn't match field analyzer"};
-    // }
-    return analyzer;
-  }
-
-  AnalyzerProvider const* fieldAnalyzerProvider{};
+  AnalyzerProvider* fieldAnalyzerProvider{};
   // need shared_ptr since pool could be deleted from the feature
   FieldMeta::Analyzer const& contextAnalyzer;
   std::span<const InvertedIndexField> fields{};
@@ -106,6 +87,11 @@ struct FilterConstants {
   static constexpr double_t DefaultNgramMatchThreshold{0.7};
   static constexpr int64_t DefaultStartsWithMinMatchCount{1};
 };
+
+void appendExpression(irs::boolean_filter& filter, aql::AstNode const& node,
+                      QueryContext const& ctx, FilterContext const& filterCtx);
+
+irs::filter& addAllFilter(irs::boolean_filter& filter, bool hasNestedFields);
 
 }  // namespace iresearch
 }  // namespace arangodb

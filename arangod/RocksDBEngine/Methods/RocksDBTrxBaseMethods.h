@@ -54,6 +54,10 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
 
   uint64_t numCommits() const noexcept final override { return _numCommits; }
 
+  uint64_t numIntermediateCommits() const noexcept final override {
+    return _numIntermediateCommits;
+  }
+
   bool ensureSnapshot() final override;
 
   rocksdb::SequenceNumber GetSequenceNumber() const noexcept final override;
@@ -112,6 +116,8 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
 
   /// @brief number of commits, including intermediate commits
   uint64_t _numCommits{0};
+  /// @brief number of intermediate commits
+  uint64_t _numIntermediateCommits{0};
   // if a transaction gets bigger than these values then an automatic
   // intermediate commit will be done
   uint64_t _numInserts{0};

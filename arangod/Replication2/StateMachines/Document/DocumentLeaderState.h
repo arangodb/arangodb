@@ -29,11 +29,20 @@
 #include "Basics/UnshackledMutex.h"
 
 #include <memory>
+#include <unordered_set>
+
+namespace arangodb::transaction {
+struct IManager;
+}
 
 namespace arangodb::replication2::replicated_state::document {
 struct DocumentLeaderState
-    : replicated_state::IReplicatedLeaderState<DocumentState> {
-  explicit DocumentLeaderState(std::unique_ptr<DocumentCore> core);
+    : replicated_state::IReplicatedLeaderState<DocumentState>,
+      std::enable_shared_from_this<DocumentLeaderState> {
+  explicit DocumentLeaderState(
+      std::unique_ptr<DocumentCore> core,
+      std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
+      transaction::IManager& transactionManager);
 
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<DocumentCore> override;
@@ -45,8 +54,11 @@ struct DocumentLeaderState
                           OperationType operation, TransactionId transactionId,
                           ReplicationOptions opts) -> futures::Future<LogIndex>;
 
+  std::unordered_set<TransactionId> getActiveTransactions() const;
+
   LoggerContext const loggerContext;
-  std::string_view shardId;
+  std::string_view const shardId;
+  GlobalLogIdentifier const gid;
 
  private:
   struct GuardedData {
@@ -57,6 +69,9 @@ struct DocumentLeaderState
     std::unique_ptr<DocumentCore> core;
   };
 
+  std::shared_ptr<IDocumentStateHandlersFactory> _handlersFactory;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
+  Guarded<std::unordered_set<TransactionId>, std::mutex> _activeTransactions;
+  transaction::IManager& _transactionManager;
 };
 }  // namespace arangodb::replication2::replicated_state::document

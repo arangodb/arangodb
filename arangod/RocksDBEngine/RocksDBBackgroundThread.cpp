@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
+#include "Logger/LogMacros.h"
 #include "Replication/ReplicationClients.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"

@@ -97,7 +97,15 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::set<ServerID> _respondedServers;
   uint64_t _globalSuperstep = 0;
   /// adjustable maximum gss for some algorithms
+  /// some algorithms need several gss per iteration and it is more natural
+  /// for the user to give a maximum number of iterations
+  /// If Utils::maxNumIterations is given, _maxSuperstep is set to infinity.
+  /// In that case, Utils::maxNumIterations can be captured in the algorithm
+  /// (when the algorithm is created in AlgoRegistry, parameter userParams)
+  /// and used in MasterContext::postGlobalSuperstep which returns whether to
+  /// continue.
   uint64_t _maxSuperstep = 500;
+
   /// determines whether we support async execution
   bool _asyncMode = false;
   bool _useMemoryMaps = true;

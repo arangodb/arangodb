@@ -847,12 +847,12 @@ class QueryInRange : public QueryTest {
 
 class QueryInRangeView : public QueryInRange {
  protected:
-  ViewType type() const final { return ViewType::kView; }
+  ViewType type() const final { return ViewType::kArangoSearch; }
 };
 
 class QueryInRangeSearch : public QueryInRange {
  protected:
-  ViewType type() const final { return ViewType::kSearch; }
+  ViewType type() const final { return ViewType::kSearchAlias; }
 };
 
 TEST_P(QueryInRangeView, Test) {

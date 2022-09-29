@@ -191,7 +191,8 @@ auto LeaderStateManager<S>::recoverEntries() noexcept
         factory->constructLeader(std::move(core));
 
     data.state = machine;
-
+    TRI_ASSERT(data.state != nullptr);
+    data.state->setStream(data.stream);
     return machine;
   });
 
@@ -219,8 +220,6 @@ auto LeaderStateManager<S>::startService() -> Result {
         }
         data.token->snapshot.updateStatus(SnapshotStatus::kCompleted);
         data.recoveryRange = std::nullopt;
-        TRI_ASSERT(data.state != nullptr);
-        data.state->setStream(data.stream);
         return data.state;
       });
 
@@ -239,15 +238,18 @@ LeaderStateManager<S>::LeaderStateManager(
     std::shared_ptr<replicated_log::ILogLeader> leader,
     std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token,
     std::shared_ptr<Factory> factory,
-    std::shared_ptr<ReplicatedStateMetrics> ms) noexcept
+    std::shared_ptr<ReplicatedStateMetrics> ms,
+    std::shared_ptr<StatePersistorInterface> statePersistor) noexcept
     : guardedData(*this, LeaderInternalState::kWaitingForLeadershipEstablished,
                   std::move(core), std::move(token)),
       parent(parent),
       logLeader(std::move(leader)),
       loggerContext(std::move(loggerContext)),
       factory(std::move(factory)),
-      metrics(std::move(ms)) {
+      metrics(std::move(ms)),
+      statePersistor(std::move(statePersistor)) {
   metrics->replicatedStateNumberLeaders->fetch_add(1);
+  TRI_ASSERT(this->statePersistor != nullptr);
 }
 
 template<typename S>

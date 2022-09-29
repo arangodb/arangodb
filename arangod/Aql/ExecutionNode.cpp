@@ -32,13 +32,12 @@
 #include "Aql/Collection.h"
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/FilterExecutor.h"
-#include "Aql/FixedVarExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IdExecutor.h"
@@ -122,9 +121,23 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::ASYNC), "AsyncNode"},
     {static_cast<int>(ExecutionNode::MUTEX), "MutexNode"},
     {static_cast<int>(ExecutionNode::WINDOW), "WindowNode"},
+    {static_cast<int>(ExecutionNode::OFFSET_INFO_MATERIALIZE),
+     "OffsetMaterializeNode"},
 };
 
 }  // namespace
+
+namespace arangodb::aql {
+ExecutionNode* createOffsetMaterializeNode(ExecutionPlan*, velocypack::Slice);
+
+#ifndef USE_ENTERPRISE
+ExecutionNode* createOffsetMaterializeNode(ExecutionPlan*, velocypack::Slice) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                 "Function 'OFFSET_INFO' is available in "
+                                 "ArangoDB Enterprise Edition only.");
+}
+#endif
+}  // namespace arangodb::aql
 
 /// @brief resolve nodeType to a string.
 std::string const& ExecutionNode::getTypeString(NodeType type) {
@@ -353,6 +366,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       return new DistributeConsumerNode(plan, slice);
     case MATERIALIZE:
       return createMaterializeNode(plan, slice);
+    case OFFSET_INFO_MATERIALIZE:
+      return aql::createOffsetMaterializeNode(plan, slice);
     case ASYNC:
       return new AsyncNode(plan, slice);
     case MUTEX:
@@ -678,8 +693,8 @@ void ExecutionNode::invalidateCost() {
 CostEstimate ExecutionNode::getCost() const {
   if (!_costEstimate.isValid()) {
     // Use a walker to estimate cost of all direct and indirect dependencies.
-    // This is necessary to avoid deeply nested recursive calls in estimateCosts
-    // which could result in a stack overflow.
+    // This is necessary to avoid deeply nested recursive calls in
+    // estimateCosts which could result in a stack overflow.
     struct CostEstimator : WalkerWorkerBase<ExecutionNode> {
       void after(ExecutionNode* n) override {
         if (!n->_costEstimate.isValid()) {
@@ -730,8 +745,8 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
   nodes.emplace_back(const_cast<ExecutionNode*>(this), State::Pending);
 
   auto enqueDependencies = [&nodes](std::vector<ExecutionNode*>& deps) {
-    // we enqueue the dependencies in reversed order, because we always continue
-    // with the _last_ node in the list.
+    // we enqueue the dependencies in reversed order, because we always
+    // continue with the _last_ node in the list.
     for (auto it = deps.rbegin(); it != deps.rend(); ++it) {
       nodes.emplace_back(*it, State::Pending);
     }
@@ -1399,7 +1414,7 @@ void ExecutionNode::setParent(ExecutionNode* p) {
   _parents.emplace_back(p);
 }
 
-void ExecutionNode::getVariablesUsedHere(VarSet& vars) const {
+void ExecutionNode::getVariablesUsedHere(VarSet&) const {
   // do nothing!
 }
 
@@ -1466,9 +1481,9 @@ RegIdSet const& ExecutionNode::getRegsToClear() const {
   return _regsToClear;
 }
 
-bool ExecutionNode::isVarUsedLater(Variable const* variable) const {
+bool ExecutionNode::isVarUsedLater(Variable const* variable) const noexcept {
   TRI_ASSERT(_varUsageValid);
-  return (getVarsUsedLater().find(variable) != getVarsUsedLater().end());
+  return getVarsUsedLater().contains(variable);
 }
 
 bool ExecutionNode::isInInnerLoop() const { return getLoop() != nullptr; }
@@ -1547,6 +1562,7 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case SUBQUERY_START:
     case SUBQUERY_END:
     case MATERIALIZE:
+    case OFFSET_INFO_MATERIALIZE:
     case RETURN:
       return true;
     case CALCULATION:
@@ -1616,7 +1632,7 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
 }
 
 /// @brief doToVelocyPack, for SingletonNode
-void SingletonNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void SingletonNode::doToVelocyPack(VPackBuilder&, unsigned) const {
   // nothing to do here!
 }
 
@@ -1765,8 +1781,8 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
   auto const estimatedNrItems =
       collection()->count(&trx, transaction::CountType::TryCache);
   if (!doCount()) {
-    // if "count" mode is active, the estimated number of items from above must
-    // not be multiplied with the number of items in this collection
+    // if "count" mode is active, the estimated number of items from above
+    // must not be multiplied with the number of items in this collection
     estimate.estimatedNrItems *= estimatedNrItems;
   }
   // We do a full collection scan for each incoming item.
@@ -1787,7 +1803,7 @@ EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
 
 /// @brief doToVelocyPack, for EnumerateListNode
 void EnumerateListNode::doToVelocyPack(VPackBuilder& nodes,
-                                       unsigned flags) const {
+                                       unsigned /*flags*/) const {
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
 
@@ -1939,7 +1955,7 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
 }
 
 // @brief doToVelocyPack, for LimitNode
-void LimitNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void LimitNode::doToVelocyPack(VPackBuilder& nodes, unsigned /*flags*/) const {
   nodes.add("offset", VPackValue(_offset));
   nodes.add("limit", VPackValue(_limit));
   nodes.add("fullCount", VPackValue(_fullCount));
@@ -2322,8 +2338,8 @@ bool SubqueryNode::mayAccessCollections() {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
+    ExecutionEngine&,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "cannot instantiate SubqueryExecutor");
@@ -2486,7 +2502,7 @@ FilterNode::FilterNode(ExecutionPlan* plan,
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")) {}
 
 /// @brief doToVelocyPack, for FilterNode
-void FilterNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void FilterNode::doToVelocyPack(VPackBuilder& nodes, unsigned /*flags*/) const {
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
 }
@@ -2563,7 +2579,7 @@ ReturnNode::ReturnNode(ExecutionPlan* plan,
       _count(VelocyPackHelper::getBooleanValue(base, "count", false)) {}
 
 /// @brief doToVelocyPack, for ReturnNode
-void ReturnNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void ReturnNode::doToVelocyPack(VPackBuilder& nodes, unsigned /*flags*/) const {
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
   nodes.add("count", VPackValue(_count));
@@ -2665,7 +2681,7 @@ Variable const* ReturnNode::inVariable() const { return _inVariable; }
 void ReturnNode::inVariable(Variable const* v) { _inVariable = v; }
 
 /// @brief doToVelocyPack, for NoResultsNode
-void NoResultsNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void NoResultsNode::doToVelocyPack(VPackBuilder&, unsigned) const {
   // nothing to do here!
 }
 
@@ -2683,8 +2699,8 @@ std::unique_ptr<ExecutionBlock> NoResultsNode::createBlock(
 
 /// @brief estimateCost, the cost of a NoResults is nearly 0
 CostEstimate NoResultsNode::estimateCost() const {
-  // we have trigger cost estimation for parent nodes because this node could be
-  // spliced into a subquery.
+  // we have trigger cost estimation for parent nodes because this node could
+  // be spliced into a subquery.
   CostEstimate estimate = _dependencies.at(0)->getCost();
   estimate.estimatedNrItems = 0;
   estimate.estimatedCost = 0.5;  // just to make it non-zero
@@ -2775,7 +2791,7 @@ SortInformation::Match SortInformation::isCoveredBy(
 }
 
 /// @brief doToVelocyPack, for AsyncNode
-void AsyncNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void AsyncNode::doToVelocyPack(VPackBuilder&, unsigned) const {
   // nothing to do here!
 }
 
@@ -2842,7 +2858,7 @@ MaterializeNode::MaterializeNode(ExecutionPlan* plan,
           plan->getAst(), base, MATERIALIZE_NODE_OUT_VARIABLE_PARAM)) {}
 
 void MaterializeNode::doToVelocyPack(arangodb::velocypack::Builder& nodes,
-                                     unsigned flags) const {
+                                     unsigned /*flags*/) const {
   nodes.add(VPackValue(MATERIALIZE_NODE_IN_NM_DOC_PARAM));
   _inNonMaterializedDocId->toVelocyPack(nodes);
 

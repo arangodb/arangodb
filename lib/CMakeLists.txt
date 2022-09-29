@@ -52,23 +52,19 @@ else()
   message(STATUS "Will not compile in hand-optimized assembler code for CRC32.")
 endif()
 
-if (USE_LOCAL_CLOCK_GETTIME)
-  set(LIB_CLOCK_GETTIME Utilities/clock_gettime.cpp)
-endif ()
-
 add_library(arango STATIC
   ${LIB_ARANGO_APPLE}
   ${LIB_ARANGO_MSVC}
   ${LIB_ARANGO_POSIX}
   ${LIB_ARANGO_LINENOISE}
   ${LIB_ARANGO_DATE}
-  ${LIB_CLOCK_GETTIME}
   ${LIB_ASM_SOURCES}
   ApplicationFeatures/ApplicationFeature.cpp
   ApplicationFeatures/ApplicationFeaturePhase.cpp
   ApplicationFeatures/ApplicationServer.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
+  ApplicationFeatures/FileSystemFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/ShellColorsFeature.cpp
@@ -119,6 +115,7 @@ add_library(arango STATIC
   Basics/UnshackledMutex.cpp
   Basics/Utf8Helper.cpp
   Basics/VelocyPackHelper.cpp
+  Basics/VelocyPackStringLiteral.cpp
   Basics/application-exit.cpp
   Basics/CleanupFunctions.cpp
   Basics/conversions.cpp
@@ -200,7 +197,6 @@ add_library(arango STATIC
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp
-  ${ADDITIONAL_LIB_ARANGO_SOURCES}
 )
 
 # The following is necessary to compile MerkleTree.cpp without RTTI.

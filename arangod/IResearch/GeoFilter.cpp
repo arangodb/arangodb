@@ -55,9 +55,7 @@ using namespace arangodb::iresearch;
 using Disjunction =
     irs::disjunction_iterator<irs::doc_iterator::ptr, irs::NoopAggregator>;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a filter matching all documents with a given geo field
-////////////////////////////////////////////////////////////////////////////////
+// Return a filter matching all documents with a given geo field
 irs::filter::prepared::ptr match_all(irs::index_reader const& index,
                                      irs::Order const& order,
                                      irs::string_ref field,
@@ -69,22 +67,15 @@ irs::filter::prepared::ptr match_all(irs::index_reader const& index,
   return filter.prepare(index, order, boost);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns singleton S2Cap that tolerates precision errors
-////////////////////////////////////////////////////////////////////////////////
+// Returns singleton S2Cap that tolerates precision errors
 inline S2Cap fromPoint(S2Point const& origin) {
   return S2Cap(origin, S1Angle::Radians(SIGNLETON_CAP_EPS));
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class GeoIterator
-////////////////////////////////////////////////////////////////////////////////
 template<typename Acceptor>
 class GeoIterator : public irs::doc_iterator {
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief two phase iterator is heavier than a usual disjunction
-  //////////////////////////////////////////////////////////////////////////////
+  // Two phase iterator is heavier than a usual disjunction
   static constexpr irs::cost::cost_t EXTRA_COST = 2;
 
  public:
@@ -156,13 +147,13 @@ class GeoIterator : public irs::doc_iterator {
 
     if (doc->value != _columnIt->seek(doc->value) ||
         _storedValue->value.empty()) {
-      LOG_TOPIC("62a62", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("62a62", DEBUG, arangodb::iresearch::TOPIC)
           << "failed to find stored geo value, doc='" << doc->value << "'";
       return false;
     }
 
     if (!parseShape(slice(_storedValue->value), _shape, false)) {
-      LOG_TOPIC("62a65", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("62a65", DEBUG, arangodb::iresearch::TOPIC)
           << "failed to parse stored geo value, value='"
           << slice(_storedValue->value).toHex() << ", doc='" << doc->value
           << "'";
@@ -181,7 +172,7 @@ class GeoIterator : public irs::doc_iterator {
   irs::payload const* _storedValue;
   attributes _attrs;
   Acceptor& _acceptor;
-};  // GeoIterator
+};
 
 template<typename Acceptor>
 irs::doc_iterator::ptr make_iterator(
@@ -194,35 +185,23 @@ irs::doc_iterator::ptr make_iterator(
       std::move(columnIt), acceptor, reader, field, query_stats, order, boost);
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @struct GeoState
-/// @brief cached per reader state
-//////////////////////////////////////////////////////////////////////////////
+// Cached per reader query state
 struct GeoState {
   using TermState = irs::seek_cookie::ptr;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief corresponding stored field
-  //////////////////////////////////////////////////////////////////////////////
+  // Corresponding stored field
   const irs::column_reader* storedField;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief reader using for iterate over the terms
-  //////////////////////////////////////////////////////////////////////////////
+  // Reader using for iterate over the terms
   const irs::term_reader* reader;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief geo term states
-  //////////////////////////////////////////////////////////////////////////////
+  // Geo term states
   std::vector<irs::seek_cookie::ptr> states;
-};  // GeoState
+};
 
 using GeoStates = irs::states_cache<GeoState>;
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class GeoQuery
-/// @brief compiled GeoFilter
-//////////////////////////////////////////////////////////////////////////////
+// Compiled GeoFilter
 template<typename Acceptor>
 class GeoQuery final : public irs::filter::prepared {
  public:
@@ -233,10 +212,10 @@ class GeoQuery final : public irs::filter::prepared {
         _stats(std::move(stats)),
         _acceptor(std::move(acceptor)) {}
 
-  virtual irs::doc_iterator::ptr execute(
-      const irs::sub_reader& segment, irs::Order const& ord, irs::ExecutionMode,
-      const irs::attribute_provider* /*ctx*/) const override {
+  irs::doc_iterator::ptr execute(
+      irs::ExecutionContext const& ctx) const override {
     // get term state for the specified reader
+    auto& segment = ctx.segment;
     auto state = _states.find(segment);
 
     if (!state) {
@@ -272,15 +251,20 @@ class GeoQuery final : public irs::filter::prepared {
     }
 
     return make_iterator(std::move(itrs), std::move(columnIt), segment,
-                         *state->reader, _stats.c_str(), ord, boost(),
+                         *state->reader, _stats.c_str(), ctx.scorers, boost(),
                          _acceptor);
+  }
+
+  void visit(irs::sub_reader const&, irs::PreparedStateVisitor&,
+             irs::score_t) const override {
+    // NOOP
   }
 
  private:
   GeoStates _states;
   irs::bstring _stats;
   Acceptor _acceptor;
-};  // GeoQuery
+};
 
 template<bool MinIncl, bool MaxIncl>
 struct GeoDistanceRangeAcceptor {

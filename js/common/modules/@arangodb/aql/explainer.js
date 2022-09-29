@@ -1177,7 +1177,9 @@ function processQuery(query, explain, planIndex) {
     if (node.producesResult || !node.hasOwnProperty('producesResult')) {
       if (node.indexCoversProjections) {
         what += ', index only';
-      } 
+      } else {
+        what += ', index scan + document lookup';
+      }
     } else {
       what += ', scan only';
     }
@@ -2008,6 +2010,9 @@ function processQuery(query, explain, planIndex) {
 
       case 'MaterializeNode':
         return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
+      case 'OffsetMaterializeNode':
+        return keyword('LET ') + variableName(node.outVariable) + ' = ' +
+               func('OFFSET_INFO') + '(' + variableName(node.viewVariable) + ', ' + buildExpression(node.options) + ')';
       case 'MutexNode':
         return keyword('MUTEX') + '   ' + annotation('/* end async execution */');
       case 'AsyncNode':
@@ -2058,7 +2063,6 @@ function processQuery(query, explain, planIndex) {
     if (['EnumerateCollectionNode',
       'EnumerateListNode',
       'EnumerateViewNode',
-      'IndexRangeNode',
       'IndexNode',
       'TraversalNode',
       'SubqueryStartNode',

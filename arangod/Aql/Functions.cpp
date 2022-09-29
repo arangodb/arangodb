@@ -86,6 +86,7 @@
 #include "analysis/token_attributes.hpp"
 #include "utils/levenshtein_utils.hpp"
 #include "utils/ngram_match_utils.hpp"
+#include "utils/utf8_utils.hpp"
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -241,14 +242,14 @@ bool isValidDocument(VPackSlice slice) {
 }
 
 void registerICUWarning(ExpressionContext* expressionContext,
-                        char const* functionName, UErrorCode status) {
+                        std::string_view functionName, UErrorCode status) {
   std::string msg;
   msg.append("in function '");
   msg.append(functionName);
   msg.append("()': ");
   msg.append(basics::Exception::FillExceptionString(TRI_ERROR_ARANGO_ICU_ERROR,
                                                     u_errorName(status)));
-  expressionContext->registerWarning(TRI_ERROR_ARANGO_ICU_ERROR, msg.c_str());
+  expressionContext->registerWarning(TRI_ERROR_ARANGO_ICU_ERROR, msg);
 }
 
 /// @brief convert a number value into an AqlValue
@@ -1356,7 +1357,7 @@ AqlValue const& extractFunctionParameterValue(
   return parameters[position];
 }
 
-std::string_view getFunctionName(const AstNode& node) noexcept {
+std::string_view getFunctionName(AstNode const& node) noexcept {
   TRI_ASSERT(aql::NODE_TYPE_FCALL == node.type);
   auto const* impl = static_cast<aql::Function*>(node.getData());
   TRI_ASSERT(impl != nullptr);
@@ -1365,33 +1366,41 @@ std::string_view getFunctionName(const AstNode& node) noexcept {
 
 /// @brief register warning
 void registerWarning(ExpressionContext* expressionContext,
-                     char const* functionName, Result const& rr) {
+                     std::string_view functionName, Result const& rr) {
   std::string msg = "in function '";
   msg.append(functionName);
   msg.append("()': ");
   msg.append(rr.errorMessage());
-  expressionContext->registerWarning(rr.errorNumber(), msg.c_str());
+  expressionContext->registerWarning(rr.errorNumber(), msg);
 }
 
 /// @brief register warning
 void registerWarning(ExpressionContext* expressionContext,
-                     char const* functionName, ErrorCode code) {
+                     std::string_view functionName, ErrorCode code) {
   if (code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH &&
       code != TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH) {
     registerWarning(expressionContext, functionName, Result(code));
     return;
   }
 
-  std::string msg = basics::Exception::FillExceptionString(code, functionName);
-  expressionContext->registerWarning(code, msg.c_str());
+  // ensure that function name is null-terminated
+  // TODO: if we get rid of vsprintf in FillExceptionString, we don't
+  // need to pass a raw C-style string into it
+  std::string fname(functionName);
+  std::string msg = basics::Exception::FillExceptionString(code, fname.c_str());
+  expressionContext->registerWarning(code, msg);
 }
 
 void registerError(ExpressionContext* expressionContext,
-                   char const* functionName, ErrorCode code) {
+                   std::string_view functionName, ErrorCode code) {
   std::string msg;
 
   if (code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
-    msg = aql::QueryWarnings::buildFormattedString(code, functionName);
+    // ensure that function name is null-terminated
+    // TODO: if we get rid of vsprintf in FillExceptionString, we don't
+    // need to pass a raw C-style string into it
+    std::string fname(functionName);
+    msg = basics::Exception::FillExceptionString(code, fname.c_str());
   } else {
     msg.append("in function '");
     msg.append(functionName);
@@ -1399,12 +1408,12 @@ void registerError(ExpressionContext* expressionContext,
     msg.append(TRI_errno_string(code));
   }
 
-  expressionContext->registerError(code, msg.c_str());
+  expressionContext->registerError(code, msg);
 }
 
 /// @brief register usage of an invalid function argument
 void registerInvalidArgumentWarning(ExpressionContext* expressionContext,
-                                    char const* functionName) {
+                                    std::string_view functionName) {
   registerWarning(expressionContext, functionName,
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
 }
@@ -1414,8 +1423,7 @@ void registerInvalidArgumentWarning(ExpressionContext* expressionContext,
 
 /// @brief append the VelocyPack value to a string buffer
 void functions::Stringify(VPackOptions const* vopts,
-                          velocypack::StringSink& buffer,
-                          VPackSlice const& slice) {
+                          velocypack::StringSink& buffer, VPackSlice slice) {
   if (slice.isNull()) {
     // null is the empty string
     return;
@@ -2582,8 +2590,67 @@ AqlValue functions::Substring(ExpressionContext* ctx, AstNode const&,
 
   return AqlValue(utf8);
 }
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
+
+AqlValue functions::SubstringBytes(ExpressionContext* ctx, AstNode const& node,
+                                   VPackFunctionParametersView parameters) {
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  if (!value.isString()) {
+    registerWarning(ctx, getFunctionName(node).data(), TRI_ERROR_BAD_PARAMETER);
+    return AqlValue{AqlValueHintNull{}};
+  }
+
+  auto const str = value.slice().stringView();
+
+  uint32_t const offset = [&]() {
+    auto offset = static_cast<int32_t>(
+        extractFunctionParameterValue(parameters, 1).toInt64());
+
+    if (offset < 0) {
+      offset = std::max(0, static_cast<int32_t>(str.size() + offset));
+    }
+
+    return offset;
+  }();
+
+  int32_t const length = [&]() {
+    if (parameters.size() >= 3) {
+      return static_cast<int32_t>(
+          extractFunctionParameterValue(parameters, 2).toInt64());
+    } else {
+      return static_cast<int32_t>(str.size());
+    }
+  }();
+
+  if (length <= 0 || offset >= str.size()) {
+    return AqlValue{velocypack::Slice::emptyStringSlice()};
+  }
+
+  auto validate = [](std::string_view str) noexcept {
+    auto* begin = reinterpret_cast<irs::byte_type const*>(str.data());
+    auto* end = begin + str.size();
+
+    while (begin != end) {
+      const auto c = irs::utf8_utils::next_checked(begin, end);
+
+      if (irs::utf8_utils::INVALID_CODE_POINT == c) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  auto const subStr =
+      str.substr(offset, std::min(static_cast<uint32_t>(length),
+                                  static_cast<uint32_t>(str.size()) - offset));
+
+  if (!validate(subStr)) {
+    registerWarning(ctx, getFunctionName(node).data(), TRI_ERROR_BAD_PARAMETER);
+    return AqlValue{AqlValueHintNull{}};
+  }
+
+  return AqlValue{subStr};
+}
 
 AqlValue functions::Substitute(ExpressionContext* expressionContext,
                                AstNode const&,
@@ -3114,8 +3181,8 @@ AqlValue functions::Like(ExpressionContext* expressionContext, AstNode const&,
   ::appendAsString(vopts, adapter, regex);
 
   // the matcher is owned by the context!
-  icu::RegexMatcher* matcher = expressionContext->buildLikeMatcher(
-      buffer->data(), buffer->length(), caseInsensitive);
+  icu::RegexMatcher* matcher =
+      expressionContext->buildLikeMatcher(*buffer, caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
@@ -3309,8 +3376,8 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
   bool isEmptyExpression = (buffer->length() == 0);
 
   // the matcher is owned by the context!
-  icu::RegexMatcher* matcher = expressionContext->buildRegexMatcher(
-      buffer->data(), buffer->length(), caseInsensitive);
+  icu::RegexMatcher* matcher =
+      expressionContext->buildRegexMatcher(*buffer, caseInsensitive);
 
   if (matcher == nullptr) {
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
@@ -3407,8 +3474,8 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
   bool isEmptyExpression = (buffer->length() == 0);
 
   // the matcher is owned by the context!
-  icu::RegexMatcher* matcher = expressionContext->buildRegexMatcher(
-      buffer->data(), buffer->length(), caseInsensitive);
+  icu::RegexMatcher* matcher =
+      expressionContext->buildRegexMatcher(*buffer, caseInsensitive);
 
   if (matcher == nullptr) {
     registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
@@ -3508,8 +3575,8 @@ AqlValue functions::RegexTest(ExpressionContext* expressionContext,
   ::appendAsString(vopts, adapter, regex);
 
   // the matcher is owned by the context!
-  icu::RegexMatcher* matcher = expressionContext->buildRegexMatcher(
-      buffer->data(), buffer->length(), caseInsensitive);
+  icu::RegexMatcher* matcher =
+      expressionContext->buildRegexMatcher(*buffer, caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
@@ -3552,8 +3619,8 @@ AqlValue functions::RegexReplace(ExpressionContext* expressionContext,
   ::appendAsString(vopts, adapter, regex);
 
   // the matcher is owned by the context!
-  icu::RegexMatcher* matcher = expressionContext->buildRegexMatcher(
-      buffer->data(), buffer->length(), caseInsensitive);
+  icu::RegexMatcher* matcher =
+      expressionContext->buildRegexMatcher(*buffer, caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
@@ -3786,6 +3853,31 @@ AqlValue functions::DateIsoWeek(ExpressionContext* expressionContext,
   // The (unsigned) operator is overloaded...
   uint64_t isoWeek = static_cast<uint64_t>((unsigned)(yww.weeknum()));
   return AqlValue(AqlValueHintUInt(isoWeek));
+}
+
+/// @brief function DATE_ISOWEEKYEAR
+AqlValue functions::DateIsoWeekYear(ExpressionContext* expressionContext,
+                                    AstNode const&,
+                                    VPackFunctionParametersView parameters) {
+  static char const* AFN = "DATE_ISOWEEKYEAR";
+  tp_sys_clock_ms tp;
+
+  if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  iso_week::year_weeknum_weekday yww{floor<date::days>(tp)};
+  // The (unsigned) operator is overloaded...
+  uint64_t isoWeek = static_cast<uint64_t>((unsigned)(yww.weeknum()));
+  int isoYear = (int)(yww.year());
+  transaction::Methods* trx = &expressionContext->trx();
+  transaction::BuilderLeaser builder(trx);
+  builder->openObject();
+  builder->add("week", VPackValue(isoWeek));
+  builder->add("year", VPackValue(isoYear));
+  builder->close();
+
+  return AqlValue(builder->slice(), builder->size());
 }
 
 /// @brief function DATE_LEAPYEAR
@@ -4754,6 +4846,83 @@ AqlValue functions::Values(ExpressionContext* expressionContext, AstNode const&,
   builder->close();
 
   return AqlValue(builder->slice(), builder->size());
+}
+
+AqlValue functions::Value(ExpressionContext* expressionContext,
+                          AstNode const& node,
+                          VPackFunctionParametersView parameters) {
+  size_t const n = parameters.size();
+
+  if (n < 2) {
+    // no parameters
+    registerWarning(expressionContext, getFunctionName(node).data(),
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+    return AqlValue{AqlValueHintNull()};
+  }
+
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  if (!value.isObject()) {
+    // not an object
+    registerWarning(expressionContext, getFunctionName(node).data(),
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue{AqlValueHintNull()};
+  }
+
+  AqlValue const& pathArg = extractFunctionParameterValue(parameters, 1);
+
+  if (!pathArg.isArray()) {
+    registerWarning(expressionContext, getFunctionName(node).data(),
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue{AqlValueHintNull()};
+  }
+
+  auto& trx = expressionContext->trx();
+  AqlValueMaterializer materializer{&trx.vpackOptions()};
+  VPackSlice slice{materializer.slice(value, false)};
+  VPackSlice const root{slice};
+
+  auto visitor = [&slice]<typename T>(T value) {
+    static_assert(std::is_same_v<T, std::string_view> ||
+                  std::is_same_v<T, size_t>);
+
+    if constexpr (std::is_same_v<T, std::string_view>) {
+      if (!slice.isObject()) {
+        return false;
+      }
+      slice = slice.get(value);
+      return !slice.isNone();
+    } else if (std::is_same_v<T, size_t>) {
+      if (!slice.isArray() || slice.length() <= value) {
+        return false;
+      }
+      slice = slice.at(value);
+      return true;
+    }
+  };
+
+  if (0 == pathArg.length()) {
+    return AqlValue{AqlValueHintNull{}};
+  }
+
+  for (auto entry : velocypack::ArrayIterator{pathArg.slice()}) {
+    bool ok = false;
+    if (entry.isString()) {
+      ok = visitor(entry.stringView());
+    } else if (entry.isNumber()) {
+      ok = visitor(entry.getNumber<size_t>());
+    }
+
+    if (!ok) {
+      return AqlValue{AqlValueHintNull{}};
+    }
+  }
+
+  if (slice.isCustom()) {
+    // The only custom slice is `_id` field
+    return AqlValue{trx.extractIdString(root)};
+  }
+
+  return AqlValue{slice};
 }
 
 /// @brief function MIN
@@ -9491,7 +9660,7 @@ AqlValue functions::CosineSimilarity(aql::ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintNull());
     }
 
-    return ::numberValue(numerator / denominator, true);
+    return ::numberValue(std::clamp(numerator / denominator, -1.0, 1.0), true);
   };
 
   return DistanceImpl(expressionContext, node, parameters,

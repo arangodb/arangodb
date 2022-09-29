@@ -43,9 +43,6 @@ function testSuite() {
   const errors = require('@arangodb').errors;
 
   return {
-    setUp: function() {},
-    tearDown: function() {},
-
     testCanExecuteAction : function() {
       // fetch server-side database directory name
       let data = "return require('@arangodb').db._path();";

@@ -34,6 +34,7 @@
 #include "Aql/Collection.h"
 #include "Aql/ConditionFinder.h"
 #include "Aql/DocumentProducingNode.h"
+#include "Aql/EnumeratePathsNode.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
@@ -41,7 +42,6 @@
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IndexNode.h"
-#include "Aql/EnumeratePathsNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
@@ -61,7 +61,6 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallUnorderedMap.h"
@@ -1346,6 +1345,7 @@ void arangodb::aql::removeRedundantSortsRule(
           auto other =
               ExecutionNode::castTo<SortNode*>(current)->getSortInformation();
 
+          bool canContinueSearch = true;
           switch (sortInfo.isCoveredBy(other)) {
             case SortInformation::unequal: {
               // different sort criteria
@@ -1355,20 +1355,25 @@ void arangodb::aql::removeRedundantSortsRule(
 
                 if (!other.isDeterministic) {
                   // if the sort is non-deterministic, we must not remove it
+                  canContinueSearch = false;
                   break;
                 }
 
                 if (sortNode->isStable()) {
-                  // we should not optimize predecessors of a stable sort (used
-                  // in a COLLECT node)
+                  // we should not optimize predecessors of a stable sort
+                  // (used in a COLLECT node)
                   // the stable sort is for a reason, and removing any
-                  // predecessors sorts might
-                  // change the result
+                  // predecessors sorts might change the result.
+                  // We're not allowed to continue our search for further
+                  // redundant SORTS in this iteration.
+                  canContinueSearch = false;
                   break;
                 }
 
                 // remove sort that is a direct predecessor of a sort
                 toUnlink.emplace(current);
+              } else {
+                canContinueSearch = false;
               }
               break;
             }
@@ -1381,7 +1386,9 @@ void arangodb::aql::removeRedundantSortsRule(
             case SortInformation::ourselvesLessAccurate: {
               // the sort at the start of the pipeline makes the sort at the end
               // superfluous, so we'll remove it
+              // Related to: BTS-937
               toUnlink.emplace(n);
+              canContinueSearch = false;
               break;
             }
 
@@ -1391,6 +1398,9 @@ void arangodb::aql::removeRedundantSortsRule(
               toUnlink.emplace(current);
               break;
             }
+          }
+          if (!canContinueSearch) {
+            break;
           }
         } else if (current->getType() == EN::FILTER) {
           // ok: a filter does not depend on sort order
@@ -3536,11 +3546,6 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
 
     size_t const n = condition.root()->numMembers();
 
-    if (n != 1) {
-      // either no condition or multiple ORed conditions...
-      continue;
-    }
-
     bool handled = false;
     auto current = node;
     while (current != nullptr) {
@@ -3558,6 +3563,11 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
             // single index. this is something that we can handle
             AstNode* newNode{nullptr};
             if (!indexNode->isAllCoveredByOneIndex()) {
+              if (n != 1) {
+                // either no condition or multiple ORed conditions
+                // and index has not covered entire condition.
+                break;
+              }
               newNode = condition.removeIndexCondition(
                   plan.get(), indexNode->outVariable(), indexCondition->root(),
                   indexesUsed[0].get());
@@ -4869,6 +4879,7 @@ void arangodb::aql::distributeFilterCalcToClusterRule(
           stopSearching = true;
           break;
 
+        case EN::OFFSET_INFO_MATERIALIZE:
         case EN::CALCULATION:
         case EN::FILTER: {
           if (inspectNode->getType() == EN::CALCULATION) {
@@ -4988,6 +4999,7 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::REMOTESINGLE:
         case EN::ENUMERATE_IRESEARCH_VIEW:
         case EN::WINDOW:
+        case EN::OFFSET_INFO_MATERIALIZE:
 
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -5070,7 +5082,8 @@ void arangodb::aql::removeUnnecessaryRemoteScatterRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
-  plan->findNodesOfType(nodes, EN::REMOTE, true);
+  plan->findNodesOfType(nodes, EN::REMOTE,
+                        false /* do not go into Subqueries */);
 
   ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
 
@@ -5272,22 +5285,37 @@ void arangodb::aql::restrictToSingleShardRule(
         }
       } else if (currentType == ExecutionNode::INDEX ||
                  currentType == ExecutionNode::ENUMERATE_COLLECTION) {
-        auto collection = ::getCollection(current);
-        auto collectionVariable = ::getOutVariable(current);
-        std::string shardId = finder.getShard(collectionVariable);
+        bool disable = false;
+        if (currentType == ExecutionNode::INDEX) {
+          // Custom analyzer on inverted indexes might be incompatible with
+          // shard key distribution.
+          for (auto& index :
+               ExecutionNode::castTo<aql::IndexNode*>(current)->getIndexes()) {
+            if (Index::TRI_IDX_TYPE_INVERTED_INDEX == index->type()) {
+              disable = true;
+              break;
+            }
+          }
+        }
 
-        if (finder.isSafeForOptimization(collectionVariable) &&
-            !shardId.empty()) {
-          wasModified = true;
-          ::restrictToShard(current, shardId);
-          forwardRestrictionToPrototype(current, shardId);
-        } else if (finder.isSafeForOptimization(collection)) {
-          auto& shards = modificationRestrictions[collection];
-          if (shards.size() == 1) {
+        if (!disable) {
+          auto collection = ::getCollection(current);
+          auto collectionVariable = ::getOutVariable(current);
+          std::string shardId = finder.getShard(collectionVariable);
+
+          if (finder.isSafeForOptimization(collectionVariable) &&
+              !shardId.empty()) {
             wasModified = true;
-            shardId = *shards.begin();
             ::restrictToShard(current, shardId);
             forwardRestrictionToPrototype(current, shardId);
+          } else if (finder.isSafeForOptimization(collection)) {
+            auto& shards = modificationRestrictions[collection];
+            if (shards.size() == 1) {
+              wasModified = true;
+              shardId = *shards.begin();
+              ::restrictToShard(current, shardId);
+              forwardRestrictionToPrototype(current, shardId);
+            }
           }
         }
       } else if (currentType == ExecutionNode::UPSERT ||
@@ -5971,7 +5999,7 @@ struct RemoveRedundantOr {
             type == NODE_TYPE_OPERATOR_BINARY_LE);
   }
 
-  int isCompatibleBound(AstNodeType type, AstNode const* value) {
+  int isCompatibleBound(AstNodeType type, AstNode const*) {
     if ((comparison == NODE_TYPE_OPERATOR_BINARY_LE ||
          comparison == NODE_TYPE_OPERATOR_BINARY_LT) &&
         (type == NODE_TYPE_OPERATOR_BINARY_LE ||
@@ -7387,6 +7415,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
 static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
   switch (node->getType()) {
     case ExecutionNode::CALCULATION:
+    case ExecutionNode::OFFSET_INFO_MATERIALIZE:
     case ExecutionNode::SUBQUERY:
     case ExecutionNode::REMOTE:
     case ExecutionNode::ASYNC:
@@ -8792,7 +8821,12 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
       // If our input variable is set by a collection/index enumeration, it is
       // guaranteed to be an object with a _key attribute, so we don't need to
       // do anything.
-      return;
+      if (!createKeys || collection->usesDefaultSharding()) {
+        // no need to insert an extra calculation node in this case.
+        return;
+      }
+      // in case we have a collection that is not sharded by _key,
+      // the keys need to be created/validated by the coordinator.
     }
 
     auto* ast = plan.getAst();

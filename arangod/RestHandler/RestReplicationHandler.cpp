@@ -23,6 +23,7 @@
 
 #include "RestReplicationHandler.h"
 
+#include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Basics/ConditionLocker.h"
@@ -37,7 +38,9 @@
 #include "Basics/hashes.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ResignShardLeadership.h"
@@ -1918,6 +1921,12 @@ Result RestReplicationHandler::processRestoreIndexes(
         idx = physical->createIndex(idxDef, /*restore*/ true, created);
       } catch (basics::Exception const& e) {
         if (e.code() == TRI_ERROR_NOT_IMPLEMENTED) {
+          continue;
+        }
+        if (auto const& message = e.message();
+            message.find("arangodb_search_num_failed_commits") !=
+            std::string::npos) {
+          // TODO(MBkkt) Fix it! Now it's single correct and simple way :(
           continue;
         }
 

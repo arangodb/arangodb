@@ -39,7 +39,6 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
-#include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -53,15 +52,16 @@
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
+#include "Replication2/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Utilities/NameValidator.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
-#include "Utilities/NameValidator.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -448,6 +448,7 @@ DatabaseFeature::DatabaseFeature(Server& server)
       _isInitiallyEmpty(false),
       _checkVersion(false),
       _upgrade(false),
+      _defaultReplicationVersion(replication::Version::ONE),
       _extendedNamesForDatabases(false),
       _performIOHeartbeat(true),
       _databasesLists(new DatabasesLists()),
@@ -470,6 +471,17 @@ DatabaseFeature::~DatabaseFeature() {
 
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "database options");
+
+  options
+      ->addOption("--database.default-replication-version",
+                  "default replication version, can be overwritten "
+                  "when creating a new database, possible values: 1, 2",
+                  new replication::ReplicationVersionParameter(
+                      &_defaultReplicationVersion),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::Experimental))
+      .setIntroducedIn(31100);
 
   options->addOption(
       "--database.wait-for-sync",
@@ -494,7 +506,8 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--database.extended-names-databases",
-                  "allow extended characters in database names",
+                  "Allow most UTF-8 characters in database names. Once in use, "
+                  "this option cannot be turned off again.",
                   new BooleanParameter(&_extendedNamesForDatabases),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon,
@@ -512,7 +525,7 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   // the following option was obsoleted in 3.9
   options->addObsoleteOption(
       "--database.old-system-collections",
-      "create and use deprecated system collection (_modules, _fishbowl)",
+      "Create and use deprecated system collection (_modules, _fishbowl).",
       false);
 
   // the following option was obsoleted in 3.8

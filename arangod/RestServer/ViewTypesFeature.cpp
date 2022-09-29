@@ -30,15 +30,15 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/BootstrapFeature.h"
 #include "Utils/Events.h"
+#include "VocBase/vocbase.h"
 
 namespace {
 
 using namespace arangodb;
 
-struct InvalidViewFactory : public arangodb::ViewFactory {
-  virtual Result create(LogicalView::ptr&, TRI_vocbase_t& vocbase,
-                        VPackSlice definition,
-                        bool /*isUserRequest*/) const override {
+struct InvalidViewFactory final : arangodb::ViewFactory {
+  Result create(LogicalView::ptr&, TRI_vocbase_t& vocbase,
+                VPackSlice definition, bool /*isUserRequest*/) const final {
     std::string name;
     if (definition.isObject()) {
       name = basics::VelocyPackHelper::getStringValue(
@@ -51,8 +51,8 @@ struct InvalidViewFactory : public arangodb::ViewFactory {
             definition.toString()};
   }
 
-  virtual Result instantiate(LogicalView::ptr&, TRI_vocbase_t&,
-                             VPackSlice definition) const override {
+  Result instantiate(LogicalView::ptr&, TRI_vocbase_t&, VPackSlice definition,
+                     bool /*isUserRequest*/) const final {
     return {TRI_ERROR_BAD_PARAMETER,
             std::string(
                 "invalid type provided to instantiate view with definition: ") +

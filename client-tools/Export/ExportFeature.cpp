@@ -115,8 +115,8 @@ void ExportFeature::collectOptions(
 
   options
       ->addOption("--custom-query-bindvars",
-                  "bind parameters to be used with '--custom-query' or "
-                  "custom-query-file'",
+                  "The bind parameters to be used with the `--custom-query` or "
+                  "`--custom-query-file` option.",
                   new StringParameter(&_customQueryBindVars))
       .setIntroducedIn(31000);
 
@@ -127,7 +127,7 @@ void ExportFeature::collectOptions(
                      new BooleanParameter(&_xgmmlLabelOnly));
 
   options->addOption("--xgmml-label-attribute",
-                     "specify document attribute that will be the xgmml label",
+                     "Specify document attribute that will be the XGMML label.",
                      new StringParameter(&_xgmmlLabelAttribute));
 
   options->addOption("--output-directory", "output directory",
@@ -338,10 +338,12 @@ void ExportFeature::start() {
             << std::endl;
 
   uint64_t exportedSize = 0;
+  std::string progressDetails;
 
   if (_typeExport == "json" || _typeExport == "jsonl" || _typeExport == "xml" ||
       _typeExport == "csv") {
     if (_collections.size()) {
+      progressDetails = std::to_string(_collections.size()) + " collection(s)";
       collectionExport(httpClient.get());
 
       for (auto const& collection : _collections) {
@@ -357,6 +359,7 @@ void ExportFeature::start() {
         }
       }
     } else if (!_customQuery.empty()) {
+      progressDetails = "1 query";
       queryExport(httpClient.get());
 
       std::string filePath =
@@ -367,6 +370,7 @@ void ExportFeature::start() {
       exportedSize += TRI_SizeFile(filePath.c_str());
     }
   } else if (_typeExport == "xgmml" && _graphName.size()) {
+    progressDetails = "1 graph";
     graphExport(httpClient.get());
     std::string filePath = _outputDirectory + TRI_DIR_SEPARATOR_STR +
                            _graphName + "." + _typeExport;
@@ -382,7 +386,7 @@ void ExportFeature::start() {
 
   using arangodb::basics::StringUtils::formatSize;
 
-  std::cout << "Processed " << _collections.size() << " collection(s), wrote "
+  std::cout << "Processed " << progressDetails << ", wrote "
             << formatSize(exportedSize) << ", " << _httpRequestsDone
             << " HTTP request(s)" << std::endl;
 

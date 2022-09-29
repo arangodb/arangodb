@@ -180,7 +180,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(createJson->slice()));
+      vocbase.createView(createJson->slice(), false));
   ASSERT_FALSE(!view);
   EXPECT_FALSE(view->primarySort().empty());
   EXPECT_EQ(1, view->primarySort().size());
@@ -213,7 +213,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(slice.get("name").copyString(), "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::StaticStrings::ViewType);
+                arangodb::iresearch::StaticStrings::ViewArangoSearchType);
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
@@ -486,7 +486,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(createJson->slice()));
+      vocbase.createView(createJson->slice(), false));
   ASSERT_FALSE(!view);
   EXPECT_FALSE(view->primarySort().empty());
   EXPECT_EQ(4, view->primarySort().size());
@@ -519,7 +519,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(slice.get("name").copyString(), "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::StaticStrings::ViewType);
+                arangodb::iresearch::StaticStrings::ViewArangoSearchType);
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());

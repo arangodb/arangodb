@@ -184,6 +184,8 @@ class RocksDBEngine final : public StorageEngine {
 
   void getReplicatedLogs(TRI_vocbase_t& vocbase,
                          arangodb::velocypack::Builder& result);
+  void getReplicatedStates(TRI_vocbase_t& vocbase,
+                           arangodb::velocypack::Builder& result);
   ErrorCode getViews(TRI_vocbase_t& vocbase,
                      arangodb::velocypack::Builder& result) override;
 
@@ -278,6 +280,13 @@ class RocksDBEngine final : public StorageEngine {
       std::shared_ptr<
           arangodb::replication2::replicated_log::PersistedLog> const&)
       -> Result override;
+
+  auto updateReplicatedState(
+      TRI_vocbase_t& vocbase,
+      replication2::replicated_state::PersistedStateInfo const& info)
+      -> Result override;
+  auto dropReplicatedState(TRI_vocbase_t& vocbase,
+                           arangodb::replication2::LogId id) -> Result override;
 
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
@@ -467,6 +476,8 @@ class RocksDBEngine final : public StorageEngine {
 
   std::string getCompressionSupport() const;
 
+  void verifySstFiles(rocksdb::Options const& options) const;
+
 #ifdef USE_ENTERPRISE
   void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void validateEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
@@ -586,6 +597,9 @@ class RocksDBEngine final : public StorageEngine {
 
   /// @brief whether or not the in-memory cache for edges is used
   bool _useEdgeCache;
+
+  /// @brief whether or not to verify the sst files present in the db path
+  bool _verifySst;
 
   /// @brief activate generation of SHA256 files to parallel .sst files
   bool _createShaFiles;

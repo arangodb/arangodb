@@ -95,6 +95,7 @@ void MerkleTreeBase::Data::ensureShard(std::uint64_t shard,
     shards[shard] = buildShard(shardSize);
     memoryUsage += shardSize;
   }
+  TRI_ASSERT(shards[shard] != nullptr);
 }
 
 /*static*/ MerkleTreeBase::Data::ShardType MerkleTreeBase::Data::buildShard(

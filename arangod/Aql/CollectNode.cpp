@@ -26,7 +26,7 @@
 #include "Aql/Ast.h"
 #include "Aql/CountCollectExecutor.h"
 #include "Aql/DistinctCollectExecutor.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/HashedCollectExecutor.h"
@@ -85,7 +85,8 @@ CollectNode::CollectNode(
 CollectNode::~CollectNode() = default;
 
 /// @brief doToVelocyPack, for CollectNode
-void CollectNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void CollectNode::doToVelocyPack(VPackBuilder& nodes,
+                                 unsigned /*flags*/) const {
   // group variables
   nodes.add(VPackValue("groups"));
   {
@@ -482,6 +483,7 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
+    case ExecutionNode::OFFSET_INFO_MATERIALIZE:
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
       return false;
@@ -526,6 +528,7 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
+    case ExecutionNode::OFFSET_INFO_MATERIALIZE:
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
       return false;
@@ -570,6 +573,7 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
+    case ExecutionNode::OFFSET_INFO_MATERIALIZE:
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
       return false;

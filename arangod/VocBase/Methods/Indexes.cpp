@@ -39,6 +39,7 @@
 #include "Indexes/IndexFactory.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
@@ -94,10 +95,11 @@ Result Indexes::getIndex(LogicalCollection const* collection,
   }
 
   VPackBuilder tmp;
-  Result res = Indexes::getAll(collection, Index::makeFlags(),
-                               /*withHidden*/ true, tmp, trx);
+  Result res =
+      Indexes::getAll(collection, Index::makeFlags(Index::Serialize::Estimates),
+                      /*withHidden*/ true, tmp, trx);
   if (res.ok()) {
-    for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
+    for (VPackSlice index : VPackArrayIterator(tmp.slice())) {
       if ((index.hasKey(StaticStrings::IndexId) &&
            index.get(StaticStrings::IndexId).compareString(id) == 0) ||
           (index.hasKey(StaticStrings::IndexName) &&
@@ -396,6 +398,21 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
   }
 
   VPackSlice indexDef = normalized.slice();
+  // for single server or for cluster when the instance is coordinator,
+  // indexes cannot be created covering fields that have preceding or trailing
+  // ":", because the case of preceding or trailing ":" is treated as a special
+  // case for shardKeys, in which the value of the attribute is read until or
+  // starting from where the character ":" of the string is reached, and it
+  // doesn't happen for index fields. We don't disallow this usage for dbservers
+  // because this check must be only done for indexes that will be created, not
+  // for indexes that already exist. Example for shardKeys: ["value:"], if the
+  // document has an attribute {"value": "123:abc"}, the shard key would cover
+  // "123", which is the substring read until we reach a ":"
+  if (create && (ServerState::instance()->isSingleServer() ||
+                 ServerState::instance()->isCoordinator())) {
+    Index::validateFieldsWithSpecialCase(
+        indexDef.get(arangodb::StaticStrings::IndexFields));
+  }
 
   if (ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(indexDef.isObject());
@@ -477,7 +494,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
         res.reset(code);
       } else {
         // flush estimates
-        collection->flushClusterIndexEstimates();
+        collection->getPhysical()->flushClusterIndexEstimates();
 
         // the cluster won't set a proper id value
         std::string iid = tmp.slice().get(StaticStrings::IndexId).copyString();
@@ -699,7 +716,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection,
     }
 
     // flush estimates
-    collection->flushClusterIndexEstimates();
+    collection->getPhysical()->flushClusterIndexEstimates();
 
 #ifdef USE_ENTERPRISE
     res = Indexes::dropCoordinatorEE(collection, iid);

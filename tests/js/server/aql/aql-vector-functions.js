@@ -103,7 +103,7 @@ function BaseTestConfig (f) {
     },
 
     testWithLargeArrays : function() {
-      const vals = [ 100, 1000, 10000, 100000, 1000000, 10000000 ];
+      const vals = [ 100, 1000, 10000, 100000, 1000000 ];
       const q = `RETURN ${fn}(@val, @val)`; 
       vals.forEach((n) => { 
         let res = db._query(q, { val: buildArray(n) }); 

@@ -47,14 +47,16 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
 class CollectionNameResolver;
 class LogicalDataSource;  // forward declaration
 
 namespace transaction {
+
 class Context;
 class Methods;
-}  // namespace transaction
 
+}  // namespace transaction
 namespace aql {
 
 class Ast;
@@ -67,55 +69,50 @@ enum class SerializationFormat;
 
 /// @brief an AQL query
 class Query : public QueryContext, public std::enable_shared_from_this<Query> {
- private:
-  enum ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
-
-  Query(Query const&) = delete;
-  Query& operator=(Query const&) = delete;
-
  protected:
   /// @brief internal constructor, Used to construct a full query or a
   /// ClusterQuery
   Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
         QueryString queryString,
-        std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
-        aql::QueryOptions options,
-        std::shared_ptr<SharedQueryState> sharedState);
+        std::shared_ptr<velocypack::Builder> bindParameters,
+        QueryOptions options, std::shared_ptr<SharedQueryState> sharedState);
 
   /// Used to construct a full query. the constructor is protected to ensure
   /// that call sites only create Query objects using the `create` factory
   /// method
   Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
-        std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
-        aql::QueryOptions options = aql::QueryOptions{});
+        std::shared_ptr<velocypack::Builder> bindParameters,
+        QueryOptions options);
+
+  ~Query() override;
+
+  void destroy();
 
  public:
-  virtual ~Query();
+  Query(Query const&) = delete;
+  Query& operator=(Query const&) = delete;
 
   /// @brief factory method for creating a query. this must be used to
   /// ensure that Query objects are always created using shared_ptrs.
   static std::shared_ptr<Query> create(
       std::shared_ptr<transaction::Context> ctx, QueryString queryString,
-      std::shared_ptr<arangodb::velocypack::Builder> bindParameters,
-      aql::QueryOptions options = aql::QueryOptions{});
-
-  /// @brief note that the query uses the DataSource
-  void addDataSource(std::shared_ptr<arangodb::LogicalDataSource> const& ds);
+      std::shared_ptr<velocypack::Builder> bindParameters,
+      QueryOptions options = {});
 
   constexpr static uint64_t DontCache = 0;
 
   /// @brief return the user that started the query
-  std::string const& user() const override;
+  std::string const& user() const final;
 
   /// @brief whether or not the query is killed
-  bool killed() const override;
+  bool killed() const final;
 
   /// @brief set the query to killed
   void kill();
 
   /// @brief setter and getter methods for the query lockTimeout.
-  void setLockTimeout(double timeout) noexcept override;
-  double getLockTimeout() const noexcept override;
+  void setLockTimeout(double timeout) noexcept final;
+  double getLockTimeout() const noexcept final;
 
   QueryString const& queryString() const { return _queryString; }
 
@@ -125,7 +122,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   void prepareQuery(SerializationFormat format);
 
   /// @brief execute an AQL query
-  aql::ExecutionState execute(QueryResult& res);
+  ExecutionState execute(QueryResult& res);
 
   /// @brief execute an AQL query and block this thread in case we
   ///        need to wait.
@@ -138,7 +135,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief Enter finalization phase and do cleanup.
   /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.
   /// Only use directly for a streaming query, rather use `execute(...)`
-  aql::ExecutionState finalize(arangodb::velocypack::Builder& extras);
+  ExecutionState finalize(velocypack::Builder& extras);
 
   /// @brief parse an AQL query
   QueryResult parse();
@@ -147,18 +144,18 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   QueryResult explain();
 
   /// @brief whether or not a query is a modification query
-  virtual bool isModificationQuery() const noexcept override;
+  bool isModificationQuery() const noexcept final;
 
-  virtual bool isAsyncQuery() const noexcept override;
+  bool isAsyncQuery() const noexcept final;
 
   /// @brief enter a V8 context
-  virtual void enterV8Context() override;
+  void enterV8Context() final;
 
   /// @brief exits a V8 context
-  virtual void exitV8Context() override;
+  void exitV8Context() final;
 
   /// @brief check if the query has a V8 context ready for use
-  virtual bool hasEnteredV8Context() const override {
+  bool hasEnteredV8Context() const final {
     return (_contextOwnedByExterior || _v8Context != nullptr);
   }
 
@@ -167,7 +164,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   ErrorCode resultCode() const noexcept;
 
   /// @brief return the bind parameters as passed by the user
-  std::shared_ptr<arangodb::velocypack::Builder> bindParameters() const {
+  std::shared_ptr<velocypack::Builder> bindParameters() const {
     return _bindParameters.builder();
   }
 
@@ -176,21 +173,21 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   ExecutionEngine* rootEngine() const;
 
-  Ast* ast() { return _ast.get(); }
+  QueryOptions const& queryOptions() const final { return _queryOptions; }
 
-  QueryOptions const& queryOptions() const override { return _queryOptions; }
-
-  QueryOptions& queryOptions() noexcept override { return _queryOptions; }
+  QueryOptions& queryOptions() noexcept final { return _queryOptions; }
 
   /// @brief pass-thru a resolver object from the transaction context
-  virtual CollectionNameResolver const& resolver() const override;
+  CollectionNameResolver const& resolver() const final;
 
   /// @brief create a transaction::Context
-  virtual std::shared_ptr<transaction::Context> newTrxContext() const override;
+  std::shared_ptr<transaction::Context> newTrxContext() const final;
 
-  virtual velocypack::Options const& vpackOptions() const override;
+  velocypack::Options const& vpackOptions() const final;
 
-  virtual transaction::Methods& trxForOptimization() override;
+  transaction::Methods& trxForOptimization() override;
+
+  void addIntermediateCommits(uint64_t value);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   ExecutionPlan* plan() const {
@@ -205,16 +202,16 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   AqlItemBlockManager& itemBlockManager() { return _itemBlockManager; }
 
-  aql::SnippetList const& snippets() const { return _snippets; }
-  aql::SnippetList& snippets() { return _snippets; }
-  aql::ServerQueryIdList& serverQueryIds() { return _serverQueryIds; }
-  aql::ExecutionStats& executionStats() { return _execStats; }
+  SnippetList const& snippets() const { return _snippets; }
+  SnippetList& snippets() { return _snippets; }
+  ServerQueryIdList& serverQueryIds() { return _serverQueryIds; }
+  ExecutionStats& executionStats() { return _execStats; }
 
   // Debug method to kill a query at a specific position
   // during execution. It internally asserts that the query
   // is actually visible through other APIS (e.g. current queries)
   // so user actually has a chance to kill it here.
-  void debugKillQuery() override;
+  void debugKillQuery() final;
 
   bool allowDirtyReads() const noexcept { return _allowDirtyReads; }
 
@@ -247,18 +244,20 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   void enterState(QueryExecutionState::ValueType);
 
   /// @brief cleanup plan and engine for current query can issue WAITING
-  aql::ExecutionState cleanupPlanAndEngine(ErrorCode errorCode, bool sync);
+  ExecutionState cleanupPlanAndEngine(ErrorCode errorCode, bool sync);
 
   void unregisterSnippets();
 
  private:
-  aql::ExecutionState cleanupTrxAndEngines(ErrorCode errorCode);
+  ExecutionState cleanupTrxAndEngines(ErrorCode errorCode);
 
   // @brief injects vertex collections into all types of graph nodes:
   // ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH and
   // ExecutionNode::ENUMERATE_PATHS - in case the GraphNode does not contain
   // a vertex collection yet. This can happen e.g. during anonymous traversal.
   void injectVertexCollectionIntoGraphNodes(ExecutionPlan& plan);
+
+  enum class ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
 
  protected:
   AqlItemBlockManager _itemBlockManager;
@@ -267,7 +266,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   QueryString _queryString;
 
   /// collect execution stats, contains aliases
-  aql::ExecutionStats _execStats;
+  ExecutionStats _execStats;
 
   /// @brief transaction context to use for this query
   std::shared_ptr<transaction::Context> _transactionContext;
@@ -285,8 +284,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   QueryOptions _queryOptions;
 
   /// @brief first one should be the local one
-  aql::SnippetList _snippets;
-  aql::ServerQueryIdList _serverQueryIds;
+  SnippetList _snippets;
+  ServerQueryIdList _serverQueryIds;
 
   /// @brief query execution profile
   std::unique_ptr<QueryProfile> _queryProfile;
@@ -363,6 +362,9 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
                           // transaction, it is valid and remains valid
                           // once `preparePlan` has run and can be queried
                           // until the query object is gone!
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool _wasDestroyed{false};
+#endif
 };
 
 }  // namespace aql

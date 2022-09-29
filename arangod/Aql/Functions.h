@@ -31,6 +31,7 @@
 #include "Containers/SmallVector.h"
 
 #include <span>
+#include <string_view>
 
 namespace arangodb {
 class Result;
@@ -51,13 +52,13 @@ typedef AqlValue (*FunctionImplementation)(arangodb::aql::ExpressionContext*,
                                            VPackFunctionParametersView);
 
 void registerError(ExpressionContext* expressionContext,
-                   char const* functionName, ErrorCode code);
+                   std::string_view functionName, ErrorCode code);
 void registerWarning(ExpressionContext* expressionContext,
-                     char const* functionName, ErrorCode code);
+                     std::string_view functionName, ErrorCode code);
 void registerWarning(ExpressionContext* expressionContext,
-                     char const* functionName, Result const& rr);
+                     std::string_view functionName, Result const& rr);
 void registerInvalidArgumentWarning(ExpressionContext* expressionContext,
-                                    char const* functionName);
+                                    std::string_view functionName);
 
 // Returns zero-terminated function name from the given FCALL node.
 std::string_view getFunctionName(const AstNode& node) noexcept;
@@ -70,7 +71,7 @@ namespace functions {
 /// @brief helper function. not callable as a "normal" AQL function
 void Stringify(velocypack::Options const* vopts,
                arangodb::velocypack::StringSink& buffer,
-               arangodb::velocypack::Slice const& slice);
+               arangodb::velocypack::Slice slice);
 
 AqlValue IsNull(arangodb::aql::ExpressionContext*, AstNode const&,
                 VPackFunctionParametersView);
@@ -122,6 +123,8 @@ AqlValue Upper(arangodb::aql::ExpressionContext*, AstNode const&,
                VPackFunctionParametersView);
 AqlValue Substring(arangodb::aql::ExpressionContext*, AstNode const&,
                    VPackFunctionParametersView);
+AqlValue SubstringBytes(arangodb::aql::ExpressionContext*, AstNode const&,
+                        VPackFunctionParametersView);
 AqlValue Substitute(arangodb::aql::ExpressionContext*, AstNode const&,
                     VPackFunctionParametersView);
 AqlValue Left(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -209,6 +212,8 @@ AqlValue DateDayOfYear(arangodb::aql::ExpressionContext*, AstNode const&,
                        VPackFunctionParametersView);
 AqlValue DateIsoWeek(arangodb::aql::ExpressionContext*, AstNode const&,
                      VPackFunctionParametersView);
+AqlValue DateIsoWeekYear(arangodb::aql::ExpressionContext*, AstNode const&,
+                         VPackFunctionParametersView);
 AqlValue DateLeapYear(arangodb::aql::ExpressionContext*, AstNode const&,
                       VPackFunctionParametersView);
 AqlValue DateQuarter(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -284,6 +289,8 @@ AqlValue Attributes(arangodb::aql::ExpressionContext*, AstNode const&,
                     VPackFunctionParametersView);
 AqlValue Values(arangodb::aql::ExpressionContext*, AstNode const&,
                 VPackFunctionParametersView);
+AqlValue Value(arangodb::aql::ExpressionContext*, AstNode const&,
+               VPackFunctionParametersView);
 AqlValue Min(arangodb::aql::ExpressionContext*, AstNode const&,
              VPackFunctionParametersView);
 AqlValue Max(arangodb::aql::ExpressionContext*, AstNode const&,

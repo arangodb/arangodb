@@ -39,10 +39,13 @@
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 #include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 
 #include "Inspection/VPack.h"
 #include "velocypack/Builder.h"
+
+#include "fmt/core.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -156,6 +159,9 @@ void Worker<V, E, M>::_initializeMessageCaches() {
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::setupWorker() {
   std::function<void()> finishedCallback = [self = shared_from_this(), this] {
+    LOG_PREGEL("52062", WARN)
+        << fmt::format("Worker for execution number {} has finished loading.",
+                       _config.executionNumber());
     VPackBuilder package;
     package.openObject();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
@@ -172,6 +178,8 @@ void Worker<V, E, M>::setupWorker() {
   // initialization of the graphstore might take an undefined amount
   // of time. Therefore this is performed asynchronously
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  LOG_PREGEL("52070", WARN) << fmt::format(
+      "Worker for execution number {} is loading", _config.executionNumber());
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestLane::INTERNAL_LOW,
@@ -925,6 +933,7 @@ template class arangodb::pregel::Worker<int64_t, int64_t, int64_t>;
 template class arangodb::pregel::Worker<uint64_t, uint8_t, uint64_t>;
 template class arangodb::pregel::Worker<float, float, float>;
 template class arangodb::pregel::Worker<double, float, double>;
+template class arangodb::pregel::Worker<float, uint8_t, float>;
 
 // custom algorithm types
 template class arangodb::pregel::Worker<uint64_t, uint64_t,
@@ -934,6 +943,8 @@ template class arangodb::pregel::Worker<WCCValue, uint64_t,
 template class arangodb::pregel::Worker<SCCValue, int8_t,
                                         SenderMessage<uint64_t>>;
 template class arangodb::pregel::Worker<HITSValue, int8_t,
+                                        SenderMessage<double>>;
+template class arangodb::pregel::Worker<HITSKleinbergValue, int8_t,
                                         SenderMessage<double>>;
 template class arangodb::pregel::Worker<ECValue, int8_t, HLLCounter>;
 template class arangodb::pregel::Worker<DMIDValue, float, DMIDMessage>;

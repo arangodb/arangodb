@@ -197,6 +197,12 @@ bool inObjectFiltered(std::string& buffer,
   return canHandleValue(buffer, value.value, *context);
 }
 
+#ifdef USE_ENTERPRISE
+bool inNestedObjectFiltered(std::string& buffer,
+                            arangodb::iresearch::FieldMeta const*& context,
+                            arangodb::iresearch::IteratorValue const& value);
+#endif
+
 bool inObject(std::string& buffer,
               arangodb::iresearch::FieldMeta const*& context,
               arangodb::iresearch::IteratorValue const& value) {
@@ -250,9 +256,15 @@ Filter const valueAcceptors[] = {
     // type == Array , trackListPositions == true , includeAllValues == true
     &inArrayOrdered};
 
-Filter getFilter(VPackSlice value,
-                 arangodb::iresearch::FieldMeta const& meta) noexcept {
+Filter getFilter(VPackSlice value, arangodb::iresearch::FieldMeta const& meta,
+                 bool nested) noexcept {
   TRI_ASSERT(arangodb::iresearch::isArrayOrObject(value));
+
+#ifdef USE_ENTERPRISE
+  if (nested) {
+    return &inNestedObjectFiltered;
+  }
+#endif
 
   return valueAcceptors[4 * value.isArray() + 2 * meta._trackListPositions +
                         meta._includeAllFields];
@@ -264,7 +276,7 @@ using InvertedIndexFilter = bool (*)(
         context,
     arangodb::iresearch::IteratorValue const& value);
 
-template<bool defaultAccept>
+template<bool defaultAccept, bool nested>
 bool acceptAll(
     std::string& buffer,
     arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext const*&
@@ -277,18 +289,21 @@ bool acceptAll(
   }
 
   buffer.append(key.c_str(), key.size());
-  auto subContext = context->_subFields.find(key);
-  if (subContext != context->_subFields.end()) {
-    if (subContext->second._hasNested) {
+  auto& container = nested ? context->_nested : context->_fields;
+  auto subContext = container.find(key);
+  if (subContext != container.end()) {
+    context = &subContext->second;
+    if (!context->_nested.empty() && context->_fields.empty()) {
+      // this is just nested root. But not indexed by itself
       return false;
     }
-    context = &subContext->second;
-    if (context->_isArray && !value.value.isArray()) {
+    if (!context->_isSearchField && context->_isArray &&
+        !value.value.isArray()) {
       // we were expecting an array but something else were given
       // this case is just skipped. Just like regular indicies do.
       return false;
     } else if (value.value.isObject() && !context->_includeAllFields &&
-               context->_subFields.empty() &&
+               context->_fields.empty() &&
                !context->_analyzers->front()._pool->accepts(
                    arangodb::iresearch::AnalyzerValueType::Object)) {
       THROW_ARANGO_EXCEPTION_FORMAT(
@@ -299,6 +314,7 @@ bool acceptAll(
           " from index definition",
           buffer.c_str());
     } else if (value.value.isArray() && !context->_isArray &&
+               !context->_isSearchField &&
                !context->_analyzers->front()._pool->accepts(
                    arangodb::iresearch::AnalyzerValueType::Array)) {
       THROW_ARANGO_EXCEPTION_FORMAT(
@@ -313,7 +329,7 @@ bool acceptAll(
     }
   }
 
-  if (subContext == context->_subFields.end() && !defaultAccept) {
+  if (subContext == container.end() && !defaultAccept) {
     return false;
   }
 
@@ -330,20 +346,25 @@ bool inArrayInverted(
     append(buffer, value.pos);
     buffer += arangodb::iresearch::NESTING_LIST_OFFSET_SUFFIX;
   } else {
-    buffer += "[*]";
+    if (!context->_isSearchField) {
+      buffer += "[*]";
+    }
   }
   return true;
 }
 
 InvertedIndexFilter const valueAcceptorsInverted[] = {
-    &acceptAll<false>, &acceptAll<true>, &inArrayInverted, &inArrayInverted};
+    &acceptAll<false, false>, &acceptAll<true, false>, &inArrayInverted,
+    &inArrayInverted};
 
 InvertedIndexFilter getFilter(
     VPackSlice value,
-    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext const&
-        meta) noexcept {
+    arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext const& meta,
+    bool nested) noexcept {
   TRI_ASSERT(arangodb::iresearch::isArrayOrObject(value));
-
+  if (nested) {
+    return &acceptAll<false, true>;
+  }
   return valueAcceptorsInverted[value.isArray() * 2 + meta._includeAllFields];
 }
 
@@ -411,7 +432,7 @@ void FieldIterator<IndexMetaStruct>::reset(VPackSlice doc,
   _nameBuffer.clear();
   _disableFlush = false;
   // push the provided 'doc' on stack and initialize current value
-  auto const filter = getFilter(doc, linkMeta);
+  auto const filter = getFilter(doc, linkMeta, false);
   if constexpr (std::is_same_v<IndexMetaStruct,
                                IResearchInvertedIndexMetaIndexingContext>) {
     _missingFieldsMap = linkMeta._missingFieldsMap;
@@ -479,7 +500,8 @@ void FieldIterator<IndexMetaStruct>::setNullValue(VPackSlice const value) {
 
 template<typename IndexMetaStruct>
 bool FieldIterator<IndexMetaStruct>::setValue(
-    VPackSlice const value, FieldMeta::Analyzer const& valueAnalyzer) {
+    VPackSlice const value, FieldMeta::Analyzer const& valueAnalyzer,
+    IndexMetaStruct const& context) {
   TRI_ASSERT(  // assert
       (value.isCustom() &&
        _nameBuffer == arangodb::StaticStrings::IdString)  // custom string
@@ -597,8 +619,14 @@ bool FieldIterator<IndexMetaStruct>::setValue(
         iresearch::kludge::mangleField(_nameBuffer, true, valueAnalyzer);
       }
       _value._analyzer = std::move(analyzer);
-      _value._fieldFeatures = pool->fieldFeatures();
-      _value._indexFeatures = pool->indexFeatures();
+      if constexpr (std::is_same_v<IndexMetaStruct,
+                                   IResearchInvertedIndexMetaIndexingContext>) {
+        _value._fieldFeatures = context.fieldFeatures();
+        _value._indexFeatures = context.indexFeatures();
+      } else {
+        _value._fieldFeatures = pool->fieldFeatures();
+        _value._indexFeatures = pool->indexFeatures();
+      }
       _value._name = _nameBuffer;
     } break;
   }
@@ -693,8 +721,9 @@ void FieldIterator<IndexMetaStruct>::next() {
   setAnalyzers:
     while (_begin != _end) {
       // remove previous suffix
+      TRI_ASSERT(context);
       _nameBuffer.resize(_prefixLength);
-      if (setValue(_valueSlice, *_begin++)) {
+      if (setValue(_valueSlice, *_begin++, *context)) {
         return;
       }
     }
@@ -777,7 +806,8 @@ void FieldIterator<IndexMetaStruct>::next() {
 #endif
           [[fallthrough]];
         case VPackValueType::Object: {
-          auto filter = getFilter(valueSlice, *context);
+          auto filter = getFilter(valueSlice, *context,
+                                  level.type == LevelType::kNestedObjects);
           bool setAnalyzers = pushLevel(valueSlice, *context, filter);
           if (setAnalyzers) {
             // FIXME(Dronplane): use traits

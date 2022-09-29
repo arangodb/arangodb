@@ -1054,7 +1054,6 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
                         "d['quick'].brown.fox, 2.5) RETURN d",
                         expected);
   }
-
   // empty array NONE
   {
     irs::Or expected;
@@ -1584,6 +1583,78 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
         expected, &ctx);
   }
 
+  // AT LEAST
+  {
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::Or>().min_match_count(3);
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("a");
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      }
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("a");
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+      }
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("a");
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+      }
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("a");
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("4"));
+      }
+      {
+        auto& filter = root.add<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("a");
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("5"));
+      }
+
+      assertFilterSuccess(
+          vocbase(),
+          "FOR d IN collection FILTER ['1','2','3', '4', '5'] AT "
+          "LEAST(3) IN d.a RETURN d",
+          expected);
+
+      ExpressionContextMock ctxX;
+      ctxX.vars.emplace(
+          "x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(3)));
+      auto arrJson = VPackParser::fromJson(R"(["1", "2", "3", "4", "5"])");
+      ctxX.vars.emplace("arr", arangodb::aql::AqlValue(arrJson->slice()));
+
+      assertFilterSuccess(
+          vocbase(),
+          "LET x = 3 FOR d IN collection FILTER ['1','2','3', '4', '5'] AT "
+          "LEAST(x) IN d.a RETURN d",
+          expected, &ctxX);
+
+      assertFilterSuccess(
+          vocbase(),
+          "LET x = 3 LET arr = ['1','2','3', '4', '5'] FOR d IN "
+          "collection FILTER arr AT "
+          "LEAST(x) IN d.a RETURN d",
+          expected, &ctxX);
+
+      ExpressionContextMock ctxXstr;
+      ctxXstr.vars.emplace("x", arangodb::aql::AqlValue("3"));
+
+      assertFilterSuccess(
+          vocbase(),
+          "LET x = '3' FOR d IN collection FILTER ['1','2', x, '4', '5'] AT "
+          "LeAsT(3) IN d.a RETURN d",
+          expected, &ctxXstr);
+    }
+  }
+
   // empty array ANY
   {
     irs::Or expected;
@@ -1665,7 +1736,17 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     EXPECT_EQ(boost, root.boost());
     return root.begin();
   };
-
+  auto checkAtLeast = [](irs::Or& actual, irs::score_t boost) {
+    SCOPED_TRACE(testing::Message("Actual:") << iresearch::to_string(actual));
+    EXPECT_EQ(1, actual.size());
+    auto& root = dynamic_cast<const irs::Or&>(*actual.begin());
+    EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
+    EXPECT_EQ(3, root.size());
+    // hardcode here to keep same number of arguments
+    EXPECT_EQ(2, root.min_match_count());
+    EXPECT_EQ(boost, root.boost());
+    return root.begin();
+  };
   // nondeterministic value
   {
     std::vector<std::pair<
@@ -1688,7 +1769,11 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
          checkAll},
         {"FOR d IN collection FILTER [ '1', RAND(), '3' ] NONE == d.a.b.c.e.f "
          "RETURN d ",
-         checkNone}};
+         checkNone},
+        {"FOR d IN collection FILTER [ '1', RAND(), '3' ] AT LEAST(2) == "
+         "d.a.b.c.e.f "
+         "RETURN d ",
+         checkAtLeast}};
 
     for (auto caseData : testCases) {
       const auto& queryString = caseData.first;
@@ -4285,6 +4370,83 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         "boolVal, numVal+1, nullVal] NONE != d.a.b.c.e.f, 2.5) RETURN d",
         expected, &ctx);
   }
+  // AT LEAST
+  {
+    // NOT IN
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::Or>().min_match_count(3);
+      {
+        auto& filter =
+            root.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("a");
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      }
+      {
+        auto& filter =
+            root.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("a");
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+      }
+      {
+        auto& filter =
+            root.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("a");
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+      }
+      {
+        auto& filter =
+            root.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("a");
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("4"));
+      }
+      {
+        auto& filter =
+            root.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
+        *filter.mutable_field() = mangleStringIdentity("a");
+        filter.mutable_options()->term =
+            irs::ref_cast<irs::byte_type>(irs::string_ref("5"));
+      }
+
+      assertFilterSuccess(
+          vocbase(),
+          "FOR d IN collection FILTER ['1','2','3', '4', '5'] AT "
+          "LEAST(3) NOT IN d.a RETURN d",
+          expected);
+
+      ExpressionContextMock ctxX;
+      ctxX.vars.emplace(
+          "x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(3)));
+      auto arrJson = VPackParser::fromJson(R"(["1", "2", "3", "4", "5"])");
+      ctxX.vars.emplace("arr", arangodb::aql::AqlValue(arrJson->slice()));
+
+      assertFilterSuccess(
+          vocbase(),
+          "LET x = 3 FOR d IN collection FILTER ['1','2','3', '4', '5'] AT "
+          "LEAST(x) NOT IN d.a RETURN d",
+          expected, &ctxX);
+
+      assertFilterSuccess(
+          vocbase(),
+          "LET x = 3 LET arr = ['1','2','3', '4', '5'] FOR d IN "
+          "collection FILTER arr AT "
+          "LEAST(x) NOT IN d.a RETURN d",
+          expected, &ctxX);
+
+      ExpressionContextMock ctxXstr;
+      ctxXstr.vars.emplace("x", arangodb::aql::AqlValue("3"));
+
+      assertFilterSuccess(
+          vocbase(),
+          "LET x = '3' FOR d IN collection FILTER ['1','2', x, '4', '5'] AT "
+          "LeAsT(3) NOT IN d.a RETURN d",
+          expected, &ctxXstr);
+    }
+  }
 
   // no reference provided
   assertFilterExecutionFail(
@@ -4312,9 +4474,19 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
       "LET x={} FOR d IN myView FILTER [1,x.a,3] NONE NOT IN d.a RETURN d",
       &ExpressionContextMock::EMPTY);
 
+  assertFilterExecutionFail(vocbase(),
+                            "LET x={} FOR d IN myView FILTER [1,x.a,3] AT "
+                            "LEAST(2) NOT IN d.a RETURN d",
+                            &ExpressionContextMock::EMPTY);
+
   assertFilterExecutionFail(
       vocbase(),
       "LET x={} FOR d IN myView FILTER [1,x.a,3] NONE != d.a RETURN d",
+      &ExpressionContextMock::EMPTY);
+
+  assertFilterExecutionFail(
+      vocbase(),
+      "LET x={} FOR d IN myView FILTER [1,x.a,3] AT LEAST(2) != d.a RETURN d",
       &ExpressionContextMock::EMPTY);
 
   // empty array ANY
@@ -4383,4 +4555,95 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
         "FOR d IN collection FILTER BOOST([] NONE != d['a'], 2.5) RETURN d",
         expected);
   }
+
+  // empty array AT LEAST
+  {
+    irs::Or expected;
+    expected.add<irs::empty>();
+    expected.boost(2.5);
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER BOOST([] AT LEAST(2) IN d.a, 2.5) RETURN d",
+        expected);
+  }
+  // 0 AT LEAST
+  {
+    irs::Or expected;
+    expected.add<irs::all>();
+    expected.boost(2.5);
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER BOOST([] AT LEAST(0) IN d.a, 2.5) RETURN d",
+        expected);
+  }
+
+  // 0 AT LEAST NOT IN
+  {
+    irs::Or expected;
+    expected.add<irs::all>();
+    expected.boost(2.5);
+
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER BOOST([] AT LEAST(0) NOT "
+                        "IN d.a, 2.5) RETURN d",
+                        expected);
+  }
+  // empty array AT LEAST NOT
+  {
+    irs::Or expected;
+    expected.add<irs::empty>();
+    expected.boost(2.5);
+
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER BOOST([] AT LEAST(2) NOT "
+                        "IN d.a, 2.5) RETURN d",
+                        expected);
+  }
+
+  // array ALL with nested
+#ifdef USE_ENTERPRISE
+  {
+    irs::Or expected;
+    *expected.add<irs::by_column_existence>().mutable_field() =
+        arangodb::iresearch::DocumentPrimaryKey::PK();
+    expected.boost(2.5);
+
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER BOOST([] ALL IN "
+                        "d.quick.brown.fox, 2.5) RETURN d",
+                        expected, nullptr, nullptr, "d",
+                        arangodb::iresearch::FilterOptimization::NONE, true,
+                        true, true);
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER BOOST([] NONE IN "
+                        "d.quick.brown.fox, 2.5) RETURN d",
+                        expected, nullptr, nullptr, "d",
+                        arangodb::iresearch::FilterOptimization::NONE, true,
+                        true, true);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN collection FILTER BOOST([] AT LEAST(0) IN d.a, 2.5) RETURN d",
+        expected, nullptr, nullptr, "d",
+        arangodb::iresearch::FilterOptimization::NONE, true, true, true);
+
+    assertFilterSuccess(vocbase(),
+                        "FOR d IN collection FILTER BOOST([] AT LEAST(0) NOT "
+                        "IN d.a, 2.5) RETURN d",
+                        expected, nullptr, nullptr, "d",
+                        arangodb::iresearch::FilterOptimization::NONE, true,
+                        true, true);
+  }
+  {
+    irs::Or expected;
+    auto& all = expected.add<irs::by_column_existence>();
+    *all.mutable_field() = arangodb::iresearch::DocumentPrimaryKey::PK();
+    all.boost(2.5);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN collection FILTER BOOST(1..3, 2.5) RETURN d",
+        expected, nullptr, nullptr, "d",
+        arangodb::iresearch::FilterOptimization::NONE, true, true, true);
+  }
+#endif
 }

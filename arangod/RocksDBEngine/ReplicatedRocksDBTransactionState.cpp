@@ -90,10 +90,9 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
   std::vector<futures::Future<Result>> commits;
   allCollections([&](TransactionCollection& tc) {
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(tc);
-    if (rtc.hasOperations()) {
-      // For non-empty transactions we have to write to the log and wait for the
-      // log entry to be committed (in the log sense), before we can commit
-      // locally.
+    if (rtc.accessType() != AccessMode::Type::READ) {
+      // We have to write to the log and wait for the log entry to be committed
+      // (in the log sense), before we can commit locally.
       auto leader = rtc.leaderState();
       commits.emplace_back(leader
                                ->replicateOperation(velocypack::SharedSlice{},
@@ -102,8 +101,8 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
                                  return rtc.commitTransaction();
                                }));
     } else {
-      // For empty transactions the commit is a no-op, but we still have to call
-      // it to ensure cleanup.
+      // For read-only transactions the commit is a no-op, but we still have to
+      // call it to ensure cleanup.
       rtc.commitTransaction();
     }
     return true;
@@ -149,7 +148,7 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
   TRI_ASSERT(options.waitForCommit == false);
   for (auto& col : _collections) {
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(*col);
-    if (rtc.hasOperations()) {
+    if (rtc.accessType() != AccessMode::Type::READ) {
       auto leader = rtc.leaderState();
       leader->replicateOperation(velocypack::SharedSlice{}, operation, id(),
                                  options);
@@ -203,7 +202,7 @@ TRI_voc_tick_t ReplicatedRocksDBTransactionState::lastOperationTick()
       });
 }
 
-uint64_t ReplicatedRocksDBTransactionState::numCommits() const {
+uint64_t ReplicatedRocksDBTransactionState::numCommits() const noexcept {
   // TODO
   return std::accumulate(
       _collections.begin(), _collections.end(), (uint64_t)0,
@@ -212,6 +211,24 @@ uint64_t ReplicatedRocksDBTransactionState::numCommits() const {
                static_cast<ReplicatedRocksDBTransactionCollection const&>(*col)
                    .numCommits();
       });
+}
+
+uint64_t ReplicatedRocksDBTransactionState::numIntermediateCommits()
+    const noexcept {
+  return std::accumulate(
+      _collections.begin(), _collections.end(), (uint64_t)0,
+      [](auto sum, auto& col) {
+        return sum +
+               static_cast<ReplicatedRocksDBTransactionCollection const&>(*col)
+                   .numIntermediateCommits();
+      });
+}
+
+void ReplicatedRocksDBTransactionState::addIntermediateCommits(uint64_t value) {
+  // this is not supposed to be called, ever
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "invalid call to addIntermediateCommits");
 }
 
 bool ReplicatedRocksDBTransactionState::hasOperations() const noexcept {

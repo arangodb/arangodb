@@ -251,8 +251,8 @@ void GeneralServerFeature::collectOptions(
 
   options
       ->addOption("--http.return-queue-time-header",
-                  "if true, return the 'x-arango-queue-time-seconds' header in "
-                  "responses",
+                  "If true, return the `x-arango-queue-time-seconds` header in "
+                  "responses.",
                   new BooleanParameter(&_returnQueueTimeHeader))
       .setIntroducedIn(30900);
 
@@ -277,8 +277,8 @@ void GeneralServerFeature::collectOptions(
                         "web-interface.trusted-proxy");
 
   options->addOption("--web-interface.trusted-proxy",
-                     "list of proxies to trust (may be IP or network). Make "
-                     "sure --web-interface.proxy-request-check is enabled",
+                     "List of proxies to trust (can be IP or network). Make "
+                     "sure `--web-interface.proxy-request-check` is enabled.",
                      new VectorParameter<StringParameter>(&_trustedProxies),
                      arangodb::options::makeFlags(
                          arangodb::options::Flags::DefaultNoComponents,

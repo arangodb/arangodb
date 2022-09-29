@@ -38,6 +38,8 @@ namespace arangodb::iresearch::kludge {
 #ifdef USE_ENTERPRISE
 void mangleNested(std::string& name);
 #endif
+
+bool needTrackPrevDoc(irs::string_ref name, bool nested) noexcept;
 void mangleType(std::string& name);
 void mangleAnalyzer(std::string& name);
 
@@ -48,5 +50,15 @@ void mangleString(std::string& name);
 
 void mangleField(std::string& name, bool isOldMangling,
                  iresearch::FieldMeta::Analyzer const& analyzer);
+
+std::string_view demangleType(std::string_view name) noexcept;
+#ifdef USE_ENTERPRISE
+[[maybe_unused]] std::string_view demangleNested(std::string_view name,
+                                                 std::string& buf);
+[[maybe_unused]] inline std::string_view demangle(std::string_view name,
+                                                  std::string& buf) {
+  return demangleNested(demangleType(name), buf);
+}
+#endif
 
 }  // namespace arangodb::iresearch::kludge

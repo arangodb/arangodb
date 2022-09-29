@@ -127,7 +127,7 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_currentModuleDirectory));
 
   options->addOption("--javascript.copy-installation",
-                     "copy contents of 'javascript.startup-directory'",
+                     "Copy contents of `--javascript.startup-directory`.",
                      new BooleanParameter(&_copyInstallation));
 
   options->addOption(

@@ -36,6 +36,7 @@
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
 #include "IResearch/IResearchViewStoredValues.h"
+#include "IResearch/Search.h"
 #include "VocBase/LogicalView.h"
 
 #include "types.h"
@@ -75,61 +76,64 @@ enum class CountApproximate {
   Cost = 1,   // iterator cost could be used as skipAllCount
 };
 
-/// @brief class EnumerateViewNode
 class IResearchViewNode final : public aql::ExecutionNode {
  public:
-  /// @brief node options
+  // Node options
   struct Options {
-    /// @brief a list of data source CIDs to restrict a query
+    // List of data source CIDs to restrict a query
     containers::FlatHashSet<DataSourceId> sources;
 
-    /// @brief condition optimization Auto - condition will be transformed to
-    /// DNF.
+    // Condition optimization
+    //  Auto - condition will be transformed to DNF.
     aql::ConditionOptimization conditionOptimization{
         aql::ConditionOptimization::Auto};
 
-    /// @brief skipAll method for view
+    // `skipAll` method for view
     CountApproximate countApproximate{CountApproximate::Exact};
 
-    /// @brief iresearch filters optimization level
+    // iresearch filters optimization level
     FilterOptimization filterOptimization{FilterOptimization::MAX};
 
-    /// @brief use the list of sources to restrict a query
+    // Use the list of sources to restrict a query.
     bool restrictSources{false};
 
-    /// @brief sync view before querying to get the latest index snapshot
+    // Sync view before querying to get the latest index snapshot.
     bool forceSync{false};
 
-    /// @brief try not to materialize documents
+    // Try not to materialize documents.
     bool noMaterialization{true};
   };
+
+  static IResearchViewNode* getByVar(aql::ExecutionPlan const& plan,
+                                     aql::Variable const& var) noexcept;
 
   IResearchViewNode(aql::ExecutionPlan& plan, aql::ExecutionNodeId id,
                     TRI_vocbase_t& vocbase,
                     std::shared_ptr<const LogicalView> view,
                     aql::Variable const& outVariable,
                     aql::AstNode* filterCondition, aql::AstNode* options,
-                    std::vector<Scorer>&& scorers);
+                    std::vector<SearchFunc>&& scorers);
 
   IResearchViewNode(aql::ExecutionPlan&, velocypack::Slice base);
 
-  /// @brief return the type of the node
+  // Return the type of the node.
   NodeType getType() const final { return ENUMERATE_IRESEARCH_VIEW; }
 
-  /// @brief clone ExecutionNode recursively
+  // Clone ExecutionNode recursively.
   aql::ExecutionNode* clone(aql::ExecutionPlan* plan, bool withDependencies,
                             bool withProperties) const final;
 
   using Collections =
       std::vector<std::pair<std::reference_wrapper<aql::Collection const>,
                             LogicalView::Indexes>>;
-  /// @returns the list of the linked collections
+
+  // Returns the list of the linked collections.
   Collections collections() const;
 
-  /// @returns true if underlying view has no links
+  // Returns true if underlying view has no links.
   bool empty() const noexcept;
 
-  /// @brief the cost of an enumerate view node
+  // The cost of an enumerate view node.
   aql::CostEstimate estimateCost() const final;
 
   // TODO(MBkkt) Use containers::FlatHashMap
@@ -137,22 +141,24 @@ class IResearchViewNode final : public aql::ExecutionNode {
       std::unordered_map<aql::VariableId, aql::Variable const*> const&
           replacements) final;
 
-  /// @brief getVariablesSetHere
   std::vector<aql::Variable const*> getVariablesSetHere() const final;
 
-  /// @brief return out variable
+  // Return out variable.
   aql::Variable const& outVariable() const noexcept { return *_outVariable; }
 
-  /// @brief return the database
+  // Return the database.
   TRI_vocbase_t& vocbase() const noexcept { return _vocbase; }
 
-  /// @brief return the view
+  // Return the view.
   auto const& view() const noexcept { return _view; }
 
-  /// @brief return the filter condition to pass to the view
+  // Return the meta.
+  auto const& meta() const noexcept { return _meta; }
+
+  // Return the filter condition to pass to the view.
   auto const& filterCondition() const noexcept { return *_filterCondition; }
 
-  /// @brief set the filter condition to pass to the view
+  // Set the filter condition to pass to the view.
   void setFilterCondition(aql::AstNode const* node) noexcept;
 
   // we could merge if it is allowed in general and there are no scores - as
@@ -164,45 +170,47 @@ class IResearchViewNode final : public aql::ExecutionNode {
     return _options.filterOptimization;
   }
 
-  /// @brief return list of shards related to the view (cluster only)
+  // Return list of shards related to the view (cluster only).
   auto const& shards() const noexcept { return _shards; }
 
-  /// @brief return list of shards related to the view (cluster only)
+  // Return list of shards related to the view (cluster only).
   auto& shards() noexcept { return _shards; }
 
-  /// @brief return the scorers to pass to the view
+  // Return the scorers to pass to the view.
   auto const& scorers() const noexcept { return _scorers; }
 
-  /// @brief set the scorers to pass to the view
-  void setScorers(std::vector<Scorer>&& scorers) noexcept {
+  // Return current snapshot key
+  void const* getSnapshotKey() const noexcept;
+
+  // Set the scorers to pass to the view.
+  void setScorers(std::vector<SearchFunc>&& scorers) noexcept {
     _scorers = std::move(scorers);
   }
 
-  /// @return sort condition satisfied by a sorted index
+  // Return sort condition satisfied by a sorted index.
   std::pair<iresearch::IResearchSortBase const*, size_t> sort() const noexcept {
-    return {_sort.get(), _sortBuckets};
+    return {_sort, _sortBuckets};
   }
 
-  /// @brief set sort condition satisfied by a sorted index
+  // Set sort condition satisfied by a sorted index.
   void setSort(IResearchSortBase const& sort, size_t buckets) noexcept {
     _sortBuckets = std::min(buckets, sort.size());
-    _sort = std::shared_ptr<IResearchSortBase const>(
-        &sort, [](IResearchSortBase const*) noexcept {});
+    _sort = &sort;
   }
 
-  /// @brief getVariablesUsedHere, modifying the set in-place
+  // getVariablesUsedHere, modifying the set in-place.
   void getVariablesUsedHere(aql::VarSet& vars) const final;
 
-  /// @brief returns IResearchViewNode options
+  // Return IResearchViewNode options.
   Options const& options() const noexcept { return _options; }
 
-  /// @brief node volatility, determines how often query has
-  ///  to be rebuilt during the execution
-  /// @return pair:
-  ///  first - node has nondeterministic/dependent (inside a loop)
-  ///   filter condition
-  ///  second - node has nondeterministic/dependent (inside a loop)
-  ///   sort condition
+  // Node volatility, determines how often query has
+  //  to be rebuilt during the execution.
+  // Return pair:
+  //  first - node has nondeterministic/dependent (inside a loop)
+  //   filter condition
+  //  second - node has nondeterministic/dependent (inside a loop)
+  //   sort condition
   std::pair<bool, bool> volatility(bool force = false) const;
 
   void setScorersSort(std::vector<std::pair<size_t, bool>>&& sort,
@@ -217,7 +225,7 @@ class IResearchViewNode final : public aql::ExecutionNode {
   auto getScorersSort() const noexcept { return std::span(_scorersSort); }
 #endif
 
-  /// @brief creates corresponding ExecutionBlock
+  // Creates corresponding ExecutionBlock.
   // TODO(MBkkt) Use containers::FlatHashMap
   std::unique_ptr<aql::ExecutionBlock> createBlock(
       aql::ExecutionEngine& engine,
@@ -225,6 +233,14 @@ class IResearchViewNode final : public aql::ExecutionNode {
       const final;
 
   aql::RegIdSet calcInputRegs() const;
+
+  aql::Variable const* searchDocIdVar() const noexcept {
+    return _outSearchDocId;
+  }
+
+  void setSearchDocIdVar(aql::Variable const& var) noexcept {
+    _outSearchDocId = &var;
+  }
 
   bool isLateMaterialized() const noexcept {
     return _outNonMaterializedDocId != nullptr &&
@@ -295,7 +311,7 @@ class IResearchViewNode final : public aql::ExecutionNode {
     bool canVariablesBeReplaced(aql::CalculationNode* calculationNode) const;
 
     ViewVarsInfo replaceViewVariables(
-        std::vector<aql::CalculationNode*> const& calcNodes,
+        std::span<aql::CalculationNode* const> calcNodes,
         containers::HashSet<ExecutionNode*>& toUnlink);
 
     ViewVarsInfo replaceAllViewVariables(
@@ -313,17 +329,24 @@ class IResearchViewNode final : public aql::ExecutionNode {
   OptimizationState& state() noexcept { return _optState; }
 
  private:
-  /// @brief export to VelocyPack
+  // Export to VelocyPack.
   void doToVelocyPack(velocypack::Builder&, unsigned) const final;
 
-  /// @brief the database
+  // The database.
   TRI_vocbase_t& _vocbase;
 
-  /// @brief view
-  /// @note need shared_ptr to ensure view validity
+  // Underlying view.
+  // Need shared_ptr to ensure view validity.
   std::shared_ptr<LogicalView const> _view;
+  std::shared_ptr<SearchMeta const> _meta;
 
-  /// @brief output variable to write to
+  // Output variable to write ArangoSearch document identifiers
+  // composed of segment id (8 bytes) and document id (4 bytes).
+  // Both values fit AqlValue with type VPACK_INLINE which avoids
+  // heap allocations.
+  aql::Variable const* _outSearchDocId{nullptr};
+
+  // Output variable to write to.
   aql::Variable const* _outVariable{nullptr};
 
   // Following two variables should be set in pairs.
@@ -334,45 +357,42 @@ class IResearchViewNode final : public aql::ExecutionNode {
   // We store raw ptr to collection as materialization is expected to happen
   // on same server (it is ensured by optimizer rule as network hop is
   // expensive!)
-  /// @brief output variable to write only non-materialized document ids
+  // Output variable to write only non-materialized document ids.
   aql::Variable const* _outNonMaterializedDocId{nullptr};
-  /// @brief output variable to write only non-materialized collection ids
+  // Output variable to write only non-materialized collection ids.
   aql::Variable const* _outNonMaterializedColPtr{nullptr};
 
-  /// @brief output variables to non-materialized document view sort references
+  // Output variables to non-materialized document view sort references.
   ViewValuesVars _outNonMaterializedViewVars;
 
   OptimizationState _optState;
 
-  /// @brief filter node to pass to the view
+  // Filter node to be processed by the view.
   aql::AstNode const* _filterCondition{nullptr};
 
-  /// @brief sort condition covered by the view
-  /// _sort - sort condition
-  /// _sortBuckets - number of sort buckets to use
-  std::shared_ptr<IResearchSortBase const> _sort;
+  // Sort condition covered by the view
+  // Sort condition.
+  IResearchSortBase const* _sort{nullptr};
+  // Number of sort buckets to use.
   size_t _sortBuckets{0};
 
-  /// @brief stored values covered by the view
-  std::shared_ptr<IResearchViewStoredValues const> _storedValues;
+  // Scorers related to the view.
+  std::vector<SearchFunc> _scorers;
 
-  /// @brief scorers related to the view
-  std::vector<Scorer> _scorers;
-
-  /// @brief list of shards involved, need this for the cluster
+  // List of shards involved, need this for the cluster.
   containers::FlatHashMap<std::string, LogicalView::Indexes> _shards;
 
-  /// @brief IResearchViewNode options
+  // Node options.
   Options _options;
 
-  /// @brief internal order for scorers
+  // Internal order for scorers.
   std::vector<std::pair<size_t, bool>> _scorersSort;
   size_t _scorersSortLimit{0};
 
-  /// @brief volatility mask
+  // Volatility mask
   mutable int _volatilityMask{-1};
 
-  /// @brief is no materialization should be applied
+  // Whether "no materialization" rule should be applied
   bool _noMaterialization{false};
 };
 

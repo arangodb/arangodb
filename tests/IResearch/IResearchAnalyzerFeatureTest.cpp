@@ -1541,7 +1541,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_identity_static) {
   ASSERT_NE(nullptr, analyzer.get());
   auto* term = irs::get<irs::term_attribute>(*analyzer);
   ASSERT_NE(nullptr, term);
-  EXPECT_FALSE(analyzer->next());
   EXPECT_TRUE(analyzer->reset("abc def ghi"));
   EXPECT_TRUE(analyzer->next());
   EXPECT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("abc def ghi")),
@@ -1979,7 +1978,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_add_new_records) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      EXPECT_TRUE(collection->truncate(trx, options).ok());
+      bool usedRangeDelete;
+      EXPECT_TRUE(collection->truncate(trx, options, usedRangeDelete).ok());
     }
 
     {

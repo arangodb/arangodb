@@ -38,6 +38,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-compiler.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "Cluster/FollowerInfo.h"
@@ -56,7 +57,9 @@
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionCollection.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/BatchOptions.h"
@@ -310,22 +313,16 @@ arangodb::Result applyDataSourceRegistrationCallbacks(
 /// @brief notify callbacks of association of 'cid' with this TransactionState
 /// @note done separately from addCollection() to avoid creating a
 ///       TransactionCollection instance for virtual entities, e.g. View
-void applyStatusChangeCallbacks(arangodb::transaction::Methods& trx,
-                                arangodb::transaction::Status status) noexcept {
+Result applyStatusChangeCallbacks(arangodb::transaction::Methods& trx,
+                                  arangodb::transaction::Status status) noexcept
+    try {
   TRI_ASSERT(arangodb::transaction::Status::ABORTED == status ||
              arangodb::transaction::Status::COMMITTED == status ||
              arangodb::transaction::Status::RUNNING == status);
-  //  TRI_ASSERT(!trx.state()  // for embeded transactions status is not always
-  //  updated
-  //             || (trx.state()->isTopLevelTransaction() &&
-  //             trx.state()->status() == status) ||
-  //             (!trx.state()->isTopLevelTransaction() &&
-  //              arangodb::transaction::Status::RUNNING ==
-  //              trx.state()->status()));
 
   auto* state = trx.state();
   if (!state) {
-    return;  // nothing to apply
+    return {};  // nothing to apply
   }
 
   TRI_ASSERT(trx.isMainTransaction());
@@ -333,8 +330,10 @@ void applyStatusChangeCallbacks(arangodb::transaction::Methods& trx,
   auto* callbacks = getStatusChangeCallbacks(*state);
 
   if (!callbacks) {
-    return;  // no callbacks to apply
+    return {};  // no callbacks to apply
   }
+
+  Result res;
 
   // no need to lock since transactions are single-threaded
   for (auto& callback : *callbacks) {
@@ -342,10 +341,30 @@ void applyStatusChangeCallbacks(arangodb::transaction::Methods& trx,
 
     try {
       (*callback)(trx, status);
-    } catch (...) {
+    } catch (basics::Exception const& ex) {
       // we must not propagate exceptions from here
+      if (res.ok()) {
+        // only track the first error
+        res = {ex.code(), ex.what()};
+      }
+    } catch (std::exception const& ex) {
+      // we must not propagate exceptions from here
+      if (res.ok()) {
+        // only track the first error
+        res = {TRI_ERROR_INTERNAL, ex.what()};
+      }
+    } catch (...) {
+      if (res.ok()) {
+        res = {
+            TRI_ERROR_INTERNAL,
+            "caught unknown exception while applying status change callbacks"};
+      }
     }
   }
+
+  return res;
+} catch (...) {
+  return Result(TRI_ERROR_OUT_OF_MEMORY);
 }
 
 void throwCollectionNotFound(std::string const& name) {
@@ -660,6 +679,8 @@ Result transaction::Methods::begin() {
                                    "invalid transaction state");
   }
 
+  Result res;
+
   if (_mainTransaction) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     bool a = _localHints.has(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
@@ -667,17 +688,15 @@ Result transaction::Methods::begin() {
     TRI_ASSERT(!(a && b));
 #endif
 
-    auto res = _state->beginTransaction(_localHints);
-    if (res.fail()) {
-      return res;
+    res = _state->beginTransaction(_localHints);
+    if (res.ok()) {
+      res = applyStatusChangeCallbacks(*this, Status::RUNNING);
     }
-
-    applyStatusChangeCallbacks(*this, Status::RUNNING);
   } else {
     TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
   }
 
-  return Result();
+  return res;
 }
 
 auto Methods::commit() noexcept -> Result {
@@ -761,7 +780,10 @@ OperationResult transaction::Methods::anyLocal(
   VPackBuilder resultBuilder;
   if (_state->isDBServer()) {
     std::shared_ptr<LogicalCollection> const& collection =
-        trxCollection(cid)->collection();
+        trxColl->collection();
+    if (collection == nullptr) {
+      return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options);
+    }
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
       return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
@@ -906,13 +928,21 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
     return collectionName;
   };
 
-  DataSourceId cid = addCollectionAtRuntime(translateName(collectionName),
-                                            AccessMode::Type::READ);
-  auto const& collection = trxCollection(cid)->collection();
-
   std::string_view key(transaction::helpers::extractKeyPart(value));
   if (key.empty()) {
-    return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+    return {TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD};
+  }
+
+  DataSourceId cid = addCollectionAtRuntime(translateName(collectionName),
+                                            AccessMode::Type::READ);
+
+  TransactionCollection* trxColl = trxCollection(cid);
+  if (trxColl == nullptr) {
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+  }
+  auto const& collection = trxColl->collection();
+  if (collection == nullptr) {
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
   return collection->getPhysical()->read(
@@ -940,12 +970,17 @@ Result transaction::Methods::documentFastPathLocal(
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
-  TRI_ASSERT(trxColl != nullptr);
+  if (trxColl == nullptr) {
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+  }
   std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
   TRI_ASSERT(collection != nullptr);
+  if (collection == nullptr) {
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+  }
 
   if (key.empty()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+    return {TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD};
   }
 
   // We never want to see our own writes here, otherwise we could observe
@@ -1009,8 +1044,16 @@ Future<OperationResult> transaction::Methods::documentLocal(
     OperationOptions const& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
-  std::shared_ptr<LogicalCollection> const& collection =
-      trxCollection(cid)->collection();
+  TransactionCollection* trxColl = trxCollection(cid);
+  if (trxColl == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
+  std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
+  if (collection == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
 
   if (_state->isDBServer()) {
     auto const& followerInfo = collection->followers();
@@ -1136,13 +1179,36 @@ void transaction::Methods::trackWaitForSync(LogicalCollection& collection,
   }
 }
 
+/// @brief Determine the replication type and the followers for a transaction.
+/// The replication type indicates whether this server is the leader or a
+/// follower. The followers are the servers that will be contacted for the
+/// actual replication.
+///
+/// We had to split this function into two parts, because the first one is used
+/// by replication1 and the second one is used by replication2.
 Result transaction::Methods::determineReplicationTypeAndFollowers(
     LogicalCollection& collection, std::string_view operationName,
     velocypack::Slice value, OperationOptions& options,
     ReplicationType& replicationType,
     std::shared_ptr<std::vector<ServerID> const>& followers) {
-  replicationType = ReplicationType::NONE;
   auto replicationVersion = collection.replicationVersion();
+  if (replicationVersion == replication::Version::ONE) {
+    return determineReplication1TypeAndFollowers(
+        collection, operationName, value, options, replicationType, followers);
+  }
+  TRI_ASSERT(replicationVersion == replication::Version::TWO);
+  return determineReplication2TypeAndFollowers(
+      collection, operationName, value, options, replicationType, followers);
+}
+
+/// @brief The original code for determineReplicationTypeAndFollowers, used for
+/// replication1.
+Result transaction::Methods::determineReplication1TypeAndFollowers(
+    LogicalCollection& collection, std::string_view operationName,
+    velocypack::Slice value, OperationOptions& options,
+    ReplicationType& replicationType,
+    std::shared_ptr<std::vector<ServerID> const>& followers) {
+  replicationType = ReplicationType::NONE;
   TRI_ASSERT(followers == nullptr);
 
   if (_state->isDBServer()) {
@@ -1166,19 +1232,15 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
         return {TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION};
       }
 
-      // This is just a trick to let the function continue for replication2
-      // databases
-      if (replicationVersion != replication::Version::TWO) {
-        switch (followerInfo->allowedToWrite()) {
-          case FollowerInfo::WriteState::FORBIDDEN:
-            // We cannot fulfill minimum replication Factor. Reject write.
-            return {TRI_ERROR_ARANGO_READ_ONLY};
-          case FollowerInfo::WriteState::UNAVAILABLE:
-          case FollowerInfo::WriteState::STARTUP:
-            return {TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE};
-          default:
-            break;
-        }
+      switch (followerInfo->allowedToWrite()) {
+        case FollowerInfo::WriteState::FORBIDDEN:
+          // We cannot fulfill minimum replication Factor. Reject write.
+          return {TRI_ERROR_ARANGO_READ_ONLY};
+        case FollowerInfo::WriteState::UNAVAILABLE:
+        case FollowerInfo::WriteState::STARTUP:
+          return {TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE};
+        default:
+          break;
       }
 
       replicationType = ReplicationType::LEADER;
@@ -1189,14 +1251,12 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
       // be silent.
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
-      if (!followers->empty() ||
-          replicationVersion == replication::Version::TWO) {
+      if (!followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
       replicationType = ReplicationType::FOLLOWER;
-      if (replicationVersion != replication::Version::TWO &&
-          options.isSynchronousReplicationFrom.empty()) {
+      if (options.isSynchronousReplicationFrom.empty()) {
         return {TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
       }
       bool sendRefusal = (options.isSynchronousReplicationFrom != theLeader);
@@ -1213,7 +1273,7 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
                           std::string::npos);
         }
       }
-      if (replicationVersion != replication::Version::TWO && sendRefusal) {
+      if (sendRefusal) {
         return ::buildRefusalResult(collection, operationName, options,
                                     theLeader);
       }
@@ -1236,6 +1296,66 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
   return {};
 }
 
+/// @brief The replication2 version for determineReplicationTypeAndFollowers.
+/// The replication type is determined from the replicated state status (could
+/// be follower status or leader status). Followers is always an empty vector,
+/// because replication2 framework handles followers itself.
+Result transaction::Methods::determineReplication2TypeAndFollowers(
+    LogicalCollection& collection, std::string_view operationName,
+    velocypack::Slice value, OperationOptions& options,
+    ReplicationType& replicationType,
+    std::shared_ptr<std::vector<ServerID> const>& followers) {
+  if (!_state->isDBServer()) {
+    replicationType = ReplicationType::NONE;
+    return {};
+  }
+
+  auto state = collection.getDocumentState();
+  TRI_ASSERT(state != nullptr);
+  if (state == nullptr) {
+    return {TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,
+            "Could not get replicated state"};
+  }
+
+  auto status = state->getStatus();
+  if (status == std::nullopt) {
+    return {TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
+            "Could not get replicated state status"};
+  }
+
+  using namespace replication2::replicated_state;
+
+  if (auto leaderStatus = status->asLeaderStatus(); leaderStatus != nullptr) {
+    if (leaderStatus->managerState.state ==
+        LeaderInternalState::kRecoveryInProgress) {
+      // Even though we are the leader, we don't want to replicate during
+      // recovery.
+      options.silent = true;
+      replicationType = ReplicationType::FOLLOWER;
+      followers = nullptr;
+    } else if (leaderStatus->managerState.state ==
+               LeaderInternalState::kServiceAvailable) {
+      options.silent = false;
+      replicationType = ReplicationType::LEADER;
+      followers = std::make_shared<std::vector<ServerID>>();
+    } else {
+      return {TRI_ERROR_REPLICATION_LEADER_ERROR,
+              "Unexpected manager state " +
+                  std::string(to_string(leaderStatus->managerState.state))};
+    }
+  } else if (auto followerStatus = status->asFollowerStatus();
+             followerStatus != nullptr) {
+    options.silent = true;
+    replicationType = ReplicationType::FOLLOWER;
+    followers = std::make_shared<std::vector<ServerID> const>();
+  } else {
+    std::stringstream s;
+    s << "Status is " << *status;
+    return {TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE, s.str()};
+  }
+  return {};
+}
+
 /// @brief create one or multiple documents in a collection, local.
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
@@ -1244,9 +1364,16 @@ Future<OperationResult> transaction::Methods::insertLocal(
     OperationOptions& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
-  auto& transactionCollection = *trxCollection(cid);
-  std::shared_ptr<LogicalCollection> const& collection =
-      transactionCollection.collection();
+  TransactionCollection* trxColl = trxCollection(cid);
+  if (trxColl == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
+  std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
+  if (collection == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
 
   ReplicationType replicationType = ReplicationType::NONE;
   std::shared_ptr<std::vector<ServerID> const> followers;
@@ -1510,8 +1637,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
       // in case of an error.
 
       // Now replicate the good operations on all followers:
-      return replicateOperations(transactionCollection, followers, options,
-                                 *replicationData,
+      return replicateOperations(*trxColl, followers, options, *replicationData,
                                  TRI_VOC_DOCUMENT_OPERATION_INSERT)
           .thenValue([options, errs = std::move(errorCounter),
                       resultData = std::move(resDocs)](Result res) mutable {
@@ -1664,10 +1790,17 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     OperationOptions& options, bool isUpdate) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
-  auto& transactionCollection = *trxCollection(cid);
-  std::shared_ptr<LogicalCollection> const& collection =
-      transactionCollection.collection();
-  TRI_ASSERT(trxCollection(cid)->isLocked(AccessMode::Type::WRITE));
+  TransactionCollection* trxColl = trxCollection(cid);
+  if (trxColl == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
+  std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
+  if (collection == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
+  TRI_ASSERT(trxColl->isLocked(AccessMode::Type::WRITE));
 
   // this call will populate replicationType and followers
   ReplicationType replicationType = ReplicationType::NONE;
@@ -1853,8 +1986,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
       // in case of an error.
 
       // Now replicate the good operations on all followers:
-      return replicateOperations(transactionCollection, followers, options,
-                                 *replicationData,
+      return replicateOperations(*trxColl, followers, options, *replicationData,
                                  isUpdate ? TRI_VOC_DOCUMENT_OPERATION_UPDATE
                                           : TRI_VOC_DOCUMENT_OPERATION_REPLACE)
           .thenValue([options, errs = std::move(errorCounter),
@@ -2026,10 +2158,17 @@ Future<OperationResult> transaction::Methods::removeLocal(
     OperationOptions& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
-  auto& transactionCollection = *trxCollection(cid);
-  std::shared_ptr<LogicalCollection> const& collection =
-      transactionCollection.collection();
-  TRI_ASSERT(trxCollection(cid)->isLocked(AccessMode::Type::WRITE));
+  TransactionCollection* trxColl = trxCollection(cid);
+  if (trxColl == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
+  std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
+  if (collection == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
+  TRI_ASSERT(trxColl->isLocked(AccessMode::Type::WRITE));
 
   ReplicationType replicationType = ReplicationType::NONE;
   std::shared_ptr<std::vector<ServerID> const> followers;
@@ -2184,8 +2323,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
       // in case of an error.
 
       // Now replicate the good operations on all followers:
-      return replicateOperations(transactionCollection, followers, options,
-                                 *replicationData,
+      return replicateOperations(*trxColl, followers, options, *replicationData,
                                  TRI_VOC_DOCUMENT_OPERATION_REMOVE)
           .thenValue([options, errs = std::move(errorCounter),
                       resultData = std::move(resDocs)](Result res) mutable {
@@ -2273,13 +2411,20 @@ OperationResult transaction::Methods::allLocal(
     OperationOptions& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
-  TRI_ASSERT(trxCollection(cid)->isLocked(AccessMode::Type::READ));
+  TransactionCollection* trxColl = trxCollection(cid);
+  if (trxColl == nullptr) {
+    return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options);
+  }
+  TRI_ASSERT(trxColl->isLocked(AccessMode::Type::READ));
 
   VPackBuilder resultBuilder;
 
   if (_state->isDBServer()) {
     std::shared_ptr<LogicalCollection> const& collection =
-        trxCollection(cid)->collection();
+        trxColl->collection();
+    if (collection == nullptr) {
+      return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options);
+    }
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
       return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
@@ -2329,8 +2474,16 @@ Future<OperationResult> transaction::Methods::truncateLocal(
     std::string const& collectionName, OperationOptions& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
-  auto& tc = *trxCollection(cid);
-  auto const& collection = tc.collection();
+  TransactionCollection* trxColl = trxCollection(cid);
+  if (trxColl == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
+  auto const& collection = trxColl->collection();
+  if (collection == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
 
   // this call will populate replicationType and followers
   ReplicationType replicationType = ReplicationType::NONE;
@@ -2340,20 +2493,29 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       *collection, "truncate", VPackSlice::noneSlice(), options,
       replicationType, followers);
 
-  if (res.fail()) {
+  // will be populated by the call to truncate()
+  bool usedRangeDelete = false;
+
+  if (res.ok()) {
+    res = collection->truncate(*this, options, usedRangeDelete);
+  }
+
+  if (res.fail() || !usedRangeDelete) {
+    // we must exit here if we didn't perform a range delete.
+    // this is because the non-range delete version of truncate
+    // removes documents one by one, and also _replicates_ these
+    // removal operations.
     return futures::makeFuture(OperationResult(std::move(res), options));
   }
 
-  res = collection->truncate(*this, options);
-
-  if (res.fail()) {
-    return futures::makeFuture(OperationResult(res, options));
-  }
+  // range delete version of truncate. we are responsible for the
+  // replication ourselves
+  TRI_ASSERT(usedRangeDelete);
 
   auto replicationVersion = collection->replicationVersion();
   if (replicationType == ReplicationType::LEADER &&
       replicationVersion == replication::Version::TWO) {
-    auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(tc);
+    auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(*trxColl);
     auto leaderState = rtc.leaderState();
     auto body = VPackBuilder();
     {
@@ -2593,7 +2755,14 @@ OperationResult transaction::Methods::countLocal(
     OperationOptions const& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
-  auto const& collection = trxCollection(cid)->collection();
+  TransactionCollection* trxColl = trxCollection(cid);
+  if (trxColl == nullptr) {
+    return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options);
+  }
+  auto const& collection = trxColl->collection();
+  if (collection == nullptr) {
+    return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options);
+  }
 
   TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::READ));
 
@@ -2653,6 +2822,9 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(
   TRI_ASSERT(trxColl->isLocked(AccessMode::Type::READ));
 
   std::shared_ptr<LogicalCollection> const& logical = trxColl->collection();
+  if (logical == nullptr) {
+    throwCollectionNotFound(collectionName);
+  }
   TRI_ASSERT(logical != nullptr);
 
   // TODO: an extra optimizer rule could make this unnecessary
@@ -2684,14 +2856,10 @@ arangodb::LogicalCollection* transaction::Methods::documentCollection(
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   auto trxColl = trxCollection(name, AccessMode::Type::READ);
-  if (trxColl == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        std::string("could not find collection '") + name + "'");
+  if (trxColl == nullptr || trxColl->collection() == nullptr) {
+    throwCollectionNotFound(name);
   }
 
-  TRI_ASSERT(trxColl != nullptr);
-  TRI_ASSERT(trxColl->collection() != nullptr);
   return trxColl->collection().get();
 }
 
@@ -3155,7 +3323,7 @@ Future<Result> Methods::commitInternal(MethodsApi api) noexcept try {
       })
       .thenValue([this](Result res) -> Result {
         if (res.ok()) {
-          applyStatusChangeCallbacks(*this, Status::COMMITTED);
+          res = applyStatusChangeCallbacks(*this, Status::COMMITTED);
         }
         return res;
       });
@@ -3196,7 +3364,7 @@ Future<Result> Methods::abortInternal(MethodsApi api) noexcept try {
 
     res = _state->abortTransaction(this);
     if (res.ok()) {
-      applyStatusChangeCallbacks(*this, Status::ABORTED);
+      res = applyStatusChangeCallbacks(*this, Status::ABORTED);
     }
 
     return res;

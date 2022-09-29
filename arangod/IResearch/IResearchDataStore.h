@@ -20,6 +20,7 @@
 ///
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
 #include "IResearchDataStoreMeta.h"
@@ -38,6 +39,8 @@
 #include "store/directory.hpp"
 #include "utils/utf8_path.hpp"
 
+#include <atomic>
+
 namespace arangodb {
 
 struct FlushSubscription;
@@ -51,44 +54,20 @@ class IResearchDataStore;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchDataStore handle to use with asynchronous tasks
 ////////////////////////////////////////////////////////////////////////////////
-class AsyncLinkHandle final {
- public:
-  explicit AsyncLinkHandle(IResearchDataStore* link);
-  ~AsyncLinkHandle();
-  [[nodiscard]] bool empty() const noexcept { return _link.empty(); }
-  [[nodiscard]] auto lock() noexcept { return _link.lock(); }
-  [[nodiscard]] bool terminationRequested() const noexcept {
-    return _asyncTerminate.load(std::memory_order_acquire);
-  }
-
-  AsyncLinkHandle(AsyncLinkHandle const&) = delete;
-  AsyncLinkHandle(AsyncLinkHandle&&) = delete;
-  AsyncLinkHandle& operator=(AsyncLinkHandle const&) = delete;
-  AsyncLinkHandle& operator=(AsyncLinkHandle&&) = delete;
-
- private:
-  friend class IResearchDataStore;
-
-  void reset();
-
-  AsyncValue<IResearchDataStore> _link;
-  // trigger termination of long-running async jobs
-  std::atomic_bool _asyncTerminate{false};
-};
-
-using LinkLock = AsyncValue<IResearchDataStore>::Value;
+using AsyncLinkHandle = AsyncValue<IResearchDataStore>;
+using LinkLock = AsyncLinkHandle::Value;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container storing the index state for a given TransactionState
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchTrxState final : public TransactionState::Cookie {
-  irs::index_writer::documents_context _ctx;
   // prevent data-store deallocation (lock @ AsyncSelf)
-  LinkLock _linkLock;
+  LinkLock _linkLock;  // should be first field to destroy last
+  irs::index_writer::documents_context _ctx;
   PrimaryKeyFilterContainer _removals;  // list of document removals
 
   IResearchTrxState(LinkLock&& linkLock, irs::index_writer& writer) noexcept
-      : _ctx{writer.documents()}, _linkLock{std::move(linkLock)} {}
+      : _linkLock{std::move(linkLock)}, _ctx{writer.documents()} {}
 
   ~IResearchTrxState() final {
     if (_removals.empty()) {
@@ -119,6 +98,10 @@ struct IResearchTrxState final : public TransactionState::Cookie {
     _ctx.reset();
   }
 };
+
+void clusterCollectionName(LogicalCollection const& collection, ClusterInfo* ci,
+                           uint64_t id, bool indexIdAttribute,
+                           std::string& name);
 
 class IResearchDataStore {
  public:
@@ -160,7 +143,8 @@ class IResearchDataStore {
 
   IResearchDataStore(IndexId iid, LogicalCollection& collection);
 
-  virtual ~IResearchDataStore() = default;
+  virtual ~IResearchDataStore();
+
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief 'this' for the lifetime of the link data-store
   ///        for use with asynchronous calls, e.g. callbacks, view
@@ -187,6 +171,8 @@ class IResearchDataStore {
   LogicalCollection& collection() const noexcept { return _collection; }
 
   static bool hasSelectivityEstimate();  // arangodb::Index override
+
+  bool hasNestedFields() const noexcept { return _hasNestedFields; }
 
   void afterTruncate(TRI_voc_tick_t tick,
                      transaction::Methods* trx);  // arangodb::Index override
@@ -254,6 +240,27 @@ class IResearchDataStore {
   ////////////////////////////////////////////////////////////////////////////////
   virtual Stats stats() const;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief set the data store to out of sync. if a data store is out of sync,
+  /// it is known to have incomplete data and may refuse to serve queries
+  /// (depending on settings). returns true if the call set the data store to
+  /// out of sync, and false if the data store was already marked as out of
+  /// sync before.
+  //////////////////////////////////////////////////////////////////////////////
+  bool setOutOfSync() noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the data store is out of sync (i.e. has incomplete
+  /// data)
+  //////////////////////////////////////////////////////////////////////////////
+  bool isOutOfSync() const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not queries on this data store fail should fail with an
+  /// error if the data store is out of sync.
+  //////////////////////////////////////////////////////////////////////////////
+  bool failQueriesOnOutOfSync() const noexcept;
+
  protected:
   friend struct CommitTask;
   friend struct ConsolidationTask;
@@ -287,16 +294,18 @@ class IResearchDataStore {
   /// @brief the underlying iresearch data store
   //////////////////////////////////////////////////////////////////////////////
   struct DataStore {
-    IResearchDataStoreMeta
-        _meta;  // runtime meta for a data store (not persisted)
+    // runtime meta for a data store (not persisted)
+    IResearchDataStoreMeta _meta;
     irs::directory::ptr _directory;
-    basics::ReadWriteLock _mutex;  // for use with member '_meta'
+    // for use with member '_meta'
+    basics::ReadWriteLock _mutex;
     irs::utf8_path _path;
     irs::directory_reader _reader;
     irs::index_writer::ptr _writer;
     // the tick at which data store was recovered
     TRI_voc_tick_t _recoveryTick{0};
-    std::atomic_bool _inRecovery{false};  // data store is in recovery
+    // data store is in recovery
+    std::atomic_bool _inRecovery{false};
     explicit operator bool() const noexcept { return _directory && _writer; }
 
     void resetDataStore() noexcept {
@@ -323,7 +332,9 @@ class IResearchDataStore {
   /// @param wait even if other thread is committing
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  UnsafeOpResult commitUnsafe(bool wait, CommitResult* code);
+  UnsafeOpResult commitUnsafe(
+      bool wait, irs::index_writer::progress_report_callback const& progress,
+      CommitResult& code);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run segment consolidation on the data store
@@ -345,7 +356,9 @@ class IResearchDataStore {
   /// @param wait even if other thread is committing
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  Result commitUnsafeImpl(bool wait, CommitResult* code);
+  Result commitUnsafeImpl(
+      bool wait, irs::index_writer::progress_report_callback const& progress,
+      CommitResult& code);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run segment consolidation on the data store
@@ -356,12 +369,14 @@ class IResearchDataStore {
       irs::merge_writer::flush_progress_t const& progress,
       bool& emptyConsolidation);
 
+  void initAsyncSelf();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
   //////////////////////////////////////////////////////////////////////////////
   Result initDataStore(
       bool& pathExists, InitCallback const& initCallback, uint32_t version,
-      bool sorted,
+      bool sorted, bool nested,
       std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
       irs::type_info::type_id primarySortCompression);
 
@@ -400,11 +415,22 @@ class IResearchDataStore {
   std::tuple<uint64_t, uint64_t, uint64_t> avgTime() const;
 
  protected:
+  enum class DataStoreError : uint8_t {
+    // data store has no issues
+    kNoError = 0,
+    // data store is out of sync
+    kOutOfSync = 1,
+    // data store is failed (currently not used)
+    kFailed = 2,
+  };
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Update index stats for current snapshot
   /// @note Unsafe, can only be called is _asyncSelf is locked
   ////////////////////////////////////////////////////////////////////////////////
   Stats updateStatsUnsafe() const;
+
+  void initClusterMetrics() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief insert metrics to MetricsFeature
@@ -435,12 +461,17 @@ class IResearchDataStore {
   // the iresearch data store, protected by _asyncSelf->mutex()
   DataStore _dataStore;
 
+  // data store error state
+  std::atomic<DataStoreError> _error;
+
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;
   IndexId const _id;
   // protected by _commitMutex
   TRI_voc_tick_t _lastCommittedTick;
   size_t _cleanupIntervalCount;
+
+  bool _hasNestedFields{false};
 
   // prevents data store sequential commits
   std::mutex _commitMutex;
