@@ -44,9 +44,10 @@ struct FileInfo {
 class FileMaker {
  public:
   FileMaker(std::string const& directory, std::vector<FileInfo> const& files) {
+    std::vector<char> p;
     for (auto const& fi : files) {
       std::string path = basics::FileUtils::buildFilename(directory, fi.name);
-      std::vector<char> p;
+      p.clear();
       p.resize(fi.size);
       for (size_t i = 0; i < fi.size; ++i) {
         p[i] = i % 67 + '!';
@@ -166,18 +167,19 @@ TEST_F(RocksDBChecksumHelperTest, test_missing_sha_files) {
   std::vector<std::string> expected = {
       // new
       {"000050.sha."
-       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash"},
+       "b4bdf67d8d471ee4187a1132ce11aadf6681036e042199388b0105450ef9c71e.hash"},
       {"000050.sst"},
       {"000051.sha."
        "908e00481d4913afdc583633624dd87176af80558cc3c2a8c5528ab89e9d5c60.hash"},
       {"000051.sst"},
       // new
       {"000053.sha."
-       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash"},
+       "c33037ed23f5865dcaf4d31f3425f76d1b4598156cff437cbd726fe980617e46.hash"},
       {"000053.sst"},
       {"000055.blob"},
+      // new
       {"000055.sha."
-       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash"},
+       "c33037ed23f5865dcaf4d31f3425f76d1b4598156cff437cbd726fe980617e46.hash"},
       {"CURRENT"},
       {"MANIFEST-000005"},
       {"OPTIONS-000041"},
