@@ -2646,7 +2646,7 @@ void Supervision::deleteBrokenIndex(AgentInterface* agent,
         VPackObjectBuilder preconditions(&envelope);
         {
           VPackObjectBuilder precondition(&envelope, collectionPath);
-          envelope.add("oldEmpty", VPackValue(!coordinatorFound));
+          envelope.add("oldEmpty", VPackValue(false));
         }
       }
     }
