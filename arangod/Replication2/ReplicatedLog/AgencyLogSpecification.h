@@ -62,7 +62,6 @@ struct ParticipantsConfig {
   ParticipantsFlagsMap participants;
   LogPlanConfig config{};
 
-  // to be defaulted soon
   friend auto operator==(ParticipantsConfig const& left,
                          ParticipantsConfig const& right) noexcept
       -> bool = default;
@@ -73,6 +72,41 @@ auto inspect(Inspector& f, ParticipantsConfig& x) {
   return f.object(x).fields(f.field("generation", x.generation),
                             f.field("config", x.config),
                             f.field("participants", x.participants));
+}
+
+namespace static_strings {
+auto const String_Snapshot = velocypack::StringRef{"snapshot"};
+auto const String_Generation = velocypack::StringRef{"generation"};
+}  // namespace static_strings
+
+struct ImplementationSpec {
+  std::string type;
+  std::optional<velocypack::SharedSlice> parameters;
+
+  friend auto operator==(ImplementationSpec const& s,
+                         ImplementationSpec const& s2) noexcept -> bool;
+};
+
+auto operator==(ImplementationSpec const& s,
+                ImplementationSpec const& s2) noexcept -> bool;
+
+template<class Inspector>
+auto inspect(Inspector& f, ImplementationSpec& x) {
+  return f.object(x).fields(
+      f.field(StaticStrings::IndexType, x.type),
+      f.field(StaticStrings::DataSourceParameters, x.parameters));
+}
+
+struct Properties {
+  ImplementationSpec implementation;
+
+  friend auto operator==(Properties const& s, Properties const& s2) noexcept
+      -> bool = default;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, Properties& x) {
+  return f.object(x).fields(f.field("implementation", x.implementation));
 }
 
 struct LogPlanTermSpecification {
@@ -103,6 +137,7 @@ struct LogPlanSpecification {
   std::optional<LogPlanTermSpecification> currentTerm;
 
   ParticipantsConfig participantsConfig;
+  Properties properties;
 
   std::optional<std::string> owner;
 
@@ -120,6 +155,7 @@ struct LogPlanSpecification {
 struct LogCurrentLocalState {
   LogTerm term{};
   TermIndexPair spearhead{};
+  bool snapshotAvailable{false};
 
   LogCurrentLocalState() = default;
   LogCurrentLocalState(LogTerm, TermIndexPair) noexcept;
@@ -329,6 +365,7 @@ struct LogTarget {
   LogId id;
   ParticipantsFlagsMap participants;
   LogTargetConfig config;
+  Properties properties;
 
   std::optional<ParticipantId> leader;
   std::optional<uint64_t> version;
@@ -344,7 +381,7 @@ struct LogTarget {
 
   LogTarget() = default;
 
-  LogTarget(LogId id, ParticipantsFlagsMap const& participants,
+  LogTarget(LogId id, ParticipantsFlagsMap participants,
             LogTargetConfig const& config);
 
   friend auto operator==(LogTarget const&, LogTarget const&) noexcept

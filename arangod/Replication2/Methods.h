@@ -27,7 +27,6 @@
 #include "Replication2/ReplicatedLog/LogEntries.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
 
 #include <string>
 #include <variant>
@@ -160,58 +159,58 @@ template<class Inspector>
 auto inspect(Inspector& f, ReplicatedLogMethods::CreateResult& x) {
   return f.object(x).fields(f.field("id", x.id), f.field("servers", x.servers));
 }
+//
+// struct ReplicatedStateMethods {
+//  virtual ~ReplicatedStateMethods() = default;
+//
+//  [[nodiscard]] virtual auto waitForStateReady(LogId, std::uint64_t version)
+//      -> futures::Future<ResultT<consensus::index_t>> = 0;
+//
+//  virtual auto createReplicatedState(replicated_state::agency::Target spec)
+//      const -> futures::Future<Result> = 0;
+//  virtual auto deleteReplicatedState(LogId id) const
+//      -> futures::Future<Result> = 0;
+//
+//  virtual auto getLocalStatus(LogId) const
+//      -> futures::Future<replicated_state::StateStatus> = 0;
+//
+////  struct ParticipantSnapshotStatus {
+////    replicated_state::SnapshotInfo status;
+////    replicated_state::StateGeneration generation;
+////  };
+////
+////  using GlobalSnapshotStatus =
+////      std::unordered_map<ParticipantId, ParticipantSnapshotStatus>;
+////
+////  virtual auto getGlobalSnapshotStatus(LogId) const
+////      -> futures::Future<ResultT<GlobalSnapshotStatus>> = 0;
+//
+//  static auto createInstance(TRI_vocbase_t& vocbase)
+//      -> std::shared_ptr<ReplicatedStateMethods>;
+//
+//  static auto createInstanceDBServer(TRI_vocbase_t& vocbase)
+//      -> std::shared_ptr<ReplicatedStateMethods>;
+//
+//  static auto createInstanceCoordinator(ArangodServer& server,
+//                                        std::string databaseName)
+//      -> std::shared_ptr<ReplicatedStateMethods>;
+//
+//  [[nodiscard]] virtual auto replaceParticipant(
+//      LogId, ParticipantId const& participantToRemove,
+//      ParticipantId const& participantToAdd,
+//      std::optional<ParticipantId> const& currentLeader) const
+//      -> futures::Future<Result> = 0;
+//
+//  [[nodiscard]] virtual auto setLeader(
+//      LogId id, std::optional<ParticipantId> const& leaderId) const
+//      -> futures::Future<Result> = 0;
+//};
 
-struct ReplicatedStateMethods {
-  virtual ~ReplicatedStateMethods() = default;
-
-  [[nodiscard]] virtual auto waitForStateReady(LogId, std::uint64_t version)
-      -> futures::Future<ResultT<consensus::index_t>> = 0;
-
-  virtual auto createReplicatedState(replicated_state::agency::Target spec)
-      const -> futures::Future<Result> = 0;
-  virtual auto deleteReplicatedState(LogId id) const
-      -> futures::Future<Result> = 0;
-
-  virtual auto getLocalStatus(LogId) const
-      -> futures::Future<replicated_state::StateStatus> = 0;
-
-  struct ParticipantSnapshotStatus {
-    replicated_state::SnapshotInfo status;
-    replicated_state::StateGeneration generation;
-  };
-
-  using GlobalSnapshotStatus =
-      std::unordered_map<ParticipantId, ParticipantSnapshotStatus>;
-
-  virtual auto getGlobalSnapshotStatus(LogId) const
-      -> futures::Future<ResultT<GlobalSnapshotStatus>> = 0;
-
-  static auto createInstance(TRI_vocbase_t& vocbase)
-      -> std::shared_ptr<ReplicatedStateMethods>;
-
-  static auto createInstanceDBServer(TRI_vocbase_t& vocbase)
-      -> std::shared_ptr<ReplicatedStateMethods>;
-
-  static auto createInstanceCoordinator(ArangodServer& server,
-                                        std::string databaseName)
-      -> std::shared_ptr<ReplicatedStateMethods>;
-
-  [[nodiscard]] virtual auto replaceParticipant(
-      LogId, ParticipantId const& participantToRemove,
-      ParticipantId const& participantToAdd,
-      std::optional<ParticipantId> const& currentLeader) const
-      -> futures::Future<Result> = 0;
-
-  [[nodiscard]] virtual auto setLeader(
-      LogId id, std::optional<ParticipantId> const& leaderId) const
-      -> futures::Future<Result> = 0;
-};
-
-template<class Inspector>
-auto inspect(Inspector& f,
-             ReplicatedStateMethods::ParticipantSnapshotStatus& x) {
-  return f.object(x).fields(f.field("status", x.status),
-                            f.field("generation", x.generation));
-}
+// template<class Inspector>
+// auto inspect(Inspector& f,
+//             ReplicatedStateMethods::ParticipantSnapshotStatus& x) {
+//  return f.object(x).fields(f.field("status", x.status),
+//                            f.field("generation", x.generation));
+//}
 
 }  // namespace arangodb::replication2

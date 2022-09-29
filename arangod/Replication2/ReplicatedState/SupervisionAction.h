@@ -28,7 +28,6 @@
 #include "Agency/TransactionBuilder.h"
 #include "Replication2/Supervision/ModifyContext.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/ReplicatedState/StateCommon.h"
 
 namespace arangodb::replication2::replicated_state {

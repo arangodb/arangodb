@@ -27,6 +27,7 @@
 #include <Basics/debugging.h>
 #include <Replication2/ReplicatedLog/PersistedLog.h>
 #include <Basics/ResultT.h>
+#include <Inspection/VPack.h>
 #include <memory>
 
 #include <utility>

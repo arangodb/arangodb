@@ -113,63 +113,19 @@ auto algorithms::updateReplicatedLog(
   auto result = basics::catchToResultT([&]() -> futures::Future<
                                                  arangodb::Result> {
     if (spec == nullptr) {
-      return ctx.dropReplicatedLog(logId);
+      return ctx.dropReplicatedState(logId);
     }
 
     TRI_ASSERT(logId == spec->id);
     TRI_ASSERT(spec->currentTerm.has_value());
     auto& plannedLeader = spec->currentTerm->leader;
-    auto log = ctx.ensureReplicatedLog(logId);
-
-    if (log->getParticipant()->getTerm() == spec->currentTerm->term) {
-      // something has changed in the term volatile configuration
-      auto leader = log->getLeader();
-      TRI_ASSERT(leader != nullptr);
-      // Provide the leader with a way to build a follower
-      auto const buildFollower = [&ctx,
-                                  &logId](ParticipantId const& participantId) {
-        return ctx.buildAbstractFollowerImpl(logId, participantId);
-      };
-      auto index = leader->updateParticipantsConfig(
-          std::make_shared<ParticipantsConfig const>(spec->participantsConfig),
-          buildFollower);
-      return leader->waitFor(index).thenValue(
-          [](auto&& quorum) -> Result { return Result{TRI_ERROR_NO_ERROR}; });
-    } else if (plannedLeader.has_value() &&
-               plannedLeader->serverId == myServerId &&
-               plannedLeader->rebootId == myRebootId) {
-      auto followers = std::vector<
-          std::shared_ptr<replication2::replicated_log::AbstractFollower>>{};
-      for (auto const& [participant, data] :
-           spec->participantsConfig.participants) {
-        if (participant != myServerId) {
-          followers.emplace_back(
-              ctx.buildAbstractFollowerImpl(logId, participant));
-        }
-      }
-
-      TRI_ASSERT(spec->participantsConfig.generation > 0);
-      auto newLeader = log->becomeLeader(
-          myServerId, spec->currentTerm->term, followers,
-          std::make_shared<ParticipantsConfig>(spec->participantsConfig),
-          std::move(failureOracle));
-      newLeader->triggerAsyncReplication();  // TODO move this call into
-                                             // becomeLeader?
-      return newLeader->waitForLeadership().thenValue(
-          [](auto&& quorum) -> Result { return Result{TRI_ERROR_NO_ERROR}; });
-    } else {
-      auto leaderString = std::optional<ParticipantId>{};
-      if (spec->currentTerm->leader) {
-        leaderString = spec->currentTerm->leader->serverId;
-      }
-
-      std::ignore = log->becomeFollower(myServerId, spec->currentTerm->term,
-                                        leaderString);
+    auto& impl = spec->properties.implementation;
+    if (auto res = ctx.ensureReplicatedState(logId, impl.type,
+                                             impl.parameters.value().slice());
+        res.fail()) {
+      return res;
     }
-
-    return futures::Future<arangodb::Result>{std::in_place};
-  });
-
+};
   if (result.ok()) {
     return *std::move(result);
   } else {

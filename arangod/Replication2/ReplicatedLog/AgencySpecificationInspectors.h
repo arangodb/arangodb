@@ -86,7 +86,8 @@ auto inspect(Inspector& f, LogPlanSpecification& x) {
 template<class Inspector>
 auto inspect(Inspector& f, LogCurrentLocalState& x) {
   return f.object(x).fields(f.field(StaticStrings::Term, x.term),
-                            f.field(StaticStrings::Spearhead, x.spearhead));
+                            f.field(StaticStrings::Spearhead, x.spearhead),
+                            f.field("snapshotAvailable", x.snapshotAvailable));
 }
 
 template<typename Enum>
@@ -288,6 +289,7 @@ auto inspect(Inspector& f, LogTarget& x) {
       f.field(StaticStrings::Id, x.id),
       f.field(StaticStrings::Participants, x.participants)
           .fallback(ParticipantsFlagsMap{}),
+      f.field(StaticStrings::Properties, x.properties),
       f.field(StaticStrings::Config, x.config),
       f.field(StaticStrings::Leader, x.leader),
       f.field(static_strings::Version, x.version),

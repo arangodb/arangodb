@@ -37,7 +37,6 @@
 #include "Cluster/TakeoverShardLeadership.h"
 #include "Cluster/UpdateCollection.h"
 #include "Cluster/UpdateReplicatedLogAction.h"
-#include "Cluster/UpdateReplicatedStateAction.h"
 
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
@@ -105,11 +104,6 @@ static factories_t factories = factories_t{
     {UPDATE_REPLICATED_LOG,
      [](MaintenanceFeature& f, ActionDescription const& a) {
        return std::make_unique<UpdateReplicatedLogAction>(f, a);
-     }},
-
-    {UPDATE_REPLICATED_STATE,
-     [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::make_unique<UpdateReplicatedStateAction>(f, a);
      }},
 };
 

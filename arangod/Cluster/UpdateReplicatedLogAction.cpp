@@ -45,30 +45,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::replication2;
 
-namespace {
-struct LogActionContextMaintenance : algorithms::LogActionContext {
-  LogActionContextMaintenance(TRI_vocbase_t& vocbase,
-                              network::ConnectionPool* pool)
-      : vocbase(vocbase), pool(pool) {}
-
-  auto dropReplicatedLog(LogId id) -> arangodb::Result override {
-    return vocbase.dropReplicatedLog(id);
-  }
-  auto ensureReplicatedLog(LogId id)
-      -> std::shared_ptr<replicated_log::ReplicatedLog> override {
-    return vocbase.ensureReplicatedLog(id, std::nullopt);
-  }
-  auto buildAbstractFollowerImpl(LogId id, ParticipantId participantId)
-      -> std::shared_ptr<replicated_log::AbstractFollower> override {
-    return std::make_shared<replicated_log::NetworkAttachedFollower>(
-        pool, std::move(participantId), vocbase.name(), id);
-  }
-
-  TRI_vocbase_t& vocbase;
-  network::ConnectionPool* pool;
-};
-}  // namespace
-
 bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   auto spec = std::invoke([&]() -> std::optional<agency::LogPlanSpecification> {
     auto buffer =
@@ -82,8 +58,6 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   });
 
   auto logId = LogId{StringUtils::uint64(_description.get(REPLICATED_LOG_ID))};
-  auto serverId = ServerState::instance()->getId();
-  auto rebootId = ServerState::instance()->getRebootId();
 
   network::ConnectionPool* pool =
       _feature.server().getFeature<NetworkFeature>().pool();
@@ -91,35 +65,30 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   auto const& database = _description.get(DATABASE);
   auto& df = _feature.server().getFeature<DatabaseFeature>();
   DatabaseGuard guard(df, database);
-  auto ctx = LogActionContextMaintenance{guard.database(), pool};
-  auto failureOracle = _feature.server()
-                           .getFeature<cluster::FailureOracleFeature>()
-                           .getFailureOracle();
-  auto result = replication2::algorithms::updateReplicatedLog(
-      ctx, serverId, rebootId, logId,
-      spec.has_value() ? &spec.value() : nullptr, std::move(failureOracle));
-  std::move(result).thenFinal([desc = _description, logId, &feature = _feature](
-                                  futures::Try<Result>&& tryResult) noexcept {
-    try {
-      auto const& result = tryResult.get();
-      if (result.fail()) {
-        LOG_TOPIC("ba775", ERR, Logger::REPLICATION2)
-            << "failed to modify replicated log " << desc.get(DATABASE) << '/'
-            << logId << "; " << result.errorMessage();
+
+  ADB_PROD_ASSERT(spec->currentTerm.has_value())
+      << database << "/" << logId << " missing term";
+
+  auto result = std::invoke([&] {
+    if (spec.has_value()) {
+      if (auto state = guard->getReplicatedStateById(logId); state.ok()) {
+        return guard->updateReplicatedState(logId, *spec->currentTerm,
+                                            spec->participantsConfig);
+      } else {
+        auto& impl = spec->properties.implementation;
+        ADB_PROD_ASSERT(impl.parameters.has_value())
+            << database << "/" << logId << " impl type " << impl.type
+            << " - missing parameters";
+        return guard
+            ->createReplicatedState(logId, impl.type, impl.parameters->slice())
+            .result();
       }
-      feature.addDirty(desc.get(DATABASE));
-    } catch (
-        replication2::replicated_log::ParticipantResignedException const& e) {
-      LOG_TOPIC("4e010", DEBUG, Logger::REPLICATION2)
-          << "participant resigned during update of replicated log "
-          << desc.get(DATABASE) << '/' << logId << "; " << e.what();
-    } catch (std::exception const& e) {
-      LOG_TOPIC("f824f", ERR, Logger::REPLICATION2)
-          << "exception during update of replicated log " << desc.get(DATABASE)
-          << '/' << logId << "; " << e.what();
+    } else {
+      return guard->dropReplicatedState(logId);
     }
   });
 
+  _feature.addDirty(database);
   return false;
 }
 

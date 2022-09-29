@@ -31,7 +31,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Inspection/VPack.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -536,13 +537,10 @@ bool MoveShard::startReplication2() {
   // - if leader move shard, set leader, otherwise if _from is leader, clear
   // Preconditions:
   //  - target version is as expected
-  using TargetType = replication2::replicated_state::agency::Target;
+  using namespace replication2;
   auto stateId = LogicalCollection::shardIdToStateId(_shard);
-  auto targetPath =
-      "/Target/ReplicatedStates/" + _database + "/" + to_string(stateId);
-  auto& targetNode = _snapshot.get(targetPath).value().get();
-  auto target =
-      velocypack::deserialize<TargetType>(targetNode.toBuilder().slice());
+  auto targetPath = targetRepStatePrefix + _database + "/" + to_string(stateId);
+  auto target = readStateTarget(_snapshot, _database, stateId).value();
 
   bool const containsTo = target.participants.contains(_to);
   bool const containsFrom = target.participants.contains(_from);
@@ -563,7 +561,7 @@ bool MoveShard::startReplication2() {
     }
 
     target.participants.erase(_from);
-    target.participants.emplace(_to, TargetType::Participant{});
+    target.participants.emplace(_to, ParticipantFlags{});
   }
 
   auto oldTargetVersion = target.version;

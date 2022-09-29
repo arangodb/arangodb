@@ -48,6 +48,7 @@ struct QuickLogStatus {
   std::optional<LogTerm> term{};
   std::optional<LogStatistics> local{};
   bool leadershipEstablished{false};
+  bool snapshotAvailable{false};
   std::optional<CommitFailReason> commitFailReason{};
 
   // The following make sense only for a leader.
@@ -86,6 +87,7 @@ auto inspect(Inspector& f, QuickLogStatus& x) {
       f.field("role", x.role).transformWith(ParticipantRoleStringTransformer{}),
       f.field("term", x.term), f.field("local", x.local),
       f.field("leadershipEstablished", x.leadershipEstablished),
+      f.field("snapshotAvailable", x.snapshotAvailable),
       f.field("commitFailReason", x.commitFailReason),
       f.field("activeParticipantsConfig", activeParticipantsConfig),
       f.field("committedParticipantsConfig", committedParticipantsConfig));

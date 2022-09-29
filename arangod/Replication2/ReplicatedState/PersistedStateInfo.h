@@ -20,9 +20,13 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedState/StateCommon.h"
 
+namespace arangodb {
+template<typename T>
+class ResultT;
+}
 namespace arangodb::futures {
 struct Unit;
 template<typename T>

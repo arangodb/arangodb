@@ -54,8 +54,6 @@
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/ReplicatedState/Supervision.h"
 #include "StorageEngine/HealthData.h"
 #include "Basics/ScopeGuard.h"
 
@@ -1810,11 +1808,6 @@ bool Supervision::handleJobs() {
       << "Begin checkBrokenAnalyzers";
   checkBrokenAnalyzers();
 
-  LOG_TOPIC("f7aa5", TRACE, Logger::SUPERVISION)
-      << "Begin checkReplicatedStates";
-  checkReplicatedStates();
-  updateSnapshot();  // make updates from replicated state visible
-
   LOG_TOPIC("f7d05", TRACE, Logger::SUPERVISION) << "Begin checkReplicatedLogs";
   checkReplicatedLogs();
 
@@ -2638,26 +2631,6 @@ auto parseReplicatedLogAgency(Node const& root, std::string const& dbName,
   }
 }
 
-auto parseReplicatedStateAgency(Node const& root, Node const& targetNode,
-                                std::string const& dbName,
-                                std::string const& idString)
-    -> replication2::replicated_state::agency::State {
-  return replication2::replicated_state::agency::State{
-      .target = parseSomethingFromNode<
-          replication2::replicated_state::agency::Target>(targetNode),
-      .plan = parseIfExists<replication2::replicated_state::agency::Plan>(
-          root, aliases::plan()
-                    ->replicatedStates()
-                    ->database(dbName)
-                    ->state(idString)
-                    ->str(SkipComponents(1))),
-      .current = parseIfExists<replication2::replicated_state::agency::Current>(
-          root, aliases::current()
-                    ->replicatedStates()
-                    ->database(dbName)
-                    ->state(idString)
-                    ->str(SkipComponents(1)))};
-}
 }  // namespace
 
 namespace {
@@ -2730,7 +2703,7 @@ void Supervision::checkReplicatedLogs() {
   using namespace replication2::agency;
 
   // check if Target has replicated logs
-  auto const& targetNode = snapshot().hasAsNode(targetRepLogPrefix);
+  auto const& targetNode = snapshot().hasAsNode(targetRepStatePrefix);
   if (!targetNode) {
     return;
   }
@@ -2769,58 +2742,6 @@ void Supervision::checkReplicatedLogs() {
     write_ret_t res = _agent->write(builder);
     if (!res.successful()) {
       LOG_TOPIC("12d36", WARN, Logger::SUPERVISION)
-          << "failed to update term in agency. Will retry. "
-          << builder->toJson();
-    }
-  }
-}
-
-namespace {
-auto handleReplicatedState(Node const& snapshot, Node const& targetNode,
-                           std::string const& dbName,
-                           std::string const& idString,
-                           arangodb::agency::envelope envelope)
-    -> arangodb::agency::envelope try {
-  auto log = parseReplicatedLogAgency(snapshot, dbName, idString);
-  auto state =
-      parseReplicatedStateAgency(snapshot, targetNode, dbName, idString);
-
-  return replication2::replicated_state::executeCheckReplicatedState(
-      dbName, std::move(state), std::move(log), std::move(envelope));
-} catch (std::exception const& err) {
-  LOG_TOPIC("676d1", ERR, Logger::REPLICATION2)
-      << "Supervision caught exception while parsing "
-         "replicated state "
-      << dbName << "/" << idString << ": " << err.what();
-  return envelope;
-}
-}  // namespace
-
-void Supervision::checkReplicatedStates() {
-  _lock.assertLockedByCurrentThread();
-
-  using namespace replication2::agency;
-
-  auto targetNode = snapshot().hasAsNode(targetRepStatePrefix);
-  if (!targetNode.has_value()) {
-    return;
-  }
-
-  auto builder = std::make_shared<Builder>();
-  auto envelope = arangodb::agency::envelope::into_builder(*builder);
-
-  for (auto const& [dbName, db] : targetNode->get().children()) {
-    for (auto const& [idString, node] : db->children()) {
-      envelope = handleReplicatedState(snapshot(), *node, dbName, idString,
-                                       std::move(envelope));
-    }
-  }
-
-  envelope.done();
-  if (builder->slice().length() > 0) {
-    write_ret_t res = _agent->write(builder);
-    if (!res.successful()) {
-      LOG_TOPIC("12e37", WARN, Logger::SUPERVISION)
           << "failed to update term in agency. Will retry. "
           << builder->toJson();
     }
@@ -2952,12 +2873,12 @@ void Supervision::cleanupReplicatedLogs() {
   using namespace replication2::agency;
 
   // check if Plan has replicated logs
-  auto const& planNode = snapshot().hasAsNode(planRepLogPrefix);
+  auto const& planNode = snapshot().hasAsNode(planRepStatePrefix);
   if (!planNode) {
     return;
   }
 
-  auto const& targetNode = snapshot().hasAsNode(targetRepLogPrefix);
+  auto const& targetNode = snapshot().hasAsNode(targetRepStatePrefix);
 
   auto builder = std::make_shared<Builder>();
   auto envelope = arangodb::agency::envelope::into_builder(*builder);

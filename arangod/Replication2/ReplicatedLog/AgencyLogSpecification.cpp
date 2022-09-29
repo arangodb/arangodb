@@ -31,10 +31,12 @@
 #include "Logger/Logger.h"
 
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Iterator.h>
 
 #include <type_traits>
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -97,6 +99,17 @@ LogTargetConfig::LogTargetConfig(std::size_t writeConcern,
       softWriteConcern(softWriteConcern),
       waitForSync(waitForSync) {}
 
-LogTarget::LogTarget(LogId id, ParticipantsFlagsMap const& participants,
+LogTarget::LogTarget(LogId id, ParticipantsFlagsMap participants,
                      LogTargetConfig const& config)
-    : id{id}, participants{participants}, config(config) {}
+    : id{id}, participants{std::move(participants)}, config(config) {}
+
+auto agency::operator==(ImplementationSpec const& s,
+                        ImplementationSpec const& s2) noexcept -> bool {
+  if (s.type != s2.type ||
+      s.parameters.has_value() != s2.parameters.has_value()) {
+    return false;
+  }
+  return !s.parameters.has_value() ||
+         basics::VelocyPackHelper::equal(s.parameters->slice(),
+                                         s2.parameters->slice(), true);
+}

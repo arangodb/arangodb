@@ -25,11 +25,9 @@
 #include <Agency/TransactionBuilder.h>
 #include <Basics/ResultT.h>
 #include <Cluster/ClusterTypes.h>
+#include <Futures/Future.h>
 #include <Replication2/ReplicatedLog/AgencyLogSpecification.h>
 #include <optional>
-
-#include "Futures/Future.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
 
 namespace arangodb {
 class Result;

@@ -82,15 +82,3 @@ auto replicated_state::agency::to_string(StatusCode code) noexcept
       return "(unknown status code)";
   }
 }
-
-auto replicated_state::agency::operator==(ImplementationSpec const& s,
-                                          ImplementationSpec const& s2) noexcept
-    -> bool {
-  if (s.type != s2.type ||
-      s.parameters.has_value() != s2.parameters.has_value()) {
-    return false;
-  }
-  return !s.parameters.has_value() ||
-         basics::VelocyPackHelper::equal(s.parameters->slice(),
-                                         s2.parameters->slice(), true);
-}

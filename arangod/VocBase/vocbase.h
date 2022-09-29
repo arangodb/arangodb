@@ -63,6 +63,7 @@ struct LogTerm;
 struct LogPayload;
 namespace agency {
 struct LogPlanSpecification;
+struct LogPlanTermSpecification;
 struct ParticipantsConfig;
 }  // namespace agency
 namespace replicated_log {
@@ -198,6 +199,12 @@ struct TRI_vocbase_t {
       arangodb::replication2::LogId id,
       arangodb::replication2::agency::ParticipantsConfig const&)
       -> arangodb::futures::Future<arangodb::Result>;
+
+  auto updateReplicatedState(
+      arangodb::replication2::LogId id,
+      arangodb::replication2::agency::LogPlanTermSpecification const& spec,
+      arangodb::replication2::agency::ParticipantsConfig const&)
+      -> arangodb::Result;
 
   [[nodiscard]] auto getReplicatedStatesQuickStatus() const
       -> std::unordered_map<

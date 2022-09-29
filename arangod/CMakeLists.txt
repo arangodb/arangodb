@@ -365,9 +365,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedState/Supervision.cpp
   Replication2/ReplicatedState/SupervisionAction.cpp
   Replication2/ReplicatedState/UnconfiguredStateManager.tpp
-  Replication2/ReplicatedState/UpdateReplicatedState.cpp
-  Replication2/ReplicatedState/UpdateReplicatedState.h
-  Replication2/StateMachines/BlackHole/BlackHoleStateMachine.cpp
+        Replication2/StateMachines/BlackHole/BlackHoleStateMachine.cpp
   Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.cpp
   Replication2/StateMachines/Document/DocumentCore.cpp
   Replication2/StateMachines/Document/DocumentFollowerState.cpp
@@ -488,8 +486,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/TakeoverShardLeadership.cpp
   Cluster/UpdateCollection.cpp
   Cluster/UpdateReplicatedLogAction.cpp
-  Cluster/UpdateReplicatedStateAction.cpp
-  FeaturePhases/AgencyFeaturePhase.cpp
+        FeaturePhases/AgencyFeaturePhase.cpp
   FeaturePhases/AqlFeaturePhase.cpp
   FeaturePhases/BasicFeaturePhaseServer.cpp
   FeaturePhases/ClusterFeaturePhase.cpp
@@ -543,8 +540,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestLicenseHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
-  RestHandler/RestReplicatedStateHandler.cpp
-  RestHandler/RestShutdownHandler.cpp
+        RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestStatusHandler.cpp

@@ -102,6 +102,7 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/ticks.h"
+#include "Inspection/VPack.h"
 
 #include <rocksdb/convenience.h>
 #include <rocksdb/db.h>
