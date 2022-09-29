@@ -146,7 +146,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   std::string basename = progname;
   bool checkArangoImp = (progname == "arangoimport");
 
-  if (!StringUtils::isSuffix(basename, ".conf")) {
+  if (!basename.ends_with(".conf")) {
     basename += ".conf";
   }
 

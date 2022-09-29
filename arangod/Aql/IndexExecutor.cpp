@@ -527,22 +527,24 @@ size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
 
   uint64_t skipped = 0;
   if (_infos.getFilter() != nullptr || _checkUniqueness) {
-    switch (_type) {
-      case Type::Covering:
-      case Type::CoveringFilterOnly:
-      case Type::LateMaterialized:
-        TRI_ASSERT(_coveringSkipper != nullptr);
-        _cursor->nextCovering(_coveringSkipper, toSkip);
-        break;
-      case Type::NoResult:
-      case Type::Document:
-      case Type::Count:
-        TRI_ASSERT(_documentSkipper != nullptr);
-        _cursor->nextDocument(_documentSkipper, toSkip);
-        break;
+    while (hasMore() && (skipped < toSkip)) {
+      switch (_type) {
+        case Type::Covering:
+        case Type::CoveringFilterOnly:
+        case Type::LateMaterialized:
+          TRI_ASSERT(_coveringSkipper != nullptr);
+          _cursor->nextCovering(_coveringSkipper, toSkip - skipped);
+          break;
+        case Type::NoResult:
+        case Type::Document:
+        case Type::Count:
+          TRI_ASSERT(_documentSkipper != nullptr);
+          _cursor->nextDocument(_documentSkipper, toSkip - skipped);
+          break;
+      }
+      skipped +=
+          _context.getAndResetNumScanned() - _context.getAndResetNumFiltered();
     }
-    skipped =
-        _context.getAndResetNumScanned() - _context.getAndResetNumFiltered();
   } else {
     _cursor->skip(toSkip, skipped);
   }

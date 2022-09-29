@@ -30,6 +30,7 @@
 #include "Agency/JobContext.h"
 #include "Agency/MoveShard.h"
 #include "Basics/TimeString.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -287,8 +288,8 @@ bool ResignLeadership::start(bool& aborts) {
     // will not be in the snapshot under ToDo, but in this case we find it
     // in _jb:
     if (_jb == nullptr) {
-      auto tmp_todo = _snapshot.hasAsBuilder(toDoPrefix + _jobId, todo);
-      if (!tmp_todo) {
+      auto tmpTodo = _snapshot.hasAsBuilder(toDoPrefix + _jobId, todo);
+      if (!tmpTodo) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
         LOG_TOPIC("deadb", INFO, Logger::SUPERVISION)

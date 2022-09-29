@@ -4929,6 +4929,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
     if (numberOfShards > 0 &&
         !slice.get(StaticStrings::IndexType).isEqualString("arangosearch")) {
       ob->add(StaticStrings::IndexIsBuilding, VPackValue(true));
+      // add our coordinator id and reboot id
+      ob->add(StaticStrings::AttrCoordinator,
+              VPackValue(ServerState::instance()->getId()));
+      ob->add(StaticStrings::AttrCoordinatorRebootId,
+              VPackValue(ServerState::instance()->getRebootId().value()));
     }
     ob->add(StaticStrings::IndexId, VPackValue(idString));
   }
@@ -5057,12 +5062,15 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
         VPackBuilder finishedPlanIndex;
         {
           VPackObjectBuilder o(&finishedPlanIndex);
-          for (auto const& entry :
-               VPackObjectIterator(newIndexBuilder.slice())) {
+          for (auto entry : VPackObjectIterator(newIndexBuilder.slice())) {
             auto const key = entry.key.stringView();
+            // remove "isBuilding", "coordinatorId" and "rebootId", plus
+            // "newlyCreated" from the final index
             if (key != StaticStrings::IndexIsBuilding &&
+                key != StaticStrings::AttrCoordinator &&
+                key != StaticStrings::AttrCoordinatorRebootId &&
                 key != "isNewlyCreated") {
-              finishedPlanIndex.add(entry.key.copyString(), entry.value);
+              finishedPlanIndex.add(entry.key.stringView(), entry.value);
             }
           }
         }
@@ -5998,13 +6006,16 @@ std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
   if (!_currentProt.isValid) {
     tries++;
   }
+  if (!_planProt.isValid) {
+    tries++;
+  }
 
   auto logId = LogicalCollection::shardIdToStateId(shardID);
 
   while (true) {
     {
-      READ_LOCKER(readLocker, _currentProt.lock);
       {
+        READ_LOCKER(readLocker, _planProt.lock);
         // if we find a replicated log for this shard, then this is a
         // replication 2.0 db, in which case we want to use the participant
         // information from the log instead
@@ -6022,9 +6033,11 @@ std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
               result->emplace_back(k);
             }
           }
+          return result;
         }
       }
 
+      READ_LOCKER(readLocker, _currentProt.lock);
       // _shardIds is a map-type <ShardId,
       // std::shared_ptr<std::vector<ServerId>>>
       auto it = _shardIds.find(shardID);
@@ -6068,18 +6081,18 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
   TRI_ASSERT(!shardIds.empty());
 
   containers::FlatHashMap<ShardID, ServerID> result;
-  int tries = 0;
-
-  if (!_currentProt.isValid) {
-    Result r = waitForCurrent(1).get();
-    if (r.fail()) {
-      THROW_ARANGO_EXCEPTION(r);
-    }
-  }
 
   {
-    READ_LOCKER(readLocker, _currentProt.lock);
+    if (!_planProt.isValid) {
+      Result r = waitForPlan(1).get();
+      if (r.fail()) {
+        THROW_ARANGO_EXCEPTION(r);
+      }
+    }
     bool isReplicationTwo = false;
+
+    READ_LOCKER(readLocker, _planProt.lock);
+
     for (auto const& shardId : shardIds) {
       auto logId = LogicalCollection::tryShardIdToStateId(shardId);
       if (!logId.has_value()) {
@@ -6107,6 +6120,17 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
     }
     if (isReplicationTwo) {
       return result;
+    }
+
+    // fall through to non-replication2 handling
+  }
+
+  int tries = 0;
+
+  if (!_currentProt.isValid) {
+    Result r = waitForCurrent(1).get();
+    if (r.fail()) {
+      THROW_ARANGO_EXCEPTION(r);
     }
   }
 

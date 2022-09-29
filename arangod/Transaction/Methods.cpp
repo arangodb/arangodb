@@ -2509,15 +2509,24 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       *collection, "truncate", VPackSlice::noneSlice(), options,
       replicationType, followers);
 
-  if (res.fail()) {
+  // will be populated by the call to truncate()
+  bool usedRangeDelete = false;
+
+  if (res.ok()) {
+    res = collection->truncate(*this, options, usedRangeDelete);
+  }
+
+  if (res.fail() || !usedRangeDelete) {
+    // we must exit here if we didn't perform a range delete.
+    // this is because the non-range delete version of truncate
+    // removes documents one by one, and also _replicates_ these
+    // removal operations.
     return futures::makeFuture(OperationResult(std::move(res), options));
   }
 
-  res = collection->truncate(*this, options);
-
-  if (res.fail()) {
-    return futures::makeFuture(OperationResult(res, options));
-  }
+  // range delete version of truncate. we are responsible for the
+  // replication ourselves
+  TRI_ASSERT(usedRangeDelete);
 
   auto replicationVersion = collection->replicationVersion();
   if (replicationType == ReplicationType::LEADER &&

@@ -120,6 +120,11 @@ bool operator<(irs::string_ref lhs,
 namespace arangodb {
 namespace iresearch {
 
+FieldMeta::Analyzer const& FieldMeta::identity() {
+  static Analyzer kIdentity{IResearchAnalyzerFeature::identity()};
+  return kIdentity;
+}
+
 bool FieldMeta::operator==(FieldMeta const& rhs) const noexcept {
   if (!equalAnalyzers(_analyzers, rhs._analyzers)) {
     return false;
@@ -634,7 +639,7 @@ size_t FieldMeta::memory() const noexcept {
 
 IResearchLinkMeta::IResearchLinkMeta()
     : _version{static_cast<uint32_t>(LinkVersion::MIN)} {
-  _analyzers.emplace_back(IResearchAnalyzerFeature::identity());
+  _analyzers.emplace_back(FieldMeta::identity());
   _primitiveOffset = _analyzers.size();
 }
 

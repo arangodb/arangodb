@@ -343,6 +343,16 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
 
     testReplicateOperationsTruncate: function() {
       const opType = "Truncate";
+      // we need to fill the collection with some docs since truncate will only
+      // use range-deletes (which are replicated as truncate op) if the number
+      // of docs is > 32*1024, otherwise it uses babies removes.
+      const docs = [];
+      for (let i = 0; i < 33; ++i) {
+        for (let j = 0; j < 1024; ++j) {
+          docs.push({});
+        }
+        collection.insert(docs);
+      }
       collection.truncate();
 
       let found = [];

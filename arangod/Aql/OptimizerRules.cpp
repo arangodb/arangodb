@@ -5285,22 +5285,37 @@ void arangodb::aql::restrictToSingleShardRule(
         }
       } else if (currentType == ExecutionNode::INDEX ||
                  currentType == ExecutionNode::ENUMERATE_COLLECTION) {
-        auto collection = ::getCollection(current);
-        auto collectionVariable = ::getOutVariable(current);
-        std::string shardId = finder.getShard(collectionVariable);
+        bool disable = false;
+        if (currentType == ExecutionNode::INDEX) {
+          // Custom analyzer on inverted indexes might be incompatible with
+          // shard key distribution.
+          for (auto& index :
+               ExecutionNode::castTo<aql::IndexNode*>(current)->getIndexes()) {
+            if (Index::TRI_IDX_TYPE_INVERTED_INDEX == index->type()) {
+              disable = true;
+              break;
+            }
+          }
+        }
 
-        if (finder.isSafeForOptimization(collectionVariable) &&
-            !shardId.empty()) {
-          wasModified = true;
-          ::restrictToShard(current, shardId);
-          forwardRestrictionToPrototype(current, shardId);
-        } else if (finder.isSafeForOptimization(collection)) {
-          auto& shards = modificationRestrictions[collection];
-          if (shards.size() == 1) {
+        if (!disable) {
+          auto collection = ::getCollection(current);
+          auto collectionVariable = ::getOutVariable(current);
+          std::string shardId = finder.getShard(collectionVariable);
+
+          if (finder.isSafeForOptimization(collectionVariable) &&
+              !shardId.empty()) {
             wasModified = true;
-            shardId = *shards.begin();
             ::restrictToShard(current, shardId);
             forwardRestrictionToPrototype(current, shardId);
+          } else if (finder.isSafeForOptimization(collection)) {
+            auto& shards = modificationRestrictions[collection];
+            if (shards.size() == 1) {
+              wasModified = true;
+              shardId = *shards.begin();
+              ::restrictToShard(current, shardId);
+              forwardRestrictionToPrototype(current, shardId);
+            }
           }
         }
       } else if (currentType == ExecutionNode::UPSERT ||

@@ -1470,9 +1470,13 @@ arangodb::RevisionId PhysicalCollectionMock::revision(
 }
 
 arangodb::Result PhysicalCollectionMock::truncate(
-    arangodb::transaction::Methods& trx, arangodb::OperationOptions& options) {
+    arangodb::transaction::Methods& trx, arangodb::OperationOptions& options,
+    bool& usedRangeDelete) {
   before();
   _documents.clear();
+
+  // should not matter what we set here
+  usedRangeDelete = true;
   return {};
 }
 
