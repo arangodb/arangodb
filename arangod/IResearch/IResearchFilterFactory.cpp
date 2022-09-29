@@ -303,7 +303,7 @@ Result byTerm(irs::by_term* filter, std::string&& name,
 
 Result byTerm(irs::by_term* filter, aql::AstNode const& attribute,
               ScopedAqlValue const& value, FilterContext const& filterCtx) {
-  std::string name{filterCtx.namePrefix};
+  std::string name{filterCtx.query.namePrefix};
 
   if (!nameFromAttributeAccess(name, attribute, filterCtx.query,
                                filter != nullptr)) {
@@ -341,9 +341,10 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attribute,
                aql::Range const& rangeData, FilterContext const& filterCtx) {
   TRI_ASSERT(attribute.isDeterministic());
 
-  std::string name{filterCtx.namePrefix};
-  if (!nameFromAttributeAccess(name, attribute, filterCtx.query,
-                               filter != nullptr)) {
+  auto const& ctx = filterCtx.query;
+
+  std::string name{ctx.namePrefix};
+  if (!nameFromAttributeAccess(name, attribute, ctx, filter != nullptr)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Failed to generate field name from node "s.append(
                 aql::AstNode::toString(&attribute))};
@@ -379,7 +380,7 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
                FilterContext const& filterCtx) {
   auto const& ctx = filterCtx.query;
 
-  std::string name{filterCtx.namePrefix};
+  std::string name{ctx.namePrefix};
   if (!nameFromAttributeAccess(name, attributeNode, ctx, filter != nullptr)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Failed to generate field name from node "s.append(
@@ -663,7 +664,7 @@ Result byRange(irs::boolean_filter* filter, NormalizedCmpNode const& node,
 
   auto const& ctx = filterCtx.query;
 
-  std::string name{filterCtx.namePrefix};
+  std::string name{ctx.namePrefix};
   if (!nameFromAttributeAccess(name, *node.attribute, ctx, filter != nullptr)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Failed to generate field name from node "s.append(
@@ -790,7 +791,7 @@ Result fromFuncGeoInRange(char const* funcName, irs::boolean_filter* filter,
     }
   }
 
-  std::string name{filterCtx.namePrefix};
+  std::string name{ctx.namePrefix};
   if (!nameFromAttributeAccess(name, *fieldNode, ctx, filter != nullptr)) {
     return error::failedToGenerateName(funcName, fieldNodeIdx);
   }
@@ -895,7 +896,7 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
     }
   }
 
-  std::string name{filterCtx.namePrefix};
+  std::string name{ctx.namePrefix};
   if (!nameFromAttributeAccess(name, *fieldNode, ctx, filter != nullptr)) {
     return error::failedToGenerateName(GEO_DISTANCE_FUNC, fieldNodeIdx);
   }
@@ -1433,7 +1434,6 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
         .query = filterCtx.query,
         .contextAnalyzer = filterCtx.contextAnalyzer,
         .fieldAnalyzerProvider = filterCtx.fieldAnalyzerProvider,
-        .namePrefix = filterCtx.namePrefix,
         .boost = irs::kNoBoost};  // reset boost
 
     // Expand array interval as several binaryInterval nodes ('array' feature is
@@ -1527,10 +1527,9 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
           .query = filterCtx.query,
           .contextAnalyzer = filterCtx.contextAnalyzer,
           .fieldAnalyzerProvider = filterCtx.fieldAnalyzerProvider,
-          .namePrefix = filterCtx.namePrefix,
           .boost = irs::kNoBoost};  // reset boost
 
-      std::string fieldName{filterCtx.namePrefix};
+      std::string fieldName{ctx.namePrefix};
       if (!nameFromAttributeAccess(fieldName, *attributeNode, ctx,
                                    filter != nullptr)) {
         return {TRI_ERROR_BAD_PARAMETER,
@@ -1621,7 +1620,6 @@ Result fromInArray(irs::boolean_filter* filter, FilterContext const& filterCtx,
       .query = filterCtx.query,
       .contextAnalyzer = filterCtx.contextAnalyzer,
       .fieldAnalyzerProvider = filterCtx.fieldAnalyzerProvider,
-      .namePrefix = filterCtx.namePrefix,
       .boost = irs::kNoBoost};  // reset boost
 
   NormalizedCmpNode normalized;
@@ -1778,7 +1776,6 @@ Result fromIn(irs::boolean_filter* filter, FilterContext const& filterCtx,
           .query = filterCtx.query,
           .contextAnalyzer = filterCtx.contextAnalyzer,
           .fieldAnalyzerProvider = filterCtx.fieldAnalyzerProvider,
-          .namePrefix = filterCtx.namePrefix,
           .boost = irs::kNoBoost};  // reset boost
 
       for (size_t i = 0; i < n; ++i) {
@@ -1848,7 +1845,6 @@ Result fromNegation(irs::boolean_filter* filter, FilterContext const& filterCtx,
       .query = filterCtx.query,
       .contextAnalyzer = filterCtx.contextAnalyzer,
       .fieldAnalyzerProvider = filterCtx.fieldAnalyzerProvider,
-      .namePrefix = filterCtx.namePrefix,
       .boost = irs::kNoBoost};  // reset boost
 
 #ifdef USE_ENTERPRISE
@@ -1942,7 +1938,6 @@ Result fromGroup(irs::boolean_filter* filter, FilterContext const& filterCtx,
       .query = filterCtx.query,
       .contextAnalyzer = filterCtx.contextAnalyzer,
       .fieldAnalyzerProvider = filterCtx.fieldAnalyzerProvider,
-      .namePrefix = filterCtx.namePrefix,
       .boost = irs::kNoBoost};  // reset boost
 
   for (size_t i = 0; i < n; ++i) {
@@ -2024,7 +2019,6 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
       .contextAnalyzer = analyzer,
       .fieldAnalyzerProvider =
           ctx.isOldMangling ? nullptr : filterCtx.fieldAnalyzerProvider,
-      .namePrefix = filterCtx.namePrefix,
       .boost = filterCtx.boost};
 
   rv = makeFilter(filter, subFilterContext, *expressionArg);
@@ -2076,7 +2070,6 @@ Result fromFuncBoost(char const* funcName, irs::boolean_filter* filter,
       .query = filterCtx.query,
       .contextAnalyzer = filterCtx.contextAnalyzer,
       .fieldAnalyzerProvider = filterCtx.fieldAnalyzerProvider,
-      .namePrefix = filterCtx.namePrefix,
       .boost = filterCtx.boost * static_cast<float_t>(boostValue)};
 
   rv = makeFilter(filter, subFilterContext, *expressionArg);
@@ -2124,7 +2117,7 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
   bool prefixMatch = true;
   auto const isOldMangling = ctx.isOldMangling;
 
-  std::string fieldName{filterCtx.namePrefix};
+  std::string fieldName{ctx.namePrefix};
   if (!nameFromAttributeAccess(fieldName, *fieldArg, ctx, filter != nullptr)) {
     return error::failedToGenerateName(funcName, 1);
   }
@@ -2299,8 +2292,7 @@ Result fromFuncMinMatch(char const* funcName, irs::boolean_filter* filter,
   FilterContext const subFilterCtx{
       .query = filterCtx.query,
       .contextAnalyzer = filterCtx.contextAnalyzer,
-      .fieldAnalyzerProvider = filterCtx.fieldAnalyzerProvider,
-      .namePrefix = filterCtx.namePrefix};
+      .fieldAnalyzerProvider = filterCtx.fieldAnalyzerProvider};
 
   for (size_t i = 0; i < lastArg; ++i) {
     auto subFilterExpression = args.getMemberUnchecked(i);
@@ -3282,7 +3274,7 @@ Result fromFuncPhrase(char const* funcName, irs::boolean_filter* filter,
   irs::by_phrase* phrase = nullptr;
   AnalyzerPool::CacheType::ptr analyzer;
 
-  std::string name{filterCtx.namePrefix};
+  std::string name{ctx.namePrefix};
   if (!nameFromAttributeAccess(name, *fieldArg, ctx, filter != nullptr)) {
     return error::failedToGenerateName(funcName, 1);
   }
@@ -3444,7 +3436,7 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
     }
   }
 
-  std::string name{filterCtx.namePrefix};
+  std::string name{ctx.namePrefix};
   if (!nameFromAttributeAccess(name, *field, ctx, filter != nullptr)) {
     return error::failedToGenerateName(funcName, 1);
   }
@@ -3610,7 +3602,7 @@ Result fromFuncStartsWith(char const* funcName, irs::boolean_filter* filter,
     scoringLimit = static_cast<size_t>(scoringLimitValue);
   }
 
-  std::string name{filterCtx.namePrefix};
+  std::string name{ctx.namePrefix};
   if (!nameFromAttributeAccess(name, *field, ctx, filter != nullptr)) {
     return error::failedToGenerateName(funcName, 1);
   }
@@ -3722,7 +3714,7 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
 
   const auto scoringLimit = FilterConstants::DefaultScoringTermsLimit;
 
-  std::string name{filterCtx.namePrefix};
+  std::string name{ctx.namePrefix};
   if (!nameFromAttributeAccess(name, *field, ctx, filter != nullptr)) {
     return error::failedToGenerateName(funcName, 1);
   }
@@ -3764,7 +3756,7 @@ Result fromFuncLevenshteinMatch(char const* funcName,
 
   auto const& ctx = filterCtx.query;
 
-  std::string name{filterCtx.namePrefix};
+  std::string name{ctx.namePrefix};
   if (!nameFromAttributeAccess(name, *field, ctx, filter != nullptr)) {
     return error::failedToGenerateName(funcName, 1);
   }
@@ -3875,7 +3867,7 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
     }
   }
 
-  std::string name{filterCtx.namePrefix};
+  std::string name{ctx.namePrefix};
   if (!nameFromAttributeAccess(name, *fieldNode, ctx, filter != nullptr)) {
     return error::failedToGenerateName(funcName, fieldNodeIdx);
   }
@@ -4048,8 +4040,7 @@ Result fromExpression(irs::boolean_filter* filter,
     if (ctx.isSearchQuery) {
       if (filter) {
         auto& exprFilter = append<ByExpression>(*filter, filterCtx);
-        exprFilter.init(filterCtx.namePrefix, *ctx.ast,
-                        const_cast<aql::AstNode&>(node));
+        exprFilter.init(ctx, const_cast<aql::AstNode&>(node));
         exprFilter.boost(filterCtx.boost);
         return {};
       }

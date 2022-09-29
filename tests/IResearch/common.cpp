@@ -834,14 +834,9 @@ void assertExpressionFilter(
         arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
         arangodb::transaction::Options());
 
-    irs::Or expected;
-    expected.add<arangodb::iresearch::ByExpression>().init(
-        {}, *ast, *expressionExtractor(filterNode));
-
     ExpressionContextMock exprCtx;
     exprCtx.setTrx(&trx);
 
-    irs::Or actual;
     arangodb::iresearch::QueryContext const ctx{
         .trx = &trx,
         .ast = ast,
@@ -849,6 +844,12 @@ void assertExpressionFilter(
         .index = &irs::sub_reader::empty(),
         .ref = ref,
         .isSearchQuery = true};
+
+    irs::Or expected;
+    expected.add<arangodb::iresearch::ByExpression>().init(
+        ctx, *expressionExtractor(filterNode));
+
+    irs::Or actual;
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
     arangodb::iresearch::FilterContext const filterCtx{
@@ -1054,14 +1055,13 @@ void assertFilter(
         .trx = &trx,
         .ref = ref,
         .filterOptimization = filterOptimization,
+        .namePrefix = arangodb::iresearch::nestedRoot(hasNested),
         .isSearchQuery = searchQuery,
         .isOldMangling = oldMangling};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
     arangodb::iresearch::FilterContext const filterCtx{
-        .query = ctx,
-        .contextAnalyzer = analyzer,
-        .namePrefix = arangodb::iresearch::nestedRoot(hasNested)};
+        .query = ctx, .contextAnalyzer = analyzer};
     EXPECT_EQ(parseOk, arangodb::iresearch::FilterFactory::filter(
                            nullptr, filterCtx, *filterNode)
                            .ok());
@@ -1085,14 +1085,13 @@ void assertFilter(
         .index = &irs::sub_reader::empty(),
         .ref = ref,
         .filterOptimization = filterOptimization,
+        .namePrefix = arangodb::iresearch::nestedRoot(hasNested),
         .isSearchQuery = searchQuery,
         .isOldMangling = oldMangling};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
     arangodb::iresearch::FilterContext const filterCtx{
-        .query = ctx,
-        .contextAnalyzer = analyzer,
-        .namePrefix = arangodb::iresearch::nestedRoot(hasNested)};
+        .query = ctx, .contextAnalyzer = analyzer};
     EXPECT_EQ(execOk, arangodb::iresearch::FilterFactory::filter(
                           &actual, filterCtx, *filterNode)
                           .ok());

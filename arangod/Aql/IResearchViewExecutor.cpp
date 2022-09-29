@@ -734,6 +734,7 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
         .index = _reader.get(),
         .ref = &infos().outVariable(),
         .filterOptimization = infos().filterOptimization(),
+        .namePrefix = nestedRoot(_reader->hasNestedFields()),
         .isSearchQuery = true,
         .isOldMangling = infos().isOldMangling()};
 
@@ -750,8 +751,7 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
     FilterContext const filterCtx{
         .query = queryCtx,
         .contextAnalyzer = *contextAnalyzer,
-        .fieldAnalyzerProvider = fieldAnalyzerProvider,
-        .namePrefix = nestedRoot(_reader->hasNestedFields())};
+        .fieldAnalyzerProvider = fieldAnalyzerProvider};
 
     irs::Or root;
     auto const rv =

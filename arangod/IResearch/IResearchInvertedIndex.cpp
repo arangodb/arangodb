@@ -105,21 +105,21 @@ bool supportsFilterNode(
   // attributes access/values. Otherwise if we have say d[a.smth] where 'a' is a
   // variable from the upstream loop we may get here a field we don`t have in
   // the index.
-  QueryContext const queryCtx{.trx = &trx,
-                              .ref = reference,
-                              .fields = metaFields,
-                              .isSearchQuery = false,
-                              .isOldMangling = false};
+  QueryContext const queryCtx{
+      .trx = &trx,
+      .ref = reference,
+      .fields = metaFields,
+      // we don't care here as we are checking condition in general
+      .namePrefix = nestedRoot(false),
+      .isSearchQuery = false,
+      .isOldMangling = false};
 
   // The analyzer is referenced in the FilterContext and used during the
   // following ::makeFilter() call, so may not be a temporary.
   auto emptyAnalyzer = makeEmptyAnalyzer();
-  FilterContext const filterCtx{
-      .query = queryCtx,
-      .contextAnalyzer = emptyAnalyzer,
-      .fieldAnalyzerProvider = provider,
-      // we don't care here as we are checking condition in general
-      .namePrefix = nestedRoot(false)};
+  FilterContext const filterCtx{.query = queryCtx,
+                                .contextAnalyzer = emptyAnalyzer,
+                                .fieldAnalyzerProvider = provider};
 
   auto rv = FilterFactory::filter(nullptr, filterCtx, *node);
 
@@ -320,21 +320,21 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
     AnalyzerProvider analyzerProvider = makeAnalyzerProvider(*_indexMeta);
 
-    QueryContext const queryCtx{.trx = _trx,
-                                .index = _reader,
-                                .ref = _variable,
-                                .fields = _indexMeta->_fields,
-                                .isSearchQuery = false,
-                                .isOldMangling = false};
+    QueryContext const queryCtx{
+        .trx = _trx,
+        .index = _reader,
+        .ref = _variable,
+        .fields = _indexMeta->_fields,
+        .namePrefix = nestedRoot(_indexMeta->hasNested()),
+        .isSearchQuery = false,
+        .isOldMangling = false};
 
     // The analyzer is referenced in the FilterContext and used during the
     // following FilterFactory::::filter() call, so may not be a temporary.
     auto emptyAnalyzer = makeEmptyAnalyzer();
-    FilterContext const filterCtx{
-        .query = queryCtx,
-        .contextAnalyzer = emptyAnalyzer,
-        .fieldAnalyzerProvider = &analyzerProvider,
-        .namePrefix = nestedRoot(_indexMeta->hasNested())};
+    FilterContext const filterCtx{.query = queryCtx,
+                                  .contextAnalyzer = emptyAnalyzer,
+                                  .fieldAnalyzerProvider = &analyzerProvider};
 
     irs::Or root;
     if (condition) {

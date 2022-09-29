@@ -39,6 +39,8 @@ class ExecutionPlan;
 
 namespace iresearch {
 
+struct QueryContext;
+
 struct ExpressionCompilationContext {
   bool operator==(ExpressionCompilationContext const& rhs) const noexcept {
     return ast == rhs.ast && node == rhs.node;
@@ -83,19 +85,10 @@ class ByExpression final : public irs::filter {
 
   ByExpression() noexcept;
 
-  void init(std::string_view allColumn, aql::Ast& ast,
-            aql::AstNode& node) noexcept {
-    _ctx.ast = &ast;
-    _ctx.node.reset(&node, [](aql::AstNode*) {});
-    _allColumn = allColumn;
-  }
+  void init(QueryContext const& ctx, aql::AstNode& node) noexcept;
 
-  void init(std::string_view allColumn, aql::Ast& ast,
-            std::shared_ptr<aql::AstNode>&& node) noexcept {
-    _ctx.ast = &ast;
-    _ctx.node = std::move(node);
-    _allColumn = allColumn;
-  }
+  void init(QueryContext const& ctx,
+            std::shared_ptr<aql::AstNode>&& node) noexcept;
 
   using irs::filter::prepare;
 

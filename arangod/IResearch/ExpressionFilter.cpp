@@ -328,6 +328,19 @@ size_t ExpressionCompilationContext::hash() const noexcept {
 ByExpression::ByExpression() noexcept
     : irs::filter{irs::type<ByExpression>::get()} {}
 
+void ByExpression::init(QueryContext const& ctx, aql::AstNode& node) noexcept {
+  _ctx.ast = ctx.ast;
+  _ctx.node.reset(&node, [](aql::AstNode*) {});
+  _allColumn = ctx.namePrefix;
+}
+
+void ByExpression::init(QueryContext const& ctx,
+                        std::shared_ptr<aql::AstNode>&& node) noexcept {
+  _ctx.ast = ctx.ast;
+  _ctx.node = std::move(node);
+  _allColumn = ctx.namePrefix;
+}
+
 bool ByExpression::equals(irs::filter const& rhs) const noexcept {
   auto const& typed = static_cast<ByExpression const&>(rhs);
   return irs::filter::equals(rhs) && _ctx == typed._ctx;

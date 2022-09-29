@@ -1438,7 +1438,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
       irs::Or expected;
       auto& root = expected.add<irs::Not>().filter<irs::And>();
       root.add<arangodb::iresearch::ByExpression>().init(
-          {}, *ast,
+          {.ast = ast},
           *filterNode->getMember(0)->getMember(
               0)  // d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')]
                   // == '1'
@@ -1537,7 +1537,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
       irs::Or expected;
       auto& root = expected.add<irs::Not>().filter<irs::And>();
       root.add<arangodb::iresearch::ByExpression>().init(
-          {}, *ast,
+          {.ast = ast},
           *filterNode->getMember(0)->getMember(
               0)  // '1' <
                   // d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_NONDETERM_('a')]
@@ -1633,7 +1633,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
       irs::Or expected;
       auto& root = expected.add<irs::Not>().filter<irs::And>();
       root.add<arangodb::iresearch::ByExpression>().init(
-          {}, *ast,
+          {.ast = ast},
           *filterNode->getMember(0)->getMember(0)  // d.a < _NONDETERM_('1')
       );
 
@@ -1729,7 +1729,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
       auto& root = expected.add<irs::Not>();
       root.boost(2.5);
       root.filter<irs::And>().add<arangodb::iresearch::ByExpression>().init(
-          {}, *ast,
+          {.ast = ast},
           *filterNode->getMember(0)->getMember(0)->getMember(0)->getMember(
               0)  // d.a < _NONDETERM_('1')
       );
@@ -1826,7 +1826,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
       irs::Or expected;
       auto& root = expected.add<irs::Not>().filter<irs::And>();
       root.add<arangodb::iresearch::ByExpression>().init(
-          {}, *ast,
+          {.ast = ast},
           *filterNode->getMember(0)->getMember(0)  // k.a < _NONDETERM_('1')
       );
 
@@ -1923,7 +1923,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
       auto& expr = root.add<arangodb::iresearch::ByExpression>();
       expr.boost(1.5);
       expr.init(
-          {}, *ast,
+          {.ast = ast},
           *filterNode->getMember(0)->getMember(0)->getMember(0)->getMember(
               0)  // k.a < _NONDETERM_('1')
       );
@@ -2019,7 +2019,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
       irs::Or expected;
       auto& root = expected.add<irs::Not>().filter<irs::And>();
       root.add<arangodb::iresearch::ByExpression>().init(
-          {}, *ast,
+          {.ast = ast},
           *filterNode->getMember(0)->getMember(0)  // d.a < 1+d.b
       );
 
@@ -3057,7 +3057,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
       irs::Or expected;
       auto& root = expected.add<irs::Or>();
       root.add<arangodb::iresearch::ByExpression>().init(
-          {}, *ast,
+          {.ast = ast},
           *filterNode->getMember(0)->getMember(0)  // d.a.b.c > _NONDETERM_(15)
       );
       {
@@ -3162,7 +3162,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
       auto& root = expected.add<irs::Or>();
       root.boost(2.5);
       root.add<arangodb::iresearch::ByExpression>().init(
-          {}, *ast,
+          {.ast = ast},
           *filterNode->getMember(0)->getMember(0)->getMember(0)->getMember(
               0)  // d.a.b.c > _NONDETERM_(15)
       );
@@ -3545,7 +3545,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       }
 
       root.add<arangodb::iresearch::ByExpression>().init(
-          {}, *ast,
+          {.ast = ast},
           *filterNode->getMember(0)->getMember(1)  // not d.c.b.a == '2'
       );
 
@@ -3973,11 +3973,11 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       root.add<arangodb::iresearch::ByExpression>().init(
-          {}, *ast,
+          {.ast = ast},
           *filterNode->getMember(0)->getMember(0)  // d.a[*].b > 15
       );
       root.add<arangodb::iresearch::ByExpression>().init(
-          {}, *ast,
+          {.ast = ast},
           *filterNode->getMember(0)->getMember(1)  // d.a[*].b < 40
       );
 
@@ -4076,13 +4076,13 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         auto& expr = root.add<arangodb::iresearch::ByExpression>();
         expr.boost(0.5);
         expr.init(
-            {}, *ast,
+            {.ast = ast},
             *filterNode->getMember(0)->getMember(0)->getMember(0)->getMember(
                 0)  // d.a[*].b > 15
         );
       }
       root.add<arangodb::iresearch::ByExpression>().init(
-          {}, *ast,
+          {.ast = ast},
           *filterNode->getMember(0)->getMember(1)  // d.a[*].b < 40
       );
 
@@ -4446,11 +4446,11 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       root.add<arangodb::iresearch::ByExpression>().init(
-          {}, *ast,
+          {.ast = ast},
           *filterNode->getMember(0)->getMember(0)  // d.a[*].b >= 15
       );
       root.add<arangodb::iresearch::ByExpression>().init(
-          {}, *ast,
+          {.ast = ast},
           *filterNode->getMember(0)->getMember(1)  // d.a[*].b <= 40
       );
 
@@ -4636,11 +4636,11 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       root.add<arangodb::iresearch::ByExpression>().init(
-          {}, *ast,
+          {.ast = ast},
           *filterNode->getMember(0)->getMember(0)  // d.a[*].b >= 15
       );
       root.add<arangodb::iresearch::ByExpression>().init(
-          {}, *ast,
+          {.ast = ast},
           *filterNode->getMember(0)->getMember(1)  // d.a[*].b <= 40
       );
 
@@ -6736,7 +6736,7 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       root.add<arangodb::iresearch::ByExpression>().init(
-          {}, *ast,
+          {.ast = ast},
           *filterNode->getMember(0)->getMember(0)  // d.a.b.c > _NONDETERM_(15)
       );
       {

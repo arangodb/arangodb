@@ -55,6 +55,7 @@ struct QueryContext {
   // Allow optimize away/modify some conditions during filter building
   FilterOptimization filterOptimization{FilterOptimization::MAX};
   std::span<const InvertedIndexField> fields{};
+  std::string_view namePrefix{};  // field name prefix
   // The flag is set when a query is dedicated to a search view
   bool isSearchQuery{true};
   bool isOldMangling{true};
@@ -75,7 +76,6 @@ struct FilterContext {
   // need shared_ptr since pool could be deleted from the feature
   FieldMeta::Analyzer const& contextAnalyzer;
   AnalyzerProvider* fieldAnalyzerProvider{};
-  std::string_view namePrefix{};  // field name prefix
   irs::score_t boost{irs::kNoBoost};
 };
 
