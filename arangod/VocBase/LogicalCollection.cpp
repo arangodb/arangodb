@@ -1137,17 +1137,14 @@ void LogicalCollection::deferDropCollection(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief processes a truncate operation (note: currently this only clears
-/// the read-cache
+/// @brief processes a truncate operation
 ////////////////////////////////////////////////////////////////////////////////
 
 Result LogicalCollection::truncate(transaction::Methods& trx,
-                                   OperationOptions& options) {
-  TRI_IF_FAILURE("LogicalCollection::truncate") {
-    return Result(TRI_ERROR_DEBUG);
-  }
-
-  return getPhysical()->truncate(trx, options);
+                                   OperationOptions& options,
+                                   bool& usedRangeDelete) {
+  TRI_IF_FAILURE("LogicalCollection::truncate") { return {TRI_ERROR_DEBUG}; }
+  return getPhysical()->truncate(trx, options, usedRangeDelete);
 }
 
 /// @brief compact-data operation

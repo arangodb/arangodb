@@ -614,8 +614,11 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
             build.add("index", velocypack::Value{index->name()});
           } else {
             build.add(velocypack::Value{velocypack::ValueType::Object});
-            absl::AlphaNum collectionId{collection->id().id()};
-            build.add("collection", velocypack::Value{collectionId.Piece()});
+            if (ServerState::instance()->isSingleServer()) {
+              build.add("collection", velocypack::Value{collection->guid()});
+            } else {
+              build.add("collection", velocypack::Value{collection->name()});
+            }
             absl::AlphaNum indexId{index->id().id()};
             build.add("index", velocypack::Value{indexId.Piece()});
           }
@@ -625,7 +628,7 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
     }
     build.close();
     return {};
-  } catch (basics::Exception& e) {
+  } catch (basics::Exception const& e) {
     return {
         e.code(),
         absl::StrCat("caught exception while generating json for search view '",

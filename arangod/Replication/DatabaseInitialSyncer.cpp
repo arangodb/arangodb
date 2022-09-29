@@ -2656,7 +2656,7 @@ Result DatabaseInitialSyncer::handleViewCreation(VPackSlice views,
     if (!sliceType.isString()) {
       return true;
     }
-    return sliceType.stringView() == type;
+    return sliceType.stringView() != type;
   };
   for (VPackSlice slice : VPackArrayIterator(views)) {
     if (check(slice)) {
