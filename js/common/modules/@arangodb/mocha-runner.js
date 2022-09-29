@@ -72,6 +72,10 @@ function logSuite (suite, indentLevel) {
   }
 
   if (suite.tests) {
+    if (suite.tests != null && typeof suite.tests[Symbol.iterator] !== 'function') {
+      console.error("suite.tests is not iterable: ", suite.tests, JSON.stringify(suite.tests));
+    }
+
     for (let test of suite.tests) {
       if (test.result === 'pass') {
         print(`${indent(indentLevel)}${
