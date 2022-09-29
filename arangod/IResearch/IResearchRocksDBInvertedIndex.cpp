@@ -303,7 +303,7 @@ void IResearchRocksDBInvertedIndex::toVelocyPack(
     std::underlying_type<Index::Serialize>::type flags) const {
   bool const forPersistence =
       Index::hasFlag(flags, Index::Serialize::Internals);
-  bool const forInventory = Index::hasFlag(flags, Index::Serialize::Internals);
+  bool const forInventory = Index::hasFlag(flags, Index::Serialize::Inventory);
   VPackObjectBuilder objectBuilder(&builder);
   IResearchInvertedIndex::toVelocyPack(
       IResearchDataStore::collection().vocbase().server(),
