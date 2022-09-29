@@ -160,8 +160,8 @@ class PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  virtual Result truncate(transaction::Methods& trx,
-                          OperationOptions& options) = 0;
+  virtual Result truncate(transaction::Methods& trx, OperationOptions& options,
+                          bool& usedRangeDelete) = 0;
 
   /// @brief compact-data operation
   virtual void compact() {}

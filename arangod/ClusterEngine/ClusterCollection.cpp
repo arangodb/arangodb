@@ -326,7 +326,8 @@ std::unique_ptr<IndexIterator> ClusterCollection::getAnyIterator(
 }
 
 Result ClusterCollection::truncate(transaction::Methods& /*trx*/,
-                                   OperationOptions& /*options*/) {
+                                   OperationOptions& /*options*/,
+                                   bool& usedRangeDelete) {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
