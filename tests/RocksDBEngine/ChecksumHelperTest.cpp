@@ -46,12 +46,12 @@ class FileMaker {
   FileMaker(std::string const& directory, std::vector<FileInfo> const& files) {
     for (auto const& fi : files) {
       std::string path = basics::FileUtils::buildFilename(directory, fi.name);
-      std::string p;
-      p.reserve(fi.size);
+      std::vector<char> p;
+      p.resize(fi.size);
       for (size_t i = 0; i < fi.size; ++i) {
         p[i] = i % 67 + '!';
       }
-      basics::FileUtils::spit(path, p, fi.size);
+      basics::FileUtils::spit(path, p.data(), fi.size);
     }
   }
 };
