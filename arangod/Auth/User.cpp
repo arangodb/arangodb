@@ -61,7 +61,7 @@ static ErrorCode HexHashFromData(std::string_view hashMethod,
 
   if (hashMethod == "sha1") {
     arangodb::rest::SslInterface::sslSHA1(str.data(), str.size(), &buffer[0]);
-    cryptedLength = 10;
+    cryptedLength = 20;
   } else if (hashMethod == "sha512") {
     arangodb::rest::SslInterface::sslSHA512(str.data(), str.size(), &buffer[0]);
     cryptedLength = 64;

@@ -4063,15 +4063,15 @@ static void JS_Sha1(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha1
-  char hash[10];
+  char hash[20];
   SslInterface::sslSHA1(key.c_str(), key.size(), &hash[0]);
 
   // as hex
-  char hex[20];
-  SslInterface::sslHEX(hash, 10, &hex[0]);
+  char hex[40];
+  SslInterface::sslHEX(hash, 20, &hex[0]);
 
   // and return
-  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 20);
+  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 40);
 
   TRI_V8_RETURN(hashStr);
   TRI_V8_TRY_CATCH_END
