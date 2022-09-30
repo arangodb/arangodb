@@ -1,6 +1,11 @@
 v3.9.4 (XXXX-XX-XX)
 -------------------
 
+* Fix encoding and decoding of revision ids in replication of SmartGraph
+  edge collection data using the Merkle tree incremental sync protocol.
+  Previously, the encoding of revision ids could be ambiguous under some
+  circumstances.
+
 * Fix an issue with replication of arangosearch view change entries in single
   server replication and active failover. Previously, when changing the
   properties of existing views, the changes were not properly picked up by
@@ -88,6 +93,7 @@ v3.9.4 (XXXX-XX-XX)
 * Fixed a rare occuring issue where paths inside a DisjointSmart traversal
   containing only satellite relevant nodes were not returned properly
   (ES-1265).
+
 
 v3.9.3 (2022-09-02)
 -------------------
