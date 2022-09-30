@@ -111,7 +111,7 @@ class RevisionId : public arangodb::basics::Identifier {
 
   /// @brief extract revision from slice; expects either an integer or string,
   /// or an object with a string or integer _rev attribute
-  static RevisionId fromSlice(velocypack::Slice const slice);
+  static RevisionId fromSlice(velocypack::Slice slice);
 
   /// @brief extract revision from persistent storage (proper endianness)
   static RevisionId fromPersistent(char const* data);
