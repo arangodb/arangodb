@@ -19,54 +19,57 @@ Storing::~Storing() {
   conductor._feature.metrics()->pregelConductorsStoringNumber->fetch_sub(1);
 }
 
-auto Storing::_store() -> StoredFuture {
-  auto results = std::vector<futures::Future<ResultT<Stored>>>{};
-  for (auto&& [_, worker] : conductor._workers) {
-    results.emplace_back(worker.store(Store{}));
-  }
-  return futures::collectAll(results);
-}
-
-auto Storing::_cleanup() -> CleanupFuture {
-  auto results = std::vector<futures::Future<ResultT<CleanupFinished>>>{};
-  for (auto&& [_, worker] : conductor._workers) {
-    results.emplace_back(worker.cleanup(Cleanup{}));
-  }
-  return futures::collectAll(results);
-}
-
 auto Storing::run() -> std::optional<std::unique_ptr<State>> {
   conductor._cleanup();
 
-  return _store()
-      .thenValue([&](auto results) -> std::unique_ptr<State> {
+  auto store = _store().get();
+  if (store.fail()) {
+    LOG_PREGEL_CONDUCTOR("bc495", ERR) << store.errorMessage();
+    return std::make_unique<FatalError>(conductor);
+  }
+
+  LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Cleanup workers";
+  auto cleanup = _cleanup().get();
+  if (cleanup.fail()) {
+    LOG_PREGEL_CONDUCTOR("4b34d", ERR) << cleanup.errorMessage();
+    return std::make_unique<FatalError>(conductor);
+  }
+
+  return std::make_unique<Done>(conductor);
+}
+
+auto Storing::_store() -> futures::Future<Result> {
+  return conductor._workers.store(Store{}).thenValue([&](auto results)
+                                                         -> Result {
+    for (auto const& result : results) {
+      if (result.get().fail()) {
+        return Result{
+            result.get().errorNumber(),
+            fmt::format(
+                "Got unsuccessful response from worker while storing graph: {}",
+                result.get().errorMessage())};
+      }
+    }
+    return Result{};
+  });
+}
+
+auto Storing::_cleanup() -> futures::Future<Result> {
+  return conductor._workers.cleanup(Cleanup{}).thenValue(
+      [&](auto results) -> Result {
         for (auto const& result : results) {
           if (result.get().fail()) {
-            LOG_PREGEL_CONDUCTOR("bc495", ERR) << fmt::format(
-                "Got unsuccessful response from worker while storing graph: {}",
-                result.get().errorMessage());
-            return std::make_unique<FatalError>(conductor);
+            return Result{
+                result.get().errorNumber(),
+                fmt::format(
+                    "Got unsuccessful response from worker while cleaning "
+                    "up: {}",
+                    result.get().errorMessage())};
           }
         }
-
-        LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Cleanup workers";
-        return _cleanup()
-            .thenValue([&](auto results) -> std::unique_ptr<State> {
-              for (auto const& result : results) {
-                if (result.get().fail()) {
-                  LOG_PREGEL_CONDUCTOR("bc495", ERR) << fmt::format(
-                      "Got unsuccessful response from worker while cleaning "
-                      "up: {}",
-                      result.get().errorMessage());
-                  return std::make_unique<FatalError>(conductor);
-                }
-              }
-              if (conductor._inErrorAbort) {
-                return std::make_unique<FatalError>(conductor);
-              }
-              return std::make_unique<Done>(conductor);
-            })
-            .get();
-      })
-      .get();
+        if (conductor._inErrorAbort) {
+          return Result{TRI_ERROR_INTERNAL, "Conductor in error"};
+        }
+        return Result{};
+      });
 }

@@ -47,9 +47,6 @@ struct Canceled : State {
   };
 
  private:
-  using CleanupFuture = futures::Future<std::vector<
-      futures::Try<arangodb::ResultT<arangodb::pregel::CleanupFinished>>>>;
-  auto _cleanup() -> CleanupFuture;
   std::chrono::nanoseconds _retryInterval = std::chrono::seconds(1);
   std::chrono::nanoseconds _timeout = std::chrono::minutes(5);
   auto _cleanupUntilTimeout(std::chrono::steady_clock::time_point start)

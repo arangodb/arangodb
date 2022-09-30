@@ -341,29 +341,26 @@ auto Conductor::_initializeWorkers(VPackSlice additional) -> GraphLoadedFuture {
                 shardList);  // store or
   }
 
-  if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
-    TRI_ASSERT(vertexMap.size() == 1);
-    auto [server, _] = *vertexMap.begin();
-    _dbServers.push_back(server);
-    _workers.emplace(
-        server, conductor::WorkerApi{server, _executionNumber,
-                                     std::make_unique<DirectConnection>(
-                                         _feature, _vocbaseGuard.database())});
-  } else {
-    for (auto const& [server, _] : vertexMap) {
-      _dbServers.push_back(server);
-      network::RequestOptions reqOpts;
-      reqOpts.timeout = network::Timeout(5.0 * 60.0);
-      reqOpts.database = _vocbaseGuard.database().name();
-      _workers.emplace(server,
-                       conductor::WorkerApi{
-                           server, _executionNumber,
-                           std::make_unique<NetworkConnection>(
-                               Utils::baseUrl(Utils::workerPrefix),
-                               std::move(reqOpts), _vocbaseGuard.database())});
-    }
+  auto servers = std::vector<ServerID>{};
+  for (auto const& [server, _] : vertexMap) {
+    servers.push_back(server);
   }
-  _status = ConductorStatus::forWorkers(_dbServers);
+  if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
+    TRI_ASSERT(servers.size() == 1);
+    _workers = conductor::WorkerApi{
+        servers, _executionNumber,
+        std::make_unique<DirectConnection>(_feature, _vocbaseGuard.database())};
+  } else {
+    network::RequestOptions reqOpts;
+    reqOpts.timeout = network::Timeout(5.0 * 60.0);
+    reqOpts.database = _vocbaseGuard.database().name();
+    _workers =
+        conductor::WorkerApi{servers, _executionNumber,
+                             std::make_unique<NetworkConnection>(
+                                 Utils::baseUrl(Utils::workerPrefix),
+                                 std::move(reqOpts), _vocbaseGuard.database())};
+  }
+  _status = ConductorStatus::forWorkers(servers);
   // do not reload all shard id's, this list must stay in the same order
   if (_allShards.size() == 0) {
     _allShards = shardList;
@@ -373,7 +370,6 @@ auto Conductor::_initializeWorkers(VPackSlice additional) -> GraphLoadedFuture {
   auto results = std::vector<futures::Future<ResultT<GraphLoaded>>>{};
 
   for (auto const& it : vertexMap) {
-    ServerID const& server = it.first;
     std::map<CollectionID, std::vector<ShardID>> const& vertexShardMap =
         it.second;
     std::map<CollectionID, std::vector<ShardID>> const& edgeShardMap =
@@ -438,7 +434,7 @@ auto Conductor::_initializeWorkers(VPackSlice additional) -> GraphLoadedFuture {
     b.close();
 
     auto graph = LoadGraph{.details = b};
-    results.emplace_back(_workers[server].loadGraph(graph));
+    results.emplace_back(_workers.loadGraph(graph));
   }
   return futures::collectAll(results);
 }

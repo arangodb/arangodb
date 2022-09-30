@@ -44,11 +44,6 @@ struct Done : State {
       -> std::optional<std::chrono::system_clock::time_point> override {
     return expiration;
   };
-
- private:
-  using ResultsFuture = futures::Future<std::vector<
-      futures::Try<arangodb::ResultT<arangodb::pregel::PregelResults>>>>;
-  auto _results(bool withId) -> ResultsFuture;
 };
 }  // namespace conductor
 }  // namespace arangodb::pregel
