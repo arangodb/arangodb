@@ -100,6 +100,8 @@ const executeJS = (code) => {
 helper.switchUser('root', '_system');
 helper.removeAllUsers();
 helper.generateAllUsers();
+    
+const testViewType = "arangosearch";
 
 describe('User Rights Management', () => {
   it('should check if all users are created', () => {
@@ -113,163 +115,161 @@ describe('User Rights Management', () => {
 
   it('should test rights for', () => {
     expect(userSet.size).to.be.greaterThan(0);
-    for (let testViewType of ["arangosearch", "search-alias"]) {
-      describe(`view type ${testViewType}`, () => {
-        for (let name of userSet) {
-          let canUse = false;
-          try {
-            helper.switchUser(name, dbName);
-            canUse = true;
-          } catch (e) {
-            canUse = false;
-          }
+    for (let name of userSet) {
+      let canUse = false;
+      try {
+        helper.switchUser(name, dbName);
+        canUse = true;
+      } catch (e) {
+        canUse = false;
+      }
 
-          if (canUse) {
-            describe(`user ${name}`, () => {
-              before(() => {
+      if (canUse) {
+        describe(`user ${name}`, () => {
+          before(() => {
+            helper.switchUser(name, dbName);
+            expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
+          });
+
+          after(() => {
+            dropKeySpace(keySpaceId);
+          });
+
+          describe('administrate on db level', () => {
+            const rootTestCollection = (colName, switchBack = true) => {
+              helper.switchUser('root', dbName);
+              let col = db._collection(colName);
+              if (switchBack) {
                 helper.switchUser(name, dbName);
-                expect(createKeySpace(keySpaceId)).to.equal(true, 'keySpace creation failed!');
+              }
+              return col !== null;
+            };
+
+            const rootCreateCollection = (colName = testColName) => {
+              if (!rootTestCollection(colName, false)) {
+                let c = db._create(colName);
+                if (colName === testColName) {
+                  c.ensureIndex({ type: "inverted", name: indexName, fields: [ { name: "value" } ] });
+                }
+                if (colLevel['none'].has(name)) {
+                  if (helper.isLdapEnabledExternal()) {
+                    users.grantCollection(':role:' + name, dbName, colName, 'none');
+                  } else {
+                    users.grantCollection(name, dbName, colName, 'none');
+                  }
+                } else if (colLevel['ro'].has(name)) {
+                  if (helper.isLdapEnabledExternal()) {
+                    users.grantCollection(':role:' + name, dbName, colName, 'ro');
+                  } else {
+                    users.grantCollection(name, dbName, colName, 'ro');
+                  }
+                } else if (colLevel['rw'].has(name)) {
+                  if (helper.isLdapEnabledExternal()) {
+                    users.grantCollection(':role:' + name, dbName, colName, 'rw');
+                  } else {
+                    users.grantCollection(name, dbName, colName, 'rw');
+                  }
+                }
+              }
+              helper.switchUser(name, dbName);
+            };
+
+            const rootDropCollection = (colName = testColName) => {
+              if (rootTestCollection(colName, false)) {
+                try {
+                  db._collection(colName).drop();
+                } catch (ignored) { }
+              }
+              helper.switchUser(name, dbName);
+            };
+
+            const rootTestView = (viewName = testViewName) => {
+              helper.switchUser('root', dbName);
+              const view = db._view(viewName);
+              helper.switchUser(name, dbName);
+              return view !== null;
+            };
+
+            const rootTestViewHasLinks = (viewName = testViewName, links) => {
+              helper.switchUser('root', dbName);
+              let view = db._view(viewName);
+              if (view !== null) {
+                links.every(function(link) {
+                  const links = view.properties().links;
+                  if (links !== null && links.hasOwnProperty([link])){
+                    return true;
+                  } else {
+                    view = null;
+                    return false;
+                  }
+                });
+              }
+              helper.switchUser(name, dbName);
+              return view !== null;
+            };
+
+            const rootTestViewLinksEmpty = (viewName = testViewName) => {
+              helper.switchUser('root', dbName);
+              let view = db._view(viewName);
+              return Object.keys(view.properties().links).length === 0;
+            };
+
+            const rootDropView = () => {
+              helper.switchUser('root', dbName);
+              try {
+                db._dropView(testViewName);
+              } catch (ignored) { }
+              helper.switchUser(name, dbName);
+            };
+
+            const rootGetViewProps = (viewName, switchBack = true) => {
+              helper.switchUser('root', dbName);
+              let properties = db._view(viewName).properties();
+              if (switchBack) {
+                helper.switchUser(name, dbName);
+              }
+              return properties;
+            };
+
+            const rootGrantCollection = (colName, user, explicitRight = '') => {
+              if (rootTestCollection(colName, false)) {
+                if (explicitRight !== '' && rightLevels.includes(explicitRight)) {
+                  if (helper.isLdapEnabledExternal()) {
+                    users.grantCollection(':role:' + user, dbName, colName, explicitRight);
+                  } else {
+                    users.grantCollection(user, dbName, colName, explicitRight);
+                  }
+                }
+              }
+              helper.switchUser(user, dbName);
+            };
+
+            const checkError = (e) => {
+              expect(e.code).to.equal(403, "Expected to get forbidden REST error code, but got another one");
+              expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
+            };
+
+            describe('create a', () => {
+              before(() => {
+                db._useDatabase(dbName);
               });
 
               after(() => {
-                dropKeySpace(keySpaceId);
+                rootDropView(testViewName);
+                rootDropCollection(testColName);
               });
 
-              describe('administrate on db level', () => {
-                const rootTestCollection = (colName, switchBack = true) => {
-                  helper.switchUser('root', dbName);
-                  let col = db._collection(colName);
-                  if (switchBack) {
-                    helper.switchUser(name, dbName);
-                  }
-                  return col !== null;
-                };
+              const key = `${name}`;
 
-                const rootCreateCollection = (colName = testColName) => {
-                  if (!rootTestCollection(colName, false)) {
-                    let c = db._create(colName);
-                    if (colName === testColName) {
-                      c.ensureIndex({ type: "inverted", name: indexName, fields: [ { name: "value" } ] });
-                    }
-                    if (colLevel['none'].has(name)) {
-                      if (helper.isLdapEnabledExternal()) {
-                        users.grantCollection(':role:' + name, dbName, colName, 'none');
-                      } else {
-                        users.grantCollection(name, dbName, colName, 'none');
-                      }
-                    } else if (colLevel['ro'].has(name)) {
-                      if (helper.isLdapEnabledExternal()) {
-                        users.grantCollection(':role:' + name, dbName, colName, 'ro');
-                      } else {
-                        users.grantCollection(name, dbName, colName, 'ro');
-                      }
-                    } else if (colLevel['rw'].has(name)) {
-                      if (helper.isLdapEnabledExternal()) {
-                        users.grantCollection(':role:' + name, dbName, colName, 'rw');
-                      } else {
-                        users.grantCollection(name, dbName, colName, 'rw');
-                      }
-                    }
-                  }
-                  helper.switchUser(name, dbName);
-                };
+              it('view with empty (default) parameters', () => {
+                expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
 
-                const rootDropCollection = (colName = testColName) => {
-                  if (rootTestCollection(colName, false)) {
-                    try {
-                      db._collection(colName).drop();
-                    } catch (ignored) { }
-                  }
-                  helper.switchUser(name, dbName);
-                };
-
-                const rootTestView = (viewName = testViewName) => {
-                  helper.switchUser('root', dbName);
-                  const view = db._view(viewName);
-                  helper.switchUser(name, dbName);
-                  return view !== null;
-                };
-
-                const rootTestViewHasLinks = (viewName = testViewName, links) => {
-                  helper.switchUser('root', dbName);
-                  let view = db._view(viewName);
-                  if (view !== null) {
-                    links.every(function(link) {
-                      const links = view.properties().links;
-                      if (links !== null && links.hasOwnProperty([link])){
-                        return true;
-                      } else {
-                        view = null;
-                        return false;
-                      }
-                    });
-                  }
-                  helper.switchUser(name, dbName);
-                  return view !== null;
-                };
-
-                const rootTestViewLinksEmpty = (viewName = testViewName) => {
-                  helper.switchUser('root', dbName);
-                  let view = db._view(viewName);
-                  return Object.keys(view.properties().links).length === 0;
-                };
-
-                const rootDropView = () => {
-                  helper.switchUser('root', dbName);
-                  try {
-                    db._dropView(testViewName);
-                  } catch (ignored) { }
-                  helper.switchUser(name, dbName);
-                };
-
-                const rootGetViewProps = (viewName, switchBack = true) => {
-                  helper.switchUser('root', dbName);
-                  let properties = db._view(viewName).properties();
-                  if (switchBack) {
-                    helper.switchUser(name, dbName);
-                  }
-                  return properties;
-                };
-
-                const rootGrantCollection = (colName, user, explicitRight = '') => {
-                  if (rootTestCollection(colName, false)) {
-                    if (explicitRight !== '' && rightLevels.includes(explicitRight)) {
-                      if (helper.isLdapEnabledExternal()) {
-                        users.grantCollection(':role:' + user, dbName, colName, explicitRight);
-                      } else {
-                        users.grantCollection(user, dbName, colName, explicitRight);
-                      }
-                    }
-                  }
-                  helper.switchUser(user, dbName);
-                };
-
-                const checkError = (e) => {
-                  expect(e.code).to.equal(403, "Expected to get forbidden REST error code, but got another one");
-                  expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
-                };
-
-                describe('create a', () => {
-                  before(() => {
-                    db._useDatabase(dbName);
-                  });
-
-                  after(() => {
-                    rootDropView(testViewName);
-                    rootDropCollection(testColName);
-                  });
-
-                  const key = `${testViewType}_${name}`;
-
-                  it('view with empty (default) parameters', () => {
-                    expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
-
-                    setKey(keySpaceId, name);
-                    const taskId = 'task_create_view_default_params_' + key;
-                    const task = {
-                      id: taskId,
-                      name: taskId,
-                      command: `(function (params) {
+                setKey(keySpaceId, name);
+                const taskId = 'task_create_view_default_params_' + key;
+                const task = {
+                  id: taskId,
+                  name: taskId,
+                  command: `(function (params) {
                     try {
                       const db = require('@arangodb').db;
                       db._createView('${testViewName}', '${testViewType}', {});
@@ -280,40 +280,39 @@ describe('User Rights Management', () => {
                       global.KEY_SET('${keySpaceId}', '${key}', true);
                     }
                   })(params);`
-                    };
+                };
 
-                    if (dbLevel['rw'].has(name)) {
-                      tasks.register(task);
-                      wait(keySpaceId, key);
-                      expect(getKey(keySpaceId, `${key}_status`)).to.equal(true, `${name} could not create the view with sufficient rights`);
-                      expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
-                    } else {
-                      try {
-                        tasks.register(task);
-                        wait(keySpaceId, key);
-                      } catch (e) {
-                        checkError(e);
-                        return;
-                      } finally {
-                        expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
-                      }
-                      expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
-                    }
-                  });
+                if (dbLevel['rw'].has(name)) {
+                  tasks.register(task);
+                  wait(keySpaceId, key);
+                  expect(getKey(keySpaceId, `${key}_status`)).to.equal(true, `${name} could not create the view with sufficient rights`);
+                  expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
+                } else {
+                  try {
+                    tasks.register(task);
+                    wait(keySpaceId, key);
+                  } catch (e) {
+                    checkError(e);
+                    return;
+                  } finally {
+                    expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
+                  }
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                }
+              });
 
-                  if (testViewType === 'arangosearch') {
-                    it('view with non-empty parameters (except links)', () => {
-                      rootDropView(testViewName);
-                      rootDropCollection(testColName);
+              it('view with non-empty parameters (except links)', () => {
+                rootDropView(testViewName);
+                rootDropCollection(testColName);
 
-                      expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
+                expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
 
-                      setKey(keySpaceId, key);
-                      const taskId = 'task_create_view_non_default_params_except_links_' + key;
-                      const task = {
-                        id: taskId,
-                        name: taskId,
-                        command: `(function (params) {
+                setKey(keySpaceId, key);
+                const taskId = 'task_create_view_non_default_params_except_links_' + key;
+                const task = {
+                  id: taskId,
+                  name: taskId,
+                  command: `(function (params) {
                     try {
                       const db = require('@arangodb').db;
                       db._createView('${testViewName}', '${testViewType}', { cleanupIntervalStep: 20 });
@@ -324,42 +323,42 @@ describe('User Rights Management', () => {
                       global.KEY_SET('${keySpaceId}', '${key}', true);
                     }
                   })(params);`
-                      };
+                };
 
-                      if (dbLevel['rw'].has(name)) {
-                        tasks.register(task);
-                        wait(keySpaceId, key);
-                        expect(getKey(keySpaceId, `${key}_status`)).to.equal(true, `${name} could not create the view with sufficient rights`);
-                        expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
-                        expect(rootGetViewProps(testViewName, true)["cleanupIntervalStep"]).to.equal(20, 'View creation reported success, but view property was not set as expected during creation');
-                      } else {
-                        try {
-                          tasks.register(task);
-                          wait(keySpaceId, key);
-                        } catch (e) {
-                          checkError(e);
-                          return;
-                        } finally {
-                          expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
-                        }
-                        expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
-                      }
-                    });
+                if (dbLevel['rw'].has(name)) {
+                  tasks.register(task);
+                  wait(keySpaceId, key);
+                  expect(getKey(keySpaceId, `${key}_status`)).to.equal(true, `${name} could not create the view with sufficient rights`);
+                  expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
+                  expect(rootGetViewProps(testViewName, true)["cleanupIntervalStep"]).to.equal(20, 'View creation reported success, but view property was not set as expected during creation');
+                } else {
+                  try {
+                    tasks.register(task);
+                    wait(keySpaceId, key);
+                  } catch (e) {
+                    checkError(e);
+                    return;
+                  } finally {
+                    expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
+                  }
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                }
+              });
 
-                    it('view with links to existing collection', () => {
-                      rootDropView(testViewName);
-                      rootDropCollection(testColName);
+              it('view with links to existing collection', () => {
+                rootDropView(testViewName);
+                rootDropCollection(testColName);
 
-                      rootCreateCollection(testColName);
-                      expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
-                      expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the collection still not exists');
+                rootCreateCollection(testColName);
+                expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
+                expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the collection still not exists');
 
-                      setKey(keySpaceId, key);
-                      const taskId = 'task_create_view_with_links_to_existing_collection_' + key;
-                      const task = {
-                        id: taskId,
-                        name: taskId,
-                        command: `(function (params) {
+                setKey(keySpaceId, key);
+                const taskId = 'task_create_view_with_links_to_existing_collection_' + key;
+                const task = {
+                  id: taskId,
+                  name: taskId,
+                  command: `(function (params) {
                     try {
                       const db = require('@arangodb').db;
                       var view = db._createView('${testViewName}', '${testViewType}', { links: { '${testColName}': { includeAllFields: true } } });
@@ -370,221 +369,217 @@ describe('User Rights Management', () => {
                       global.KEY_SET('${keySpaceId}', '${key}', true);
                     }
                   })(params);`
-                      };
+                };
 
-                      if (dbLevel['rw'].has(name)) {
-                        if (colLevel['rw'].has(name) || colLevel['ro'].has(name)) {
-                          tasks.register(task);
-                          wait(keySpaceId, key);
-                          expect(getKey(keySpaceId, `${key}_status`)).to.equal(true, `${name} could not create the view with sufficient rights`);
-                          expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
-                          expect(rootTestViewHasLinks(testViewName, [`${testColName}`])).to.equal(true, 'View links expected to be visible, but were not found afterwards');
-                        } else {
-                          tasks.register(task);
-                          wait(keySpaceId, key);
-                          expect(getKey(keySpaceId, `${key}_status`)).to.equal(false, `${name} could create the view with insufficient rights`);
-                          expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
-                        }
-                      } else {
-                        try {
-                          tasks.register(task);
-                          wait(keySpaceId, key);
-                        } catch (e) {
-                          checkError(e);
-                          return;
-                        } finally {
-                          expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
-                        }
-                        expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
-                      }
-                    });
-
-                    it('view with links to multiple collections with same access level', () => {
-                      rootDropView(testViewName);
-                      rootDropCollection(testColName);
-
-                      rootCreateCollection(testColName);
-                      rootCreateCollection(testColNameAnother);
-
-                      expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
-                      expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the collection still not exists');
-                      expect(rootTestCollection(testColNameAnother)).to.equal(true, 'Precondition failed, the collection still not exists');
-
-                      setKey(keySpaceId, key);
-                      const taskId = 'task_create_view_with_links_to_existing_collections_with_same_access_level_' + key;
-                      const task = {
-                        id: taskId,
-                        name: taskId,
-                        command: `(function (params) {
-                    try {
-                      const db = require('@arangodb').db;
-                      var view = db._createView('${testViewName}', '${testViewType}', { links: { 
-                        '${testColName}': { includeAllFields: true }, '${testColNameAnother}': { includeAllFields: true } 
-                        }
-                      });
-                      global.KEY_SET('${keySpaceId}', '${key}_status', true);
-                    } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${key}_status', false);
-                    } finally {
-                      global.KEY_SET('${keySpaceId}', '${key}', true);
-                    }
-                  })(params);`
-                      };
-
-                      if (dbLevel['rw'].has(name)) {
-                        if (colLevel['rw'].has(name) || colLevel['ro'].has(name)) {
-                          tasks.register(task);
-                          wait(keySpaceId, key);
-                          expect(getKey(keySpaceId, `${key}_status`)).to.equal(true, `${name} could not create the view with sufficient rights`);
-                          expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
-                          expect(rootTestViewHasLinks(testViewName, [`${testColName}`, `${testColNameAnother}`])).to.equal(true, 'View links expected to be visible, but were not found afterwards');
-                        } else {
-                          tasks.register(task);
-                          wait(keySpaceId, key);
-                          expect(getKey(keySpaceId, `${key}_status`)).to.equal(false, `${name} could create the view with insufficient rights`);
-                          expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
-                        }
-                      } else {
-                        try {
-                          tasks.register(task);
-                          wait(keySpaceId, key);
-                        } catch (e) {
-                          checkError(e);
-                          return;
-                        } finally {
-                          expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
-                        }
-                        expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
-                      }
-                    });
-
-
-                    let itName = 'view with links to multiple collections with RO access level to one of them';
-                    !(colLevel['rw'].has(name) || colLevel['none'].has(name)) ? it.skip(itName) :
-                      it(itName, () => {
-                        rootDropView(testViewName);
-                        rootDropCollection(testColName);
-                        rootDropCollection(testColNameAnother);
-
-                        rootCreateCollection(testColName);
-                        rootCreateCollection(testColNameAnother);
-                        rootGrantCollection(testColNameAnother, name, "ro");
-
-                        expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
-                        expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the collection still not exists');
-                        expect(rootTestCollection(testColNameAnother)).to.equal(true, 'Precondition failed, the collection still not exists');
-
-                        setKey(keySpaceId, key);
-                        const taskId = 'task_create_view_with_links_to_existing_collections_with_RO_access_level_to_one_of_them_' + key;
-                        const task = {
-                          id: taskId,
-                          name: taskId,
-                          command: `(function (params) {
-                    try {
-                      const db = require('@arangodb').db;
-                      var view = db._createView('${testViewName}', '${testViewType}', { links: { 
-                        '${testColName}': { includeAllFields: true }, '${testColNameAnother}': { includeAllFields: true } 
-                        }
-                      });
-                      global.KEY_SET('${keySpaceId}', '${key}_status', true);
-                    } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${key}_status', false);
-                    } finally {
-                      global.KEY_SET('${keySpaceId}', '${key}', true);
-                    }
-                  })(params);`
-                        };
-
-                        if (dbLevel['rw'].has(name)) {
-                          if (colLevel['rw'].has(name)) {
-                            tasks.register(task);
-                            wait(keySpaceId, key);
-                            expect(getKey(keySpaceId, `${key}_status`)).to.equal(true, `${name} could not create the view with sufficient rights`);
-                            expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
-                            expect(rootTestViewHasLinks(testViewName, [`${testColName}`, `${testColNameAnother}`])).to.equal(true, 'View links expected to be visible, but were not found afterwards');
-                          } else {
-                            tasks.register(task);
-                            wait(keySpaceId, key);
-                            expect(getKey(keySpaceId, `${key}_status`)).to.equal(false, `${name} could create the view with insufficient rights`);
-                            expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
-                          }
-                        } else {
-                          try {
-                            tasks.register(task);
-                            wait(keySpaceId, key);
-                          } catch (e) {
-                            checkError(e);
-                            return;
-                          } finally {
-                            expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
-                          }
-                          expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
-                        }
-                      });
-
-                    itName = 'view with links to multiple collections with NONE access level to one of them';
-                    !(colLevel['rw'].has(name) || colLevel['ro'].has(name)) ? it.skip(itName) :
-                      it(itName, () => {
-                        rootDropView(testViewName);
-                        rootDropCollection(testColName);
-                        rootDropCollection(testColNameAnother);
-
-                        rootCreateCollection(testColName);
-                        rootCreateCollection(testColNameAnother);
-                        rootGrantCollection(testColNameAnother, name, "none");
-
-                        expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
-                        expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the collection still not exists');
-                        expect(rootTestCollection(testColNameAnother)).to.equal(true, 'Precondition failed, the collection still not exists');
-
-                        setKey(keySpaceId, key);
-                        const taskId = 'task_create_view_with_links_to_existing_collections_with_NONE_access_level_to_one_of_them_' + key;
-                        const task = {
-                          id: taskId,
-                          name: taskId,
-                          command: `(function (params) {
-                    try {
-                      const db = require('@arangodb').db;
-                      var view = db._createView('${testViewName}', '${testViewType}', { links: { 
-                        '${testColName}': { includeAllFields: true }, '${testColNameAnother}': { includeAllFields: true } 
-                        }
-                      });
-                      global.KEY_SET('${keySpaceId}', '${key}_status', true);
-                    } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${key}_status', false);
-                    } finally {
-                      global.KEY_SET('${keySpaceId}', '${key}', true);
-                    }
-                  })(params);`
-                        };
-
-                        if (dbLevel['rw'].has(name)) {
-                          tasks.register(task);
-                          wait(keySpaceId, key);
-                          expect(getKey(keySpaceId, `${key}_status`)).to.equal(false, `${name} could create the view with insufficient rights`);
-                          expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
-                        } else {
-                          try {
-                            tasks.register(task);
-                            wait(keySpaceId, key);
-                          } catch (e) {
-                            checkError(e);
-                            return;
-                          } finally {
-                            expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
-                          }
-                          expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
-                        }
-                      });
-
+                if (dbLevel['rw'].has(name)) {
+                  if (colLevel['rw'].has(name) || colLevel['ro'].has(name)) {
+                    tasks.register(task);
+                    wait(keySpaceId, key);
+                    expect(getKey(keySpaceId, `${key}_status`)).to.equal(true, `${name} could not create the view with sufficient rights`);
+                    expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
+                    expect(rootTestViewHasLinks(testViewName, [`${testColName}`])).to.equal(true, 'View links expected to be visible, but were not found afterwards');
+                  } else {
+                    tasks.register(task);
+                    wait(keySpaceId, key);
+                    expect(getKey(keySpaceId, `${key}_status`)).to.equal(false, `${name} could create the view with insufficient rights`);
+                    expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
                   }
-
-                });
+                } else {
+                  try {
+                    tasks.register(task);
+                    wait(keySpaceId, key);
+                  } catch (e) {
+                    checkError(e);
+                    return;
+                  } finally {
+                    expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
+                  }
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                }
               });
+
+              it('view with links to multiple collections with same access level', () => {
+                rootDropView(testViewName);
+                rootDropCollection(testColName);
+
+                rootCreateCollection(testColName);
+                rootCreateCollection(testColNameAnother);
+
+                expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
+                expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the collection still not exists');
+                expect(rootTestCollection(testColNameAnother)).to.equal(true, 'Precondition failed, the collection still not exists');
+
+                setKey(keySpaceId, key);
+                const taskId = 'task_create_view_with_links_to_existing_collections_with_same_access_level_' + key;
+                const task = {
+                  id: taskId,
+                  name: taskId,
+                  command: `(function (params) {
+                    try {
+                      const db = require('@arangodb').db;
+                      var view = db._createView('${testViewName}', '${testViewType}', { links: { 
+                        '${testColName}': { includeAllFields: true }, '${testColNameAnother}': { includeAllFields: true } 
+                        }
+                      });
+                      global.KEY_SET('${keySpaceId}', '${key}_status', true);
+                    } catch (e) {
+                      global.KEY_SET('${keySpaceId}', '${key}_status', false);
+                    } finally {
+                      global.KEY_SET('${keySpaceId}', '${key}', true);
+                    }
+                  })(params);`
+                };
+
+                if (dbLevel['rw'].has(name)) {
+                  if (colLevel['rw'].has(name) || colLevel['ro'].has(name)) {
+                    tasks.register(task);
+                    wait(keySpaceId, key);
+                    expect(getKey(keySpaceId, `${key}_status`)).to.equal(true, `${name} could not create the view with sufficient rights`);
+                    expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
+                    expect(rootTestViewHasLinks(testViewName, [`${testColName}`, `${testColNameAnother}`])).to.equal(true, 'View links expected to be visible, but were not found afterwards');
+                  } else {
+                    tasks.register(task);
+                    wait(keySpaceId, key);
+                    expect(getKey(keySpaceId, `${key}_status`)).to.equal(false, `${name} could create the view with insufficient rights`);
+                    expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
+                  }
+                } else {
+                  try {
+                    tasks.register(task);
+                    wait(keySpaceId, key);
+                  } catch (e) {
+                    checkError(e);
+                    return;
+                  } finally {
+                    expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
+                  }
+                  expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                }
+              });
+
+
+              let itName = 'view with links to multiple collections with RO access level to one of them';
+              !(colLevel['rw'].has(name) || colLevel['none'].has(name)) ? it.skip(itName) :
+                it(itName, () => {
+                  rootDropView(testViewName);
+                  rootDropCollection(testColName);
+                  rootDropCollection(testColNameAnother);
+
+                  rootCreateCollection(testColName);
+                  rootCreateCollection(testColNameAnother);
+                  rootGrantCollection(testColNameAnother, name, "ro");
+
+                  expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
+                  expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the collection still not exists');
+                  expect(rootTestCollection(testColNameAnother)).to.equal(true, 'Precondition failed, the collection still not exists');
+
+                  setKey(keySpaceId, key);
+                  const taskId = 'task_create_view_with_links_to_existing_collections_with_RO_access_level_to_one_of_them_' + key;
+                  const task = {
+                    id: taskId,
+                    name: taskId,
+                    command: `(function (params) {
+                    try {
+                      const db = require('@arangodb').db;
+                      var view = db._createView('${testViewName}', '${testViewType}', { links: { 
+                        '${testColName}': { includeAllFields: true }, '${testColNameAnother}': { includeAllFields: true } 
+                        }
+                      });
+                      global.KEY_SET('${keySpaceId}', '${key}_status', true);
+                    } catch (e) {
+                      global.KEY_SET('${keySpaceId}', '${key}_status', false);
+                    } finally {
+                      global.KEY_SET('${keySpaceId}', '${key}', true);
+                    }
+                  })(params);`
+                  };
+
+                  if (dbLevel['rw'].has(name)) {
+                    if (colLevel['rw'].has(name)) {
+                      tasks.register(task);
+                      wait(keySpaceId, key);
+                      expect(getKey(keySpaceId, `${key}_status`)).to.equal(true, `${name} could not create the view with sufficient rights`);
+                      expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
+                      expect(rootTestViewHasLinks(testViewName, [`${testColName}`, `${testColNameAnother}`])).to.equal(true, 'View links expected to be visible, but were not found afterwards');
+                    } else {
+                      tasks.register(task);
+                      wait(keySpaceId, key);
+                      expect(getKey(keySpaceId, `${key}_status`)).to.equal(false, `${name} could create the view with insufficient rights`);
+                      expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
+                    }
+                  } else {
+                    try {
+                      tasks.register(task);
+                      wait(keySpaceId, key);
+                    } catch (e) {
+                      checkError(e);
+                      return;
+                    } finally {
+                      expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
+                    }
+                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                  }
+                });
+
+              itName = 'view with links to multiple collections with NONE access level to one of them';
+              !(colLevel['rw'].has(name) || colLevel['ro'].has(name)) ? it.skip(itName) :
+                it(itName, () => {
+                  rootDropView(testViewName);
+                  rootDropCollection(testColName);
+                  rootDropCollection(testColNameAnother);
+
+                  rootCreateCollection(testColName);
+                  rootCreateCollection(testColNameAnother);
+                  rootGrantCollection(testColNameAnother, name, "none");
+
+                  expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
+                  expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the collection still not exists');
+                  expect(rootTestCollection(testColNameAnother)).to.equal(true, 'Precondition failed, the collection still not exists');
+
+                  setKey(keySpaceId, key);
+                  const taskId = 'task_create_view_with_links_to_existing_collections_with_NONE_access_level_to_one_of_them_' + key;
+                  const task = {
+                    id: taskId,
+                    name: taskId,
+                    command: `(function (params) {
+                    try {
+                      const db = require('@arangodb').db;
+                      var view = db._createView('${testViewName}', '${testViewType}', { links: { 
+                        '${testColName}': { includeAllFields: true }, '${testColNameAnother}': { includeAllFields: true } 
+                        }
+                      });
+                      global.KEY_SET('${keySpaceId}', '${key}_status', true);
+                    } catch (e) {
+                      global.KEY_SET('${keySpaceId}', '${key}_status', false);
+                    } finally {
+                      global.KEY_SET('${keySpaceId}', '${key}', true);
+                    }
+                  })(params);`
+                  };
+
+                  if (dbLevel['rw'].has(name)) {
+                    tasks.register(task);
+                    wait(keySpaceId, key);
+                    expect(getKey(keySpaceId, `${key}_status`)).to.equal(false, `${name} could create the view with insufficient rights`);
+                    expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
+                  } else {
+                    try {
+                      tasks.register(task);
+                      wait(keySpaceId, key);
+                    } catch (e) {
+                      checkError(e);
+                      return;
+                    } finally {
+                      expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
+                    }
+                    expect(false).to.equal(true, `${name} managed to register a task with insufficient rights`);
+                  }
+                });
+
             });
-          }
-        }
-      }); 
+          });
+        });
+      }
     }
   });
 });
