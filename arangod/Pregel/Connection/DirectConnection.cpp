@@ -3,7 +3,7 @@
 #include "Basics/voc-errors.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/WorkerConductorMessages.h"
+#include "Pregel/Messaging/Message.h"
 
 using namespace arangodb::pregel;
 

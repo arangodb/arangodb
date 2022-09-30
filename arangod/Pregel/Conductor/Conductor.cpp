@@ -51,7 +51,7 @@
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Utils.h"
-#include "Pregel/WorkerConductorMessages.h"
+#include "Pregel/Messaging/Message.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/MutexLocker.h"

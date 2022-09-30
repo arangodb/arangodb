@@ -64,7 +64,6 @@
 #include "Pregel/Conductor/Conductor.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker/Worker.h"
-#include "Pregel/WorkerConductorMessages.h"
 #include "Random/UniformCharacter.h"
 #include "Rest/Version.h"
 #include "RestServer/SystemDatabaseFeature.h"
