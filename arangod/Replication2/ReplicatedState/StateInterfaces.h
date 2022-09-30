@@ -56,7 +56,15 @@ struct IReplicatedFollowerStateBase {
 };
 
 template<typename S>
-struct IReplicatedLeaderState : IReplicatedLeaderStateBase {
+struct IReplicatedStateImplBase {
+  using CoreType = typename ReplicatedStateTraits<S>::CoreType;
+  virtual ~IReplicatedStateImplBase() = default;
+  virtual auto resign() noexcept -> std::unique_ptr<CoreType> = 0;
+};
+
+template<typename S>
+struct IReplicatedLeaderState : IReplicatedStateImplBase<S>,
+                                IReplicatedLeaderStateBase {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using Stream = streams::ProducerStream<EntryType>;
@@ -97,7 +105,8 @@ struct IReplicatedLeaderState : IReplicatedLeaderStateBase {
 };
 
 template<typename S>
-struct IReplicatedFollowerState : IReplicatedFollowerStateBase {
+struct IReplicatedFollowerState : IReplicatedStateImplBase<S>,
+                                  IReplicatedFollowerStateBase {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using Stream = streams::Stream<EntryType>;

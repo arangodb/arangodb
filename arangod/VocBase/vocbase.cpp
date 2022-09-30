@@ -179,8 +179,10 @@ struct arangodb::VocBaseLogManager {
         auto res = engine.dropReplicatedState(_vocbase, storage);
 
         if (res.fail()) {
+          TRI_ASSERT(storage != nullptr);
           return res;
         }
+        TRI_ASSERT(storage == nullptr);
         data.statesAndLogs.erase(iter);
 
         return Result();
@@ -265,6 +267,16 @@ struct arangodb::VocBaseLogManager {
       if (auto iter = statesAndLogs.find(id); iter != std::end(statesAndLogs)) {
         return {TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER};
       }
+
+      // 1. Allocate all memory
+      //    1.1 allocate node in map.
+      //    1.2 allocate state (and log)
+      //    1.2 allocate state (and log)
+      // 2. write to storage engine
+      // ---- from now on no errors are allowed
+      // 3. forward storage interface to replicated state
+      // 4. start up with initial configuration
+
       // TODO we need to add the parameter slice to the ImplementationSpec!
       StorageEngine& engine =
           server.getFeature<EngineSelectorFeature>().engine();

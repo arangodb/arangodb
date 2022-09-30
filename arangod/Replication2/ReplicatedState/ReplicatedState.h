@@ -33,6 +33,7 @@
 #include "Basics/Guarded.h"
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/LoggerContext.h"
+#include "Replication2/ReplicatedLog/ReplicatedLog.h"
 
 namespace arangodb::futures {
 template<typename T>
@@ -148,6 +149,10 @@ struct ReplicatedState final
         -> std::tuple<std::unique_ptr<CoreType>,
                       std::unique_ptr<ReplicatedStateToken>,
                       DeferredAction> = 0;
+
+    virtual auto resign2() && noexcept -> std::tuple<
+        std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods>,
+        std::unique_ptr<CoreType>> = 0;
   };
 
  private:

@@ -50,22 +50,37 @@ namespace arangodb::replication2::replicated_log {
 
 struct IReplicatedLogHandle {
   virtual ~IReplicatedLogHandle() = default;
-  virtual auto getLogSnapshot() -> InMemoryLog = 0;
-  virtual auto insert(LogPayload) -> LogIndex = 0;
-  virtual auto snapshotCompleted() -> Result = 0;
+};
+
+struct IReplicatedLogMethodsBase {
+  virtual ~IReplicatedLogMethodsBase() = default;
   virtual auto releaseIndex(LogIndex) -> void = 0;
+  virtual auto getLogSnapshot() -> InMemoryLog = 0;
+};
+
+struct IReplicatedLogLeaderMethods : IReplicatedLogMethodsBase {
+  virtual auto insert(LogPayload) -> LogIndex = 0;
+};
+
+struct IReplicatedLogFollowerMethods : IReplicatedLogMethodsBase {
+  virtual auto snapshotCompleted() -> Result = 0;
 };
 
 struct IReplicatedStateHandle {
   virtual ~IReplicatedStateHandle() = default;
-  virtual void becomeLeader() = 0;
+  virtual auto resign()
+      -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> = 0;
+  virtual void becomeLeader(std::unique_ptr<IReplicatedLogLeaderMethods>) = 0;
   virtual void recoverEntries(std::unique_ptr<LogIterator>) = 0;
-  virtual void becomeFollower() = 0;
+  virtual void becomeFollower(
+      std::unique_ptr<IReplicatedLogFollowerMethods>) = 0;
   virtual void acquireSnapshot(ServerID leader, LogIndex) = 0;
   virtual void commitIndex(LogIndex) = 0;
   // TODO
   virtual void dropEntries() = 0;  // o.ä. (für waitForSync=false)
 };
+
+struct ReplicatedLogGuard {};
 
 /**
  * @brief Container for a replicated log. These are managed by the responsible
@@ -104,8 +119,7 @@ struct alignas(64) ReplicatedLog {
   auto operator=(ReplicatedLog const&) -> ReplicatedLog& = delete;
   auto operator=(ReplicatedLog&&) -> ReplicatedLog& = delete;
 
-  auto connect(std::shared_ptr<IReplicatedStateHandle>)
-      -> std::shared_ptr<IReplicatedLogHandle>;
+  auto connect(std::unique_ptr<IReplicatedStateHandle>) -> ReplicatedLogGuard;
 
   auto getId() const noexcept -> LogId;
   auto getGlobalLogId() const noexcept -> GlobalLogIdentifier const&;

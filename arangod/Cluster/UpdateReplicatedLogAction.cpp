@@ -59,9 +59,6 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
 
   auto logId = LogId{StringUtils::uint64(_description.get(REPLICATED_LOG_ID))};
 
-  network::ConnectionPool* pool =
-      _feature.server().getFeature<NetworkFeature>().pool();
-
   auto const& database = _description.get(DATABASE);
   auto& df = _feature.server().getFeature<DatabaseFeature>();
   DatabaseGuard guard(df, database);

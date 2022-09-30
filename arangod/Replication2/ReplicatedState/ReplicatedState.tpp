@@ -53,6 +53,89 @@
 namespace arangodb::replication2::replicated_state {
 
 template<typename S>
+struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
+  using CoreType = typename ReplicatedStateTraits<S>::CoreType;
+  using Factory = typename ReplicatedStateTraits<S>::FactoryType;
+  using FollowerType = typename ReplicatedStateTraits<S>::FollowerType;
+  using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
+
+  void acquireSnapshot(ServerID leader, LogIndex index) override {
+    auto guard = _guarded.getLockedGuard();
+    if (auto follower = std::dynamic_pointer_cast<IReplicatedFollowerState<S>>(
+            guard->_currentState);
+        follower != nullptr) {
+      // follower->acquireSnapshot().then([]{
+      //    _methods->onSnapshotCompleted();
+      // });
+    }
+  }
+
+  void commitIndex(LogIndex index) override {
+    auto guard = _guarded.getLockedGuard();
+    if (auto follower = std::dynamic_pointer_cast<IReplicatedFollowerState<S>>(
+            guard->_currentState);
+        follower != nullptr) {
+      auto log = guard->_methods->getLogSnapshot();
+      // get log iterator
+      // follower->applyEntries(iter);
+      // todo applyEntries returns a future. Is this necessary?
+      //      If yes, we have to deal with this async behaviour here.
+    }
+  }
+
+  auto resign()
+      -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> override {
+    auto guard = _guarded.getLockedGuard();
+    ADB_PROD_ASSERT(guard->_currentState != nullptr);
+    ADB_PROD_ASSERT(guard->_core == nullptr);
+    guard->_core = guard->_currentState->resign();
+    guard->_currentState.reset();
+    return std::move(guard->_methods);
+  }
+
+  void becomeLeader(std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods>
+                        methods) override {
+    auto guard = _guarded.getLockedGuard();
+    ADB_PROD_ASSERT(guard->_currentState == nullptr);
+    ADB_PROD_ASSERT(guard->_core != nullptr);
+    guard->_methods = std::move(methods);
+    guard->_currentState = factory.constructLeader(std::move(guard->_core));
+  }
+
+  void recoverEntries(std::unique_ptr<LogIterator> ptr) override {
+    auto guard = _guarded.getLockedGuard();
+    ADB_PROD_ASSERT(guard->_currentState != nullptr);
+    auto leader = std::dynamic_pointer_cast<IReplicatedLeaderState<S>>(
+        guard->_currentState);
+    ADB_PROD_ASSERT(leader != nullptr);
+    auto fut = leader->recoverEntries(ptr);  // TODO requires deserialization
+    // handle future?
+  }
+
+  void becomeFollower(
+      std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> methods)
+      override {
+    auto guard = _guarded.getLockedGuard();
+    ADB_PROD_ASSERT(guard->_currentState == nullptr);
+    ADB_PROD_ASSERT(guard->_core != nullptr);
+    guard->_methods = std::move(methods);
+    guard->_currentState = factory.constructFollower(std::move(guard->_core));
+  }
+
+  void dropEntries() override { TRI_ASSERT(false); }
+
+  struct GuardedData {
+    std::shared_ptr<IReplicatedStateImplBase<S>> _currentState;
+    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> _methods;
+    std::unique_ptr<CoreType> _core;
+  };
+
+  Guarded<GuardedData> _guarded;
+
+  std::shared_ptr<Factory> const factory;
+};
+
+template<typename S>
 auto IReplicatedLeaderState<S>::getStream() const noexcept
     -> std::shared_ptr<Stream> const& {
   ADB_PROD_ASSERT(_stream != nullptr)

@@ -187,8 +187,8 @@ auto replicated_log::ReplicatedLog::getGlobalLogId() const noexcept
 }
 
 auto replicated_log::ReplicatedLog::connect(
-    std::shared_ptr<IReplicatedStateHandle> stateHandle)
-    -> std::shared_ptr<IReplicatedLogHandle> {
+    std::unique_ptr<IReplicatedStateHandle> stateHandle)
+    -> std::unique_ptr<IReplicatedLogHandle> {
   auto guard = _guarded.getLockedGuard();
   if (guard->stateHandle) {
     // TODO
