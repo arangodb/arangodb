@@ -6,6 +6,10 @@ devel
 
 * Upgrade bundled version of RocksDB to 7.7.
 
+* BTS-969: Added restriction for HTTP request `/cluster/rebalance`not to 
+  consider servers that have failed status as a possible target for rebalancing
+  shards in its execution plan.
+
 * Added index cleanup in Supervision. If an index was not created successfully
   and the coordinator which initiated the creation was rebooted or is dead,
   then the agency Supervision will drop the index again. If it was created
