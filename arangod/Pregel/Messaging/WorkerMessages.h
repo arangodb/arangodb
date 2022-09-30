@@ -109,6 +109,7 @@ auto inspect(Inspector& f, GlobalSuperStepFinished& x) {
 
 struct Stored {
   Stored() noexcept = default;
+  bool operator==(const Stored&) const = default;
   auto add(Stored const& other) -> void {}
 };
 template<typename Inspector>

@@ -24,12 +24,11 @@
 #include <date/date.h>
 #include <chrono>
 #include <optional>
+#include "gtest/gtest.h"
+
 #include "Pregel/Common.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/Status.h"
-
-#include "Pregel/Status/ConductorStatus.h"
-#include "gtest/gtest.h"
 
 using namespace arangodb::pregel;
 
