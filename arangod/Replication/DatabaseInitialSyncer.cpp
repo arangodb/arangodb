@@ -420,7 +420,13 @@ arangodb::Result fetchRevisions(
         {
           VPackArrayBuilder list(&requestBuilder);
           for (auto const& r : v) {
-            requestBuilder.add(r.toValuePair(ridBuffer));
+            if (encodeAsHLC) {
+              requestBuilder.add(VPackValue(
+                  arangodb::basics::HybridLogicalClock::encodeTimeStamp(
+                      r.id())));
+            } else {
+              requestBuilder.add(r.toValuePair(ridBuffer));
+            }
           }
         }
 
