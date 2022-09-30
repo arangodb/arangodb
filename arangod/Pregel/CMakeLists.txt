@@ -10,9 +10,8 @@ add_library(arango_pregel STATIC
   Utils.cpp)
 
 target_link_libraries(arango_pregel
-	arango
+  arango
   arango_agency
-  arango_greenspun
   boost_boost
   boost_system)
 
