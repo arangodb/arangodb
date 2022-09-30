@@ -340,8 +340,9 @@ void ByExpression::init(QueryContext const& ctx,
 }
 
 bool ByExpression::equals(irs::filter const& rhs) const noexcept {
-  auto const& typed = static_cast<ByExpression const&>(rhs);
-  return irs::filter::equals(rhs) && _ctx == typed._ctx;
+  auto const& impl = static_cast<ByExpression const&>(rhs);
+  return irs::filter::equals(rhs) && _ctx == impl._ctx &&
+         _allColumn == impl._allColumn;
 }
 
 size_t ByExpression::hash() const noexcept { return _ctx.hash(); }
