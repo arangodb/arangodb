@@ -53,12 +53,6 @@ auto inspect(Inspector& f, PersistedStateInfo& x) {
                             f.field("specification", x.specification));
 }
 
-struct StatePersistorInterface {
-  virtual ~StatePersistorInterface() = default;
-  virtual void updateStateInformation(PersistedStateInfo const&) noexcept = 0;
-  virtual void deleteStateInformation(LogId stateId) noexcept = 0;
-};
-
 struct IStorageEngineMethods {
   virtual ~IStorageEngineMethods() = default;
   virtual auto updateMetadata(PersistedStateInfo) -> Result = 0;

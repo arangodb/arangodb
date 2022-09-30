@@ -210,7 +210,7 @@ class StorageEngine : public ArangodFeature {
   virtual auto dropReplicatedState(
       TRI_vocbase_t&,
       std::unique_ptr<
-          arangodb::replication2::replicated_state::IStorageEngineMethods>)
+          arangodb::replication2::replicated_state::IStorageEngineMethods>&)
       -> Result = 0;
 
   virtual auto createReplicatedState(

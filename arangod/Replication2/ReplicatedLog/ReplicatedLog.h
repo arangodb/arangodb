@@ -126,24 +126,6 @@ struct alignas(64) ReplicatedLog {
 
   auto resign() && -> std::unique_ptr<LogCore>;
 
-  template<
-      typename F,
-      std::enable_if_t<std::is_invocable_v<F, std::shared_ptr<LogLeader>>> = 0,
-      typename R = std::invoke_result_t<F, std::shared_ptr<LogLeader>>>
-  auto executeIfLeader(F&& f) {
-    auto leaderPtr = std::dynamic_pointer_cast<LogLeader>(getParticipant());
-    if constexpr (std::is_void_v<R>) {
-      if (leaderPtr != nullptr) {
-        std::invoke(f, leaderPtr);
-      }
-    } else {
-      if (leaderPtr != nullptr) {
-        return std::optional<R>{std::invoke(f, leaderPtr)};
-      }
-      return std::optional<R>{};
-    }
-  }
-
  private:
   struct GuardedData {
     std::shared_ptr<IReplicatedStateHandle> stateHandle;

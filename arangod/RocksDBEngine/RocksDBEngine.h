@@ -269,7 +269,7 @@ class RocksDBEngine final : public StorageEngine {
 
   auto dropReplicatedState(
       TRI_vocbase_t& vocbase,
-      std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>
+      std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>&
           ptr) -> Result override;
 
   auto createReplicatedState(

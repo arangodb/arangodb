@@ -302,7 +302,7 @@ void ClusterEngine::waitForEstimatorSync(
 }
 Result ClusterEngine::dropReplicatedState(
     TRI_vocbase_t& vocbase,
-    std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>
+    std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>&
         ptr) {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }

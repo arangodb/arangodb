@@ -95,10 +95,8 @@ template<typename S>
 ReplicatedState<S>::ReplicatedState(
     std::shared_ptr<replicated_log::ReplicatedLog> log,
     std::shared_ptr<Factory> factory, LoggerContext loggerContext,
-    std::shared_ptr<ReplicatedStateMetrics> metrics,
-    std::shared_ptr<StatePersistorInterface> persistor)
-    : persistor(std::move(persistor)),
-      factory(std::move(factory)),
+    std::shared_ptr<ReplicatedStateMetrics> metrics)
+    : factory(std::move(factory)),
       log(std::move(log)),
       guardedData(*this),
       loggerContext(std::move(loggerContext)),
@@ -211,7 +209,6 @@ auto ReplicatedState<S>::buildCore(
     info.stateId = log->getId();
     info.specification.type = S::NAME;
     info.specification.parameters = *coreParameter;
-    persistor->updateStateInformation(info);
     return factory->constructCore(log->getGlobalLogId(), std::move(params));
   }
 }

@@ -122,6 +122,7 @@
 
 #include <iomanip>
 #include <limits>
+#include <utility>
 
 // we will not use the multithreaded index creation that uses rocksdb's sst
 // file ingestion until rocksdb external file ingestion is fixed to have
@@ -3478,28 +3479,41 @@ bool RocksDBEngine::checkExistingDB(
 
 Result RocksDBEngine::dropReplicatedState(
     TRI_vocbase_t& vocbase,
-    std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>
+    std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>&
         ptr) {
   // make sure that all pending async operations have completed
-  auto& methods = dynamic_cast<RocksDBLogStorageMethods&>(*ptr);
-  methods.ctx.waitForCompletion();
+  std::unique_ptr<RocksDBLogStorageMethods> methods{
+      &dynamic_cast<RocksDBLogStorageMethods&>(*ptr.release())};
+  methods->ctx.waitForCompletion();
+  // in case of an error, reset the unique_ptr
+  ScopeGuard guard([&]() noexcept { ptr = std::move(methods); });
 
+  // prepare deletion transaction
   rocksdb::WriteBatch batch;
   auto key = RocksDBKey{};
   key.constructReplicatedState(vocbase.id(), ptr->getLogId());
-  batch.Delete(RocksDBColumnFamilyManager::get(
-                   RocksDBColumnFamilyManager::Family::Definitions),
-               key.string());
+  if (auto s =
+          batch.Delete(RocksDBColumnFamilyManager::get(
+                           RocksDBColumnFamilyManager::Family::Definitions),
+                       key.string());
+      !s.ok()) {
+    return rocksutils::convertStatus(s);
+  }
 
   auto logcf = RocksDBColumnFamilyManager::get(
       RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   auto range = RocksDBKeyBounds::LogRange(ptr->getObjectId());
   auto start = range.start();
   auto end = range.end();
-  batch.DeleteRange(logcf, start, end);
+  if (auto s = batch.DeleteRange(logcf, start, end); !s.ok()) {
+    return rocksutils::convertStatus(s);
+  }
   if (auto s = _db->Write(rocksdb::WriteOptions{}, &batch); !s.ok()) {
     return rocksutils::convertStatus(s);
   }
+  // write was committed, the log is gone. Transaction completed.
+  methods.reset();
+  guard.cancel();
 
   std::ignore = _db->CompactRange(
       rocksdb::CompactRangeOptions{.exclusive_manual_compaction = false,

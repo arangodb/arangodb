@@ -190,16 +190,6 @@ struct TRI_vocbase_t {
       -> arangodb::ResultT<std::shared_ptr<
           arangodb::replication2::replicated_state::ReplicatedStateBase>>;
 
-  auto updateReplicatedStateTerm(
-      arangodb::replication2::LogId logId,
-      arangodb::replication2::agency::LogPlanSpecification const& spec)
-      -> arangodb::futures::Future<arangodb::Result>;
-
-  auto updateReplicatedStateConfig(
-      arangodb::replication2::LogId id,
-      arangodb::replication2::agency::ParticipantsConfig const&)
-      -> arangodb::futures::Future<arangodb::Result>;
-
   auto updateReplicatedState(
       arangodb::replication2::LogId id,
       arangodb::replication2::agency::LogPlanTermSpecification const& spec,

@@ -61,14 +61,12 @@ struct alignas(64) LogCore {
 
   auto insertAsync(std::unique_ptr<PersistedLogIterator> iter, bool waitForSync)
       -> futures::Future<Result>;
-  auto insert(PersistedLogIterator& iter, bool waitForSync) -> Result;
   [[nodiscard]] auto read(LogIndex first) const
       -> std::unique_ptr<PersistedLogIterator>;
   auto removeBack(LogIndex first) -> Result;
   auto removeFront(LogIndex stop) -> futures::Future<Result>;
 
   auto logId() const noexcept -> LogId;
-  auto gid() const noexcept -> GlobalLogIdentifier const&;
 
  private:
   replicated_state::IStorageEngineMethods& _storage;
