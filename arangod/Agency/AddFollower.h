@@ -50,6 +50,7 @@ struct AddFollower : public Job {
   std::string _database;
   std::string _collection;
   std::string _shard;
+  std::string _timeCreated;
 };
 
 }  // namespace consensus

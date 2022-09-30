@@ -51,12 +51,15 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
   auto tmp_collection = _snapshot.hasAsString(path + "collection");
   auto tmp_shard = _snapshot.hasAsString(path + "shard");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
+  auto tmp_timeCreated = _snapshot.hasAsString(path + "timeCreated");
 
-  if (tmp_database && tmp_collection && tmp_shard && tmp_creator) {
+  if (tmp_database && tmp_collection && tmp_shard && tmp_creator &&
+      tmp_timeCreated) {
     _database = tmp_database.value();
     _collection = tmp_collection.value();
     _shard = tmp_shard.value();
     _creator = tmp_creator.value();
+    _timeCreated = tmp_timeCreated.value();
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
@@ -191,6 +194,18 @@ bool AddFollower::start(bool&) {
     LOG_TOPIC("1de2b", DEBUG, Logger::SUPERVISION)
         << "shard " << _shard
         << " is currently locked, not starting AddFollower job " << _jobId;
+    return false;
+  }
+
+  // Check if 5 mins have passed since the creation of the job:
+  auto now = std::chrono::system_clock::now();
+  std::chrono::system_clock::time_point created =
+      stringToTimepoint(_timeCreated);
+  if (now - created < std::chrono::minutes(1)) {
+    LOG_TOPIC("1de2c", DEBUG, Logger::SUPERVISION)
+        << "shard " << _shard
+        << " needs addFollower but 1 minute has not yet passed, delaying job "
+        << _jobId;
     return false;
   }
 
