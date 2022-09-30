@@ -86,8 +86,7 @@ auto Computing::_prepareGlobalSuperStep()
           conductor._aggregators->aggregateValues(
               gssPrepared.aggregators.slice());
           messagesFromWorkers.add(gssPrepared.messages.slice());
-          conductor._statistics.accumulateActiveCounts(gssPrepared.senderId,
-                                                       gssPrepared.activeCount);
+          conductor._statistics.accumulateActiveCounts(gssPrepared.activeCount);
           conductor._totalVerticesCount += gssPrepared.vertexCount;
           conductor._totalEdgesCount += gssPrepared.edgeCount;
         }
@@ -137,8 +136,7 @@ auto Computing::_runGlobalSuperStep(bool activateAll)
                                       result.get().errorMessage())};
           }
           auto finished = result.get().get();
-          conductor._statistics.accumulateMessageStats(
-              finished.senderId, finished.messageStats.slice());
+          conductor._statistics.accumulate(finished.messageStats);
         }
         conductor._timing.gss.back().finish();
         LOG_PREGEL_CONDUCTOR("39385", DEBUG)

@@ -26,6 +26,7 @@
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/Graph.h"
+#include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Utils.h"
 #include "VocBase/Methods/Tasks.h"
@@ -39,15 +40,6 @@
 namespace arangodb::pregel {
 
 // ------ events sent from worker to conductor -------
-
-struct WorkerCreated {
-  ServerID senderId;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, WorkerCreated& x) {
-  return f.object(x).fields(f.field("onServer", x.senderId));
-}
-
 struct GraphLoaded {
   uint64_t vertexCount;
   uint64_t edgeCount;
@@ -63,18 +55,16 @@ auto inspect(Inspector& f, GraphLoaded& x) {
 }
 
 struct GlobalSuperStepPrepared {
-  std::string senderId;
   uint64_t activeCount;
   uint64_t vertexCount;
   uint64_t edgeCount;
   VPackBuilder messages;
   VPackBuilder aggregators;
   GlobalSuperStepPrepared() noexcept = default;
-  GlobalSuperStepPrepared(std::string senderId, uint64_t activeCount,
-                          uint64_t vertexCount, uint64_t edgeCount,
-                          VPackBuilder messages, VPackBuilder aggregators)
-      : senderId{std::move(senderId)},
-        activeCount{activeCount},
+  GlobalSuperStepPrepared(uint64_t activeCount, uint64_t vertexCount,
+                          uint64_t edgeCount, VPackBuilder messages,
+                          VPackBuilder aggregators)
+      : activeCount{activeCount},
         vertexCount{vertexCount},
         edgeCount{edgeCount},
         messages{std::move(messages)},
@@ -83,32 +73,21 @@ struct GlobalSuperStepPrepared {
 template<typename Inspector>
 auto inspect(Inspector& f, GlobalSuperStepPrepared& x) {
   return f.object(x).fields(
-      f.field(Utils::senderKey, x.senderId),
       f.field("activeCount", x.activeCount),
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount),
       f.field("messages", x.messages), f.field("aggregators", x.aggregators));
 }
 
 struct GlobalSuperStepFinished {
-  std::string senderId;
-  uint64_t gss;
-  VPackBuilder messageStats;
-  VPackBuilder aggregators;
+  MessageStats messageStats;
   GlobalSuperStepFinished() noexcept = default;
-  GlobalSuperStepFinished(std::string senderId, uint64_t gss,
-                          VPackBuilder messageStats, VPackBuilder aggregators)
-      : senderId{std::move(senderId)},
-        gss{gss},
-        messageStats{std::move(messageStats)},
-        aggregators{std::move(aggregators)} {}
+  GlobalSuperStepFinished(MessageStats messageStats)
+      : messageStats{std::move(messageStats)} {}
 };
 
 template<typename Inspector>
 auto inspect(Inspector& f, GlobalSuperStepFinished& x) {
-  return f.object(x).fields(f.field(Utils::senderKey, x.senderId),
-                            f.field(Utils::globalSuperstepKey, x.gss),
-                            f.field("messageStats", x.messageStats),
-                            f.field("aggregators", x.aggregators));
+  return f.object(x).fields(f.field("messageStats", x.messageStats));
 }
 
 struct Stored {};

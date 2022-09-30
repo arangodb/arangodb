@@ -166,7 +166,6 @@ class Worker : public IWorker {
   [[nodiscard]] auto _observeStatus() -> Status const;
   [[nodiscard]] auto _makeStatusCallback() -> std::function<void()>;
 
-  [[nodiscard]] auto _gssFinishedEvent() const -> GlobalSuperStepFinished;
   [[nodiscard]] auto _prepareGlobalSuperStepFct(
       PrepareGlobalSuperStep const& data) -> ResultT<GlobalSuperStepPrepared>;
   [[nodiscard]] auto _resultsFct(CollectPregelResults const& message) const

@@ -240,10 +240,9 @@ auto Worker<V, E, M>::_prepareGlobalSuperStepFct(
     VPackObjectBuilder ob(&aggregators);
     _workerAggregators->serializeValues(aggregators);
   }
-  return GlobalSuperStepPrepared{
-      ServerState::instance()->getId(), _activeCount,
-      _graphStore->localVertexCount(),  _graphStore->localEdgeCount(),
-      std::move(messageToMaster),       aggregators};
+  return GlobalSuperStepPrepared{_activeCount, _graphStore->localVertexCount(),
+                                 _graphStore->localEdgeCount(),
+                                 std::move(messageToMaster), aggregators};
 }
 
 template<typename V, typename E, typename M>
@@ -497,7 +496,8 @@ auto Worker<V, E, M>::_finishProcessing() -> ResultT<GlobalSuperStepFinished> {
   // only set the state here, because _processVertices checks for it
   _state = WorkerState::IDLE;
 
-  GlobalSuperStepFinished gssFinishedEvent = _gssFinishedEvent();
+  GlobalSuperStepFinished gssFinishedEvent =
+      GlobalSuperStepFinished{_messageStats};
   VPackBuilder event;
   serialize(event, gssFinishedEvent);
   LOG_PREGEL("2de5b", DEBUG) << "Finished GSS: " << event.toJson();
@@ -505,24 +505,10 @@ auto Worker<V, E, M>::_finishProcessing() -> ResultT<GlobalSuperStepFinished> {
   uint64_t tn = _config.parallelism();
   uint64_t s = _messageStats.sendCount / tn / 2UL;
   _messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
-  _messageStats.resetTracking();
+  _messageStats.reset();
   LOG_PREGEL("13dbf", DEBUG) << "Message batch size: " << _messageBatchSize;
 
   return gssFinishedEvent;
-}
-
-template<typename V, typename E, typename M>
-auto Worker<V, E, M>::_gssFinishedEvent() const -> GlobalSuperStepFinished {
-  VPackBuilder messageStats;
-  {
-    VPackObjectBuilder ob(&messageStats);
-    _messageStats.serializeValues(messageStats);
-  }
-  VPackBuilder aggregators;
-  { VPackObjectBuilder ob(&aggregators); }
-  return GlobalSuperStepFinished{
-      ServerState::instance()->getId(), _config.globalSuperstep(),
-      std::move(messageStats), std::move(aggregators)};
 }
 
 template<typename V, typename E, typename M>

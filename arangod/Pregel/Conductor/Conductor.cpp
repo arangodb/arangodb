@@ -72,6 +72,7 @@
 #include "VocBase/vocbase.h"
 #include "velocypack/Builder.h"
 #include "Pregel/Connection/NetworkConnection.h"
+#include "velocypack/Value.h"
 
 #include <Inspection/VPack.h>
 #include <velocypack/Iterator.h>
@@ -453,7 +454,8 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
     }
   }
   _aggregators->serializeValues(result);
-  _statistics.serializeValues(result);
+  auto statistics = velocypack::serialize(_statistics);
+  result.add(VPackObjectIterator(statistics.slice()));
   result.add("vertexCount", VPackValue(_totalVerticesCount));
   result.add("edgeCount", VPackValue(_totalEdgesCount));
   VPackSlice p = _userParams.slice().get(Utils::parallelismKey);
