@@ -51,14 +51,16 @@ struct AsyncLogWriteContext {
 
 struct AsyncLogOperationGuard {
   AsyncLogOperationGuard() = default;
-
+  AsyncLogOperationGuard(AsyncLogOperationGuard&&) noexcept = default;
+  AsyncLogOperationGuard& operator=(AsyncLogOperationGuard&&) noexcept =
+      default;
   explicit AsyncLogOperationGuard(AsyncLogWriteContext& ctx) : _context(&ctx) {
     ctx.addPendingAsyncOperation();
   }
 
   ~AsyncLogOperationGuard() { fire(); }
 
-  void fire() {
+  void fire() noexcept {
     if (_context) {
       _context->finishPendingAsyncOperation();
       _context = nullptr;
@@ -66,7 +68,12 @@ struct AsyncLogOperationGuard {
   }
 
  private:
-  AsyncLogWriteContext* _context = nullptr;
+  struct nop {
+    template<typename T>
+    void operator()(T const&) const noexcept {}
+  };
+
+  std::unique_ptr<AsyncLogWriteContext, nop> _context = nullptr;
 };
 
 struct IRocksDBAsyncLogWriteBatcher {
