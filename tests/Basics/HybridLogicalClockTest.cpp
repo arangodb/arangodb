@@ -87,7 +87,7 @@ TEST(HybridLogicalClockTest, test_encode_decode_timestamp) {
 
     // decode from velocypack string
     b.clear();
-    b.add(VPackValue(value.second));
+    b.add(velocypack::Value(value.second));
     ASSERT_EQ(value.first,
               basics::HybridLogicalClock::decodeTimeStamp(b.slice()));
   }
