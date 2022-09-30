@@ -153,15 +153,7 @@ class IResearchFilterBooleanTest
   TRI_vocbase_t& vocbase() { return *_vocbase; }
 };  // IResearchFilterSetup
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
 TEST_F(IResearchFilterBooleanTest, Ternary) {
-  //  arangodb::aql::Query
-  //  q(arangodb::transaction::StandaloneContext::Create(this->vocbase()),
-  //                         arangodb::aql::QueryString(), nullptr);
-  //
   // can evaluate expression
   {
     ExpressionContextMock ctx;
@@ -230,8 +222,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // simple attribute, string
   {
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleStringIdentity("a");
     filter.mutable_options()->term =
         irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
@@ -253,8 +247,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // simple offset, string
   {
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleStringIdentity("[1]");
     filter.mutable_options()->term =
         irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
@@ -270,8 +266,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // complex attribute, string
   {
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleStringIdentity("a.b.c");
     filter.mutable_options()->term =
         irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
@@ -295,8 +293,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // complex attribute with offset, string
   {
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleStringIdentity("a.b[42].c");
     filter.mutable_options()->term =
         irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
@@ -322,7 +322,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // complex attribute with offset, string, boost
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>();
+    auto& root = expected.add<irs::And>().add<irs::Not>();
     root.boost(2.5);
     auto& filter = root.filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleStringIdentity("a.b[42].c");
@@ -354,7 +354,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // complex attribute with offset, string, boost
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>();
     auto& filter = root.add<irs::by_term>();
     filter.boost(2.5);
     *filter.mutable_field() = mangleStringIdentity("a.b[42].c");
@@ -371,7 +371,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // complex attribute with offset, string, boost, analyzer
   {
     irs::Or expected;
-    auto& root = expected.add<irs::Not>();
+    auto& root = expected.add<irs::And>().add<irs::Not>();
     root.boost(2.5);
     auto& filter = root.filter<irs::And>().add<irs::by_term>();
     *filter.mutable_field() = mangleString("a.b[42].c", "test_analyzer");
@@ -410,8 +410,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     ctx.vars.emplace(var.name, value);
 
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
     filter.mutable_options()->term =
         irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
@@ -458,8 +460,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     ctx.vars.emplace(var.name, value);
 
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleString("a.b[23].c", "test_analyzer");
     filter.mutable_options()->term =
         irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
@@ -509,8 +513,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     ExpressionContextMock ctx;
     ctx.vars.emplace(var.name, value);
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
     filter.mutable_options()->term =
         irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
@@ -537,8 +543,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                          arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
     filter.mutable_options()->term =
         irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
@@ -630,8 +638,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // complex attribute, true
   {
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleBool("a.b.c");
     filter.mutable_options()->term =
         irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
@@ -670,8 +680,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // complex attribute, false
   {
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleBool("a.b.c.bool");
     filter.mutable_options()->term =
         irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
@@ -697,8 +709,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // complex attribute with offset, false
   {
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleBool("a[1].b.c.bool");
     filter.mutable_options()->term =
         irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
@@ -732,8 +746,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     ctx.vars.emplace(var.name, value);
 
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleBool("a.b[23].c");
     filter.mutable_options()->term =
         irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
@@ -790,8 +806,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                          arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleBool("a.b.c.e[4].f[5].g[3].g.a");
     filter.mutable_options()->term =
         irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
@@ -883,8 +901,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // complex attribute, null
   {
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleNull("a.b.c.bool");
     filter.mutable_options()->term =
         irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
@@ -911,8 +931,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // complex attribute, null
   {
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleNull("a.b.c.bool[42]");
     filter.mutable_options()->term =
         irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
@@ -947,8 +969,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     ctx.vars.emplace(var.name, value);
 
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleNull("a.b[23].c");
     filter.mutable_options()->term =
         irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
@@ -1004,8 +1028,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
                          arangodb::aql::AqlValueHintDouble{5.6})));
 
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleNull("a.b.c.e[4].f[5].g[3].g.a");
     filter.mutable_options()->term =
         irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
@@ -1102,8 +1128,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     auto* term = irs::get<irs::term_attribute>(stream);
 
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleNumeric("a.b.c.numeric");
     filter.mutable_options()->term = term->value;
 
@@ -1164,8 +1192,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     auto* term = irs::get<irs::term_attribute>(stream);
 
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleNumeric("a.b.c.numeric[42]");
     filter.mutable_options()->term = term->value;
 
@@ -1212,8 +1242,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     auto* term = irs::get<irs::term_attribute>(stream);
 
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleNumeric("a.b[23].c");
     filter.mutable_options()->term = term->value;
 
@@ -1268,8 +1300,10 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     auto* term = irs::get<irs::term_attribute>(stream);
 
     irs::Or expected;
-    auto& filter =
-        expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>();
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
+                       .filter<irs::And>()
+                       .add<irs::by_term>();
     *filter.mutable_field() = mangleNumeric("a.b.c.e[4].f[5].g[3].g.a");
     filter.mutable_options()->term = term->value;
 
@@ -1436,7 +1470,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           arangodb::transaction::Options());
 
       irs::Or expected;
-      auto& root = expected.add<irs::Not>().filter<irs::And>();
+      auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>();
       root.add<arangodb::iresearch::ByExpression>().init(
           {.ast = ast},
           *filterNode->getMember(0)->getMember(
@@ -1535,7 +1569,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           arangodb::transaction::Options());
 
       irs::Or expected;
-      auto& root = expected.add<irs::Not>().filter<irs::And>();
+      auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>();
       root.add<arangodb::iresearch::ByExpression>().init(
           {.ast = ast},
           *filterNode->getMember(0)->getMember(
@@ -1631,7 +1665,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           arangodb::transaction::Options());
 
       irs::Or expected;
-      auto& root = expected.add<irs::Not>().filter<irs::And>();
+      auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>();
       root.add<arangodb::iresearch::ByExpression>().init(
           {.ast = ast},
           *filterNode->getMember(0)->getMember(0)  // d.a < _NONDETERM_('1')
@@ -1726,7 +1760,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           arangodb::transaction::Options());
 
       irs::Or expected;
-      auto& root = expected.add<irs::Not>();
+      auto& root = expected.add<irs::And>().add<irs::Not>();
       root.boost(2.5);
       root.filter<irs::And>().add<arangodb::iresearch::ByExpression>().init(
           {.ast = ast},
@@ -1824,7 +1858,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           arangodb::transaction::Options());
 
       irs::Or expected;
-      auto& root = expected.add<irs::Not>().filter<irs::And>();
+      auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>();
       root.add<arangodb::iresearch::ByExpression>().init(
           {.ast = ast},
           *filterNode->getMember(0)->getMember(0)  // k.a < _NONDETERM_('1')
@@ -1919,7 +1953,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           arangodb::transaction::Options());
 
       irs::Or expected;
-      auto& root = expected.add<irs::Not>().filter<irs::And>();
+      auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>();
       auto& expr = root.add<arangodb::iresearch::ByExpression>();
       expr.boost(1.5);
       expr.init(
@@ -2017,7 +2051,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
           arangodb::transaction::Options());
 
       irs::Or expected;
-      auto& root = expected.add<irs::Not>().filter<irs::And>();
+      auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>();
       root.add<arangodb::iresearch::ByExpression>().init(
           {.ast = ast},
           *filterNode->getMember(0)->getMember(0)  // d.a < 1+d.b
