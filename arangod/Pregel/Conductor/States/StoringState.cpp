@@ -39,33 +39,24 @@ auto Storing::run() -> std::optional<std::unique_ptr<State>> {
 }
 
 auto Storing::_store() -> futures::Future<Result> {
-  return conductor._workers.store(Store{}).thenValue([&](auto results)
-                                                         -> Result {
-    for (auto const& result : results) {
-      if (result.get().fail()) {
-        return Result{
-            result.get().errorNumber(),
-            fmt::format(
-                "Got unsuccessful response from worker while storing graph: {}",
-                result.get().errorMessage())};
-      }
-    }
-    return Result{};
-  });
+  return conductor._workers.store(Store{}).thenValue(
+      [&](auto stored) -> Result {
+        if (stored.fail()) {
+          return Result{
+              stored.errorNumber(),
+              fmt::format("While storing graph: {}", stored.errorMessage())};
+        }
+        return Result{};
+      });
 }
 
 auto Storing::_cleanup() -> futures::Future<Result> {
   return conductor._workers.cleanup(Cleanup{}).thenValue(
-      [&](auto results) -> Result {
-        for (auto const& result : results) {
-          if (result.get().fail()) {
-            return Result{
-                result.get().errorNumber(),
-                fmt::format(
-                    "Got unsuccessful response from worker while cleaning "
-                    "up: {}",
-                    result.get().errorMessage())};
-          }
+      [&](auto cleanupFinished) -> Result {
+        if (cleanupFinished.fail()) {
+          return Result{cleanupFinished.errorNumber(),
+                        fmt::format("While cleaning up: {}",
+                                    cleanupFinished.errorMessage())};
         }
         if (conductor._inErrorAbort) {
           return Result{TRI_ERROR_INTERNAL, "Conductor in error"};

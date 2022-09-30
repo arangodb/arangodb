@@ -47,25 +47,13 @@ auto Done::run() -> std::optional<std::unique_ptr<State>> {
 
 auto Done::getResults(bool withId) -> ResultT<PregelResults> {
   return conductor._workers.results(CollectPregelResults{.withId = withId})
-      .thenValue([&](auto responses) -> ResultT<PregelResults> {
-        VPackBuilder pregelResults;
-        {
-          VPackArrayBuilder ab(&pregelResults);
-          for (auto const& response : responses) {
-            if (response.get().fail()) {
-              return Result{TRI_ERROR_INTERNAL,
-                            fmt::format("Got unsuccessful response from worker "
-                                        "while requesting results: "
-                                        "{}",
-                                        response.get().errorMessage())};
-            }
-            if (auto slice = response.get().get().results.slice();
-                slice.isArray()) {
-              pregelResults.add(VPackArrayIterator(slice));
-            }
-          }
+      .thenValue([&](auto pregelResults) -> ResultT<PregelResults> {
+        if (pregelResults.fail()) {
+          return Result{pregelResults.errorNumber(),
+                        fmt::format("While requesting pregel results: {}",
+                                    pregelResults.errorMessage())};
         }
-        return PregelResults{pregelResults};
+        return pregelResults;
       })
       .get();
 }

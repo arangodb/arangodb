@@ -31,6 +31,7 @@
 #include "Pregel/Utils.h"
 #include "VocBase/Methods/Tasks.h"
 #include "velocypack/Builder.h"
+#include "velocypack/Iterator.h"
 #include "velocypack/Slice.h"
 #include <cstdint>
 #include <optional>
@@ -46,6 +47,10 @@ struct GraphLoaded {
   GraphLoaded() noexcept = default;
   GraphLoaded(uint64_t vertexCount, uint64_t edgeCount)
       : vertexCount{vertexCount}, edgeCount{edgeCount} {}
+  auto add(GraphLoaded const& other) -> void {
+    vertexCount = other.vertexCount;
+    edgeCount = other.edgeCount;
+  }
 };
 
 template<typename Inspector>
@@ -69,6 +74,22 @@ struct GlobalSuperStepPrepared {
         edgeCount{edgeCount},
         messages{std::move(messages)},
         aggregators{std::move(aggregators)} {}
+  auto add(GlobalSuperStepPrepared const& other) -> void {
+    activeCount += other.activeCount;
+    vertexCount += other.vertexCount;
+    edgeCount += other.edgeCount;
+    messages.add(other.messages.slice());
+    // TODO directly aggregate in here when aggregators have an inspector
+    VPackBuilder newAggregators;
+    {
+      VPackArrayBuilder ab(&newAggregators);
+      if (!aggregators.isEmpty()) {
+        newAggregators.add(VPackArrayIterator(aggregators.slice()));
+      }
+      newAggregators.add(other.aggregators.slice());
+    }
+    aggregators = newAggregators;
+  }
 };
 template<typename Inspector>
 auto inspect(Inspector& f, GlobalSuperStepPrepared& x) {
@@ -83,6 +104,9 @@ struct GlobalSuperStepFinished {
   GlobalSuperStepFinished() noexcept = default;
   GlobalSuperStepFinished(MessageStats messageStats)
       : messageStats{std::move(messageStats)} {}
+  auto add(GlobalSuperStepFinished const& other) -> void {
+    messageStats.accumulate(other.messageStats);
+  }
 };
 
 template<typename Inspector>
@@ -90,7 +114,10 @@ auto inspect(Inspector& f, GlobalSuperStepFinished& x) {
   return f.object(x).fields(f.field("messageStats", x.messageStats));
 }
 
-struct Stored {};
+struct Stored {
+  Stored() noexcept = default;
+  auto add(Stored const& other) -> void {}
+};
 template<typename Inspector>
 auto inspect(Inspector& f, Stored& x) {
   return f.object(x).fields();
@@ -98,6 +125,7 @@ auto inspect(Inspector& f, Stored& x) {
 
 struct CleanupFinished {
   CleanupFinished() noexcept = default;
+  auto add(CleanupFinished const& other) -> void {}
 };
 template<typename Inspector>
 auto inspect(Inspector& f, CleanupFinished& x) {
@@ -116,19 +144,26 @@ auto inspect(Inspector& f, StatusUpdated& x) {
 }
 
 struct PregelResults {
+  VPackBuilder results;
   PregelResults() noexcept = default;
   PregelResults(VPackBuilder results) : results{std::move(results)} {}
-  VPackBuilder results;
+  auto add(PregelResults const& other) -> void {
+    VPackBuilder newAggregators;
+    {
+      VPackArrayBuilder ab(&newAggregators);
+      if (!results.isEmpty()) {
+        newAggregators.add(VPackArrayIterator(results.slice()));
+      }
+      if (other.results.slice().isArray()) {
+        newAggregators.add(VPackArrayIterator(other.results.slice()));
+      }
+    }
+    results = newAggregators;
+  }
 };
 template<typename Inspector>
 auto inspect(Inspector& f, PregelResults& x) {
   return f.object(x).fields(f.field("results", x.results));
-}
-
-struct GssStarted {};
-template<typename Inspector>
-auto inspect(Inspector& f, GssStarted& x) {
-  return f.object(x).fields();
 }
 
 // ------ commands sent from conductor to worker -------
