@@ -29,6 +29,9 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Identifier.h"
 
+#include <cstdint>
+#include <string_view>
+
 namespace arangodb {
 class ClusterInfo;
 class LocalDocumentId;
@@ -52,21 +55,28 @@ class RevisionId final : public arangodb::basics::Identifier {
   // @brief get the previous revision id in sequence (this - 1)
   RevisionId previous() const;
 
-  /// @brief Convert a revision ID to a string
-  std::string toString() const;
+  /// @brief Convert a revision ID to a string.
+  /// this method can produce an ambiguous result - do not use it
+  /// for future code
+  [[deprecated]] std::string toString() const;
 
   /// @brief Convert a revision ID to a string
   /// the buffer should be at least arangodb::basics::maxUInt64StringSize
   /// bytes long
   /// the length of the encoded value and the start position into
-  /// the result buffer are returned
-  std::pair<size_t, size_t> toString(char* buffer) const;
+  /// the result buffer are returned.
+  /// this method can produce an ambiguous result - do not use it
+  /// for future code
+  [[deprecated]] std::pair<size_t, size_t> toString(char* buffer) const;
 
   /// @brief Convert revision ID to a string using the provided buffer,
   /// returning the result as a value pair for convenience
   /// the buffer should be at least arangodb::basics::maxUInt64StringSize
   /// bytes long
-  arangodb::velocypack::ValuePair toValuePair(char* buffer) const;
+  /// this method can produce an ambiguous result - do not use it
+  /// for future code
+  [[deprecated]] arangodb::velocypack::ValuePair toValuePair(
+      char* buffer) const;
 
   /// @brief create a not-set revision id
   static constexpr RevisionId none() { return RevisionId{0}; }
@@ -86,18 +96,13 @@ class RevisionId final : public arangodb::basics::Identifier {
   static RevisionId createClusterWideUnique(ClusterInfo& ci);
 
   /// @brief Convert a string into a revision ID, returns none() if invalid
-  static RevisionId fromString(std::string const& ridStr);
+  static RevisionId fromString(std::string_view rid);
 
   /// @brief Convert a string into a revision ID, returns none() if invalid
-  static RevisionId fromString(std::string const& ridStr, bool& isOld,
-                               bool warn);
+  static RevisionId fromString(std::string_view rid, bool& isOld, bool warn);
 
   /// @brief Convert a string into a revision ID, no check variant
   static RevisionId fromString(char const* p, size_t len, bool warn);
-
-  /// @brief Convert a string into a revision ID, returns none() if invalid
-  static RevisionId fromString(char const* p, size_t len, bool& isOld,
-                               bool warn);
 
   /// @brief extract revision from slice; expects either an integer or string,
   /// or an object with a string or integer _rev attribute
