@@ -56,6 +56,7 @@
 #include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 
+#include <absl/strings/str_cat.h>
 #include <fuerte/jwt.h>
 #include <velocypack/Iterator.h>
 
@@ -1067,9 +1068,20 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
       canAccessTrx &= (mtrx.sideUsers.load(std::memory_order_relaxed) == 0);
     }
     if (!canAccessTrx) {
-      std::string msg("updating transaction status failed. transaction ");
-      msg.append(std::to_string(tid.id()));
-      msg.append(" is in use");
+      std::string_view hint = " ";
+      if (tid.isFollowerTransactionId()) {
+        hint = " follower ";
+      }
+
+      std::string_view operation;
+      if (status == transaction::Status::COMMITTED) {
+        operation = "commit";
+      } else {
+        operation = "abort";
+      }
+      std::string msg = absl::StrCat("updating", hint, "transaction status on ",
+                                     operation, " failed. transaction ",
+                                     std::to_string(tid.id()), " is in use");
       LOG_TOPIC("dfc30", DEBUG, Logger::TRANSACTIONS) << msg;
       return res.reset(TRI_ERROR_LOCKED, std::move(msg));
     }

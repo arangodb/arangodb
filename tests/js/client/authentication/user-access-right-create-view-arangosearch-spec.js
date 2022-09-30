@@ -39,9 +39,9 @@ const namePrefix = helper.namePrefix;
 const dbName = helper.dbName;
 const rightLevels = helper.rightLevels;
 const testViewName = `${namePrefix}ViewNew`;
-const testViewType = "arangosearch";
 const testColName = `${namePrefix}ColNew`;
 const testColNameAnother = `${namePrefix}ColAnotherNew`;
+const indexName = `${namePrefix}Inverted`;
 
 const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
@@ -59,16 +59,9 @@ helper.switchUser('root', '_system');
 helper.removeAllUsers();
 helper.generateAllUsers();
 
-function hasIResearch (db) {
-  return !(db._views() === 0); // arangosearch views are not supported
-}
-
-!hasIResearch(db) ? describe.skip : describe('User Rights Management', () => {
+describe('User Rights Management', () => {
   it('should check if all users are created', () => {
     helper.switchUser('root', '_system');
-    if (db._views() === 0) {
-      return; // arangosearch views are not supported
-    }
     expect(userSet.size).to.be.greaterThan(0); 
     expect(userSet.size).to.equal(helper.userCount);
     for (let name of userSet) {
@@ -77,301 +70,310 @@ function hasIResearch (db) {
   });
 
   it('should test rights for', () => {
-      for (let name of userSet) {
-        try {
+    for (let testViewType of ["arangosearch", "search-alias"]) {
+      describe(`view type ${testViewType}`, () => {
+        for (let name of userSet) {
+          try {
             helper.switchUser(name, dbName);
-        } catch (e) {
+          } catch (e) {
             continue;
-        }
+          }
 
-        describe(`user ${name}`, () => {
-          before(() => {
-            helper.switchUser(name, dbName);
-          });
-
-        describe('administrate on db level', () => {
-          const rootTestCollection = (colName, switchBack = true) => {
-            helper.switchUser('root', dbName);
-            let col = db._collection(colName);
-            if (switchBack) {
-                helper.switchUser(name, dbName);
-            }
-            return col !== null;
-          };
-
-          const rootCreateCollection = (colName = testColName) => {
-            if (!rootTestCollection(colName, false)) {
-              db._create(colName);
-              if (colLevel['none'].has(name)) {
-                if (helper.isLdapEnabledExternal()) {
-                  users.grantCollection(':role:' + name, dbName, colName, 'none');
-                } else {
-                  users.grantCollection(name, dbName, colName, 'none');
-                }
-              } else if (colLevel['ro'].has(name)) {
-                if (helper.isLdapEnabledExternal()) {
-                  users.grantCollection(':role:' + name, dbName, colName, 'ro');
-                } else {
-                  users.grantCollection(name, dbName, colName, 'ro');
-                }
-              } else if (colLevel['rw'].has(name)) {
-                if (helper.isLdapEnabledExternal()) {
-                  users.grantCollection(':role:' + name, dbName, colName, 'rw');
-                } else {
-                  users.grantCollection(name, dbName, colName, 'rw');
-                }
-              }
-            }
-            helper.switchUser(name, dbName);
-          };
-
-          const rootDropCollection = (colName = testColName) => {
-            helper.switchUser('root', dbName);
-            try {
-              db._collection(colName).drop();
-            } catch (ignored) { }
-            helper.switchUser(name, dbName);
-          };
-
-          const rootTestView = (viewName = testViewName) => {
-            helper.switchUser('root', dbName);
-            const view = db._view(viewName);
-            helper.switchUser(name, dbName);
-            return view != null;
-          };
-
-          const rootTestViewHasLinks = (viewName = testViewName, links) => {
-            helper.switchUser('root', dbName);
-            var view = db._view(viewName);
-            if (view != null) {
-              links.every(function(link) {
-                const links = view.properties().links;
-                if (links != null && links.hasOwnProperty([link])){
-                  return true;
-                } else {
-                  view = null;
-                  return false;
-                }
-              });
-            }
-            helper.switchUser(name, dbName);
-            return view != null;
-          };
-
-          const rootDropView = (viewName = testViewName) => {
-            helper.switchUser('root', dbName);
-            try {
-              db._dropView(viewName);
-            } catch (ignored) { }
-            helper.switchUser(name, dbName);
-          };
-
-          const rootGetViewProps = (viewName, switchBack = true) => {
-            helper.switchUser('root', dbName);
-            let properties = db._view(viewName).properties();
-            if (switchBack) {
-                helper.switchUser(name, dbName);
-            }
-            return properties;
-          };
-
-          const rootGrantCollection = (colName, user, explicitRight = '') => {
-            if (rootTestCollection(colName, false)) {
-              if (explicitRight !== '' && rightLevels.includes(explicitRight))
-              {
-                if (helper.isLdapEnabledExternal()) {
-                  users.grantCollection(':role:' + user, dbName, colName, explicitRight);
-                } else {
-                  users.grantCollection(user, dbName, colName, explicitRight);
-                }
-              }
-            }
-            helper.switchUser(user, dbName);
-          };
-
-          const checkError = (e) => {
-            expect(e.code).to.equal(403, "Expected to get forbidden REST error code, but got another one");
-            expect(e.errorNum).to.oneOf([errors.ERROR_FORBIDDEN.code, errors.ERROR_ARANGO_READ_ONLY.code], "Expected to get forbidden error number, but got another one");
-          };
-
-          describe('create a', () => {
+          describe(`user ${name}`, () => {
             before(() => {
-              db._useDatabase(dbName);
+              helper.switchUser(name, dbName);
             });
 
-            after(() => {
-              rootDropView(testViewName);
-              rootDropCollection(testColName);
-            });
+            describe('administrate on db level', () => {
+              const rootTestCollection = (colName, switchBack = true) => {
+                helper.switchUser('root', dbName);
+                let col = db._collection(colName);
+                if (switchBack) {
+                  helper.switchUser(name, dbName);
+                }
+                return col !== null;
+              };
 
-            it('view with empty (default) parameters', () => {
-              expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view exists');
+              const rootCreateCollection = (colName = testColName) => {
+                if (!rootTestCollection(colName, false)) {
+                  let c = db._create(colName);
+                  if (colName === testColName) {
+                    c.ensureIndex({ type: "inverted", name: indexName, fields: [ { name: "value" } ] });
+                  }
+                  if (colLevel['none'].has(name)) {
+                    if (helper.isLdapEnabledExternal()) {
+                      users.grantCollection(':role:' + name, dbName, colName, 'none');
+                    } else {
+                      users.grantCollection(name, dbName, colName, 'none');
+                    }
+                  } else if (colLevel['ro'].has(name)) {
+                    if (helper.isLdapEnabledExternal()) {
+                      users.grantCollection(':role:' + name, dbName, colName, 'ro');
+                    } else {
+                      users.grantCollection(name, dbName, colName, 'ro');
+                    }
+                  } else if (colLevel['rw'].has(name)) {
+                    if (helper.isLdapEnabledExternal()) {
+                      users.grantCollection(':role:' + name, dbName, colName, 'rw');
+                    } else {
+                      users.grantCollection(name, dbName, colName, 'rw');
+                    }
+                  }
+                }
+                helper.switchUser(name, dbName);
+              };
 
-              if (dbLevel['rw'].has(name)) {
-                db._createView(testViewName, testViewType, {});
-                expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
-              } else {
+              const rootDropCollection = (colName = testColName) => {
+                helper.switchUser('root', dbName);
                 try {
-                  db._createView(testViewName, testViewType, {});
-                } catch (e) {
-                  checkError(e);
-                  return;
+                  db._collection(colName).drop();
+                } catch (ignored) { }
+                helper.switchUser(name, dbName);
+              };
+
+              const rootTestView = (viewName = testViewName) => {
+                helper.switchUser('root', dbName);
+                const view = db._view(viewName);
+                helper.switchUser(name, dbName);
+                return view !== null;
+              };
+
+              const rootTestViewHasLinks = (viewName = testViewName, links) => {
+                helper.switchUser('root', dbName);
+                let view = db._view(viewName);
+                if (view !== null) {
+                  links.every(function(link) {
+                    const links = view.properties().links;
+                    if (links != null && links.hasOwnProperty([link])){
+                      return true;
+                    } else {
+                      view = null;
+                      return false;
+                    }
+                  });
                 }
-                expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
-              }
-            });
+                helper.switchUser(name, dbName);
+                return view !== null;
+              };
 
-            it('view with non-empty parameters (except links)', () => {
-              rootDropView(testViewName);
-              rootDropCollection(testColName);
-
-              expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
-
-              if (dbLevel['rw'].has(name)) {
-                db._createView(testViewName, testViewType, { cleanupIntervalStep: 20 });
-                expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
-                expect(rootGetViewProps(testViewName, true)["cleanupIntervalStep"]).to.equal(20, 'View creation reported success, but view property was not set as expected during creation');
-              } else {
+              const rootDropView = (viewName = testViewName) => {
+                helper.switchUser('root', dbName);
                 try {
-                  db._createView(testViewName, testViewType, { cleanupIntervalStep: 20 });
-                } catch (e) {
-                  checkError(e);
-                  return;
+                  db._dropView(viewName);
+                } catch (ignored) { }
+                helper.switchUser(name, dbName);
+              };
+
+              const rootGetViewProps = (viewName, switchBack = true) => {
+                helper.switchUser('root', dbName);
+                let properties = db._view(viewName).properties();
+                if (switchBack) {
+                  helper.switchUser(name, dbName);
                 }
-                expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
-              }
-            });
+                return properties;
+              };
 
-            // FIXME: uncomment after PR 6199 is done with respectful changes
-            /*
-            it('view with links to existing collection', () => {
-              rootDropView(testViewName);
-              rootDropCollection(testColName);
-
-              rootCreateCollection(testColName);
-              expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
-              expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the collection still not exists');
-
-              if (dbLevel['rw'].has(name) && colLevel['rw'].has(name) || colLevel['ro'].has(name)) {
-                db._createView(testViewName, testViewType, { links: { [testColName]: { includeAllFields: true } } });
-                expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
-                expect(rootTestViewHasLinks(testViewName, [`${testColName}`])).to.equal(true, 'View links expected to be visible, but were not found afterwards');
-              } else {
-                try {
-                  db._createView(testViewName, testViewType, { links: { [testColName]: { includeAllFields: true } } });
-                } catch (e) {
-                  checkError(e);
-                  return;
+              const rootGrantCollection = (colName, user, explicitRight = '') => {
+                if (rootTestCollection(colName, false)) {
+                  if (explicitRight !== '' && rightLevels.includes(explicitRight))
+                  {
+                    if (helper.isLdapEnabledExternal()) {
+                      users.grantCollection(':role:' + user, dbName, colName, explicitRight);
+                    } else {
+                      users.grantCollection(user, dbName, colName, explicitRight);
+                    }
+                  }
                 }
-                if(!dbLevel['rw'].has(name)) {
-                  expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
-                }
-              }
-            });
+                helper.switchUser(user, dbName);
+              };
 
-            it('view with links to multiple collections with same access level', () => {
-              rootDropView(testViewName);
-              rootDropCollection(testColName);
+              const checkError = (e) => {
+                expect(e.code).to.equal(403, "Expected to get forbidden REST error code, but got another one");
+                expect(e.errorNum).to.oneOf([errors.ERROR_FORBIDDEN.code, errors.ERROR_ARANGO_READ_ONLY.code], "Expected to get forbidden error number, but got another one");
+              };
 
-              rootCreateCollection(testColName);
-              rootCreateCollection(testColNameAnother);
+              describe('create a', () => {
+                before(() => {
+                  db._useDatabase(dbName);
+                });
 
-              expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
-              expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the collection still not exists');
-              expect(rootTestCollection(testColNameAnother)).to.equal(true, 'Precondition failed, the collection still not exists');
+                after(() => {
+                  rootDropView(testViewName);
+                  rootDropCollection(testColName);
+                });
 
-              if (dbLevel['rw'].has(name) && colLevel['rw'].has(name) || colLevel['ro'].has(name)) {
-                db._createView(testViewName, testViewType, { links: { 
-                  [testColName]: { includeAllFields: true }, [testColNameAnother]: { includeAllFields: true } 
+                it('view with empty (default) parameters', () => {
+                  expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view exists');
+
+                  if (dbLevel['rw'].has(name)) {
+                    db._createView(testViewName, testViewType, {});
+                    expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
+                  } else {
+                    try {
+                      db._createView(testViewName, testViewType, {});
+                    } catch (e) {
+                      checkError(e);
+                      return;
+                    }
+                    expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
                   }
                 });
-                expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
-                expect(rootTestViewHasLinks(testViewName, [`${testColName}`, `${testColNameAnother}`])).to.equal(true, 'View links expected to be visible, but were not found afterwards');
-              } else {
-                try {
-                  db._createView(testViewName, testViewType, { links: { 
-                    [testColName]: { includeAllFields: true }, [testColNameAnother]: { includeAllFields: true } 
+
+                if (testViewType === "arangosearch") {
+                  it('view with non-empty parameters (except links)', () => {
+                    rootDropView(testViewName);
+                    rootDropCollection(testColName);
+
+                    expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
+
+                    if (dbLevel['rw'].has(name)) {
+                      db._createView(testViewName, testViewType, { cleanupIntervalStep: 20 });
+                      expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
+                      expect(rootGetViewProps(testViewName, true)["cleanupIntervalStep"]).to.equal(20, 'View creation reported success, but view property was not set as expected during creation');
+                    } else {
+                      try {
+                        db._createView(testViewName, testViewType, { cleanupIntervalStep: 20 });
+                      } catch (e) {
+                        checkError(e);
+                        return;
+                      }
+                      expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
                     }
                   });
-                } catch (e) {
-                  checkError(e);
-                  return;
-                }
-                if(!dbLevel['rw'].has(name)) {
-                  expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
-                }
-              }
-            });
+                  
+                  it('view with links to existing collection', () => {
+                    rootDropView(testViewName);
+                    rootDropCollection(testColName);
 
-            var itName = 'view with links to multiple collections with RO access level to one of them';
-            !(colLevel['rw'].has(name) || colLevel['none'].has(name)) ? it.skip(itName) :
-            it(itName, () => {
-              rootDropView(testViewName);
-              rootDropCollection(testColName);
-              rootDropCollection(testColNameAnother);
+                    rootCreateCollection(testColName);
+                    expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
+                    expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the collection still not exists');
 
-              rootCreateCollection(testColName);
-              rootCreateCollection(testColNameAnother);
-              rootGrantCollection(testColNameAnother, name, "ro");
-
-              expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
-              expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the collection still not exists');
-              expect(rootTestCollection(testColNameAnother)).to.equal(true, 'Precondition failed, the collection still not exists');
-
-              if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
-                db._createView(testViewName, testViewType, { links: { 
-                  [testColName]: { includeAllFields: true }, [testColNameAnother]: { includeAllFields: true }
-                  } 
-                });
-                expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
-                expect(rootTestViewHasLinks(testViewName, [`${testColName}`, `${testColNameAnother}`])).to.equal(true, 'View links expected to be visible, but were not found afterwards');
-              } else {
-                try {
-                  db._createView(testViewName, testViewType, { links: {
-                    [testColName]: { includeAllFields: true }, [testColNameAnother]: { includeAllFields: true }
-                    } 
-                  });
-                } catch (e) {
-                  checkError(e);
-                  return;
-                }
-                if(!dbLevel['rw'].has(name)) {
-                  expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
-                }
-              }
-            });
-
-            var itName = 'view with links to multiple collections with NONE access level to one of them';
-            !(colLevel['rw'].has(name) || colLevel['ro'].has(name)) ? it.skip(itName) :
-            it(itName, () => {
-              rootDropView(testViewName);
-              rootDropCollection(testColName);
-              rootDropCollection(testColNameAnother);
-
-              rootCreateCollection(testColName);
-              rootCreateCollection(testColNameAnother);
-              rootGrantCollection(testColNameAnother, name, "none");
-              
-              expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
-              expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the collection still not exists');
-              expect(rootTestCollection(testColNameAnother)).to.equal(true, 'Precondition failed, the collection still not exists');
-
-              if (dbLevel['rw'].has(name)) {
-                try {
-                  db._createView(testViewName, testViewType, { links: {
-                    [testColName]: { includeAllFields: true }, [testColNameAnother]: { includeAllFields: true }
+                    if (dbLevel['rw'].has(name) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
+                      db._createView(testViewName, testViewType, { links: { [testColName]: { includeAllFields: true } } });
+                      expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
+                      expect(rootTestViewHasLinks(testViewName, [`${testColName}`])).to.equal(true, 'View links expected to be visible, but were not found afterwards');
+                    } else {
+                      try {
+                        db._createView(testViewName, testViewType, { links: { [testColName]: { includeAllFields: true } } });
+                      } catch (e) {
+                        checkError(e);
+                        return;
+                      }
+                      if (!dbLevel['rw'].has(name)) {
+                        expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
+                      }
                     }
                   });
-                } catch (e) {
-                  checkError(e);
-                  return;
+                  
+                  it('view with links to multiple collections with same access level', () => {
+                    rootDropView(testViewName);
+                    rootDropCollection(testColName);
+                    rootDropCollection(testColNameAnother);
+
+                    rootCreateCollection(testColName);
+                    rootCreateCollection(testColNameAnother);
+
+                    expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
+                    expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the collection still not exists');
+                    expect(rootTestCollection(testColNameAnother)).to.equal(true, 'Precondition failed, the collection still not exists');
+
+                    if (dbLevel['rw'].has(name) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
+                      db._createView(testViewName, testViewType, { links: { 
+                        [testColName]: { includeAllFields: true }, [testColNameAnother]: { includeAllFields: true } 
+                      }
+                      });
+                      expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
+                      expect(rootTestViewHasLinks(testViewName, [`${testColName}`, `${testColNameAnother}`])).to.equal(true, 'View links expected to be visible, but were not found afterwards');
+                    } else {
+                      try {
+                        db._createView(testViewName, testViewType, { links: { 
+                          [testColName]: { includeAllFields: true }, [testColNameAnother]: { includeAllFields: true } 
+                        }
+                        });
+                      } catch (e) {
+                        checkError(e);
+                        return;
+                      }
+                      if (!dbLevel['rw'].has(name)) {
+                        expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
+                      }
+                    }
+                  });
+
+                  let itName = 'view with links to multiple collections with RO access level to one of them';
+                  !(colLevel['rw'].has(name) || colLevel['none'].has(name)) ? it.skip(itName) :
+                    it(itName, () => {
+                      rootDropView(testViewName);
+                      rootDropCollection(testColName);
+                      rootDropCollection(testColNameAnother);
+
+                      rootCreateCollection(testColName);
+                      rootCreateCollection(testColNameAnother);
+                      rootGrantCollection(testColNameAnother, name, "ro");
+
+                      expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
+                      expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the collection still not exists');
+                      expect(rootTestCollection(testColNameAnother)).to.equal(true, 'Precondition failed, the collection still not exists');
+
+                      if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
+                        db._createView(testViewName, testViewType, { links: { 
+                          [testColName]: { includeAllFields: true }, [testColNameAnother]: { includeAllFields: true }
+                        } 
+                        });
+                        expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
+                        expect(rootTestViewHasLinks(testViewName, [`${testColName}`, `${testColNameAnother}`])).to.equal(true, 'View links expected to be visible, but were not found afterwards');
+                      } else {
+                        try {
+                          db._createView(testViewName, testViewType, { links: {
+                            [testColName]: { includeAllFields: true }, [testColNameAnother]: { includeAllFields: true }
+                          } 
+                          });
+                        } catch (e) {
+                          checkError(e);
+                          return;
+                        }
+                        if(!dbLevel['rw'].has(name)) {
+                          expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
+                        }
+                      }
+                    });
+                  
+                  itName = 'view with links to multiple collections with NONE access level to one of them';
+                  !(colLevel['rw'].has(name) || colLevel['ro'].has(name)) ? it.skip(itName) :
+                    it(itName, () => {
+                      rootDropView(testViewName);
+                      rootDropCollection(testColName);
+                      rootDropCollection(testColNameAnother);
+
+                      rootCreateCollection(testColName);
+                      rootCreateCollection(testColNameAnother);
+                      rootGrantCollection(testColNameAnother, name, "none");
+
+                      expect(rootTestView(testViewName)).to.equal(false, 'Precondition failed, the view still exists');
+                      expect(rootTestCollection(testColName)).to.equal(true, 'Precondition failed, the collection still not exists');
+                      expect(rootTestCollection(testColNameAnother)).to.equal(true, 'Precondition failed, the collection still not exists');
+
+                      if (dbLevel['rw'].has(name)) {
+                        try {
+                          db._createView(testViewName, testViewType, { links: {
+                            [testColName]: { includeAllFields: true }, [testColNameAnother]: { includeAllFields: true }
+                          }
+                          });
+                        } catch (e) {
+                          checkError(e);
+                          return;
+                        }
+                        expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
+                      }
+                    });
                 }
-                expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
+              });
             });
-            */
           });
-        });
+        }
       });
+
     }
   });
 });
