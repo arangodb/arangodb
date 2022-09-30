@@ -120,7 +120,6 @@ class HybridLogicalClock {
   /// the result buffer are returned
   static std::pair<size_t, size_t> encodeTimeStamp(uint64_t t, char* r) {
     size_t pos = 11;
-    r[pos - 1] = '\0';
     while (t > 0) {
       TRI_ASSERT(pos > 0);
       r[--pos] = encodeTable[static_cast<uint8_t>(t & 0x3ful)];
