@@ -195,55 +195,31 @@ auto Conductor::process(MessagePayload const& message) -> Result {
       message);
 }
 
-auto Conductor ::_postGlobalSuperStep(VPackBuilder messagesFromWorkers)
-    -> PostGlobalSuperStepResult {
+auto Conductor ::_postGlobalSuperStep() -> PostGlobalSuperStepResult {
   // workers are done if all messages were processed and no active vertices
   // are left to process
-  bool activateAll = false;
   bool done = _globalSuperstep > 0 && _statistics.noActiveVertices() &&
               _statistics.allMessagesProcessed();
   bool proceed = true;
   if (_masterContext &&
       _globalSuperstep > 0) {  // ask algorithm to evaluate aggregated values
     _masterContext->_globalSuperstep = _globalSuperstep - 1;
-    _masterContext->_enterNextGSS = false;
-    _masterContext->postGlobalSuperstepMessage(messagesFromWorkers.slice());
     proceed = _masterContext->postGlobalSuperstep();
     if (!proceed) {
       LOG_PREGEL("0aa8e", DEBUG) << "Master context ended execution";
     }
-    if (proceed) {
-      switch (_masterContext->postGlobalSuperstep(done)) {
-        case MasterContext::ContinuationResult::ACTIVATE_ALL:
-          activateAll = true;
-          [[fallthrough]];
-        case MasterContext::ContinuationResult::CONTINUE:
-          done = false;
-          break;
-        case MasterContext::ContinuationResult::ERROR_ABORT:
-          _inErrorAbort = true;
-          [[fallthrough]];
-        case MasterContext::ContinuationResult::ABORT:
-          proceed = false;
-          break;
-        case MasterContext::ContinuationResult::DONT_CARE:
-          break;
-      }
-    }
   }
   return PostGlobalSuperStepResult{
-      .activateAll = activateAll,
       .finished = !proceed || done || _globalSuperstep >= _maxSuperstep};
 }
 
-auto Conductor::_preGlobalSuperStep() -> bool {
+auto Conductor::_preGlobalSuperStep() -> void {
   if (_masterContext) {
     _masterContext->_globalSuperstep = _globalSuperstep;
     _masterContext->_vertexCount = _totalVerticesCount;
     _masterContext->_edgeCount = _totalEdgesCount;
-    return _masterContext->preGlobalSuperstepWithResult();
+    _masterContext->preGlobalSuperstep();
   }
-  return true;
 }
 
 // ============ Conductor callbacks ===============

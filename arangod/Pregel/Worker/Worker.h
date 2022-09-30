@@ -145,8 +145,6 @@ class Worker : public IWorker {
   uint64_t _activeCount = 0;
   /// current number of running threads
   size_t _runningThreads = 0;
-  /// if the worker has started sendng messages to the next GSS
-  std::atomic<bool> _requestedNextGSS;
   Scheduler::WorkHandle _workHandle;
 
   using VerticesProcessedFuture =
@@ -160,9 +158,6 @@ class Worker : public IWorker {
       -> ResultT<VerticesProcessed>;
   auto _finishProcessing() -> ResultT<GlobalSuperStepFinished>;
   void _callConductor(VPackBuilder const& message);
-  void _callConductorWithResponse(std::string const& path,
-                                  VPackBuilder const& message,
-                                  std::function<void(VPackSlice slice)> handle);
   [[nodiscard]] auto _observeStatus() -> Status const;
   [[nodiscard]] auto _makeStatusCallback() -> std::function<void()>;
 

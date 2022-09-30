@@ -40,7 +40,6 @@ class MasterContext {
   uint64_t _vertexCount = 0;
   uint64_t _edgeCount = 0;
   // Should cause the master to tell everyone to enter the next phase
-  bool _enterNextGSS = false;
   AggregatorHandler* _aggregators = nullptr;
 
  public:
@@ -97,45 +96,17 @@ class MasterContext {
 #endif
   }
 
-  inline void enterNextGlobalSuperstep() { _enterNextGSS = true; }
-
   virtual void preApplication() {}
 
   /// @brief called before supersteps
   virtual void preGlobalSuperstep() {}
-  /// @return true to continue the computation
-  virtual bool preGlobalSuperstepWithResult() {
-    preGlobalSuperstep();
-    return true;
-  }
-  /// @brief called before supersteps; message that is put
-  ///        in msg is sent to all WorkerContexts
-  virtual void preGlobalSuperstepMessage(VPackBuilder& msg) {}
   /// @brief called after supersteps
   /// @return true to continue the computation
   virtual bool postGlobalSuperstep() { return true; }
 
-  /// @brief called after supersteps, VPackSlice contains array of all
-  ///        worker messages received
-  virtual bool postGlobalSuperstepMessage(VPackSlice workerMsgs) {
-    return true;
-  }
-
   virtual void postApplication() {}
 
   virtual void serializeValues(VPackBuilder& b) {}
-
-  enum class ContinuationResult {
-    CONTINUE,
-    ABORT,
-    DONT_CARE,
-    ACTIVATE_ALL,
-    ERROR_ABORT,
-  };
-
-  virtual ContinuationResult postGlobalSuperstep(bool allVertexesVotedHalt) {
-    return ContinuationResult::DONT_CARE;
-  }
 
   /// should indicate if compensation is supposed to start by returning true
   virtual bool preCompensation() { return true; }

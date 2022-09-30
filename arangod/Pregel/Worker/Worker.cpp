@@ -99,8 +99,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
     : _feature(feature),
       _state(WorkerState::IDLE),
       _config(&vocbase),
-      _algorithm(algo),
-      _requestedNextGSS(false) {
+      _algorithm(algo) {
   _config.updateConfig(_feature, initConfig);
 
   MUTEX_LOCKER(guard, _commandMutex);
@@ -222,15 +221,10 @@ auto Worker<V, E, M>::_prepareGlobalSuperStepFct(
   std::swap(_readCache, _writeCache);
   _config._localSuperstep = gss;
 
-  VPackBuilder messageToMaster;
   // only place where is makes sense to call this, since startGlobalSuperstep
   // might not be called again
-  {
-    VPackObjectBuilder ob(&messageToMaster);
-    if (_workerContext && gss > 0) {
-      _workerContext->postGlobalSuperstep(gss - 1);
-      _workerContext->postGlobalSuperstepMasterMessage(messageToMaster);
-    }
+  if (_workerContext && gss > 0) {
+    _workerContext->postGlobalSuperstep(gss - 1);
   }
 
   // responds with info which allows the conductor to decide whether
@@ -241,8 +235,7 @@ auto Worker<V, E, M>::_prepareGlobalSuperStepFct(
     _workerAggregators->serializeValues(aggregators);
   }
   return GlobalSuperStepPrepared{_activeCount, _graphStore->localVertexCount(),
-                                 _graphStore->localEdgeCount(),
-                                 std::move(messageToMaster), aggregators};
+                                 _graphStore->localEdgeCount(), aggregators};
 }
 
 template<typename V, typename E, typename M>
@@ -266,12 +259,6 @@ auto Worker<V, E, M>::_preGlobalSuperStep(RunGlobalSuperStep const& message)
   if (gss != _config.globalSuperstep()) {
     return Result{TRI_ERROR_BAD_PARAMETER, "Wrong GSS"};
   }
-  if (message.activateAll) {
-    for (auto vertices = _graphStore->vertexIterator(); vertices.hasMore();
-         ++vertices) {
-      vertices->setActive(true);
-    }
-  }
   _workerAggregators->resetValues();
   _conductorAggregators->setAggregatedValues(message.aggregators.slice());
   // execute context
@@ -279,8 +266,6 @@ auto Worker<V, E, M>::_preGlobalSuperStep(RunGlobalSuperStep const& message)
     _workerContext->_vertexCount = message.vertexCount;
     _workerContext->_edgeCount = message.edgeCount;
     _workerContext->preGlobalSuperstep(gss);
-    _workerContext->preGlobalSuperstepMasterMessage(
-        message.toWorkerMessages.slice());
   }
   return Result{};
 }
@@ -398,8 +383,6 @@ auto Worker<V, E, M>::_processVertices(
   _initializeVertexContext(vertexComputation.get());
   vertexComputation->_writeAggregators = &workerAggregator;
   vertexComputation->_cache = outCache;
-  // Should cause enterNextGlobalSuperstep to do nothing
-  vertexComputation->_enterNextGSS = true;
 
   size_t activeCount = 0;
   for (; vertexIterator.hasMore(); ++vertexIterator) {
@@ -432,9 +415,6 @@ auto Worker<V, E, M>::_processVertices(
   outCache->flushMessages();
   if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
     return Result{TRI_ERROR_INTERNAL, "Worker execution aborted prematurely."};
-  }
-  if (vertexComputation->_enterNextGSS) {
-    _requestedNextGSS = true;
   }
 
   // double t = TRI_microtime();
@@ -630,42 +610,6 @@ void Worker<V, E, M>::_callConductor(VPackBuilder const& message) {
     network::sendRequestRetry(
         pool, "server:" + _config.coordinatorId(), fuerte::RestVerb::Post,
         baseUrl + Utils::modernMessagingPath, std::move(buffer), reqOpts);
-  }
-}
-
-template<typename V, typename E, typename M>
-void Worker<V, E, M>::_callConductorWithResponse(
-    std::string const& path, VPackBuilder const& message,
-    std::function<void(VPackSlice slice)> handle) {
-  LOG_PREGEL("6d349", TRACE) << "Calling the conductor";
-  if (ServerState::instance()->isRunningInCluster() == false) {
-    VPackBuilder response;
-    _feature.handleConductorRequest(*_config.vocbase(), path, message.slice(),
-                                    response);
-    handle(response.slice());
-  } else {
-    std::string baseUrl = Utils::baseUrl(Utils::conductorPrefix);
-
-    auto& server = _config.vocbase()->server();
-    auto const& nf = server.template getFeature<arangodb::NetworkFeature>();
-    network::ConnectionPool* pool = nf.pool();
-
-    VPackBuffer<uint8_t> buffer;
-    buffer.append(message.data(), message.size());
-
-    network::RequestOptions reqOpts;
-    reqOpts.database = _config.database();
-    reqOpts.skipScheduler = true;
-
-    network::Response r =
-        network::sendRequestRetry(pool, "server:" + _config.coordinatorId(),
-                                  fuerte::RestVerb::Post, baseUrl + path,
-                                  std::move(buffer), reqOpts)
-            .get();
-
-    if (handle) {
-      handle(r.slice());
-    }
   }
 }
 

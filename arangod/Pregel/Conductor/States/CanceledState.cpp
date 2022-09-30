@@ -59,10 +59,6 @@ auto Canceled::_cleanupUntilTimeout(std::chrono::steady_clock::time_point start)
           std::this_thread::sleep_for(_retryInterval);
           return _cleanupUntilTimeout(start).get();
         }
-
-        if (conductor._inErrorAbort) {
-          return Result{TRI_ERROR_INTERNAL, "Conductor in error"};
-        }
         return Result{};
       });
 }
