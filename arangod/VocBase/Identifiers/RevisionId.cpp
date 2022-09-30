@@ -38,8 +38,9 @@
 namespace {
 /// @brief Convert a revision ID to a string
 constexpr static arangodb::RevisionId::BaseType TickLimit =
-    static_cast<arangodb::RevisionId::BaseType>(2016ULL - 1970ULL) * 1000ULL *
-    60ULL * 60ULL * 24ULL * 365ULL;
+    (static_cast<arangodb::RevisionId::BaseType>(2016ULL - 1970ULL) * 1000ULL *
+     60ULL * 60ULL * 24ULL * 365ULL)
+    << 20ULL;
 }  // namespace
 
 namespace arangodb {
@@ -56,6 +57,8 @@ RevisionId RevisionId::next() const { return RevisionId{id() + 1}; }
 // @brief get the previous revision id in sequence (this - 1)
 RevisionId RevisionId::previous() const { return RevisionId{id() - 1}; }
 
+/// @brief this method can produce an ambiguous result - do not use it
+/// for future code
 std::string RevisionId::toString() const {
   if (id() <= ::TickLimit) {
     return arangodb::basics::StringUtils::itoa(id());
@@ -67,7 +70,9 @@ std::string RevisionId::toString() const {
 /// the buffer should be at least arangodb::basics::maxUInt64StringSize
 /// bytes long.
 /// the length of the encoded value and the start position into
-/// the result buffer are returned by the function
+/// the result buffer are returned by the function.
+/// this method can produce an ambiguous result - do not use it
+/// for future code
 std::pair<size_t, size_t> RevisionId::toString(char* buffer) const {
   if (id() <= ::TickLimit) {
     std::pair<size_t, size_t> pos{0, 0};
@@ -80,7 +85,9 @@ std::pair<size_t, size_t> RevisionId::toString(char* buffer) const {
 /// encodes the uint64_t timestamp into a temporary velocypack ValuePair,
 /// using the specific temporary result buffer
 /// the result buffer should be at least
-/// arangodb::basics::maxUInt64StringSize bytes long
+/// arangodb::basics::maxUInt64StringSize bytes long.
+/// this method can produce an ambiguous result - do not use it
+/// for future code
 arangodb::velocypack::ValuePair RevisionId::toValuePair(char* buffer) const {
   auto positions = toString(buffer);
   return arangodb::velocypack::ValuePair(&buffer[0] + positions.first,

@@ -55,21 +55,28 @@ class RevisionId final : public arangodb::basics::Identifier {
   // @brief get the previous revision id in sequence (this - 1)
   RevisionId previous() const;
 
-  /// @brief Convert a revision ID to a string
-  std::string toString() const;
+  /// @brief Convert a revision ID to a string.
+  /// this method can produce an ambiguous result - do not use it
+  /// for future code
+  [[deprecated]] std::string toString() const;
 
   /// @brief Convert a revision ID to a string
   /// the buffer should be at least arangodb::basics::maxUInt64StringSize
   /// bytes long
   /// the length of the encoded value and the start position into
-  /// the result buffer are returned
-  std::pair<size_t, size_t> toString(char* buffer) const;
+  /// the result buffer are returned.
+  /// this method can produce an ambiguous result - do not use it
+  /// for future code
+  [[deprecated]] std::pair<size_t, size_t> toString(char* buffer) const;
 
   /// @brief Convert revision ID to a string using the provided buffer,
   /// returning the result as a value pair for convenience
   /// the buffer should be at least arangodb::basics::maxUInt64StringSize
   /// bytes long
-  arangodb::velocypack::ValuePair toValuePair(char* buffer) const;
+  /// this method can produce an ambiguous result - do not use it
+  /// for future code
+  [[deprecated]] arangodb::velocypack::ValuePair toValuePair(
+      char* buffer) const;
 
   /// @brief create a not-set revision id
   static constexpr RevisionId none() { return RevisionId{0}; }
