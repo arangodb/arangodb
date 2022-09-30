@@ -1,3 +1,17 @@
+v3.10.1 (XXXX-XX-XX)
+--------------------
+
+* Adjust permissions for "search-alias" views.
+
+  Previously, "search-alias" views were visible to users that didn't have read
+  permissions on the underlying referenced collections. This was inconsistent, 
+  because "arangosearch" views weren't shown to users that didn't have read 
+  permissions on the underlying links. 
+  Now, the behavior for "search-alias" views is the same as for "arangosearch" 
+  views, i.e. "search-alias" views are not shown and are not accessible for 
+  users that don't have at least read permissions on the underlying collections.
+
+
 v3.10.0-rc.1 (2022-09-25)
 -------------------------
 
