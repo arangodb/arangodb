@@ -135,7 +135,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
                                 arangodb::DatabaseInitialSyncer::Configuration& config,
                                 arangodb::Syncer::SyncerState& state,
                                 arangodb::LogicalCollection& collection,
-                                std::string const& leader,
+                                std::string const& leader, bool encodeAsHLC,
                                 std::vector<arangodb::RevisionId>& toFetch,
                                 arangodb::ReplicationMetricsFeature::InitialSyncStats& stats) {
   using arangodb::PhysicalCollection;
@@ -168,7 +168,8 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
       RestReplicationHandler::Revisions + "/" + RestReplicationHandler::Documents +
       "?collection=" + arangodb::basics::StringUtils::urlEncode(leader) +
       "&serverId=" + state.localServerIdString +
-      "&batchId=" + std::to_string(config.batch.id);
+      "&batchId=" + std::to_string(config.batch.id) +
+      "&encodeAsHLC=" + (encodeAsHLC ? "true" : "false");
   auto headers = arangodb::replutils::createHeaders();
 
   config.progress.set("fetching documents by revision for collection '" +
@@ -206,6 +207,14 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
       VPackArrayBuilder list(requestBuilder.get());
       for (std::size_t i = 0; i < 5000 && current + i < toFetch.size(); ++i) {
         requestBuilder->add(toFetch[current + i].toValuePair(ridBuffer));
+        if (encodeAsHLC) {
+          requestBuilder->add(VPackValue(
+              arangodb::basics::HybridLogicalClock::encodeTimeStamp(
+                    toFetch[current + i].id())));
+        } else {
+          // deprecated, ambiguous format
+          requestBuilder->add(toFetch[current + i].toValuePair(ridBuffer));
+        }
       }
     }
     std::string request = requestBuilder->slice().toJson();
@@ -1470,7 +1479,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
   //std::pair<std::size_t, std::size_t> fullRange = treeLeader->range();
   auto treeLocal = physical->revisionTree(*trx);
   if (!treeLocal) {
-    // local collection does not support syncing by revision, fall back to keys
+    // local collection does not support syncing by revision, fall back to
+    // keys
     guard.fire();
     return fetchCollectionSyncByKeys(coll, leaderColl, maxTick);
   }
@@ -1485,8 +1495,26 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     return Result{};
   }
 
-  // now lets get the actual ranges and handle the differences
+  // encoding revisions as HLC timestamps is supported from the following
+  // versions:
+  // - 3.8.8 or higher
+  // - 3.9.4 or higher
+  // - 3.10.1 or higher
+  // - 3.11.0 or higher
+  // - 4.0 higher
+  bool encodeAsHLC =
+      _config.leader.majorVersion >= 4 ||
+      (_config.leader.majorVersion >= 3 && _config.leader.minorVersion >= 11) ||
+      (_config.leader.majorVersion >= 3 && _config.leader.minorVersion >= 10 &&
+       _config.leader.patchVersion >= 1) ||
+      (_config.leader.majorVersion >= 3 && _config.leader.minorVersion >= 9 &&
+       _config.leader.patchVersion >= 4) ||
+      (_config.leader.majorVersion >= 3 && _config.leader.minorVersion >= 8 &&
+       _config.leader.patchVersion >= 8);
 
+  TRI_IF_FAILURE("SyncerNoEncodeAsHLC") { encodeAsHLC = false; }
+
+  // now lets get the actual ranges and handle the differences
   {
     VPackBuilder requestBuilder;
     {
@@ -1532,8 +1560,26 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
         batchExtend();
       }
 
+      // assemble URL to call.
+      // note that the URL contains both the "resume" and "resumeHLC"
+      // parameters. "resume" contains the stringified revision id value for
+      // where to resume from. that stringification can be ambiguous and is thus
+      // deprecated. we also send a "resumeHLC" parameter now, which always
+      // contains a base64-encoded logical clock value. this is the preferred
+      // way to encode the resume value, and once all leaders support it, we can
+      // remove the "resume" parameter from the protocol
+      bool appendResumeHLC = true;
       std::string batchUrl = url + "&" + StaticStrings::RevisionTreeResume +
                              "=" + requestResume.toString();
+
+      TRI_IF_FAILURE("SyncerNoEncodeAsHLC") { appendResumeHLC = false; }
+
+      if (appendResumeHLC) {
+        url += "&" + StaticStrings::RevisionTreeResumeHLC + "=" +
+               urlEncode(basics::HybridLogicalClock::encodeTimeStamp(
+                   requestResume.id()));
+      }
+
       std::string msg = "fetching collection revision ranges for collection '" +
                         coll->name() + "' from " + batchUrl;
       _config.progress.set(msg);
@@ -1671,7 +1717,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       }
       toRemove.clear();
 
-      res = ::fetchRevisions(*trx, _config, _state, *coll, leaderColl, toFetch, stats);
+      res = ::fetchRevisions(*trx, _config, _state, *coll, leaderColl, encodeAsHLC, toFetch, stats);
       if (res.fail()) {
         return res;
       }
@@ -1796,8 +1842,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
   // phase handling
   if (phase == PHASE_VALIDATE) {
-    // validation phase just returns ok if we got here (aborts above if data is
-    // invalid)
+    // validation phase just returns ok if we got here (aborts above if data
+    // is invalid)
     _config.progress.processedCollections.try_emplace(leaderCid, leaderName);
 
     return Result();
@@ -1836,9 +1882,9 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
           bool truncate = false;
 
           if (col->name() == StaticStrings::UsersCollection) {
-            // better not throw away the _users collection. otherwise it is gone
-            // and this may be a problem if the
-            // server crashes in-between.
+            // better not throw away the _users collection. otherwise it is
+            // gone and this may be a problem if the server crashes
+            // in-between.
             truncate = true;
           }
 
@@ -2143,8 +2189,8 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
   // STEP 1: validate collection declarations from leader
   // ----------------------------------------------------------------------------------
 
-  // STEP 2: drop and re-create collections locally if they are also present on
-  // the leader
+  // STEP 2: drop and re-create collections locally if they are also present
+  // on the leader
   //  ------------------------------------------------------------------------------------
 
   // iterate over all collections from the leader...

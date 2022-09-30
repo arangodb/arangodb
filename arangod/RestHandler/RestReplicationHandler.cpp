@@ -2924,10 +2924,25 @@ bool RestReplicationHandler::prepareRevisionOperation(RevisionOperationContext& 
     return false;
   }
 
-  // get resume
-  std::string const& resumeString = _request->value("resume", found);
+  // get resume.
+  // we first try the parameter "resumeHLC" - if set, this will contain a
+  // timestamp-encoded HLC value
+  std::string const& resumeString =
+      _request->value(StaticStrings::RevisionTreeResumeHLC, found);
   if (found) {
-    ctx.resume = RevisionId::fromString(resumeString);
+    // "resumeHLC" is set. use it
+    uint64_t value = HybridLogicalClock::decodeTimeStamp(resumeString);
+    TRI_ASSERT(value != UINT64_MAX);
+    ctx.resume = RevisionId{value};
+  } else {
+    // "resumeHLC" is not set. now fall back to the parameter "resume". this
+    // parameter contains either a numeric value of a timestamp-encoded HLC
+    // value
+    std::string const& resumeString =
+        _request->value(StaticStrings::RevisionTreeResume, found);
+    if (found) {
+      ctx.resume = RevisionId::fromString(resumeString);
+    }
   }
 
   // print request
@@ -3018,8 +3033,8 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
         badFormat = true;
         break;
       }
-      RevisionId left = RevisionId::fromSlice(first);
-      RevisionId right = RevisionId::fromSlice(second);
+      RevisionId left{HybridLogicalClock::decodeTimeStamp(first)};
+      RevisionId right{HybridLogicalClock::decodeTimeStamp(second)};
       if (left == RevisionId::max() ||
           right == RevisionId::max() || left >= right ||
           left < previousRight) {
@@ -3134,6 +3149,14 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
     return;
   }
 
+  // the "encodeAsHLC" parameter is sent from the following versions onwards:
+  // - 3.8.8 or higher
+  // - 3.9.4 or higher
+  // - 3.10.1 or higher
+  // - 3.11.0 or higher
+  // - 4.0 higher
+  bool encodeAsHLC = _request->parsedValue("encodeAsHLC", false);
+
   bool success = false;
   VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
@@ -3147,7 +3170,15 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
         badFormat = true;
         break;
       }
-      RevisionId rev = RevisionId::fromSlice(entry);
+      RevisionId rev;
+      if (encodeAsHLC) {
+        uint64_t value =
+            basics::HybridLogicalClock::decodeTimeStamp(entry.stringView());
+        TRI_ASSERT(value != UINT64_MAX);
+        rev = RevisionId{value};
+      } else {
+        rev = RevisionId::fromSlice(entry);
+      }
       if (rev == RevisionId::max()) {
         badFormat = true;
         break;
@@ -3182,7 +3213,23 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
     VPackArrayBuilder docs(&response);
 
     for (VPackSlice entry : VPackArrayIterator(body)) {
-      RevisionId rev = RevisionId::fromSlice(entry);
+      RevisionId rev;
+      if (encodeAsHLC) {
+        uint64_t value =
+            basics::HybridLogicalClock::decodeTimeStamp(entry.stringView());
+        TRI_ASSERT(value != UINT64_MAX);
+        rev = RevisionId{value};
+      } else {
+        rev = RevisionId::fromSlice(entry);
+      }
+      // We assume that the rev is actually present, otherwise it would not
+      // have been ordered. But we want this code to work if revisions in
+      // the list arrive in some arbitrary order. However, in most cases
+      // the list will contain adjacent revs in ascending order. Therefore,
+      // we want to try a next() on the iterator first (if this makes sense).
+      // However, if we then still have not found the right revision, we need
+      // to seek. If the rev exists, the iterator will then point to the right
+      // document:
       if (it.hasMore() && it.revision() < rev) {
         it.seek(rev);
       }
