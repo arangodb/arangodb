@@ -188,6 +188,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/EndpointTest.cpp
   Basics/FixedSizeAllocatorTest.cpp
   Basics/GuardedTest.cpp
+  Basics/HybridLogicalClockTest.cpp
   Basics/InifileParserTest.cpp
   Basics/LoggerTest.cpp
   Basics/MemoryUsageTest.cpp
