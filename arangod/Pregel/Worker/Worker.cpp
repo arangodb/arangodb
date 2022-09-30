@@ -95,7 +95,7 @@ std::function<void()> Worker<V, E, M>::_makeStatusCallback() {
 
 template<typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
-                        VPackSlice initConfig, PregelFeature& feature)
+                        CreateWorker const& initConfig, PregelFeature& feature)
     : _feature(feature),
       _state(WorkerState::IDLE),
       _config(&vocbase),
@@ -105,9 +105,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
 
   MUTEX_LOCKER(guard, _commandMutex);
 
-  VPackSlice userParams = initConfig.get(Utils::userParametersKey);
-
-  _workerContext.reset(algo->workerContext(userParams));
+  _workerContext.reset(algo->workerContext(initConfig.userParameters.slice()));
   _messageFormat.reset(algo->messageFormat());
   _messageCombiner.reset(algo->messageCombiner());
   _conductorAggregators = std::make_unique<AggregatorHandler>(algo);

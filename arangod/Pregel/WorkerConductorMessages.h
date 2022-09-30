@@ -40,6 +40,14 @@ namespace arangodb::pregel {
 
 // ------ events sent from worker to conductor -------
 
+struct WorkerCreated {
+  ServerID senderId;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, WorkerCreated& x) {
+  return f.object(x).fields(f.field("onServer", x.senderId));
+}
+
 struct GraphLoaded {
   uint64_t vertexCount;
   uint64_t edgeCount;
@@ -146,12 +154,38 @@ auto inspect(Inspector& f, GssStarted& x) {
 
 // ------ commands sent from conductor to worker -------
 
-struct LoadGraph {
-  VPackBuilder details;
+struct CreateWorker {
+  ExecutionNumber executionNumber;
+  std::string algorithm;
+  VPackBuilder userParameters;
+  std::string coordinatorId;
+  bool useMemoryMaps;
+  std::unordered_map<CollectionID, std::vector<ShardID>>
+      edgeCollectionRestrictions;
+  std::map<CollectionID, std::vector<ShardID>> vertexShards;
+  std::map<CollectionID, std::vector<ShardID>> edgeShards;
+  std::unordered_map<CollectionID, std::string> collectionPlanIds;
+  std::vector<ShardID> allShards;
 };
 template<typename Inspector>
+auto inspect(Inspector& f, CreateWorker& x) {
+  return f.object(x).fields(
+      f.field("executionNumber", x.executionNumber),
+      f.field("algorithm", x.algorithm),
+      f.field("userParameters", x.userParameters),
+      f.field("coordinatorId", x.coordinatorId),
+      f.field("useMemoryMaps", x.useMemoryMaps),
+      f.field("edgeCollectionRestrictions", x.edgeCollectionRestrictions),
+      f.field("vertexShards", x.vertexShards),
+      f.field("edgeShards", x.edgeShards),
+      f.field("collectionPlanIds", x.collectionPlanIds),
+      f.field("allShards", x.allShards));
+}
+
+struct LoadGraph {};
+template<typename Inspector>
 auto inspect(Inspector& f, LoadGraph& x) {
-  return f.object(x).fields(f.field("details", x.details));
+  return f.object(x).fields();
 }
 
 struct PrepareGlobalSuperStep {
@@ -226,7 +260,8 @@ auto inspect(Inspector& f, PregelMessage& x) {
 // ---------------------- modern message ----------------------
 
 using MessagePayload =
-    std::variant<LoadGraph, ResultT<GraphLoaded>, PrepareGlobalSuperStep,
+    std::variant<CreateWorker, ResultT<WorkerCreated>, LoadGraph,
+                 ResultT<GraphLoaded>, PrepareGlobalSuperStep,
                  ResultT<GlobalSuperStepPrepared>, RunGlobalSuperStep,
                  ResultT<GlobalSuperStepFinished>, Store, ResultT<Stored>,
                  Cleanup, ResultT<CleanupFinished>, CollectPregelResults,
@@ -236,6 +271,8 @@ struct MessagePayloadSerializer : MessagePayload {};
 template<class Inspector>
 auto inspect(Inspector& f, MessagePayloadSerializer& x) {
   return f.variant(x).unqualified().alternatives(
+      arangodb::inspection::type<CreateWorker>("createWorker"),
+      arangodb::inspection::type<ResultT<WorkerCreated>>("workerCreated"),
       arangodb::inspection::type<LoadGraph>("loadGraph"),
       arangodb::inspection::type<ResultT<GraphLoaded>>("graphLoaded"),
       arangodb::inspection::type<PrepareGlobalSuperStep>(

@@ -22,32 +22,56 @@ Loading::~Loading() {
 }
 
 auto Loading::run() -> std::optional<std::unique_ptr<State>> {
+  auto create = _createWorkers().get();
+  if (create.fail()) {
+    LOG_PREGEL_CONDUCTOR("ae855", ERR) << create.errorMessage();
+    return std::make_unique<Canceled>(conductor);
+  }
+
   LOG_PREGEL_CONDUCTOR("3a255", DEBUG) << "Telling workers to load the data";
-  return conductor._initializeWorkers(VPackSlice())
-      .thenValue([&](auto results) -> std::unique_ptr<State> {
+  auto loadGraph = _loadGraph().get();
+  if (loadGraph.fail()) {
+    LOG_PREGEL_CONDUCTOR("8e855", ERR) << loadGraph.errorMessage();
+    return std::make_unique<Canceled>(conductor);
+  }
+
+  LOG_PREGEL_CONDUCTOR("76631", INFO)
+      << "Running Pregel " << conductor._algorithm->name() << " with "
+      << conductor._totalVerticesCount << " vertices, "
+      << conductor._totalEdgesCount << " edges";
+  if (conductor._masterContext) {
+    conductor._masterContext->initialize(conductor._totalVerticesCount,
+                                         conductor._totalEdgesCount,
+                                         conductor._aggregators.get());
+  }
+
+  return std::make_unique<Computing>(conductor);
+}
+
+auto Loading::_createWorkers() -> futures::Future<Result> {
+  return conductor._initializeWorkers().thenValue([&](auto result) -> Result {
+    if (result.fail()) {
+      return Result{result.errorNumber(), result.errorMessage()};
+    }
+    return Result{};
+  });
+}
+
+auto Loading::_loadGraph() -> futures::Future<Result> {
+  return conductor._workers.loadGraph(LoadGraph{})
+      .thenValue([&](auto results) -> Result {
         for (auto const& result : results) {
           if (result.get().fail()) {
-            LOG_PREGEL_CONDUCTOR("8e855", ERR) << fmt::format(
-                "Got unsuccessful response from worker while loading graph: "
-                "{}\n",
-                result.get().errorMessage());
-            return std::make_unique<Canceled>(conductor);
+            return Result{result.get().errorNumber(),
+                          fmt::format("Got unsuccessful response from worker "
+                                      "while loading graph: "
+                                      "{}\n",
+                                      result.get().errorMessage())};
           }
           auto graphLoaded = result.get().get();
           conductor._totalVerticesCount += graphLoaded.vertexCount;
           conductor._totalEdgesCount += graphLoaded.edgeCount;
         }
-
-        LOG_PREGEL_CONDUCTOR("76631", INFO)
-            << "Running Pregel " << conductor._algorithm->name() << " with "
-            << conductor._totalVerticesCount << " vertices, "
-            << conductor._totalEdgesCount << " edges";
-        if (conductor._masterContext) {
-          conductor._masterContext->initialize(conductor._totalVerticesCount,
-                                               conductor._totalEdgesCount,
-                                               conductor._aggregators.get());
-        }
-        return std::make_unique<Computing>(conductor);
-      })
-      .get();
+        return Result{};
+      });
 }

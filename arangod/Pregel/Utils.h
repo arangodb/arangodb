@@ -27,13 +27,14 @@
 
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
-#include "Pregel/Worker/WorkerConfig.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
 class LogicalCollection;
 namespace pregel {
+
+class WorkerConfig;
 
 class Utils {
   Utils() = delete;

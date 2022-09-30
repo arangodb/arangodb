@@ -94,7 +94,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   std::vector<CollectionID> _vertexCollections;
   std::vector<CollectionID> _edgeCollections;
-  std::vector<ShardID> _allShards;  // persistent shard list
 
   // maps from vertex collection name to a list of edge collections that this
   // vertex collection is restricted to. only use for a collection if there is
@@ -138,11 +137,8 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   // with the Inspecotr framework
   ConductorStatus _status;
 
-  using GraphLoadedFuture = futures::Future<std::vector<
-      futures::Try<arangodb::ResultT<arangodb::pregel::GraphLoaded>>>>;
-
   auto _changeState(std::unique_ptr<conductor::State> newState) -> void;
-  auto _initializeWorkers(VPackSlice additional) -> GraphLoadedFuture;
+  auto _initializeWorkers() -> futures::Future<Result>;
   auto _preGlobalSuperStep() -> bool;
   auto _postGlobalSuperStep(VPackBuilder messagesFromWorkers)
       -> PostGlobalSuperStepResult;
