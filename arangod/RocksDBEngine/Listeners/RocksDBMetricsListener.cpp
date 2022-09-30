@@ -99,7 +99,7 @@ void RocksDBMetricsListener::OnStallConditionsChanged(
 
 void RocksDBMetricsListener::handleFlush(
     std::string_view phase, rocksdb::FlushJobInfo const& info) const {
-  auto buildReason = [](auto const& info) {
+  auto buildReason = [](auto const& info) noexcept {
     std::string_view reason = "unknown";
 
     switch (info.flush_reason) {
@@ -156,7 +156,7 @@ void RocksDBMetricsListener::handleFlush(
 
 void RocksDBMetricsListener::handleCompaction(
     std::string_view phase, rocksdb::CompactionJobInfo const& info) const {
-  auto buildReason = [](auto const& info) {
+  auto buildReason = [](auto const& info) noexcept {
     std::string_view reason = "unknown";
 
     switch (info.compaction_reason) {
