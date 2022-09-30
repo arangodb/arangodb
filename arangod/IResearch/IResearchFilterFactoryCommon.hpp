@@ -47,16 +47,16 @@ class ByExpression;
 
 irs::filter::ptr makeAll(std::string_view field);
 
-std::string_view makeAllColumn(FilterContext const& ctx) noexcept;
+std::string_view makeAllColumn(QueryContext const& ctx) noexcept;
 
-irs::AllDocsProvider::ProviderFunc makeAllProvider(FilterContext const& ctx);
+irs::AllDocsProvider::ProviderFunc makeAllProvider(QueryContext const& ctx);
 
 template<typename Filter, typename Source>
 auto& append(Source& parent, [[maybe_unused]] FilterContext const& ctx) {
   if constexpr (std::is_same_v<Filter, irs::all>) {
     static_assert(std::is_base_of_v<irs::boolean_filter, Source>);
 #ifdef USE_ENTERPRISE
-    return parent.add(makeAll(makeAllColumn(ctx)));
+    return parent.add(makeAll(makeAllColumn(ctx.query)));
 #else
     return parent.template add<irs::all>();
 #endif
@@ -71,12 +71,7 @@ auto& append(Source& parent, [[maybe_unused]] FilterContext const& ctx) {
 
 #ifdef USE_ENTERPRISE
     if constexpr (std::is_base_of_v<irs::AllDocsProvider, Filter>) {
-      filter->SetProvider(makeAllProvider(ctx));
-    }
-
-    if constexpr (std::is_same_v<Filter, ByExpression>) {
-      // FIXME(gnusi)
-      // filter->hasNested(ctx.hasNestedFields);
+      filter->SetProvider(makeAllProvider(ctx.query));
     }
 #endif
 

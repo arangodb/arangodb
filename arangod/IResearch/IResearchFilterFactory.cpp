@@ -106,13 +106,18 @@ Result fromFuncMinHashMatch(char const* funcName, irs::boolean_filter* filter,
 irs::filter::ptr makeAll(std::string_view) {
   return std::make_unique<irs::all>();
 }
-std::string_view makeAllColumn(FilterContext const&) noexcept { return {}; }
+std::string_view makeAllColumn(QueryContext const&) noexcept { return {}; }
 
 #endif
 
-irs::AllDocsProvider::ProviderFunc makeAllProvider(FilterContext const& ctx) {
-  return [field = std::string{makeAllColumn(ctx)}](
-             irs::score_t boost) -> irs::filter::ptr {
+irs::AllDocsProvider::ProviderFunc makeAllProvider(QueryContext const& ctx) {
+  auto const allColumn = makeAllColumn(ctx);
+
+  if (allColumn.empty()) {
+    return {};
+  }
+
+  return [field = std::string{allColumn}](irs::score_t boost) {
     auto filter = makeAll(field);
     filter->boost(boost);
     return filter;

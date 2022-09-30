@@ -49,11 +49,13 @@ void checkQuery(TRI_vocbase_t& vocbase,
                 std::span<const velocypack::Slice> expected,
                 std::string const& query) {
   auto result = tests::executeQuery(vocbase, query);
+  SCOPED_TRACE(testing::Message("Error: ") << result.errorMessage());
   ASSERT_TRUE(result.result.ok());
   auto slice = result.data->slice();
   EXPECT_TRUE(slice.isArray());
   size_t i = 0;
 
+  SCOPED_TRACE(testing::Message("Result:\n") << slice.toString());
   for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
     auto const resolved = itr.value().resolveExternals();
     EXPECT_TRUE(i < expected.size());
