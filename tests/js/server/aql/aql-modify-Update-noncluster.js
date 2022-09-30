@@ -3,10 +3,6 @@
   assertNotEqual, assertUndefined, fail, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, bind parameters
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -35,33 +31,12 @@ const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const getModifyQueryResults = helper.getModifyQueryResults;
 const getModifyQueryResultsRaw = helper.getModifyQueryResultsRaw;
+const sanitizeStats = helper.sanitizeStats;
 const isEqual = helper.isEqual;
 const assertQueryError = helper.assertQueryError;
 const errors = internal.errors;
 
-let sanitizeStats = function (stats) {
-  // remove these members from the stats because they don't matter
-  // for the comparisons
-  delete stats.scannedFull;
-  delete stats.scannedIndex;
-  delete stats.cursorsCreated;
-  delete stats.cursorsRearmed;
-  delete stats.cacheHits;
-  delete stats.cacheMisses;
-  delete stats.filtered;
-  delete stats.executionTime;
-  delete stats.httpRequests;
-  delete stats.fullCount;
-  delete stats.peakMemoryUsage;
-  delete stats.intermediateCommits;
-  return stats;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 
-////////////////////////////////////////////////////////////////////////////////
-
-var validateDocuments = function (documents, isEdgeCollection) {
+let validateDocuments = function (documents, isEdgeCollection) {
   for (let index in documents) {
     if (documents.hasOwnProperty(index)) {
       assertTrue(documents[index].hasOwnProperty('_id'));
@@ -79,7 +54,7 @@ var validateDocuments = function (documents, isEdgeCollection) {
 /// @brief check whether the documents inserted are equal on the db.
 ////////////////////////////////////////////////////////////////////////////////
 
-var validateModifyResultInsert = function (collection, results) {
+let validateModifyResultInsert = function (collection, results) {
   for (let index in results) {
     if (results.hasOwnProperty(index)) {
       assertTrue(isEqual(collection.document(results[index]._key), results[index]));
@@ -92,7 +67,7 @@ var validateModifyResultInsert = function (collection, results) {
 ///        as object
 ////////////////////////////////////////////////////////////////////////////////
 
-var wrapToKeys = function (results) {
+let wrapToKeys = function (results) {
   var keyArray = {};
   for (let index in results) {
     if (results.hasOwnProperty(index)){
@@ -107,7 +82,6 @@ var wrapToKeys = function (results) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlUpdateSuite () {
-  var errors = internal.errors;
   const cn1 = "UnitTestsAhuacatlUpdate1";
   const cn2 = "UnitTestsAhuacatlUpdate2";
   const cn3 = "UnitTestsAhuacatlUpdate3";
@@ -116,10 +90,6 @@ function ahuacatlUpdateSuite () {
   let c3;
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
       db._drop(cn1);
@@ -142,10 +112,6 @@ function ahuacatlUpdateSuite () {
       }
       c3.insert(docs);
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       db._drop(cn1);
