@@ -39,6 +39,7 @@
 
 #include "Basics/Common.h"
 
+#include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/PageSize.h"
 #include "Basics/StringUtils.h"
