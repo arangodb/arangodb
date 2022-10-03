@@ -1749,7 +1749,7 @@ void Supervision::unlockHotBackup() {
 }
 
 // Guarded by caller
-bool Supervision::handleJobs() {
+void Supervision::handleJobs() {
   _lock.assertLockedByCurrentThread();
   // Do supervision
   LOG_TOPIC("67eef", TRACE, Logger::SUPERVISION) << "Begin unlockHotBackup";
@@ -1766,7 +1766,7 @@ bool Supervision::handleJobs() {
   cleanupLostCollections(snapshot(), _agent, _jobId);
   // Note that this function consumes job IDs, potentially many, so the member
   // is incremented inside the function. Furthermore, `cleanupLostCollections`
-  // is static for catch testing purposes.
+  // is static for unit testing purposes.
 
   LOG_TOPIC("00789", TRACE, Logger::SUPERVISION)
       << "Begin readyOrphanedIndexCreations";
@@ -1811,8 +1811,6 @@ bool Supervision::handleJobs() {
   LOG_TOPIC("0892d", TRACE, Logger::SUPERVISION)
       << "Begin failBrokenHotbackupTransferJobs";
   failBrokenHotbackupTransferJobs();
-
-  return true;
 }
 
 // Guarded by caller
@@ -1918,7 +1916,7 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
           // appears to be ongoing, or at a new style, properly ongoing
           // We ignore non-completedness of old crud and only consider
           // new jobs with a rebootId as incomplete:
-          auto const& rebootId = pp.second->hasAsUInt("rebootId");
+          auto const& rebootId = pp.second->hasAsUInt(StaticStrings::RebootId);
           if (status.value().compare("NEW") == 0 || rebootId) {
             completed = false;
           }
@@ -2224,7 +2222,7 @@ bool Supervision::verifyServerRebootID(Node const& snapshot,
 
   // if the server is not found, health is an empty string
   serverFound = !health.empty();
-  if (health != "GOOD" && health != "BAD") {
+  if (health != HEALTH_STATUS_GOOD && health != HEALTH_STATUS_BAD) {
     return false;
   }
 
@@ -2237,7 +2235,8 @@ bool Supervision::verifyServerRebootID(Node const& snapshot,
   return rebootID && *rebootID == wantedRebootID;
 }
 
-void Supervision::deleteBrokenDatabase(std::string const& database,
+void Supervision::deleteBrokenDatabase(AgentInterface* agent,
+                                       std::string const& database,
                                        std::string const& coordinatorID,
                                        uint64_t rebootID,
                                        bool coordinatorFound) {
@@ -2298,7 +2297,8 @@ void Supervision::deleteBrokenDatabase(std::string const& database,
     }
   }
 
-  write_ret_t res = _agent->write(envelope.slice());
+  write_ret_t res = agent->write(envelope.slice());
+
   if (!res.successful()) {
     LOG_TOPIC("38482", DEBUG, Logger::SUPERVISION)
         << "failed to delete broken database in agency. Will retry "
@@ -2306,7 +2306,8 @@ void Supervision::deleteBrokenDatabase(std::string const& database,
   }
 }
 
-void Supervision::deleteBrokenCollection(std::string const& database,
+void Supervision::deleteBrokenCollection(AgentInterface* agent,
+                                         std::string const& database,
                                          std::string const& collection,
                                          std::string const& coordinatorID,
                                          uint64_t rebootID,
@@ -2355,7 +2356,8 @@ void Supervision::deleteBrokenCollection(std::string const& database,
     }
   }
 
-  write_ret_t res = _agent->write(envelope.slice());
+  write_ret_t res = agent->write(envelope.slice());
+
   if (!res.successful()) {
     LOG_TOPIC("38485", DEBUG, Logger::SUPERVISION)
         << "failed to delete broken collection in agency. Will retry. "
@@ -2439,14 +2441,14 @@ void Supervision::resourceCreatorLost(
   bool coordinatorFound = false;
 
   if (rebootID && coordinatorID) {
-    keepResource = Supervision::verifyServerRebootID(
-        snapshot(), *coordinatorID, *rebootID, coordinatorFound);
+    keepResource = verifyServerRebootID(snapshot(), *coordinatorID, *rebootID,
+                                        coordinatorFound);
     // incomplete data, should not happen
   } else {
     //          v---- Please note this awesome log-id
     LOG_TOPIC("dbbad", WARN, Logger::SUPERVISION)
-        << "resource has set `isBuilding` but is missing coordinatorID and "
-           "rebootID";
+        << "resource has set `isBuilding` but is missing coordinatorId and "
+           "rebootId";
   }
 
   if (!keepResource) {
@@ -2487,7 +2489,7 @@ void Supervision::checkBrokenCreatedDatabases() {
              "name "
           << dbpair.first;
       // delete this database and all of its collections
-      deleteBrokenDatabase(dbpair.first, ev.coordinatorId,
+      deleteBrokenDatabase(_agent, dbpair.first, ev.coordinatorId,
                            ev.coordinatorRebootId, ev.coordinatorFound);
     });
   }
@@ -2521,11 +2523,52 @@ void Supervision::checkBrokenCollections() {
                 << "checkBrokenCollections: removing broken collection with "
                    "name "
                 << dbpair.first;
-            // delete this database and all of its collections
-            deleteBrokenCollection(dbpair.first, collectionPair.first,
+            // delete this collection
+            deleteBrokenCollection(_agent, dbpair.first, collectionPair.first,
                                    ev.coordinatorId, ev.coordinatorRebootId,
                                    ev.coordinatorFound);
           });
+
+      // also check all indexes of the collection to see if they are abandoned
+      if (collectionPair.second->has("indexes")) {
+        Slice indexes = collectionPair.second->get("indexes")
+                            .value()
+                            .get()
+                            .getArray()
+                            .value();
+        // check if the coordinator which started creating this index is
+        // still present...
+        for (VPackSlice planIndex : VPackArrayIterator(indexes)) {
+          if (VPackSlice isBuildingSlice =
+                  planIndex.get(StaticStrings::AttrIsBuilding);
+              !isBuildingSlice.isTrue()) {
+            // we are only interested in indexes that are still building
+            continue;
+          }
+
+          VPackSlice rebootIDSlice =
+              planIndex.get(StaticStrings::AttrCoordinatorRebootId);
+          VPackSlice coordinatorIDSlice =
+              planIndex.get(StaticStrings::AttrCoordinator);
+
+          if (rebootIDSlice.isNumber() && coordinatorIDSlice.isString()) {
+            auto rebootID = rebootIDSlice.getUInt();
+            auto coordinatorID = coordinatorIDSlice.copyString();
+
+            bool coordinatorFound = false;
+            bool keepResource = verifyServerRebootID(
+                snapshot(), coordinatorID, rebootID, coordinatorFound);
+
+            if (!keepResource) {
+              // index creation still ongoing, but started by a coordinator that
+              // has failed by now. delete this index
+              deleteBrokenIndex(_agent, dbpair.first, collectionPair.first,
+                                planIndex, coordinatorID, rebootID,
+                                coordinatorFound);
+            }
+          }
+        }
+      }
     }
   }
 }
@@ -2558,6 +2601,63 @@ void Supervision::checkBrokenAnalyzers() {
                 ev.coordinatorRebootId, ev.coordinatorFound);
           });
     }
+  }
+}
+
+void Supervision::deleteBrokenIndex(AgentInterface* agent,
+                                    std::string const& database,
+                                    std::string const& collection,
+                                    arangodb::velocypack::Slice index,
+                                    std::string const& coordinatorID,
+                                    uint64_t rebootID, bool coordinatorFound) {
+  VPackBuilder envelope;
+  {
+    VPackArrayBuilder trxs(&envelope);
+    {
+      std::string collectionPath = plan()
+                                       ->collections()
+                                       ->database(database)
+                                       ->collection(collection)
+                                       ->str();
+      std::string indexesPath = plan()
+                                    ->collections()
+                                    ->database(database)
+                                    ->collection(collection)
+                                    ->indexes()
+                                    ->str();
+
+      VPackArrayBuilder trx(&envelope);
+      {
+        VPackObjectBuilder operation(&envelope);
+        // increment Plan Version
+        {
+          VPackObjectBuilder o(&envelope, _agencyPrefix + "/" + PLAN_VERSION);
+          envelope.add("op", VPackValue("increment"));
+        }
+        // delete the index from Plan/Collections/<db>/<collection>
+        {
+          VPackObjectBuilder o(&envelope, indexesPath);
+          envelope.add("op", VPackValue("erase"));
+          envelope.add("val", index);
+        }
+      }
+      {
+        // precondition that the collection is still in Plan
+        VPackObjectBuilder preconditions(&envelope);
+        {
+          VPackObjectBuilder precondition(&envelope, collectionPath);
+          envelope.add("oldEmpty", VPackValue(false));
+        }
+      }
+    }
+  }
+
+  write_ret_t res = agent->write(envelope.slice());
+
+  if (!res.successful()) {
+    LOG_TOPIC("01598", DEBUG, Logger::SUPERVISION)
+        << "failed to delete broken index in agency. Will retry. "
+        << envelope.toJson();
   }
 }
 
@@ -2816,7 +2916,7 @@ void Supervision::readyOrphanedIndexCreations() {
         if (collection.has("indexes")) {
           indexes = collection.get("indexes").value().get().getArray().value();
           if (indexes.length() > 0) {
-            for (auto const& planIndex : VPackArrayIterator(indexes)) {
+            for (auto planIndex : VPackArrayIterator(indexes)) {
               if (planIndex.hasKey(StaticStrings::IndexIsBuilding) &&
                   collection.has("shards")) {
                 auto const& planId = planIndex.get("id");
@@ -2843,6 +2943,14 @@ void Supervision::readyOrphanedIndexCreations() {
                               .slice();
                       for (auto const& curIndex :
                            VPackArrayIterator(curIndexes)) {
+                        VPackSlice errorSlice =
+                            curIndex.get(StaticStrings::Error);
+                        if (errorSlice.isTrue()) {
+                          // index creation for this shard has failed - don't
+                          // count it as valid!
+                          continue;
+                        }
+
                         auto const& curId = curIndex.get("id");
                         if (basics::VelocyPackHelper::equal(planId, curId,
                                                             false)) {
@@ -2860,7 +2968,8 @@ void Supervision::readyOrphanedIndexCreations() {
           }
         }
 
-        // We have some indexes, that have been built and are isBuilding still
+        // We have some indexes, that have been fully built and have their
+        // isBuilding attribute still set.
         if (!built.empty()) {
           velocypack::Builder envelope;
           {
@@ -2877,15 +2986,17 @@ void Supervision::readyOrphanedIndexCreations() {
                 envelope.add(VPackValue(_agencyPrefix + planColPrefix +
                                         colPath + "indexes"));
                 VPackArrayBuilder value(&envelope);
-                for (auto const& planIndex : VPackArrayIterator(indexes)) {
+                for (auto planIndex : VPackArrayIterator(indexes)) {
                   if (built.find(planIndex.get("id").copyString()) !=
                       built.end()) {
                     {
                       VPackObjectBuilder props(&envelope);
-                      for (auto const& prop : VPackObjectIterator(planIndex)) {
-                        if (prop.key.stringView() !=
-                            StaticStrings::IndexIsBuilding) {
-                          envelope.add(prop.key.stringView(), prop.value);
+                      for (auto prop : VPackObjectIterator(planIndex)) {
+                        auto key = prop.key.stringView();
+                        if (key != StaticStrings::IndexIsBuilding &&
+                            key != StaticStrings::AttrCoordinator &&
+                            key != StaticStrings::AttrCoordinatorRebootId) {
+                          envelope.add(key, prop.value);
                         }
                       }
                     }

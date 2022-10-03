@@ -57,12 +57,15 @@ struct fmt::formatter<VPackSlice> {
   template<typename FormatContext>
   auto format(VPackSlice const& slice, FormatContext& ctx) const
       -> decltype(ctx.out()) {
+    arangodb::velocypack::Options options =
+        arangodb::velocypack::Options::Defaults;
+    options.dumpAttributesInIndexOrder = false;
     switch (presentation) {
       case Presentation::Pretty:
-        return fmt::format_to(ctx.out(), "{}", slice.toString());
+        return fmt::format_to(ctx.out(), "{}", slice.toString(&options));
       case Presentation::NotPretty:
       default:
-        return fmt::format_to(ctx.out(), "{}", slice.toJson());
+        return fmt::format_to(ctx.out(), "{}", slice.toJson(&options));
     }
   }
 };
