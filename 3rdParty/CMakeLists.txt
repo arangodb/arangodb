@@ -367,6 +367,7 @@ LIST(APPEND TZ_DATA_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/windowsZones.xml")
 
 set(TZ_DATA_FILES ${TZ_DATA_FILES} PARENT_SCOPE)
+
 add_custom_target(tzdata)
 
 if (MSVC)
