@@ -34,7 +34,9 @@ if(SIZEOF_SSIZE_T STREQUAL "")
   target_compile_definitions(fuerte PRIVATE ssize_t=int)
 endif()
 
-target_include_directories(fuerte SYSTEM PUBLIC include)
-
-# TODO: THis is a dependency on openssl...
-target_include_directories(fuerte SYSTEM PUBLIC "${OPENSSL_INCLUDE_DIR}")
+target_include_directories(fuerte
+  PUBLIC
+    src
+  SYSTEM PUBLIC
+    include
+    "${OPENSSL_INCLUDE_DIR}")
