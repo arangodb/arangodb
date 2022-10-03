@@ -149,47 +149,57 @@ struct VPackSaveInspector
   auto processVariant(
       typename Base::template UnqualifiedVariant<Ts...>& variant,
       Args&&... args) {
-    return beginObject()  //
-           |
-           [&]() {
-             return std::visit(overload{[this, &args](typename Args::Type& v) {
-                                 return applyFields(this->field(args.tag, v));
-                               }...},
-                               variant.value);
-           }  //
-           | [&]() { return endObject(); };
+    return std::visit(
+        overload{[&](typename Args::Type& v) {
+          if constexpr (Args::isInlineType) {
+            return this->apply(v);
+          } else {
+            return beginObject()                                             //
+                   | [&]() { return applyField(this->field(args.tag, v)); }  //
+                   | [&]() { return endObject(); };
+          }
+        }...},
+        variant.value);
   }
 
   template<class... Ts, class... Args>
   auto processVariant(typename Base::template QualifiedVariant<Ts...>& variant,
                       Args&&... args) {
-    return beginObject()  //
-           |
-           [&]() {
-             return std::visit(
-                 overload{[this, &variant, &args](typename Args::Type& v) {
-                   return applyFields(this->field(variant.typeField, args.tag),
-                                      this->field(variant.valueField, v));
-                 }...},
-                 variant.value);
-           }  //
-           | [&]() { return endObject(); };
+    return std::visit(overload{[&](typename Args::Type& v) {
+                        if constexpr (Args::isInlineType) {
+                          return this->apply(v);
+                        } else {
+                          auto storeFields = [&]() {
+                            return applyFields(
+                                this->field(variant.typeField, args.tag),
+                                this->field(variant.valueField, v));
+                          };
+                          return beginObject()  //
+                                 | storeFields  //
+                                 | [&]() { return endObject(); };
+                        }
+                      }...},
+                      variant.value);
   }
 
   template<class... Ts, class... Args>
   auto processVariant(typename Base::template EmbeddedVariant<Ts...>& variant,
                       Args&&... args) {
-    return beginObject()  //
-           |
-           [&]() {
-             return std::visit(
-                 overload{[this, &variant, &args](typename Args::Type& v) {
-                   return applyFields(this->field(variant.typeField, args.tag),
-                                      this->embedFields(v));
-                 }...},
-                 variant.value);
-           }  //
-           | [&]() { return endObject(); };
+    return std::visit(overload{[&](typename Args::Type& v) {
+                        if constexpr (Args::isInlineType) {
+                          return this->apply(v);
+                        } else {
+                          auto storeFields = [&]() {
+                            return applyFields(
+                                this->field(variant.typeField, args.tag),
+                                this->embedFields(v));
+                          };
+                          return beginObject()  //
+                                 | storeFields  //
+                                 | [&]() { return endObject(); };
+                        }
+                      }...},
+                      variant.value);
   }
 
   velocypack::Builder& builder() noexcept { return _builder; }
