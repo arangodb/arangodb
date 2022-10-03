@@ -56,11 +56,6 @@ option(USE_MINIMAL_DEBUGINFO "use minimal debug symbols for builds containing de
 
 find_package(Git 1.5.3 REQUIRED)
 
-# don't use standalone boost asio
-# use this when asio is included outside of Boost
-# add_definitions("-DARANGODB_STANDALONE_ASIO=0")
-# add_definitions("-DFUERTE_STANDALONE_ASIO=0")
-
 # ------------------------------------------------------------------------------
 # VERSION information
 # ------------------------------------------------------------------------------
@@ -81,14 +76,6 @@ find_package(Git 1.5.3 REQUIRED)
 # ARANGODB_VERSION_PRELEASE_TYPE   = TYPE
 # ARANGODB_VERSION_PRELEASE_NUMBER = NUMBER
 #
-# This will set the following variables
-#
-# ARANGODB_DEBIAN_UPSTREAM
-# ARANGODB_DEBIAN_REVISION
-#
-# ARANGODB_RPM_UPSTREAM
-# ARANGODB_RPM_REVISION
-
 set(ARANGODB_VERSION_MAJOR "3")
 set(ARANGODB_VERSION_MINOR "11")
 
@@ -136,115 +123,6 @@ message(STATUS "ARANGODB PLAIN VERSION: ${ARANGODB_PLAIN_VERSION}")
 message(STATUS "ARANGODB VERSION: ${ARANGODB_VERSION}")
 message(STATUS "ARANGODB JS VERSION: ${ARANGODB_JS_VERSION}")
 
-################################################################################
-# DEBIAN, RPM, MacOS version
-################################################################################
-
-if (DEFINED ARANGODB_VERSION_RELEASE_TYPE)
-
-  # devel
-  if (ARANGODB_VERSION_PATCH STREQUAL "0" AND ARANGODB_VERSION_RELEASE_TYPE STREQUAL "devel")
-    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.0~~${ARANGODB_VERSION_PATCH}")
-    set(ARANGODB_DEBIAN_REVISION "1")
-
-    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_RPM_REVISION "0.1.devel")
-
-    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_DARWIN_REVISION "devel")
-
-  # nightly
-  elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "nightly")
-    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_DEBIAN_REVISION "1")
-
-    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_RPM_REVISION "0.2.nightly")
-
-    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_DARWIN_REVISION "nightly")
-
-  # unstable version
-  elseif (   ARANGODB_VERSION_RELEASE_TYPE STREQUAL "alpha"
-          OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "beta"
-          OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "milestone"
-          OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "preview"
-          OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "rc")
-    if (NOT DEFINED ARANGODB_VERSION_RELEASE_NUMBER)
-      message(FATAL_ERROR "ARANGODB_VERSION_RELEASE_NUMBER is missing")
-    endif()
-
-    if (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "alpha")
-      set(ARANGODB_RPM_REVISION_NUMBER 100)
-    elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "beta")
-      set(ARANGODB_RPM_REVISION_NUMBER 200)
-    elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "milestone")
-      set(ARANGODB_RPM_REVISION_NUMBER 300)
-    elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "preview")
-      set(ARANGODB_RPM_REVISION_NUMBER 400)
-    elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "rc")
-      set(ARANGODB_RPM_REVISION_NUMBER 500)
-    endif()
-
-    MATH(EXPR ARANGODB_RPM_REVISION_NUMBER "${ARANGODB_RPM_REVISION_NUMBER}+${ARANGODB_VERSION_RELEASE_NUMBER}")
-
-    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}~${ARANGODB_VERSION_RELEASE_TYPE}.${ARANGODB_VERSION_RELEASE_NUMBER}")
-    set(ARANGODB_DEBIAN_REVISION "1")
-
-    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_RPM_REVISION "0.${ARANGODB_RPM_REVISION_NUMBER}")
-
-    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_DARWIN_REVISION "${ARANGODB_VERSION_RELEASE_TYPE}.${ARANGODB_VERSION_RELEASE_NUMBER}")
-
-  # hot-fix
-  else()
-    if (DEFINED ARANGODB_VERSION_RELEASE_NUMBER)
-      message(FATAL_ERROR "ARANGODB_VERSION_RELEASE_NUMBER must be empty for type ${ARANGODB_VERSION_RELEASE_TYPE}")
-    endif()
-
-    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}.${ARANGODB_VERSION_RELEASE_TYPE}")
-    set(ARANGODB_DEBIAN_REVISION "1")
-
-    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_RPM_REVISION "1.${ARANGODB_VERSION_RELEASE_TYPE}")
-
-    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}.${ARANGODB_VERSION_RELEASE_TYPE}")
-    set(ARANGODB_DARWIN_REVISION "")
-  endif()
-else()
-
-  # stable version
-  set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-  set(ARANGODB_DEBIAN_REVISION "1")
-
-  set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-  set(ARANGODB_RPM_REVISION "1.0")
-
-  set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-  set(ARANGODB_DARWIN_REVISION "")
-endif()
-
-message(STATUS "DEBIAN VERSION: ${ARANGODB_DEBIAN_UPSTREAM} / ${ARANGODB_DEBIAN_REVISION}")
-message(STATUS "RPM VERSION:    ${ARANGODB_RPM_UPSTREAM} / ${ARANGODB_RPM_REVISION}")
-message(STATUS "DARWIN VERSION: ${ARANGODB_DARWIN_UPSTREAM} / ${ARANGODB_DARWIN_REVISION}")
-
-
-################################################################################
-# Windows version
-################################################################################
-
-# PATCH needs to be numeric for the windows rc file
-set(ARANGODB_WINDOWS_UPSTREAM "${ARANGODB_VERSION}")
-
-if (ARANGODB_VERSION_PATCH GREATER -1)
-  set(ARANGODB_WINDOWS_PATCH "${ARANGODB_VERSION_PATCH}")
-else()
-  set(ARANGODB_WINDOWS_PATCH 1337)
-endif()
-
-message(STATUS "WINDOWS VERSION: ${ARANGODB_WINDOWS_UPSTREAM}")
-
 if (MSVC)
   option(USE_CLCACHE_MODE
     "whether we want to use CLCACHE-specific build options"
@@ -289,7 +167,7 @@ endif()
 option(STATIC_EXECUTABLES "produce static executables" OFF)
 if (STATIC_EXECUTABLES)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
-  if (WINDOWS)
+  if (WIN32)
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
   else ()
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
@@ -447,53 +325,27 @@ endif ()
 ## OPERATION SYSTEM
 ################################################################################
 
-option(HOMEBREW
-  "whether to install for homebrew"
-  Off
-)
-
 if (WIN32)
-  set(WINDOWS TRUE)
-  set(MSBUILD TRUE)
-
   add_definitions(-D_USE_MATH_DEFINES)
   add_definitions(-DNOMINMAX)
   add_definitions(-D_WIN32_WINNT=0x600)
   add_definitions(-DINCL_EXTRA_HTON_FUNCTIONS)
   add_definitions(-DPSAPI_VERSION=1)
+endif ()
 
-elseif (UNIX AND NOT APPLE)
-  if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
-    set(LINUX TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "kFreeBSD.*")
-    set(FREEBSD TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "kNetBSD.*|NetBSD.*")
-    set(NETBSD TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "kOpenBSD.*|OpenBSD.*")
-    set(OPENBSD TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES ".*GNU.*")
-    set(GNU TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES ".*BSDI.*")
-    set(BSDI TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "DragonFly.*|FreeBSD")
-    set(FREEBSD TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "SYSV5.*")
-    set(SYSV5 TRUE)
-  endif ()
-elseif (APPLE)
-  if (CMAKE_SYSTEM_NAME MATCHES ".*Darwin.*")
-    set(DARWIN TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES ".*MacOS.*")
-    set(DARWIN TRUE)
-  endif ()
-  find_program(BREW brew)
+if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
+  set(LINUX TRUE)
+elseif (CMAKE_SYSTEM_NAME MATCHES ".*Darwin.*")
+  set(DARWIN TRUE)
+elseif (CMAKE_SYSTEM_NAME MATCHES ".*MacOS.*")
+  set(DARWIN TRUE)
 endif ()
 
 # ------------------------------------------------------------------------------
 # user options
 # ------------------------------------------------------------------------------
 
-if (WINDOWS)
+if (WIN32)
   SET(USE_JEMALLOC OFF)
 elseif (APPLE)
   SET(USE_JEMALLOC OFF)
@@ -515,17 +367,9 @@ else ()
   SET(USE_LIBUNWIND OFF)
 endif ()
 
-if (CROSS_COMPILING)
-# currently off, need additional params to configure like --host=triple <params>
-  SET(USE_JEMALLOC OFF)
-  SET(USE_LIBUNWIND OFF)
-endif()
-
 ################################################################################
 ## EXTERNAL PROGRAMS
 ################################################################################
-
-set(MAKE make)
 
 find_package(PythonInterp 3 EXACT REQUIRED)
 get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
@@ -538,27 +382,6 @@ execute_process(
     )
 if (NOT "${EXIT_CODE}" EQUAL "0")
   message(FATAL_ERROR "python shutil.which package is required! ")
-endif()
-
-# FIXME the build containers seem to have a
-# /usr/bin/ch(mod|own) to prevent the search
-# to find those files the NO_DEFAULT_PATH
-# argument is passed
-if (NOT WINDOWS)
-  find_program (MAKE make gmake)
-
-  find_program(
-    CHMOD_EXECUTABLE chmod
-    PATHS "/bin/" "/usr/bin/"
-    NO_DEFAULT_PATH
-  )
-  message(STATUS "chmod found in ${CHMOD_EXECUTABLE}")
-  find_program(
-    CHOWN_EXECUTABLE chown
-    PATHS "/bin" "/usr/bin"
-    NO_DEFAULT_PATH
-  )
-  message(STATUS "chown found in ${CHOWN_EXECUTABLE}")
 endif()
 
 ################################################################################
@@ -696,7 +519,7 @@ endif ()
 
 set(ARANGODB_SSE42_FLAGS "")
 set(BUILDING_FOR_ARM64 OFF)
-if (NOT WINDOWS)
+if (NOT WIN32)
   include(TargetArch)
 
   target_architecture(CMAKE_TARGET_ARCHITECTURES)
@@ -865,7 +688,7 @@ endif()
 ## LIBRARY RESOLV
 ################################################################################
 
-if (NOT WINDOWS)
+if (NOT WIN32)
   set(SYS_LIBS ${SYS_LIBS} resolv)
 
   if (NOT DARWIN)
@@ -968,11 +791,6 @@ function(add_cxx_flags_if_supported var)
   endforeach()
   set(${var} "${${var}}" PARENT_SCOPE)
 endfunction()
-
-if (VERBOSE)
-  message(STATUS)
-endif ()
-
 
 # compiler options
 if (MSVC) 
@@ -1272,11 +1090,12 @@ endif ()
 
 add_definitions("-DVELOCYPACK_XXHASH=1")
 
-set(V8_LINK_DIRECTORIES "${LINK_DIRECTORIES}" CACHE INTERNAL "" FORCE)
 
 ################################################################################
 ## V8
 ################################################################################
+
+set(V8_LINK_DIRECTORIES "${LINK_DIRECTORIES}" CACHE INTERNAL "" FORCE)
 
 add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
 
@@ -1459,14 +1278,6 @@ add_custom_target(clean_autogenerated_files
 )
 
 message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
-
-# if (VERBOSE)
-#   get_cmake_property(_variableNames VARIABLES)
-#
-#   foreach (_variableName ${_variableNames})
-#     message(STATUS "${_variableName}=${${_variableName}}")
-#   endforeach ()
-# endif ()
 
 add_custom_target(arangodb
         DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore)
