@@ -43,6 +43,10 @@ target_include_directories(fuertetest SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/fuerte/src
 )
 
+# fuertetest needs arangod to run; you can't
+# run it by itself; 
+add_dependencies(fuertetest
+  tzdata)
 
 add_subdirectory(Zkd)
 
