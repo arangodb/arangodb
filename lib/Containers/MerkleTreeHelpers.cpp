@@ -26,7 +26,6 @@
 #include <string>
 
 #include "MerkleTreeHelpers.h"
-#include "Basics/debugging.h"
 
 namespace {
 /// @brief an empty shard that is reused when serializing empty shards
@@ -66,12 +65,10 @@ size_t MerkleTreeSnappySource::Available() const { return bytesLeftToRead; }
 
 char const* MerkleTreeSnappySource::Peek(size_t* len) {
   if (bytesRead < arangodb::containers::MerkleTreeBase::MetaSize) {
-    TRI_ASSERT(bytesRead == 0);
     *len = arangodb::containers::MerkleTreeBase::MetaSize;
     return reinterpret_cast<char const*>(&data.meta);
   }
 
-  TRI_ASSERT(bytesRead >= arangodb::containers::MerkleTreeBase::MetaSize);
   std::uint64_t shard =
       (bytesRead - arangodb::containers::MerkleTreeBase::MetaSize) /
       arangodb::containers::MerkleTreeBase::ShardSize;
@@ -96,7 +93,6 @@ char const* MerkleTreeSnappySource::Peek(size_t* len) {
 
 void MerkleTreeSnappySource::Skip(size_t n) {
   bytesRead += n;
-  TRI_ASSERT(n <= bytesLeftToRead);
   bytesLeftToRead -= n;
 }
 
