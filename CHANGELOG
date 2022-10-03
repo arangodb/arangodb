@@ -1,6 +1,8 @@
 devel
 -----
 
+* MDS-1019: Make user search case-insensitive and allow search by name.
+
 * Temporary fix for BTS-1006 (hides new view types).
 
 * Updated arangosync to v2.12.0.
