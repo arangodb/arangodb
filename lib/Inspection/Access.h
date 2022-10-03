@@ -122,8 +122,9 @@ struct AccessBase {
   template<class Inspector>
   [[nodiscard]] static auto saveField(Inspector& f, std::string_view name,
                                       bool hasFallback, Value& val) {
-    f.builder().add(VPackValue(name));
-    return f.apply(val);
+    return f.beginField(name)                //
+           | [&]() { return f.apply(val); }  //
+           | [&]() { return f.endField(); };
   }
 
   template<class Inspector, class Transformer>
@@ -198,7 +199,7 @@ struct OptionalAccess {
       if (val) {
         return f.apply(*val);
       }
-      f.builder().add(VPackValue(velocypack::ValueType::Null));
+      f.apply(Null{});
       return {};
     }
   }
@@ -211,8 +212,9 @@ struct OptionalAccess {
       return inspection::saveField(f, name, hasFallback, *val);
     } else if (hasFallback) {
       // if we have a fallback we must explicitly serialize this field as null
-      f.builder().add(VPackValue(name));
-      f.builder().add(VPackValue(velocypack::ValueType::Null));
+      return f.beginField(name)                   //
+             | [&]() { return f.apply(Null{}); }  //
+             | [&]() { return f.endField(); };
     }
     return {};
   }
@@ -305,8 +307,8 @@ struct Access<std::monostate> : AccessBase<std::monostate> {
       }
       return Status{};
     } else {
-      f.builder().add(VPackSlice::emptyObjectSlice());
-      return Status::Success{};
+      return f.beginObject()  //
+             | [&]() { return f.endObject(); };
     }
   }
 };
@@ -323,8 +325,7 @@ struct Access<VPackBuilder> : AccessBase<VPackBuilder> {
       if (!x.isClosed()) {
         return Status{"Exected closed VPackBuilder"};
       }
-      f.builder().add(x.slice());
-      return Status{};
+      return f.apply(x.slice());
     }
   }
 };

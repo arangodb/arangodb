@@ -38,6 +38,9 @@ struct Access;
 
 template<class T>
 struct AccessBase;
+
+struct Null {};
+
 }  // namespace arangodb::inspection
 
 namespace arangodb::inspection::detail {
@@ -58,7 +61,7 @@ struct HasInspectOverload<T, Inspector,
 template<class T>
 constexpr inline bool IsSafeBuiltinType() {
   return std::is_same_v<T, bool> || std::is_integral_v<T> ||
-         std::is_floating_point_v<T> ||
+         std::is_floating_point_v<T> || std::is_same_v<T, Null> ||
          std::is_same_v<T, std::string> ||  // TODO - use is-string-like?
          std::is_same_v<T, arangodb::velocypack::SharedSlice>;
 }
