@@ -166,6 +166,9 @@ struct arangodb::VocBaseLogManager {
         // Invalidate the snapshot in persistent storage.
         metadata->snapshot.updateStatus(
             replication2::replicated_state::SnapshotStatus::kInvalidated);
+        // TODO check return value
+        // TODO make sure other methods working on the state, probably meaning
+        //      configuration updates, handle an invalidated snapshot correctly.
         storage->updateMetadata(*metadata);
 
         // Drop the replicated state. This will also remove its associated
