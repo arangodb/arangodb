@@ -148,7 +148,6 @@ function PregelAuthSuite () {
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 200);
-      assertTrue(result.body.state === "loading" || result.body.state === "running");
 
       require('internal').wait(5.0, false);
 

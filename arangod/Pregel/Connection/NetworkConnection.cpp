@@ -28,8 +28,9 @@ auto serialize(ModernMessage const& message)
   try {
     serialize(serializedMessage, message);
   } catch (arangodb::basics::Exception& e) {
-    return {arangodb::Result{TRI_ERROR_INTERNAL,
-                             fmt::format("REST message cannot be serialized")}};
+    return {arangodb::Result{
+        TRI_ERROR_INTERNAL,
+        fmt::format("REST message cannot be serialized: {}", e.message())}};
   }
   return messageBuffer;
 }
@@ -55,10 +56,10 @@ auto deserialize(VPackSlice slice) -> arangodb::ResultT<ModernMessage> {
   try {
     return deserialize<ModernMessage>(slice);
   } catch (arangodb::basics::Exception& e) {
-    return {
-        arangodb::Result{TRI_ERROR_INTERNAL,
-                         fmt::format("REST response cannot be deserialized: {}",
-                                     slice.toJson())}};
+    return {arangodb::Result{
+        TRI_ERROR_INTERNAL,
+        fmt::format("REST response cannot be deserialized: {}: {}", e.message(),
+                    slice.toJson())}};
   }
 }
 
