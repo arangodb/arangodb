@@ -94,8 +94,7 @@ Result fromExpression(irs::boolean_filter* filter,
 #ifdef USE_ENTERPRISE
 Result fromBooleanExpansion(irs::boolean_filter* filter,
                             FilterContext const& filterCtx,
-                            aql::AstNode const& node,
-                            irs::AllDocsProvider* parent);
+                            aql::AstNode const& node);
 #endif
 
 Result fromFuncMinHashMatch(char const* funcName, irs::boolean_filter* filter,
@@ -140,8 +139,6 @@ void setupAllTypedFilter(irs::Or& disjunction, FilterContext const& ctx,
   auto& allDocs = append<irs::by_column_existence>(disjunction, ctx);
   *allDocs.mutable_field() = std::move(mangledName);
   allDocs.boost(ctx.boost);
-  auto* opts = allDocs.mutable_options();
-  opts->prefix_match = false;
 }
 
 bool setupGeoFilter(FieldMeta::Analyzer const& a,
@@ -1834,11 +1831,10 @@ Result fromNegation(irs::boolean_filter* filter, FilterContext const& filterCtx,
   auto const* member = node.getMemberUnchecked(0);
   TRI_ASSERT(member);
 
-  irs::AllDocsProvider* parent{};
   if (filter) {
     if (filter->type() == irs::type<irs::Or>::id()) {
       // wrap negation in a disjunction into a dedicated conjunction
-      parent = filter = &append<irs::And>(*filter, filterCtx);
+      filter = &append<irs::And>(*filter, filterCtx);
     }
     auto& notFilter = append<irs::Not>(*filter, filterCtx);
     notFilter.boost(filterCtx.boost);
@@ -1856,7 +1852,7 @@ Result fromNegation(irs::boolean_filter* filter, FilterContext const& filterCtx,
   if (member->type == aql::NODE_TYPE_EXPANSION &&
       member->hasFlag(aql::FLAG_BOOLEAN_EXPANSION)) {
     // Special handling for negative nested queries
-    return fromBooleanExpansion(filter, subFilterCtx, *member, parent);
+    return fromBooleanExpansion(filter, subFilterCtx, *member);
   }
 #endif
 
@@ -2247,7 +2243,9 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
     *exists.mutable_field() = std::move(fieldName);
     exists.boost(filterCtx.boost);
     auto* opts = exists.mutable_options();
-    opts->prefix_match = prefixMatch;
+    if (prefixMatch) {
+      opts->acceptor = [](irs::string_ref) { return true; };
+    }
   }
 
   return {};
@@ -4022,7 +4020,7 @@ Result fromExpansion(irs::boolean_filter* filter,
 #ifdef USE_ENTERPRISE
   if (node.hasFlag(aql::FLAG_BOOLEAN_EXPANSION)) {
     // fromNegation handles negative cases
-    return fromBooleanExpansion(filter, filterCtx, node, nullptr);
+    return fromBooleanExpansion(filter, filterCtx, node);
   }
 #endif
 
