@@ -2967,7 +2967,15 @@ static void ProcessStatisticsToV8(
     rssp = rss / PhysicalMemory::getValue();
   }
 
-  auto context = TRI_IGETC;
+  double scClkTck = (double)info._scClkTck;
+  double userTime = (double)info._userTime;
+  double systemTime = (double)info._systemTime;
+  if (scClkTck != 0.0) {
+    userTime = userTime / (double)info._scClkTck;
+    systemTime = systemTime / (double)info._scClkTck;
+  }
+
+   auto context = TRI_IGETC;
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "minorPageFaults"),
             v8::Number::New(isolate, (double)info._minorPageFaults))
@@ -2978,13 +2986,11 @@ static void ProcessStatisticsToV8(
       .FromMaybe(false);
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "userTime"),
-            v8::Number::New(isolate,
-                            (double)info._userTime / (double)info._scClkTck))
+            v8::Number::New(isolate, userTime))
       .FromMaybe(false);
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "systemTime"),
-            v8::Number::New(isolate,
-                            (double)info._systemTime / (double)info._scClkTck))
+            v8::Number::New(isolate, systemTime))
       .FromMaybe(false);
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "numberOfThreads"),
