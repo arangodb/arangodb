@@ -32,7 +32,7 @@ namespace arangodb {
 namespace aql {
 class Ast;
 class ExpressionContext;
-class Variable;
+struct Variable;
 }  // namespace aql
 namespace transaction {
 class Methods;
