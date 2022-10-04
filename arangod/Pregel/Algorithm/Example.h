@@ -23,7 +23,6 @@
 #pragma once
 
 #include <Algorithm/Algorithm.h>
-#include <Algorithm/Formatter.h>
 
 #include <Inspection/VPack.h>
 
@@ -37,8 +36,7 @@ struct Settings {
   uint64_t iterations;
   std::string resultField;
 };
-template<typename Inspector>
-auto inspect(Inspector& f, Settings& x) {
+template <typename Inspector> auto inspect(Inspector &f, Settings &x) {
   return f.object(x).fields(f.field("iterations", x.iterations),
                             f.field("resultField", x.resultField));
 }
@@ -46,24 +44,21 @@ auto inspect(Inspector& f, Settings& x) {
 struct VertexProperties {
   uint64_t value;
 };
-template<typename Inspector>
-auto inspect(Inspector& f, VertexProperties& x) {
+template <typename Inspector> auto inspect(Inspector &f, VertexProperties &x) {
   return f.object(x).fields(f.field("value", x.value));
 }
 
 struct Global {
   uint64_t currentIteration;
 };
-template<typename Inspector>
-auto inspect(Inspector& f, Global& x) {
+template <typename Inspector> auto inspect(Inspector &f, Global &x) {
   return f.object(x).fields(f.field("currentIteration", x.currentIteration));
 }
 
 struct Message {
   uint64_t value;
 };
-template<typename Inspector>
-auto inspect(Inspector& f, Message& x) {
+template <typename Inspector> auto inspect(Inspector &f, Message &x) {
   return f.object(x).fields(f.field("value", x.value));
 }
 
@@ -83,10 +78,10 @@ struct Data {
 };
 
 struct Topology : public algorithm_sdk::TopologyBase<Data, Topology> {
-  [[nodiscard]] auto readVertex(VPackSlice const& doc) -> VertexProperties {
+  [[nodiscard]] auto readVertex(VPackSlice const &doc) -> VertexProperties {
     return VertexProperties{.value = 0};
   }
-  [[nodiscard]] auto readEdge(VPackSlice const& doc)
+  [[nodiscard]] auto readEdge(VPackSlice const &doc)
       -> algorithm_sdk::EmptyEdgeProperties {
     return algorithm_sdk::EmptyEdgeProperties{};
   }
@@ -95,12 +90,12 @@ struct Topology : public algorithm_sdk::TopologyBase<Data, Topology> {
 struct Conductor : public algorithm_sdk::ConductorBase<Data, Conductor> {
   Conductor(Data::Settings settings) : ConductorBase(settings) {}
   auto setup() -> Global { return Global{.currentIteration = 0}; }
-  auto step(Global const& global) -> Global {
+  auto step(Global const &global) -> Global {
     auto newGlobal = global;
     newGlobal.currentIteration += 1;
     return newGlobal;
   }
-  auto continue_huh(Global const& global) -> bool {
+  auto continue_huh(Global const &global) -> bool {
     return global.currentIteration < settings.iterations;
   }
 };
@@ -108,4 +103,4 @@ struct Conductor : public algorithm_sdk::ConductorBase<Data, Conductor> {
 struct VertexComputation
     : public algorithm_sdk::VertexComputationBase<Data, VertexComputation> {};
 
-}  // namespace arangodb::pregel::algorithms::example
+} // namespace arangodb::pregel::algorithms::example
