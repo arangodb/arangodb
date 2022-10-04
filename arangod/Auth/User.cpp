@@ -46,54 +46,47 @@
 
 #include <velocypack/Iterator.h>
 
+#include <string_view>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 // private hash function
-static ErrorCode HexHashFromData(std::string const& hashMethod,
+static ErrorCode HexHashFromData(std::string_view hashMethod,
                                  std::string const& str, std::string& outHash) {
-  char* crypted = nullptr;
+  // maximum length is 64 bytes for SHA512
+  char buffer[64];
   size_t cryptedLength;
 
-  try {
-    if (hashMethod == "sha1") {
-      arangodb::rest::SslInterface::sslSHA1(str.data(), str.size(), crypted,
-                                            cryptedLength);
-    } else if (hashMethod == "sha512") {
-      arangodb::rest::SslInterface::sslSHA512(str.data(), str.size(), crypted,
-                                              cryptedLength);
-    } else if (hashMethod == "sha384") {
-      arangodb::rest::SslInterface::sslSHA384(str.data(), str.size(), crypted,
-                                              cryptedLength);
-    } else if (hashMethod == "sha256") {
-      arangodb::rest::SslInterface::sslSHA256(str.data(), str.size(), crypted,
-                                              cryptedLength);
-    } else if (hashMethod == "sha224") {
-      arangodb::rest::SslInterface::sslSHA224(str.data(), str.size(), crypted,
-                                              cryptedLength);
-    } else if (hashMethod == "md5") {  // WFT?!!!
-      arangodb::rest::SslInterface::sslMD5(str.data(), str.size(), crypted,
-                                           cryptedLength);
-    } else {
-      // invalid algorithm...
-      LOG_TOPIC("3c13c", DEBUG, arangodb::Logger::AUTHENTICATION)
-          << "invalid algorithm for hexHashFromData: " << hashMethod;
-      return TRI_ERROR_BAD_PARAMETER;
-    }
-  } catch (...) {
-    // SslInterface::ssl....() allocates strings with new, which might throw
-    // exceptions
-    return TRI_ERROR_FAILED;
+  if (hashMethod == "sha1") {
+    arangodb::rest::SslInterface::sslSHA1(str.data(), str.size(), &buffer[0]);
+    cryptedLength = 20;
+  } else if (hashMethod == "sha512") {
+    arangodb::rest::SslInterface::sslSHA512(str.data(), str.size(), &buffer[0]);
+    cryptedLength = 64;
+  } else if (hashMethod == "sha384") {
+    arangodb::rest::SslInterface::sslSHA384(str.data(), str.size(), &buffer[0]);
+    cryptedLength = 48;
+  } else if (hashMethod == "sha256") {
+    arangodb::rest::SslInterface::sslSHA256(str.data(), str.size(), &buffer[0]);
+    cryptedLength = 32;
+  } else if (hashMethod == "sha224") {
+    arangodb::rest::SslInterface::sslSHA224(str.data(), str.size(), &buffer[0]);
+    cryptedLength = 28;
+  } else if (hashMethod == "md5") {
+    arangodb::rest::SslInterface::sslMD5(str.data(), str.size(), &buffer[0]);
+    cryptedLength = 16;
+  } else {
+    // invalid algorithm...
+    LOG_TOPIC("3c13c", DEBUG, arangodb::Logger::AUTHENTICATION)
+        << "invalid algorithm for hexHashFromData: " << hashMethod;
+    return TRI_ERROR_BAD_PARAMETER;
   }
 
-  auto sg = arangodb::scopeGuard([&]() noexcept { delete[] crypted; });
+  TRI_ASSERT(cryptedLength > 0);
 
-  if (crypted == nullptr || cryptedLength == 0) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  outHash = basics::StringUtils::encodeHex(crypted, cryptedLength);
+  outHash = basics::StringUtils::encodeHex(&buffer[0], cryptedLength);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -126,7 +119,7 @@ static void AddAuthLevel(VPackBuilder& builder, auth::Level lvl) {
   }
 }
 
-static auth::Level AuthLevelFromSlice(VPackSlice const& slice) {
+static auth::Level AuthLevelFromSlice(VPackSlice slice) {
   TRI_ASSERT(slice.isObject());
   VPackSlice v = slice.get("write");
   if (v.isBool() && v.isTrue()) {
@@ -194,7 +187,7 @@ void auth::User::fromDocumentDatabases(auth::User& entry,
       VPackSlice collectionsSlice = obj.value.get("collections");
 
       if (collectionsSlice.isObject()) {
-        for (auto const& collection : VPackObjectIterator(collectionsSlice)) {
+        for (auto collection : VPackObjectIterator(collectionsSlice)) {
           std::string const cName = collection.key.copyString();
           auto const collPerSlice = collection.value.get("permissions");
 

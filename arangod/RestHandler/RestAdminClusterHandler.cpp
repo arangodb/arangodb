@@ -32,6 +32,7 @@
 
 #include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
+#include "Agency/Supervision.h"
 #include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/NumberUtils.h"
@@ -2709,6 +2710,31 @@ RestAdminClusterHandler::collectRebalanceInformation(
 
   cluster::rebalance::AutoRebalanceProblem p;
   p.zones.emplace_back(cluster::rebalance::Zone{.id = "ZONE"});
+
+  std::string const healthPath = "Supervision/Health";
+
+  auto& cache = server().getFeature<ClusterFeature>().agencyCache();
+  auto [acb, idx] =
+      cache.read(std::vector<std::string>{AgencyCommHelper::path(healthPath)});
+  auto agencyCacheInfo = acb->slice();
+
+  if (!agencyCacheInfo.isArray()) {
+    generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  "Failed to acquire endpoints from agency cache");
+  }
+
+  auto serversHealthInfo =
+      agencyCacheInfo[0].get({"arango", "Supervision", "Health"});
+
+  std::unordered_set<std::string> activeServers;
+  for (auto it : velocypack::ObjectIterator(serversHealthInfo)) {
+    if (it.value.get("Status").stringView() ==
+        consensus::Supervision::HEALTH_STATUS_GOOD) {
+      activeServers.emplace(it.key.copyString());
+    }
+  }
+
+  p.setServersHealthInfo(std::move(activeServers));
 
   std::unordered_map<ServerID, std::uint32_t> serverToIndex;
 

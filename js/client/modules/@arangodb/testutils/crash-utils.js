@@ -565,6 +565,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
 }
 
 function generateCrashDump (binary, instanceInfo, options, checkStr) {
+  GDB_OUTPUT += `Forced shutdown of ${instanceInfo.name} PID[${instanceInfo.pid}]: ${checkStr}\n`;
   if (instanceInfo.hasOwnProperty('debuggerInfo')) {
     throw new Error("this process is already debugged: " + JSON.stringify(instanceInfo.getStructure()));
   }
@@ -595,7 +596,7 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
 function aggregateDebugger(instanceInfo, options) {
   print("collecting debugger info for: " + JSON.stringify(instanceInfo.getStructure()));
   if (!instanceInfo.hasOwnProperty('debuggerInfo')) {
-    print("No debugger info persisted to " + instanceInfo.debuggerInfo.getStructure());
+    print("No debugger info persisted to " + JSON.stringify(instanceInfo.getStructure()));
     return false;
   }
   print("waiting for debugger to terminate: " + JSON.stringify(instanceInfo.debuggerInfo));
@@ -652,4 +653,4 @@ exports.runProcdump = runProcdump;
 exports.stopProcdump = stopProcdump;
 exports.isEnabledWindowsMonitor = isEnabledWindowsMonitor;
 exports.calculateMonitorValues = calculateMonitorValues;
-Object.defineProperty(exports, 'GDB_OUTPUT', {get: () => GDB_OUTPUT});
+Object.defineProperty(exports, 'GDB_OUTPUT', { get: () => GDB_OUTPUT, set: (value) => { GDB_OUTPUT = value; }});

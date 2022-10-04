@@ -5356,17 +5356,12 @@ AqlValue functions::Md5(ExpressionContext* exprCtx, AstNode const&,
   ::appendAsString(vopts, adapter, value);
 
   // create md5
-  char hash[17];
-  char* p = &hash[0];
-  size_t length;
-
-  rest::SslInterface::sslMD5(buffer->data(), buffer->length(), p, length);
+  char hash[16];
+  rest::SslInterface::sslMD5(buffer->data(), buffer->length(), &hash[0]);
 
   // as hex
-  char hex[33];
-  p = &hex[0];
-
-  rest::SslInterface::sslHEX(hash, 16, p, length);
+  char hex[32];
+  rest::SslInterface::sslHEX(hash, 16, &hex[0]);
 
   return AqlValue(&hex[0], 32);
 }
@@ -5383,19 +5378,36 @@ AqlValue functions::Sha1(ExpressionContext* exprCtx, AstNode const&,
   ::appendAsString(vopts, adapter, value);
 
   // create sha1
-  char hash[21];
-  char* p = &hash[0];
-  size_t length;
-
-  rest::SslInterface::sslSHA1(buffer->data(), buffer->length(), p, length);
+  char hash[20];
+  rest::SslInterface::sslSHA1(buffer->data(), buffer->length(), &hash[0]);
 
   // as hex
-  char hex[41];
-  p = &hex[0];
-
-  rest::SslInterface::sslHEX(hash, 20, p, length);
+  char hex[40];
+  rest::SslInterface::sslHEX(hash, 20, &hex[0]);
 
   return AqlValue(&hex[0], 40);
+}
+
+/// @brief function SHA256
+AqlValue functions::Sha256(ExpressionContext* exprCtx, AstNode const&,
+                           VPackFunctionParametersView parameters) {
+  transaction::Methods* trx = &exprCtx->trx();
+  auto const& vopts = trx->vpackOptions();
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  transaction::StringLeaser buffer(trx);
+  velocypack::StringSink adapter(buffer.get());
+
+  ::appendAsString(vopts, adapter, value);
+
+  // create sha256
+  char hash[32];
+  rest::SslInterface::sslSHA256(buffer->data(), buffer->length(), &hash[0]);
+
+  // as hex
+  char hex[64];
+  rest::SslInterface::sslHEX(hash, 32, &hex[0]);
+
+  return AqlValue(&hex[0], 64);
 }
 
 /// @brief function SHA512
@@ -5410,17 +5422,12 @@ AqlValue functions::Sha512(ExpressionContext* exprCtx, AstNode const&,
   ::appendAsString(vopts, adapter, value);
 
   // create sha512
-  char hash[65];
-  char* p = &hash[0];
-  size_t length;
-
-  rest::SslInterface::sslSHA512(buffer->data(), buffer->length(), p, length);
+  char hash[64];
+  rest::SslInterface::sslSHA512(buffer->data(), buffer->length(), &hash[0]);
 
   // as hex
-  char hex[129];
-  p = &hex[0];
-
-  rest::SslInterface::sslHEX(hash, 64, p, length);
+  char hex[128];
+  rest::SslInterface::sslHEX(hash, 64, &hex[0]);
 
   return AqlValue(&hex[0], 128);
 }

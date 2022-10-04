@@ -440,7 +440,7 @@ void LoggerFeature::prepare() {
   Logger::setUseJson(_useJson);
 
   for (auto const& definition : _output) {
-    if (_supervisor && StringUtils::isPrefix(definition, "file://")) {
+    if (_supervisor && definition.starts_with("file://")) {
       LogAppender::addAppender(Logger::defaultLogGroup(),
                                definition + ".supervisor");
     } else {
