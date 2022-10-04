@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added new AQL function SHA256(value).
+
 * Adjust permissions for "search-alias" views.
 
   Previously, "search-alias" views were visible to users that didn't have read
