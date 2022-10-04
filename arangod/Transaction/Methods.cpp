@@ -66,6 +66,7 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Options.h"
+#include "Transaction/ReplicatedContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
@@ -1310,48 +1311,21 @@ Result transaction::Methods::determineReplication2TypeAndFollowers(
     return {};
   }
 
-  auto state = collection.getDocumentState();
-  TRI_ASSERT(state != nullptr);
-  if (state == nullptr) {
-    return {TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,
-            "Could not get replicated state"};
-  }
-
-  auto status = state->getStatus();
-  if (status == std::nullopt) {
-    return {TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
-            "Could not get replicated state status"};
-  }
-
-  using namespace replication2::replicated_state;
-
-  if (auto leaderStatus = status->asLeaderStatus(); leaderStatus != nullptr) {
-    if (leaderStatus->managerState.state ==
-        LeaderInternalState::kRecoveryInProgress) {
-      // Even though we are the leader, we don't want to replicate during
-      // recovery.
-      options.silent = true;
-      replicationType = ReplicationType::FOLLOWER;
-      followers = nullptr;
-    } else if (leaderStatus->managerState.state ==
-               LeaderInternalState::kServiceAvailable) {
-      options.silent = false;
-      replicationType = ReplicationType::LEADER;
-      followers = std::make_shared<std::vector<ServerID>>();
-    } else {
-      return {TRI_ERROR_REPLICATION_LEADER_ERROR,
-              "Unexpected manager state " +
-                  std::string(to_string(leaderStatus->managerState.state))};
-    }
-  } else if (auto followerStatus = status->asFollowerStatus();
-             followerStatus != nullptr) {
+  // The context type is a good indicator of the replication type.
+  // A transaction created on a follower always has a ReplicatedContext, whereas
+  // one created on the leader does not. The only exception is while doing
+  // recovery, where we have a ReplicatedContext, but we are still the
+  // leader. In that case, the leader behaves very similar to a follower.
+  if (auto* context = dynamic_cast<transaction::ReplicatedContext*>(
+          _transactionContext.get());
+      context == nullptr) {
+    options.silent = false;
+    replicationType = ReplicationType::LEADER;
+    followers = std::make_shared<std::vector<ServerID>>();
+  } else {
     options.silent = true;
     replicationType = ReplicationType::FOLLOWER;
     followers = std::make_shared<std::vector<ServerID> const>();
-  } else {
-    std::stringstream s;
-    s << "Status is " << *status;
-    return {TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE, s.str()};
   }
   return {};
 }
