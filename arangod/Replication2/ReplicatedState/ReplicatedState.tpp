@@ -335,6 +335,12 @@ auto ReplicatedState<S>::resign() && -> std::unique_ptr<ReplicatedStateToken> {
   return token;
 }
 
+auto ReplicatedState<S>::createStateHandle()
+    -> std::unique_ptr<replicated_log::IReplicatedStateHandle> {
+  ADB_PROD_ASSERT(false);  // TODO create correctly
+  return std::unique_ptr<ReplicatedStateManager<S>>();
+}
+
 template<typename S>
 auto ReplicatedState<S>::GuardedData::rebuild(
     std::unique_ptr<CoreType> core,
