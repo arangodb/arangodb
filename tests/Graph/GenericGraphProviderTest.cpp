@@ -29,6 +29,7 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Mocks/PreparedResponseConnectionPool.h"
+#include "Mocks/MockQuery.h"
 
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
@@ -153,8 +154,7 @@ class GraphProviderTest : public ::testing::Test {
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
             server.getSystemDatabase());
-        auto fakeQuery =
-            arangodb::aql::Query::create(ctx, queryString, nullptr);
+        auto fakeQuery = std::make_shared<MockQuery>(ctx, queryString);
         try {
           fakeQuery->collections().add("s9880", AccessMode::Type::READ,
                                        arangodb::aql::Collection::Hint::Shard);
