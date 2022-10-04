@@ -29,12 +29,13 @@ add_library(arango_aql STATIC
   CalculationExecutor.cpp
   CalculationNodeVarFinder.cpp
   ClusterNodes.cpp
-  CollectNode.cpp
-  CollectOptions.cpp
-  Collection.cpp
+  ClusterQuery.cpp
   CollectionAccess.cpp
   CollectionAccessingNode.cpp
+  Collection.cpp
   Collections.cpp
+  CollectNode.cpp
+  CollectOptions.cpp
   Condition.cpp
   ConditionFinder.cpp
   ConstFetcher.cpp
@@ -49,13 +50,12 @@ add_library(arango_aql STATIC
   DocumentExpressionContext.cpp
   DocumentProducingHelper.cpp
   DocumentProducingNode.cpp
-  EnumeratePathsNode.cpp
-  ClusterQuery.cpp
   EngineInfoContainerCoordinator.cpp
   EngineInfoContainerDBServerServerBased.cpp
   EnumerateCollectionExecutor.cpp
   EnumerateListExecutor.cpp
   EnumeratePathsExecutor.cpp
+  EnumeratePathsNode.cpp
   ExecutionBlock.cpp
   ExecutionEngine.cpp
   ExecutionNode.cpp
@@ -69,12 +69,10 @@ add_library(arango_aql STATIC
   FixedVarExpressionContext.cpp
   Function.cpp
   Functions.cpp
+  grammar.cpp
   GraphNode.cpp
   Graphs.cpp
   HashedCollectExecutor.cpp
-  IResearchViewExecutor.cpp
-  IResearchViewNode.cpp
-  IResearchViewOptimizerRules.cpp
   IdExecutor.cpp
   InAndOutRowExpressionContext.cpp
   IndexExecutor.cpp
@@ -83,6 +81,9 @@ add_library(arango_aql STATIC
   IndexNodeOptimizerRules.cpp
   InputAqlItemRow.cpp
   InsertModifier.cpp
+  IResearchViewExecutor.cpp
+  IResearchViewNode.cpp
+  IResearchViewOptimizerRules.cpp
   LateMaterializedExpressionContext.cpp
   LateMaterializedOptimizerRulesCommon.cpp
   LimitExecutor.cpp
@@ -98,12 +99,12 @@ add_library(arango_aql STATIC
   MutexExecutor.cpp
   MutexNode.cpp
   NodeFinder.cpp
-  NonConstExpression.cpp
   NonConstExpressionContainer.cpp
+  NonConstExpression.cpp
   NoResultsExecutor.cpp
   Optimizer.cpp
-  OptimizerRules.cpp
   OptimizerRulesCluster.cpp
+  OptimizerRules.cpp
   OptimizerRulesFeature.cpp
   OptimizerRulesReplaceFunctions.cpp
   OptimizerUtils.cpp
@@ -111,10 +112,11 @@ add_library(arango_aql STATIC
   ParallelUnsortedGatherExecutor.cpp
   Parser.cpp
   Projections.cpp
+  PruneExpressionEvaluator.cpp
   Quantifier.cpp
-  Query.cpp
   QueryCache.cpp
   QueryContext.cpp
+  Query.cpp
   QueryExecutionState.cpp
   QueryExpressionContext.cpp
   QueryList.cpp
@@ -138,41 +140,40 @@ add_library(arango_aql STATIC
   ShardLocking.cpp
   SharedAqlItemBlockPtr.cpp
   SharedQueryState.cpp
-  ShortStringStorage.cpp
   ShortestPathExecutor.cpp
   ShortestPathNode.cpp
+  ShortStringStorage.cpp
   SimpleModifier.cpp
   SingleRemoteModificationExecutor.cpp
   SingleRowFetcher.cpp
   SkipResult.cpp
   SortCondition.cpp
-  SortExecutor.cpp
-  SortNode.cpp
-  SortRegister.cpp
   SortedCollectExecutor.cpp
   SortedRowsStorageBackendMemory.cpp
   SortedRowsStorageBackendStaged.cpp
+  SortExecutor.cpp
   SortingGatherExecutor.cpp
+  SortNode.cpp
+  SortRegister.cpp
   SubqueryEndExecutionNode.cpp
   SubqueryEndExecutor.cpp
   SubqueryStartExecutionNode.cpp
   SubqueryStartExecutor.cpp
   Timing.cpp
+  tokens.cpp
   TraversalConditionFinder.cpp
-  TraverserEngineShardLists.cpp
   TraversalExecutor.cpp
   TraversalNode.cpp
+  TraverserEngineShardLists.cpp
   UnsortedGatherExecutor.cpp
   UpdateReplaceModifier.cpp
   UpsertModifier.cpp
   V8Executor.cpp
-  VarUsageFinder.cpp
   Variable.cpp
   VariableGenerator.cpp
-  WindowNode.cpp
+  VarUsageFinder.cpp
   WindowExecutor.cpp
-  grammar.cpp
-  tokens.cpp)
+  WindowNode.cpp)
 
 target_link_libraries(arango_aql
   arango_geo
@@ -188,3 +189,35 @@ target_include_directories(arango_aql PRIVATE
 
 target_compile_options(arango_aql PRIVATE
 	${CMAKE_DEPRECATE_OPTIONS})
+
+################################################################################
+## BISON/FLEX
+################################################################################
+
+#note that we check - in the generated FLEX / BISON files, therefore they are
+#generate inside the source tree
+
+if (USE_MAINTAINER_MODE AND NOT MSVC)
+  set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM "On")
+
+  add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/tokens.cpp
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMAND ${FLEX_EXECUTABLE} -L -otokens.cpp tokens.ll
+    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/tokens.ll
+    VERBATIM
+  )
+
+  add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/grammar.cpp
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMAND ${CMAKE_SOURCE_DIR}/utils/bison-c.sh
+      ${BISON_EXECUTABLE} grammar.cpp grammar.y
+    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/grammar.y
+    VERBATIM
+  )
+endif ()
+
+if (CMAKE_COMPILER_IS_GNUCC)
+  set_source_files_properties(tokens.cpp PROPERTIES COMPILE_FLAGS -Wno-sign-compare)
+endif ()
