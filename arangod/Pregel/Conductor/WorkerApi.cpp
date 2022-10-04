@@ -6,17 +6,26 @@
 
 using namespace arangodb::pregel::conductor;
 
-// This template enforces In and Out type of the function:
-// 'In' enforces which type of message is sent
-// 'Out' defines the expected response type:
-// The function returns an error if this expectation is not fulfilled
-template<typename Out, typename In>
-auto WorkerApi::sendToAll(In const& in) const -> FutureOfWorkerResults<Out> {
+template<Addable Out, typename In>
+auto WorkerApi::sendToAll(In const& in) const -> futures::Future<ResultT<Out>> {
   auto results = std::vector<futures::Future<ResultT<Out>>>{};
   for (auto&& server : _servers) {
     results.emplace_back(send<Out>(server, in));
   }
-  return futures::collectAll(results);
+  return futures::collectAll(results).thenValue(
+      [](auto responses) -> ResultT<Out> {
+        auto out = Out{};
+        for (auto const& response : responses) {
+          if (response.get().fail()) {
+            return Result{
+                response.get().errorNumber(),
+                fmt::format("Got unsuccessful response from worker: {}",
+                            response.get().errorMessage())};
+          }
+          out.add(response.get().get());
+        }
+        return out;
+      });
 }
 
 template<typename Out, typename In>
@@ -64,30 +73,31 @@ auto WorkerApi::createWorkers(
 }
 
 auto WorkerApi::loadGraph(LoadGraph const& data)
-    -> FutureOfWorkerResults<GraphLoaded> {
+    -> futures::Future<ResultT<GraphLoaded>> {
   return sendToAll<GraphLoaded>(data);
 }
 
 auto WorkerApi::prepareGlobalSuperStep(PrepareGlobalSuperStep const& data)
-    -> FutureOfWorkerResults<GlobalSuperStepPrepared> {
+    -> futures::Future<ResultT<GlobalSuperStepPrepared>> {
   return sendToAll<GlobalSuperStepPrepared>(data);
 }
 
 auto WorkerApi::runGlobalSuperStep(RunGlobalSuperStep const& data)
-    -> FutureOfWorkerResults<GlobalSuperStepFinished> {
+    -> futures::Future<ResultT<GlobalSuperStepFinished>> {
   return sendToAll<GlobalSuperStepFinished>(data);
 }
 
-auto WorkerApi::store(Store const& message) -> FutureOfWorkerResults<Stored> {
+auto WorkerApi::store(Store const& message)
+    -> futures::Future<ResultT<Stored>> {
   return sendToAll<Stored>(message);
 }
 
 auto WorkerApi::cleanup(Cleanup const& message)
-    -> FutureOfWorkerResults<CleanupFinished> {
+    -> futures::Future<ResultT<CleanupFinished>> {
   return sendToAll<CleanupFinished>(message);
 }
 
 auto WorkerApi::results(CollectPregelResults const& message) const
-    -> FutureOfWorkerResults<PregelResults> {
+    -> futures::Future<ResultT<PregelResults>> {
   return sendToAll<PregelResults>(message);
 }
