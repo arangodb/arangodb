@@ -1,3 +1,12 @@
+v3.10.3 (XXXX-XX-XX)
+--------------------
+
+* BTS-325: Changed the HTTP status code from `400` to `404` of the ArangoDB
+  error code `ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED` to handle
+  this error in accordance to our edge errors.
+
+* Added new AQL function SHA256(value).
+
 v3.10.2 (XXXX-XX-XX)
 --------------------
 
