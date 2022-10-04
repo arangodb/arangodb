@@ -1,10 +1,20 @@
-v3.10.0 (XXXX-XX-XX)
+v3.10.1 (XXXX-XX-XX)
 --------------------
 
 * Fix an issue with replication of arangosearch view change entries in single
   server replication and active failover. Previously, when changing the
   properties of existing views, the changes were not properly picked up by
   followers in these setups. Cluster setups were not affected.
+
+
+v3.10.0 (2022-09-29)
+--------------------
+
+* Convert v3.10.0-rc.1 into v3.10.0.
+
+
+v3.10.0-rc.1 (2022-09-25)
+-------------------------
 
 * Temporary fix for BTS-1006 (hides new view types).
 
