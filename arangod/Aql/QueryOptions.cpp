@@ -38,7 +38,7 @@ size_t QueryOptions::defaultMaxNumberOfPlans = 128;
 #ifdef __APPLE__
 // On OSX the default stack size for worker threads (non-main thread) is 512kb
 // which is rather low, so we have to use a lower default
-size_t QueryOptions::defaultMaxNodesPerCallstack = 150;
+size_t QueryOptions::defaultMaxNodesPerCallstack = 100;
 #else
 size_t QueryOptions::defaultMaxNodesPerCallstack = 250;
 #endif
