@@ -65,6 +65,8 @@ struct ParticipantsConfig {
   friend auto operator==(ParticipantsConfig const& left,
                          ParticipantsConfig const& right) noexcept
       -> bool = default;
+  friend auto operator<<(std::ostream& os, ParticipantsConfig const&)
+      -> std::ostream&;
 };
 
 template<class Inspector>
@@ -109,27 +111,32 @@ auto inspect(Inspector& f, Properties& x) {
   return f.object(x).fields(f.field("implementation", x.implementation));
 }
 
+struct ServerInstanceReference {
+  ParticipantId serverId;
+  RebootId rebootId;
+
+  ServerInstanceReference(ParticipantId participant, RebootId rebootId)
+      : serverId{std::move(participant)}, rebootId{rebootId} {}
+  ServerInstanceReference() : rebootId{RebootId{0}} {};
+  friend auto operator==(ServerInstanceReference const&,
+                         ServerInstanceReference const&) noexcept
+      -> bool = default;
+};
+
 struct LogPlanTermSpecification {
   LogTerm term;
-  struct Leader {
-    ParticipantId serverId;
-    RebootId rebootId;
-
-    Leader(ParticipantId participant, RebootId rebootId)
-        : serverId{std::move(participant)}, rebootId{rebootId} {}
-    Leader() : rebootId{RebootId{0}} {};
-    friend auto operator==(Leader const&, Leader const&) noexcept
-        -> bool = default;
-  };
-  std::optional<Leader> leader;
+  std::optional<ServerInstanceReference> leader;
 
   LogPlanTermSpecification() = default;
 
-  LogPlanTermSpecification(LogTerm term, std::optional<Leader>);
+  LogPlanTermSpecification(LogTerm term,
+                           std::optional<ServerInstanceReference>);
 
   friend auto operator==(LogPlanTermSpecification const&,
                          LogPlanTermSpecification const&) noexcept
       -> bool = default;
+  friend auto operator<<(std::ostream& os, LogPlanTermSpecification const&)
+      -> std::ostream&;
 };
 
 struct LogPlanSpecification {
@@ -150,6 +157,8 @@ struct LogPlanSpecification {
   friend auto operator==(LogPlanSpecification const&,
                          LogPlanSpecification const&) noexcept
       -> bool = default;
+  friend auto operator<<(std::ostream& os, LogPlanSpecification const&)
+      -> std::ostream&;
 };
 
 struct LogCurrentLocalState {

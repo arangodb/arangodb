@@ -46,8 +46,8 @@ LogPlanConfig::LogPlanConfig(std::size_t effectiveWriteConcern,
                              bool waitForSync) noexcept
     : effectiveWriteConcern(effectiveWriteConcern), waitForSync(waitForSync) {}
 
-LogPlanTermSpecification::LogPlanTermSpecification(LogTerm term,
-                                                   std::optional<Leader> leader)
+LogPlanTermSpecification::LogPlanTermSpecification(
+    LogTerm term, std::optional<ServerInstanceReference> leader)
     : term(term), leader(std::move(leader)) {}
 
 LogPlanSpecification::LogPlanSpecification(
@@ -60,6 +60,20 @@ LogPlanSpecification::LogPlanSpecification(
     : id(id),
       currentTerm(std::move(term)),
       participantsConfig(std::move(participantsConfig)) {}
+
+auto agency::operator<<(std::ostream& os, LogPlanTermSpecification const& term)
+    -> std::ostream& {
+  VPackBuilder builder;
+  velocypack::serialize(builder, term);
+  return os << builder.toJson();
+}
+
+auto agency::operator<<(std::ostream& os, ParticipantsConfig const& config)
+    -> std::ostream& {
+  VPackBuilder builder;
+  velocypack::serialize(builder, config);
+  return os << builder.toJson();
+}
 
 LogCurrentLocalState::LogCurrentLocalState(LogTerm term,
                                            TermIndexPair spearhead) noexcept
