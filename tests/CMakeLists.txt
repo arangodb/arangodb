@@ -422,6 +422,7 @@ add_executable(
   ../cmake/activeCodePage.manifest
   ${ARANGODB_TESTS_SOURCES}
   ${ARANGODB_REPLICATION2_TEST_SOURCES}
+  ${ARANGODB_GRAPH_TEST_SOURCES}
   main.cpp)
 
 set(USE_SEPARATE_REPLICATION2_TESTS_BINARY FALSE CACHE BOOL
@@ -443,6 +444,7 @@ if (USE_SEPARATE_GRAPH_TESTS_BINARY)
   add_executable(
           arangodbtests_graph
           ${ARANGODB_TESTS_COMMON_SOURCES}
+          ${ARANGODB_GRAPH_TEST_SOURCES}
           main.cpp
   )
 endif()
