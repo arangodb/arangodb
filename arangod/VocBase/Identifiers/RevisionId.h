@@ -106,12 +106,6 @@ class RevisionId final : public arangodb::basics::Identifier {
   /// @brief Convert a string into a revision ID, returns none() if invalid
   static RevisionId fromString(std::string_view rid);
 
-  /// @brief Convert a string into a revision ID, returns none() if invalid
-  static RevisionId fromString(std::string_view rid, bool& isOld, bool warn);
-
-  /// @brief Convert a string into a revision ID, no check variant
-  static RevisionId fromString(char const* p, size_t len, bool warn);
-
   /// @brief Convert a HLC string into a revision ID, no check variant
   static RevisionId fromHLC(std::string_view rid) noexcept;
 

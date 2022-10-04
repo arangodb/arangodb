@@ -974,14 +974,19 @@ futures::Future<OperationResult> revisionOnCoordinator(
           if (answer.isObject()) {
             VPackSlice r = answer.get("revision");
             if (r.isString()) {
-              VPackValueLength len;
-              char const* p = r.getString(len);
-              RevisionId cmp = RevisionId::fromString(p, len, false);
-              RevisionId rid = RevisionId::fromSlice(builder.slice());
+              RevisionId cmp = RevisionId::fromString(r.stringView());
+              if (VPackSlice s = answer.get("revisionHLC"); s.isString()) {
+                cmp = RevisionId::fromHLC(s.stringView());
+              }
+              RevisionId rid;
+              if (builder.slice().isString()) {
+                rid = RevisionId::fromHLC(builder.slice().stringView());
+              }
+
               if (cmp != RevisionId::max() && cmp > rid) {
                 // get the maximum value
                 builder.clear();
-                builder.add(VPackValue(cmp.id()));
+                builder.add(VPackValue(cmp.toHLC()));
               }
               return;
             }
@@ -1064,8 +1069,14 @@ futures::Future<OperationResult> checksumOnCoordinator(
       // document checksums or partial results from different shards.
       checksum ^= builder.slice().get("checksum").getUInt();
 
-      RevisionId cmp = RevisionId::fromSlice(r);
-      RevisionId rid = RevisionId::fromSlice(builder.slice().get("revision"));
+      RevisionId cmp = RevisionId::fromHLC(r.stringView());
+      if (VPackSlice s = answer.get("revisionHLC"); s.isString()) {
+        cmp = RevisionId::fromHLC(s.stringView());
+      }
+      RevisionId rid;
+      if (builder.slice().isString()) {
+        rid = RevisionId::fromHLC(builder.slice().stringView());
+      }
       if (cmp != RevisionId::max() && cmp > rid) {
         // get the maximum value
         rid = cmp;
@@ -1075,6 +1086,7 @@ futures::Future<OperationResult> checksumOnCoordinator(
       VPackObjectBuilder b(&builder);
       builder.add("checksum", VPackValue(checksum));
       builder.add("revision", VPackValue(rid.id()));
+      builder.add("revisionHLC", VPackValue(rid.toHLC()));
     };
     return handleResponsesFromAllShards(options, results, handler, pre);
   };

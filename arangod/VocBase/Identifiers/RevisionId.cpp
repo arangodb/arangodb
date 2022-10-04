@@ -36,11 +36,12 @@
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
 namespace {
-/// @brief Convert a revision ID to a string
-constexpr static arangodb::RevisionId::BaseType TickLimit =
+/// @brief limit until which we encode a revision id in a numeric
+/// fashion. must not be changed, because it will have an influence
+/// on how _rev values will be encoded and decoded!
+constexpr static arangodb::RevisionId::BaseType tickLimit =
     (static_cast<arangodb::RevisionId::BaseType>(2016ULL - 1970ULL) * 1000ULL *
-     60ULL * 60ULL * 24ULL * 365ULL)
-    << 20ULL;
+     60ULL * 60ULL * 24ULL * 365ULL);
 }  // namespace
 
 namespace arangodb {
@@ -60,7 +61,7 @@ RevisionId RevisionId::previous() const { return RevisionId{id() - 1}; }
 /// @brief this method can produce an ambiguous result - do not use it
 /// for future code
 std::string RevisionId::toString() const {
-  if (id() <= ::TickLimit) {
+  if (id() <= ::tickLimit) {
     return arangodb::basics::StringUtils::itoa(id());
   }
   return basics::HybridLogicalClock::encodeTimeStamp(id());
@@ -74,7 +75,7 @@ std::string RevisionId::toString() const {
 /// this method can produce an ambiguous result - do not use it
 /// for future code
 std::pair<size_t, size_t> RevisionId::toString(char* buffer) const {
-  if (id() <= ::TickLimit) {
+  if (id() <= ::tickLimit) {
     std::pair<size_t, size_t> pos{0, 0};
     pos.second = basics::StringUtils::itoa(id(), buffer);
     return pos;
@@ -107,7 +108,7 @@ velocypack::ValuePair RevisionId::toHLCValuePair(char* buffer) const {
 RevisionId RevisionId::lowerBound() {
   // "2021-01-01T00:00:00.000Z" => 1609459200000 milliseconds since the epoch
   RevisionId value{uint64_t(1609459200000ULL) << 20ULL};
-  TRI_ASSERT(value.id() > ::TickLimit);
+  TRI_ASSERT(value.id() > (::tickLimit << 20ULL));
   return value;
 }
 
@@ -119,46 +120,27 @@ RevisionId RevisionId::createClusterWideUnique(ClusterInfo& ci) {
   return RevisionId{ci.uniqid()};
 }
 
-/// @brief Convert a string into a revision ID, no check variant
-RevisionId RevisionId::fromString(char const* p, size_t len, bool warn) {
-  [[maybe_unused]] bool isOld;
-  return fromString({p, len}, isOld, warn);
-}
-
 /// @brief Convert a string into a revision ID, returns 0 if format invalid
 RevisionId RevisionId::fromString(std::string_view rid) {
-  [[maybe_unused]] bool isOld;
-  return fromString(rid, isOld, false);
-}
-
-/// @brief Convert a string into a revision ID, returns 0 if format invalid
-RevisionId RevisionId::fromString(std::string_view rid, bool& isOld,
-                                  bool warn) {
   char const* p = rid.data();
   size_t len = rid.size();
   if (len > 0 && *p >= '1' && *p <= '9') {
     bool isValid = false;
     BaseType r = NumberUtils::atoi_positive<BaseType>(p, p + len, isValid);
-    if (isValid) {
-      if (warn && r > ::TickLimit) {
-        // An old tick value that could be confused with a time stamp
-        LOG_TOPIC("66a3a", WARN, arangodb::Logger::FIXME)
-            << "Saw old _rev value that could be confused with a time stamp!";
-      }
-      isOld = true;
+    if (isValid && r <= ::tickLimit) {
+      // only values <= tickLimit will be encoded as pure integers. everything
+      // else will be HLC encoded
       return RevisionId{r};
     }
     // value consists not only of numeric digits. now fall through to
     // the string decoding
   }
-  isOld = false;
-  return RevisionId{basics::HybridLogicalClock::decodeTimeStamp(p, len)};
+  return fromHLC(rid);
 }
 
 /// @brief Convert a HLC string into a revision ID, returns 0 if format invalid
 RevisionId RevisionId::fromHLC(std::string_view rid) noexcept {
-  return RevisionId{
-      basics::HybridLogicalClock::decodeTimeStamp(rid.data(), rid.size())};
+  return RevisionId{basics::HybridLogicalClock::decodeTimeStamp(rid)};
 }
 
 /// @brief extract revision from slice; expects either an integer, or an object
@@ -169,14 +151,11 @@ RevisionId RevisionId::fromSlice(velocypack::Slice slice) {
   if (slice.isObject()) {
     slice = slice.get(StaticStrings::RevString);
   }
-
   if (slice.isInteger()) {
     return RevisionId{slice.getNumber<BaseType>()};
   }
   if (slice.isString()) {
-    velocypack::ValueLength l;
-    char const* p = slice.getStringUnchecked(l);
-    return fromString(p, l, false);
+    return fromString(slice.stringView());
   }
 
   return RevisionId::none();

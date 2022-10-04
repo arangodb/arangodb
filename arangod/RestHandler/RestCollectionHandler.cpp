@@ -167,6 +167,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
         VPackObjectBuilder obj(&_builder, true);
         obj->add("checksum", VPackValue(std::to_string(checksum)));
         obj->add("revision", VPackValue(revId.toString()));
+        obj->add("revisionHLC", VPackValue(revId.toHLC()));
 
         // We do not need a transaction here
         methods::Collections::Context ctxt(coll);
@@ -267,6 +268,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
               {
                 VPackObjectBuilder obj(&_builder, true);
                 obj->add("revision", VPackValue(StringUtils::itoa(rid.id())));
+                obj->add("revisionHLC", VPackValue(rid.toHLC()));
 
                 // no need to use async variant
                 collectionRepresentation(*_ctxt, /*showProperties*/ true,
