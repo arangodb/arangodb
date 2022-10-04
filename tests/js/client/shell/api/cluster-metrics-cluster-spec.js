@@ -26,7 +26,8 @@
 
 const {expect} = require('chai');
 const request = require("@arangodb/request");
-const db = require("internal").db;
+const internal = require("internal");
+const db = internal.db;
 
 
 const expectOneBucketChanged = (actual, old) => {
@@ -286,24 +287,13 @@ class SupervisionWatcher extends Watcher {
 describe('_admin/metrics', () => {
 
   const getServers = () => {
-    const endpointToURL = (endpoint) => {
-      if (endpoint.substr(0, 6) === 'ssl://') {
-        return 'https://' + endpoint.substr(6);
-      }
-      var pos = endpoint.indexOf('://');
-      if (pos === -1) {
-        return 'http://' + endpoint;
-      }
-      return 'http' + endpoint.substr(pos);
-    };
-    const {instanceInfo} = global;
+    const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
     const list = new Map();
     list.set("coordinator", []);
     list.set("dbserver", []);
     list.set("agent", []);
     for (const d of instanceInfo.arangods) {
-      const {role, endpoint} = d;
-      list.get(role).push(endpointToURL(endpoint));
+      list.get(d.instanceRole).push(d.url);
     }
     return list;
   };
