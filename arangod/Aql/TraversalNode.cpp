@@ -1096,7 +1096,9 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
                                     it.second->clone(_plan->getAst()));
   }
 
-  c.setCondition(_condition->clone());
+  if (_condition) {
+    c.setCondition(_condition->clone());
+  }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   c.checkConditionsDefined();
