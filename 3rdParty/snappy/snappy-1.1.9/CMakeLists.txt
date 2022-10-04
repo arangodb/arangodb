@@ -54,7 +54,7 @@ if(MSVC)
 
   # Mixing -fno-rtti with -frtti (the default for C++) leads to unwanted
   # consequences, in particular with exception handling. Since the snappy
-  # developers will not allow fixes in theri repository, we fix it here.
+  # developers will not allow fixes in their repository, we fix it here.
   # Disable RTTI.
   #string(REGEX REPLACE "/GR" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
   #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GR-")
