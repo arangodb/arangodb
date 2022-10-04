@@ -317,6 +317,8 @@ AqlValue Md5(arangodb::aql::ExpressionContext*, AstNode const&,
              VPackFunctionParametersView);
 AqlValue Sha1(arangodb::aql::ExpressionContext*, AstNode const&,
               VPackFunctionParametersView);
+AqlValue Sha256(arangodb::aql::ExpressionContext*, AstNode const&,
+                VPackFunctionParametersView);
 AqlValue Sha512(arangodb::aql::ExpressionContext*, AstNode const&,
                 VPackFunctionParametersView);
 AqlValue Crc32(arangodb::aql::ExpressionContext*, AstNode const&,

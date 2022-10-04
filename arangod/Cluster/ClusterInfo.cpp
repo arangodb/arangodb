@@ -4929,6 +4929,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
     if (numberOfShards > 0 &&
         !slice.get(StaticStrings::IndexType).isEqualString("arangosearch")) {
       ob->add(StaticStrings::IndexIsBuilding, VPackValue(true));
+      // add our coordinator id and reboot id
+      ob->add(StaticStrings::AttrCoordinator,
+              VPackValue(ServerState::instance()->getId()));
+      ob->add(StaticStrings::AttrCoordinatorRebootId,
+              VPackValue(ServerState::instance()->getRebootId().value()));
     }
     ob->add(StaticStrings::IndexId, VPackValue(idString));
   }
@@ -5057,12 +5062,15 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
         VPackBuilder finishedPlanIndex;
         {
           VPackObjectBuilder o(&finishedPlanIndex);
-          for (auto const& entry :
-               VPackObjectIterator(newIndexBuilder.slice())) {
+          for (auto entry : VPackObjectIterator(newIndexBuilder.slice())) {
             auto const key = entry.key.stringView();
+            // remove "isBuilding", "coordinatorId" and "rebootId", plus
+            // "newlyCreated" from the final index
             if (key != StaticStrings::IndexIsBuilding &&
+                key != StaticStrings::AttrCoordinator &&
+                key != StaticStrings::AttrCoordinatorRebootId &&
                 key != "isNewlyCreated") {
-              finishedPlanIndex.add(entry.key.copyString(), entry.value);
+              finishedPlanIndex.add(entry.key.stringView(), entry.value);
             }
           }
         }
