@@ -301,12 +301,14 @@ void IResearchRocksDBInvertedIndex::removeMetrics() {
 void IResearchRocksDBInvertedIndex::toVelocyPack(
     VPackBuilder& builder,
     std::underlying_type<Index::Serialize>::type flags) const {
-  auto const forPersistence =
+  bool const forPersistence =
       Index::hasFlag(flags, Index::Serialize::Internals);
+  bool const forInventory = Index::hasFlag(flags, Index::Serialize::Inventory);
   VPackObjectBuilder objectBuilder(&builder);
   IResearchInvertedIndex::toVelocyPack(
       IResearchDataStore::collection().vocbase().server(),
-      &IResearchDataStore::collection().vocbase(), builder, forPersistence);
+      &IResearchDataStore::collection().vocbase(), builder,
+      forPersistence || forInventory);
   if (forPersistence) {
     TRI_ASSERT(objectId() != 0);  // If we store it, it cannot be 0
     builder.add(arangodb::StaticStrings::ObjectId,

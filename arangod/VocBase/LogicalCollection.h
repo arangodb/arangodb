@@ -327,10 +327,9 @@ class LogicalCollection : public LogicalDataSource {
 
   bool dropIndex(IndexId iid);
 
-  // SECTION: Index access (local only)
-
   /// @brief processes a truncate operation
-  Result truncate(transaction::Methods& trx, OperationOptions& options);
+  Result truncate(transaction::Methods& trx, OperationOptions& options,
+                  bool& usedRangeDelete);
 
   /// @brief compact-data operation
   void compact();

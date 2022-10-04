@@ -45,7 +45,8 @@ class IResearchInvertedIndex : public IResearchDataStore {
   explicit IResearchInvertedIndex(IndexId iid, LogicalCollection& collection);
 
   void toVelocyPack(ArangodServer& server, TRI_vocbase_t const* defaultVocbase,
-                    velocypack::Builder& builder, bool forPersistence) const;
+                    velocypack::Builder& builder,
+                    bool writeAnalyzerDefinition) const;
 
   std::string const& getDbName() const noexcept {
     return _collection.vocbase().name();
