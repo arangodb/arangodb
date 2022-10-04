@@ -261,9 +261,7 @@ arangodb::Result fetchRevisions(
         std::size_t i;
         for (i = 0; i < 5000 && current + i < toFetch.size(); ++i) {
           if (encodeAsHLC) {
-            requestBuilder.add(VPackValue(
-                arangodb::basics::HybridLogicalClock::encodeTimeStamp(
-                    toFetch[current + i].id())));
+            requestBuilder.add(toFetch[current + i].toHLCValuePair(ridBuffer));
           } else {
             // deprecated, ambiguous format
             requestBuilder.add(toFetch[current + i].toValuePair(ridBuffer));
@@ -1600,7 +1598,8 @@ void DatabaseInitialSyncer::fetchRevisionsChunk(
     if (appendResumeHLC) {
       url += "&" + StaticStrings::RevisionTreeResumeHLC + "=" +
              urlEncode(basics::HybridLogicalClock::encodeTimeStamp(
-                 requestResume.id()));
+                 requestResume.id())) +
+             "&encodeAsHLC=true";
     }
 
     bool isVPack = false;
@@ -1981,7 +1980,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
                           ": response is not an object");
       }
 
-      VPackSlice resumeSlice = slice.get("resume");
+      // first try using "resume", which is deprecated
+      VPackSlice resumeSlice = slice.get(StaticStrings::RevisionTreeResume);
       if (!resumeSlice.isNone() && !resumeSlice.isString()) {
         ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -1991,6 +1991,11 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       }
       requestResume = resumeSlice.isNone() ? RevisionId::max()
                                            : RevisionId::fromSlice(resumeSlice);
+      if (VPackSlice s = slice.get(StaticStrings::RevisionTreeResumeHLC);
+          s.isString()) {
+        // use "resumeHLC" if it is present
+        requestResume = RevisionId::fromHLC(s.stringView());
+      }
 
       if (requestResume < RevisionId::max() && !isAborted()) {
         // already fetch next chunk in the background, by posting the

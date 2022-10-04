@@ -75,8 +75,16 @@ class RevisionId final : public arangodb::basics::Identifier {
   /// bytes long
   /// this method can produce an ambiguous result - do not use it
   /// for future code
-  [[deprecated]] arangodb::velocypack::ValuePair toValuePair(
-      char* buffer) const;
+  [[deprecated]] velocypack::ValuePair toValuePair(char* buffer) const;
+
+  /// @brief convert revision id to HLC string
+  std::string toHLC() const;
+
+  /// @brief Convert revision ID to a string using the provided buffer,
+  /// returning the result as a value pair for convenience
+  /// the buffer should be at least arangodb::basics::maxUInt64StringSize
+  /// bytes long
+  velocypack::ValuePair toHLCValuePair(char* buffer) const;
 
   /// @brief create a not-set revision id
   static constexpr RevisionId none() { return RevisionId{0}; }
@@ -104,9 +112,14 @@ class RevisionId final : public arangodb::basics::Identifier {
   /// @brief Convert a string into a revision ID, no check variant
   static RevisionId fromString(char const* p, size_t len, bool warn);
 
+  /// @brief Convert a HLC string into a revision ID, no check variant
+  static RevisionId fromHLC(std::string_view rid) noexcept;
+
   /// @brief extract revision from slice; expects either an integer or string,
   /// or an object with a string or integer _rev attribute
-  static RevisionId fromSlice(velocypack::Slice slice);
+  /// this method can produce an ambiguous result - do not use it
+  /// for future code
+  [[deprecated]] static RevisionId fromSlice(velocypack::Slice slice);
 };
 
 static_assert(sizeof(RevisionId) == sizeof(RevisionId::BaseType),

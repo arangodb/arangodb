@@ -88,11 +88,19 @@ std::pair<size_t, size_t> RevisionId::toString(char* buffer) const {
 /// arangodb::basics::maxUInt64StringSize bytes long.
 /// this method can produce an ambiguous result - do not use it
 /// for future code
-arangodb::velocypack::ValuePair RevisionId::toValuePair(char* buffer) const {
+velocypack::ValuePair RevisionId::toValuePair(char* buffer) const {
   auto positions = toString(buffer);
   return arangodb::velocypack::ValuePair(&buffer[0] + positions.first,
                                          positions.second,
                                          velocypack::ValueType::String);
+}
+
+std::string RevisionId::toHLC() const {
+  return basics::HybridLogicalClock::encodeTimeStamp(id());
+}
+
+velocypack::ValuePair RevisionId::toHLCValuePair(char* buffer) const {
+  return basics::HybridLogicalClock::encodeTimeStampToValuePair(id(), buffer);
 }
 
 /// @brief create a revision id with a lower-bound HLC value
@@ -145,6 +153,12 @@ RevisionId RevisionId::fromString(std::string_view rid, bool& isOld,
   }
   isOld = false;
   return RevisionId{basics::HybridLogicalClock::decodeTimeStamp(p, len)};
+}
+
+/// @brief Convert a HLC string into a revision ID, returns 0 if format invalid
+RevisionId RevisionId::fromHLC(std::string_view rid) noexcept {
+  return RevisionId{
+      basics::HybridLogicalClock::decodeTimeStamp(rid.data(), rid.size())};
 }
 
 /// @brief extract revision from slice; expects either an integer, or an object

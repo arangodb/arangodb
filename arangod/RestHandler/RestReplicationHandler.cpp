@@ -27,7 +27,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Basics/ConditionLocker.h"
-#include "Basics/HybridLogicalClock.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
@@ -71,6 +70,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utilities/NameValidator.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Collections.h"
@@ -3068,9 +3068,7 @@ bool RestReplicationHandler::prepareRevisionOperation(
       _request->value(StaticStrings::RevisionTreeResumeHLC, found);
   if (found) {
     // "resumeHLC" is set. use it
-    uint64_t value = HybridLogicalClock::decodeTimeStamp(resumeString);
-    TRI_ASSERT(value != UINT64_MAX);
-    ctx.resume = RevisionId{value};
+    ctx.resume = RevisionId::fromHLC(resumeString);
   } else {
     // "resumeHLC" is not set. now fall back to the parameter "resume". this
     // parameter contains either a numeric value of a timestamp-encoded HLC
@@ -3172,8 +3170,8 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
         badFormat = true;
         break;
       }
-      RevisionId left{HybridLogicalClock::decodeTimeStamp(first)};
-      RevisionId right{HybridLogicalClock::decodeTimeStamp(second)};
+      RevisionId left = RevisionId::fromHLC(first.stringView());
+      RevisionId right = RevisionId::fromHLC(second.stringView());
       if (left == RevisionId::max() || right == RevisionId::max() ||
           left >= right || left < previousRight) {
         badFormat = true;
@@ -3192,6 +3190,8 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
     return;
   }
 
+  bool encodeAsHLC = _request->parsedValue("encodeAsHLC", false);
+
   RevisionReplicationIterator& it =
       *static_cast<RevisionReplicationIterator*>(ctx.iter.get());
   it.seek(ctx.resume);
@@ -3207,8 +3207,8 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
     RevisionId right;
     auto setRange = [&body, &range, &left, &right](std::size_t index) -> void {
       range = body.at(index);
-      left = RevisionId::fromSlice(range.at(0));
-      right = RevisionId::fromSlice(range.at(1));
+      left = RevisionId::fromHLC(range.at(0).stringView());
+      right = RevisionId::fromHLC(range.at(1).stringView());
     };
     setRange(current);
 
@@ -3233,7 +3233,11 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
         }
 
         if (it.hasMore() && it.revision() >= left && it.revision() <= right) {
-          response.add(it.revision().toValuePair(ridBuffer));
+          if (encodeAsHLC) {
+            response.add(it.revision().toHLCValuePair(ridBuffer));
+          } else {
+            response.add(it.revision().toValuePair(ridBuffer));
+          }
           ++total;
           resumeNext = it.revision().next();
           it.next();
@@ -3267,9 +3271,11 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
 
     if (body.length() >= 1) {
       setRange(body.length() - 1);
-      if (body.length() > 0 && resumeNext <= right) {
+      if (resumeNext <= right) {
         response.add(StaticStrings::RevisionTreeResume,
                      resumeNext.toValuePair(ridBuffer));
+        response.add(StaticStrings::RevisionTreeResumeHLC,
+                     resumeNext.toHLCValuePair(ridBuffer));
       }
     }
   }
@@ -3312,10 +3318,7 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
       }
       RevisionId rev;
       if (encodeAsHLC) {
-        uint64_t value =
-            basics::HybridLogicalClock::decodeTimeStamp(entry.stringView());
-        TRI_ASSERT(value != UINT64_MAX);
-        rev = RevisionId{value};
+        rev = RevisionId::fromHLC(entry.stringView());
       } else {
         rev = RevisionId::fromSlice(entry);
       }
@@ -3355,10 +3358,7 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
     for (VPackSlice entry : VPackArrayIterator(body)) {
       RevisionId rev;
       if (encodeAsHLC) {
-        uint64_t value =
-            basics::HybridLogicalClock::decodeTimeStamp(entry.stringView());
-        TRI_ASSERT(value != UINT64_MAX);
-        rev = RevisionId{value};
+        rev = RevisionId::fromHLC(entry.stringView());
       } else {
         rev = RevisionId::fromSlice(entry);
       }
