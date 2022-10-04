@@ -762,8 +762,12 @@ class instanceManager {
   _forceTerminate(moreReason="") {
     print("Aggregating coredumps");
     this.arangods.forEach((arangod) => {
-      arangod.killWithCoreDump('forced shutdown because of: ' + moreReason);
-      arangod.serverCrashedLocal = true;
+      if (arangod.pid !== null) {
+        arangod.killWithCoreDump('forced shutdown because of: ' + moreReason);
+        arangod.serverCrashedLocal = true;
+      } else {
+        print(RED + Date() + 'instance already gone? ' + arangod.name + RESET);
+      }
     });
     this.arangods.forEach((arangod) => {
       if (arangod.checkArangoAlive()) {
@@ -780,6 +784,14 @@ class instanceManager {
     let shutdownSuccess = !forceTerminate;
 
     // we need to find the leading server
+    let allAlive = true;
+    this.arangods.forEach(arangod => {
+      if (arangod.pid === null) {
+        allAlive = false;
+      }});
+    if (!allAlive) {
+      return this._forceTerminate("not all instances are alive!");
+    }
     if (this.options.activefailover) {
       let d = this.detectCurrentLeader();
       if (this.endpoint !== d.endpoint) {
@@ -1022,7 +1034,7 @@ class instanceManager {
       headers: {'content-type': 'application/json' }
     };
     let count = 60;
-    while (count > 0) {
+    while ((count > 0) && (this.agencyConfig.agencyInstances[0].pid !== null)) {
       let reply = download(this.agencyConfig.urls[0] + '/_api/agency/read', '[["/arango/Plan/AsyncReplication/Leader"]]', opts);
 
       if (!reply.error && reply.code === 200) {
@@ -1044,6 +1056,10 @@ class instanceManager {
     this.leader = null;
     while (this.leader === null) {
       this.urls.forEach(url => {
+        this.arangods.forEach(arangod => {
+          if ((arangod.url === url && arangod.pid === null)) {
+            throw new Error("detectCurrentleader: instance we attempt to query not alive");
+          }});
         opts['method'] = 'GET';
         let reply = download(url + '/_api/cluster/endpoints', '', opts);
         if (reply.code === 200) {
