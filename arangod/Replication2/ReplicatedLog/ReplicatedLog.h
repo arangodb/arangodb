@@ -70,12 +70,13 @@ struct IReplicatedStateHandle {
   virtual ~IReplicatedStateHandle() = default;
   virtual auto resign()
       -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> = 0;
-  virtual void becomeLeader(std::unique_ptr<IReplicatedLogLeaderMethods>) = 0;
+  virtual void leadershipEstablished(
+      std::unique_ptr<IReplicatedLogLeaderMethods>) = 0;
   virtual void recoverEntries(std::unique_ptr<LogIterator>) = 0;
   virtual void becomeFollower(
       std::unique_ptr<IReplicatedLogFollowerMethods>) = 0;
   virtual void acquireSnapshot(ServerID leader, LogIndex) = 0;
-  virtual void commitIndex(LogIndex) = 0;
+  virtual void updateCommitIndex(LogIndex) = 0;
   // TODO
   virtual void dropEntries() = 0;  // o.ä. (für waitForSync=false)
 };
