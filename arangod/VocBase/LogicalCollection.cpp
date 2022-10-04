@@ -1089,8 +1089,9 @@ std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice info,
   return idx;
 }
 
-Result LogicalCollection::updateIndex(IndexId iid, velocypack::Slice body) {
-  auto res = _physical->updateIndex(iid, body);
+Result LogicalCollection::updateIndex(IndexId iid, velocypack::Slice body,
+                                      VPackBuilder& updated) {
+  auto res = _physical->updateIndex(iid, body, updated);
   if (res.ok()) {
     auto& df = vocbase().server().getFeature<DatabaseFeature>();
     if (df.versionTracker() != nullptr) {

@@ -748,7 +748,7 @@ arangodb::Result Indexes::update(LogicalCollection* collection,
       //                  res.errorNumber());
       return res;
     }
-    res = col->updateIndex(iid, body);
+    res = col->updateIndex(iid, body, output);
     // FIXME: Do we need an event here?
     //events::UpdateIndex(collection->vocbase().name(), collection->name(),
     //                  std::to_string(iid.id()), res.errorNumber());

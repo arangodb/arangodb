@@ -466,7 +466,8 @@ void RocksDBCollection::prepareIndexes(
   TRI_ASSERT(!_indexes.empty());
 }
 
-Result RocksDBCollection::updateIndex(IndexId iid, VPackSlice body) {
+Result RocksDBCollection::updateIndex(IndexId iid, VPackSlice body,
+                                      VPackBuilder& updated) {
   TRI_ASSERT(body.isObject());
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
   if (!vocbase.use()) {  // someone dropped the database
@@ -524,13 +525,15 @@ Result RocksDBCollection::updateIndex(IndexId iid, VPackSlice body) {
           {"path", "statusString"},
           LogicalDataSource::Serialization::PersistenceWithInProgress);
       // log this event in the WAL and in the collection meta-data
+      toUpdate->toVelocyPack(updated,
+                           Index::makeFlags(Index::Serialize::Internals));
       res = engine.writeCreateCollectionMarker(  // write marker
           _logicalCollection.vocbase().id(),            // vocbase id
           _logicalCollection.id(),                      // collection id
           builder.slice(),                              // RocksDB path
           RocksDBLogValue::IndexChange(                   // marker
-              _logicalCollection.vocbase().id(), _logicalCollection.id(),
-              iid  // args
+              _logicalCollection.vocbase().id(), _logicalCollection.id(), iid,
+              updated.slice()  // args
               ));
     }
   }

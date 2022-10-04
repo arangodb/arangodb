@@ -274,7 +274,7 @@ void ClusterCollection::prepareIndexes(
   TRI_ASSERT(!_indexes.empty());
 }
 
-Result ClusterCollection::updateIndex(IndexId iid, velocypack::Slice body) {
+Result ClusterCollection::updateIndex(IndexId iid, VPackSlice body, VPackBuilder&) {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
