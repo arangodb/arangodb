@@ -335,6 +335,7 @@ auto ReplicatedState<S>::resign() && -> std::unique_ptr<ReplicatedStateToken> {
   return token;
 }
 
+template<typename S>
 auto ReplicatedState<S>::createStateHandle()
     -> std::unique_ptr<replicated_log::IReplicatedStateHandle> {
   ADB_PROD_ASSERT(false);  // TODO create correctly
