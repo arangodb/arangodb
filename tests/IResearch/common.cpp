@@ -161,7 +161,7 @@ std::ostream& operator<<(std::ostream& os, Not const& filter) {
 std::ostream& operator<<(std::ostream& os, by_ngram_similarity const& filter) {
   os << "NGRAM_SIMILARITY[";
   os << filter.field() << ", ";
-  for (auto ngram : filter.options().ngrams) {
+  for (auto const& ngram : filter.options().ngrams) {
     os << ngram.c_str();
   }
   os << "," << filter.options().threshold << "]";
@@ -268,9 +268,9 @@ struct BoostScorer : public irs::sort {
    public:
     Prepared() = default;
 
-    virtual void collect(irs::byte_type* stats, const irs::index_reader& index,
-                         const irs::sort::field_collector* field,
-                         const irs::sort::term_collector* term) const override {
+    virtual void collect(irs::byte_type*, const irs::index_reader&,
+                         const irs::sort::field_collector*,
+                         const irs::sort::term_collector*) const override {
       // NOOP
     }
 
@@ -326,9 +326,9 @@ struct CustomScorer : public irs::sort {
    public:
     Prepared(float_t i) : i(i) {}
 
-    virtual void collect(irs::byte_type* stats, const irs::index_reader& index,
-                         const irs::sort::field_collector* field,
-                         const irs::sort::term_collector* term) const override {
+    virtual void collect(irs::byte_type*, const irs::index_reader&,
+                         const irs::sort::field_collector*,
+                         const irs::sort::term_collector*) const override {
       // NOOP
     }
 
@@ -582,12 +582,11 @@ arangodb::aql::QueryResult executeQuery(
 std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
     TRI_vocbase_t& vocbase, std::string const& queryString,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */,
-    std::string const& optionsString /*= "{}"*/
-) {
+    std::string const& optionsString /*= "{}"*/) {
   auto ctx =
       std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto query = arangodb::aql::Query::create(
-      ctx, arangodb::aql::QueryString(queryString), nullptr,
+      ctx, arangodb::aql::QueryString(queryString), bindVars,
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
   query->initTrxForTests();
@@ -604,12 +603,11 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
 std::shared_ptr<arangodb::aql::Query> prepareQuery(
     TRI_vocbase_t& vocbase, std::string const& queryString,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */,
-    std::string const& optionsString /*= "{}"*/
-) {
+    std::string const& optionsString /*= "{}"*/) {
   auto ctx =
       std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto query = arangodb::aql::Query::create(
-      ctx, arangodb::aql::QueryString(queryString), nullptr,
+      ctx, arangodb::aql::QueryString(queryString), bindVars,
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
@@ -804,7 +802,7 @@ void assertExpressionFilter(
   auto* allVars = ast->variables();
   ASSERT_TRUE(allVars);
   arangodb::aql::Variable* ref = nullptr;
-  for (auto entry : allVars->variables(true)) {
+  for (auto const& entry : allVars->variables(true)) {
     if (entry.second == refName) {
       ref = allVars->getVariable(entry.first);
       break;
@@ -937,7 +935,7 @@ void buildActualFilter(
   auto* allVars = ast->variables();
   ASSERT_TRUE(allVars);
   arangodb::aql::Variable* ref = nullptr;
-  for (auto entry : allVars->variables(true)) {
+  for (auto const& entry : allVars->variables(true)) {
     if (entry.second == refName) {
       ref = allVars->getVariable(entry.first);
       break;
@@ -947,7 +945,7 @@ void buildActualFilter(
 
   // optimization time
   {
-    arangodb::transaction ::Methods trx(
+    arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
         arangodb::transaction::Options());
 
@@ -1033,7 +1031,7 @@ void assertFilter(
   auto* allVars = ast->variables();
   ASSERT_TRUE(allVars);
   aql::Variable* ref = nullptr;
-  for (auto entry : allVars->variables(true)) {
+  for (auto const& entry : allVars->variables(true)) {
     if (entry.second == refName) {
       ref = allVars->getVariable(entry.first);
       break;

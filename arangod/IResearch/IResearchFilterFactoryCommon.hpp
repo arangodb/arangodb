@@ -81,7 +81,12 @@ auto& append(Source& parent, [[maybe_unused]] FilterContext const& ctx) {
 
 template<typename Filter, typename Source>
 Filter& appendNot(Source& parent, FilterContext const& ctx) {
-  return append<Filter>(append<irs::Not>(parent, ctx), ctx);
+  return append<Filter>(
+      append<irs::Not>(parent.type() == irs::type<irs::Or>::id()
+                           ? append<irs::And>(parent, ctx)
+                           : parent,
+                       ctx),
+      ctx);
 }
 
 namespace error {

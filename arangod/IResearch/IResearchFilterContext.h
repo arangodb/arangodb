@@ -43,7 +43,7 @@ namespace iresearch {
 struct InvertedIndexField;
 
 constexpr std::string_view nestedRoot(bool hasNested) noexcept {
-  return hasNested ? std::string_view{} : std::string_view{nullptr, 0};
+  return {hasNested ? "" : nullptr, 0};
 }
 
 struct QueryContext {

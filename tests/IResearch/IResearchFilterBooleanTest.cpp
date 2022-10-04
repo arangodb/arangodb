@@ -2322,7 +2322,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
           irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
     {
-      auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          root.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("b");
       filter.mutable_options()->term =
           irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
@@ -2365,7 +2366,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
           irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
     {
-      auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          root.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       filter.boost(1.5);
       *filter.mutable_field() = mangleString("b", "test_analyzer");
       filter.mutable_options()->term =
@@ -2404,7 +2406,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
           irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
     }
     {
-      auto& filter = root.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          root.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("b");
       filter.mutable_options()->term =
           irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
