@@ -5,6 +5,30 @@ devel
   should be optimized into the traversal, and some that are not valid should not be optimized
   anymore. Fixes #16589.
 
+* Added new AQL function SHA256(value).
+
+* Adjust permissions for "search-alias" views.
+
+  Previously, "search-alias" views were visible to users that didn't have read
+  permissions on the underlying referenced collections. This was inconsistent, 
+  because "arangosearch" views weren't shown to users that didn't have read 
+  permissions on the underlying links. 
+  Now, the behavior for "search-alias" views is the same as for "arangosearch" 
+  views, i.e. "search-alias" views are not shown and are not accessible for 
+  users that don't have at least read permissions on the underlying collections.
+
+* BTS-969: Added restriction for HTTP request `/cluster/rebalance`not to 
+  consider servers that have failed status as a possible target for rebalancing
+  shards in its execution plan.
+
+* Added index cleanup in Supervision. If an index was not created successfully
+  and the coordinator which initiated the creation was rebooted or is dead,
+  then the agency Supervision will drop the index again. If it was created
+  successfully, the agency Supervision will finalize it.
+
+* BTS-742: Added restriction for, when in smart graph, not accepting satellites
+  in invalid format when storing a graph (like `{satellites: null}`).
+
 * Temporary fix for BTS-1006 (hides new view types).
 
 * Updated arangosync to v2.12.0.

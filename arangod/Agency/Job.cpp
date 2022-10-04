@@ -966,7 +966,7 @@ void Job::addPreconditionServerNotBlocked(Builder& pre,
 }
 
 void Job::addPreconditionServerHealth(Builder& pre, std::string const& server,
-                                      std::string const& health) {
+                                      std::string_view health) {
   pre.add(VPackValue(healthPrefix + server + "/Status"));
   {
     VPackObjectBuilder serverGood(&pre);
@@ -983,7 +983,7 @@ void Job::addPreconditionShardNotBlocked(Builder& pre,
   }
 }
 
-void Job::addPreconditionUnchanged(Builder& pre, std::string const& key,
+void Job::addPreconditionUnchanged(Builder& pre, std::string_view key,
                                    Slice value) {
   pre.add(VPackValue(key));
   {
@@ -993,12 +993,12 @@ void Job::addPreconditionUnchanged(Builder& pre, std::string const& key,
 }
 
 void Job::addBlockServer(Builder& trx, std::string const& server,
-                         std::string const& jobId) {
+                         std::string_view jobId) {
   trx.add(blockedServersPrefix + server, VPackValue(jobId));
 }
 
 void Job::addBlockShard(Builder& trx, std::string const& shard,
-                        std::string const& jobId) {
+                        std::string_view jobId) {
   trx.add(blockedShardsPrefix + shard, VPackValue(jobId));
 }
 
