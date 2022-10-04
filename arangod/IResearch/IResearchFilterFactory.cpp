@@ -2094,10 +2094,6 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
     return error::nondeterministicArgs(funcName);
   }
 
-  if (!ctx.isSearchQuery) {
-    return {TRI_ERROR_NOT_IMPLEMENTED, "EXISTS is supported for SEARCH only"};
-  }
-
   auto const argc = args.numMembers();
 
   if (argc < 1 || argc > 3) {
