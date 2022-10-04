@@ -115,35 +115,24 @@
       if (frontendConfig.ldapEnabled) {
         this.saveLocalCollectionQueries(queries, callbackFunc);
       } else {
-        if (!this.activeUser) {
+        if (this.activeUser === false || this.activeUser === null) {
           this.activeUser = 'root';
         }
 
+        // save current collection
         $.ajax({
           cache: false,
-          type: 'GET',
+          type: 'PATCH',
           url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(this.activeUser)),
-          success: function (user) {
-            // save current collection
-            $.ajax({
-              cache: false,
-              type: 'PATCH',
-              url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(user.user)),
-              data: JSON.stringify({
-                extra: {
-                  ...user.extra,
-                  queries
-                }
-              }),
-              contentType: 'application/json',
-              processData: false,
-              success: function (data) {
-                callbackFunc(false, data);
-              },
-              error: function () {
-                callbackFunc(true);
-              }
-            });
+          data: JSON.stringify({
+            extra: {
+              queries: queries
+            }
+          }),
+          contentType: 'application/json',
+          processData: false,
+          success: function (data) {
+            callbackFunc(false, data);
           },
           error: function () {
             callbackFunc(true);

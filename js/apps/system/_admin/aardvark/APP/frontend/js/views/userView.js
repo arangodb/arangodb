@@ -304,35 +304,31 @@
         return;
       }
 
-      $.ajax({
-        cache: false,
-        type: 'GET',
-        url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(username)),
-        success: function (user) {
-          $.ajax({
-            cache: false,
-            type: 'PATCH',
-            url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(username)),
-            data: JSON.stringify({
-              extra: {
-                ...user.extra,
-                name
-              },
-              active: status
-            }),
-            contentType: 'application/json',
-            processData: false,
-            success: function () {
-              arangoHelper.arangoNotification('User', username + ' updated.');
-            },
-            error: function () {
-              arangoHelper.arangoError('User', 'Could not update ' + username + '.');
+      var self = this;
+      var userPromise = new Promise((resolve) => {
+        if (username === self.currentUser.get('user')) {
+          self.collection.fetch({
+            fetchAllUsers: false,
+            success: function (res) {
+              resolve(res.models[0]);
             }
           });
-        },
-        error: function () {
-          arangoHelper.arangoError('User', 'Could not update ' + username + '.');
+        } else {
+          resolve(this.collection.findWhere({'user': username}));
         }
+      });
+
+      userPromise.then(user => {
+        const extra = user.get('extra');
+        user.save({'extra': Object.assign(extra, {'name': name}), 'active': status}, {
+          type: 'PATCH',
+          success: function () {
+            arangoHelper.arangoNotification('User', user.get('user') + ' updated.');
+          },
+          error: function () {
+            arangoHelper.arangoError('User', 'Could not update ' + user.get('user') + '.');
+          }
+        });
       });
     },
 
