@@ -3953,6 +3953,7 @@ frozen::map<irs::string_ref, ConvertionHandler,
     {GEO_INTERSECT_FUNC, fromFuncGeoContainsIntersect},
     {"GEO_IN_RANGE", fromFuncGeoInRange},
     {"GEO_CONTAINS", fromFuncGeoContainsIntersect},
+    // GEO_DISTANCE missing because it's not return boolean
     // context functions
     {"BOOST", fromFuncBoost},
     {"ANALYZER", fromFuncAnalyzer},
