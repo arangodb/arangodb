@@ -35,16 +35,23 @@
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 
-namespace arangodb::futures {
+namespace arangodb {
+class Result;
+
+namespace futures {
 template<typename T>
 class Future;
 template<typename T>
 class Promise;
 struct Unit;
-}  // namespace arangodb::futures
-namespace arangodb {
-class Result;
+}  // namespace futures
+
+namespace velocypack {
+class SharedSlice;
 }
+
+}  // namespace arangodb
+
 namespace arangodb::replication2 {
 namespace replicated_log {
 struct ReplicatedLog;
@@ -61,6 +68,8 @@ struct IReplicatedLeaderStateBase;
 struct IReplicatedFollowerStateBase;
 
 struct IStateManagerBase {};
+template<typename S>
+struct IReplicatedStateImplBase;
 
 /**
  * Common base class for all ReplicatedStates, hiding the type information.
@@ -86,11 +95,50 @@ struct ReplicatedStateBase {
     return getFollowerBase();
   }
 
+  [[nodiscard]] virtual auto createStateHandle()
+      -> std::unique_ptr<replicated_log::IReplicatedStateHandle> = 0;
+
  private:
   [[nodiscard]] virtual auto getLeaderBase()
       -> std::shared_ptr<IReplicatedLeaderStateBase> = 0;
   [[nodiscard]] virtual auto getFollowerBase()
       -> std::shared_ptr<IReplicatedFollowerStateBase> = 0;
+};
+
+template<typename S>
+struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
+  using CoreType = typename ReplicatedStateTraits<S>::CoreType;
+  using Factory = typename ReplicatedStateTraits<S>::FactoryType;
+  using FollowerType = typename ReplicatedStateTraits<S>::FollowerType;
+  using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
+
+  void acquireSnapshot(ServerID leader, LogIndex index) override;
+
+  void updateCommitIndex(LogIndex index) override;
+
+  auto resign()
+      -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> override;
+
+  void leadershipEstablished(
+      std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods>) override;
+
+  void recoverEntries(std::unique_ptr<LogIterator> ptr) override;
+
+  void becomeFollower(
+      std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> methods)
+      override;
+
+  void dropEntries() override;
+
+  struct GuardedData {
+    std::shared_ptr<IReplicatedStateImplBase<S>> _currentState;
+    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> _methods;
+    std::unique_ptr<CoreType> _core;
+  };
+
+  Guarded<GuardedData> _guarded;
+
+  std::shared_ptr<Factory> const factory;
 };
 
 template<typename S>
@@ -136,6 +184,9 @@ struct ReplicatedState final
    * Rebuilds the managers. Called by the manager when its participant is gone.
    */
   void rebuildMe(IStateManagerBase const* caller) noexcept override;
+
+  auto createStateHandle()
+      -> std::unique_ptr<replicated_log::IReplicatedStateHandle> override;
 
   struct IStateManager : IStateManagerBase {
     virtual ~IStateManager() = default;
@@ -210,5 +261,6 @@ using ReplicatedStateStreamSpec =
         streams::tag_descriptor_set<streams::tag_descriptor<
             1, typename ReplicatedStateTraits<S>::Deserializer,
             typename ReplicatedStateTraits<S>::Serializer>>>>;
+
 }  // namespace replicated_state
 }  // namespace arangodb::replication2

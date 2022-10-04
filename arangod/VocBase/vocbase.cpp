@@ -264,6 +264,7 @@ struct arangodb::VocBaseLogManager {
         TRI_vocbase_t& vocbase)
         -> ResultT<std::shared_ptr<
             replication2::replicated_state::ReplicatedStateBase>> try {
+      // TODO Make this atomic without crashing on errors if possible
       using namespace arangodb::replication2;
       using namespace arangodb::replication2::replicated_state;
 
@@ -306,7 +307,7 @@ struct arangodb::VocBaseLogManager {
         stateAndLog.storage = std::move(*maybeStorage);
       }
 
-      stateAndLog.log = std::invoke([&]() {
+      auto& log = stateAndLog.log = std::invoke([&]() {
         auto&& logCore =
             std::make_unique<replication2::replicated_log::LogCore>(
                 *stateAndLog.storage);
@@ -317,8 +318,14 @@ struct arangodb::VocBaseLogManager {
             server.getFeature<ReplicatedLogFeature>().options(), logContext);
       });
 
-      stateAndLog.state =
-          feature.createReplicatedState(type, stateAndLog.log, logContext);
+      auto& state = stateAndLog.state =
+          feature.createReplicatedState(type, log, logContext);
+
+      auto&& stateHandle = state->createStateHandle();
+
+      // TODO put the guard into `statesAndLog` or so?
+      auto guard = log->connect(std::move(stateHandle));
+
       auto iter = statesAndLogs.emplace(id, std::move(stateAndLog));
 
       server.getFeature<ReplicatedLogFeature>()

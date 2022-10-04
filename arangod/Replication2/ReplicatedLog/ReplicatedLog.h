@@ -66,6 +66,7 @@ struct IReplicatedLogFollowerMethods : IReplicatedLogMethodsBase {
   virtual auto snapshotCompleted() -> Result = 0;
 };
 
+// TODO Move to namespace replicate_state (and different file?)
 struct IReplicatedStateHandle {
   virtual ~IReplicatedStateHandle() = default;
   virtual auto resign()
