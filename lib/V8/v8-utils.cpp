@@ -2967,15 +2967,16 @@ static void ProcessStatisticsToV8(
     rssp = rss / PhysicalMemory::getValue();
   }
 
-  double scClkTck = (double)info._scClkTck;
-  double userTime = (double)info._userTime;
-  double systemTime = (double)info._systemTime;
+  auto context = TRI_IGETC;
+  auto scClkTck = (double)info._scClkTck;
+  auto userTime = (double)info._userTime;
+  auto systemTime = (double)info._systemTime;
+
   if (scClkTck != 0.0) {
     userTime = userTime / (double)info._scClkTck;
     systemTime = systemTime / (double)info._scClkTck;
   }
 
-   auto context = TRI_IGETC;
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "minorPageFaults"),
             v8::Number::New(isolate, (double)info._minorPageFaults))
