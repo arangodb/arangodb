@@ -126,11 +126,12 @@ const IResearchInvertedIndexMeta& IResearchInvertedIndexMeta::DEFAULT() {
   return meta;
 }
 
-IResearchInvertedIndexMeta::IResearchInvertedIndexMeta() {
-  _analyzers[0] = IResearchAnalyzerFeature::identity();
-  _primitiveOffset = 1;
-  _indexingContext =
-      std::make_unique<IResearchInvertedIndexMetaIndexingContext>(this, false);
+IResearchInvertedIndexMeta::IResearchInvertedIndexMeta()
+    : _indexingContext{
+          std::make_unique<IResearchInvertedIndexMetaIndexingContext>(this,
+                                                                      false)} {
+  _analyzers[0] = FieldMeta::identity();
+  _primitiveOffset = _analyzers.size();
 }
 
 // FIXME(Dronplane): make all constexpr defines consistent
@@ -542,7 +543,6 @@ bool InvertedIndexField::init(
     std::string& errorField) {
   // Fill inherited fields
   if (!rootMode) {
-    _features = parent._features;
     _includeAllFields = parent._includeAllFields;
     _trackListPositions = parent._trackListPositions;
     _isArray = parent._isArray;
@@ -555,8 +555,9 @@ bool InvertedIndexField::init(
     TRI_ASSERT(!rootMode);
     try {
       TRI_ASSERT(!parent._analyzers.empty());
-      TRI_ParseAttributeString(slice.stringView(), fieldParts, !_isSearchField);
       _analyzers[0] = parent.analyzer();
+      _features = parent._features;
+      TRI_ParseAttributeString(slice.stringView(), fieldParts, !_isSearchField);
       TRI_ASSERT(!fieldParts.empty());
     } catch (arangodb::basics::Exception const& err) {
       LOG_TOPIC("1d04c", ERR, arangodb::iresearch::TOPIC)
@@ -672,6 +673,11 @@ bool InvertedIndexField::init(
         return false;
       }
       _features = std::move(tmp);
+    } else if (slice.hasKey(kAnalyzerFieldName) || rootMode) {
+      TRI_ASSERT(_analyzers[0]);
+      _features = _analyzers[0]._pool->features();
+    } else {
+      _features = parent._features;
     }
     if (!rootMode && slice.hasKey(kExpressionFieldName)) {
       auto subSlice = slice.get(kExpressionFieldName);
@@ -955,9 +961,17 @@ IResearchInvertedIndexMetaIndexingContext::
       _includeAllFields(field->_includeAllFields),
       _trackListPositions(field->_trackListPositions),
       _isSearchField(field->_isSearchField) {
+  setFeatures(field->_features);
   if (add) {
     addField(*field, false);
   }
+}
+
+void IResearchInvertedIndexMetaIndexingContext::setFeatures(
+    Features const& features) {
+  _features = features;
+  _fieldFeatures =
+      _features.fieldFeatures(static_cast<LinkVersion>(_meta->_version));
 }
 
 void IResearchInvertedIndexMetaIndexingContext::addField(
@@ -987,6 +1001,7 @@ void IResearchInvertedIndexMetaIndexingContext::addField(
         current->_includeAllFields = f._includeAllFields;
         current->_trackListPositions = f._trackListPositions;
         current->_isSearchField = f._isSearchField;
+        current->setFeatures(f._features);
       }
     }
 #ifdef USE_ENTERPRISE

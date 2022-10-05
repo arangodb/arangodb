@@ -28,11 +28,12 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
 #include "Cluster/ClusterHelpers.h"
-#include "VocBase/LogicalCollection.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Inspection/VPack.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "Logger/LogMacros.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;

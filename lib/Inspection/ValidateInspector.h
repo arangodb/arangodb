@@ -92,9 +92,6 @@ struct ValidateInspector : InspectorBase<ValidateInspector<Context>, Context> {
     explicit InvariantContainer(Invariant&& invariant)
         : invariantFunc(std::move(invariant)) {}
     Invariant invariantFunc;
-
-    static constexpr const char InvariantFailedError[] =
-        "Field invariant failed";
   };
 
   template<class... Args>
@@ -116,7 +113,33 @@ struct ValidateInspector : InspectorBase<ValidateInspector<Context>, Context> {
     return {};
   }
 
- protected:
+  template<class Invariant, class T>
+  Status objectInvariant(T& object, Invariant&& func, Status result) {
+    if (result.ok()) {
+      result =
+          Base::template checkInvariant<detail::ObjectInvariantFailedError>(
+              std::forward<Invariant>(func), object);
+    }
+    return result;
+  }
+
+ private:
+  template<class>
+  friend struct detail::EmbeddedFields;
+  template<class, class...>
+  friend struct detail::EmbeddedFieldsImpl;
+  template<class, class, class>
+  friend struct detail::EmbeddedFieldsWithObjectInvariant;
+  template<class, class>
+  friend struct detail::EmbeddedFieldInspector;
+
+  using EmbeddedParam = std::monostate;
+
+  template<class... Args>
+  Status processEmbeddedFields(EmbeddedParam&, Args&&... args) {
+    return validateFields(std::forward<Args>(args)...);
+  }
+
   Status::Success validateFields() { return Status::Success{}; }
 
   template<class Arg>
@@ -128,6 +151,14 @@ struct ValidateInspector : InspectorBase<ValidateInspector<Context>, Context> {
   Status validateFields(Arg&& arg, Args&&... args) {
     return validateField(std::forward<Arg>(arg)) |
            [&]() { return validateFields(std::forward<Args>(args)...); };
+  }
+
+  [[nodiscard]] Status validateField(
+      std::unique_ptr<detail::EmbeddedFields<ValidateInspector>>&&
+          embeddedFields) {
+    EmbeddedParam params;
+    return embeddedFields->apply(*this, params)  //
+           | [&]() { return embeddedFields->checkInvariant(); };
   }
 
   template<class T>
@@ -146,14 +177,13 @@ struct ValidateInspector : InspectorBase<ValidateInspector<Context>, Context> {
 
   template<class T, class U>
   Status checkInvariant(typename Base::template InvariantField<T, U>& field) {
-    using Field = typename Base::template InvariantField<T, U>;
-    return Base::template checkInvariant<Field, Field::InvariantFailedError>(
+    return Base::template checkInvariant<detail::FieldInvariantFailedError>(
         field.invariantFunc, Base::getFieldValue(field));
   }
 
   template<class T>
   auto checkInvariant(T& field) {
-    if constexpr (!Base::template IsRawField<std::remove_cvref_t<T>>::value) {
+    if constexpr (!detail::IsRawField<std::remove_cvref_t<T>>::value) {
       return checkInvariant(field.inner);
     } else {
       return Status::Success{};

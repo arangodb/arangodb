@@ -223,7 +223,8 @@ class FieldIterator {
 
   void next();
   bool setValue(VPackSlice const value,
-                FieldMeta::Analyzer const& valueAnalyzer);
+                FieldMeta::Analyzer const& valueAnalyzer,
+                IndexMetaStruct const& context);
   void setNullValue(VPackSlice const value);
   void setNumericValue(VPackSlice const value);
   void setBoolValue(VPackSlice const value);
