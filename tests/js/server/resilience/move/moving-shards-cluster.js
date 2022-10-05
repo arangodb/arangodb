@@ -1251,17 +1251,18 @@ function MovingShardsSuite({useData, replVersion}) {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(function MovingShardsSuite_nodata() {
-  let derivedSuite = {};
-  deriveTestSuite(MovingShardsSuite({ useData: false, replVersion: "1" }), derivedSuite, "_nodata_R1");
-  return derivedSuite;
-});
-
-jsunity.run(function MovingShardsSuite_data() {
-  let derivedSuite = {};
-  deriveTestSuite(MovingShardsSuite({ useData: true, replVersion: "1" }), derivedSuite, "_data_R1");
-  return derivedSuite;
-});
+// Disabling replication1 tests for this branch
+// jsunity.run(function MovingShardsSuite_nodata() {
+//   let derivedSuite = {};
+//   deriveTestSuite(MovingShardsSuite({ useData: false, replVersion: "1" }), derivedSuite, "_nodata_R1");
+//   return derivedSuite;
+// });
+//
+// jsunity.run(function MovingShardsSuite_data() {
+//   let derivedSuite = {};
+//   deriveTestSuite(MovingShardsSuite({ useData: true, replVersion: "1" }), derivedSuite, "_data_R1");
+//   return derivedSuite;
+// });
 
 jsunity.run(function MovingShardsSuite_data() {
   let derivedSuite = {};
