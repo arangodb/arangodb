@@ -101,6 +101,8 @@ Result fromFuncMinHashMatch(char const* funcName, irs::boolean_filter* filter,
                             FilterContext const& filterCtx,
                             aql::AstNode const& args);
 
+irs::ColumnAcceptor makeColumnAcceptor(bool) noexcept;
+
 #ifndef USE_ENTERPRISE
 irs::filter::ptr makeAll(std::string_view) {
   return std::make_unique<irs::all>();
@@ -2237,7 +2239,9 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
   if (filter) {
     auto& exists = append<irs::by_column_existence>(*filter, filterCtx);
     if (auto* opts = exists.mutable_options(); prefixMatch) {
-      opts->acceptor = makeColumnAcceptor(fieldName);
+      TRI_ASSERT(ctx.namePrefix.empty() ||
+                 kludge::isNestedField(ctx.namePrefix));
+      opts->acceptor = makeColumnAcceptor(!ctx.namePrefix.empty());
     }
     *exists.mutable_field() = std::move(fieldName);
     exists.boost(filterCtx.boost);
@@ -4032,7 +4036,7 @@ bool allColumnAcceptor(irs::string_ref, irs::string_ref) noexcept {
 }
 
 #ifndef USE_ENTERPRISE
-irs::ColumnAcceptor makeColumnAcceptor(std::string_view field) noexcept {
+irs::ColumnAcceptor makeColumnAcceptor(bool) noexcept {
   return allColumnAcceptor;
 }
 #endif
