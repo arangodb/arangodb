@@ -83,6 +83,7 @@ class LogFollower : public ILogFollower,
 
   [[nodiscard]] auto copyInMemoryLog() const -> InMemoryLog override;
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
+  Result onSnapshotCompleted();
 
   /// @brief Resolved when the leader has committed at least one entry.
   auto waitForLeaderAcked() -> WaitForFuture override;

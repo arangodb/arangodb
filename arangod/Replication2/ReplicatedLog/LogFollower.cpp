@@ -133,7 +133,6 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
             algorithms::detectConflict(data._inMemoryLog, req.prevLogEntry);
         conflict.has_value()) {
       auto [reason, next] = *conflict;
-
       LOG_CTX("5971a", DEBUG, _loggerContext)
           << "reject append entries - prev log did not match: "
           << to_string(reason);
@@ -177,6 +176,18 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
         flag = false;
         cv.notify_one();
       });
+
+  {
+    // Invalidate snapshot status
+    if (req.prevLogEntry == TermIndexPair{}) {
+      LOG_CTX("6262d", INFO, _loggerContext)
+          << "Log truncated - invalidating snapshot";
+      dataGuard->_logCore->updateSnapshotState(
+          replicated_state::SnapshotStatus::kUninitialized);
+      ADB_PROD_ASSERT(_leaderId.has_value());
+      _stateHandle->acquireSnapshot(*_leaderId, req.prevLogEntry.index + 1);
+    }
+  }
 
   {
     // Transactional Code Block
@@ -367,6 +378,7 @@ auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
     auto const oldCommitIndex = _commitIndex;
     _commitIndex =
         std::min(newCommitIndex, _inMemoryLog.back().entry().logIndex());
+    _follower._stateHandle->updateCommitIndex(newCommitIndex);
     _follower._logMetrics->replicatedLogNumberCommittedEntries->count(
         _commitIndex.value - oldCommitIndex.value);
     LOG_CTX("1641d", TRACE, _follower._loggerContext)
@@ -437,6 +449,11 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<
               ADB_HERE));
         }
 
+        {
+          auto methods = _stateHandle->resign();
+          ADB_PROD_ASSERT(methods != nullptr);
+        }
+
         // use a unique ptr because move constructor for multimaps is not
         // noexcept
         struct Queues {
@@ -492,6 +509,23 @@ replicated_log::LogFollower::LogFollower(
       _currentTerm(term),
       _stateHandle(std::move(stateHandle)),
       _guardedFollowerData(*this, std::move(logCore), std::move(inMemoryLog)) {
+  struct MethodsImpl : IReplicatedLogFollowerMethods {
+    explicit MethodsImpl(LogFollower& log) : _log(log) {}
+    auto releaseIndex(LogIndex index) -> void override {
+      if (auto res = _log.release(index); res.fail()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+    }
+    auto getLogSnapshot() -> InMemoryLog override {
+      return _log.copyInMemoryLog();
+    }
+    auto snapshotCompleted() -> Result override {
+      return _log.onSnapshotCompleted();
+    }
+    LogFollower& _log;
+  };
+
+  _stateHandle->becomeFollower(std::make_unique<MethodsImpl>(*this));
   _logMetrics->replicatedLogFollowerNumber->fetch_add(1);
 }
 
@@ -692,6 +726,10 @@ auto LogFollower::construct(
 }
 auto LogFollower::copyInMemoryLog() const -> InMemoryLog {
   return _guardedFollowerData.getLockedGuard()->_inMemoryLog;
+}
+
+Result LogFollower::onSnapshotCompleted() {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()
