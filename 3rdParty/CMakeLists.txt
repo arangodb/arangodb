@@ -25,8 +25,6 @@ endif ()
 ## gtest
 ################################################################################
 
-UpdateModule(${GIT_EXECUTABLE} "gtest" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
-
 set(GOOGLETEST_ROOT 3rdParty/gtest/googletest CACHE STRING "Google Test source root")
 set(GOOGLEMOCK_ROOT 3rdParty/gtest/googlemock CACHE STRING "Google Mock source root")
 
