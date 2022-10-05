@@ -53,6 +53,10 @@ auto inspect(Inspector& f, EmptyEdgeProperties& x) {
 }
 
 struct EmptyMessage {};
+template<typename Inspector>
+auto inspect(Inspector& f, EmptyMessage& x) {
+  return f.object(x).fields();
+}
 
 struct VertexId {};
 

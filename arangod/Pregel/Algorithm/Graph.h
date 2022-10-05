@@ -62,4 +62,39 @@ struct Graph {
   std::vector<Edge<EdgeProperties>> edges;
 };
 
+template<typename VertexProperties, typename EdgeProperties>
+auto addVertex(Graph<VertexProperties, EdgeProperties>& graph,
+               Vertex<VertexProperties> v) {
+  graph.vertices.emplace_back(v);
+}
+
+template<typename VertexProperties, typename EdgeProperties>
+auto readVertex(Graph<VertexProperties, EdgeProperties>& graph,
+                velocypack::SharedSlice s) -> inspection::Status {
+  auto v = Vertex<VertexProperties>();
+  auto result = deserializeWithStatus(s.slice(), v);
+
+  if (result.ok()) {
+    graph.vertices.emplace_back(v);
+  }
+  return result;
+}
+
+template<typename VertexProperties, typename EdgeProperties>
+auto addEdge(Graph<VertexProperties, EdgeProperties>& graph,
+             Edge<EdgeProperties> e) {
+  graph.edges.emplace_back(e);
+}
+template<typename VertexProperties, typename EdgeProperties>
+auto readEdge(Graph<VertexProperties, EdgeProperties>& graph,
+              velocypack::SharedSlice s) -> inspection::Status {
+  auto e = Edge<EdgeProperties>();
+  auto result = deserializeWithStatus(s.slice(), e);
+
+  if (result.ok()) {
+    graph.edges.emplace_back(e);
+  }
+  return result;
+}
+
 }  // namespace arangodb::pregel::graph

@@ -21,7 +21,9 @@ using namespace arangodb::pregel::algorithms::example;
 
 TEST(Pregel, test_graph_setup) {
   auto graphJson =
-      R"({ "vertices": [ {"_key": "A", "value": 5}, {"_key": "B"}, {"_key": "C"} ],
+      R"({ "vertices": [ {"_key": "A", "value": 5},
+                         {"_key": "B", "value": 10},
+                         {"_key": "C", "value": 15} ],
            "edges":    [ {"_key": "", "_from": "A", "_to": "B"},
                          {"_key": "", "_from": "B", "_to": "C"} ] })"_vpack;
 
@@ -29,33 +31,19 @@ TEST(Pregel, test_graph_setup) {
 
   auto vs = graphJson["vertices"];
   for (size_t i = 0; i < vs.length(); ++i) {
-    auto v = Vertex<VertexProperties>{};
-    auto res = deserializeWithStatus(vs[i].slice(), v);
-    if (res.ok()) {
-      graph.vertices.emplace_back(v);
-    } else {
-      fmt::print("error reading vertex: {}", res.error());
-    }
-    fmt::print("v: {}\n", vs[i].toJson());
+    auto res = readVertex(graph, vs[i]);
+
+    EXPECT_TRUE(res.ok()) << fmt::format("error reading vertex: {}\n",
+                                         res.error());
   }
 
   auto es = graphJson["edges"];
   for (size_t i = 0; i < es.length(); ++i) {
-    auto e = Edge{};
-    auto res = deserializeWithStatus(es[i].slice(), e);
+    auto res = readEdge(graph, es[i]);
 
-    if (res.ok()) {
-      graph.edges.emplace_back(e);
-    } else {
-      fmt::print("error reading vertex: {}", res.error());
-    }
-
-    fmt::print("e: {}\n", es[i].toJson());
+    EXPECT_TRUE(res.ok()) << fmt::format("error reading edge: {}\n",
+                                         res.error());
   }
-
-  //  fmt::print("{}", graphJson.toJson());
-  EXPECT_TRUE(false) << "Expected true to be false and black equal to white "
-                        "and be killed on the next zebra crossing";
 }
 
 #if 0
