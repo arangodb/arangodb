@@ -349,14 +349,16 @@ class Index {
   /// @brief serialization flags for indexes.
   /// note that these must be mutually exclusive when bit-ORed
   enum class Serialize : uint8_t {
-    /// @brief serialize figures for index
+    /// @brief serialize index
     Basics = 0,
-    /// @brief serialize figures for index
+    /// @brief serialize figures
     Figures = 2,
     /// @brief serialize selectivity estimates
     Estimates = 4,
-    /// @brief serialize object ids for persistence
-    Internals = 8
+    /// @brief serialize for persistence
+    Internals = 8,
+    /// @brief serialize for inventory
+    Inventory = 16,
   };
 
   /// @brief helper for building flags
