@@ -29,7 +29,7 @@
 #include "GeneralServer/RequestLane.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/CommonFormats.h"
-#include "Pregel/Connection/DirectConnectionToConductor.h"
+#include "Pregel/Connection/DirectConnection.h"
 #include "Pregel/Connection/NetworkConnection.h"
 #include "Pregel/Messaging/Message.h"
 #include "Pregel/IncomingCache.h"
@@ -59,15 +59,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::pregel;
 
-namespace {
-template<class... Ts>
-struct overloaded : Ts... {
-  using Ts::operator()...;
-};
-template<class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
-}  // namespace
-
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
       << "[job " << _config.executionNumber() << "] "
@@ -86,13 +77,8 @@ std::function<void()> Worker<V, E, M>::_makeStatusCallback() {
     auto statusUpdatedEvent =
         StatusUpdated{.senderId = ServerState::instance()->getId(),
                       .status = _observeStatus()};
-    auto modernMessage =
-        ModernMessage{.executionNumber = _config.executionNumber(),
-                      .payload = statusUpdatedEvent};
-    VPackBuilder event;
-    serialize(event, modernMessage);
-
-    _callConductor(event);
+    _callConductor(ModernMessage{.executionNumber = _config.executionNumber(),
+                                 .payload = statusUpdatedEvent});
   };
 }
 
@@ -107,15 +93,14 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
   if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
     _conductor = worker::ConductorApi{
         _config.coordinatorId(), _config.executionNumber(),
-        std::make_unique<DirectConnectionToConductor>(_feature, vocbase)};
+        std::make_unique<DirectConnection>(_feature, vocbase)};
   } else {
     network::RequestOptions reqOpts;
     reqOpts.database = vocbase.name();
-    _conductor =
-        worker::ConductorApi{_config.coordinatorId(), _config.executionNumber(),
-                             std::make_unique<NetworkConnection>(
-                                 Utils::baseUrl(Utils::conductorPrefix),
-                                 std::move(reqOpts), vocbase)};
+    _conductor = worker::ConductorApi{
+        _config.coordinatorId(), _config.executionNumber(),
+        std::make_unique<NetworkConnection>(Utils::apiPrefix,
+                                            std::move(reqOpts), vocbase)};
   }
 
   MUTEX_LOCKER(guard, _commandMutex);
@@ -599,22 +584,20 @@ auto Worker<V, E, M>::_resultsFct(CollectPregelResults const& message) const
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::_callConductor(VPackBuilder const& message) {
+void Worker<V, E, M>::_callConductor(ModernMessage message) {
   if (!ServerState::instance()->isRunningInCluster()) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->queue(
-        RequestLane::INTERNAL_LOW, [this, self = shared_from_this(), message] {
-          VPackBuilder response;
-          _feature.handleConductorRequest(*_config.vocbase(),
-                                          Utils::modernMessagingPath,
-                                          message.slice(), response);
-        });
+    scheduler->queue(RequestLane::INTERNAL_LOW,
+                     [this, self = shared_from_this(), message] {
+                       _feature.process(message, *_config.vocbase());
+                     });
   } else {
-    std::string baseUrl = Utils::baseUrl(Utils::conductorPrefix);
-
     VPackBuffer<uint8_t> buffer;
-    buffer.append(message.data(), message.size());
+    VPackBuilder serializedMessage;
+    serialize(serializedMessage, message);
+
+    buffer.append(serializedMessage.data(), serializedMessage.size());
     auto const& nf = _config.vocbase()
                          ->server()
                          .template getFeature<arangodb::NetworkFeature>();
@@ -623,9 +606,9 @@ void Worker<V, E, M>::_callConductor(VPackBuilder const& message) {
     network::RequestOptions reqOpts;
     reqOpts.database = _config.database();
 
-    network::sendRequestRetry(
-        pool, "server:" + _config.coordinatorId(), fuerte::RestVerb::Post,
-        baseUrl + Utils::modernMessagingPath, std::move(buffer), reqOpts);
+    network::sendRequestRetry(pool, "server:" + _config.coordinatorId(),
+                              fuerte::RestVerb::Post, Utils::apiPrefix,
+                              std::move(buffer), reqOpts);
   }
 }
 
@@ -641,74 +624,6 @@ auto Worker<V, E, M>::_observeStatus() -> Status const {
                 .allGssStatus = fullGssStatus.gss.size() > 0
                                     ? std::optional{fullGssStatus}
                                     : std::nullopt};
-}
-
-template<typename V, typename E, typename M>
-auto Worker<V, E, M>::process(MessagePayload const& message)
-    -> futures::Future<ResultT<ModernMessage>> {
-  return std::visit(
-      overloaded{
-          [&](LoadGraph const& x) -> futures::Future<ResultT<ModernMessage>> {
-            Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-            scheduler->queue(
-                RequestLane::INTERNAL_LOW,
-                [this, self = shared_from_this(), x] { loadGraph(x); });
-            return ModernMessage{.executionNumber = _config.executionNumber(),
-                                 .payload = Ok{}};
-          },
-          [&](PrepareGlobalSuperStep const& x)
-              -> futures::Future<ResultT<ModernMessage>> {
-            return prepareGlobalSuperStep(x).thenValue(
-                [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
-                  return ModernMessage{
-                      .executionNumber = _config.executionNumber(),
-                      .payload = {result}};
-                });
-          },
-          [&](RunGlobalSuperStep const& x)
-              -> futures::Future<ResultT<ModernMessage>> {
-            return runGlobalSuperStep(x).thenValue(
-                [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
-                  return ModernMessage{
-                      .executionNumber = _config.executionNumber(),
-                      .payload = {result}};
-                });
-          },
-          [&](Store const& x) -> futures::Future<ResultT<ModernMessage>> {
-            return store(x).thenValue(
-                [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
-                  return ModernMessage{
-                      .executionNumber = _config.executionNumber(),
-                      .payload = {result}};
-                });
-          },
-          [&](Cleanup const& x) -> futures::Future<ResultT<ModernMessage>> {
-            return cleanup(x).thenValue(
-                [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
-                  return ModernMessage{
-                      .executionNumber = _config.executionNumber(),
-                      .payload = {result}};
-                });
-          },
-          [&](CollectPregelResults const& x)
-              -> futures::Future<ResultT<ModernMessage>> {
-            return results(x).thenValue(
-                [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
-                  return ModernMessage{
-                      .executionNumber = _config.executionNumber(),
-                      .payload = {result}};
-                });
-          },
-          [&](PregelMessage const& x)
-              -> futures::Future<ResultT<ModernMessage>> {
-            receivedMessages(x);
-            return {ModernMessage{}};
-          },
-          [](auto const& x) -> futures::Future<ResultT<ModernMessage>> {
-            return Result{TRI_ERROR_INTERNAL,
-                          "Worker: Cannot handle received message"};
-          }},
-      message);
 }
 
 template<typename V, typename E, typename M>

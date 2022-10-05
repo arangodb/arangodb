@@ -78,9 +78,8 @@ auto NetworkConnection::send(Destination const& destination,
                              messageBuffer.errorMessage()}};
   }
   auto request = network::sendRequestRetry(
-      _connectionPool, destination.toString(), fuerte::RestVerb::Post,
-      _baseUrl + Utils::modernMessagingPath, std::move(messageBuffer.get()),
-      _requestOptions);
+      _connectionPool, destination.toString(), fuerte::RestVerb::Post, _baseUrl,
+      std::move(messageBuffer.get()), _requestOptions);
 
   return std::move(request).thenValue(
       [](auto&& result) -> ResultT<ModernMessage> {
@@ -101,9 +100,8 @@ auto NetworkConnection::post(Destination const& destination,
                              messageBuffer.errorMessage()}};
   }
   auto request = network::sendRequestRetry(
-      _connectionPool, destination.toString(), fuerte::RestVerb::Post,
-      _baseUrl + Utils::modernMessagingPath, std::move(messageBuffer.get()),
-      _requestOptions);
+      _connectionPool, destination.toString(), fuerte::RestVerb::Post, _baseUrl,
+      std::move(messageBuffer.get()), _requestOptions);
 
   return std::move(request).thenValue([](auto&& result) -> Result {
     auto out = errorHandling(result);
@@ -123,9 +121,8 @@ auto NetworkConnection::sendWithoutRetry(Destination const& destination,
                              messageBuffer.errorMessage()}};
   }
   auto request = network::sendRequest(
-      _connectionPool, destination.toString(), fuerte::RestVerb::Post,
-      _baseUrl + Utils::modernMessagingPath, std::move(messageBuffer.get()),
-      _requestOptions);
+      _connectionPool, destination.toString(), fuerte::RestVerb::Post, _baseUrl,
+      std::move(messageBuffer.get()), _requestOptions);
 
   return std::move(request).thenValue([](auto&& result) -> Result {
     auto slice = errorHandling(result);
