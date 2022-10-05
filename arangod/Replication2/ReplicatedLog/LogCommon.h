@@ -51,6 +51,7 @@
 #include <velocypack/Value.h>
 
 #include "Inspection/Status.h"
+#include "Inspection/Types.h"
 
 #include <Basics/Identifier.h>
 #include <Containers/FlatHashMap.h>
@@ -247,9 +248,6 @@ struct ParticipantFlags {
 
   friend auto operator<<(std::ostream&, ParticipantFlags const&)
       -> std::ostream&;
-
-  void toVelocyPack(velocypack::Builder&) const;
-  static auto fromVelocyPack(velocypack::Slice) -> ParticipantFlags;
 };
 
 template<class Inspector>
@@ -293,8 +291,6 @@ struct CommitFailReason {
   CommitFailReason() = default;
 
   struct NothingToCommit {
-    static auto fromVelocyPack(velocypack::Slice) -> NothingToCommit;
-    void toVelocyPack(velocypack::Builder& builder) const;
     friend auto operator==(NothingToCommit const& left,
                            NothingToCommit const& right) noexcept
         -> bool = default;
@@ -337,9 +333,6 @@ struct CommitFailReason {
     }
   };
   struct ForcedParticipantNotInQuorum {
-    static auto fromVelocyPack(velocypack::Slice)
-        -> ForcedParticipantNotInQuorum;
-    void toVelocyPack(velocypack::Builder& builder) const;
     ParticipantId who;
     friend auto operator==(ForcedParticipantNotInQuorum const& left,
                            ForcedParticipantNotInQuorum const& right) noexcept
@@ -370,6 +363,13 @@ struct CommitFailReason {
     template<typename Inspector>
     friend auto inspect(Inspector& f, NonEligibleServerRequiredForQuorum& x) {
       return f.object(x).fields(f.field("candidates", x.candidates));
+    }
+
+    template<class Inspector>
+    auto inspect(Inspector& f, Why& x) {
+      return f.enumeration(x).values(
+          Why::kNotAllowedInQuorum, "NotAllowedInQuorum", Why::kWrongTerm,
+          "WrongTerm", Why::kSnapshotMissing, "SnapshotMissing");
     }
   };
   struct FewerParticipantsThanWriteConcern {
@@ -405,27 +405,27 @@ struct CommitFailReason {
   static auto withFewerParticipantsThanWriteConcern(
       FewerParticipantsThanWriteConcern) -> CommitFailReason;
 
-  static auto fromVelocyPack(velocypack::Slice) -> CommitFailReason;
-  void toVelocyPack(velocypack::Builder& builder) const;
-
   friend auto operator==(CommitFailReason const& left,
                          CommitFailReason const& right) -> bool = default;
+
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, CommitFailReason& x) {
+    namespace insp = arangodb::inspection;
+    return f.variant(x).embedded("reason").alternatives(
+        insp::type<NothingToCommit>("NothingToCommit"),
+        insp::type<QuorumSizeNotReached>("QuorumSizeNotReached"),
+        insp::type<ForcedParticipantNotInQuorum>(
+            "ForcedParticipantNotInQuorum"),
+        insp::type<NonEligibleServerRequiredForQuorum>(
+            "NonEligibleServerRequiredForQuorum"),
+        insp::type<FewerParticipantsThanWriteConcern>(
+            "FewerParticipantsThanWriteConcern"));
+  }
 
  private:
   template<typename... Args>
   explicit CommitFailReason(std::in_place_t, Args&&... args) noexcept;
 };
-
-template<class Inspector>
-auto inspect(Inspector& f,
-             arangodb::replication2::replicated_log::CommitFailReason& x) {
-  if constexpr (Inspector::isLoading) {
-    x = CommitFailReason::fromVelocyPack(f.slice());
-  } else {
-    x.toVelocyPack(f.builder());
-  }
-  return arangodb::inspection::Status::Success{};
-}
 
 auto operator<<(std::ostream&,
                 CommitFailReason::QuorumSizeNotReached::ParticipantInfo)
