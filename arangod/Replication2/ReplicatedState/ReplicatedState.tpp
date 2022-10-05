@@ -94,7 +94,7 @@ void ReplicatedStateManager<S>::updateCommitIndex(LogIndex index) {
 }
 
 template<typename S>
-auto ReplicatedStateManager<S>::resign()
+auto ReplicatedStateManager<S>::resign() noexcept
     -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> {
   auto guard = _guarded.getLockedGuard();
   auto&& [core, methods] =
@@ -221,10 +221,11 @@ auto IReplicatedFollowerState<S>::waitForApplied(LogIndex index)
 
 template<typename S>
 ReplicatedState<S>::ReplicatedState(
-    std::shared_ptr<replicated_log::ReplicatedLog> log,
+    GlobalLogIdentifier gid, std::shared_ptr<replicated_log::ReplicatedLog> log,
     std::shared_ptr<Factory> factory, LoggerContext loggerContext,
     std::shared_ptr<ReplicatedStateMetrics> metrics)
     : factory(std::move(factory)),
+      gid(std::move(gid)),
       log(std::move(log)),
       guardedData(*this),
       loggerContext(std::move(loggerContext)),
@@ -234,12 +235,12 @@ ReplicatedState<S>::ReplicatedState(
   this->metrics->replicatedStateNumber->fetch_add(1);
 }
 
-template<typename S>
-void ReplicatedState<S>::flush(StateGeneration planGeneration) {
-  auto deferred = guardedData.getLockedGuard()->flush(planGeneration);
-  // execute *after* the lock has been released
-  deferred.fire();
-}
+// template<typename S>
+// void ReplicatedState<S>::flush(StateGeneration planGeneration) {
+//   auto deferred = guardedData.getLockedGuard()->flush(planGeneration);
+//   // execute *after* the lock has been released
+//   deferred.fire();
+// }
 
 template<typename S>
 auto ReplicatedState<S>::getFollower() const -> std::shared_ptr<FollowerType> {
@@ -279,38 +280,40 @@ auto ReplicatedState<S>::getStatus() -> std::optional<StateStatus> {
       });
 }
 
-template<typename S>
-void ReplicatedState<S>::rebuildMe(const IStateManagerBase* caller) noexcept {
-  LOG_CTX("8041a", TRACE, loggerContext) << "Force rebuild of replicated state";
-  static_assert(noexcept(
-      // get type of `deferred` by repeating the right-hand-side
-      decltype(guardedData.getLockedGuard()->rebuildMe(caller))
-      // call its copy constructor
-      (
-          // right-hand-side value
-          // note thate getLockedGuard() isn't noexcept, but we consciously
-          // ignore locks throwing exceptions.
-          std::declval<decltype(guardedData.getLockedGuard())>()->rebuildMe(
-              caller)  //
-          )            //
-      ));
-  auto deferred = guardedData.getLockedGuard()->rebuildMe(caller);
-  static_assert(noexcept(deferred.fire()));
-  // execute *after* the lock has been released
-  deferred.fire();
-}
+// template<typename S>
+// void ReplicatedState<S>::rebuildMe(const IStateManagerBase* caller) noexcept
+// {
+//   LOG_CTX("8041a", TRACE, loggerContext) << "Force rebuild of replicated
+//   state"; static_assert(noexcept(
+//       // get type of `deferred` by repeating the right-hand-side
+//       decltype(guardedData.getLockedGuard()->rebuildMe(caller))
+//       // call its copy constructor
+//       (
+//           // right-hand-side value
+//           // note thate getLockedGuard() isn't noexcept, but we consciously
+//           // ignore locks throwing exceptions.
+//           std::declval<decltype(guardedData.getLockedGuard())>()->rebuildMe(
+//               caller)  //
+//           )            //
+//       ));
+//   auto deferred = guardedData.getLockedGuard()->rebuildMe(caller);
+//   static_assert(noexcept(deferred.fire()));
+//   // execute *after* the lock has been released
+//   deferred.fire();
+// }
 
-template<typename S>
-void ReplicatedState<S>::start(
-    std::unique_ptr<ReplicatedStateToken> token,
-    std::optional<velocypack::SharedSlice> const& coreParameter) {
-  // persistor->updateStateInformation({});
-  auto core = buildCore(coreParameter);
-  auto deferred =
-      guardedData.getLockedGuard()->rebuild(std::move(core), std::move(token));
-  // execute *after* the lock has been released
-  deferred.fire();
-}
+// template<typename S>
+// void ReplicatedState<S>::start(
+//     std::unique_ptr<ReplicatedStateToken> token,
+//     std::optional<velocypack::SharedSlice> const& coreParameter) {
+//   // persistor->updateStateInformation({});
+//   auto core = buildCore(coreParameter);
+//   auto deferred =
+//       guardedData.getLockedGuard()->rebuild(std::move(core),
+//       std::move(token));
+//   // execute *after* the lock has been released
+//   deferred.fire();
+// }
 
 template<typename S>
 ReplicatedState<S>::~ReplicatedState() {
@@ -321,10 +324,9 @@ template<typename S>
 auto ReplicatedState<S>::buildCore(
     std::optional<velocypack::SharedSlice> const& coreParameter) {
   if constexpr (std::is_void_v<typename S::CoreParameterType>) {
-    return factory->constructCore(log->getGlobalLogId());
+    return factory->constructCore(gid);
   } else {
     if (!coreParameter.has_value()) {
-      auto const& gid = log->getGlobalLogId();
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           fmt::format("Cannot find core parameter for replicated state with "
@@ -337,7 +339,7 @@ auto ReplicatedState<S>::buildCore(
     info.stateId = log->getId();
     info.specification.type = S::NAME;
     info.specification.parameters = *coreParameter;
-    return factory->constructCore(log->getGlobalLogId(), std::move(params));
+    return factory->constructCore(gid, std::move(params));
   }
 }
 

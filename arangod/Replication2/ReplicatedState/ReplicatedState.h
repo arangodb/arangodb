@@ -166,7 +166,7 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
 
   void updateCommitIndex(LogIndex index) override;
 
-  [[nodiscard]] auto resign() && noexcept
+  [[nodiscard]] auto resign() noexcept
       -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> override;
 
   void leadershipEstablished(
@@ -201,7 +201,8 @@ struct ReplicatedState final
   using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
 
-  explicit ReplicatedState(std::shared_ptr<replicated_log::ReplicatedLog> log,
+  explicit ReplicatedState(GlobalLogIdentifier gid,
+                           std::shared_ptr<replicated_log::ReplicatedLog> log,
                            std::shared_ptr<Factory> factory,
                            LoggerContext loggerContext,
                            std::shared_ptr<ReplicatedStateMetrics>);
@@ -253,6 +254,7 @@ struct ReplicatedState final
   }
 
   std::shared_ptr<Factory> const factory;
+  GlobalLogIdentifier const gid;
   std::shared_ptr<replicated_log::ReplicatedLog> const log{};
 
   struct GuardedData {

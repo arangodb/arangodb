@@ -517,7 +517,10 @@ struct PrototypeStateMethodsCoordinator final
     auto methods =
         replication2::ReplicatedStateMethods::createInstance(_vocbase);
 
-    return methods->createReplicatedState(std::move(target))
+    return methods
+        ->createReplicatedState(
+            GlobalLogIdentifier(_vocbase.name(), replication2::LogId()),
+            std::move(target))
         .thenValue([options = std::move(options), methods,
                     self = shared_from_this()](auto&& result) mutable
                    -> futures::Future<ResultT<CreateResult>> {

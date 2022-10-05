@@ -37,7 +37,8 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 
 auto replicated_state::ReplicatedStateFeature::createReplicatedState(
-    std::string_view name, std::shared_ptr<replicated_log::ReplicatedLog> log,
+    std::string_view name, std::string_view database,
+    std::shared_ptr<replicated_log::ReplicatedLog> log,
     LoggerContext const& loggerContext)
     -> std::shared_ptr<ReplicatedStateBase> {
   auto name_str = std::string{name};
@@ -48,17 +49,19 @@ auto replicated_state::ReplicatedStateFeature::createReplicatedState(
                   .with<logContextKeyLogId>(logId);
     LOG_CTX("24af7", TRACE, lc)
         << "Creating replicated state of type `" << name << "`.";
+    auto gid = GlobalLogIdentifier(std::string(database), log->getId());
     return iter->second.factory->createReplicatedState(
-        std::move(log), std::move(lc), iter->second.metrics);
+        std::move(gid), std::move(log), std::move(lc), iter->second.metrics);
   }
   THROW_ARANGO_EXCEPTION(
       TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);  // TODO fix error code
 }
 
 auto replicated_state::ReplicatedStateFeature::createReplicatedState(
-    std::string_view name, std::shared_ptr<replicated_log::ReplicatedLog> log)
+    std::string_view name, std::string_view database,
+    std::shared_ptr<replicated_log::ReplicatedLog> log)
     -> std::shared_ptr<ReplicatedStateBase> {
-  return createReplicatedState(name, std::move(log),
+  return createReplicatedState(name, database, std::move(log),
                                LoggerContext(Logger::REPLICATED_STATE));
 }
 

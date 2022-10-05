@@ -104,7 +104,7 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
 
     leader->waitForLeadership().get();
     auto replicatedState = feature->createReplicatedState(
-        "prototype-state", leaderLog, statePersistor);
+        "prototype-state", dbName, leaderLog, statePersistor);
     replicatedState->start(
         std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
         std::nullopt);
@@ -114,7 +114,7 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
     networkMock->addLeaderState("leader", leaderState);
 
     replicatedState = feature->createReplicatedState(
-        "prototype-state", followerLog, statePersistor);
+        "prototype-state", dbName, followerLog, statePersistor);
     replicatedState->start(
         std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
         std::nullopt);

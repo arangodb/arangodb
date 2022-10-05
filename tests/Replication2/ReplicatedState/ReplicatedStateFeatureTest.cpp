@@ -60,7 +60,7 @@ TEST_F(ReplicatedStateFeatureTest, create_state_machine) {
 
   auto log = makeReplicatedLog(LogId{1});
   auto instance =
-      feature->createReplicatedState("my-state", log, statePersistor);
+      feature->createReplicatedState("my-state", dbName, log, statePersistor);
 }
 
 TEST_F(ReplicatedStateFeatureTest, create_non_existing_state_machine) {
@@ -70,8 +70,8 @@ TEST_F(ReplicatedStateFeatureTest, create_non_existing_state_machine) {
   auto log = makeReplicatedLog(LogId{1});
   ASSERT_THROW(
       {
-        auto instance =
-            feature->createReplicatedState("FOOBAR", log, statePersistor);
+        auto instance = feature->createReplicatedState("FOOBAR", dbName, log,
+                                                       statePersistor);
       },
       basics::Exception);
 }

@@ -327,7 +327,7 @@ struct arangodb::VocBaseLogManager {
       });
 
       auto& state = stateAndLog.state =
-          feature.createReplicatedState(type, log, logContext);
+          feature.createReplicatedState(type, vocbase.name(), log, logContext);
 
       auto&& stateHandle = state->createStateHandle();
 

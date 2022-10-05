@@ -176,6 +176,7 @@ struct ReplicatedLogTest : ::testing::Test {
       std::make_shared<ReplicatedLogMetricsMock>();
   std::shared_ptr<ReplicatedLogGlobalSettings> _optionsMock =
       std::make_shared<ReplicatedLogGlobalSettings>();
+  std::string const dbName = "testDb";
 };
 
 }  // namespace arangodb::replication2::test
