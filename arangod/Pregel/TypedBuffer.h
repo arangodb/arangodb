@@ -29,6 +29,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "Basics/operating-system.h"
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
