@@ -105,4 +105,28 @@ struct ConductorBase {
   typename AlgorithmData::Settings settings;
 };
 
+template<typename AlgorithmData>
+struct Conductor {
+  typename AlgorithmData::Settings settings;
+  typename AlgorithmData::Global global;
+};
+
+template<typename AlgorithmData>
+auto createConductor(typename AlgorithmData::Settings settings)
+    -> Conductor<AlgorithmData> {
+  return Conductor<AlgorithmData>{.settings = std::move(settings),
+                                  .global = typename AlgorithmData::Global{}};
+}
+
+template<typename AlgorithmData>
+struct Worker {
+  typename AlgorithmData::Settings settings;
+};
+
+template<typename AlgorithmData>
+auto createWorker(typename AlgorithmData::Settings settings)
+    -> Worker<AlgorithmData> {
+  return Worker<AlgorithmData>{.settings = std::move(settings)};
+}
+
 }  // namespace arangodb::pregel::algorithm_sdk

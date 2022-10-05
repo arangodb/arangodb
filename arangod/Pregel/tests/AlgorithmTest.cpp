@@ -46,24 +46,20 @@ TEST(Pregel, test_graph_setup) {
   }
 }
 
-#if 0
-auto test_conductor_setup() {
-  auto c = Conductor(Settings{.iterations = 100});
+TEST(Pregel, test_conductor_setup) {
+  auto const& settings = Settings{.iterations = 10, .resultField = "result"};
+  auto g = createConductor<Data>(settings);
 
-  auto h = c.setup();
-
-  while (c.continue_huh(h)) {
-    h = c.step(h);
-    fmt::print("{:f}", h);
-  }
+  // What even to test ;)
 }
 
-auto test_vertex_computation() { auto v = VertexComputation(); }
-#endif
+TEST(Pregel, test_worker_setup) {
+  auto const& settings = Settings{.iterations = 10, .resultField = "result"};
+  auto g = createWorker<Data>(settings);
+}
 
-auto main(int argc, char **argv) -> int {
+auto main(int argc, char** argv) -> int {
   testing::InitGoogleTest();
-  fmt::print("Hello, world\n");
 
   return RUN_ALL_TESTS();
 }
