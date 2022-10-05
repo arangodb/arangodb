@@ -1,8 +1,10 @@
 #include "WorkerApi.h"
 #include <variant>
 
-#include "Pregel/WorkerConductorMessages.h"
+#include "Futures/Utilities.h"
 #include "Pregel/Connection/Connection.h"
+#include "Pregel/Messaging/WorkerMessages.h"
+#include "Pregel/Messaging/ConductorMessages.h"
 
 using namespace arangodb::pregel::conductor;
 

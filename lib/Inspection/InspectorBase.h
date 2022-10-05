@@ -390,14 +390,27 @@ struct InspectorBase : detail::ContextContainer<Context> {
   };
 
   template<class... Ts>
+  struct EmbeddedVariant : VariantBase<EmbeddedVariant, Ts...> {
+    EmbeddedVariant(Derived& inspector, std::variant<Ts...>& value,
+                    std::string_view typeField)
+        : VariantBase<EmbeddedVariant, Ts...>(inspector, value),
+          typeField(typeField) {}
+
+    std::string_view const typeField;
+  };
+
+  template<class... Ts>
   struct Variant {
-    UnqualifiedVariant<Ts...> unqualified() && {
+    auto unqualified() && {
       return UnqualifiedVariant<Ts...>(_inspector, _value);
     }
 
-    QualifiedVariant<Ts...> qualified(std::string_view typeField,
-                                      std::string_view valueField) && {
+    auto qualified(std::string_view typeField, std::string_view valueField) && {
       return QualifiedVariant<Ts...>(_inspector, _value, typeField, valueField);
+    }
+
+    auto embedded(std::string_view typeField) && {
+      return EmbeddedVariant<Ts...>(_inspector, _value, typeField);
     }
 
    private:
@@ -486,6 +499,12 @@ struct EmbeddedFieldInspector
 
   template<class... Ts, class... Args>
   auto processVariant(typename Base::template QualifiedVariant<Ts...>& variant,
+                      Args&&... args) {
+    return fail();
+  }
+
+  template<class... Ts, class... Args>
+  auto processVariant(typename Base::template EmbeddedVariant<Ts...>& variant,
                       Args&&... args) {
     return fail();
   }

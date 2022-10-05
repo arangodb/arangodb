@@ -39,7 +39,7 @@
 #include "Pregel/Algos/WCC.h"
 #include "Pregel/Utils.h"
 #include "VocBase/vocbase.h"
-#include "Pregel/WorkerConductorMessages.h"
+#include "Pregel/Messaging/ConductorMessages.h"
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
 #include "Pregel/Algos/ReadWrite.h"
 #endif

@@ -2,7 +2,6 @@
 #include "fmt/chrono.h"
 #include "Basics/FunctionUtils.h"
 #include "Pregel/Conductor/Conductor.h"
-#include "Pregel/WorkerConductorMessages.h"
 #include "Pregel/PregelFeature.h"
 
 using namespace arangodb::pregel::conductor;

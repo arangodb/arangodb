@@ -26,6 +26,7 @@
 #include "Pregel/Graph.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/Connection/NetworkConnection.h"
+#include "Pregel/Messaging/Message.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/WorkerConfig.h"
 
@@ -36,7 +37,6 @@
 #include "Futures/Utilities.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "Pregel/WorkerConductorMessages.h"
 #include "VocBase/LogicalCollection.h"
 #include "velocypack/Builder.h"
 

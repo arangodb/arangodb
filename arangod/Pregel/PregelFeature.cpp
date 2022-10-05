@@ -55,7 +55,7 @@
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Worker.h"
-#include "Pregel/WorkerConductorMessages.h"
+#include "Pregel/Messaging/Message.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"

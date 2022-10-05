@@ -27,7 +27,7 @@
 
 namespace arangodb::velocypack {
 
-SharedSlice vpackFromJsonString(char const *c);
-SharedSlice operator"" _vpack(const char *json, size_t);
+SharedSlice vpackFromJsonString(char const* c);
+SharedSlice operator"" _vpack(const char* json, size_t);
 
-} // namespace arangodb::velocypack
+}  // namespace arangodb::velocypack

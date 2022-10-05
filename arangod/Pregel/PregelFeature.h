@@ -40,7 +40,7 @@
 #include "Futures/Unit.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelMetrics.h"
-#include "Pregel/WorkerConductorMessages.h"
+#include "Pregel/Messaging/Message.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"

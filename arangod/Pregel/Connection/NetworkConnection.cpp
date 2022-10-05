@@ -4,7 +4,7 @@
 #include "Logger/LogMacros.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Methods.h"
-#include "Pregel/WorkerConductorMessages.h"
+#include "Pregel/Messaging/Message.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 #include "ApplicationFeatures/ApplicationServer.h"

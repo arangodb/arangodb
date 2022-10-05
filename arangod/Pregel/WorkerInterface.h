@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Pregel/WorkerConductorMessages.h"
+#include "Pregel/Messaging/WorkerMessages.h"
+#include "Pregel/Messaging/ConductorMessages.h"
 
 #include <Futures/Future.h>
 
