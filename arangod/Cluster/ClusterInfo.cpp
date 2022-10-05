@@ -6001,42 +6001,30 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers() {
 
 std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
     std::string_view shardID) {
+  if (auto result = getResponsibleServerReplication2(shardID);
+      result != nullptr) {
+    return result;
+  }
+  return getResponsibleServerReplication1(shardID);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replication1 code for getResponsibleServer
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<std::vector<ServerID> const>
+ClusterInfo::getResponsibleServerReplication1(std::string_view shardID) {
   int tries = 0;
 
   if (!_currentProt.isValid) {
-    tries++;
+    Result r = waitForCurrent(1).get();
+    if (r.fail()) {
+      THROW_ARANGO_EXCEPTION(r);
+    }
   }
-  if (!_planProt.isValid) {
-    tries++;
-  }
-
-  auto logId = LogicalCollection::shardIdToStateId(shardID);
 
   while (true) {
     {
-      {
-        READ_LOCKER(readLocker, _planProt.lock);
-        // if we find a replicated log for this shard, then this is a
-        // replication 2.0 db, in which case we want to use the participant
-        // information from the log instead
-        auto it = _replicatedLogs.find(logId);
-        if (it != _replicatedLogs.end()) {
-          auto& participants = it->second->participantsConfig.participants;
-          auto result = std::make_shared<std::vector<ServerID>>();
-          result->reserve(participants.size());
-          // participants is an unordered map, but the resulting list requires
-          // that the leader is the first entry!
-          auto& leader = it->second->currentTerm->leader->serverId;
-          result->emplace_back(leader);
-          for (auto& [k, v] : participants) {
-            if (k != leader) {
-              result->emplace_back(k);
-            }
-          }
-          return result;
-        }
-      }
-
       READ_LOCKER(readLocker, _currentProt.lock);
       // _shardIds is a map-type <ShardId,
       // std::shared_ptr<std::vector<ServerId>>>
@@ -6050,7 +6038,7 @@ std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
           // resigned, let's wait half a second and try again.
           --tries;
           LOG_TOPIC("b1dc5", INFO, Logger::CLUSTER)
-              << "getResponsibleServer: found resigned leader,"
+              << "getResponsibleServerReplication1: found resigned leader,"
               << "waiting for half a second...";
         } else {
           return (*it).second;
@@ -6065,6 +6053,67 @@ std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
   }
 
   return std::make_shared<std::vector<ServerID>>();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief for replication2 we use the replicated logs data to find the servers
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<std::vector<ServerID> const>
+ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
+  int tries = 0;
+
+  if (!_planProt.isValid) {
+    Result r = waitForPlan(1).get();
+    if (r.fail()) {
+      THROW_ARANGO_EXCEPTION(r);
+    }
+  }
+
+  auto logId = LogicalCollection::shardIdToStateId(shardID);
+  auto result = std::shared_ptr<std::vector<ServerID>>{nullptr};
+
+  while (true) {
+    {
+      READ_LOCKER(readLocker, _planProt.lock);
+      // if we find a replicated log for this shard, then this is a
+      // replication 2.0 db, in which case we want to use the participant
+      // information from the log instead
+      auto it = _replicatedLogs.find(logId);
+      if (it == _replicatedLogs.end()) {
+        // we are not in a replication2 database
+        break;
+      }
+
+      if (it->second->currentTerm.has_value() &&
+          it->second->currentTerm->leader.has_value()) {
+        auto& leader = it->second->currentTerm->leader->serverId;
+        auto& participants = it->second->participantsConfig.participants;
+        result = std::make_shared<std::vector<ServerID>>();
+        result->reserve(participants.size());
+        // participants is an unordered map, but the resulting list requires
+        // that the leader is the first entry!
+        result->emplace_back(leader);
+        for (auto& [k, v] : participants) {
+          if (k != leader) {
+            result->emplace_back(k);
+          }
+        }
+        break;
+      }
+    }
+
+    LOG_TOPIC("4fff5", INFO, Logger::CLUSTER)
+        << "getResponsibleServerReplication2: did not found leader,"
+        << "waiting for half a second...";
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    if (++tries >= 100) {
+      break;
+    }
+  }
+
+  return result;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -6082,49 +6131,20 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
 
   containers::FlatHashMap<ShardID, ServerID> result;
 
-  {
-    if (!_planProt.isValid) {
-      Result r = waitForPlan(1).get();
-      if (r.fail()) {
-        THROW_ARANGO_EXCEPTION(r);
-      }
-    }
-    bool isReplicationTwo = false;
-
-    READ_LOCKER(readLocker, _planProt.lock);
-
-    for (auto const& shardId : shardIds) {
-      auto logId = LogicalCollection::tryShardIdToStateId(shardId);
-      if (!logId.has_value()) {
-        // could not convert shardId to logId, but this implies that
-        // the shardId is not valid.
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                       "invalid shard " + shardId);
-      }
-      // if we find a replicated log for this shard, then this is a
-      // replication 2.0 db, in which case we want to use the leader
-      // information from the log instead
-      auto it = _replicatedLogs.find(*logId);
-      if (it != _replicatedLogs.end()) {
-        isReplicationTwo = true;
-        result.emplace(shardId, it->second->currentTerm->leader->serverId);
-      } else if (isReplicationTwo) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-            "no replicated log found for shard " + shardId);
-      } else {
-        // this seems to be no replication 2.0 db -> skip the remaining shards
-        // and continue as usual
-        break;
-      }
-    }
-    if (isReplicationTwo) {
-      return result;
-    }
-
-    // fall through to non-replication2 handling
+  if (!getResponsibleServersReplication2(shardIds, result)) {
+    getResponsibleServersReplication1(shardIds, result);
   }
 
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replication1 code for getResponsibleServers
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterInfo::getResponsibleServersReplication1(
+    containers::FlatHashSet<ShardID> const& shardIds,
+    containers::FlatHashMap<ShardID, ServerID>& result) {
   int tries = 0;
 
   if (!_currentProt.isValid) {
@@ -6142,9 +6162,8 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
         auto it = _shardIds.find(shardId);
 
         if (it == _shardIds.end()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-              "no servers found for shard " + shardId);
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                         "no shard found with ID " + shardId);
         }
 
         auto serverList = (*it).second;
@@ -6178,12 +6197,79 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
     }
 
     LOG_TOPIC("31428", INFO, Logger::CLUSTER)
-        << "getResponsibleServers: found resigned leader,"
+        << "getResponsibleServersReplication1: found resigned leader,"
         << "waiting for half a second...";
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
+}
 
-  return result;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief for replication2 we use the replicated logs data to find the servers
+////////////////////////////////////////////////////////////////////////////////
+
+bool ClusterInfo::getResponsibleServersReplication2(
+    containers::FlatHashSet<ShardID> const& shardIds,
+    containers::FlatHashMap<ShardID, ServerID>& result) {
+  int tries = 0;
+
+  if (!_planProt.isValid) {
+    Result r = waitForPlan(1).get();
+    if (r.fail()) {
+      THROW_ARANGO_EXCEPTION(r);
+    }
+  }
+
+  auto& clusterFeature = _server.getFeature<ClusterFeature>();
+  auto& agencyCache = clusterFeature.agencyCache();
+
+  bool isReplicationTwo = false;
+  do {
+    TRI_ASSERT(result.empty());
+    {
+      READ_LOCKER(readLocker, _planProt.lock);
+
+      for (auto const& shardId : shardIds) {
+        auto logId = LogicalCollection::tryShardIdToStateId(shardId);
+        if (!logId.has_value()) {
+          // could not convert shardId to logId, but this implies that
+          // the shardId is not valid.
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                         "invalid shard " + shardId);
+        }
+        // if we find a replicated log for this shard, then this is a
+        // replication 2.0 db, in which case we want to use the leader
+        // information from the log instead
+        auto it = _replicatedLogs.find(*logId);
+        if (it != _replicatedLogs.end()) {
+          isReplicationTwo = true;
+          if (it->second->currentTerm.has_value() &&
+              it->second->currentTerm->leader.has_value()) {
+            result.emplace(shardId, it->second->currentTerm->leader->serverId);
+          } else {
+            // no leader found, will retry
+            ++tries;
+            result.clear();
+            break;
+          }
+        } else if (isReplicationTwo) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+              "no replicated log found for shard " + shardId);
+        } else {
+          // this seems to be no replication 2.0 db -> skip the remaining shards
+          return false;
+        }
+      }
+    }
+
+    LOG_TOPIC("0f8a7", INFO, Logger::CLUSTER)
+        << "getResponsibleServersReplication2: did not found leader,"
+        << "waiting for half a second...";
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  } while (isReplicationTwo && tries < 100 &&
+           result.size() != shardIds.size() && !_server.isStopping());
+
+  return isReplicationTwo;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
