@@ -311,7 +311,7 @@ NonConstExpressionContainer IndexNode::buildNonConstExpressions() const {
 
     return utils::extractNonConstPartsOfIndexCondition(
         _plan->getAst(), getRegisterPlan()->varInfo, options().evaluateFCalls,
-        idx->sparse() || idx->isSorted(), _condition->root(), _outVariable);
+        idx.get(), _condition->root(), _outVariable);
   }
   return {};
 }
