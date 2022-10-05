@@ -26,8 +26,10 @@
 #include <optional>
 #include <string>
 #include <string_view>
-#include "Pregel/WorkerConductorMessages.h"
 #include "velocypack/Builder.h"
+
+#include "Pregel/Messaging/ConductorMessages.h"
+#include "Pregel/Messaging/WorkerMessages.h"
 
 namespace arangodb::pregel {
 

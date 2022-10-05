@@ -31,7 +31,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/Graph.h"
-#include "Pregel/WorkerConductorMessages.h"
+#include "Pregel/Messaging/ConductorMessages.h"
 
 struct TRI_vocbase_t;
 

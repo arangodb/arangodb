@@ -26,7 +26,7 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Utils.h"
-#include "Pregel/WorkerConductorMessages.h"
+#include "Pregel/Messaging/ConductorMessages.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;

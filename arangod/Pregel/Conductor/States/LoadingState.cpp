@@ -7,7 +7,6 @@
 #include "Metrics/Gauge.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/WorkerConductorMessages.h"
 
 using namespace arangodb::pregel::conductor;
 

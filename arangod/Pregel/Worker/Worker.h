@@ -32,7 +32,7 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
-#include "Pregel/WorkerConductorMessages.h"
+#include "Pregel/Messaging/Message.h"
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/Worker/WorkerContext.h"
 #include "Pregel/WorkerInterface.h"
