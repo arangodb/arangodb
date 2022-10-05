@@ -25,19 +25,15 @@
 #pragma once
 
 namespace arangodb::pregel::algorithm_sdk {
-struct IConductor {
-  virtual auto start() -> void = 0;
 
-  virtual ~IConductor(){};
+template<typename Algorithm>
+struct Conductor {
+  auto start() -> void { return; }
 };
 
-template <typename Algorithm> struct Conductor : public IConductor {
-  auto start() -> void override { return; }
-};
-
-template <typename Algorithm>
+template<typename Algorithm>
 auto makeConductor() -> std::shared_ptr<Conductor<Algorithm>> {
   return std::make_shared<Conductor<Algorithm>>();
 }
 
-} // namespace arangodb::pregel::algorithm_sdk
+}  // namespace arangodb::pregel::algorithm_sdk

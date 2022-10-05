@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <Algorithm/Algorithm.h>
+
 namespace arangodb::pregel::graph {
 
 using VertexKey = std::string;
@@ -39,7 +41,7 @@ auto inspect(Inspector& f, Vertex<VertexProperties>& p) {
                             f.embedFields(p.properties));
 }
 
-template<typename EdgeProperties>
+template<typename EdgeProperties = algorithm_sdk::EmptyEdgeProperties>
 struct Edge {
   EdgeKey _key;
   VertexKey _from;
@@ -47,7 +49,8 @@ struct Edge {
   EdgeProperties properties;
 };
 
-template<typename Inspector, typename EdgeProperties>
+template<typename Inspector,
+         typename EdgeProperties = algorithm_sdk::EmptyEdgeProperties>
 auto inspect(Inspector& f, Edge<EdgeProperties>& p) {
   return f.object(p).fields(f.field("_key", p._key), f.field("_from", p._from),
                             f.field("_to", p._to), f.embedFields(p.properties));

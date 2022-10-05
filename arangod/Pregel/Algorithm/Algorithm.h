@@ -40,7 +40,18 @@ namespace arangodb::pregel::algorithm_sdk {
 // This becomes really quite important when
 // we are talking about a billion vertices/edges
 struct EmptyVertexProperties {};
+
+template<typename Inspector>
+auto inspect(Inspector& f, EmptyVertexProperties& x) {
+  return f.object(x).fields();
+}
+
 struct EmptyEdgeProperties {};
+template<typename Inspector>
+auto inspect(Inspector& f, EmptyEdgeProperties& x) {
+  return f.object(x).fields();
+}
+
 struct EmptyMessage {};
 
 struct VertexId {};

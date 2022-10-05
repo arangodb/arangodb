@@ -24,7 +24,7 @@
 
 #include <Algorithm/Algorithm.h>
 
-#include <Inspection/VPack.h>
+#include <Inspection/VPackPure.h>
 
 #include "Algorithm.h"
 #include <string>
