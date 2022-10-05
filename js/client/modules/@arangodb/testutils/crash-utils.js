@@ -79,7 +79,7 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
     'set pagination off\\n' +
     'set confirm off\\n' +
     'set logging file ' + gdbOutputFile + '\\n' +
-    'set logging on\\n' +
+    'set logging enabled\\n' +
     'bt\\n' +
     'thread apply all bt\\n'+
     'bt full\\n' +
@@ -140,7 +140,7 @@ function generateCoreDumpGDB (instanceInfo, options, storeArangodPath, pid, gene
     'set pagination off\\n' +
     'set confirm off\\n' +
     'set logging file ' + gdbOutputFile + '\\n' +
-    'set logging on\\n' +
+    'set logging enabled\\n' +
     'bt\\n' +
     'thread apply all bt\\n'+
     'bt full\\n' +
@@ -599,11 +599,11 @@ function aggregateDebugger(instanceInfo, options) {
     print("No debugger info persisted to " + JSON.stringify(instanceInfo.getStructure()));
     return false;
   }
-  print("waiting for debugger to terminate: " + JSON.stringify(instanceInfo.debuggerInfo));
+  print(`waiting for debugger of ${instanceInfo.pid} to terminate: ${JSON.stringify(instanceInfo.debuggerInfo)}`);
   let tearDownTimeout = 180; // s
   while (tearDownTimeout > 0) {
     let ret = statusExternal(instanceInfo.debuggerInfo.pid.pid, false);
-    print(ret);
+    print(`Debugger ${instanceInfo.debuggerInfo.pid.pid} Status => ${JSON.stringify(ret)}`);
     if (ret.status === "RUNNING") {
       sleep(1);
       tearDownTimeout -= 1;
