@@ -6,6 +6,12 @@ devel
   the user can't access and from a database name that doesn't exist, so both
   requests have the same error message (`_db/<dbName>/_api/database/current`).
 
+* BTS-325: Changed the HTTP status code from `400` to `404` of the ArangoDB
+  error code `ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED` to handle
+  this error in accordance to our edge errors.
+
+* Added new AQL function SHA256(value).
+
 * Adjust permissions for "search-alias" views.
 
   Previously, "search-alias" views were visible to users that didn't have read

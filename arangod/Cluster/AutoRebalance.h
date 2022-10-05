@@ -177,10 +177,12 @@ struct AutoRebalanceProblem {
   uint64_t createCollection(std::string const& name, std::string const& dbName,
                             uint32_t numberOfShards, uint32_t replicationFactor,
                             double weight = 1.0);
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   void createCluster(uint32_t nrDBserver, bool withZones = false);
   void createRandomDatabasesAndCollections(uint32_t nrDBs, uint32_t nrColls,
                                            uint32_t minReplFactor,
                                            uint32_t maxReplFactor);
+#endif
   void setPiFactor(double p) { _piFactor = p; }
   void distributeShardsRandomly(std::vector<double> const& probabilities);
   void moveToBuilder(MoveShardJob const& m, VPackBuilder& mb) const;
