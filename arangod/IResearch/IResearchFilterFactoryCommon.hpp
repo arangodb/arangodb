@@ -38,6 +38,7 @@
 #include "VocBase/vocbase.h"
 
 #include "search/all_filter.hpp"
+#include "search/column_existence_filter.hpp"
 
 using namespace std::string_literals;
 
@@ -50,6 +51,8 @@ irs::filter::ptr makeAll(std::string_view field);
 std::string_view makeAllColumn(QueryContext const& ctx) noexcept;
 
 irs::AllDocsProvider::ProviderFunc makeAllProvider(QueryContext const& ctx);
+
+irs::ColumnAcceptor makeColumnAcceptor(std::string_view field) noexcept;
 
 template<typename Filter, typename Source>
 auto& append(Source& parent, [[maybe_unused]] FilterContext const& ctx) {

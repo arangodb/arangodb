@@ -2240,12 +2240,11 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
 
   if (filter) {
     auto& exists = append<irs::by_column_existence>(*filter, filterCtx);
+    if (auto* opts = exists.mutable_options(); prefixMatch) {
+      opts->acceptor = makeColumnAcceptor(fieldName);
+    }
     *exists.mutable_field() = std::move(fieldName);
     exists.boost(filterCtx.boost);
-    auto* opts = exists.mutable_options();
-    if (prefixMatch) {
-      opts->acceptor = [](irs::string_ref, irs::string_ref) { return true; };
-    }
   }
 
   return {};
@@ -4029,8 +4028,17 @@ Result fromExpansion(irs::boolean_filter* filter,
 
 }  // namespace
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
+
+bool allColumnAcceptor(irs::string_ref, irs::string_ref) noexcept {
+  return true;
+}
+
+#ifndef USE_ENTERPRISE
+irs::ColumnAcceptor makeColumnAcceptor(std::string_view field) noexcept {
+  return allColumnAcceptor;
+}
+#endif
 
 Result fromExpression(irs::boolean_filter* filter,
                       FilterContext const& filterCtx,
@@ -4160,5 +4168,4 @@ Result makeFilter(irs::boolean_filter* filter, FilterContext const& filterCtx,
   return res;
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch
