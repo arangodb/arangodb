@@ -162,6 +162,10 @@ let optionsDocumentation = [
   ''
 ];
 
+const isAsan = (
+  global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
+    global.ARANGODB_CLIENT_VERSION(true).tsan === 'true');
+
 const optionsDefaults = {
   'dumpAgencyOnError': true,
   'agencySize': 3,
@@ -214,10 +218,8 @@ const optionsDefaults = {
   'skipNondeterministic': false,
   'skipGrey': false,
   'onlyGrey': false,
-  'oneTestTimeout': 15 * 60,
-  'isAsan': (
-      global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
-      global.ARANGODB_CLIENT_VERSION(true).tsan === 'true'),
+  'oneTestTimeout': (isAsan? 15 : 25) * 60,
+  'isAsan': isAsan,
   'skipTimeCritical': false,
   'test': undefined,
   'testBuckets': undefined,
