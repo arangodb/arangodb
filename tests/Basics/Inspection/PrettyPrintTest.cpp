@@ -37,10 +37,11 @@ using namespace arangodb;
 
 struct PrettyPrintInspectorTest : public ::testing::Test {
   std::ostringstream stream;
-  inspection::PrettyPrintInspector<> inspector{stream, ""};
+  inspection::PrettyPrintInspector<> inspector{
+      stream, inspection::PrettyPrintFormat::kPretty};
 };
 
-TEST_F(PrettyPrintInspectorTest, store_empty_object) {
+TEST_F(PrettyPrintInspectorTest, store_empty_objecty) {
   auto empty = AnEmptyObject{};
   auto result = inspector.apply(empty);
   EXPECT_TRUE(result.ok());
@@ -518,6 +519,513 @@ TEST_F(PrettyPrintInspectorTest, store_embedded_fields) {
   s: "foobar",
   b: 2
 })";
+  EXPECT_EQ(expected, stream.str());
+}
+
+struct PrettyPrintInspectorCompactTest : public ::testing::Test {
+  std::ostringstream stream;
+  inspection::PrettyPrintInspector<> inspector{
+      stream, inspection::PrettyPrintFormat::kCompact};
+};
+
+TEST_F(PrettyPrintInspectorCompactTest, store_empty_objecty) {
+  auto empty = AnEmptyObject{};
+  auto result = inspector.apply(empty);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ("{ }", stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest, store_object) {
+  Dummy const f{.i = 42, .d = 123.456, .b = true, .s = "foobar"};
+  auto result = inspector.apply(f);
+  EXPECT_TRUE(result.ok());
+
+  auto expected = R"({ i: 42, d: 123.456, b: true, s: "foobar" })";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest, store_nested_object) {
+  Nested b{.dummy = {.i = 42, .d = 123.456, .b = true, .s = "foobar"}};
+  auto result = inspector.apply(b);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"({ dummy: { i: 42, d: 123.456, b: true, s: "foobar" } })";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest, store_nested_object_without_nesting) {
+  Container c{.i = {.value = 42}};
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = "{ i: 42 }";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest, store_list) {
+  List l{.vec = {{1}, {2}, {3}}, .list = {4, 5}};
+  auto result = inspector.apply(l);
+  ASSERT_TRUE(result.ok());
+
+  auto expected =
+      R"({ vec: [ { i: 1 }, { i: 2 }, { i: 3 } ], list: [ 4, 5 ] })";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest, store_map) {
+  Map m{.map = {{"1", {1}}, {"2", {2}}, {"3", {3}}},
+        .unordered = {{"4", 4}, {"5", 5}}};
+  auto result = inspector.apply(m);
+  ASSERT_TRUE(result.ok());
+
+  auto expected =
+      R"({ map: { "1": { i: 1 }, "2": { i: 2 }, "3": { i: 3 } }, unordered: { "5": 5, "4": 4 } })";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest, store_tuples) {
+  Tuple t{.tuple = {"foo", 42, 12.34},
+          .pair = {987, "bar"},
+          .array1 = {"a", "b"},
+          .array2 = {1, 2, 3}};
+  auto result = inspector.apply(t);
+  ASSERT_TRUE(result.ok());
+
+  auto expected =
+      R"({ tuple: [ "foo", 42, 12.34 ], pair: [ 987, "bar" ], array1: [ "a", "b" ], array2: [ 1, 2, 3 ] })";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest, store_optional) {
+  Optional o{.a = std::nullopt,
+             .b = std::nullopt,
+             .x = std::nullopt,
+             .y = "blubb",
+             .vec = {1, std::nullopt, 3},
+             .map = {{"1", 1}, {"2", std::nullopt}, {"3", 3}}};
+  auto result = inspector.apply(o);
+  ASSERT_TRUE(result.ok());
+
+  auto expected =
+      R"({ a: null, b: null, y: "blubb", vec: [ 1, null, 3 ], map: { "1": 1, "2": null, "3": 3 } })";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest, store_optional_pointer) {
+  Pointer p{.a = nullptr,
+            .b = std::make_shared<int>(42),
+            .c = nullptr,
+            .d = std::make_unique<Container>(Container{.i = {.value = 43}}),
+            .vec = {},
+            .x = {},
+            .y = {}};
+  p.vec.push_back(std::make_unique<int>(1));
+  p.vec.push_back(nullptr);
+  p.vec.push_back(std::make_unique<int>(2));
+  auto result = inspector.apply(p);
+  ASSERT_TRUE(result.ok());
+
+  auto expected =
+      R"({ b: 42, d: { i: 43 }, vec: [ 1, null, 2 ], x: null, y: null })";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest, store_object_with_field_transform) {
+  FieldTransform f{.x = 42};
+  auto result = inspector.apply(f);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"({ x: "42" })";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest,
+       store_object_with_optional_field_transform) {
+  OptionalFieldTransform f{.x = 1, .y = std::nullopt, .z = 3};
+  auto result = inspector.apply(f);
+
+  auto expected = R"({ x: "1", z: "3" })";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest, store_type_with_custom_specialization) {
+  Specialization s{.i = 42, .s = "foobar"};
+  auto result = inspector.apply(s);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"({ i: 42, s: "foobar" })";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest,
+       store_type_with_explicitly_ignored_fields) {
+  ExplicitIgnore e{.s = "foobar"};
+  auto result = inspector.apply(e);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"({ s: "foobar" })";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest, store_type_with_unsafe_fields) {
+  velocypack::Builder localBuilder;
+  localBuilder.add(VPackValue("blubb"));
+  std::string_view hashedString = "hashedString";
+  Unsafe u{.view = "foobar",
+           .slice = localBuilder.slice(),
+           .hashed = {hashedString.data(),
+                      static_cast<uint32_t>(hashedString.size())}};
+  auto result = inspector.apply(u);
+  ASSERT_TRUE(result.ok());
+
+  auto expected =
+      R"({ view: "foobar", slice: "blubb", hashed: "hashedString" })";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest, store_qualified_variant) {
+  QualifiedVariant d{.a = {"foobar"},
+                     .b = {42},
+                     .c = {Struct1{1}},
+                     .d = {Struct2{2}},
+                     .e = {std::monostate{}}};
+  auto result = inspector.apply(d);
+  ASSERT_TRUE(result.ok());
+
+  auto expected =
+      R"({ a: "foobar", b: { t: "int", v: 42 }, c: { t: "Struct1", v: { v: 1 } }, d: { t: "Struct2", v: { v: 2 } }, e: { t: "nil", v: { } } })";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest, store_unqualified_variant) {
+  UnqualifiedVariant d{.a = {"foobar"},
+                       .b = {42},
+                       .c = {Struct1{1}},
+                       .d = {Struct2{2}},
+                       .e = {std::monostate{}}};
+  auto result = inspector.apply(d);
+  ASSERT_TRUE(result.ok());
+
+  auto expected =
+      R"({ a: { string: "foobar" }, b: 42, c: { Struct1: { v: 1 } }, d: { Struct2: { v: 2 } }, e: { nil: { } } })";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest, store_string_enum) {
+  std::vector<MyStringEnum> enums{MyStringEnum::kValue1, MyStringEnum::kValue2,
+                                  MyStringEnum::kValue3};
+  auto result = inspector.apply(enums);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"([ "value1", "value2", "value2" ])";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest, store_int_enum) {
+  std::vector<MyIntEnum> enums{MyIntEnum::kValue1, MyIntEnum::kValue2,
+                               MyIntEnum::kValue3};
+  auto result = inspector.apply(enums);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"([ 1, 2, 2 ])";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest, store_mixed_enum) {
+  std::vector<MyMixedEnum> enums{MyMixedEnum::kValue1, MyMixedEnum::kValue2};
+  auto result = inspector.apply(enums);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"([ "value1", "value2" ])";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest, store_inline_variant) {
+  InlineVariant d{.a = {"foobar"},
+                  .b = {Struct1{.v = 42}},
+                  .c = {std::vector<int>{1, 2, 3}},
+                  .d = {TypedInt{.value = 123}},
+                  .e = {std::tuple{"blubb", 987, true}}};
+  auto result = inspector.apply(d);
+  ASSERT_TRUE(result.ok());
+
+  auto expected =
+      R"({ a: "foobar", b: { v: 42 }, c: [ 1, 2, 3 ], d: 123, e: [ "blubb", 987, true ] })";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest, store_embedded_variant) {
+  EmbeddedVariant d{.a = {Struct1{1}},
+                    .b = {Struct2{2}},
+                    .c = {Struct3{.a = 1, .b = 2}},
+                    .d = {true}};
+  auto result = inspector.apply(d);
+  ASSERT_TRUE(result.ok());
+
+  auto expected =
+      R"({ a: { t: "Struct1", v: 1 }, b: { t: "Struct2", v: 2 }, c: { t: "Struct3", a: 1, b: 2 }, d: true })";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorCompactTest, store_embedded_fields) {
+  NestedEmbedding const n{
+      Embedded{.a = 1, .inner = {.i = 42, .s = "foobar"}, .b = 2}};
+  auto result = inspector.apply(n);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"({ a: 1, i: 42, s: "foobar", b: 2 })";
+  EXPECT_EQ(expected, stream.str());
+}
+
+struct PrettyPrintInspectorMinimalTest : public ::testing::Test {
+  std::ostringstream stream;
+  inspection::PrettyPrintInspector<> inspector{
+      stream, inspection::PrettyPrintFormat::kMinimal};
+};
+
+TEST_F(PrettyPrintInspectorMinimalTest, store_empty_objecty) {
+  auto empty = AnEmptyObject{};
+  auto result = inspector.apply(empty);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ("{}", stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest, store_object) {
+  Dummy const f{.i = 42, .d = 123.456, .b = true, .s = "foobar"};
+  auto result = inspector.apply(f);
+  EXPECT_TRUE(result.ok());
+
+  auto expected = R"({i:42,d:123.456,b:true,s:"foobar"})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest, store_nested_object) {
+  Nested b{.dummy = {.i = 42, .d = 123.456, .b = true, .s = "foobar"}};
+  auto result = inspector.apply(b);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"({dummy:{i:42,d:123.456,b:true,s:"foobar"}})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest, store_nested_object_without_nesting) {
+  Container c{.i = {.value = 42}};
+  auto result = inspector.apply(c);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = "{i:42}";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest, store_list) {
+  List l{.vec = {{1}, {2}, {3}}, .list = {4, 5}};
+  auto result = inspector.apply(l);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"({vec:[{i:1},{i:2},{i:3}],list:[4,5]})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest, store_map) {
+  Map m{.map = {{"1", {1}}, {"2", {2}}, {"3", {3}}},
+        .unordered = {{"4", 4}, {"5", 5}}};
+  auto result = inspector.apply(m);
+  ASSERT_TRUE(result.ok());
+
+  auto expected =
+      R"({map:{"1":{i:1},"2":{i:2},"3":{i:3}},unordered:{"5":5,"4":4}})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest, store_tuples) {
+  Tuple t{.tuple = {"foo", 42, 12.34},
+          .pair = {987, "bar"},
+          .array1 = {"a", "b"},
+          .array2 = {1, 2, 3}};
+  auto result = inspector.apply(t);
+  ASSERT_TRUE(result.ok());
+
+  auto expected =
+      R"({tuple:["foo",42,12.34],pair:[987,"bar"],array1:["a","b"],array2:[1,2,3]})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest, store_optional) {
+  Optional o{.a = std::nullopt,
+             .b = std::nullopt,
+             .x = std::nullopt,
+             .y = "blubb",
+             .vec = {1, std::nullopt, 3},
+             .map = {{"1", 1}, {"2", std::nullopt}, {"3", 3}}};
+  auto result = inspector.apply(o);
+  ASSERT_TRUE(result.ok());
+
+  auto expected =
+      R"({a:null,b:null,y:"blubb",vec:[1,null,3],map:{"1":1,"2":null,"3":3}})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest, store_optional_pointer) {
+  Pointer p{.a = nullptr,
+            .b = std::make_shared<int>(42),
+            .c = nullptr,
+            .d = std::make_unique<Container>(Container{.i = {.value = 43}}),
+            .vec = {},
+            .x = {},
+            .y = {}};
+  p.vec.push_back(std::make_unique<int>(1));
+  p.vec.push_back(nullptr);
+  p.vec.push_back(std::make_unique<int>(2));
+  auto result = inspector.apply(p);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"({b:42,d:{i:43},vec:[1,null,2],x:null,y:null})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest, store_object_with_field_transform) {
+  FieldTransform f{.x = 42};
+  auto result = inspector.apply(f);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"({x:"42"})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest,
+       store_object_with_optional_field_transform) {
+  OptionalFieldTransform f{.x = 1, .y = std::nullopt, .z = 3};
+  auto result = inspector.apply(f);
+
+  auto expected = R"({x:"1",z:"3"})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest, store_type_with_custom_specialization) {
+  Specialization s{.i = 42, .s = "foobar"};
+  auto result = inspector.apply(s);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"({i:42,s:"foobar"})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest,
+       store_type_with_explicitly_ignored_fields) {
+  ExplicitIgnore e{.s = "foobar"};
+  auto result = inspector.apply(e);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"({s:"foobar"})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest, store_type_with_unsafe_fields) {
+  velocypack::Builder localBuilder;
+  localBuilder.add(VPackValue("blubb"));
+  std::string_view hashedString = "hashedString";
+  Unsafe u{.view = "foobar",
+           .slice = localBuilder.slice(),
+           .hashed = {hashedString.data(),
+                      static_cast<uint32_t>(hashedString.size())}};
+  auto result = inspector.apply(u);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"({view:"foobar",slice:"blubb",hashed:"hashedString"})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest, store_qualified_variant) {
+  QualifiedVariant d{.a = {"foobar"},
+                     .b = {42},
+                     .c = {Struct1{1}},
+                     .d = {Struct2{2}},
+                     .e = {std::monostate{}}};
+  auto result = inspector.apply(d);
+  ASSERT_TRUE(result.ok());
+
+  auto expected =
+      R"({a:"foobar",b:{t:"int",v:42},c:{t:"Struct1",v:{v:1}},d:{t:"Struct2",v:{v:2}},e:{t:"nil",v:{}}})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest, store_unqualified_variant) {
+  UnqualifiedVariant d{.a = {"foobar"},
+                       .b = {42},
+                       .c = {Struct1{1}},
+                       .d = {Struct2{2}},
+                       .e = {std::monostate{}}};
+  auto result = inspector.apply(d);
+  ASSERT_TRUE(result.ok());
+
+  auto expected =
+      R"({a:{string:"foobar"},b:42,c:{Struct1:{v:1}},d:{Struct2:{v:2}},e:{nil:{}}})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest, store_string_enum) {
+  std::vector<MyStringEnum> enums{MyStringEnum::kValue1, MyStringEnum::kValue2,
+                                  MyStringEnum::kValue3};
+  auto result = inspector.apply(enums);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"(["value1","value2","value2"])";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest, store_int_enum) {
+  std::vector<MyIntEnum> enums{MyIntEnum::kValue1, MyIntEnum::kValue2,
+                               MyIntEnum::kValue3};
+  auto result = inspector.apply(enums);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"([1,2,2])";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest, store_mixed_enum) {
+  std::vector<MyMixedEnum> enums{MyMixedEnum::kValue1, MyMixedEnum::kValue2};
+  auto result = inspector.apply(enums);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"(["value1","value2"])";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest, store_inline_variant) {
+  InlineVariant d{.a = {"foobar"},
+                  .b = {Struct1{.v = 42}},
+                  .c = {std::vector<int>{1, 2, 3}},
+                  .d = {TypedInt{.value = 123}},
+                  .e = {std::tuple{"blubb", 987, true}}};
+  auto result = inspector.apply(d);
+  ASSERT_TRUE(result.ok());
+
+  auto expected =
+      R"({a:"foobar",b:{v:42},c:[1,2,3],d:123,e:["blubb",987,true]})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest, store_embedded_variant) {
+  EmbeddedVariant d{.a = {Struct1{1}},
+                    .b = {Struct2{2}},
+                    .c = {Struct3{.a = 1, .b = 2}},
+                    .d = {true}};
+  auto result = inspector.apply(d);
+  ASSERT_TRUE(result.ok());
+
+  auto expected =
+      R"({a:{t:"Struct1",v:1},b:{t:"Struct2",v:2},c:{t:"Struct3",a:1,b:2},d:true})";
+  EXPECT_EQ(expected, stream.str());
+}
+
+TEST_F(PrettyPrintInspectorMinimalTest, store_embedded_fields) {
+  NestedEmbedding const n{
+      Embedded{.a = 1, .inner = {.i = 42, .s = "foobar"}, .b = 2}};
+  auto result = inspector.apply(n);
+  ASSERT_TRUE(result.ok());
+
+  auto expected = R"({a:1,i:42,s:"foobar",b:2})";
   EXPECT_EQ(expected, stream.str());
 }
 

@@ -34,6 +34,8 @@
 
 namespace arangodb::inspection {
 
+enum class PrettyPrintFormat { kPretty, kCompact, kMinimal };
+
 template<class Context = NoContext>
 struct PrettyPrintInspector
     : SaveInspectorBase<PrettyPrintInspector<Context>, Context> {
@@ -43,8 +45,16 @@ struct PrettyPrintInspector
 
  public:
   PrettyPrintInspector(std::ostream& stream,
-                       std::string indentation) requires(!Base::hasContext)
-      : Base(), _stream(stream), _indentation(std::move(indentation)) {}
+                       PrettyPrintFormat format) requires(!Base::hasContext)
+      : Base(),
+        _stream(stream),
+        _indentation(),
+        _linebreak(format == PrettyPrintFormat::kPretty    ? "\n"
+                   : format == PrettyPrintFormat::kCompact ? " "
+                                                           : ""),
+        _separator(format == PrettyPrintFormat::kMinimal ? "" : " "),
+        _format(format) {}
+
   PrettyPrintInspector(std::ostream& stream, std::string indentation,
                        Context const& context)
       : Base(context), _stream(stream), _indentation(std::move(indentation)) {}
@@ -103,32 +113,31 @@ struct PrettyPrintInspector
 
   [[nodiscard]] Status::Success endObject() {
     decrementIndentationLevel();
-    _stream << '\n' << _indentation << '}';
+    _stream << _linebreak << _indentation << '}';
     return {};
   }
 
   [[nodiscard]] Status::Success beginField(std::string_view name) {
     if (_firstField) {
       _firstField = false;
-      _stream << '\n';
     } else {
-      _stream << ",\n";
+      _stream << ',';
     }
-    _stream << _indentation << name << ": ";
+    _stream << _linebreak << _indentation << name << ':' << _separator;
     return {};
   }
 
   [[nodiscard]] Status::Success endField() { return {}; }
 
   [[nodiscard]] Status::Success beginArray() {
-    _stream << "[\n";
+    _stream << '[' << _linebreak;
     incrementIndentationLevel();
     return {};
   }
 
   [[nodiscard]] Status::Success endArray() {
     decrementIndentationLevel();
-    _stream << '\n' << _indentation << ']';
+    _stream << _linebreak << _indentation << ']';
     return {};
   }
 
@@ -168,7 +177,7 @@ struct PrettyPrintInspector
       return process(*this, std::get<Idx>(data))  //
              | [&]() {
                  if constexpr (Idx + 1 < End) {
-                   _stream << ",\n";
+                   _stream << ',' << _linebreak;
                  }
                  return processTuple<Idx + 1, End>(data);
                };
@@ -186,7 +195,7 @@ struct PrettyPrintInspector
         return res;
       }
       if (++it != end) {
-        _stream << ",\n";
+        _stream << ',' << _linebreak;
       }
     }
     return {};
@@ -197,35 +206,42 @@ struct PrettyPrintInspector
       -> decltype(process(std::declval<PrettyPrintInspector&>(),
                           map.begin()->second)) {
     auto end = map.end();
-    _stream << '\n';
+    _stream << _linebreak;
     for (auto it = map.begin(); it != end;) {
       auto&& [k, v] = *it;
-      _stream << _indentation << '"' << k << "\": ";
+      _stream << _indentation << '"' << k << "\":" << _separator;
       if (auto res = process(*this, v); !res.ok()) {
         return res;
       }
       if (++it != end) {
-        _stream << ",\n";
+        _stream << ',' << _linebreak;
       }
     }
     return {};
   }
 
   void incrementIndentationLevel() {
-    for (unsigned i = 0; i < IndentationPerLevel; ++i) {
-      _indentation.push_back(' ');
+    if (_format == PrettyPrintFormat::kPretty) {
+      for (unsigned i = 0; i < IndentationPerLevel; ++i) {
+        _indentation.push_back(' ');
+      }
     }
   }
 
   void decrementIndentationLevel() {
-    TRI_ASSERT(_indentation.size() >= IndentationPerLevel);
-    for (unsigned i = 0; i < IndentationPerLevel; ++i) {
-      _indentation.pop_back();
+    if (_format == PrettyPrintFormat::kPretty) {
+      TRI_ASSERT(_indentation.size() >= IndentationPerLevel);
+      for (unsigned i = 0; i < IndentationPerLevel; ++i) {
+        _indentation.pop_back();
+      }
     }
   }
 
   std::ostream& _stream;
   std::string _indentation;
+  std::string_view _linebreak;
+  std::string_view _separator;
+  PrettyPrintFormat _format;
   bool _firstField = false;
 };
 
