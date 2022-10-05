@@ -29,6 +29,10 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/LogLeader.h"
+#include "Replication2/ReplicatedLog/LogFollower.h"
+
 #if (_MSC_VER >= 1)
 // suppress warnings:
 #pragma warning(push)

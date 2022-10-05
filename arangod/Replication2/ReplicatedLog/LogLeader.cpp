@@ -96,11 +96,11 @@ replicated_log::LogLeader::LogLeader(
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     ParticipantId id, LogTerm term, LogIndex firstIndex,
     InMemoryLog inMemoryLog,
-    std::shared_ptr<cluster::IFailureOracle const> failureOracle)
+    std::shared_ptr<IReplicatedStateHandle> stateHandle)
     : _logContext(std::move(logContext)),
       _logMetrics(std::move(logMetrics)),
       _options(std::move(options)),
-      _failureOracle(std::move(failureOracle)),
+      _stateHandle(std::move(stateHandle)),
       _id(std::move(id)),
       _currentTerm(term),
       _firstIndexOfCurrentTerm(firstIndex),
@@ -296,7 +296,7 @@ auto replicated_log::LogLeader::construct(
     ParticipantId id, LogTerm term, LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-    std::shared_ptr<cluster::IFailureOracle const> failureOracle)
+    std::shared_ptr<IReplicatedStateHandle> stateHandle)
     -> std::shared_ptr<LogLeader> {
   auto const& config = participantsConfig->config;
 
@@ -324,11 +324,11 @@ auto replicated_log::LogLeader::construct(
         std::shared_ptr<ReplicatedLogGlobalSettings const> options,
         ParticipantId id, LogTerm term, LogIndex firstIndexOfCurrentTerm,
         InMemoryLog inMemoryLog,
-        std::shared_ptr<cluster::IFailureOracle const> failureOracle)
+        std::shared_ptr<IReplicatedStateHandle> stateHandle)
         : LogLeader(std::move(logContext), std::move(logMetrics),
                     std::move(options), std::move(id), term,
                     firstIndexOfCurrentTerm, std::move(inMemoryLog),
-                    std::move(failureOracle)) {}
+                    std::move(stateHandle)) {}
   };
 
   auto log = InMemoryLog::loadFromLogCore(*logCore);
@@ -356,7 +356,7 @@ auto replicated_log::LogLeader::construct(
   auto leader = std::make_shared<MakeSharedLogLeader>(
       commonLogContext.with<logContextKeyLogComponent>("leader"),
       std::move(logMetrics), std::move(options), std::move(id), term,
-      lastIndex.index + 1u, log, std::move(failureOracle));
+      lastIndex.index + 1u, log, std::move(stateHandle));
   auto localFollower = std::make_shared<LocalFollower>(
       *leader,
       commonLogContext.with<logContextKeyLogComponent>("local-follower"),
@@ -925,11 +925,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerStates() const
     auto flags = activeParticipantsConfig->participants.find(pid);
     TRI_ASSERT(flags != std::end(activeParticipantsConfig->participants));
 
-    participantStates.emplace_back(algorithms::ParticipantState{
-        .lastAckedEntry = follower->lastAckedIndex,
-        .id = pid,
-        .failed = _self._failureOracle->isServerFailed(pid),
-        .flags = flags->second});
+    participantStates.emplace_back(
+        algorithms::ParticipantState{.lastAckedEntry = follower->lastAckedIndex,
+                                     .id = pid,
+                                     .failed = false,
+                                     .flags = flags->second});
 
     largestCommonIndex =
         std::min(largestCommonIndex, follower->lastAckedCommitIndex);

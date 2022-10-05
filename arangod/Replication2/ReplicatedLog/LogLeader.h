@@ -47,6 +47,7 @@
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/WaitForBag.h"
 #include "Replication2/ReplicatedLog/types.h"
+#include "Replication2/ReplicatedLog/ReplicatedLog.h"
 
 namespace arangodb {
 struct DeferredAction;
@@ -99,8 +100,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
       ParticipantId id, LogTerm term, LoggerContext const& logContext,
       std::shared_ptr<ReplicatedLogMetrics> logMetrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-      std::shared_ptr<cluster::IFailureOracle const> failureOracle)
-      -> std::shared_ptr<LogLeader>;
+      std::shared_ptr<IReplicatedStateHandle>) -> std::shared_ptr<LogLeader>;
 
   auto insert(LogPayload payload, bool waitForSync = false)
       -> LogIndex override;
@@ -174,8 +174,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
             std::shared_ptr<ReplicatedLogMetrics> logMetrics,
             std::shared_ptr<ReplicatedLogGlobalSettings const> options,
             ParticipantId id, LogTerm term, LogIndex firstIndexOfCurrentTerm,
-            InMemoryLog inMemoryLog,
-            std::shared_ptr<cluster::IFailureOracle const> failureOracle);
+            InMemoryLog inMemoryLog, std::shared_ptr<IReplicatedStateHandle>);
 
  private:
   struct GuardedLeaderData;
@@ -338,7 +337,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   LoggerContext const _logContext;
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
   std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
-  std::shared_ptr<cluster::IFailureOracle const> const _failureOracle;
+  std::shared_ptr<IReplicatedStateHandle> const _stateHandle;
   ParticipantId const _id;
   LogTerm const _currentTerm;
   LogIndex const _firstIndexOfCurrentTerm;

@@ -479,6 +479,7 @@ replicated_log::LogFollower::LogFollower(
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
     std::optional<ParticipantId> leaderId,
+    std::shared_ptr<IReplicatedStateHandle> stateHandle,
     replicated_log::InMemoryLog inMemoryLog)
     : _logMetrics(std::move(logMetrics)),
       _options(std::move(options)),
@@ -489,6 +490,7 @@ replicated_log::LogFollower::LogFollower(
       _participantId(std::move(id)),
       _leaderId(std::move(leaderId)),
       _currentTerm(term),
+      _stateHandle(std::move(stateHandle)),
       _guardedFollowerData(*this, std::move(logCore), std::move(inMemoryLog)) {
   _logMetrics->replicatedLogFollowerNumber->fetch_add(1);
 }
@@ -655,7 +657,9 @@ auto LogFollower::construct(
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
-    std::optional<ParticipantId> leaderId) -> std::shared_ptr<LogFollower> {
+    std::optional<ParticipantId> leaderId,
+    std::shared_ptr<IReplicatedStateHandle> stateHandle)
+    -> std::shared_ptr<LogFollower> {
   auto log = InMemoryLog::loadFromLogCore(*logCore);
 
   auto const lastIndex = log.getLastTermIndexPair();
@@ -672,15 +676,19 @@ auto LogFollower::construct(
         std::shared_ptr<ReplicatedLogMetrics> logMetrics,
         std::shared_ptr<ReplicatedLogGlobalSettings const> options,
         ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
-        std::optional<ParticipantId> leaderId, InMemoryLog inMemoryLog)
+        std::optional<ParticipantId> leaderId,
+        std::shared_ptr<IReplicatedStateHandle> stateHandle,
+        InMemoryLog inMemoryLog)
         : LogFollower(loggerContext, std::move(logMetrics), std::move(options),
                       std::move(id), std::move(logCore), term,
-                      std::move(leaderId), std::move(inMemoryLog)) {}
+                      std::move(leaderId), std::move(stateHandle),
+                      std::move(inMemoryLog)) {}
   };
 
   return std::make_shared<MakeSharedWrapper>(
       loggerContext, std::move(logMetrics), std::move(options), std::move(id),
-      std::move(logCore), term, std::move(leaderId), std::move(log));
+      std::move(logCore), term, std::move(leaderId), std::move(stateHandle),
+      std::move(log));
 }
 auto LogFollower::copyInMemoryLog() const -> InMemoryLog {
   return _guardedFollowerData.getLockedGuard()->_inMemoryLog;

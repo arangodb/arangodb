@@ -29,6 +29,7 @@
 #include "Cluster/FailureOracle.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
 
 #include <algorithm>
 #include <random>

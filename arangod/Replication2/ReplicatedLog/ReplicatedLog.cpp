@@ -127,7 +127,7 @@ void replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data) {
 
       data.participant = LogLeader::construct(
           std::move(data.core), participants, configShared, _myself.serverId,
-          term.term, _logContext, _metrics, _options, nullptr);
+          term.term, _logContext, _metrics, _options, data.stateHandle);
       _metrics->replicatedLogLeaderTookOverNumber->count();
     } else {
       // follower
@@ -138,7 +138,7 @@ void replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data) {
 
       data.participant = LogFollower::construct(
           _logContext, _metrics, _options, _myself.serverId,
-          std::move(data.core), term.term, std::move(leader));
+          std::move(data.core), term.term, std::move(leader), data.stateHandle);
       _metrics->replicatedLogStartedFollowingNumber->operator++();
     }
   } else if (auto leader =

@@ -147,6 +147,14 @@ struct arangodb::VocBaseLogManager {
     guard->statesAndLogs.clear();
   }
 
+  auto updateReplicatedState(
+      arangodb::replication2::LogId id,
+      arangodb::replication2::agency::LogPlanTermSpecification const& term,
+      arangodb::replication2::agency::ParticipantsConfig const& config)
+      -> Result {
+    TRI_ASSERT(false);
+  }
+
   [[nodiscard]] auto dropReplicatedState(arangodb::replication2::LogId id)
       -> arangodb::Result {
     LOG_CTX("658c6", DEBUG, _logContext) << "Dropping replicated state " << id;
@@ -2152,6 +2160,28 @@ auto TRI_vocbase_t::updateReplicatedState(
     LogId id, agency::LogPlanTermSpecification const& term,
     agency::ParticipantsConfig const& config) -> Result {
   _logManager->updateReplicatedState(id, term, config);
+}
+
+auto TRI_vocbase_t::getReplicatedLogLeaderById(LogId id)
+    -> std::shared_ptr<replicated_log::LogLeader> {
+  auto log = getReplicatedLogById(id);
+  auto participant = std::dynamic_pointer_cast<replicated_log::LogLeader>(
+      log->getParticipant());
+  if (participant == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER);
+  }
+  return participant;
+}
+
+auto TRI_vocbase_t::getReplicatedLogFollowerById(LogId id)
+    -> std::shared_ptr<replicated_log::LogFollower> {
+  auto log = getReplicatedLogById(id);
+  auto participant = std::dynamic_pointer_cast<replicated_log::LogFollower>(
+      log->getParticipant());
+  if (participant == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER);
+  }
+  return participant;
 }
 
 auto TRI_vocbase_t::getReplicatedLogById(LogId id)

@@ -32,6 +32,7 @@
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/WaitForBag.h"
 #include "Replication2/ReplicatedLog/types.h"
+#include "ReplicatedLog.h"
 
 #include <Basics/Guarded.h>
 #include <Futures/Future.h>
@@ -54,7 +55,8 @@ class LogFollower : public ILogFollower,
       LoggerContext const&, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
       ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
-      std::optional<ParticipantId> leaderId) -> std::shared_ptr<LogFollower>;
+      std::optional<ParticipantId> leaderId,
+      std::shared_ptr<IReplicatedStateHandle>) -> std::shared_ptr<LogFollower>;
 
   // follower only
   [[nodiscard]] auto appendEntries(AppendEntriesRequest)
@@ -90,7 +92,8 @@ class LogFollower : public ILogFollower,
               std::shared_ptr<ReplicatedLogMetrics> logMetrics,
               std::shared_ptr<ReplicatedLogGlobalSettings const> options,
               ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
-              std::optional<ParticipantId> leaderId, InMemoryLog inMemoryLog);
+              std::optional<ParticipantId> leaderId,
+              std::shared_ptr<IReplicatedStateHandle>, InMemoryLog inMemoryLog);
 
   struct GuardedFollowerData {
     GuardedFollowerData() = delete;
@@ -126,6 +129,7 @@ class LogFollower : public ILogFollower,
   ParticipantId const _participantId;
   std::optional<ParticipantId> const _leaderId;
   LogTerm const _currentTerm;
+  std::shared_ptr<IReplicatedStateHandle> const _stateHandle;
 
   // We use the unshackled mutex because guards are captured by futures.
   // When using a std::mutex we would have to release the mutex in the same

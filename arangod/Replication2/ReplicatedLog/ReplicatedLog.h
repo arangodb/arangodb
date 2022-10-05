@@ -23,12 +23,13 @@
 
 #pragma once
 
+#include "Basics/Guarded.h"
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/LogCore.h"
 
 #include <iosfwd>
 #include <memory>
@@ -153,7 +154,6 @@ struct alignas(64) ReplicatedLog {
   struct GuardedData {
     explicit GuardedData(std::unique_ptr<LogCore> core)
         : core(std::move(core)) {}
-    std::shared_ptr<IReplicatedStateHandle> stateHandle;
 
     struct LatestConfig {
       explicit LatestConfig(agency::LogPlanTermSpecification term,
@@ -166,6 +166,7 @@ struct alignas(64) ReplicatedLog {
     std::unique_ptr<LogCore> core = nullptr;
     std::shared_ptr<ILogParticipant> participant = nullptr;
     std::optional<LatestConfig> latest;
+    std::shared_ptr<IReplicatedStateHandle> stateHandle;
   };
 
   void tryBuildParticipant(GuardedData& data);
