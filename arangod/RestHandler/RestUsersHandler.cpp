@@ -298,7 +298,7 @@ static Result StoreUser(auth::UserManager* um, int mode,
       }
       if (extra.isObject() && !extra.isEmptyObject()) {
         VPackSlice oldExtra = u.get("extra");
-        entry.setUserData(VPackCollection::merge(oldExtra, extra, false));
+        entry.setUserData(VPackCollection::merge(oldExtra, extra, true, false));
       }
       return TRI_ERROR_NO_ERROR;
     });
