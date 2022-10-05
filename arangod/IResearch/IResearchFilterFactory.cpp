@@ -2239,8 +2239,6 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
   if (filter) {
     auto& exists = append<irs::by_column_existence>(*filter, filterCtx);
     if (auto* opts = exists.mutable_options(); prefixMatch) {
-      TRI_ASSERT(ctx.namePrefix.empty() ||
-                 kludge::isNestedField(ctx.namePrefix));
       opts->acceptor = makeColumnAcceptor(!ctx.namePrefix.empty());
     }
     *exists.mutable_field() = std::move(fieldName);

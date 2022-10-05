@@ -105,15 +105,11 @@ void mangleNested(std::string& name) {
   normalizeExpansion(name);
   name += kNestedDelimiter;
 }
-#endif
 
 bool isNestedField(irs::string_ref name) noexcept {
-#ifdef USE_ENTERPRISE
   return !name.empty() && name.back() == kNestedDelimiter;
-#else
-  return false;
-#endif
 }
+#endif
 
 bool needTrackPrevDoc(irs::string_ref name, bool nested) noexcept {
 #ifdef USE_ENTERPRISE
