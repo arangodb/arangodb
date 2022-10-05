@@ -70,6 +70,10 @@ struct IReplicatedFollowerStateBase;
 struct IStateManagerBase {};
 template<typename S>
 struct IReplicatedStateImplBase;
+template<typename S>
+struct IReplicatedFollowerState;
+template<typename S>
+struct IReplicatedLeaderState;
 
 /**
  * Common base class for all ReplicatedStates, hiding the type information.
@@ -77,14 +81,7 @@ struct IReplicatedStateImplBase;
 struct ReplicatedStateBase {
   virtual ~ReplicatedStateBase() = default;
 
-  virtual void flush(StateGeneration plannedGeneration) = 0;
-  virtual void start(
-      std::unique_ptr<ReplicatedStateToken> token,
-      std::optional<velocypack::SharedSlice> const& coreParameter) = 0;
   virtual void drop() && = 0;
-  [[nodiscard]] virtual auto
-  resign() && -> std::unique_ptr<ReplicatedStateToken> = 0;
-  virtual void rebuildMe(IStateManagerBase const* caller) noexcept = 0;
   [[nodiscard]] virtual auto getStatus() -> std::optional<StateStatus> = 0;
   [[nodiscard]] auto getLeader()
       -> std::shared_ptr<IReplicatedLeaderStateBase> {
@@ -106,23 +103,74 @@ struct ReplicatedStateBase {
 };
 
 template<typename S>
+struct NewLeaderStateManager {
+  using CoreType = typename ReplicatedStateTraits<S>::CoreType;
+  explicit NewLeaderStateManager(
+      std::shared_ptr<IReplicatedLeaderState<S>> leaderState,
+      std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> logMethods);
+
+  void recoverEntries();
+  void updateCommitIndex(LogIndex index);
+  [[nodiscard]] auto resign() noexcept
+      -> std::pair<std::unique_ptr<CoreType>,
+                   std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
+
+ private:
+  std::shared_ptr<IReplicatedLeaderState<S>> _leaderState;
+  std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> _logMethods;
+};
+
+template<typename S>
+struct NewFollowerStateManager {
+  using CoreType = typename ReplicatedStateTraits<S>::CoreType;
+  explicit NewFollowerStateManager(
+      std::shared_ptr<IReplicatedFollowerState<S>> followerState,
+      std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods>
+          logMethods);
+  void acquireSnapshot(ServerID leader, LogIndex index);
+  void updateCommitIndex(LogIndex index);
+  [[nodiscard]] auto resign() noexcept
+      -> std::pair<std::unique_ptr<CoreType>,
+                   std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
+
+ private:
+  std::shared_ptr<IReplicatedFollowerState<S>> _followerState;
+  std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> _logMethods;
+  LogIndex _lastAppliedIndex = LogIndex{0};
+};
+
+template<typename S>
+struct NewUnconfiguredStateManager {
+  using CoreType = typename ReplicatedStateTraits<S>::CoreType;
+  explicit NewUnconfiguredStateManager(std::unique_ptr<CoreType>) noexcept;
+  [[nodiscard]] auto resign() noexcept
+      -> std::pair<std::unique_ptr<CoreType>,
+                   std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
+
+ private:
+  std::unique_ptr<CoreType> _core;
+};
+
+template<typename S>
 struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using Factory = typename ReplicatedStateTraits<S>::FactoryType;
   using FollowerType = typename ReplicatedStateTraits<S>::FollowerType;
   using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
 
+  ReplicatedStateManager(LoggerContext loggerContext,
+                         std::unique_ptr<CoreType> logCore,
+                         std::shared_ptr<Factory> factory);
+
   void acquireSnapshot(ServerID leader, LogIndex index) override;
 
   void updateCommitIndex(LogIndex index) override;
 
-  auto resign()
+  [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> override;
 
   void leadershipEstablished(
       std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods>) override;
-
-  void recoverEntries(std::unique_ptr<LogIterator> ptr) override;
 
   void becomeFollower(
       std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> methods)
@@ -130,15 +178,17 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
 
   void dropEntries() override;
 
+ private:
   struct GuardedData {
-    std::shared_ptr<IReplicatedStateImplBase<S>> _currentState;
-    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> _methods;
-    std::unique_ptr<CoreType> _core;
+    std::variant<NewUnconfiguredStateManager<S>, NewLeaderStateManager<S>,
+                 NewFollowerStateManager<S>>
+        _currentManager;
   };
 
   Guarded<GuardedData> _guarded;
 
-  std::shared_ptr<Factory> const factory;
+  LoggerContext const _loggerContext;
+  std::shared_ptr<Factory> const _factory;
 };
 
 template<typename S>
@@ -157,16 +207,7 @@ struct ReplicatedState final
                            std::shared_ptr<ReplicatedStateMetrics>);
   ~ReplicatedState() override;
 
-  /**
-   * Forces to rebuild the state machine depending on the replicated log state.
-   */
-  void flush(StateGeneration planGeneration) override;
-  void start(
-      std::unique_ptr<ReplicatedStateToken> token,
-      std::optional<velocypack::SharedSlice> const& coreParameter) override;
   void drop() && override;
-  [[nodiscard]] auto
-  resign() && -> std::unique_ptr<ReplicatedStateToken> override;
   /**
    * Returns the follower state machine. Returns nullptr if no follower state
    * machine is present. (i.e. this server is not a follower)
@@ -179,11 +220,6 @@ struct ReplicatedState final
   [[nodiscard]] auto getLeader() const -> std::shared_ptr<LeaderType>;
 
   [[nodiscard]] auto getStatus() -> std::optional<StateStatus> final;
-
-  /**
-   * Rebuilds the managers. Called by the manager when its participant is gone.
-   */
-  void rebuildMe(IStateManagerBase const* caller) noexcept override;
 
   auto createStateHandle()
       -> std::unique_ptr<replicated_log::IReplicatedStateHandle> override;

@@ -72,11 +72,10 @@ struct IReplicatedLogFollowerMethods : IReplicatedLogMethodsBase {
 // TODO Move to namespace replicate_state (and different file?)
 struct IReplicatedStateHandle {
   virtual ~IReplicatedStateHandle() = default;
-  virtual auto resign()
+  virtual auto resign() && noexcept
       -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> = 0;
   virtual void leadershipEstablished(
       std::unique_ptr<IReplicatedLogLeaderMethods>) = 0;
-  virtual void recoverEntries(std::unique_ptr<LogIterator>) = 0;
   virtual void becomeFollower(
       std::unique_ptr<IReplicatedLogFollowerMethods>) = 0;
   virtual void acquireSnapshot(ServerID leader, LogIndex) = 0;

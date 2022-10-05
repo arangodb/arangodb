@@ -53,78 +53,131 @@
 namespace arangodb::replication2::replicated_state {
 
 template<typename S>
+ReplicatedStateManager<S>::ReplicatedStateManager(
+    LoggerContext loggerContext, std::unique_ptr<CoreType> logCore,
+    std::shared_ptr<Factory> factory)
+    : _guarded{._currentManager =
+                   NewUnconfiguredStateManager(std::move(logCore))},
+      _factory(std::move(factory)),
+      _loggerContext(std::move(loggerContext)) {}
+
+template<typename S>
 void ReplicatedStateManager<S>::acquireSnapshot(ServerID leader,
-                                                LogIndex index) {
+                                                LogIndex commitIndex) {
   auto guard = _guarded.getLockedGuard();
   if (auto follower = std::dynamic_pointer_cast<IReplicatedFollowerState<S>>(
           guard->_currentState);
       follower != nullptr) {
-    // follower->acquireSnapshot().then([]{
-    //    _methods->onSnapshotCompleted();
-    // });
+    LOG_CTX("52a11", DEBUG, _loggerContext)
+        << "try to acquire a new snapshot, starting at " << commitIndex;
+
+    follower->acquireSnapshot().then(
+        [&] { guard._methods->onSnapshotCompleted(); });
+  } else {
+    ADB_PROD_ASSERT(false) << "State is not a follower (or uninitialized), but "
+                              "acquireSnapshot is called";
   }
 }
 
 template<typename S>
 void ReplicatedStateManager<S>::updateCommitIndex(LogIndex index) {
   auto guard = _guarded.getLockedGuard();
-  if (auto follower = std::dynamic_pointer_cast<IReplicatedFollowerState<S>>(
-          guard->_currentState);
-      follower != nullptr) {
-    auto log = guard->_methods->getLogSnapshot();
-    // get log iterator
-    // follower->applyEntries(iter);
-    // todo applyEntries returns a future. Is this necessary?
-    //      If yes, we have to deal with this async behaviour here.
-  }
+
+  std::visit(overload{
+                 [index](auto& manager) { manager.updateCommitIndex(index); },
+                 [](NewUnconfiguredStateManager<S>& manager) {
+                   ADB_PROD_ASSERT(false) << "update commit index called on "
+                                             "an unconfigured state manager";
+                 },
+             },
+             guard->_currentManager);
 }
 
 template<typename S>
 auto ReplicatedStateManager<S>::resign()
     -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> {
   auto guard = _guarded.getLockedGuard();
-  ADB_PROD_ASSERT(guard->_currentState != nullptr);
-  ADB_PROD_ASSERT(guard->_core == nullptr);
-  guard->_core = guard->_currentState->resign();
-  guard->_currentState.reset();
-  return std::move(guard->_methods);
+  auto&& [core, methods] =
+      std::visit([](auto& manager) { return std::move(manager).resign(); },
+                 guard->_currentManager);
+  // TODO Is it allowed to happen that resign() is called on an unconfigured
+  // state?
+  ADB_PROD_ASSERT(std::holds_alternative<NewUnconfiguredStateManager<S>>(
+                      guard->_currentManager) == (methods == nullptr));
+  guard->_currentManager.template emplace<NewUnconfiguredStateManager<S>>(
+      std::move(core));
+  return std::move(methods);
 }
 
 template<typename S>
 void ReplicatedStateManager<S>::leadershipEstablished(
     std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> methods) {
   auto guard = _guarded.getLockedGuard();
-  ADB_PROD_ASSERT(guard->_currentState == nullptr);
-  ADB_PROD_ASSERT(guard->_core != nullptr);
-  guard->_methods = std::move(methods);
-  guard->_currentState = factory.constructLeader(std::move(guard->_core));
-}
+  ADB_PROD_ASSERT(std::holds_alternative<NewUnconfiguredStateManager<S>>(
+      guard->_currentManager));
+  auto&& [core, oldMethods] =
+      std::move(
+          std::get<NewUnconfiguredStateManager<S>>(guard->_currentManager))
+          .resign();
+  ADB_PROD_ASSERT(oldMethods == nullptr);
+  auto leaderState = _factory.constructLeader(std::move(core));
+  auto& manager =
+      guard->_currentManager.template emplace<NewLeaderStateManager<S>>(
+          std::move(leaderState), std::move(methods));
 
-template<typename S>
-void ReplicatedStateManager<S>::recoverEntries(
-    std::unique_ptr<LogIterator> ptr) {
-  auto guard = _guarded.getLockedGuard();
-  ADB_PROD_ASSERT(guard->_currentState != nullptr);
-  auto leader = std::dynamic_pointer_cast<IReplicatedLeaderState<S>>(
-      guard->_currentState);
-  ADB_PROD_ASSERT(leader != nullptr);
-  auto fut = leader->recoverEntries(ptr);  // TODO requires deserialization
-  // handle future?
+  manager->recoverEntries();
 }
 
 template<typename S>
 void ReplicatedStateManager<S>::becomeFollower(
     std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> methods) {
   auto guard = _guarded.getLockedGuard();
-  ADB_PROD_ASSERT(guard->_currentState == nullptr);
-  ADB_PROD_ASSERT(guard->_core != nullptr);
-  guard->_methods = std::move(methods);
-  guard->_currentState = factory.constructFollower(std::move(guard->_core));
+  ADB_PROD_ASSERT(std::holds_alternative<NewUnconfiguredStateManager<S>>(
+      guard->_currentManager));
+  auto&& [core, oldMethods] =
+      std::move(
+          std::get<NewUnconfiguredStateManager<S>>(guard->_currentManager))
+          .resign();
+  ADB_PROD_ASSERT(oldMethods == nullptr);
+
+  auto followerState = _factory.constructFollower(std::move(core));
+  auto& manager =
+      guard->_currentManager.template emplace<NewFollowerStateManager<S>>(
+          std::move(followerState), std::move(methods));
 }
 
 template<typename S>
 void ReplicatedStateManager<S>::dropEntries() {
   ADB_PROD_ASSERT(false);
+}
+
+template<typename S>
+void NewLeaderStateManager<S>::recoverEntries() {
+  auto logSnapshot = _logMethods->getLogSnapshot();
+  auto logIter = logSnapshot.getIteratorFrom(LogIndex{0});
+  ADB_PROD_ASSERT(_leaderState != nullptr);
+  auto fut = _leaderState->recoverEntries(
+      std::move(logIter));  // TODO requires deserialization
+  // TOOD handle future
+  ADB_PROD_ASSERT(false);
+}
+
+template<typename S>
+void NewLeaderStateManager<S>::updateCommitIndex(LogIndex index) {
+  // TODO post resolving waitFor promises onto the scheduler
+}
+
+template<typename S>
+void NewFollowerStateManager<S>::updateCommitIndex(LogIndex commitIndex) {
+  auto log = _logMethods->getLogSnapshot();
+  auto iter = log.getIteratorRange(_lastAppliedIndex, commitIndex);
+  auto fut = _followerState->applyEntries(iter);
+  // TODO update _lastAppliedIndex after applying entries
+  // TODO handle concurrent calls to updateCommitIndex while applyEntries is
+  //      running
+  // get log iterator follower->applyEntries(iter); todo applyEntries
+  // returns a future. Is this necessary?
+  //      If yes, we have to deal with this async behaviour here.
 }
 
 template<typename S>
