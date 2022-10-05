@@ -298,26 +298,43 @@ struct CommitFailReason {
     friend auto operator==(NothingToCommit const& left,
                            NothingToCommit const& right) noexcept
         -> bool = default;
+
+    template<typename Inspector>
+    friend auto inspect(Inspector& f, NothingToCommit& x) {
+      return f.object(x).fields();
+    }
   };
   struct QuorumSizeNotReached {
     struct ParticipantInfo {
       bool isFailed{};
       bool isAllowedInQuorum{};
+      bool snapshotAvailable{};
       TermIndexPair lastAcknowledged;
-      static auto fromVelocyPack(velocypack::Slice) -> ParticipantInfo;
-      void toVelocyPack(velocypack::Builder& builder) const;
       friend auto operator==(ParticipantInfo const& left,
                              ParticipantInfo const& right) noexcept
           -> bool = default;
+      template<typename Inspector>
+      friend auto inspect(Inspector& f, ParticipantInfo& x) {
+        return f.object(x).fields(
+            f.field("isFailed", x.isFailed),
+            f.field("isAllowedInQuorum", x.isAllowedInQuorum),
+            f.field("snapshotAvailable", x.snapshotAvailable),
+            f.field("lastAcknowledged", x.lastAcknowledged));
+      }
     };
     using who_type = containers::FlatHashMap<ParticipantId, ParticipantInfo>;
-    static auto fromVelocyPack(velocypack::Slice) -> QuorumSizeNotReached;
-    void toVelocyPack(velocypack::Builder& builder) const;
+
     who_type who;
     TermIndexPair spearhead;
     friend auto operator==(QuorumSizeNotReached const& left,
                            QuorumSizeNotReached const& right) noexcept
         -> bool = default;
+
+    template<typename Inspector>
+    friend auto inspect(Inspector& f, QuorumSizeNotReached& x) {
+      return f.object(x).fields(f.field("who", x.who),
+                                f.field("spearhead", x.spearhead));
+    }
   };
   struct ForcedParticipantNotInQuorum {
     static auto fromVelocyPack(velocypack::Slice)
@@ -327,6 +344,10 @@ struct CommitFailReason {
     friend auto operator==(ForcedParticipantNotInQuorum const& left,
                            ForcedParticipantNotInQuorum const& right) noexcept
         -> bool = default;
+    template<typename Inspector>
+    friend auto inspect(Inspector& f, ForcedParticipantNotInQuorum& x) {
+      return f.object(x).fields(f.field("who", x.who));
+    }
   };
   struct NonEligibleServerRequiredForQuorum {
     enum Why {
@@ -334,6 +355,7 @@ struct CommitFailReason {
       // WrongTerm might be misleading, because the follower might be in the
       // right term, it just never has acked an entry of the current term.
       kWrongTerm,
+      kSnapshotMissing,
     };
     static auto to_string(Why) noexcept -> std::string_view;
 
@@ -341,24 +363,28 @@ struct CommitFailReason {
 
     CandidateMap candidates;
 
-    static auto fromVelocyPack(velocypack::Slice)
-        -> NonEligibleServerRequiredForQuorum;
-    void toVelocyPack(velocypack::Builder& builder) const;
     friend auto operator==(
         NonEligibleServerRequiredForQuorum const& left,
         NonEligibleServerRequiredForQuorum const& right) noexcept
         -> bool = default;
+    template<typename Inspector>
+    friend auto inspect(Inspector& f, NonEligibleServerRequiredForQuorum& x) {
+      return f.object(x).fields(f.field("candidates", x.candidates));
+    }
   };
   struct FewerParticipantsThanWriteConcern {
     std::size_t effectiveWriteConcern{};
     std::size_t numParticipants{};
-    static auto fromVelocyPack(velocypack::Slice)
-        -> FewerParticipantsThanWriteConcern;
-    void toVelocyPack(velocypack::Builder& builder) const;
     friend auto operator==(
         FewerParticipantsThanWriteConcern const& left,
         FewerParticipantsThanWriteConcern const& right) noexcept
         -> bool = default;
+    template<typename Inspector>
+    friend auto inspect(Inspector& f, FewerParticipantsThanWriteConcern& x) {
+      return f.object(x).fields(
+          f.field("effectiveWriteConcern", x.effectiveWriteConcern),
+          f.field("numParticipants", x.numParticipants));
+    }
   };
   std::variant<NothingToCommit, QuorumSizeNotReached,
                ForcedParticipantNotInQuorum, NonEligibleServerRequiredForQuorum,

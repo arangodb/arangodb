@@ -27,6 +27,7 @@
 #include <mutex>
 
 #include <Basics/Result.h>
+#include <Basics/ResultT.h>
 #include <Basics/UnshackledMutex.h>
 #include <Futures/Future.h>
 
@@ -70,6 +71,7 @@ struct alignas(64) LogCore {
   auto logId() const noexcept -> LogId;
 
   auto updateSnapshotState(replicated_state::SnapshotStatus) -> Result;
+  auto getSnapshotState() -> ResultT<replicated_state::SnapshotStatus>;
 
  private:
   replicated_state::IStorageEngineMethods& _storage;

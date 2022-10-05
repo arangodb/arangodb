@@ -82,6 +82,7 @@ struct AppendEntriesResult {
   ErrorCode const errorCode;
   AppendEntriesErrorReason reason;
   MessageId messageId;
+  bool snapshotAvailable{false};
 
   std::optional<TermIndexPair> conflict;
 

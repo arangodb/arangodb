@@ -220,9 +220,13 @@ inline constexpr std::string_view CandidatesFieldName = "candidates";
 inline constexpr std::string_view NonEligibleNotAllowedInQuorum =
     "notAllowedInQuorum";
 inline constexpr std::string_view NonEligibleWrongTerm = "wrongTerm";
+inline constexpr std::string_view NonEligibleSnapshotMissing =
+    "snapshotMissing";
 inline constexpr std::string_view IsFailedFieldName = "isFailed";
 inline constexpr std::string_view IsAllowedInQuorumFieldName =
     "isAllowedInQuorum";
+inline constexpr std::string_view SnapshotAvailableFieldName =
+    "isSnapshotAvailable";
 inline constexpr std::string_view LastAcknowledgedFieldName =
     "lastAcknowledged";
 inline constexpr std::string_view SpearheadFieldName = "spearhead";
@@ -292,6 +296,7 @@ auto replicated_log::CommitFailReason::QuorumSizeNotReached::ParticipantInfo::
   return {
       .isFailed = s.get(IsFailedFieldName).getBool(),
       .isAllowedInQuorum = s.get(IsAllowedInQuorumFieldName).getBool(),
+      .snapshotAvailable = s.get(SnapshotAvailableFieldName).getBool(),
       .lastAcknowledged =
           deserialize<TermIndexPair>(s.get(LastAcknowledgedFieldName)),
   };
@@ -368,6 +373,8 @@ auto replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::
       return NonEligibleNotAllowedInQuorum;
     case kWrongTerm:
       return NonEligibleWrongTerm;
+    case kSnapshotMissing:
+      return NonEligibleSnapshotMissing;
     default:
       TRI_ASSERT(false);
       return "(unknown)";

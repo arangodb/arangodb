@@ -90,3 +90,11 @@ auto LogCore::updateSnapshotState(replicated_state::SnapshotStatus status)
   meta.snapshot.status = status;
   return _storage.updateMetadata(meta);
 }
+
+auto LogCore::getSnapshotState() -> ResultT<replicated_state::SnapshotStatus> {
+  auto metaResult = _storage.readMetadata();
+  if (metaResult.fail()) {
+    return metaResult.result();
+  }
+  return metaResult->snapshot.status;
+}

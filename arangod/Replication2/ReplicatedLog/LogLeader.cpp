@@ -853,6 +853,13 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
           << ", errorCode = " << to_string(response.errorCode)
           << ", reason  = " << to_string(response.reason.error);
 
+      if (follower.snapshotAvailable != response.snapshotAvailable) {
+        LOG_CTX("efd44", INFO, follower.logContext)
+            << "snapshot status changed old = " << follower.snapshotAvailable
+            << " new = " << response.snapshotAvailable;
+        follower.snapshotAvailable = response.snapshotAvailable;
+      }
+
       follower.lastErrorReason = response.reason;
       if (response.isSuccess()) {
         follower.numErrorsSinceLastAnswer = 0;
@@ -956,11 +963,12 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerStates() const
     auto flags = activeParticipantsConfig->participants.find(pid);
     TRI_ASSERT(flags != std::end(activeParticipantsConfig->participants));
 
-    participantStates.emplace_back(
-        algorithms::ParticipantState{.lastAckedEntry = follower->lastAckedIndex,
-                                     .id = pid,
-                                     .failed = false,
-                                     .flags = flags->second});
+    participantStates.emplace_back(algorithms::ParticipantState{
+        .lastAckedEntry = follower->lastAckedIndex,
+        .id = pid,
+        .failed = false,
+        .snapshotAvailable = follower->snapshotAvailable,
+        .flags = flags->second});
 
     largestCommonIndex =
         std::min(largestCommonIndex, follower->lastAckedCommitIndex);

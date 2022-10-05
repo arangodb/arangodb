@@ -125,6 +125,9 @@ auto ParticipantState::isForced() const noexcept -> bool {
 };
 
 auto ParticipantState::isFailed() const noexcept -> bool { return failed; };
+auto ParticipantState::isSnapshotAvailable() const noexcept -> bool {
+  return snapshotAvailable;
+}
 
 auto ParticipantState::lastTerm() const noexcept -> LogTerm {
   return lastAckedEntry.term;
@@ -159,7 +162,7 @@ auto algorithms::calculateCommitIndex(
   eligible.reserve(participants.size());
   std::copy_if(std::begin(participants), std::end(participants),
                std::back_inserter(eligible), [&](auto const& p) {
-                 return p.isAllowedInQuorum() &&
+                 return p.isAllowedInQuorum() and p.isSnapshotAvailable() and
                         p.lastTerm() == lastTermIndex.term;
                });
 
@@ -245,12 +248,14 @@ auto algorithms::calculateCommitIndex(
       auto who = CommitFailReason::QuorumSizeNotReached::who_type();
       for (auto const& participant : participants) {
         if (participant.lastAckedEntry < lastTermIndex ||
-            !participant.isAllowedInQuorum()) {
+            !participant.isAllowedInQuorum() ||
+            !participant.isSnapshotAvailable()) {
           who.try_emplace(
               participant.id,
               CommitFailReason::QuorumSizeNotReached::ParticipantInfo{
                   .isFailed = participant.isFailed(),
                   .isAllowedInQuorum = participant.isAllowedInQuorum(),
+                  .snapshotAvailable = participant.isSnapshotAvailable(),
                   .lastAcknowledged = participant.lastAckedEntry,
               });
         }
@@ -276,6 +281,10 @@ auto algorithms::calculateCommitIndex(
       candidates.emplace(
           p.id,
           CommitFailReason::NonEligibleServerRequiredForQuorum::kWrongTerm);
+    } else if (not p.isSnapshotAvailable()) {
+      candidates.emplace(p.id,
+                         CommitFailReason::NonEligibleServerRequiredForQuorum::
+                             kSnapshotMissing);
     }
   }
 

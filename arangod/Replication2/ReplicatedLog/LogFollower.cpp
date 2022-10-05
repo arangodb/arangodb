@@ -182,8 +182,11 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     if (req.prevLogEntry == TermIndexPair{}) {
       LOG_CTX("6262d", INFO, _loggerContext)
           << "Log truncated - invalidating snapshot";
-      dataGuard->_logCore->updateSnapshotState(
-          replicated_state::SnapshotStatus::kUninitialized);
+      if (auto res = dataGuard->_logCore->updateSnapshotState(
+              replicated_state::SnapshotStatus::kUninitialized);
+          res.fail()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
       ADB_PROD_ASSERT(_leaderId.has_value());
       _stateHandle->acquireSnapshot(*_leaderId, req.prevLogEntry.index + 1);
     }
@@ -412,6 +415,7 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
     status.leader = _leaderId;
     status.term = _currentTerm;
     status.lowestIndexToKeep = followerData._lowestIndexToKeep;
+    // TODO add snapshot status?
     return LogStatus{std::move(status)};
   });
 }
@@ -427,7 +431,8 @@ auto replicated_log::LogFollower::getQuickStatus() const -> QuickLogStatus {
         .role = ParticipantRole::kFollower,
         .term = _currentTerm,
         .local = followerData.getLocalStatistics(),
-        .leadershipEstablished = followerData._commitIndex > kBaseIndex};
+        .leadershipEstablished = followerData._commitIndex > kBaseIndex,
+        .snapshotAvailable = followerData._snapshotCompleted};
   });
 }
 
@@ -509,6 +514,17 @@ replicated_log::LogFollower::LogFollower(
       _currentTerm(term),
       _stateHandle(std::move(stateHandle)),
       _guardedFollowerData(*this, std::move(logCore), std::move(inMemoryLog)) {
+  auto guard = _guardedFollowerData.getLockedGuard();
+  auto snapshotStatus = guard->_logCore->getSnapshotState();
+  if (snapshotStatus.fail()) {
+    THROW_ARANGO_EXCEPTION(snapshotStatus.result());
+  }
+  guard->_snapshotCompleted =
+      snapshotStatus == replicated_state::SnapshotStatus::kCompleted;
+
+  LOG_CTX("c3790", DEBUG, _loggerContext)
+      << "loading snapshot status: " << to_string(*snapshotStatus);
+
   struct MethodsImpl : IReplicatedLogFollowerMethods {
     explicit MethodsImpl(LogFollower& log) : _log(log) {}
     auto releaseIndex(LogIndex index) -> void override {
@@ -729,7 +745,13 @@ auto LogFollower::copyInMemoryLog() const -> InMemoryLog {
 }
 
 Result LogFollower::onSnapshotCompleted() {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  auto guard = _guardedFollowerData.getLockedGuard();
+  auto res = guard->_logCore->updateSnapshotState(
+      replicated_state::SnapshotStatus::kCompleted);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  guard->_snapshotCompleted = true;
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()
