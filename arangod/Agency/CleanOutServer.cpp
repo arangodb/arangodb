@@ -30,6 +30,7 @@
 #include "Agency/MoveShard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"

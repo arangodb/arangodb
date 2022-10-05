@@ -277,7 +277,6 @@ const replicatedLogSuite = function () {
           expectedDocumentsInserted[quorum.index] = secondDoc;
           assertTrue(quorum.result.quorum.quorum.indexOf(followers[0]) === -1);
         }
-        print(log.status());
       }
 
       // now stop the leader
