@@ -16,6 +16,9 @@ v3.10.0 (2022-09-29)
 v3.10.0-rc.1 (2022-09-25)
 -------------------------
 
+* BTS-1008: Update react-autocomplete-input to fix single letter collection
+  bug when creating a link in the views in the WebUI.
+
 * Temporary fix for BTS-1006 (hides new view types).
 
 * Fixed SEARCH-399 Rule `restrict-to-single-shard` now works properly with
