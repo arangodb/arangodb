@@ -8,41 +8,7 @@ add_subdirectory(Greenspun)
 # Fuerte tests
 # ----------------------------------------
 
-set(FUERTE_TESTS_SOURCES
-  Fuerte/VstTest.cpp
-  Fuerte/ConnectionBasicTest.cpp
-  Fuerte/ConnectionConcurrentTest.cpp
-  Fuerte/ConnectionFailuresTest.cpp
-  Fuerte/ConnectionTimeoutsTest.cpp
-#    test_10000_writes.cpp
-)
-
-add_executable(fuertetest
-  ${FUERTE_TESTS_SOURCES}
-  Fuerte/main.cpp
-)
-
-target_link_libraries(fuertetest
-    fuerte
-    gtest
-    boost_boost
-    arango
-    arango_v8server
-    arango_v8
-    arangoserver
-    ${MSVC_LIBS}
-    ${OPENSSL_LIBRARIES}
-    ${CMAKE_THREAD_LIBS_INIT}
-)
-
-target_include_directories(fuertetest SYSTEM PRIVATE
-  ${V8_INTERNAL_INCLUDE_DIR}
-  ${INCLUDE_DIRECTORIES}
-  ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
-  ${CMAKE_SOURCE_DIR}/${GOOGLETEST_ROOT}/include
-  ${CMAKE_SOURCE_DIR}/3rdParty/fuerte/src
-)
-
+add_subdirectory(Fuerte)
 
 # ----------------------------------------
 # Link directories
@@ -415,6 +381,7 @@ add_executable(
   ../cmake/activeCodePage.manifest
   ${ARANGODB_TESTS_SOURCES}
   ${ARANGODB_REPLICATION2_TEST_SOURCES}
+  ${ARANGODB_GRAPH_TEST_SOURCES}
   main.cpp)
 
 set(USE_SEPARATE_REPLICATION2_TESTS_BINARY FALSE CACHE BOOL
@@ -436,6 +403,7 @@ if (USE_SEPARATE_GRAPH_TESTS_BINARY)
   add_executable(
           arangodbtests_graph
           ${ARANGODB_TESTS_COMMON_SOURCES}
+          ${ARANGODB_GRAPH_TEST_SOURCES}
           main.cpp
   )
 endif()
