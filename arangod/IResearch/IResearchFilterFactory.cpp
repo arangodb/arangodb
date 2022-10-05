@@ -2244,7 +2244,7 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
     exists.boost(filterCtx.boost);
     auto* opts = exists.mutable_options();
     if (prefixMatch) {
-      opts->acceptor = [](irs::string_ref) { return true; };
+      opts->acceptor = [](irs::string_ref, irs::string_ref) { return true; };
     }
   }
 
