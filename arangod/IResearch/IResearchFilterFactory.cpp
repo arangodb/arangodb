@@ -2094,10 +2094,6 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
     return error::nondeterministicArgs(funcName);
   }
 
-  if (!ctx.isSearchQuery) {
-    return {TRI_ERROR_NOT_IMPLEMENTED, "EXISTS is supported for SEARCH only"};
-  }
-
   auto const argc = args.numMembers();
 
   if (argc < 1 || argc > 3) {
@@ -3953,6 +3949,7 @@ frozen::map<irs::string_ref, ConvertionHandler,
     {GEO_INTERSECT_FUNC, fromFuncGeoContainsIntersect},
     {"GEO_IN_RANGE", fromFuncGeoInRange},
     {"GEO_CONTAINS", fromFuncGeoContainsIntersect},
+    // GEO_DISTANCE missing because it doesn't return boolean
     // context functions
     {"BOOST", fromFuncBoost},
     {"ANALYZER", fromFuncAnalyzer},

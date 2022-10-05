@@ -610,7 +610,7 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
         generateExpression(remainderCondition, indexCondition);
 
     auto container = aql::utils::extractNonConstPartsOfIndexCondition(
-        ast, getRegisterPlan()->varInfo, false, false, indexCondition,
+        ast, getRegisterPlan()->varInfo, false, nullptr, indexCondition,
         options()->tmpVar());
     indexAccessors.emplace_back(std::move(indexToUse), indexCondition,
                                 memberToUpdate, std::move(expression),
