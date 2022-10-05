@@ -181,6 +181,7 @@ class TraversalNode : public virtual GraphNode {
 
   /// @brief remember the condition to execute for early traversal abortion.
   void setCondition(std::unique_ptr<Condition> condition);
+  void markUnusedConditionVariable(Variable const* var);
 
   /// @brief return the condition for the node
   Condition const* condition() const { return _condition.get(); }
@@ -244,6 +245,9 @@ class TraversalNode : public virtual GraphNode {
 
   void traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
                             bool withProperties) const;
+
+  /// @brief variables that got optimized out
+  VarIdSet _optimizedOutVariables;
 
   /// @brief vertex output variable
   Variable const* _pathOutVariable;

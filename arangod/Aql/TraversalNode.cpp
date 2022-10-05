@@ -365,16 +365,18 @@ void TraversalNode::replaceVariables(
 /// @brief getVariablesUsedHere
 void TraversalNode::getVariablesUsedHere(VarSet& result) const {
   for (auto const& condVar : _conditionVariables) {
-    if (condVar != getTemporaryVariable()) {
+    if (condVar != pathOutVariable() && condVar != getTemporaryVariable()) {
       result.emplace(condVar);
     }
   }
+
   for (auto const& pruneVar : _pruneVariables) {
     if (pruneVar != vertexOutVariable() && pruneVar != edgeOutVariable() &&
         pruneVar != pathOutVariable()) {
       result.emplace(pruneVar);
     }
   }
+
   if (usesInVariable()) {
     result.emplace(_inVariable);
   }
@@ -1084,6 +1086,9 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
                                    _globalVertexConditions.begin(),
                                    _globalVertexConditions.end());
 
+  // Optimized Out Variables
+  c._optimizedOutVariables = _optimizedOutVariables;
+
   for (auto const& it : _edgeConditions) {
     // Copy the builder
     auto ecBuilder =
@@ -1223,12 +1228,17 @@ void TraversalNode::setCondition(
          oneVar->id != _vertexOutVariable->id) &&
         (_edgeOutVariable == nullptr || oneVar->id != _edgeOutVariable->id) &&
         (_pathOutVariable == nullptr || oneVar->id != _pathOutVariable->id) &&
-        (_inVariable == nullptr || oneVar->id != _inVariable->id)) {
+        (_inVariable == nullptr || oneVar->id != _inVariable->id) &&
+        (!_optimizedOutVariables.contains(oneVar->id))) {
       _conditionVariables.emplace(oneVar);
     }
   }
 
   _condition = std::move(condition);
+}
+
+void TraversalNode::markUnusedConditionVariable(Variable const* var) {
+  _optimizedOutVariables.emplace(var->id);
 }
 
 void TraversalNode::registerCondition(bool isConditionOnEdge,
