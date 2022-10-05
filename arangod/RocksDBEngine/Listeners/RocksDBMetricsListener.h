@@ -34,6 +34,7 @@
 namespace rocksdb {
 struct CompactionJobInfo;
 class DB;
+struct FlushJobInfo;
 }  // namespace rocksdb
 
 namespace arangodb {
@@ -47,6 +48,10 @@ class RocksDBMetricsListener : public rocksdb::EventListener {
  public:
   explicit RocksDBMetricsListener(ArangodServer&);
 
+  void OnFlushBegin(rocksdb::DB*, rocksdb::FlushJobInfo const& info) override;
+  void OnFlushCompleted(rocksdb::DB*,
+                        rocksdb::FlushJobInfo const& info) override;
+
   void OnCompactionBegin(rocksdb::DB*,
                          rocksdb::CompactionJobInfo const&) override;
   void OnCompactionCompleted(rocksdb::DB*,
@@ -54,6 +59,9 @@ class RocksDBMetricsListener : public rocksdb::EventListener {
   void OnStallConditionsChanged(rocksdb::WriteStallInfo const& info) override;
 
  private:
+  void handleFlush(std::string_view phase,
+                   rocksdb::FlushJobInfo const& info) const;
+
   void handleCompaction(std::string_view phase,
                         rocksdb::CompactionJobInfo const& info) const;
 
