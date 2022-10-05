@@ -83,7 +83,7 @@ auto hasCurrentTermWithLeader(Log const& log) -> bool {
 
 // Leader has failed if it is marked as failed or its rebootId is
 // different from what is expected
-auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
+auto isLeaderFailed(ServerInstanceReference const& leader,
                     ParticipantsHealth const& health) -> bool {
   // TODO: less obscure with fewer negations
   // TODO: write test first
@@ -273,7 +273,7 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
     if (newLeaderRebootId.has_value()) {
       ctx.reportStatus<LogCurrentSupervision::LeaderElectionSuccess>(election);
       ctx.createAction<LeaderElectionAction>(
-          LogPlanTermSpecification::Leader(newLeader, *newLeaderRebootId),
+          ServerInstanceReference(newLeader, *newLeaderRebootId),
           effectiveWriteConcern,
           std::min(current.supervision->assumedWriteConcern,
                    effectiveWriteConcern),
@@ -390,7 +390,8 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
         auto const& rebootId = health.getRebootId(participant);
         if (rebootId.has_value()) {
           ctx.createAction<SwitchLeaderAction>(
-              LogPlanTermSpecification::Leader{participant, *rebootId});
+              ServerInstanceReference{participant, *rebootId});
+
           return;
         } else {
           // TODO: this should get the participant
@@ -472,7 +473,7 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
       auto const& rebootId = health.getRebootId(*target.leader);
       if (rebootId.has_value()) {
         ctx.createAction<SwitchLeaderAction>(
-            LogPlanTermSpecification::Leader{*target.leader, *rebootId});
+            ServerInstanceReference{*target.leader, *rebootId});
       } else {
         ctx.reportStatus<LogCurrentSupervision::TargetLeaderInvalid>();
       }
@@ -508,7 +509,7 @@ auto pickRandomParticipantToBeLeader(ParticipantsFlagsMap const& participants,
 auto pickLeader(std::optional<ParticipantId> targetLeader,
                 ParticipantsFlagsMap const& participants,
                 ParticipantsHealth const& health, uint64_t logId)
-    -> std::optional<LogPlanTermSpecification::Leader> {
+    -> std::optional<ServerInstanceReference> {
   auto& leaderId = targetLeader;
 
   if (!leaderId) {
@@ -518,7 +519,7 @@ auto pickLeader(std::optional<ParticipantId> targetLeader,
   if (leaderId.has_value()) {
     auto const& rebootId = health.getRebootId(*leaderId);
     if (rebootId.has_value()) {
-      return LogPlanTermSpecification::Leader{*leaderId, *rebootId};
+      return ServerInstanceReference{*leaderId, *rebootId};
     }
   };
 

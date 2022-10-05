@@ -59,7 +59,7 @@ template<typename S>
 struct IReplicatedStateImplBase {
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   virtual ~IReplicatedStateImplBase() = default;
-  virtual auto resign() noexcept -> std::unique_ptr<CoreType> = 0;
+  virtual auto resign() && noexcept -> std::unique_ptr<CoreType> = 0;
 };
 
 template<typename S>
@@ -86,8 +86,8 @@ struct IReplicatedLeaderState : IReplicatedStateImplBase<S>,
   [[nodiscard]] auto getStream() const noexcept
       -> std::shared_ptr<Stream> const&;
 
-  [[nodiscard]] virtual auto resign() && noexcept
-      -> std::unique_ptr<CoreType> = 0;
+  [[nodiscard]] auto resign() && noexcept
+      -> std::unique_ptr<CoreType> override = 0;
 
   /**
    * This hook is called after leader recovery is completed and the internal
@@ -148,8 +148,8 @@ struct IReplicatedFollowerState : IReplicatedStateImplBase<S>,
    * TODO Comment missing
    * @return
    */
-  [[nodiscard]] virtual auto resign() && noexcept
-      -> std::unique_ptr<CoreType> = 0;
+  [[nodiscard]] auto resign() && noexcept
+      -> std::unique_ptr<CoreType> override = 0;
 
  protected:
   [[nodiscard]] auto getStream() const noexcept

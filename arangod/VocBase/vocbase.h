@@ -202,6 +202,15 @@ struct TRI_vocbase_t {
           arangodb::replication2::replicated_log::QuickLogStatus>;
 
  public:
+  // Old Replicated Log API. Still there for compatibility. To be removed.
+  auto getReplicatedLogById(arangodb::replication2::LogId id)
+      -> std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>;
+  auto getReplicatedLogLeaderById(arangodb::replication2::LogId id)
+      -> std::shared_ptr<arangodb::replication2::replicated_log::LogLeader>;
+  auto getReplicatedLogFollowerById(arangodb::replication2::LogId id)
+      -> std::shared_ptr<arangodb::replication2::replicated_log::LogFollower>;
+
+ public:
   arangodb::basics::DeadlockDetector<arangodb::TransactionId,
                                      arangodb::LogicalCollection>
       _deadlockDetector;

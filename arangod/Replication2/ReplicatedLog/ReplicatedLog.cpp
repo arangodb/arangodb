@@ -119,7 +119,6 @@ void replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data) {
     auto const& config = data.latest->config;
     if (term.leader == _myself) {
       // leader
-      // TODO participants
       auto participants = std::vector<std::shared_ptr<AbstractFollower>>{};
       participants.reserve(config.participants.size());
       for (auto const& [id, p] : config.participants) {

@@ -83,9 +83,6 @@ auto createReplicatedLogTrx(arangodb::agency::envelope envelope,
     -> arangodb::agency::envelope;
 auto createReplicatedLog(DatabaseID const& database, LogTarget const& spec)
     -> futures::Future<ResultT<uint64_t>>;
-auto createReplicatedState(DatabaseID const& database,
-                           replicated_state::agency::Target const& spec)
-    -> futures::Future<ResultT<uint64_t>>;
 auto deleteReplicatedStateTrx(arangodb::agency::envelope envelope,
                               DatabaseID const& database, LogId id)
     -> arangodb::agency::envelope;

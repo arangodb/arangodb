@@ -130,7 +130,7 @@ struct alignas(64) ReplicatedLog {
   void updateConfig(agency::LogPlanTermSpecification term,
                     agency::ParticipantsConfig config);
 
-  //  auto getId() const noexcept -> LogId;
+  auto getId() const noexcept -> LogId;
   //  auto getGlobalLogId() const noexcept -> GlobalLogIdentifier const&;
   //  auto becomeLeader(
   //      ParticipantId id, LogTerm term,
@@ -142,12 +142,12 @@ struct alignas(64) ReplicatedLog {
   //                      std::optional<ParticipantId> leaderId)
   //      -> std::shared_ptr<LogFollower>;
   //
-  //  auto getParticipant() const -> std::shared_ptr<ILogParticipant>;
+  auto getParticipant() const -> std::shared_ptr<ILogParticipant>;
   //
   //  auto getLeader() const -> std::shared_ptr<LogLeader>;
   //  auto getFollower() const -> std::shared_ptr<LogFollower>;
   //
-  //  auto resign() && -> std::unique_ptr<LogCore>;
+  auto resign() && -> std::unique_ptr<LogCore>;
 
  private:
   struct GuardedData {

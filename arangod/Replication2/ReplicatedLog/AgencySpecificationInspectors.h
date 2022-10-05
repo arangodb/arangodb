@@ -63,7 +63,7 @@ auto constexpr AssumedWaitForSync = std::string_view{"assumedWaitForSync"};
 }  // namespace static_strings
 
 template<class Inspector>
-auto inspect(Inspector& f, LogPlanTermSpecification::Leader& x) {
+auto inspect(Inspector& f, ServerInstanceReference& x) {
   return f.object(x).fields(f.field(StaticStrings::ServerId, x.serverId),
                             f.field(StaticStrings::RebootId, x.rebootId));
 }

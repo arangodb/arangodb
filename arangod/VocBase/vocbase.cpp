@@ -2154,6 +2154,9 @@ auto TRI_vocbase_t::updateReplicatedState(
   _logManager->updateReplicatedState(id, term, config);
 }
 
+auto TRI_vocbase_t::getReplicatedLogById(LogId id)
+    -> std::shared_ptr<replicated_log::ReplicatedLog> {}
+
 auto TRI_vocbase_t::getReplicatedStatesQuickStatus() const
     -> std::unordered_map<LogId, replicated_log::QuickLogStatus> {
   return _logManager->getReplicatedLogsQuickStatus();

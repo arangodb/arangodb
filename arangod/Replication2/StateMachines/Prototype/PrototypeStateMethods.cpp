@@ -79,7 +79,7 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
           ResultT<std::unordered_map<std::string, std::string>>> override {
     auto stateMachine =
         std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-            _vocbase.getReplicatedStateById(id));
+            _vocbase.getReplicatedStateById(id).get());
     if (stateMachine == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL, basics::StringUtils::concatT(
@@ -115,7 +115,7 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
       -> futures::Future<Result> override {
     auto stateMachine =
         std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-            _vocbase.getReplicatedStateById(id));
+            _vocbase.getReplicatedStateById(id).get());
     if (stateMachine == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL, basics::StringUtils::concatT(
