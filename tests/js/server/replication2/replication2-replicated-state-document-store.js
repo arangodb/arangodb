@@ -346,12 +346,15 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       // we need to fill the collection with some docs since truncate will only
       // use range-deletes (which are replicated as truncate op) if the number
       // of docs is > 32*1024, otherwise it uses babies removes.
-      const docs = [];
-      for (let i = 0; i < 33; ++i) {
+      // We have two shards, so we need to insert at least twice as many docs to have high enough probability that each
+      // shard contains more than 32k docs.
+      let docs = [];
+      for (let i = 0; i < 70; ++i) {
         for (let j = 0; j < 1024; ++j) {
           docs.push({});
         }
         collection.insert(docs);
+        docs.length = 0;
       }
       collection.truncate();
 
