@@ -36,44 +36,8 @@
 
 #include <type_traits>
 
-namespace arangodb {
-namespace iresearch {
-
-irs::doc_iterator::ptr makeAllIterator(irs::sub_reader const& segment,
-                                       irs::bytes_ref stats,
-                                       const irs::Order& scorers,
-                                       irs::score_t boost, std::string_view);
-
-#ifndef USE_ENTERPRISE
-irs::doc_iterator::ptr makeAllIterator(irs::sub_reader const& segment,
-                                       irs::bytes_ref stats,
-                                       const irs::Order& scorers,
-                                       irs::score_t boost, std::string_view) {
-  return irs::memory::make_managed<irs::all_iterator>(
-      segment, stats.c_str(), scorers, segment.docs_count(), boost);
-}
-#endif
-
+namespace arangodb::iresearch {
 namespace {
-
-template<typename T>
-irs::filter::prepared::ptr compileQuery(ExpressionCompilationContext const& ctx,
-                                        irs::index_reader const& index,
-                                        irs::Order const& order,
-                                        irs::score_t boost,
-                                        std::string_view allColumn) {
-  using type_t =
-      typename std::enable_if_t<std::is_base_of_v<irs::filter::prepared, T>, T>;
-
-  irs::bstring stats(order.stats_size(), 0);
-  auto* stats_buf = const_cast<irs::byte_type*>(stats.data());
-
-  // skip filed-level/term-level statistics because there are no fields/terms
-  irs::PrepareCollectors(order.buckets(), stats_buf, index);
-
-  return irs::memory::make_managed<type_t>(ctx, std::move(stats), boost,
-                                           allColumn);
-}
 
 class NondeterministicExpressionIteratorBase : public irs::doc_iterator {
  public:
@@ -114,7 +78,7 @@ class NondeterministicExpressionIterator final
                                      ExpressionExecutionContext const& ectx)
       : NondeterministicExpressionIteratorBase{cctx, ectx},
         _it{std::move(it)},
-        _doc{irs::get<irs::document>(*it)} {
+        _doc{irs::get<irs::document>(*_it)} {
     TRI_ASSERT(_it);
     TRI_ASSERT(_doc);
   }
@@ -150,89 +114,30 @@ class NondeterministicExpressionIterator final
   irs::document const* _doc;
 };
 
-class NondeterministicExpressionAllIterator final
-    : public NondeterministicExpressionIteratorBase {
+class ExpressionQuery : public irs::filter::prepared {
  public:
-  NondeterministicExpressionAllIterator(
-      irs::sub_reader const& reader, irs::byte_type const* stats,
-      irs::Order const& order, uint64_t docs_count,
-      ExpressionCompilationContext const& cctx,
-      ExpressionExecutionContext const& ectx, irs::score_t boost)
-      : NondeterministicExpressionIteratorBase{cctx, ectx},
-        max_doc_{irs::doc_id_t(irs::doc_limits::min() + docs_count - 1)} {
-    std::get<irs::cost>(attrs_).reset(max_doc_);
-
-    // set scorers
-    if (!order.empty()) {
-      auto& score = std::get<irs::score>(attrs_);
-
-      score = irs::CompileScore(order.buckets(), reader,
-                                irs::empty_term_reader{docs_count}, stats,
-                                *this, boost);
-    }
+  void visit(irs::sub_reader const& segment, irs::PreparedStateVisitor& visitor,
+             irs::score_t boost) const final {
+    return _allQuery->visit(segment, visitor, boost);
   }
 
-  bool next() override {
-    auto& doc = std::get<irs::document>(attrs_);
-    return !irs::doc_limits::eof(seek(doc.value + 1));
+ protected:
+  explicit ExpressionQuery(ExpressionCompilationContext const& ctx,
+                           irs::filter::prepared::ptr&& allQuery) noexcept
+      : _allQuery{std::move(allQuery)}, _ctx{ctx} {
+    TRI_ASSERT(_allQuery);
   }
 
-  irs::attribute* get_mutable(irs::type_info::type_id id) noexcept final {
-    return irs::get_mutable(attrs_, id);
-  }
-
-  irs::doc_id_t seek(irs::doc_id_t target) override {
-    auto& doc = std::get<irs::document>(attrs_);
-
-    while (target <= max_doc_) {
-      if (evaluate()) {
-        break;
-      }
-
-      ++target;
-    }
-
-    doc.value = target <= max_doc_ ? target : irs::doc_limits::eof();
-
-    return doc.value;
-  }
-
-  irs::doc_id_t value() const noexcept override {
-    return std::get<irs::document>(attrs_).value;
-  }
-
- private:
-  using attributes = std::tuple<irs::document, irs::cost, irs::score>;
-
-  irs::doc_id_t max_doc_;  // largest valid doc_id
-  attributes attrs_;
+  irs::filter::prepared::ptr _allQuery;
+  ExpressionCompilationContext _ctx;
 };
 
-irs::doc_iterator::ptr makeNonDeterministicAllIterator(
-    ExpressionCompilationContext const& cctx,
-    ExpressionExecutionContext const& ectx, irs::sub_reader const& segment,
-    irs::bytes_ref stats, const irs::Order& scorers, irs::score_t boost,
-    [[maybe_unused]] std::string_view allColumn) {
-#ifdef USE_ENTERPRISE
-  if (!allColumn.empty()) {
-    return irs::memory::make_managed<NondeterministicExpressionIterator>(
-        makeAllIterator(segment, stats, scorers, boost, allColumn), cctx, ectx);
-  }
-#endif
-
-  return irs::memory::make_managed<NondeterministicExpressionAllIterator>(
-      segment, stats.c_str(), scorers, segment.docs_count(), cctx, ectx, boost);
-}
-
-class NondeterministicExpressionQuery final : public irs::filter::prepared {
+class NondeterministicExpressionQuery final : public ExpressionQuery {
  public:
   explicit NondeterministicExpressionQuery(
-      ExpressionCompilationContext const& ctx, irs::bstring&& stats,
-      irs::score_t boost, std::string_view allColumn) noexcept
-      : irs::filter::prepared{boost},
-        _ctx{ctx},
-        _allColumn{allColumn},
-        _stats{std::move(stats)} {}
+      ExpressionCompilationContext const& ctx,
+      irs::filter::prepared::ptr&& allQuery) noexcept
+      : ExpressionQuery{ctx, std::move(allQuery)} {}
 
   irs::doc_iterator::ptr execute(
       irs::ExecutionContext const& ctx) const override {
@@ -251,31 +156,17 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared {
     // set expression for troubleshooting purposes
     execCtx->ctx->_expr = _ctx.node.get();
 
-    return makeNonDeterministicAllIterator(_ctx, *execCtx, ctx.segment, _stats,
-                                           ctx.scorers, boost(), _allColumn);
+    return irs::memory::make_managed<NondeterministicExpressionIterator>(
+        _allQuery->execute(ctx), _ctx, *execCtx);
   }
-
-  void visit(irs::sub_reader const&, irs::PreparedStateVisitor&,
-             irs::score_t) const override {
-    // NOOP
-  }
-
- private:
-  ExpressionCompilationContext _ctx;
-  std::string _allColumn;
-  irs::bstring _stats;
 };
 
-class DeterministicExpressionQuery final : public irs::filter::prepared {
+class DeterministicExpressionQuery final : public ExpressionQuery {
  public:
-  explicit DeterministicExpressionQuery(ExpressionCompilationContext const& ctx,
-                                        irs::bstring&& stats,
-                                        irs::score_t boost,
-                                        std::string_view allColumn) noexcept
-      : irs::filter::prepared{boost},
-        _ctx{ctx},
-        _allColumn{allColumn},
-        _stats{std::move(stats)} {}
+  explicit DeterministicExpressionQuery(
+      ExpressionCompilationContext const& ctx,
+      irs::filter::prepared::ptr&& allQuery) noexcept
+      : ExpressionQuery{ctx, std::move(allQuery)} {}
 
   irs::doc_iterator::ptr execute(
       irs::ExecutionContext const& ctx) const override {
@@ -294,28 +185,17 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
     // set expression for troubleshooting purposes
     execCtx->ctx->_expr = _ctx.node.get();
 
-    aql::Expression expr(_ctx.ast, _ctx.node.get());
+    aql::Expression expr{_ctx.ast, _ctx.node.get()};
     bool mustDestroy = false;
     auto value = expr.execute(execCtx->ctx, mustDestroy);
-    aql::AqlValueGuard guard(value, mustDestroy);
+    aql::AqlValueGuard guard{value, mustDestroy};
 
     if (value.toBoolean()) {
-      return makeAllIterator(ctx.segment, _stats, ctx.scorers, boost(),
-                             _allColumn);
+      return _allQuery->execute(ctx);
     }
 
     return irs::doc_iterator::empty();
   }
-
-  void visit(irs::sub_reader const&, irs::PreparedStateVisitor&,
-             irs::score_t) const override {
-    // NOOP
-  }
-
- private:
-  ExpressionCompilationContext _ctx;
-  std::string _allColumn;
-  irs::bstring _stats;
 };
 
 }  // namespace
@@ -355,20 +235,26 @@ irs::filter::prepared::ptr ByExpression::prepare(
     return irs::filter::prepared::empty();
   }
 
-  filter_boost *= this->boost();
+  auto allQuery =
+      makeAll(_allColumn)
+          ->prepare(index, order, this->boost() * filter_boost, ctx);
+
+  if (ADB_UNLIKELY(!allQuery)) {
+    return irs::filter::prepared::empty();
+  }
 
   if (!_ctx.node->isDeterministic()) {
     // non-deterministic expression, make non-deterministic query
-    return compileQuery<NondeterministicExpressionQuery>(
-        _ctx, index, order, filter_boost, _allColumn);
+    return irs::memory::make_managed<NondeterministicExpressionQuery>(
+        _ctx, std::move(allQuery));
   }
 
   auto* execCtx = ctx ? irs::get<ExpressionExecutionContext>(*ctx) : nullptr;
 
   if (!execCtx || !static_cast<bool>(*execCtx)) {
     // no execution context provided, make deterministic query
-    return compileQuery<DeterministicExpressionQuery>(_ctx, index, order,
-                                                      filter_boost, _allColumn);
+    return irs::memory::make_managed<DeterministicExpressionQuery>(
+        _ctx, std::move(allQuery));
   }
 
   // set expression for troubleshooting purposes
@@ -376,16 +262,15 @@ irs::filter::prepared::ptr ByExpression::prepare(
 
   // evaluate expression
   bool mustDestroy = false;
-  aql::Expression expr(_ctx.ast, _ctx.node.get());
+  aql::Expression expr{_ctx.ast, _ctx.node.get()};
   auto value = expr.execute(execCtx->ctx, mustDestroy);
-  aql::AqlValueGuard guard(value, mustDestroy);
+  aql::AqlValueGuard guard{value, mustDestroy};
 
   if (!value.toBoolean()) {
     return irs::filter::prepared::empty();
   }
 
-  return makeAll(_allColumn)->prepare(index, order, filter_boost);
+  return allQuery;
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch
