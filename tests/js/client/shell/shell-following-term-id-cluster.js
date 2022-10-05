@@ -239,5 +239,7 @@ function followingTermIdSuite() {
   };
 }
 
-jsunity.run(followingTermIdSuite);
+if (db._properties().replicationVersion !== "2") {
+  jsunity.run(followingTermIdSuite);
+}
 return jsunity.done();
