@@ -102,6 +102,7 @@ struct ReplicatedStateBase {
       -> std::shared_ptr<IReplicatedFollowerStateBase> = 0;
 };
 
+// TODO Add and use LoggerContext to/in state managers
 template<typename S>
 struct NewLeaderStateManager {
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
