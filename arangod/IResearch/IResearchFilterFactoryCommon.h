@@ -52,6 +52,8 @@ std::string_view makeAllColumn(QueryContext const& ctx) noexcept;
 
 irs::AllDocsProvider::ProviderFunc makeAllProvider(QueryContext const& ctx);
 
+bool allColumnAcceptor(irs::string_ref, irs::string_ref) noexcept;
+
 template<typename Filter, typename Source>
 auto& append(Source& parent, [[maybe_unused]] FilterContext const& ctx) {
   if constexpr (std::is_same_v<Filter, irs::all>) {

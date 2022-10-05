@@ -27,7 +27,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
-#include "IResearch/IResearchFilterFactoryCommon.hpp"
+#include "IResearch/IResearchFilterFactoryCommon.h"
 
 #include "formats/empty_term_reader.hpp"
 #include "search/all_iterator.hpp"

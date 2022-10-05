@@ -67,7 +67,7 @@
 #include "IResearch/GeoAnalyzer.h"
 #include "IResearch/GeoFilter.h"
 #include "IResearch/ExpressionFilter.h"
-#include "IResearch/IResearchFilterFactoryCommon.hpp"
+#include "IResearch/IResearchFilterFactoryCommon.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"

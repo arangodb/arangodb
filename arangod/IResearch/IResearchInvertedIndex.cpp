@@ -35,7 +35,7 @@
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFilterFactory.h"
-#include "IResearch/IResearchFilterFactoryCommon.hpp"
+#include "IResearch/IResearchFilterFactoryCommon.h"
 #include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchMetricStats.h"
 #include "Metrics/ClusterMetricsFeature.h"
