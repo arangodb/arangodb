@@ -90,7 +90,8 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
         << "reject append entries - log core gone";
     return AppendEntriesResult::withRejection(
         _currentTerm, req.messageId,
-        {AppendEntriesErrorReason::ErrorType::kLostLogCore});
+        {AppendEntriesErrorReason::ErrorType::kLostLogCore},
+        data._snapshotCompleted);
   }
 
   if (data._lastRecvMessageId >= req.messageId) {
@@ -98,7 +99,8 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
         << "reject append entries - message id out dated: " << req.messageId;
     return AppendEntriesResult::withRejection(
         _currentTerm, req.messageId,
-        {AppendEntriesErrorReason::ErrorType::kMessageOutdated});
+        {AppendEntriesErrorReason::ErrorType::kMessageOutdated},
+        data._snapshotCompleted);
   }
 
   if (_appendEntriesInFlight) {
@@ -106,7 +108,8 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
         << "reject append entries - previous append entry still in flight";
     return AppendEntriesResult::withRejection(
         _currentTerm, req.messageId,
-        {AppendEntriesErrorReason::ErrorType::kPrevAppendEntriesInFlight});
+        {AppendEntriesErrorReason::ErrorType::kPrevAppendEntriesInFlight},
+        data._snapshotCompleted);
   }
 
   if (req.leaderId != _leaderId) {
@@ -115,7 +118,8 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
         << " current = " << _leaderId.value_or("<none>");
     return AppendEntriesResult::withRejection(
         _currentTerm, req.messageId,
-        {AppendEntriesErrorReason::ErrorType::kInvalidLeaderId});
+        {AppendEntriesErrorReason::ErrorType::kInvalidLeaderId},
+        data._snapshotCompleted);
   }
 
   if (req.leaderTerm != _currentTerm) {
@@ -124,7 +128,8 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
         << ", current = " << _currentTerm;
     return AppendEntriesResult::withRejection(
         _currentTerm, req.messageId,
-        {AppendEntriesErrorReason::ErrorType::kWrongTerm});
+        {AppendEntriesErrorReason::ErrorType::kWrongTerm},
+        data._snapshotCompleted);
   }
 
   // It is always allowed to replace the log entirely
@@ -137,7 +142,7 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
           << "reject append entries - prev log did not match: "
           << to_string(reason);
       return AppendEntriesResult::withConflict(_currentTerm, req.messageId,
-                                               next);
+                                               next, data._snapshotCompleted);
     }
   }
 
@@ -208,8 +213,8 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       if (!res.ok()) {
         LOG_CTX("f17b8", ERR, _loggerContext)
             << "failed to remove log entries after " << req.prevLogEntry.index;
-        return AppendEntriesResult::withPersistenceError(_currentTerm,
-                                                         req.messageId, res);
+        return AppendEntriesResult::withPersistenceError(
+            _currentTerm, req.messageId, res, dataGuard->_snapshotCompleted);
       }
 
       // commit the deletion in memory
@@ -226,7 +231,8 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     auto action = dataGuard->checkCommitIndex(
         req.leaderCommit, req.lowestIndexToKeep, std::move(toBeResolved));
     auto result = AppendEntriesResult::withOk(dataGuard->_follower._currentTerm,
-                                              req.messageId);
+                                              req.messageId,
+                                              dataGuard->_snapshotCompleted);
     dataGuard.unlock();  // unlock here, action must be executed after
     inFlightScopeGuard.fire();
     action.fire();
@@ -275,10 +281,10 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       if (res.fail()) {
         LOG_CTX("216d8", ERR, data->_follower._loggerContext)
             << "failed to insert log entries: " << res.errorMessage();
-        return std::make_pair(
-            AppendEntriesResult::withPersistenceError(
-                data->_follower._currentTerm, req.messageId, res),
-            DeferredAction{});
+        return std::make_pair(AppendEntriesResult::withPersistenceError(
+                                  data->_follower._currentTerm, req.messageId,
+                                  res, data->_snapshotCompleted),
+                              DeferredAction{});
       }
 
       // commit the write in memory
@@ -296,12 +302,14 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     auto action = data->checkCommitIndex(
         req.leaderCommit, req.lowestIndexToKeep, std::move(toBeResolved));
 
-    static_assert(noexcept(AppendEntriesResult::withOk(
-        data->_follower._currentTerm, req.messageId)));
+    static_assert(noexcept(
+        AppendEntriesResult::withOk(data->_follower._currentTerm, req.messageId,
+                                    dataGuard->_snapshotCompleted)));
     static_assert(std::is_nothrow_move_constructible_v<DeferredAction>);
-    return std::make_pair(AppendEntriesResult::withOk(
-                              data->_follower._currentTerm, req.messageId),
-                          std::move(action));
+    return std::make_pair(
+        AppendEntriesResult::withOk(data->_follower._currentTerm, req.messageId,
+                                    data->_snapshotCompleted),
+        std::move(action));
   };
   static_assert(std::is_nothrow_move_constructible_v<
                 decltype(checkResultAndCommitIndex)>);
@@ -752,6 +760,7 @@ Result LogFollower::onSnapshotCompleted() {
     THROW_ARANGO_EXCEPTION(res);
   }
   guard->_snapshotCompleted = true;
+  return {};
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()

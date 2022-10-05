@@ -89,21 +89,26 @@ struct AppendEntriesResult {
   [[nodiscard]] auto isSuccess() const noexcept -> bool;
 
   AppendEntriesResult(LogTerm term, MessageId id, TermIndexPair conflict,
-                      AppendEntriesErrorReason reason) noexcept;
-  AppendEntriesResult(LogTerm, MessageId) noexcept;
+                      AppendEntriesErrorReason reason,
+                      bool snapshotAvailable) noexcept;
+  AppendEntriesResult(LogTerm, MessageId, bool snapshotAvailable) noexcept;
   AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode,
-                      AppendEntriesErrorReason reason, MessageId) noexcept;
+                      AppendEntriesErrorReason reason, MessageId,
+                      bool snapshotAvailable) noexcept;
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesResult;
 
-  static auto withConflict(LogTerm, MessageId, TermIndexPair conflict) noexcept
+  static auto withConflict(LogTerm, MessageId, TermIndexPair conflict,
+                           bool snapshotAvailable) noexcept
       -> AppendEntriesResult;
-  static auto withRejection(LogTerm, MessageId,
-                            AppendEntriesErrorReason) noexcept
+  static auto withRejection(LogTerm, MessageId, AppendEntriesErrorReason,
+                            bool snapshotAvailable) noexcept
       -> AppendEntriesResult;
-  static auto withPersistenceError(LogTerm, MessageId, Result const&) noexcept
+  static auto withPersistenceError(LogTerm, MessageId, Result const&,
+                                   bool snapshotAvailable) noexcept
       -> AppendEntriesResult;
-  static auto withOk(LogTerm, MessageId) noexcept -> AppendEntriesResult;
+  static auto withOk(LogTerm, MessageId, bool snapshotAvailable) noexcept
+      -> AppendEntriesResult;
 };
 #if (defined(__GNUC__) && !defined(__clang__))
 #pragma GCC diagnostic pop
