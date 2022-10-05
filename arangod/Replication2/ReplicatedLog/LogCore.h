@@ -32,6 +32,7 @@
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedState/StateCommon.h"
 
 namespace arangodb::replication2::replicated_state {
 struct IStorageEngineMethods;
@@ -67,6 +68,8 @@ struct alignas(64) LogCore {
   auto removeFront(LogIndex stop) -> futures::Future<Result>;
 
   auto logId() const noexcept -> LogId;
+
+  auto updateSnapshotState(replicated_state::SnapshotStatus) -> Result;
 
  private:
   replicated_state::IStorageEngineMethods& _storage;

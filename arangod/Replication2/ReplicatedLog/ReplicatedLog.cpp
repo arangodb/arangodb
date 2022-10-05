@@ -24,7 +24,6 @@
 #include "ReplicatedLog.h"
 
 #include "Logger/LogContextKeys.h"
-#include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
@@ -32,13 +31,11 @@
 #include "Replication2/ReplicatedLog/LogUnconfiguredParticipant.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Metrics/Counter.h"
-#include "Cluster/FailureOracle.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/voc-errors.h>
 
 #include <optional>
-#include <type_traits>
 #include <utility>
 
 namespace arangodb::replication2::replicated_log {
@@ -159,5 +156,22 @@ void ReplicatedLog::resetParticipant(GuardedData& data) {
     data.participant.reset();
   }
 }
+
+auto ReplicatedLog::getParticipant() const -> std::shared_ptr<ILogParticipant> {
+  auto guard = _guarded.getLockedGuard();
+  if (guard->participant == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED);
+  }
+  return guard->participant;
+}
+
+auto ReplicatedLog::resign() && -> std::unique_ptr<LogCore> {
+  auto guard = _guarded.getLockedGuard();
+  resetParticipant(guard.get());
+  ADB_PROD_ASSERT(guard->core != nullptr);
+  return std::move(guard->core);
+}
+
+auto ReplicatedLog::getId() const noexcept -> LogId { return _id; }
 
 }  // namespace arangodb::replication2::replicated_log

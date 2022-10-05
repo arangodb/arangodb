@@ -79,3 +79,14 @@ auto LogCore::removeFront(LogIndex stop) -> futures::Future<Result> {
         return std::move(res).result();
       });
 }
+
+auto LogCore::updateSnapshotState(replicated_state::SnapshotStatus status)
+    -> Result {
+  auto metaResult = _storage.readMetadata();
+  if (metaResult.fail()) {
+    return metaResult.result();
+  }
+  auto& meta = metaResult.get();
+  meta.snapshot.status = status;
+  return _storage.updateMetadata(meta);
+}

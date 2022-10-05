@@ -343,6 +343,8 @@ auto replicated_log::LogLeader::construct(
     FATAL_ERROR_EXIT();  // This must never happen in production
   }
 
+  logCore->updateSnapshotState(replicated_state::SnapshotStatus::kCompleted);
+
   // Note that although we add an entry to establish our leadership
   // we do still want to use the unchanged lastIndex to initialize
   // our followers with, as none of them can possibly have this entry.
@@ -407,6 +409,11 @@ auto replicated_log::LogLeader::resign() && -> std::tuple<
           << "Leader " << participantId << " already resigned!";
       throw ParticipantResignedException(
           TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
+    }
+
+    if (leaderData._leadershipEstablished) {
+      auto methods = _stateHandle->resign();
+      ADB_PROD_ASSERT(methods != nullptr);
     }
 
     // WARNING! This stunt is here to make things exception safe.
@@ -636,6 +643,30 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
       newIndex.value - _commitIndex.value);
   _commitIndex = newIndex;
   _lastQuorum = quorum;
+
+  struct MethodsImpl : IReplicatedLogLeaderMethods {
+    explicit MethodsImpl(LogLeader& log) : _log(log) {}
+    auto releaseIndex(LogIndex index) -> void override {
+      if (auto res = _log.release(index); res.fail()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+    }
+    auto getLogSnapshot() -> InMemoryLog override {
+      return _log.copyInMemoryLog();
+    }
+    auto insert(LogPayload payload) -> LogIndex override {
+      return _log.insert(std::move(payload));
+    }
+
+    LogLeader& _log;
+  };
+
+  if (not _leadershipEstablished) {
+    _self._stateHandle->leadershipEstablished(
+        std::make_unique<MethodsImpl>(_self));
+  }
+
+  _self._stateHandle->updateCommitIndex(_commitIndex);
 
   try {
     WaitForQueue toBeResolved;
