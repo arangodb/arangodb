@@ -56,6 +56,7 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchFilterFactoryCommon.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "Logger/LogTopic.h"
@@ -4603,9 +4604,11 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 #ifdef USE_ENTERPRISE
   {
     irs::Or expected;
-    *expected.add<irs::by_column_existence>().mutable_field() =
-        arangodb::iresearch::DocumentPrimaryKey::PK();
     expected.boost(2.5);
+    auto& exists = expected.add<irs::by_column_existence>();
+    *exists.mutable_field() = arangodb::iresearch::DocumentPrimaryKey::PK();
+    exists.mutable_options()->acceptor =
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN collection FILTER BOOST([] ALL IN "
@@ -4636,6 +4639,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     irs::Or expected;
     auto& all = expected.add<irs::by_column_existence>();
     *all.mutable_field() = arangodb::iresearch::DocumentPrimaryKey::PK();
+    all.mutable_options()->acceptor =
+        arangodb::iresearch::makeColumnAcceptor(false);
     all.boost(2.5);
     assertFilterSuccess(
         vocbase(), "FOR d IN collection FILTER BOOST(1..3, 2.5) RETURN d",

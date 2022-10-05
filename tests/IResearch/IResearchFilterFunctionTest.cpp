@@ -1119,7 +1119,7 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = "name";
     exists.mutable_options()->acceptor =
-        &arangodb::iresearch::allColumnAcceptor;
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.name) RETURN d", expected);
@@ -1139,7 +1139,7 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = "[42]";
     exists.mutable_options()->acceptor =
-        &arangodb::iresearch::allColumnAcceptor;
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d[42]) RETURN d", expected);
@@ -1151,7 +1151,7 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = "obj.prop.name";
     exists.mutable_options()->acceptor =
-        &arangodb::iresearch::allColumnAcceptor;
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.obj.prop.name) RETURN d",
@@ -1174,7 +1174,7 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = "obj.prop[3].name";
     exists.mutable_options()->acceptor =
-        &arangodb::iresearch::allColumnAcceptor;
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.obj.prop[3].name) RETURN d",
@@ -1199,7 +1199,7 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     *exists.mutable_field() = "obj.prop[3].name";
     exists.boost(1.5f);
     exists.mutable_options()->acceptor =
-        &arangodb::iresearch::allColumnAcceptor;
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(
         vocbase(),
@@ -1233,7 +1233,7 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = "obj.prop[3].name";
     exists.mutable_options()->acceptor =
-        &arangodb::iresearch::allColumnAcceptor;
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(
         vocbase(),
@@ -1271,7 +1271,7 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = "a.b.c.e[4].f[5].g[3].g.a";
     exists.mutable_options()->acceptor =
-        &arangodb::iresearch::allColumnAcceptor;
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(
         vocbase(),
@@ -1369,7 +1369,7 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = mangleType("name");
     exists.mutable_options()->acceptor =
-        &arangodb::iresearch::allColumnAcceptor;
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.name, 'type') RETURN d",
@@ -1419,7 +1419,7 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = mangleAnalyzer("name");
     exists.mutable_options()->acceptor =
-        &arangodb::iresearch::allColumnAcceptor;
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.name, 'string') RETURN d",
@@ -1472,7 +1472,7 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = mangleAnalyzer("name");
     exists.mutable_options()->acceptor =
-        &arangodb::iresearch::allColumnAcceptor;
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(vocbase(),
                         "LET anl='str' FOR d IN myView FILTER exists(d.name, "
