@@ -34,7 +34,7 @@
 #include "Pregel/Iterators.h"
 #include "Pregel/MessageCombiner.h"
 #include "Pregel/MessageFormat.h"
-#include "Pregel/WorkerConductorMessages.h"
+#include "Pregel/Messaging/WorkerMessages.h"
 
 namespace arangodb {
 namespace pregel {

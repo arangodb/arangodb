@@ -1,7 +1,6 @@
 #include "FatalErrorState.h"
 
 #include "Pregel/Conductor/Conductor.h"
-#include "Pregel/WorkerConductorMessages.h"
 #include "velocypack/Builder.h"
 
 using namespace arangodb::pregel::conductor;

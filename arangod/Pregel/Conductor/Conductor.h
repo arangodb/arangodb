@@ -30,7 +30,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterTypes.h"
 #include "Pregel/Statistics.h"
-#include "Pregel/WorkerConductorMessages.h"
+#include "Pregel/Messaging/Message.h"
 #include "Scheduler/Scheduler.h"
 #include "Utils/DatabaseGuard.h"
 

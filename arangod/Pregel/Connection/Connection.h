@@ -25,7 +25,7 @@
 #include "Basics/ResultT.h"
 #include "Cluster/ClusterTypes.h"
 #include "Futures/Future.h"
-#include "Pregel/WorkerConductorMessages.h"
+#include "Pregel/Messaging/Message.h"
 
 namespace arangodb::pregel {
 

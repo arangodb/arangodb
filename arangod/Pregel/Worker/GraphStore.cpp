@@ -41,7 +41,7 @@
 #include "Pregel/TypedBuffer.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/WorkerConfig.h"
-#include "Pregel/WorkerConductorMessages.h"
+#include "Pregel/Messaging/WorkerMessages.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Helpers.h"

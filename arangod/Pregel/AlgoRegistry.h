@@ -26,7 +26,7 @@
 #include <string>
 #include "Algorithm.h"
 #include "Pregel/Worker/Worker.h"
-#include "Pregel/WorkerConductorMessages.h"
+#include "Pregel/Messaging/ConductorMessages.h"
 
 struct TRI_vocbase_t;
 

@@ -29,7 +29,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Pregel/WorkerConductorMessages.h"
+#include "Pregel/Messaging/WorkerMessages.h"
 
 #include <velocypack/Iterator.h>
 
