@@ -22,35 +22,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Basics/Guarded.h"
-#include "Pregel/Messaging/Aggregate.h"
-#include "State.h"
+#include "Pregel/Connection/Connection.h"
+#include "Utils/DatabaseGuard.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb::pregel {
 
-class Conductor;
-
-namespace conductor {
-
-struct Loading : State {
-  Conductor& conductor;
-  Loading(Conductor& conductor);
-  ~Loading();
-  auto run() -> std::optional<std::unique_ptr<State>> override;
-  auto receive(MessagePayload message)
-      -> std::optional<std::unique_ptr<State>> override;
-  auto canBeCanceled() -> bool override { return false; }
-  auto name() const -> std::string override { return "loading"; };
-  auto isRunning() const -> bool override { return true; }
-  auto getExpiration() const
-      -> std::optional<std::chrono::system_clock::time_point> override {
-    return std::nullopt;
-  }
+struct DirectConnectionToWorker : Connection {
+  DirectConnectionToWorker(PregelFeature& feature, TRI_vocbase_t& vocbase)
+      : _feature{feature}, _vocbaseGuard{vocbase} {}
+  auto post(Destination const& destination, ModernMessage&& message) const
+      -> futures::Future<Result> override;
+  [[deprecated("Use new post function")]] auto send(
+      Destination const& destination, ModernMessage&& message) const
+      -> futures::Future<ResultT<ModernMessage>> override;
+  ~DirectConnectionToWorker() = default;
 
  private:
-  auto _createWorkers() -> futures::Future<Result>;
-  Guarded<Aggregate<GraphLoaded>> _aggregate;
+  PregelFeature& _feature;
+  const DatabaseGuard _vocbaseGuard;
 };
 
-}  // namespace conductor
 }  // namespace arangodb::pregel

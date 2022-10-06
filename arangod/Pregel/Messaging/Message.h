@@ -29,8 +29,14 @@
 
 namespace arangodb::pregel {
 
+struct Ok {};
+template<typename Inspector>
+auto inspect(Inspector& f, Ok& x) {
+  return f.object(x).fields();
+}
+
 using MessagePayload =
-    std::variant<CreateWorker, ResultT<WorkerCreated>, LoadGraph,
+    std::variant<Ok, CreateWorker, ResultT<WorkerCreated>, LoadGraph,
                  ResultT<GraphLoaded>, PrepareGlobalSuperStep,
                  ResultT<GlobalSuperStepPrepared>, RunGlobalSuperStep,
                  ResultT<GlobalSuperStepFinished>, Store, ResultT<Stored>,
@@ -41,6 +47,7 @@ struct MessagePayloadSerializer : MessagePayload {};
 template<class Inspector>
 auto inspect(Inspector& f, MessagePayloadSerializer& x) {
   return f.variant(x).unqualified().alternatives(
+      arangodb::inspection::type<Ok>("ok"),
       arangodb::inspection::type<CreateWorker>("createWorker"),
       arangodb::inspection::type<ResultT<WorkerCreated>>("workerCreated"),
       arangodb::inspection::type<LoadGraph>("loadGraph"),

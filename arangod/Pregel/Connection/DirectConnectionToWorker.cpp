@@ -1,4 +1,4 @@
-#include "DirectConnection.h"
+#include "DirectConnectionToWorker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 #include "Pregel/AlgoRegistry.h"
@@ -7,8 +7,8 @@
 
 using namespace arangodb::pregel;
 
-auto DirectConnection::send(Destination const& destination,
-                            ModernMessage&& message) const
+auto DirectConnectionToWorker::send(Destination const& destination,
+                                    ModernMessage&& message) const
     -> futures::Future<ResultT<ModernMessage>> {
   if (std::holds_alternative<CreateWorker>(message.payload)) {
     try {
@@ -57,8 +57,8 @@ auto DirectConnection::send(Destination const& destination,
       });
 }
 
-auto DirectConnection::post(Destination const& destination,
-                            ModernMessage&& message) const
+auto DirectConnectionToWorker::post(Destination const& destination,
+                                    ModernMessage&& message) const
     -> futures::Future<Result> {
   // TODO add same cases a in send fct when post is used for more messages
   auto worker = _feature.worker(message.executionNumber);

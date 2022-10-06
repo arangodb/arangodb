@@ -28,15 +28,15 @@
 
 namespace arangodb::pregel {
 
-struct DirectConnection : Connection {
-  DirectConnection(PregelFeature& feature, TRI_vocbase_t& vocbase)
+struct DirectConnectionToConductor : Connection {
+  DirectConnectionToConductor(PregelFeature& feature, TRI_vocbase_t& vocbase)
       : _feature{feature}, _vocbaseGuard{vocbase} {}
   auto post(Destination const& destination, ModernMessage&& message) const
       -> futures::Future<Result> override;
   [[deprecated("Use new post function")]] auto send(
       Destination const& destination, ModernMessage&& message) const
       -> futures::Future<ResultT<ModernMessage>> override;
-  ~DirectConnection() = default;
+  ~DirectConnectionToConductor() = default;
 
  private:
   PregelFeature& _feature;

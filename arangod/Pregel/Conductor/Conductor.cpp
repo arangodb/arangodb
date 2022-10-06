@@ -45,7 +45,7 @@
 #include "Pregel/Conductor/States/State.h"
 #include "Pregel/Conductor/States/StoringState.h"
 #include "Pregel/Conductor/WorkerApi.h"
-#include "Pregel/Connection/DirectConnection.h"
+#include "Pregel/Connection/DirectConnectionToWorker.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/ConductorStatus.h"
@@ -188,6 +188,18 @@ auto Conductor::process(MessagePayload const& message) -> Result {
                    _workerStatusUpdate(x);
                    return {};
                  },
+                 [&](ResultT<GraphLoaded> const& x) -> Result {
+                   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+                   scheduler->queue(
+                       RequestLane::INTERNAL_LOW,
+                       [this, self = shared_from_this(), x] {
+                         auto newState = _state->receive(x);
+                         if (newState.has_value()) {
+                           _changeState(std::move(newState.value()));
+                         }
+                       });
+                   return Result{};
+                 },
                  [](auto const& x) -> Result {
                    return Result{TRI_ERROR_INTERNAL,
                                  "Conductor: Cannot handle received message"};
@@ -326,9 +338,9 @@ auto Conductor::_initializeWorkers() -> futures::Future<Result> {
 
   if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
     TRI_ASSERT(servers.size() == 1);
-    _workers = conductor::WorkerApi{
-        _executionNumber,
-        std::make_unique<DirectConnection>(_feature, _vocbaseGuard.database())};
+    _workers = conductor::WorkerApi{_executionNumber,
+                                    std::make_unique<DirectConnectionToWorker>(
+                                        _feature, _vocbaseGuard.database())};
   } else {
     network::RequestOptions reqOpts;
     reqOpts.timeout = network::Timeout(5.0 * 60.0);

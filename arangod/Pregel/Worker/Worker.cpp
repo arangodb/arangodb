@@ -29,7 +29,7 @@
 #include "GeneralServer/RequestLane.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/CommonFormats.h"
-#include "Pregel/Connection/DirectConnection.h"
+#include "Pregel/Connection/DirectConnectionToConductor.h"
 #include "Pregel/Connection/NetworkConnection.h"
 #include "Pregel/Messaging/Message.h"
 #include "Pregel/IncomingCache.h"
@@ -107,7 +107,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
   if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
     _conductor = worker::ConductorApi{
         _config.coordinatorId(), _config.executionNumber(),
-        std::make_unique<DirectConnection>(_feature, vocbase)};
+        std::make_unique<DirectConnectionToConductor>(_feature, vocbase)};
   } else {
     network::RequestOptions reqOpts;
     reqOpts.database = vocbase.name();
@@ -649,12 +649,12 @@ auto Worker<V, E, M>::process(MessagePayload const& message)
   return std::visit(
       overloaded{
           [&](LoadGraph const& x) -> futures::Future<ResultT<ModernMessage>> {
-            return loadGraph(x).thenValue(
-                [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
-                  return ModernMessage{
-                      .executionNumber = _config.executionNumber(),
-                      .payload = {result}};
-                });
+            Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+            scheduler->queue(
+                RequestLane::INTERNAL_LOW,
+                [this, self = shared_from_this(), x] { loadGraph(x); });
+            return ModernMessage{.executionNumber = _config.executionNumber(),
+                                 .payload = Ok{}};
           },
           [&](PrepareGlobalSuperStep const& x)
               -> futures::Future<ResultT<ModernMessage>> {
@@ -712,22 +712,18 @@ auto Worker<V, E, M>::process(MessagePayload const& message)
 }
 
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::loadGraph(LoadGraph const& graph)
-    -> futures::Future<ResultT<GraphLoaded>> {
+auto Worker<V, E, M>::loadGraph(LoadGraph const& graph) -> void {
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
 
   LOG_PREGEL("52070", DEBUG) << fmt::format(
       "Worker for execution number {} is loading", _config.executionNumber());
-  return futures::makeFuture(
-             _graphStore->loadShards(&_config, _makeStatusCallback()))
-      .then([&](auto&& result) {
-        LOG_PREGEL("52062", DEBUG) << fmt::format(
-            "Worker for execution number {} has finished loading.",
-            _config.executionNumber());
-        _makeStatusCallback()();
-        _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
-        return result.get();
-      });
+  auto graphLoaded = _graphStore->loadShards(&_config, _makeStatusCallback());
+  LOG_PREGEL("52062", DEBUG)
+      << fmt::format("Worker for execution number {} has finished loading.",
+                     _config.executionNumber());
+  _makeStatusCallback()();
+  _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
+  _conductor.graphLoaded(graphLoaded);
 }
 
 // template types to create
