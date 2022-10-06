@@ -1514,6 +1514,20 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username,
   return res;
 }
 
+bool Manager::isTransactionStreaming(TransactionId const& tid) const {
+  size_t const bucket = getBucket(tid);
+  // quick check whether ID exists
+  READ_LOCKER(readLocker, _transactions[bucket]._lock);
+
+  auto const& buck = _transactions[bucket];
+  auto it = buck._managed.find(tid);
+  if (it != buck._managed.end()) {
+    return it->second.state->hasHint(Hints::Hint::GLOBAL_MANAGED);
+  } else {
+    return false;
+  }
+}
+
 bool Manager::transactionIdExists(TransactionId const& tid) const {
   size_t const bucket = getBucket(tid);
   // quick check whether ID exists

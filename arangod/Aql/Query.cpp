@@ -600,7 +600,9 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         }
         // will set warnings, stats, profile and cleanup plan and engine
         auto state = finalize(*queryResult.extra);
-        if (state == ExecutionState::DONE && _cacheEntry != nullptr) {
+        if (state == ExecutionState::DONE && _cacheEntry != nullptr &&
+            !(_transactionContext->isStreaming() &&
+              !_transactionContext->isReadOnly())) {
           _cacheEntry->_stats = queryResult.extra;
           QueryCache::instance()->store(&_vocbase, std::move(_cacheEntry));
         }
@@ -840,7 +842,8 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       ss->waitForAsyncWakeup();
       state = finalize(*queryResult.extra);
     }
-    if (_cacheEntry != nullptr) {
+    if (_cacheEntry != nullptr && !(_transactionContext->isV8Context() &&
+                                    !_transactionContext->isReadOnly())) {
       _cacheEntry->_stats = queryResult.extra;
       QueryCache::instance()->store(&_vocbase, std::move(_cacheEntry));
     }
@@ -1252,7 +1255,10 @@ uint64_t Query::calculateHash() const {
 
 /// @brief whether or not the query cache can be used for the query
 bool Query::canUseQueryCache() const {
-  if (_queryString.size() < 8 || _queryOptions.silent) {
+  if (((_transactionContext->isStreaming() ||
+        _transactionContext->isV8Context()) &&
+       !_transactionContext->isReadOnly()) ||
+      _queryString.size() < 8 || _queryOptions.silent) {
     return false;
   }
 

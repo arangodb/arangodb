@@ -191,6 +191,10 @@ class Manager final : public IManager {
   bool abortManagedTrx(
       std::function<bool(TransactionState const&, std::string const&)>);
 
+  /// @brief whether or not the transaction is streaming (used for knowing if
+  /// can read from query cache)
+  bool isTransactionStreaming(TransactionId const& tid) const;
+
   /// @brief abort all managed write transactions
   Result abortAllManagedWriteTrx(std::string const& username, bool fanout);
 
@@ -277,6 +281,7 @@ class Manager final : public IManager {
   static double ttlForType(ManagerFeature const& feature, Manager::MetaType);
 
   bool transactionIdExists(TransactionId const& tid) const;
+
   bool storeManagedState(TransactionId const& tid,
                          std::shared_ptr<arangodb::TransactionState> state,
                          double ttl);

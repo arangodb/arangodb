@@ -32,6 +32,8 @@
 
 #include <velocypack/Options.h>
 
+#include "Logger/LogMacros.h"
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -107,6 +109,18 @@ class Context {
   virtual std::shared_ptr<TransactionState> acquireState(
       transaction::Options const& options, bool& responsibleForCommit) = 0;
 
+  /// @brief whether or not is from a streaming transaction (used to know
+  /// whether or not can read from query cache)
+  bool isStreaming() { return _transaction.isStreamingTransaction; }
+
+  /// @brief whether or not the transaction is read-only (used to know whether
+  /// or not can read from query cache)
+  bool isReadOnly() { return _transaction.isReadOnlyTransaction; }
+
+  /// @brief sets the transaction to be streaming (used to know whether or not
+  /// can read from query cache)
+  void setStreaming() { _transaction.isStreamingTransaction = true; }
+
   /// @brief whether or not the transaction is embeddable
   virtual bool isEmbeddable() const = 0;
 
@@ -146,6 +160,7 @@ class Context {
     TransactionId id;
     bool isReadOnlyTransaction;
     bool isFollowerTransaction;
+    bool isStreamingTransaction = false;
   } _transaction;
 };
 
