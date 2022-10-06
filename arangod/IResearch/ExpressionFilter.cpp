@@ -124,7 +124,9 @@ class ExpressionQuery : public irs::filter::prepared {
  protected:
   explicit ExpressionQuery(ExpressionCompilationContext const& ctx,
                            irs::filter::prepared::ptr&& allQuery) noexcept
-      : _allQuery{std::move(allQuery)}, _ctx{ctx} {
+      : irs::filter::prepared{allQuery->boost()},
+        _allQuery{std::move(allQuery)},
+        _ctx{ctx} {
     TRI_ASSERT(_allQuery);
   }
 
