@@ -139,10 +139,8 @@ struct arangodb::VocBaseLogManager {
     auto guard = _guardedData.getLockedGuard();
     for (auto&& [id, val] : guard->statesAndLogs) {
       auto&& log = val.log;
-      auto&& state = val.state;
       auto core = std::move(*log).resign();
       core.reset();
-      std::ignore = std::move(*state).resign();
     }
     guard->statesAndLogs.clear();
   }
@@ -315,6 +313,28 @@ struct arangodb::VocBaseLogManager {
         stateAndLog.storage = std::move(*maybeStorage);
       }
 
+      struct NetworkFollowerFactory
+          : replication2::replicated_log::AbstractFollowerFactory {
+        NetworkFollowerFactory(TRI_vocbase_t& vocbase, replication2::LogId id)
+            : vocbase(vocbase), id(id) {}
+        auto constructFollower(const ParticipantId& participantId)
+            -> std::shared_ptr<
+                replication2::replicated_log::AbstractFollower> override {
+          auto* pool = vocbase.server().getFeature<NetworkFeature>().pool();
+
+          return std::make_shared<
+              replication2::replicated_log::NetworkAttachedFollower>(
+              pool, participantId, vocbase.name(), id);
+        }
+
+        TRI_vocbase_t& vocbase;
+        replication2::LogId id;
+      };
+
+      auto myself = replication2::agency::ServerInstanceReference(
+          ServerState::instance()->getId(),
+          ServerState::instance()->getRebootId());
+
       auto& log = stateAndLog.log = std::invoke([&]() {
         auto&& logCore =
             std::make_unique<replication2::replicated_log::LogCore>(
@@ -323,7 +343,9 @@ struct arangodb::VocBaseLogManager {
             arangodb::replication2::replicated_log::ReplicatedLog>(
             std::move(logCore),
             server.getFeature<ReplicatedLogFeature>().metrics(),
-            server.getFeature<ReplicatedLogFeature>().options(), logContext);
+            server.getFeature<ReplicatedLogFeature>().options(),
+            std::make_shared<NetworkFollowerFactory>(vocbase, id), logContext,
+            myself);
       });
 
       auto& state = stateAndLog.state =
@@ -2159,7 +2181,7 @@ using namespace arangodb::replication2;
 auto TRI_vocbase_t::updateReplicatedState(
     LogId id, agency::LogPlanTermSpecification const& term,
     agency::ParticipantsConfig const& config) -> Result {
-  _logManager->updateReplicatedState(id, term, config);
+  return _logManager->updateReplicatedState(id, term, config);
 }
 
 auto TRI_vocbase_t::getReplicatedLogLeaderById(LogId id)
@@ -2185,7 +2207,15 @@ auto TRI_vocbase_t::getReplicatedLogFollowerById(LogId id)
 }
 
 auto TRI_vocbase_t::getReplicatedLogById(LogId id)
-    -> std::shared_ptr<replicated_log::ReplicatedLog> {}
+    -> std::shared_ptr<replicated_log::ReplicatedLog> {
+  auto guard = _logManager->_guardedData.getLockedGuard();
+  if (auto iter = guard->statesAndLogs.find(id);
+      iter != guard->statesAndLogs.end()) {
+    return iter->second.log;
+  } else {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND);
+  }
+}
 
 auto TRI_vocbase_t::getReplicatedStatesQuickStatus() const
     -> std::unordered_map<LogId, replicated_log::QuickLogStatus> {
@@ -2195,7 +2225,7 @@ auto TRI_vocbase_t::getReplicatedStatesQuickStatus() const
 auto TRI_vocbase_t::createReplicatedState(LogId id, std::string_view type,
                                           VPackSlice parameter)
     -> ResultT<std::shared_ptr<replicated_state::ReplicatedStateBase>> {
-  _logManager->createReplicatedState(id, type, parameter);
+  return _logManager->createReplicatedState(id, type, parameter);
 }
 
 auto TRI_vocbase_t::dropReplicatedState(LogId id) noexcept -> Result {
