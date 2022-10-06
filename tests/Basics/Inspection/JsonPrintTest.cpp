@@ -1030,7 +1030,7 @@ TEST(JsonPrint, stream_output) {
   Dummy const f{.i = 42, .d = 123.456, .b = true, .s = "foobar"};
   std::ostringstream stream;
   {
-    stream << inspection::printable(f, inspection::JsonPrintFormat::kPretty);
+    stream << inspection::json(f, inspection::JsonPrintFormat::kPretty);
     auto expected = R"({
   i: 42,
   d: 123.456,
@@ -1043,7 +1043,7 @@ TEST(JsonPrint, stream_output) {
   {
     stream.str("");
     stream.clear();
-    stream << inspection::printable(f);
+    stream << inspection::json(f);
     auto expected = R"({ i: 42, d: 123.456, b: true, s: "foobar" })";
     EXPECT_EQ(expected, stream.str());
   }
@@ -1059,31 +1059,31 @@ TEST(JsonPrint, format_output) {
   b: true,
   s: "foobar"
 })";
-    auto actual = fmt::format("Dummy - {:p}", inspection::printable(f));
+    auto actual = fmt::format("Dummy - {:p}", inspection::json(f));
     EXPECT_EQ(expected, actual);
 
-    actual = fmt::format(
-        "Dummy - {}",
-        inspection::printable(f, inspection::JsonPrintFormat::kPretty));
+    actual =
+        fmt::format("Dummy - {}",
+                    inspection::json(f, inspection::JsonPrintFormat::kPretty));
     EXPECT_EQ(expected, actual);
   }
 
   {
     auto expected = R"(Dummy - { i: 42, d: 123.456, b: true, s: "foobar" })";
-    auto actual = fmt::format("Dummy - {}", inspection::printable(f));
+    auto actual = fmt::format("Dummy - {}", inspection::json(f));
     EXPECT_EQ(expected, actual);
-    actual = fmt::format("Dummy - {:c}", inspection::printable(f));
+    actual = fmt::format("Dummy - {:c}", inspection::json(f));
     EXPECT_EQ(expected, actual);
   }
 
   {
     auto expected = R"(Dummy - {i:42,d:123.456,b:true,s:"foobar"})";
-    auto actual = fmt::format("Dummy - {:m}", inspection::printable(f));
+    auto actual = fmt::format("Dummy - {:m}", inspection::json(f));
     EXPECT_EQ(expected, actual);
 
-    actual = fmt::format(
-        "Dummy - {}",
-        inspection::printable(f, inspection::JsonPrintFormat::kMinimal));
+    actual =
+        fmt::format("Dummy - {}",
+                    inspection::json(f, inspection::JsonPrintFormat::kMinimal));
     EXPECT_EQ(expected, actual);
   }
 }

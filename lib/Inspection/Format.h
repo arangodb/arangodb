@@ -85,22 +85,21 @@ struct inspection_formatter : fmt::formatter<VPackSlice> {
 };
 
 template<class T>
-struct Printable {
+struct JsonPrintable {
   T const& value;
   JsonPrintFormat format;
 };
 
 template<class T>
-auto printable(T const& value,
-               JsonPrintFormat format = JsonPrintFormat::kCompact) {
+auto json(T const& value, JsonPrintFormat format = JsonPrintFormat::kCompact) {
   static_assert(detail::IsInspectable<T, JsonPrintInspector<>>());
-  return Printable<T>{.value = value, .format = format};
+  return JsonPrintable<T>{.value = value, .format = format};
 }
 
 }  // namespace arangodb::inspection
 
 template<class T, class Char>
-struct fmt::formatter<arangodb::inspection::Printable<T>, Char>
+struct fmt::formatter<arangodb::inspection::JsonPrintable<T>, Char>
     : formatter<basic_string_view<Char>, Char> {
   void set_debug_format() = delete;
 
@@ -124,7 +123,7 @@ struct fmt::formatter<arangodb::inspection::Printable<T>, Char>
   }
 
   template<typename OutputIt>
-  auto format(arangodb::inspection::Printable<T> const& v,
+  auto format(arangodb::inspection::JsonPrintable<T> const& v,
               basic_format_context<OutputIt, Char>& ctx) const
       -> decltype(ctx.out()) {
     auto format = _format.value_or(v.format);
@@ -157,7 +156,7 @@ struct fmt::formatter<arangodb::inspection::Printable<T>, Char>
 namespace std {
 template<class T>
 ostream& operator<<(ostream& stream,
-                    arangodb::inspection::Printable<T> const& v) {
+                    arangodb::inspection::JsonPrintable<T> const& v) {
   arangodb::inspection::JsonPrintInspector<> inspector(stream, v.format);
   auto result = inspector.apply(v.value);
   assert(result.ok());  // TODO - print error if failed?
