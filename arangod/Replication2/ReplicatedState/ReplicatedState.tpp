@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+
 #include "ReplicatedState.h"
 
 #include <string>
@@ -33,10 +34,11 @@
 #include "Metrics/Gauge.h"
 #include "Replication2/ReplicatedLog/LogUnconfiguredParticipant.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
-#include "Replication2/ReplicatedState/LeaderStateManager.h"
 #include "Replication2/ReplicatedState/FollowerStateManager.h"
-#include "Replication2/ReplicatedState/UnconfiguredStateManager.h"
+#include "Replication2/ReplicatedState/LazyDeserializingIterator.h"
+#include "Replication2/ReplicatedState/LeaderStateManager.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/ReplicatedState/UnconfiguredStateManager.h"
 #include "Replication2/Streams/LogMultiplexer.h"
 #include "Replication2/Streams/StreamSpecification.h"
 #include "Replication2/Streams/Streams.h"
@@ -65,18 +67,21 @@ template<typename S>
 void ReplicatedStateManager<S>::acquireSnapshot(ServerID leader,
                                                 LogIndex commitIndex) {
   auto guard = _guarded.getLockedGuard();
-  if (auto follower = std::dynamic_pointer_cast<IReplicatedFollowerState<S>>(
-          guard->_currentState);
-      follower != nullptr) {
-    LOG_CTX("52a11", DEBUG, _loggerContext)
-        << "try to acquire a new snapshot, starting at " << commitIndex;
 
-    follower->acquireSnapshot().then(
-        [&] { guard._methods->onSnapshotCompleted(); });
-  } else {
-    ADB_PROD_ASSERT(false) << "State is not a follower (or uninitialized), but "
-                              "acquireSnapshot is called";
-  }
+  std::visit(overload{
+                 [&](NewFollowerStateManager<S>& manager) {
+                   LOG_CTX("52a11", DEBUG, _loggerContext)
+                       << "try to acquire a new snapshot, starting at "
+                       << commitIndex;
+                   manager.acquireSnapshot(leader, commitIndex);
+                 },
+                 [](auto&&) {
+                   ADB_PROD_ASSERT(false)
+                       << "State is not a follower (or uninitialized), but "
+                          "acquireSnapshot is called";
+                 },
+             },
+             guard->_currentManager);
 }
 
 template<typename S>
@@ -121,6 +126,10 @@ void ReplicatedStateManager<S>::leadershipEstablished(
           .resign();
   ADB_PROD_ASSERT(oldMethods == nullptr);
   auto leaderState = _factory->constructLeader(std::move(core));
+  // TODO Pass the stream during construction already, and delete the
+  //      "setStream" method; after that, the leader state implementation can
+  //      also really rely on the stream being there.
+  leaderState->setStream(std::make_shared<ProducerStreamProxy<EntryType>>());
   auto& manager =
       guard->_currentManager.template emplace<NewLeaderStateManager<S>>(
           std::move(leaderState), std::move(methods));
@@ -141,9 +150,8 @@ void ReplicatedStateManager<S>::becomeFollower(
   ADB_PROD_ASSERT(oldMethods == nullptr);
 
   auto followerState = _factory->constructFollower(std::move(core));
-  auto& manager =
-      guard->_currentManager.template emplace<NewFollowerStateManager<S>>(
-          std::move(followerState), std::move(methods));
+  guard->_currentManager.template emplace<NewFollowerStateManager<S>>(
+      std::move(followerState), std::move(methods));
 }
 
 template<typename S>
@@ -155,9 +163,11 @@ template<typename S>
 void NewLeaderStateManager<S>::recoverEntries() {
   auto logSnapshot = _logMethods->getLogSnapshot();
   auto logIter = logSnapshot.getIteratorFrom(LogIndex{0});
+  auto deserializedIter =
+      std::make_unique<LazyDeserializingIterator<EntryType, Deserializer>>(
+          std::move(logIter));
   ADB_PROD_ASSERT(_leaderState != nullptr);
-  auto fut = _leaderState->recoverEntries(
-      std::move(logIter));  // TODO requires deserialization
+  auto fut = _leaderState->recoverEntries(std::move(deserializedIter));
   // TOOD handle future
   ADB_PROD_ASSERT(false);
 }
@@ -170,8 +180,11 @@ void NewLeaderStateManager<S>::updateCommitIndex(LogIndex index) {
 template<typename S>
 void NewFollowerStateManager<S>::updateCommitIndex(LogIndex commitIndex) {
   auto log = _logMethods->getLogSnapshot();
-  auto iter = log.getIteratorRange(_lastAppliedIndex, commitIndex);
-  auto fut = _followerState->applyEntries(iter);
+  auto logIter = log.getIteratorRange(_lastAppliedIndex, commitIndex);
+  auto deserializedIter = std::make_unique<
+      LazyDeserializingIterator<EntryType const&, Deserializer>>(
+      std::move(logIter));
+  auto fut = _followerState->applyEntries(std::move(deserializedIter));
   // TODO update _lastAppliedIndex after applying entries
   // TODO handle concurrent calls to updateCommitIndex while applyEntries is
   //      running

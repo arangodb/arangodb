@@ -157,6 +157,7 @@ struct IReplicatedFollowerState : IReplicatedStateImplBase<S>,
 
  private:
   friend struct FollowerStateManager<S>;
+  friend struct NewFollowerStateManager<S>;
 
   void setStateManager(
       std::shared_ptr<FollowerStateManager<S>> manager) noexcept;

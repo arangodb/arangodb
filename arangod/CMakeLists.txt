@@ -354,6 +354,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedLog/WaitForBag.cpp
   Replication2/ReplicatedLog/types.cpp
   Replication2/ReplicatedState/FollowerStateManager.tpp
+  Replication2/ReplicatedState/LazyDeserializingIterator.h
   Replication2/ReplicatedState/LeaderStateManager.tpp
   Replication2/ReplicatedState/PersistedStateInfo.cpp
   Replication2/ReplicatedState/ReplicatedStateFeature.cpp

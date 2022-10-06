@@ -75,6 +75,14 @@ struct IReplicatedFollowerState;
 template<typename S>
 struct IReplicatedLeaderState;
 
+template<typename S>
+using ReplicatedStateStreamSpec =
+    streams::stream_descriptor_set<streams::stream_descriptor<
+        streams::StreamId{1}, typename ReplicatedStateTraits<S>::EntryType,
+        streams::tag_descriptor_set<streams::tag_descriptor<
+            1, typename ReplicatedStateTraits<S>::Deserializer,
+            typename ReplicatedStateTraits<S>::Serializer>>>>;
+
 /**
  * Common base class for all ReplicatedStates, hiding the type information.
  */
@@ -102,10 +110,49 @@ struct ReplicatedStateBase {
       -> std::shared_ptr<IReplicatedFollowerStateBase> = 0;
 };
 
-// TODO Add and use LoggerContext to/in state managers
+// TODO Clean this up, starting with trimming Stream to its minimum
+template<typename EntryType,
+         template<typename> typename Interface = streams::Stream>
+struct StreamProxy : Interface<EntryType> {
+  using WaitForResult = typename streams::Stream<EntryType>::WaitForResult;
+  using Iterator = typename streams::Stream<EntryType>::Iterator;
+
+  auto waitFor(LogIndex index) -> futures::Future<WaitForResult> override {
+    // TODO Delete this, also in streams::Stream
+    std::abort();
+  }
+  auto waitForIterator(LogIndex index)
+      -> futures::Future<std::unique_ptr<Iterator>> override {
+    // TODO Delete this, also in streams::Stream
+    std::abort();
+  }
+  auto release(LogIndex index) -> void override {
+    // TODO Implement this
+    std::abort();
+  }
+};
+
+template<typename EntryType>
+struct ProducerStreamProxy : StreamProxy<EntryType, streams::ProducerStream> {
+  auto insert(const EntryType& t) -> LogIndex override {
+    // TODO Implement this
+    std::abort();
+  }
+  auto insertDeferred(const EntryType& t)
+      -> std::pair<LogIndex, DeferredAction> override {
+    // TODO Implement this
+    std::abort();
+  }
+};
+
+// TODO Add and use LoggerContext to/in the new state managers
+// TODO Add guards to the new state managers
 template<typename S>
 struct NewLeaderStateManager {
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
+  using EntryType = typename ReplicatedStateTraits<S>::EntryType;
+  using Deserializer = typename ReplicatedStateTraits<S>::Deserializer;
+
   explicit NewLeaderStateManager(
       std::shared_ptr<IReplicatedLeaderState<S>> leaderState,
       std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> logMethods);
@@ -124,6 +171,8 @@ struct NewLeaderStateManager {
 template<typename S>
 struct NewFollowerStateManager {
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
+  using EntryType = typename ReplicatedStateTraits<S>::EntryType;
+  using Deserializer = typename ReplicatedStateTraits<S>::Deserializer;
   explicit NewFollowerStateManager(
       std::shared_ptr<IReplicatedFollowerState<S>> followerState,
       std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods>
@@ -158,6 +207,7 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
   using Factory = typename ReplicatedStateTraits<S>::FactoryType;
   using FollowerType = typename ReplicatedStateTraits<S>::FollowerType;
   using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
+  using EntryType = typename ReplicatedStateTraits<S>::EntryType;
 
   ReplicatedStateManager(LoggerContext loggerContext,
                          std::unique_ptr<CoreType> logCore,
@@ -292,14 +342,6 @@ struct ReplicatedState final
   DatabaseID const database;
   std::shared_ptr<ReplicatedStateMetrics> const metrics;
 };
-
-template<typename S>
-using ReplicatedStateStreamSpec =
-    streams::stream_descriptor_set<streams::stream_descriptor<
-        streams::StreamId{1}, typename ReplicatedStateTraits<S>::EntryType,
-        streams::tag_descriptor_set<streams::tag_descriptor<
-            1, typename ReplicatedStateTraits<S>::Deserializer,
-            typename ReplicatedStateTraits<S>::Serializer>>>>;
 
 }  // namespace replicated_state
 }  // namespace arangodb::replication2
