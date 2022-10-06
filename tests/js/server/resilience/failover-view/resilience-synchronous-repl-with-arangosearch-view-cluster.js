@@ -37,6 +37,39 @@ const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
 const download = require('internal').download;
 
+const replicatedLogsHelper = require('@arangodb/testutils/replicated-logs-helper');
+const replicatedLogsPredicates = require('@arangodb/testutils/replicated-logs-predicates');
+const replicatedLogsHttpHelper = require('@arangodb/testutils/replicated-logs-http-helper');
+const helper = require('@arangodb/test-helper');
+
+const syncShardsWithLogs = function(dbn) {
+  const coordinator = replicatedLogsHelper.coordinators[0];
+  let logs = replicatedLogsHttpHelper.listLogs(coordinator, dbn).result;
+  let collections = replicatedLogsHelper.readAgencyValueAt(`Plan/Collections/${dbn}`);
+  for (const [colId, colInfo] of Object.entries(collections)) {
+    for (const shardId of Object.keys(colInfo.shards)) {
+      const logId = shardId.slice(1);
+      if (logId in logs) {
+        helper.agency.set(`Plan/Collections/${dbn}/${colId}/shards/${shardId}`, logs[logId]);
+      }
+    }
+  }
+
+  const waitForCurrent  = replicatedLogsHelper.readAgencyValueAt("Current/Version");
+  helper.agency.increaseVersion(`Plan/Version`);
+
+  replicatedLogsHelper.waitFor(() => {
+    const currentVersion  = replicatedLogsHelper.readAgencyValueAt("Current/Version");
+    if (currentVersion > waitForCurrent) {
+      return true;
+    }
+    return Error(`Current/Version expected to be greater than ${waitForCurrent}, but got ${currentVersion}`);
+  }, 30, (e) => {
+    // We ignore this and continue. Most probably current was increased before we could observe it.
+    print(e.message);
+  });
+};
+
 function getDBServers() {
   var tmp = global.ArangoClusterInfo.getDBServers();
   var servers = [];
@@ -154,7 +187,13 @@ function SynchronousReplicationWithViewSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function failLeader() {
+    var logId = shards[0].slice(1);
+
+    let term = replicatedLogsHelper.readReplicatedLogAgency("_system", logId).plan.currentTerm.term;
+    let newTerm = term + 2;
+
     var leader = cinfo.shards[shards[0]][0];
+    var followers = cinfo.shards[shards[0]].slice(1);
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
     // Now look for instanceManager:
     var pos = _.findIndex(global.instanceManager.arangods,
@@ -163,6 +202,12 @@ function SynchronousReplicationWithViewSuite () {
     assertTrue(suspendExternal(global.instanceManager.arangods[pos].pid));
     console.info("Have failed leader", leader);
     failedState.leader = leader;
+
+    replicatedLogsHelper.unsetLeader("_system", logId);
+    replicatedLogsHelper.waitFor(replicatedLogsPredicates.replicatedLogLeaderEstablished(
+      "_system", logId, newTerm, followers));
+    syncShardsWithLogs("_system");
+
     return leader;
   }
 
@@ -180,6 +225,7 @@ function SynchronousReplicationWithViewSuite () {
     assertTrue(continueExternal(global.instanceManager.arangods[pos].pid));
     console.info("Have healed leader", leader);
     if (failedState.leader === leader) failedState.leader = null;
+    syncShardsWithLogs("_system");
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -224,7 +270,7 @@ function SynchronousReplicationWithViewSuite () {
 
     if (healing.place === 1) { healFailure(healing); }
     if (failure.place === 2) { makeFailure(failure); }
-    
+
     var doc = c.document(id._key);
     assertEqual(12, doc.Hallo);
     viewOperations("assert", null, function assert() {
