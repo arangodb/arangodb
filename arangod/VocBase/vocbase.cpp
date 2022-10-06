@@ -135,6 +135,14 @@ struct arangodb::VocBaseLogManager {
     }
   }
 
+  void registerReplicatedState(
+      replication2::LogId id,
+      std::unique_ptr<
+          arangodb::replication2::replicated_state::IStorageEngineMethods>) {
+    ADB_PROD_ASSERT(false) << "register not yet implemented";
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
   auto resignAll() {
     auto guard = _guardedData.getLockedGuard();
     for (auto&& [id, val] : guard->statesAndLogs) {
@@ -2235,6 +2243,14 @@ auto TRI_vocbase_t::dropReplicatedState(LogId id) noexcept -> Result {
 auto TRI_vocbase_t::getReplicatedStateById(LogId id)
     -> ResultT<std::shared_ptr<replicated_state::ReplicatedStateBase>> {
   return _logManager->getReplicatedStateById(id);
+}
+
+void TRI_vocbase_t::registerReplicatedState(
+    arangodb::replication2::LogId id,
+    std::unique_ptr<
+        arangodb::replication2::replicated_state::IStorageEngineMethods>
+        methods) {
+  _logManager->registerReplicatedState(id, std::move(methods));
 }
 
 /// @brief sanitize an object, given as slice, builder must contain an
