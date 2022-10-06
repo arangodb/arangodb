@@ -1213,7 +1213,7 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(
         }
         LOG_CTX("e0800", TRACE, logContext)
             << "local follower completed append entries";
-        return AppendEntriesResult{term, messageId};
+        return AppendEntriesResult{term, messageId, true};
       };
 
   LOG_CTX("6fa8b", TRACE, messageLogContext)
@@ -1234,7 +1234,7 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(
              "moved away.";
       return AppendEntriesResult::withRejection(
           request.leaderTerm, request.messageId,
-          {AppendEntriesErrorReason::ErrorType::kLostLogCore});
+          {AppendEntriesErrorReason::ErrorType::kLostLogCore}, true);
     }
 
     // Note that the beginning of iter here is always (and must be) exactly the

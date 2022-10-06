@@ -366,7 +366,7 @@ struct CommitFailReason {
     }
 
     template<class Inspector>
-    auto inspect(Inspector& f, Why& x) {
+    friend auto inspect(Inspector& f, Why& x) {
       return f.enumeration(x).values(
           Why::kNotAllowedInQuorum, "NotAllowedInQuorum", Why::kWrongTerm,
           "WrongTerm", Why::kSnapshotMissing, "SnapshotMissing");
@@ -411,7 +411,7 @@ struct CommitFailReason {
   template<typename Inspector>
   friend auto inspect(Inspector& f, CommitFailReason& x) {
     namespace insp = arangodb::inspection;
-    return f.variant(x).embedded("reason").alternatives(
+    return f.variant(x.value).embedded("reason").alternatives(
         insp::type<NothingToCommit>("NothingToCommit"),
         insp::type<QuorumSizeNotReached>("QuorumSizeNotReached"),
         insp::type<ForcedParticipantNotInQuorum>(

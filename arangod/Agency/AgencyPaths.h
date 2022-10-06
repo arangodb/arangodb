@@ -2386,6 +2386,19 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
               return Id::make_shared(shared_from_this());
             }
 
+            class Leader : public StaticComponent<Leader, Log> {
+             public:
+              constexpr char const* component() const noexcept {
+                return "leader";
+              }
+
+              using BaseType::StaticComponent;
+            };
+
+            std::shared_ptr<Leader const> leader() const {
+              return Leader::make_shared(shared_from_this());
+            }
+
             class Participants : public StaticComponent<Participants, Log> {
              public:
               constexpr char const* component() const noexcept {
