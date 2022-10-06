@@ -1268,7 +1268,7 @@ auto LogicalCollection::getDocumentState()
   using namespace replication2::replicated_state;
   auto stateMachine =
       std::dynamic_pointer_cast<ReplicatedState<document::DocumentState>>(
-          vocbase().getReplicatedStateById(shardIdToStateId(name())));
+          vocbase().getReplicatedStateById(shardIdToStateId(name())).get());
   ADB_PROD_ASSERT(stateMachine != nullptr)
       << "Missing document state in shard " << name();
   return stateMachine;

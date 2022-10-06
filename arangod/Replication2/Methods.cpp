@@ -328,6 +328,7 @@ struct ReplicatedLogMethodsCoordinator final
     target.id = options.id.value();
     target.config = options.config.value();
     target.leader = options.leader;
+    target.properties.implementation = options.spec;
     target.version = 1;
     for (auto const& server : options.servers) {
       target.participants[server];

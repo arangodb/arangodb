@@ -75,6 +75,7 @@ struct ReplicatedLogMethods {
     std::optional<ParticipantId> leader;
     std::optional<std::size_t> numberOfServers;
     std::vector<ParticipantId> servers;
+    agency::ImplementationSpec spec;
   };
 
   struct CreateResult {
