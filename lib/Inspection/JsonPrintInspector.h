@@ -34,29 +34,29 @@
 
 namespace arangodb::inspection {
 
-enum class PrettyPrintFormat { kPretty, kCompact, kMinimal };
+enum class JsonPrintFormat { kPretty, kCompact, kMinimal };
 
 template<class Context = NoContext>
-struct PrettyPrintInspector
-    : SaveInspectorBase<PrettyPrintInspector<Context>, Context> {
+struct JsonPrintInspector
+    : SaveInspectorBase<JsonPrintInspector<Context>, Context> {
  protected:
-  using Base = SaveInspectorBase<PrettyPrintInspector, Context>;
+  using Base = SaveInspectorBase<JsonPrintInspector, Context>;
   static constexpr unsigned IndentationPerLevel = 2;
 
  public:
-  PrettyPrintInspector(std::ostream& stream,
-                       PrettyPrintFormat format) requires(!Base::hasContext)
+  JsonPrintInspector(std::ostream& stream,
+                     JsonPrintFormat format) requires(!Base::hasContext)
       : Base(),
         _stream(stream),
         _indentation(),
-        _linebreak(format == PrettyPrintFormat::kPretty    ? "\n"
-                   : format == PrettyPrintFormat::kCompact ? " "
-                                                           : ""),
-        _separator(format == PrettyPrintFormat::kMinimal ? "" : " "),
+        _linebreak(format == JsonPrintFormat::kPretty    ? "\n"
+                   : format == JsonPrintFormat::kCompact ? " "
+                                                         : ""),
+        _separator(format == JsonPrintFormat::kMinimal ? "" : " "),
         _format(format) {}
 
-  PrettyPrintInspector(std::ostream& stream, std::string indentation,
-                       Context const& context)
+  JsonPrintInspector(std::ostream& stream, std::string indentation,
+                     Context const& context)
       : Base(context), _stream(stream), _indentation(std::move(indentation)) {}
 
   template<class T>
@@ -188,7 +188,7 @@ struct PrettyPrintInspector
 
   template<class Iterator>
   [[nodiscard]] auto processList(Iterator begin, Iterator end)
-      -> decltype(process(std::declval<PrettyPrintInspector&>(), *begin)) {
+      -> decltype(process(std::declval<JsonPrintInspector&>(), *begin)) {
     for (auto it = begin; it != end;) {
       _stream << _indentation;
       if (auto res = process(*this, *it); !res.ok()) {
@@ -203,7 +203,7 @@ struct PrettyPrintInspector
 
   template<class T>
   [[nodiscard]] auto processMap(T const& map)
-      -> decltype(process(std::declval<PrettyPrintInspector&>(),
+      -> decltype(process(std::declval<JsonPrintInspector&>(),
                           map.begin()->second)) {
     auto end = map.end();
     _stream << _linebreak;
@@ -221,7 +221,7 @@ struct PrettyPrintInspector
   }
 
   void incrementIndentationLevel() {
-    if (_format == PrettyPrintFormat::kPretty) {
+    if (_format == JsonPrintFormat::kPretty) {
       for (unsigned i = 0; i < IndentationPerLevel; ++i) {
         _indentation.push_back(' ');
       }
@@ -229,7 +229,7 @@ struct PrettyPrintInspector
   }
 
   void decrementIndentationLevel() {
-    if (_format == PrettyPrintFormat::kPretty) {
+    if (_format == JsonPrintFormat::kPretty) {
       TRI_ASSERT(_indentation.size() >= IndentationPerLevel);
       for (unsigned i = 0; i < IndentationPerLevel; ++i) {
         _indentation.pop_back();
@@ -241,8 +241,7 @@ struct PrettyPrintInspector
   std::string _indentation;
   std::string_view _linebreak;
   std::string_view _separator;
-  PrettyPrintFormat _format;
+  JsonPrintFormat _format;
   bool _firstField = false;
 };
-
 }  // namespace arangodb::inspection

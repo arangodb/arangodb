@@ -23,60 +23,58 @@
 
 #include <gtest/gtest.h>
 
-#include <iostream>
 #include <ostream>
 
-#include "Inspection/Access.h"
 #include "Inspection/Format.h"
-#include "Inspection/PrettyPrintInspector.h"
+#include "Inspection/JsonPrintInspector.h"
 
 #include "InspectionTestHelper.h"
 
 namespace {
 using namespace arangodb;
 
-struct PrettyPrintInspectorTest : public ::testing::Test {
+struct JsonPrintInspectorTest : public ::testing::Test {
   std::ostringstream stream;
-  inspection::PrettyPrintInspector<> inspector{
-      stream, inspection::PrettyPrintFormat::kPretty};
+  inspection::JsonPrintInspector<> inspector{
+      stream, inspection::JsonPrintFormat::kPretty};
 };
 
-TEST_F(PrettyPrintInspectorTest, store_empty_objecty) {
+TEST_F(JsonPrintInspectorTest, store_empty_objecty) {
   auto empty = AnEmptyObject{};
   auto result = inspector.apply(empty);
   EXPECT_TRUE(result.ok());
   EXPECT_EQ("{\n}", stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_int) {
+TEST_F(JsonPrintInspectorTest, store_int) {
   int x = 42;
   auto result = inspector.apply(x);
   EXPECT_TRUE(result.ok());
   EXPECT_EQ("42", stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_double) {
+TEST_F(JsonPrintInspectorTest, store_double) {
   double x = 123.456;
   auto result = inspector.apply(x);
   EXPECT_TRUE(result.ok());
   EXPECT_EQ("123.456", stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_bool) {
+TEST_F(JsonPrintInspectorTest, store_bool) {
   bool x = true;
   auto result = inspector.apply(x);
   EXPECT_TRUE(result.ok());
   EXPECT_EQ("true", stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_string) {
+TEST_F(JsonPrintInspectorTest, store_string) {
   std::string x = "foobar";
   auto result = inspector.apply(x);
   EXPECT_TRUE(result.ok());
   EXPECT_EQ("\"foobar\"", stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_object) {
+TEST_F(JsonPrintInspectorTest, store_object) {
   Dummy const f{.i = 42, .d = 123.456, .b = true, .s = "foobar"};
   auto result = inspector.apply(f);
   EXPECT_TRUE(result.ok());
@@ -90,7 +88,7 @@ TEST_F(PrettyPrintInspectorTest, store_object) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_nested_object) {
+TEST_F(JsonPrintInspectorTest, store_nested_object) {
   Nested b{.dummy = {.i = 42, .d = 123.456, .b = true, .s = "foobar"}};
   auto result = inspector.apply(b);
   ASSERT_TRUE(result.ok());
@@ -106,7 +104,7 @@ TEST_F(PrettyPrintInspectorTest, store_nested_object) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_nested_object_without_nesting) {
+TEST_F(JsonPrintInspectorTest, store_nested_object_without_nesting) {
   Container c{.i = {.value = 42}};
   auto result = inspector.apply(c);
   ASSERT_TRUE(result.ok());
@@ -115,7 +113,7 @@ TEST_F(PrettyPrintInspectorTest, store_nested_object_without_nesting) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_list) {
+TEST_F(JsonPrintInspectorTest, store_list) {
   List l{.vec = {{1}, {2}, {3}}, .list = {4, 5}};
   auto result = inspector.apply(l);
   ASSERT_TRUE(result.ok());
@@ -140,7 +138,7 @@ TEST_F(PrettyPrintInspectorTest, store_list) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_map) {
+TEST_F(JsonPrintInspectorTest, store_map) {
   Map m{.map = {{"1", {1}}, {"2", {2}}, {"3", {3}}},
         .unordered = {{"4", 4}, {"5", 5}}};
   auto result = inspector.apply(m);
@@ -166,7 +164,7 @@ TEST_F(PrettyPrintInspectorTest, store_map) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_tuples) {
+TEST_F(JsonPrintInspectorTest, store_tuples) {
   Tuple t{.tuple = {"foo", 42, 12.34},
           .pair = {987, "bar"},
           .array1 = {"a", "b"},
@@ -197,7 +195,7 @@ TEST_F(PrettyPrintInspectorTest, store_tuples) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_optional) {
+TEST_F(JsonPrintInspectorTest, store_optional) {
   Optional o{.a = std::nullopt,
              .b = std::nullopt,
              .x = std::nullopt,
@@ -225,7 +223,7 @@ TEST_F(PrettyPrintInspectorTest, store_optional) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_optional_pointer) {
+TEST_F(JsonPrintInspectorTest, store_optional_pointer) {
   Pointer p{.a = nullptr,
             .b = std::make_shared<int>(42),
             .c = nullptr,
@@ -255,7 +253,7 @@ TEST_F(PrettyPrintInspectorTest, store_optional_pointer) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_object_with_field_transform) {
+TEST_F(JsonPrintInspectorTest, store_object_with_field_transform) {
   FieldTransform f{.x = 42};
   auto result = inspector.apply(f);
   ASSERT_TRUE(result.ok());
@@ -266,7 +264,7 @@ TEST_F(PrettyPrintInspectorTest, store_object_with_field_transform) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_object_with_optional_field_transform) {
+TEST_F(JsonPrintInspectorTest, store_object_with_optional_field_transform) {
   OptionalFieldTransform f{.x = 1, .y = std::nullopt, .z = 3};
   auto result = inspector.apply(f);
 
@@ -277,7 +275,7 @@ TEST_F(PrettyPrintInspectorTest, store_object_with_optional_field_transform) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_type_with_custom_specialization) {
+TEST_F(JsonPrintInspectorTest, store_type_with_custom_specialization) {
   Specialization s{.i = 42, .s = "foobar"};
   auto result = inspector.apply(s);
   ASSERT_TRUE(result.ok());
@@ -289,7 +287,7 @@ TEST_F(PrettyPrintInspectorTest, store_type_with_custom_specialization) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_type_with_explicitly_ignored_fields) {
+TEST_F(JsonPrintInspectorTest, store_type_with_explicitly_ignored_fields) {
   ExplicitIgnore e{.s = "foobar"};
   auto result = inspector.apply(e);
   ASSERT_TRUE(result.ok());
@@ -300,7 +298,7 @@ TEST_F(PrettyPrintInspectorTest, store_type_with_explicitly_ignored_fields) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_type_with_unsafe_fields) {
+TEST_F(JsonPrintInspectorTest, store_type_with_unsafe_fields) {
   velocypack::Builder localBuilder;
   localBuilder.add(VPackValue("blubb"));
   std::string_view hashedString = "hashedString";
@@ -319,7 +317,7 @@ TEST_F(PrettyPrintInspectorTest, store_type_with_unsafe_fields) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_qualified_variant) {
+TEST_F(JsonPrintInspectorTest, store_qualified_variant) {
   QualifiedVariant d{.a = {"foobar"},
                      .b = {42},
                      .c = {Struct1{1}},
@@ -355,7 +353,7 @@ TEST_F(PrettyPrintInspectorTest, store_qualified_variant) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_unqualified_variant) {
+TEST_F(JsonPrintInspectorTest, store_unqualified_variant) {
   UnqualifiedVariant d{.a = {"foobar"},
                        .b = {42},
                        .c = {Struct1{1}},
@@ -387,7 +385,7 @@ TEST_F(PrettyPrintInspectorTest, store_unqualified_variant) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_string_enum) {
+TEST_F(JsonPrintInspectorTest, store_string_enum) {
   std::vector<MyStringEnum> enums{MyStringEnum::kValue1, MyStringEnum::kValue2,
                                   MyStringEnum::kValue3};
   auto result = inspector.apply(enums);
@@ -401,7 +399,7 @@ TEST_F(PrettyPrintInspectorTest, store_string_enum) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_int_enum) {
+TEST_F(JsonPrintInspectorTest, store_int_enum) {
   std::vector<MyIntEnum> enums{MyIntEnum::kValue1, MyIntEnum::kValue2,
                                MyIntEnum::kValue3};
   auto result = inspector.apply(enums);
@@ -415,7 +413,7 @@ TEST_F(PrettyPrintInspectorTest, store_int_enum) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_mixed_enum) {
+TEST_F(JsonPrintInspectorTest, store_mixed_enum) {
   std::vector<MyMixedEnum> enums{MyMixedEnum::kValue1, MyMixedEnum::kValue2};
   auto result = inspector.apply(enums);
   ASSERT_TRUE(result.ok());
@@ -427,7 +425,7 @@ TEST_F(PrettyPrintInspectorTest, store_mixed_enum) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest,
+TEST_F(JsonPrintInspectorTest,
        store_string_enum_returns_error_for_unknown_value) {
   MyStringEnum val = static_cast<MyStringEnum>(42);
   auto result = inspector.apply(val);
@@ -435,15 +433,14 @@ TEST_F(PrettyPrintInspectorTest,
   EXPECT_EQ("Unknown enum value 42", result.error());
 }
 
-TEST_F(PrettyPrintInspectorTest,
-       store_int_enum_returns_error_for_unknown_value) {
+TEST_F(JsonPrintInspectorTest, store_int_enum_returns_error_for_unknown_value) {
   MyIntEnum val = static_cast<MyIntEnum>(42);
   auto result = inspector.apply(val);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Unknown enum value 42", result.error());
 }
 
-TEST_F(PrettyPrintInspectorTest,
+TEST_F(JsonPrintInspectorTest,
        store_mixed_enum_returns_error_for_unknown_value) {
   MyMixedEnum val = static_cast<MyMixedEnum>(42);
   auto result = inspector.apply(val);
@@ -451,7 +448,7 @@ TEST_F(PrettyPrintInspectorTest,
   EXPECT_EQ("Unknown enum value 42", result.error());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_inline_variant) {
+TEST_F(JsonPrintInspectorTest, store_inline_variant) {
   InlineVariant d{.a = {"foobar"},
                   .b = {Struct1{.v = 42}},
                   .c = {std::vector<int>{1, 2, 3}},
@@ -480,7 +477,7 @@ TEST_F(PrettyPrintInspectorTest, store_inline_variant) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_embedded_variant) {
+TEST_F(JsonPrintInspectorTest, store_embedded_variant) {
   EmbeddedVariant d{.a = {Struct1{1}},
                     .b = {Struct2{2}},
                     .c = {Struct3{.a = 1, .b = 2}},
@@ -507,7 +504,7 @@ TEST_F(PrettyPrintInspectorTest, store_embedded_variant) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorTest, store_embedded_fields) {
+TEST_F(JsonPrintInspectorTest, store_embedded_fields) {
   NestedEmbedding const n{
       Embedded{.a = 1, .inner = {.i = 42, .s = "foobar"}, .b = 2}};
   auto result = inspector.apply(n);
@@ -522,20 +519,20 @@ TEST_F(PrettyPrintInspectorTest, store_embedded_fields) {
   EXPECT_EQ(expected, stream.str());
 }
 
-struct PrettyPrintInspectorCompactTest : public ::testing::Test {
+struct JsonPrintInspectorCompactTest : public ::testing::Test {
   std::ostringstream stream;
-  inspection::PrettyPrintInspector<> inspector{
-      stream, inspection::PrettyPrintFormat::kCompact};
+  inspection::JsonPrintInspector<> inspector{
+      stream, inspection::JsonPrintFormat::kCompact};
 };
 
-TEST_F(PrettyPrintInspectorCompactTest, store_empty_objecty) {
+TEST_F(JsonPrintInspectorCompactTest, store_empty_objecty) {
   auto empty = AnEmptyObject{};
   auto result = inspector.apply(empty);
   EXPECT_TRUE(result.ok());
   EXPECT_EQ("{ }", stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest, store_object) {
+TEST_F(JsonPrintInspectorCompactTest, store_object) {
   Dummy const f{.i = 42, .d = 123.456, .b = true, .s = "foobar"};
   auto result = inspector.apply(f);
   EXPECT_TRUE(result.ok());
@@ -544,7 +541,7 @@ TEST_F(PrettyPrintInspectorCompactTest, store_object) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest, store_nested_object) {
+TEST_F(JsonPrintInspectorCompactTest, store_nested_object) {
   Nested b{.dummy = {.i = 42, .d = 123.456, .b = true, .s = "foobar"}};
   auto result = inspector.apply(b);
   ASSERT_TRUE(result.ok());
@@ -553,7 +550,7 @@ TEST_F(PrettyPrintInspectorCompactTest, store_nested_object) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest, store_nested_object_without_nesting) {
+TEST_F(JsonPrintInspectorCompactTest, store_nested_object_without_nesting) {
   Container c{.i = {.value = 42}};
   auto result = inspector.apply(c);
   ASSERT_TRUE(result.ok());
@@ -562,7 +559,7 @@ TEST_F(PrettyPrintInspectorCompactTest, store_nested_object_without_nesting) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest, store_list) {
+TEST_F(JsonPrintInspectorCompactTest, store_list) {
   List l{.vec = {{1}, {2}, {3}}, .list = {4, 5}};
   auto result = inspector.apply(l);
   ASSERT_TRUE(result.ok());
@@ -572,7 +569,7 @@ TEST_F(PrettyPrintInspectorCompactTest, store_list) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest, store_map) {
+TEST_F(JsonPrintInspectorCompactTest, store_map) {
   Map m{.map = {{"1", {1}}, {"2", {2}}, {"3", {3}}},
         .unordered = {{"4", 4}, {"5", 5}}};
   auto result = inspector.apply(m);
@@ -583,7 +580,7 @@ TEST_F(PrettyPrintInspectorCompactTest, store_map) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest, store_tuples) {
+TEST_F(JsonPrintInspectorCompactTest, store_tuples) {
   Tuple t{.tuple = {"foo", 42, 12.34},
           .pair = {987, "bar"},
           .array1 = {"a", "b"},
@@ -596,7 +593,7 @@ TEST_F(PrettyPrintInspectorCompactTest, store_tuples) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest, store_optional) {
+TEST_F(JsonPrintInspectorCompactTest, store_optional) {
   Optional o{.a = std::nullopt,
              .b = std::nullopt,
              .x = std::nullopt,
@@ -611,7 +608,7 @@ TEST_F(PrettyPrintInspectorCompactTest, store_optional) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest, store_optional_pointer) {
+TEST_F(JsonPrintInspectorCompactTest, store_optional_pointer) {
   Pointer p{.a = nullptr,
             .b = std::make_shared<int>(42),
             .c = nullptr,
@@ -630,7 +627,7 @@ TEST_F(PrettyPrintInspectorCompactTest, store_optional_pointer) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest, store_object_with_field_transform) {
+TEST_F(JsonPrintInspectorCompactTest, store_object_with_field_transform) {
   FieldTransform f{.x = 42};
   auto result = inspector.apply(f);
   ASSERT_TRUE(result.ok());
@@ -639,7 +636,7 @@ TEST_F(PrettyPrintInspectorCompactTest, store_object_with_field_transform) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest,
+TEST_F(JsonPrintInspectorCompactTest,
        store_object_with_optional_field_transform) {
   OptionalFieldTransform f{.x = 1, .y = std::nullopt, .z = 3};
   auto result = inspector.apply(f);
@@ -648,7 +645,7 @@ TEST_F(PrettyPrintInspectorCompactTest,
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest, store_type_with_custom_specialization) {
+TEST_F(JsonPrintInspectorCompactTest, store_type_with_custom_specialization) {
   Specialization s{.i = 42, .s = "foobar"};
   auto result = inspector.apply(s);
   ASSERT_TRUE(result.ok());
@@ -657,7 +654,7 @@ TEST_F(PrettyPrintInspectorCompactTest, store_type_with_custom_specialization) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest,
+TEST_F(JsonPrintInspectorCompactTest,
        store_type_with_explicitly_ignored_fields) {
   ExplicitIgnore e{.s = "foobar"};
   auto result = inspector.apply(e);
@@ -667,7 +664,7 @@ TEST_F(PrettyPrintInspectorCompactTest,
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest, store_type_with_unsafe_fields) {
+TEST_F(JsonPrintInspectorCompactTest, store_type_with_unsafe_fields) {
   velocypack::Builder localBuilder;
   localBuilder.add(VPackValue("blubb"));
   std::string_view hashedString = "hashedString";
@@ -683,7 +680,7 @@ TEST_F(PrettyPrintInspectorCompactTest, store_type_with_unsafe_fields) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest, store_qualified_variant) {
+TEST_F(JsonPrintInspectorCompactTest, store_qualified_variant) {
   QualifiedVariant d{.a = {"foobar"},
                      .b = {42},
                      .c = {Struct1{1}},
@@ -697,7 +694,7 @@ TEST_F(PrettyPrintInspectorCompactTest, store_qualified_variant) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest, store_unqualified_variant) {
+TEST_F(JsonPrintInspectorCompactTest, store_unqualified_variant) {
   UnqualifiedVariant d{.a = {"foobar"},
                        .b = {42},
                        .c = {Struct1{1}},
@@ -711,7 +708,7 @@ TEST_F(PrettyPrintInspectorCompactTest, store_unqualified_variant) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest, store_string_enum) {
+TEST_F(JsonPrintInspectorCompactTest, store_string_enum) {
   std::vector<MyStringEnum> enums{MyStringEnum::kValue1, MyStringEnum::kValue2,
                                   MyStringEnum::kValue3};
   auto result = inspector.apply(enums);
@@ -721,7 +718,7 @@ TEST_F(PrettyPrintInspectorCompactTest, store_string_enum) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest, store_int_enum) {
+TEST_F(JsonPrintInspectorCompactTest, store_int_enum) {
   std::vector<MyIntEnum> enums{MyIntEnum::kValue1, MyIntEnum::kValue2,
                                MyIntEnum::kValue3};
   auto result = inspector.apply(enums);
@@ -731,7 +728,7 @@ TEST_F(PrettyPrintInspectorCompactTest, store_int_enum) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest, store_mixed_enum) {
+TEST_F(JsonPrintInspectorCompactTest, store_mixed_enum) {
   std::vector<MyMixedEnum> enums{MyMixedEnum::kValue1, MyMixedEnum::kValue2};
   auto result = inspector.apply(enums);
   ASSERT_TRUE(result.ok());
@@ -740,7 +737,7 @@ TEST_F(PrettyPrintInspectorCompactTest, store_mixed_enum) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest, store_inline_variant) {
+TEST_F(JsonPrintInspectorCompactTest, store_inline_variant) {
   InlineVariant d{.a = {"foobar"},
                   .b = {Struct1{.v = 42}},
                   .c = {std::vector<int>{1, 2, 3}},
@@ -754,7 +751,7 @@ TEST_F(PrettyPrintInspectorCompactTest, store_inline_variant) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest, store_embedded_variant) {
+TEST_F(JsonPrintInspectorCompactTest, store_embedded_variant) {
   EmbeddedVariant d{.a = {Struct1{1}},
                     .b = {Struct2{2}},
                     .c = {Struct3{.a = 1, .b = 2}},
@@ -767,7 +764,7 @@ TEST_F(PrettyPrintInspectorCompactTest, store_embedded_variant) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorCompactTest, store_embedded_fields) {
+TEST_F(JsonPrintInspectorCompactTest, store_embedded_fields) {
   NestedEmbedding const n{
       Embedded{.a = 1, .inner = {.i = 42, .s = "foobar"}, .b = 2}};
   auto result = inspector.apply(n);
@@ -777,20 +774,20 @@ TEST_F(PrettyPrintInspectorCompactTest, store_embedded_fields) {
   EXPECT_EQ(expected, stream.str());
 }
 
-struct PrettyPrintInspectorMinimalTest : public ::testing::Test {
+struct JsonPrintInspectorMinimalTest : public ::testing::Test {
   std::ostringstream stream;
-  inspection::PrettyPrintInspector<> inspector{
-      stream, inspection::PrettyPrintFormat::kMinimal};
+  inspection::JsonPrintInspector<> inspector{
+      stream, inspection::JsonPrintFormat::kMinimal};
 };
 
-TEST_F(PrettyPrintInspectorMinimalTest, store_empty_objecty) {
+TEST_F(JsonPrintInspectorMinimalTest, store_empty_objecty) {
   auto empty = AnEmptyObject{};
   auto result = inspector.apply(empty);
   EXPECT_TRUE(result.ok());
   EXPECT_EQ("{}", stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest, store_object) {
+TEST_F(JsonPrintInspectorMinimalTest, store_object) {
   Dummy const f{.i = 42, .d = 123.456, .b = true, .s = "foobar"};
   auto result = inspector.apply(f);
   EXPECT_TRUE(result.ok());
@@ -799,7 +796,7 @@ TEST_F(PrettyPrintInspectorMinimalTest, store_object) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest, store_nested_object) {
+TEST_F(JsonPrintInspectorMinimalTest, store_nested_object) {
   Nested b{.dummy = {.i = 42, .d = 123.456, .b = true, .s = "foobar"}};
   auto result = inspector.apply(b);
   ASSERT_TRUE(result.ok());
@@ -808,7 +805,7 @@ TEST_F(PrettyPrintInspectorMinimalTest, store_nested_object) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest, store_nested_object_without_nesting) {
+TEST_F(JsonPrintInspectorMinimalTest, store_nested_object_without_nesting) {
   Container c{.i = {.value = 42}};
   auto result = inspector.apply(c);
   ASSERT_TRUE(result.ok());
@@ -817,7 +814,7 @@ TEST_F(PrettyPrintInspectorMinimalTest, store_nested_object_without_nesting) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest, store_list) {
+TEST_F(JsonPrintInspectorMinimalTest, store_list) {
   List l{.vec = {{1}, {2}, {3}}, .list = {4, 5}};
   auto result = inspector.apply(l);
   ASSERT_TRUE(result.ok());
@@ -826,7 +823,7 @@ TEST_F(PrettyPrintInspectorMinimalTest, store_list) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest, store_map) {
+TEST_F(JsonPrintInspectorMinimalTest, store_map) {
   Map m{.map = {{"1", {1}}, {"2", {2}}, {"3", {3}}},
         .unordered = {{"4", 4}, {"5", 5}}};
   auto result = inspector.apply(m);
@@ -837,7 +834,7 @@ TEST_F(PrettyPrintInspectorMinimalTest, store_map) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest, store_tuples) {
+TEST_F(JsonPrintInspectorMinimalTest, store_tuples) {
   Tuple t{.tuple = {"foo", 42, 12.34},
           .pair = {987, "bar"},
           .array1 = {"a", "b"},
@@ -850,7 +847,7 @@ TEST_F(PrettyPrintInspectorMinimalTest, store_tuples) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest, store_optional) {
+TEST_F(JsonPrintInspectorMinimalTest, store_optional) {
   Optional o{.a = std::nullopt,
              .b = std::nullopt,
              .x = std::nullopt,
@@ -865,7 +862,7 @@ TEST_F(PrettyPrintInspectorMinimalTest, store_optional) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest, store_optional_pointer) {
+TEST_F(JsonPrintInspectorMinimalTest, store_optional_pointer) {
   Pointer p{.a = nullptr,
             .b = std::make_shared<int>(42),
             .c = nullptr,
@@ -883,7 +880,7 @@ TEST_F(PrettyPrintInspectorMinimalTest, store_optional_pointer) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest, store_object_with_field_transform) {
+TEST_F(JsonPrintInspectorMinimalTest, store_object_with_field_transform) {
   FieldTransform f{.x = 42};
   auto result = inspector.apply(f);
   ASSERT_TRUE(result.ok());
@@ -892,7 +889,7 @@ TEST_F(PrettyPrintInspectorMinimalTest, store_object_with_field_transform) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest,
+TEST_F(JsonPrintInspectorMinimalTest,
        store_object_with_optional_field_transform) {
   OptionalFieldTransform f{.x = 1, .y = std::nullopt, .z = 3};
   auto result = inspector.apply(f);
@@ -901,7 +898,7 @@ TEST_F(PrettyPrintInspectorMinimalTest,
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest, store_type_with_custom_specialization) {
+TEST_F(JsonPrintInspectorMinimalTest, store_type_with_custom_specialization) {
   Specialization s{.i = 42, .s = "foobar"};
   auto result = inspector.apply(s);
   ASSERT_TRUE(result.ok());
@@ -910,7 +907,7 @@ TEST_F(PrettyPrintInspectorMinimalTest, store_type_with_custom_specialization) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest,
+TEST_F(JsonPrintInspectorMinimalTest,
        store_type_with_explicitly_ignored_fields) {
   ExplicitIgnore e{.s = "foobar"};
   auto result = inspector.apply(e);
@@ -920,7 +917,7 @@ TEST_F(PrettyPrintInspectorMinimalTest,
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest, store_type_with_unsafe_fields) {
+TEST_F(JsonPrintInspectorMinimalTest, store_type_with_unsafe_fields) {
   velocypack::Builder localBuilder;
   localBuilder.add(VPackValue("blubb"));
   std::string_view hashedString = "hashedString";
@@ -935,7 +932,7 @@ TEST_F(PrettyPrintInspectorMinimalTest, store_type_with_unsafe_fields) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest, store_qualified_variant) {
+TEST_F(JsonPrintInspectorMinimalTest, store_qualified_variant) {
   QualifiedVariant d{.a = {"foobar"},
                      .b = {42},
                      .c = {Struct1{1}},
@@ -949,7 +946,7 @@ TEST_F(PrettyPrintInspectorMinimalTest, store_qualified_variant) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest, store_unqualified_variant) {
+TEST_F(JsonPrintInspectorMinimalTest, store_unqualified_variant) {
   UnqualifiedVariant d{.a = {"foobar"},
                        .b = {42},
                        .c = {Struct1{1}},
@@ -963,7 +960,7 @@ TEST_F(PrettyPrintInspectorMinimalTest, store_unqualified_variant) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest, store_string_enum) {
+TEST_F(JsonPrintInspectorMinimalTest, store_string_enum) {
   std::vector<MyStringEnum> enums{MyStringEnum::kValue1, MyStringEnum::kValue2,
                                   MyStringEnum::kValue3};
   auto result = inspector.apply(enums);
@@ -973,7 +970,7 @@ TEST_F(PrettyPrintInspectorMinimalTest, store_string_enum) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest, store_int_enum) {
+TEST_F(JsonPrintInspectorMinimalTest, store_int_enum) {
   std::vector<MyIntEnum> enums{MyIntEnum::kValue1, MyIntEnum::kValue2,
                                MyIntEnum::kValue3};
   auto result = inspector.apply(enums);
@@ -983,7 +980,7 @@ TEST_F(PrettyPrintInspectorMinimalTest, store_int_enum) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest, store_mixed_enum) {
+TEST_F(JsonPrintInspectorMinimalTest, store_mixed_enum) {
   std::vector<MyMixedEnum> enums{MyMixedEnum::kValue1, MyMixedEnum::kValue2};
   auto result = inspector.apply(enums);
   ASSERT_TRUE(result.ok());
@@ -992,7 +989,7 @@ TEST_F(PrettyPrintInspectorMinimalTest, store_mixed_enum) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest, store_inline_variant) {
+TEST_F(JsonPrintInspectorMinimalTest, store_inline_variant) {
   InlineVariant d{.a = {"foobar"},
                   .b = {Struct1{.v = 42}},
                   .c = {std::vector<int>{1, 2, 3}},
@@ -1006,7 +1003,7 @@ TEST_F(PrettyPrintInspectorMinimalTest, store_inline_variant) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest, store_embedded_variant) {
+TEST_F(JsonPrintInspectorMinimalTest, store_embedded_variant) {
   EmbeddedVariant d{.a = {Struct1{1}},
                     .b = {Struct2{2}},
                     .c = {Struct3{.a = 1, .b = 2}},
@@ -1019,7 +1016,7 @@ TEST_F(PrettyPrintInspectorMinimalTest, store_embedded_variant) {
   EXPECT_EQ(expected, stream.str());
 }
 
-TEST_F(PrettyPrintInspectorMinimalTest, store_embedded_fields) {
+TEST_F(JsonPrintInspectorMinimalTest, store_embedded_fields) {
   NestedEmbedding const n{
       Embedded{.a = 1, .inner = {.i = 42, .s = "foobar"}, .b = 2}};
   auto result = inspector.apply(n);
@@ -1027,6 +1024,68 @@ TEST_F(PrettyPrintInspectorMinimalTest, store_embedded_fields) {
 
   auto expected = R"({a:1,i:42,s:"foobar",b:2})";
   EXPECT_EQ(expected, stream.str());
+}
+
+TEST(JsonPrint, stream_output) {
+  Dummy const f{.i = 42, .d = 123.456, .b = true, .s = "foobar"};
+  std::ostringstream stream;
+  {
+    stream << inspection::printable(f, inspection::JsonPrintFormat::kPretty);
+    auto expected = R"({
+  i: 42,
+  d: 123.456,
+  b: true,
+  s: "foobar"
+})";
+    EXPECT_EQ(expected, stream.str());
+  }
+
+  {
+    stream.str("");
+    stream.clear();
+    stream << inspection::printable(f);
+    auto expected = R"({ i: 42, d: 123.456, b: true, s: "foobar" })";
+    EXPECT_EQ(expected, stream.str());
+  }
+}
+
+TEST(JsonPrint, format_output) {
+  Dummy const f{.i = 42, .d = 123.456, .b = true, .s = "foobar"};
+
+  {
+    auto expected = R"(Dummy - {
+  i: 42,
+  d: 123.456,
+  b: true,
+  s: "foobar"
+})";
+    auto actual = fmt::format("Dummy - {:p}", inspection::printable(f));
+    EXPECT_EQ(expected, actual);
+
+    actual = fmt::format(
+        "Dummy - {}",
+        inspection::printable(f, inspection::JsonPrintFormat::kPretty));
+    EXPECT_EQ(expected, actual);
+  }
+
+  {
+    auto expected = R"(Dummy - { i: 42, d: 123.456, b: true, s: "foobar" })";
+    auto actual = fmt::format("Dummy - {}", inspection::printable(f));
+    EXPECT_EQ(expected, actual);
+    actual = fmt::format("Dummy - {:c}", inspection::printable(f));
+    EXPECT_EQ(expected, actual);
+  }
+
+  {
+    auto expected = R"(Dummy - {i:42,d:123.456,b:true,s:"foobar"})";
+    auto actual = fmt::format("Dummy - {:m}", inspection::printable(f));
+    EXPECT_EQ(expected, actual);
+
+    actual = fmt::format(
+        "Dummy - {}",
+        inspection::printable(f, inspection::JsonPrintFormat::kMinimal));
+    EXPECT_EQ(expected, actual);
+  }
 }
 
 }  // namespace

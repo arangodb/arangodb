@@ -26,9 +26,11 @@
 #include <fmt/core.h>
 #include <fmt/format.h>
 
+#include "Inspection/JsonPrintInspector.h"
 #include "Inspection/VPackSaveInspector.h"
-#include "Inspection/detail/traits.h"
 #include <Inspection/VPack.h>
+#include "Inspection/detail/traits.h"
+#include "fmt/os.h"
 
 template<>
 struct fmt::formatter<VPackSlice> {
@@ -81,4 +83,84 @@ struct inspection_formatter : fmt::formatter<VPackSlice> {
     return fmt::formatter<VPackSlice>::format(sharedSlice.slice(), ctx);
   }
 };
+
+template<class T>
+struct Printable {
+  T const& value;
+  JsonPrintFormat format;
+};
+
+template<class T>
+auto printable(T const& value,
+               JsonPrintFormat format = JsonPrintFormat::kCompact) {
+  static_assert(detail::IsInspectable<T, JsonPrintInspector<>>());
+  return Printable<T>{.value = value, .format = format};
+}
+
 }  // namespace arangodb::inspection
+
+template<class T, class Char>
+struct fmt::formatter<arangodb::inspection::Printable<T>, Char>
+    : formatter<basic_string_view<Char>, Char> {
+  void set_debug_format() = delete;
+
+  constexpr auto parse(fmt::format_parse_context& ctx)
+      -> decltype(ctx.begin()) {
+    auto it = ctx.begin(), end = ctx.end();
+    if (it != end) {
+      if (*it == 'm') {
+        _format = arangodb::inspection::JsonPrintFormat::kMinimal;
+        it++;
+      } else if (*it == 'c') {
+        _format = arangodb::inspection::JsonPrintFormat::kCompact;
+        it++;
+      } else if (*it == 'p') {
+        _format = arangodb::inspection::JsonPrintFormat::kPretty;
+        it++;
+      }
+    }
+    if (it != end && *it != '}') throw fmt::format_error("invalid format");
+    return it;
+  }
+
+  template<typename OutputIt>
+  auto format(arangodb::inspection::Printable<T> const& v,
+              basic_format_context<OutputIt, Char>& ctx) const
+      -> decltype(ctx.out()) {
+    auto format = _format.value_or(v.format);
+
+    auto buffer = fmt::basic_memory_buffer<Char>();
+    format_value(buffer, v.value, ctx.locale(), format);
+    return formatter<basic_string_view<Char>, Char>::format(
+        {buffer.data(), buffer.size()}, ctx);
+  }
+
+ private:
+  static void format_value(detail::buffer<Char>& buf, const T& value,
+                           detail::locale_ref loc,
+                           arangodb::inspection::JsonPrintFormat format) {
+    auto&& format_buf = detail::formatbuf<std::basic_streambuf<Char>>(buf);
+    auto&& output = std::basic_ostream<Char>(&format_buf);
+#if !defined(FMT_STATIC_THOUSANDS_SEPARATOR)
+    if (loc) output.imbue(loc.get<std::locale>());
+#endif
+    arangodb::inspection::JsonPrintInspector<> insp(output, format);
+    auto res = insp.apply(value);
+    assert(res.ok());  // TODO - print error if failed?
+    output.exceptions(std::ios_base::failbit | std::ios_base::badbit);
+  }
+
+  // format: 'm' - Minimal, 'c' - Compact, 'p' - Pretty.
+  std::optional<arangodb::inspection::JsonPrintFormat> _format;
+};
+
+namespace std {
+template<class T>
+ostream& operator<<(ostream& stream,
+                    arangodb::inspection::Printable<T> const& v) {
+  arangodb::inspection::JsonPrintInspector<> inspector(stream, v.format);
+  auto result = inspector.apply(v.value);
+  assert(result.ok());  // TODO - print error if failed?
+  return stream;
+}
+}  // namespace std
