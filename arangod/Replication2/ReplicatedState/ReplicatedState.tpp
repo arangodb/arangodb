@@ -56,12 +56,14 @@ namespace arangodb::replication2::replicated_state {
 
 template<typename S>
 ReplicatedStateManager<S>::ReplicatedStateManager(
-    LoggerContext loggerContext, std::unique_ptr<CoreType> logCore,
-    std::shared_ptr<Factory> factory)
+    LoggerContext loggerContext,
+    std::shared_ptr<ReplicatedStateMetrics> metrics,
+    std::unique_ptr<CoreType> logCore, std::shared_ptr<Factory> factory)
     : _guarded{._currentManager =
                    NewUnconfiguredStateManager(std::move(logCore))},
-      _factory(std::move(factory)),
-      _loggerContext(std::move(loggerContext)) {}
+      _loggerContext(std::move(loggerContext)),
+      _metrics(metrics),
+      _factory(std::move(factory)) {}
 
 template<typename S>
 void ReplicatedStateManager<S>::acquireSnapshot(ServerID leader,
@@ -132,7 +134,7 @@ void ReplicatedStateManager<S>::leadershipEstablished(
   leaderState->setStream(std::make_shared<ProducerStreamProxy<EntryType>>());
   auto& manager =
       guard->_currentManager.template emplace<NewLeaderStateManager<S>>(
-          std::move(leaderState), std::move(methods));
+          _metrics, std::move(leaderState), std::move(methods));
 
   manager.recoverEntries();
 }
@@ -151,7 +153,7 @@ void ReplicatedStateManager<S>::becomeFollower(
 
   auto followerState = _factory->constructFollower(std::move(core));
   guard->_currentManager.template emplace<NewFollowerStateManager<S>>(
-      std::move(followerState), std::move(methods));
+      _metrics, std::move(followerState), std::move(methods));
 }
 
 template<typename S>
@@ -166,10 +168,12 @@ void NewLeaderStateManager<S>::recoverEntries() {
   auto deserializedIter =
       std::make_unique<LazyDeserializingIterator<EntryType, Deserializer>>(
           std::move(logIter));
-  ADB_PROD_ASSERT(_leaderState != nullptr);
-  auto fut = _leaderState->recoverEntries(std::move(deserializedIter));
-  // TOOD handle future
-  ADB_PROD_ASSERT(false);
+  MeasureTimeGuard timeGuard(_metrics->replicatedStateRecoverEntriesRtt);
+  auto fut = _leaderState->recoverEntries(std::move(deserializedIter))
+                 .then([guard = std::move(timeGuard)](auto&& res) mutable {
+                   guard.fire();
+                   return std::move(res.get());
+                 });
 }
 
 template<typename S>
@@ -247,13 +251,6 @@ ReplicatedState<S>::ReplicatedState(
   this->metrics->replicatedStateNumber->fetch_add(1);
 }
 
-// template<typename S>
-// void ReplicatedState<S>::flush(StateGeneration planGeneration) {
-//   auto deferred = guardedData.getLockedGuard()->flush(planGeneration);
-//   // execute *after* the lock has been released
-//   deferred.fire();
-// }
-
 template<typename S>
 auto ReplicatedState<S>::getFollower() const -> std::shared_ptr<FollowerType> {
   auto guard = guardedData.getLockedGuard();
@@ -291,41 +288,6 @@ auto ReplicatedState<S>::getStatus() -> std::optional<StateStatus> {
         return data.currentManager->getStatus();
       });
 }
-
-// template<typename S>
-// void ReplicatedState<S>::rebuildMe(const IStateManagerBase* caller) noexcept
-// {
-//   LOG_CTX("8041a", TRACE, loggerContext) << "Force rebuild of replicated
-//   state"; static_assert(noexcept(
-//       // get type of `deferred` by repeating the right-hand-side
-//       decltype(guardedData.getLockedGuard()->rebuildMe(caller))
-//       // call its copy constructor
-//       (
-//           // right-hand-side value
-//           // note thate getLockedGuard() isn't noexcept, but we consciously
-//           // ignore locks throwing exceptions.
-//           std::declval<decltype(guardedData.getLockedGuard())>()->rebuildMe(
-//               caller)  //
-//           )            //
-//       ));
-//   auto deferred = guardedData.getLockedGuard()->rebuildMe(caller);
-//   static_assert(noexcept(deferred.fire()));
-//   // execute *after* the lock has been released
-//   deferred.fire();
-// }
-
-// template<typename S>
-// void ReplicatedState<S>::start(
-//     std::unique_ptr<ReplicatedStateToken> token,
-//     std::optional<velocypack::SharedSlice> const& coreParameter) {
-//   // persistor->updateStateInformation({});
-//   auto core = buildCore(coreParameter);
-//   auto deferred =
-//       guardedData.getLockedGuard()->rebuild(std::move(core),
-//       std::move(token));
-//   // execute *after* the lock has been released
-//   deferred.fire();
-// }
 
 template<typename S>
 ReplicatedState<S>::~ReplicatedState() {
@@ -382,27 +344,6 @@ void ReplicatedState<S>::drop() && {
   });
   deferred.fire();
 }
-
-// template<typename S>
-// auto ReplicatedState<S>::resign() && -> std::unique_ptr<ReplicatedStateToken>
-// {
-//   auto token = std::unique_ptr<ReplicatedStateToken>();
-//   auto action = DeferredAction();
-//   std::tie(token, action) = guardedData.doUnderLock(
-//       [](auto&& self)
-//           -> std::pair<std::unique_ptr<ReplicatedStateToken>, DeferredAction>
-//           {
-//         if (self.currentManager == nullptr) {
-//           return {};
-//         } else {
-//           auto&& [core, token_, action_] =
-//               std::move(*self.currentManager).resign();
-//           return {std::move(token_), std::move(action_)};
-//         }
-//       });
-//   action.fire();
-//   return token;
-// }
 
 template<typename S>
 auto ReplicatedState<S>::createStateHandle()
@@ -462,91 +403,6 @@ auto ReplicatedState<S>::GuardedData::rebuild(
     std::abort();
   }
 }
-
-// template<typename S>
-// auto ReplicatedState<S>::GuardedData::runFollower(
-//     std::shared_ptr<replicated_log::ILogFollower> logFollower,
-//     std::unique_ptr<CoreType> core,
-//     std::unique_ptr<ReplicatedStateToken> token) noexcept -> DeferredAction
-//     try {
-//   LOG_CTX("95b9d", DEBUG, _self.loggerContext) << "create follower state";
-//
-//   auto loggerCtx =
-//       _self.loggerContext.template with<logContextKeyStateComponent>(
-//           "follower-manager");
-//   auto&& self = _self.shared_from_this();
-//   static_assert(noexcept(FollowerStateManager<S>(
-//       std::move(loggerCtx), std::move(self), std::move(logFollower),
-//       std::move(core), std::move(token), _self.factory, _self.metrics,
-//       _self.persistor)));
-//   auto manager = std::make_shared<FollowerStateManager<S>>(
-//       std::move(loggerCtx), std::move(self), std::move(logFollower),
-//       std::move(core), std::move(token), _self.factory, _self.metrics,
-//       _self.persistor);
-//   currentManager = manager;
-//
-//   static_assert(noexcept(manager->run()));
-//   return DeferredAction([manager]() noexcept { manager->run(); });
-// } catch (std::exception const& e) {
-//   LOG_CTX("ab9de", FATAL, _self.loggerContext)
-//       << "runFollower caught exception: " << e.what();
-//   FATAL_ERROR_ABORT();
-// }
-
-// template<typename S>
-// auto ReplicatedState<S>::GuardedData::runLeader(
-//     std::shared_ptr<replicated_log::ILogLeader> logLeader,
-//     std::unique_ptr<CoreType> core,
-//     std::unique_ptr<ReplicatedStateToken> token) noexcept -> DeferredAction
-//     try {
-//   LOG_CTX("95b9d", DEBUG, _self.loggerContext) << "create leader state";
-//
-//   auto loggerCtx =
-//       _self.loggerContext.template with<logContextKeyStateComponent>(
-//           "leader-manager");
-//   auto&& self = _self.shared_from_this();
-//   static_assert(noexcept(LeaderStateManager<S>(
-//       std::move(loggerCtx), std::move(self), std::move(logLeader),
-//       std::move(core), std::move(token), _self.factory, _self.metrics,
-//       _self.persistor)));
-//   auto manager = std::make_shared<LeaderStateManager<S>>(
-//       std::move(loggerCtx), std::move(self), std::move(logLeader),
-//       std::move(core), std::move(token), _self.factory, _self.metrics,
-//       _self.persistor);
-//   currentManager = manager;
-//
-//   static_assert(noexcept(manager->run()));
-//   return DeferredAction([manager]() noexcept { manager->run(); });
-// } catch (std::exception const& e) {
-//   LOG_CTX("016f3", FATAL, _self.loggerContext)
-//       << "run leader caught exception: " << e.what();
-//   FATAL_ERROR_ABORT();
-// }
-
-// template<typename S>
-// auto ReplicatedState<S>::GuardedData::runUnconfigured(
-//     std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
-//         unconfiguredParticipant,
-//     std::unique_ptr<CoreType> core,
-//     std::unique_ptr<ReplicatedStateToken> token) noexcept -> DeferredAction
-//     try {
-//   LOG_CTX("5d7c6", DEBUG, _self.loggerContext) << "create unconfigured
-//   state"; auto&& self = _self.shared_from_this();
-//   static_assert(noexcept((UnconfiguredStateManager<S>(
-//       std::move(self), std::move(unconfiguredParticipant), std::move(core),
-//       std::move(token)))));
-//   auto manager = std::make_shared<UnconfiguredStateManager<S>>(
-//       std::move(self), std::move(unconfiguredParticipant), std::move(core),
-//       std::move(token));
-//   currentManager = manager;
-//
-//   static_assert(noexcept(manager->run()));
-//   return DeferredAction([manager]() noexcept { manager->run(); });
-// } catch (std::exception const& e) {
-//   LOG_CTX("6f1eb", FATAL, _self.loggerContext)
-//       << "run unconfigured caught exception: " << e.what();
-//   FATAL_ERROR_ABORT();
-// }
 
 template<typename S>
 auto ReplicatedState<S>::GuardedData::rebuildMe(

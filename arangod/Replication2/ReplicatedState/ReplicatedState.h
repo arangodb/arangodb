@@ -152,8 +152,8 @@ struct NewLeaderStateManager {
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using Deserializer = typename ReplicatedStateTraits<S>::Deserializer;
-
   explicit NewLeaderStateManager(
+      std::shared_ptr<ReplicatedStateMetrics> metrics,
       std::shared_ptr<IReplicatedLeaderState<S>> leaderState,
       std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> logMethods);
 
@@ -164,6 +164,7 @@ struct NewLeaderStateManager {
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
 
  private:
+  std::shared_ptr<ReplicatedStateMetrics> const _metrics;
   std::shared_ptr<IReplicatedLeaderState<S>> _leaderState;
   std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> _logMethods;
 };
@@ -173,7 +174,9 @@ struct NewFollowerStateManager {
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using Deserializer = typename ReplicatedStateTraits<S>::Deserializer;
+
   explicit NewFollowerStateManager(
+      std::shared_ptr<ReplicatedStateMetrics> metrics,
       std::shared_ptr<IReplicatedFollowerState<S>> followerState,
       std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods>
           logMethods);
@@ -184,6 +187,7 @@ struct NewFollowerStateManager {
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
 
  private:
+  std::shared_ptr<ReplicatedStateMetrics> const _metrics;
   std::shared_ptr<IReplicatedFollowerState<S>> _followerState;
   std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> _logMethods;
   LogIndex _lastAppliedIndex = LogIndex{0};
@@ -211,7 +215,8 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
 
   ReplicatedStateManager(LoggerContext loggerContext,
                          std::unique_ptr<CoreType> logCore,
-                         std::shared_ptr<Factory> factory);
+                         std::shared_ptr<Factory> factory,
+                         std::shared_ptr<ReplicatedStateMetrics> metrics);
 
   void acquireSnapshot(ServerID leader, LogIndex index) override;
 
@@ -239,6 +244,7 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
   Guarded<GuardedData> _guarded;
 
   LoggerContext const _loggerContext;
+  std::shared_ptr<ReplicatedStateMetrics> const _metrics;
   std::shared_ptr<Factory> const _factory;
 };
 
