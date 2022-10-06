@@ -486,6 +486,7 @@ class testRunner {
     let serverDead = false;
     let count = 0;
     let forceTerminate = false;
+    let moreReason = "";
     for (let i = 0; i < this.testList.length; i++) {
       let te = this.testList[i];
       let filtered = {};
@@ -499,6 +500,7 @@ class testRunner {
           if (!this.continueTesting || !this.cleanupChecks[j].setUp(this, te)) {
             this.continueTesting = false;
             print(RED+'server pretest "' + this.cleanupChecks[j].name + '" failed!'+RESET);
+            moreReason += `server pretest '${this.cleanupChecks[j].name}' failed!`;
             j = this.cleanupChecks.length;
             continue;
           }
@@ -516,6 +518,7 @@ class testRunner {
           print('\n' + (new Date()).toISOString() + GREEN + " [============] " + this.info + ': Trying', te, '...', RESET);
           let reply = this.runOneTest(te);
           if (reply.hasOwnProperty('forceTerminate') && reply.forceTerminate) {
+            moreReason += "test told us that we should forceTerminate.";
             this.results[this.translateResult(te)] = reply;
             this.continueTesting = false;
             forceTerminate = true;
@@ -556,6 +559,7 @@ class testRunner {
             for (let j = 0; j < this.cleanupChecks.length; j++) {
               if (!this.continueTesting || !this.cleanupChecks[j].runCheck(this, te)) {
                 print(RED+'server posttest "' + this.cleanupChecks[j].name + '" failed!'+RESET);
+                moreReason += `server posttest '${this.cleanupChecks[j].name}' failed!`;
                 this.continueTesting = false;
                 j = this.cleanupChecks.length;
                 continue;
@@ -625,7 +629,7 @@ class testRunner {
     if (this.serverOptions['server.jwt-secret'] && !clonedOpts['server.jwt-secret']) {
       clonedOpts['server.jwt-secret'] = this.serverOptions['server.jwt-secret'];
     }
-    this.results.shutdown = this.results.shutdown && this.instanceManager.shutdownInstance(forceTerminate);
+    this.results.shutdown = this.results.shutdown && this.instanceManager.shutdownInstance(forceTerminate, moreReason);
     if (!this.results.shutdown) {
       this.results.status = false;
     }

@@ -31,13 +31,25 @@ namespace detail {
 template<class T>
 struct AlternativeType {
   using Type = T;
+  static constexpr bool isInlineType = false;
   std::string_view const tag;
+};
+
+template<class T>
+struct AlternativeInlineType {
+  using Type = T;
+  static constexpr bool isInlineType = true;
 };
 }  // namespace detail
 
 template<class T>
 detail::AlternativeType<T> type(std::string_view tag) {
   return detail::AlternativeType<T>{tag};
+}
+
+template<class T>
+detail::AlternativeInlineType<T> inlineType() {
+  return detail::AlternativeInlineType<T>{};
 }
 
 }  // namespace arangodb::inspection

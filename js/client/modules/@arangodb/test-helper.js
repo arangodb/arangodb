@@ -536,6 +536,8 @@ exports.agency = {
     }]]);
   },
 
+  call: callAgency,
+
   increaseVersion: function (path) {
     callAgency('write', [[{
       [`/arango/${path}`]: {
