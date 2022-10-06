@@ -206,6 +206,11 @@ struct NewUnconfiguredStateManager {
 };
 
 template<typename S>
+NewUnconfiguredStateManager<S>::NewUnconfiguredStateManager(
+    std::unique_ptr<CoreType> core) noexcept
+    : _core(std::move(core)) {}
+
+template<typename S>
 struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using Factory = typename ReplicatedStateTraits<S>::FactoryType;
@@ -315,28 +320,6 @@ struct ReplicatedState final
   std::shared_ptr<replicated_log::ReplicatedLog> const log{};
 
   struct GuardedData {
-    auto rebuildMe(IStateManagerBase const* caller) noexcept -> DeferredAction;
-
-    auto runLeader(std::shared_ptr<replicated_log::ILogLeader> logLeader,
-                   std::unique_ptr<CoreType>,
-                   std::unique_ptr<ReplicatedStateToken> token) noexcept
-        -> DeferredAction;
-    auto runFollower(std::shared_ptr<replicated_log::ILogFollower> logFollower,
-                     std::unique_ptr<CoreType>,
-                     std::unique_ptr<ReplicatedStateToken> token) noexcept
-        -> DeferredAction;
-    auto runUnconfigured(
-        std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
-            unconfiguredParticipant,
-        std::unique_ptr<CoreType> core,
-        std::unique_ptr<ReplicatedStateToken> token) noexcept -> DeferredAction;
-
-    auto rebuild(std::unique_ptr<CoreType> core,
-                 std::unique_ptr<ReplicatedStateToken> token) noexcept
-        -> DeferredAction;
-
-    auto flush(StateGeneration planGeneration) -> DeferredAction;
-
     explicit GuardedData(ReplicatedState& self) : _self(self) {}
 
     ReplicatedState& _self;

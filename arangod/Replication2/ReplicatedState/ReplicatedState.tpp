@@ -59,10 +59,10 @@ ReplicatedStateManager<S>::ReplicatedStateManager(
     LoggerContext loggerContext,
     std::shared_ptr<ReplicatedStateMetrics> metrics,
     std::unique_ptr<CoreType> logCore, std::shared_ptr<Factory> factory)
-    : _guarded{._currentManager =
-                   NewUnconfiguredStateManager(std::move(logCore))},
+    : _guarded{{._currentManager = {NewUnconfiguredStateManager<S>(
+                    std::move(logCore))}}},
       _loggerContext(std::move(loggerContext)),
-      _metrics(metrics),
+      _metrics(std::move(metrics)),
       _factory(std::move(factory)) {}
 
 template<typename S>
@@ -182,6 +182,15 @@ void NewLeaderStateManager<S>::updateCommitIndex(LogIndex index) {
 }
 
 template<typename S>
+NewLeaderStateManager<S>::NewLeaderStateManager(
+    std::shared_ptr<ReplicatedStateMetrics> metrics,
+    std::shared_ptr<IReplicatedLeaderState<S>> leaderState,
+    std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> logMethods)
+    : _metrics(std::move(metrics)),
+      _leaderState(std::move(leaderState)),
+      _logMethods(std::move(logMethods)) {}
+
+template<typename S>
 void NewFollowerStateManager<S>::updateCommitIndex(LogIndex commitIndex) {
   auto log = _logMethods->getLogSnapshot();
   auto logIter = log.getIteratorRange(_lastAppliedIndex, commitIndex);
@@ -196,6 +205,15 @@ void NewFollowerStateManager<S>::updateCommitIndex(LogIndex commitIndex) {
   // returns a future. Is this necessary?
   //      If yes, we have to deal with this async behaviour here.
 }
+
+template<typename S>
+NewFollowerStateManager<S>::NewFollowerStateManager(
+    std::shared_ptr<ReplicatedStateMetrics> metrics,
+    std::shared_ptr<IReplicatedFollowerState<S>> followerState,
+    std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> logMethods)
+    : _metrics(std::move(metrics)),
+      _followerState(std::move(followerState)),
+      _logMethods(std::move(logMethods)) {}
 
 template<typename S>
 auto IReplicatedLeaderState<S>::getStream() const noexcept
@@ -348,91 +366,13 @@ void ReplicatedState<S>::drop() && {
 template<typename S>
 auto ReplicatedState<S>::createStateHandle()
     -> std::unique_ptr<replicated_log::IReplicatedStateHandle> {
-  ADB_PROD_ASSERT(false);  // TODO create correctly
-  return std::unique_ptr<ReplicatedStateManager<S>>();
-}
+  // TODO Should we make sure not to build the core twice?
+  // TODO Fix or remove the parameter argument
+  auto core = buildCore({});
+  auto handle = std::make_unique<ReplicatedStateManager<S>>(
+      loggerContext, metrics, std::move(core), factory);
 
-template<typename S>
-auto ReplicatedState<S>::GuardedData::rebuild(
-    std::unique_ptr<CoreType> core,
-    std::unique_ptr<ReplicatedStateToken> token) noexcept -> DeferredAction {
-  LOG_CTX("edaef", TRACE, _self.loggerContext)
-      << "replicated state rebuilding - query participant";
-  auto participant = decltype(_self.log->getParticipant())(nullptr);
-  try {
-    participant = _self.log->getParticipant();
-  } catch (replicated_log::ParticipantResignedException const& ex) {
-    LOG_CTX("eacb9", INFO, _self.loggerContext)
-        << "Replicated log participant is gone. Replicated state will go "
-           "soon as well. Error code: "
-        << ex.code();
-    currentManager = nullptr;
-    oldCore = std::move(core);
-    return {};
-  }
-  if (auto leader =
-          std::dynamic_pointer_cast<replicated_log::ILogLeader>(participant);
-      leader) {
-    LOG_CTX("99890", TRACE, _self.loggerContext)
-        << "obtained leader participant";
-    static_assert(noexcept(
-        runLeader(std::move(leader), std::move(core), std::move(token))));
-    return runLeader(std::move(leader), std::move(core), std::move(token));
-  } else if (auto follower =
-                 std::dynamic_pointer_cast<replicated_log::ILogFollower>(
-                     participant);
-             follower) {
-    LOG_CTX("f5328", TRACE, _self.loggerContext)
-        << "obtained follower participant";
-    static_assert(noexcept(
-        runFollower(std::move(follower), std::move(core), std::move(token))));
-    return runFollower(std::move(follower), std::move(core), std::move(token));
-  } else if (auto unconfiguredLogParticipant = std::dynamic_pointer_cast<
-                 replicated_log::LogUnconfiguredParticipant>(participant);
-             unconfiguredLogParticipant) {
-    LOG_CTX("ad84b", TRACE, _self.loggerContext)
-        << "obtained unconfigured participant";
-    static_assert(
-        noexcept(runUnconfigured(std::move(unconfiguredLogParticipant),
-                                 std::move(core), std::move(token))));
-    return runUnconfigured(std::move(unconfiguredLogParticipant),
-                           std::move(core), std::move(token));
-  } else {
-    LOG_CTX("33d5f", FATAL, _self.loggerContext)
-        << "Replicated log has an unhandled participant type.";
-    std::abort();
-  }
-}
-
-template<typename S>
-auto ReplicatedState<S>::GuardedData::rebuildMe(
-    const IStateManagerBase* caller) noexcept -> DeferredAction try {
-  if (caller != currentManager.get()) {
-    // Do nothing if the manager changed: A manager may only rebuild itself.
-    return {};
-  }
-  static_assert(noexcept(std::move(*currentManager).resign()));
-  auto [core, token, queueAction] = std::move(*currentManager).resign();
-  static_assert(noexcept(decltype(rebuild(std::move(core), std::move(token)))(
-      rebuild(std::move(core), std::move(token)))));
-  auto runAction = rebuild(std::move(core), std::move(token));
-  return DeferredAction::combine(std::move(queueAction), std::move(runAction));
-} catch (std::exception const& e) {
-  LOG_CTX("af348", FATAL, _self.loggerContext)
-      << "forced rebuild caught exception: " << e.what();
-  FATAL_ERROR_ABORT();
-}
-
-template<typename S>
-auto ReplicatedState<S>::GuardedData::flush(StateGeneration planGeneration)
-    -> DeferredAction {
-  auto [core, token, queueAction] = std::move(*currentManager).resign();
-  if (token->generation != planGeneration) {
-    token = std::make_unique<ReplicatedStateToken>(planGeneration);
-  }
-
-  auto runAction = rebuild(std::move(core), std::move(token));
-  return DeferredAction::combine(std::move(queueAction), std::move(runAction));
+  return handle;
 }
 
 }  // namespace arangodb::replication2::replicated_state
