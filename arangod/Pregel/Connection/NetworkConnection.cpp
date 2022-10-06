@@ -92,6 +92,28 @@ auto NetworkConnection::send(Destination const& destination,
       });
 }
 
+auto NetworkConnection::post(Destination const& destination,
+                             ModernMessage&& message) const
+    -> futures::Future<Result> {
+  auto messageBuffer = serialize(message);
+  if (messageBuffer.fail()) {
+    return {arangodb::Result{messageBuffer.errorNumber(),
+                             messageBuffer.errorMessage()}};
+  }
+  auto request = network::sendRequestRetry(
+      _connectionPool, destination.toString(), fuerte::RestVerb::Post,
+      _baseUrl + Utils::modernMessagingPath, std::move(messageBuffer.get()),
+      _requestOptions);
+
+  return std::move(request).thenValue([](auto&& result) -> Result {
+    auto out = errorHandling(result);
+    if (out.fail()) {
+      return Result{out.errorNumber(), out.errorMessage()};
+    }
+    return Result{};
+  });
+}
+
 auto NetworkConnection::sendWithoutRetry(Destination const& destination,
                                          ModernMessage&& message) const
     -> futures::Future<Result> {

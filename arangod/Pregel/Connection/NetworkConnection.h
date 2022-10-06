@@ -40,6 +40,8 @@ struct NetworkConnection : Connection {
   auto sendWithoutRetry(Destination const& destination,
                         ModernMessage&& message) const
       -> futures::Future<Result>;
+  auto post(Destination const& destination, ModernMessage&& message) const
+      -> futures::Future<Result> override;
   ~NetworkConnection() = default;
 
  private:

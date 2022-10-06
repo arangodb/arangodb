@@ -56,3 +56,23 @@ auto DirectConnection::send(Destination const& destination,
         return response;
       });
 }
+
+auto DirectConnection::post(Destination const& destination,
+                            ModernMessage&& message) const
+    -> futures::Future<Result> {
+  // TODO add same cases a in send fct when post is used for more messages
+  auto worker = _feature.worker(message.executionNumber);
+  if (!worker) {
+    VPackBuilder serialized;
+    serialize(serialized, message);
+    return Result{TRI_ERROR_CURSOR_NOT_FOUND,
+                  fmt::format("Handling direct request {} but worker for "
+                              "execution {} does not exist",
+                              serialized.toJson(), message.executionNumber)};
+  }
+  // TODO change process function to directly return a Result
+  //      and move actual work to scheduler
+  return worker->process(message.payload)
+      .thenValue(
+          [&](auto response) -> futures::Future<Result> { return Result{}; });
+}
