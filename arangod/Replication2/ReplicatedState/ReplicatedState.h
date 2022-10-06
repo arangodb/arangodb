@@ -214,9 +214,9 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
 
   ReplicatedStateManager(LoggerContext loggerContext,
+                         std::shared_ptr<ReplicatedStateMetrics> metrics,
                          std::unique_ptr<CoreType> logCore,
-                         std::shared_ptr<Factory> factory,
-                         std::shared_ptr<ReplicatedStateMetrics> metrics);
+                         std::shared_ptr<Factory> factory);
 
   void acquireSnapshot(ServerID leader, LogIndex index) override;
 
