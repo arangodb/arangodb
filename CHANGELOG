@@ -1,6 +1,9 @@
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
+* BTS-1008: Update react-autocomplete-input to fix single letter collection
+  bug when creating a link in the views in the WebUI.
+
 * Fix an issue with replication of arangosearch view change entries in single
   server replication and active failover. Previously, when changing the
   properties of existing views, the changes were not properly picked up by
@@ -15,9 +18,6 @@ v3.10.0 (2022-09-29)
 
 v3.10.0-rc.1 (2022-09-25)
 -------------------------
-
-* BTS-1008: Update react-autocomplete-input to fix single letter collection
-  bug when creating a link in the views in the WebUI.
 
 * Temporary fix for BTS-1006 (hides new view types).
 
