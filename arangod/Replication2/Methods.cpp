@@ -25,6 +25,8 @@
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>
 
+#include <utility>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/AgencyCallbackRegistry.h"
@@ -239,11 +241,11 @@ struct ReplicatedLogMethodsCoordinator final
     // target (or bigger)
     auto path = aliases::current()
                     ->replicatedLogs()
-                    ->database(vocbase.name())
+                    ->database(vocbaseName)
                     ->log(id)
                     ->supervision();
     auto cb = std::make_shared<AgencyCallback>(
-        vocbase.server(), path->str(SkipComponents(1)),
+        server, path->str(SkipComponents(1)),
         [ctx](velocypack::Slice slice, consensus::index_t index) -> bool {
           if (slice.isNone()) {
             return false;
@@ -377,8 +379,7 @@ struct ReplicatedLogMethodsCoordinator final
 
   auto createReplicatedLog(replication2::agency::LogTarget spec) const
       -> futures::Future<Result> override {
-    return replication2::agency::methods::createReplicatedLog(vocbase.name(),
-                                                              spec)
+    return replication2::agency::methods::createReplicatedLog(vocbaseName, spec)
         .thenValue([self = shared_from_this()](
                        ResultT<uint64_t>&& res) -> futures::Future<Result> {
           if (res.fail()) {
@@ -390,8 +391,7 @@ struct ReplicatedLogMethodsCoordinator final
   }
 
   auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> override {
-    return replication2::agency::methods::deleteReplicatedLog(vocbase.name(),
-                                                              id)
+    return replication2::agency::methods::deleteReplicatedLog(vocbaseName, id)
         .thenValue([self = shared_from_this()](
                        ResultT<uint64_t>&& res) -> futures::Future<Result> {
           if (res.fail()) {
@@ -412,7 +412,7 @@ struct ReplicatedLogMethodsCoordinator final
       -> futures::Future<replication2::replicated_log::GlobalStatus> override {
     // 1. Determine which source to use for gathering information
     // 2. Query information from all sources
-    auto futureSpec = loadLogSpecification(vocbase.name(), id, source);
+    auto futureSpec = loadLogSpecification(vocbaseName, id, source);
     return std::move(futureSpec)
         .thenValue([self = shared_from_this(), source](
                        ResultT<std::shared_ptr<
@@ -440,7 +440,7 @@ struct ReplicatedLogMethodsCoordinator final
     auto path =
         basics::StringUtils::joinT("/", "_api/log", id, "entry", index.value);
     network::RequestOptions opts;
-    opts.database = vocbase.name();
+    opts.database = vocbaseName;
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Get, path, {}, opts)
         .thenValue([](network::Response&& resp) {
@@ -458,7 +458,7 @@ struct ReplicatedLogMethodsCoordinator final
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "slice");
 
     network::RequestOptions opts;
-    opts.database = vocbase.name();
+    opts.database = vocbaseName;
     opts.parameters["start"] = to_string(start);
     opts.parameters["stop"] = to_string(stop);
     return network::sendRequest(pool, "server:" + getLogLeader(id),
@@ -479,7 +479,7 @@ struct ReplicatedLogMethodsCoordinator final
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "poll");
 
     network::RequestOptions opts;
-    opts.database = vocbase.name();
+    opts.database = vocbaseName;
     opts.parameters["first"] = to_string(index);
     opts.parameters["limit"] = std::to_string(limit);
     return network::sendRequest(pool, "server:" + getLogLeader(id),
@@ -500,7 +500,7 @@ struct ReplicatedLogMethodsCoordinator final
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "tail");
 
     network::RequestOptions opts;
-    opts.database = vocbase.name();
+    opts.database = vocbaseName;
     opts.parameters["limit"] = std::to_string(limit);
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Get, path, {}, opts)
@@ -520,7 +520,7 @@ struct ReplicatedLogMethodsCoordinator final
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "head");
 
     network::RequestOptions opts;
-    opts.database = vocbase.name();
+    opts.database = vocbaseName;
     opts.parameters["limit"] = std::to_string(limit);
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Get, path, {}, opts)
@@ -541,7 +541,7 @@ struct ReplicatedLogMethodsCoordinator final
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "insert");
 
     network::RequestOptions opts;
-    opts.database = vocbase.name();
+    opts.database = vocbaseName;
     opts.param(StaticStrings::WaitForSyncString,
                waitForSync ? "true" : "false");
     return network::sendRequest(pool, "server:" + getLogLeader(id),
@@ -581,7 +581,7 @@ struct ReplicatedLogMethodsCoordinator final
     }
 
     network::RequestOptions opts;
-    opts.database = vocbase.name();
+    opts.database = vocbaseName;
     opts.param(StaticStrings::WaitForSyncString,
                waitForSync ? "true" : "false");
     return network::sendRequest(pool, "server:" + getLogLeader(id),
@@ -616,7 +616,7 @@ struct ReplicatedLogMethodsCoordinator final
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "insert");
 
     network::RequestOptions opts;
-    opts.database = vocbase.name();
+    opts.database = vocbaseName;
     opts.param(StaticStrings::WaitForSyncString,
                waitForSync ? "true" : "false");
     opts.param(StaticStrings::DontWaitForCommit, "true");
@@ -644,7 +644,7 @@ struct ReplicatedLogMethodsCoordinator final
     }
 
     network::RequestOptions opts;
-    opts.database = vocbase.name();
+    opts.database = vocbaseName;
     opts.parameters["index"] = to_string(index);
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Post, path, std::move(body),
@@ -653,11 +653,13 @@ struct ReplicatedLogMethodsCoordinator final
             [](network::Response&& resp) { return resp.combinedResult(); });
   }
 
-  explicit ReplicatedLogMethodsCoordinator(TRI_vocbase_t& vocbase)
-      : vocbase(vocbase),
-        clusterFeature(vocbase.server().getFeature<ClusterFeature>()),
+  explicit ReplicatedLogMethodsCoordinator(DatabaseID vocbase,
+                                           ArangodServer& server)
+      : vocbaseName(std::move(vocbase)),
+        server(server),
+        clusterFeature(server.getFeature<ClusterFeature>()),
         clusterInfo(clusterFeature.clusterInfo()),
-        pool(vocbase.server().getFeature<NetworkFeature>().pool()) {}
+        pool(server.getFeature<NetworkFeature>().pool()) {}
 
  private:
   auto getLogLeader(LogId id) const -> ServerID {
@@ -722,7 +724,7 @@ struct ReplicatedLogMethodsCoordinator final
     // TODO move this into the agency methods
     auto f = ac.getValues(arangodb::cluster::paths::aliases::current()
                               ->replicatedLogs()
-                              ->database(vocbase.name())
+                              ->database(vocbaseName)
                               ->log(id)
                               ->supervision(),
                           std::chrono::seconds{5});
@@ -760,7 +762,7 @@ struct ReplicatedLogMethodsCoordinator final
     using Status = GlobalStatus::ParticipantStatus;
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "local-status");
     network::RequestOptions opts;
-    opts.database = vocbase.name();
+    opts.database = vocbaseName;
     opts.timeout = std::chrono::seconds{5};
     return network::sendRequest(pool, "server:" + participant,
                                 fuerte::RestVerb::Get, path, {}, opts)
@@ -834,7 +836,8 @@ struct ReplicatedLogMethodsCoordinator final
         });
   }
 
-  TRI_vocbase_t& vocbase;
+  DatabaseID vocbaseName;
+  ArangodServer& server;
   ClusterFeature& clusterFeature;
   ClusterInfo& clusterInfo;
   network::ConnectionPool* pool;
@@ -1064,7 +1067,7 @@ struct ReplicatedLogMethodsCoordinator final
 //    case ServerState::ROLE_DBSERVER:
 //      return createInstanceDBServer(vocbase);
 //    case ServerState::ROLE_COORDINATOR:
-//      return createInstanceCoordinator(vocbase.server(), vocbase.name());
+//      return createInstanceCoordinator(vocbase.server(), vocbaseName);
 //    default:
 //      THROW_ARANGO_EXCEPTION_MESSAGE(
 //          TRI_ERROR_NOT_IMPLEMENTED,
@@ -1088,3 +1091,31 @@ struct ReplicatedLogMethodsCoordinator final
 //  return std::make_shared<ReplicatedStateCoordinatorMethods>(
 //      server, std::move(databaseName));
 }  // namespace
+auto ReplicatedLogMethods::createInstance(TRI_vocbase_t& vocbase)
+    -> std::shared_ptr<ReplicatedLogMethods> {
+  switch (ServerState::instance()->getRole()) {
+    case ServerState::ROLE_COORDINATOR:
+      return std::make_shared<ReplicatedLogMethodsCoordinator>(
+          vocbase.name(), vocbase.server());
+    case ServerState::ROLE_DBSERVER:
+      return std::make_shared<ReplicatedLogMethodsDBServer>(vocbase);
+    default:
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "api only on available coordinators or dbservers");
+  }
+}
+
+auto ReplicatedLogMethods::createInstance(DatabaseID database,
+                                          ArangodServer& server)
+    -> std::shared_ptr<ReplicatedLogMethods> {
+  switch (ServerState::instance()->getRole()) {
+    case ServerState::ROLE_COORDINATOR:
+      return std::make_shared<ReplicatedLogMethodsCoordinator>(database,
+                                                               server);
+    default:
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "api only on available coordinators or dbservers");
+  }
+}

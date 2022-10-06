@@ -3027,7 +3027,7 @@ void Supervision::cleanupReplicatedStates() {
       // delete plan and target
       auto logId = replication2::LogId{basics::StringUtils::uint64(idString)};
       envelope =
-          methods::deleteReplicatedStateTrx(std::move(envelope), dbName, logId);
+          methods::deleteReplicatedLogTrx(std::move(envelope), dbName, logId);
     }
   }
 

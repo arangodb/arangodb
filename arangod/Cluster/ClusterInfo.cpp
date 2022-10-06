@@ -592,99 +592,93 @@ auto ClusterInfo::waitForReplicatedStatesCreation(
     std::string const& databaseName,
     std::vector<replication2::agency::LogTarget> const& replicatedStates)
     -> futures::Future<Result> {
-  //  auto replicatedStateMethods =
-  //      arangodb::replication2::ReplicatedLogMethods::createInstance(
-  //          _server, databaseName);
-  //
-  //  std::vector<futures::Future<ResultT<consensus::index_t>>> futureStates;
-  //  futureStates.reserve(replicatedStates.size());
-  //  for (auto const& spec : replicatedStates) {
-  //    futureStates.emplace_back(
-  //        replicatedStateMethods->waitForStateReady(spec.id, *spec.version));
-  //  }
-  //
-  //  // we need to define this here instead of using an inline lambda
-  //  expression
-  //  // because MSVC is too stupid to compile it otherwise
-  //  auto appendErrorMessage = [](result::Error error) {
-  //    error.appendErrorMessage(
-  //        "Failed to create a corresponding replicated state "
-  //        "for each shard!");
-  //    return error;
-  //  };
-  //
-  //  return futures::collectAll(std::move(futureStates))
-  //      .thenValue(
-  //          [&clusterInfo =
-  //          _server.getFeature<ClusterFeature>().clusterInfo()](
-  //              auto&& raftIndices) {
-  //            consensus::index_t maxIndex = 0;
-  //            for (auto& v : raftIndices) {
-  //              maxIndex = std::max(maxIndex, v.get().get());
-  //            }
-  //            return clusterInfo.waitForPlan(maxIndex);
-  //          })
-  //      .then([&appendErrorMessage](auto&& tryResult) {
-  //        Result result =
-  //            basics::catchToResult([&] { return std::move(tryResult.get());
-  //            });
-  //        if (result.fail()) {
-  //          if (result.is(TRI_ERROR_NO_ERROR)) {
-  //            result = Result(TRI_ERROR_INTERNAL, result.errorMessage());
-  //          }
-  //          result = result.mapError(appendErrorMessage);
-  //        }
-  //        return result;
-  //      });
-  //}
-  //
-  // auto ClusterInfo::deleteReplicatedStates(
-  //    std::string const& databaseName,
-  //    std::vector<replication2::LogId> const& replicatedStatesIds)
-  //    -> futures::Future<Result> {
-  //  auto replicatedStateMethods =
-  //      arangodb::replication2::ReplicatedStateMethods::createInstanceCoordinator(
-  //          _server, databaseName);
-  //
-  //  std::vector<futures::Future<Result>> deletedStates;
-  //  deletedStates.reserve(replicatedStatesIds.size());
-  //  for (auto const& id : replicatedStatesIds) {
-  //    deletedStates.emplace_back(
-  //        replicatedStateMethods->deleteReplicatedState(id));
-  //  }
-  //
-  //  return futures::collectAll(std::move(deletedStates))
-  //      .then([](futures::Try<std::vector<futures::Try<Result>>>&& tryResult)
-  //      {
-  //        auto deletionResults =
-  //            basics::catchToResultT([&] { return std::move(tryResult.get());
-  //            });
-  //
-  //        auto makeResult = [](auto&& result) {
-  //          Result r = result.mapError([](result::Error error) {
-  //            error.appendErrorMessage(
-  //                "Failed to delete replicated states corresponding to
-  //                shards!");
-  //            return error;
-  //          });
-  //          return r;
-  //        };
-  //
-  //        auto result = deletionResults.result();
-  //        if (result.fail()) {
-  //          return makeResult(std::move(result));
-  //        }
-  //        for (auto shardResult : deletionResults.get()) {
-  //          auto r = basics::catchToResult(
-  //              [&] { return std::move(shardResult.get()); });
-  //          if (r.fail()) {
-  //            return makeResult(std::move(r));
-  //          }
-  //        }
-  //
-  //        return result;
-  //      });
-  TRI_ASSERT(false);
+  auto replicatedStateMethods =
+      arangodb::replication2::ReplicatedLogMethods::createInstance(databaseName,
+                                                                   _server);
+
+  std::vector<futures::Future<ResultT<consensus::index_t>>> futureStates;
+  futureStates.reserve(replicatedStates.size());
+  for (auto const& spec : replicatedStates) {
+    futureStates.emplace_back(
+        replicatedStateMethods->waitForLogReady(spec.id, *spec.version));
+  }
+
+  // we need to define this here instead of using an inline lambda expression
+  // because MSVC is too stupid to compile it otherwise
+  auto appendErrorMessage = [](result::Error error) {
+    error.appendErrorMessage(
+        "Failed to create a corresponding replicated state "
+        "for each shard!");
+    return error;
+  };
+
+  return futures::collectAll(std::move(futureStates))
+      .thenValue(
+          [&clusterInfo = _server.getFeature<ClusterFeature>().clusterInfo()](
+              auto&& raftIndices) {
+            consensus::index_t maxIndex = 0;
+            for (auto& v : raftIndices) {
+              maxIndex = std::max(maxIndex, v.get().get());
+            }
+            return clusterInfo.waitForPlan(maxIndex);
+          })
+      .then([&appendErrorMessage](auto&& tryResult) {
+        Result result =
+            basics::catchToResult([&] { return std::move(tryResult.get()); });
+        if (result.fail()) {
+          if (result.is(TRI_ERROR_NO_ERROR)) {
+            result = Result(TRI_ERROR_INTERNAL, result.errorMessage());
+          }
+          result = result.mapError(appendErrorMessage);
+        }
+        return result;
+      });
+}
+
+auto ClusterInfo::deleteReplicatedStates(
+    std::string const& databaseName,
+    std::vector<replication2::LogId> const& replicatedStatesIds)
+    -> futures::Future<Result> {
+  auto replicatedStateMethods =
+      arangodb::replication2::ReplicatedLogMethods::createInstance(databaseName,
+                                                                   _server);
+
+  std::vector<futures::Future<Result>> deletedStates;
+  deletedStates.reserve(replicatedStatesIds.size());
+  for (auto const& id : replicatedStatesIds) {
+    deletedStates.emplace_back(replicatedStateMethods->deleteReplicatedLog(id));
+  }
+
+  auto const cb =
+      [&](futures::Try<std::vector<futures::Try<Result>>>&& tryResult) {
+        auto deletionResults =
+            basics::catchToResultT([&] { return std::move(tryResult.get()); });
+
+        auto makeResult = [](auto&& result) {
+          Result r = result.mapError([](result::Error error) {
+            error.appendErrorMessage(
+                "Failed to delete replicated states corresponding to shards!");
+            return error;
+          });
+          return r;
+        };
+
+        auto result = deletionResults.result();
+        if (result.fail()) {
+          return makeResult(std::move(result));
+        }
+        for (auto shardResult : deletionResults.get()) {
+          auto r = basics::catchToResult(
+              [&] { return std::move(shardResult.get()); });
+          if (r.fail()) {
+            return makeResult(std::move(r));
+          }
+        }
+
+        return result;
+      };
+
+  return futures::collectAll(std::move(deletedStates)).then(cb);
 }
 
 /// @brief produces an agency dump and logs it

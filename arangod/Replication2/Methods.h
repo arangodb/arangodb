@@ -137,6 +137,8 @@ struct ReplicatedLogMethods {
 
   static auto createInstance(TRI_vocbase_t& vocbase)
       -> std::shared_ptr<ReplicatedLogMethods>;
+  static auto createInstance(DatabaseID database, ArangodServer& server)
+      -> std::shared_ptr<ReplicatedLogMethods>;
 
  private:
   virtual auto createReplicatedLog(agency::LogTarget spec) const
