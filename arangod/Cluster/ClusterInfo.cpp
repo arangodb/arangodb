@@ -6030,6 +6030,8 @@ ClusterInfo::getResponsibleServerReplication1(std::string_view shardID) {
       // std::shared_ptr<std::vector<ServerId>>>
       auto it = _shardIds.find(shardID);
 
+      // TODO throw an exception if we don't find the shard or the server list
+      // is null or empty?
       if (it != _shardIds.end()) {
         auto serverList = (*it).second;
         if (serverList != nullptr && !serverList->empty() &&
@@ -6037,19 +6039,20 @@ ClusterInfo::getResponsibleServerReplication1(std::string_view shardID) {
           // This is a temporary situation in which the leader has already
           // resigned, let's wait half a second and try again.
           --tries;
-          LOG_TOPIC("b1dc5", INFO, Logger::CLUSTER)
-              << "getResponsibleServerReplication1: found resigned leader,"
-              << "waiting for half a second...";
         } else {
           return (*it).second;
         }
       }
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-    if (++tries >= 2) {
+    if (++tries >= 2 || _server.isStopping()) {
       break;
     }
+
+    LOG_TOPIC("b1dc5", INFO, Logger::CLUSTER)
+        << "getResponsibleServerReplication1: found resigned leader,"
+        << "waiting for half a second...";
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
   return std::make_shared<std::vector<ServerID>>();
@@ -6103,14 +6106,14 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
       }
     }
 
+    if (++tries >= 100 || _server.isStopping()) {
+      break;
+    }
+
     LOG_TOPIC("4fff5", INFO, Logger::CLUSTER)
         << "getResponsibleServerReplication2: did not found leader,"
         << "waiting for half a second...";
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-    if (++tries >= 100) {
-      break;
-    }
   }
 
   return result;
@@ -6223,7 +6226,7 @@ bool ClusterInfo::getResponsibleServersReplication2(
   auto& agencyCache = clusterFeature.agencyCache();
 
   bool isReplicationTwo = false;
-  do {
+  while (true) {
     TRI_ASSERT(result.empty());
     {
       READ_LOCKER(readLocker, _planProt.lock);
@@ -6265,11 +6268,14 @@ bool ClusterInfo::getResponsibleServersReplication2(
     LOG_TOPIC("0f8a7", INFO, Logger::CLUSTER)
         << "getResponsibleServersReplication2: did not found leader,"
         << "waiting for half a second...";
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-  } while (isReplicationTwo && tries < 100 &&
-           result.size() != shardIds.size() && !_server.isStopping());
 
-  return isReplicationTwo;
+    if (tries >= 100 || !result.empty() || _server.isStopping()) {
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
