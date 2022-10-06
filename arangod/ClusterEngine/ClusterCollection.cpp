@@ -275,6 +275,9 @@ void ClusterCollection::prepareIndexes(
 }
 
 Result ClusterCollection::updateIndex(IndexId iid, VPackSlice body, VPackBuilder&) {
+
+
+
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
