@@ -77,7 +77,10 @@ auto DocumentStateHandlersFactory::createTransaction(
   auto ctx = std::make_shared<transaction::ReplicatedContext>(doc.tid, state);
 
   auto methods = std::make_unique<transaction::Methods>(
-      std::move(ctx), doc.shardId, AccessMode::Type::WRITE);
+      std::move(ctx), doc.shardId,
+      doc.operation == OperationType::kTruncate ? AccessMode::Type::EXCLUSIVE
+                                                : AccessMode::Type::WRITE);
+  methods->addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
 
   // TODO Why is GLOBAL_MANAGED necessary?
   methods->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
