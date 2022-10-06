@@ -710,14 +710,14 @@ AstNode* wrapInUniqueCall(Ast* ast, AstNode* node, bool sorted) {
 
 void extractNonConstPartsOfJunctionCondition(
     Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-    bool evaluateFCalls, bool sorted, AstNode const* condition,
+    bool evaluateFCalls, Index* index, AstNode const* condition,
     Variable const* indexVariable,
     std::vector<size_t> const& selectedMembersFromRoot,
     NonConstExpressionContainer& result);
 
 void extractNonConstPartsOfLeafNode(
     Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-    bool evaluateFCalls, bool sorted, AstNode* leaf,
+    bool evaluateFCalls, Index* index, AstNode* leaf,
     Variable const* indexVariable,
     std::vector<size_t> const& selectedMembersFromRoot,
     NonConstExpressionContainer& result) {
@@ -756,7 +756,7 @@ void extractNonConstPartsOfLeafNode(
       }
       auto path = selectedMembersFromRoot;
       path.emplace_back(0);
-      extractNonConstPartsOfLeafNode(ast, varInfo, evaluateFCalls, sorted,
+      extractNonConstPartsOfLeafNode(ast, varInfo, evaluateFCalls, index,
                                      negatedNode, indexVariable,
                                      std::move(path), result);
       return;
@@ -783,7 +783,7 @@ void extractNonConstPartsOfLeafNode(
     case NODE_TYPE_OPERATOR_NARY_OR:
     case NODE_TYPE_OPERATOR_NARY_AND:
       extractNonConstPartsOfJunctionCondition(ast, varInfo, evaluateFCalls,
-                                              sorted, leaf, indexVariable,
+                                              index, leaf, indexVariable,
                                               selectedMembersFromRoot, result);
       return;
     default:
@@ -804,7 +804,9 @@ void extractNonConstPartsOfLeafNode(
     // has to be evaluated
     if (!rhs->isConstant()) {
       if (leaf->type == NODE_TYPE_OPERATOR_BINARY_IN) {
-        rhs = wrapInUniqueCall(ast, rhs, sorted);
+        rhs = wrapInUniqueCall(
+            ast, rhs,
+            index != nullptr && (index->sparse() || index->isSorted()));
       }
       auto path = selectedMembersFromRoot;
       path.emplace_back(1);
@@ -815,8 +817,19 @@ void extractNonConstPartsOfLeafNode(
     path.emplace_back(0);
     // Index is responsible for the right side, check if left side
     // has to be evaluated
+    auto isInvertedIndexFunc = [&] {
+      if (index == nullptr ||
+          index->type() != arangodb::Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+        return false;
+      }
+      TRI_ASSERT(lhs != nullptr);
+      auto fn = static_cast<aql::Function*>(lhs->getData());
+      TRI_ASSERT(fn != nullptr);
+      return iresearch::isFilter(*fn);
+    };
 
-    if (lhs->type == NODE_TYPE_FCALL && !evaluateFCalls) {
+    if (lhs->type == NODE_TYPE_FCALL &&
+        (!evaluateFCalls || isInvertedIndexFunc())) {
       // most likely a geo index condition
       captureFCallArgumentExpressions(ast, varInfo, lhs, std::move(path),
                                       indexVariable, result);
@@ -828,7 +841,7 @@ void extractNonConstPartsOfLeafNode(
 
 void extractNonConstPartsOfAndPart(
     Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-    bool evaluateFCalls, bool sorted, AstNode const* andNode,
+    bool evaluateFCalls, Index* index, AstNode const* andNode,
     Variable const* indexVariable,
     std::vector<size_t> const& selectedMembersFromRoot,
     NonConstExpressionContainer& result) {
@@ -840,7 +853,7 @@ void extractNonConstPartsOfAndPart(
     if (!leaf->isConstant()) {
       auto path = selectedMembersFromRoot;
       path.emplace_back(j);
-      extractNonConstPartsOfLeafNode(ast, varInfo, evaluateFCalls, sorted, leaf,
+      extractNonConstPartsOfLeafNode(ast, varInfo, evaluateFCalls, index, leaf,
                                      indexVariable, path, result);
     }
   }
@@ -848,7 +861,7 @@ void extractNonConstPartsOfAndPart(
 
 void extractNonConstPartsOfJunctionCondition(
     Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-    bool evaluateFCalls, bool sorted, AstNode const* condition,
+    bool evaluateFCalls, Index* index, AstNode const* condition,
     Variable const* indexVariable,
     std::vector<size_t> const& selectedMembersFromRoot,
     NonConstExpressionContainer& result) {
@@ -866,12 +879,12 @@ void extractNonConstPartsOfJunctionCondition(
       }
       auto path = selectedMembersFromRoot;
       path.emplace_back(i);
-      extractNonConstPartsOfAndPart(ast, varInfo, evaluateFCalls, sorted,
+      extractNonConstPartsOfAndPart(ast, varInfo, evaluateFCalls, index,
                                     andNode, indexVariable, std::move(path),
                                     result);
     }
   } else {
-    extractNonConstPartsOfAndPart(ast, varInfo, evaluateFCalls, sorted,
+    extractNonConstPartsOfAndPart(ast, varInfo, evaluateFCalls, index,
                                   condition, indexVariable,
                                   selectedMembersFromRoot, result);
   }
@@ -1279,7 +1292,7 @@ bool getIndexForSortCondition(aql::Collection const& coll,
 
 NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
     Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-    bool evaluateFCalls, bool sorted, AstNode const* condition,
+    bool evaluateFCalls, Index* index, AstNode const* condition,
     Variable const* indexVariable) {
   // conditions can be of the form (a [<|<=|>|=>] b) && ...
   TRI_ASSERT(condition != nullptr);
@@ -1288,7 +1301,7 @@ NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
   TRI_ASSERT(indexVariable != nullptr);
 
   NonConstExpressionContainer result;
-  extractNonConstPartsOfJunctionCondition(ast, varInfo, evaluateFCalls, sorted,
+  extractNonConstPartsOfJunctionCondition(ast, varInfo, evaluateFCalls, index,
                                           condition, indexVariable, {}, result);
   return result;
 }
