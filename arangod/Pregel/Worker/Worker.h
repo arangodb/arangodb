@@ -33,6 +33,7 @@
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Messaging/Message.h"
+#include "Pregel/Worker/ConductorApi.h"
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/Worker/WorkerContext.h"
 #include "Pregel/WorkerInterface.h"
@@ -105,6 +106,7 @@ class Worker : public IWorker {
     DONE        // after calling finished
   };
 
+  worker::ConductorApi _conductor;
   PregelFeature& _feature;
   std::atomic<WorkerState> _state = WorkerState::DEFAULT;
   WorkerConfig _config;

@@ -29,12 +29,15 @@
 #include "GeneralServer/RequestLane.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/CommonFormats.h"
+#include "Pregel/Connection/DirectConnection.h"
+#include "Pregel/Connection/NetworkConnection.h"
 #include "Pregel/Messaging/Message.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/VertexComputation.h"
+#include "Pregel/Worker/ConductorApi.h"
 #include "Pregel/WorkerInterface.h"
 #include "Pregel/Worker/GraphStore.h"
 
@@ -101,6 +104,19 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
       _config(&vocbase),
       _algorithm(algo) {
   _config.updateConfig(_feature, initConfig);
+  if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
+    _conductor = worker::ConductorApi{
+        _config.coordinatorId(), _config.executionNumber(),
+        std::make_unique<DirectConnection>(_feature, vocbase)};
+  } else {
+    network::RequestOptions reqOpts;
+    reqOpts.database = vocbase.name();
+    _conductor =
+        worker::ConductorApi{_config.coordinatorId(), _config.executionNumber(),
+                             std::make_unique<NetworkConnection>(
+                                 Utils::baseUrl(Utils::conductorPrefix),
+                                 std::move(reqOpts), vocbase)};
+  }
 
   MUTEX_LOCKER(guard, _commandMutex);
 
