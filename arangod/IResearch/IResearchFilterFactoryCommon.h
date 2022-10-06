@@ -29,6 +29,7 @@
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchFilterContext.h"
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
 #include "RestServer/arangod.h"
@@ -36,9 +37,60 @@
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 
+#include "search/all_filter.hpp"
+#include "search/column_existence_filter.hpp"
+
 using namespace std::string_literals;
 
 namespace arangodb::iresearch {
+
+class ByExpression;
+
+irs::filter::ptr makeAll(std::string_view field);
+
+std::string_view makeAllColumn(QueryContext const& ctx) noexcept;
+
+irs::AllDocsProvider::ProviderFunc makeAllProvider(QueryContext const& ctx);
+
+irs::ColumnAcceptor makeColumnAcceptor(bool) noexcept;
+
+template<typename Filter, typename Source>
+auto& append(Source& parent, [[maybe_unused]] FilterContext const& ctx) {
+  if constexpr (std::is_same_v<Filter, irs::all>) {
+    static_assert(std::is_base_of_v<irs::boolean_filter, Source>);
+#ifdef USE_ENTERPRISE
+    return parent.add(makeAll(makeAllColumn(ctx.query)));
+#else
+    return parent.template add<irs::all>();
+#endif
+  } else {
+    auto* filter = [&] {
+      if constexpr (std::is_same_v<irs::Not, Source>) {
+        return &parent.template filter<Filter>();
+      } else {
+        return &parent.template add<Filter>();
+      }
+    }();
+
+#ifdef USE_ENTERPRISE
+    if constexpr (std::is_base_of_v<irs::AllDocsProvider, Filter>) {
+      filter->SetProvider(makeAllProvider(ctx.query));
+    }
+#endif
+
+    return *filter;
+  }
+}
+
+template<typename Filter, typename Source>
+Filter& appendNot(Source& parent, FilterContext const& ctx) {
+  return append<Filter>(
+      append<irs::Not>(parent.type() == irs::type<irs::Or>::id()
+                           ? append<irs::And>(parent, ctx)
+                           : parent,
+                       ctx),
+      ctx);
+}
 
 namespace error {
 
