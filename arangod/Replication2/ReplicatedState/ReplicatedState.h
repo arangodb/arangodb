@@ -161,7 +161,9 @@ struct NewLeaderStateManager {
   void updateCommitIndex(LogIndex index);
   [[nodiscard]] auto resign() noexcept
       -> std::pair<std::unique_ptr<CoreType>,
-                   std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
+                   std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
+    TRI_ASSERT(false);
+  }
 
  private:
   std::shared_ptr<ReplicatedStateMetrics> const _metrics;
@@ -180,11 +182,17 @@ struct NewFollowerStateManager {
       std::shared_ptr<IReplicatedFollowerState<S>> followerState,
       std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods>
           logMethods);
-  void acquireSnapshot(ServerID leader, LogIndex index);
+  void acquireSnapshot(ServerID leader, LogIndex index) {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
   void updateCommitIndex(LogIndex index);
   [[nodiscard]] auto resign() noexcept
       -> std::pair<std::unique_ptr<CoreType>,
-                   std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
+                   std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
 
  private:
   std::shared_ptr<ReplicatedStateMetrics> const _metrics;
@@ -199,7 +207,9 @@ struct NewUnconfiguredStateManager {
   explicit NewUnconfiguredStateManager(std::unique_ptr<CoreType>) noexcept;
   [[nodiscard]] auto resign() noexcept
       -> std::pair<std::unique_ptr<CoreType>,
-                   std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
+                   std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
+    TRI_ASSERT(false);
+  }
 
  private:
   std::unique_ptr<CoreType> _core;

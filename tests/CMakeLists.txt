@@ -333,11 +333,11 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   ${ARANGODB_REPLICATION2_TEST_HELPER_SOURCES}
   #Replication2/ReplicatedLog/AppendEntriesBatchTest.cpp
   #Replication2/ReplicatedLog/AppendEntriesErrorReasonTest.cpp
-  #Replication2/ReplicatedLog/CalcCommitIndexTest.cpp
+  Replication2/ReplicatedLog/CalcCommitIndexTest.cpp
   #Replication2/ReplicatedLog/ChangeStreamTests.cpp
   #Replication2/ReplicatedLog/CheckLogsTest.cpp
   #Replication2/ReplicatedLog/ConcurrencyTests.cpp
-  #Replication2/ReplicatedLog/DetectConflictTest.cpp
+  Replication2/ReplicatedLog/DetectConflictTest.cpp
   #Replication2/ReplicatedLog/EstablishLeadershipTest.cpp
   #Replication2/ReplicatedLog/FollowerAppendEntries.cpp
   #Replication2/ReplicatedLog/FollowerWaitFor.cpp
