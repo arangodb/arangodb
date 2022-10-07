@@ -257,6 +257,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   // a vertex collection yet. This can happen e.g. during anonymous traversal.
   void injectVertexCollectionIntoGraphNodes(ExecutionPlan& plan);
 
+  void logError(QueryResult const& queryResult) const;
+
   enum class ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
 
  protected:

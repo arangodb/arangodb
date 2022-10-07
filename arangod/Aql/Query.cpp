@@ -604,6 +604,8 @@ ExecutionState Query::execute(QueryResult& queryResult) {
           _cacheEntry->_stats = queryResult.extra;
           QueryCache::instance()->store(&_vocbase, std::move(_cacheEntry));
         }
+
+        logError(queryResult);
         return state;
       }
     }
@@ -635,6 +637,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
   }
 
+  logError(queryResult);
   return ExecutionState::DONE;
 }
 
@@ -871,6 +874,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
   }
 
+  logError(queryResult);
   return queryResult;
 }
 
@@ -1210,9 +1214,32 @@ uint64_t Query::hash() {
 /// @brief log a query
 void Query::log() {
   if (!_queryString.empty()) {
+    size_t maxLength = 2048;
+    if (vocbase().queryList()) {
+      maxLength = vocbase().queryList()->maxQueryStringLength();
+    }
     LOG_TOPIC("8a86a", TRACE, Logger::QUERIES)
-        << "executing query " << _queryId << ": '" << _queryString.extract(1024)
-        << "'";
+        << "executing query " << _queryId << ": '"
+        << _queryString.extract(maxLength) << "'";
+  }
+}
+
+void Query::logError(QueryResult const& queryResult) const {
+  if (!_queryString.empty() && queryResult.result.fail() &&
+      vocbase().server().hasFeature<QueryRegistryFeature>() &&
+      vocbase()
+          .server()
+          .getFeature<QueryRegistryFeature>()
+          .logFailedQueries()) {
+    size_t maxLength = 2048;
+    if (vocbase().queryList()) {
+      maxLength = vocbase().queryList()->maxQueryStringLength();
+    }
+    LOG_TOPIC("d499d", INFO, Logger::QUERIES)
+        << "AQL query '" << _queryString.extract(maxLength)
+        << "', id: " << _queryId << ", token: QRY" << _queryId
+        << " failed with error code " << queryResult.result.errorNumber()
+        << ": " << queryResult.result.errorMessage();
   }
 }
 

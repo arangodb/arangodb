@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added startup option `--query.log-failed-queries` to optionally log all
+  failed AQL queries to the server log. The option is turned off by default.
+
 * BTS-977: Added an error message for when an unauthorized user makes an 
   HTTP GET request to current database from a database name that exists which 
   the user can't access and from a database name that doesn't exist, so both

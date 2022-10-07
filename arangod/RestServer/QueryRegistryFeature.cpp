@@ -179,6 +179,7 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
       _parallelizeTraversals(true),
 #endif
       _allowCollectionsInExpressions(false),
+      _logFailedQueries(false),
       _queryGlobalMemoryLimit(
           defaultMemoryLimit(PhysicalMemory::getValue(), 0.1, 0.90)),
       _queryMemoryLimit(
@@ -403,6 +404,16 @@ void QueryRegistryFeature::collectOptions(
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800)
       .setDeprecatedIn(30900);
+
+  options
+      ->addOption("--query.log-failed-queries", "log failed AQL queries",
+                  new BooleanParameter(&_logFailedQueries),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31100);
 }
 
 void QueryRegistryFeature::validateOptions(
