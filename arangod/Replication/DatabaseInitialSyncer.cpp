@@ -55,6 +55,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -140,7 +141,7 @@ arangodb::Result fetchRevisions(
     arangodb::DatabaseInitialSyncer::Configuration& config,
     arangodb::Syncer::SyncerState& state,
     arangodb::LogicalCollection& collection, std::string const& leader,
-    std::vector<arangodb::RevisionId>& toFetch,
+    bool encodeAsHLC, std::vector<arangodb::RevisionId>& toFetch,
     arangodb::ReplicationMetricsFeature::InitialSyncStats& stats) {
   using arangodb::PhysicalCollection;
   using arangodb::RestReplicationHandler;
@@ -213,6 +214,7 @@ arangodb::Result fetchRevisions(
        config.leader.patchVersion < 1)) {
     queueSize = 1;
   }
+
   while (current < toFetch.size() || !futures.empty()) {
     // Send some requests off if not enough in flight and something to go
     while (futures.size() < queueSize && current < toFetch.size()) {
@@ -223,7 +225,14 @@ arangodb::Result fetchRevisions(
         VPackArrayBuilder list(&requestBuilder);
         std::size_t i;
         for (i = 0; i < 5000 && current + i < toFetch.size(); ++i) {
-          requestBuilder.add(toFetch[current + i].toValuePair(ridBuffer));
+          if (encodeAsHLC) {
+            requestBuilder.add(VPackValue(
+                arangodb::basics::HybridLogicalClock::encodeTimeStamp(
+                    toFetch[current + i].id())));
+          } else {
+            // deprecated, ambiguous format
+            requestBuilder.add(toFetch[current + i].toValuePair(ridBuffer));
+          }
           shoppingList.insert(toFetch[current + i]);
           ++count;
         }
@@ -233,7 +242,8 @@ arangodb::Result fetchRevisions(
       arangodb::network::RequestOptions reqOptions;
       reqOptions.param("collection", leader)
           .param("serverId", state.localServerIdString)
-          .param("batchId", std::to_string(config.batch.id));
+          .param("batchId", std::to_string(config.batch.id))
+          .param("encodeAsHLC", encodeAsHLC ? "true" : "false");
       reqOptions.database = config.vocbase.name();
       reqOptions.timeout = arangodb::network::Timeout(25.0);
       auto buffer = requestBuilder.steal();
@@ -373,14 +383,22 @@ arangodb::Result fetchRevisions(
         {
           VPackArrayBuilder list(&requestBuilder);
           for (auto const& r : v) {
-            requestBuilder.add(r.toValuePair(ridBuffer));
+            if (encodeAsHLC) {
+              requestBuilder.add(VPackValue(
+                  arangodb::basics::HybridLogicalClock::encodeTimeStamp(
+                      r.id())));
+            } else {
+              // deprecated, ambiguous format
+              requestBuilder.add(r.toValuePair(ridBuffer));
+            }
           }
         }
 
         arangodb::network::RequestOptions reqOptions;
         reqOptions.param("collection", leader)
             .param("serverId", state.localServerIdString)
-            .param("batchId", std::to_string(config.batch.id));
+            .param("batchId", std::to_string(config.batch.id))
+            .param("encodeAsHLC", encodeAsHLC ? "true" : "false");
         reqOptions.timeout = arangodb::network::Timeout(25.0);
         reqOptions.database = config.vocbase.name();
         auto buffer = requestBuilder.steal();
@@ -1693,7 +1711,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
   // std::pair<std::size_t, std::size_t> fullRange = treeLeader->range();
   auto treeLocal = physical->revisionTree(*trx);
   if (!treeLocal) {
-    // local collection does not support syncing by revision, fall back to keys
+    // local collection does not support syncing by revision, fall back to
+    // keys
     guard.fire();
     return fetchCollectionSyncByKeys(coll, leaderColl, maxTick);
   }
@@ -1708,8 +1727,26 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
     return Result{};
   }
 
-  // now lets get the actual ranges and handle the differences
+  // encoding revisions as HLC timestamps is supported from the following
+  // versions:
+  // - 3.8.8 or higher
+  // - 3.9.4 or higher
+  // - 3.10.1 or higher
+  // - 3.11.0 or higher
+  // - 4.0 higher
+  bool encodeAsHLC =
+      _config.leader.majorVersion >= 4 ||
+      (_config.leader.majorVersion >= 3 && _config.leader.minorVersion >= 11) ||
+      (_config.leader.majorVersion >= 3 && _config.leader.minorVersion >= 10 &&
+       _config.leader.patchVersion >= 1) ||
+      (_config.leader.majorVersion >= 3 && _config.leader.minorVersion >= 9 &&
+       _config.leader.patchVersion >= 4) ||
+      (_config.leader.majorVersion >= 3 && _config.leader.minorVersion >= 8 &&
+       _config.leader.patchVersion >= 8);
 
+  TRI_IF_FAILURE("SyncerNoEncodeAsHLC") { encodeAsHLC = false; }
+
+  // now lets get the actual ranges and handle the differences
   {
     VPackBuilder requestBuilder;
     {
@@ -1717,6 +1754,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       VPackArrayBuilder list(&requestBuilder);
       for (auto& pair : ranges) {
         VPackArrayBuilder range(&requestBuilder);
+        // ok to use only HLC encoding here.
         requestBuilder.add(
             basics::HybridLogicalClock::encodeTimeStampToValuePair(pair.first,
                                                                    ridBuffer));
@@ -1759,8 +1797,27 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
         batchExtend();
       }
 
+      // assemble URL to call.
+      // note that the URL contains both the "resume" and "resumeHLC"
+      // parameters. "resume" contains the stringified revision id value for
+      // where to resume from. that stringification can be ambiguous and is thus
+      // deprecated. we also send a "resumeHLC" parameter now, which always
+      // contains a base64-encoded logical clock value. this is the preferred
+      // way to encode the resume value, and once all leaders support it, we can
+      // remove the "resume" parameter from the protocol
+      bool appendResumeHLC = true;
       std::string batchUrl = url + "&" + StaticStrings::RevisionTreeResume +
                              "=" + requestResume.toString();
+
+      TRI_IF_FAILURE("SyncerNoEncodeAsHLC") { appendResumeHLC = false; }
+
+      if (appendResumeHLC) {
+        batchUrl += "&" + StaticStrings::RevisionTreeResumeHLC + "=" +
+                    urlEncode(basics::HybridLogicalClock::encodeTimeStamp(
+                        requestResume.id())) +
+                    "&encodeAsHLC=true";
+      }
+
       std::string msg = "fetching collection revision ranges for collection '" +
                         coll->name() + "' from " + batchUrl;
       _config.progress.set(msg);
@@ -1802,7 +1859,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
                           ": response is not an object");
       }
 
-      VPackSlice const resumeSlice = slice.get("resume");
+      // first try using "resume", which is deprecated
+      VPackSlice resumeSlice = slice.get(StaticStrings::RevisionTreeResume);
       if (!resumeSlice.isNone() && !resumeSlice.isString()) {
         ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -1812,6 +1870,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       }
       requestResume = resumeSlice.isNone() ? RevisionId::max()
                                            : RevisionId::fromSlice(resumeSlice);
+      if (VPackSlice s = slice.get(StaticStrings::RevisionTreeResumeHLC);
+          s.isString()) {
+        // use "resumeHLC" if it is present
+        requestResume = RevisionId{
+            basics::HybridLogicalClock::decodeTimeStamp(s.stringView())};
+      }
 
       VPackSlice const rangesSlice = slice.get("ranges");
       if (!rangesSlice.isArray()) {
@@ -1903,7 +1967,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       toRemove.clear();
 
       res = ::fetchRevisions(nf, *trx, _config, _state, *coll, leaderColl,
-                             toFetch, stats);
+                             encodeAsHLC, toFetch, stats);
       if (res.fail()) {
         return res;
       }
