@@ -301,6 +301,12 @@ UpdateModule(${GIT_EXECUTABLE} "fmt" ${CMAKE_CURRENT_SOURCE_DIR} "README.rst")
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/fmt)
 
 ################################################################################
+## YACLib
+################################################################################
+UpdateModule(${GIT_EXECUTABLE} "yaclib" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/yaclib)
+
+################################################################################
 ## LINK_DIRECTORIES
 ################################################################################
 
