@@ -1807,7 +1807,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       // remove the "resume" parameter from the protocol
       bool appendResumeHLC = true;
       std::string batchUrl = url + "&" + StaticStrings::RevisionTreeResume +
-                             "=" + requestResume.toString();
+                             "=" + urlEncode(requestResume.toString());
 
       TRI_IF_FAILURE("SyncerNoEncodeAsHLC") { appendResumeHLC = false; }
 
