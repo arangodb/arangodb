@@ -59,7 +59,7 @@ function IResearchLshAqlTestSuiteCommunity() {
 
       db._createDatabase(dbName);
       db._useDatabase(dbName);
-      let collection_0 = db._create("collection_0", {computedValues:[{"name":"mh10","expression":"Return minhash(@doc.dataArr,10)","computeOn":["insert","update","replace"],"overwrite":true,"failOnWarning":false,"keepNull":true},{"name":"mh50","expression":"Return minhash(@doc.dataArr,50)","computeOn":["insert","update","replace"],"overwrite":true,"failOnWarning":false,"keepNull":true},{"name":"mh100","expression":"Return minhash(@doc.dataArr,100)","computeOn":["insert","update","replace"],"overwrite":true,"failOnWarning":false,"keepNull":true}], 
+      let collection_0 = db._create("collection_0", {computedValues:[{"name":"mh10","expression":"Return 'a'","computeOn":["insert","update","replace"],"overwrite":true,"failOnWarning":false,"keepNull":true},{"name":"mh50","expression":"Return 'b'","computeOn":["insert","update","replace"],"overwrite":true,"failOnWarning":false,"keepNull":true},{"name":"mh100","expression":"Return 'c'","computeOn":["insert","update","replace"],"overwrite":true,"failOnWarning":false,"keepNull":true}],
       replicationFactor:3, 
       writeConcern:1, 
       numberOfShards : 3});
@@ -67,6 +67,43 @@ function IResearchLshAqlTestSuiteCommunity() {
       var analyzers = require("@arangodb/analyzers");
       analyzers.save("delimiter", "delimiter", {"delimiter": "#", "features": []})
 
+      collection_0.insert({ _key: "a"});
+      collection_0.insert({ body: "the quick brown fox jumps over the lazy dog", sub: { body: "the quick brown fox jumps over the lazy dog" } });
+      collection_0.insert({ body: "the foxx jumps over the fox", sub: { body: "the foxx jumps over the fox" } });
+      collection_0.insert({ body: "the fox jumps over the lazy dog", sub: { body: "the fox jumps over the lazy dog" } });
+      collection_0.insert({ body: "the dog jumps over the lazy fox", sub: { body: "the dog jumps over the lazy fox" } });
+      collection_0.insert({ body: "roses are red, violets are blue, foxes are quick", sub: { body: "roses are red, violets are blue, foxes are quick" } });
+
+      db._createView("view", "arangosearch");
+      db.view.properties({
+          "links": {
+              "collection_0": {
+                  "fields": {
+                      "mh50": {
+                          "analyzers": [
+                              "identity"
+                          ]
+                      },
+                      "mh100": {
+                          "analyzers": [
+                              "identity"
+                          ]
+                      },
+                      "mh10": {
+                          "analyzers": [
+                              "identity"
+                          ]
+                      }
+                  }
+              }
+           }
+        });
+    },
+    tearDownAll : function () { 
+      cleanup();
+    },
+
+    testMinhashAnalyzer: function() {
       // assert that minhash analyzers are unavailable
       try {
         analyzers.save("myMinHash10", "minhash", {"numHashes": 10, "analyzer": {"type": "delimiter", "properties": {"delimiter": "#", "features": []}}})
@@ -74,25 +111,17 @@ function IResearchLshAqlTestSuiteCommunity() {
       } catch (e) {
         assertEqual(errors.ERROR_NOT_IMPLEMENTED.code, e.errorNum);
       }
-
-      // analyzers.save("offsets", "delimiter", { delimiter: " " }, [ "frequency", "position", "offset"]);
-      collection_0.insert({ _key: "a"});
-      collection_0.insert({ body: "the quick brown fox jumps over the lazy dog", sub: { body: "the quick brown fox jumps over the lazy dog" } });
-      collection_0.insert({ body: "the foxx jumps over the fox", sub: { body: "the foxx jumps over the fox" } });
-      collection_0.insert({ body: "the fox jumps over the lazy dog", sub: { body: "the fox jumps over the lazy dog" } });
-      collection_0.insert({ body: "the dog jumps over the lazy fox", sub: { body: "the dog jumps over the lazy fox" } });
-      collection_0.insert({ body: "roses are red, violets are blue, foxes are quick", sub: { body: "roses are red, violets are blue, foxes are quick" } });
-      // db._createView("docsView", "arangosearch",
-      //     { links: { docs: { includeAllFields : true, analyzers: ["offsets"] } } });
-      // db._query("FOR d IN docsView OPTIONS {waitForSync:true} LIMIT 1 RETURN 1");
-    },
-    tearDownAll : function () { 
-      cleanup();
     },
 
     testMinhash: function() {
       checkThatQueryReturnsExpectedError(
         "for d in collection_0 filter minhash(Tokens(d.dataStr, 'delimiter'), 10) == d.mh10 collect with count into c return c",
+        errors.ERROR_NOT_IMPLEMENTED.code);
+    },
+
+    testMinhashMatch: function() {
+      checkThatQueryReturnsExpectedError(
+        "for doc in view search minhash_match(doc.dataStr, 'abc', 0.3, 'myMinHash10') return doc",
         errors.ERROR_NOT_IMPLEMENTED.code);
     },
 
