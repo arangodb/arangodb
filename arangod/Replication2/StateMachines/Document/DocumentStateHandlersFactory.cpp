@@ -27,23 +27,24 @@
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 
+#include "Cluster/AgencyCache.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/ReplicatedContext.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateHandlersFactory::DocumentStateHandlersFactory(
-    ArangodServer& server, ClusterFeature& clusterFeature,
+    ArangodServer& server, AgencyCache& agencyCache,
     MaintenanceFeature& maintenaceFeature, DatabaseFeature& databaseFeature)
     : _server(server),
-      _clusterFeature(clusterFeature),
+      _agencyCache(agencyCache),
       _maintenanceFeature(maintenaceFeature),
       _databaseFeature(databaseFeature) {}
 
 auto DocumentStateHandlersFactory::createAgencyHandler(GlobalLogIdentifier gid)
     -> std::shared_ptr<IDocumentStateAgencyHandler> {
   return std::make_shared<DocumentStateAgencyHandler>(std::move(gid), _server,
-                                                      _clusterFeature);
+                                                      _agencyCache);
 }
 
 auto DocumentStateHandlersFactory::createShardHandler(GlobalLogIdentifier gid)

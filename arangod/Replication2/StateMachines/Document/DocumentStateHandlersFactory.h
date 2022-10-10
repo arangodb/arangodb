@@ -37,7 +37,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class ClusterFeature;
+class AgencyCache;
 class DatabaseFeature;
 class MaintenanceFeature;
 class TransactionState;
@@ -79,8 +79,7 @@ class DocumentStateHandlersFactory
     : public IDocumentStateHandlersFactory,
       public std::enable_shared_from_this<DocumentStateHandlersFactory> {
  public:
-  DocumentStateHandlersFactory(ArangodServer& server,
-                               ClusterFeature& clusterFeature,
+  DocumentStateHandlersFactory(ArangodServer& server, AgencyCache& agencyCache,
                                MaintenanceFeature& maintenaceFeature,
                                DatabaseFeature& databaseFeature);
   auto createAgencyHandler(GlobalLogIdentifier gid)
@@ -95,7 +94,7 @@ class DocumentStateHandlersFactory
 
  private:
   ArangodServer& _server;
-  ClusterFeature& _clusterFeature;
+  AgencyCache& _agencyCache;
   MaintenanceFeature& _maintenanceFeature;
   DatabaseFeature& _databaseFeature;
 };
