@@ -2593,10 +2593,10 @@ const testSmallCircleDFSProjectionsEdges = testGraph => testProjectionsUsage(tes
 const testSmallCircleWeightedProjectionsEdges = testGraph => testProjectionsUsage(testGraph, "weighted", true);
 
 const executeParallelQuery = (makeQuery, expectedTotalNumberOfNodes = -1) => {
-  // We are using 10.000 start nodes here, to give all worker threads something to work on.
+  // We are using 1100 start nodes here, to give all worker threads something to work on.
   // The input will most likely be split into batches of 1000 nodes each (implementation detail)
   // so with the above batch-size there should be enough work to distribute on 4 threads.
-  const numberOfStartNodes = 10000;
+  const numberOfStartNodes = 1100;
 
   const query = makeQuery(true, numberOfStartNodes);
   const nonParallelQuery = makeQuery(false, numberOfStartNodes);
