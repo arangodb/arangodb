@@ -366,7 +366,9 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
           found.push(colName);
         }
       }
-      assertEqual(found.length, 2, `Dumping combined log entries: ${JSON.stringify(allEntries)}`);
+      assertEqual(found.length, 2, `Dumping combined log entries (excluding inserts): ` +
+        JSON.stringify(allEntries.filter(entry => !entry.hasOwnProperty("payload") ||
+          entry.hasOwnProperty("payload") && entry.payload[1].operation !== "Insert")));
     }
   };
 };
