@@ -896,6 +896,23 @@
       },
 
       ////////////////////////////////////////////////////////////////////////////////
+      /// @brief test inverted index restoring
+      ////////////////////////////////////////////////////////////////////////////////
+
+      testInvertedIndex: function () {
+        let collection = db._collection("collection_documents_0");
+        assertNotEqual(null, collection);
+
+        let index = collection.index("collection_documents_0_all");
+
+        let search = db._view("v_collection_documents_0_all");
+        assertNotEqual(null, search);
+        assertEqual("v_collection_documents_0_all", search.name());
+        let props = search.properties();
+        assertEqual(props.indexes, [ { 'collection': 'collection_documents_0', 'index': 'collection_documents_0_all' }]);
+      },
+
+      ////////////////////////////////////////////////////////////////////////////////
       /// @brief test custom analyzers restoring
       ////////////////////////////////////////////////////////////////////////////////
       testAnalyzers: function () {
@@ -935,8 +952,8 @@
 
         assertNotEqual(null, db._collection("_analyzers"));
         assertEqual((isEnterprise) ?
-            3 : // plus 1 for a SmartGraph in Enterprise
-            2,  // only 1 stored custom analyzers
+            7 : // plus 1 for a SmartGraph in Enterprise
+            6,  // only 1 stored custom analyzers
           db._analyzers.count());
 
         _.each(createdAnalyzersInSrc, (analyzerObject) => {

@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <velocypack/Builder.h>
@@ -164,6 +165,7 @@ struct AutoRebalanceProblem {
   std::vector<Database> databases;
   std::unordered_map<std::string, uint64_t> dbCollByName;
   std::unordered_map<std::string, uint64_t> dbByName;
+  std::unordered_set<std::string> serversHealthInfo;
 
  private:
   double _piFactor = 256e6;
@@ -197,5 +199,9 @@ struct AutoRebalanceProblem {
   std::vector<std::vector<MoveShardJob>> findAllMoveShardJobs(
       bool considerLeaderChanges, bool considerFollowerMoves,
       bool considerLeaderMoves) const;
+
+  void setServersHealthInfo(std::unordered_set<std::string> serversInfo) {
+    serversHealthInfo = std::move(serversInfo);
+  }
 };
 }  // namespace arangodb::cluster::rebalance
