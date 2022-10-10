@@ -296,9 +296,15 @@ static Result StoreUser(auth::UserManager* um, int mode,
           entry.setActive(active);
         }
       }
-      if (extra.isObject() && !extra.isEmptyObject()) {
-        VPackSlice oldExtra = u.get("extra");
+
+      VPackSlice oldExtra = u.get("extra");
+      if (extra.isObject() && oldExtra.isObject()) {
+        // Both `extra` and `oldExtra` are objects, so perform a deep merge.
         entry.setUserData(VPackCollection::merge(oldExtra, extra, true, false));
+      } else if (!extra.isNone()) {
+        // `extra` or `oldExtra` is not an object, so a deep merge is not possible.
+        // Just overwrite the old value.
+        entry.setUserData(VPackBuilder(extra));
       }
       return TRI_ERROR_NO_ERROR;
     });
