@@ -2098,7 +2098,6 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
   }
 
   auto const& ctx = filterCtx.query;
-
   auto const argc = args.numMembers();
 
   if (argc < 1 || argc > 3) {
@@ -3952,6 +3951,7 @@ frozen::map<irs::string_ref, ConversionHandler,
     {GEO_INTERSECT_FUNC, fromFuncGeoContainsIntersect},
     {"GEO_IN_RANGE", fromFuncGeoInRange},
     {"GEO_CONTAINS", fromFuncGeoContainsIntersect},
+    // GEO_DISTANCE missing because it doesn't return boolean
     // context functions
     {"BOOST", fromFuncBoost},
     {"ANALYZER", fromFuncAnalyzer},

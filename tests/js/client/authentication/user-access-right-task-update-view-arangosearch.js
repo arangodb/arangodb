@@ -29,8 +29,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
-var jsunity = require('jsunity');
-var analyzers = require("@arangodb/analyzers");
+const jsunity = require('jsunity');
 const testHelper = require('@arangodb/test-helper');
 const isEqual = testHelper.isEqual;
 const deriveTestSuite = testHelper.deriveTestSuite;
@@ -50,6 +49,7 @@ const testViewRename = `${namePrefix}ViewRename`;
 const testViewType = "arangosearch";
 const testCol1Name = `${namePrefix}Col1New`;
 const testCol2Name = `${namePrefix}Col2New`;
+const indexName = `${namePrefix}inverted`;
 const keySpaceId = 'task_update_view_keyspace';
 const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
@@ -58,9 +58,9 @@ const colLevel = helper.colLevel;
 
 const arango = require('internal').arango;
 for (let l of rightLevels) {
-    systemLevel[l] = new Set();
-    dbLevel[l] = new Set();
-    colLevel[l] = new Set();
+  systemLevel[l] = new Set();
+  dbLevel[l] = new Set();
+  colLevel[l] = new Set();
 }
 
 const wait = (keySpaceId, key) => {
@@ -73,163 +73,162 @@ const wait = (keySpaceId, key) => {
 };
 
 const createKeySpace = (keySpaceId) => {
-    return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
+  return executeJS(`return global.KEYSPACE_CREATE('${keySpaceId}', 128, true);`).body === 'true';
 };
 
 const dropKeySpace = (keySpaceId) => {
-    executeJS(`global.KEYSPACE_DROP('${keySpaceId}');`);
+  executeJS(`global.KEYSPACE_DROP('${keySpaceId}');`);
 };
 
 const getKey = (keySpaceId, key) => {
-    return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
+  return executeJS(`return global.KEY_GET('${keySpaceId}', '${key}');`).body === 'true';
 };
 
 const setKey = (keySpaceId, name) => {
-    return executeJS(`global.KEY_SET('${keySpaceId}', '${name}', false);`);
+  return executeJS(`global.KEY_SET('${keySpaceId}', '${name}', false);`);
 };
 
 const executeJS = (code) => {
-    let httpOptions = pu.makeAuthorizationHeaders({
-      username: 'root',
-      password: ''
-    }, {});
-    httpOptions.method = 'POST';
-    httpOptions.timeout = 1800;
-    httpOptions.returnBodyOnError = true;
-    return download(arango.getEndpoint().replace('tcp', 'http') + `/_db/${dbName}/_admin/execute?returnAsJSON=true`,
-                    code, httpOptions);
+  let httpOptions = pu.makeAuthorizationHeaders({
+    username: 'root',
+    password: ''
+  }, {});
+  httpOptions.method = 'POST';
+  httpOptions.timeout = 1800;
+  httpOptions.returnBodyOnError = true;
+  return download(arango.getEndpoint().replace('tcp', 'http') + `/_db/${dbName}/_admin/execute?returnAsJSON=true`,
+    code, httpOptions);
 };
 
 
-function hasIResearch (db) {
-    return !(db._views() === 0); // arangosearch views are not supported
-}
 let name = "";
 function rootTestCollection (colName, switchBack = true) {
-    helper.switchUser('root', dbName);
-    let col = db._collection(colName);
-    if (switchBack) {
-        helper.switchUser(name, dbName);
-    }
-    return col !== null;
+  helper.switchUser('root', dbName);
+  let col = db._collection(colName);
+  if (switchBack) {
+    helper.switchUser(name, dbName);
+  }
+  return col !== null;
 };
 
 function rootCreateCollection (colName) {
-    if (!rootTestCollection(colName, false)) {
-        db._create(colName);
-        if (colLevel['none'].has(name)) {
-            if (helper.isLdapEnabledExternal()) {
-                users.grantCollection(':role:' + name, dbName, colName, 'none');
-            } else {
-                users.grantCollection(name, dbName, colName, 'none');
-            }
-        } else if (colLevel['ro'].has(name)) {
-            if (helper.isLdapEnabledExternal()) {
-                users.grantCollection(':role:' + name, dbName, colName, 'ro');
-            } else {
-                users.grantCollection(name, dbName, colName, 'ro');
-            }
-        } else if (colLevel['rw'].has(name)) {
-            if (helper.isLdapEnabledExternal()) {
-                users.grantCollection(':role:' + name, dbName, colName, 'rw');
-            } else {
-                users.grantCollection(name, dbName, colName, 'rw');
-            }
-        }
+  if (!rootTestCollection(colName, false)) {
+    let c = db._create(colName);
+    if (colName === testCol1Name) {
+      c.ensureIndex({ type: "inverted", name: indexName, fields: [ { name: "value" } ] });
     }
-    helper.switchUser(name, dbName);
+    if (colLevel['none'].has(name)) {
+      if (helper.isLdapEnabledExternal()) {
+        users.grantCollection(':role:' + name, dbName, colName, 'none');
+      } else {
+        users.grantCollection(name, dbName, colName, 'none');
+      }
+    } else if (colLevel['ro'].has(name)) {
+      if (helper.isLdapEnabledExternal()) {
+        users.grantCollection(':role:' + name, dbName, colName, 'ro');
+      } else {
+        users.grantCollection(name, dbName, colName, 'ro');
+      }
+    } else if (colLevel['rw'].has(name)) {
+      if (helper.isLdapEnabledExternal()) {
+        users.grantCollection(':role:' + name, dbName, colName, 'rw');
+      } else {
+        users.grantCollection(name, dbName, colName, 'rw');
+      }
+    }
+  }
+  helper.switchUser(name, dbName);
 };
 
 function rootPrepareCollection (colName, numDocs = 1, defKey = true) {
-    if (rootTestCollection(colName, false)) {
-        db._collection(colName).truncate({ compact: false });
-        for(var i = 0; i < numDocs; ++i)
-        {
-            var doc = {prop1: colName + "_1", propI: i, plink: "lnk" + i};
-            if (!defKey) {
-                doc._key = colName + i;
-            }
-            db._collection(colName).save(doc, {waitForSync: true});
-        }
+  if (rootTestCollection(colName, false)) {
+    db._collection(colName).truncate({ compact: false });
+    for(var i = 0; i < numDocs; ++i)
+    {
+      var doc = {prop1: colName + "_1", propI: i, plink: "lnk" + i};
+      if (!defKey) {
+        doc._key = colName + i;
+      }
+      db._collection(colName).save(doc, {waitForSync: true});
     }
-    helper.switchUser(name, dbName);
+  }
+  helper.switchUser(name, dbName);
 };
 
 function rootGrantCollection (colName, user, explicitRight = '') {
-    if (rootTestCollection(colName, false)) {
-        if (explicitRight !== '' && rightLevels.includes(explicitRight))
-        {
-            if (helper.isLdapEnabledExternal()) {
-                users.grantCollection(':role:' + user, dbName, colName, explicitRight);
-            } else {
-                users.grantCollection(user, dbName, colName, explicitRight);
-            }
-        }
+  if (rootTestCollection(colName, false)) {
+    if (explicitRight !== '' && rightLevels.includes(explicitRight))
+    {
+      if (helper.isLdapEnabledExternal()) {
+        users.grantCollection(':role:' + user, dbName, colName, explicitRight);
+      } else {
+        users.grantCollection(user, dbName, colName, explicitRight);
+      }
     }
-    helper.switchUser(user, dbName);
+  }
+  helper.switchUser(user, dbName);
 };
 
 function rootDropCollection (colName) {
-    helper.switchUser('root', dbName);
-    try {
-        db._collection(colName).drop();
-    } catch (ignored) { }
-    helper.switchUser(name, dbName);
+  helper.switchUser('root', dbName);
+  db._drop(colName);
+  helper.switchUser(name, dbName);
 };
 
 function rootTestView (viewName, switchBack = true) {
-    helper.switchUser('root', dbName);
-    let view = db._view(viewName);
-    if (switchBack) {
-        helper.switchUser(name, dbName);
-    }
-    return view !== null;
+  helper.switchUser('root', dbName);
+  let view = db._view(viewName);
+  if (switchBack) {
+    helper.switchUser(name, dbName);
+  }
+  return view !== null;
 };
 
 function rootGetViewProps (viewName, switchBack = true) {
-    helper.switchUser('root', dbName);
-    let properties = db._view(viewName).properties();
-    if (switchBack) {
-        helper.switchUser(name, dbName);
-    }
-    return properties;
-};
-
-function rootCreateView (viewName, properties = null) {
-    if (rootTestView(viewName, false)) {
-        try {
-            db._dropView(viewName);
-        } catch (ignored) {}
-    }
-    let view =  db._createView(viewName, testViewType, {});
-    if (properties !== null) {
-        view.properties(properties, false);
-    }
+  helper.switchUser('root', dbName);
+  let properties = db._view(viewName).properties();
+  if (switchBack) {
     helper.switchUser(name, dbName);
+  }
+  return properties;
 };
 
-function rootGetDefaultViewProps () {
-    helper.switchUser('root', dbName);
+function rootCreateView (viewName, viewType, properties = null) {
+  if (rootTestView(viewName, false)) {
     try {
-        var tmpView = db._createView(this.title + "_tmpView", testViewType, {});
-        var properties = tmpView.properties();
-        db._dropView(this.title + "_tmpView");
-    } catch (ignored) { }
-    helper.switchUser(name, dbName);
-    return properties;
+      db._dropView(viewName);
+    } catch (ignored) {}
+  }
+  let view =  db._createView(viewName, viewType, {});
+  if (properties !== null) {
+    view.properties(properties, false);
+  }
+  helper.switchUser(name, dbName);
+};
+
+function rootGetDefaultViewProps (viewType) {
+  helper.switchUser('root', dbName);
+  let properties;
+  try {
+    let tmpView = db._createView(this.title + "_tmpView", viewType, {});
+    properties = tmpView.properties();
+    db._dropView(this.title + "_tmpView");
+  } catch (ignored) { }
+  helper.switchUser(name, dbName);
+  return properties;
 };
 
 function rootDropView (viewName) {
-    helper.switchUser('root', dbName);
-    try {
-        db._dropView(viewName);
-    } catch (ignored) { }
-    helper.switchUser(name, dbName);
+  helper.switchUser('root', dbName);
+  try {
+    db._dropView(viewName);
+  } catch (ignored) { }
+  helper.switchUser(name, dbName);
 };
 
 const checkError = (e) => {
-    assertEqual(e.code, 403, "Expected to get forbidden REST error code, but got another one");
-    assertEqual(e.errorNum, errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
+  assertEqual(e.code, 403, "Expected to get forbidden REST error code, but got another one");
+  assertEqual(e.errorNum, errors.ERROR_FORBIDDEN.code, "Expected to get forbidden error number, but got another one");
 };
 
 function UserRightsManagement(name) {
@@ -244,17 +243,13 @@ function UserRightsManagement(name) {
       rootPrepareCollection(testCol2Name);
     },
 
-    setUp: function() {
-      rootCreateView(testViewName, { links: { [testCol1Name] : {includeAllFields: true } } });
-      helper.switchUser('root', dbName);
-    },
-
     tearDownAll: function() {
       rootDropCollection(testCol1Name);
       rootDropCollection(testCol2Name);
 
       dropKeySpace(keySpaceId);
     },
+
     tearDown: function() {
       rootDropView(testViewRename);
       rootDropView(testViewName);
@@ -272,20 +267,22 @@ function UserRightsManagement(name) {
 };
 
     
-if (hasIResearch(db)) {
-  helper.switchUser('root', '_system');
-  helper.removeAllUsers();
-  helper.generateAllUsers();
+helper.switchUser('root', '_system');
+helper.removeAllUsers();
+helper.generateAllUsers();
 
-  jsunity.run(function() {
-    let suite = {};
+jsunity.run(function() {
+  let suite = {};
 
-    deriveTestSuite(
-      UserRightsManagement(name),
-      suite,
-      "_-_" + name);
-    return suite;
-  });
+  deriveTestSuite(
+    UserRightsManagement(name),
+    suite,
+    "_-_" + name);
+  return suite;
+});
+
+for (let testViewType of ["arangosearch", "search-alias"]) {
+  // note: name is a global variable here
   for (name of userSet) {
     let canUse = true;
     try {
@@ -295,235 +292,259 @@ if (hasIResearch(db)) {
     }
 
     if (canUse) {
+      const key = `${testViewType}_${name}`;
+
       let suite = {
         testCheckAdministrateOnDBLevel: function() {
           assertTrue(userSet.size > 0);
           assertEqual(rootTestView(testViewName), true, 'Precondition failed, view was not found');
-          setKey(keySpaceId, name);
-          const taskId = 'task_update_view_name_' + name;
+          setKey(keySpaceId, key);
+          const taskId = 'task_update_view_name_' + key;
           const task = {
             id: taskId,
             name: taskId,
             command: `(function (params) {
-                    try {
-                      const db = require('@arangodb').db;
+                  try {
+                    const db = require('@arangodb').db;
 
-                      db._view('${testViewName}').rename('${testViewRename}');
-                      global.KEY_SET('${keySpaceId}', '${name}_status', true);
-                    } catch (e) {
-                      //FIXME: remove IF block after renaming will work in cluster
-                      if (e.errorNum === 1470) {
-                        global.KEY_SET('${keySpaceId}', '${name}_no_cluster_rename', true);
-                        global.KEY_SET('${keySpaceId}', '${name}_status', true);
-                      } else {
-                        global.KEY_SET('${keySpaceId}', '${name}_no_cluster_rename', false);
-                        global.KEY_SET('${keySpaceId}', '${name}_status', false);
-                      }
-                    } finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
+                    db._view('${testViewName}').rename('${testViewRename}');
+                    global.KEY_SET('${keySpaceId}', '${key}_status', true);
+                  } catch (e) {
+                    //FIXME: remove IF block after renaming will work in cluster
+                    if (e.errorNum === 1470) {
+                      global.KEY_SET('${keySpaceId}', '${key}_no_cluster_rename', true);
+                      global.KEY_SET('${keySpaceId}', '${key}_status', true);
+                    } else {
+                      global.KEY_SET('${keySpaceId}', '${key}_no_cluster_rename', false);
+                      global.KEY_SET('${keySpaceId}', '${key}_status', false);
                     }
-                  })(params);`
+                  } finally {
+                    global.KEY_SET('${keySpaceId}', '${key}', true);
+                  }
+                })(params);`
           };
           if (dbLevel['rw'].has(name)) {
             tasks.register(task);
-            wait(keySpaceId, name);
-            if(!getKey(keySpaceId, `${name}_no_cluster_rename`)) {
-              assertEqual(getKey(keySpaceId, `${name}_status`), colLevel['ro'].has(name) || colLevel['rw'].has(name), `${name} could update the view with sufficient rights`);
+            wait(keySpaceId, key);
+            if (!getKey(keySpaceId, `${key}_no_cluster_rename`)) {
+              assertEqual(getKey(keySpaceId, `${key}_status`), colLevel['ro'].has(name) || colLevel['rw'].has(name), `${name} could update the view with sufficient rights`);
               assertEqual(rootTestView(testViewRename), colLevel['ro'].has(name) || colLevel['rw'].has(name), 'View renaming reported success, but updated view was not found afterwards');
             }
           } else {
             try {
               tasks.register(task);
-              wait(keySpaceId, name);
+              wait(keySpaceId, key);
               assertFail(`${name} managed to register a task with insufficient rights`);
             } catch (e) {
               checkError(e);
             } finally {
-              assertFalse(getKey(keySpaceId, `${name}_status`), `${name} could update the view with insufficient rights`);
+              assertFalse(getKey(keySpaceId, `${key}_status`), `${name} could update the view with insufficient rights`);
             }
           }
         },
-        testViewPropertyExceptLinksPartial: function() {
+        
+        testViewByPropertiesRemoveFull : function() {
           assertTrue(rootTestView(testViewName), 'Precondition failed, view was not found');
-          setKey(keySpaceId, name);
-          const taskId = 'task_update_view_property_not_links_partial_' + name;
+          setKey(keySpaceId, key);
+          const taskId = 'task_update_view_properties_remove_full_' + key;
           const task = {
             id: taskId,
             name: taskId,
             command: `(function (params) {
-                    try {
-                      const db = require('@arangodb').db;
-                      db._view('${testViewName}').properties({ "cleanupIntervalStep": 1 }, true);
-                      global.KEY_SET('${keySpaceId}', '${name}_status', true);
-                    } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${name}_status', false);
-                    }finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
-                    }
-                  })(params);`
+                  try {
+                    const db = require('@arangodb').db;
+                    db._view('${testViewName}').properties({}, false);
+                    global.KEY_SET('${keySpaceId}', '${key}_status', true);
+                  } catch (e) {
+                    global.KEY_SET('${keySpaceId}', '${key}_status', false);
+                  }finally {
+                    global.KEY_SET('${keySpaceId}', '${key}', true);
+                  }
+                })(params);`
           };
           if (dbLevel['rw'].has(name)) {
-            if(colLevel['rw'].has(name) || colLevel['ro'].has(name)){
+            if (colLevel['rw'].has(name) || colLevel['ro'].has(name)) {
               tasks.register(task);
-              wait(keySpaceId, name);
-              assertTrue(getKey(keySpaceId, `${name}_status`), `${name} could not update the view with sufficient rights`);
-              assertEqual(rootGetViewProps(testViewName)["cleanupIntervalStep"], 1, 'View property update reported success, but property was not updated');
-            } else {
-              tasks.register(task);
-              wait(keySpaceId, name);
-              assertFalse(getKey(keySpaceId, `${name}_status`), `${name} could update the view with insufficient rights`);
-            }
-          } else {
-            try {
-              tasks.register(task);
-              wait(keySpaceId, name);
-              assertFail( `${name} managed to register a task with insufficient rights`);
-            } catch (e) {
-              checkError(e);
-            } finally {
-              assertFalse(getKey(keySpaceId, `${name}_status`), `${name} could update the view with insufficient rights`);
-            }
-          }
-        },
-        testViewByPropertyExceptLinksFull: function() {
-          assertTrue(rootTestView(testViewName), 'Precondition failed, view was not found');
-          setKey(keySpaceId, name);
-          const taskId = 'task_update_view_property_not_links_full_' + name;
-          const task = {
-            id: taskId,
-            name: taskId,
-            command: `(function (params) {
-                    try {
-                      const db = require('@arangodb').db;
-                      db._view('${testViewName}').properties({ "cleanupIntervalStep": 1 }, false);
-                      global.KEY_SET('${keySpaceId}', '${name}_status', true);
-                    } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${name}_status', false);
-                    }finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
-                    }
-                  })(params);`
-          };
-          if (dbLevel['rw'].has(name)) {
-            if(colLevel['rw'].has(name) || colLevel['ro'].has(name)){
-              tasks.register(task);
-              wait(keySpaceId, name);
-              assertTrue(getKey(keySpaceId, `${name}_status`), `${name} could not update the view with sufficient rights`);
-              assertEqual(rootGetViewProps(testViewName)["cleanupIntervalStep"], 1, 'View property update reported success, but property was not updated');
-            } else {
-              tasks.register(task);
-              wait(keySpaceId, name);
-              assertFalse(getKey(keySpaceId, `${name}_status`), `${name} could update the view with insufficient rights`);
-            }
-          } else {
-            try {
-              tasks.register(task);
-              wait(keySpaceId, name);
-              assertFail(`${name} managed to register a task with insufficient rights`);
-            } catch (e) {
-              checkError(e);
-              return;
-            } finally {
-              assertFalse(getKey(keySpaceId, `${name}_status`), `${name} could update the view with insufficient rights`);
-            }
-          }
-        },
-        testViewBypPropertiesRemoveFull: function() {
-          assertTrue(rootTestView(testViewName), 'Precondition failed, view was not found');
-          setKey(keySpaceId, name);
-          const taskId = 'task_update_view_properties_remove_full_' + name;
-          const task = {
-            id: taskId,
-            name: taskId,
-            command: `(function (params) {
-                    try {
-                      const db = require('@arangodb').db;
-                      db._view('${testViewName}').properties({}, false);
-                      global.KEY_SET('${keySpaceId}', '${name}_status', true);
-                    } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${name}_status', false);
-                    }finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
-                    }
-                  })(params);`
-          };
-          if (dbLevel['rw'].has(name)) {
-            if(colLevel['rw'].has(name) || colLevel['ro'].has(name)){
-              tasks.register(task);
-              wait(keySpaceId, name);
-              assertTrue(getKey(keySpaceId, `${name}_status`), `${name} could not update the view with sufficient rights`);
-              assertTrue(isEqual(rootGetViewProps(testViewName, true), rootGetDefaultViewProps()),
+              wait(keySpaceId, key);
+              assertTrue(getKey(keySpaceId, `${key}_status`), `${name} could not update the view with sufficient rights`);
+              assertTrue(isEqual(rootGetViewProps(testViewName, true), rootGetDefaultViewProps(testViewType)),
                 'View properties update reported success, but properties were not updated');
             } else {
               tasks.register(task);
-              wait(keySpaceId, name);
-              assertFalse(getKey(keySpaceId, `${name}_status`), `${name} could update the view with insufficient rights`);
+              wait(keySpaceId, key);
+              assertFalse(getKey(keySpaceId, `${key}_status`), `${name} could update the view with insufficient rights`);
             }
           } else {
             try {
               tasks.register(task);
-              wait(keySpaceId, name);
+              wait(keySpaceId, key);
               assertFail(`${name} managed to register a task with insufficient rights`);
             } catch (e) {
               checkError(e);
               return;
             } finally {
-              assertFalse(getKey(keySpaceId, `${name}_status`), `${name} could update the view with insufficient rights`);
+              assertFalse(getKey(keySpaceId, `${key}_status`), `${name} could update the view with insufficient rights`);
             }
           }
         },
-        testViewByExistingLinkUpdatePartial: function() {
+
+      };
+
+      if (testViewType === 'arangosearch') {
+        // specific handling for views of type "arangosearch"
+        suite.setUp = function() {
+          rootCreateView(testViewName, testViewType, { links: { [testCol1Name] : {includeAllFields: true } } });
+          helper.switchUser('root', dbName);
+        };
+
+        suite.testViewPropertyExceptLinksPartial = function() {
           assertTrue(rootTestView(testViewName), 'Precondition failed, view was not found');
-          setKey(keySpaceId, name);
-          const taskId = 'task_update_view_existing_link_partial_' + name;
+          setKey(keySpaceId, key);
+          const taskId = 'task_update_view_property_not_links_partial_' + key;
           const task = {
             id: taskId,
             name: taskId,
             command: `(function (params) {
-                    try {
-                      const db = require('@arangodb').db;
-                      db._view('${testViewName}').properties({ links: { ['${testCol1Name}']: { includeAllFields: true, analyzers: ['text_de','text_en'] } } }, true);
-                      global.KEY_SET('${keySpaceId}', '${name}_status', true);
-                    } catch (e) {
-                      global.KEY_SET('${keySpaceId}', '${name}_status', false);
-                    }finally {
-                      global.KEY_SET('${keySpaceId}', '${name}', true);
-                    }
-                  })(params);`
+                  try {
+                    const db = require('@arangodb').db;
+                    db._view('${testViewName}').properties({ "cleanupIntervalStep": 1 }, true);
+                    global.KEY_SET('${keySpaceId}', '${key}_status', true);
+                  } catch (e) {
+                    global.KEY_SET('${keySpaceId}', '${key}_status', false);
+                  }finally {
+                    global.KEY_SET('${keySpaceId}', '${key}', true);
+                  }
+                })(params);`
           };
           if (dbLevel['rw'].has(name)) {
-            if(colLevel['rw'].has(name) || colLevel['ro'].has(name))
-            {
+            if (colLevel['rw'].has(name) || colLevel['ro'].has(name)) {
               tasks.register(task);
-              wait(keySpaceId, name);
-              assertTrue(getKey(keySpaceId, `${name}_status`), `${name} could not update the view with sufficient rights`);
-              assertEqual(rootGetViewProps(testViewName)["links"][testCol1Name]["analyzers"], ["text_de", "text_en"], 'View link update reported success, but property was not updated');
+              wait(keySpaceId, key);
+              assertTrue(getKey(keySpaceId, `${key}_status`), `${name} could not update the view with sufficient rights`);
+              assertEqual(rootGetViewProps(testViewName)["cleanupIntervalStep"], 1, 'View property update reported success, but property was not updated');
             } else {
               tasks.register(task);
-              wait(keySpaceId, name);
-              assertFalse(getKey(keySpaceId, `${name}_status`), `${name} could update the view with insufficient rights`);
+              wait(keySpaceId, key);
+              assertFalse(getKey(keySpaceId, `${key}_status`), `${name} could update the view with insufficient rights`);
             }
           } else {
             try {
               tasks.register(task);
-              wait(keySpaceId, name);
+              wait(keySpaceId, key);
               assertFail(`${name} managed to register a task with insufficient rights`);
             } catch (e) {
               checkError(e);
             } finally {
-              assertFalse(getKey(keySpaceId, `${name}_status`), `${name} could update the view with insufficient rights`);
+              assertFalse(getKey(keySpaceId, `${key}_status`), `${name} could update the view with insufficient rights`);
+            }
+          }
+        };
+
+        suite.testViewByPropertyExceptLinksFull = function() {
+          assertTrue(rootTestView(testViewName), 'Precondition failed, view was not found');
+          setKey(keySpaceId, key);
+          const taskId = 'task_update_view_property_not_links_full_' + key;
+          const task = {
+            id: taskId,
+            name: taskId,
+            command: `(function (params) {
+                  try {
+                    const db = require('@arangodb').db;
+                    db._view('${testViewName}').properties({ "cleanupIntervalStep": 1 }, false);
+                    global.KEY_SET('${keySpaceId}', '${key}_status', true);
+                  } catch (e) {
+                    global.KEY_SET('${keySpaceId}', '${key}_status', false);
+                  }finally {
+                    global.KEY_SET('${keySpaceId}', '${key}', true);
+                  }
+                })(params);`
+          };
+          if (dbLevel['rw'].has(name)) {
+            if (colLevel['rw'].has(name) || colLevel['ro'].has(name)) {
+              tasks.register(task);
+              wait(keySpaceId, key);
+              assertTrue(getKey(keySpaceId, `${key}_status`), `${name} could not update the view with sufficient rights`);
+              assertEqual(rootGetViewProps(testViewName)["cleanupIntervalStep"], 1, 'View property update reported success, but property was not updated');
+            } else {
+              tasks.register(task);
+              wait(keySpaceId, key);
+              assertFalse(getKey(keySpaceId, `${key}_status`), `${name} could update the view with insufficient rights`);
+            }
+          } else {
+            try {
+              tasks.register(task);
+              wait(keySpaceId, key);
+              assertFail(`${name} managed to register a task with insufficient rights`);
+            } catch (e) {
+              checkError(e);
+              return;
+            } finally {
+              assertFalse(getKey(keySpaceId, `${key}_status`), `${name} could update the view with insufficient rights`);
+            }
+          }
+        };
+
+        suite.testViewByExistingLinkUpdatePartial = function() {
+          assertTrue(rootTestView(testViewName), 'Precondition failed, view was not found');
+          setKey(keySpaceId, key);
+          const taskId = 'task_update_view_existing_link_partial_' + key;
+          const task = {
+            id: taskId,
+            name: taskId,
+            command: `(function (params) {
+                  try {
+                    const db = require('@arangodb').db;
+                    db._view('${testViewName}').properties({ links: { ['${testCol1Name}']: { includeAllFields: true, analyzers: ['text_de','text_en'] } } }, true);
+                    global.KEY_SET('${keySpaceId}', '${key}_status', true);
+                  } catch (e) {
+                    global.KEY_SET('${keySpaceId}', '${key}_status', false);
+                  }finally {
+                    global.KEY_SET('${keySpaceId}', '${key}', true);
+                  }
+                })(params);`
+          };
+          if (dbLevel['rw'].has(name)) {
+            if (colLevel['rw'].has(name) || colLevel['ro'].has(name))
+            {
+              tasks.register(task);
+              wait(keySpaceId, key);
+              assertTrue(getKey(keySpaceId, `${key}_status`), `${name} could not update the view with sufficient rights`);
+              assertEqual(rootGetViewProps(testViewName)["links"][testCol1Name]["analyzers"], ["text_de", "text_en"], 'View link update reported success, but property was not updated');
+            } else {
+              tasks.register(task);
+              wait(keySpaceId, key);
+              assertFalse(getKey(keySpaceId, `${key}_status`), `${name} could update the view with insufficient rights`);
+            }
+          } else {
+            try {
+              tasks.register(task);
+              wait(keySpaceId, key);
+              assertFail(`${name} managed to register a task with insufficient rights`);
+            } catch (e) {
+              checkError(e);
+            } finally {
+              assertFalse(getKey(keySpaceId, `${key}_status`), `${name} could update the view with insufficient rights`);
             }
 
           }
-        }
-      };
+        };
+
+      } else {
+        // specific handling for views of type "search-alias"
+        suite.setUp = function() {
+          rootCreateView(testViewName, testViewType, { indexes: [ { collection: testCol1Name, index: indexName } ] });
+          helper.switchUser('root', dbName);
+        };
+      }
+
       jsunity.run(function() {
         return deriveTestSuiteWithnamespace(
           UserRightsManagement(name),
           suite,
-          "_-_" + name);
+          "_-_" + key);
       });
     }
   }
+
 }
 return jsunity.done();
