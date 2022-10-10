@@ -97,6 +97,7 @@ TEST(RevisionIdTest, test_safe_roundtrip_encoded_boundaries) {
       RevisionId decoded = RevisionId::fromString(encoded);
 
       EXPECT_EQ(original.id(), decoded.id());
+      value *= 10;
     }
   }
 
@@ -109,6 +110,8 @@ TEST(RevisionIdTest, test_safe_roundtrip_encoded_boundaries) {
       RevisionId decoded = RevisionId::fromString(encoded);
 
       EXPECT_EQ(original.id(), decoded.id());
+      value *= 10;
+      value += 9;
     }
   }
 }
