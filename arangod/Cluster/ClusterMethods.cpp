@@ -974,14 +974,12 @@ futures::Future<OperationResult> revisionOnCoordinator(
           if (answer.isObject()) {
             VPackSlice r = answer.get("revision");
             if (r.isString()) {
-              VPackValueLength len;
-              char const* p = r.getString(len);
-              RevisionId cmp = RevisionId::fromString(p, len, false);
+              RevisionId cmp = RevisionId::fromString(r.stringView());
               RevisionId rid = RevisionId::fromSlice(builder.slice());
               if (cmp != RevisionId::max() && cmp > rid) {
                 // get the maximum value
                 builder.clear();
-                builder.add(VPackValue(cmp.id()));
+                builder.add(VPackValue(cmp.toString()));
               }
               return;
             }
@@ -1074,7 +1072,7 @@ futures::Future<OperationResult> checksumOnCoordinator(
       builder.clear();
       VPackObjectBuilder b(&builder);
       builder.add("checksum", VPackValue(checksum));
-      builder.add("revision", VPackValue(rid.id()));
+      builder.add("revision", VPackValue(rid.toString()));
     };
     return handleResponsesFromAllShards(options, results, handler, pre);
   };
