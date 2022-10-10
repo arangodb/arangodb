@@ -740,8 +740,8 @@ IResearchInvertedIndex::IResearchInvertedIndex(IndexId iid,
 void IResearchInvertedIndex::toVelocyPack(ArangodServer& server,
                                           TRI_vocbase_t const* defaultVocbase,
                                           velocypack::Builder& builder,
-                                          bool forPersistence) const {
-  if (!_meta.json(server, builder, forPersistence, defaultVocbase)) {
+                                          bool writeAnalyzerDefinition) const {
+  if (!_meta.json(server, builder, writeAnalyzerDefinition, defaultVocbase)) {
     THROW_ARANGO_EXCEPTION(Result(
         TRI_ERROR_INTERNAL,
         std::string{"Failed to generate inverted index field definition"}));
@@ -1075,12 +1075,13 @@ aql::AstNode* IResearchInvertedIndex::specializeCondition(
 void IResearchInvertedClusterIndex::toVelocyPack(
     VPackBuilder& builder,
     std::underlying_type<Index::Serialize>::type flags) const {
-  auto const forPersistence =
+  bool const forPersistence =
       Index::hasFlag(flags, Index::Serialize::Internals);
+  bool const forInventory = Index::hasFlag(flags, Index::Serialize::Inventory);
   VPackObjectBuilder objectBuilder(&builder);
   auto& vocbase = IResearchDataStore::collection().vocbase();
   IResearchInvertedIndex::toVelocyPack(vocbase.server(), &vocbase, builder,
-                                       forPersistence);
+                                       forPersistence || forInventory);
   // can't use Index::toVelocyPack as it will try to output 'fields'
   // but we have custom storage format
   builder.add(arangodb::StaticStrings::IndexId,
