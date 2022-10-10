@@ -27,8 +27,7 @@
 
 struct TRI_vocbase_t;
 
-namespace arangodb {
-namespace transaction {
+namespace arangodb::transaction {
 
 StandaloneContext::StandaloneContext(TRI_vocbase_t& vocbase)
     : SmartContext(vocbase, Context::makeTransactionId(), nullptr) {}
@@ -63,5 +62,4 @@ transaction::StandaloneContext::Create(TRI_vocbase_t& vocbase) {
   return std::make_shared<transaction::StandaloneContext>(vocbase);
 }
 
-}  // namespace transaction
-}  // namespace arangodb
+}  // namespace arangodb::transaction
