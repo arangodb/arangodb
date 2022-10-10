@@ -1,6 +1,10 @@
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
+* BTS-969: Added restriction for HTTP request `/cluster/rebalance`not to
+  consider servers that have failed status as a possible target for rebalancing
+  shards in its execution plan.
+
 * Fix an issue with replication of arangosearch view change entries in single
   server replication and active failover. Previously, when changing the
   properties of existing views, the changes were not properly picked up by
