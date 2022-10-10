@@ -47,9 +47,16 @@ auto DocumentStateAgencyHandler::getCollectionPlan(
                   ->collections()
                   ->database(_gid.database)
                   ->collection(collectionId);
-  _clusterFeature.agencyCache().get(*builder, path);
 
-  ADB_PROD_ASSERT(!builder->isEmpty())
+  auto& agencyCache = _clusterFeature.agencyCache();
+  agencyCache.get(*builder, path);
+
+  // TODO
+  // This can happen if the collection was dropped in the meantime, but we
+  // already started creating it.
+  // It would make sense to handle this gracefully, perhaps abort the core
+  // construction.
+  ADB_PROD_ASSERT(!builder->slice().isEmptyObject())
       << "Could not get collection from plan " << path->str();
 
   return builder;
