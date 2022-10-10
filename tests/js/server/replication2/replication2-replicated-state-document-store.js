@@ -26,6 +26,7 @@
 
 const jsunity = require('jsunity');
 const arangodb = require("@arangodb");
+const internal = require("internal");
 const _ = require('lodash');
 const db = arangodb.db;
 const helper = require('@arangodb/test-helper');
