@@ -75,6 +75,13 @@ auto agency::operator<<(std::ostream& os, ParticipantsConfig const& config)
   return os << builder.toJson();
 }
 
+auto agency::operator<<(std::ostream& os, LogPlanSpecification const& term)
+    -> std::ostream& {
+  VPackBuilder builder;
+  velocypack::serialize(builder, term);
+  return os << builder.toJson();
+}
+
 LogCurrentLocalState::LogCurrentLocalState(LogTerm term,
                                            TermIndexPair spearhead) noexcept
     : term(term), spearhead(spearhead) {}

@@ -44,8 +44,7 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
   auto spec = LogPlanSpecification{
       id,
       LogPlanTermSpecification{
-          LogTerm{1},
-          LogPlanTermSpecification::Leader{"leaderId", RebootId{100}}},
+          LogTerm{1}, ServerInstanceReference{"leaderId", RebootId{100}}},
       ParticipantsConfig{
           15, {{"p1", {true, false}}, {"p2", {}}}, LogPlanConfig{1, false}}};
 
@@ -146,52 +145,5 @@ TEST(AgencyLogSpecificationTest, log_target_supervision_test) {
     auto jsonSlice = velocypack::Slice(jsonBuffer->data());
     auto supervision = deserialize<LogTarget::Supervision>(jsonSlice);
     EXPECT_EQ(supervision.maxActionsTraceLength, 1234);
-  }
-}
-
-TEST(AgencyLogSpecificationTest, log_target_test) {
-  {
-    auto config = LogTargetConfig();
-    config.writeConcern = 2;
-    config.softWriteConcern = 2;
-    config.waitForSync = false;
-
-    auto target = LogTarget(
-        LogId{5}, ParticipantsFlagsMap{{"A", ParticipantFlags{}}}, config);
-
-    VPackBuilder builder;
-    serialize(builder, target);
-    auto slice = builder.slice();
-
-    auto fromVPack = deserialize<LogTarget>(slice);
-    EXPECT_EQ(target, fromVPack);
-  }
-
-  {
-    auto config = LogTargetConfig();
-    config.writeConcern = 2;
-    config.softWriteConcern = 2;
-    config.waitForSync = true;
-
-    auto expectedTarget = LogTarget(
-        LogId{12},
-        ParticipantsFlagsMap{{"A", ParticipantFlags{.allowedInQuorum = false}}},
-        config);
-
-    expectedTarget.leader = "A";
-
-    auto jsonBuffer = R"({
-      "id": 12,
-      "participants": { "A": { "allowedInQuorum": false } },
-      "config": {
-        "writeConcern": 2,
-        "waitForSync": true },
-      "leader": "A"
-    })"_vpack;
-
-    auto jsonSlice = velocypack::Slice(jsonBuffer->data());
-    auto target = deserialize<LogTarget>(jsonSlice);
-
-    EXPECT_EQ(target, expectedTarget);
   }
 }

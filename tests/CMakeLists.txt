@@ -379,13 +379,12 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   #Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
   #Replication2/ReplicatedState/SupervisionModelChecker.cpp
   #Replication2/ReplicatedState/SupervisionTest.cpp
-  #Replication2/Serialization/AgencyLogSpecificationTest.cpp
-  #Replication2/Serialization/LogCommonTest.cpp
-  #Replication2/Serialization/LogStatusTest.cpp
+  Replication2/Serialization/AgencyLogSpecificationTest.cpp
+  Replication2/Serialization/LogCommonTest.cpp
+  Replication2/Serialization/LogStatusTest.cpp
   #Replication2/Streams/LogMultiplexerTest.cpp
   #Replication2/Streams/MultiplexerConcurrencyTest.cpp
   #Replication2/Streams/TestLogSpecification.cpp
-  #Replication2/Streams/TestLogSpecification.h
         )
 
 set(ARANGODB_GRAPH_TEST_SOURCES
