@@ -26,13 +26,18 @@
 
 #include "gtest/gtest.h"
 
+#include "Basics/HybridLogicalClock.h"
 #include "VocBase/Identifiers/RevisionId.h"
+#include "VocBase/ticks.h"
+#include "Logger/LogMacros.h"
 
+#include <random>
+#include <string>
 #include <vector>
 
 using namespace arangodb;
 
-TEST(RevisionIdTest, test_safe_roundtrip) {
+TEST(RevisionIdTest, test_safe_roundtrip_boundaries) {
   std::vector<uint64_t> values;
   values.reserve(125'000);
 
@@ -53,10 +58,8 @@ TEST(RevisionIdTest, test_safe_roundtrip) {
     values.emplace_back(i);
   }
 
-  uint64_t tickLimit =
-      (2016ULL - 1970ULL) * 1000ULL * 60ULL * 60ULL * 24ULL * 365ULL;
-
-  for (uint64_t i = tickLimit - 10'000ULL; i < tickLimit + 10'000ULL; ++i) {
+  for (uint64_t i = RevisionId::tickLimit - 10'000ULL;
+       i < RevisionId::tickLimit + 10'000ULL; ++i) {
     values.emplace_back(i);
   }
 
@@ -65,6 +68,87 @@ TEST(RevisionIdTest, test_safe_roundtrip) {
     std::string encoded = original.toString();
     RevisionId decoded = RevisionId::fromString(encoded);
 
-    ASSERT_EQ(original, decoded);
+    ASSERT_EQ(original.id(), decoded.id());
   }
 }
+
+TEST(RevisionIdTest, test_safe_roundtrip_random_till_ticklimit) {
+  auto rd{std::random_device{}()};
+  auto mt{std::mt19937_64(rd)};
+  std::uniform_int_distribution<uint64_t> uni{
+      1, RevisionId::tickLimit + 10'000'000ULL};
+
+  for (size_t i = 0; i < 10'000'000; ++i) {
+    RevisionId original{uni(mt)};
+    std::string encoded = original.toString();
+    RevisionId decoded = RevisionId::fromString(encoded);
+
+    ASSERT_EQ(original.id(), decoded.id());
+  }
+}
+
+TEST(RevisionIdTest, test_safe_roundtrip_encoded_boundaries) {
+  {
+    uint64_t value = 1;
+
+    for (size_t digits = 0; digits <= 19; ++digits) {
+      RevisionId original{value};
+      std::string encoded = original.toString();
+      RevisionId decoded = RevisionId::fromString(encoded);
+
+      EXPECT_EQ(original.id(), decoded.id());
+    }
+  }
+
+  {
+    uint64_t value = 9;
+
+    for (size_t digits = 0; digits <= 18; ++digits) {
+      RevisionId original{value};
+      std::string encoded = original.toString();
+      RevisionId decoded = RevisionId::fromString(encoded);
+
+      EXPECT_EQ(original.id(), decoded.id());
+    }
+  }
+}
+
+/*
+TEST(RevisionIdTest, test_safe_roundtrip_random_beyond_ticklimit) {
+  auto rd{std::random_device{}()};
+  auto mt{std::mt19937_64(rd)};
+  std::uniform_int_distribution<uint64_t> uni{RevisionId::tickLimit,
+UINT64_MAX};
+
+  LOG_DEVEL << "HLC:        " << TRI_HybridLogicalClock();
+  LOG_DEVEL << "TICK LIMIT: " << RevisionId::tickLimit;
+
+  uint64_t lowest = UINT64_MAX;
+  uint64_t highest = 0;
+  for (size_t i = 0; i < 20'000'000'000; ++i) {
+    RevisionId original{uni(mt)};
+    std::string encoded = original.toString();
+    RevisionId decoded = RevisionId::fromString(encoded);
+
+    if (original.id() != decoded.id()) {
+      lowest = std::min(original.id(), lowest);
+      highest = std::max(original.id(), highest);
+    }
+    EXPECT_EQ(original.id(), decoded.id()) << "ORIG: " << original.id() << ",
+ENCODED: '" << encoded << "', DECODED: " << decoded.id();
+  }
+
+  ASSERT_EQ(UINT64_MAX, lowest) << "LOWEST: " << lowest << ", TIME: " << (lowest
+>> 20ULL) << ", HIGHEST: " << highest << ", TIME: " << (highest >> 20ULL);
+}
+*/
+
+/*
+TEST(RevisionIdTest, test_safe_roundtrip_fixed) {
+  RevisionId original{1134040617867804543ULL};
+  std::string encoded = original.toString();
+  ASSERT_EQ("8648561979", encoded);
+  RevisionId decoded = RevisionId::fromString(encoded);
+  ASSERT_EQ(original.id(), decoded.id());
+}
+*/

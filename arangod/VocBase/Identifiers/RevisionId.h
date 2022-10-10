@@ -30,6 +30,9 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Identifier.h"
 
+#include <string>
+#include <string_view>
+
 namespace arangodb {
 class ClusterInfo;
 class LocalDocumentId;
@@ -40,6 +43,13 @@ class RevisionId : public arangodb::basics::Identifier {
   constexpr RevisionId() noexcept : Identifier() {}
   constexpr explicit RevisionId(BaseType id) noexcept : Identifier(id) {}
   explicit RevisionId(LocalDocumentId const& id);
+
+  /// @brief tick limit for internal encoding switch
+  /// all revisions <= tickLimit will be encoded numerically by
+  /// toString() and toValuePair().
+  /// all revisions > tickLimit will be HLC-encoded.
+  constexpr static BaseType tickLimit =
+      BaseType(2016ULL - 1970ULL) * 1000ULL * 60ULL * 60ULL * 24ULL * 365ULL;
 
   /// @brief whether or not the id is set (not 0)
   bool isSet() const noexcept;
@@ -72,7 +82,6 @@ class RevisionId : public arangodb::basics::Identifier {
   /// @brief Write revision ID to string for storage with correct endianness
   void toPersistent(std::string& buffer) const;
 
- public:
   /// @brief create a not-set revision id
   static constexpr RevisionId none() { return RevisionId{0}; }
 
@@ -91,11 +100,10 @@ class RevisionId : public arangodb::basics::Identifier {
   static RevisionId createClusterWideUnique(ClusterInfo& ci);
 
   /// @brief Convert a string into a revision ID, returns none() if invalid
-  static RevisionId fromString(std::string const& ridStr);
+  static RevisionId fromString(std::string_view rid);
 
   /// @brief Convert a string into a revision ID, returns none() if invalid
-  static RevisionId fromString(std::string const& ridStr, bool& isOld,
-                               bool warn);
+  static RevisionId fromString(std::string_view rid, bool& isOld, bool warn);
 
   /// @brief Convert a string into a revision ID, no check variant
   static RevisionId fromString(char const* p, size_t len, bool warn);
