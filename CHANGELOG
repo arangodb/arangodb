@@ -2,8 +2,22 @@ v3.10.1 (XXXX-XX-XX)
 --------------------
 
 * BTS-325: Changed the HTTP status code from `400` to `404` of the ArangoDB
-  error code `ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED` to handle
-  this error in accordance to our edge errors.
+  error code `ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED` to handle this
+  error in accordance to our edge errors.
+
+* Adjust permissions for "search-alias" views.
+
+  Previously, "search-alias" views were visible to users that didn't have read
+  permissions on the underlying referenced collections. This was inconsistent,
+  because "arangosearch" views weren't shown to users that didn't have read
+  permissions on the underlying links.
+  Now, the behavior for "search-alias" views is the same as for "arangosearch"
+  views, i.e. "search-alias" views are not shown and are not accessible for
+  users that don't have at least read permissions on the underlying collections.
+
+* BTS-969: Added restriction for HTTP request `/cluster/rebalance`not to
+  consider servers that have failed status as a possible target for rebalancing
+  shards in its execution plan.
 
 * Fix an issue with replication of arangosearch view change entries in single
   server replication and active failover. Previously, when changing the
