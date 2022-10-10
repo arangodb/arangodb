@@ -102,38 +102,19 @@ RevisionId RevisionId::createClusterWideUnique(ClusterInfo& ci) {
   return RevisionId{ci.uniqid()};
 }
 
-/// @brief Convert a string into a revision ID, no check variant
-RevisionId RevisionId::fromString(char const* p, size_t len, bool warn) {
-  [[maybe_unused]] bool isOld;
-  return fromString(p, len, isOld, warn);
-}
-
 /// @brief Convert a string into a revision ID, returns 0 if format invalid
 RevisionId RevisionId::fromString(std::string_view rid) {
-  [[maybe_unused]] bool isOld;
-  return fromString(rid.data(), rid.size(), isOld, false);
-}
-
-/// @brief Convert a string into a revision ID, returns 0 if format invalid
-RevisionId RevisionId::fromString(std::string_view rid, bool& isOld,
-                                  bool warn) {
-  return fromString(rid.data(), rid.size(), isOld, warn);
-}
-
-/// @brief Convert a string into a revision ID, returns 0 if format invalid
-RevisionId RevisionId::fromString(char const* p, size_t len, bool& isOld,
-                                  bool /*warn*/) {
+  char const* p = rid.data();
+  size_t len = rid.size();
   if (len > 0 && *p >= '1' && *p <= '9') {
     bool isValid = false;
     BaseType r = NumberUtils::atoi_positive<BaseType>(p, p + len, isValid);
     if (isValid) {
-      isOld = true;
       return RevisionId{r};
     }
     // value consists not only of numeric digits. now fall through to
     // the string decoding
   }
-  isOld = false;
   return RevisionId{basics::HybridLogicalClock::decodeTimeStamp(p, len)};
 }
 
