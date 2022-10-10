@@ -294,6 +294,7 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/KeyGenerator-test.cpp
   VocBase/LogicalDataSource-test.cpp
   VocBase/LogicalView-test.cpp
+  VocBase/RevisionIdTest.cpp
   VocBase/VersionTest.cpp
   VPackDeserializer/BasicTests.cpp
   Zkd/Conversion.cpp
