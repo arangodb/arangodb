@@ -1,5 +1,6 @@
 devel
 -----
+* Fixed BTS-852 (user's saved queries used to disappear after updating user profile).
 
 * BTS-977: Added an error message for when an unauthorized user makes an 
   HTTP GET request to current database from a database name that exists which 
@@ -273,8 +274,6 @@ devel
 
 * ArangoSearch nested search feature. (Enterprise Edition): Added ability to index
   and search nested documents with ArangoSearch views.
-
-* Fixed BTS-852 (user's saved queries used to disappear after updating user profile).
 
 * Fixed handling of illegal edges in Enterprise Graphs. Adding an edge to a SmartGraph
   vertex collection through document API caused incorrect sharding of the edge. Now
