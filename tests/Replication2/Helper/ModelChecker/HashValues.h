@@ -101,8 +101,7 @@ static inline std::size_t hash_value(LogCurrent const& s) {
   boost::hash_combine(seed, s.leader);
   return seed;
 }
-static inline std::size_t hash_value(
-    LogPlanTermSpecification::Leader const& s) {
+static inline std::size_t hash_value(ServerInstanceReference const& s) {
   std::size_t seed = 0;
   boost::hash_combine(seed, s.serverId);
   boost::hash_combine(seed, s.rebootId.value());

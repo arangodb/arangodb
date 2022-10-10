@@ -327,6 +327,7 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
         #Replication2/Mocks/ReplicatedStateMetricsMock.cpp
         #Replication2/ModelChecker/ModelChecker.cpp
         #Replication2/ModelChecker/Tests/ModelCheckerTest.cpp
+        #Replication2/ReplicatedLog/TestHelper.cpp
         )
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
@@ -341,7 +342,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   #Replication2/ReplicatedLog/EstablishLeadershipTest.cpp
   #Replication2/ReplicatedLog/FollowerAppendEntries.cpp
   #Replication2/ReplicatedLog/FollowerWaitFor.cpp
-  #Replication2/ReplicatedLog/InMemoryLogTest.cpp
+  Replication2/ReplicatedLog/InMemoryLogTest.cpp
   #Replication2/ReplicatedLog/LeaderAppendEntriesTest.cpp
   #Replication2/ReplicatedLog/LogFollowerCompactionTest.cpp
   #Replication2/ReplicatedLog/LogParticipantWaitForResignTests.cpp
@@ -351,15 +352,15 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   #Replication2/ReplicatedLog/MetricsTest.cpp
   #Replication2/ReplicatedLog/MultiTermTest.cpp
   #Replication2/ReplicatedLog/ParticipantResignTest.cpp
-  #Replication2/ReplicatedLog/ParticipantsHealthTest.cpp
+  Replication2/ReplicatedLog/ParticipantsHealthTest.cpp
   #Replication2/ReplicatedLog/ReplicatedLogHandleTest.cpp
   #Replication2/ReplicatedLog/ReplicatedLogTest.cpp
   #Replication2/ReplicatedLog/RewriteLogTest.cpp
   #Replication2/ReplicatedLog/RocksDBLogTest.cpp
   #Replication2/ReplicatedLog/SimpleInsertTests.cpp
   #Replication2/ReplicatedLog/SupervisionSimulationTest.cpp
-  #Replication2/ReplicatedLog/SupervisionTest.cpp
-  #Replication2/ReplicatedLog/TestHelper.cpp
+  Replication2/ReplicatedLog/SupervisionTest.cpp
+
   #Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
   #Replication2/ReplicatedLog/UpdateReplicatedLogTests.cpp
   #Replication2/ReplicatedLog/WaitForSyncTest.cpp

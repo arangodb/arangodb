@@ -131,6 +131,21 @@ struct AgencyLogBuilder {
     return *this;
   }
 
+  auto setSnapshotTrue(replication2::ParticipantId const& id)
+      -> AgencyLogBuilder& {
+    auto& current = makeCurrent();
+    current.localState[id].snapshotAvailable = true;
+    return *this;
+  }
+
+  auto allSnapshotsTrue() -> AgencyLogBuilder& {
+    auto& current = makeCurrent();
+    for (auto& [id, v] : current.localState) {
+      v.snapshotAvailable = true;
+    }
+    return *this;
+  }
+
   auto makeCurrent() -> RLA::LogCurrent& {
     if (!_log.current.has_value()) {
       _log.current.emplace();

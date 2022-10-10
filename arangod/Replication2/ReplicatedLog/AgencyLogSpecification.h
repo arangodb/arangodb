@@ -167,7 +167,7 @@ struct LogCurrentLocalState {
   bool snapshotAvailable{false};
 
   LogCurrentLocalState() = default;
-  LogCurrentLocalState(LogTerm, TermIndexPair) noexcept;
+  LogCurrentLocalState(LogTerm, TermIndexPair, bool) noexcept;
   friend auto operator==(LogCurrentLocalState const& s,
                          LogCurrentLocalState const& s2) noexcept
       -> bool = default;
