@@ -30,8 +30,6 @@
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Options.h>
-
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -50,11 +48,10 @@ class Methods;
 struct Options;
 
 class Context {
- public:
+ protected:
   Context(Context const&) = delete;
   Context& operator=(Context const&) = delete;
 
- protected:
   /// @brief create the context
   explicit Context(TRI_vocbase_t& vocbase);
 
@@ -91,7 +88,7 @@ class Context {
   TEST_VIRTUAL void returnBuilder(arangodb::velocypack::Builder*) noexcept;
 
   /// @brief get velocypack options with a custom type handler
-  TEST_VIRTUAL arangodb::velocypack::Options* getVPackOptions();
+  TEST_VIRTUAL velocypack::Options* getVPackOptions();
 
   /// @brief unregister the transaction
   /// this will save the transaction's id and status locally
@@ -99,7 +96,6 @@ class Context {
                               bool isReadOnlyTransaction,
                               bool isFollowerTranaction) noexcept;
 
- public:
   /// @brief get a custom type handler
   virtual arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() = 0;
 
@@ -130,14 +126,13 @@ class Context {
   std::shared_ptr<TransactionState> createState(
       transaction::Options const& options);
 
- protected:
   TRI_vocbase_t& _vocbase;
   std::unique_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
 
   containers::SmallVector<arangodb::velocypack::Builder*, 8> _builders;
   containers::SmallVector<std::string*, 4> _strings;
 
-  arangodb::velocypack::Options _options;
+  velocypack::Options _options;
 
  private:
   std::unique_ptr<CollectionNameResolver> _resolver;

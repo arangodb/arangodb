@@ -3,6 +3,11 @@ devel
 
 * BTS-1061: ARM was not recognized on Apple M1.
 
+* BTS-977: Added an error message for when an unauthorized user makes an 
+  HTTP GET request to current database from a database name that exists which 
+  the user can't access and from a database name that doesn't exist, so both
+  requests have the same error message (`_db/<dbName>/_api/database/current`).
+
 * BTS-325: Changed the HTTP status code from `400` to `404` of the ArangoDB
   error code `ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED` to handle
   this error in accordance to our edge errors.

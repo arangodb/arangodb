@@ -342,17 +342,20 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       // we need to fill the collection with some docs since truncate will only
       // use range-deletes (which are replicated as truncate op) if the number
       // of docs is > 32*1024, otherwise it uses babies removes.
-      const docs = [];
-      for (let i = 0; i < 33; ++i) {
-        for (let j = 0; j < 1024; ++j) {
-          docs.push({});
-        }
+      // note that our collection has multiple shards, so we need to make sure that
+      // each shard has >= 32*1024 docs!
+      const numberOfShards = collection.properties().numberOfShards;
+      let docs = [];
+      for (let j = 0; j < 1024; ++j) {
+        docs.push({});
+      }
+      for (let i = 0; i < 33 * numberOfShards; ++i) {
         collection.insert(docs);
       }
       collection.truncate();
 
       let found = [];
-      let allEntries = logs.reduce((previous, current) => previous.concat(current.head(1000)), []);
+      let allEntries = logs.reduce((previous, current) => previous.concat(current.head(1010)), []);
       for (const entry of allEntries) {
         if (entry.hasOwnProperty("payload") && entry.payload[1].operation === opType) {
           let colName = entry.payload[1].data.collection;
@@ -360,7 +363,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
           found.push(colName);
         }
       }
-      assertEqual(found.length, 2, `Dumping combined log entries: ${JSON.stringify(allEntries)}`);
+      assertEqual(found.length, 2); //, `Dumping combined log entries: ${JSON.stringify(allEntries)}`);
     },
   };
 };
