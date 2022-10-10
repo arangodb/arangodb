@@ -474,7 +474,7 @@ function testing_the_query_cache_in_transcationSuite() {
       }
     },
 
-    test_testing_streaming_js_transaction_aborted_set: function() {
+    test_testing_js_transaction_aborted_set: function() {
       let res = arango.POST_RAW("/_api/cursor", {"query": `UPSERT { _key: "a" } INSERT { _key: "a", value: 0 } UPDATE { value: 0 } IN ${cn}`});
       assertEqual(res.code, 201);
       res = arango.POST_RAW("/_api/cursor", {"query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`});
