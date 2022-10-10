@@ -393,6 +393,24 @@ function removeCost (obj) {
   }
 }
 
+function sanitizeStats (stats) {
+  // remove these members from the stats because they don't matter
+  // for the comparisons
+  delete stats.scannedFull;
+  delete stats.scannedIndex;
+  delete stats.cursorsCreated;
+  delete stats.cursorsRearmed;
+  delete stats.cacheHits;
+  delete stats.cacheMisses;
+  delete stats.filtered;
+  delete stats.executionTime;
+  delete stats.httpRequests;
+  delete stats.fullCount;
+  delete stats.peakMemoryUsage;
+  delete stats.intermediateCommits;
+  return stats;
+}
+
 exports.getParseResults = getParseResults;
 exports.assertParseError = assertParseError;
 exports.getQueryExplanation = getQueryExplanation;
@@ -411,3 +429,4 @@ exports.removeAlwaysOnClusterRules = removeAlwaysOnClusterRules;
 exports.removeClusterNodes = removeClusterNodes;
 exports.removeClusterNodesFromPlan = removeClusterNodesFromPlan;
 exports.removeCost = removeCost;
+exports.sanitizeStats = sanitizeStats;

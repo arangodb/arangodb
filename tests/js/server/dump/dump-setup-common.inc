@@ -417,6 +417,8 @@ function createSearch() {
   let collection = db._create("searchCollection");
 
   // create indexes
+
+  // create indexes
   let index = collection.ensureIndex({
     type: "inverted",
     name: "searchIndex",
@@ -1447,6 +1449,7 @@ exports.createTransactional = createTransactional;
 exports.createPersistent = createPersistent;
 exports.createView = createView;
 exports.createSearch = createSearch;
+exports.createInvertedIndex = createInvertedIndex;
 exports.createReplicationFactors = createReplicationFactors;
 exports.createJobs = createJobs;
 exports.createFoxx = createFoxx;

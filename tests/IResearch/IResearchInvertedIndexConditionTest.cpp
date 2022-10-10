@@ -549,6 +549,7 @@ TEST_F(IResearchInvertedIndexConditionTest, test_exists) {
       "FOR d IN test FILTER EXISTS(d.a, 'string') RETURN d ";
   std::vector<std::string> fields = {"a", "b", "c", "d"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
   estimateFilterCondition(queryString, fields, expected);
 }
 
