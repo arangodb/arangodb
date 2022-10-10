@@ -48,7 +48,7 @@ replicated_log::ReplicatedLog::ReplicatedLog(
     std::unique_ptr<LogCore> core,
     std::shared_ptr<ReplicatedLogMetrics> metrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-    std::shared_ptr<AbstractFollowerFactory> followerFactory,
+    std::shared_ptr<IAbstractFollowerFactory> followerFactory,
     LoggerContext const& logContext, agency::ServerInstanceReference myself)
     : _logContext(logContext.with<logContextKeyLogId>(core->logId())),
       _metrics(std::move(metrics)),

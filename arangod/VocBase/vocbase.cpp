@@ -322,7 +322,7 @@ struct arangodb::VocBaseLogManager {
       }
 
       struct NetworkFollowerFactory
-          : replication2::replicated_log::AbstractFollowerFactory {
+          : replication2::replicated_log::IAbstractFollowerFactory {
         NetworkFollowerFactory(TRI_vocbase_t& vocbase, replication2::LogId id)
             : vocbase(vocbase), id(id) {}
         auto constructFollower(const ParticipantId& participantId)

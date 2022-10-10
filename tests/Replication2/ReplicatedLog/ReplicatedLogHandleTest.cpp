@@ -31,46 +31,7 @@
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
-namespace {
-struct Event {
-  enum class Type {
-    kBecomeLeader,
-    kRecoverEntries,
-    kBecomeFollower,
-    kAcquireSnapshot,
-    kCommitIndex,
-    kDropEntries,
-  } type;
-  std::unique_ptr<LogIterator> iterator;
-  arangodb::ServerID leader;
-  LogIndex index;
-};
-}  // namespace
-
-struct MyReplicatedStateHandle : IReplicatedStateHandle {
-  void becomeLeader() override {
-    events.emplace_back(Event{.type = Event::Type::kBecomeLeader});
-  }
-  void recoverEntries(std::unique_ptr<LogIterator> iterator) override {
-    events.emplace_back(Event{.type = Event::Type::kRecoverEntries,
-                              .iterator = std::move(iterator)});
-  }
-  void becomeFollower() override {
-    events.emplace_back(Event{.type = Event::Type::kBecomeFollower});
-  }
-  void acquireSnapshot(arangodb::ServerID leader, LogIndex index) override {
-    events.emplace_back(Event{.type = Event::Type::kAcquireSnapshot,
-                              .leader = leader,
-                              .index = index});
-  }
-  void commitIndex(LogIndex index) override {
-    events.emplace_back(Event{.type = Event::Type::kCommitIndex});
-  }
-  void dropEntries() override {
-    events.emplace_back(Event{.type = Event::Type::kDropEntries});
-  }
-  std::vector<Event> events;
-};
+namespace {}  // namespace
 
 auto operator<<(std::ostream& os, Event const& event) -> std::ostream& {
   auto str = std::invoke([&]() -> std::string {

@@ -27,6 +27,26 @@
 
 namespace arangodb::replication2::test {
 
+struct FakeStorageEngineMethodsContext {
+  using LogContainerType = std::map<LogIndex, PersistingLogEntry>;
+  using SequenceNumber =
+      replicated_state::IStorageEngineMethods::SequenceNumber;
+
+  FakeStorageEngineMethodsContext(
+      std::uint64_t objectId, LogId logId,
+      std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> executor);
+
+  auto getMethods() -> std::unique_ptr<replicated_state::IStorageEngineMethods>;
+
+  std::uint64_t const objectId;
+  LogId const logId;
+  std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> const executor;
+  std::optional<replicated_state::PersistedStateInfo> meta;
+  LogContainerType log;
+  std::unordered_set<LogIndex> writtenWithWaitForSync;
+  SequenceNumber lastSequenceNumber{0};
+};
+
 struct FakeStorageEngineMethods : replicated_state::IStorageEngineMethods {
   auto updateMetadata(replicated_state::PersistedStateInfo info)
       -> Result override;
@@ -51,18 +71,9 @@ struct FakeStorageEngineMethods : replicated_state::IStorageEngineMethods {
   auto waitForSync(SequenceNumber number)
       -> futures::Future<futures::Unit> override;
 
-  FakeStorageEngineMethods(
-      std::uint64_t objectId, LogId logId,
-      std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> executor);
+  FakeStorageEngineMethods(FakeStorageEngineMethodsContext& self);
 
-  using LogContainerType = std::map<LogIndex, PersistingLogEntry>;
-
-  std::uint64_t objectId;
-  LogId logId;
-  std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> executor;
-  std::optional<replicated_state::PersistedStateInfo> meta;
-  LogContainerType log;
-  SequenceNumber lastSequenceNumber{0};
-  std::unordered_set<LogIndex> writtenWithWaitForSync;
+  FakeStorageEngineMethodsContext& _self;
 };
+
 }  // namespace arangodb::replication2::test

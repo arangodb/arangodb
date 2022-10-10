@@ -31,6 +31,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "TestHelper.h"
+#include "Replication2/Mocks/FakeAsyncExecutor.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -61,12 +62,6 @@ struct RocksDBInstance {
 
 template<typename Factory>
 struct StorageEngineMethodsTest : ::testing::Test {
-  struct SyncExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
-    void operator()(fu2::unique_function<void() noexcept> f) noexcept override {
-      std::move(f).operator()();
-    }
-  };
-
   static void SetUpTestCase() { Factory::SetUp(); }
   static void TearDownTestCase() { Factory::TearDown(); }
   void TearDown() override { Factory::Drop(std::move(methods)); }
@@ -78,7 +73,8 @@ struct StorageEngineMethodsTest : ::testing::Test {
     SetUp();
   }
 
-  std::shared_ptr<SyncExecutor> executor = std::make_shared<SyncExecutor>();
+  std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> executor =
+      std::make_shared<test::ThreadAsyncExecutor>();
 
   static constexpr std::uint64_t objectId = 1;
   static constexpr std::uint64_t vocbaseId = 1;
@@ -138,10 +134,15 @@ struct FakeFactory {
       std::uint64_t objectId, std::uint64_t vocbaseId, LogId logId,
       std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> executor)
       -> std::unique_ptr<replicated_state::IStorageEngineMethods> {
-    return std::make_unique<test::FakeStorageEngineMethods>(
+    context = std::make_shared<test::FakeStorageEngineMethodsContext>(
         objectId, logId, std::move(executor));
+    return context->getMethods();
   };
+
+  static std::shared_ptr<test::FakeStorageEngineMethodsContext> context;
 };
+
+std::shared_ptr<test::FakeStorageEngineMethodsContext> FakeFactory::context;
 }  // namespace arangodb::replication2::test
 
 using MyTypes = ::testing::Types<test::RocksDBFactory, test::FakeFactory>;
@@ -244,9 +245,7 @@ TYPED_TEST(StorageEngineMethodsTest, write_log_entries_remove_front_back) {
 
   {
     auto iter = test::make_iterator(entries);
-    auto fut = this->methods->insert(std::move(iter), {});
-    ASSERT_TRUE(fut.isReady());
-    auto res = fut.get();
+    auto res = this->methods->insert(std::move(iter), {}).get();
     EXPECT_TRUE(res.ok());
   }
 
@@ -283,9 +282,7 @@ TYPED_TEST(StorageEngineMethodsTest, write_log_entries_iter_after_remove) {
 
   {
     auto iter = test::make_iterator(entries);
-    auto fut = this->methods->insert(std::move(iter), {});
-    ASSERT_TRUE(fut.isReady());
-    auto res = fut.get();
+    auto res = this->methods->insert(std::move(iter), {}).get();
     EXPECT_TRUE(res.ok());
   }
 

@@ -49,8 +49,8 @@ struct LogCore;
 
 namespace arangodb::replication2::replicated_log {
 
-struct AbstractFollowerFactory {
-  virtual ~AbstractFollowerFactory() = default;
+struct IAbstractFollowerFactory {
+  virtual ~IAbstractFollowerFactory() = default;
   virtual auto constructFollower(ParticipantId const&)
       -> std::shared_ptr<AbstractFollower> = 0;
 };
@@ -113,7 +113,7 @@ struct alignas(64) ReplicatedLog {
       std::unique_ptr<LogCore> core,
       std::shared_ptr<ReplicatedLogMetrics> metrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-      std::shared_ptr<AbstractFollowerFactory> followerFactory,
+      std::shared_ptr<IAbstractFollowerFactory> followerFactory,
       LoggerContext const& logContext, agency::ServerInstanceReference myself);
 
   ~ReplicatedLog();
@@ -175,7 +175,7 @@ struct alignas(64) ReplicatedLog {
   LoggerContext const _logContext = LoggerContext(Logger::REPLICATION2);
   std::shared_ptr<ReplicatedLogMetrics> const _metrics;
   std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
-  std::shared_ptr<AbstractFollowerFactory> const _followerFactory;
+  std::shared_ptr<IAbstractFollowerFactory> const _followerFactory;
   agency::ServerInstanceReference const _myself;
   Guarded<GuardedData> _guarded;
 };

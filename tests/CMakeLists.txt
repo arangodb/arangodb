@@ -323,12 +323,12 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
         #Replication2/Mocks/PersistedLog.cpp
         #Replication2/Mocks/PersistedLog.h
         #Replication2/Mocks/PersistedLog.h
-        #Replication2/Mocks/ReplicatedLogMetricsMock.cpp
+        Replication2/Mocks/ReplicatedLogMetricsMock.cpp
         #Replication2/Mocks/ReplicatedStateMetricsMock.cpp
         #Replication2/ModelChecker/ModelChecker.cpp
         #Replication2/ModelChecker/Tests/ModelCheckerTest.cpp
         #Replication2/ReplicatedLog/TestHelper.cpp
-        Replication2/Mocks/FakeStorageEngineMethods.cpp Replication2/Mocks/FakeStorageEngineMethods.h)
+        Replication2/Mocks/FakeStorageEngineMethods.cpp Replication2/Mocks/FakeStorageEngineMethods.h Replication2/Mocks/FakeAsyncExecutor.cpp Replication2/Mocks/FakeAsyncExecutor.h Replication2/Mocks/LogEventRecorder.cpp Replication2/Mocks/LogEventRecorder.h)
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
   ${ARANGODB_REPLICATION2_TEST_HELPER_SOURCES}
@@ -386,7 +386,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   #Replication2/Streams/LogMultiplexerTest.cpp
   #Replication2/Streams/MultiplexerConcurrencyTest.cpp
   #Replication2/Streams/TestLogSpecification.cpp
-        Replication2/ReplicatedLog/ReplicatedLogConnectTest.cpp Replication2/ReplicatedLog/RocksDBPersistorTest.cpp)
+        Replication2/ReplicatedLog/ReplicatedLogConnectTest.cpp Replication2/ReplicatedLog/StorageEngineMethodsTest.cpp)
 
 set(ARANGODB_GRAPH_TEST_SOURCES
   Graph/ClusterTraverserCacheTest.cpp

@@ -46,14 +46,14 @@ auto invoke_on_executor(
 
 auto FakeStorageEngineMethods::updateMetadata(
     replicated_state::PersistedStateInfo info) -> Result {
-  meta = std::move(info);
+  _self.meta = std::move(info);
   return {};
 }
 
 auto FakeStorageEngineMethods::readMetadata()
     -> arangodb::ResultT<replicated_state::PersistedStateInfo> {
-  if (meta.has_value()) {
-    return {*meta};
+  if (_self.meta.has_value()) {
+    return {*_self.meta};
   } else {
     return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
   }
@@ -62,7 +62,7 @@ auto FakeStorageEngineMethods::readMetadata()
 auto FakeStorageEngineMethods::read(replication2::LogIndex start)
     -> std::unique_ptr<PersistedLogIterator> {
   struct ContainerIterator : PersistedLogIterator {
-    using Container = FakeStorageEngineMethods::LogContainerType;
+    using Container = FakeStorageEngineMethodsContext::LogContainerType;
     using Iterator = Container ::iterator;
     ContainerIterator(Container store, LogIndex start)
         : _store(std::move(store)),
@@ -83,7 +83,7 @@ auto FakeStorageEngineMethods::read(replication2::LogIndex start)
     Iterator _end;
   };
 
-  return std::make_unique<ContainerIterator>(log, start);
+  return std::make_unique<ContainerIterator>(_self.log, start);
 }
 
 auto FakeStorageEngineMethods::insert(
@@ -92,22 +92,23 @@ auto FakeStorageEngineMethods::insert(
     -> arangodb::futures::Future<arangodb::ResultT<
         replicated_state::IStorageEngineMethods::SequenceNumber>> {
   return invoke_on_executor(
-      executor,
+      _self.executor,
       [this, iter = std::move(iter), options]()
           -> arangodb::ResultT<
               replicated_state::IStorageEngineMethods::SequenceNumber> {
         auto lastIndex = LogIndex{0};
         while (auto entry = iter->next()) {
-          auto const res = log.try_emplace(entry->logIndex(), entry.value());
+          auto const res =
+              _self.log.try_emplace(entry->logIndex(), entry.value());
           TRI_ASSERT(res.second);
 
           TRI_ASSERT(entry->logIndex() > lastIndex);
           lastIndex = entry->logIndex();
           if (options.waitForSync) {
-            writtenWithWaitForSync.insert(entry->logIndex());
+            _self.writtenWithWaitForSync.insert(entry->logIndex());
           }
         }
-        return {lastSequenceNumber++};
+        return {_self.lastSequenceNumber++};
       });
 }
 auto FakeStorageEngineMethods::removeFront(
@@ -116,12 +117,12 @@ auto FakeStorageEngineMethods::removeFront(
     -> arangodb::futures::Future<arangodb::ResultT<
         replicated_state::IStorageEngineMethods::SequenceNumber>> {
   return invoke_on_executor(
-      executor,
+      _self.executor,
       [this, stop]()
           -> arangodb::ResultT<
               replicated_state::IStorageEngineMethods::SequenceNumber> {
-        log.erase(log.begin(), log.lower_bound(stop));
-        return {lastSequenceNumber++};
+        _self.log.erase(_self.log.begin(), _self.log.lower_bound(stop));
+        return {_self.lastSequenceNumber++};
       });
 }
 
@@ -131,19 +132,19 @@ auto FakeStorageEngineMethods::removeBack(
     -> arangodb::futures::Future<arangodb::ResultT<
         replicated_state::IStorageEngineMethods::SequenceNumber>> {
   return invoke_on_executor(
-      executor,
+      _self.executor,
       [this, start]()
           -> arangodb::ResultT<
               replicated_state::IStorageEngineMethods::SequenceNumber> {
-        log.erase(log.lower_bound(start), log.end());
-        return {lastSequenceNumber++};
+        _self.log.erase(_self.log.lower_bound(start), _self.log.end());
+        return {_self.lastSequenceNumber++};
       });
 }
 
 auto FakeStorageEngineMethods::getObjectId() -> std::uint64_t {
-  return objectId;
+  return _self.objectId;
 }
-auto FakeStorageEngineMethods::getLogId() -> LogId { return logId; }
+auto FakeStorageEngineMethods::getLogId() -> LogId { return _self.logId; }
 auto FakeStorageEngineMethods::getSyncedSequenceNumber()
     -> replicated_state::IStorageEngineMethods::SequenceNumber {
   TRI_ASSERT(false) << "not implemented";
@@ -155,6 +156,15 @@ auto FakeStorageEngineMethods::waitForSync(
 }
 
 FakeStorageEngineMethods::FakeStorageEngineMethods(
-    std::uint64_t objectId, LogId logId,
+    FakeStorageEngineMethodsContext& self)
+    : _self(self) {}
+
+auto FakeStorageEngineMethodsContext::getMethods()
+    -> std::unique_ptr<replicated_state::IStorageEngineMethods> {
+  return std::make_unique<FakeStorageEngineMethods>(*this);
+}
+
+FakeStorageEngineMethodsContext::FakeStorageEngineMethodsContext(
+    std::uint64_t objectId, arangodb::replication2::LogId logId,
     std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> executor)
     : objectId(objectId), logId(logId), executor(std::move(executor)) {}
