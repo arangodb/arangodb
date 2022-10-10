@@ -30,6 +30,7 @@
 const internal = require('internal');
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
 const contentType = forceJson ? "application/json" : "application/x-velocypack";
+const errors = require('@arangodb').errors;
 
 const jsunity = require("jsunity");
 let api = "/_api/cursor";
@@ -331,17 +332,15 @@ function testing_the_query_cache_in_transcationSuite() {
       res = arango.POST_RAW("/_api/cursor", {"query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`});
       assertEqual(res.code, 201);
       assertEqual(res.parsedBody.result[0].value, 0);
+      res = arango.POST_RAW("/_api/transaction/begin", {collections: {write: cn}});
+      assertEqual(res.code, 201);
+      assertNotUndefined(res.parsedBody.result.id);
+      trx = res.parsedBody.result.id;
+      assertNotNull(trx);
       try {
-        res = arango.POST_RAW("/_api/transaction/begin", {collections: {write: cn}});
-        assertEqual(res.code, 201);
-        assertNotUndefined(res.parsedBody.result.id);
-        trx = res.parsedBody.result.id;
-        assertNotNull(trx);
-        // use trx on different coord to run a query
         res = arango.POST_RAW("/_api/cursor", {"query": `UPDATE { _key: "a", value: 1 } IN ${cn}`}, {"x-arango-trx-id": trx});
 
         assertEqual(res.code, 201);
-        // request must have been forwarded
         assertFalse(res.body.error);
 
         res = arango.POST_RAW("/_api/cursor", {
@@ -349,15 +348,12 @@ function testing_the_query_cache_in_transcationSuite() {
           "cache": true
         });
         assertEqual(res.code, 201);
-        // request must have been forwarded
         assertFalse(res.error);
         assertEqual(res.parsedBody.result[0].value, 0);
 
 
         res = arango.POST_RAW("/_api/cursor", {"query": `UPDATE { _key: "a", value: 2 } IN ${cn}`}, {"x-arango-trx-id": trx});
-
         assertEqual(res.code, 201);
-        // request must have been forwarded
         assertFalse(res.error);
 
 
@@ -366,7 +362,6 @@ function testing_the_query_cache_in_transcationSuite() {
           "cache": true
         }, {"x-arango-trx-id": trx});
         assertEqual(res.code, 201);
-        // request must have been forwarded
         assertFalse(res.error);
         assertEqual(res.parsedBody.result[0].value, 2);
 
@@ -375,7 +370,6 @@ function testing_the_query_cache_in_transcationSuite() {
           "cache": true
         });
         assertEqual(res.code, 201);
-        // request must have been forwarded
         assertFalse(res.error);
         assertEqual(res.parsedBody.result[0].value, 0);
 
@@ -384,26 +378,27 @@ function testing_the_query_cache_in_transcationSuite() {
           "cache": false
         });
         assertEqual(res.code, 201);
-        // request must have been forwarded
         assertFalse(res.error);
         assertEqual(res.parsedBody.result[0].value, 0);
 
       } finally {
         res = arango.DELETE("/_api/transaction/" + encodeURIComponent(trx), {}, {});
+        assertEqual(res.code, 200);
+        assertEqual(res.result.id, trx);
+        assertEqual(res.result.status, "aborted");
         res = arango.POST_RAW("/_api/cursor", {
           "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
           "cache": true
         });
         assertEqual(res.code, 201);
-        // request must have been forwarded
         assertFalse(res.error);
         assertEqual(res.parsedBody.result[0].value, 0);
+
         res = arango.POST_RAW("/_api/cursor", {
           "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
           "cache": false
         });
         assertEqual(res.code, 201);
-        // request must have been forwarded
         assertFalse(res.error);
         assertEqual(res.parsedBody.result[0].value, 0);
       }
@@ -416,17 +411,15 @@ function testing_the_query_cache_in_transcationSuite() {
       res = arango.POST_RAW("/_api/cursor", {"query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`});
       assertEqual(res.code, 201);
       assertEqual(res.parsedBody.result[0].value, 0);
+      res = arango.POST_RAW("/_api/transaction/begin", {collections: {write: cn}});
+      assertEqual(res.code, 201);
+      assertNotUndefined(res.parsedBody.result.id);
+      trx = res.parsedBody.result.id;
+      assertNotNull(trx);
       try {
-        res = arango.POST_RAW("/_api/transaction/begin", {collections: {write: cn}});
-        assertEqual(res.code, 201);
-        assertNotUndefined(res.parsedBody.result.id);
-        trx = res.parsedBody.result.id;
-        assertNotNull(trx);
-        // use trx on different coord to run a query
         res = arango.POST_RAW("/_api/cursor", {"query": `UPDATE { _key: "a", value: 1 } IN ${cn}`}, {"x-arango-trx-id": trx});
 
         assertEqual(res.code, 201);
-        // request must have been forwarded
         assertFalse(res.body.error);
 
         res = arango.POST_RAW("/_api/cursor", {
@@ -434,14 +427,11 @@ function testing_the_query_cache_in_transcationSuite() {
           "cache": true
         });
         assertEqual(res.code, 201);
-        // request must have been forwarded
         assertFalse(res.error);
         assertEqual(res.parsedBody.result[0].value, 0);
 
         res = arango.POST_RAW("/_api/cursor", {"query": `UPDATE { _key: "a", value: 2 } IN ${cn}`}, {"x-arango-trx-id": trx});
-
         assertEqual(res.code, 201);
-        // request must have been forwarded
         assertFalse(res.error);
 
         res = arango.POST_RAW("/_api/cursor", {
@@ -449,7 +439,6 @@ function testing_the_query_cache_in_transcationSuite() {
           "cache": true
         }, {"x-arango-trx-id": trx});
         assertEqual(res.code, 201);
-        // request must have been forwarded
         assertFalse(res.error);
         assertEqual(res.parsedBody.result[0].value, 2);
 
@@ -458,7 +447,6 @@ function testing_the_query_cache_in_transcationSuite() {
           "cache": true
         });
         assertEqual(res.code, 201);
-        // request must have been forwarded
         assertFalse(res.error);
         assertEqual(res.parsedBody.result[0].value, 0);
 
@@ -467,14 +455,11 @@ function testing_the_query_cache_in_transcationSuite() {
           "cache": false
         });
         assertEqual(res.code, 201);
-        // request must have been forwarded
         assertFalse(res.error);
         assertEqual(res.parsedBody.result[0].value, 0);
-
-
+      } finally {
         res = arango.PUT_RAW("/_api/transaction/" + encodeURIComponent(trx), {}, {});
         assertEqual(res.code, 200);
-        // request must have been forwarded
         assertFalse(res.error);
         assertEqual(res.parsedBody.result.status, "committed");
 
@@ -483,17 +468,12 @@ function testing_the_query_cache_in_transcationSuite() {
           "cache": false
         });
         assertEqual(res.code, 201);
-        // request must have been forwarded
         assertFalse(res.error);
         assertEqual(res.parsedBody.result[0].value, 2);
-
-      } finally {
-        res = arango.DELETE("/_api/transaction/" + encodeURIComponent(trx), {}, {});
       }
     },
 
     test_testing_streaming_js_transaction_aborted_set: function() {
-      let trx = null;
       let res = arango.POST_RAW("/_api/cursor", {"query": `UPSERT { _key: "a" } INSERT { _key: "a", value: 0 } UPDATE { value: 0 } IN ${cn}`});
       assertEqual(res.code, 201);
       res = arango.POST_RAW("/_api/cursor", {"query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`});
@@ -501,27 +481,63 @@ function testing_the_query_cache_in_transcationSuite() {
       assertEqual(res.parsedBody.result[0].value, 0);
       try {
         res = arango.POST_RAW("/_api/transaction",
-
-          {"collections":{"write":[cn]},
-            "action": `function() { const arangodb = require("@arangodb"); const db = arangodb.db; db._query("UPDATE { _key: "a", value: 1 } IN test"); db._query("RETURN SLEEP(3)"); let d = new Date(); d = String(d.getSeconds()).padStart(2, "0") + "." + String(d.getMilliseconds())[0]; const err = new arangodb.ArangoError(); err.errorNum = arangodb.ERROR_TRANSACTION_ABORTED; err.errorMessage = "\n" + d + "  Aborting transaction that updated value to 1\n"; throw err; }`
-          }
-
-          );
-
-
-
-      } catch(err) {
-          print("ERROR");
-        } finally {
-        res = arango.DELETE("/_api/transaction/" + encodeURIComponent(trx), {}, {});
-
-        }
+          {
+            "collections": {"write": [cn]},
+            "action": `function() { const arangodb = require("@arangodb"); const db = arangodb.db; db._query("UPDATE { _key: 'a', value: 1 } IN ${cn}"); db._query("RETURN SLEEP(3)"); let d = new Date(); d = String(d.getSeconds()).padStart(2, "0") + "." + String(d.getMilliseconds())[0]; const err = new arangodb.ArangoError(); err.errorNum = arangodb.ERROR_TRANSACTION_ABORTED; err.errorMessage = "\\n" + d + "  Aborting transaction that updated value to 1\\n"; throw err;}`
+          });
+        assertEqual(res.code, 410);
+        assertTrue(res.parsedBody.error);
+        throw(res.parsedBody.errorNum);
+      } catch (err) {
+        assertEqual(errors.ERROR_TRANSACTION_ABORTED.code, err);
+        res = arango.POST_RAW("/_api/cursor", {
+          "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
+          "bindVars": {},
+          "cache": true
+        });
+        assertEqual(res.code, 201);
+        assertEqual(res.parsedBody.result[0].value, 0);
+        res = arango.POST_RAW("/_api/cursor", {
+          "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
+          "bindVars": {},
+          "cache": false
+        });
+        assertEqual(res.code, 201);
+        assertEqual(res.parsedBody.result[0].value, 0);
+      }
     },
 
-
+    test_testing_streaming_js_transaction_committed_set: function() {
+      let res = arango.POST_RAW("/_api/cursor", {"query": `UPSERT { _key: "a" } INSERT { _key: "a", value: 0 } UPDATE { value: 0 } IN ${cn}`});
+      assertEqual(res.code, 201);
+      res = arango.POST_RAW("/_api/cursor", {"query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`});
+      assertEqual(res.code, 201);
+      assertEqual(res.parsedBody.result[0].value, 0);
+      res = arango.POST_RAW("/_api/transaction",
+        {
+          "collections": {"write": [cn]},
+          "action": `function() { const arangodb = require("@arangodb"); const db = arangodb.db; db._query("UPDATE { _key: 'a', value: 2 } IN ${cn}"); db._query("RETURN SLEEP(3)"); }`
+        });
+      assertEqual(res.code, 200);
+      assertFalse(res.parsedBody.error);
+      res = arango.POST_RAW("/_api/cursor", {
+        "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
+        "bindVars": {},
+        "cache": true
+      });
+      assertEqual(res.code, 201);
+      assertEqual(res.parsedBody.result[0].value, 2);
+      res = arango.POST_RAW("/_api/cursor", {
+        "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
+        "bindVars": {},
+        "cache": false
+      });
+      assertEqual(res.code, 201);
+      assertEqual(res.parsedBody.result[0].value, 2);
+    },
   };
 }
 
-//jsunity.run(testing_the_query_cacheSuite);
+jsunity.run(testing_the_query_cacheSuite);
 jsunity.run(testing_the_query_cache_in_transcationSuite);
 return jsunity.done();
