@@ -30,10 +30,6 @@
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Options.h>
-
-#include "Logger/LogMacros.h"
-
 struct TRI_vocbase_t;
 
 namespace arangodb {
