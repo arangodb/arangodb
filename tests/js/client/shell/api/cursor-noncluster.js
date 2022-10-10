@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, assertIdentical, assertNotIdentical */
+/* global fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, assertIdentical, assertNotIdentical, assertNotNull */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief 
@@ -30,6 +30,7 @@
 const internal = require('internal');
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
 const contentType = forceJson ? "application/json" : "application/x-velocypack";
+const db = require("@arangodb").db;
 const errors = require('@arangodb').errors;
 
 const jsunity = require("jsunity");
