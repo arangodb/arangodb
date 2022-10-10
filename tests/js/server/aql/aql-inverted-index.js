@@ -135,7 +135,7 @@ function optimizerRuleInvertedIndexTestSuite() {
       let executeRes = db._query(query.query, query.bindVars);
       assertEqual(1, executeRes.toArray().length);
     },
-    testIndexGeo: function () {
+    testIndexGeoIntersects: function () {
       const query = aql`
         FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
           FILTER GEO_INTERSECTS(d.geo_field, {type: 'Point', coordinates: [37.615895, 55.7039]})
@@ -147,6 +147,58 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
       let executeRes = db._query(query.query, query.bindVars);
       assertEqual(docs/10, executeRes.toArray()[0]);
+    },
+    testIndexGeoDistance: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER GEO_DISTANCE(d.geo_field, GEO_POINT(37.615895, 55.7039)) > 0
+          COLLECT WITH COUNT INTO c
+          RETURN c`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars);
+      assertEqual(docs - (docs/10), executeRes.toArray()[0]);
+    },
+    testIndexGeoContains: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER GEO_CONTAINS(GEO_POLYGON([[37, 55], [38, 55], [38, 56], [37, 56], [37, 55]]), d.geo_field)
+          COLLECT WITH COUNT INTO c
+          RETURN c`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars);
+      assertEqual(docs/10, executeRes.toArray()[0]);
+    },
+    testIndexGeoInRange: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER GEO_IN_RANGE(d.geo_field, GEO_POINT(37.615895, 55.7039), 0.000001, 1000000)
+          COLLECT WITH COUNT INTO c
+          RETURN c`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars);
+      assertEqual(docs/10, executeRes.toArray()[0]);
+    },
+    testIndexExists: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER EXISTS(d.geo_field)
+          COLLECT WITH COUNT INTO c
+          RETURN c`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars);
+      assertEqual(docs, executeRes.toArray()[0]);
     },
     testIndexHintedSorted: function () {
       const query = aql`
