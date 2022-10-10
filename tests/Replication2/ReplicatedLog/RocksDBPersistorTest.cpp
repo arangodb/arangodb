@@ -56,107 +56,157 @@ struct RocksDBInstance {
   rocksdb::DB* _db = nullptr;
   std::string _path;
 };
+
+struct IStorageEngineTestFactory {
+  using Executor = RocksDBAsyncLogWriteBatcher::IAsyncExecutor;
+
+  virtual ~IStorageEngineTestFactory() = default;
+  virtual void setup() = 0;
+  virtual void tearDown() = 0;
+  virtual auto build(std::uint64_t objectId, std::uint64_t vocbaseId,
+                     LogId logId, std::shared_ptr<Executor> executor)
+      -> std::unique_ptr<replicated_state::IStorageEngineMethods> = 0;
+  virtual void drop(
+      std::unique_ptr<replicated_state::IStorageEngineMethods>) = 0;
+};
+
 }  // namespace arangodb::replication2::test
 
-struct RocksDBPersistorTest : ::testing::Test {
-  static std::shared_ptr<test::RocksDBInstance> rocksdb;
-  static std::shared_ptr<ReplicatedLogGlobalSettings> settings;
-
+template<typename Factory>
+struct StorageEngineMethodsTest : ::testing::Test {
   struct SyncExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
     void operator()(fu2::unique_function<void() noexcept> f) noexcept override {
       std::move(f).operator()();
     }
   };
 
-  static void SetUpTestCase() {
+  static void SetUpTestCase() { Factory::SetUp(); }
+
+  static void TearDownTestCase() { Factory::TearDown(); }
+
+  void TearDown() override { Factory::Drop(std::move(methods)); }
+  void SetUp() override {
+    methods = Factory::BuildMethods(objectId, vocbaseId, logId, executor);
+  }
+  void dropAndRebuild() {
+    TearDown();
+    SetUp();
+  }
+
+  std::shared_ptr<SyncExecutor> executor = std::make_shared<SyncExecutor>();
+
+  static constexpr std::uint64_t objectId = 1;
+  static constexpr std::uint64_t vocbaseId = 1;
+  static constexpr LogId logId = LogId{1};
+
+  std::unique_ptr<replicated_state::IStorageEngineMethods> methods;
+};
+
+namespace {
+
+struct RocksDBFactory {
+  static void SetUp() {
     rocksutils::setRocksDBKeyFormatEndianess(RocksDBEndianness::Little);
     settings = std::make_shared<ReplicatedLogGlobalSettings>();
     rocksdb =
         std::make_shared<test::RocksDBInstance>("rocksdb-tests-replicated-log");
   }
 
-  static void TearDownTestCase() { rocksdb.reset(); }
+  static void TearDown() { rocksdb.reset(); }
 
-  void TearDown() override { methods->drop(); }
+  static void Drop(
+      std::unique_ptr<replicated_state::IStorageEngineMethods> methods) {
+    dynamic_cast<RocksDBLogStorageMethods&>(*methods).drop();
+  }
 
-  std::shared_ptr<SyncExecutor> executor = std::make_shared<SyncExecutor>();
+  static auto BuildMethods(
+      std::uint64_t objectId, std::uint64_t vocbaseId, LogId logId,
+      std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> executor)
+      -> std::unique_ptr<replicated_state::IStorageEngineMethods> {
+    std::shared_ptr<RocksDBAsyncLogWriteBatcher> writeBatcher =
+        std::make_shared<RocksDBAsyncLogWriteBatcher>(
+            rocksdb->getDatabase()->DefaultColumnFamily(),
+            rocksdb->getDatabase(), std::move(executor), settings);
 
-  std::shared_ptr<RocksDBAsyncLogWriteBatcher> writeBatcher =
-      std::make_shared<RocksDBAsyncLogWriteBatcher>(
-          rocksdb->getDatabase()->DefaultColumnFamily(), rocksdb->getDatabase(),
-          executor, settings);
+    return std::make_unique<RocksDBLogStorageMethods>(
+        objectId, vocbaseId, logId, writeBatcher, rocksdb->getDatabase(),
+        rocksdb->getDatabase()->DefaultColumnFamily(),
+        rocksdb->getDatabase()->DefaultColumnFamily());
+  }
 
-  static constexpr std::uint64_t objectId = 1;
-  static constexpr std::uint64_t vocbaseId = 1;
-  static constexpr LogId logId = LogId{1};
-
-  std::shared_ptr<RocksDBLogStorageMethods> methods =
-      std::make_shared<RocksDBLogStorageMethods>(
-          objectId, vocbaseId, logId, writeBatcher, rocksdb->getDatabase(),
-          rocksdb->getDatabase()->DefaultColumnFamily(),
-          rocksdb->getDatabase()->DefaultColumnFamily());
+  static std::shared_ptr<test::RocksDBInstance> rocksdb;
+  static std::shared_ptr<ReplicatedLogGlobalSettings> settings;
 };
 
-std::shared_ptr<ReplicatedLogGlobalSettings> RocksDBPersistorTest::settings;
-std::shared_ptr<test::RocksDBInstance> RocksDBPersistorTest::rocksdb;
+std::shared_ptr<test::RocksDBInstance> RocksDBFactory::rocksdb;
+std::shared_ptr<ReplicatedLogGlobalSettings> RocksDBFactory::settings;
 
-TEST_F(RocksDBPersistorTest, read_meta_data_not_found) {
-  auto result = methods->readMetadata();
+}  // namespace
+
+using MyTypes = ::testing::Types<RocksDBFactory>;
+TYPED_TEST_SUITE(StorageEngineMethodsTest, MyTypes);
+
+// std::shared_ptr<ReplicatedLogGlobalSettings>
+// StorageEngineMethodsTest::settings; std::shared_ptr<test::RocksDBInstance>
+// StorageEngineMethodsTest::rocksdb;
+
+TYPED_TEST(StorageEngineMethodsTest, read_meta_data_not_found) {
+  auto result = this->methods->readMetadata();
   ASSERT_EQ(result.errorNumber(), TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
-TEST_F(RocksDBPersistorTest, write_meta_data) {
+TYPED_TEST(StorageEngineMethodsTest, write_meta_data) {
   replicated_state::PersistedStateInfo info;
-  info.stateId = logId;
+  info.stateId = this->logId;
   info.snapshot.status = replicated_state::SnapshotStatus::kCompleted;
   {
-    auto result = methods->updateMetadata(info);
+    auto result = this->methods->updateMetadata(info);
     ASSERT_TRUE(result.ok());
   }
   {
-    auto result = methods->readMetadata();
+    auto result = this->methods->readMetadata();
     ASSERT_TRUE(result.ok());
     EXPECT_EQ(result->snapshot.status,
               replicated_state::SnapshotStatus::kCompleted);
-    EXPECT_EQ(result->stateId, logId);
+    EXPECT_EQ(result->stateId, this->logId);
   }
 
   info.snapshot.status = replicated_state::SnapshotStatus::kInvalidated;
   {
-    auto result = methods->updateMetadata(info);
+    auto result = this->methods->updateMetadata(info);
     ASSERT_TRUE(result.ok());
   }
   {
-    auto result = methods->readMetadata();
+    auto result = this->methods->readMetadata();
     ASSERT_TRUE(result.ok());
     EXPECT_EQ(result->snapshot.status,
               replicated_state::SnapshotStatus::kInvalidated);
-    EXPECT_EQ(result->stateId, logId);
+    EXPECT_EQ(result->stateId, this->logId);
   }
 }
 
-TEST_F(RocksDBPersistorTest, write_drop_data) {
+TYPED_TEST(StorageEngineMethodsTest, write_drop_data) {
   replicated_state::PersistedStateInfo info;
-  info.stateId = logId;
+  info.stateId = this->logId;
   info.snapshot.status = replicated_state::SnapshotStatus::kCompleted;
   {
-    auto result = methods->updateMetadata(info);
+    auto result = this->methods->updateMetadata(info);
     ASSERT_TRUE(result.ok());
   }
   {
-    auto result = methods->readMetadata();
+    auto result = this->methods->readMetadata();
     ASSERT_TRUE(result.ok());
   }
 
-  methods->drop();
+  this->dropAndRebuild();
 
   {
-    auto result = methods->readMetadata();
+    auto result = this->methods->readMetadata();
     ASSERT_EQ(result.errorNumber(), TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 }
 
-TEST_F(RocksDBPersistorTest, write_log_entries) {
+TYPED_TEST(StorageEngineMethodsTest, write_log_entries) {
   auto const entries = std::vector{
       PersistingLogEntry{LogTerm{1}, LogIndex{1},
                          LogPayload::createFromString("first")},
@@ -170,12 +220,12 @@ TEST_F(RocksDBPersistorTest, write_log_entries) {
 
   {
     auto iter = test::make_iterator(entries);
-    auto res = methods->insert(std::move(iter), {}).get();
+    auto res = this->methods->insert(std::move(iter), {}).get();
     EXPECT_TRUE(res.ok());
   }
 
   {
-    auto iter = methods->read(LogIndex{0});
+    auto iter = this->methods->read(LogIndex{0});
     for (auto const& expected : entries) {
       ASSERT_EQ(iter->next(), expected);
     }
@@ -183,7 +233,7 @@ TEST_F(RocksDBPersistorTest, write_log_entries) {
   }
 }
 
-TEST_F(RocksDBPersistorTest, write_log_entries_remove_front_back) {
+TYPED_TEST(StorageEngineMethodsTest, write_log_entries_remove_front_back) {
   auto const entries = std::vector{
       PersistingLogEntry{LogTerm{1}, LogIndex{1},
                          LogPayload::createFromString("first")},
@@ -197,23 +247,23 @@ TEST_F(RocksDBPersistorTest, write_log_entries_remove_front_back) {
 
   {
     auto iter = test::make_iterator(entries);
-    auto fut = methods->insert(std::move(iter), {});
+    auto fut = this->methods->insert(std::move(iter), {});
     ASSERT_TRUE(fut.isReady());
     auto res = fut.get();
     EXPECT_TRUE(res.ok());
   }
 
   {
-    auto result = methods->removeFront(LogIndex{2}, {}).get();
+    auto result = this->methods->removeFront(LogIndex{2}, {}).get();
     ASSERT_TRUE(result.ok());
   }
   {
-    auto result = methods->removeBack(LogIndex{3}, {}).get();
+    auto result = this->methods->removeBack(LogIndex{3}, {}).get();
     ASSERT_TRUE(result.ok());
   }
 
   {
-    auto iter = methods->read(LogIndex{0});
+    auto iter = this->methods->read(LogIndex{0});
     auto next = iter->next();
     ASSERT_TRUE(next.has_value());
     EXPECT_EQ(next->logIndex(), LogIndex{2});
@@ -222,7 +272,7 @@ TEST_F(RocksDBPersistorTest, write_log_entries_remove_front_back) {
   }
 }
 
-TEST_F(RocksDBPersistorTest, write_log_entries_iter_after_remove) {
+TYPED_TEST(StorageEngineMethodsTest, write_log_entries_iter_after_remove) {
   auto const entries = std::vector{
       PersistingLogEntry{LogTerm{1}, LogIndex{1},
                          LogPayload::createFromString("first")},
@@ -236,18 +286,18 @@ TEST_F(RocksDBPersistorTest, write_log_entries_iter_after_remove) {
 
   {
     auto iter = test::make_iterator(entries);
-    auto fut = methods->insert(std::move(iter), {});
+    auto fut = this->methods->insert(std::move(iter), {});
     ASSERT_TRUE(fut.isReady());
     auto res = fut.get();
     EXPECT_TRUE(res.ok());
   }
 
   // obtain iterator
-  auto iter = methods->read(LogIndex{0});
+  auto iter = this->methods->read(LogIndex{0});
 
   {
     // remove log entries
-    auto result = methods->removeFront(LogIndex{1}, {}).get();
+    auto result = this->methods->removeFront(LogIndex{1}, {}).get();
     ASSERT_TRUE(result.ok());
   }
 
