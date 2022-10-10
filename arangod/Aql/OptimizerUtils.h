@@ -99,7 +99,7 @@ bool getIndexForSortCondition(aql::Collection const& coll,
 
 NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
     Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-    bool evaluateFCalls, bool sorted, AstNode const* condition,
+    bool evaluateFCalls, Index* index, AstNode const* condition,
     Variable const* indexVariable);
 
 }  // namespace utils
