@@ -101,6 +101,8 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
   connectToLeader();
   leaderFunc2(state);
 
+  internal.wal.flush(true, false);
+
   // use lastLogTick as of now
   state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
 
