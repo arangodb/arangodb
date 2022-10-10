@@ -218,6 +218,9 @@ auto replicated_log::operator<<(
     -> std::ostream& {
   ostream << "{ ";
   ostream << std::boolalpha;
+  if (not pInfo.snapshotAvailable) {
+    ostream << "snapshot: " << pInfo.snapshotAvailable << ", ";
+  }
   if (pInfo.isAllowedInQuorum) {
     ostream << "isAllowedInQuorum: " << pInfo.isAllowedInQuorum;
   } else {
