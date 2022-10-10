@@ -199,9 +199,9 @@ auto inspect(Inspector& f, RocksDBReplicatedStateInfo& x) {
 struct RocksDBLogStorageMethods final
     : replication2::replicated_state::IStorageEngineMethods {
   explicit RocksDBLogStorageMethods(
-      std::uint64_t objectId, std::uint64_t vocbaseId,
-      replication2::LogId logId,
-      std::shared_ptr<IRocksDBAsyncLogWriteBatcher> persistor, rocksdb::DB*);
+      uint64_t objectId, std::uint64_t vocbaseId, replication2::LogId logId,
+      std::shared_ptr<IRocksDBAsyncLogWriteBatcher> persistor, rocksdb::DB* db,
+      rocksdb::ColumnFamilyHandle* metaCf, rocksdb::ColumnFamilyHandle* logCf);
 
   auto updateMetadata(replication2::replicated_state::PersistedStateInfo info)
       -> Result override;
@@ -223,9 +223,14 @@ struct RocksDBLogStorageMethods final
   auto waitForSync(SequenceNumber number)
       -> futures::Future<futures::Unit> override;
 
+  auto drop() -> Result;
+  auto compact() -> Result;
+
   replication2::LogId const logId;
   std::shared_ptr<IRocksDBAsyncLogWriteBatcher> const batcher;
-  rocksdb::DB* const _db;
+  rocksdb::DB* const db;
+  rocksdb::ColumnFamilyHandle* const metaCf;
+  rocksdb::ColumnFamilyHandle* const logCf;
   AsyncLogWriteContext ctx;
 };
 

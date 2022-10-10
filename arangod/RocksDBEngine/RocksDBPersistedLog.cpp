@@ -35,7 +35,6 @@
 #include "RocksDBKey.h"
 #include "RocksDBPersistedLog.h"
 #include "RocksDBValue.h"
-#include "RocksDBColumnFamilyManager.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -263,6 +262,7 @@ auto RocksDBAsyncLogWriteBatcher::queue(AsyncLogWriteContext& ctx,
 
   auto [future, wantNewThread] = queueRequest(lane);
   if (wantNewThread) {
+    lane._activePersistorThreads += 1;
     startNewThread(lane);
   }
   return std::move(future);
@@ -341,11 +341,7 @@ Result RocksDBLogStorageMethods::updateMetadata(
   auto value = RocksDBValue::ReplicatedState(valueBuilder.slice());
 
   rocksdb::WriteOptions opts;
-  auto s = _db->GetRootDB()->Put(
-      opts,
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Definitions),
-      key.string(), value.string());
+  auto s = db->GetRootDB()->Put(opts, metaCf, key.string(), value.string());
 
   return rocksutils::convertStatus(s);
 }
@@ -355,11 +351,8 @@ ResultT<PersistedStateInfo> RocksDBLogStorageMethods::readMetadata() {
   key.constructReplicatedState(ctx.vocbaseId, logId);
 
   std::string value;
-  auto s = _db->GetRootDB()->Get(
-      rocksdb::ReadOptions{},
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Definitions),
-      key.string(), &value);
+  auto s = db->GetRootDB()->Get(rocksdb::ReadOptions{}, metaCf, key.string(),
+                                &value);
   if (!s.ok()) {
     return rocksutils::convertStatus(s);
   }
@@ -373,11 +366,7 @@ ResultT<PersistedStateInfo> RocksDBLogStorageMethods::readMetadata() {
 
 std::unique_ptr<PersistedLogIterator> RocksDBLogStorageMethods::read(
     LogIndex first) {
-  return std::make_unique<RocksDBLogIterator>(
-      ctx.objectId, _db,
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-      first);
+  return std::make_unique<RocksDBLogIterator>(ctx.objectId, db, logCf, first);
 }
 
 auto RocksDBLogStorageMethods::removeFront(LogIndex stop,
@@ -409,10 +398,13 @@ LogId RocksDBLogStorageMethods::getLogId() { return logId; }
 
 RocksDBLogStorageMethods::RocksDBLogStorageMethods(
     uint64_t objectId, std::uint64_t vocbaseId, replication2::LogId logId,
-    std::shared_ptr<IRocksDBAsyncLogWriteBatcher> persistor, rocksdb::DB* db)
+    std::shared_ptr<IRocksDBAsyncLogWriteBatcher> persistor, rocksdb::DB* db,
+    rocksdb::ColumnFamilyHandle* metaCf, rocksdb::ColumnFamilyHandle* logCf)
     : logId(logId),
       batcher(std::move(persistor)),
-      _db(db),
+      db(db),
+      metaCf(metaCf),
+      logCf(logCf),
       ctx(vocbaseId, objectId) {}
 
 auto RocksDBLogStorageMethods::getSyncedSequenceNumber() -> SequenceNumber {
@@ -423,4 +415,36 @@ auto RocksDBLogStorageMethods::waitForSync(
     IStorageEngineMethods::SequenceNumber number)
     -> futures::Future<futures::Unit> {
   TRI_ASSERT(false);
+}
+
+auto RocksDBLogStorageMethods::drop() -> Result {
+  // prepare deletion transaction
+  rocksdb::WriteBatch batch;
+  auto key = RocksDBKey{};
+  key.constructReplicatedState(ctx.vocbaseId, logId);
+  if (auto s = batch.Delete(metaCf, key.string()); !s.ok()) {
+    return rocksutils::convertStatus(s);
+  }
+
+  auto range = RocksDBKeyBounds::LogRange(ctx.objectId);
+  auto start = range.start();
+  auto end = range.end();
+  if (auto s = batch.DeleteRange(logCf, start, end); !s.ok()) {
+    return rocksutils::convertStatus(s);
+  }
+  if (auto s = db->Write(rocksdb::WriteOptions{}, &batch); !s.ok()) {
+    return rocksutils::convertStatus(s);
+  }
+  return {};
+}
+
+auto RocksDBLogStorageMethods::compact() -> Result {
+  auto range = RocksDBKeyBounds::LogRange(ctx.objectId);
+  auto start = range.start();
+  auto end = range.end();
+  auto res = db->CompactRange(
+      rocksdb::CompactRangeOptions{.exclusive_manual_compaction = false,
+                                   .allow_write_stall = false},
+      logCf, &start, &end);
+  return rocksutils::convertStatus(res);
 }

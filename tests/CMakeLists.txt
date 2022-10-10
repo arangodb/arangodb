@@ -386,7 +386,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   #Replication2/Streams/LogMultiplexerTest.cpp
   #Replication2/Streams/MultiplexerConcurrencyTest.cpp
   #Replication2/Streams/TestLogSpecification.cpp
-        )
+        Replication2/ReplicatedLog/ReplicatedLogConnectTest.cpp Replication2/ReplicatedLog/RocksDBPersistorTest.cpp)
 
 set(ARANGODB_GRAPH_TEST_SOURCES
   Graph/ClusterTraverserCacheTest.cpp

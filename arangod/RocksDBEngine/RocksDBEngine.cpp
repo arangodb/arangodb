@@ -2765,7 +2765,11 @@ void RocksDBEngine::loadReplicatedStates(
 
     auto info = velocypack::deserialize<RocksDBReplicatedStateInfo>(slice);
     auto methods = std::make_unique<RocksDBLogStorageMethods>(
-        info.objectId, vocbase->id(), info.stateId, _logPersistor, _db);
+        info.objectId, vocbase->id(), info.stateId, _logPersistor, _db,
+        RocksDBColumnFamilyManager::get(
+            RocksDBColumnFamilyManager::Family::Definitions),
+        RocksDBColumnFamilyManager::get(
+            RocksDBColumnFamilyManager::Family::ReplicatedLogs));
     registerReplicatedState(*vocbase, info.stateId, std::move(methods));
   }
 }
@@ -3488,37 +3492,17 @@ Result RocksDBEngine::dropReplicatedState(
   // in case of an error, reset the unique_ptr
   ScopeGuard guard([&]() noexcept { ptr = std::move(methods); });
 
-  // prepare deletion transaction
-  rocksdb::WriteBatch batch;
-  auto key = RocksDBKey{};
-  key.constructReplicatedState(vocbase.id(), ptr->getLogId());
-  if (auto s =
-          batch.Delete(RocksDBColumnFamilyManager::get(
-                           RocksDBColumnFamilyManager::Family::Definitions),
-                       key.string());
-      !s.ok()) {
-    return rocksutils::convertStatus(s);
+  // drop everything
+  if (auto res = methods->drop(); res.fail()) {
+    return res;
   }
 
-  auto logcf = RocksDBColumnFamilyManager::get(
-      RocksDBColumnFamilyManager::Family::ReplicatedLogs);
-  auto range = RocksDBKeyBounds::LogRange(ptr->getObjectId());
-  auto start = range.start();
-  auto end = range.end();
-  if (auto s = batch.DeleteRange(logcf, start, end); !s.ok()) {
-    return rocksutils::convertStatus(s);
-  }
-  if (auto s = _db->Write(rocksdb::WriteOptions{}, &batch); !s.ok()) {
-    return rocksutils::convertStatus(s);
-  }
   // write was committed, the log is gone. Transaction completed.
-  methods.reset();
   guard.cancel();
 
-  std::ignore = _db->CompactRange(
-      rocksdb::CompactRangeOptions{.exclusive_manual_compaction = false,
-                                   .allow_write_stall = false},
-      logcf, &start, &end);
+  // do a compaction for the log range
+  std::ignore = methods->compact();
+  methods.reset();
   return {};
 }
 
@@ -3529,7 +3513,11 @@ auto RocksDBEngine::createReplicatedState(
         replication2::replicated_state::IStorageEngineMethods>> {
   auto objectId = TRI_NewTickServer();
   auto methods = std::make_unique<RocksDBLogStorageMethods>(
-      objectId, vocbase.id(), id, _logPersistor, _db);
+      objectId, vocbase.id(), id, _logPersistor, _db,
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::Definitions),
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::ReplicatedLogs));
   methods->updateMetadata(info);
   return {std::move(methods)};
 }
