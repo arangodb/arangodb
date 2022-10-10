@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -40,8 +41,7 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-namespace arangodb {
-namespace transaction {
+namespace arangodb::transaction {
 
 DECLARE_COUNTER(arangodb_transactions_expired_total,
                 "Total number of expired transactions");
@@ -178,11 +178,10 @@ void ManagerFeature::queueGarbageCollection() {
   _workItem = std::move(workItem);
 }
 
-void ManagerFeature::trackExpired(uint64_t numExpired) {
+void ManagerFeature::trackExpired(uint64_t numExpired) noexcept {
   if (numExpired > 0) {
     _numExpiredTransactions.count(numExpired);
   }
 }
 
-}  // namespace transaction
-}  // namespace arangodb
+}  // namespace arangodb::transaction

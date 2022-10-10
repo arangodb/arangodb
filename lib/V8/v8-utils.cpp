@@ -2389,17 +2389,12 @@ static void JS_Md5(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // create md5
-  char hash[17];
-  char* p = &hash[0];
-  size_t length;
-
-  SslInterface::sslMD5(*str, str.length(), p, length);
+  char hash[16];
+  SslInterface::sslMD5(*str, str.length(), &hash[0]);
 
   // as hex
-  char hex[33];
-  p = &hex[0];
-
-  SslInterface::sslHEX(hash, 16, p, length);
+  char hex[32];
+  SslInterface::sslHEX(hash, 16, &hex[0]);
 
   // and return
   v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 32);
@@ -2973,6 +2968,15 @@ static void ProcessStatisticsToV8(
   }
 
   auto context = TRI_IGETC;
+  auto scClkTck = (double)info._scClkTck;
+  auto userTime = (double)info._userTime;
+  auto systemTime = (double)info._systemTime;
+
+  if (scClkTck != 0.0) {
+    userTime = userTime / (double)info._scClkTck;
+    systemTime = systemTime / (double)info._scClkTck;
+  }
+
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "minorPageFaults"),
             v8::Number::New(isolate, (double)info._minorPageFaults))
@@ -2983,13 +2987,11 @@ static void ProcessStatisticsToV8(
       .FromMaybe(false);
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "userTime"),
-            v8::Number::New(isolate,
-                            (double)info._userTime / (double)info._scClkTck))
+            v8::Number::New(isolate, userTime))
       .FromMaybe(false);
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "systemTime"),
-            v8::Number::New(isolate,
-                            (double)info._systemTime / (double)info._scClkTck))
+            v8::Number::New(isolate, systemTime))
       .FromMaybe(false);
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "numberOfThreads"),
@@ -3185,9 +3187,9 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   char content[1024];
   size_t length = sizeof(content) - 1;
-  auto read_len = TRI_ReadPipe(proc, content, length);
+  auto readLen = TRI_ReadPipe(proc, content, length);
 
-  auto result = TRI_V8_PAIR_STRING(isolate, content, read_len);
+  auto result = TRI_V8_PAIR_STRING(isolate, content, readLen);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -3932,24 +3934,15 @@ static void JS_Sha512(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha512
-  char* hash = nullptr;
-  size_t hashLen;
-
-  SslInterface::sslSHA512(key.c_str(), key.size(), hash, hashLen);
+  char hash[64];
+  SslInterface::sslSHA512(key.c_str(), key.size(), &hash[0]);
 
   // as hex
-  char* hex = nullptr;
-  size_t hexLen;
-
-  SslInterface::sslHEX(hash, hashLen, hex, hexLen);
-
-  delete[] hash;
+  char hex[128];
+  SslInterface::sslHEX(hash, 64, &hex[0]);
 
   // and return
-  v8::Handle<v8::String> hashStr =
-      TRI_V8_PAIR_STRING(isolate, hex, (int)hexLen);
-
-  delete[] hex;
+  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 128);
 
   TRI_V8_RETURN(hashStr);
   TRI_V8_TRY_CATCH_END
@@ -3975,24 +3968,15 @@ static void JS_Sha384(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha384
-  char* hash = nullptr;
-  size_t hashLen;
-
-  SslInterface::sslSHA384(key.c_str(), key.size(), hash, hashLen);
+  char hash[48];
+  SslInterface::sslSHA384(key.c_str(), key.size(), &hash[0]);
 
   // as hex
-  char* hex = nullptr;
-  size_t hexLen;
-
-  SslInterface::sslHEX(hash, hashLen, hex, hexLen);
-
-  delete[] hash;
+  char hex[96];
+  SslInterface::sslHEX(hash, 48, &hex[0]);
 
   // and return
-  v8::Handle<v8::String> hashStr =
-      TRI_V8_PAIR_STRING(isolate, hex, (int)hexLen);
-
-  delete[] hex;
+  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 96);
 
   TRI_V8_RETURN(hashStr);
   TRI_V8_TRY_CATCH_END
@@ -4018,24 +4002,15 @@ static void JS_Sha256(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha256
-  char* hash = nullptr;
-  size_t hashLen;
-
-  SslInterface::sslSHA256(key.c_str(), key.size(), hash, hashLen);
+  char hash[32];
+  SslInterface::sslSHA256(key.c_str(), key.size(), &hash[0]);
 
   // as hex
-  char* hex = nullptr;
-  size_t hexLen;
-
-  SslInterface::sslHEX(hash, hashLen, hex, hexLen);
-
-  delete[] hash;
+  char hex[64];
+  SslInterface::sslHEX(hash, 32, &hex[0]);
 
   // and return
-  v8::Handle<v8::String> hashStr =
-      TRI_V8_PAIR_STRING(isolate, hex, (int)hexLen);
-
-  delete[] hex;
+  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 64);
 
   TRI_V8_RETURN(hashStr);
   TRI_V8_TRY_CATCH_END
@@ -4061,24 +4036,15 @@ static void JS_Sha224(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha224
-  char* hash = nullptr;
-  size_t hashLen;
-
-  SslInterface::sslSHA224(key.c_str(), key.size(), hash, hashLen);
+  char hash[28];
+  SslInterface::sslSHA224(key.c_str(), key.size(), &hash[0]);
 
   // as hex
-  char* hex = nullptr;
-  size_t hexLen;
-
-  SslInterface::sslHEX(hash, hashLen, hex, hexLen);
-
-  delete[] hash;
+  char hex[56];
+  SslInterface::sslHEX(hash, 28, &hex[0]);
 
   // and return
-  v8::Handle<v8::String> hashStr =
-      TRI_V8_PAIR_STRING(isolate, hex, (int)hexLen);
-
-  delete[] hex;
+  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 56);
 
   TRI_V8_RETURN(hashStr);
   TRI_V8_TRY_CATCH_END
@@ -4104,24 +4070,15 @@ static void JS_Sha1(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha1
-  char* hash = nullptr;
-  size_t hashLen;
-
-  SslInterface::sslSHA1(key.c_str(), key.size(), hash, hashLen);
+  char hash[20];
+  SslInterface::sslSHA1(key.c_str(), key.size(), &hash[0]);
 
   // as hex
-  char* hex = nullptr;
-  size_t hexLen;
-
-  SslInterface::sslHEX(hash, hashLen, hex, hexLen);
-
-  delete[] hash;
+  char hex[40];
+  SslInterface::sslHEX(hash, 20, &hex[0]);
 
   // and return
-  v8::Handle<v8::String> hashStr =
-      TRI_V8_PAIR_STRING(isolate, hex, (int)hexLen);
-
-  delete[] hex;
+  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 40);
 
   TRI_V8_RETURN(hashStr);
   TRI_V8_TRY_CATCH_END
@@ -4158,7 +4115,7 @@ static void JS_RsaPrivSign(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::Handle<v8::String> signStr =
-      TRI_V8_PAIR_STRING(isolate, sign.c_str(), (int)sign.size());
+      TRI_V8_PAIR_STRING(isolate, sign.c_str(), sign.size());
 
   TRI_V8_RETURN(signStr);
   TRI_V8_TRY_CATCH_END

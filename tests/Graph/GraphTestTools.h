@@ -29,8 +29,9 @@
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
+#include "Mocks/MockQuery.h"
 
-#include "./MockGraph.h"
+#include "MockGraph.h"
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
@@ -44,11 +45,11 @@
 #include "Graph/ConstantWeightShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
+#include "Metrics/MetricsFeature.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -63,6 +64,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
 using namespace arangodb::velocypack;
+using namespace arangodb::tests::mocks;
 
 namespace arangodb {
 namespace tests {
@@ -227,7 +229,7 @@ struct MockGraphDatabase {
 
     auto ctx =
         std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-    auto query = arangodb::aql::Query::create(ctx, queryString, nullptr);
+    auto query = std::make_shared<MockQuery>(ctx, queryString);
     for (auto const& c : collections) {
       query->collections().add(c, AccessMode::Type::READ,
                                arangodb::aql::Collection::Hint::Collection);
@@ -268,7 +270,6 @@ struct MockGraphDatabase {
     spo->addReverseLookupInfo(plan, "e", StaticStrings::ToString,
                               _toCondition->clone(ast),
                               /*onlyEdgeIndexes*/ false, TRI_EDGE_IN);
-
     return spo;
   }
 

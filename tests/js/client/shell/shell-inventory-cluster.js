@@ -149,6 +149,27 @@ function clusterInventorySuite () {
         index.fields.forEach(function (field) {
           assertEqual("string", typeof field.name);
         });
+        assertEqual(index.analyzerDefinitions, [
+          {
+            "name": "custom",
+            "type": "delimiter",
+            "properties": {
+              "delimiter": " "
+            },
+            "features": [
+              "frequency"
+            ]
+          },
+          {
+            "name": "identity",
+            "type": "identity",
+            "properties": {},
+            "features": [
+              "frequency",
+              "norm"
+            ]
+          }
+        ]);
       } else {
         index.fields.forEach(function (field) {
           assertEqual("string", typeof field);
@@ -219,7 +240,7 @@ function clusterInventorySuite () {
       });
       
       c = db._create("UnitTestsDumpSearchAliasCollection");
-      let idx = c.ensureIndex({ type: "inverted", fields: [{ name: "value" }] });
+      let idx = c.ensureIndex({ type: "inverted", fields: [{ name: "value", analyzer: analyzer.name }] });
      
       view = db._createView("UnitTestsDumpViewSearchAlias", "search-alias", {});
       view.properties({
@@ -232,7 +253,7 @@ function clusterInventorySuite () {
       });
       
       c = db._create("UnitTestsDumpSearchAliasCollection2");
-      idx = c.ensureIndex({ type: "inverted", fields: [{ name: "value" }] });
+      idx = c.ensureIndex({ type: "inverted", fields: [{ name: "value", analyzer: analyzer.name }] });
      
       db._createView("UnitTestsDumpViewSearchAlias2", "search-alias", {
         indexes: [

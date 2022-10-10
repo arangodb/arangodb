@@ -27,7 +27,6 @@
 const jsunity = require('jsunity');
 const arangodb = require("@arangodb");
 const _ = require('lodash');
-const internal = require('internal');
 const db = arangodb.db;
 const helper = require('@arangodb/test-helper');
 const lh = require("@arangodb/testutils/replicated-logs-helper");
@@ -346,20 +345,20 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       // we need to fill the collection with some docs since truncate will only
       // use range-deletes (which are replicated as truncate op) if the number
       // of docs is > 32*1024, otherwise it uses babies removes.
-      // We have two shards, so we need to insert at least twice as many docs to have high enough probability that each
-      // shard contains more than 32k docs.
+      // note that our collection has multiple shards, so we need to make sure that
+      // each shard has >= 32*1024 docs!
+      const numberOfShards = collection.properties().numberOfShards;
       let docs = [];
-      for (let i = 0; i < 70; ++i) {
-        for (let j = 0; j < 1024; ++j) {
-          docs.push({});
-        }
+      for (let j = 0; j < 1024; ++j) {
+        docs.push({});
+      }
+      for (let i = 0; i < 33 * numberOfShards; ++i) {
         collection.insert(docs);
-        docs.length = 0;
       }
       collection.truncate();
 
       let found = [];
-      let allEntries = logs.reduce((previous, current) => previous.concat(current.head(1000)), []);
+      let allEntries = logs.reduce((previous, current) => previous.concat(current.head(1010)), []);
       for (const entry of allEntries) {
         if (entry.hasOwnProperty("payload") && entry.payload[1].operation === opType) {
           let colName = entry.payload[1].data.collection;
