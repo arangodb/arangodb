@@ -36,6 +36,8 @@
 namespace arangodb::iresearch::kludge {
 
 #ifdef USE_ENTERPRISE
+inline constexpr char kNestedDelimiter = '\2';
+bool isNestedField(irs::string_ref name) noexcept;
 void mangleNested(std::string& name);
 #endif
 
