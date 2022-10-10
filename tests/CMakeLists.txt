@@ -328,7 +328,7 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
         #Replication2/ModelChecker/ModelChecker.cpp
         #Replication2/ModelChecker/Tests/ModelCheckerTest.cpp
         #Replication2/ReplicatedLog/TestHelper.cpp
-        )
+        Replication2/Mocks/FakeStorageEngineMethods.cpp Replication2/Mocks/FakeStorageEngineMethods.h)
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
   ${ARANGODB_REPLICATION2_TEST_HELPER_SOURCES}

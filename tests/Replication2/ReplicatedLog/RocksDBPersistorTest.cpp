@@ -29,6 +29,7 @@
 #include <RocksDBEngine/RocksDBPersistedLog.h>
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "TestHelper.h"
 
 using namespace arangodb;
@@ -56,20 +57,6 @@ struct RocksDBInstance {
   rocksdb::DB* _db = nullptr;
   std::string _path;
 };
-
-struct IStorageEngineTestFactory {
-  using Executor = RocksDBAsyncLogWriteBatcher::IAsyncExecutor;
-
-  virtual ~IStorageEngineTestFactory() = default;
-  virtual void setup() = 0;
-  virtual void tearDown() = 0;
-  virtual auto build(std::uint64_t objectId, std::uint64_t vocbaseId,
-                     LogId logId, std::shared_ptr<Executor> executor)
-      -> std::unique_ptr<replicated_state::IStorageEngineMethods> = 0;
-  virtual void drop(
-      std::unique_ptr<replicated_state::IStorageEngineMethods>) = 0;
-};
-
 }  // namespace arangodb::replication2::test
 
 template<typename Factory>
@@ -81,9 +68,7 @@ struct StorageEngineMethodsTest : ::testing::Test {
   };
 
   static void SetUpTestCase() { Factory::SetUp(); }
-
   static void TearDownTestCase() { Factory::TearDown(); }
-
   void TearDown() override { Factory::Drop(std::move(methods)); }
   void SetUp() override {
     methods = Factory::BuildMethods(objectId, vocbaseId, logId, executor);
@@ -102,7 +87,7 @@ struct StorageEngineMethodsTest : ::testing::Test {
   std::unique_ptr<replicated_state::IStorageEngineMethods> methods;
 };
 
-namespace {
+namespace arangodb::replication2::test {
 
 struct RocksDBFactory {
   static void SetUp() {
@@ -141,14 +126,26 @@ struct RocksDBFactory {
 std::shared_ptr<test::RocksDBInstance> RocksDBFactory::rocksdb;
 std::shared_ptr<ReplicatedLogGlobalSettings> RocksDBFactory::settings;
 
-}  // namespace
+struct FakeFactory {
+  static void SetUp() {}
 
-using MyTypes = ::testing::Types<RocksDBFactory>;
+  static void TearDown() {}
+
+  static void Drop(
+      std::unique_ptr<replicated_state::IStorageEngineMethods> methods) {}
+
+  static auto BuildMethods(
+      std::uint64_t objectId, std::uint64_t vocbaseId, LogId logId,
+      std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> executor)
+      -> std::unique_ptr<replicated_state::IStorageEngineMethods> {
+    return std::make_unique<test::FakeStorageEngineMethods>(
+        objectId, logId, std::move(executor));
+  };
+};
+}  // namespace arangodb::replication2::test
+
+using MyTypes = ::testing::Types<test::RocksDBFactory, test::FakeFactory>;
 TYPED_TEST_SUITE(StorageEngineMethodsTest, MyTypes);
-
-// std::shared_ptr<ReplicatedLogGlobalSettings>
-// StorageEngineMethodsTest::settings; std::shared_ptr<test::RocksDBInstance>
-// StorageEngineMethodsTest::rocksdb;
 
 TYPED_TEST(StorageEngineMethodsTest, read_meta_data_not_found) {
   auto result = this->methods->readMetadata();
