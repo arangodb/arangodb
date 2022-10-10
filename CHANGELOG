@@ -1,12 +1,12 @@
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
+* BTS-1061: ARM was not recognized on Apple M1.
+
 * Fix an issue with replication of arangosearch view change entries in single
   server replication and active failover. Previously, when changing the
   properties of existing views, the changes were not properly picked up by
   followers in these setups. Cluster setups were not affected.
-
-* BTS-1061: ARM was not recognized on Apple M1.
 
 
 v3.10.0 (2022-09-29)
