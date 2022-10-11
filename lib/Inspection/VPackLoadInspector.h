@@ -465,7 +465,8 @@ struct VPackLoadInspectorImpl
     velocypack::Slice slice;
     bool isPresent = false;
     if (auto it = fields.find(name); it != fields.end()) {
-      assert(!it->second.second);
+      assert(!it->second.second &&
+        "field processed twice during inspection. Make sure field names are unique!");
       isPresent = true;
       slice = it->second.first;
       it->second.second = true;  // mark the field as processed
