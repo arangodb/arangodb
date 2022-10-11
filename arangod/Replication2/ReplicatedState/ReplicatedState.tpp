@@ -32,18 +32,15 @@
 #include <velocypack/Slice.h>
 
 #include "Metrics/Gauge.h"
-#include "Replication2/ReplicatedLog/LogUnconfiguredParticipant.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/LazyDeserializingIterator.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
-#include "Replication2/ReplicatedState/UnconfiguredStateManager.h"
 #include "Replication2/Streams/StreamSpecification.h"
 #include "Replication2/Streams/Streams.h"
 
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
-#include "Replication2/ReplicatedState/UnconfiguredStateManager.tpp"
 #include "Logger/LogContextKeys.h"
 #include "Replication2/MetricsHelper.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"

@@ -632,24 +632,6 @@ auto replicated_log::LogFollower::waitForIterator(LogIndex index)
   });
 }
 
-auto replicated_log::LogFollower::getLogIterator(LogIndex firstIndex) const
-    -> std::unique_ptr<LogIterator> {
-  return _guardedFollowerData.doUnderLock(
-      [&](GuardedFollowerData const& data) -> std::unique_ptr<LogIterator> {
-        auto const endIdx = data._inMemoryLog.getLastTermIndexPair().index + 1;
-        TRI_ASSERT(firstIndex <= endIdx);
-        return data._inMemoryLog.getIteratorFrom(firstIndex);
-      });
-}
-
-auto replicated_log::LogFollower::getCommittedLogIterator(
-    LogIndex firstIndex) const -> std::unique_ptr<LogIterator> {
-  return _guardedFollowerData.doUnderLock(
-      [&](GuardedFollowerData const& data) -> std::unique_ptr<LogIterator> {
-        return data.getCommittedLogIterator(firstIndex);
-      });
-}
-
 auto replicated_log::LogFollower::GuardedFollowerData::getCommittedLogIterator(
     LogIndex firstIndex) const -> std::unique_ptr<LogRangeIterator> {
   auto const endIdx = _inMemoryLog.getNextIndex();
@@ -695,19 +677,6 @@ auto LogFollower::waitForLeaderAcked() -> WaitForFuture {
 auto LogFollower::getLeader() const noexcept
     -> std::optional<ParticipantId> const& {
   return _leaderId;
-}
-
-auto LogFollower::getCommitIndex() const noexcept -> LogIndex {
-  return _guardedFollowerData.getLockedGuard()->_commitIndex;
-}
-
-auto LogFollower::waitForResign() -> futures::Future<futures::Unit> {
-  auto&& [future, action] =
-      _guardedFollowerData.getLockedGuard()->waitForResign();
-
-  action.fire();
-
-  return std::move(future);
 }
 
 auto LogFollower::construct(

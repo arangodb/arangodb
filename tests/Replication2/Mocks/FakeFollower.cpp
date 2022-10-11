@@ -45,10 +45,6 @@ auto FakeFollower::getParticipantId() const noexcept -> ParticipantId const& {
   return id;
 }
 
-auto FakeFollower::getCommitIndex() const noexcept -> LogIndex {
-  return guarded.getLockedGuard()->commitIndex;
-}
-
 auto FakeFollower::resign() && -> std::tuple<
     std::unique_ptr<replicated_log::LogCore>, DeferredAction> {
   resign();
@@ -120,10 +116,6 @@ auto FakeFollower::waitForIterator(LogIndex index)
         auto guard = guarded.getLockedGuard();
         return guard->log.getIteratorRange(index, guard->commitIndex + 1);
       });
-}
-
-auto FakeFollower::waitForResign() -> futures::Future<futures::Unit> {
-  return waitForResignQueue.addWaitFor();
 }
 
 void FakeFollower::updateCommitIndex(LogIndex index) {

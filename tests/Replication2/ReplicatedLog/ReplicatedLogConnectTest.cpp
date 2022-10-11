@@ -117,12 +117,6 @@ struct FakeLogFollower : replicated_log::ILogFollower {
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
-  auto waitForResign() -> futures::Future<futures::Unit> override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-  auto getCommitIndex() const noexcept -> LogIndex override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
   auto copyInMemoryLog() const -> replicated_log::InMemoryLog override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -152,12 +146,6 @@ struct FakeLogLeader : replicated_log::ILogLeader {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-  auto waitForResign() -> futures::Future<futures::Unit> override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-  auto getCommitIndex() const noexcept -> LogIndex override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
   auto copyInMemoryLog() const -> replicated_log::InMemoryLog override {
