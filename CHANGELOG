@@ -15,6 +15,11 @@ v3.10.1 (XXXX-XX-XX)
   be ambiguous under some circumstances, which could prevent shards from 
   getting into sync.
 
+* Fixed BTS-850: Fixed the removal of already deleted orphan collections out of
+  a graph definition. The removal of an already deleted orphan collection out of
+  a graph definition failed and has been rejected in case the collection got
+  dropped already.
+
 * BTS-1008: Update react-autocomplete-input to fix single letter collection bug
   when creating a link in the views in the WebUI.
 
