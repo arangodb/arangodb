@@ -321,6 +321,9 @@ Variable const* TraversalNode::pathOutVariable() const {
 
 /// @brief set the path out variable
 void TraversalNode::setPathOutput(Variable const* outVar) {
+  if (outVar == nullptr) {
+    markUnusedConditionVariable(_pathOutVariable);
+  }
   _pathOutVariable = outVar;
 }
 
@@ -1235,10 +1238,6 @@ void TraversalNode::setCondition(
   }
 
   _condition = std::move(condition);
-}
-
-void TraversalNode::markUnusedConditionVariable(Variable const* var) {
-  _optimizedOutVariables.emplace(var->id);
 }
 
 void TraversalNode::registerCondition(bool isConditionOnEdge,

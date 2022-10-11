@@ -176,6 +176,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
+      _optimizedOutVariables({}),
       _graphObj(nullptr),
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
@@ -361,6 +362,7 @@ GraphNode::GraphNode(ExecutionPlan* plan,
       _vocbase(&(plan->getAst()->query().vocbase())),
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
+      _optimizedOutVariables({}),
       _graphObj(nullptr),
       _tmpObjVariable(nullptr),
       _tmpObjVarNode(nullptr),
@@ -485,6 +487,15 @@ GraphNode::GraphNode(ExecutionPlan* plan,
         Variable::varFromVPack(plan->getAst(), base, "edgeOutVariable");
   }
 
+  VPackSlice optimizedOutVariables = base.get("optimizedOutVariables");
+  if (optimizedOutVariables.isArray()) {
+    for (auto const& var : VPackArrayIterator(optimizedOutVariables)) {
+      if (var.isNumber()) {
+        _optimizedOutVariables.emplace(var.getNumber<VariableId>());
+      }
+    }
+  }
+
   // Temporary Filter Objects
   TRI_ASSERT(base.hasKey("tmpObjVariable"));
   _tmpObjVariable =
@@ -529,6 +540,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
+      _optimizedOutVariables({}),
       _graphObj(graph),
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
@@ -574,6 +586,7 @@ GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
       _vocbase(other._vocbase),
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
+      _optimizedOutVariables({}),
       _graphObj(other.graph()),
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
@@ -686,6 +699,14 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   if (isEdgeOutVariableUsedLater()) {
     nodes.add(VPackValue("edgeOutVariable"));
     edgeOutVariable()->toVelocyPack(nodes);
+  }
+
+  nodes.add(VPackValue("optimizedOutVariables"));
+  {
+    VPackArrayBuilder guard(&nodes);
+    for (auto const& var : _optimizedOutVariables) {
+      nodes.add(VPackValue(var));
+    }
   }
 
   // Flags
@@ -987,7 +1008,14 @@ bool GraphNode::isVertexOutVariableUsedLater() const {
 }
 
 void GraphNode::setVertexOutput(Variable const* outVar) {
+  if (outVar == nullptr) {
+    markUnusedConditionVariable(_vertexOutVariable);
+  }
   _vertexOutVariable = outVar;
+}
+
+void GraphNode::markUnusedConditionVariable(Variable const* var) {
+  _optimizedOutVariables.emplace(var->id);
 }
 
 Variable const* GraphNode::edgeOutVariable() const { return _edgeOutVariable; }
@@ -997,6 +1025,9 @@ bool GraphNode::isEdgeOutVariableUsedLater() const {
 }
 
 void GraphNode::setEdgeOutput(Variable const* outVar) {
+  if (outVar == nullptr) {
+    markUnusedConditionVariable(_edgeOutVariable);
+  }
   _edgeOutVariable = outVar;
 }
 

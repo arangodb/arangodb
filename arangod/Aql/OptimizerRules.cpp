@@ -6377,7 +6377,8 @@ void arangodb::aql::removeFiltersCoveredByTraversal(
     auto current = node;
     while (current != nullptr) {
       if (current->getType() == EN::TRAVERSAL) {
-        auto traversalNode = ExecutionNode::castTo<TraversalNode*>(current);
+        auto traversalNode =
+            ExecutionNode::castTo<TraversalNode const*>(current);
 
         // found a traversal node, now check if the expression
         // is covered by the traversal
@@ -6431,7 +6432,6 @@ void arangodb::aql::removeFiltersCoveredByTraversal(
 
           for (auto [v, isPathCondition] : vars) {
             if (remover(v, isPathCondition)) {
-              traversalNode->markUnusedConditionVariable(v);
               modified = true;
               handled = true;
               break;
