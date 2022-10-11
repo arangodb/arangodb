@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fixed BTS-850: Fixed the removal of already deleted orphan collections out
+  of a graph definition. The removal of an already deleted orphan collection
+  out of a graph definition failed and has been rejected in case the
+  collection got dropped already.
+
 * BTS-1061: ARM was not recognized on Apple M1.
 
 * BTS-977: Added an error message for when an unauthorized user makes an 
