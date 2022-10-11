@@ -101,13 +101,8 @@ RevisionId RevisionId::fromString(std::string_view rid) {
   char const* p = rid.data();
   size_t len = rid.size();
   if (len > 0 && *p >= '1' && *p <= '9') {
-    bool isValid = false;
-    BaseType r = NumberUtils::atoi_positive<BaseType>(p, p + len, isValid);
-    if (isValid) {
-      return RevisionId{r};
-    }
-    // value consists not only of numeric digits. now fall through to
-    // the string decoding
+    BaseType r = NumberUtils::atoi_positive_unchecked<BaseType>(p, p + len);
+    return RevisionId{r};
   }
   return RevisionId{basics::HybridLogicalClock::decodeTimeStamp(p, len)};
 }
