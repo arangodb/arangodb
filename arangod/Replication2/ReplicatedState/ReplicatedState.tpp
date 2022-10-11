@@ -59,13 +59,16 @@ ReplicatedStateManager<S>::ReplicatedStateManager(
     LoggerContext loggerContext,
     std::shared_ptr<ReplicatedStateMetrics> metrics,
     std::unique_ptr<CoreType> logCore, std::shared_ptr<Factory> factory)
-    : _guarded{{._currentManager = {NewUnconfiguredStateManager<S>(
-                    _loggerContext.with<logContextKeyStateRole>(
-                        static_strings::StringUnconfigured),
-                    std::move(logCore))}}},
-      _loggerContext(std::move(loggerContext)),
+    : _loggerContext(std::move(loggerContext)),
       _metrics(std::move(metrics)),
-      _factory(std::move(factory)) {}
+      _factory(std::move(factory)),
+      _guarded{
+          //
+          std::in_place_type<NewUnconfiguredStateManager<S>>,  //
+          _loggerContext.with<logContextKeyStateRole>(
+              static_strings::StringUnconfigured),
+          std::move(logCore)  //
+      } {}
 
 template<typename S>
 void ReplicatedStateManager<S>::acquireSnapshot(ServerID leader,
@@ -171,17 +174,24 @@ void ReplicatedStateManager<S>::dropEntries() {
 
 template<typename S>
 void NewLeaderStateManager<S>::recoverEntries() {
+  auto future = _guardedData.getLockedGuard()->recoverEntries();
+  // TODO
+}
+
+template<typename S>
+auto NewLeaderStateManager<S>::GuardedData::recoverEntries() {
   auto logSnapshot = _logMethods->getLogSnapshot();
   auto logIter = logSnapshot.getIteratorFrom(LogIndex{0});
   auto deserializedIter =
       std::make_unique<LazyDeserializingIterator<EntryType, Deserializer>>(
           std::move(logIter));
-  MeasureTimeGuard timeGuard(_metrics->replicatedStateRecoverEntriesRtt);
+  MeasureTimeGuard timeGuard(_metrics.replicatedStateRecoverEntriesRtt);
   auto fut = _leaderState->recoverEntries(std::move(deserializedIter))
                  .then([guard = std::move(timeGuard)](auto&& res) mutable {
                    guard.fire();
                    return std::move(res.get());
                  });
+  return fut;
 }
 
 template<typename S>
@@ -197,8 +207,8 @@ NewLeaderStateManager<S>::NewLeaderStateManager(
     std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> logMethods)
     : _loggerContext(std::move(loggerContext)),
       _metrics(std::move(metrics)),
-      _leaderState(std::move(leaderState)),
-      _logMethods(std::move(logMethods)) {}
+      _guardedData{_loggerContext, *_metrics, std::move(leaderState),
+                   std::move(logMethods)} {}
 
 template<typename S>
 auto NewLeaderStateManager<S>::resign() noexcept
@@ -210,6 +220,13 @@ auto NewLeaderStateManager<S>::resign() noexcept
 
 template<typename S>
 void NewFollowerStateManager<S>::updateCommitIndex(LogIndex commitIndex) {
+  auto future = _guardedData.getLockedGuard()->updateCommitIndex(commitIndex);
+  // TODO
+}
+
+template<typename S>
+auto NewFollowerStateManager<S>::GuardedData::updateCommitIndex(
+    LogIndex commitIndex) {
   auto log = _logMethods->getLogSnapshot();
   auto logIter = log.getIteratorRange(_lastAppliedIndex, commitIndex);
   auto deserializedIter = std::make_unique<
@@ -222,6 +239,7 @@ void NewFollowerStateManager<S>::updateCommitIndex(LogIndex commitIndex) {
   // get log iterator follower->applyEntries(iter); todo applyEntries
   // returns a future. Is this necessary?
   //      If yes, we have to deal with this async behaviour here.
+  return fut;
 }
 
 template<typename S>
@@ -232,8 +250,7 @@ NewFollowerStateManager<S>::NewFollowerStateManager(
     std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> logMethods)
     : _loggerContext(std::move(loggerContext)),
       _metrics(std::move(metrics)),
-      _followerState(std::move(followerState)),
-      _logMethods(std::move(logMethods)) {}
+      _guardedData{std::move(followerState), std::move(logMethods)} {}
 
 template<typename S>
 void NewFollowerStateManager<S>::acquireSnapshot(ServerID leader,
@@ -255,7 +272,8 @@ auto NewFollowerStateManager<S>::resign() noexcept
 template<typename S>
 NewUnconfiguredStateManager<S>::NewUnconfiguredStateManager(
     LoggerContext loggerContext, std::unique_ptr<CoreType> core) noexcept
-    : _loggerContext(std::move(loggerContext)), _core(std::move(core)) {}
+    : _loggerContext(std::move(loggerContext)),
+      _guardedData{GuardedData{._core = std::move(core)}} {}
 
 template<typename S>
 auto IReplicatedLeaderState<S>::getStream() const noexcept

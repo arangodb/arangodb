@@ -167,8 +167,15 @@ struct NewLeaderStateManager {
  private:
   LoggerContext const _loggerContext;
   std::shared_ptr<ReplicatedStateMetrics> const _metrics;
-  std::shared_ptr<IReplicatedLeaderState<S>> _leaderState;
-  std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> _logMethods;
+  struct GuardedData {
+    auto recoverEntries();
+
+    LoggerContext const& _loggerContext;
+    ReplicatedStateMetrics const& _metrics;
+    std::shared_ptr<IReplicatedLeaderState<S>> _leaderState;
+    std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> _logMethods;
+  };
+  Guarded<GuardedData> _guardedData;
 };
 
 template<typename S>
@@ -192,9 +199,14 @@ struct NewFollowerStateManager {
  private:
   LoggerContext const _loggerContext;
   std::shared_ptr<ReplicatedStateMetrics> const _metrics;
-  std::shared_ptr<IReplicatedFollowerState<S>> _followerState;
-  std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> _logMethods;
-  LogIndex _lastAppliedIndex = LogIndex{0};
+  struct GuardedData {
+    auto updateCommitIndex(LogIndex index);
+
+    std::shared_ptr<IReplicatedFollowerState<S>> _followerState;
+    std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> _logMethods;
+    LogIndex _lastAppliedIndex = LogIndex{0};
+  };
+  Guarded<GuardedData> _guardedData;
 };
 
 template<typename S>
@@ -210,7 +222,10 @@ struct NewUnconfiguredStateManager {
 
  private:
   LoggerContext const _loggerContext;
-  std::unique_ptr<CoreType> _core;
+  struct GuardedData {
+    std::unique_ptr<CoreType> _core;
+  };
+  Guarded<GuardedData> _guardedData;
 };
 
 template<typename S>
@@ -243,17 +258,20 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
   void dropEntries() override;
 
  private:
+  LoggerContext const _loggerContext;
+  std::shared_ptr<ReplicatedStateMetrics> const _metrics;
+  std::shared_ptr<Factory> const _factory;
+
   struct GuardedData {
+    template<typename... Args>
+    GuardedData(Args&&... args)
+        : _currentManager(std::forward<Args>(args)...) {}
+
     std::variant<NewUnconfiguredStateManager<S>, NewLeaderStateManager<S>,
                  NewFollowerStateManager<S>>
         _currentManager;
   };
-
   Guarded<GuardedData> _guarded;
-
-  LoggerContext const _loggerContext;
-  std::shared_ptr<ReplicatedStateMetrics> const _metrics;
-  std::shared_ptr<Factory> const _factory;
 };
 
 template<typename S>
