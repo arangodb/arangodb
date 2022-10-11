@@ -452,7 +452,8 @@ struct VPackLoadInspectorImpl
   [[nodiscard]] Status::Success parseField(FieldsMap& fields,
                                            typename Base::IgnoreField&& field) {
     if (auto it = fields.find(field.name); it != fields.end()) {
-      assert(!it->second.second);
+      assert(!it->second.second &&
+        "field processed twice during inspection. Make sure field names are unique!");
       it->second.second = true;  // mark the field as processed
     }
     return {};
