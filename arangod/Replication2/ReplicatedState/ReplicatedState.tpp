@@ -261,12 +261,22 @@ NewFollowerStateManager<S>::NewFollowerStateManager(
 template<typename S>
 void NewFollowerStateManager<S>::acquireSnapshot(ServerID leader,
                                                  LogIndex index) {
-  auto guard = _guardedData.getLockedGuard();
-  auto fut = guard->_followerState->acquireSnapshot(std::move(leader), index);
-
-  // TODO implement
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  auto fut = _guardedData.doUnderLock([&](auto& self) {
+    return self._followerState->acquireSnapshot(std::move(leader), index);
+  });
+  // note that we release the lock before calling then to avoid deadlocks
+  std::move(fut).thenFinal(
+      [weak = this->weak_from_this()](futures::Try<Result>&& tryResult) {
+        if (auto self = weak.lock(); self != nullptr) {
+          // TODO handle errors
+          ADB_PROD_ASSERT(tryResult.hasValue());
+          ADB_PROD_ASSERT(tryResult.get().ok());
+          auto guard = self->_guardedData.getLockedGuard();
+          auto result = guard->_logMethods->snapshotCompleted();
+          // TODO handle errors
+          ADB_PROD_ASSERT(result.ok());
+        }
+      });
 }
 
 template<typename S>
