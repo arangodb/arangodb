@@ -1,7 +1,7 @@
 @startDocuBlock post_api_view_searchalias
 @brief Creates a `search-alias` View
 
-@RESTHEADER{POST /_api/view#searchalias, Create a Search Alias View, createViewSearchAlias}
+@RESTHEADER{POST /_api/view#searchalias, Create a search-alias View, createViewSearchAlias}
 
 @RESTBODYPARAM{name,string,required,string}
 The name of the View.
@@ -17,7 +17,8 @@ A list of inverted indexes to add to the View.
 The name of a collection.
 
 @RESTSTRUCT{index,post_api_view_searchalias_indexes,string,required,}
-The name of an inverted index of the `collection`.
+The name of an inverted index of the `collection`, or the index ID without
+the `<collection>/` prefix.
 
 @RESTDESCRIPTION
 Creates a new View with a given name and properties if it does not
