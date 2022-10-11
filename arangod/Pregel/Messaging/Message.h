@@ -29,8 +29,14 @@
 
 namespace arangodb::pregel {
 
+struct Ok {};
+template<typename Inspector>
+auto inspect(Inspector& f, Ok& x) {
+  return f.object(x).fields();
+}
+
 using MessagePayload =
-    std::variant<CreateWorker, ResultT<WorkerCreated>, LoadGraph,
+    std::variant<Ok, CreateWorker, ResultT<WorkerCreated>, LoadGraph,
                  ResultT<GraphLoaded>, PrepareGlobalSuperStep,
                  ResultT<GlobalSuperStepPrepared>, RunGlobalSuperStep,
                  ResultT<GlobalSuperStepFinished>, Store, ResultT<Stored>,
@@ -41,6 +47,7 @@ struct MessagePayloadSerializer : MessagePayload {};
 template<class Inspector>
 auto inspect(Inspector& f, MessagePayloadSerializer& x) {
   return f.variant(x).unqualified().alternatives(
+      arangodb::inspection::type<Ok>("ok"),
       arangodb::inspection::type<CreateWorker>("createWorker"),
       arangodb::inspection::type<ResultT<WorkerCreated>>("workerCreated"),
       arangodb::inspection::type<LoadGraph>("loadGraph"),
@@ -83,6 +90,20 @@ auto inspect(Inspector& f, ModernMessage& x) {
   return f.object(x).fields(
       f.field(Utils::executionNumberKey, x.executionNumber),
       f.field("payload", x.payload));
+}
+
+template<typename T>
+auto getResultTMessage(MessagePayload const& message) -> ResultT<T> {
+  if (!std::holds_alternative<ResultT<T>>(message)) {
+    return Result{TRI_ERROR_INTERNAL, "Received unexpected message type"};
+  }
+  auto expectedMessage = std::get<ResultT<T>>(message);
+  if (expectedMessage.fail()) {
+    return Result{expectedMessage.errorNumber(),
+                  fmt::format("Got unsuccessful message: {}",
+                              expectedMessage.errorMessage())};
+  }
+  return expectedMessage.get();
 }
 
 }  // namespace arangodb::pregel

@@ -82,15 +82,6 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::basics;
 
-namespace {
-template<class... Ts>
-struct overloaded : Ts... {
-  using Ts::operator()...;
-};
-template<class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
-}  // namespace
-
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
       << fmt::format("[job {}]", _executionNumber)
@@ -182,19 +173,6 @@ void Conductor::start() {
   _changeState(std::make_unique<conductor::Loading>(*this));
 }
 
-auto Conductor::process(MessagePayload const& message) -> Result {
-  return std::visit(
-      overloaded{[&](StatusUpdated const& x) -> Result {
-                   _workerStatusUpdate(x);
-                   return {};
-                 },
-                 [](auto const& x) -> Result {
-                   return Result{TRI_ERROR_INTERNAL,
-                                 "Conductor: Cannot handle received message"};
-                 }},
-      message);
-}
-
 auto Conductor ::_postGlobalSuperStep() -> PostGlobalSuperStepResult {
   // workers are done if all messages were processed and no active vertices
   // are left to process
@@ -226,7 +204,7 @@ auto Conductor::_preGlobalSuperStep() -> void {
 
 // The worker can (and should) periodically call back
 // to update its status
-void Conductor::_workerStatusUpdate(StatusUpdated const& data) {
+void Conductor::workerStatusUpdated(StatusUpdated const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   // TODO: for these updates we do not care about uniqueness of responses
   // _ensureUniqueResponse(data);
@@ -334,9 +312,9 @@ auto Conductor::_initializeWorkers() -> futures::Future<Result> {
     reqOpts.timeout = network::Timeout(5.0 * 60.0);
     reqOpts.database = _vocbaseGuard.database().name();
     _workers = conductor::WorkerApi{
-        _executionNumber, std::make_unique<NetworkConnection>(
-                              Utils::baseUrl(Utils::workerPrefix),
-                              std::move(reqOpts), _vocbaseGuard.database())};
+        _executionNumber,
+        std::make_unique<NetworkConnection>(
+            Utils::apiPrefix, std::move(reqOpts), _vocbaseGuard.database())};
   }
 
   auto createWorkers = std::unordered_map<ServerID, CreateWorker>{};

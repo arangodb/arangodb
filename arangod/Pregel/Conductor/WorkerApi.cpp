@@ -3,6 +3,7 @@
 
 #include "Futures/Utilities.h"
 #include "Pregel/Connection/Connection.h"
+#include "Pregel/Messaging/Aggregate.h"
 #include "Pregel/Messaging/WorkerMessages.h"
 #include "Pregel/Messaging/ConductorMessages.h"
 
@@ -75,8 +76,26 @@ auto WorkerApi::createWorkers(
 }
 
 auto WorkerApi::loadGraph(LoadGraph const& data)
-    -> futures::Future<ResultT<GraphLoaded>> {
-  return sendToAll<GraphLoaded>(data);
+    -> ResultT<Aggregate<GraphLoaded>> {
+  auto results = std::vector<futures::Future<Result>>{};
+  for (auto&& server : _servers) {
+    results.emplace_back(_connection->post(
+        Destination{Destination::Type::server, server},
+        ModernMessage{.executionNumber = _executionNumber, .payload = {data}}));
+  }
+  return futures::collectAll(results)
+      .thenValue([](auto responses) -> ResultT<Aggregate<GraphLoaded>> {
+        for (auto const& response : responses) {
+          if (response.get().fail()) {
+            return Result{
+                response.get().errorNumber(),
+                fmt::format("Got unsuccessful response from worker: {}",
+                            response.get().errorMessage())};
+          }
+        }
+        return Aggregate<GraphLoaded>::withComponentsCount(responses.size());
+      })
+      .get();
 }
 
 auto WorkerApi::prepareGlobalSuperStep(PrepareGlobalSuperStep const& data)

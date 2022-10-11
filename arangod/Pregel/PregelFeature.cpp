@@ -53,6 +53,7 @@
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/Messaging/ConductorMessages.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Worker.h"
 #include "Pregel/Messaging/Message.h"
@@ -69,6 +70,13 @@ using namespace arangodb::options;
 using namespace arangodb::pregel;
 
 namespace {
+
+template<class... Ts>
+struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+template<class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
 
 // locations for Pregel's temporary files
 std::unordered_set<std::string> const tempLocationTypes{
@@ -650,89 +658,146 @@ auto PregelFeature::cleanupWorker(ExecutionNumber executionNumber)
   });
 }
 
-void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
-                                           std::string const& path,
-                                           VPackSlice const& body,
-                                           VPackBuilder& outBuilder) {
+auto PregelFeature::process(ModernMessage message, TRI_vocbase_t& vocbase)
+    -> ResultT<ModernMessage> {
   if (isStopping()) {
-    return;  // shutdown ongoing
+    return Result{TRI_ERROR_INTERNAL, "Pregel is stopping"};
   }
-
-  if (path != Utils::modernMessagingPath) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_CURSOR_NOT_FOUND,
-        fmt::format("Conductor path not found: {}", path));
-  }
-
-  auto message = deserialize<ModernMessage>(body);
-  auto c = conductor(message.executionNumber);
-  if (!c && std::holds_alternative<ResultT<CleanupFinished>>(message.payload)) {
-    // conductor not found, but potentially already garbage-collected
-    return;
-  }
-  if (!c) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_CURSOR_NOT_FOUND,
-        fmt::format("Conductor not found, invalid execution number: {}",
-                    message.executionNumber));
-  }
-  auto response = c->process(message.payload);
+  auto response = apply(message.executionNumber, message.payload, vocbase);
   if (response.fail()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_CURSOR_NOT_FOUND,
-        fmt::format("Execution {}: {}: {}", message.executionNumber,
-                    response.errorMessage(), body.toJson()));
+    VPackBuilder serialized;
+    serialize(serialized, message);
+    return Result{TRI_ERROR_CURSOR_NOT_FOUND,
+                  fmt::format("Processing request failed: Execution {}: {}: {}",
+                              message.executionNumber, response.errorMessage(),
+                              serialized.toJson())};
   }
-  return;
+  return ModernMessage{.executionNumber = message.executionNumber,
+                       .payload = response.get()};
 }
 
-void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
-                                        std::string const& path,
-                                        VPackSlice const& body,
-                                        VPackBuilder& outBuilder) {
-  if (path != Utils::modernMessagingPath) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_CURSOR_NOT_FOUND,
-        fmt::format("Worker path not found: {}", path));
-  }
+auto PregelFeature::apply(ExecutionNumber const& executionNumber,
+                          MessagePayload const& message, TRI_vocbase_t& vocbase)
+    -> ResultT<MessagePayload> {
+  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  return std::visit(
+      overloaded{
+          [&](CreateWorker const& x) -> ResultT<MessagePayload> {
+            try {
+              auto created = AlgoRegistry::createWorker(vocbase, x, *this);
+              TRI_ASSERT(created.get() != nullptr);
+              addWorker(std::move(created), executionNumber);
+              return {
+                  WorkerCreated{.senderId = ServerState::instance()->getId()}};
+            } catch (basics::Exception& e) {
+              return Result{e.code(), e.message()};
+            }
+          },
+          [&](LoadGraph const& x) -> ResultT<MessagePayload> {
+            auto w = worker(executionNumber);
+            if (!w) {
+              return workerNotFound(executionNumber, message);
+            }
+            scheduler->queue(RequestLane::INTERNAL_LOW,
+                             [w = w->shared_from_this(), x = std::move(x)] {
+                               w->loadGraph(x);
+                             });
+            return {Ok{}};
+          },
+          [&](PrepareGlobalSuperStep const& x) -> ResultT<MessagePayload> {
+            auto w = worker(executionNumber);
+            if (!w) {
+              return workerNotFound(executionNumber, message);
+            }
+            return {w->prepareGlobalSuperStep(x).get()};
+          },
+          [&](RunGlobalSuperStep const& x) -> ResultT<MessagePayload> {
+            auto w = worker(executionNumber);
+            if (!w) {
+              return workerNotFound(executionNumber, message);
+            }
+            return {w->runGlobalSuperStep(x).get()};
+          },
+          [&](Store const& x) -> ResultT<MessagePayload> {
+            auto w = worker(executionNumber);
+            if (!w) {
+              return workerNotFound(executionNumber, message);
+            }
+            return {w->store(x).get()};
+          },
+          [&](Cleanup const& x) -> ResultT<MessagePayload> {
+            auto w = worker(executionNumber);
+            if (!w || isStopping()) {
+              // either cleanup has already happended because of garbage
+              // collection or cleanup is unnecessary because shutdown already
+              // started
+              return {CleanupFinished{}};
+            }
+            return {w->cleanup(x).get()};
+          },
+          [&](CollectPregelResults const& x) -> ResultT<MessagePayload> {
+            auto w = worker(executionNumber);
+            if (!w) {
+              return workerNotFound(executionNumber, message);
+            }
+            return {w->results(x).get()};
+          },
+          [&](PregelMessage const& x) -> ResultT<MessagePayload> {
+            auto w = worker(executionNumber);
+            if (!w) {
+              return workerNotFound(executionNumber, message);
+            }
+            w->receivedMessages(x);
+            return {Ok{}};
+          },
+          [&](StatusUpdated const& x) -> ResultT<MessagePayload> {
+            auto c = conductor(executionNumber);
+            if (!c) {
+              return conductorNotFound(executionNumber, message);
+            }
+            c->workerStatusUpdated(x);
+            return {Ok{}};
+          },
+          [&](ResultT<GraphLoaded> const& x) -> ResultT<MessagePayload> {
+            auto c = conductor(executionNumber);
+            if (!c) {
+              return conductorNotFound(executionNumber, message);
+            }
+            scheduler->queue(RequestLane::INTERNAL_LOW,
+                             [c = c->shared_from_this(), x = std::move(x)] {
+                               auto newState = c->_state->receive(x);
+                               if (newState.has_value()) {
+                                 c->_changeState(std::move(newState.value()));
+                               }
+                             });
+            return {Ok{}};
+          },
+          [&](auto const& x) -> ResultT<MessagePayload> {
+            return Result{TRI_ERROR_INTERNAL, "Cannot handle received message"};
+          }},
+      message);
+}
 
-  auto message = deserialize<ModernMessage>(body);
-  if (std::holds_alternative<CreateWorker>(message.payload)) {
-    addWorker(AlgoRegistry::createWorker(
-                  vocbase, std::get<CreateWorker>(message.payload), *this),
-              message.executionNumber);
-    auto workerCreated = ModernMessage{
-        .executionNumber = message.executionNumber,
-        .payload = WorkerCreated{.senderId = ServerState::instance()->getId()}};
-    serialize(outBuilder, workerCreated);
-    return;
-  }
-  auto w = worker(message.executionNumber);
-  if (std::holds_alternative<Cleanup>(message.payload)) {
-    if (!w) {
-      // cleanup has already happended because of garbage collection
-      auto response = ModernMessage{.executionNumber = message.executionNumber,
-                                    .payload = CleanupFinished{}};
-      serialize(outBuilder, response);
-      return;
-    }
-  }
-  if (!w) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_CURSOR_NOT_FOUND,
-        fmt::format(
-            "Handling request {} but worker for execution {} does not exist",
-            body.toJson(), message.executionNumber));
-  }
-  auto response = w->process(message.payload).get();
-  if (response.fail()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_CURSOR_NOT_FOUND,
-        fmt::format("Execution {}: {}: {}", message.executionNumber,
-                    response.errorMessage(), body.toJson()));
-  }
-  serialize(outBuilder, response.get());
-  return;
+namespace {
+auto entityNotFound(ExecutionNumber const& executionNumber, std::string entity,
+                    MessagePayload const& message) -> Result {
+  VPackBuilder serialized;
+  serialize(serialized, message);
+  return Result{TRI_ERROR_CURSOR_NOT_FOUND,
+                fmt::format("Handling request {} but {} for "
+                            "execution {} does not exist",
+                            serialized.toJson(), entity, executionNumber)};
+}
+}  // namespace
+
+auto PregelFeature::workerNotFound(ExecutionNumber const& executionNumber,
+                                   MessagePayload const& message) -> Result {
+  return entityNotFound(executionNumber, "worker", message);
+}
+
+auto PregelFeature::conductorNotFound(ExecutionNumber const& executionNumber,
+                                      MessagePayload const& message) -> Result {
+  return entityNotFound(executionNumber, "conductor", message);
 }
 
 auto PregelFeature::collectPregelResults(ExecutionNumber const& executionNumber,

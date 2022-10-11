@@ -25,6 +25,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Futures/Future.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/Messaging/Aggregate.h"
 #include "Pregel/Messaging/WorkerMessages.h"
 #include "Pregel/Messaging/ConductorMessages.h"
 #include "Pregel/WorkerInterface.h"
@@ -38,7 +39,7 @@ concept Addable = requires(T a, T b) {
   {a.add(b)};
 };
 
-struct WorkerApi : NewIWorker {
+struct WorkerApi {
   WorkerApi() = default;
   WorkerApi(ExecutionNumber executionNumber,
             std::unique_ptr<Connection> connection)
@@ -48,17 +49,17 @@ struct WorkerApi : NewIWorker {
       std::unordered_map<ServerID, CreateWorker> const& data)
       -> futures::Future<Result>;
   [[nodiscard]] auto loadGraph(LoadGraph const& graph)
-      -> futures::Future<ResultT<GraphLoaded>> override;
+      -> ResultT<Aggregate<GraphLoaded>>;
   [[nodiscard]] auto prepareGlobalSuperStep(PrepareGlobalSuperStep const& data)
-      -> futures::Future<ResultT<GlobalSuperStepPrepared>> override;
+      -> futures::Future<ResultT<GlobalSuperStepPrepared>>;
   [[nodiscard]] auto runGlobalSuperStep(RunGlobalSuperStep const& data)
-      -> futures::Future<ResultT<GlobalSuperStepFinished>> override;
+      -> futures::Future<ResultT<GlobalSuperStepFinished>>;
   [[nodiscard]] auto store(Store const& message)
-      -> futures::Future<ResultT<Stored>> override;
+      -> futures::Future<ResultT<Stored>>;
   [[nodiscard]] auto cleanup(Cleanup const& message)
-      -> futures::Future<ResultT<CleanupFinished>> override;
+      -> futures::Future<ResultT<CleanupFinished>>;
   [[nodiscard]] auto results(CollectPregelResults const& message) const
-      -> futures::Future<ResultT<PregelResults>> override;
+      -> futures::Future<ResultT<PregelResults>>;
 
  private:
   std::vector<ServerID> _servers = {};
