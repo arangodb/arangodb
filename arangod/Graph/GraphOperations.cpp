@@ -443,12 +443,18 @@ OperationResult GraphOperations::eraseOrphanCollection(
   }
 
   // check if collection exists in the database
+  bool collectionExists = true;
   Result res = checkVertexCollectionAvailability(collectionName);
   if (res.fail()) {
-    return OperationResult(res, options);
+    if (res.errorNumber() == TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST) {
+      // in this case, we are allowed just to drop it out of the definition
+      collectionExists = false;
+    } else {
+      return OperationResult(res, options);
+    }
   }
 
-  if (!hasRWPermissionsFor(collectionName)) {
+  if (collectionExists && !hasRWPermissionsFor(collectionName)) {
     return OperationResult{TRI_ERROR_FORBIDDEN, options};
   }
 
@@ -481,7 +487,7 @@ OperationResult GraphOperations::eraseOrphanCollection(
     res = trx.finish(result.result);
   }
 
-  if (dropCollection) {
+  if (dropCollection && collectionExists) {
     std::unordered_set<std::string> collectionsToBeRemoved;
     GraphManager gmngr{_vocbase};
     res = gmngr.pushCollectionIfMayBeDropped(collectionName, "",
