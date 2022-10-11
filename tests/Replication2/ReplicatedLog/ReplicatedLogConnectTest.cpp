@@ -141,8 +141,10 @@ struct FakeLogFollower : replicated_log::ILogFollower {
 };
 
 struct FakeLogLeader : replicated_log::ILogLeader {
-  explicit FakeLogLeader(std::unique_ptr<replicated_log::LogCore> core)
-      : core(std::move(core)) {}
+  explicit FakeLogLeader(
+      std::unique_ptr<replicated_log::LogCore> core,
+      std::shared_ptr<agency::ParticipantsConfig const> config)
+      : core(std::move(core)), latestConfig(std::move(config)) {}
   auto getStatus() const -> replicated_log::LogStatus override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -194,8 +196,8 @@ struct FakeLogLeader : replicated_log::ILogLeader {
     latestConfig = config;
     return LogIndex{0};
   }
-  std::shared_ptr<agency::ParticipantsConfig const> latestConfig;
   std::unique_ptr<replicated_log::LogCore> core;
+  std::shared_ptr<agency::ParticipantsConfig const> latestConfig;
 };
 
 struct FakeParticipantsFactory : replicated_log::IParticipantsFactory {
@@ -211,7 +213,8 @@ struct FakeParticipantsFactory : replicated_log::IParticipantsFactory {
                        replicated_log::LeaderTermInfo info,
                        replicated_log::ParticipantContext context)
       -> std::shared_ptr<replicated_log::ILogLeader> override {
-    auto leader = std::make_shared<FakeLogLeader>(std::move(logCore));
+    auto leader =
+        std::make_shared<FakeLogLeader>(std::move(logCore), info.initialConfig);
     participants[info.term] = leader;
     return leader;
   }
@@ -280,6 +283,11 @@ TEST_F(ReplicatedLogConnectTest, construct_leader_on_connect) {
         std::dynamic_pointer_cast<test::FakeLogLeader>(log->getParticipant());
     ASSERT_EQ(leader, participant);
   }
+
+  connection.disconnect();
+
+  // old leader lost core
+  ASSERT_EQ(leader->core, nullptr);
 }
 
 TEST_F(ReplicatedLogConnectTest, construct_leader_on_update_config) {
@@ -307,6 +315,11 @@ TEST_F(ReplicatedLogConnectTest, construct_leader_on_update_config) {
         std::dynamic_pointer_cast<test::FakeLogLeader>(log->getParticipant());
     ASSERT_EQ(leader, participant);
   }
+
+  connection.disconnect();
+
+  // old leader lost core
+  ASSERT_EQ(leader->core, nullptr);
 }
 
 TEST_F(ReplicatedLogConnectTest, update_leader_to_follower) {
