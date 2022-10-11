@@ -311,7 +311,7 @@ NonConstExpressionContainer IndexNode::buildNonConstExpressions() const {
 
     return utils::extractNonConstPartsOfIndexCondition(
         _plan->getAst(), getRegisterPlan()->varInfo, options().evaluateFCalls,
-        idx->sparse() || idx->isSorted(), _condition->root(), _outVariable);
+        idx.get(), _condition->root(), _outVariable);
   }
   return {};
 }
@@ -478,8 +478,8 @@ CostEstimate IndexNode::estimateCost() const {
 
     if (root != nullptr && root->numMembers() > i) {
       auto const* condition = _allCoveredByOneIndex ? root : root->getMember(i);
-      costs = _indexes[i]->supportsFilterCondition({}, condition, _outVariable,
-                                                   itemsInCollection);
+      costs = _indexes[i]->supportsFilterCondition(
+          trx, {}, condition, _outVariable, itemsInCollection);
     }
 
     totalItems += costs.estimatedItems;

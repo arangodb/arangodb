@@ -50,8 +50,7 @@ auto algorithms::updateReplicatedState(
   if (state == nullptr) {
     // TODO use user data instead of non-slice
     auto result =
-        ctx.createReplicatedState(id, spec->properties.implementation.type,
-                                  velocypack::Slice::noneSlice());
+        ctx.createReplicatedState(id, spec->properties.implementation.type);
     if (result.fail()) {
       return result.result();
     }

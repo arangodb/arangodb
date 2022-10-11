@@ -62,6 +62,33 @@ namespace arangodb::pregel::algos {
  *    active vertices. For this, the algorithm goes to Step 1.
  *
  *    Otherwise, the algorithm terminates.
+ *
+ * The runtime measured in the number of elementary operations is in
+ * O((n+m)^2), the number of global super steps is in O(n^2). The worst case
+ * happens if in each iteration (from Step 1 to Step 4), the least Id is in the
+ * SCC from that all other SCCs are reachable. If we assume that the
+ * distribution of Ids is sufficiently random (at the moment they are set
+ * vertex by vertex to the value of an counter), that the average SCC size
+ * is k, and that the average size of the subgraph reachable from a vertex is a
+ * fixed portion of the whole graph, the expected number of elementary
+ * operations decreases to
+ * O((n+m)^2 / (k * log(n+m)))
+ * and the number of global super steps to
+ * O(n^2 / (k * log(n))).
+ *
+ * (We find, in the first iteration, the SCC C_0 whose
+ * least Id is minimum among all Ids in the graph and we find no SCCs reachable
+ * from C_0. The reachable part is, on average, the half of the graph, actually,
+ * a fixed portion of the graph. In the other half, we, recursively, would find
+ * C_1, the SCC with the second least Id - among those not reachable from C_0 -,
+ * and so on, having, on average, a depth of log(n) of those C_i. Thus in one
+ * iteration we deactivate O(k * log(n)) vertices.)
+ *
+ * Possible improvements:
+ * (1) Remove edges between found SCCs and the remainder (according to the paper
+ *      mentioned above).
+ * (2) Correctly randomize vertex Ids.
+ * (3) Propagate also a color backwards (as suggested in the paper).
  */
 
 struct SCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {

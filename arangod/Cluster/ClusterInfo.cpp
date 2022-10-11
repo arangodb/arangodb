@@ -976,7 +976,7 @@ void ClusterInfo::loadPlan() {
 
   bool const isCoordinator = ServerState::instance()->isCoordinator();
 
-  auto start = clock::now();
+  [[maybe_unused]] auto start = clock::now();
 
   auto& clusterFeature = _server.getFeature<ClusterFeature>();
   auto& databaseFeature = _server.getFeature<DatabaseFeature>();
@@ -1008,15 +1008,17 @@ void ClusterInfo::loadPlan() {
   // set plan loader
   {
     READ_LOCKER(guard, _planProt.lock);
-    _newPlannedViews =
-        _plannedViews;  // Create a copy, since we might not visit all databases
+    // Create a copy, since we might not visit all databases
+    _newPlannedViews = _plannedViews;
+    _newPlannedCollections = _plannedCollections;
     _planLoader = std::this_thread::get_id();
   }
 
   // ensure we'll eventually reset plan loader
-  auto resetLoader = scopeGuard([this, start]() noexcept {
+  auto resetLoader = scopeGuard([&]() noexcept {
     _planLoader = std::thread::id();
     _newPlannedViews.clear();
+    _newPlannedCollections.clear();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto diff = clock::now() - start;
@@ -1025,8 +1027,6 @@ void ClusterInfo::loadPlan() {
           << "Loading the new plan took: "
           << std::chrono::duration<double>(diff).count() << "s";
     }
-#else
-    (void)start;
 #endif
   });
 
@@ -1066,7 +1066,6 @@ void ClusterInfo::loadPlan() {
 
   decltype(_plannedDatabases) newDatabases;
   std::set<std::string> buildingDatabases;
-  decltype(_plannedCollections) newCollections;
   decltype(_shards) newShards;
   decltype(_shardServers) newShardServers;
   decltype(_shardToShardGroupLeader) newShardToShardGroupLeader;
@@ -1084,7 +1083,6 @@ void ClusterInfo::loadPlan() {
     READ_LOCKER(guard, _planProt.lock);
     auto start = std::chrono::steady_clock::now();
     newDatabases = _plannedDatabases;
-    newCollections = _plannedCollections;
     newShards = _shards;
     newShardServers = _shardServers;
     newShardToShardGroupLeader = _shardToShardGroupLeader;
@@ -1439,8 +1437,8 @@ void ClusterInfo::loadPlan() {
     std::vector<std::string_view> collectionsPath{
         AgencyCommHelper::path(), "Plan", "Collections", databaseName};
     if (!collectionsSlice.hasKey(collectionsPath)) {
-      auto it = newCollections.find(databaseName);
-      if (it != newCollections.end()) {
+      auto it = _newPlannedCollections.find(databaseName);
+      if (it != _newPlannedCollections.end()) {
         for (auto const& collection : *(it->second)) {
           auto& collectionId = collection.first;
           newShards.erase(
@@ -1448,7 +1446,7 @@ void ClusterInfo::loadPlan() {
           newShardToName.erase(collectionId);
         }
         auto copy_it = it++;
-        newCollections.erase(copy_it);
+        _newPlannedCollections.erase(copy_it);
       }
       continue;
     }
@@ -1486,13 +1484,13 @@ void ClusterInfo::loadPlan() {
     // redundant lookups into _plannedCollections for the same database
 
     AllCollections::const_iterator existingCollections,
-        stillExistingCollections = newCollections.find(databaseName);
+        stillExistingCollections = _newPlannedCollections.find(databaseName);
     {
       READ_LOCKER(guard, _planProt.lock);
       existingCollections = _plannedCollections.find(databaseName);
     }
 
-    if (stillExistingCollections != newCollections.end()) {
+    if (stillExistingCollections != _newPlannedCollections.end()) {
       auto const& np = newPlan.find(databaseName);
       if (np != newPlan.end()) {
         auto nps = np->second->slice()[0];
@@ -1670,8 +1668,8 @@ void ClusterInfo::loadPlan() {
         }
       }
     }
-    newCollections.insert_or_assign(databaseName,
-                                    std::move(databaseCollections));
+    _newPlannedCollections.insert_or_assign(databaseName,
+                                            std::move(databaseCollections));
   }
 
   // Ensure "search-alias" views are being created AFTER collections
@@ -1743,8 +1741,8 @@ void ClusterInfo::loadPlan() {
       systemDB->setShardingPrototype(ShardingPrototype::Users);
       // but for "old" databases it may still be "_graphs". we need to find out!
       // find _system database in Plan
-      auto it = newCollections.find(StaticStrings::SystemDatabase);
-      if (it != newCollections.end()) {
+      auto it = _newPlannedCollections.find(StaticStrings::SystemDatabase);
+      if (it != _newPlannedCollections.end()) {
         // find _graphs collection in Plan
         auto it2 = (*it).second->find(StaticStrings::GraphCollection);
         if (it2 != (*it).second->end()) {
@@ -1773,7 +1771,7 @@ void ClusterInfo::loadPlan() {
   }
 
   if (swapCollections) {
-    _plannedCollections.swap(newCollections);
+    _plannedCollections.swap(_newPlannedCollections);
     _shards.swap(newShards);
     _shardServers.swap(newShardServers);
     _shardToShardGroupLeader.swap(newShardToShardGroupLeader);
@@ -2090,71 +2088,91 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(
 
 std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNT(
     std::string_view databaseID, std::string_view collectionID) {
-  if (!_planProt.isValid) {
-    Result r = waitForPlan(1).get();
-    if (r.fail()) {
-      return nullptr;
-    }
-  }
-
-  READ_LOCKER(readLocker, _planProt.lock);
-  // look up database by id
-  AllCollections::const_iterator it = _plannedCollections.find(databaseID);
-
-  if (it != _plannedCollections.end()) {
-    // look up collection by id (or by name)
-    DatabaseCollections::const_iterator it2 = (*it).second->find(collectionID);
-
-    if (it2 != (*it).second->end()) {
-      return (*it2).second.collection;
-    }
-  }
-
-  return nullptr;
-}
-
-std::shared_ptr<LogicalDataSource> ClusterInfo::getCollectionOrViewNT(
-    std::string_view databaseID, std::string_view name) {
-  if (!_planProt.isValid) {
-    Result r = waitForPlan(1).get();
-    if (r.fail()) {
-      return nullptr;
-    }
-  }
-
-  READ_LOCKER(readLocker, _planProt.lock);
-
-  // look up collection first
-  {
+  auto lookupCollection =
+      [&](auto const& collections) -> std::shared_ptr<LogicalCollection> {
     // look up database by id
-    auto it = _plannedCollections.find(databaseID);
+    auto it = collections.find(databaseID);
 
-    if (it != _plannedCollections.end()) {
+    if (it != collections.end()) {
       // look up collection by id (or by name)
-      auto it2 = (*it).second->find(name);
+      auto it2 = (*it).second->find(collectionID);
 
       if (it2 != (*it).second->end()) {
         return (*it2).second.collection;
       }
     }
+    return nullptr;
+  };
+
+  if (std::this_thread::get_id() == _planLoader) {
+    // we're loading plan, lookup inside immediately created planned data
+    // sources already protected by _planProt.mutex, don't need to lock there
+    return lookupCollection(_newPlannedCollections);
   }
 
-  // look up views next
-  {
-    // look up database by id
-    auto it = _plannedViews.find(databaseID);
-
-    if (it != _plannedViews.end()) {
-      // look up collection by id (or by name)
-      auto it2 = (*it).second.find(name);
-
-      if (it2 != (*it).second.end()) {
-        return (*it2).second;
-      }
+  if (!_planProt.isValid) {
+    Result r = waitForPlan(1).get();
+    if (r.fail()) {
+      return nullptr;
     }
   }
 
-  return nullptr;
+  READ_LOCKER(readLocker, _planProt.lock);
+  return lookupCollection(_plannedCollections);
+}
+
+std::shared_ptr<LogicalDataSource> ClusterInfo::getCollectionOrViewNT(
+    std::string_view databaseID, std::string_view name) {
+  auto lookupDataSource =
+      [&](auto const& collections,
+          auto const& views) -> std::shared_ptr<LogicalDataSource> {
+    // look up collection first
+    {
+      // look up database by id
+      auto it = collections.find(databaseID);
+
+      if (it != collections.end()) {
+        // look up collection by id (or by name)
+        auto it2 = (*it).second->find(name);
+
+        if (it2 != (*it).second->end()) {
+          return (*it2).second.collection;
+        }
+      }
+    }
+
+    // look up views next
+    {
+      // look up database by id
+      auto it = views.find(databaseID);
+
+      if (it != views.end()) {
+        // look up collection by id (or by name)
+        auto it2 = (*it).second.find(name);
+
+        if (it2 != (*it).second.end()) {
+          return (*it2).second;
+        }
+      }
+    }
+    return nullptr;
+  };
+
+  if (std::this_thread::get_id() == _planLoader) {
+    // we're loading plan, lookup inside immediately created planned data
+    // sources already protected by _planProt.mutex, don't need to lock there
+    return lookupDataSource(_newPlannedCollections, _newPlannedViews);
+  }
+
+  if (!_planProt.isValid) {
+    Result r = waitForPlan(1).get();
+    if (r.fail()) {
+      return nullptr;
+    }
+  }
+
+  READ_LOCKER(readLocker, _planProt.lock);
+  return lookupDataSource(_plannedCollections, _plannedViews);
 }
 
 std::string ClusterInfo::getCollectionNotFoundMsg(
@@ -2249,8 +2267,7 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(std::string_view databaseID,
   }
 
   auto lookupView =
-      [](AllViews const& dbs, std::string_view databaseID,
-         std::string_view viewID) noexcept -> std::shared_ptr<LogicalView> {
+      [&](AllViews const& dbs) noexcept -> std::shared_ptr<LogicalView> {
     // look up database by id
     auto const db = dbs.find(databaseID);
 
@@ -2270,7 +2287,7 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(std::string_view databaseID,
   if (std::this_thread::get_id() == _planLoader) {
     // we're loading plan, lookup inside immediately created planned views
     // already protected by _planProt.mutex, don't need to lock there
-    return lookupView(_newPlannedViews, databaseID, viewID);
+    return lookupView(_newPlannedViews);
   }
 
   if (!_planProt.isValid) {
@@ -2279,7 +2296,7 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(std::string_view databaseID,
 
   {
     READ_LOCKER(readLocker, _planProt.lock);
-    auto view = lookupView(_plannedViews, databaseID, viewID);
+    auto view = lookupView(_plannedViews);
 
     if (view) {
       return view;
@@ -2289,7 +2306,7 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(std::string_view databaseID,
   Result res = fetchAndWaitForPlanVersion(std::chrono::seconds(10)).get();
   if (res.ok()) {
     READ_LOCKER(readLocker, _planProt.lock);
-    auto view = lookupView(_plannedViews, databaseID, viewID);
+    auto view = lookupView(_plannedViews);
 
     if (view) {
       return view;
@@ -4912,6 +4929,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
     if (numberOfShards > 0 &&
         !slice.get(StaticStrings::IndexType).isEqualString("arangosearch")) {
       ob->add(StaticStrings::IndexIsBuilding, VPackValue(true));
+      // add our coordinator id and reboot id
+      ob->add(StaticStrings::AttrCoordinator,
+              VPackValue(ServerState::instance()->getId()));
+      ob->add(StaticStrings::AttrCoordinatorRebootId,
+              VPackValue(ServerState::instance()->getRebootId().value()));
     }
     ob->add(StaticStrings::IndexId, VPackValue(idString));
   }
@@ -5040,12 +5062,15 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
         VPackBuilder finishedPlanIndex;
         {
           VPackObjectBuilder o(&finishedPlanIndex);
-          for (auto const& entry :
-               VPackObjectIterator(newIndexBuilder.slice())) {
+          for (auto entry : VPackObjectIterator(newIndexBuilder.slice())) {
             auto const key = entry.key.stringView();
+            // remove "isBuilding", "coordinatorId" and "rebootId", plus
+            // "newlyCreated" from the final index
             if (key != StaticStrings::IndexIsBuilding &&
+                key != StaticStrings::AttrCoordinator &&
+                key != StaticStrings::AttrCoordinatorRebootId &&
                 key != "isNewlyCreated") {
-              finishedPlanIndex.add(entry.key.copyString(), entry.value);
+              finishedPlanIndex.add(entry.key.stringView(), entry.value);
             }
           }
         }
@@ -5976,42 +6001,37 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers() {
 
 std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
     std::string_view shardID) {
+  if (auto result = getResponsibleServerReplication2(shardID);
+      result != nullptr) {
+    return result;
+  }
+  return getResponsibleServerReplication1(shardID);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replication1 code for getResponsibleServer
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<std::vector<ServerID> const>
+ClusterInfo::getResponsibleServerReplication1(std::string_view shardID) {
   int tries = 0;
 
   if (!_currentProt.isValid) {
-    tries++;
+    Result r = waitForCurrent(1).get();
+    if (r.fail()) {
+      THROW_ARANGO_EXCEPTION(r);
+    }
   }
-
-  auto logId = LogicalCollection::shardIdToStateId(shardID);
 
   while (true) {
     {
       READ_LOCKER(readLocker, _currentProt.lock);
-      {
-        // if we find a replicated log for this shard, then this is a
-        // replication 2.0 db, in which case we want to use the participant
-        // information from the log instead
-        auto it = _replicatedLogs.find(logId);
-        if (it != _replicatedLogs.end()) {
-          auto& participants = it->second->participantsConfig.participants;
-          auto result = std::make_shared<std::vector<ServerID>>();
-          result->reserve(participants.size());
-          // participants is an unordered map, but the resulting list requires
-          // that the leader is the first entry!
-          auto& leader = it->second->currentTerm->leader->serverId;
-          result->emplace_back(leader);
-          for (auto& [k, v] : participants) {
-            if (k != leader) {
-              result->emplace_back(k);
-            }
-          }
-        }
-      }
-
       // _shardIds is a map-type <ShardId,
       // std::shared_ptr<std::vector<ServerId>>>
       auto it = _shardIds.find(shardID);
 
+      // TODO throw an exception if we don't find the shard or the server list
+      // is null or empty?
       if (it != _shardIds.end()) {
         auto serverList = (*it).second;
         if (serverList != nullptr && !serverList->empty() &&
@@ -6019,22 +6039,84 @@ std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
           // This is a temporary situation in which the leader has already
           // resigned, let's wait half a second and try again.
           --tries;
-          LOG_TOPIC("b1dc5", INFO, Logger::CLUSTER)
-              << "getResponsibleServer: found resigned leader,"
-              << "waiting for half a second...";
         } else {
           return (*it).second;
         }
       }
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-    if (++tries >= 2) {
+    if (++tries >= 2 || _server.isStopping()) {
       break;
     }
+
+    LOG_TOPIC("b1dc5", INFO, Logger::CLUSTER)
+        << "getResponsibleServerReplication1: found resigned leader,"
+        << "waiting for half a second...";
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
   return std::make_shared<std::vector<ServerID>>();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief for replication2 we use the replicated logs data to find the servers
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<std::vector<ServerID> const>
+ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
+  int tries = 0;
+
+  if (!_planProt.isValid) {
+    Result r = waitForPlan(1).get();
+    if (r.fail()) {
+      THROW_ARANGO_EXCEPTION(r);
+    }
+  }
+
+  auto logId = LogicalCollection::shardIdToStateId(shardID);
+  auto result = std::shared_ptr<std::vector<ServerID>>{nullptr};
+
+  while (true) {
+    {
+      READ_LOCKER(readLocker, _planProt.lock);
+      // if we find a replicated log for this shard, then this is a
+      // replication 2.0 db, in which case we want to use the participant
+      // information from the log instead
+      auto it = _replicatedLogs.find(logId);
+      if (it == _replicatedLogs.end()) {
+        // we are not in a replication2 database
+        break;
+      }
+
+      if (it->second->currentTerm.has_value() &&
+          it->second->currentTerm->leader.has_value()) {
+        auto& leader = it->second->currentTerm->leader->serverId;
+        auto& participants = it->second->participantsConfig.participants;
+        result = std::make_shared<std::vector<ServerID>>();
+        result->reserve(participants.size());
+        // participants is an unordered map, but the resulting list requires
+        // that the leader is the first entry!
+        result->emplace_back(leader);
+        for (auto& [k, v] : participants) {
+          if (k != leader) {
+            result->emplace_back(k);
+          }
+        }
+        break;
+      }
+    }
+
+    if (++tries >= 100 || _server.isStopping()) {
+      break;
+    }
+
+    LOG_TOPIC("4fff5", INFO, Logger::CLUSTER)
+        << "getResponsibleServerReplication2: did not found leader,"
+        << "waiting for half a second...";
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  }
+
+  return result;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -6051,45 +6133,27 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
   TRI_ASSERT(!shardIds.empty());
 
   containers::FlatHashMap<ShardID, ServerID> result;
+
+  if (!getResponsibleServersReplication2(shardIds, result)) {
+    getResponsibleServersReplication1(shardIds, result);
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replication1 code for getResponsibleServers
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterInfo::getResponsibleServersReplication1(
+    containers::FlatHashSet<ShardID> const& shardIds,
+    containers::FlatHashMap<ShardID, ServerID>& result) {
   int tries = 0;
 
   if (!_currentProt.isValid) {
     Result r = waitForCurrent(1).get();
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(r);
-    }
-  }
-
-  {
-    READ_LOCKER(readLocker, _currentProt.lock);
-    bool isReplicationTwo = false;
-    for (auto const& shardId : shardIds) {
-      auto logId = LogicalCollection::tryShardIdToStateId(shardId);
-      if (!logId.has_value()) {
-        // could not convert shardId to logId, but this implies that
-        // the shardId is not valid.
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                       "invalid shard " + shardId);
-      }
-      // if we find a replicated log for this shard, then this is a
-      // replication 2.0 db, in which case we want to use the leader
-      // information from the log instead
-      auto it = _replicatedLogs.find(*logId);
-      if (it != _replicatedLogs.end()) {
-        isReplicationTwo = true;
-        result.emplace(shardId, it->second->currentTerm->leader->serverId);
-      } else if (isReplicationTwo) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-            "no replicated log found for shard " + shardId);
-      } else {
-        // this seems to be no replication 2.0 db -> skip the remaining shards
-        // and continue as usual
-        break;
-      }
-    }
-    if (isReplicationTwo) {
-      return result;
     }
   }
 
@@ -6101,9 +6165,8 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
         auto it = _shardIds.find(shardId);
 
         if (it == _shardIds.end()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-              "no servers found for shard " + shardId);
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                         "no shard found with ID " + shardId);
         }
 
         auto serverList = (*it).second;
@@ -6137,12 +6200,82 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
     }
 
     LOG_TOPIC("31428", INFO, Logger::CLUSTER)
-        << "getResponsibleServers: found resigned leader,"
+        << "getResponsibleServersReplication1: found resigned leader,"
         << "waiting for half a second...";
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
+}
 
-  return result;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief for replication2 we use the replicated logs data to find the servers
+////////////////////////////////////////////////////////////////////////////////
+
+bool ClusterInfo::getResponsibleServersReplication2(
+    containers::FlatHashSet<ShardID> const& shardIds,
+    containers::FlatHashMap<ShardID, ServerID>& result) {
+  int tries = 0;
+
+  if (!_planProt.isValid) {
+    Result r = waitForPlan(1).get();
+    if (r.fail()) {
+      THROW_ARANGO_EXCEPTION(r);
+    }
+  }
+
+  auto& clusterFeature = _server.getFeature<ClusterFeature>();
+  auto& agencyCache = clusterFeature.agencyCache();
+
+  bool isReplicationTwo = false;
+  while (true) {
+    TRI_ASSERT(result.empty());
+    {
+      READ_LOCKER(readLocker, _planProt.lock);
+
+      for (auto const& shardId : shardIds) {
+        auto logId = LogicalCollection::tryShardIdToStateId(shardId);
+        if (!logId.has_value()) {
+          // could not convert shardId to logId, but this implies that
+          // the shardId is not valid.
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                         "invalid shard " + shardId);
+        }
+        // if we find a replicated log for this shard, then this is a
+        // replication 2.0 db, in which case we want to use the leader
+        // information from the log instead
+        auto it = _replicatedLogs.find(*logId);
+        if (it != _replicatedLogs.end()) {
+          isReplicationTwo = true;
+          if (it->second->currentTerm.has_value() &&
+              it->second->currentTerm->leader.has_value()) {
+            result.emplace(shardId, it->second->currentTerm->leader->serverId);
+          } else {
+            // no leader found, will retry
+            ++tries;
+            result.clear();
+            break;
+          }
+        } else if (isReplicationTwo) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+              "no replicated log found for shard " + shardId);
+        } else {
+          // this seems to be no replication 2.0 db -> skip the remaining shards
+          return false;
+        }
+      }
+    }
+
+    LOG_TOPIC("0f8a7", INFO, Logger::CLUSTER)
+        << "getResponsibleServersReplication2: did not found leader,"
+        << "waiting for half a second...";
+
+    if (tries >= 100 || !result.empty() || _server.isStopping()) {
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

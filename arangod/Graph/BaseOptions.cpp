@@ -218,7 +218,7 @@ void BaseOptions::LookupInfo::initializeNonConstExpressions(
     std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
     aql::Variable const* indexVariable) {
   _nonConstContainer = aql::utils::extractNonConstPartsOfIndexCondition(
-      ast, varInfo, false, false, indexCondition, indexVariable);
+      ast, varInfo, false, nullptr, indexCondition, indexVariable);
   // We cannot optimize V8 expressions
   TRI_ASSERT(!_nonConstContainer._hasV8Expression);
 }
@@ -395,9 +395,10 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
   // actual value does not matter much. 1000 has historically worked fine.
   constexpr size_t itemsInCollection = 1000;
 
+  auto& trx = plan->getAst()->query().trxForOptimization();
   bool res = aql::utils::getBestIndexHandleForFilterCondition(
-      *coll, info.indexCondition, _tmpVar, itemsInCollection, aql::IndexHint(),
-      info.idxHandles[0], onlyEdgeIndexes);
+      trx, *coll, info.indexCondition, _tmpVar, itemsInCollection,
+      aql::IndexHint(), info.idxHandles[0], onlyEdgeIndexes);
   // Right now we have an enforced edge index which should always fit.
   if (!res) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

@@ -810,7 +810,8 @@ AqlValue Expression::executeSimpleExpressionFCall(ExpressionContext& ctx,
   // check that the called function actually has one
   auto func = static_cast<Function*>(node->getData());
   TRI_ASSERT(func != nullptr);
-  if (func->hasCxxImplementation()) {
+  // likely because call js function anyway will be slow
+  if (ADB_LIKELY(func->hasCxxImplementation())) {
     return executeSimpleExpressionFCallCxx(ctx, node, mustDestroy);
   }
   return executeSimpleExpressionFCallJS(ctx, node, mustDestroy);

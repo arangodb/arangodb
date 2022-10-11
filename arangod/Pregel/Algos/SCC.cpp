@@ -120,9 +120,9 @@ struct SCCComputation
           SenderMessage<uint64_t> message(pregelId(), vertexState->color);
           // sendMessageToAllParents
           for (PregelID const& pid : vertexState->parents) {
-            sendMessage(pid, message); // todo: if the parent was deactivated
-                                       //  this reactivates it in the refactored
-                                       //  Pregel. Change this.
+            sendMessage(pid, message);  // todo: if the parent was deactivated
+                                        //  this reactivates it in the
+                                        //  refactored Pregel. Change this.
           }
         }
         break;
