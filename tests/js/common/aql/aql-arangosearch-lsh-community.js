@@ -121,7 +121,7 @@ function IResearchLshAqlTestSuiteCommunity() {
 
     testMinhashMatch: function() {
       checkThatQueryReturnsExpectedError(
-        "for doc in view search minhash_match(doc.dataStr, 'abc', 0.3, 'myMinHash10') return doc",
+        "for doc in view search minhash_match(doc.dataStr, 'abc', 0.3, 'identity') return doc",
         errors.ERROR_NOT_IMPLEMENTED.code);
     },
 
