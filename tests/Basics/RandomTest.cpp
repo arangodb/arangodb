@@ -22,13 +22,52 @@
 /// @author Copyright 2007-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-
 #include "gtest/gtest.h"
 
 #include "Random/RandomGenerator.h"
+#include <stdint.h>
 
 using namespace arangodb;
+
+TEST(RandomGeneratorTest, test_RandomGeneratorTest_random_uint32) {
+  RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
+  RandomGenerator::ensureDeviceIsInitialized();
+  ASSERT_EQ(RandomGenerator::random(INT32_MAX, 5), INT32_MAX);
+  ASSERT_LE(RandomGenerator::random(1000, INT32_MAX), INT32_MAX);
+}
+
+TEST(RandomGeneratorTest,
+     test_RandomGeneratorTest_UniformRandomGenerator_uint16) {
+  RandomGenerator::UniformRandomGenerator<uint16_t> uniformRandomGenerator;
+  ASSERT_EQ(uniformRandomGenerator.min(), 0);
+  ASSERT_EQ(uniformRandomGenerator.max(), INT16_MAX);
+  for (int i = 0; i < 10000; ++i) {
+    uint16_t value = uniformRandomGenerator();
+    ASSERT_LE(value, uniformRandomGenerator.max());
+  }
+}
+
+TEST(RandomGeneratorTest,
+     test_RandomGeneratorTest_UniformRandomGenerator_uint32) {
+  RandomGenerator::UniformRandomGenerator<uint32_t> uniformRandomGenerator;
+  ASSERT_EQ(uniformRandomGenerator.min(), 0);
+  ASSERT_EQ(uniformRandomGenerator.max(), INT32_MAX);
+  for (int i = 0; i < 10000; ++i) {
+    uint32_t value = uniformRandomGenerator();
+    ASSERT_LE(value, uniformRandomGenerator.max());
+  }
+}
+
+TEST(RandomGeneratorTest,
+     test_RandomGeneratorTest_UniformRandomGenerator_uint64) {
+  RandomGenerator::UniformRandomGenerator<uint64_t> uniformRandomGenerator;
+  ASSERT_EQ(uniformRandomGenerator.min(), 0);
+  ASSERT_EQ(uniformRandomGenerator.max(), INT64_MAX);
+  for (int i = 0; i < 10000; ++i) {
+    uint64_t value = uniformRandomGenerator();
+    ASSERT_LE(value, uniformRandomGenerator.max());
+  }
+}
 
 TEST(RandomGeneratorTest, test_RandomGeneratorTest_interval_uint16_brute) {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
@@ -101,6 +140,11 @@ TEST(RandomGeneratorTest, test_RandomGeneratorTest_ranges_int16_brute) {
       int16_t value = RandomGenerator::interval(lower, upper);
       ASSERT_GE(value, lower);
       ASSERT_LE(value, upper);
+      value = RandomGenerator::interval(upper, lower);
+      ASSERT_EQ(value, upper);
+      value = RandomGenerator::random(lower, upper);
+      ASSERT_GE(value, lower);
+      ASSERT_LE(value, upper);
     }
   }
 }
@@ -151,6 +195,11 @@ TEST(RandomGeneratorTest, test_RandomGeneratorTest_ranges_int32_brute) {
       int32_t value = RandomGenerator::interval(lower, upper);
       ASSERT_GE(value, lower);
       ASSERT_LE(value, upper);
+      value = RandomGenerator::interval(upper, lower);
+      ASSERT_EQ(value, upper);
+      value = RandomGenerator::random(lower, upper);
+      ASSERT_GE(value, lower);
+      ASSERT_LE(value, upper);
     }
   }
 }
@@ -197,9 +246,16 @@ TEST(RandomGeneratorTest, test_RandomGeneratorTest_ranges_int64_brute) {
       {9223372036854775807LL, 9223372036854775807LL},
   };
   for (auto [lower, upper] : bounds) {
+    LOG_DEVEL << "lower " << lower << " upper " << upper << " " << UINT64_MAX
+              << " "
+              << " " << INT64_MAX << " " << (upper < INT64_MAX);
     for (int i = 0; i < 10000; ++i) {
       int64_t value = RandomGenerator::interval(lower, upper);
       ASSERT_GE(value, lower);
+      ASSERT_LE(value, upper);
+      value = RandomGenerator::interval(upper, lower);
+      ASSERT_EQ(value, upper);
+      value = RandomGenerator::random(lower, upper);
       ASSERT_LE(value, upper);
     }
   }
@@ -259,6 +315,11 @@ TEST(RandomGeneratorTest, test_RandomGeneratorTest_random_int32_brute) {
   for (auto [lower, upper] : bounds) {
     for (int i = 0; i < 10000; ++i) {
       int32_t value = RandomGenerator::random(lower, upper);
+      ASSERT_GE(value, lower);
+      ASSERT_LE(value, upper);
+      value = RandomGenerator::interval(upper, lower);
+      ASSERT_EQ(value, upper);
+      value = RandomGenerator::random(lower, upper);
       ASSERT_GE(value, lower);
       ASSERT_LE(value, upper);
     }
