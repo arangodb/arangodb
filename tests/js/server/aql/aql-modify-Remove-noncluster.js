@@ -1,12 +1,8 @@
 /*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
 /*global assertEqual, assertFalse, assertNull, assertNotNull, assertTrue, 
-  assertNotEqual, assertUndefined, fail, AQL_EXECUTE */
+  assertNotEqual, assertUndefined, fail, AQL_EXECUTE, assertNotUndefined */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, bind parameters
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -35,35 +31,13 @@ const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const getModifyQueryResults = helper.getModifyQueryResults;
 const getModifyQueryResultsRaw = helper.getModifyQueryResultsRaw;
+const sanitizeStats = helper.sanitizeStats;
 const isEqual = helper.isEqual;
 const assertQueryError = helper.assertQueryError;
 const errors = internal.errors;
 
-let sanitizeStats = function (stats) {
-  // remove these members from the stats because they don't matter
-  // for the comparisons
-  delete stats.scannedFull;
-  delete stats.scannedIndex;
-  delete stats.cursorsCreated;
-  delete stats.cursorsRearmed;
-  delete stats.cacheHits;
-  delete stats.cacheMisses;
-  delete stats.filtered;
-  delete stats.executionTime;
-  delete stats.httpRequests;
-  delete stats.fullCount;
-  delete stats.peakMemoryUsage;
-  delete stats.intermediateCommits;
-  return stats;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 
-////////////////////////////////////////////////////////////////////////////////
-
-var validateDocuments = function (documents, isEdgeCollection) {
-  var index;
-  for (index in documents) {
+let validateDocuments = function (documents, isEdgeCollection) {
+  for (let index in documents) {
     if (documents.hasOwnProperty(index)) {
       assertTrue(documents[index].hasOwnProperty('_id'));
       assertTrue(documents[index].hasOwnProperty('_key'));
@@ -77,32 +51,17 @@ var validateDocuments = function (documents, isEdgeCollection) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether the documents inserted are equal on the db.
-////////////////////////////////////////////////////////////////////////////////
-
-var validateModifyResultInsert = function (collection, results) {
-  var index;
-  for (index in results) {
-    if (results.hasOwnProperty(index)){
-      assertTrue(isEqual(collection.document(results[index]._key), results[index]));
-    }
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the documents reported deleted are really gone
 ////////////////////////////////////////////////////////////////////////////////
 
-var validateDeleteGone = function (collection, results) {
-  var index;
-  for (index in results) {
-    if (results.hasOwnProperty(index)){
+let validateDeleteGone = function (collection, results) {
+  for (let index in results) {
+    if (results.hasOwnProperty(index)) {
       try {
         assertEqual(collection.document(results[index]._key), {});
         fail();
-      }
-      catch (e) {
-        assertTrue(e.errorNum !== undefined, "unexpected error format while calling checking for deleted entry");
+      } catch (e) {
+        assertNotUndefined(e.errorNum, "unexpected error format while calling checking for deleted entry");
         assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, e.errorNum, "unexpected error code (" + e.errorMessage + "): ");
       }
     }
@@ -110,27 +69,10 @@ var validateDeleteGone = function (collection, results) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert flat document database to an associative array with the keys
-///        as object
-////////////////////////////////////////////////////////////////////////////////
-
-var wrapToKeys = function (results) {
-  var keyArray = {};
-  var index;
-  for (index in results) {
-    if (results.hasOwnProperty(index)){
-      keyArray[results[index]._key] = results[index];
-    }    
-  }
-  return keyArray;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlRemoveSuite () {
-  const errors = internal.errors;
   const cn1 = "UnitTestsAhuacatlRemove1";
   const cn2 = "UnitTestsAhuacatlRemove2";
   let c1;
@@ -138,28 +80,19 @@ function ahuacatlRemoveSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUp : function () {
-      let i;
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1);
       c2 = db._create(cn2);
 
-      for (i = 0; i < 100; ++i) {
-        c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
-      for (i = 0; i < 50; ++i) {
-        c2.save({ _key: "test" + i, value1: i, value2: "test" + i });
-      }
+      c1.insert(docs);
+      c2.insert(docs.slice(0, 50));
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       db._drop(cn1);
@@ -799,11 +732,5 @@ function ahuacatlRemoveSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(ahuacatlRemoveSuite);
-
 return jsunity.done();
-
