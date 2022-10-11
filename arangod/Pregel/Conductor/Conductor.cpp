@@ -45,7 +45,7 @@
 #include "Pregel/Conductor/States/State.h"
 #include "Pregel/Conductor/States/StoringState.h"
 #include "Pregel/Conductor/WorkerApi.h"
-#include "Pregel/Connection/DirectConnectionToWorker.h"
+#include "Pregel/Connection/DirectConnection.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/ConductorStatus.h"
@@ -81,15 +81,6 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::basics;
-
-namespace {
-template<class... Ts>
-struct overloaded : Ts... {
-  using Ts::operator()...;
-};
-template<class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
-}  // namespace
 
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
@@ -182,31 +173,6 @@ void Conductor::start() {
   _changeState(std::make_unique<conductor::Loading>(*this));
 }
 
-auto Conductor::process(MessagePayload const& message) -> Result {
-  return std::visit(
-      overloaded{[&](StatusUpdated const& x) -> Result {
-                   _workerStatusUpdate(x);
-                   return {};
-                 },
-                 [&](ResultT<GraphLoaded> const& x) -> Result {
-                   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-                   scheduler->queue(
-                       RequestLane::INTERNAL_LOW,
-                       [this, self = shared_from_this(), x] {
-                         auto newState = _state->receive(x);
-                         if (newState.has_value()) {
-                           _changeState(std::move(newState.value()));
-                         }
-                       });
-                   return Result{};
-                 },
-                 [](auto const& x) -> Result {
-                   return Result{TRI_ERROR_INTERNAL,
-                                 "Conductor: Cannot handle received message"};
-                 }},
-      message);
-}
-
 auto Conductor ::_postGlobalSuperStep() -> PostGlobalSuperStepResult {
   // workers are done if all messages were processed and no active vertices
   // are left to process
@@ -238,7 +204,7 @@ auto Conductor::_preGlobalSuperStep() -> void {
 
 // The worker can (and should) periodically call back
 // to update its status
-void Conductor::_workerStatusUpdate(StatusUpdated const& data) {
+void Conductor::workerStatusUpdated(StatusUpdated const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   // TODO: for these updates we do not care about uniqueness of responses
   // _ensureUniqueResponse(data);
@@ -338,17 +304,17 @@ auto Conductor::_initializeWorkers() -> futures::Future<Result> {
 
   if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
     TRI_ASSERT(servers.size() == 1);
-    _workers = conductor::WorkerApi{_executionNumber,
-                                    std::make_unique<DirectConnectionToWorker>(
-                                        _feature, _vocbaseGuard.database())};
+    _workers = conductor::WorkerApi{
+        _executionNumber,
+        std::make_unique<DirectConnection>(_feature, _vocbaseGuard.database())};
   } else {
     network::RequestOptions reqOpts;
     reqOpts.timeout = network::Timeout(5.0 * 60.0);
     reqOpts.database = _vocbaseGuard.database().name();
     _workers = conductor::WorkerApi{
-        _executionNumber, std::make_unique<NetworkConnection>(
-                              Utils::baseUrl(Utils::workerPrefix),
-                              std::move(reqOpts), _vocbaseGuard.database())};
+        _executionNumber,
+        std::make_unique<NetworkConnection>(
+            Utils::apiPrefix, std::move(reqOpts), _vocbaseGuard.database())};
   }
 
   auto createWorkers = std::unordered_map<ServerID, CreateWorker>{};

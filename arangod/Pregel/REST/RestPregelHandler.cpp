@@ -30,6 +30,7 @@
 #include "Logger/LogMacros.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Utils.h"
+#include "fmt/format.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -59,20 +60,21 @@ RestStatus RestPregelHandler::execute() {
 
     VPackBuilder response;
     std::vector<std::string> const& suffix = _request->suffixes();
-    if (suffix.size() != 2) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
-                    "you are missing a prefix");
-    } else if (suffix[0] == Utils::conductorPrefix) {
-      _pregel.handleConductorRequest(_vocbase, suffix[1], body, response);
-      generateResult(rest::ResponseCode::OK, response.slice());
-    } else if (suffix[0] == Utils::workerPrefix) {
-      _pregel.handleWorkerRequest(_vocbase, suffix[1], body, response);
-
-      generateResult(rest::ResponseCode::OK, response.slice());
-    } else {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
-                    "the prefix is incorrect");
+    if (suffix.size() != 0) {
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
+          fmt::format("Worker path not found: {}", fmt::join(suffix, "/")));
     }
+
+    auto message = deserialize<ModernMessage>(body);
+    auto result = _pregel.process(message, _vocbase);
+    if (result.fail()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(),
+                                     result.errorMessage());
+    }
+    serialize(response, result.get());
+    generateResult(rest::ResponseCode::OK, response.slice());
+
   } catch (basics::Exception const& ex) {
     LOG_TOPIC("d1b56", ERR, arangodb::Logger::PREGEL)
         << "Exception in pregel REST handler: " << ex.what();
