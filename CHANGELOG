@@ -1,6 +1,20 @@
 devel
 -----
 
+* Fixed handling of empty URL parameters in HTTP request handling.
+
+* Fixed diffing of completely non-overlapping revision trees, which could
+  lead to out-of-bounds reads at the right end of the first (smaller) tree.
+
+* Fixed aborting the server process if an exception was thrown in C++ code
+  that was invoked from the llhttp C code dispatcher. That dispatcher code
+  couldn't handle C++ exceptions properly.
+
+* Fixed BTS-1073: Fix encoding and decoding of revision ids in replication 
+  incremental sync protocol. Previously, the encoding of revision ids could 
+  be ambiguous under some circumstances, which could prevent shards from 
+  getting into sync.
+
 * Fixed BTS-850: Fixed the removal of already deleted orphan collections out
   of a graph definition. The removal of an already deleted orphan collection
   out of a graph definition failed and has been rejected in case the
