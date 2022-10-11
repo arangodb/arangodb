@@ -31,19 +31,15 @@
 'use strict';
 
 const jsunity = require('jsunity');
-const {assertEqual, assertTrue, assertFalse, fail} = jsunity.jsUnity.assertions;
-
-
+const {assertEqual} = jsunity.jsUnity.assertions;
+const {errors} = require("@arangodb");
 const internal = require('internal');
+const isCluster = internal.isCluster();
+const gh = require('@arangodb/graph/helpers');
 const db = internal.db;
-
 
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
-
-
-
-const gh = require('@arangodb/graph/helpers');
 
 function pruneTraversalSuite() {
   const optionsToTest = {
@@ -282,6 +278,34 @@ function pruneTraversalSuite() {
       }
     };
 
+    testObj[`testPruningWithV8Function${name}`] = () => {
+      const q = `
+                WITH ${vn}, ${en}
+                FOR v IN 1 OUTBOUND {"_id": "${vn}/1"} ${en}
+                PRUNE V8(LENGTH("ServerShouldDenyThis"))
+                RETURN v
+              `;
+
+      try {
+        db._query(q);
+        fail();
+      } catch (err) {
+        // It is forbidden to execute V8 inside PRUNE statements
+        assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+      }
+    };
+
+    testObj[`testPostFilterWithV8Function${name}`] = () => {
+      const q = `
+                WITH ${vn}, ${en}
+                FOR v IN 1 OUTBOUND {"_id": "${vn}/1"} ${en}
+                FILTER V8(LENGTH(v._key))
+                RETURN v
+              `;
+
+      const res = db._query(q);
+      print(res);
+    };
   };
 
   const testObj = {
