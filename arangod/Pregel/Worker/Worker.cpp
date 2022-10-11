@@ -29,12 +29,15 @@
 #include "GeneralServer/RequestLane.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/CommonFormats.h"
+#include "Pregel/Connection/DirectConnection.h"
+#include "Pregel/Connection/NetworkConnection.h"
 #include "Pregel/Messaging/Message.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/VertexComputation.h"
+#include "Pregel/Worker/ConductorApi.h"
 #include "Pregel/WorkerInterface.h"
 #include "Pregel/Worker/GraphStore.h"
 
@@ -56,15 +59,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::pregel;
 
-namespace {
-template<class... Ts>
-struct overloaded : Ts... {
-  using Ts::operator()...;
-};
-template<class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
-}  // namespace
-
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
       << "[job " << _config.executionNumber() << "] "
@@ -83,13 +77,8 @@ std::function<void()> Worker<V, E, M>::_makeStatusCallback() {
     auto statusUpdatedEvent =
         StatusUpdated{.senderId = ServerState::instance()->getId(),
                       .status = _observeStatus()};
-    auto modernMessage =
-        ModernMessage{.executionNumber = _config.executionNumber(),
-                      .payload = statusUpdatedEvent};
-    VPackBuilder event;
-    serialize(event, modernMessage);
-
-    _callConductor(event);
+    _callConductor(ModernMessage{.executionNumber = _config.executionNumber(),
+                                 .payload = statusUpdatedEvent});
   };
 }
 
@@ -101,6 +90,18 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
       _config(&vocbase),
       _algorithm(algo) {
   _config.updateConfig(_feature, initConfig);
+  if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
+    _conductor = worker::ConductorApi{
+        _config.coordinatorId(), _config.executionNumber(),
+        std::make_unique<DirectConnection>(_feature, vocbase)};
+  } else {
+    network::RequestOptions reqOpts;
+    reqOpts.database = vocbase.name();
+    _conductor = worker::ConductorApi{
+        _config.coordinatorId(), _config.executionNumber(),
+        std::make_unique<NetworkConnection>(Utils::apiPrefix,
+                                            std::move(reqOpts), vocbase)};
+  }
 
   MUTEX_LOCKER(guard, _commandMutex);
 
@@ -583,22 +584,20 @@ auto Worker<V, E, M>::_resultsFct(CollectPregelResults const& message) const
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::_callConductor(VPackBuilder const& message) {
+void Worker<V, E, M>::_callConductor(ModernMessage message) {
   if (!ServerState::instance()->isRunningInCluster()) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->queue(
-        RequestLane::INTERNAL_LOW, [this, self = shared_from_this(), message] {
-          VPackBuilder response;
-          _feature.handleConductorRequest(*_config.vocbase(),
-                                          Utils::modernMessagingPath,
-                                          message.slice(), response);
-        });
+    scheduler->queue(RequestLane::INTERNAL_LOW,
+                     [this, self = shared_from_this(), message] {
+                       _feature.process(message, *_config.vocbase());
+                     });
   } else {
-    std::string baseUrl = Utils::baseUrl(Utils::conductorPrefix);
-
     VPackBuffer<uint8_t> buffer;
-    buffer.append(message.data(), message.size());
+    VPackBuilder serializedMessage;
+    serialize(serializedMessage, message);
+
+    buffer.append(serializedMessage.data(), serializedMessage.size());
     auto const& nf = _config.vocbase()
                          ->server()
                          .template getFeature<arangodb::NetworkFeature>();
@@ -607,9 +606,9 @@ void Worker<V, E, M>::_callConductor(VPackBuilder const& message) {
     network::RequestOptions reqOpts;
     reqOpts.database = _config.database();
 
-    network::sendRequestRetry(
-        pool, "server:" + _config.coordinatorId(), fuerte::RestVerb::Post,
-        baseUrl + Utils::modernMessagingPath, std::move(buffer), reqOpts);
+    network::sendRequestRetry(pool, "server:" + _config.coordinatorId(),
+                              fuerte::RestVerb::Post, Utils::apiPrefix,
+                              std::move(buffer), reqOpts);
   }
 }
 
@@ -628,90 +627,18 @@ auto Worker<V, E, M>::_observeStatus() -> Status const {
 }
 
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::process(MessagePayload const& message)
-    -> futures::Future<ResultT<ModernMessage>> {
-  return std::visit(
-      overloaded{
-          [&](LoadGraph const& x) -> futures::Future<ResultT<ModernMessage>> {
-            return loadGraph(x).thenValue(
-                [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
-                  return ModernMessage{
-                      .executionNumber = _config.executionNumber(),
-                      .payload = {result}};
-                });
-          },
-          [&](PrepareGlobalSuperStep const& x)
-              -> futures::Future<ResultT<ModernMessage>> {
-            return prepareGlobalSuperStep(x).thenValue(
-                [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
-                  return ModernMessage{
-                      .executionNumber = _config.executionNumber(),
-                      .payload = {result}};
-                });
-          },
-          [&](RunGlobalSuperStep const& x)
-              -> futures::Future<ResultT<ModernMessage>> {
-            return runGlobalSuperStep(x).thenValue(
-                [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
-                  return ModernMessage{
-                      .executionNumber = _config.executionNumber(),
-                      .payload = {result}};
-                });
-          },
-          [&](Store const& x) -> futures::Future<ResultT<ModernMessage>> {
-            return store(x).thenValue(
-                [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
-                  return ModernMessage{
-                      .executionNumber = _config.executionNumber(),
-                      .payload = {result}};
-                });
-          },
-          [&](Cleanup const& x) -> futures::Future<ResultT<ModernMessage>> {
-            return cleanup(x).thenValue(
-                [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
-                  return ModernMessage{
-                      .executionNumber = _config.executionNumber(),
-                      .payload = {result}};
-                });
-          },
-          [&](CollectPregelResults const& x)
-              -> futures::Future<ResultT<ModernMessage>> {
-            return results(x).thenValue(
-                [&](auto result) -> futures::Future<ResultT<ModernMessage>> {
-                  return ModernMessage{
-                      .executionNumber = _config.executionNumber(),
-                      .payload = {result}};
-                });
-          },
-          [&](PregelMessage const& x)
-              -> futures::Future<ResultT<ModernMessage>> {
-            receivedMessages(x);
-            return {ModernMessage{}};
-          },
-          [](auto const& x) -> futures::Future<ResultT<ModernMessage>> {
-            return Result{TRI_ERROR_INTERNAL,
-                          "Worker: Cannot handle received message"};
-          }},
-      message);
-}
-
-template<typename V, typename E, typename M>
-auto Worker<V, E, M>::loadGraph(LoadGraph const& graph)
-    -> futures::Future<ResultT<GraphLoaded>> {
+auto Worker<V, E, M>::loadGraph(LoadGraph const& graph) -> void {
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
 
   LOG_PREGEL("52070", DEBUG) << fmt::format(
       "Worker for execution number {} is loading", _config.executionNumber());
-  return futures::makeFuture(
-             _graphStore->loadShards(&_config, _makeStatusCallback()))
-      .then([&](auto&& result) {
-        LOG_PREGEL("52062", DEBUG) << fmt::format(
-            "Worker for execution number {} has finished loading.",
-            _config.executionNumber());
-        _makeStatusCallback()();
-        _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
-        return result.get();
-      });
+  auto graphLoaded = _graphStore->loadShards(&_config, _makeStatusCallback());
+  LOG_PREGEL("52062", DEBUG)
+      << fmt::format("Worker for execution number {} has finished loading.",
+                     _config.executionNumber());
+  _makeStatusCallback()();
+  _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
+  _conductor.graphLoaded(graphLoaded);
 }
 
 // template types to create

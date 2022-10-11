@@ -91,11 +91,8 @@ class PregelFeature final : public ArangodFeature {
   auto cleanupWorker(ExecutionNumber executionNumber)
       -> futures::Future<futures::Unit>;
 
-  void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
-                              VPackSlice const& body,
-                              VPackBuilder& outResponse);
-  void handleWorkerRequest(TRI_vocbase_t& vocbase, std::string const& path,
-                           VPackSlice const& body, VPackBuilder& outBuilder);
+  auto process(ModernMessage message, TRI_vocbase_t& vocbase)
+      -> ResultT<ModernMessage>;
   auto collectPregelResults(ExecutionNumber const& executionNumber, bool withId)
       -> ResultT<PregelResults>;
 
@@ -119,6 +116,13 @@ class PregelFeature final : public ArangodFeature {
 
  private:
   void scheduleGarbageCollection();
+  auto apply(ExecutionNumber const& executionNumber,
+             MessagePayload const& message, TRI_vocbase_t& vocbase)
+      -> ResultT<MessagePayload>;
+  auto workerNotFound(ExecutionNumber const& exeuctionNumber,
+                      MessagePayload const& message) -> Result;
+  auto conductorNotFound(ExecutionNumber const& exeuctionNumber,
+                         MessagePayload const& message) -> Result;
 
   // default parallelism to use per Pregel job
   size_t _defaultParallelism;

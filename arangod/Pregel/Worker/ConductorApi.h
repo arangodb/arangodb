@@ -22,32 +22,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <cstdint>
-#include "Cluster/ClusterTypes.h"
-#include "Network/ConnectionPool.h"
-#include "Network/Methods.h"
 #include "Pregel/Connection/Connection.h"
-#include "VocBase/vocbase.h"
+#include "Pregel/ExecutionNumber.h"
+#include "Pregel/Messaging/WorkerMessages.h"
 
-namespace arangodb::pregel {
+namespace arangodb::pregel::worker {
 
-struct NetworkConnection : Connection {
- public:
-  NetworkConnection(std::string baseUrl, network::RequestOptions requestOptions,
-                    TRI_vocbase_t& vocbase);
-  auto send(Destination const& destination, ModernMessage&& message) const
-      -> futures::Future<ResultT<ModernMessage>> override;
-  auto sendWithoutRetry(Destination const& destination,
-                        ModernMessage&& message) const
-      -> futures::Future<Result>;
-  auto post(Destination const& destination, ModernMessage&& message) const
-      -> futures::Future<Result> override;
-  ~NetworkConnection() = default;
+struct ConductorApi {
+  ConductorApi() = default;
+  ConductorApi(ServerID conductorServer, ExecutionNumber executionNumber,
+               std::unique_ptr<Connection> connection)
+      : _server{std::move(conductorServer)},
+        _executionNumber{std::move(executionNumber)},
+        _connection{std::move(connection)} {}
+  auto graphLoaded(ResultT<GraphLoaded> const& data) const -> Result;
 
  private:
-  std::string _baseUrl;
-  network::RequestOptions _requestOptions;
-  network::ConnectionPool* _connectionPool;
+  ServerID _server;
+  ExecutionNumber _executionNumber;
+  std::unique_ptr<Connection> _connection;
 };
 
-}  // namespace arangodb::pregel
+}  // namespace arangodb::pregel::worker

@@ -45,9 +45,12 @@ struct Destination {
 };
 
 struct Connection {
-  virtual auto send(Destination const& destination,
-                    ModernMessage&& message) const
+  [[deprecated("Use new post function")]] virtual auto send(
+      Destination const& destination, ModernMessage&& message) const
       -> futures::Future<ResultT<ModernMessage>> = 0;
+  virtual auto post(Destination const& destination,
+                    ModernMessage&& message) const
+      -> futures::Future<Result> = 0;
   virtual ~Connection() = default;
 };
 }  // namespace arangodb::pregel

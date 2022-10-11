@@ -141,9 +141,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   auto _postGlobalSuperStep() -> PostGlobalSuperStepResult;
   void _cleanup();
 
-  // === REST callbacks ===
-  void _workerStatusUpdate(StatusUpdated const& data);
-
   std::vector<ShardID> getShardIds(ShardID const& collection) const;
 
  public:
@@ -157,10 +154,10 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   ~Conductor();
 
-  auto process(MessagePayload const& message) -> Result;
   void start();
   void cancel();
   auto collectAQLResults(bool withId) -> ResultT<PregelResults>;
+  void workerStatusUpdated(StatusUpdated const& data);
   void toVelocyPack(arangodb::velocypack::Builder& result) const;
 
   bool canBeGarbageCollected() const;

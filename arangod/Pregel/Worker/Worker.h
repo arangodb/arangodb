@@ -33,6 +33,7 @@
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Messaging/Message.h"
+#include "Pregel/Worker/ConductorApi.h"
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/Worker/WorkerContext.h"
 #include "Pregel/WorkerInterface.h"
@@ -51,10 +52,7 @@ class PregelFeature;
 class IWorker : public std::enable_shared_from_this<IWorker> {
  public:
   virtual ~IWorker() = default;
-  [[nodiscard]] virtual auto process(MessagePayload const& message)
-      -> futures::Future<ResultT<ModernMessage>> = 0;
-  [[nodiscard]] virtual auto loadGraph(LoadGraph const& graph)
-      -> futures::Future<ResultT<GraphLoaded>> = 0;
+  virtual auto loadGraph(LoadGraph const& graph) -> void = 0;
   [[nodiscard]] virtual auto prepareGlobalSuperStep(
       PrepareGlobalSuperStep const& data)
       -> futures::Future<ResultT<GlobalSuperStepPrepared>> = 0;
@@ -105,6 +103,7 @@ class Worker : public IWorker {
     DONE        // after calling finished
   };
 
+  worker::ConductorApi _conductor;
   PregelFeature& _feature;
   std::atomic<WorkerState> _state = WorkerState::DEFAULT;
   WorkerConfig _config;
@@ -157,7 +156,7 @@ class Worker : public IWorker {
       size_t threadId, RangeIterator<Vertex<V, E>>& vertexIterator)
       -> ResultT<VerticesProcessed>;
   auto _finishProcessing() -> ResultT<GlobalSuperStepFinished>;
-  void _callConductor(VPackBuilder const& message);
+  void _callConductor(ModernMessage message);
   [[nodiscard]] auto _observeStatus() -> Status const;
   [[nodiscard]] auto _makeStatusCallback() -> std::function<void()>;
 
@@ -172,10 +171,7 @@ class Worker : public IWorker {
   ~Worker();
 
   // ====== called by rest handler =====
-  auto process(MessagePayload const& message)
-      -> futures::Future<ResultT<ModernMessage>> override;
-  auto loadGraph(LoadGraph const& graph)
-      -> futures::Future<ResultT<GraphLoaded>> override;
+  auto loadGraph(LoadGraph const& graph) -> void override;
   auto prepareGlobalSuperStep(PrepareGlobalSuperStep const& data)
       -> futures::Future<ResultT<GlobalSuperStepPrepared>> override;
   auto runGlobalSuperStep(RunGlobalSuperStep const& data)

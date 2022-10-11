@@ -26,6 +26,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include "Pregel/Messaging/Message.h"
 #include "velocypack/Builder.h"
 
 #include "Pregel/Messaging/ConductorMessages.h"
@@ -43,6 +44,10 @@ namespace conductor {
 
 struct State {
   virtual auto run() -> std::optional<std::unique_ptr<State>> = 0;
+  virtual auto receive(MessagePayload message)
+      -> std::optional<std::unique_ptr<State>> {
+    return std::nullopt;
+  }
   virtual auto canBeCanceled() -> bool = 0;
   virtual auto getResults(bool withId) -> ResultT<PregelResults> {
     VPackBuilder emptyArray;

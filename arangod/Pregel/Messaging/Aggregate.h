@@ -26,6 +26,7 @@
 #include <optional>
 #include <utility>
 #include "Basics/ResultT.h"
+#include "Inspection/VPack.h"
 
 namespace arangodb::pregel {
 
@@ -36,6 +37,7 @@ concept Addable = requires(T a, T b) {
 
 template<Addable T>
 struct Aggregate {
+  Aggregate() = default;
   Aggregate(T initialValue, uint64_t countUntilFinished)
       : _countUntilFinished{countUntilFinished},
         _aggregate{std::move(initialValue)} {}
