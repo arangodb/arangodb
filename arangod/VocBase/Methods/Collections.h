@@ -171,6 +171,11 @@ struct Collections {
   /// @brief filters properties for collection creation
   static arangodb::velocypack::Builder filterInput(
       arangodb::velocypack::Slice slice, bool allowDC2DCAttributes);
+
+ private:
+  static void appendSmartEdgeCollections(
+      PlanCollection& collection, std::vector<PlanCollection>& collectionList,
+      std::function<DataSourceId()> const&);
 };
 
 #ifdef USE_ENTERPRISE

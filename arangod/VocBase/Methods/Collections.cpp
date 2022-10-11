@@ -630,7 +630,11 @@ Collections::create(         // create collection
   config.enforceReplicationFactor = enforceReplicationFactor;
 
   ClusterInfo& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
-  for (auto& col : collections) {
+  auto numberOfPublicCollections = collections.size();
+  // NOTE: We use index access here, as collections may be modified
+  // during this code
+  for (size_t i = 0; i < numberOfPublicCollections; ++i) {
+    auto& col = collections[i];
     if (col.constantProperties.distributeShardsLike.has_value()) {
       // Apply distributeShardsLike overwrites
       // TODO: Make this piece unit-testable.
@@ -682,6 +686,8 @@ Collections::create(         // create collection
       if (result.fail()) {
         return result.result();
       }
+
+      appendSmartEdgeCollections(col, collections, config.idGenerator);
     }
   }
 
@@ -1561,3 +1567,11 @@ arangodb::velocypack::Builder Collections::filterInput(
       properties, std::unordered_set<std::string>{
                       COMMON_ALLOWED_COLLECTION_INPUT_ATTRIBUTES});
 }
+
+#ifndef USE_ENTERPRISE
+void Collections::appendSmartEdgeCollections(
+    PlanCollection&, std::vector<PlanCollection>&,
+    std::function<DataSourceId()> const&) {
+  // Nothing to do here.
+}
+#endif

@@ -35,6 +35,7 @@
 #include "Cluster/Utils/PlanCollectionEntry.h"
 #include "Cluster/Utils/PlanCollectionToAgencyWriter.h"
 #include "Cluster/Utils/SatelliteDistribution.h"
+#include "Sharding/ShardingInfo.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Properties/PlanCollection.h"
@@ -338,7 +339,10 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
   return shardNames;
 }
 
-[[nodiscard]] auto ClusterCollectionMethods::selectDistributeType(ClusterInfo& ci, PlanCollection const& col, std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>& allUsedDistrbitions) -> std::shared_ptr<IShardDistributionFactory> {
+[[nodiscard]] auto ClusterCollectionMethods::selectDistributeType(
+    ClusterInfo& ci, std::string_view databaseName, PlanCollection const& col,
+    std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>&
+        allUsedDistrbitions) -> std::shared_ptr<IShardDistributionFactory> {
   if (col.constantProperties.distributeShardsLike.has_value()) {
     auto distLike = col.constantProperties.distributeShardsLike.value();
     // Empty value has to be rejected by invariants beforehand, assert here just
@@ -349,7 +353,30 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
       return allUsedDistrbitions.at(distLike);
     }
     // Follow the given distribution
-    auto distribution = std::make_shared<DistributeShardsLike>();
+    auto distribution = std::make_shared<DistributeShardsLike>(
+        [&ci, databaseName,
+         distLike]() -> ResultT<std::vector<ResponsibleServerList>> {
+          auto c = ci.getCollectionNT(databaseName, distLike);
+          if (c == nullptr) {
+            return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+                          "Collection not found: " + distLike +
+                              " in database " + std::string(databaseName)};
+          }
+          auto shardingInfo = c->shardingInfo();
+          // Every collection has shards.
+          TRI_ASSERT(shardingInfo != nullptr);
+
+          auto shardNames = shardingInfo->shardListAsShardID();
+          TRI_ASSERT(shardNames != nullptr);
+          std::vector<ResponsibleServerList> result{};
+          auto shardIds = shardingInfo->shardIds();
+          result.reserve(shardIds->size());
+          for (auto const& s : *shardNames) {
+            auto servers = shardIds->find(s);
+            result.emplace_back(ResponsibleServerList{servers->second});
+          }
+          return result;
+        });
     // Add the Leader to the distribution List
     allUsedDistrbitions.emplace(distLike, distribution);
     return distribution;
@@ -406,8 +433,8 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   for (auto& c : collections) {
     auto shards = generateShardNames(feature.clusterInfo(),
                                      c.constantProperties.numberOfShards);
-    auto distributionType =
-        selectDistributeType(feature.clusterInfo(), c, shardDistributionList);
+    auto distributionType = selectDistributeType(
+        feature.clusterInfo(), vocbase.name(), c, shardDistributionList);
     collectionPlanEntries.emplace_back(toPlanEntry(
         std::move(c), std::move(shards), distributionType, buildingFlags));
   }

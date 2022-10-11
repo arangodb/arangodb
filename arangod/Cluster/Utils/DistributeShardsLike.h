@@ -25,11 +25,21 @@
 #include "Cluster/Utils/IShardDistributionFactory.h"
 
 namespace arangodb {
+
+template<typename T>
+class ResultT;
+
 struct DistributeShardsLike : public IShardDistributionFactory {
-  DistributeShardsLike();
+  DistributeShardsLike(
+      std::function<ResultT<std::vector<ResponsibleServerList>>()>
+          getOriginalSharding);
   Result planShardsOnServers(
       std::vector<ServerID> availableServers,
       std::unordered_set<ServerID>& serversPlanned) override;
+
+ private:
+  std::function<ResultT<std::vector<ResponsibleServerList>>()>
+      _originalShardingProducer;
 };
 
 }

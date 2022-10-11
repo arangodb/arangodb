@@ -70,7 +70,11 @@ struct ClusterCollectionMethods {
 
   [[nodiscard]] static auto generateShardNames(ClusterInfo& ci, uint64_t numberOfShards) -> std::vector<ShardID>;
 
-  [[nodiscard]] static auto selectDistributeType(ClusterInfo& ci, PlanCollection const& col, std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>& allUsedDistrbitions) -> std::shared_ptr<IShardDistributionFactory>;
+  [[nodiscard]] static auto selectDistributeType(
+      ClusterInfo& ci, std::string_view databaseName, PlanCollection const& col,
+      std::unordered_map<std::string,
+                         std::shared_ptr<IShardDistributionFactory>>&
+          allUsedDistrbitions) -> std::shared_ptr<IShardDistributionFactory>;
 };
 
 }

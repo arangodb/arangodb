@@ -23,17 +23,43 @@
 #include "DistributeShardsLike.h"
 
 #include "Basics/Exceptions.h"
+#include "Basics/ResultT.h"
 
 using namespace arangodb;
 
-DistributeShardsLike::DistributeShardsLike() {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
+DistributeShardsLike::DistributeShardsLike(
+    std::function<ResultT<std::vector<ResponsibleServerList>>()>
+        getOriginalSharding)
+    : _originalShardingProducer{std::move(getOriginalSharding)} {}
 
 Result DistributeShardsLike::planShardsOnServers(
     std::vector<ServerID> availableServers,
     std::unordered_set<ServerID>& serversPlanned) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  auto nextSharding = _originalShardingProducer();
+  if (nextSharding.fail()) {
+    return nextSharding.result();
+  }
+
+  for (auto const& list : nextSharding.get()) {
+    for (auto const& s : list.servers) {
+      // Test if server is available:
+      if (std::find(availableServers.begin(), availableServers.end(), s) ==
+          availableServers.end()) {
+        // TODO: Discuss, should we abort on all servers (like here) or should
+        // we only abort if the LEADER is not available.
+        return {
+            TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS,
+            "Server: " + s +
+                " required to fulfill distributeShardsLike, is not available"};
+      }
+      // Register Server als planned
+      serversPlanned.emplace(s);
+    }
+  }
+
+  // Sharding Okay, take it
+  _shardToServerMapping = nextSharding.get();
+  return {TRI_ERROR_NO_ERROR};
 }
 
 #if false
