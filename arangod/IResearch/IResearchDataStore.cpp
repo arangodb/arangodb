@@ -629,8 +629,9 @@ IResearchDataStore::Snapshot IResearchDataStore::snapshot() const {
 irs::directory_reader IResearchDataStore::reader(LinkLock const& linkLock) {
   TRI_ASSERT(linkLock);
   TRI_ASSERT(linkLock->_dataStore);
-  TRI_ASSERT(linkLock->_dataStore._reader);
-  return irs::directory_reader(linkLock->_dataStore._reader);
+  irs::directory_reader reader{linkLock->_dataStore._reader};
+  TRI_ASSERT(reader);
+  return reader;
 }
 
 void IResearchDataStore::scheduleCommit(std::chrono::milliseconds delay) {

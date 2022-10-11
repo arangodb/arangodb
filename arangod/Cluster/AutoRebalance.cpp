@@ -446,22 +446,31 @@ AutoRebalanceProblem::findAllMoveShardJobs(bool considerLeaderChanges,
     scratch[shard.leader] = 1;
     if (considerLeaderChanges) {
       for (auto const toserver : shard.followers) {
-        res.emplace_back(shard.id, shard.leader, toserver, true, false, nr);
-        scratch[toserver] = 1;
+        if (serversHealthInfo.find(dbServers[toserver].id) !=
+            serversHealthInfo.end()) {
+          res.emplace_back(shard.id, shard.leader, toserver, true, false, nr);
+          scratch[toserver] = 1;
+        }
       }
     }
     if (considerLeaderMoves) {
       for (uint32_t i = 0; i < nr; ++i) {
-        if (scratch[i] == 0) {
-          res.emplace_back(shard.id, shard.leader, i, true, true, nr);
+        if (serversHealthInfo.find(dbServers[i].id) !=
+            serversHealthInfo.end()) {
+          if (scratch[i] == 0) {
+            res.emplace_back(shard.id, shard.leader, i, true, true, nr);
+          }
         }
       }
     }
     if (considerFollowerMoves) {
       for (auto const fromserver : shard.followers) {
         for (uint32_t i = 0; i < nr; ++i) {
-          if (scratch[i] == 0) {
-            res.emplace_back(shard.id, fromserver, i, false, true, nr);
+          if (serversHealthInfo.find(dbServers[i].id) !=
+              serversHealthInfo.end()) {
+            if (scratch[i] == 0) {
+              res.emplace_back(shard.id, fromserver, i, false, true, nr);
+            }
           }
         }
       }
