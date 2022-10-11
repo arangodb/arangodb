@@ -264,7 +264,7 @@ struct InspectorBase : detail::ContextContainer<Context> {
           // TODO - read std::string_view
           res = load<std::string>(retryDifferentType,
                                   std::forward<Args>(args)...);
-          TRI_ASSERT(retryDifferentType == false || !res.ok());
+          assert(retryDifferentType == false || !res.ok());
         }
         if constexpr (hasIntValues) {
           if (!hasStringValues || retryDifferentType) {
@@ -533,8 +533,7 @@ struct EmbeddedFieldInspector
 
   template<class Fn, class T>
   Status objectInvariant(T& object, Fn&& invariant, Status result) {
-    TRI_ASSERT(result.ok())
-        << "embedded inspection failed with error " << result.error();
+    assert(result.ok());
     fields = std::make_unique<EmbeddedFieldsWithObjectInvariant<Parent, T, Fn>>(
         object, std::forward<Fn>(invariant), std::move(fields));
     return result;
@@ -578,7 +577,7 @@ auto InspectorBase<Derived, Context, TargetInspector>::embedFields(
     }
   }();
   auto res = insp.apply(value);
-  TRI_ASSERT(res.ok());
+  assert(res.ok());
   return std::move(insp.fields);
 }
 
