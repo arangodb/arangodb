@@ -74,7 +74,6 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     : _registerMapping(std::move(registerMapping)),
       _fixedSource(std::move(fixedSource)),
       _inputRegister(inputRegister),
-      _ast(ast),
       _uniqueVertices(vertexUniqueness),
       _uniqueEdges(edgeUniqueness),
       _order(order),
@@ -89,8 +88,6 @@ TraversalExecutorInfos::TraversalExecutorInfos(
   TRI_ASSERT(_fixedSource.empty() ||
              (!_fixedSource.empty() &&
               _inputRegister.value() == RegisterId::maxRegisterId));
-  // All Nodes are located in the AST it cannot be non-existing.
-  TRI_ASSERT(_ast != nullptr);
 
   /*
    * In the refactored variant we need to parse the correct enumerator type
@@ -124,7 +121,6 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     : _registerMapping(std::move(registerMapping)),
       _fixedSource(std::move(fixedSource)),
       _inputRegister(inputRegister),
-      _ast(ast),
       _uniqueVertices(vertexUniqueness),
       _uniqueEdges(edgeUniqueness),
       _order(order),
@@ -137,8 +133,6 @@ TraversalExecutorInfos::TraversalExecutorInfos(
   TRI_ASSERT(_fixedSource.empty() ||
              (!_fixedSource.empty() &&
               _inputRegister.value() == RegisterId::maxRegisterId));
-  // All Nodes are located in the AST it cannot be non-existing.
-  TRI_ASSERT(_ast != nullptr);
 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   /*
@@ -164,7 +158,7 @@ TraversalExecutorInfos::traversalEnumerator() const {
 
 bool TraversalExecutorInfos::usesOutputRegister(
     TraversalExecutorInfosHelper::OutputName type) const {
-  return _registerMapping.find(type) != _registerMapping.end();
+  return _registerMapping.contains(type);
 }
 
 bool TraversalExecutorInfos::useVertexOutput() const {
@@ -178,8 +172,6 @@ bool TraversalExecutorInfos::useEdgeOutput() const {
 bool TraversalExecutorInfos::usePathOutput() const {
   return usesOutputRegister(TraversalExecutorInfosHelper::OutputName::PATH);
 }
-
-Ast* TraversalExecutorInfos::getAst() const { return _ast; }
 
 std::string TraversalExecutorInfos::typeToString(
     TraversalExecutorInfosHelper::OutputName type) {
@@ -254,6 +246,11 @@ TraverserOptions::Order TraversalExecutorInfos::getOrder() const {
 }
 
 transaction::Methods* TraversalExecutorInfos::getTrx() { return _trx; }
+
+arangodb::aql::QueryContext& TraversalExecutorInfos::getQuery() {
+  return _query;
+}
+
 arangodb::aql::QueryWarnings& TraversalExecutorInfos::getWarnings() {
   return _query.warnings();
 }
@@ -372,6 +369,7 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
 
 TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
+      _ast(infos.getQuery()),
       _inputRow{CreateInvalidInputRowHint{}},
       _traversalEnumerator(nullptr) {
   // reset the traverser, so that no residual state is left in it. This is
@@ -526,7 +524,8 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
                                            "allowed");
     } else {
       // prepare index
-      traversalEnumerator()->prepareIndexExpressions(_infos.getAst());
+      _ast.clearMost();
+      traversalEnumerator()->prepareIndexExpressions(&_ast);
 
       // start actual search
       traversalEnumerator()->reset(toHashedStringRef(

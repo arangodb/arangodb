@@ -39,7 +39,7 @@ struct ConnectedComponents
  public:
   explicit ConnectedComponents(application_features::ApplicationServer& server,
                                VPackSlice userParams)
-      : SimpleAlgorithm(server, "ConnectedComponents", userParams) {}
+      : SimpleAlgorithm(server, "connectedcomponents", userParams) {}
 
   bool supportsAsyncMode() const override { return true; }
   bool supportsCompensation() const override { return true; }

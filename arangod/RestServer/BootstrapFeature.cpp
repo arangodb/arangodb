@@ -27,6 +27,7 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryList.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterUpgradeFeature.h"
@@ -44,6 +45,9 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Upgrade.h"
+#include "VocBase/vocbase.h"
+
+#include <velocypack/Iterator.h>
 
 namespace {
 static std::string const bootstrapKey = "Bootstrap";

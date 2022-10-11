@@ -8,41 +8,7 @@ add_subdirectory(Greenspun)
 # Fuerte tests
 # ----------------------------------------
 
-set(FUERTE_TESTS_SOURCES
-  Fuerte/VstTest.cpp
-  Fuerte/ConnectionBasicTest.cpp
-  Fuerte/ConnectionConcurrentTest.cpp
-  Fuerte/ConnectionFailuresTest.cpp
-  Fuerte/ConnectionTimeoutsTest.cpp
-#    test_10000_writes.cpp
-)
-
-add_executable(fuertetest
-  ${FUERTE_TESTS_SOURCES}
-  Fuerte/main.cpp
-)
-
-target_link_libraries(fuertetest
-    fuerte
-    gtest
-    boost_boost
-    arango
-    arango_v8server
-    arango_v8
-    arangoserver
-    ${MSVC_LIBS}
-    ${OPENSSL_LIBRARIES}
-    ${CMAKE_THREAD_LIBS_INIT}
-)
-
-target_include_directories(fuertetest SYSTEM PRIVATE
-  ${V8_INTERNAL_INCLUDE_DIR}
-  ${INCLUDE_DIRECTORIES}
-  ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
-  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/third-party/gtest-1.8.1/fused-src
-  ${CMAKE_SOURCE_DIR}/3rdParty/fuerte/src
-)
-
+add_subdirectory(Fuerte)
 
 # ----------------------------------------
 # Link directories
@@ -93,7 +59,6 @@ set(ARANGODB_TESTS_SOURCES
   Agency/TransactionBuilderTests.cpp
   Aql/AqlCallListTest.cpp
   Aql/AqlExecutorTestCase.cpp
-  Aql/AqlSharedExecutionBlockImplTest.cpp
   Aql/AqlHelper.cpp
   Aql/AqlItemBlockInputRangeTest.cpp
   Aql/AqlItemBlockTest.cpp
@@ -120,7 +85,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/EnumerateCollectionExecutorTest.cpp
   Aql/EnumerateListExecutorTest.cpp
   Aql/ExecutionBlockImplTest.cpp
-  Aql/ExecutionBlockImplTestInstances.cpp
   Aql/ExecutionNodeTest.cpp
   Aql/ExecutorTestHelper.cpp
   Aql/FilterExecutorTest.cpp
@@ -268,7 +232,9 @@ set(ARANGODB_TESTS_SOURCES
   RestServer/FlushFeatureTest.cpp
   RestServer/LanguageFeatureTest.cpp
   Restore/CollectionRestoreOrder.cpp
-  RocksDBEngine/Endian.cpp
+  RocksDBEngine/ChecksumCalculatorTest.cpp
+  RocksDBEngine/ChecksumHelperTest.cpp
+  RocksDBEngine/EndianTest.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/HotBackupTest.cpp
   RocksDBEngine/EncryptionProviderTest.cpp
@@ -288,15 +254,17 @@ set(ARANGODB_TESTS_SOURCES
   V8Server/V8AnalyzersTest.cpp
   V8Server/V8UsersTest.cpp
   V8Server/V8ViewsTest.cpp
-  VocBase/VocbaseTest.cpp
+  VocBase/ComputedValuesTest.cpp
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp
   VocBase/LogicalViewTest.cpp
+  VocBase/PlanCollectionTest.cpp
   VocBase/VersionTest.cpp
+  VocBase/VocbaseTest.cpp
   VPackDeserializer/BasicTests.cpp
   Zkd/Conversion.cpp
   Zkd/Library.cpp
-  ${ADDITIONAL_TEST_SOURCES} Cluster/ShardAutoRebalancerTest.cpp)
+  Cluster/ShardAutoRebalancerTest.cpp)
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Helper/ModelChecker/Actors.cpp
@@ -352,16 +320,17 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
   Replication2/ReplicatedLog/UpdateReplicatedLogTests.cpp
   Replication2/ReplicatedLog/WaitForSyncTest.cpp
+  Replication2/ReplicatedState/DocumentStateMachineTest.cpp
   Replication2/ReplicatedState/FollowerSnapshotTest.cpp
   Replication2/ReplicatedState/FollowerWaitForTest.cpp
   Replication2/ReplicatedState/LeaderRecoveryTest.cpp
   Replication2/ReplicatedState/LeaderResignTest.cpp
   Replication2/ReplicatedState/MaintenanceTest.cpp
-  Replication2/ReplicatedState/DocumentStateMachineTest.cpp
   Replication2/ReplicatedState/PrototypeConcurrencyTest.cpp
   Replication2/ReplicatedState/PrototypeStateMachineTest.cpp
   Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp
   Replication2/ReplicatedState/ReplicatedStateTest.cpp
+  Replication2/ReplicatedState/StateCleanupTest.cpp
   Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
   Replication2/ReplicatedState/SupervisionModelChecker.cpp
   Replication2/ReplicatedState/SupervisionTest.cpp
@@ -375,7 +344,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedState/ReplicatedStateMetricsTest.cpp
   Replication2/ReplicatedLog/MetricsTest.cpp
   Replication2/ReplicatedState/FollowerResignTest.cpp
-)
+        Replication2/Mocks/MockStatePersistorInterface.cpp Replication2/Mocks/MockStatePersistorInterface.h)
 
 set(ARANGODB_GRAPH_TEST_SOURCES
   Graph/ClusterTraverserCacheTest.cpp
@@ -397,7 +366,6 @@ set(ARANGODB_GRAPH_TEST_SOURCES
   ${ADDITIONAL_GRAPH_TEST_SOURCES}
 )
 
-
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
   # this speeds up the compilation with optimizations and newer g++ versions
@@ -410,15 +378,13 @@ if (LINUX)
     set_source_files_properties(${ARANGODB_TESTS_SOURCES} PROPERTIES COMPILE_FLAGS -fno-var-tracking)
   endif ()
 endif ()
-
 add_executable(
   arangodbtests
   ../cmake/activeCodePage.manifest
   ${ARANGODB_TESTS_SOURCES}
   ${ARANGODB_REPLICATION2_TEST_SOURCES}
   ${ARANGODB_GRAPH_TEST_SOURCES}
-  main.cpp
-)
+  main.cpp)
 
 set(USE_SEPARATE_REPLICATION2_TESTS_BINARY FALSE CACHE BOOL
   "Write a separate binary 'arangodbtests_replication2', containing only the Replication 2.0 tests.")
@@ -556,21 +522,23 @@ endif()
 target_include_directories(arangodbtests SYSTEM PRIVATE
   ${V8_INTERNAL_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
-  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/third-party/gtest-1.8.1/fused-src
+  ${CMAKE_SOURCE_DIR}/${GOOGLETEST_ROOT}/include
+  ${CMAKE_SOURCE_DIR}/${GOOGLEMOCK_ROOT}/include
 )
 
 target_link_libraries(arangodbtests v8_interface)
 
 if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   target_include_directories(arangodbtests_replication2 SYSTEM PRIVATE
-    ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/third-party/gtest-1.8.1/fused-src
-  )
+  ${CMAKE_SOURCE_DIR}/${GOOGLETEST_ROOT}/include
+  ${CMAKE_SOURCE_DIR}/${GOOGLEMOCK_ROOT}/include
+)
 endif()
 
 if (USE_SEPARATE_GRAPH_TESTS_BINARY)
   target_include_directories(arangodbtests_graph SYSTEM PRIVATE
-          ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
-          )
+  ${CMAKE_SOURCE_DIR}/${GOOGLETEST_ROOT}/include
+)
 endif()
 
 if (USE_JEMALLOC)
@@ -594,3 +562,5 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
     )
   endif()
 endforeach()
+
+add_subdirectory(sepp)

@@ -34,7 +34,6 @@
 #include "Basics/StringHeap.h"
 #include "Containers/FlatHashMap.h"
 
-#include "Transaction/Methods.h"
 #include "Graph/Steps/ClusterProviderStep.h"
 
 #include <vector>
@@ -55,6 +54,9 @@ class Builder;
 class HashedStringRef;
 }  // namespace velocypack
 
+namespace transaction {
+class Methods;
+}
 namespace graph {
 
 // TODO: we need to control from the outside if and which parts of the vertex -

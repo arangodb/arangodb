@@ -29,9 +29,14 @@
 namespace arangodb {
 class DatabaseFeature;
 
+struct IDatabaseGuard {
+  virtual ~IDatabaseGuard() = default;
+  [[nodiscard]] virtual TRI_vocbase_t& database() const noexcept = 0;
+};
+
 /// @brief Scope guard for a database, ensures that it is not
 ///        dropped while still using it.
-class DatabaseGuard {
+class DatabaseGuard final : public IDatabaseGuard {
  public:
   DatabaseGuard(DatabaseGuard&&) = delete;
   DatabaseGuard(DatabaseGuard const&) = delete;
@@ -53,7 +58,7 @@ class DatabaseGuard {
   }
 
   /// @brief return the database pointer
-  inline TRI_vocbase_t& database() const { return _vocbase; }
+  TRI_vocbase_t& database() const noexcept final { return _vocbase; }
   auto operator->() const noexcept -> TRI_vocbase_t const* { return &_vocbase; }
   auto operator->() noexcept -> TRI_vocbase_t* { return &_vocbase; }
 

@@ -24,7 +24,7 @@
 #pragma once
 
 #include "Agency/Store.h"
-#include "AgencyCommon.h"
+#include "Agency/AgencyCommon.h"
 #include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
 #include "Utils/OperationOptions.h"
@@ -128,8 +128,7 @@ class State {
   /// @brief Has entry with index und term
   bool has(index_t, term_t) const;
 
-  /// @brief Get log entries by client Id
-  std::vector<index_t> inquire(query_t const&) const;
+  std::vector<index_t> inquire(velocypack::Slice query) const;
 
   /// @brief Get complete logged commands by lower and upper bounds.
   ///        Default: [first, last]

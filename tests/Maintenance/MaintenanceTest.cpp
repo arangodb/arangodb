@@ -26,6 +26,7 @@
 #include "RestServer/arangod.h"
 #include "gtest/gtest.h"
 
+#include "Agency/AgencyComm.h"
 #include "Agency/AgencyPaths.h"
 #include "Agency/AgencyStrings.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"

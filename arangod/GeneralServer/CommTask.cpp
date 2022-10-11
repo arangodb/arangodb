@@ -39,6 +39,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
+#include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/Scheduler.h"
@@ -310,7 +311,8 @@ CommTask::Flow CommTask::prepareExecution(
       if (lvl == auth::Level::NONE) {
         sendErrorResponse(rest::ResponseCode::UNAUTHORIZED,
                           req.contentTypeResponse(), req.messageId(),
-                          TRI_ERROR_FORBIDDEN);
+                          TRI_ERROR_FORBIDDEN,
+                          "not authorized to execute this request");
         return Flow::Abort;
       }
     }
@@ -473,6 +475,13 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
           self->sendResponse(handler->stealResponse(),
                              self->stealStatistics(messageId));
         });
+    return;
+  }
+
+  if (res.hasValue() && res.get().fail()) {
+    auto& r = res.get();
+    sendErrorResponse(GeneralResponse::responseCode(r.errorNumber()), respType,
+                      messageId, r.errorNumber(), r.errorMessage());
     return;
   }
 
@@ -960,7 +969,7 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
   req.setAuthenticated(authToken.authenticated());
   req.setTokenExpiry(authToken.expiry());
   req.setUser(authToken.username());  // do copy here, so that we do not
-                                      // invalidate the member
+  // invalidate the member
   if (authToken.authenticated()) {
     events::Authenticated(req, authMethod);
   } else {

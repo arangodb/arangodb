@@ -324,14 +324,17 @@ FollowerStateManager<S>::FollowerStateManager(
     std::shared_ptr<replicated_log::ILogFollower> logFollower,
     std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token,
     std::shared_ptr<Factory> factory,
-    std::shared_ptr<ReplicatedStateMetrics> ms) noexcept
+    std::shared_ptr<ReplicatedStateMetrics> ms,
+    std::shared_ptr<StatePersistorInterface> statePersistor) noexcept
     : _guardedData(*this, std::move(core), std::move(token)),
       parent(parent),
       logFollower(std::move(logFollower)),
       factory(std::move(factory)),
       loggerContext(std::move(loggerContext)),
-      metrics(std::move(ms)) {
+      metrics(std::move(ms)),
+      statePersistor(std::move(statePersistor)) {
   TRI_ASSERT(metrics != nullptr);
+  TRI_ASSERT(this->statePersistor != nullptr);
   metrics->replicatedStateNumberFollowers->fetch_add(1);
 }
 
@@ -551,8 +554,7 @@ auto FollowerStateManager<S>::applyNewEntries() -> futures::Future<Result> {
             basics::catchToResult([&] { return std::move(tryResult.get()); });
         if (result.fail()) {
           LOG_CTX("dd84e", ERR, ctx)
-              << "failed to transfer snapshot: " << result.errorMessage()
-              << " - retry scheduled";
+              << "failed to apply log entries: " << result.errorMessage();
           metrics->replicatedStateNumberApplyEntriesErrors->operator++();
         } else {
           metrics->replicatedStateNumberProcessedEntries->count(range.count());

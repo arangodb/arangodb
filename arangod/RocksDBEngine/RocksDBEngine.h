@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
-#include "RocksDBEngine/RocksDBChecksumEnv.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/StorageEngine.h"
@@ -46,9 +45,9 @@
 #include <velocypack/Slice.h>
 
 namespace rocksdb {
-
-class TransactionDB;
 class EncryptionProvider;
+class Env;
+class TransactionDB;
 }  // namespace rocksdb
 
 namespace arangodb {
@@ -184,6 +183,8 @@ class RocksDBEngine final : public StorageEngine {
 
   void getReplicatedLogs(TRI_vocbase_t& vocbase,
                          arangodb::velocypack::Builder& result);
+  void getReplicatedStates(TRI_vocbase_t& vocbase,
+                           arangodb::velocypack::Builder& result);
   ErrorCode getViews(TRI_vocbase_t& vocbase,
                      arangodb::velocypack::Builder& result) override;
 
@@ -278,6 +279,13 @@ class RocksDBEngine final : public StorageEngine {
       std::shared_ptr<
           arangodb::replication2::replicated_log::PersistedLog> const&)
       -> Result override;
+
+  auto updateReplicatedState(
+      TRI_vocbase_t& vocbase,
+      replication2::replicated_state::PersistedStateInfo const& info)
+      -> Result override;
+  auto dropReplicatedState(TRI_vocbase_t& vocbase,
+                           arangodb::replication2::LogId id) -> Result override;
 
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
@@ -467,6 +475,8 @@ class RocksDBEngine final : public StorageEngine {
 
   std::string getCompressionSupport() const;
 
+  void verifySstFiles(rocksdb::Options const& options) const;
+
 #ifdef USE_ENTERPRISE
   void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void validateEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
@@ -587,7 +597,10 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief whether or not the in-memory cache for edges is used
   bool _useEdgeCache;
 
-  /// @brief activate generation of SHA256 files to parallel .sst files
+  /// @brief whether or not to verify the sst files present in the db path
+  bool _verifySst;
+
+  /// @brief activate generation of SHA256 files for .sst and .blob files
   bool _createShaFiles;
 
   // whether or not to issue range delete markers in the write-ahead log
@@ -680,11 +693,8 @@ class RocksDBEngine final : public StorageEngine {
 
   // Checksum env for when creation of sha files is enabled
   // this is for when encryption is enabled, sha files will be created
-  // after the encryption of the .sst files
+  // after the encryption of the .sst and .blob files
   std::unique_ptr<rocksdb::Env> _checksumEnv;
-
-  std::unique_ptr<rocksdb::Env> NewChecksumEnv(rocksdb::Env* base_env,
-                                               std::string const& path);
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";

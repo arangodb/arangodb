@@ -73,6 +73,20 @@ rest::RequestType llhttpToRequestType(llhttp_t* p) {
 }  // namespace
 
 template<SocketType T>
+bool HttpCommTask<T>::transferEncodingContainsChunked(
+    HttpCommTask<T>& commTask, std::string const& encoding) {
+  if (basics::StringUtils::tolower(encoding).find("chunked") !=
+      std::string::npos) {
+    commTask.sendErrorResponse(
+        rest::ResponseCode::NOT_IMPLEMENTED, rest::ContentType::UNSET, 1,
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "Parsing for transfer-encoding of type chunked not implemented.");
+    return true;
+  }
+  return false;
+}
+
+template<SocketType T>
 int HttpCommTask<T>::on_message_began(llhttp_t* p) {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_lastHeaderField.clear();
@@ -148,6 +162,16 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
                               std::move(me->_lastHeaderValue));
   }
 
+  bool found;
+  std::string const& encoding =
+      me->_request->header(StaticStrings::TransferEncoding, found);
+
+  if (found) {
+    if (transferEncodingContainsChunked(*me, encoding)) {
+      return HPE_USER;
+    }
+  }
+
   if ((p->http_major != 1 || p->http_minor != 0) &&
       (p->http_major != 1 || p->http_minor != 1)) {
     me->sendSimpleResponse(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
@@ -161,7 +185,6 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
   }
   me->_shouldKeepAlive = llhttp_should_keep_alive(p);
 
-  bool found;
   std::string const& expect =
       me->_request->header(StaticStrings::Expect, found);
   if (found && StringUtils::trim(expect) == "100-continue") {
@@ -487,9 +510,25 @@ void HttpCommTask<T>::doProcessRequest() {
     this->_generalServerFeature.countHttp1Request(body.size());
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
+      std::string bodyForLogging;
+      try {
+        velocypack::Slice s = _request->payload(false);
+        if (!s.isNone()) {
+          // "none" can happen if the content-type is neither JSON nor vpack
+          bodyForLogging = StringUtils::escapeUnicode(s.toJson());
+        }
+      } catch (...) {
+        // cannot stringify request body
+      }
+
+      if (bodyForLogging.empty() && !body.empty()) {
+        bodyForLogging = "potential binary data";
+      }
+
       LOG_TOPIC("b9e76", TRACE, Logger::REQUESTS)
           << "\"http-request-body\",\"" << (void*)this << "\",\""
-          << StringUtils::escapeUnicode(std::string(body)) << "\"";
+          << rest::contentTypeToString(_request->contentType()) << "\",\""
+          << _request->contentLength() << "\",\"" << bodyForLogging << "\"";
     }
   }
 

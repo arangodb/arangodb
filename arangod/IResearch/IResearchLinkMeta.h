@@ -111,6 +111,8 @@ struct FieldMeta {
     bool _storeValues;
   };
 
+  [[nodiscard]] static Analyzer const& identity();
+
   FieldMeta() = default;
   FieldMeta(FieldMeta const&) = default;
   FieldMeta(FieldMeta&&) = default;
@@ -150,10 +152,9 @@ struct FieldMeta {
   ///        return success or set TRI_set_errno(...) and return false
   /// @param server underlying application server
   /// @param builder output buffer
+  /// @param ignoreEqual values to ignore if equal
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
-  /// @param ignoreEqual values to ignore if equal
-  /// @param defaultVocbase fallback vocbase
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
   bool json(ArangodServer& server, velocypack::Builder& builder,
@@ -189,6 +190,8 @@ struct FieldMeta {
 #endif
 };
 
+inline FieldMeta::Analyzer makeEmptyAnalyzer() { return {{}, {}}; }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief metadata describing how to process a field in a collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -220,8 +223,8 @@ struct IResearchLinkMeta : public FieldMeta {
   uint32_t _version;
 
   // Linked collection name. Stored here for cluster deployment only.
-  // For sigle server collection could be renamed so can`t store it here or
-  // syncronisation will be needed. For cluster rename is not possible so
+  // For single server collection could be renamed so can`t store it here or
+  // synchronisation will be needed. For cluster rename is not possible so
   // there is no problem but solved recovery issue - we will be able to index
   // _id attribute without doing agency request for collection name
   std::string _collectionName;
@@ -243,7 +246,7 @@ struct IResearchLinkMeta : public FieldMeta {
   ///        return success or set 'errorField' to specific field with error
   ///        on failure state is undefined
   /// @param slice definition
-  /// @param erroField field causing error (out-param)
+  /// @param errorField field causing error (out-param)
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
   /// @param defaultVersion fallback version if not present in definition

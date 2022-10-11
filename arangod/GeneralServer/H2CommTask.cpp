@@ -31,6 +31,7 @@
 #include "Basics/asio_ns.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogContext.h"
@@ -41,6 +42,13 @@
 #include "Statistics/RequestStatistics.h"
 
 #include <cstring>
+
+// Work-around for nghttp2 non-standard definition ssize_t under windows
+// https://github.com/nghttp2/nghttp2/issues/616
+#if defined(_WIN32) && defined(_MSC_VER)
+#define ssize_t long
+#endif
+#include <nghttp2/nghttp2.h>
 
 using namespace arangodb::basics;
 using std::string_view;
@@ -423,7 +431,7 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
   for (auto const& buffer : this->_protocol->buffer.data()) {
     const uint8_t* data = reinterpret_cast<const uint8_t*>(buffer.data());
 
-    ssize_t rv = nghttp2_session_mem_recv(_session, data, buffer.size());
+    auto rv = nghttp2_session_mem_recv(_session, data, buffer.size());
     if (rv < 0 || static_cast<size_t>(rv) != buffer.size()) {
       LOG_TOPIC("43942", INFO, Logger::REQUESTS)
           << "HTTP2 parsing error: \"" << nghttp2_strerror((int)rv) << "\" ("
@@ -519,7 +527,13 @@ template<SocketType T>
 void H2CommTask<T>::processStream(Stream& stream) {
   DTraceH2CommTaskProcessStream((size_t)this);
 
+  if (!stream.request->header("x-omit-www-authenticate").empty()) {
+    stream.mustSendAuthHeader = false;
+  } else {
+    stream.mustSendAuthHeader = true;
+  }
   std::unique_ptr<HttpRequest> req = std::move(stream.request);
+
   auto msgId = req->messageId();
   auto respContentType = req->contentTypeResponse();
   try {
@@ -563,9 +577,25 @@ void H2CommTask<T>::processRequest(Stream& stream,
     this->_generalServerFeature.countHttp2Request(body.size());
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
+      std::string bodyForLogging;
+      try {
+        velocypack::Slice s = req->payload(false);
+        if (!s.isNone()) {
+          // "none" can happen if the content-type is neither JSON nor vpack
+          bodyForLogging = StringUtils::escapeUnicode(s.toJson());
+        }
+      } catch (...) {
+        // cannot stringify request body
+      }
+
+      if (bodyForLogging.empty() && !body.empty()) {
+        bodyForLogging = "potential binary data";
+      }
+
       LOG_TOPIC("b6dc3", TRACE, Logger::REQUESTS)
           << "\"h2-request-body\",\"" << (void*)this << "\",\""
-          << StringUtils::escapeUnicode(std::string(body)) << "\"";
+          << rest::contentTypeToString(req->contentType()) << "\",\""
+          << req->contentLength() << "\",\"" << bodyForLogging << "\"";
     }
   }
 
@@ -722,6 +752,16 @@ void H2CommTask<T>::queueHttp2Responses() {
     nva.push_back({(uint8_t*)":status", (uint8_t*)status.data(), 7,
                    status.size(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
 
+    // if we return HTTP 401, we need to send a www-authenticate header back
+    // with the response. in this case we need to check if the header was
+    // already set or if we need to set it ourselves. note that clients can
+    // suppress sending the www-authenticate header by sending us an
+    // x-omit-www-authenticate header.
+    bool needWwwAuthenticate =
+        (this->_auth->isActive() &&
+         res.responseCode() == rest::ResponseCode::UNAUTHORIZED &&
+         strm->mustSendAuthHeader);
+
     bool seenServerHeader = false;
     for (auto const& it : res.headers()) {
       std::string const& key = it.first;
@@ -736,6 +776,8 @@ void H2CommTask<T>::queueHttp2Responses() {
 
       if (key == StaticStrings::Server) {
         seenServerHeader = true;
+      } else if (needWwwAuthenticate && key == StaticStrings::WwwAuthenticate) {
+        needWwwAuthenticate = false;
       }
 
       nva.push_back(
@@ -747,6 +789,19 @@ void H2CommTask<T>::queueHttp2Responses() {
     if (!seenServerHeader && !HttpResponse::HIDE_PRODUCT_HEADER) {
       nva.push_back(
           {(uint8_t*)"server", (uint8_t*)"ArangoDB", 6, 8,
+           NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
+    }
+
+    if (needWwwAuthenticate) {
+      TRI_ASSERT(res.responseCode() == rest::ResponseCode::UNAUTHORIZED);
+      nva.push_back(
+          {(uint8_t*)"www-authenticate", (uint8_t*)"Basic, realm=\"ArangoDB\"",
+           16, 23,
+           NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
+
+      nva.push_back(
+          {(uint8_t*)"www-authenticate",
+           (uint8_t*)"Bearer, token_type=\"JWT\", realm=\"ArangoDB\"", 16, 42,
            NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
     }
 
@@ -785,8 +840,7 @@ void H2CommTask<T>::queueHttp2Responses() {
 
         // TODO do not copy the body if it is > 16kb
         TRI_ASSERT(body.size() > strm->responseOffset);
-        size_t nread = std::min(length, body.size() - strm->responseOffset);
-        TRI_ASSERT(nread > 0);
+        auto nread = std::min(length, body.size() - strm->responseOffset);
 
         const char* src = body.data() + strm->responseOffset;
         std::copy_n(src, nread, buf);
@@ -854,7 +908,7 @@ void H2CommTask<T>::doWrite() {
   std::array<asio_ns::const_buffer, 2> outBuffers;
   while (true) {
     const uint8_t* data;
-    ssize_t rv = nghttp2_session_mem_send(_session, &data);
+    auto rv = nghttp2_session_mem_send(_session, &data);
     if (rv < 0) {  // error
       this->_writing = false;
       LOG_TOPIC("2b6c4", INFO, arangodb::Logger::REQUESTS)

@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchKludge.h"
+#include "IResearchDocument.h"
 #include "IResearchRocksDBLink.h"
 #include "IResearchRocksDBInvertedIndex.h"
 #include "Basics/DownCast.h"
@@ -42,9 +43,6 @@ inline void normalizeExpansion(std::string& name) {
 
 constexpr char kTypeDelimiter = '\0';
 constexpr char kAnalyzerDelimiter = '\1';
-#ifdef USE_ENTERPRISE
-constexpr char kNestedDelimiter = '\2';
-#endif
 
 std::string_view constexpr kNullSuffix{"\0_n", 3};
 std::string_view constexpr kBoolSuffix{"\0_b", 3};
@@ -107,7 +105,19 @@ void mangleNested(std::string& name) {
   normalizeExpansion(name);
   name += kNestedDelimiter;
 }
+
+bool isNestedField(irs::string_ref name) noexcept {
+  return !name.empty() && name.back() == kNestedDelimiter;
+}
 #endif
+
+bool needTrackPrevDoc(irs::string_ref name, bool nested) noexcept {
+#ifdef USE_ENTERPRISE
+  return (isNestedField(name)) || (nested && name == DocumentPrimaryKey::PK());
+#else
+  return false;
+#endif
+}
 
 void mangleField(std::string& name, bool isOldMangling,
                  iresearch::FieldMeta::Analyzer const& analyzer) {

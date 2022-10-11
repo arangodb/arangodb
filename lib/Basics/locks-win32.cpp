@@ -25,14 +25,12 @@
 
 /// @brief initializes a new condition variable
 void TRI_InitCondition(TRI_condition_t* cond) noexcept {
-  InitializeCriticalSection(&cond->_lockWaiters);
+  InitializeSRWLock(&cond->_lockWaiters);
   InitializeConditionVariable(&cond->_conditionVariable);
 }
 
 /// @brief destroys a condition variable
-void TRI_DestroyCondition(TRI_condition_t* cond) noexcept {
-  DeleteCriticalSection(&cond->_lockWaiters);
-}
+void TRI_DestroyCondition(TRI_condition_t* cond) noexcept {}
 
 /// @brief signals a condition variable
 ///
@@ -52,8 +50,8 @@ void TRI_BroadcastCondition(TRI_condition_t* cond) noexcept {
 ///
 /// Note that you must hold the lock.
 void TRI_WaitCondition(TRI_condition_t* cond) noexcept {
-  SleepConditionVariableCS(&cond->_conditionVariable, &cond->_lockWaiters,
-                           INFINITE);
+  SleepConditionVariableSRW(&cond->_conditionVariable, &cond->_lockWaiters,
+                            INFINITE, 0);
 }
 
 /// @brief waits for a signal with a timeout in micro-seconds
@@ -65,16 +63,16 @@ bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) noexcept {
   // while the Windows function accepts milliseconds
   // ...........................................................................
   delay = delay / 1000;
-  return SleepConditionVariableCS(&cond->_conditionVariable,
-                                  &cond->_lockWaiters, (DWORD)delay) != 0;
+  return SleepConditionVariableSRW(&cond->_conditionVariable,
+                                   &cond->_lockWaiters, (DWORD)delay, 0) != 0;
 }
 
 /// @brief locks the mutex of a condition variable
 void TRI_LockCondition(TRI_condition_t* cond) noexcept {
-  EnterCriticalSection(&cond->_lockWaiters);
+  AcquireSRWLockExclusive(&cond->_lockWaiters);
 }
 
 /// @brief unlocks the mutex of a condition variable
 void TRI_UnlockCondition(TRI_condition_t* cond) noexcept {
-  LeaveCriticalSection(&cond->_lockWaiters);
+  ReleaseSRWLockExclusive(&cond->_lockWaiters);
 }

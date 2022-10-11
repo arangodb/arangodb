@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global assertTrue, assertFalse, assertEqual, assertNotEqual, require*/
+/* global assertTrue, assertFalse, assertEqual, assertNotEqual, assertMatch, require*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -32,6 +32,7 @@ const db = require("internal").db;
 const request = require("@arangodb/request");
 const url = require('url');
 const _ = require("lodash");
+const errors = require("internal").errors;
 const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
 
 const servers = getCoordinatorEndpoints();
@@ -126,7 +127,7 @@ function PregelSuite () {
       assertEqual(result.status, 200);
       assertEqual(5, result.body.length);
       result.body.forEach((task) => {
-        assertEqual("PageRank", task.algorithm);
+        assertEqual("pagerank", task.algorithm);
         assertEqual(db._name(), task.database);
         assertNotEqual(-1, ids.indexOf(task.id));
       });
@@ -152,11 +153,6 @@ function PregelSuite () {
         assertFalse(result.body.error);
         assertEqual(result.status, 200);
       });
-      
-      url = baseUrl;
-      result = sendRequest('GET', url, {}, false);
-      assertEqual(result.status, 200);
-      assertEqual([], result.body);
     },
 
     testPregelForwarding: function() {
@@ -187,6 +183,52 @@ function PregelSuite () {
 
       url = `${baseUrl}/${taskId}`;
       result = sendRequest('DELETE', url, {}, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.body.error);
+      assertEqual(result.status, 200);
+    },
+    
+    testPregelWrongId: function() {
+      let url = baseUrl;
+      const task = {
+        algorithm: "pagerank",
+        vertexCollections: ["vertices"],
+        edgeCollections: ["edges"],
+        params: {
+          resultField: "result"
+        }
+      };
+      let result = sendRequest('POST', url, task, true);
+
+      assertFalse(result === undefined || result === {});
+      assertEqual(result.status, 200);
+      assertTrue(result.body > 1);
+
+      const taskId = result.body;
+      url = `${baseUrl}/${taskId}`;
+      result = sendRequest('GET', url, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertEqual(result.status, 200);
+      assertTrue(result.body.state === "loading" || result.body.state === "running");
+
+      require('internal').wait(5.0, false);
+
+      // kill using wrong id
+      url = `${baseUrl}/${taskId}`;
+      result = sendRequest('DELETE', `${baseUrl}/12345${taskId}`, {}, {}, true);
+      assertEqual(result.status, 404);
+      assertEqual(errors.ERROR_CURSOR_NOT_FOUND.code, result.body.errorNum);
+      assertMatch(/cannot find target server/, result.body.errorMessage);
+      
+      result = sendRequest('DELETE', `${baseUrl}/12345${taskId}`, {}, {}, false);
+      assertEqual(result.status, 404);
+      assertEqual(errors.ERROR_CURSOR_NOT_FOUND.code, result.body.errorNum);
+      assertMatch(/cannot find target server/, result.body.errorMessage);
+      
+      // kill using the right id
+      result = sendRequest('DELETE', url, {}, {}, true);
 
       assertFalse(result === undefined || result === {});
       assertFalse(result.body.error);

@@ -32,10 +32,12 @@ namespace arangodb::replication2::replicated_state::document {
 struct IDocumentStateTransactionHandler;
 
 struct DocumentFollowerState
-    : replicated_state::IReplicatedFollowerState<DocumentState> {
+    : replicated_state::IReplicatedFollowerState<DocumentState>,
+      std::enable_shared_from_this<DocumentFollowerState> {
   explicit DocumentFollowerState(
       std::unique_ptr<DocumentCore> core,
       std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory);
+  ~DocumentFollowerState();
 
  protected:
   [[nodiscard]] auto resign() && noexcept

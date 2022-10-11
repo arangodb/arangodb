@@ -34,8 +34,8 @@ using namespace application_features;
 
 using ArangoVPackFeatures =
     TypeList<BasicFeaturePhaseClient, GreetingsFeaturePhase, VersionFeature,
-             ConfigFeature, LoggerFeature, RandomFeature, ShellColorsFeature,
-             ShutdownFeature, VPackFeature>;
+             ConfigFeature, LoggerFeature, FileSystemFeature, RandomFeature,
+             ShellColorsFeature, ShutdownFeature, VPackFeature>;
 
 using ArangoVPackServer = ApplicationServerT<ArangoVPackFeatures>;
 using ArangoVPackFeature = ApplicationFeatureT<ArangoVPackServer>;

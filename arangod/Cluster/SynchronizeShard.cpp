@@ -35,6 +35,7 @@
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
@@ -707,39 +708,6 @@ bool SynchronizeShard::first() {
   // from this many number of failures in a row, we will step on the brake
   constexpr size_t delayThreshold = 4;
 
-  if (failuresInRow >= MaintenanceFeature::maxReplicationErrorsPerShard) {
-    auto& df = _feature.server().getFeature<DatabaseFeature>();
-    DatabaseGuard guard(df, database);
-    auto vocbase = &guard.database();
-
-    auto collection = vocbase->lookupCollection(shard);
-    if (collection != nullptr) {
-      LOG_TOPIC("7a2cf", WARN, Logger::MAINTENANCE)
-          << "SynchronizeShard: synchronizing shard '" << database << "/"
-          << shard << "' for central '" << database << "/" << planId
-          << "' encountered " << failuresInRow
-          << " failures in a row. now dropping follower shard for "
-          << "a full rebuild";
-
-      // remove these failure points for testing
-      TRI_RemoveFailurePointDebugging("SynchronizeShard::wrongChecksum");
-      TRI_RemoveFailurePointDebugging("disableCountAdjustment");
-
-      // remove all recorded failures, so in next run we can start with a clean
-      // state
-      _feature.removeReplicationError(getDatabase(), getShard());
-
-      ++_feature.server()
-            .getFeature<ClusterFeature>()
-            .followersTotalRebuildCounter();
-
-      // drop shard (💥)
-      methods::Collections::drop(*collection, false, 3.0);
-      result(TRI_ERROR_REPLICATION_WRONG_CHECKSUM);
-      return false;
-    }
-  }
-
   if (failuresInRow >= delayThreshold) {
     // shard synchronization has failed several times in a row.
     // now step on the brake a bit. this blocks our maintenance thread, but
@@ -747,6 +715,7 @@ bool SynchronizeShard::first() {
     // maintenance tasks.
     double sleepTime = 2.0 + 0.1 * (failuresInRow * (failuresInRow + 1) / 2);
 
+    // cap sleep time to 15 seconds
     sleepTime = std::min<double>(sleepTime, 15.0);
 
     LOG_TOPIC("40376", INFO, Logger::MAINTENANCE)
@@ -922,7 +891,7 @@ bool SynchronizeShard::first() {
           docCount - docCountOnLeader > 10000))) {
       // This could be a larger job, let's reschedule ourselves with
       // priority SLOW_OP_PRIORITY:
-      LOG_TOPIC("25a62", INFO, Logger::MAINTENANCE)
+      LOG_TOPIC("25a62", DEBUG, Logger::MAINTENANCE)
           << "SynchronizeShard action found that leader's and follower's "
              "document count differ by more than 10000, will reschedule with "
              "slow priority, database: "

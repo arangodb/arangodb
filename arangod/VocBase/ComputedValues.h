@@ -74,25 +74,25 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
   explicit ComputedValuesExpressionContext(transaction::Methods& trx,
                                            LogicalCollection& collection);
 
-  void registerWarning(ErrorCode errorCode, char const* msg) override;
+  void registerWarning(ErrorCode errorCode, std::string_view msg) override;
 
-  void registerError(ErrorCode errorCode, char const* msg) override;
+  void registerError(ErrorCode errorCode, std::string_view msg) override;
 
   void failOnWarning(bool value) noexcept { _failOnWarning = value; }
 
   void setName(std::string_view name) noexcept { _name = name; }
 
-  icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
+  icu::RegexMatcher* buildRegexMatcher(std::string_view expr,
                                        bool caseInsensitive) override;
 
-  icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
+  icu::RegexMatcher* buildLikeMatcher(std::string_view expr,
                                       bool caseInsensitive) override;
 
   icu::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
                                        velocypack::Options const* opts,
                                        bool& isEmptyExpression) override;
 
-  ValidatorBase* buildValidator(velocypack::Slice const& params) override;
+  ValidatorBase* buildValidator(velocypack::Slice params) override;
 
   TRI_vocbase_t& vocbase() const override;
 
@@ -110,7 +110,8 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
   void clearVariable(aql::Variable const* variable) noexcept override;
 
  private:
-  std::string buildLogMessage(std::string_view type, char const* msg) const;
+  std::string buildLogMessage(std::string_view type,
+                              std::string_view msg) const;
 
   transaction::Methods& _trx;
   LogicalCollection& _collection;

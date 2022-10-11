@@ -24,7 +24,8 @@
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 
 #include "Replication2/StateMachines/Document/DocumentCore.h"
-#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
+#include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
+#include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
 #include <Basics/Exceptions.h>
 #include <Futures/Future.h>
@@ -37,6 +38,8 @@ DocumentFollowerState::DocumentFollowerState(
     : _transactionHandler(
           handlersFactory->createTransactionHandler(core->getGid())),
       _guardedData(std::move(core)) {}
+
+DocumentFollowerState::~DocumentFollowerState() = default;
 
 auto DocumentFollowerState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
@@ -56,45 +59,22 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
 
 auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
-  while (auto entry = ptr->next()) {
-    auto doc = entry->second;
+  return _guardedData.doUnderLock(
+      [self = shared_from_this(),
+       ptr = std::move(ptr)](auto& data) -> futures::Future<Result> {
+        if (data.didResign()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
+        }
 
-    try {
-      auto fut = futures::Future<Result>{Result{}};
-      auto trx = _transactionHandler->ensureTransaction(doc);
-      TRI_ASSERT(trx != nullptr);
-      switch (doc.operation) {
-        case OperationType::kInsert:
-        case OperationType::kUpdate:
-        case OperationType::kReplace:
-        case OperationType::kRemove:
-        case OperationType::kTruncate:
-          fut = trx->apply(doc);
-          break;
-        case OperationType::kCommit:
-          fut = trx->commit();
-          _transactionHandler->removeTransaction(doc.tid);
-          break;
-        case OperationType::kAbort:
-          fut = trx->abort();
-          _transactionHandler->removeTransaction(doc.tid);
-          break;
-        default:
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
-      }
-
-      ADB_PROD_ASSERT(fut.isReady()) << doc;
-      if (fut.result()->fail()) {
-        return fut;
-      }
-    } catch (basics::Exception& e) {
-      return Result{e.code(), e.message()};
-    } catch (std::exception& e) {
-      return Result{TRI_ERROR_TRANSACTION_INTERNAL, e.what()};
-    }
-  }
-
-  return {TRI_ERROR_NO_ERROR};
+        while (auto entry = ptr->next()) {
+          auto doc = entry->second;
+          auto res = self->_transactionHandler->applyEntry(doc);
+          if (res.fail()) {
+            return res;
+          }
+        }
+        return {TRI_ERROR_NO_ERROR};
+      });
 }
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"

@@ -40,6 +40,7 @@
 
 #include <absl/strings/str_cat.h>
 
+#include <rocksdb/cache.h>
 #include <rocksdb/comparator.h>
 #include <rocksdb/db.h>
 #include <rocksdb/env.h>
@@ -129,13 +130,16 @@ RocksDBTempStorage::RocksDBTempStorage(std::string const& basePath,
                                        bool allowHWAcceleration)
     : _basePath(basePath),
       _usageTracker(usageTracker),
+#ifdef USE_ENTERPRISE
       _useEncryption(useEncryption),
       _allowHWAcceleration(allowHWAcceleration),
+#endif
       _nextId(0),
       _db(nullptr),
-      _comparator(std::make_unique<::KeysComparator>()) {}
+      _comparator(std::make_unique<::KeysComparator>()) {
+}
 
-RocksDBTempStorage::~RocksDBTempStorage() = default;
+RocksDBTempStorage::~RocksDBTempStorage() { close(); }
 
 Result RocksDBTempStorage::init() {
   // path for temporary files, not managed by RocksDB, but by us.
@@ -189,9 +193,6 @@ Result RocksDBTempStorage::init() {
     options.compression_per_level[level] =
         (level >= 2 ? rocksdb::kLZ4Compression : rocksdb::kNoCompression);
   }
-
-  // try to avoid having a WAL as much as possible
-  options.manual_wal_flush = true;
 
   // speed up write performance at the expense of snapshot consistency.
   // this implies that we cannot use snapshots in this instance to get
@@ -258,8 +259,16 @@ Result RocksDBTempStorage::init() {
 }
 
 void RocksDBTempStorage::close() {
-  TRI_ASSERT(_db != nullptr);
-  _db->Close();
+  if (_db != nullptr) {
+    for (auto* handle : _cfHandles) {
+      _db->DestroyColumnFamilyHandle(handle);
+    }
+
+    _db->Close();
+
+    delete _db;
+    _db = nullptr;
+  }
 }
 
 std::unique_ptr<RocksDBSortedRowsStorageContext>

@@ -173,7 +173,7 @@ std::unique_ptr<containers::RevisionTree> PhysicalCollection::revisionTree(
 }
 
 std::unique_ptr<containers::RevisionTree> PhysicalCollection::revisionTree(
-    uint64_t batchId) {
+    rocksdb::SequenceNumber) {
   return nullptr;
 }
 
