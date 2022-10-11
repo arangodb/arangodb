@@ -61,7 +61,7 @@ fuerte priority=500 single
 # Cluster Tests
 
 arangobench priority=1000 cluster -- --dumpAgencyOnError true
-chaos cluster !full -- --dumpAgencyOnError true
+chaos cluster !full -- --dumpAgencyOnError true parallelity=6
 restart priority=1000 sniff cluster -- --dumpAgencyOnError true --forceJson true
 
 load_balancing priority=500 cluster -- --dumpAgencyOnError true
