@@ -191,6 +191,14 @@ NewLeaderStateManager<S>::NewLeaderStateManager(
       _logMethods(std::move(logMethods)) {}
 
 template<typename S>
+auto NewLeaderStateManager<S>::resign() noexcept
+    -> std::pair<std::unique_ptr<CoreType>,
+                 std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
+  // TODO implement
+  TRI_ASSERT(false);
+}
+
+template<typename S>
 void NewFollowerStateManager<S>::updateCommitIndex(LogIndex commitIndex) {
   auto log = _logMethods->getLogSnapshot();
   auto logIter = log.getIteratorRange(_lastAppliedIndex, commitIndex);
@@ -214,6 +222,28 @@ NewFollowerStateManager<S>::NewFollowerStateManager(
     : _metrics(std::move(metrics)),
       _followerState(std::move(followerState)),
       _logMethods(std::move(logMethods)) {}
+
+template<typename S>
+void NewFollowerStateManager<S>::acquireSnapshot(ServerID leader,
+                                                 LogIndex index) {
+  // TODO implement
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+template<typename S>
+auto NewFollowerStateManager<S>::resign() noexcept
+    -> std::pair<std::unique_ptr<CoreType>,
+                 std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
+  // TODO implement
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+template<typename S>
+NewUnconfiguredStateManager<S>::NewUnconfiguredStateManager(
+    std::unique_ptr<CoreType> core) noexcept
+    : _core(std::move(core)) {}
 
 template<typename S>
 auto IReplicatedLeaderState<S>::getStream() const noexcept
