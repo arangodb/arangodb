@@ -46,7 +46,8 @@ struct TermBuilder {
     return *this;
   }
 
-  auto setLeader(ParticipantId id, RebootId rebootId) -> TermBuilder& {
+  auto setLeader(ParticipantId id, RebootId rebootId = RebootId{1})
+      -> TermBuilder& {
     term.leader.emplace(std::move(id), rebootId);
     return *this;
   }
@@ -216,6 +217,13 @@ struct FakeParticipantsFactory : replicated_log::IParticipantsFactory {
     return nullptr;
   }
 
+  auto followerInTerm(LogTerm term) const -> std::shared_ptr<FakeLogFollower> {
+    if (auto it = participants.find(term); it != participants.end()) {
+      return std::dynamic_pointer_cast<FakeLogFollower>(it->second);
+    }
+    return nullptr;
+  }
+
   std::unordered_map<LogTerm, std::shared_ptr<replicated_log::ILogParticipant>>
       participants;
 };
@@ -252,7 +260,7 @@ TEST_F(ReplicatedLogTest2, construct_leader_on_connect) {
 
   test::ParticipantsConfigBuilder config;
   config.setEffectiveWriteConcern(2)
-      .setParticipant("SELF", {.allowedInQuorum = true})
+      .setParticipant(myself.serverId, {.allowedInQuorum = true})
       .setParticipant("A", {.allowedInQuorum = true})
       .setParticipant("B", {.allowedInQuorum = true});
 
@@ -278,7 +286,7 @@ TEST_F(ReplicatedLogTest2, construct_leader_on_update_config) {
 
   test::ParticipantsConfigBuilder config;
   config.setEffectiveWriteConcern(2)
-      .setParticipant("SELF", {.allowedInQuorum = true})
+      .setParticipant(myself.serverId, {.allowedInQuorum = true})
       .setParticipant("A", {.allowedInQuorum = true})
       .setParticipant("B", {.allowedInQuorum = true});
 
@@ -292,4 +300,71 @@ TEST_F(ReplicatedLogTest2, construct_leader_on_update_config) {
         std::dynamic_pointer_cast<test::FakeLogLeader>(log->getParticipant());
     ASSERT_EQ(leader, participant);
   }
+}
+
+TEST_F(ReplicatedLogTest2, update_leader_to_follower) {
+  auto log = std::make_shared<replicated_log::ReplicatedLog>(
+      std::move(core), logMetricsMock, optionsMock, participantsFactory,
+      loggerContext, myself);
+
+  test::TermBuilder term;
+  term.setTerm(LogTerm{1}).setLeader(myself);
+
+  test::ParticipantsConfigBuilder config;
+  config.setEffectiveWriteConcern(2)
+      .setParticipant(myself.serverId, {.allowedInQuorum = true})
+      .setParticipant("A", {.allowedInQuorum = true})
+      .setParticipant("B", {.allowedInQuorum = true});
+
+  // create initial state and connection
+  auto connection = log->connect(recorder.createHandle());
+  log->updateConfig(term.get(), config.get());
+  auto leader = participantsFactory->leaderInTerm(LogTerm{1});
+
+  // update term and make A leader
+  term.setTerm(LogTerm{2}).setLeader("A");
+  log->updateConfig(term.get(), config.get());
+  auto follower = participantsFactory->followerInTerm(LogTerm{2});
+  ASSERT_NE(follower, nullptr);
+  {
+    auto participant =
+        std::dynamic_pointer_cast<test::FakeLogFollower>(log->getParticipant());
+    ASSERT_EQ(follower, participant);
+  }
+  // old leader lost core
+  ASSERT_EQ(leader->core, nullptr);
+}
+
+TEST_F(ReplicatedLogTest2, update_follower_to_leader) {
+  auto log = std::make_shared<replicated_log::ReplicatedLog>(
+      std::move(core), logMetricsMock, optionsMock, participantsFactory,
+      loggerContext, myself);
+
+  test::TermBuilder term;
+  term.setTerm(LogTerm{1}).setLeader("B");
+
+  test::ParticipantsConfigBuilder config;
+  config.setEffectiveWriteConcern(2)
+      .setParticipant(myself.serverId, {.allowedInQuorum = true})
+      .setParticipant("A", {.allowedInQuorum = true})
+      .setParticipant("B", {.allowedInQuorum = true});
+
+  // create initial state and connection
+  auto connection = log->connect(recorder.createHandle());
+  log->updateConfig(term.get(), config.get());
+  auto follower = participantsFactory->followerInTerm(LogTerm{1});
+
+  // update term and make myself leader
+  term.setTerm(LogTerm{2}).setLeader(myself);
+  log->updateConfig(term.get(), config.get());
+  auto leader = participantsFactory->leaderInTerm(LogTerm{2});
+  ASSERT_NE(leader, nullptr);
+  {
+    auto participant =
+        std::dynamic_pointer_cast<test::FakeLogLeader>(log->getParticipant());
+    ASSERT_EQ(leader, participant);
+  }
+
+  // old leader lost core
+  ASSERT_EQ(follower->core, nullptr);
 }
