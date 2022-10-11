@@ -103,8 +103,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
       std::shared_ptr<IAbstractFollowerFactory> followerFactory)
       -> std::shared_ptr<LogLeader>;
 
-  auto insert(LogPayload payload, bool waitForSync = false)
-      -> LogIndex override;
+  auto insert(LogPayload payload, bool waitForSync = false) -> LogIndex;
 
   // As opposed to the above insert methods, this one does not trigger the async
   // replication automatically, i.e. does not call triggerAsyncReplication after
@@ -115,8 +114,10 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   // This method will however not prevent the resulting log entry from being
   // replicated, if async replication is running in the background already, or
   // if it is triggered by someone else.
+  struct DoNotTriggerAsyncReplication {};
+  static constexpr DoNotTriggerAsyncReplication doNotTriggerAsyncReplication{};
   auto insert(LogPayload payload, bool waitForSync,
-              DoNotTriggerAsyncReplication) -> LogIndex override;
+              DoNotTriggerAsyncReplication) -> LogIndex;
 
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
 
@@ -132,7 +133,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   // until all participants are perfectly in sync, and will then stop.
   // Is usually called automatically after an insert, but can be called manually
   // from test code.
-  auto triggerAsyncReplication() -> void override;
+  auto triggerAsyncReplication() -> void;
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
 
@@ -149,9 +150,9 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
   // Returns true if the leader has established its leadership: at least one
   // entry within its term has been committed.
-  [[nodiscard]] auto isLeadershipEstablished() const noexcept -> bool override;
+  [[nodiscard]] auto isLeadershipEstablished() const noexcept -> bool;
 
-  auto waitForLeadership() -> WaitForFuture override;
+  auto waitForLeadership() -> WaitForFuture;
 
   [[nodiscard]] auto waitForResign() -> futures::Future<futures::Unit> override;
 

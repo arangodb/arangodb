@@ -129,13 +129,6 @@ struct FakeLogFollower : replicated_log::ILogFollower {
   auto release(LogIndex doneWithIdx) -> Result override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
-  auto waitForLeaderAcked() -> WaitForFuture override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-  auto getLeader() const noexcept
-      -> std::optional<ParticipantId> const& override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
 
   std::unique_ptr<replicated_log::LogCore> core;
 };
@@ -173,21 +166,7 @@ struct FakeLogLeader : replicated_log::ILogLeader {
   auto release(LogIndex doneWithIdx) -> Result override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
-  auto insert(LogPayload payload, bool waitForSync) -> LogIndex override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-  auto insert(LogPayload payload, bool waitForSync,
-              DoNotTriggerAsyncReplication asyncReplication)
-      -> LogIndex override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-  void triggerAsyncReplication() override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-  auto isLeadershipEstablished() const noexcept -> bool override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-  auto waitForLeadership() -> WaitForFuture override {
+  auto insert(LogPayload payload, bool waitForSync) -> LogIndex {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
   auto updateParticipantsConfig(

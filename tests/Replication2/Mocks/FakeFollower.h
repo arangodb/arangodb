@@ -50,11 +50,6 @@ struct FakeFollower final : replicated_log::ILogFollower,
 
   auto release(LogIndex doneWithIdx) -> Result override;
 
-  auto waitForLeaderAcked() -> WaitForFuture override;
-
-  auto getLeader() const noexcept
-      -> std::optional<ParticipantId> const& override;
-
   auto getParticipantId() const noexcept -> ParticipantId const& override;
 
   auto appendEntries(replicated_log::AppendEntriesRequest request)

@@ -41,11 +41,6 @@ auto FakeFollower::release(arangodb::replication2::LogIndex doneWithIdx)
   return {};  // return ok
 }
 
-auto FakeFollower::getLeader() const noexcept
-    -> std::optional<ParticipantId> const& {
-  return leaderId;
-}
-
 auto FakeFollower::getParticipantId() const noexcept -> ParticipantId const& {
   return id;
 }
@@ -92,10 +87,6 @@ auto FakeFollower::getQuickStatus() const -> replicated_log::QuickLogStatus {
       }},
       .leadershipEstablished = guard->commitIndex > kBaseIndex,
   };
-}
-
-auto FakeFollower::waitForLeaderAcked() -> WaitForFuture {
-  return waitForLeaderAckedQueue.waitFor({});
 }
 
 auto FakeFollower::addEntry(LogPayload payload) -> LogIndex {

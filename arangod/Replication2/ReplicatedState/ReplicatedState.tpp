@@ -34,23 +34,19 @@
 #include "Metrics/Gauge.h"
 #include "Replication2/ReplicatedLog/LogUnconfiguredParticipant.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
-#include "Replication2/ReplicatedState/FollowerStateManager.h"
 #include "Replication2/ReplicatedState/LazyDeserializingIterator.h"
-#include "Replication2/ReplicatedState/LeaderStateManager.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/ReplicatedState/UnconfiguredStateManager.h"
-#include "Replication2/Streams/LogMultiplexer.h"
 #include "Replication2/Streams/StreamSpecification.h"
 #include "Replication2/Streams/Streams.h"
 
 #include "Replication2/Exceptions/ParticipantResignedException.h"
-#include "Replication2/ReplicatedState/FollowerStateManager.tpp"
-#include "Replication2/ReplicatedState/LeaderStateManager.tpp"
 #include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
 #include "Replication2/ReplicatedState/UnconfiguredStateManager.tpp"
-#include "Replication2/Streams/LogMultiplexer.tpp"
 #include "Logger/LogContextKeys.h"
+#include "Replication2/MetricsHelper.h"
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
 
 namespace arangodb::replication2::replicated_state {
 
@@ -324,14 +320,15 @@ void IReplicatedFollowerState<S>::setStateManager(
 template<typename S>
 auto IReplicatedFollowerState<S>::waitForApplied(LogIndex index)
     -> futures::Future<futures::Unit> {
-  if (auto manager = _manager.lock(); manager != nullptr) {
-    return manager->waitForApplied(index);
-  } else {
-    WaitForAppliedFuture future(
-        std::make_exception_ptr(replicated_log::ParticipantResignedException(
-            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE)));
-    return future;
-  }
+  //  if (auto manager = _manager.lock(); manager != nullptr) {
+  //    return manager->waitForApplied(index);
+  //  } else {
+  //    WaitForAppliedFuture future(
+  //        std::make_exception_ptr(replicated_log::ParticipantResignedException(
+  //            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
+  //            ADB_HERE)));
+  //    return future;
+  //  }
 }
 
 template<typename S>
@@ -351,26 +348,27 @@ ReplicatedState<S>::ReplicatedState(
 
 template<typename S>
 auto ReplicatedState<S>::getFollower() const -> std::shared_ptr<FollowerType> {
-  auto guard = guardedData.getLockedGuard();
-  if (auto machine = std::dynamic_pointer_cast<FollowerStateManager<S>>(
-          guard->currentManager);
-      machine) {
-    return std::static_pointer_cast<FollowerType>(machine->getFollowerState());
-  }
+  //  auto guard = guardedData.getLockedGuard();
+  //  if (auto machine = std::dynamic_pointer_cast<FollowerStateManager<S>>(
+  //          guard->currentManager);
+  //      machine) {
+  //    return
+  //    std::static_pointer_cast<FollowerType>(machine->getFollowerState());
+  //  }
   return nullptr;
 }
 
 template<typename S>
 auto ReplicatedState<S>::getLeader() const -> std::shared_ptr<LeaderType> {
-  auto guard = guardedData.getLockedGuard();
-  if (auto internalState = std::dynamic_pointer_cast<LeaderStateManager<S>>(
-          guard->currentManager);
-      internalState) {
-    if (auto state = internalState->getImplementationState();
-        state != nullptr) {
-      return std::static_pointer_cast<LeaderType>(state);
-    }
-  }
+  //  auto guard = guardedData.getLockedGuard();
+  //  if (auto internalState = std::dynamic_pointer_cast<LeaderStateManager<S>>(
+  //          guard->currentManager);
+  //      internalState) {
+  //    if (auto state = internalState->getImplementationState();
+  //        state != nullptr) {
+  //      return std::static_pointer_cast<LeaderType>(state);
+  //    }
+  //  }
   return nullptr;
 }
 

@@ -82,10 +82,6 @@ struct ILogParticipant {
   [[nodiscard]] virtual auto waitFor(LogIndex index) -> WaitForFuture = 0;
   [[nodiscard]] virtual auto waitForIterator(LogIndex index)
       -> WaitForIteratorFuture = 0;
-  [[nodiscard]] virtual auto waitForResign()
-      -> futures::Future<futures::Unit> = 0;
-  [[nodiscard]] virtual auto getTerm() const noexcept -> std::optional<LogTerm>;
-  [[nodiscard]] virtual auto getCommitIndex() const noexcept -> LogIndex = 0;
 
   [[nodiscard]] virtual auto copyInMemoryLog() const -> InMemoryLog = 0;
   [[nodiscard]] virtual auto release(LogIndex doneWithIdx) -> Result = 0;
@@ -95,30 +91,13 @@ struct ILogParticipant {
  * Interface describing a LogFollower API. Components should use this interface
  * if they want to refer to a LogFollower instance.
  */
-struct ILogFollower : ILogParticipant, AbstractFollower {
-  [[nodiscard]] virtual auto waitForLeaderAcked() -> WaitForFuture = 0;
-  [[nodiscard]] virtual auto getLeader() const noexcept
-      -> std::optional<ParticipantId> const& = 0;
-};
+struct ILogFollower : ILogParticipant, AbstractFollower {};
 
 /**
  * Interfaces describe a LogLeader API. Components should use this interface
  * if they want to refer to a LogLeader instance.
  */
 struct ILogLeader : ILogParticipant {
-  virtual auto insert(LogPayload payload, bool waitForSync) -> LogIndex = 0;
-
-  struct DoNotTriggerAsyncReplication {};
-  constexpr static auto doNotTriggerAsyncReplication =
-      DoNotTriggerAsyncReplication{};
-  virtual auto insert(LogPayload payload, bool waitForSync,
-                      DoNotTriggerAsyncReplication) -> LogIndex = 0;
-  virtual void triggerAsyncReplication() = 0;
-
-  [[nodiscard]] virtual auto isLeadershipEstablished() const noexcept
-      -> bool = 0;
-  [[nodiscard]] virtual auto waitForLeadership() -> WaitForFuture = 0;
-
   virtual auto updateParticipantsConfig(
       std::shared_ptr<agency::ParticipantsConfig const> const& config)
       -> LogIndex = 0;

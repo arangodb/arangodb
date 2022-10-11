@@ -67,26 +67,20 @@ class LogFollower : public ILogFollower,
   [[nodiscard]] auto
   resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
   [[nodiscard]] auto getLeader() const noexcept
-      -> std::optional<ParticipantId> const& override;
+      -> std::optional<ParticipantId> const&;
 
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
   [[nodiscard]] auto waitForIterator(LogIndex index)
       -> WaitForIteratorFuture override;
-  [[nodiscard]] auto waitForResign() -> futures::Future<futures::Unit> override;
   [[nodiscard]] auto getParticipantId() const noexcept
       -> ParticipantId const& override;
-  [[nodiscard]] auto getLogIterator(LogIndex firstIndex) const
-      -> std::unique_ptr<LogIterator>;
-  [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const
-      -> std::unique_ptr<LogIterator>;
-  [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
 
   [[nodiscard]] auto copyInMemoryLog() const -> InMemoryLog override;
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
-  Result onSnapshotCompleted();
+  auto onSnapshotCompleted() -> Result;
 
   /// @brief Resolved when the leader has committed at least one entry.
-  auto waitForLeaderAcked() -> WaitForFuture override;
+  auto waitForLeaderAcked() -> WaitForFuture;
 
  private:
   LogFollower(LoggerContext const&,
