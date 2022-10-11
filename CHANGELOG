@@ -1,10 +1,10 @@
 v3.9.4 (XXXX-XX-XX)
 -------------------
 
-* Fixed BTS-850: Fixed the removal of already deleted orphan collections out
-  of a graph definition. The removal of an already deleted orphan collection
-  out of a graph definition failed and has been rejected in case the
-  collection got dropped already.
+* Fixed BTS-850: Fixed the removal of already deleted orphan collections out of
+  a graph definition. The removal of an already deleted orphan collection out of
+  a graph definition failed and has been rejected in case the collection got
+  dropped already.
 
 * Fix an issue with replication of arangosearch view change entries in single
   server replication and active failover. Previously, when changing the
