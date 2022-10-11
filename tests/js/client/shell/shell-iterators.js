@@ -84,7 +84,7 @@ function IteratorSuite(permuteConfigs) {
   };
 
   return {
-    setUp: function () {
+    setUpAll: function () {
       db._drop(cn);
       let c = db._create(cn, { numberOfShards: 3 });
       c.ensureIndex({ type: "persistent", fields: ["value1"] });
@@ -97,7 +97,7 @@ function IteratorSuite(permuteConfigs) {
       db._createEdgeCollection(ecn, { numberOfShards: 3 });
     },
 
-    tearDown: function () {
+    tearDownAll: function () {
       db._drop(cn);
       db._drop(ecn);
     },
