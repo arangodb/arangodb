@@ -417,6 +417,22 @@ function testing_the_query_cache_in_transcationSuite() {
       assertNotUndefined(res.parsedBody.result.id);
       trx = res.parsedBody.result.id;
       assertNotNull(trx);
+
+
+      res = arango.POST_RAW("/_api/transaction/begin", {collections: {read: cn}});
+      assertEqual(res.code, 201);
+      assertNotUndefined(res.parsedBody.result.id);
+      const trx2 = res.parsedBody.result.id;
+      assertNotNull(trx2);
+
+
+      res = arango.POST_RAW("/_api/cursor", {
+        "query": `FOR doc IN ${cn} RETURN doc`,
+        "cache": true
+      }, {"x-arango-trx-id": trx2});
+      assertEqual(res.code, 201);
+      assertFalse(res.error);
+
       try {
         res = arango.POST_RAW("/_api/cursor", {"query": `UPDATE { _key: "a", value: 1 } IN ${cn}`}, {"x-arango-trx-id": trx});
 
