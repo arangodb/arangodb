@@ -165,7 +165,7 @@ struct NewLeaderStateManager {
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
 
  private:
-  LoggerContext _loggerContext;
+  LoggerContext const _loggerContext;
   std::shared_ptr<ReplicatedStateMetrics> const _metrics;
   std::shared_ptr<IReplicatedLeaderState<S>> _leaderState;
   std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> _logMethods;
@@ -190,7 +190,7 @@ struct NewFollowerStateManager {
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
 
  private:
-  LoggerContext _loggerContext;
+  LoggerContext const _loggerContext;
   std::shared_ptr<ReplicatedStateMetrics> const _metrics;
   std::shared_ptr<IReplicatedFollowerState<S>> _followerState;
   std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> _logMethods;
@@ -209,7 +209,7 @@ struct NewUnconfiguredStateManager {
   }
 
  private:
-  LoggerContext _loggerContext;
+  LoggerContext const _loggerContext;
   std::unique_ptr<CoreType> _core;
 };
 
