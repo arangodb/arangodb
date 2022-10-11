@@ -47,6 +47,7 @@ const RESET = internal.COLORS.COLOR_RESET;
 const YELLOW = internal.COLORS.COLOR_YELLOW;
 
 const internalMembers = [
+  'crashreport',
   'code',
   'error',
   'status',
@@ -1004,6 +1005,9 @@ function dumpAllResults(options, results) {
   let j;
 
   try {
+    if (cu.GDB_OUTPUT !== '') {
+      results['crashreport'] = cu.GDB_OUTPUT;
+    }
     j = JSON.stringify(results);
   } catch (err) {
     j = inspect(results);

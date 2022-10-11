@@ -665,7 +665,8 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoDistance) {
 
   {
     irs::Or expected;
-    auto& filter = expected.add<irs::Not>()
+    auto& filter = expected.add<irs::And>()
+                       .add<irs::Not>()
                        .filter<arangodb::iresearch::GeoDistanceFilter>();
     *filter.mutable_field() = mangleStringIdentity("name");
     auto* opts = filter.mutable_options();

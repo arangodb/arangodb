@@ -46,7 +46,8 @@ function optimizerRuleInvertedIndexTestSuite() {
       analyzers.save("my_geo", "geojson",{type: 'point'}, ["frequency", "norm", "position"]);
       col.ensureIndex({type: 'inverted',
                        name: 'InvertedIndexUnsorted',
-                       fields: ['data_field',
+                       fields: ['data_field', {name:'norm_field', analyzer: 'text_en'},
+                                {name:'norm_field2', analyzer: 'text_en'},
                                 {name:'searchField', searchField:true},
                                 {name:'geo_field', analyzer:'my_geo'},
                                 {name:'custom_field', analyzer:'text_en'}]});
@@ -60,12 +61,14 @@ function optimizerRuleInvertedIndexTestSuite() {
       for (let i = 0; i < docs; i++) {
         if (i % 10 === 0) {
           data.push({count:i,
+                     norm_field: 'fOx',
                      searchField:i,
                      data_field:'value' + i % 100,
                      custom_field:"quick brown",
                      geo_field:{type: 'Point', coordinates: [37.615895, 55.7039]}});
         } else {
           data.push({count:i,
+                     norm_field2: 'BOX',
                      data_field:'value' + i % 100,
                      custom_field: i,
                      geo_field:{type: 'Point', coordinates: [27.615895, 15.7039]}});  
@@ -90,7 +93,8 @@ function optimizerRuleInvertedIndexTestSuite() {
     testCreateDuplicate: function () {
        let idx = col.ensureIndex({type: 'inverted',
                         name: 'InvertedIndexUnsorted_duplicate',
-                        fields: ['data_field',
+                        fields: ['data_field', {name:'norm_field', analyzer: 'text_en'},
+                                {name:'norm_field2', analyzer: 'text_en'},
                                 {name:'searchField', searchField:true},
                                 {name:'geo_field', analyzer:'my_geo'},
                                 {name:'custom_field', analyzer:'text_en'}]});
@@ -131,7 +135,7 @@ function optimizerRuleInvertedIndexTestSuite() {
       let executeRes = db._query(query.query, query.bindVars);
       assertEqual(1, executeRes.toArray().length);
     },
-    testIndexGeo: function () {
+    testIndexGeoIntersects: function () {
       const query = aql`
         FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
           FILTER GEO_INTERSECTS(d.geo_field, {type: 'Point', coordinates: [37.615895, 55.7039]})
@@ -143,6 +147,58 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
       let executeRes = db._query(query.query, query.bindVars);
       assertEqual(docs/10, executeRes.toArray()[0]);
+    },
+    testIndexGeoDistance: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER GEO_DISTANCE(d.geo_field, GEO_POINT(37.615895, 55.7039)) > 0
+          COLLECT WITH COUNT INTO c
+          RETURN c`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars);
+      assertEqual(docs - (docs/10), executeRes.toArray()[0]);
+    },
+    testIndexGeoContains: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER GEO_CONTAINS(GEO_POLYGON([[37, 55], [38, 55], [38, 56], [37, 56], [37, 55]]), d.geo_field)
+          COLLECT WITH COUNT INTO c
+          RETURN c`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars);
+      assertEqual(docs/10, executeRes.toArray()[0]);
+    },
+    testIndexGeoInRange: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER GEO_IN_RANGE(d.geo_field, GEO_POINT(37.615895, 55.7039), 0.000001, 1000000)
+          COLLECT WITH COUNT INTO c
+          RETURN c`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars);
+      assertEqual(docs/10, executeRes.toArray()[0]);
+    },
+    testIndexExists: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER EXISTS(d.geo_field)
+          COLLECT WITH COUNT INTO c
+          RETURN c`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars);
+      assertEqual(docs, executeRes.toArray()[0]);
     },
     testIndexHintedSorted: function () {
       const query = aql`
@@ -439,6 +495,18 @@ function optimizerRuleInvertedIndexTestSuite() {
       const res = AQL_EXPLAIN(query.query, query.bindVars);
       const appliedRules = res.plan.rules;
       assertFalse(appliedRules.includes(useIndexes));
+    },
+    testDisjunctionOptimized: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted"}
+          FILTER d.norm_field == 'fox' OR d.norm_field2 == 'box'
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      let executeRes = db._query(query.query, query.bindVars).toArray();
+      assertEqual(docs, executeRes.length);
     },
   };
 }

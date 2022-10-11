@@ -105,15 +105,6 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(
       }
     });
 
-    bool wide = collection.id() == collection.planId() && collection.isAStub();
-    auto& ci = collection.vocbase()
-                   .server()
-                   .getFeature<ClusterFeature>()
-                   .clusterInfo();
-    clusterCollectionName(collection, wide ? nullptr : &ci,
-                          index->Index::id().id(), false,
-                          index->_collectionName);
-
     auto initRes = index->init(
         definition, pathExists, [this]() -> irs::directory_attributes {
           auto& selector = _server.getFeature<EngineSelectorFeature>();
@@ -154,9 +145,9 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(
   std::string errField;
   IResearchInvertedIndexMeta tmpLinkMeta;
   if (!tmpLinkMeta.init(_server, definition,
-                        arangodb::ServerState::instance()->isDBServer(),
-                        errField, vocbase.name())) {
-    return arangodb::Result(
+                        ServerState::instance()->isDBServer(), errField,
+                        vocbase.name())) {
+    return Result(
         TRI_ERROR_BAD_PARAMETER,
         errField.empty()
             ? (std::string(
@@ -167,7 +158,7 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(
                errField + "': " + definition.toString()));
   }
   if (!tmpLinkMeta.json(_server, normalized, isCreation, &vocbase)) {
-    return arangodb::Result(
+    return Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string(
             "failed to write normalized index fields from definition: ") +
@@ -177,7 +168,7 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(
   if (nameSlice.isString() && nameSlice.getStringLength() > 0) {
     normalized.add(arangodb::StaticStrings::IndexName, nameSlice);
   } else if (!nameSlice.isNone()) {
-    return arangodb::Result(
+    return Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string(
             "failed to normalize index from definition, error in attribute '") +
@@ -185,22 +176,21 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(
   }
 
   normalized.add(arangodb::StaticStrings::IndexType,
-                 arangodb::velocypack::Value(arangodb::Index::oldtypeName(
-                     arangodb::Index::TRI_IDX_TYPE_INVERTED_INDEX)));
+                 velocypack::Value(
+                     Index::oldtypeName(Index::TRI_IDX_TYPE_INVERTED_INDEX)));
 
-  if (isCreation && !arangodb::ServerState::instance()->isCoordinator() &&
+  if (isCreation && !ServerState::instance()->isCoordinator() &&
       !definition.hasKey(arangodb::StaticStrings::ObjectId)) {
     normalized.add(arangodb::StaticStrings::ObjectId,
                    VPackValue(std::to_string(TRI_NewTickServer())));
   }
 
-  normalized.add(arangodb::StaticStrings::IndexSparse,
-                 arangodb::velocypack::Value(true));
+  normalized.add(arangodb::StaticStrings::IndexSparse, velocypack::Value(true));
   normalized.add(arangodb::StaticStrings::IndexUnique,
-                 arangodb::velocypack::Value(false));
+                 velocypack::Value(false));
 
-  arangodb::IndexFactory::processIndexInBackground(definition, normalized);
-  arangodb::IndexFactory::processIndexParallelism(definition, normalized);
+  IndexFactory::processIndexInBackground(definition, normalized);
+  IndexFactory::processIndexParallelism(definition, normalized);
 
   return res;
 }
@@ -245,7 +235,7 @@ std::string IResearchRocksDBInvertedIndex::getCollectionName() const {
   if (ServerState::instance()->isSingleServer()) {
     return std::to_string(Index::_collection.id().id());
   }
-  return _collectionName;
+  return meta()._collectionName;
 }
 
 std::string const& IResearchRocksDBInvertedIndex::getShardName()
@@ -311,12 +301,14 @@ void IResearchRocksDBInvertedIndex::removeMetrics() {
 void IResearchRocksDBInvertedIndex::toVelocyPack(
     VPackBuilder& builder,
     std::underlying_type<Index::Serialize>::type flags) const {
-  auto const forPersistence =
+  bool const forPersistence =
       Index::hasFlag(flags, Index::Serialize::Internals);
+  bool const forInventory = Index::hasFlag(flags, Index::Serialize::Inventory);
   VPackObjectBuilder objectBuilder(&builder);
   IResearchInvertedIndex::toVelocyPack(
       IResearchDataStore::collection().vocbase().server(),
-      &IResearchDataStore::collection().vocbase(), builder, forPersistence);
+      &IResearchDataStore::collection().vocbase(), builder,
+      forPersistence || forInventory);
   if (forPersistence) {
     TRI_ASSERT(objectId() != 0);  // If we store it, it cannot be 0
     builder.add(arangodb::StaticStrings::ObjectId,
@@ -325,11 +317,10 @@ void IResearchRocksDBInvertedIndex::toVelocyPack(
   // can't use Index::toVelocyPack as it will try to output 'fields'
   // but we have custom storage format
   builder.add(arangodb::StaticStrings::IndexId,
-              arangodb::velocypack::Value(std::to_string(_iid.id())));
+              velocypack::Value(std::to_string(_iid.id())));
   builder.add(arangodb::StaticStrings::IndexType,
-              arangodb::velocypack::Value(oldtypeName(type())));
-  builder.add(arangodb::StaticStrings::IndexName,
-              arangodb::velocypack::Value(name()));
+              velocypack::Value(oldtypeName(type())));
+  builder.add(arangodb::StaticStrings::IndexName, velocypack::Value(name()));
   builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
 
@@ -349,7 +340,7 @@ void IResearchRocksDBInvertedIndex::unload() /*noexcept*/ {
 }
 
 bool IResearchRocksDBInvertedIndex::matchesDefinition(
-    arangodb::velocypack::Slice const& other) const {
+    velocypack::Slice const& other) const {
   TRI_ASSERT(other.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto typeSlice = other.get(arangodb::StaticStrings::IndexType);

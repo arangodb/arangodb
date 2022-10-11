@@ -79,6 +79,12 @@ struct ReplicatedLogTest : ::testing::Test {
   }
 
   template<typename MockLogT = MockLog>
+  auto makeLogCore(GlobalLogIdentifier gid) -> std::unique_ptr<LogCore> {
+    auto persisted = makePersistedLog<MockLogT>(std::move(gid));
+    return std::make_unique<LogCore>(persisted);
+  }
+
+  template<typename MockLogT = MockLog>
   auto getPersistedLogById(LogId id) -> std::shared_ptr<MockLogT> {
     return std::dynamic_pointer_cast<MockLogT>(_persistedLogs.at(id));
   }
@@ -90,6 +96,13 @@ struct ReplicatedLogTest : ::testing::Test {
     return persisted;
   }
 
+  template<typename MockLogT = MockLog>
+  auto makePersistedLog(GlobalLogIdentifier gid) -> std::shared_ptr<MockLogT> {
+    auto persisted = std::make_shared<MockLogT>(gid);
+    _persistedLogs[gid.id] = persisted;
+    return persisted;
+  }
+
   auto makeDelayedPersistedLog(LogId id) {
     return makePersistedLog<DelayedMockLog>(id);
   }
@@ -97,6 +110,15 @@ struct ReplicatedLogTest : ::testing::Test {
   template<typename MockLogT = MockLog>
   auto makeReplicatedLog(LogId id) -> std::shared_ptr<TestReplicatedLog> {
     auto core = makeLogCore<MockLogT>(id);
+    return std::make_shared<TestReplicatedLog>(
+        std::move(core), _logMetricsMock, _optionsMock,
+        LoggerContext(Logger::REPLICATION2));
+  }
+
+  template<typename MockLogT = MockLog>
+  auto makeReplicatedLog(GlobalLogIdentifier gid)
+      -> std::shared_ptr<TestReplicatedLog> {
+    auto core = makeLogCore<MockLogT>(std::move(gid));
     return std::make_shared<TestReplicatedLog>(
         std::move(core), _logMetricsMock, _optionsMock,
         LoggerContext(Logger::REPLICATION2));

@@ -46,6 +46,7 @@ using namespace arangodb::replication2::replicated_state::document;
 using namespace arangodb::replication2::test;
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/Mocks/MockStatePersistorInterface.h"
 
 struct MockDatabaseGuard : IDatabaseGuard {
   MOCK_METHOD(TRI_vocbase_t&, database, (), (const, noexcept, override));
@@ -120,6 +121,7 @@ struct MockDocumentStateShardHandler : IDocumentStateShardHandler {
   MOCK_METHOD(ResultT<std::string>, createLocalShard,
               (std::string const&, std::shared_ptr<velocypack::Builder> const&),
               (override));
+  MOCK_METHOD(Result, dropLocalShard, (std::string const&), (override));
 };
 
 struct DocumentStateMachineTest : test::ReplicatedLogTest {
@@ -129,6 +131,8 @@ struct DocumentStateMachineTest : test::ReplicatedLogTest {
                                               transactionManagerMock);
   }
 
+  std::shared_ptr<MockStatePersistorInterface> statePersistor =
+      std::make_shared<MockStatePersistorInterface>();
   std::shared_ptr<ReplicatedStateFeature> feature =
       std::make_shared<ReplicatedStateFeature>();
 
@@ -194,6 +198,7 @@ struct DocumentStateMachineTest : test::ReplicatedLogTest {
   const std::string collectionId = "testCollectionID";
   const LogId logId = LogId{1};
   const std::string dbName = "testDB";
+  const GlobalLogIdentifier globalId{dbName, logId};
   const std::string shardId =
       DocumentStateShardHandler::stateIdToShardId(logId);
   const document::DocumentCoreParameters coreParams{collectionId, dbName};
@@ -203,13 +208,14 @@ TEST_F(DocumentStateMachineTest,
        leader_resign_should_abort_active_transactions) {
   using namespace testing;
 
-  auto leaderLog = makeReplicatedLog(logId);
+  auto leaderLog = makeReplicatedLog(globalId);
   auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {}, 1);
   leader->triggerAsyncReplication();
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
-          feature->createReplicatedState(DocumentState::NAME, leaderLog));
+          feature->createReplicatedState(DocumentState::NAME, leaderLog,
+                                         statePersistor));
   ASSERT_NE(leaderReplicatedState, nullptr);
 
   EXPECT_CALL(*agencyHandlerMock, getCollectionPlan(collectionId)).Times(1);
@@ -237,30 +243,29 @@ TEST_F(DocumentStateMachineTest,
     auto operation = OperationType::kInsert;
     std::ignore =
         leaderState->replicateOperation(builder.sharedSlice(), operation,
-                                        TransactionId{1}, ReplicationOptions{});
+                                        TransactionId{5}, ReplicationOptions{});
     std::ignore =
         leaderState->replicateOperation(builder.sharedSlice(), operation,
-                                        TransactionId{2}, ReplicationOptions{});
-    std::ignore =
-        leaderState->replicateOperation(builder.sharedSlice(), operation,
-                                        TransactionId{3}, ReplicationOptions{});
+                                        TransactionId{9}, ReplicationOptions{});
+    std::ignore = leaderState->replicateOperation(builder.sharedSlice(),
+                                                  operation, TransactionId{13},
+                                                  ReplicationOptions{});
   }
   EXPECT_EQ(3, leaderState->getActiveTransactions().size());
 
   {
     VPackBuilder builder;
     std::ignore = leaderState->replicateOperation(
-        builder.sharedSlice(), OperationType::kAbort, TransactionId{1},
+        builder.sharedSlice(), OperationType::kAbort, TransactionId{5},
         ReplicationOptions{});
     std::ignore = leaderState->replicateOperation(
-        builder.sharedSlice(), OperationType::kCommit, TransactionId{2},
+        builder.sharedSlice(), OperationType::kCommit, TransactionId{9},
         ReplicationOptions{});
   }
   EXPECT_EQ(1, leaderState->getActiveTransactions().size());
 
-  // TODO - dbname is currently not set correctly in state because the MockLog
-  // gid initializes the dbname with ""
-  EXPECT_CALL(transactionManagerMock, abortManagedTrx(TransactionId{3}, ""))
+  EXPECT_CALL(transactionManagerMock,
+              abortManagedTrx(TransactionId{13}, globalId.database))
       .Times(1);
 
   // resigning as leader should abort the remaining transaction with id 3
@@ -288,13 +293,15 @@ TEST_F(DocumentStateMachineTest,
     entries.emplace_back(LogTerm{1}, LogIndex{entries.size() + 1},
                          LogPayload::createFromSlice(builder.slice()));
   };
-  addEntry(OperationType::kInsert, TransactionId{1});
-  addEntry(OperationType::kInsert, TransactionId{2});
-  addEntry(OperationType::kInsert, TransactionId{3});
-  addEntry(OperationType::kAbort, TransactionId{1});
-  addEntry(OperationType::kCommit, TransactionId{2});
 
-  auto core = makeLogCore<MockLog>(logId);
+  // Transaction IDs are of follower type, as if they were replicated.
+  addEntry(OperationType::kInsert, TransactionId{6});
+  addEntry(OperationType::kInsert, TransactionId{10});
+  addEntry(OperationType::kInsert, TransactionId{14});
+  addEntry(OperationType::kAbort, TransactionId{6});
+  addEntry(OperationType::kCommit, TransactionId{10});
+
+  auto core = makeLogCore<MockLog>(globalId);
   auto it = test::make_iterator(entries);
   core->insert(*it, true);
 
@@ -307,7 +314,8 @@ TEST_F(DocumentStateMachineTest,
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
-          feature->createReplicatedState(DocumentState::NAME, leaderLog));
+          feature->createReplicatedState(DocumentState::NAME, leaderLog,
+                                         statePersistor));
   ASSERT_NE(leaderReplicatedState, nullptr);
 
   EXPECT_CALL(*agencyHandlerMock, getCollectionPlan(collectionId)).Times(1);
@@ -319,9 +327,11 @@ TEST_F(DocumentStateMachineTest,
   EXPECT_CALL(*transactionMock, apply).Times(3);
   EXPECT_CALL(*transactionMock, commit).Times(1);
   EXPECT_CALL(*transactionMock, abort).Times(1);
-  // TODO - dbname is currently not set correctly in state because the MockLog
-  // gid initializes the dbname with ""
-  EXPECT_CALL(transactionManagerMock, abortManagedTrx(TransactionId{3}, ""))
+
+  // The leader adds a tombstone for its own transaction.
+  EXPECT_CALL(transactionManagerMock,
+              abortManagedTrx(TransactionId{14}.asLeaderTransactionId(),
+                              globalId.database))
       .Times(1);
   leaderReplicatedState->start(
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
@@ -340,7 +350,8 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
-          feature->createReplicatedState(DocumentState::NAME, leaderLog));
+          feature->createReplicatedState(DocumentState::NAME, leaderLog,
+                                         statePersistor));
   ASSERT_NE(leaderReplicatedState, nullptr);
 
   EXPECT_CALL(*agencyHandlerMock, getCollectionPlan(collectionId)).Times(1);
@@ -371,7 +382,8 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
 
   auto followerReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
-          feature->createReplicatedState(DocumentState::NAME, followerLog));
+          feature->createReplicatedState(DocumentState::NAME, followerLog,
+                                         statePersistor));
   ASSERT_NE(followerReplicatedState, nullptr);
 
   std::shared_ptr<DocumentStateTransactionHandler> real;
@@ -412,7 +424,7 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
     ob->close();
 
     auto operation = OperationType::kInsert;
-    auto tid = TransactionId{1};
+    auto tid = TransactionId{5};
     auto res = leaderState->replicateOperation(builder.sharedSlice(), operation,
                                                tid, ReplicationOptions{});
 
@@ -423,10 +435,10 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
     entry = inMemoryLog.getEntryByIndex(logIndex);
     doc = velocypack::deserialize<DocumentLogEntry>(
         entry->entry().logPayload()->slice()[1]);
-    ASSERT_EQ(doc.shardId, shardId);
-    ASSERT_EQ(doc.operation, operation);
-    ASSERT_EQ(doc.tid, tid);
-    ASSERT_EQ(doc.data.get("document1_key").stringView(), "document1_value");
+    EXPECT_EQ(doc.shardId, shardId);
+    EXPECT_EQ(doc.operation, operation);
+    EXPECT_EQ(doc.tid, tid.asFollowerTransactionId());
+    EXPECT_EQ(doc.data.get("document1_key").stringView(), "document1_value");
 
     EXPECT_CALL(*transactionHandlerMock, applyEntry(_)).Times(1);
     EXPECT_CALL(*transactionMock, apply).Times(1);
@@ -444,7 +456,7 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
     ob->close();
 
     auto operation = OperationType::kInsert;
-    auto tid = TransactionId{1};
+    auto tid = TransactionId{5};
     auto res = leaderState->replicateOperation(builder.sharedSlice(), operation,
                                                tid, ReplicationOptions{});
 
@@ -455,10 +467,10 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
     entry = inMemoryLog.getEntryByIndex(logIndex);
     doc = velocypack::deserialize<DocumentLogEntry>(
         entry->entry().logPayload()->slice()[1]);
-    ASSERT_EQ(doc.shardId, shardId);
-    ASSERT_EQ(doc.operation, operation);
-    ASSERT_EQ(doc.tid, tid);
-    ASSERT_EQ(doc.data.get("document2_key").stringView(), "document2_value");
+    EXPECT_EQ(doc.shardId, shardId);
+    EXPECT_EQ(doc.operation, operation);
+    EXPECT_EQ(doc.tid, tid.asFollowerTransactionId());
+    EXPECT_EQ(doc.data.get("document2_key").stringView(), "document2_value");
 
     EXPECT_CALL(*transactionHandlerMock, applyEntry(_)).Times(1);
     EXPECT_CALL(*transactionMock, apply(_))
@@ -476,7 +488,7 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
   // Commit
   {
     auto operation = OperationType::kCommit;
-    auto tid = TransactionId{1};
+    auto tid = TransactionId{5};
     auto res = leaderState->replicateOperation(
         velocypack::SharedSlice{}, operation, tid,
         ReplicationOptions{.waitForCommit = true});
@@ -495,10 +507,10 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
     entry = inMemoryLog.getEntryByIndex(logIndex);
     doc = velocypack::deserialize<DocumentLogEntry>(
         entry->entry().logPayload()->slice()[1]);
-    ASSERT_EQ(doc.shardId, shardId);
-    ASSERT_EQ(doc.operation, operation);
-    ASSERT_EQ(doc.tid, tid);
-    ASSERT_TRUE(doc.data.isNone());
+    EXPECT_EQ(doc.shardId, shardId);
+    EXPECT_EQ(doc.operation, operation);
+    EXPECT_EQ(doc.tid, tid.asFollowerTransactionId());
+    EXPECT_TRUE(doc.data.isNone());
   }
 }
 
@@ -514,7 +526,7 @@ TEST(DocumentStateTransactionHandlerTest, test_ensureTransaction) {
       GlobalLogIdentifier{"testDb", LogId{1}}, std::move(dbGuardMock),
       handlersFactoryMock);
 
-  auto tid = TransactionId{1};
+  auto tid = TransactionId{6};
   auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
                               velocypack::SharedSlice(), tid};
 
@@ -549,7 +561,7 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_basic) {
   });
 
   auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
-                              velocypack::SharedSlice(), TransactionId{1}};
+                              velocypack::SharedSlice(), TransactionId{6}};
 
   // Expect the transaction to be started an applied successfully
   EXPECT_CALL(*handlersFactoryMock, createTransaction).Times(1);
@@ -569,13 +581,13 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_basic) {
 
   // Start a new transaction and then abort it.
   doc = DocumentLogEntry{"s1234", OperationType::kRemove,
-                         velocypack::SharedSlice(), TransactionId{2}};
+                         velocypack::SharedSlice(), TransactionId{10}};
   EXPECT_CALL(*handlersFactoryMock, createTransaction).Times(1);
   EXPECT_CALL(*transactionMock, apply).Times(1);
   result = transactionHandler.applyEntry(doc);
   ASSERT_TRUE(result.ok());
   ASSERT_TRUE(
-      transactionHandler.getActiveTransactions().contains(TransactionId{2}));
+      transactionHandler.getActiveTransactions().contains(TransactionId{10}));
   Mock::VerifyAndClearExpectations(transactionMock.get());
   Mock::VerifyAndClearExpectations(handlersFactoryMock.get());
 
@@ -586,7 +598,7 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_basic) {
   ASSERT_TRUE(result.ok());
   Mock::VerifyAndClearExpectations(transactionMock.get());
   ASSERT_TRUE(
-      !transactionHandler.getActiveTransactions().contains(TransactionId{2}));
+      !transactionHandler.getActiveTransactions().contains(TransactionId{10}));
 
   // No transaction should be created during AbortAllOngoingTrx
   doc.operation = OperationType::kAbortAllOngoingTrx;
@@ -610,7 +622,7 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_errors) {
       .WillOnce(Return(transactionMock));
 
   auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
-                              velocypack::SharedSlice(), TransactionId{1}};
+                              velocypack::SharedSlice(), TransactionId{6}};
 
   // OperationResult failed, transaction should fail
   EXPECT_CALL(*transactionMock, apply(_))

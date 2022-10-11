@@ -780,7 +780,10 @@ OperationResult transaction::Methods::anyLocal(
   VPackBuilder resultBuilder;
   if (_state->isDBServer()) {
     std::shared_ptr<LogicalCollection> const& collection =
-        trxCollection(cid)->collection();
+        trxColl->collection();
+    if (collection == nullptr) {
+      return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options);
+    }
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
       return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
@@ -925,13 +928,21 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
     return collectionName;
   };
 
-  DataSourceId cid = addCollectionAtRuntime(translateName(collectionName),
-                                            AccessMode::Type::READ);
-  auto const& collection = trxCollection(cid)->collection();
-
   std::string_view key(transaction::helpers::extractKeyPart(value));
   if (key.empty()) {
-    return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+    return {TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD};
+  }
+
+  DataSourceId cid = addCollectionAtRuntime(translateName(collectionName),
+                                            AccessMode::Type::READ);
+
+  TransactionCollection* trxColl = trxCollection(cid);
+  if (trxColl == nullptr) {
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+  }
+  auto const& collection = trxColl->collection();
+  if (collection == nullptr) {
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
   return collection->getPhysical()->read(
@@ -959,12 +970,17 @@ Result transaction::Methods::documentFastPathLocal(
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
-  TRI_ASSERT(trxColl != nullptr);
+  if (trxColl == nullptr) {
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+  }
   std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
   TRI_ASSERT(collection != nullptr);
+  if (collection == nullptr) {
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+  }
 
   if (key.empty()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+    return {TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD};
   }
 
   // We never want to see our own writes here, otherwise we could observe
@@ -1028,8 +1044,16 @@ Future<OperationResult> transaction::Methods::documentLocal(
     OperationOptions const& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
-  std::shared_ptr<LogicalCollection> const& collection =
-      trxCollection(cid)->collection();
+  TransactionCollection* trxColl = trxCollection(cid);
+  if (trxColl == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
+  std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
+  if (collection == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
 
   if (_state->isDBServer()) {
     auto const& followerInfo = collection->followers();
@@ -1340,9 +1364,16 @@ Future<OperationResult> transaction::Methods::insertLocal(
     OperationOptions& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
-  auto& transactionCollection = *trxCollection(cid);
-  std::shared_ptr<LogicalCollection> const& collection =
-      transactionCollection.collection();
+  TransactionCollection* trxColl = trxCollection(cid);
+  if (trxColl == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
+  std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
+  if (collection == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
 
   ReplicationType replicationType = ReplicationType::NONE;
   std::shared_ptr<std::vector<ServerID> const> followers;
@@ -1606,8 +1637,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
       // in case of an error.
 
       // Now replicate the good operations on all followers:
-      return replicateOperations(transactionCollection, followers, options,
-                                 *replicationData,
+      return replicateOperations(*trxColl, followers, options, *replicationData,
                                  TRI_VOC_DOCUMENT_OPERATION_INSERT)
           .thenValue([options, errs = std::move(errorCounter),
                       resultData = std::move(resDocs)](Result res) mutable {
@@ -1760,10 +1790,17 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     OperationOptions& options, bool isUpdate) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
-  auto& transactionCollection = *trxCollection(cid);
-  std::shared_ptr<LogicalCollection> const& collection =
-      transactionCollection.collection();
-  TRI_ASSERT(trxCollection(cid)->isLocked(AccessMode::Type::WRITE));
+  TransactionCollection* trxColl = trxCollection(cid);
+  if (trxColl == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
+  std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
+  if (collection == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
+  TRI_ASSERT(trxColl->isLocked(AccessMode::Type::WRITE));
 
   // this call will populate replicationType and followers
   ReplicationType replicationType = ReplicationType::NONE;
@@ -1949,8 +1986,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
       // in case of an error.
 
       // Now replicate the good operations on all followers:
-      return replicateOperations(transactionCollection, followers, options,
-                                 *replicationData,
+      return replicateOperations(*trxColl, followers, options, *replicationData,
                                  isUpdate ? TRI_VOC_DOCUMENT_OPERATION_UPDATE
                                           : TRI_VOC_DOCUMENT_OPERATION_REPLACE)
           .thenValue([options, errs = std::move(errorCounter),
@@ -2122,10 +2158,17 @@ Future<OperationResult> transaction::Methods::removeLocal(
     OperationOptions& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
-  auto& transactionCollection = *trxCollection(cid);
-  std::shared_ptr<LogicalCollection> const& collection =
-      transactionCollection.collection();
-  TRI_ASSERT(trxCollection(cid)->isLocked(AccessMode::Type::WRITE));
+  TransactionCollection* trxColl = trxCollection(cid);
+  if (trxColl == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
+  std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
+  if (collection == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
+  TRI_ASSERT(trxColl->isLocked(AccessMode::Type::WRITE));
 
   ReplicationType replicationType = ReplicationType::NONE;
   std::shared_ptr<std::vector<ServerID> const> followers;
@@ -2280,8 +2323,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
       // in case of an error.
 
       // Now replicate the good operations on all followers:
-      return replicateOperations(transactionCollection, followers, options,
-                                 *replicationData,
+      return replicateOperations(*trxColl, followers, options, *replicationData,
                                  TRI_VOC_DOCUMENT_OPERATION_REMOVE)
           .thenValue([options, errs = std::move(errorCounter),
                       resultData = std::move(resDocs)](Result res) mutable {
@@ -2369,13 +2411,20 @@ OperationResult transaction::Methods::allLocal(
     OperationOptions& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
-  TRI_ASSERT(trxCollection(cid)->isLocked(AccessMode::Type::READ));
+  TransactionCollection* trxColl = trxCollection(cid);
+  if (trxColl == nullptr) {
+    return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options);
+  }
+  TRI_ASSERT(trxColl->isLocked(AccessMode::Type::READ));
 
   VPackBuilder resultBuilder;
 
   if (_state->isDBServer()) {
     std::shared_ptr<LogicalCollection> const& collection =
-        trxCollection(cid)->collection();
+        trxColl->collection();
+    if (collection == nullptr) {
+      return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options);
+    }
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
       return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
@@ -2425,8 +2474,16 @@ Future<OperationResult> transaction::Methods::truncateLocal(
     std::string const& collectionName, OperationOptions& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
-  auto& tc = *trxCollection(cid);
-  auto const& collection = tc.collection();
+  TransactionCollection* trxColl = trxCollection(cid);
+  if (trxColl == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
+  auto const& collection = trxColl->collection();
+  if (collection == nullptr) {
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+  }
 
   // this call will populate replicationType and followers
   ReplicationType replicationType = ReplicationType::NONE;
@@ -2436,20 +2493,29 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       *collection, "truncate", VPackSlice::noneSlice(), options,
       replicationType, followers);
 
-  if (res.fail()) {
+  // will be populated by the call to truncate()
+  bool usedRangeDelete = false;
+
+  if (res.ok()) {
+    res = collection->truncate(*this, options, usedRangeDelete);
+  }
+
+  if (res.fail() || !usedRangeDelete) {
+    // we must exit here if we didn't perform a range delete.
+    // this is because the non-range delete version of truncate
+    // removes documents one by one, and also _replicates_ these
+    // removal operations.
     return futures::makeFuture(OperationResult(std::move(res), options));
   }
 
-  res = collection->truncate(*this, options);
-
-  if (res.fail()) {
-    return futures::makeFuture(OperationResult(res, options));
-  }
+  // range delete version of truncate. we are responsible for the
+  // replication ourselves
+  TRI_ASSERT(usedRangeDelete);
 
   auto replicationVersion = collection->replicationVersion();
   if (replicationType == ReplicationType::LEADER &&
       replicationVersion == replication::Version::TWO) {
-    auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(tc);
+    auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(*trxColl);
     auto leaderState = rtc.leaderState();
     auto body = VPackBuilder();
     {
@@ -2689,7 +2755,14 @@ OperationResult transaction::Methods::countLocal(
     OperationOptions const& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
-  auto const& collection = trxCollection(cid)->collection();
+  TransactionCollection* trxColl = trxCollection(cid);
+  if (trxColl == nullptr) {
+    return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options);
+  }
+  auto const& collection = trxColl->collection();
+  if (collection == nullptr) {
+    return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options);
+  }
 
   TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::READ));
 
@@ -2749,6 +2822,9 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(
   TRI_ASSERT(trxColl->isLocked(AccessMode::Type::READ));
 
   std::shared_ptr<LogicalCollection> const& logical = trxColl->collection();
+  if (logical == nullptr) {
+    throwCollectionNotFound(collectionName);
+  }
   TRI_ASSERT(logical != nullptr);
 
   // TODO: an extra optimizer rule could make this unnecessary
@@ -2780,14 +2856,10 @@ arangodb::LogicalCollection* transaction::Methods::documentCollection(
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   auto trxColl = trxCollection(name, AccessMode::Type::READ);
-  if (trxColl == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        std::string("could not find collection '") + name + "'");
+  if (trxColl == nullptr || trxColl->collection() == nullptr) {
+    throwCollectionNotFound(name);
   }
 
-  TRI_ASSERT(trxColl != nullptr);
-  TRI_ASSERT(trxColl->collection() != nullptr);
   return trxColl->collection().get();
 }
 

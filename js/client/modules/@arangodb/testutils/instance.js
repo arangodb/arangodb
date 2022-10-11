@@ -705,10 +705,17 @@ class instance {
     // testing.js sapwned-PID-monitoring adjusted.
     print("waiting for exit - " + this.pid);
     try {
-      print(statusExternal(this.pid, true));
+      let ret = statusExternal(this.pid, false);
+      // OK, something has gone wrong, process still alive. anounce and force kill:
+      if (ret.status !== "ABORTED") {
+        print(RED+`was expecting the process ${this.pid} to be gone, but ${JSON.stringify(ret)}` + RESET);
+        killExternal(this.pid, abortSignal);
+        print(statusExternal(this.pid, true));
+      }
     } catch(ex) {
       print(ex);
     }
+    this.pid = null;
     print('done');
   }
   waitForExit() {
@@ -946,12 +953,16 @@ class instance {
         print(Date() + ' Server "' + this.name + '" shutdown: detected irregular death by monitor: pid', this.pid);
       }
       if (this.exitStatus.status === 'TERMINATED') {
-        return;
+        return true;
       }
       sleep(1);
       timeout--;
     }
     this.shutDownOneInstance({nonAgenciesCount: 1}, true, 0);
+    crashUtils.aggregateDebugger(this, this.options);
+    this.waitForExitAfterDebugKill();
+    this.pid = null;
+    return false;
   }
 
   shutDownOneInstance(counters, forceTerminate, timeout) {

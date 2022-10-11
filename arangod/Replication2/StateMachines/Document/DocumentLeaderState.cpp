@@ -95,7 +95,11 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
 
         for (auto& [tid, trx] : transactionHandler->getActiveTransactions()) {
           try {
-            self->_transactionManager.abortManagedTrx(tid, self->gid.database);
+            // the log entries contain follower ids, which is fine since during
+            // recovery we apply the entries like a follower, but we have to
+            // register tombstones in the trx managers for the leader trx id.
+            self->_transactionManager.abortManagedTrx(
+                tid.asLeaderTransactionId(), self->gid.database);
           } catch (...) {
             LOG_CTX("894f1", WARN, self->loggerContext)
                 << "failed to abort active transaction " << self->gid
@@ -112,13 +116,21 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
                                              TransactionId transactionId,
                                              ReplicationOptions opts)
     -> futures::Future<LogIndex> {
-  auto entry = DocumentLogEntry{std::string(shardId), operation,
-                                std::move(payload), transactionId};
+  // we replicate operations using follower trx ids, but locally we track the
+  // actual trx ids
+  auto entry =
+      DocumentLogEntry{std::string(shardId), operation, std::move(payload),
+                       transactionId.asFollowerTransactionId()};
 
   TRI_ASSERT(operation != OperationType::kAbortAllOngoingTrx);
   if (operation == OperationType::kCommit ||
       operation == OperationType::kAbort) {
-    _activeTransactions.getLockedGuard()->erase(transactionId);
+    if (_activeTransactions.getLockedGuard()->erase(transactionId) == 0) {
+      // we have not replicated anything for a transaction with this id, so
+      // there is no need to replicate the abort/commit operation
+      return LogIndex{};  // TODO - can we do this differently instead of
+                          // returning a dummy index/
+    }
   } else {
     _activeTransactions.getLockedGuard()->emplace(transactionId);
   }

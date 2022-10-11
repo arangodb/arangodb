@@ -26,7 +26,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
@@ -524,9 +524,7 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
   auto calculateMemberToUpdate = [&](std::string const& memberString,
                                      std::optional<size_t>& memberToUpdate,
                                      aql::AstNode* indexCondition) {
-    std::pair<arangodb::aql::Variable const*,
-              std::vector<basics::AttributeName>>
-        pathCmp;
+    std::pair<aql::Variable const*, std::vector<basics::AttributeName>> pathCmp;
     for (size_t x = 0; x < indexCondition->numMembers(); ++x) {
       // We search through the nary-and and look for EQ - _from/_to
       auto eq = indexCondition->getMemberUnchecked(x);
@@ -556,7 +554,7 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
   auto generateExpression =
       [&](aql::AstNode* remainderCondition,
           aql::AstNode* indexCondition) -> std::unique_ptr<aql::Expression> {
-    ::arangodb::containers::HashSet<size_t> toRemove;
+    containers::HashSet<size_t> toRemove;
     aql::Condition::collectOverlappingMembers(
         _plan, options()->tmpVar(), remainderCondition, indexCondition,
         toRemove, nullptr, false);
@@ -591,9 +589,10 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
     // actual value does not matter much. 1000 has historically worked fine.
     constexpr size_t itemsInCollection = 1000;
 
+    auto& trx = plan()->getAst()->query().trxForOptimization();
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
-        *_edgeColls[i], indexCondition, options()->tmpVar(), itemsInCollection,
-        aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+        trx, *_edgeColls[i], indexCondition, options()->tmpVar(),
+        itemsInCollection, aql::IndexHint(), indexToUse, onlyEdgeIndexes);
     if (!res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "expected edge index not found");
@@ -609,7 +608,7 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
         generateExpression(remainderCondition, indexCondition);
 
     auto container = aql::utils::extractNonConstPartsOfIndexCondition(
-        ast, getRegisterPlan()->varInfo, false, false, indexCondition,
+        ast, getRegisterPlan()->varInfo, false, nullptr, indexCondition,
         options()->tmpVar());
     indexAccessors.emplace_back(std::move(indexToUse), indexCondition,
                                 memberToUpdate, std::move(expression),
@@ -649,9 +648,9 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
         checkPruneAvailability,
     std::function<void(std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&
         checkPostFilterAvailability,
-    const std::unordered_map<
-        TraversalExecutorInfosHelper::OutputName, RegisterId,
-        TraversalExecutorInfosHelper::OutputNameHash>& outputRegisterMapping,
+    std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId,
+                       TraversalExecutorInfosHelper::OutputNameHash> const&
+        outputRegisterMapping,
     RegisterId inputRegister, RegisterInfos registerInfos,
     std::unordered_map<ServerID, aql::EngineId> const* engines,
     bool isSmart) const {
