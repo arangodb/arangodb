@@ -4,6 +4,9 @@ devel
 * BTS-465: Added tests for RandomGenerator and warning that other options
   for creating random values that are not Mersenne are deprecated.
 
+* BTS-1008: Update react-autocomplete-input to fix single letter collection bug
+  when creating a link in the views in the WebUI.
+
 * Fixed BTS-850: Fixed the removal of already deleted orphan collections out
   of a graph definition. The removal of an already deleted orphan collection
   out of a graph definition failed and has been rejected in case the
