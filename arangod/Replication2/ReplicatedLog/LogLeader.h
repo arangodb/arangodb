@@ -162,7 +162,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   // Updates the flags of the participants.
   auto updateParticipantsConfig(
       std::shared_ptr<agency::ParticipantsConfig const> const& config)
-      -> LogIndex;
+      -> LogIndex override;
 
   // Returns [acceptedConfig.generation, committedConfig.?generation]
   auto getParticipantConfigGenerations() const noexcept

@@ -357,7 +357,6 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   #Replication2/ReplicatedLog/ReplicatedLogHandleTest.cpp
   #Replication2/ReplicatedLog/ReplicatedLogTest.cpp
   #Replication2/ReplicatedLog/RewriteLogTest.cpp
-  #Replication2/ReplicatedLog/RocksDBLogTest.cpp
   #Replication2/ReplicatedLog/SimpleInsertTests.cpp
   #Replication2/ReplicatedLog/SupervisionSimulationTest.cpp
   Replication2/ReplicatedLog/SupervisionTest.cpp

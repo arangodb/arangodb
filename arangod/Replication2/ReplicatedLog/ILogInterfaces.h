@@ -118,6 +118,10 @@ struct ILogLeader : ILogParticipant {
   [[nodiscard]] virtual auto isLeadershipEstablished() const noexcept
       -> bool = 0;
   [[nodiscard]] virtual auto waitForLeadership() -> WaitForFuture = 0;
+
+  virtual auto updateParticipantsConfig(
+      std::shared_ptr<agency::ParticipantsConfig const> const& config)
+      -> LogIndex = 0;
 };
 
 }  // namespace arangodb::replication2::replicated_log

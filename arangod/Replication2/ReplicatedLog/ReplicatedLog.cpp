@@ -138,7 +138,7 @@ void replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data) {
       _metrics->replicatedLogStartedFollowingNumber->operator++();
     }
   } else if (auto leader =
-                 std::dynamic_pointer_cast<LogLeader>(data.participant);
+                 std::dynamic_pointer_cast<ILogLeader>(data.participant);
              leader) {
     leader->updateParticipantsConfig(configShared);
   }

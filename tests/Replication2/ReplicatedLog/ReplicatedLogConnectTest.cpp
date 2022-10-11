@@ -65,7 +65,6 @@ struct TermBuilder {
  private:
   agency::LogPlanTermSpecification term;
 };
-
 struct ParticipantsConfigBuilder {
   auto& setEffectiveWriteConcern(std::size_t wc) {
     config.config.effectiveWriteConcern = wc;
@@ -189,6 +188,13 @@ struct FakeLogLeader : replicated_log::ILogLeader {
   auto waitForLeadership() -> WaitForFuture override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
+  auto updateParticipantsConfig(
+      const std::shared_ptr<const agency::ParticipantsConfig>& config)
+      -> LogIndex override {
+    latestConfig = config;
+    return LogIndex{0};
+  }
+  std::shared_ptr<agency::ParticipantsConfig const> latestConfig;
   std::unique_ptr<replicated_log::LogCore> core;
 };
 
@@ -230,7 +236,7 @@ struct FakeParticipantsFactory : replicated_log::IParticipantsFactory {
 
 }  // namespace arangodb::replication2::test
 
-struct ReplicatedLogTest2 : ::testing::Test {
+struct ReplicatedLogConnectTest : ::testing::Test {
   std::shared_ptr<test::FakeStorageEngineMethodsContext> storageContext =
       std::make_shared<test::FakeStorageEngineMethodsContext>(
           12, LogId{12}, std::make_shared<test::ThreadAsyncExecutor>());
@@ -250,7 +256,7 @@ struct ReplicatedLogTest2 : ::testing::Test {
   test::LogEventRecorder recorder;
 };
 
-TEST_F(ReplicatedLogTest2, construct_leader_on_connect) {
+TEST_F(ReplicatedLogConnectTest, construct_leader_on_connect) {
   auto log = std::make_shared<replicated_log::ReplicatedLog>(
       std::move(core), logMetricsMock, optionsMock, participantsFactory,
       loggerContext, myself);
@@ -276,7 +282,7 @@ TEST_F(ReplicatedLogTest2, construct_leader_on_connect) {
   }
 }
 
-TEST_F(ReplicatedLogTest2, construct_leader_on_update_config) {
+TEST_F(ReplicatedLogConnectTest, construct_leader_on_update_config) {
   auto log = std::make_shared<replicated_log::ReplicatedLog>(
       std::move(core), logMetricsMock, optionsMock, participantsFactory,
       loggerContext, myself);
@@ -295,6 +301,7 @@ TEST_F(ReplicatedLogTest2, construct_leader_on_update_config) {
 
   auto leader = participantsFactory->leaderInTerm(LogTerm{1});
   ASSERT_NE(leader, nullptr);
+  EXPECT_EQ(leader->latestConfig->generation, config.get().generation);
   {
     auto participant =
         std::dynamic_pointer_cast<test::FakeLogLeader>(log->getParticipant());
@@ -302,7 +309,7 @@ TEST_F(ReplicatedLogTest2, construct_leader_on_update_config) {
   }
 }
 
-TEST_F(ReplicatedLogTest2, update_leader_to_follower) {
+TEST_F(ReplicatedLogConnectTest, update_leader_to_follower) {
   auto log = std::make_shared<replicated_log::ReplicatedLog>(
       std::move(core), logMetricsMock, optionsMock, participantsFactory,
       loggerContext, myself);
@@ -335,7 +342,7 @@ TEST_F(ReplicatedLogTest2, update_leader_to_follower) {
   ASSERT_EQ(leader->core, nullptr);
 }
 
-TEST_F(ReplicatedLogTest2, update_follower_to_leader) {
+TEST_F(ReplicatedLogConnectTest, update_follower_to_leader) {
   auto log = std::make_shared<replicated_log::ReplicatedLog>(
       std::move(core), logMetricsMock, optionsMock, participantsFactory,
       loggerContext, myself);
@@ -367,4 +374,29 @@ TEST_F(ReplicatedLogTest2, update_follower_to_leader) {
 
   // old leader lost core
   ASSERT_EQ(follower->core, nullptr);
+}
+
+TEST_F(ReplicatedLogConnectTest, leader_on_update_config) {
+  auto log = std::make_shared<replicated_log::ReplicatedLog>(
+      std::move(core), logMetricsMock, optionsMock, participantsFactory,
+      loggerContext, myself);
+
+  test::TermBuilder term;
+  term.setTerm(LogTerm{1}).setLeader(myself);
+
+  test::ParticipantsConfigBuilder config;
+  config.setEffectiveWriteConcern(2)
+      .setParticipant(myself.serverId, {.allowedInQuorum = true})
+      .setParticipant("A", {.allowedInQuorum = true})
+      .setParticipant("B", {.allowedInQuorum = true});
+
+  auto connection = log->connect(recorder.createHandle());
+  log->updateConfig(term.get(), config.get());
+
+  auto leader = participantsFactory->leaderInTerm(LogTerm{1});
+
+  config.setParticipant("C", {}).incGeneration();
+  log->updateConfig(term.get(), config.get());
+  // should update leader, but not rebuild
+  EXPECT_EQ(leader->latestConfig->generation, config.get().generation);
 }
