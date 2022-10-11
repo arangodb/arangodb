@@ -33,21 +33,12 @@
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/types.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
+#include "Replication2/ReplicatedLog/NetworkMessages.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 
 namespace arangodb::replication2::test {
-
-struct FakeFollowerFactory : replicated_log::IAbstractFollowerFactory {
-  auto constructFollower(const ParticipantId& id)
-      -> std::shared_ptr<replicated_log::AbstractFollower> override {
-    return followers[id] =
-               std::make_shared<FakeFollower>(id, "foo", LogTerm{1});
-  }
-
-  std::unordered_map<ParticipantId, std::shared_ptr<FakeFollower>> followers;
-};
 
 struct TermBuilder {
   auto setTerm(LogTerm termNo) -> TermBuilder& {
@@ -100,21 +91,131 @@ struct ParticipantsConfigBuilder {
   agency::ParticipantsConfig config;
 };
 
+struct FakeLogFollower : replicated_log::ILogFollower {
+  explicit FakeLogFollower(std::unique_ptr<replicated_log::LogCore> core)
+      : core(std::move(core)) {}
+  auto getParticipantId() const noexcept -> ParticipantId const& override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto appendEntries(replicated_log::AppendEntriesRequest request)
+      -> futures::Future<replicated_log::AppendEntriesResult> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto getStatus() const -> replicated_log::LogStatus override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto getQuickStatus() const -> replicated_log::QuickLogStatus override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto resign() && -> std::tuple<std::unique_ptr<replicated_log::LogCore>,
+                                 DeferredAction> override {
+    return std::make_tuple(std::move(core), DeferredAction{});
+  }
+  auto waitFor(LogIndex index) -> WaitForFuture override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto waitForResign() -> futures::Future<futures::Unit> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto getCommitIndex() const noexcept -> LogIndex override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto copyInMemoryLog() const -> replicated_log::InMemoryLog override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto release(LogIndex doneWithIdx) -> Result override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto waitForLeaderAcked() -> WaitForFuture override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto getLeader() const noexcept
+      -> std::optional<ParticipantId> const& override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  std::unique_ptr<replicated_log::LogCore> core;
+};
+
+struct FakeLogLeader : replicated_log::ILogLeader {
+  explicit FakeLogLeader(std::unique_ptr<replicated_log::LogCore> core)
+      : core(std::move(core)) {}
+  auto getStatus() const -> replicated_log::LogStatus override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto getQuickStatus() const -> replicated_log::QuickLogStatus override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto resign() && -> std::tuple<std::unique_ptr<replicated_log::LogCore>,
+                                 DeferredAction> override {
+    return std::make_tuple(std::move(core), DeferredAction{});
+  }
+  auto waitFor(LogIndex index) -> WaitForFuture override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto waitForResign() -> futures::Future<futures::Unit> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto getCommitIndex() const noexcept -> LogIndex override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto copyInMemoryLog() const -> replicated_log::InMemoryLog override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto release(LogIndex doneWithIdx) -> Result override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto insert(LogPayload payload, bool waitForSync) -> LogIndex override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto insert(LogPayload payload, bool waitForSync,
+              DoNotTriggerAsyncReplication asyncReplication)
+      -> LogIndex override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  void triggerAsyncReplication() override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto isLeadershipEstablished() const noexcept -> bool override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto waitForLeadership() -> WaitForFuture override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  std::unique_ptr<replicated_log::LogCore> core;
+};
+
 struct FakeParticipantsFactory : replicated_log::IParticipantsFactory {
   auto constructFollower(std::unique_ptr<replicated_log::LogCore> logCore,
                          replicated_log::FollowerTermInfo info,
                          replicated_log::ParticipantContext context)
       -> std::shared_ptr<replicated_log::ILogFollower> override {
-    return std::shared_ptr<replicated_log::ILogFollower>();
+    auto follower = std::make_shared<FakeLogFollower>(std::move(logCore));
+    participants[info.term] = follower;
+    return follower;
   }
   auto constructLeader(std::unique_ptr<replicated_log::LogCore> logCore,
                        replicated_log::LeaderTermInfo info,
                        replicated_log::ParticipantContext context)
       -> std::shared_ptr<replicated_log::ILogLeader> override {
-    return std::shared_ptr<replicated_log::ILogLeader>();
+    auto leader = std::make_shared<FakeLogLeader>(std::move(logCore));
+    participants[info.term] = leader;
+    return leader;
   }
 
- private:
+  auto leaderInTerm(LogTerm term) const -> std::shared_ptr<FakeLogLeader> {
+    if (auto it = participants.find(term); it != participants.end()) {
+      return std::dynamic_pointer_cast<FakeLogLeader>(it->second);
+    }
+    return nullptr;
+  }
+
   std::unordered_map<LogTerm, std::shared_ptr<replicated_log::ILogParticipant>>
       participants;
 };
@@ -141,7 +242,7 @@ struct ReplicatedLogTest2 : ::testing::Test {
   test::LogEventRecorder recorder;
 };
 
-TEST_F(ReplicatedLogTest2, foo_bar) {
+TEST_F(ReplicatedLogTest2, construct_leader_on_connect) {
   auto log = std::make_shared<replicated_log::ReplicatedLog>(
       std::move(core), logMetricsMock, optionsMock, participantsFactory,
       loggerContext, myself);
@@ -156,7 +257,39 @@ TEST_F(ReplicatedLogTest2, foo_bar) {
       .setParticipant("B", {.allowedInQuorum = true});
 
   log->updateConfig(term.get(), config.get());
+  auto connection = log->connect(recorder.createHandle());
+
+  auto leader = participantsFactory->leaderInTerm(LogTerm{1});
+  ASSERT_NE(leader, nullptr);
+  {
+    auto participant =
+        std::dynamic_pointer_cast<test::FakeLogLeader>(log->getParticipant());
+    ASSERT_EQ(leader, participant);
+  }
+}
+
+TEST_F(ReplicatedLogTest2, construct_leader_on_update_config) {
+  auto log = std::make_shared<replicated_log::ReplicatedLog>(
+      std::move(core), logMetricsMock, optionsMock, participantsFactory,
+      loggerContext, myself);
+
+  test::TermBuilder term;
+  term.setTerm(LogTerm{1}).setLeader(myself);
+
+  test::ParticipantsConfigBuilder config;
+  config.setEffectiveWriteConcern(2)
+      .setParticipant("SELF", {.allowedInQuorum = true})
+      .setParticipant("A", {.allowedInQuorum = true})
+      .setParticipant("B", {.allowedInQuorum = true});
 
   auto connection = log->connect(recorder.createHandle());
-  EXPECT_EQ(recorder.events.size(), 0);
+  log->updateConfig(term.get(), config.get());
+
+  auto leader = participantsFactory->leaderInTerm(LogTerm{1});
+  ASSERT_NE(leader, nullptr);
+  {
+    auto participant =
+        std::dynamic_pointer_cast<test::FakeLogLeader>(log->getParticipant());
+    ASSERT_EQ(leader, participant);
+  }
 }
