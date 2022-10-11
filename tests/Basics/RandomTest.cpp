@@ -25,7 +25,7 @@
 #include "gtest/gtest.h"
 
 #include "Random/RandomGenerator.h"
-#include <stdint.h>
+#include <cstdint>
 
 using namespace arangodb;
 
@@ -34,6 +34,7 @@ TEST(RandomGeneratorTest, test_RandomGeneratorTest_random_uint32) {
   RandomGenerator::ensureDeviceIsInitialized();
   ASSERT_EQ(RandomGenerator::random(INT32_MAX, 5), INT32_MAX);
   ASSERT_LE(RandomGenerator::random(1000, INT32_MAX), INT32_MAX);
+  ASSERT_GE(RandomGenerator::random(1000, INT32_MAX), 1000);
 }
 
 TEST(RandomGeneratorTest,
@@ -246,9 +247,6 @@ TEST(RandomGeneratorTest, test_RandomGeneratorTest_ranges_int64_brute) {
       {9223372036854775807LL, 9223372036854775807LL},
   };
   for (auto [lower, upper] : bounds) {
-    LOG_DEVEL << "lower " << lower << " upper " << upper << " " << UINT64_MAX
-              << " "
-              << " " << INT64_MAX << " " << (upper < INT64_MAX);
     for (int i = 0; i < 10000; ++i) {
       int64_t value = RandomGenerator::interval(lower, upper);
       ASSERT_GE(value, lower);
