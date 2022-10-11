@@ -148,7 +148,8 @@ struct ProducerStreamProxy : StreamProxy<EntryType, streams::ProducerStream> {
 // TODO Add and use LoggerContext to/in the new state managers
 // TODO Add guards to the new state managers
 template<typename S>
-struct NewLeaderStateManager {
+struct NewLeaderStateManager
+    : std::enable_shared_from_this<NewLeaderStateManager<S>> {
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using Deserializer = typename ReplicatedStateTraits<S>::Deserializer;
@@ -179,7 +180,8 @@ struct NewLeaderStateManager {
 };
 
 template<typename S>
-struct NewFollowerStateManager {
+struct NewFollowerStateManager
+    : std::enable_shared_from_this<NewFollowerStateManager<S>> {
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using Deserializer = typename ReplicatedStateTraits<S>::Deserializer;
@@ -210,7 +212,8 @@ struct NewFollowerStateManager {
 };
 
 template<typename S>
-struct NewUnconfiguredStateManager {
+struct NewUnconfiguredStateManager
+    : std::enable_shared_from_this<NewUnconfiguredStateManager<S>> {
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   explicit NewUnconfiguredStateManager(LoggerContext loggerContext,
                                        std::unique_ptr<CoreType>) noexcept;
@@ -267,8 +270,9 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
     GuardedData(Args&&... args)
         : _currentManager(std::forward<Args>(args)...) {}
 
-    std::variant<NewUnconfiguredStateManager<S>, NewLeaderStateManager<S>,
-                 NewFollowerStateManager<S>>
+    std::variant<std::shared_ptr<NewUnconfiguredStateManager<S>>,
+                 std::shared_ptr<NewLeaderStateManager<S>>,
+                 std::shared_ptr<NewFollowerStateManager<S>>>
         _currentManager;
   };
   Guarded<GuardedData> _guarded;

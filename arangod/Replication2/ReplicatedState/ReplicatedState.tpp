@@ -62,33 +62,30 @@ ReplicatedStateManager<S>::ReplicatedStateManager(
     : _loggerContext(std::move(loggerContext)),
       _metrics(std::move(metrics)),
       _factory(std::move(factory)),
-      _guarded{
-          //
-          std::in_place_type<NewUnconfiguredStateManager<S>>,  //
+      _guarded{std::make_shared<NewUnconfiguredStateManager<S>>(
           _loggerContext.with<logContextKeyStateRole>(
               static_strings::StringUnconfigured),
-          std::move(logCore)  //
-      } {}
+          std::move(logCore))} {}
 
 template<typename S>
 void ReplicatedStateManager<S>::acquireSnapshot(ServerID leader,
                                                 LogIndex commitIndex) {
   auto guard = _guarded.getLockedGuard();
 
-  std::visit(overload{
-                 [&](NewFollowerStateManager<S>& manager) {
-                   LOG_CTX("52a11", DEBUG, _loggerContext)
-                       << "try to acquire a new snapshot, starting at "
-                       << commitIndex;
-                   manager.acquireSnapshot(leader, commitIndex);
-                 },
-                 [](auto&&) {
-                   ADB_PROD_ASSERT(false)
-                       << "State is not a follower (or uninitialized), but "
-                          "acquireSnapshot is called";
-                 },
-             },
-             guard->_currentManager);
+  std::visit(
+      overload{
+          [&](std::shared_ptr<NewFollowerStateManager<S>> const& manager) {
+            LOG_CTX("52a11", DEBUG, _loggerContext)
+                << "try to acquire a new snapshot, starting at " << commitIndex;
+            manager->acquireSnapshot(leader, commitIndex);
+          },
+          [](auto&&) {
+            ADB_PROD_ASSERT(false)
+                << "State is not a follower (or uninitialized), but "
+                   "acquireSnapshot is called";
+          },
+      },
+      guard->_currentManager);
 }
 
 template<typename S>
@@ -96,8 +93,8 @@ void ReplicatedStateManager<S>::updateCommitIndex(LogIndex index) {
   auto guard = _guarded.getLockedGuard();
 
   std::visit(overload{
-                 [index](auto& manager) { manager.updateCommitIndex(index); },
-                 [](NewUnconfiguredStateManager<S>& manager) {
+                 [index](auto& manager) { manager->updateCommitIndex(index); },
+                 [](std::shared_ptr<NewUnconfiguredStateManager<S>>& manager) {
                    ADB_PROD_ASSERT(false) << "update commit index called on "
                                              "an unconfigured state manager";
                  },
@@ -110,16 +107,19 @@ auto ReplicatedStateManager<S>::resign() noexcept
     -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> {
   auto guard = _guarded.getLockedGuard();
   auto&& [core, methods] =
-      std::visit([](auto& manager) { return std::move(manager).resign(); },
+      std::visit([](auto& manager) { return std::move(*manager).resign(); },
                  guard->_currentManager);
   // TODO Is it allowed to happen that resign() is called on an unconfigured
-  // state?
-  ADB_PROD_ASSERT(std::holds_alternative<NewUnconfiguredStateManager<S>>(
-                      guard->_currentManager) == (methods == nullptr));
-  guard->_currentManager.template emplace<NewUnconfiguredStateManager<S>>(
-      _loggerContext.template with<logContextKeyStateRole>(
-          static_strings::StringUnconfigured),
-      std::move(core));
+  //      state?
+  ADB_PROD_ASSERT(
+      std::holds_alternative<std::shared_ptr<NewUnconfiguredStateManager<S>>>(
+          guard->_currentManager) == (methods == nullptr));
+  guard->_currentManager
+      .template emplace<std::shared_ptr<NewUnconfiguredStateManager<S>>>(
+          std::make_shared<NewUnconfiguredStateManager<S>>(
+              _loggerContext.template with<logContextKeyStateRole>(
+                  static_strings::StringUnconfigured),
+              std::move(core)));
   return std::move(methods);
 }
 
@@ -127,11 +127,12 @@ template<typename S>
 void ReplicatedStateManager<S>::leadershipEstablished(
     std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> methods) {
   auto guard = _guarded.getLockedGuard();
-  ADB_PROD_ASSERT(std::holds_alternative<NewUnconfiguredStateManager<S>>(
-      guard->_currentManager));
+  ADB_PROD_ASSERT(
+      std::holds_alternative<std::shared_ptr<NewUnconfiguredStateManager<S>>>(
+          guard->_currentManager));
   auto&& [core, oldMethods] =
-      std::move(
-          std::get<NewUnconfiguredStateManager<S>>(guard->_currentManager))
+      std::move(*std::get<std::shared_ptr<NewUnconfiguredStateManager<S>>>(
+                    guard->_currentManager))
           .resign();
   ADB_PROD_ASSERT(oldMethods == nullptr);
   auto leaderState = _factory->constructLeader(std::move(core));
@@ -140,31 +141,36 @@ void ReplicatedStateManager<S>::leadershipEstablished(
   //      also really rely on the stream being there.
   leaderState->setStream(std::make_shared<ProducerStreamProxy<EntryType>>());
   auto& manager =
-      guard->_currentManager.template emplace<NewLeaderStateManager<S>>(
-          _loggerContext.template with<logContextKeyStateRole>(
-              static_strings::StringLeader),
-          _metrics, std::move(leaderState), std::move(methods));
+      guard->_currentManager
+          .template emplace<std::shared_ptr<NewLeaderStateManager<S>>>(
+              std::make_shared<NewLeaderStateManager<S>>(
+                  _loggerContext.template with<logContextKeyStateRole>(
+                      static_strings::StringLeader),
+                  _metrics, std::move(leaderState), std::move(methods)));
 
-  manager.recoverEntries();
+  manager->recoverEntries();
 }
 
 template<typename S>
 void ReplicatedStateManager<S>::becomeFollower(
     std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> methods) {
   auto guard = _guarded.getLockedGuard();
-  ADB_PROD_ASSERT(std::holds_alternative<NewUnconfiguredStateManager<S>>(
-      guard->_currentManager));
+  ADB_PROD_ASSERT(
+      std::holds_alternative<std::shared_ptr<NewUnconfiguredStateManager<S>>>(
+          guard->_currentManager));
   auto&& [core, oldMethods] =
-      std::move(
-          std::get<NewUnconfiguredStateManager<S>>(guard->_currentManager))
+      std::move(*std::get<std::shared_ptr<NewUnconfiguredStateManager<S>>>(
+                    guard->_currentManager))
           .resign();
   ADB_PROD_ASSERT(oldMethods == nullptr);
 
   auto followerState = _factory->constructFollower(std::move(core));
-  guard->_currentManager.template emplace<NewFollowerStateManager<S>>(
-      _loggerContext.template with<logContextKeyStateRole>(
-          static_strings::StringFollower),
-      _metrics, std::move(followerState), std::move(methods));
+  guard->_currentManager
+      .template emplace<std::shared_ptr<NewFollowerStateManager<S>>>(
+          std::make_shared<NewFollowerStateManager<S>>(
+              _loggerContext.template with<logContextKeyStateRole>(
+                  static_strings::StringFollower),
+              _metrics, std::move(followerState), std::move(methods)));
 }
 
 template<typename S>
@@ -255,6 +261,9 @@ NewFollowerStateManager<S>::NewFollowerStateManager(
 template<typename S>
 void NewFollowerStateManager<S>::acquireSnapshot(ServerID leader,
                                                  LogIndex index) {
+  auto guard = _guardedData.getLockedGuard();
+  auto fut = guard->_followerState->acquireSnapshot(std::move(leader), index);
+
   // TODO implement
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -264,9 +273,10 @@ template<typename S>
 auto NewFollowerStateManager<S>::resign() noexcept
     -> std::pair<std::unique_ptr<CoreType>,
                  std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
-  // TODO implement
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  auto guard = _guardedData.getLockedGuard();
+  auto core = std::move(*guard->_followerState).resign();
+  auto methods = std::move(guard->_logMethods);
+  return {std::move(core), std::move(methods)};
 }
 
 template<typename S>
