@@ -739,6 +739,9 @@ void GraphNode::graphCloneHelper(ExecutionPlan&, GraphNode& clone, bool) const {
   clone._isSmart = _isSmart;
   clone._isDisjoint = _isDisjoint;
   clone._enabledClusterOneShardRule = _enabledClusterOneShardRule;
+
+  // Optimized Out Variables
+  clone._optimizedOutVariables = _optimizedOutVariables;
 }
 
 CostEstimate GraphNode::estimateCost() const {

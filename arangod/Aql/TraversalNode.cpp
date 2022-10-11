@@ -1089,9 +1089,6 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
                                    _globalVertexConditions.begin(),
                                    _globalVertexConditions.end());
 
-  // Optimized Out Variables
-  c._optimizedOutVariables = _optimizedOutVariables;
-
   for (auto const& it : _edgeConditions) {
     // Copy the builder
     auto ecBuilder =
