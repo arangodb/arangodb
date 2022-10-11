@@ -261,7 +261,6 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/LogicalDataSourceTest.cpp
   VocBase/LogicalViewTest.cpp
   VocBase/PlanCollectionTest.cpp
-  VocBase/RevisionIdTest.cpp
   VocBase/VersionTest.cpp
   VocBase/VocbaseTest.cpp
   VPackDeserializer/BasicTests.cpp
