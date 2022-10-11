@@ -60,6 +60,8 @@ ReplicatedStateManager<S>::ReplicatedStateManager(
     std::shared_ptr<ReplicatedStateMetrics> metrics,
     std::unique_ptr<CoreType> logCore, std::shared_ptr<Factory> factory)
     : _guarded{{._currentManager = {NewUnconfiguredStateManager<S>(
+                    _loggerContext.with<logContextKeyStateRole>(
+                        static_strings::StringUnconfigured),
                     std::move(logCore))}}},
       _loggerContext(std::move(loggerContext)),
       _metrics(std::move(metrics)),
@@ -112,6 +114,8 @@ auto ReplicatedStateManager<S>::resign() noexcept
   ADB_PROD_ASSERT(std::holds_alternative<NewUnconfiguredStateManager<S>>(
                       guard->_currentManager) == (methods == nullptr));
   guard->_currentManager.template emplace<NewUnconfiguredStateManager<S>>(
+      _loggerContext.template with<logContextKeyStateRole>(
+          static_strings::StringUnconfigured),
       std::move(core));
   return std::move(methods);
 }
@@ -134,6 +138,8 @@ void ReplicatedStateManager<S>::leadershipEstablished(
   leaderState->setStream(std::make_shared<ProducerStreamProxy<EntryType>>());
   auto& manager =
       guard->_currentManager.template emplace<NewLeaderStateManager<S>>(
+          _loggerContext.template with<logContextKeyStateRole>(
+              static_strings::StringLeader),
           _metrics, std::move(leaderState), std::move(methods));
 
   manager.recoverEntries();
@@ -153,6 +159,8 @@ void ReplicatedStateManager<S>::becomeFollower(
 
   auto followerState = _factory->constructFollower(std::move(core));
   guard->_currentManager.template emplace<NewFollowerStateManager<S>>(
+      _loggerContext.template with<logContextKeyStateRole>(
+          static_strings::StringFollower),
       _metrics, std::move(followerState), std::move(methods));
 }
 
@@ -183,10 +191,12 @@ void NewLeaderStateManager<S>::updateCommitIndex(LogIndex index) {
 
 template<typename S>
 NewLeaderStateManager<S>::NewLeaderStateManager(
+    LoggerContext loggerContext,
     std::shared_ptr<ReplicatedStateMetrics> metrics,
     std::shared_ptr<IReplicatedLeaderState<S>> leaderState,
     std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> logMethods)
-    : _metrics(std::move(metrics)),
+    : _loggerContext(std::move(loggerContext)),
+      _metrics(std::move(metrics)),
       _leaderState(std::move(leaderState)),
       _logMethods(std::move(logMethods)) {}
 
@@ -216,10 +226,12 @@ void NewFollowerStateManager<S>::updateCommitIndex(LogIndex commitIndex) {
 
 template<typename S>
 NewFollowerStateManager<S>::NewFollowerStateManager(
+    LoggerContext loggerContext,
     std::shared_ptr<ReplicatedStateMetrics> metrics,
     std::shared_ptr<IReplicatedFollowerState<S>> followerState,
     std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> logMethods)
-    : _metrics(std::move(metrics)),
+    : _loggerContext(std::move(loggerContext)),
+      _metrics(std::move(metrics)),
       _followerState(std::move(followerState)),
       _logMethods(std::move(logMethods)) {}
 
@@ -242,8 +254,8 @@ auto NewFollowerStateManager<S>::resign() noexcept
 
 template<typename S>
 NewUnconfiguredStateManager<S>::NewUnconfiguredStateManager(
-    std::unique_ptr<CoreType> core) noexcept
-    : _core(std::move(core)) {}
+    LoggerContext loggerContext, std::unique_ptr<CoreType> core) noexcept
+    : _loggerContext(std::move(loggerContext)), _core(std::move(core)) {}
 
 template<typename S>
 auto IReplicatedLeaderState<S>::getStream() const noexcept

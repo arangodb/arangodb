@@ -153,6 +153,7 @@ struct NewLeaderStateManager {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using Deserializer = typename ReplicatedStateTraits<S>::Deserializer;
   explicit NewLeaderStateManager(
+      LoggerContext loggerContext,
       std::shared_ptr<ReplicatedStateMetrics> metrics,
       std::shared_ptr<IReplicatedLeaderState<S>> leaderState,
       std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> logMethods);
@@ -164,6 +165,7 @@ struct NewLeaderStateManager {
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
 
  private:
+  LoggerContext _loggerContext;
   std::shared_ptr<ReplicatedStateMetrics> const _metrics;
   std::shared_ptr<IReplicatedLeaderState<S>> _leaderState;
   std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> _logMethods;
@@ -176,6 +178,7 @@ struct NewFollowerStateManager {
   using Deserializer = typename ReplicatedStateTraits<S>::Deserializer;
 
   explicit NewFollowerStateManager(
+      LoggerContext loggerContext,
       std::shared_ptr<ReplicatedStateMetrics> metrics,
       std::shared_ptr<IReplicatedFollowerState<S>> followerState,
       std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods>
@@ -187,6 +190,7 @@ struct NewFollowerStateManager {
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
 
  private:
+  LoggerContext _loggerContext;
   std::shared_ptr<ReplicatedStateMetrics> const _metrics;
   std::shared_ptr<IReplicatedFollowerState<S>> _followerState;
   std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> _logMethods;
@@ -196,7 +200,8 @@ struct NewFollowerStateManager {
 template<typename S>
 struct NewUnconfiguredStateManager {
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
-  explicit NewUnconfiguredStateManager(std::unique_ptr<CoreType>) noexcept;
+  explicit NewUnconfiguredStateManager(LoggerContext loggerContext,
+                                       std::unique_ptr<CoreType>) noexcept;
   [[nodiscard]] auto resign() noexcept
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
@@ -204,6 +209,7 @@ struct NewUnconfiguredStateManager {
   }
 
  private:
+  LoggerContext _loggerContext;
   std::unique_ptr<CoreType> _core;
 };
 
