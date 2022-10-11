@@ -28,9 +28,7 @@ function createInput(row) {
     break;
     case 'readonly':
 %>
-    <div class="modal-text" id="<%= row.id  %>" <%= row.style ? 'style="' + row.style + '"' : '' %>>
-        <%= row.value||''  %>
-    </div>
+    <div class="modal-text" id="<%= row.id  %>" <%= row.style ? 'style="' + row.style + '"' : '' %>><%= row.value || ''  %></div>
 <%
     break;
     case 'checkbox':
