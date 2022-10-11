@@ -228,6 +228,12 @@ void ReplicatedState<S>::drop() && {
           std::move(*data.currentManager).resign();
     }
 
+    // This could happen if we are dropping the collection just before we
+    // managed to build the replicated state's core.
+    if (core == nullptr) {
+      return action;
+    }
+
     using CleanupHandler =
         typename ReplicatedStateTraits<S>::CleanupHandlerType;
     if constexpr (not std::is_void_v<CleanupHandler>) {
