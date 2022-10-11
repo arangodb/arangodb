@@ -218,7 +218,7 @@ void BaseOptions::LookupInfo::initializeNonConstExpressions(
     std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
     aql::Variable const* indexVariable) {
   _nonConstContainer = aql::utils::extractNonConstPartsOfIndexCondition(
-      ast, varInfo, false, false, indexCondition, indexVariable);
+      ast, varInfo, false, nullptr, indexCondition, indexVariable);
   // We cannot optimize V8 expressions
   TRI_ASSERT(!_nonConstContainer._hasV8Expression);
 }
