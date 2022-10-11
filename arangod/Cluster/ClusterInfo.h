@@ -692,6 +692,12 @@ class ClusterInfo final {
   std::shared_ptr<std::vector<ServerID> const> getResponsibleServer(
       std::string_view shardID);
 
+  std::shared_ptr<std::vector<ServerID> const> getResponsibleServerReplication1(
+      std::string_view shardID);
+
+  std::shared_ptr<std::vector<ServerID> const> getResponsibleServerReplication2(
+      std::string_view shardID);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief atomically find all servers who are responsible for the given
   /// shards (only the leaders).
@@ -703,6 +709,14 @@ class ClusterInfo final {
 
   containers::FlatHashMap<ShardID, ServerID> getResponsibleServers(
       containers::FlatHashSet<ShardID> const&);
+
+  void getResponsibleServersReplication1(
+      containers::FlatHashSet<ShardID> const& shardIds,
+      containers::FlatHashMap<ShardID, ServerID>& result);
+
+  bool getResponsibleServersReplication2(
+      containers::FlatHashSet<ShardID> const& shardIds,
+      containers::FlatHashMap<ShardID, ServerID>& result);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief atomically find all servers who are responsible for the given

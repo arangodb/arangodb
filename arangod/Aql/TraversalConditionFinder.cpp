@@ -230,6 +230,7 @@ bool isSupportedNode(Ast const* ast, Variable const* pathVar,
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
     case NODE_TYPE_QUANTIFIER:
+    case NODE_TYPE_ARRAY_FILTER:
       return true;
     case NODE_TYPE_FCALL: {
       auto* func = static_cast<Function const*>(node->getData());

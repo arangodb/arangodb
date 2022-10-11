@@ -69,6 +69,7 @@
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
+#include "RocksDBEngine/RocksDBChecksumEnv.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -131,15 +132,21 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
-#ifdef USE_SST_INGESTION
 namespace {
+#ifdef USE_SST_INGESTION
 void cleanUpTempFiles(std::string_view path) {
   for (auto const& fileName : TRI_FullTreeDirectory(path.data())) {
     TRI_UnlinkFile(basics::FileUtils::buildFilename(path, fileName).data());
   }
 }
-}  // namespace
 #endif
+
+std::unique_ptr<rocksdb::Env> createChecksumEnv(rocksdb::Env* baseEnv,
+                                                std::string const& path) {
+  return std::make_unique<arangodb::checksum::ChecksumEnv>(baseEnv, path);
+}
+
+}  // namespace
 
 namespace arangodb {
 
@@ -289,11 +296,6 @@ RocksDBEngine::RocksDBEngine(Server& server,
 RocksDBEngine::~RocksDBEngine() {
   _recoveryHelpers.clear();
   shutdownRocksDBInstance();
-}
-
-std::unique_ptr<rocksdb::Env> RocksDBEngine::NewChecksumEnv(
-    rocksdb::Env* base_env, std::string const& path) {
-  return std::make_unique<arangodb::checksum::ChecksumEnv>(base_env, path);
 }
 
 /// shuts down the RocksDB instance. this is called from unprepare
@@ -783,7 +785,7 @@ void RocksDBEngine::start() {
   }
 
   if (_createShaFiles) {
-    _checksumEnv = NewChecksumEnv(rocksdb::Env::Default(), _path);
+    _checksumEnv = createChecksumEnv(rocksdb::Env::Default(), _path);
     _dbOptions.env = _checksumEnv.get();
     static_cast<checksum::ChecksumEnv*>(_checksumEnv.get())
         ->getHelper()
@@ -2952,12 +2954,12 @@ void RocksDBEngine::getStatistics(std::string& result) const {
   getStatistics(stats);
   VPackSlice sslice = stats.slice();
   TRI_ASSERT(sslice.isObject());
-  for (auto const& a : VPackObjectIterator(sslice)) {
+  for (auto a : VPackObjectIterator(sslice)) {
     if (a.value.isNumber()) {
       std::string name = a.key.copyString();
       std::replace(name.begin(), name.end(), '.', '_');
       std::replace(name.begin(), name.end(), '-', '_');
-      if (name.front() != 'r') {
+      if (!name.empty() && name.front() != 'r') {
         name = std::string{kEngineName}.append("_").append(name);
       }
       result += "\n# HELP " + name + " " + name + "\n# TYPE " + name +
@@ -2996,9 +2998,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
         // -1 returned for somethings that are valid property but no value
         if (0 < temp) {
           sum += temp;
-        }  // if
-      }    // if
-    }      // for
+        }
+      }
+    }
     builder.add(s, VPackValue(sum));
   };
 
@@ -3073,6 +3075,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addInt(rocksdb::DB::Properties::kBlockCacheCapacity);
   addInt(rocksdb::DB::Properties::kBlockCacheUsage);
   addInt(rocksdb::DB::Properties::kBlockCachePinnedUsage);
+
   addIntAllCf(rocksdb::DB::Properties::kTotalSstFilesSize);
   addInt(rocksdb::DB::Properties::kActualDelayedWriteRate);
   addInt(rocksdb::DB::Properties::kIsWriteStopped);
@@ -3137,13 +3140,14 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf(RocksDBColumnFamilyManager::Family::VPackIndex);
   addCf(RocksDBColumnFamilyManager::Family::GeoIndex);
   addCf(RocksDBColumnFamilyManager::Family::FulltextIndex);
+  addCf(RocksDBColumnFamilyManager::Family::ZkdIndex);
   addCf(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   builder.close();
 
   if (_throttleListener) {
     builder.add("rocksdb_engine.throttle.bps",
                 VPackValue(_throttleListener->getThrottle()));
-  }  // if
+  }
 
   {
     // total disk space in database directory
