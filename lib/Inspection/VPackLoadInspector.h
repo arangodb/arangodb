@@ -453,7 +453,8 @@ struct VPackLoadInspectorImpl
                                            typename Base::IgnoreField&& field) {
     if (auto it = fields.find(field.name); it != fields.end()) {
       assert(!it->second.second &&
-        "field processed twice during inspection. Make sure field names are unique!");
+             "field processed twice during inspection. Make sure field names "
+             "are unique!");
       it->second.second = true;  // mark the field as processed
     }
     return {};
@@ -466,7 +467,8 @@ struct VPackLoadInspectorImpl
     bool isPresent = false;
     if (auto it = fields.find(name); it != fields.end()) {
       assert(!it->second.second &&
-        "field processed twice during inspection. Make sure field names are unique!");
+             "field processed twice during inspection. Make sure field names "
+             "are unique!");
       isPresent = true;
       slice = it->second.first;
       it->second.second = true;  // mark the field as processed
