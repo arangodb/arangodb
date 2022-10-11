@@ -102,8 +102,9 @@ function componentsTestSuite() {
 
             let lcg = createRand();
 
+            let edges = [];
+            let vertices = [];
             for (let c = 0; c < numComponents; c++) {
-                let edges = [];
                 for (let x = 0; x < m; x++) {
                     let fromID = String(c) + ":" + Math.floor(lcg() * n);
                     let toID = String(c) + ":" + Math.floor(lcg() * n);
@@ -111,9 +112,7 @@ function componentsTestSuite() {
                     let to = vColl + '/' + toID;
                     edges.push({_from: from, _to: to, vertex: String(fromID)});
                 }
-                db[eColl].insert(edges);
 
-                let vertices = [];
                 for (let x = 0; x < n; x++) {
                     let fromID = String(c) + ":" + x;
                     let toID = String(c) + ":" + (x + 1);
@@ -121,8 +120,9 @@ function componentsTestSuite() {
                     let to = vColl + '/' + toID;
                     vertices.push({_from: from, _to: to, vertex: String(fromID)});
                 }
-                db[eColl].insert(vertices);
             }
+            db[eColl].insert(edges);
+            db[eColl].insert(vertices);
 
             console.log("Got %s edges", db[eColl].count());
             assertEqual(db[eColl].count(), numComponents * m + numComponents * n);
