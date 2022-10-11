@@ -212,7 +212,7 @@ static std::unique_ptr<fuerte::Response> buildResponse(
   fuerte::ResponseHeader responseHeader;
   responseHeader.responseCode = statusCode;
   responseHeader.contentType(ContentType::VPack);
-  auto resp = std::make_unique<fuerte::Response>(responseHeader);
+  auto resp = std::make_unique<fuerte::Response>(std::move(responseHeader));
   resp->setPayload(std::move(buffer), 0);
   return resp;
 }
