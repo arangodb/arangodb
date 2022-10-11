@@ -48,12 +48,12 @@ replicated_log::ReplicatedLog::ReplicatedLog(
     std::unique_ptr<LogCore> core,
     std::shared_ptr<ReplicatedLogMetrics> metrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-    std::shared_ptr<IAbstractFollowerFactory> followerFactory,
+    std::shared_ptr<IParticipantsFactory> participantsFactory,
     LoggerContext const& logContext, agency::ServerInstanceReference myself)
     : _logContext(logContext.with<logContextKeyLogId>(core->logId())),
       _metrics(std::move(metrics)),
       _options(std::move(options)),
-      _followerFactory(std::move(followerFactory)),
+      _participantsFactory(std::move(participantsFactory)),
       _myself(std::move(myself)),
       _guarded(std::move(core)) {}
 
@@ -109,46 +109,41 @@ void replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data) {
   auto configShared =
       std::make_shared<agency::ParticipantsConfig>(data.latest->config);
 
+  ParticipantContext context = {.loggerContext = _logContext,
+                                .stateHandle = data.stateHandle,
+                                .metrics = _metrics,
+                                .options = _options};
+
   if (not data.participant) {
     // rebuild participant
     ADB_PROD_ASSERT(data.core != nullptr);
     auto const& term = data.latest->term;
-    auto const& config = data.latest->config;
     if (term.leader == _myself) {
-      // leader
-      auto participants = std::vector<std::shared_ptr<AbstractFollower>>{};
-      participants.reserve(config.participants.size());
-      for (auto const& [id, p] : config.participants) {
-        if (id == _myself.serverId) {
-          continue;
-        }
-        participants.emplace_back(_followerFactory->constructFollower(id));
-      }
+      LeaderTermInfo info = {.term = term.term,
+                             .myself = _myself.serverId,
+                             .initialConfig = configShared};
 
-      data.participant = LogLeader::construct(
-          std::move(data.core), participants, configShared, _myself.serverId,
-          term.term, _logContext, _metrics, _options, data.stateHandle);
+      data.participant = _participantsFactory->constructLeader(
+          std::move(data.core), info, context);
       _metrics->replicatedLogLeaderTookOverNumber->count();
     } else {
       // follower
-      auto leader = std::optional<ServerID>{};
+      FollowerTermInfo info = {.term = term.term, .myself = _myself.serverId};
       if (term.leader) {
-        leader = term.leader->serverId;
+        info.leader = term.leader->serverId;
       }
 
-      data.participant = LogFollower::construct(
-          _logContext, _metrics, _options, _myself.serverId,
-          std::move(data.core), term.term, std::move(leader), data.stateHandle);
+      data.participant = _participantsFactory->constructFollower(
+          std::move(data.core), info, context);
       _metrics->replicatedLogStartedFollowingNumber->operator++();
     }
   } else if (auto leader =
                  std::dynamic_pointer_cast<LogLeader>(data.participant);
              leader) {
-    leader->updateParticipantsConfig(
-        configShared, [f = _followerFactory](ParticipantId const& id) {
-          return f->constructFollower(id);
-        });
+    leader->updateParticipantsConfig(configShared);
   }
+
+  ADB_PROD_ASSERT(data.participant != nullptr && data.core == nullptr);
 }
 
 void ReplicatedLog::resetParticipant(GuardedData& data) {
@@ -177,4 +172,36 @@ auto ReplicatedLog::resign() && -> std::unique_ptr<LogCore> {
 
 auto ReplicatedLog::getId() const noexcept -> LogId { return _id; }
 
+void ReplicatedLogConnection::disconnect() {
+  if (_log) {
+    _log->disconnect(std::move(*this));
+  }
+}
+
+ReplicatedLogConnection::~ReplicatedLogConnection() { disconnect(); }
+ReplicatedLogConnection::ReplicatedLogConnection(ReplicatedLog* log)
+    : _log(log) {}
+
+auto DefaultParticipantsFactory::constructFollower(
+    std::unique_ptr<LogCore> logCore, FollowerTermInfo info,
+    ParticipantContext context) -> std::shared_ptr<ILogFollower> {
+  return LogFollower::construct(
+      context.loggerContext, std::move(context.metrics),
+      std::move(context.options), std::move(info.myself), std::move(logCore),
+      info.term, std::move(info.leader), std::move(context.stateHandle));
+}
+
+auto DefaultParticipantsFactory::constructLeader(
+    std::unique_ptr<LogCore> logCore, LeaderTermInfo info,
+    ParticipantContext context) -> std::shared_ptr<ILogLeader> {
+  return LogLeader::construct(std::move(logCore), std::move(info.initialConfig),
+                              std::move(info.myself), info.term,
+                              context.loggerContext, std::move(context.metrics),
+                              std::move(context.options),
+                              std::move(context.stateHandle), followerFactory);
+}
+
+DefaultParticipantsFactory::DefaultParticipantsFactory(
+    std::shared_ptr<IAbstractFollowerFactory> followerFactory)
+    : followerFactory(std::move(followerFactory)) {}
 }  // namespace arangodb::replication2::replicated_log

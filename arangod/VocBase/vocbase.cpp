@@ -352,8 +352,9 @@ struct arangodb::VocBaseLogManager {
             std::move(logCore),
             server.getFeature<ReplicatedLogFeature>().metrics(),
             server.getFeature<ReplicatedLogFeature>().options(),
-            std::make_shared<NetworkFollowerFactory>(vocbase, id), logContext,
-            myself);
+            std::make_shared<replicated_log::DefaultParticipantsFactory>(
+                std::make_shared<NetworkFollowerFactory>(vocbase, id)),
+            logContext, myself);
       });
 
       auto& state = stateAndLog.state =

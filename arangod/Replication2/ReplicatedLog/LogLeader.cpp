@@ -96,11 +96,13 @@ replicated_log::LogLeader::LogLeader(
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     ParticipantId id, LogTerm term, LogIndex firstIndex,
     InMemoryLog inMemoryLog,
-    std::shared_ptr<IReplicatedStateHandle> stateHandle)
+    std::shared_ptr<IReplicatedStateHandle> stateHandle,
+    std::shared_ptr<IAbstractFollowerFactory> followerFactory)
     : _logContext(std::move(logContext)),
       _logMetrics(std::move(logMetrics)),
       _options(std::move(options)),
       _stateHandle(std::move(stateHandle)),
+      _followerFactory(std::move(followerFactory)),
       _id(std::move(id)),
       _currentTerm(term),
       _firstIndexOfCurrentTerm(firstIndex),
@@ -120,25 +122,25 @@ replicated_log::LogLeader::~LogLeader() {
 
 auto replicated_log::LogLeader::instantiateFollowers(
     LoggerContext const& logContext,
-    std::vector<std::shared_ptr<AbstractFollower>> const& followers,
+    std::shared_ptr<IAbstractFollowerFactory> followerFactory,
     std::shared_ptr<LocalFollower> const& localFollower,
-    TermIndexPair lastEntry)
+    TermIndexPair lastEntry,
+    std::shared_ptr<agency::ParticipantsConfig const> const& participantsConfig)
     -> std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>> {
   auto initLastIndex = lastEntry.index.saturatedDecrement();
 
   std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>>
       followers_map;
-  followers_map.reserve(followers.size() + 1);
+  followers_map.reserve(participantsConfig->participants.size() + 1);
   followers_map.emplace(
       localFollower->getParticipantId(),
       std::make_shared<FollowerInfo>(localFollower, lastEntry, logContext));
-  for (auto const& impl : followers) {
+  for (auto const& impl : participantsConfig->participants) {
     auto const& [it, inserted] = followers_map.emplace(
-        impl->getParticipantId(),
-        std::make_shared<FollowerInfo>(
-            impl, TermIndexPair{LogTerm{0}, initLastIndex}, logContext));
-    TRI_ASSERT(inserted) << "duplicate participant id: "
-                         << impl->getParticipantId();
+        impl.first, std::make_shared<FollowerInfo>(
+                        followerFactory->constructFollower(impl.first),
+                        TermIndexPair{LogTerm{0}, initLastIndex}, logContext));
+    TRI_ASSERT(inserted) << "duplicate participant id: " << impl.first;
   }
   return followers_map;
 }
@@ -291,22 +293,22 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 
 auto replicated_log::LogLeader::construct(
     std::unique_ptr<LogCore> logCore,
-    std::vector<std::shared_ptr<AbstractFollower>> const& followers,
     std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
     ParticipantId id, LogTerm term, LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-    std::shared_ptr<IReplicatedStateHandle> stateHandle)
+    std::shared_ptr<IReplicatedStateHandle> stateHandle,
+    std::shared_ptr<IAbstractFollowerFactory> followerFactory)
     -> std::shared_ptr<LogLeader> {
   auto const& config = participantsConfig->config;
+  auto const& participants = participantsConfig->participants;
 
   if (ADB_UNLIKELY(logCore == nullptr)) {
     auto followerIds = std::vector<std::string>{};
-    std::transform(followers.begin(), followers.end(),
-                   std::back_inserter(followerIds),
-                   [](auto const& follower) -> std::string {
-                     return follower->getParticipantId();
-                   });
+    std::transform(
+        participants.begin(), participants.end(),
+        std::back_inserter(followerIds),
+        [](auto const& follower) -> std::string { return follower.first; });
     auto message = basics::StringUtils::concatT(
         "LogCore missing when constructing LogLeader, leader id: ", id,
         "term: ", term, "effectiveWriteConcern: ", config.effectiveWriteConcern,
@@ -324,11 +326,12 @@ auto replicated_log::LogLeader::construct(
         std::shared_ptr<ReplicatedLogGlobalSettings const> options,
         ParticipantId id, LogTerm term, LogIndex firstIndexOfCurrentTerm,
         InMemoryLog inMemoryLog,
-        std::shared_ptr<IReplicatedStateHandle> stateHandle)
+        std::shared_ptr<IReplicatedStateHandle> stateHandle,
+        std::shared_ptr<IAbstractFollowerFactory> followerFactory)
         : LogLeader(std::move(logContext), std::move(logMetrics),
                     std::move(options), std::move(id), term,
                     firstIndexOfCurrentTerm, std::move(inMemoryLog),
-                    std::move(stateHandle)) {}
+                    std::move(stateHandle), std::move(followerFactory)) {}
   };
 
   auto log = InMemoryLog::loadFromLogCore(*logCore);
@@ -358,7 +361,7 @@ auto replicated_log::LogLeader::construct(
   auto leader = std::make_shared<MakeSharedLogLeader>(
       commonLogContext.with<logContextKeyLogComponent>("leader"),
       std::move(logMetrics), std::move(options), std::move(id), term,
-      lastIndex.index + 1u, log, std::move(stateHandle));
+      lastIndex.index + 1u, log, std::move(stateHandle), followerFactory);
   auto localFollower = std::make_shared<LocalFollower>(
       *leader,
       commonLogContext.with<logContextKeyLogComponent>("local-follower"),
@@ -368,8 +371,9 @@ auto replicated_log::LogLeader::construct(
   {
     auto leaderDataGuard = leader->acquireMutex();
 
-    leaderDataGuard->_follower = instantiateFollowers(
-        commonLogContext, followers, localFollower, lastIndex);
+    leaderDataGuard->_follower =
+        instantiateFollowers(commonLogContext, followerFactory, localFollower,
+                             lastIndex, participantsConfig);
     leaderDataGuard->activeParticipantsConfig = participantsConfig;
     leader->_localFollower = std::move(localFollower);
     TRI_ASSERT(leaderDataGuard->_follower.size() >=
@@ -1342,9 +1346,8 @@ auto const keySetDifference = [](auto const& left, auto const& right) {
 }  // namespace
 
 auto replicated_log::LogLeader::updateParticipantsConfig(
-    std::shared_ptr<agency::ParticipantsConfig const> const& config,
-    std::function<std::shared_ptr<replicated_log::AbstractFollower>(
-        ParticipantId const&)> const& buildFollower) -> LogIndex {
+    std::shared_ptr<agency::ParticipantsConfig const> const& config)
+    -> LogIndex {
   LOG_CTX("ac277", TRACE, _logContext)
       << "trying to update configuration to generation " << config->generation;
   auto waitForIndex = _guardedLeaderData.doUnderLock([&](GuardedLeaderData&
@@ -1364,8 +1367,9 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
       for (auto const& participantId : additionalParticipantIds) {
         // exclude the leader
         if (participantId != _id) {
-          additionalFollowers_.try_emplace(participantId,
-                                           buildFollower(participantId));
+          additionalFollowers_.try_emplace(
+              participantId,
+              _followerFactory->constructFollower(participantId));
         }
       }
       return std::pair(std::move(followersToRemove_),

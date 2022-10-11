@@ -84,6 +84,36 @@ struct IReplicatedStateHandle {
   virtual void dropEntries() = 0;  // o.ä. (für waitForSync=false)
 };
 
+struct LeaderTermInfo {
+  LogTerm term;
+  ParticipantId myself;
+  std::shared_ptr<agency::ParticipantsConfig const> initialConfig;
+};
+
+struct FollowerTermInfo {
+  LogTerm term;
+  ParticipantId myself;
+  std::optional<ParticipantId> leader;
+};
+
+struct ParticipantContext {
+  LoggerContext loggerContext;
+  std::shared_ptr<IReplicatedStateHandle> stateHandle;
+  std::shared_ptr<ReplicatedLogMetrics> metrics;
+  std::shared_ptr<ReplicatedLogGlobalSettings const> options;
+};
+
+struct IParticipantsFactory {
+  virtual ~IParticipantsFactory() = default;
+  virtual auto constructFollower(std::unique_ptr<LogCore> logCore,
+                                 FollowerTermInfo info,
+                                 ParticipantContext context)
+      -> std::shared_ptr<ILogFollower> = 0;
+  virtual auto constructLeader(std::unique_ptr<LogCore> logCore,
+                               LeaderTermInfo info, ParticipantContext context)
+      -> std::shared_ptr<ILogLeader> = 0;
+};
+
 struct ReplicatedLogConnection;
 
 /**
@@ -113,7 +143,7 @@ struct alignas(64) ReplicatedLog {
       std::unique_ptr<LogCore> core,
       std::shared_ptr<ReplicatedLogMetrics> metrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-      std::shared_ptr<IAbstractFollowerFactory> followerFactory,
+      std::shared_ptr<IParticipantsFactory> participantsFactory,
       LoggerContext const& logContext, agency::ServerInstanceReference myself);
 
   ~ReplicatedLog();
@@ -175,7 +205,7 @@ struct alignas(64) ReplicatedLog {
   LoggerContext const _logContext = LoggerContext(Logger::REPLICATION2);
   std::shared_ptr<ReplicatedLogMetrics> const _metrics;
   std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
-  std::shared_ptr<IAbstractFollowerFactory> const _followerFactory;
+  std::shared_ptr<IParticipantsFactory> const _participantsFactory;
   agency::ServerInstanceReference const _myself;
   Guarded<GuardedData> _guarded;
 };
@@ -189,17 +219,13 @@ struct ReplicatedLogConnection {
   auto operator=(ReplicatedLogConnection&&) noexcept
       -> ReplicatedLogConnection& = default;
 
-  ~ReplicatedLogConnection() { disconnect(); }
+  ~ReplicatedLogConnection();
 
-  void disconnect() {
-    if (_log) {
-      _log->disconnect(std::move(*this));
-    }
-  }
+  void disconnect();
 
  private:
   friend struct ReplicatedLog;
-  explicit ReplicatedLogConnection(ReplicatedLog* log) : _log(log) {}
+  explicit ReplicatedLogConnection(ReplicatedLog* log);
 
   struct nop {
     template<typename T>
@@ -207,6 +233,19 @@ struct ReplicatedLogConnection {
   };
 
   std::unique_ptr<ReplicatedLog, nop> _log = nullptr;
+};
+
+struct DefaultParticipantsFactory : IParticipantsFactory {
+  explicit DefaultParticipantsFactory(
+      std::shared_ptr<IAbstractFollowerFactory> followerFactory);
+  auto constructFollower(std::unique_ptr<LogCore> logCore,
+                         FollowerTermInfo info, ParticipantContext context)
+      -> std::shared_ptr<ILogFollower> override;
+  auto constructLeader(std::unique_ptr<LogCore> logCore, LeaderTermInfo info,
+                       ParticipantContext context)
+      -> std::shared_ptr<ILogLeader> override;
+
+  std::shared_ptr<IAbstractFollowerFactory> followerFactory;
 };
 
 }  // namespace arangodb::replication2::replicated_log

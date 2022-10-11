@@ -29,6 +29,10 @@
 #include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
 #include "Replication2/Mocks/FakeFollower.h"
 #include "Replication2/Mocks/LogEventRecorder.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
+#include "Replication2/ReplicatedLog/ILogInterfaces.h"
+#include "Replication2/ReplicatedLog/types.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -96,6 +100,25 @@ struct ParticipantsConfigBuilder {
   agency::ParticipantsConfig config;
 };
 
+struct FakeParticipantsFactory : replicated_log::IParticipantsFactory {
+  auto constructFollower(std::unique_ptr<replicated_log::LogCore> logCore,
+                         replicated_log::FollowerTermInfo info,
+                         replicated_log::ParticipantContext context)
+      -> std::shared_ptr<replicated_log::ILogFollower> override {
+    return std::shared_ptr<replicated_log::ILogFollower>();
+  }
+  auto constructLeader(std::unique_ptr<replicated_log::LogCore> logCore,
+                       replicated_log::LeaderTermInfo info,
+                       replicated_log::ParticipantContext context)
+      -> std::shared_ptr<replicated_log::ILogLeader> override {
+    return std::shared_ptr<replicated_log::ILogLeader>();
+  }
+
+ private:
+  std::unordered_map<LogTerm, std::shared_ptr<replicated_log::ILogParticipant>>
+      participants;
+};
+
 }  // namespace arangodb::replication2::test
 
 struct ReplicatedLogTest2 : ::testing::Test {
@@ -112,15 +135,15 @@ struct ReplicatedLogTest2 : ::testing::Test {
       std::make_shared<ReplicatedLogGlobalSettings>();
   LoggerContext loggerContext = LoggerContext(Logger::REPLICATION2);
   agency::ServerInstanceReference const myself = {"SELF", RebootId{1}};
-  std::shared_ptr<test::FakeFollowerFactory> followerFactory =
-      std::make_shared<test::FakeFollowerFactory>();
+  std::shared_ptr<test::FakeParticipantsFactory> participantsFactory =
+      std::make_shared<test::FakeParticipantsFactory>();
 
   test::LogEventRecorder recorder;
 };
 
 TEST_F(ReplicatedLogTest2, foo_bar) {
   auto log = std::make_shared<replicated_log::ReplicatedLog>(
-      std::move(core), logMetricsMock, optionsMock, followerFactory,
+      std::move(core), logMetricsMock, optionsMock, participantsFactory,
       loggerContext, myself);
 
   test::TermBuilder term;

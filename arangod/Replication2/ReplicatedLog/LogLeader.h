@@ -95,12 +95,13 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
   [[nodiscard]] static auto construct(
       std::unique_ptr<LogCore> logCore,
-      std::vector<std::shared_ptr<AbstractFollower>> const& followers,
       std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
       ParticipantId id, LogTerm term, LoggerContext const& logContext,
       std::shared_ptr<ReplicatedLogMetrics> logMetrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-      std::shared_ptr<IReplicatedStateHandle>) -> std::shared_ptr<LogLeader>;
+      std::shared_ptr<IReplicatedStateHandle>,
+      std::shared_ptr<IAbstractFollowerFactory> followerFactory)
+      -> std::shared_ptr<LogLeader>;
 
   auto insert(LogPayload payload, bool waitForSync = false)
       -> LogIndex override;
@@ -160,9 +161,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
   // Updates the flags of the participants.
   auto updateParticipantsConfig(
-      std::shared_ptr<agency::ParticipantsConfig const> const& config,
-      std::function<std::shared_ptr<replicated_log::AbstractFollower>(
-          ParticipantId const&)> const& buildFollower) -> LogIndex;
+      std::shared_ptr<agency::ParticipantsConfig const> const& config)
+      -> LogIndex;
 
   // Returns [acceptedConfig.generation, committedConfig.?generation]
   auto getParticipantConfigGenerations() const noexcept
@@ -174,7 +174,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
             std::shared_ptr<ReplicatedLogMetrics> logMetrics,
             std::shared_ptr<ReplicatedLogGlobalSettings const> options,
             ParticipantId id, LogTerm term, LogIndex firstIndexOfCurrentTerm,
-            InMemoryLog inMemoryLog, std::shared_ptr<IReplicatedStateHandle>);
+            InMemoryLog inMemoryLog, std::shared_ptr<IReplicatedStateHandle>,
+            std::shared_ptr<IAbstractFollowerFactory> followerFactory);
 
  private:
   struct GuardedLeaderData;
@@ -339,6 +340,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
   std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
   std::shared_ptr<IReplicatedStateHandle> const _stateHandle;
+  std::shared_ptr<IAbstractFollowerFactory> const _followerFactory;
   ParticipantId const _id;
   LogTerm const _currentTerm;
   LogIndex const _firstIndexOfCurrentTerm;
@@ -352,10 +354,12 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
       std::shared_ptr<agency::ParticipantsConfig const> config);
 
   [[nodiscard]] static auto instantiateFollowers(
-      LoggerContext const&,
-      std::vector<std::shared_ptr<AbstractFollower>> const& followers,
+      LoggerContext const& logContext,
+      std::shared_ptr<IAbstractFollowerFactory> followerFactory,
       std::shared_ptr<LocalFollower> const& localFollower,
-      TermIndexPair lastEntry)
+      TermIndexPair lastEntry,
+      std::shared_ptr<agency::ParticipantsConfig const> const&
+          participantsConfig)
       -> std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>>;
 
   auto acquireMutex() -> Guard;
