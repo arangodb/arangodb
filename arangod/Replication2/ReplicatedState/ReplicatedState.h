@@ -112,7 +112,8 @@ struct ReplicatedStateBase {
 
 // TODO Clean this up, starting with trimming Stream to its minimum
 template<typename EntryType,
-         template<typename> typename Interface = streams::Stream>
+         template<typename> typename Interface = streams::Stream,
+         typename ILogMethodsT = replicated_log::IReplicatedLogMethodsBase>
 struct StreamProxy : Interface<EntryType> {
   using WaitForResult = typename streams::Stream<EntryType>::WaitForResult;
   using Iterator = typename streams::Stream<EntryType>::Iterator;
@@ -130,17 +131,26 @@ struct StreamProxy : Interface<EntryType> {
     // TODO Implement this
     std::abort();
   }
+
+  // TODO Acquire the log methods, handle ownership
+  ILogMethodsT* _logMethods{};
 };
 
-template<typename EntryType>
-struct ProducerStreamProxy : StreamProxy<EntryType, streams::ProducerStream> {
-  auto insert(const EntryType& t) -> LogIndex override {
-    // TODO Implement this
-    std::abort();
+template<typename EntryType, typename Serializer>
+struct ProducerStreamProxy
+    : StreamProxy<EntryType, streams::ProducerStream,
+                  replicated_log::IReplicatedLogLeaderMethods> {
+  auto insert(EntryType const& v) -> LogIndex override {
+    auto builder = velocypack::Builder();
+    std::invoke(Serializer{}, streams::serializer_tag<EntryType>, v, builder);
+    // TODO avoid the copy
+    auto payload = LogPayload::createFromSlice(builder.slice());
+    return this->_logMethods->insert(std::move(payload));
   }
-  auto insertDeferred(const EntryType& t)
+
+  auto insertDeferred(EntryType const& t)
       -> std::pair<LogIndex, DeferredAction> override {
-    // TODO Implement this
+    // TODO Delete this, it's superfluous
     std::abort();
   }
 };
@@ -153,6 +163,7 @@ struct NewLeaderStateManager
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using Deserializer = typename ReplicatedStateTraits<S>::Deserializer;
+  using Serializer = typename ReplicatedStateTraits<S>::Serializer;
   explicit NewLeaderStateManager(
       LoggerContext loggerContext,
       std::shared_ptr<ReplicatedStateMetrics> metrics,

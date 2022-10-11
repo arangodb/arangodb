@@ -132,7 +132,9 @@ void ReplicatedStateManager<S>::leadershipEstablished(
   // TODO Pass the stream during construction already, and delete the
   //      "setStream" method; after that, the leader state implementation can
   //      also really rely on the stream being there.
-  leaderState->setStream(std::make_shared<ProducerStreamProxy<EntryType>>());
+  leaderState->setStream(
+      std::make_shared<ProducerStreamProxy<
+          EntryType, typename ReplicatedStateTraits<S>::Serializer>>());
   auto& manager =
       guard->_currentManager
           .template emplace<std::shared_ptr<NewLeaderStateManager<S>>>(
@@ -174,7 +176,11 @@ void ReplicatedStateManager<S>::dropEntries() {
 template<typename S>
 void NewLeaderStateManager<S>::recoverEntries() {
   auto future = _guardedData.getLockedGuard()->recoverEntries();
-  // TODO
+  std::move(future).thenFinal([](futures::Try<Result>&& tryResult) {
+    // TODO error handling
+    ADB_PROD_ASSERT(tryResult.hasValue());
+    ADB_PROD_ASSERT(tryResult.get().ok());
+  });
 }
 
 template<typename S>
