@@ -1,10 +1,19 @@
 v3.9.4 (XXXX-XX-XX)
 -------------------
 
+* Fixed handling of empty URL parameters in HTTP request handling.
+
+* Fixed diffing of completely non-overlapping revision trees, which could
+  lead to out-of-bounds reads at the right end of the first (smaller) tree.
+
+* Fixed aborting the server process if an exception was thrown in C++ code
+  that was invoked from the llhttp C code dispatcher. That dispatcher code
+  couldn't handle C++ exceptions properly.
+
 * Fixed BTS-1073: Fix encoding and decoding of revision ids in replication 
-  of SmartGraph edge collection data using the Merkle tree incremental sync 
-  protocol. Previously, the encoding of revision ids could be ambiguous under
-  some circumstances, which could prevent shards from getting into sync.
+  incremental sync protocol. Previously, the encoding of revision ids could 
+  be ambiguous under some circumstances, which could prevent shards from 
+  getting into sync.
 
 * Fix an issue with replication of arangosearch view change entries in single
   server replication and active failover. Previously, when changing the
