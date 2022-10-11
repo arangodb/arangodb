@@ -31,15 +31,19 @@
 'use strict';
 
 const jsunity = require('jsunity');
-const {assertEqual} = jsunity.jsUnity.assertions;
+const {assertEqual, assertTrue} = jsunity.jsUnity.assertions;
 const {errors} = require("@arangodb");
 const internal = require('internal');
-const isCluster = internal.isCluster();
+const explainer = require('@arangodb/aql/explainer');
 const gh = require('@arangodb/graph/helpers');
 const db = internal.db;
 
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
+
+const planNodes = function(plan) {
+  return plan.plan.nodes.map(n => n.type);
+};
 
 function pruneTraversalSuite() {
   const optionsToTest = {
@@ -303,8 +307,25 @@ function pruneTraversalSuite() {
                 RETURN v
               `;
 
+      // Query planning phase:
+      const debug = explainer.debug({
+        query: q,
+        bindVars: {},
+        options: {}
+      });
+      const nodes = planNodes(debug.explain);
+      // Make sure we still have the FilterNode and CalculationNode
+      assertTrue(nodes.includes('FilterNode'));
+      assertTrue(nodes.includes('CalculationNode'));
+
+      // Query execution phase:
+      // While in the "testPruningWithV8..." tests, we need to fail hard and abort
+      // execution, in this case we're allowed to proceed with our query. The difference
+      // is that we will not optimize the filter into the TraversalNode.
       const res = db._query(q);
-      print(res);
+
+      // We do not care about the result, will be 0 anyway.
+      assertEqual(res.count(), 0);
     };
   };
 
