@@ -1,6 +1,9 @@
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
+* BTS-1008: Update react-autocomplete-input to fix single letter collection bug
+  when creating a link in the views in the WebUI.
+
 * BTS-1061: ARM was not recognized on Apple M1.
 
 * BTS-325: Changed the HTTP status code from `400` to `404` of the ArangoDB
