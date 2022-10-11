@@ -1,8 +1,28 @@
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
-* BTS-1008: Update react-autocomplete-input to fix single letter collection
-  bug when creating a link in the views in the WebUI.
+* BTS-1008: Update react-autocomplete-input to fix single letter collection bug
+  when creating a link in the views in the WebUI.
+
+* BTS-1061: ARM was not recognized on Apple M1.
+
+* BTS-325: Changed the HTTP status code from `400` to `404` of the ArangoDB
+  error code `ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED` to handle this
+  error in accordance to our edge errors.
+
+* Adjust permissions for "search-alias" views.
+
+  Previously, "search-alias" views were visible to users that didn't have read
+  permissions on the underlying referenced collections. This was inconsistent,
+  because "arangosearch" views weren't shown to users that didn't have read
+  permissions on the underlying links.
+  Now, the behavior for "search-alias" views is the same as for "arangosearch"
+  views, i.e. "search-alias" views are not shown and are not accessible for
+  users that don't have at least read permissions on the underlying collections.
+
+* BTS-969: Added restriction for HTTP request `/cluster/rebalance`not to
+  consider servers that have failed status as a possible target for rebalancing
+  shards in its execution plan.
 
 * Fix an issue with replication of arangosearch view change entries in single
   server replication and active failover. Previously, when changing the
@@ -177,7 +197,7 @@ v3.10.0-beta.1 (2022-09-14)
 
 * Fixed SEARCH-347 Cycle variable reference in nested search query is properly
   detected and rejected.
-  
+
 * Fixed SEARCH-364 Fixed index fields match check for inverted index.
 
 * Web UI: Reduce size and initial render height of a modal (fixes BTS-940).
@@ -249,12 +269,12 @@ v3.10.0-alpha.1 (2022-08-17)
 * Fixed an invalid attribute access in AQL query optimization.
   Without the fix, a query such as
 
-      LET data = { 
-        "a": [ 
+      LET data = {
+        "a": [
           ...
-        ], 
-      } 
-      FOR d IN data["a"] 
+        ],
+      }
+      FOR d IN data["a"]
         RETURN d
 
   could fail with error "invalid operand to FOR loop, expecting Array".
@@ -339,12 +359,12 @@ v3.10.0-alpha.1 (2022-08-17)
   "underscore". We recommend always bundling your own copy of third-party
   modules as all previously included third-party modules are now considered
   deprecated and may be removed in future versions of ArangoD
-  
+
 * APM-84: Added option to spill intermediate AQL query results from RAM to disk
   when their size exceeds certain thresholds. Currently the only AQL operation
   that can make use of this is the SortExecutor (AQL SORT operation without
   using a LIMIT). Further AQL executor types will be supported in future
-  releases. 
+  releases.
 
   Spilling over query results from RAM to disk is off by default and currently
   in an experimental stage. In order to opt in to the feature, it is required to
@@ -406,7 +426,7 @@ v3.10.0-alpha.1 (2022-08-17)
   values.
 
 * Added startup option `--rocksdb.compaction-style` to configure the compaction
-  style which is used to pick the next file(s) to be compacted. 
+  style which is used to pick the next file(s) to be compacted.
 
 * BugFix in Pregel's Label Propagation: the union of three undirected cliques of
   size at least three connected by an undirected triangle now returns three
@@ -592,7 +612,7 @@ v3.10.0-alpha.1 (2022-08-17)
   directory (`temp-directory`), which may not provide enough capacity for larger
   Pregel jobs.
   It may be more sensible to configure a custom directory for memory-mapped
-  files and provide the necessary disk space there (`custom`). Such custom 
+  files and provide the necessary disk space there (`custom`). Such custom
   directory can be mounted on ephemeral storage, as the files are only needed
   temporarily.
   There is also the option to use a subdirectory of the database directory as
@@ -665,7 +685,7 @@ v3.10.0-alpha.1 (2022-08-17)
 
 * Added new optimization rule "arangosearch-constrained-sort" to perform sorting
   & limiting inside ArangoSearch View enumeration node in case of using just
-  scoring for sort. 
+  scoring for sort.
 
 * Updated lz4 to version 1.9.3.
 
@@ -1089,7 +1109,7 @@ v3.10.0-alpha.1 (2022-08-17)
 v3.9.2 (2022-06-07)
 -------------------
 
-* Enterprise only: Restricted behavior of Hybrid Disjoint Smart Graphs. Within a 
+* Enterprise only: Restricted behavior of Hybrid Disjoint Smart Graphs. Within a
   single traversal or path query we now restrict that you can only switch
   between Smart and Satellite sharding once, all queries where more than one
   switch is (in theory) possible will be rejected. e.g:
@@ -1373,9 +1393,9 @@ v3.9.1 (2022-04-04)
 
 * Replaced internal JS dependency xmldom with @xmldom/xmldom.
 
-* Fixed BTS-750: Fixed the issue restricted to cluster mode in which queries 
+* Fixed BTS-750: Fixed the issue restricted to cluster mode in which queries
   containing the keywords UPDATE or REPLACE together with the keyword WITH and
-  the same key value would result in an error. For example: 
+  the same key value would result in an error. For example:
   `UPDATE 'key1' WITH {_key: 'key1'} IN Collection`
   because the same key used to update was provided in the object to update the
   document with.
@@ -1563,7 +1583,7 @@ v3.9.0-beta.1 (2022-01-06)
   a new deployment to provide the license. After that period, the read-only mode
   will be enforced.
 
-* Added startup options to adjust previously hard-coded parameters for the 
+* Added startup options to adjust previously hard-coded parameters for the
   RocksDB throttle:
   - `--rocksdb.throttle-frequency`: frequency for write-throttle calculations
     (in milliseconds, default value is 60000, i.e. 60 seconds).
@@ -1577,7 +1597,7 @@ v3.9.0-beta.1 (2022-01-06)
     The actual write rate will be the minimum of this value and the value the
     throttle calculation produces.
   - `--rocksdb.throttle-slow-down-writes-trigger`: number of level 0 files whose
-    payload is not considered in throttle calculations when penalizing the 
+    payload is not considered in throttle calculations when penalizing the
     presence of L0 files. There is normally no need to change this value.
 
   All these options will only have an effect if `--rocksdb.throttle` is enabled
@@ -1605,7 +1625,7 @@ v3.9.0-beta.1 (2022-01-06)
   This addresses a potential security issue when exporting specially crafted
   documents to CSV, opening the CSV file in MS Excel or OpenOffice and then
   clicking links in any of the tainted cells.
-  
+
   This change also adds a new option `--escape-csv-formulae` to toggle the
   escaping behavior for potential formulae values. The option is turned on by
   default.
@@ -1622,7 +1642,7 @@ v3.9.0-beta.1 (2022-01-06)
   modification nodes and don't read their own writes. This fixed the execution
   of a query without the splicing-subqueries option being faster than the
   execution of a query with this option (after version 3.8, this option cannot
-  be switched off). 
+  be switched off).
 
 * Added the following metrics for revision trees:
   - `arangodb_revision_tree_hibernations_total`: number of times a revision tree
@@ -1883,7 +1903,7 @@ v3.9.0-alpha.1 (2021-11-30)
 * The server now has two flags to control the escaping control and Unicode
   characters in the log. The flag `--log.escape` is now deprecated and, instead,
   the new flags `--log.escape-control-chars` and `--log.escape-unicode-chars`
-  should be used. 
+  should be used.
 
   - `--log.escape-control-chars`: this flag applies to the control characters,
     which have hex code below `\x20`, and also the character DEL, with hex code
@@ -1988,7 +2008,7 @@ v3.9.0-alpha.1 (2021-11-30)
   - arangorestore
   - arangosh
   More tools and the drivers shipped by ArangoDB will be added to the list in
-  the future. 
+  the future.
 
   Please note that the extended names for databases should not be turned on
   during upgrades from previous versions, but only once the upgrade has been
@@ -2034,9 +2054,9 @@ v3.9.0-alpha.1 (2021-11-30)
 
   When invoking arangoimport with the startup options
 
-      --datatype key=string 
-      --datatype price=number 
-      --datatype weight=number 
+      --datatype key=string
+      --datatype price=number
+      --datatype weight=number
       --datatype fk=string
 
   it will turn the numeric-looking values in "key" into strings (so that they
@@ -2053,7 +2073,7 @@ v3.9.0-alpha.1 (2021-11-30)
 
 * Fixed issue BTS-531 "Error happens during EXE package installation if
   non-ASCII characters are present in target path".
-  
+
 * Fix active failover, so that the new host actually has working Foxx services
   (BTS-558).
 
