@@ -355,8 +355,7 @@ class QueryTest : public IResearchQueryTest {
       auto createJson = VPackParser::fromJson(absl::Substitute(
           R"({ "name": "testIndex0", "type": "inverted",
                "version": $0, $1
-               "includeAllFields": true,
-               "fields": [ { "name": "this_field_no_exist_just_stub_for_definition_parser" } ] })",
+               "includeAllFields": true })",
           version(), definition1));
       auto collection = _vocbase.lookupCollection("testCollection0");
       ASSERT_TRUE(collection);
@@ -370,8 +369,7 @@ class QueryTest : public IResearchQueryTest {
       auto createJson = VPackParser::fromJson(absl::Substitute(
           R"({ "name": "testIndex1", "type": "inverted",
                "version": $0, $1
-               "includeAllFields": true,
-               "fields": [ { "name": "this_field_no_exist_just_stub_for_definition_parser" } ] })",
+               "includeAllFields": true })",
           version(), definition2));
       auto collection = _vocbase.lookupCollection("testCollection1");
       ASSERT_TRUE(collection);
@@ -435,7 +433,7 @@ class QueryTest : public IResearchQueryTest {
         errorCount += !checkSlices(resolved, expected->slice());
       }
     }
-    EXPECT_EQ(errorCount, 0);
+    EXPECT_EQ(errorCount, 0U);
     return it.size() == expectedCount && errorCount == 0;
   }
 
