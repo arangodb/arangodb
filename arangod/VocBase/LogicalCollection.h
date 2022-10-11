@@ -236,8 +236,8 @@ class LogicalCollection : public LogicalDataSource {
   std::vector<std::string> const& shardKeys() const noexcept;
 
   virtual std::shared_ptr<ShardMap> shardIds() const;
-  void shardsToVelocyPack(arangodb::velocypack::Builder& result,
-                          bool details = true) const;
+  void shardMapToVelocyPack(arangodb::velocypack::Builder& result) const;
+  void shardKeysToVelocyPack(arangodb::velocypack::Builder& result) const;
 
   // mutation options for sharding
   void setShardMap(std::shared_ptr<ShardMap> map) noexcept;

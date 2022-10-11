@@ -293,10 +293,10 @@ RestStatus RestCollectionHandler::handleCommandGet() {
       auto shardsMap = coll->shardIds();
       if (_request->parsedValue("details", false)) {
         // with details
-        coll->shardsToVelocyPack(_builder, true);
+        coll->shardMapToVelocyPack(_builder);
       } else {
         // without details
-        coll->shardsToVelocyPack(_builder, false);
+        coll->shardKeysToVelocyPack(_builder);
       }
     }
     return standardResponse();
