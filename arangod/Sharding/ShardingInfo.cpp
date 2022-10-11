@@ -29,11 +29,13 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
+#include "Containers/SmallVector.h"
 #include "Logger/LogMacros.h"
 #include "Sharding/ShardingFeature.h"
 #include "Sharding/ShardingStrategyDefault.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 

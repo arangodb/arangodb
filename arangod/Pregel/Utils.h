@@ -128,6 +128,11 @@ class Utils {
   /// only send by the conductor
   static std::string const enterNextGSSKey;
 
+  /// Algorithms parameters
+  static std::string const maxGSS;
+  static std::string const maxNumIterations;
+  static std::string const threshold;
+
   static std::string const compensate;
   static std::string const rollback;
   static std::string const reportsKey;

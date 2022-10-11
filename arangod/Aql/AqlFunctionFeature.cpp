@@ -170,6 +170,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"LOWER", ".", flags, &functions::Lower});
   add({"UPPER", ".", flags, &functions::Upper});
   add({"SUBSTRING", ".,.|.", flags, &functions::Substring});
+  add({"SUBSTRING_BYTES", ".,.|.", flags, &functions::SubstringBytes});
   add({"CONTAINS", ".,.|.", flags, &functions::Contains});
   add({"LIKE", ".,.|.", flags, &functions::Like});
   add({"REGEX_MATCHES", ".,.|.", flags, &functions::RegexMatches});
@@ -189,6 +190,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"IPV4_FROM_NUMBER", ".", flags, &functions::IpV4FromNumber});
   add({"MD5", ".", flags, &functions::Md5});
   add({"SHA1", ".", flags, &functions::Sha1});
+  add({"SHA256", ".", flags, &functions::Sha256});
   add({"SHA512", ".", flags, &functions::Sha512});
   add({"CRC32", ".", flags, &functions::Crc32});
   add({"FNV64", ".", flags, &functions::Fnv64});

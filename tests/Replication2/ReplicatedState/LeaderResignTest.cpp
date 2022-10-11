@@ -33,6 +33,7 @@
 
 #include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
+#include "Replication2/Mocks/MockStatePersistorInterface.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -47,6 +48,7 @@ struct ReplicatedStateLeaderResignTest : test::ReplicatedLogTest {
     using FactoryType = test::RecordingFactory<LeaderType, FollowerType>;
     using CoreType = test::TestCoreType;
     using CoreParameterType = void;
+    using CleanupHandlerType = void;
   };
 
   ReplicatedStateLeaderResignTest() {
@@ -63,12 +65,14 @@ struct ReplicatedStateLeaderResignTest : test::ReplicatedLogTest {
   std::shared_ptr<State::LeaderType> leaderState;
   std::shared_ptr<ReplicatedStateMetrics> _metrics =
       std::make_shared<ReplicatedStateMetricsMock>("foo");
+  std::shared_ptr<test::MockStatePersistorInterface> _persistor =
+      std::make_shared<test::MockStatePersistorInterface>();
   LoggerContext const loggerCtx{Logger::REPLICATED_STATE};
   std::shared_ptr<replicated_state::LeaderStateManager<State>> manager =
       std::make_shared<replicated_state::LeaderStateManager<State>>(
           loggerCtx, nullptr, logLeader, std::move(core),
           std::make_unique<ReplicatedStateToken>(StateGeneration{1}), factory,
-          _metrics);
+          _metrics, _persistor);
 };
 
 TEST_F(ReplicatedStateLeaderResignTest, complete_run_without_resign) {

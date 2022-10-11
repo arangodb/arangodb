@@ -32,6 +32,7 @@
 #include "Containers/FlatHashSet.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Replication2/Version.h"
 
 namespace arangodb {
 

@@ -890,23 +890,15 @@ function TransactionsImplicitCollectionsSuite() {
 function TransactionsInvocationsParametersSuite () {
   'use strict';
 
-  var c = null;
-  var cn = "UnitTestsTransaction";
+  let c = null;
+  const cn = "UnitTestsTransaction";
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
       db._drop(cn);
       c = db._create(cn);
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       db._drop(cn);
@@ -918,8 +910,8 @@ function TransactionsInvocationsParametersSuite () {
     
     testSmallMaxTransactionSize : function () {
       try {
-        db._query("FOR i IN 1..10000 INSERT { someValue: i} INTO @@cn", 
-        {"@cn": cn}, {maxTransactionSize: 100 * 1000}); // 100 KB => not enough!
+        db._query("FOR i IN 1..10000 INSERT { someValue: i } INTO @@cn", 
+          {"@cn": cn}, {maxTransactionSize: 100 * 1000}); // 100 KB => not enough!
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_RESOURCE_LIMIT.code, err.errorNum);
@@ -930,34 +922,36 @@ function TransactionsInvocationsParametersSuite () {
     },
 
     testBigMaxTransactionSize : function () {
-      db._query("FOR i IN 1..10000 INSERT { someValue: i} INTO @@cn", 
+      db._query("FOR i IN 1..10000 INSERT { someValue: i } INTO @@cn", 
         {"@cn": cn}, {maxTransactionSize: 10 * 1000 * 1000}); // 10 MB => enough!
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
     
     testIntermediateCommitCountVerySmall : function () {
-      db._query("FOR i IN 1..1000 INSERT { someValue: i} INTO @@cn", {"@cn": cn}, 
-      { intermediateCommitCount: 1 });
+      let res = db._query("FOR i IN 1..1000 INSERT { someValue: i } INTO @@cn", {"@cn": cn}, 
+        { intermediateCommitCount: 1 });
+      assertEqual(1, res.getExtra().stats.intermediateCommits);
       // this should produce 1000 intermediate commits
       assertEqual(1000, db._collection(cn).count());
       assertEqual(1000, db._collection(cn).toArray().length);
     },
 
     testIntermediateCommitCountBigger : function () {
-      db._query("FOR i IN 1..10000 INSERT { someValue: i} INTO @@cn", {"@cn": cn}, 
-      { intermediateCommitCount: 1000 });
+      let res = db._query("FOR i IN 1..10000 INSERT { someValue: i } INTO @@cn", {"@cn": cn}, 
+        { intermediateCommitCount: 1000 });
+      assertEqual(10, res.getExtra().stats.intermediateCommits);
       // this should produce 10 intermediate commits
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
     
     testIntermediateCommitCountWithFail : function () {
-      var failed = false;
+      let failed = false;
 
       try {
-        db._query("FOR i IN 1..10001 FILTER i < 10001 OR FAIL('peng') INSERT { someValue: i} INTO @@cn ", {"@cn": cn}, 
-        { intermediateCommitCount: 1000 });
+        db._query("FOR i IN 1..10001 FILTER i < 10001 OR FAIL('peng') INSERT { someValue: i } INTO @@cn ", {"@cn": cn}, 
+          { intermediateCommitCount: 1000 });
         fail();
         // this should produce 10 intermediate commits
       } catch (err) {
@@ -971,11 +965,11 @@ function TransactionsInvocationsParametersSuite () {
     },
 
     testIntermediateCommitCountWithFailInTheMiddle : function () {
-      var failed = false;
+      let failed = false;
 
       try {
-        db._query("FOR i IN 1..10000 FILTER i != 6532 OR FAIL('peng') INSERT { someValue: i} INTO @@cn ", {"@cn": cn}, 
-        { intermediateCommitCount: 1000 });
+        db._query("FOR i IN 1..10000 FILTER i != 6532 OR FAIL('peng') INSERT { someValue: i } INTO @@cn ", {"@cn": cn}, 
+          { intermediateCommitCount: 1000 });
         // this should produce 6 intermediate commits
         fail();
       } catch (err) {
@@ -990,27 +984,29 @@ function TransactionsInvocationsParametersSuite () {
 
 
     testIntermediateCommitSizeVerySmall : function () {
-      db._query("FOR i IN 1..1000 INSERT { someValue: i} INTO @@cn", {"@cn": cn}, 
-      { intermediateCommitSize: 10 });
+      let res = db._query("FOR i IN 1..1000 INSERT { someValue: i } INTO @@cn", {"@cn": cn}, 
+        { intermediateCommitSize: 10 });
+      assertEqual(1, res.getExtra().stats.intermediateCommits);
       // this should produce a lot of intermediate commits
       assertEqual(1000, db._collection(cn).count());
       assertEqual(1000, db._collection(cn).toArray().length);
     },
     
     testIntermediateCommitSizeBigger : function () {
-      db._query("FOR i IN 1..10000 INSERT { someValue: i} INTO @@cn", {"@cn": cn}, 
-      { intermediateCommitSize: 1000 });
+      let res = db._query("FOR i IN 1..10000 INSERT { someValue: i } INTO @@cn", {"@cn": cn}, 
+        { intermediateCommitSize: 1000 });
+      assertEqual(10, res.getExtra().stats.intermediateCommits);
       // this should produce a lot of intermediate commits
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
     
     testIntermediateCommitSizeWithFail : function () {
-      var failed = false;
+      let failed = false;
 
       try {
-        db._query("FOR i IN 1..10001 FILTER i < 10001 OR FAIL('peng') INSERT { someValue: i} INTO @@cn", {"@cn": cn}, 
-        { intermediateCommitSize: 10 });
+        db._query("FOR i IN 1..10001 FILTER i < 10001 OR FAIL('peng') INSERT { someValue: i } INTO @@cn", {"@cn": cn}, 
+          { intermediateCommitSize: 10 });
         // this should produce a lot of intermediate commits
         fail();
       } catch (err) {
@@ -1024,7 +1020,7 @@ function TransactionsInvocationsParametersSuite () {
     },
     
     testIntermediateCommitDuplicateKeys1 : function () {
-      var failed = false;
+      let failed = false;
 
       try { // should fail because intermediate commits are not allowed
         db._executeTransaction({
@@ -1051,10 +1047,10 @@ function TransactionsInvocationsParametersSuite () {
 
         
     testIntermediateCommitDuplicateKeys2 : function () {
-      var failed = false;
+      let failed = false;
 
       try { // should fail because intermediate commits are not allowed
-        db._query("FOR i IN ['a', 'b', 'a', 'b'] INSERT { _key: i} INTO @@cn", {"@cn": cn}, {intermediateCommitCount: 2 });
+        db._query("FOR i IN ['a', 'b', 'a', 'b'] INSERT { _key: i } INTO @@cn", {"@cn": cn}, {intermediateCommitCount: 2 });
         fail();
       } catch (err) {
         failed = true;
@@ -1067,10 +1063,10 @@ function TransactionsInvocationsParametersSuite () {
     },
     
     testIntermediateCommitDuplicateKeys3 : function () {
-      var failed = false;
+      let failed = false;
 
       try {
-        db._query("FOR i IN ['a', 'b', 'a', 'b'] INSERT { _key: i} INTO @@cn", {"@cn": cn}, {intermediateCommitCount: 10 });
+        db._query("FOR i IN ['a', 'b', 'a', 'b'] INSERT { _key: i } INTO @@cn", {"@cn": cn}, {intermediateCommitCount: 10 });
         fail();
       } catch (err) {
         failed = true;
@@ -1105,19 +1101,43 @@ function TransactionsInvocationsParametersSuite () {
     },
     
     testAqlIntermediateCommitCountVerySmall : function () {
-      db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn, options: { intermediateCommitCount: 1 } });
+      let res = db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn, options: { intermediateCommitCount: 1 } });
+      // 10 intermediate commits only because inserts are executed in batches of 1000 ops
+      assertEqual(10, res.getExtra().stats.intermediateCommits);
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
 
     testAqlIntermediateCommitCountBigger : function () {
-      db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn, options: { intermediateCommitCount: 1000 } });
+      let res = db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn, options: { intermediateCommitCount: 1000 } });
+      // 10 intermediate commits only because inserts are executed in batches of 1000 ops
+      assertEqual(10, res.getExtra().stats.intermediateCommits);
+      assertEqual(10000, db._collection(cn).count());
+      assertEqual(10000, db._collection(cn).toArray().length);
+    },
+    
+    testAqlIntermediateCommitCountMultipleShards : function () {
+      if (!internal.isCluster()) {
+        return;
+      }
+
+      // recreate collection with mutliple shards
+      db._drop(cn);
+      c = db._create(cn, { numberOfShards: 5 });
+
+      let res = db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn, options: { intermediateCommitCount: 1000 } });
+      // we don't know exactly upfront how many intermediate commits are going to happen, because we
+      // don't know how many documents there will be on each shard, and which shards will be co-located
+      // on the same DB server. So we assume it must be >= 5 and <= 10
+      let stat = res.getExtra().stats.intermediateCommits;
+      assertTrue(stat >= 5, stat);
+      assertTrue(stat <= 10, stat);
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
     
     testAqlIntermediateCommitCountWithFail : function () {
-      var failed = false;
+      let failed = false;
 
       try {
         db._query({ query: "FOR i IN 1..10000 LET x = NOOPT(i == 8533 ? FAIL('peng!') : i) INSERT { value: x } INTO " + cn, options: { intermediateCommitCount: 1000 } });
@@ -1133,19 +1153,21 @@ function TransactionsInvocationsParametersSuite () {
     },
 
     testAqlIntermediateCommitSizeVerySmall : function () {
-      db._query({ query: "FOR i IN 1..10000 INSERT { someValue: i } INTO " + cn, options: { intermediateCommitSize: 1000 } });
+      let res = db._query({ query: "FOR i IN 1..10000 INSERT { someValue: i } INTO " + cn, options: { intermediateCommitSize: 1000 } });
+      assertEqual(10, res.getExtra().stats.intermediateCommits);
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
     
     testAqlIntermediateCommitSizeBigger : function () {
-      db._query({ query: "FOR i IN 1..10000 INSERT { someValue: i } INTO " + cn, options: { intermediateCommitSize: 10000 } });
+      let res = db._query({ query: "FOR i IN 1..10000 INSERT { someValue: i } INTO " + cn, options: { intermediateCommitSize: 10000 } });
+      assertEqual(10, res.getExtra().stats.intermediateCommits);
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
     
     testAqlIntermediateCommitSizeWithFailInTheMiddle : function () {
-      var failed = false;
+      let failed = false;
 
       try {
         db._query({ query: "FOR i IN 1..10000 LET x = NOOPT(i == 8533 ? FAIL('peng!') : i) INSERT { value: x } INTO " + cn, options: { intermediateCommitSize: 10 } });

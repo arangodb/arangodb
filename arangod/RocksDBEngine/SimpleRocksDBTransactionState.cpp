@@ -29,6 +29,8 @@
 #include "RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.h"
 #include "RocksDBEngine/Methods/RocksDBTrxMethods.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 
@@ -146,8 +148,20 @@ TRI_voc_tick_t SimpleRocksDBTransactionState::lastOperationTick()
   return _rocksMethods->lastOperationTick();
 }
 
-uint64_t SimpleRocksDBTransactionState::numCommits() const {
+uint64_t SimpleRocksDBTransactionState::numCommits() const noexcept {
   return _rocksMethods->numCommits();
+}
+
+uint64_t SimpleRocksDBTransactionState::numIntermediateCommits()
+    const noexcept {
+  return _rocksMethods->numIntermediateCommits();
+}
+
+void SimpleRocksDBTransactionState::addIntermediateCommits(uint64_t value) {
+  // this is not supposed to be called, ever
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "invalid call to addIntermediateCommits");
 }
 
 bool SimpleRocksDBTransactionState::hasOperations() const noexcept {

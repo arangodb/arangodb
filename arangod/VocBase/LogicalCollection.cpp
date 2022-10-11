@@ -32,6 +32,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
@@ -686,7 +687,7 @@ void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
       case Index::TRI_IDX_TYPE_EDGE_INDEX:
         return false;
       default:
-        flags = Index::makeFlags(Index::Serialize::Basics);
+        flags = Index::makeFlags(Index::Serialize::Inventory);
         return !idx->isHidden();
     }
   });
@@ -748,12 +749,12 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
       case Index::TRI_IDX_TYPE_EDGE_INDEX:
         return false;
       default:
-        flags = Index::makeFlags();
+        flags = Index::makeFlags(Index::Serialize::Inventory);
         return !idx->isHidden() && !idx->inProgress();
     }
   });
-  result.add("planVersion",
-             VPackValue(1));  // planVersion is hard-coded to 1 since 3.8
+  // planVersion is hard-coded to 1 since 3.8
+  result.add("planVersion", VPackValue(1));
   result.add("isReady", VPackValue(isReady));
   result.add("allInSync", VPackValue(allInSync));
   result.close();  // CollectionInfo
@@ -1188,17 +1189,14 @@ void LogicalCollection::deferDropCollection(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief processes a truncate operation (note: currently this only clears
-/// the read-cache
+/// @brief processes a truncate operation
 ////////////////////////////////////////////////////////////////////////////////
 
 Result LogicalCollection::truncate(transaction::Methods& trx,
-                                   OperationOptions& options) {
-  TRI_IF_FAILURE("LogicalCollection::truncate") {
-    return Result(TRI_ERROR_DEBUG);
-  }
-
-  return getPhysical()->truncate(trx, options);
+                                   OperationOptions& options,
+                                   bool& usedRangeDelete) {
+  TRI_IF_FAILURE("LogicalCollection::truncate") { return {TRI_ERROR_DEBUG}; }
+  return getPhysical()->truncate(trx, options, usedRangeDelete);
 }
 
 /// @brief compact-data operation
@@ -1354,7 +1352,7 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
                      "Replicated state {} is not available as leader, accessed "
                      "from {}/{}. Status is {}.",
                      shardIdToStateId(name()), vocbase().name(), name(),
-                     *status);
+                     fmt::streamed(*status));
   }
 
   auto leader = stateMachine->getLeader();

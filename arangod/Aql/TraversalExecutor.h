@@ -37,11 +37,13 @@
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "Graph/Types/UniquenessLevel.h"
-#include "Transaction/Methods.h"
 
 namespace arangodb {
 class Result;
 
+namespace transaction {
+class Methods;
+}
 namespace aql {
 
 class Query;

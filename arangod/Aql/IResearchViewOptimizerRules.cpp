@@ -233,16 +233,18 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
     arangodb::iresearch::QueryContext ctx{
         .trx = &query.trxForOptimization(),
         .ref = &viewNode.outVariable(),
+        // we don't care here as we are checking condition in general
+        .namePrefix = nestedRoot(false),
         .isSearchQuery = true,
         .isOldMangling = (viewNode.meta() == nullptr)};
 
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so may not be a temporary.
-    FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-    FilterContext const filterCtx{.contextAnalyzer = analyzer};
+    FilterContext const filterCtx{.query = ctx,
+                                  .contextAnalyzer = FieldMeta::identity()};
 
     auto filterCreated =
-        FilterFactory::filter(nullptr, ctx, filterCtx, *searchCondition.root());
+        FilterFactory::filter(nullptr, filterCtx, *searchCondition.root());
 
     if (filterCreated.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(

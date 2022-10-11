@@ -30,6 +30,7 @@
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogContextKeys.h"
 #include "Logger/LogMacros.h"

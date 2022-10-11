@@ -34,13 +34,16 @@
 #include "Cluster/ClusterInfo.h"
 #include "Basics/ResultT.h"
 #include "Graph/Graph.h"
-#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationResult.h"
 
 namespace arangodb {
-namespace graph {
 
+namespace transaction {
+class Methods;
+}
+class RevisionId;
+namespace graph {
 // TODO rename to GraphMethods
 
 class GraphOperations {
@@ -60,16 +63,15 @@ class GraphOperations {
 
   // TODO I added the complex result type for the get* methods to exactly
   // reproduce (in the RestGraphHandler) the behavior of the similar methods
-  // in the RestDocumentHandler. A simpler type, e.g. ResultT<OperationResult>,
-  // would be preferable.
+  // in the RestDocumentHandler. A simpler type, e.g.
+  // ResultT<OperationResult>, would be preferable.
 
-  /// @brief Get a single vertex document from collection, optionally check rev
-  /// The return value is as follows:
-  /// If trx.begin fails, the outer ResultT will contain this error Result.
-  /// Otherwise, the results of both (trx.document(), trx.finish()) are
-  /// returned as a pair.
-  /// This is because in case of a precondition error during trx.document(),
-  /// the OperationResult may still be needed.
+  /// @brief Get a single vertex document from collection, optionally check
+  /// rev The return value is as follows: If trx.begin fails, the outer
+  /// ResultT will contain this error Result. Otherwise, the results of both
+  /// (trx.document(), trx.finish()) are returned as a pair. This is because
+  /// in case of a precondition error during trx.document(), the
+  /// OperationResult may still be needed.
   OperationResult getVertex(std::string const& collectionName,
                             std::string const& key,
                             std::optional<RevisionId> rev);
@@ -112,8 +114,9 @@ class GraphOperations {
                              VPackSlice document, bool waitForSync,
                              bool returnNew);
 
-  // @brief This function is a helper function which is setting up a transaction
-  // and calls validateEdgeVertices and validateEdgeContent methods.
+  // @brief This function is a helper function which is setting up a
+  // transaction and calls validateEdgeVertices and validateEdgeContent
+  // methods.
   std::pair<OperationResult, std::unique_ptr<transaction::Methods>>
   validateEdge(const std::string& definitionName, const VPackSlice& document,
                bool waitForSync, bool isUpdate);
@@ -127,8 +130,8 @@ class GraphOperations {
                                        transaction::Methods& trx);
 
   // @brief This function is checking whether the given document defines _from
-  // and _to attributes or not and checks if they are correct or invalid if they
-  // are available.
+  // and _to attributes or not and checks if they are correct or invalid if
+  // they are available.
   std::pair<OperationResult, bool> validateEdgeContent(
       const VPackSlice& document, std::string& fromCollectionName,
       std::string& fromCollectionKey, std::string& toCollectionName,

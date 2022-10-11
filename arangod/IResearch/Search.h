@@ -20,14 +20,16 @@
 ///
 /// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
 #include "VocBase/LogicalView.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDataStore.h"
+#include "IResearch/IResearchFilterContext.h"
+#include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/ViewSnapshot.h"
 #include "Containers/FlatHashMap.h"
-#include "IResearchFilterFactory.h"
 
 #include <shared_mutex>
 #include <atomic>
@@ -52,6 +54,9 @@ class SearchMeta final {
   struct Field final {
     std::string analyzer;
     bool includeAllFields{false};
+    // intentionally not serialized as it is not
+    // used during query
+    bool isSearchField{false};
   };
   using Map = std::map<std::string, Field, std::less<>>;
   Map fieldToAnalyzer;

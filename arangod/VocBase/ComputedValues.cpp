@@ -85,7 +85,7 @@ transaction::Methods& ComputedValuesExpressionContext::trx() const {
 }
 
 void ComputedValuesExpressionContext::registerWarning(ErrorCode errorCode,
-                                                      char const* msg) {
+                                                      std::string_view msg) {
   if (_failOnWarning) {
     // treat as an error if we are supposed to treat warnings as errors
     registerError(errorCode, msg);
@@ -96,7 +96,7 @@ void ComputedValuesExpressionContext::registerWarning(ErrorCode errorCode,
 }
 
 void ComputedValuesExpressionContext::registerError(ErrorCode errorCode,
-                                                    char const* msg) {
+                                                    std::string_view msg) {
   TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
 
   std::string error = buildLogMessage("error", msg);
@@ -105,31 +105,25 @@ void ComputedValuesExpressionContext::registerError(ErrorCode errorCode,
 }
 
 std::string ComputedValuesExpressionContext::buildLogMessage(
-    std::string_view type, char const* msg) const {
+    std::string_view type, std::string_view msg) const {
   // note: on DB servers, the error message will contain the shard name
   // rather than the collection name.
-  std::string error =
-      absl::StrCat("computed values expression evaluation produced a runtime ",
-                   type, " for attribute '", _name, "' of collection '",
-                   _collection.vocbase().name(), "/", _collection.name(), "'");
-
-  if (msg != nullptr) {
-    absl::StrAppend(&error, ": ", msg);
-  }
+  std::string error = absl::StrCat(
+      "computed values expression evaluation produced a runtime ", type,
+      " for attribute '", _name, "' of collection '",
+      _collection.vocbase().name(), "/", _collection.name(), "': ", msg);
 
   return error;
 }
 
 icu::RegexMatcher* ComputedValuesExpressionContext::buildRegexMatcher(
-    char const* ptr, size_t length, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache.buildRegexMatcher(ptr, length,
-                                                      caseInsensitive);
+    std::string_view expr, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache.buildRegexMatcher(expr, caseInsensitive);
 }
 
 icu::RegexMatcher* ComputedValuesExpressionContext::buildLikeMatcher(
-    char const* ptr, size_t length, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache.buildLikeMatcher(ptr, length,
-                                                     caseInsensitive);
+    std::string_view expr, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache.buildLikeMatcher(expr, caseInsensitive);
 }
 
 icu::RegexMatcher* ComputedValuesExpressionContext::buildSplitMatcher(
@@ -140,7 +134,7 @@ icu::RegexMatcher* ComputedValuesExpressionContext::buildSplitMatcher(
 }
 
 ValidatorBase* ComputedValuesExpressionContext::buildValidator(
-    velocypack::Slice const& params) {
+    velocypack::Slice params) {
   return _aqlFunctionsInternalCache.buildValidator(params);
 }
 

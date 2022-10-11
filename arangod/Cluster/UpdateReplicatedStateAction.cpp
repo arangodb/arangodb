@@ -52,11 +52,9 @@ struct StateActionContextImpl : algorithms::StateActionContext {
     }
   }
 
-  auto createReplicatedState(LogId id, std::string_view type,
-                             velocypack::Slice data)
-      -> ResultT<
-          std::shared_ptr<replicated_state::ReplicatedStateBase>> override {
-    return vocbase.createReplicatedState(id, type, data);
+  auto createReplicatedState(LogId id, std::string_view type) -> ResultT<
+      std::shared_ptr<replicated_state::ReplicatedStateBase>> override {
+    return vocbase.createReplicatedState(id, type);
   }
 
   auto dropReplicatedState(LogId id) -> Result override {
