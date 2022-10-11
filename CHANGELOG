@@ -1,10 +1,13 @@
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
-* Fixed BTS-850: Fixed the removal of already deleted orphan collections out
-  of a graph definition. The removal of an already deleted orphan collection
-  out of a graph definition failed and has been rejected in case the
-  collection got dropped already.
+* Fixed BTS-850: Fixed the removal of already deleted orphan collections out of
+  a graph definition. The removal of an already deleted orphan collection out of
+  a graph definition failed and has been rejected in case the collection got
+  dropped already.
+
+* BTS-1008: Update react-autocomplete-input to fix single letter collection bug
+  when creating a link in the views in the WebUI.
 
 * BTS-1061: ARM was not recognized on Apple M1.
 
