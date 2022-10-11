@@ -311,14 +311,12 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
         #Replication2/Mocks/FakeAbstractFollower.h
         #Replication2/Mocks/FakeFailureOracle.cpp
         #Replication2/Mocks/FakeFailureOracle.h
-        #Replication2/Mocks/FakeFollower.cpp
-        #Replication2/Mocks/FakeFollower.h
+        Replication2/Mocks/FakeFollower.cpp
+        Replication2/Mocks/FakeFollower.h
         #Replication2/Mocks/FakeLeader.cpp Replication2/Mocks/FakeLeader.h
         #Replication2/Mocks/FakeReplicatedLog.cpp
         #Replication2/Mocks/FakeReplicatedLog.h
         #Replication2/Mocks/FakeReplicatedState.cpp
-        #Replication2/Mocks/MockStatePersistorInterface.cpp
-        #Replication2/Mocks/MockStatePersistorInterface.h
         #Replication2/Mocks/PersistedLog.cpp
         #Replication2/Mocks/PersistedLog.cpp
         #Replication2/Mocks/PersistedLog.h
@@ -328,7 +326,10 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
         #Replication2/ModelChecker/ModelChecker.cpp
         #Replication2/ModelChecker/Tests/ModelCheckerTest.cpp
         #Replication2/ReplicatedLog/TestHelper.cpp
-        Replication2/Mocks/FakeStorageEngineMethods.cpp Replication2/Mocks/FakeStorageEngineMethods.h Replication2/Mocks/FakeAsyncExecutor.cpp Replication2/Mocks/FakeAsyncExecutor.h Replication2/Mocks/LogEventRecorder.cpp Replication2/Mocks/LogEventRecorder.h)
+        Replication2/Mocks/FakeStorageEngineMethods.cpp
+        Replication2/Mocks/FakeAsyncExecutor.cpp
+        Replication2/Mocks/LogEventRecorder.cpp
+        )
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
   ${ARANGODB_REPLICATION2_TEST_HELPER_SOURCES}
@@ -383,10 +384,8 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Serialization/AgencyLogSpecificationTest.cpp
   Replication2/Serialization/LogCommonTest.cpp
   Replication2/Serialization/LogStatusTest.cpp
-  #Replication2/Streams/LogMultiplexerTest.cpp
-  #Replication2/Streams/MultiplexerConcurrencyTest.cpp
-  #Replication2/Streams/TestLogSpecification.cpp
-        Replication2/ReplicatedLog/ReplicatedLogConnectTest.cpp Replication2/ReplicatedLog/StorageEngineMethodsTest.cpp)
+  Replication2/ReplicatedLog/ReplicatedLogConnectTest.cpp
+  Replication2/ReplicatedLog/StorageEngineMethodsTest.cpp)
 
 set(ARANGODB_GRAPH_TEST_SOURCES
   Graph/ClusterTraverserCacheTest.cpp

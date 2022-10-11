@@ -38,7 +38,16 @@ struct LogEvent {
   LogIndex index;
 };
 
-struct LogEventRecorderHandler : replicated_log::IReplicatedStateHandle {
+struct LogEventRecorder {
+  auto createHandle()
+      -> std::unique_ptr<replicated_log::IReplicatedStateHandle>;
+
+  std::vector<LogEvent> events;
+  std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> methods;
+};
+
+struct LogEventRecorderHandle : replicated_log::IReplicatedStateHandle {
+  explicit LogEventRecorderHandle(LogEventRecorder& recorder);
   auto resign() noexcept
       -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> override;
   void leadershipEstablished(
@@ -51,8 +60,8 @@ struct LogEventRecorderHandler : replicated_log::IReplicatedStateHandle {
   void acquireSnapshot(arangodb::ServerID leader, LogIndex index) override;
   void updateCommitIndex(LogIndex index) override;
   void dropEntries() override;
-  std::vector<LogEvent> events;
-  std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> methods;
+
+  LogEventRecorder& recorder;
 };
 
 }  // namespace arangodb::replication2::test

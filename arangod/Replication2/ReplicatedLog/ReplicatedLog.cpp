@@ -119,6 +119,9 @@ void replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data) {
       auto participants = std::vector<std::shared_ptr<AbstractFollower>>{};
       participants.reserve(config.participants.size());
       for (auto const& [id, p] : config.participants) {
+        if (id == _myself.serverId) {
+          continue;
+        }
         participants.emplace_back(_followerFactory->constructFollower(id));
       }
 
