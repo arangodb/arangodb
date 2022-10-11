@@ -113,13 +113,15 @@ function componentsTestSuite() {
                 }
                 db[eColl].insert(edges);
 
+                let vertices = [];
                 for (let x = 0; x < n; x++) {
                     let fromID = String(c) + ":" + x;
                     let toID = String(c) + ":" + (x + 1);
                     let from = vColl + '/' + fromID;
                     let to = vColl + '/' + toID;
-                    db[eColl].insert({_from: from, _to: to, vertex: String(fromID)});
+                    vertices.push({_from: from, _to: to, vertex: String(fromID)});
                 }
+                db[eColl].insert(vertices);
             }
 
             console.log("Got %s edges", db[eColl].count());
@@ -175,15 +177,19 @@ function componentsTestSuite() {
                 } catch (err) {
                 }
 
-                const graph = graph_module._create(problematicGraphName, [graph_module._relation(e, v, v)]);
+                graph_module._create(problematicGraphName, [graph_module._relation(e, v, v)]);
 
+                let vertdocs = [];
                 vertices.forEach(vertex => {
-                    graph[v].save({_key: vertex});
+                    vertdocs.push({_key: vertex});
                 });
+                db[v].save(vertdocs);
 
+                let edgedocs = [];
                 edges.forEach(([from, to]) => {
-                    graph[e].save({_from: `${v}/${from}`, _to: `${v}/${to}`});
+                    edgedocs.push({_from: `${v}/${from}`, _to: `${v}/${to}`});
                 });
+                db[e].save(edgedocs);
             }
         },
 
