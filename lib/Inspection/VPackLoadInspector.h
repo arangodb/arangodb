@@ -354,7 +354,7 @@ struct VPackLoadInspectorImpl
         return {"Missing unqualified variant data"};
       }
       auto [type, value] = *it;
-      TRI_ASSERT(type.isString());
+      assert(type.isString());
       auto parser = [this, value = value](auto& v) {
         auto inspector = make(value);
         return inspector.apply(v);
@@ -452,9 +452,9 @@ struct VPackLoadInspectorImpl
   [[nodiscard]] Status::Success parseField(FieldsMap& fields,
                                            typename Base::IgnoreField&& field) {
     if (auto it = fields.find(field.name); it != fields.end()) {
-      TRI_ASSERT(!it->second.second)
-          << "field " << field.name << " processed twice during inspection. "
-          << "Make sure field names are unique!";
+      assert(!it->second.second &&
+             "field processed twice during inspection. Make sure field names "
+             "are unique!");
       it->second.second = true;  // mark the field as processed
     }
     return {};
@@ -466,9 +466,9 @@ struct VPackLoadInspectorImpl
     velocypack::Slice slice;
     bool isPresent = false;
     if (auto it = fields.find(name); it != fields.end()) {
-      TRI_ASSERT(!it->second.second)
-          << "field " << name << " processed twice during inspection. "
-          << "Make sure field names are unique!";
+      assert(!it->second.second &&
+             "field processed twice during inspection. Make sure field names "
+             "are unique!");
       isPresent = true;
       slice = it->second.first;
       it->second.second = true;  // mark the field as processed
