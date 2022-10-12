@@ -108,11 +108,6 @@ struct ColorPropagation : public Algorithm<ColorPropagationValue, int8_t,
         _outputColorsFieldName(getOutputColorsFieldName(userParams)),
         _equivalenceClassFieldName(getEquivalenceClassFieldName(userParams)),
         _maxGss{getMaxGss(userParams)} {
-    LOG_DEVEL << "User params: numColors == " << _numColors
-              << ", _inputColorsFieldName == " << _inputColorsFieldName
-              << ", _outputColorsFieldName == " << _outputColorsFieldName
-              << ", _equivalenceClassFieldName == "
-              << _equivalenceClassFieldName << ", maxGss" << _maxGss;
   }
 
   [[nodiscard]] GraphFormat<ColorPropagationValue, int8_t>* inputFormat()
