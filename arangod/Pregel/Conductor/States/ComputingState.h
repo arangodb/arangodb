@@ -44,7 +44,6 @@ struct Computing : State {
   }
 
  private:
-  auto _prepareGlobalSuperStep() -> futures::Future<Result>;
   auto _runGlobalSuperStepCommand() -> RunGlobalSuperStep;
   auto _runGlobalSuperStep() -> futures::Future<Result>;
 };

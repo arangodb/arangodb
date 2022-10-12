@@ -98,11 +98,6 @@ auto WorkerApi::loadGraph(LoadGraph const& data)
       .get();
 }
 
-auto WorkerApi::prepareGlobalSuperStep(PrepareGlobalSuperStep const& data)
-    -> futures::Future<ResultT<GlobalSuperStepPrepared>> {
-  return sendToAll<GlobalSuperStepPrepared>(data);
-}
-
 auto WorkerApi::runGlobalSuperStep(RunGlobalSuperStep const& data)
     -> futures::Future<ResultT<GlobalSuperStepFinished>> {
   return sendToAll<GlobalSuperStepFinished>(data);

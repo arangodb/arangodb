@@ -178,72 +178,25 @@ void Worker<V, E, M>::_initializeMessageCaches() {
 }
 
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::prepareGlobalSuperStep(
-    PrepareGlobalSuperStep const& message)
-    -> futures::Future<ResultT<GlobalSuperStepPrepared>> {
-  return futures::makeFuture(_prepareGlobalSuperStepFct(message));
-}
-
-template<typename V, typename E, typename M>
-auto Worker<V, E, M>::_prepareGlobalSuperStepFct(
-    PrepareGlobalSuperStep const& message) -> ResultT<GlobalSuperStepPrepared> {
-  if (_state != WorkerState::IDLE) {
-    return Result{TRI_ERROR_INTERNAL,
-                  "Cannot prepare a gss when the worker is not idle"};
-  }
-  VPackBuilder serializedMessage;
-  serialize(serializedMessage, message);
-  _state = WorkerState::PREPARING;  // stop any running step
-  LOG_PREGEL("f16f2", DEBUG)
-      << "Received prepare GSS: " << serializedMessage.toJson();
-  const uint64_t gss = message.gss;
-  if (_expectedGSS != gss) {
-    return Result{
-        TRI_ERROR_BAD_PARAMETER,
-        fmt::format(
-            "Seems like this worker missed a gss, expected %u. Data = %s ",
-            _expectedGSS, serializedMessage.toJson().c_str())};
-  }
-
-  // initialize worker context
-  if (_workerContext && gss == 0 && _config.localSuperstep() == 0) {
-    _workerContext->_readAggregators = _conductorAggregators.get();
-    _workerContext->_writeAggregators = _workerAggregators.get();
-    _workerContext->_vertexCount = message.vertexCount;
-    _workerContext->_edgeCount = message.edgeCount;
-    _workerContext->preApplication();
-  }
-
-  // make us ready to receive messages
-  _config._globalSuperstep = gss;
-  // write cache becomes the readable cache
-  MY_WRITE_LOCKER(wguard, _cacheRWLock);
-  TRI_ASSERT(_readCache->containedMessageCount() == 0);
-  std::swap(_readCache, _writeCache);
-  _config._localSuperstep = gss;
-
-  // responds with info which allows the conductor to decide whether
-  // to start the next GSS or end the execution
-  VPackBuilder aggregators;
-  {
-    VPackObjectBuilder ob(&aggregators);
-    _workerAggregators->serializeValues(aggregators);
-  }
-  return GlobalSuperStepPrepared{_activeCount, _graphStore->localVertexCount(),
-                                 _graphStore->localEdgeCount(), aggregators};
-}
-
-template<typename V, typename E, typename M>
 void Worker<V, E, M>::receivedMessages(PregelMessage const& message) {
-  if (message.gss != _config._globalSuperstep) {
+  if (message.gss != _config._globalSuperstep &&
+      message.gss != _config._globalSuperstep + 1) {
     LOG_PREGEL("ecd34", ERR)
         << "Expected: " << _config._globalSuperstep << " Got: " << message.gss;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Superstep out of sync");
   }
-  // make sure the pointer is not changed while parsing messages
+
+  // make sure the cache and gss are not changed while parsing messages
   MY_READ_LOCKER(guard, _cacheRWLock);
-  // handles locking for us
+
+  // queue message if gss was not yet incremented
+  if (message.gss == _config._globalSuperstep + 1) {
+    _messagesForNextGss.doUnderLock(
+        [&](auto& messages) { messages.push_back(message); });
+    return;
+  }
+
   _writeCache->parseMessages(message);
 }
 
@@ -251,12 +204,41 @@ template<typename V, typename E, typename M>
 auto Worker<V, E, M>::_preGlobalSuperStep(RunGlobalSuperStep const& message)
     -> Result {
   const uint64_t gss = message.gss;
-  if (gss != _config.globalSuperstep()) {
-    return Result{TRI_ERROR_BAD_PARAMETER, "Wrong GSS"};
+  if (_expectedGSS != gss) {
+    return Result{
+        TRI_ERROR_BAD_PARAMETER,
+        fmt::format(
+            "Seems like this worker missed a gss, expected {} but got {}",
+            _expectedGSS, gss)};
   }
+
+  // write cache becomes the readable cache
+  {
+    MY_WRITE_LOCKER(wguard, _cacheRWLock);
+    TRI_ASSERT(_readCache->containedMessageCount() == 0);
+    std::swap(_readCache, _writeCache);
+    _config._globalSuperstep = gss;
+    _config._localSuperstep = gss;
+  }
+
+  // process all queued messages
+  _messagesForNextGss.doUnderLock([&](auto& messages) {
+    for (auto const& message : messages) {
+      receivedMessages(message);
+    }
+    messages.clear();
+  });
+
+  if (gss == 0 && _workerContext) {
+    _workerContext->_readAggregators = _conductorAggregators.get();
+    _workerContext->_writeAggregators = _workerAggregators.get();
+    _workerContext->_vertexCount = message.vertexCount;
+    _workerContext->_edgeCount = message.edgeCount;
+    _workerContext->preApplication();
+  }
+
   _workerAggregators->resetValues();
   _conductorAggregators->setAggregatedValues(message.aggregators.slice());
-  // execute context
   if (_workerContext) {
     _workerContext->_vertexCount = message.vertexCount;
     _workerContext->_edgeCount = message.edgeCount;
@@ -269,9 +251,10 @@ template<typename V, typename E, typename M>
 auto Worker<V, E, M>::runGlobalSuperStep(RunGlobalSuperStep const& message)
     -> futures::Future<ResultT<GlobalSuperStepFinished>> {
   MUTEX_LOCKER(guard, _commandMutex);
-  if (_state != WorkerState::PREPARING) {
+
+  if (_state != WorkerState::IDLE) {
     return Result{TRI_ERROR_INTERNAL,
-                  "Cannot start a gss when the worker is not prepared"};
+                  "Cannot start a gss when the worker is not idle"};
   }
   VPackBuilder serializedMessage;
   serialize(serializedMessage, message);

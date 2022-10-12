@@ -50,8 +50,6 @@ struct WorkerApi {
       -> futures::Future<Result>;
   [[nodiscard]] auto loadGraph(LoadGraph const& graph)
       -> ResultT<Aggregate<GraphLoaded>>;
-  [[nodiscard]] auto prepareGlobalSuperStep(PrepareGlobalSuperStep const& data)
-      -> futures::Future<ResultT<GlobalSuperStepPrepared>>;
   [[nodiscard]] auto runGlobalSuperStep(RunGlobalSuperStep const& data)
       -> futures::Future<ResultT<GlobalSuperStepFinished>>;
   [[nodiscard]] auto store(Store const& message)
