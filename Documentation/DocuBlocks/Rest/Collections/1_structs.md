@@ -29,25 +29,33 @@ Whether the target attribute is set if the expression evaluates to `null`.
 Whether the write operation fails if the expression produces a warning.
 
 @RESTSTRUCT{keyOptions,collection_info,object,required,key_generator_type}
-A object which contains key generation options
+An object which contains key generation options.
 
 @RESTSTRUCT{type,key_generator_type,string,required,}
-specifies the type of the key generator. The currently
-available generators are `traditional`, `autoincrement`, `uuid`
-and `padded`.
+Specifies the type of the key generator. The available generators are `"traditional"`, `"autoincrement"`, `"uuid"`, and `"padded"`.
+
+@RESTSTRUCT{allowUserKeys,key_generator_type,boolean,required,}
+If set to `true`, then you are allowed to supply
+own key values in the `_key` attribute of a document. If set to
+`false`, then the key generator is solely responsible for
+generating keys and an error is raised if you supply own key values in the
+`_key` attribute of documents.
+
+@RESTSTRUCT{increment,key_generator_type,integer,optional,}
+The increment value for `autoincrement` key generator.
+Not used for other key generator types.
+
+@RESTSTRUCT{offset,key_generator_type,integer,optional,}
+The initial offset value for `autoincrement` key generator.
+Not used for other key generator types.
+
+@RESTSTRUCT{lastValue,key_generator_type,integer,required,}
+The current offset value of the `"autoincrement"` or `"padded"` key generator.
+This property is only exposed to allow restoring dumps properly.
 
 @RESTSTRUCT{cacheEnabled,collection_info,boolean,required,}
 Whether the in-memory hash cache for documents is enabled for this
 collection.
-
-@RESTSTRUCT{allowUserKeys,key_generator_type,boolean,required,}
-if set to `true`, then it is allowed to supply
-own key values in the `_key` attribute of a document. If set to
-`false`, then the key generator is solely responsible for
-generating keys and supplying own key values in the `_key` attribute
-of documents is considered an error.
-
-@RESTSTRUCT{lastValue,key_generator_type,integer,required,}
 
 @RESTSTRUCT{numberOfShards,collection_info,integer,optional,}
 The number of shards of the collection. _(cluster only)_
@@ -73,8 +81,12 @@ the sharding strategy selected for the collection.
 One of 'hash' or 'enterprise-hash-smart-edge'. _(cluster only)_
 
 @RESTSTRUCT{isSmart,collection_info,boolean,optional,}
-Whether the collection is used in a SmartGraph (Enterprise Edition only).
-_(cluster only)_
+Whether the collection is used in a SmartGraph or EnterpriseGraph (Enterprise Edition only).
+This is an internal property. _(cluster only)_
+
+@RESTSTRUCT{isDisjoint,collection_info,boolean,optional,}
+Whether the SmartGraph or EnterpriseGraph this collection belongs to is disjoint
+(Enterprise Edition only). This is an internal property. _(cluster only)_
 
 @RESTSTRUCT{smartGraphAttribute,collection_info,string,optional,}
 Attribute that is used in SmartGraphs (Enterprise Edition only). _(cluster only)_
@@ -99,4 +111,4 @@ The type of the collection:
   - `3`: edge collection
 
 @RESTSTRUCT{globallyUniqueId,collection_info,string,optional,}
-Unique identifier of the collection
+A unique identifier of the collection.

@@ -22,8 +22,8 @@ If `true` then the data is synchronized to disk before returning from a
 document create, update, replace or removal operation. (default: false)
 
 @RESTBODYPARAM{isSystem,boolean,optional,}
-If `true`, create a  system collection. In this case `collection-name`
-should start with an underscore. End users should normally create non-system
+If `true`, create a system collection. In this case, the `collection-name`
+should start with an underscore. End-users should normally create non-system
 collections only. API implementors may be required to create system
 collections in very special occasions, but normally a regular collection will do.
 (The default is `false`)
@@ -101,10 +101,10 @@ keys are generated on the leader DB server, which has full control over the key
 sequence.
 
 @RESTSTRUCT{allowUserKeys,post_api_collection_opts,boolean,required,}
-if set to `true`, then it is allowed to supply own key values in the
+If set to `true`, then you are allowed to supply own key values in the
 `_key` attribute of a document. If set to `false`, then the key generator
-will solely be responsible for generating keys and supplying own key values
-in the `_key` attribute of documents is considered an error.
+is solely be responsible for generating keys and an error is raised if you
+supply own key values in the `_key` attribute of documents.
 
 @RESTSTRUCT{increment,post_api_collection_opts,integer,required,int64}
 increment value for `autoincrement` key generator. Not used for other key
