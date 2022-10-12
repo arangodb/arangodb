@@ -222,12 +222,6 @@ auto Worker<V, E, M>::_prepareGlobalSuperStepFct(
   std::swap(_readCache, _writeCache);
   _config._localSuperstep = gss;
 
-  // only place where is makes sense to call this, since startGlobalSuperstep
-  // might not be called again
-  if (_workerContext && gss > 0) {
-    _workerContext->postGlobalSuperstep(gss - 1);
-  }
-
   // responds with info which allows the conductor to decide whether
   // to start the next GSS or end the execution
   VPackBuilder aggregators;
@@ -460,6 +454,10 @@ auto Worker<V, E, M>::_finishProcessing() -> ResultT<GlobalSuperStepFinished> {
                   "Worker in wrong state"};  // probably canceled
   }
 
+  if (_workerContext) {
+    _workerContext->postGlobalSuperstep(_config._globalSuperstep);
+  }
+
   // count all received messages
   _messageStats.receivedCount = _readCache->containedMessageCount();
   _feature.metrics()->pregelMessagesReceived->count(
@@ -477,8 +475,14 @@ auto Worker<V, E, M>::_finishProcessing() -> ResultT<GlobalSuperStepFinished> {
   // only set the state here, because _processVertices checks for it
   _state = WorkerState::IDLE;
 
-  GlobalSuperStepFinished gssFinishedEvent =
-      GlobalSuperStepFinished{_messageStats};
+  VPackBuilder aggregators;
+  {
+    VPackObjectBuilder ob(&aggregators);
+    _workerAggregators->serializeValues(aggregators);
+  }
+  GlobalSuperStepFinished gssFinishedEvent = GlobalSuperStepFinished{
+      _messageStats, _activeCount, _graphStore->localVertexCount(),
+      _graphStore->localEdgeCount(), aggregators};
   VPackBuilder event;
   serialize(event, gssFinishedEvent);
   LOG_PREGEL("2de5b", DEBUG) << "Finished GSS: " << event.toJson();

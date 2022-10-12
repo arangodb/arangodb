@@ -26,9 +26,17 @@ Computing::~Computing() {
 
 auto Computing::run() -> std::optional<std::unique_ptr<State>> {
   do {
+    conductor._preGlobalSuperStep();
+
     auto prepared = _prepareGlobalSuperStep().get();
     if (prepared.fail()) {
       LOG_PREGEL_CONDUCTOR("04189", ERR) << prepared.errorMessage();
+      return std::make_unique<FatalError>(conductor);
+    }
+
+    auto runGlobalSuperStep = _runGlobalSuperStep().get();
+    if (runGlobalSuperStep.fail()) {
+      LOG_PREGEL_CONDUCTOR("f34bb", ERR) << runGlobalSuperStep.errorMessage();
       return std::make_unique<FatalError>(conductor);
     }
 
@@ -39,13 +47,7 @@ auto Computing::run() -> std::optional<std::unique_ptr<State>> {
       }
       return std::make_unique<Done>(conductor);
     }
-    conductor._preGlobalSuperStep();
 
-    auto runGlobalSuperStep = _runGlobalSuperStep().get();
-    if (runGlobalSuperStep.fail()) {
-      LOG_PREGEL_CONDUCTOR("f34bb", ERR) << runGlobalSuperStep.errorMessage();
-      return std::make_unique<FatalError>(conductor);
-    }
   } while (true);
 }
 
@@ -110,6 +112,16 @@ auto Computing::_runGlobalSuperStep() -> futures::Future<Result> {
         }
         conductor._statistics.accumulate(
             globalSuperStepFinished.get().messageStats);
+        conductor._aggregators->resetValues();
+        for (auto aggregator : VPackArrayIterator(
+                 globalSuperStepFinished.get().aggregators.slice())) {
+          conductor._aggregators->aggregateValues(aggregator);
+        }
+        conductor._statistics.setActiveCounts(
+            globalSuperStepFinished.get().activeCount);
+        conductor._totalVerticesCount =
+            globalSuperStepFinished.get().vertexCount;
+        conductor._totalEdgesCount = globalSuperStepFinished.get().edgeCount;
         conductor._timing.gss.back().finish();
         LOG_PREGEL_CONDUCTOR("39385", DEBUG)
             << "Finished gss " << conductor._globalSuperstep << " in "
