@@ -29,7 +29,9 @@
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Metrics/Counter.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/voc-errors.h>
@@ -88,13 +90,19 @@ void replicated_log::ReplicatedLog::updateConfig(
       << " and config = " << config;
   ADB_PROD_ASSERT(not guard->latest || term.term > guard->latest->term.term ||
                   term == guard->latest->term)
-      << "term should always increase old = " << guard->latest->term
-      << " old = " << term;
+      << "term should always increase old = "
+      << (guard->latest
+              ? arangodb::basics::velocypackhelper::toJson(guard->latest->term)
+              : "(none)")
+      << " new = " << term;
   ADB_PROD_ASSERT(not guard->latest ||
                   config.generation > guard->latest->config.generation ||
                   config == guard->latest->config)
       << "config generation should always increase. old = "
-      << guard->latest->config << " new = " << config;
+      << (guard->latest ? arangodb::basics::velocypackhelper::toJson(
+                              guard->latest->config)
+                        : "(none)")
+      << " new = " << config;
 
   if (guard->latest->term.term < term.term) {
     resetParticipant(guard.get());
@@ -186,6 +194,12 @@ auto ReplicatedLog::resign() && -> std::unique_ptr<LogCore> {
 }
 
 auto ReplicatedLog::getId() const noexcept -> LogId { return _id; }
+auto ReplicatedLog::getQuickStatus() const -> QuickLogStatus {
+  if (auto guard = _guarded.getLockedGuard(); guard->participant) {
+    return guard->participant->getQuickStatus();
+  }
+  return {};
+}
 
 void ReplicatedLogConnection::disconnect() {
   if (_log) {

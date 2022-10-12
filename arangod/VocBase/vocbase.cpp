@@ -157,7 +157,14 @@ struct arangodb::VocBaseLogManager {
       arangodb::replication2::agency::LogPlanTermSpecification const& term,
       arangodb::replication2::agency::ParticipantsConfig const& config)
       -> Result {
-    TRI_ASSERT(false);
+    auto guard = _guardedData.getLockedGuard();
+    if (auto iter = guard->statesAndLogs.find(id);
+        iter != guard->statesAndLogs.end()) {
+      iter->second.log->updateConfig(term, config);
+      return {};
+    } else {
+      return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
+    }
   }
 
   [[nodiscard]] auto dropReplicatedState(arangodb::replication2::LogId id)
@@ -226,7 +233,7 @@ struct arangodb::VocBaseLogManager {
         result;
     auto guard = _guardedData.getLockedGuard();
     for (auto& [id, value] : guard->statesAndLogs) {
-      result.emplace(id, value.log->getParticipant()->getQuickStatus());
+      result.emplace(id, value.log->getQuickStatus());
     }
     return result;
   }
@@ -246,7 +253,8 @@ struct arangodb::VocBaseLogManager {
               _logContext.withTopic(Logger::REPLICATED_STATE), _server,
               _vocbase);
           LOG_CTX("2bf8d", DEBUG, _logContext)
-              << "Created replicated state " << id << " impl = " << type;
+              << "Created replicated state " << id << " impl = " << type
+              << " result = " << state.errorNumber();
 
           return state;
         });
@@ -258,6 +266,8 @@ struct arangodb::VocBaseLogManager {
 
   struct GuardedData {
     struct StateAndLog {
+      arangodb::replication2::replicated_log::ReplicatedLogConnection
+          connection;
       std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>
           log;
       std::shared_ptr<
@@ -293,14 +303,14 @@ struct arangodb::VocBaseLogManager {
       // ---- from now on no errors are allowed
       // 3. forward storage interface to replicated state
       // 4. start up with initial configuration
-
-      // TODO we need to add the parameter slice to the ImplementationSpec!
       StorageEngine& engine =
           server.getFeature<EngineSelectorFeature>().engine();
 
+      LOG_CTX("ef730", DEBUG, logContext)
+          << "building new replicated state " << id << " impl = " << type;
+
       // prepare map
-      auto& stateAndLog = statesAndLogs[id];
-      ScopeGuard cleanMap([&]() noexcept { statesAndLogs.erase(id); });
+      auto stateAndLog = StateAndLog{};
 
       {
         VPackBufferUInt8 buffer;
@@ -361,8 +371,7 @@ struct arangodb::VocBaseLogManager {
 
       auto&& stateHandle = state->createStateHandle();
 
-      // TODO put the guard into `statesAndLog` or so?
-      auto guard = log->connect(std::move(stateHandle));
+      stateAndLog.connection = log->connect(std::move(stateHandle));
 
       auto iter = statesAndLogs.emplace(id, std::move(stateAndLog));
 

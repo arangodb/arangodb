@@ -132,15 +132,22 @@ auto replicated_log::LogLeader::instantiateFollowers(
   std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>>
       followers_map;
   followers_map.reserve(participantsConfig->participants.size() + 1);
-  followers_map.emplace(
-      localFollower->getParticipantId(),
-      std::make_shared<FollowerInfo>(localFollower, lastEntry, logContext));
-  for (auto const& impl : participantsConfig->participants) {
-    auto const& [it, inserted] = followers_map.emplace(
-        impl.first, std::make_shared<FollowerInfo>(
-                        followerFactory->constructFollower(impl.first),
-                        TermIndexPair{LogTerm{0}, initLastIndex}, logContext));
-    TRI_ASSERT(inserted) << "duplicate participant id: " << impl.first;
+  for (auto const& participant : participantsConfig->participants) {
+    auto const& [it, inserted] = std::invoke([&]() {
+      if (participant.first == localFollower->getParticipantId()) {
+        return followers_map.emplace(participant.first,
+                                     std::make_shared<FollowerInfo>(
+                                         localFollower, lastEntry, logContext));
+      } else {
+        return followers_map.emplace(
+            participant.first,
+            std::make_shared<FollowerInfo>(
+                followerFactory->constructFollower(participant.first),
+                TermIndexPair{LogTerm{0}, initLastIndex}, logContext));
+      }
+    });
+
+    TRI_ASSERT(inserted) << "duplicate participant id: " << participant.first;
   }
   return followers_map;
 }

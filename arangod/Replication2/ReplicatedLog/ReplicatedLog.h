@@ -173,6 +173,7 @@ struct alignas(64) ReplicatedLog {
   //      -> std::shared_ptr<LogFollower>;
   //
   auto getParticipant() const -> std::shared_ptr<ILogParticipant>;
+  auto getQuickStatus() const -> QuickLogStatus;
   //
   //  auto getLeader() const -> std::shared_ptr<LogLeader>;
   //  auto getFollower() const -> std::shared_ptr<LogFollower>;
