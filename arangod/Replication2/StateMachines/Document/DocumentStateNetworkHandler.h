@@ -34,6 +34,9 @@ class ConnectionPool;
 
 namespace arangodb::replication2::replicated_state::document {
 
+/**
+ * An interface used to communicate with the leader remotely.
+ */
 struct IDocumentStateLeaderInterface {
   virtual ~IDocumentStateLeaderInterface() = default;
   virtual auto getSnapshot(LogIndex waitForIndex)
@@ -55,6 +58,9 @@ class DocumentStateLeaderInterface : public IDocumentStateLeaderInterface {
   network::ConnectionPool* _pool;
 };
 
+/**
+ * Abstraction for network communication between participants.
+ */
 struct IDocumentStateNetworkHandler {
   virtual ~IDocumentStateNetworkHandler() = default;
   virtual auto getLeaderInterface(ParticipantId participantId)
