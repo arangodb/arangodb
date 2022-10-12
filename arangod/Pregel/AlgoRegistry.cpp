@@ -188,7 +188,6 @@ template<typename V, typename E, typename M>
                             server, userParams),
                         body, feature);
   }
-  LOG_DEVEL << "Algorithm: " << algorithm;
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                  "Unsupported algorithm");
 }
