@@ -129,13 +129,14 @@ Result getInitialColors(ColorPropagationValue& senders,
                         VPackSlice vertexDocument,
                         std::string_view colorsFieldName,
                         std::string_view documentId, uint16_t numColors) {
+  senders.colors.resize(numColors);
+
   auto colorsDocument = vertexDocument.get(colorsFieldName);
   if (colorsDocument.isNone()) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            fmt::format("The document with Id {} has no field {}", documentId,
-                        colorsFieldName)};
+    // not all vertices must have an initial color
+    return {TRI_ERROR_NO_ERROR};
   }
-  senders.colors.resize(numColors);
+
   if (colorsDocument.isNumber()) {
     auto color = colorsDocument.getNumber<PropagatedColor>();
     senders.add(color);
