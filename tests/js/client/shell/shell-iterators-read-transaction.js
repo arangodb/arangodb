@@ -43,7 +43,7 @@ function TransactionIteratorReadSuite() {
           write: [base.cn, base.ecn]
         },
       };
-      const ctx = db._createTransaction(Object.assign(trxOpts, opts));
+      const ctx = internal.db._createTransaction(Object.assign(trxOpts, opts));
       run(ctx, opts);
     });
   };
