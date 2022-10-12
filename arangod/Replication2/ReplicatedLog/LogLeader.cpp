@@ -398,7 +398,7 @@ auto replicated_log::LogLeader::construct(
   }
 
   leader->establishLeadership(std::move(participantsConfig));
-
+  leader->triggerAsyncReplication();
   return leader;
 }
 

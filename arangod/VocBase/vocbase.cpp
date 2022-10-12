@@ -317,11 +317,13 @@ struct arangodb::VocBaseLogManager {
         buffer.append(parameters.start(), parameters.byteSize());
         auto parametersCopy = velocypack::SharedSlice(std::move(buffer));
 
-        auto metadata =
-            PersistedStateInfo{.stateId = id,
-                               .specification = agency::ImplementationSpec{
-                                   .type = std::string(type),
-                                   .parameters = std::move(parametersCopy)}};
+        auto metadata = PersistedStateInfo{
+            .stateId = id,
+            .snapshot = {.status =
+                             replicated_state::SnapshotStatus::kCompleted},
+            .specification = agency::ImplementationSpec{
+                .type = std::string(type),
+                .parameters = std::move(parametersCopy)}};
         auto maybeStorage = engine.createReplicatedState(vocbase, id, metadata);
 
         if (maybeStorage.fail()) {

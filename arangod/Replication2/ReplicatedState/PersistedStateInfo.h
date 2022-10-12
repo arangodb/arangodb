@@ -42,7 +42,7 @@ struct PersistedStateInfo {
   LogId stateId;  // could be removed
   SnapshotInfo snapshot;
   StateGeneration generation;
-  agency::ImplementationSpec specification;
+  replication2::agency::ImplementationSpec specification;
 };
 
 template<class Inspector>

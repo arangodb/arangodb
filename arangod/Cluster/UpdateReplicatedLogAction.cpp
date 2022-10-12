@@ -75,8 +75,7 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
         auto& impl = spec->properties.implementation;
         VPackSlice parameter = impl.parameters ? impl.parameters->slice()
                                                : VPackSlice::noneSlice();
-        return guard
-            ->createReplicatedState(logId, impl.type, impl.parameters->slice())
+        return guard->createReplicatedState(logId, impl.type, parameter)
             .result();
       }
     } else {

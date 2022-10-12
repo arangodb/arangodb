@@ -531,7 +531,7 @@ replicated_log::LogFollower::LogFollower(
       snapshotStatus == replicated_state::SnapshotStatus::kCompleted;
 
   LOG_CTX("c3791", DEBUG, _loggerContext)
-      << "loading snapshot status: " << to_string(*snapshotStatus);
+      << "loaded snapshot status: " << to_string(*snapshotStatus);
 
   struct MethodsImpl : IReplicatedLogFollowerMethods {
     explicit MethodsImpl(LogFollower& log) : _log(log) {}
@@ -548,7 +548,8 @@ replicated_log::LogFollower::LogFollower(
     }
     LogFollower& _log;
   };
-
+  LOG_CTX("f3668", DEBUG, _loggerContext)
+      << "calling becomeFollower on state handle";
   _stateHandle->becomeFollower(std::make_unique<MethodsImpl>(*this));
   _logMetrics->replicatedLogFollowerNumber->fetch_add(1);
 }
