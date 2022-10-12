@@ -26,6 +26,7 @@
 
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchFilterOptimization.h"
+#include "IResearch/IResearchInvertedIndexMeta.h"
 
 namespace arangodb {
 
@@ -39,8 +40,6 @@ class Methods;
 }
 
 namespace iresearch {
-
-struct InvertedIndexField;
 
 constexpr std::string_view nestedRoot(bool hasNested) noexcept {
   return {hasNested ? "" : nullptr, 0};
