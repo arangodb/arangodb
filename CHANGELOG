@@ -2,6 +2,10 @@ devel
 -----
 * Fixed BTS-852 (user's saved queries used to disappear after updating user profile).
 
+* MDS-1016: When creating a new collection the fields "Number of Shards" and
+  "Replication factor" are greyed out now when the field "Distribute shards
+  like" is not empty.
+
 * BTS-1008: Update react-autocomplete-input to fix single letter collection bug
   when creating a link in the views in the WebUI.
 
