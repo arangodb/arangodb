@@ -32,6 +32,11 @@
 #include <fmt/core.h>
 
 namespace arangodb::pregel::algorithm_sdk {
+
+struct ActorBase {
+  size_t id;
+};
+
 // These structs can be used by an algorithm
 // implementor to signal that the respective
 // data is empty, so we do not allocate *any*
@@ -106,7 +111,7 @@ struct ConductorBase {
 };
 
 template<typename AlgorithmData>
-struct Conductor {
+struct Conductor : public ActorBase {
   typename AlgorithmData::Settings settings;
   typename AlgorithmData::Global global;
 };

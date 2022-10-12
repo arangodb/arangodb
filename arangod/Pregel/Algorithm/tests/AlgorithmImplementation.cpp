@@ -30,7 +30,7 @@
 #include <vector>
 
 #include <Basics/VelocyPackStringLiteral.h>
-#include <Inspection/VPackPure.h>
+#include <Inspection/VPack.h>
 
 #include <velocypack/vpack.h>
 
@@ -44,6 +44,16 @@ using namespace arangodb::velocypack;
 using namespace arangodb::pregel::graph;
 using namespace arangodb::pregel::algorithm_sdk;
 using namespace arangodb::pregel::algorithms::example;
+
+struct ActorHandle {
+  size_t id;
+};
+
+template<typename Data>
+struct Actor {
+  ActorHandle handle;
+  Data d;
+};
 
 void setup_graph() {
   auto graphJson =
@@ -69,7 +79,8 @@ void setup_graph() {
 void setup() {
   auto const& settings = Settings{.iterations = 10, .resultField = "result"};
 
-  auto g = createConductor<Data>(settings);
+  auto conductor = createConductor<Data>(settings);
+  auto worker = createWorker<Data>(settings /*, conductorHandle */);
 
   std::vector<Worker<Data>> workers;
   for (size_t i = 0; i < 16; i++) {
