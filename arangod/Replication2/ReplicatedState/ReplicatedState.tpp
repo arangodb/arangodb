@@ -128,20 +128,21 @@ void ReplicatedStateManager<S>::leadershipEstablished(
                     guard->_currentManager))
           .resign();
   ADB_PROD_ASSERT(oldMethods == nullptr);
+  auto stream = std::make_shared<ProducerStreamProxy<
+      EntryType, typename ReplicatedStateTraits<S>::Serializer>>(
+      std::move(methods));
   auto leaderState = _factory->constructLeader(std::move(core));
   // TODO Pass the stream during construction already, and delete the
   //      "setStream" method; after that, the leader state implementation can
   //      also really rely on the stream being there.
-  leaderState->setStream(
-      std::make_shared<ProducerStreamProxy<
-          EntryType, typename ReplicatedStateTraits<S>::Serializer>>());
+  leaderState->setStream(stream);
   auto& manager =
       guard->_currentManager
           .template emplace<std::shared_ptr<NewLeaderStateManager<S>>>(
               std::make_shared<NewLeaderStateManager<S>>(
                   _loggerContext.template with<logContextKeyStateRole>(
                       static_strings::StringLeader),
-                  _metrics, std::move(leaderState), std::move(methods)));
+                  _metrics, std::move(leaderState), std::move(stream)));
 
   manager->recoverEntries();
 }
@@ -185,7 +186,7 @@ void NewLeaderStateManager<S>::recoverEntries() {
 
 template<typename S>
 auto NewLeaderStateManager<S>::GuardedData::recoverEntries() {
-  auto logSnapshot = _logMethods->getLogSnapshot();
+  auto logSnapshot = _stream->methods().getLogSnapshot();
   auto logIter = logSnapshot.getIteratorFrom(LogIndex{0});
   auto deserializedIter =
       std::make_unique<LazyDeserializingIterator<EntryType, Deserializer>>(
@@ -202,6 +203,13 @@ auto NewLeaderStateManager<S>::GuardedData::recoverEntries() {
 template<typename S>
 void NewLeaderStateManager<S>::updateCommitIndex(LogIndex index) {
   // TODO post resolving waitFor promises onto the scheduler
+  std::abort();
+}
+
+template<typename S>
+void NewLeaderStateManager<S>::GuardedData::updateCommitIndex(LogIndex index) {
+  // TODO post resolving waitFor promises onto the scheduler
+  std::abort();
 }
 
 template<typename S>
@@ -209,18 +217,28 @@ NewLeaderStateManager<S>::NewLeaderStateManager(
     LoggerContext loggerContext,
     std::shared_ptr<ReplicatedStateMetrics> metrics,
     std::shared_ptr<IReplicatedLeaderState<S>> leaderState,
-    std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> logMethods)
+    std::shared_ptr<ProducerStreamProxy<EntryType, Serializer>> stream)
     : _loggerContext(std::move(loggerContext)),
       _metrics(std::move(metrics)),
       _guardedData{_loggerContext, *_metrics, std::move(leaderState),
-                   std::move(logMethods)} {}
+                   std::move(stream)} {}
 
 template<typename S>
-auto NewLeaderStateManager<S>::resign() noexcept
+auto NewLeaderStateManager<S>::resign() && noexcept
     -> std::pair<std::unique_ptr<CoreType>,
                  std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
-  // TODO implement
-  TRI_ASSERT(false);
+  return std::move(_guardedData.getLockedGuard().get()).resign();
+}
+
+template<typename S>
+auto NewLeaderStateManager<S>::GuardedData::resign() && noexcept
+    -> std::pair<std::unique_ptr<CoreType>,
+                 std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
+  auto core = std::move(*_leaderState).resign();
+  // resign the stream after the state, so the state won't try to use the
+  // resigned stream.
+  auto methods = std::move(*_stream).resign();
+  return {std::move(core), std::move(methods)};
 }
 
 template<typename S>
@@ -237,7 +255,12 @@ auto NewFollowerStateManager<S>::GuardedData::updateCommitIndex(
   auto deserializedIter = std::make_unique<
       LazyDeserializingIterator<EntryType const&, Deserializer>>(
       std::move(logIter));
-  auto fut = _followerState->applyEntries(std::move(deserializedIter));
+  auto fut =
+      _followerState->applyEntries(std::move(deserializedIter))
+          .then([](auto&&) {
+            ADB_PROD_ASSERT(false)
+                << "TODO Finished implementing updateCommitIndex/applyEntries";
+          });
   // TODO update _lastAppliedIndex after applying entries
   // TODO handle concurrent calls to updateCommitIndex while applyEntries is
   //      running
@@ -279,7 +302,7 @@ void NewFollowerStateManager<S>::acquireSnapshot(ServerID leader,
 }
 
 template<typename S>
-auto NewFollowerStateManager<S>::resign() noexcept
+auto NewFollowerStateManager<S>::resign() && noexcept
     -> std::pair<std::unique_ptr<CoreType>,
                  std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
   auto guard = _guardedData.getLockedGuard();
@@ -293,6 +316,20 @@ NewUnconfiguredStateManager<S>::NewUnconfiguredStateManager(
     LoggerContext loggerContext, std::unique_ptr<CoreType> core) noexcept
     : _loggerContext(std::move(loggerContext)),
       _guardedData{GuardedData{._core = std::move(core)}} {}
+
+template<typename S>
+auto NewUnconfiguredStateManager<S>::resign() && noexcept
+    -> std::pair<std::unique_ptr<CoreType>,
+                 std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
+  auto guard = _guardedData.getLockedGuard();
+  return {std::move(guard.get()).resign(), nullptr};
+}
+
+template<typename S>
+auto NewUnconfiguredStateManager<S>::GuardedData::resign() && noexcept
+    -> std::unique_ptr<CoreType> {
+  return std::move(_core);
+}
 
 template<typename S>
 auto IReplicatedLeaderState<S>::getStream() const noexcept

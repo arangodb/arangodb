@@ -140,6 +140,15 @@ template<typename EntryType, typename Serializer>
 struct ProducerStreamProxy
     : StreamProxy<EntryType, streams::ProducerStream,
                   replicated_log::IReplicatedLogLeaderMethods> {
+ private:
+  // TODO Where should the methods live while we're leader?
+  std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> _methods;
+
+ public:
+  explicit ProducerStreamProxy(
+      std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> methods)
+      : _methods(std::move(methods)) {}
+
   auto insert(EntryType const& v) -> LogIndex override {
     auto builder = velocypack::Builder();
     std::invoke(Serializer{}, streams::serializer_tag<EntryType>, v, builder);
@@ -153,6 +162,10 @@ struct ProducerStreamProxy
     // TODO Delete this, it's superfluous
     std::abort();
   }
+
+  auto methods() -> auto& { return *_methods; }
+
+  auto resign() && -> decltype(_methods) { return std::move(_methods); }
 };
 
 template<typename S>
@@ -166,11 +179,11 @@ struct NewLeaderStateManager
       LoggerContext loggerContext,
       std::shared_ptr<ReplicatedStateMetrics> metrics,
       std::shared_ptr<IReplicatedLeaderState<S>> leaderState,
-      std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> logMethods);
+      std::shared_ptr<ProducerStreamProxy<EntryType, Serializer>> stream);
 
   void recoverEntries();
   void updateCommitIndex(LogIndex index);
-  [[nodiscard]] auto resign() noexcept
+  [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
 
@@ -179,11 +192,15 @@ struct NewLeaderStateManager
   std::shared_ptr<ReplicatedStateMetrics> const _metrics;
   struct GuardedData {
     auto recoverEntries();
+    void updateCommitIndex(LogIndex index);
+    [[nodiscard]] auto resign() && noexcept -> std::pair<
+        std::unique_ptr<CoreType>,
+        std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
 
     LoggerContext const& _loggerContext;
     ReplicatedStateMetrics const& _metrics;
     std::shared_ptr<IReplicatedLeaderState<S>> _leaderState;
-    std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> _logMethods;
+    std::shared_ptr<ProducerStreamProxy<EntryType, Serializer>> _stream;
   };
   Guarded<GuardedData> _guardedData;
 };
@@ -203,7 +220,7 @@ struct NewFollowerStateManager
           logMethods);
   void acquireSnapshot(ServerID leader, LogIndex index);
   void updateCommitIndex(LogIndex index);
-  [[nodiscard]] auto resign() noexcept
+  [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
 
@@ -226,15 +243,15 @@ struct NewUnconfiguredStateManager
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   explicit NewUnconfiguredStateManager(LoggerContext loggerContext,
                                        std::unique_ptr<CoreType>) noexcept;
-  [[nodiscard]] auto resign() noexcept
+  [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
-                   std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
-    TRI_ASSERT(false);
-  }
+                   std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
 
  private:
   LoggerContext const _loggerContext;
   struct GuardedData {
+    [[nodiscard]] auto resign() && noexcept -> std::unique_ptr<CoreType>;
+
     std::unique_ptr<CoreType> _core;
   };
   Guarded<GuardedData> _guardedData;
