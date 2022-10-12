@@ -104,8 +104,8 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) try {
   me->acquireStatistics(1UL).SET_READ_START(TRI_microtime());
   return HPE_OK;
 } catch (...) {
-  // the caller of this function is a C function, which doesn't have no
-  // idea about exceptions. we must not let an exception escape from here.
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
   return HPE_INTERNAL;
 }
 
@@ -123,8 +123,8 @@ int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) try {
   me->_url.append(at, len);
   return HPE_OK;
 } catch (...) {
-  // the caller of this function is a C function, which doesn't have no
-  // idea about exceptions. we must not let an exception escape from here.
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
   return HPE_INTERNAL;
 }
 
@@ -148,8 +148,8 @@ int HttpCommTask<T>::on_header_field(llhttp_t* p, const char* at,
   me->_lastHeaderWasValue = false;
   return HPE_OK;
 } catch (...) {
-  // the caller of this function is a C function, which doesn't have no
-  // idea about exceptions. we must not let an exception escape from here.
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
   return HPE_INTERNAL;
 }
 
@@ -165,8 +165,8 @@ int HttpCommTask<T>::on_header_value(llhttp_t* p, const char* at,
   me->_lastHeaderWasValue = true;
   return HPE_OK;
 } catch (...) {
-  // the caller of this function is a C function, which doesn't have no
-  // idea about exceptions. we must not let an exception escape from here.
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
   return HPE_INTERNAL;
 }
 
@@ -226,8 +226,8 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
   }
   return HPE_OK;
 } catch (...) {
-  // the caller of this function is a C function, which doesn't have no
-  // idea about exceptions. we must not let an exception escape from here.
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
   return HPE_INTERNAL;
 }
 
@@ -237,8 +237,8 @@ int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) try {
   me->_request->body().append(at, len);
   return HPE_OK;
 } catch (...) {
-  // the caller of this function is a C function, which doesn't have no
-  // idea about exceptions. we must not let an exception escape from here.
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
   return HPE_INTERNAL;
 }
 
@@ -252,8 +252,8 @@ int HttpCommTask<T>::on_message_complete(llhttp_t* p) try {
 
   return HPE_PAUSED;
 } catch (...) {
-  // the caller of this function is a C function, which doesn't have no
-  // idea about exceptions. we must not let an exception escape from here.
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
   return HPE_INTERNAL;
 }
 
