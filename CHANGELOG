@@ -1,6 +1,8 @@
 v3.9.4 (XXXX-XX-XX)
 -------------------
 
+* Fixed BTS-852 (user's saved queries used to disappear after updating user profile).
+
 * Log better diagnosis information in case multiple servers in a cluster are
   configured to use the same endpoint.
 
