@@ -1,14 +1,15 @@
 devel
 -----
 
-* Fixed BTS-852 (user's saved queries used to disappear after updating user 
-  profile).
-
-* MDS-1016: When creating a new collection the fields "Number of Shards" and
-  "Replication factor" are greyed out now when the field "Distribute shards
-  like" is not empty.
-
-* MDS-1019: Make user search case-insensitive and allow search by name.
+* Changed the encoding of revision ids returned by the following REST APIs:
+  - GET /_api/collection/<collection-name>/revision: the revision id was
+    previously returned as numeric value, and now it will be returned as
+    a string value with either numeric encoding or HLC-encoding inside.
+  - GET /_api/collection/<collection-name>/checksum: the revision id in
+    the "revision" attribute was previously encoded as a numeric value
+    in single server, and as a string in cluster. This is now unified so
+    that the "revision" attribute always contains a string value with
+    either numeric encoding or HLC-encoding inside.
 
 * Fixed handling of empty URL parameters in HTTP request handling.
 
@@ -23,6 +24,15 @@ devel
   incremental sync protocol. Previously, the encoding of revision ids could 
   be ambiguous under some circumstances, which could prevent shards from 
   getting into sync.
+
+* Fixed BTS-852 (user's saved queries used to disappear after updating user 
+  profile).
+
+* MDS-1016: When creating a new collection the fields "Number of Shards" and
+  "Replication factor" are greyed out now when the field "Distribute shards
+  like" is not empty.
+
+* MDS-1019: Make user search case-insensitive and allow search by name.
 
 * BTS-1008: Update react-autocomplete-input to fix single letter collection bug
   when creating a link in the views in the WebUI.
