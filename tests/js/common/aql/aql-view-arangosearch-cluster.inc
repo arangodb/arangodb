@@ -42,7 +42,7 @@
     var cg;
     var vg;
     var meta;
-    const longValue  = "VeryLongValueToNotFitIntoSSOAndTriggerBufferCopyingIssuesIfAnyBlaBlaBla";
+    var longValue  = "VeryLongValueToNotFitIntoSSOAndTriggerBufferCopyingIssuesIfAnyBlaBlaBla";
 
     function getNodes(query, type, bindVars, options) {
       let stmt = db._createStatement(query);

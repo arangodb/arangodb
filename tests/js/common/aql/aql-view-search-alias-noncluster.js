@@ -39,15 +39,15 @@ const base = require("fs").join(require('internal').pathForTesting('common'),
   'aql', 'aql-view-arangosearch-common-noncluster.inc');
 const iResearchAqlTestSuite = require("internal").load(base);
 
-jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
+jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
   let suite = {};
 
   deriveTestSuite(
     iResearchAqlTestSuite(),
     suite,
-    "_ArangoSearch_NonCluster"
+    "_SearchAlias_NonCluster"
   );
- 
+  
   suite.setUpAll = function () {
       db._drop("AuxUnitTestsCollection");
       let auxCol = db._create("AuxUnitTestsCollection");
@@ -65,20 +65,10 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
       arrayCol.save({ c: 1, a: ['afoo', 'abar', 'abaz']});
 
       db._dropView("UnitTestsViewArrayView");
+      
+      arrayCol.ensureIndex({name:"invertedIndex", type:"inverted", includeAllFields:true, fields: [{name:"a[*]", analyzer:"identity"}]});
 
-      let arrayV = db._createView("UnitTestsWithArrayView", "arangosearch", {});
-
-      let meta = {
-        links: { 
-          UnitTestsWithArrayCollection: { 
-            includeAllFields: true,
-            fields: {
-              a: { analyzers: [ "identity" ] }
-            }
-          }
-        }
-      };
-      arrayV.properties(meta);
+      db._createView("UnitTestsWithArrayView", "search-alias", {indexes : [ { collection: "UnitTestsWithArrayCollection", index: "invertedIndex" } ]});
 
       db._drop("TestsCollectionWithManyFields");
       let mfc = db._create("TestsCollectionWithManyFields");
@@ -86,7 +76,6 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
       mfc.save({field1:"1value1", field2:"2value1", field3: 2, field4: 11112, field5: 2, field6: 2});
       mfc.save({field1:"1value2", field2:"2value2", field3: 3, field4: 11113, field5: 3, field6: 3});
       mfc.save({field1:"1value3", field2:"2value3", field3: 4, field4: 11114, field5: 4, field6: 4});
-      
       db._drop("TestsCollectionWithLongFields");
       let longData = [];
       let lfc = db._create("TestsCollectionWithLongFields");
@@ -101,46 +90,38 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
                                                  "accent": false,
                                                  "stemming": false},
                                                  ["position", "norm", "frequency"]);
-
-      let wps = db._createView("WithPrimarySort", "arangosearch", 
-                               {primarySort: [{field: "field1", direction: "asc"},
+                                  
+      lfc.ensureIndex({type:"inverted", analyzer: "customAnalyzer", 
+                       fields:["field1", "field2", "field3", "field4", "field5", "field6", "_key"],
+                       name:"invertedIndex",  primarySort: { fields: [{field: "field1", direction: "asc"},
                                               {field: "field2", direction: "asc"},
                                               {field: "field3", direction: "asc"},
                                               {field: "field4", direction: "asc"},
-                                              {field: "_key", direction: "asc"}]});
+                       {field: "_key", direction: "asc"}]}});                                          
 
-      wps.properties({links:{TestsCollectionWithManyFields: {
-                              storeValues: "id",
-                              analyzers: ["customAnalyzer"],
-                              fields: {
-                                field1: {},
-                                field2: {},
-                                field3: {},
-                                field4: {},
-                                field5: {},
-                                field6: {},
-                                _key: {}}}}});
-                                
-                                
-      let wsv = db._createView("WithStoredValues", "arangosearch", 
-                               {storedValues: [["field1"], ["field2"], ["field3"]]});
-      wsv.properties({links:{TestsCollectionWithLongFields: {
-                              storeValues: "id",
-                              analyzers: ["customAnalyzer"],
-                              fields: {
-                                field1: {},
-                                field2: {},
-                                field3: {}}}}});
-      let wpsl = db._createView("WithLongPrimarySort", "arangosearch", 
-                               {primarySort: [{field: "field1", direction: "asc"}],
-                                storedValues: [["field2"], ["field3"]]});
-      wpsl.properties({links:{TestsCollectionWithLongFields: {
-                              storeValues: "id",
-                              analyzers: ["customAnalyzer"],
-                              fields: {
-                                field1: {},
-                                field2: {},
-                                field3: {}}}}});
+      let wps = db._createView("WithPrimarySort", "search-alias",
+                              {indexes:[{collection:"TestsCollectionWithLongFields",
+                                         index:"invertedIndex" }]});
+                                  
+      lfc.ensureIndex({type:"inverted", analyzer: "customAnalyzer", 
+                       fields:["field1", "field2", "field3"],
+                       name:"invertedIndexWithStored", storedValues: [["field1"], ["field2"], ["field3"]]});       
+                               
+                          
+      let wsv = db._createView("WithStoredValues", "search-alias", 
+                               {indexes:[{collection:"TestsCollectionWithLongFields",
+                                         index:"invertedIndexWithStored" }]});
+                            
+     lfc.ensureIndex({type:"inverted", analyzer: "customAnalyzer", 
+                       fields:["field1", "field2", "field3"],
+                       name:"invertedIndexWithLongPrimarySort",
+                       primarySort: {fields:[{field: "field1", direction: "asc"}]},
+                       storedValues: [["field2"], ["field3"]]});            
+      
+
+      let wpsl = db._createView("WithLongPrimarySort", "search-alias", 
+      {indexes:[{collection:"TestsCollectionWithLongFields", index:"invertedIndexWithLongPrimarySort"}]});
+
     };
   suite.tearDownAll = function () {
       db._drop("AnotherUnitTestsCollection");
@@ -151,7 +132,7 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
       db._drop("TestsCollectionWithManyFields");
       db._dropView("WithStoredValues");
       db._dropView("WithLongPrimarySort");
-      db._dropView("UnitTestsViewAlias");
+      db._dropView("UnitTestsView");
       db._drop("TestsCollectionWithLongFields");
       analyzers.remove("customAnalyzer", true);
     };
@@ -162,28 +143,34 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
       db._drop("UnitTestsCollection2");
       c2 = db._create("UnitTestsCollection2");
 
+     
+      db.UnitTestsCollection.ensureIndex({ 
+        type: "inverted",
+        name: "invertedIndex",
+        fields: [ "a", "b", "c", "name", "anotherNumericField",
+                  "anotherNullField", "anotherBoolField", "_key", "xyz",
+                  { name: "text", analyzer: "text_en" } ] });
       db._dropView("UnitTestsView");
-      v = db._createView("UnitTestsView", "arangosearch", {});
-      var meta = {
-        links: { 
-          "UnitTestsCollection": { 
-            includeAllFields: true,
-            storeValues: "id",
-            fields: {
-              text: { analyzers: [ "text_en" ] }
-            }
-          }
-        }
-      };
-      v.properties(meta);
+      
+      v = db._createView("UnitTestsView", "search-alias", { 
+          indexes : [ { collection: "UnitTestsCollection", index: "invertedIndex" } ] });
+
+      db._dropView("CompoundView");
+      
+      db.UnitTestsCollection.ensureIndex({ 
+        type: "inverted",
+        name: "invertedIndexCompound", includeAllFields:true});
+      db.UnitTestsCollection2.ensureIndex({ 
+        type: "inverted",
+        name: "invertedIndexCompound", includeAllFields:true});
 
       
-      db._dropView("CompoundView");
-      v2 = db._createView("CompoundView", "arangosearch",
-        { links : {
-          UnitTestsCollection: { includeAllFields: true },
-          UnitTestsCollection2 : { includeAllFields: true }
-        }}
+      
+      v2 = db._createView("CompoundView", "search-alias",
+        { indexes : [
+            {collection:"UnitTestsCollection", index: "invertedIndexCompound" },
+            {collection:"UnitTestsCollection2", index: "invertedIndexCompound" }
+        ]}
       );
 
       for (let i = 0; i < 5; i++) {
@@ -209,23 +196,44 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
     };
 
   suite.tearDown = function () {
-      var meta = { links : { "UnitTestsCollection": null } };
-      v.properties(meta);
       v.drop();
       v2.drop();
       db._drop("UnitTestsCollection");
       db._drop("UnitTestsCollection2");
     };
-  suite.testPhraseFilter = function () {
-      var result0 = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, 'quick brown fox jumps', 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+  suite.testPhraseFilterAlias = function () {
+      // inherit analyzer from field meta
+      var result0i = db._query("FOR doc IN UnitTestsCollection OPTIONS { indexHint: 'invertedIndex', waitForSync : true } FILTER PHRASE(doc.text, 'quick brown fox jumps') RETURN doc").toArray();
+      assertEqual(result0i.length, 1);
+      assertEqual(result0i[0].name, 'full');
+
+      // inherit analyzer from field meta
+      var result0 = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, 'quick brown fox jumps') OPTIONS { waitForSync : true } RETURN doc").toArray();
 
       assertEqual(result0.length, 1);
       assertEqual(result0[0].name, 'full');
+
+      var result1i = db._query("FOR doc IN UnitTestsCollection OPTIONS { indexHint: 'invertedIndex', waitForSync : true } FILTER PHRASE(doc.text, [ 'quick brown fox jumps' ], 'text_en') RETURN doc").toArray();
+
+      assertEqual(result1i.length, 1);
+      assertEqual(result1i[0].name, 'full');
 
       var result1 = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, [ 'quick brown fox jumps' ], 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
 
       assertEqual(result1.length, 1);
       assertEqual(result1[0].name, 'full');
+
+      // non-indexed field
+      {
+        let emptyResult = db._query("FOR doc IN UnitTestsView SEARCH doc.missingField == TOKENS('quick')[0] OPTIONS { waitForSync : true } RETURN doc");
+        assertEqual(emptyResult.toArray().length, 0);
+        let warnings = emptyResult.getExtra().warnings;
+        assertEqual(warnings.length, 1);
+        warnings.forEach(v => {
+          assertEqual(v.code, 10);
+          assertEqual(v.message, "Analyzer for field 'missingField' isn't set");
+        });
+      }
 
       var result2 = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(PHRASE(doc.text, 'quick brown fox jumps'), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
 
@@ -276,6 +284,7 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
       assertEqual(result7v.length, 1);
       assertEqual(result7v[0].name, 'full');
     };
+ 
   suite.testViewInSubquery = function() {
       var entitiesData = [
         {
