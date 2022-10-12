@@ -1,5 +1,10 @@
 devel
 -----
+
+* Fixed GitHub issue #17291: Fixed a server crash which could occur in case an
+  AQL query using a PRUNE or FILTER statement, combined with UDFs (user defined
+  functions), got executed.
+
 * Fixed BTS-852 (user's saved queries used to disappear after updating user profile).
 
 * BTS-1008: Update react-autocomplete-input to fix single letter collection bug
