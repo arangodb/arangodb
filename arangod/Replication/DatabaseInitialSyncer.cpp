@@ -1975,19 +1975,20 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
           s.isString()) {
         // use "resumeHLC" if it is present
         requestResume = RevisionId::fromHLC(s.stringView());
-      } else if (VPackSlice s = slice.get(StaticStrings::RevisionTreeResume);
-                 s.isString()) {
+      } else {
         // "resumeHLC" not present.
         // now fall back to using "resume", which is deprecated
-        requestResume =
-            s.isNone() ? RevisionId::max() : RevisionId::fromSlice(s);
-      } else if (VPackSlice s = slice.get(StaticStrings::RevisionTreeResume);
-                 !s.isNone()) {
-        ++stats.numFailedConnects;
-        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                      std::string("got invalid response from leader at ") +
-                          _config.leader.endpoint + url +
-                          ": response field 'resume' is not a number");
+        VPackSlice resumeSlice = slice.get(StaticStrings::RevisionTreeResume);
+        if (!resumeSlice.isNone() && !resumeSlice.isString()) {
+          ++stats.numFailedConnects;
+          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                        std::string("got invalid response from leader at ") +
+                            _config.leader.endpoint + url +
+                            ": response field 'resume' is not a number");
+        }
+        requestResume = resumeSlice.isNone()
+                            ? RevisionId::max()
+                            : RevisionId::fromSlice(resumeSlice);
       }
 
       if (requestResume < RevisionId::max() && !isAborted()) {
