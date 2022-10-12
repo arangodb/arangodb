@@ -155,8 +155,6 @@ struct ProducerStreamProxy
   }
 };
 
-// TODO Add and use LoggerContext to/in the new state managers
-// TODO Add guards to the new state managers
 template<typename S>
 struct NewLeaderStateManager
     : std::enable_shared_from_this<NewLeaderStateManager<S>> {
