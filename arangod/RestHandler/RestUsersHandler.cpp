@@ -285,6 +285,8 @@ static Result StoreUser(auth::UserManager* um, int mode,
   if (mode == 0 || mode == 1) {
     r = um->storeUser(mode == 1, user, passwd, active, extra);
   } else if (mode == 2) {
+    VPackBuilder doc = um->serializeUser(user);
+    VPackSlice u = doc.slice();
     r = um->updateUser(user, [&](auth::User& entry) {
       if (json.isObject()) {
         if (json.get("passwd").isString()) {
@@ -294,7 +296,14 @@ static Result StoreUser(auth::UserManager* um, int mode,
           entry.setActive(active);
         }
       }
-      if (extra.isObject() && !extra.isEmptyObject()) {
+
+      VPackSlice oldExtra = u.get("extra");
+      if (extra.isObject() && oldExtra.isObject()) {
+        // Both `extra` and `oldExtra` are objects, so perform a deep merge.
+        entry.setUserData(VPackCollection::merge(oldExtra, extra, true, false));
+      } else if (!extra.isNone()) {
+        // `extra` or `oldExtra` is not an object, so a deep merge is not
+        // possible. Just overwrite the old value.
         entry.setUserData(VPackBuilder(extra));
       }
       return TRI_ERROR_NO_ERROR;
