@@ -1,5 +1,6 @@
 devel
 -----
+* Fixed BTS-852 (user's saved queries used to disappear after updating user profile).
 
 * BTS-1008: Update react-autocomplete-input to fix single letter collection bug
   when creating a link in the views in the WebUI.
@@ -307,7 +308,6 @@ devel
 
 * Added more specific process exit codes for arangod and all client tools,
   and changed the executables' exit code for the following situations:
- 
   - an unknown startup option name is used: previously the exit code was 1.
     Now the exit code when using an invalid option is 3 (symbolic exit code
     name EXIT_INVALID_OPTION_NAME).
@@ -338,7 +338,6 @@ devel
   "underscore". We recommend always bundling your own copy of third-party
   modules as all previously included third-party modules are now considered
   deprecated and may be removed in future versions of ArangoD
- 
 * APM-84: Added option to spill intermediate AQL query results from RAM to
   disk when their size exceeds certain thresholds. Currently the only AQL
   operation that can make use of this is the SortExecutor (AQL SORT operation
