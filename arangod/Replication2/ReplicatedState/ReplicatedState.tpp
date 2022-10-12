@@ -65,20 +65,20 @@ void ReplicatedStateManager<S>::acquireSnapshot(ServerID leader,
                                                 LogIndex commitIndex) {
   auto guard = _guarded.getLockedGuard();
 
-  std::visit(
-      overload{
-          [&](std::shared_ptr<NewFollowerStateManager<S>> const& manager) {
-            LOG_CTX("52a11", DEBUG, _loggerContext)
-                << "try to acquire a new snapshot, starting at " << commitIndex;
-            manager->acquireSnapshot(leader, commitIndex);
-          },
-          [](auto&&) {
-            ADB_PROD_ASSERT(false)
-                << "State is not a follower (or uninitialized), but "
-                   "acquireSnapshot is called";
-          },
-      },
-      guard->_currentManager);
+  std::visit(overload{
+                 [&](std::shared_ptr<NewFollowerStateManager<S>>& manager) {
+                   LOG_CTX("52a11", DEBUG, _loggerContext)
+                       << "try to acquire a new snapshot, starting at "
+                       << commitIndex;
+                   manager->acquireSnapshot(leader, commitIndex);
+                 },
+                 [](auto&) {
+                   ADB_PROD_ASSERT(false)
+                       << "State is not a follower (or uninitialized), but "
+                          "acquireSnapshot is called";
+                 },
+             },
+             guard->_currentManager);
 }
 
 template<typename S>
