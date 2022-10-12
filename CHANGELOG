@@ -1,6 +1,10 @@
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
+* MDS-1016: When creating a new collection the fields "Number of Shards" and
+  "Replication factor" are greyed out now when the field "Distribute shards
+  like" is not empty.
+
 * Fixed BTS-850: Fixed the removal of already deleted orphan collections out of
   a graph definition. The removal of an already deleted orphan collection out of
   a graph definition failed and has been rejected in case the collection got
