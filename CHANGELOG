@@ -6,6 +6,8 @@ devel
   "Replication factor" are greyed out now when the field "Distribute shards
   like" is not empty.
 
+* MDS-1019: Make user search case-insensitive and allow search by name.
+
 * BTS-1008: Update react-autocomplete-input to fix single letter collection bug
   when creating a link in the views in the WebUI.
 
