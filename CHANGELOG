@@ -1,6 +1,10 @@
 v3.9.4 (XXXX-XX-XX)
 -------------------
 
+* BTS-908: Fixed WebUI GraphViewer not being able to create a new edge relation
+  between two nodes in cases where only one edge definition has been defined
+  inside the graph definition.
+
 * Fixed BTS-850: Fixed the removal of already deleted orphan collections out of
   a graph definition. The removal of an already deleted orphan collection out of
   a graph definition failed and has been rejected in case the collection got
@@ -93,6 +97,7 @@ v3.9.4 (XXXX-XX-XX)
 * Fixed a rare occuring issue where paths inside a DisjointSmart traversal
   containing only satellite relevant nodes were not returned properly
   (ES-1265).
+
 
 v3.9.3 (2022-09-02)
 -------------------
