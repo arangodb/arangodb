@@ -1333,7 +1333,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
       createPruneExpression(this, _ast, node->getMember(3));
 
   if (pruneExpression != nullptr &&
-      (pruneExpression->willUseV8() || !pruneExpression->isDeterministic() ||
+      (pruneExpression->willUseV8() && !pruneExpression->isDeterministic() &&
        (ServerState::instance()->isRunningInCluster() &&
         !pruneExpression->canRunOnDBServer(
             _ast->query().vocbase().isOneShard())))) {
