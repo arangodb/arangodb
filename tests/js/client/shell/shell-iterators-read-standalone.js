@@ -46,7 +46,6 @@ function StandaloneAqlIteratorReadSuite() {
       run(ctx, opts);
     });
   };
-  global.read = true;
   
   let suite = {};
   deriveTestSuite(base.IteratorReadSuite(permute, true), suite, '_StandaloneAqlRead');
