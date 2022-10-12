@@ -236,8 +236,9 @@ void ReplicatedRocksDBTransactionState::addIntermediateCommits(uint64_t value) {
 
 arangodb::Result
 ReplicatedRocksDBTransactionState::triggerIntermediateCommit() {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "invalid call to triggerIntermediateCommit");
+  ADB_PROD_ASSERT(false) << "triggerIntermediateCommit is not supported in "
+                            "ReplicatedRocksDBTransactionState";
+  return arangodb::Result{TRI_ERROR_INTERNAL};
 }
 
 futures::Future<Result>

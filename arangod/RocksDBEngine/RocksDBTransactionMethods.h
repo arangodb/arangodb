@@ -58,7 +58,9 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   // Only relevant for RocksDBTrxMethods
   virtual bool isIntermediateCommitNeeded() { return false; }
   virtual Result triggerIntermediateCommit() {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    ADB_PROD_ASSERT(false) << "triggerIntermediateCommit is not supported in "
+                              "RocksDBTransactionMethods";
+    return Result{TRI_ERROR_INTERNAL};
   };
 
   /// @returns tick of last operation in a transaction

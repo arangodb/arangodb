@@ -92,9 +92,10 @@ class CalculationTransactionState final : public arangodb::TransactionState {
     return {};
   }
 
-  Result triggerIntermediateCommit() {
-    TRI_ASSERT(false);  // should never be called!
-    return {};
+  Result triggerIntermediateCommit() override {
+    ADB_PROD_ASSERT(false) << "triggerIntermediateCommit is not supported in "
+                              "CalculationTransactionState";
+    return Result{TRI_ERROR_INTERNAL};
   }
 
   [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(

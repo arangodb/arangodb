@@ -172,8 +172,9 @@ Result ClusterTransactionState::abortTransaction(
 }
 
 arangodb::Result ClusterTransactionState::triggerIntermediateCommit() {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "unexpected intermediate commit");
+  ADB_PROD_ASSERT(false) << "triggerIntermediateCommit is not supported in "
+                            "ClusterTransactionState";
+  return arangodb::Result{TRI_ERROR_INTERNAL};
 }
 
 futures::Future<Result>

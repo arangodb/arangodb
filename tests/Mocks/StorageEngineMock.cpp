@@ -2117,8 +2117,9 @@ TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
 }
 
 arangodb::Result TransactionStateMock::triggerIntermediateCommit() {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "invalid call to triggerIntermediateCommit");
+  ADB_PROD_ASSERT(false) << "triggerIntermediateCommit is not supported in "
+                            "TransactionStateMock";
+  return arangodb::Result{TRI_ERROR_INTERNAL};
 }
 
 arangodb::futures::Future<arangodb::Result>
