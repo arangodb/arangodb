@@ -75,7 +75,7 @@ struct IAlgorithm {
   [[nodiscard]] std::string const& name() const { return _name; }
 
  protected:
-  explicit IAlgorithm(std::string  name) : _name(std::move(name)) {}
+  explicit IAlgorithm(std::string name) : _name(std::move(name)) {}
 
  private:
   std::string _name;

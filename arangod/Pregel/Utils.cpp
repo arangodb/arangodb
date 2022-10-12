@@ -101,7 +101,6 @@ std::string const Utils::outputColorsFieldName = "outputColorsFieldName";
 std::string const Utils::numColors = "numColors";
 std::string const Utils::colors = "colors";
 
-
 size_t const Utils::batchOfVerticesStoredBeforeUpdatingStatus = 1000;
 size_t const Utils::batchOfVerticesProcessedBeforeUpdatingStatus = 1000;
 
