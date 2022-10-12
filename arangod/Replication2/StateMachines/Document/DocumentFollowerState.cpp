@@ -59,7 +59,6 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
   auto leaderInterface = _networkHandler->getLeaderInterface(destination);
   auto snapshot = leaderInterface->getSnapshot(waitForIndex).get();
   TRI_ASSERT(snapshot.ok());
-  LOG_DEVEL << snapshot.get().toJson();
   return {TRI_ERROR_NO_ERROR};
 }
 
