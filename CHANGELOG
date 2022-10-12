@@ -5,6 +5,20 @@ v3.10.1 (XXXX-XX-XX)
   between two nodes in cases where only one edge definition has been defined
   inside the graph definition.
 
+* MDS-1019: Make user search case-insensitive and allow search by name.
+
+* MDS-1016: When creating a new collection the fields "Number of Shards" and
+  "Replication factor" are greyed out now when the field "Distribute shards
+  like" is not empty.
+
+* Fixed BTS-850: Fixed the removal of already deleted orphan collections out of
+  a graph definition. The removal of an already deleted orphan collection out of
+  a graph definition failed and has been rejected in case the collection got
+  dropped already.
+
+* BTS-1008: Update react-autocomplete-input to fix single letter collection bug
+  when creating a link in the views in the WebUI.
+
 * BTS-1061: ARM was not recognized on Apple M1.
 
 * BTS-325: Changed the HTTP status code from `400` to `404` of the ArangoDB
