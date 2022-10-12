@@ -25,6 +25,7 @@
 
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
+#include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
 #include <Basics/Exceptions.h>
@@ -35,7 +36,8 @@ using namespace arangodb::replication2::replicated_state::document;
 DocumentFollowerState::DocumentFollowerState(
     std::unique_ptr<DocumentCore> core,
     std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory)
-    : _transactionHandler(
+    : _networkHandler(handlersFactory->createNetworkHandler(core->getGid())),
+      _transactionHandler(
           handlersFactory->createTransactionHandler(core->getGid())),
       _guardedData(std::move(core)) {}
 
@@ -52,8 +54,12 @@ auto DocumentFollowerState::resign() && noexcept
 }
 
 auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
-                                            LogIndex) noexcept
+                                            LogIndex waitForIndex) noexcept
     -> futures::Future<Result> {
+  auto leaderInterface = _networkHandler->getLeaderInterface(destination);
+  auto snapshot = leaderInterface->getSnapshot(waitForIndex).get();
+  TRI_ASSERT(snapshot.ok());
+  LOG_DEVEL << snapshot.get().toJson();
   return {TRI_ERROR_NO_ERROR};
 }
 
