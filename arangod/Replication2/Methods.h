@@ -150,6 +150,8 @@ auto inspect(Inspector& f, ReplicatedLogMethods::CreateOptions& x) {
   return f.object(x).fields(
       f.field("waitForReady", x.waitForReady).fallback(true),
       f.field("id", x.id), f.field("config", x.config),
+      f.field("spec", x.spec)
+          .fallback(agency::ImplementationSpec{.type = "black-hole"}),
       f.field("leader", x.leader),
       f.field("numberOfServers", x.numberOfServers),
       f.field("servers", x.servers).fallback(std::vector<ParticipantId>{}));

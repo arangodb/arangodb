@@ -73,9 +73,8 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
                                             spec->participantsConfig);
       } else {
         auto& impl = spec->properties.implementation;
-        ADB_PROD_ASSERT(impl.parameters.has_value())
-            << database << "/" << logId << " impl type " << impl.type
-            << " - missing parameters";
+        VPackSlice parameter = impl.parameters ? impl.parameters->slice()
+                                               : VPackSlice::noneSlice();
         return guard
             ->createReplicatedState(logId, impl.type, impl.parameters->slice())
             .result();

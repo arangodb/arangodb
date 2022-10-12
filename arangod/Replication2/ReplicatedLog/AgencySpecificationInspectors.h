@@ -80,6 +80,7 @@ auto inspect(Inspector& f, LogPlanSpecification& x) {
       f.field(StaticStrings::Id, x.id),
       f.field(StaticStrings::CurrentTerm, x.currentTerm),
       f.field(static_strings::Owner, x.owner),
+      f.field("properties", x.properties),
       f.field(static_strings::ParticipantsConfig, x.participantsConfig));
 };
 

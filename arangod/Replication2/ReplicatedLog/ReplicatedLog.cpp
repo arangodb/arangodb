@@ -61,6 +61,9 @@ replicated_log::ReplicatedLog::~ReplicatedLog() = default;
 auto replicated_log::ReplicatedLog::connect(
     std::unique_ptr<IReplicatedStateHandle> stateHandle)
     -> ReplicatedLogConnection {
+  LOG_CTX("8f193", DEBUG, _logContext)
+      << "calling connect on replicated log with "
+      << typeid(stateHandle.get()).name();
   auto guard = _guarded.getLockedGuard();
   ADB_PROD_ASSERT(guard->stateHandle == nullptr);
   guard->stateHandle = std::move(stateHandle);
@@ -69,6 +72,7 @@ auto replicated_log::ReplicatedLog::connect(
 }
 
 void replicated_log::ReplicatedLog::disconnect(ReplicatedLogConnection conn) {
+  LOG_CTX("66ada", DEBUG, _logContext) << "disconnecting replicated log";
   ADB_PROD_ASSERT(conn._log.get() == this);
   auto guard = _guarded.getLockedGuard();
   resetParticipant(guard.get());
@@ -102,6 +106,8 @@ void replicated_log::ReplicatedLog::updateConfig(
 
 void replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data) {
   if (not data.latest or not data.stateHandle) {
+    LOG_CTX("79005", DEBUG, _logContext)
+        << "replicated log not ready, config missing";
     return;  // config or state not yet available
   }
 
@@ -122,6 +128,8 @@ void replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data) {
                              .myself = _myself.serverId,
                              .initialConfig = configShared};
 
+      LOG_CTX("79015", DEBUG, _logContext)
+          << "replicated log configured as leader in term " << term.term;
       data.participant = _participantsFactory->constructLeader(
           std::move(data.core), info, context);
       _metrics->replicatedLogLeaderTookOverNumber->count();
@@ -132,6 +140,8 @@ void replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data) {
         info.leader = term.leader->serverId;
       }
 
+      LOG_CTX("7aed7", DEBUG, _logContext)
+          << "replicated log configured as follower in term " << term.term;
       data.participant = _participantsFactory->constructFollower(
           std::move(data.core), info, context);
       _metrics->replicatedLogStartedFollowingNumber->operator++();
@@ -139,6 +149,9 @@ void replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data) {
   } else if (auto leader =
                  std::dynamic_pointer_cast<ILogLeader>(data.participant);
              leader) {
+    LOG_CTX("2c74c", DEBUG, _logContext)
+        << "replicated log participants reconfigured with generation "
+        << configShared->generation;
     leader->updateParticipantsConfig(configShared);
   }
 
@@ -148,6 +161,8 @@ void replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data) {
 void ReplicatedLog::resetParticipant(GuardedData& data) {
   ADB_PROD_ASSERT(data.participant != nullptr || data.core != nullptr);
   if (data.participant) {
+    LOG_CTX("9a54b", DEBUG, _logContext)
+        << "reset participant of replicated log";
     auto [core, action] = std::move(*data.participant).resign();
     data.core = std::move(core);
     data.participant.reset();
@@ -164,6 +179,7 @@ auto ReplicatedLog::getParticipant() const -> std::shared_ptr<ILogParticipant> {
 
 auto ReplicatedLog::resign() && -> std::unique_ptr<LogCore> {
   auto guard = _guarded.getLockedGuard();
+  LOG_CTX("79025", DEBUG, _logContext) << "replicated log resigned";
   resetParticipant(guard.get());
   ADB_PROD_ASSERT(guard->core != nullptr);
   return std::move(guard->core);

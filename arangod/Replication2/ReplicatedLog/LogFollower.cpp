@@ -530,7 +530,7 @@ replicated_log::LogFollower::LogFollower(
   guard->_snapshotCompleted =
       snapshotStatus == replicated_state::SnapshotStatus::kCompleted;
 
-  LOG_CTX("c3790", DEBUG, _loggerContext)
+  LOG_CTX("c3791", DEBUG, _loggerContext)
       << "loading snapshot status: " << to_string(*snapshotStatus);
 
   struct MethodsImpl : IReplicatedLogFollowerMethods {
