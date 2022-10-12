@@ -972,8 +972,8 @@ futures::Future<OperationResult> revisionOnCoordinator(
            VPackSlice answer) -> void {
           if (answer.isObject()) {
             VPackSlice r = answer.get("revision");
-            if (r.isString()) {
-              RevisionId cmp = RevisionId::fromString(r.stringView());
+            if (r.isString() || r.isInteger()) {
+              RevisionId cmp = RevisionId::fromSlice(r);
               RevisionId rid = RevisionId::fromSlice(builder.slice());
               if (cmp != RevisionId::max() && cmp > rid) {
                 // get the maximum value

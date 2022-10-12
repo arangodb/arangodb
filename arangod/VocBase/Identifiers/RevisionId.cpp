@@ -52,7 +52,7 @@ std::string RevisionId::toString() const {
   if (id() <= tickLimit) {
     return arangodb::basics::StringUtils::itoa(id());
   }
-  return basics::HybridLogicalClock::encodeTimeStamp(id());
+  return toHLC();
 }
 
 /// encodes the uint64_t timestamp into the provided result buffer
@@ -67,6 +67,10 @@ std::pair<size_t, size_t> RevisionId::toString(char* buffer) const {
     return pos;
   }
   return basics::HybridLogicalClock::encodeTimeStamp(id(), buffer);
+}
+
+std::string RevisionId::toHLC() const {
+  return basics::HybridLogicalClock::encodeTimeStamp(id());
 }
 
 /// encodes the uint64_t timestamp into a temporary velocypack ValuePair,
@@ -104,7 +108,13 @@ RevisionId RevisionId::fromString(std::string_view rid) {
     BaseType r = NumberUtils::atoi_positive_unchecked<BaseType>(p, p + len);
     return RevisionId{r};
   }
-  return RevisionId{basics::HybridLogicalClock::decodeTimeStamp(p, len)};
+  return fromHLC(rid);
+}
+
+/// @brief Convert a HLC-encoded string into a revision ID, returns 0 if format
+/// invalid
+RevisionId RevisionId::fromHLC(std::string_view rid) {
+  return RevisionId{basics::HybridLogicalClock::decodeTimeStamp(rid)};
 }
 
 /// @brief extract revision from slice; expects either an integer, or an object

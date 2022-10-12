@@ -72,6 +72,9 @@ class RevisionId final : public arangodb::basics::Identifier {
   /// the result buffer are returned
   std::pair<size_t, size_t> toString(char* buffer) const;
 
+  /// @brief Convert a revision ID to an HLC-encoded string value
+  std::string toHLC() const;
+
   /// @brief Convert revision ID to a string using the provided buffer,
   /// returning the result as a value pair for convenience
   /// the buffer should be at least arangodb::basics::maxUInt64StringSize
@@ -97,6 +100,10 @@ class RevisionId final : public arangodb::basics::Identifier {
 
   /// @brief Convert a string into a revision ID, returns none() if invalid
   static RevisionId fromString(std::string_view rid);
+
+  /// @brief Convert a HLC-encoded value into a revision ID, returns none() if
+  /// invalid
+  static RevisionId fromHLC(std::string_view rid);
 
   /// @brief extract revision from slice; expects either an integer or string,
   /// or an object with a string or integer _rev attribute

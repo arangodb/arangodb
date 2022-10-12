@@ -25,7 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/HybridLogicalClock.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
@@ -262,9 +261,7 @@ arangodb::Result fetchRevisions(
         std::size_t i;
         for (i = 0; i < 5000 && current + i < toFetch.size(); ++i) {
           if (encodeAsHLC) {
-            requestBuilder.add(VPackValue(
-                arangodb::basics::HybridLogicalClock::encodeTimeStamp(
-                    toFetch[current + i].id())));
+            requestBuilder.add(VPackValue(toFetch[current + i].toHLC()));
           } else {
             // deprecated, ambiguous format
             requestBuilder.add(toFetch[current + i].toValuePair(ridBuffer));
@@ -422,9 +419,7 @@ arangodb::Result fetchRevisions(
           VPackArrayBuilder list(&requestBuilder);
           for (auto const& r : v) {
             if (encodeAsHLC) {
-              requestBuilder.add(VPackValue(
-                  arangodb::basics::HybridLogicalClock::encodeTimeStamp(
-                      r.id())));
+              requestBuilder.add(VPackValue(r.toHLC()));
             } else {
               // deprecated, ambiguous format
               requestBuilder.add(r.toValuePair(ridBuffer));
@@ -1601,9 +1596,7 @@ void DatabaseInitialSyncer::fetchRevisionsChunk(
 
     if (appendResumeHLC) {
       url += "&" + StaticStrings::RevisionTreeResumeHLC + "=" +
-             urlEncode(basics::HybridLogicalClock::encodeTimeStamp(
-                 requestResume.id())) +
-             "&encodeAsHLC=true";
+             urlEncode(requestResume.toHLC()) + "&encodeAsHLC=true";
     }
 
     bool isVPack = false;
@@ -1867,17 +1860,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
   {
     VPackBuilder requestBuilder;
     {
-      char ridBuffer[arangodb::basics::maxUInt64StringSize];
       VPackArrayBuilder list(&requestBuilder);
-      for (auto& pair : ranges) {
+      for (auto const& pair : ranges) {
         VPackArrayBuilder range(&requestBuilder);
         // ok to use only HLC encoding here.
-        requestBuilder.add(
-            basics::HybridLogicalClock::encodeTimeStampToValuePair(pair.first,
-                                                                   ridBuffer));
-        requestBuilder.add(
-            basics::HybridLogicalClock::encodeTimeStampToValuePair(pair.second,
-                                                                   ridBuffer));
+        requestBuilder.add(VPackValue(RevisionId{pair.first}.toHLC()));
+        requestBuilder.add(VPackValue(RevisionId{pair.second}.toHLC()));
       }
     }
 
@@ -1983,22 +1971,23 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
                           ": response is not an object");
       }
 
-      // first try using "resume", which is deprecated
-      VPackSlice resumeSlice = slice.get(StaticStrings::RevisionTreeResume);
-      if (!resumeSlice.isNone() && !resumeSlice.isString()) {
+      if (VPackSlice s = slice.get(StaticStrings::RevisionTreeResumeHLC);
+          s.isString()) {
+        // use "resumeHLC" if it is present
+        requestResume = RevisionId::fromHLC(s.stringView());
+      } else if (VPackSlice s = slice.get(StaticStrings::RevisionTreeResume);
+                 s.isString()) {
+        // "resumeHLC" not present.
+        // now fall back to using "resume", which is deprecated
+        requestResume =
+            s.isNone() ? RevisionId::max() : RevisionId::fromSlice(s);
+      } else if (VPackSlice s = slice.get(StaticStrings::RevisionTreeResume);
+                 !s.isNone()) {
         ++stats.numFailedConnects;
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from leader at ") +
                           _config.leader.endpoint + url +
                           ": response field 'resume' is not a number");
-      }
-      requestResume = resumeSlice.isNone() ? RevisionId::max()
-                                           : RevisionId::fromSlice(resumeSlice);
-      if (VPackSlice s = slice.get(StaticStrings::RevisionTreeResumeHLC);
-          s.isString()) {
-        // use "resumeHLC" if it is present
-        requestResume = RevisionId{
-            basics::HybridLogicalClock::decodeTimeStamp(s.stringView())};
       }
 
       if (requestResume < RevisionId::max() && !isAborted()) {
@@ -2242,8 +2231,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
   // phase handling
   if (phase == PHASE_VALIDATE) {
-    // validation phase just returns ok if we got here (aborts above if data is
-    // invalid)
+    // validation phase just returns ok if we got here (aborts above if data
+    // is invalid)
     _config.progress.processedCollections.try_emplace(leaderCid, leaderName);
 
     return Result();
@@ -2284,9 +2273,9 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
           bool truncate = false;
 
           if (col->name() == StaticStrings::UsersCollection) {
-            // better not throw away the _users collection. otherwise it is gone
-            // and this may be a problem if the
-            // server crashes in-between.
+            // better not throw away the _users collection. otherwise it is
+            // gone and this may be a problem if the server crashes
+            // in-between.
             truncate = true;
           }
 
@@ -2484,8 +2473,9 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
     url += "&includeFoxxQueues=true";
   }
 
-  // use an optmization here for shard synchronization: only fetch the inventory
-  // including a single shard. this can greatly reduce the size of the response.
+  // use an optmization here for shard synchronization: only fetch the
+  // inventory including a single shard. this can greatly reduce the size of
+  // the response.
   if (ServerState::instance()->isDBServer() && !_config.isChild() &&
       _config.applier._skipCreateDrop &&
       _config.applier._restrictType ==
@@ -2612,8 +2602,8 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(
   // STEP 1: validate collection declarations from leader
   // ----------------------------------------------------------------------------------
 
-  // STEP 2: drop and re-create collections locally if they are also present on
-  // the leader
+  // STEP 2: drop and re-create collections locally if they are also present
+  // on the leader
   //  ------------------------------------------------------------------------------------
 
   // iterate over all collections from the leader...

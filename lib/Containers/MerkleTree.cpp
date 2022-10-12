@@ -788,7 +788,9 @@ MerkleTree<Hasher, BranchingBits>::diff(
     ++index1;
   }
   // Now the buckets they both have:
-  TRI_ASSERT(pos <= tree2->meta().rangeMin);
+  TRI_ASSERT(pos == tree2->meta().rangeMin ||
+             (pos == tree1->meta().rangeMax &&
+              tree2->meta().rangeMin > tree1->meta().rangeMax));
   // note that pos can be < tree2->meta().rangeMin if the trees do not overlap
   // at all
   std::uint64_t index2 = 0;
