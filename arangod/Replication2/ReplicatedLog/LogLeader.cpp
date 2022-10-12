@@ -168,6 +168,7 @@ void replicated_log::LogLeader::handleResolvedPromiseSet(
     ResolvedPromiseSet resolvedPromises,
     std::shared_ptr<ReplicatedLogMetrics> const& logMetrics) {
   auto const commitTp = InMemoryLogEntry::clock::now();
+
   for (auto const& it : resolvedPromises._commitedLogEntries) {
     using namespace std::chrono_literals;
     auto const entryDuration = commitTp - it.insertTp();
@@ -687,7 +688,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
           << "resolving promise for index " << it->first;
       toBeResolved.insert(_waitForQueue.extract(it++));
     }
-    return ResolvedPromiseSet{std::move(toBeResolved),
+    return ResolvedPromiseSet{_commitIndex, std::move(toBeResolved),
                               WaitForResult(newIndex, std::move(quorum)),
                               _inMemoryLog.slice(oldIndex, newIndex + 1)};
   } catch (std::exception const& e) {

@@ -182,6 +182,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
         cv.notify_one();
       });
 
+  bool acquireNewSnapshot = false;
   {
     // Invalidate snapshot status
     if (req.prevLogEntry == TermIndexPair{}) {
@@ -193,7 +194,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
         THROW_ARANGO_EXCEPTION(res);
       }
       ADB_PROD_ASSERT(_leaderId.has_value());
-      _stateHandle->acquireSnapshot(*_leaderId, req.prevLogEntry.index + 1);
+      acquireNewSnapshot = true;
     }
   }
 
@@ -320,14 +321,19 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   // checkResultAndCommitIndex if another request arrives before the previous
   // one was processed.
   dataGuard.unlock();
+  if (acquireNewSnapshot) {
+    _stateHandle->acquireSnapshot(*_leaderId, req.prevLogEntry.index + 1);
+  }
   return std::move(f)
       .then(std::move(checkResultAndCommitIndex))
-      .then([measureTime = std::move(measureTimeGuard)](auto&& res) mutable {
+      .then([measureTime = std::move(measureTimeGuard),
+             acquireNewSnapshot](auto&& res) mutable {
         measureTime.fire();
         auto&& [result, action] = res.get();
         // It is okay to fire here, because commitToMemoryAndResolve has
         // released the guard already.
         action.fire();
+
         return std::move(result);
       });
 }

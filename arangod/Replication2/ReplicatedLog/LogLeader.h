@@ -251,6 +251,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   };
 
   struct ResolvedPromiseSet {
+    LogIndex commitIndex;
     WaitForQueue _set;
     WaitForResult result;
     ::immer::flex_vector<InMemoryLogEntry,
