@@ -201,15 +201,18 @@ auto NewLeaderStateManager<S>::GuardedData::recoverEntries() {
 }
 
 template<typename S>
-void NewLeaderStateManager<S>::updateCommitIndex(LogIndex index) {
-  // TODO post resolving waitFor promises onto the scheduler
-  std::abort();
+void NewLeaderStateManager<S>::updateCommitIndex(LogIndex index) noexcept {
+  auto queue = _guardedData.getLockedGuard()->getResolvablePromises(index);
+  queue.resolveAllWith(futures::Try(index), []<typename F>(F&& f) noexcept {
+    // TODO post onto the scheduler
+    std::forward<F>(f)();
+  });
 }
 
 template<typename S>
-void NewLeaderStateManager<S>::GuardedData::updateCommitIndex(LogIndex index) {
-  // TODO post resolving waitFor promises onto the scheduler
-  std::abort();
+auto NewLeaderStateManager<S>::GuardedData::getResolvablePromises(
+    LogIndex index) noexcept -> WaitForQueue {
+  return _waitQueue.splitLowerThan(index);
 }
 
 template<typename S>
@@ -221,7 +224,7 @@ NewLeaderStateManager<S>::NewLeaderStateManager(
     : _loggerContext(std::move(loggerContext)),
       _metrics(std::move(metrics)),
       _guardedData{_loggerContext, *_metrics, std::move(leaderState),
-                   std::move(stream)} {}
+                   std::move(stream), WaitForQueue{}} {}
 
 template<typename S>
 auto NewLeaderStateManager<S>::resign() && noexcept
@@ -238,6 +241,13 @@ auto NewLeaderStateManager<S>::GuardedData::resign() && noexcept
   // resign the stream after the state, so the state won't try to use the
   // resigned stream.
   auto methods = std::move(*_stream).resign();
+  auto tryResult = futures::Try<LogIndex>(
+      std::make_exception_ptr(replicated_log::ParticipantResignedException(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE)));
+  _waitQueue.resolveAllWith(std::move(tryResult), []<typename F>(F&& f) {
+    // TODO post on scheduler instead
+    std::forward<F>(f)();
+  });
   return {std::move(core), std::move(methods)};
 }
 

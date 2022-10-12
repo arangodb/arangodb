@@ -23,17 +23,18 @@
 
 #pragma once
 
-#include <map>
-
-#include "Replication2/ReplicatedState/ReplicatedStateToken.h"
-#include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
-#include "Replication2/ReplicatedState/StateStatus.h"
-#include "Replication2/Streams/Streams.h"
-
-#include "Basics/Guarded.h"
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Replication2/ReplicatedState/ReplicatedStateToken.h"
+#include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
+#include "Replication2/ReplicatedState/StateStatus.h"
+#include "Replication2/ReplicatedState/WaitForQueue.h"
+#include "Replication2/Streams/Streams.h"
+
+#include "Basics/Guarded.h"
+
+#include <map>
 
 namespace arangodb {
 class Result;
@@ -182,7 +183,7 @@ struct NewLeaderStateManager
       std::shared_ptr<ProducerStreamProxy<EntryType, Serializer>> stream);
 
   void recoverEntries();
-  void updateCommitIndex(LogIndex index);
+  void updateCommitIndex(LogIndex index) noexcept;
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
@@ -192,7 +193,7 @@ struct NewLeaderStateManager
   std::shared_ptr<ReplicatedStateMetrics> const _metrics;
   struct GuardedData {
     auto recoverEntries();
-    void updateCommitIndex(LogIndex index);
+    auto getResolvablePromises(LogIndex index) noexcept -> WaitForQueue;
     [[nodiscard]] auto resign() && noexcept -> std::pair<
         std::unique_ptr<CoreType>,
         std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
@@ -201,6 +202,7 @@ struct NewLeaderStateManager
     ReplicatedStateMetrics const& _metrics;
     std::shared_ptr<IReplicatedLeaderState<S>> _leaderState;
     std::shared_ptr<ProducerStreamProxy<EntryType, Serializer>> _stream;
+    WaitForQueue _waitQueue;
   };
   Guarded<GuardedData> _guardedData;
 };
@@ -293,7 +295,7 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
 
   struct GuardedData {
     template<typename... Args>
-    GuardedData(Args&&... args)
+    explicit GuardedData(Args&&... args)
         : _currentManager(std::forward<Args>(args)...) {}
 
     std::variant<std::shared_ptr<NewUnconfiguredStateManager<S>>,
