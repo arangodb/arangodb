@@ -360,6 +360,7 @@ void IReplicatedFollowerState<S>::setStateManager(
 template<typename S>
 auto IReplicatedFollowerState<S>::waitForApplied(LogIndex index)
     -> futures::Future<futures::Unit> {
+  std::abort();
   //  if (auto manager = _manager.lock(); manager != nullptr) {
   //    return manager->waitForApplied(index);
   //  } else {

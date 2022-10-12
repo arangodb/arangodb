@@ -34,6 +34,7 @@
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/ReplicatedState/ReplicatedState.tpp"
 #include "Replication2/Methods.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
