@@ -58,7 +58,7 @@ for (let i = 0; i < 5000; ++i) {
 }
 
 
-function IteratorSuite(permuteConfigs) {
+function IteratorReadSuite(permuteConfigs) {
   'use strict';
 
   const prepare = function(ctx) {
@@ -217,6 +217,53 @@ function IteratorSuite(permuteConfigs) {
           assertEqual(index % 113, doc.value2);
         });
       });
+    }
+  }
+}
+
+
+function IteratorWriteSuite(permuteConfigs) {
+  'use strict';
+
+  const prepare = function(ctx) {
+    const col = ctx.collection(cn);
+    col.insert(vertices);
+    let ecol = ctx.collection(ecn);
+    ecol.insert(edges);
+  };
+
+  const permute = function(test) {
+    const run = function(ctx, opts) {
+      prepare(ctx);
+      try {
+        test(ctx, opts);
+      } finally {
+        ctx.abort();
+      }
+
+      db[cn].truncate();
+      db[ecn].truncate();
+    };
+    permuteConfigs(run);
+  };
+
+  return {
+    setUp: function () {
+      db._drop(cn);
+      let c = db._create(cn, { numberOfShards: 3 });
+      c.ensureIndex({ type: "persistent", fields: ["value1"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
+      if (!internal.isCluster()) {
+        c.ensureIndex({ type: "persistent", fields: ["uniqueValue"], unique: true, sparse: true });
+      }
+
+      db._drop(ecn);
+      db._createEdgeCollection(ecn, { numberOfShards: 3 });
+    },
+
+    tearDown: function () {
+      db._drop(cn);
+      db._drop(ecn);
     },
 
     testForwardIterationInsertFullScan: function () {
