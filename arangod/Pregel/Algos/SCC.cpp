@@ -87,7 +87,7 @@ struct SCCComputation
         // If this node doesn't have any parents or outgoing edges,
         // it can't be part of an SCC
         if (vertexState->parents.empty() || getEdgeCount() == 0) {
-          voteHalt(); // this makes the vertex inactive
+          voteHalt();  // this makes the vertex inactive
         } else {
           SenderMessage<uint64_t> message(pregelId(), vertexState->color);
           sendMessageToAllNeighbours(message);
