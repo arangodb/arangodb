@@ -107,8 +107,7 @@ struct ColorPropagation : public Algorithm<ColorPropagationValue, int8_t,
         _inputColorsFieldName(getInputColorsFieldName(userParams)),
         _outputColorsFieldName(getOutputColorsFieldName(userParams)),
         _equivalenceClassFieldName(getEquivalenceClassFieldName(userParams)),
-        _maxGss{getMaxGss(userParams)} {
-  }
+        _maxGss{getMaxGss(userParams)} {}
 
   [[nodiscard]] GraphFormat<ColorPropagationValue, int8_t>* inputFormat()
       const override;
