@@ -204,13 +204,6 @@ template<typename V, typename E, typename M>
 auto Worker<V, E, M>::_preGlobalSuperStep(RunGlobalSuperStep const& message)
     -> Result {
   const uint64_t gss = message.gss;
-  if (_expectedGSS != gss) {
-    return Result{
-        TRI_ERROR_BAD_PARAMETER,
-        fmt::format(
-            "Seems like this worker missed a gss, expected {} but got {}",
-            _expectedGSS, gss)};
-  }
 
   // write cache becomes the readable cache
   {
@@ -453,7 +446,6 @@ auto Worker<V, E, M>::_finishProcessing() -> ResultT<GlobalSuperStepFinished> {
   _makeStatusCallback()();
 
   _readCache->clear();  // no need to keep old messages around
-  _expectedGSS = _config._globalSuperstep + 1;
   _config._localSuperstep++;
   // only set the state here, because _processVertices checks for it
   _state = WorkerState::IDLE;
