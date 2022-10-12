@@ -253,8 +253,6 @@ TEST(RandomGeneratorTest, test_RandomGeneratorTest_ranges_int64_brute) {
       ASSERT_LE(value, upper);
       value = RandomGenerator::interval(upper, lower);
       ASSERT_EQ(value, upper);
-      value = RandomGenerator::random(lower, upper);
-      ASSERT_LE(value, upper);
     }
   }
 }
