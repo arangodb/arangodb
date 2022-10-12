@@ -757,10 +757,9 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
             // check if the filter condition can be executed on a DB server,
             // deterministically
-            if (!expr->willUseV8() && expr->isDeterministic() &&
-                (!ServerState::instance()->isRunningInCluster() ||
-                 expr->canRunOnDBServer(
-                     _plan->getAst()->query().vocbase().isOneShard()))) {
+            if (expr != nullptr &&
+                expr->canBeUsedInFilter(
+                    _plan->getAst()->query().vocbase().isOneShard())) {
               // Only do register this condition in case it can be executed
               // inside a TraversalNode. We need to check here and abort in
               // cases which are just not allowed, e.g. execution of user
