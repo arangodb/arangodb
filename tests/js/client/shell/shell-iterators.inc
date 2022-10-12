@@ -25,9 +25,8 @@
 // /
 // / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
-
-const jsunity = require('jsunity');
 const internal = require('internal');
+const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 const testHelper = require('@arangodb/test-helper');
 const deriveTestSuite = testHelper.deriveTestSuite;
@@ -39,7 +38,6 @@ const pad = function(value) {
   value = String(value);
   return Array(6 - value.length).join("0") + value;
 };
-
 
 let vertices = [];
 for (let i = 0; i < 5000; ++i) {
@@ -57,10 +55,8 @@ for (let i = 0; i < 5000; ++i) {
   });
 }
 
-
-function IteratorSuite(permuteConfigs) {
+function IteratorReadSuite(permuteConfigs) {
   'use strict';
-
   const prepare = function(ctx) {
     const col = ctx.collection(cn);
     col.insert(vertices);
@@ -83,8 +79,9 @@ function IteratorSuite(permuteConfigs) {
     permuteConfigs(run);
   };
 
+
   return {
-    setUp: function () {
+    setUpAll: function () {
       db._drop(cn);
       let c = db._create(cn, { numberOfShards: 3 });
       c.ensureIndex({ type: "persistent", fields: ["value1"] });
@@ -97,7 +94,7 @@ function IteratorSuite(permuteConfigs) {
       db._createEdgeCollection(ecn, { numberOfShards: 3 });
     },
 
-    tearDown: function () {
+    tearDownAll: function () {
       db._drop(cn);
       db._drop(ecn);
     },
@@ -217,6 +214,53 @@ function IteratorSuite(permuteConfigs) {
           assertEqual(index % 113, doc.value2);
         });
       });
+    }
+  };
+}
+
+
+function IteratorWriteSuite(permuteConfigs) {
+  'use strict';
+
+  const prepare = function(ctx) {
+    const col = ctx.collection(cn);
+    col.insert(vertices);
+    let ecol = ctx.collection(ecn);
+    ecol.insert(edges);
+  };
+
+  const permute = function(test) {
+    const run = function(ctx, opts) {
+      prepare(ctx);
+      try {
+        test(ctx, opts);
+      } finally {
+        ctx.abort();
+      }
+
+      db[cn].truncate();
+      db[ecn].truncate();
+    };
+    permuteConfigs(run);
+  };
+
+  return {
+    setUp: function () {
+      db._drop(cn);
+      let c = db._create(cn, { numberOfShards: 3 });
+      c.ensureIndex({ type: "persistent", fields: ["value1"] });
+      c.ensureIndex({ type: "persistent", fields: ["value2"] });
+      if (!internal.isCluster()) {
+        c.ensureIndex({ type: "persistent", fields: ["uniqueValue"], unique: true, sparse: true });
+      }
+
+      db._drop(ecn);
+      db._createEdgeCollection(ecn, { numberOfShards: 3 });
+    },
+
+    tearDown: function () {
+      db._drop(cn);
+      db._drop(ecn);
     },
 
     testForwardIterationInsertFullScan: function () {
@@ -380,7 +424,7 @@ function IteratorSuite(permuteConfigs) {
             INSERT { _from: "${cn}/blubb", _to: CONCAT("y", doc._to) } INTO @@c
             SORT doc._to ASC
             RETURN doc`,
-          { '@c': ecn }, opts).toArray();
+                               { '@c': ecn }, opts).toArray();
         assertEqual(5000 + 5000, tc.count());
         assertEqual(5000, result.length);
         result.forEach((doc, index) => {
@@ -406,7 +450,7 @@ function IteratorSuite(permuteConfigs) {
             INSERT { _from: "${cn}/blubb", _to: CONCAT("y", doc._to) } INTO @@c
             SORT doc._to ASC
             RETURN doc`,
-          { '@c': ecn }, opts).toArray();
+                               { '@c': ecn }, opts).toArray();
         assertEqual(5000 + 4994, tc.count());
         assertEqual(4994, result.length);
         result.forEach((doc, index) => {
@@ -589,47 +633,7 @@ function IteratorSuite(permuteConfigs) {
   };
 }
 
-function StandaloneAqlIteratorSuite() {
-  'use strict';
-
-  const ctx = {
-    query: (...args) => db._query(...args),
-    collection: (name) => db[name],
-    abort: () => {},
-  };
-  
-  let permute = function(run) {
-    [ {}, {intermediateCommitCount: 111} ].forEach((opts) => {
-      run(ctx, opts);
-    });
-  };
-
-  let suite = {};
-  deriveTestSuite(IteratorSuite(permute), suite, '_StandaloneAql');
-  return suite;
-}
-
-function TransactionIteratorSuite() {
-  'use strict';
-  
-  let permute = function(run) {
-    [ {}, /*{intermediateCommitCount: 111}*/ ].forEach((opts) => {
-      const trxOpts = {
-        collections: {
-          write: [cn, ecn]
-        },
-      };
-      const ctx = db._createTransaction(Object.assign(trxOpts, opts));
-      run(ctx, opts);
-    });
-  };
-  
-  let suite = {};
-  deriveTestSuite(IteratorSuite(permute), suite, '_StreamingTrx');
-  return suite;
-}
-
-jsunity.run(StandaloneAqlIteratorSuite);
-jsunity.run(TransactionIteratorSuite);
-
-return jsunity.done();
+exports.IteratorReadSuite = IteratorReadSuite;
+exports.IteratorWriteSuite = IteratorWriteSuite;
+exports.cn = cn;
+exports.ecn = ecn;
