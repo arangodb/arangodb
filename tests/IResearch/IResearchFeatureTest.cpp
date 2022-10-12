@@ -2090,7 +2090,7 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
     void operator()() {
       ++*count;
 
-      auto scopedLock = irs::make_lock_guard(*mutex);
+      std::lock_guard scopedLock{*mutex};
       feature->queue(arangodb::iresearch::ThreadGroup::_1, 10000ms, *this);
       cond->notify_all();
     }
@@ -2118,7 +2118,7 @@ TEST_F(IResearchFeatureTest, test_async_schedule_wait_indefinite) {
   std::mutex mutex;
   std::atomic<size_t> count = 0;
 
-  auto lock = irs::make_unique_lock(mutex);
+  std::unique_lock lock{mutex};
   feature.queue(arangodb::iresearch::ThreadGroup::_1, 0ms,
                 Task(deallocated, mutex, cond, count, feature));
 
@@ -2194,7 +2194,7 @@ TEST_F(IResearchFeatureTest, test_async_multi_run_task) {
   std::condition_variable cond;
   size_t count = 0;
   std::chrono::steady_clock::duration diff;
-  auto lock = irs::make_unique_lock(mutex);
+  std::unique_lock lock{mutex};
 
   {
     std::shared_ptr<std::atomic_bool> flag(
@@ -2217,7 +2217,7 @@ TEST_F(IResearchFeatureTest, test_async_multi_run_task) {
           feature->queue(arangodb::iresearch::ThreadGroup::_0, 100ms, *this);
           return;
         }
-        auto scopedLock = irs::make_lock_guard(*mutex);
+        std::lock_guard scopedLock{*mutex};
         cond->notify_all();
       }
     };
@@ -2244,7 +2244,7 @@ TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
   std::atomic_bool deallocated = false;
   std::condition_variable cond;
   std::mutex mutex;
-  auto lock = irs::make_unique_lock(mutex);
+  std::unique_lock lock{mutex};
 
   {
     arangodb::iresearch::IResearchFeature feature(server.server());
@@ -2262,7 +2262,7 @@ TEST_F(IResearchFeatureTest, test_async_deallocate_with_running_tasks) {
       arangodb::iresearch::IResearchFeature* feature;
 
       void operator()() {
-        auto scopedLock = irs::make_lock_guard(*mutex);
+        std::lock_guard lock{*mutex};
         cond->notify_all();
 
         feature->queue(arangodb::iresearch::ThreadGroup::_0, 100ms, *this);
@@ -2298,7 +2298,7 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
   std::mutex mutex;
   size_t count = 0;
   std::chrono::steady_clock::duration diff;
-  auto lock = irs::make_unique_lock(mutex);
+  std::unique_lock lock{mutex};
   {
     std::shared_ptr<std::atomic_bool> flag(
         &deallocated, [](std::atomic_bool* ptr) { *ptr = true; });
@@ -2320,7 +2320,7 @@ TEST_F(IResearchFeatureTest, test_async_schedule_task_resize_pool) {
           feature->queue(arangodb::iresearch::ThreadGroup::_0, 100ms, *this);
           return;
         }
-        auto scopedLock = irs::make_lock_guard(*mutex);
+        std::lock_guard lock{*mutex};
         cond->notify_all();
       }
     };
