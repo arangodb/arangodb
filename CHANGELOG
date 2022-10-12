@@ -8,6 +8,9 @@ devel
 
 * MDS-1019: Make user search case-insensitive and allow search by name.
 
+* BTS-465: Added tests for RandomGenerator and warning that other options
+  for creating random values that are not Mersenne are deprecated.
+
 * BTS-1008: Update react-autocomplete-input to fix single letter collection bug
   when creating a link in the views in the WebUI.
 
