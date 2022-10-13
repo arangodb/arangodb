@@ -60,6 +60,7 @@ struct Aggregate {
 
 template<typename T>
 struct AggregateCount {
+  AggregateCount() = default;
   AggregateCount(uint64_t countUntilFinished)
       : _countUntilFinished{countUntilFinished} {}
   auto aggregate(T message) -> bool {

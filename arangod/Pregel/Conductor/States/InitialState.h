@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Basics/Guarded.h"
+#include "Pregel/Messaging/Aggregate.h"
 #include "State.h"
 
 namespace arangodb::pregel {
@@ -35,6 +37,8 @@ struct Initial : State {
   Initial(Conductor& conductor);
   ~Initial() = default;
   auto run() -> std::optional<std::unique_ptr<State>> override;
+  auto receive(MessagePayload message)
+      -> std::optional<std::unique_ptr<State>> override;
   auto canBeCanceled() -> bool override { return false; }
   auto name() const -> std::string override { return "initial"; };
   auto isRunning() const -> bool override { return true; }
@@ -44,6 +48,7 @@ struct Initial : State {
   }
 
  private:
+  Guarded<AggregateCount<WorkerCreated>> _aggregate;
   auto _workerInitializations() const
       -> std::tuple<std::unordered_map<ServerID, CreateWorker>,
                     std::unordered_map<ShardID, ServerID>>;

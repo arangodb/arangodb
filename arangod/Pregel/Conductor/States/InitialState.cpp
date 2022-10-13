@@ -12,7 +12,7 @@ Initial::Initial(Conductor& conductor) : conductor{conductor} {
 }
 
 auto Initial::run() -> std::optional<std::unique_ptr<State>> {
-  auto [workerInitializations, leadingServerForShard] =
+  auto const& [workerInitializations, leadingServerForShard] =
       _workerInitializations();
 
   conductor._leadingServerForShard = leadingServerForShard;
@@ -22,21 +22,36 @@ auto Initial::run() -> std::optional<std::unique_ptr<State>> {
   }
   conductor._status = ConductorStatus::forWorkers(servers);
 
-  auto created =
-      conductor._workers.createWorkers(workerInitializations)
-          .thenValue([&](auto result) -> Result {
-            if (result.fail()) {
-              return Result{result.errorNumber(), result.errorMessage()};
-            }
-            return Result{};
-          })
-          .get();
-  if (created.fail()) {
-    LOG_PREGEL_CONDUCTOR_STATE("ae855", ERR)
-        << fmt::format("Loading state: {}", created.errorMessage());
+  return _aggregate.doUnderLock(
+      [&, workerInitializations = std::move(workerInitializations)](
+          auto& agg) -> std::optional<std::unique_ptr<State>> {
+        auto aggregate =
+            conductor._workers.createWorkers(workerInitializations);
+        if (aggregate.fail()) {
+          LOG_PREGEL_CONDUCTOR_STATE("ae855", ERR)
+              << fmt::format("Initial state: {}", aggregate.errorMessage());
+          return std::make_unique<Canceled>(conductor);
+        }
+        agg = aggregate.get();
+        return std::nullopt;
+      });
+}
 
+auto Initial::receive(MessagePayload message)
+    -> std::optional<std::unique_ptr<State>> {
+  auto explicitMessage = getResultTMessage<WorkerCreated>(message);
+  if (explicitMessage.fail()) {
+    LOG_PREGEL_CONDUCTOR_STATE("7698e", ERR) << explicitMessage.errorMessage();
     return std::make_unique<Canceled>(conductor);
   }
+
+  auto finishedAggregate = _aggregate.doUnderLock(
+      [&](auto& agg) { return agg.aggregate(explicitMessage.get()); });
+
+  if (!finishedAggregate) {
+    return std::nullopt;
+  }
+
   return std::make_unique<Loading>(conductor);
 }
 

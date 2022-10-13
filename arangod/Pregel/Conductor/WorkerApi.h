@@ -47,7 +47,7 @@ struct WorkerApi {
         _connection{std::move(connection)} {}
   [[nodiscard]] auto createWorkers(
       std::unordered_map<ServerID, CreateWorker> const& data)
-      -> futures::Future<Result>;
+      -> ResultT<AggregateCount<WorkerCreated>>;
   [[nodiscard]] auto loadGraph(LoadGraph const& graph)
       -> ResultT<Aggregate<GraphLoaded>>;
   [[nodiscard]] auto runGlobalSuperStep(
