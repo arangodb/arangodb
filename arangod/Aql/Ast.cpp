@@ -92,8 +92,11 @@ auto doNothingVisitor = [](AstNode const*) {};
 [[noreturn]] void throwFormattedError(arangodb::aql::QueryContext& query,
                                       ErrorCode code,
                                       std::string_view details) {
-  std::string msg =
-      arangodb::aql::QueryWarnings::buildFormattedString(code, details);
+  // ensure that details is null-terminated
+  // TODO: if we get rid of vsprintf in FillExceptionString, we don't
+  // need to pass a raw C-style string into it
+  std::string temp(details);
+  std::string msg = basics::Exception::FillExceptionString(code, temp.c_str());
   query.warnings().registerError(code, msg);
 }
 
@@ -3767,7 +3770,7 @@ AstNode* Ast::optimizeFunctionCall(
       std::string unescapedPattern;
       bool wildcardFound;
       bool wildcardIsLastChar;
-      std::tie(wildcardFound, wildcardIsLastChar) = AqlFunctionsInternalCache::inspectLikePattern(unescapedPattern, patternArg->getStringValue(), patternArg->getStringLength());
+      std::tie(wildcardFound, wildcardIsLastChar) = AqlFunctionsInternalCache::inspectLikePattern(unescapedPattern, patternArg->getStringView());
 
       if (!wildcardFound) {
         TRI_ASSERT(!wildcardIsLastChar);

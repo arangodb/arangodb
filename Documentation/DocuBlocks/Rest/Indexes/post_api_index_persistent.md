@@ -12,6 +12,12 @@ The collection name.
 @RESTBODYPARAM{type,string,required,string}
 Must be equal to `"persistent"`.
 
+@RESTBODYPARAM{name,string,optional,string}
+An easy-to-remember name for the index to look it up or refer to it in index hints.
+Index names are subject to the same character restrictions as collection names.
+If omitted, a name is auto-generated so that it is unique with respect to the
+collection, e.g. `idx_832910498`.
+
 @RESTBODYPARAM{fields,array,required,string}
 An array of attribute paths.
 

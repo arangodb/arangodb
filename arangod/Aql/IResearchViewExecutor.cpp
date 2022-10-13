@@ -553,12 +553,12 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
         vocbase.server().getFeature<IResearchAnalyzerFeature>();
     TRI_ASSERT(_trx.state());
     auto const& revision = _trx.state()->analyzersRevision();
-    auto getAnalyzer = [&](std::string_view shortName) {
+    auto getAnalyzer = [&](std::string_view shortName) -> FieldMeta::Analyzer {
       auto analyzer = analyzerFeature.get(shortName, vocbase, revision);
       if (!analyzer) {
-        return emptyAnalyzer();
+        return makeEmptyAnalyzer();
       }
-      return FieldMeta::Analyzer{std::move(analyzer), std::string{shortName}};
+      return {std::move(analyzer), std::string{shortName}};
     };
     _provider = meta->createProvider(getAnalyzer);
   }
@@ -727,8 +727,6 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
 
   // `_volatileSort` implies `_volatileFilter`
   if (infos().volatileFilter() || !_isInitialized) {
-    irs::Or root;
-
     iresearch::QueryContext queryCtx{
         .trx = &_trx,
         .ast = infos().plan().getAst(),
@@ -736,25 +734,28 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
         .index = _reader.get(),
         .ref = &infos().outVariable(),
         .filterOptimization = infos().filterOptimization(),
+        .namePrefix = nestedRoot(_reader->hasNestedFields()),
         .isSearchQuery = true,
-        .isOldMangling = infos().isOldMangling(),
-        .hasNestedFields = _reader->hasNestedFields()};
+        .isOldMangling = infos().isOldMangling()};
 
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so can't be a temporary.
-    FieldMeta::Analyzer const identity{IResearchAnalyzerFeature::identity()};
+    auto const emptyAnalyzer = makeEmptyAnalyzer();
     AnalyzerProvider* fieldAnalyzerProvider = nullptr;
-    auto const* contextAnalyzer = &identity;
+    auto const* contextAnalyzer = &FieldMeta::identity();
     if (!infos().isOldMangling()) {
       fieldAnalyzerProvider = &_provider;
-      contextAnalyzer = &emptyAnalyzer();
+      contextAnalyzer = &emptyAnalyzer;
     }
-    FilterContext const filterCtx{
-        .fieldAnalyzerProvider = fieldAnalyzerProvider,
-        .contextAnalyzer = *contextAnalyzer};
 
-    auto const rv = FilterFactory::filter(&root, queryCtx, filterCtx,
-                                          infos().filterCondition());
+    FilterContext const filterCtx{
+        .query = queryCtx,
+        .contextAnalyzer = *contextAnalyzer,
+        .fieldAnalyzerProvider = fieldAnalyzerProvider};
+
+    irs::Or root;
+    auto const rv =
+        FilterFactory::filter(&root, filterCtx, infos().filterCondition());
 
     if (rv.fail()) {
       arangodb::velocypack::Builder builder;

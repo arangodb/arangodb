@@ -29,18 +29,17 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-namespace arangodb {
-namespace pregel {
+namespace arangodb::pregel {
 
 typedef std::string AggregatorID;
 
 ///
 class IAggregator {
-  IAggregator(const IAggregator&) = delete;
   IAggregator& operator=(const IAggregator&) = delete;
 
  public:
   IAggregator() = default;
+  IAggregator(const IAggregator&) = delete;
   virtual ~IAggregator() = default;
 
   /// @brief Used when updating aggregator value locally
@@ -48,7 +47,7 @@ class IAggregator {
   /// @brief Used when updating aggregator value from remote
   virtual void parseAggregate(arangodb::velocypack::Slice const& slice) = 0;
 
-  virtual void const* getAggregatedValue() const = 0;
+  [[nodiscard]] virtual void const* getAggregatedValue() const = 0;
   /// @brief Value from superstep S-1 supplied by the conductor
   virtual void setAggregatedValue(arangodb::velocypack::Slice const& slice) = 0;
 
@@ -57,14 +56,14 @@ class IAggregator {
 
   virtual void reset() = 0;
 
-  virtual bool isConverging() const = 0;
+  [[nodiscard]] virtual bool isConverging() const = 0;
 };
 
 template<typename T>
 struct NumberAggregator : public IAggregator {
   static_assert(std::is_arithmetic<T>::value, "Type must be numeric");
 
-  NumberAggregator(T neutral, bool perm = false, bool conv = false)
+  explicit NumberAggregator(T neutral, bool perm = false, bool conv = false)
       : _value(neutral),
         _neutral(neutral),
         _permanent(perm),
@@ -75,7 +74,9 @@ struct NumberAggregator : public IAggregator {
     aggregate((void const*)(&f));
   };
 
-  void const* getAggregatedValue() const override { return &_value; };
+  [[nodiscard]] void const* getAggregatedValue() const override {
+    return &_value;
+  };
 
   void setAggregatedValue(arangodb::velocypack::Slice const& slice) override {
     _value = slice.getNumber<T>();
@@ -92,7 +93,7 @@ struct NumberAggregator : public IAggregator {
     }
   }
 
-  bool isConverging() const override { return _converging; }
+  [[nodiscard]] bool isConverging() const override { return _converging; }
 
  protected:
   T _value, _neutral;
@@ -153,7 +154,7 @@ struct OverwriteAggregator : public NumberAggregator<T> {
 
 /// always initializes to true.
 struct BoolOrAggregator : public IAggregator {
-  BoolOrAggregator(bool perm = false) : _permanent(perm) {}
+  explicit BoolOrAggregator(bool perm = false) : _permanent(perm) {}
 
   void aggregate(void const* valuePtr) override {
     _value = _value || *((bool*)valuePtr);
@@ -163,7 +164,9 @@ struct BoolOrAggregator : public IAggregator {
     _value = _value || slice.getBool();
   }
 
-  void const* getAggregatedValue() const override { return &_value; };
+  [[nodiscard]] void const* getAggregatedValue() const override {
+    return &_value;
+  };
   void setAggregatedValue(arangodb::velocypack::Slice const& slice) override {
     _value = slice.getBool();
   }
@@ -179,10 +182,9 @@ struct BoolOrAggregator : public IAggregator {
     }
   }
 
-  bool isConverging() const override { return false; }
+  [[nodiscard]] bool isConverging() const override { return false; }
 
  protected:
   bool _value = false, _permanent;
 };
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel

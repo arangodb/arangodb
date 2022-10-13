@@ -40,6 +40,9 @@
 #include "Pregel/Algos/ShortestPath.h"
 #include "Pregel/Algos/WCC.h"
 #include "Pregel/Utils.h"
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+#include "Pregel/Algos/ReadWrite.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -77,7 +80,13 @@ IAlgorithm* AlgoRegistry::createAlgorithm(
     return new algos::DMID(server, userParams);
   } else if (algorithm == "wcc") {
     return new algos::WCC(server, userParams);
-  } else if (algorithm == algos::accumulators::pregel_algorithm_name) {
+  }
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+  else if (algorithm == "readwrite") {
+    return new algos::ReadWrite(server, userParams);
+  }
+#endif
+  else if (algorithm == algos::accumulators::pregel_algorithm_name) {
     return new algos::accumulators::ProgrammablePregelAlgorithm(server,
                                                                 userParams);
   } else {
@@ -159,7 +168,14 @@ template<typename V, typename E, typename M>
   } else if (algorithm == "wcc") {
     return createWorker(vocbase, new algos::WCC(server, userParams), body,
                         feature);
-  } else if (algorithm == algos::accumulators::pregel_algorithm_name) {
+  }
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+  else if (algorithm == "readwrite") {
+    return createWorker(vocbase, new algos::ReadWrite(server, userParams), body,
+                        feature);
+  }
+#endif
+  else if (algorithm == algos::accumulators::pregel_algorithm_name) {
     return createWorker(vocbase,
                         new algos::accumulators::ProgrammablePregelAlgorithm(
                             server, userParams),

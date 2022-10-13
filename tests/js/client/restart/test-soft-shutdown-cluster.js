@@ -1,3 +1,4 @@
+
 /*jshint globalstrict:false, strict:false */
 /* global getOptions, assertTrue, assertFalse, assertEqual, arango */
 
@@ -44,6 +45,9 @@ function testSuite() {
 
   return {
     setUp : function() {
+      if (coordinator && !coordinator.checkArangoAlive()) {
+        throw new Error("coordinator not healthy!");
+      }
       db._drop(cn);
       let collection = db._create(cn, {numberOfShards:2, replicationFactor:2});
       let docs = [];
@@ -63,9 +67,12 @@ function testSuite() {
       // Every test is supposed to initiate a soft shutdown
       // hence, once we tear down the test we expect
       // the coordinator to be gone
-      coordinator.waitForInstanceShutdown(30);
-      coordinator.restartOneInstance();
-      coordinator.checkArangoConnection(10);
+      if (coordinator.waitForInstanceShutdown(30)) {
+        coordinator.restartOneInstance();
+        coordinator.checkArangoConnection(10);
+      } else {
+        throw new Error("instance shutdown of coordinator failed!");
+      }
       // we might have been connected to the coordinator that
       // has been shut down
       db._drop(cn);

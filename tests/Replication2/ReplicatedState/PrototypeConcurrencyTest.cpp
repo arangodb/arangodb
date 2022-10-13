@@ -40,6 +40,7 @@ using namespace arangodb::replication2::replicated_state::prototype;
 using namespace arangodb::replication2::test;
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/Mocks/MockStatePersistorInterface.h"
 
 namespace {
 struct MockPrototypeLeaderInterface : public IPrototypeLeaderInterface {
@@ -102,8 +103,8 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
     leader->triggerAsyncReplication();
 
     leader->waitForLeadership().get();
-    auto replicatedState =
-        feature->createReplicatedState("prototype-state", leaderLog);
+    auto replicatedState = feature->createReplicatedState(
+        "prototype-state", leaderLog, statePersistor);
     replicatedState->start(
         std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
         std::nullopt);
@@ -112,8 +113,8 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
     TRI_ASSERT(leaderState != nullptr);
     networkMock->addLeaderState("leader", leaderState);
 
-    replicatedState =
-        feature->createReplicatedState("prototype-state", followerLog);
+    replicatedState = feature->createReplicatedState(
+        "prototype-state", followerLog, statePersistor);
     replicatedState->start(
         std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
         std::nullopt);
@@ -149,14 +150,18 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
       participants.emplace(participant->getParticipantId(), ParticipantFlags{});
     }
     auto participantsConfig =
-        std::make_shared<agency::ParticipantsConfig>(agency::ParticipantsConfig{
-            .generation = 1,
-            .participants = std::move(participants),
-        });
+        std::make_shared<replication2::agency::ParticipantsConfig>(
+            replication2::agency::ParticipantsConfig{
+                .generation = 1,
+                .participants = std::move(participants),
+            });
     return log->becomeLeader(std::move(id), term, follower,
                              std::move(participantsConfig),
                              std::make_shared<FakeFailureOracle>());
   }
+
+  std::shared_ptr<MockStatePersistorInterface> statePersistor =
+      std::make_shared<MockStatePersistorInterface>();
 
   std::shared_ptr<ReplicatedStateFeature> feature =
       std::make_shared<ReplicatedStateFeature>();

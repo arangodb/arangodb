@@ -52,7 +52,7 @@ const Graph = graphGeneration.Graph;
 const epsilon = 0.00001;
 
 /**
- * Assert that expected and actual are equal up to the tolerance epsilon.
+ * Assert that expected and actual are of the same type and that they are equal up to the tolerance epsilon.
  * @param expected the expected value, a number
  * @param actual the actual value, a number
  * @param epsilon the tolerance, a number
@@ -62,6 +62,9 @@ const epsilon = 0.00001;
  * @param context the context in that the test is performed, output after the values
  */
 const assertAlmostEquals = function (expected, actual, epsilon, msg, expectedDescription, actualDescription, context) {
+    assertEqual(typeof expected, typeof actual,
+        `Different types: type of ${expectedDescription} is ${typeof expected}, ` +
+        `type of ${actualDescription} is ${typeof actual}. ` + `${context}`);
     if (Math.abs(expected - actual) >= epsilon) {
         console.error(msg + ":");
         console.error("    " + expectedDescription + ":");
@@ -974,6 +977,39 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
 
                 for (let component of computedComponents) {
                     assertEqual(component.size, 1);
+                }
+            },
+
+            testSCCTwoCliquesWithEdge: function () {
+                // 1st clique
+                const label1 = "v1";
+                const size = 3;
+                const {
+                    vertices,
+                    edges
+                } = graphGenerator(verticesEdgesGenerator(vColl, label1)).makeBidirectedClique(size);
+                db[vColl].save(vertices);
+                db[eColl].save(edges);
+
+                // 2nd clique
+                const label2 = "v2";
+                const resultC = graphGenerator(verticesEdgesGenerator(vColl, label2)).makeBidirectedClique(size);
+                db[vColl].save(resultC.vertices);
+                db[eColl].save(resultC.edges);
+
+                // connect the cliques with one directed edge
+                const e = [makeEdgesBetweenVertices(vColl, 0, label1, 0, label2)];
+                db[eColl].save(e);
+
+                const computedComponents = pregelRunSmallInstanceGetComponents("scc", graphName, {
+                    resultField: "result",
+                    store: true
+                });
+                assertEqual(computedComponents.length, 2,
+                    `We expected 2 components, instead got ${JSON.stringify(computedComponents)}`);
+
+                for (let component of computedComponents) {
+                    assertEqual(component.size, 3);
                 }
             },
         };
