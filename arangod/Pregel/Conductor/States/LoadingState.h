@@ -48,7 +48,6 @@ struct Loading : State {
   }
 
  private:
-  auto _createWorkers() -> futures::Future<Result>;
   Guarded<Aggregate<GraphLoaded>> _aggregate;
 };
 

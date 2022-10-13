@@ -23,13 +23,6 @@ Loading::~Loading() {
 }
 
 auto Loading::run() -> std::optional<std::unique_ptr<State>> {
-  auto create = _createWorkers().get();
-  if (create.fail()) {
-    LOG_PREGEL_CONDUCTOR_STATE("ae855", ERR)
-        << fmt::format("Loading state: {}", create.errorMessage());
-    return std::make_unique<Canceled>(conductor);
-  }
-
   LOG_PREGEL_CONDUCTOR_STATE("3a255", DEBUG)
       << "Telling workers to load the data";
   return _aggregate.doUnderLock(
@@ -37,20 +30,11 @@ auto Loading::run() -> std::optional<std::unique_ptr<State>> {
         auto aggregate = conductor._workers.loadGraph(LoadGraph{});
         if (aggregate.fail()) {
           LOG_PREGEL_CONDUCTOR_STATE("dddad", ERR) << aggregate.errorMessage();
-          return std::make_unique<Canceled>(conductor);
+          return std::make_unique<FatalError>(conductor);
         }
         agg = aggregate.get();
         return std::nullopt;
       });
-}
-
-auto Loading::_createWorkers() -> futures::Future<Result> {
-  return conductor._initializeWorkers().thenValue([&](auto result) -> Result {
-    if (result.fail()) {
-      return Result{result.errorNumber(), result.errorMessage()};
-    }
-    return Result{};
-  });
 }
 
 auto Loading::receive(MessagePayload message)
@@ -58,7 +42,7 @@ auto Loading::receive(MessagePayload message)
   auto explicitMessage = getResultTMessage<GraphLoaded>(message);
   if (explicitMessage.fail()) {
     LOG_PREGEL_CONDUCTOR_STATE("7698e", ERR) << explicitMessage.errorMessage();
-    return std::make_unique<Canceled>(conductor);
+    return std::make_unique<FatalError>(conductor);
   }
   auto finishedAggregate =
       _aggregate.doUnderLock([message = std::move(explicitMessage).get()](

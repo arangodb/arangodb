@@ -42,6 +42,11 @@ struct Initial : State {
       -> std::optional<std::chrono::system_clock::time_point> override {
     return std::nullopt;
   }
+
+ private:
+  auto _workerInitializations() const
+      -> std::tuple<std::unordered_map<ServerID, CreateWorker>,
+                    std::unordered_map<ShardID, ServerID>>;
 };
 
 }  // namespace conductor
