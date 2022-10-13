@@ -31,19 +31,19 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include "Logger/LogContextKeys.h"
 #include "Metrics/Gauge.h"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
+#include "Replication2/MetricsHelper.h"
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/LazyDeserializingIterator.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
-#include "Replication2/Streams/StreamSpecification.h"
-#include "Replication2/Streams/Streams.h"
-
-#include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
-#include "Logger/LogContextKeys.h"
-#include "Replication2/MetricsHelper.h"
-#include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/Streams/StreamSpecification.h"
+#include "Replication2/Streams/Streams.h"
+#include "Scheduler/SchedulerFeature.h"
 
 namespace arangodb::replication2::replicated_state {
 
@@ -86,7 +86,18 @@ void ReplicatedStateManager<S>::updateCommitIndex(LogIndex index) {
   auto guard = _guarded.getLockedGuard();
 
   std::visit(overload{
-                 [index](auto& manager) { manager->updateCommitIndex(index); },
+                 [index](auto& manager) {
+                   // temporary hack: post on the scheduler to avoid deadlocks
+                   // with the log
+                   auto& scheduler = *SchedulerFeature::SCHEDULER;
+                   scheduler.queue(
+                       RequestLane::CLUSTER_INTERNAL,
+                       [weak = manager->weak_from_this(), index]() mutable {
+                         if (auto manager = weak.lock(); manager != nullptr) {
+                           manager->updateCommitIndex(index);
+                         }
+                       });
+                 },
                  [](std::shared_ptr<NewUnconfiguredStateManager<S>>& manager) {
                    ADB_PROD_ASSERT(false) << "update commit index called on "
                                              "an unconfigured state manager";
@@ -144,7 +155,14 @@ void ReplicatedStateManager<S>::leadershipEstablished(
                       static_strings::StringLeader),
                   _metrics, std::move(leaderState), std::move(stream)));
 
-  manager->recoverEntries();
+  // temporary hack: post on the scheduler to avoid deadlocks with the log
+  auto& scheduler = *SchedulerFeature::SCHEDULER;
+  scheduler.queue(RequestLane::CLUSTER_INTERNAL,
+                  [weak = manager->weak_from_this()]() mutable {
+                    if (auto manager = weak.lock(); manager != nullptr) {
+                      manager->recoverEntries();
+                    }
+                  });
 }
 
 template<typename S>
@@ -254,7 +272,17 @@ auto NewLeaderStateManager<S>::GuardedData::resign() && noexcept
 template<typename S>
 void NewFollowerStateManager<S>::updateCommitIndex(LogIndex commitIndex) {
   auto future = _guardedData.getLockedGuard()->updateCommitIndex(commitIndex);
-  // TODO
+  // note that we release the lock before calling "then"
+
+  std::move(future).then([weak = this->weak_from_this(), commitIndex](auto&&) {
+    if (auto self = weak.lock(); self != nullptr) {
+      // TODO this update here happens asynchronously to the corresponding
+      //      applyEntries. can this be a problem?
+      auto guard = self->_guardedData.getLockedGuard();
+      guard->_lastAppliedIndex =
+          std::max(guard->_lastAppliedIndex, commitIndex);
+    }
+  });
 }
 
 template<typename S>
@@ -265,19 +293,7 @@ auto NewFollowerStateManager<S>::GuardedData::updateCommitIndex(
   auto deserializedIter = std::make_unique<
       LazyDeserializingIterator<EntryType const&, Deserializer>>(
       std::move(logIter));
-  auto fut =
-      _followerState->applyEntries(std::move(deserializedIter))
-          .then([](auto&&) {
-            ADB_PROD_ASSERT(false)
-                << "TODO Finished implementing updateCommitIndex/applyEntries";
-          });
-  // TODO update _lastAppliedIndex after applying entries
-  // TODO handle concurrent calls to updateCommitIndex while applyEntries is
-  //      running
-  // get log iterator follower->applyEntries(iter); todo applyEntries
-  // returns a future. Is this necessary?
-  //      If yes, we have to deal with this async behaviour here.
-  return fut;
+  return _followerState->applyEntries(std::move(deserializedIter));
 }
 
 template<typename S>
@@ -293,21 +309,31 @@ NewFollowerStateManager<S>::NewFollowerStateManager(
 template<typename S>
 void NewFollowerStateManager<S>::acquireSnapshot(ServerID leader,
                                                  LogIndex index) {
+  LOG_CTX("c4d6b", DEBUG, _loggerContext) << "Acquiring snapshot";
   auto fut = _guardedData.doUnderLock([&](auto& self) {
     return self._followerState->acquireSnapshot(std::move(leader), index);
   });
-  // note that we release the lock before calling then to avoid deadlocks
-  std::move(fut).thenFinal(
-      [weak = this->weak_from_this()](futures::Try<Result>&& tryResult) {
-        if (auto self = weak.lock(); self != nullptr) {
-          // TODO handle errors
-          ADB_PROD_ASSERT(tryResult.hasValue());
-          ADB_PROD_ASSERT(tryResult.get().ok());
-          auto guard = self->_guardedData.getLockedGuard();
-          auto result = guard->_logMethods->snapshotCompleted();
-          // TODO handle errors
-          ADB_PROD_ASSERT(result.ok());
-        }
+  // note that we release the lock before calling "then" to avoid deadlocks
+
+  // temporary hack: post on the scheduler to avoid deadlocks with the log
+  auto& scheduler = *SchedulerFeature::SCHEDULER;
+  scheduler.queue(
+      RequestLane::CLUSTER_INTERNAL,
+      [weak = this->weak_from_this(), fut = std::move(fut)]() mutable {
+        std::move(fut).thenFinal(
+            [weak = std::move(weak)](futures::Try<Result>&& tryResult) {
+              if (auto self = weak.lock(); self != nullptr) {
+                LOG_CTX("13f07", DEBUG, self->_loggerContext)
+                    << "snapshot completed, informing replicated log";
+                // TODO handle errors
+                ADB_PROD_ASSERT(tryResult.hasValue());
+                ADB_PROD_ASSERT(tryResult.get().ok());
+                auto guard = self->_guardedData.getLockedGuard();
+                auto result = guard->_logMethods->snapshotCompleted();
+                // TODO handle errors
+                ADB_PROD_ASSERT(result.ok());
+              }
+            });
       });
 }
 
