@@ -74,6 +74,7 @@
 
 #include <velocypack/Iterator.h>
 
+#include <memory>
 #include <optional>
 
 #ifndef USE_PLAN_CACHE
@@ -949,7 +950,7 @@ QueryResult Query::parse() {
 }
 
 /// @brief explain an AQL query
-QueryResult Query::explain() {
+QueryResult Query::explain(bool optimize) {
   QueryResult result;
 
   try {
@@ -986,14 +987,6 @@ QueryResult Query::explain() {
     TRI_ASSERT(plan != nullptr);
     injectVertexCollectionIntoGraphNodes(*plan);
 
-    // Run the query optimizer:
-    enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
-    Optimizer opt(_queryOptions.maxNumberOfPlans);
-    // get enabled/disabled rules
-    opt.createPlans(std::move(plan), _queryOptions, true);
-
-    enterState(QueryExecutionState::ValueType::FINALIZATION);
-
     auto preparePlanForSerialization =
         [&](std::unique_ptr<ExecutionPlan> const& plan) {
           plan->findVarUsage();
@@ -1007,35 +1000,48 @@ QueryResult Query::explain() {
         _queryOptions.verbosePlans, _queryOptions.explainInternals,
         _queryOptions.explainRegisters == ExplainRegisterPlan::Yes);
 
-    if (_queryOptions.allPlans) {
-      result.data = std::make_shared<VPackBuilder>();
-      {
-        VPackArrayBuilder guard(result.data.get());
+    std::unique_ptr<Optimizer> opt = nullptr;
+    if (optimize) {
+      // Run the query optimizer:
+      enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
+      opt = std::make_unique<Optimizer>(_queryOptions.maxNumberOfPlans);
+      // get enabled/disabled rules
+      opt->createPlans(std::move(plan), _queryOptions, true);
 
-        auto const& plans = opt.getPlans();
-        for (auto& it : plans) {
-          auto& pln = it.first;
-          TRI_ASSERT(pln != nullptr);
+      enterState(QueryExecutionState::ValueType::FINALIZATION);
+      if (_queryOptions.allPlans) {
+        result.data = std::make_shared<VPackBuilder>();
+        {
+          VPackArrayBuilder guard(result.data.get());
 
-          preparePlanForSerialization(pln);
-          pln->toVelocyPack(*result.data.get(), parser.ast(), flags);
+          auto const& plans = opt->getPlans();
+          for (auto& it : plans) {
+            auto& pln = it.first;
+            TRI_ASSERT(pln != nullptr);
+
+            preparePlanForSerialization(pln);
+            pln->toVelocyPack(*result.data.get(), parser.ast(), flags);
+          }
         }
+        // cacheability not available here
+        result.cached = false;
+      } else {
+        // Now plan and all derived plans belong to the optimizer
+        std::unique_ptr<ExecutionPlan> bestPlan =
+            opt->stealBest();  // Now we own the best one again
+        TRI_ASSERT(bestPlan != nullptr);
+
+        preparePlanForSerialization(bestPlan);
+        result.data = bestPlan->toVelocyPack(parser.ast(), flags);
       }
-      // cacheability not available here
-      result.cached = false;
     } else {
-      // Now plan and all derived plans belong to the optimizer
-      std::unique_ptr<ExecutionPlan> bestPlan =
-          opt.stealBest();  // Now we own the best one again
-      TRI_ASSERT(bestPlan != nullptr);
-
-      preparePlanForSerialization(bestPlan);
-      result.data = bestPlan->toVelocyPack(parser.ast(), flags);
-
-      // cacheability
-      result.cached = (!_queryString.empty() && !isModificationQuery() &&
-                       _warnings.empty() && _ast->root()->isCacheable());
+      preparePlanForSerialization(plan);
+      result.data = plan->toVelocyPack(parser.ast(), flags);
     }
+
+    // cacheability
+    result.cached = (!_queryString.empty() && !isModificationQuery() &&
+                     _warnings.empty() && _ast->root()->isCacheable());
 
     // technically no need to commit, as we are only explaining here
     auto commitResult = _trx->commit();
@@ -1047,10 +1053,11 @@ QueryResult Query::explain() {
     {
       VPackObjectBuilder guard(result.extra.get(), /*unindexed*/ true);
       _warnings.toVelocyPack(*result.extra);
-      result.extra->add(VPackValue("stats"));
-      opt._stats.toVelocyPack(*result.extra);
+      if (opt != nullptr) {
+        result.extra->add(VPackValue("stats"));
+        opt->_stats.toVelocyPack(*result.extra);
+      }
     }
-
   } catch (Exception const& ex) {
     result.reset(Result(
         ex.code(),

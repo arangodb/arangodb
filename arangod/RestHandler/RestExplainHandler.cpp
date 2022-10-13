@@ -27,6 +27,7 @@
 #include "Aql/QueryString.h"
 #include "Logger/Logger.h"
 #include "Transaction/StandaloneContext.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 
@@ -110,7 +111,15 @@ void RestExplainHandler::explainQuery() {
       transaction::StandaloneContext::Create(_vocbase),
       aql::QueryString(queryString), std::move(bindBuilder),
       aql::QueryOptions(optionsSlice));
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool optimize = _request->parsedValue("optimize", true);
+
+  LOG_DEVEL << "Optimize: " << std::boolalpha << optimize;
+  auto queryResult = query->explain(optimize);
+#else
   auto queryResult = query->explain();
+#endif
 
   if (queryResult.result.fail()) {
     generateError(queryResult.result);
