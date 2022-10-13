@@ -45,6 +45,7 @@ namespace {
 inline int get_posix_fadvice(irs::IOAdvice advice) noexcept {
   switch (advice) {
     case irs::IOAdvice::NORMAL:
+    case irs::IOAdvice::DIRECT_ACCESS:
       return IR_FADVICE_NORMAL;
     case irs::IOAdvice::SEQUENTIAL:
       return IR_FADVICE_SEQUENTIAL;
