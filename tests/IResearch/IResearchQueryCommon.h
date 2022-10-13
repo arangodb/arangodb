@@ -322,8 +322,8 @@ class QueryTest : public IResearchQueryTest {
     EXPECT_EQ(expected, count);
     EXPECT_EQ(count, cids.size());
     auto r = executeQuery(
-        _vocbase, fmt::format("FOR d IN {} SEARCH 1 == 1"
-                              " OPTIONS {{ waitForSync: true }} RETURN d",
+        _vocbase, absl::Substitute("FOR d IN $0 SEARCH 1 == 1"
+                              " OPTIONS { waitForSync: true } RETURN d",
                               viewName));
     EXPECT_TRUE(r.result.ok()) << r.result.errorMessage();
   }
