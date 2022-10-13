@@ -296,7 +296,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
         coll->shardMapToVelocyPack(_builder);
       } else {
         // without details
-        coll->shardKeysToVelocyPack(_builder);
+        coll->shardIDsToVelocyPack(_builder);
       }
     }
     return standardResponse();
