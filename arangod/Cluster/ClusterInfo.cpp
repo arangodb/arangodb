@@ -6225,9 +6225,6 @@ bool ClusterInfo::getResponsibleServersReplication2(
     }
   }
 
-  auto& clusterFeature = _server.getFeature<ClusterFeature>();
-  auto& agencyCache = clusterFeature.agencyCache();
-
   bool isReplicationTwo = false;
   while (true) {
     TRI_ASSERT(result.empty());
