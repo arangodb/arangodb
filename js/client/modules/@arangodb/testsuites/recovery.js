@@ -129,8 +129,7 @@ function runArangodRecovery (params, useEncryption) {
   process.env["state-file"] = params.stateFile;
   process.env["crash-log"] = params.crashLog;
   process.env["isAsan"] = params.options.isAsan;
-  //params.instanceInfo.exitStatus =
-    pu.executeAndWait(
+  params.instanceInfo.pid = pu.executeAndWait(
     binary,
     argv,
       params.options,
@@ -140,7 +139,7 @@ function runArangodRecovery (params, useEncryption) {
       0,
       params.instanceInfo);
   if (params.setup && !params.instanceInfo.exitStatus.hasOwnProperty('signal')) {
-    let ret= {
+    return {
       status: false,
       timeout: false,
       message: `setup of test didn't crash as expected: ${JSON.stringify(params.instanceInfo.exitStatus)}`
