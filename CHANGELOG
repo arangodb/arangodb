@@ -25,6 +25,9 @@ v3.8.8 (XXXX-XX-XX)
   be ambiguous under some circumstances, which could prevent shards from 
   getting into sync.
 
+* Log better diagnosis information in case multiple servers in a cluster are
+  configured to use the same endpoint.
+
 * Fixed BTS-850: Fixed the removal of already deleted orphan collections out of
   a graph definition. The removal of an already deleted orphan collection out of
   a graph definition failed and has been rejected in case the collection got
