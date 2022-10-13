@@ -303,7 +303,8 @@ class QueryTest : public IResearchQueryTest {
     }
   }
 
-  void checkView(LogicalView const& view, size_t expected = 2) {
+  void checkView(LogicalView const& view, size_t expected = 2,
+                 std::string_view viewName = "testView") {
     containers::FlatHashSet<std::pair<DataSourceId, IndexId>> cids;
     size_t count = 0;
     view.visitCollections([&](DataSourceId cid, LogicalView::Indexes* indexes) {
@@ -320,9 +321,10 @@ class QueryTest : public IResearchQueryTest {
     });
     EXPECT_EQ(expected, count);
     EXPECT_EQ(count, cids.size());
-    auto r = executeQuery(_vocbase,
-                          "FOR d IN testView SEARCH 1 == 1"
-                          " OPTIONS { waitForSync: true } RETURN d");
+    auto r = executeQuery(
+        _vocbase, absl::Substitute("FOR d IN $0 SEARCH 1 == 1"
+                                   " OPTIONS { waitForSync: true } RETURN d",
+                                   viewName));
     EXPECT_TRUE(r.result.ok()) << r.result.errorMessage();
   }
 
