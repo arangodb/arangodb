@@ -3358,8 +3358,10 @@ Result ClusterInfo::createCollectionsCoordinator(
 
         auto builder = std::make_shared<VPackBuilder>();
         velocypack::serialize(*builder, spec);
-        auto path = basics::StringUtils::joinT("/", "Target/ReplicatedStates",
-                                               databaseName, spec.id);
+        auto path = paths::aliases::target()
+                        ->replicatedLogs()
+                        ->database(databaseName)
+                        ->log(spec.id);
 
         opers.emplace_back(AgencyOperation(path, AgencyValueOperationType::SET,
                                            std::move(builder)));
