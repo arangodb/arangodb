@@ -218,7 +218,7 @@ const optionsDefaults = {
   'skipNondeterministic': false,
   'skipGrey': false,
   'onlyGrey': false,
-  'oneTestTimeout': (isAsan? 15 : 25) * 60,
+  'oneTestTimeout': (isAsan? 25 : 15) * 60,
   'isAsan': isAsan,
   'skipTimeCritical': false,
   'test': undefined,
