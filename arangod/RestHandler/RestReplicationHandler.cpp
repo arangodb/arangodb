@@ -3335,7 +3335,6 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
       RevisionId rev;
       if (encodeAsHLC) {
         rev = RevisionId::fromHLC(entry.stringView());
-        ;
       } else {
         rev = RevisionId::fromSlice(entry);
       }
