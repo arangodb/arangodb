@@ -29,6 +29,7 @@ const arangodb = require("@arangodb");
 const _ = require('lodash');
 const db = arangodb.db;
 const helper = require('@arangodb/test-helper');
+const request = require("@arangodb/request");
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const lp = require("@arangodb/testutils/replicated-logs-predicates");
 const lhttp = require('@arangodb/testutils/replicated-logs-http-helper');
@@ -612,6 +613,45 @@ const replicatedStateDocumentStoreSuiteReplication1 = function () {
   };
 };
 
+/**
+ * This test suite checks the correctness of a DocumentState snapshot transfer and the related REST APIs.
+ */
+const replicatedStateSnapshotTransferSuite = function () {
+  let collection = null;
+  let shards = null;
+  let shardId = null;
+  let logId = null;
+
+  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+      lh.testHelperFunctions(database, {replicationVersion: "2"});
+
+  return {
+    setUpAll,
+    tearDownAll,
+    setUp: setUpAnd(() => {
+      collection = db._create(collectionName, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3});
+      shards = collection.shards();
+      shardId = shards[0];
+      logId = shardId.slice(1);
+    }),
+    tearDown: tearDownAnd(() => {
+      if (collection !== null) {
+        collection.drop();
+      }
+      collection = null;
+    }),
+
+    testLeaderRestAPI: function () {
+      let {leader} = lh.getReplicatedLogLeaderPlan(database, logId);
+      let leaderUrl = lh.getServerUrl(leader);
+      let url = `${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot?waitForIndex=0`;
+      let result = request.get({url: url});
+      lh.checkRequestResult(result);
+    },
+  };
+};
+
+
 function replicatedStateFollowerSuiteV1() { return makeTestSuites(replicatedStateFollowerSuite)[0]; }
 function replicatedStateFollowerSuiteV2() { return makeTestSuites(replicatedStateFollowerSuite)[1]; }
 
@@ -621,5 +661,6 @@ jsunity.run(replicatedStateDocumentStoreSuiteReplication1);
 jsunity.run(replicatedStateFollowerSuiteV1);
 jsunity.run(replicatedStateFollowerSuiteV2);
 jsunity.run(replicatedStateRecoverySuite);
+jsunity.run(replicatedStateSnapshotTransferSuite);
 
 return jsunity.done();

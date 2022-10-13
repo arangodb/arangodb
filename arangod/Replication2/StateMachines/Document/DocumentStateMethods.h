@@ -26,7 +26,23 @@
 
 struct TRI_vocbase_t;
 
-namespace arangodb::replication2 {
+namespace arangodb {
+
+template<typename T>
+class ResultT;
+
+namespace futures {
+template<typename T>
+class Future;
+}
+
+namespace velocypack {
+class SharedSlice;
+}
+
+namespace replication2 {
+struct LogIndex;
+class LogId;
 
 /**
  * Abstraction used by the RestHandler to access the DocumentState.
@@ -34,8 +50,12 @@ namespace arangodb::replication2 {
 struct DocumentStateMethods {
   virtual ~DocumentStateMethods() = default;
 
-  static auto createInstance(TRI_vocbase_t& vocbase)
+  [[nodiscard]] static auto createInstance(TRI_vocbase_t& vocbase)
       -> std::shared_ptr<DocumentStateMethods>;
-};
 
-}  // namespace arangodb::replication2
+  [[nodiscard]] virtual auto getSnapshot(LogId logId,
+                                         LogIndex waitForIndex) const
+      -> futures::Future<ResultT<velocypack::SharedSlice>> = 0;
+};
+}  // namespace replication2
+}  // namespace arangodb

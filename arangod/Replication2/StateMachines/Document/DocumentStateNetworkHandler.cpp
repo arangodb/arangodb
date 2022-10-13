@@ -23,6 +23,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Network/Methods.h"
 
@@ -37,8 +38,8 @@ DocumentStateLeaderInterface::DocumentStateLeaderInterface(
 
 auto DocumentStateLeaderInterface::getSnapshot(LogIndex waitForIndex)
     -> futures::Future<ResultT<velocypack::SharedSlice>> {
-  auto path = basics::StringUtils::joinT("/", "_api/document-state", _gid.id,
-                                         "snapshot");
+  auto path = basics::StringUtils::joinT(
+      "/", StaticStrings::ApiDocumentStateExternal, _gid.id, "snapshot");
   network::RequestOptions opts;
   opts.database = _gid.database;
   opts.param("waitForIndex", std::to_string(waitForIndex.value));
@@ -48,7 +49,7 @@ auto DocumentStateLeaderInterface::getSnapshot(LogIndex waitForIndex)
       .thenValue(
           [](network::Response&& resp) -> ResultT<velocypack::SharedSlice> {
             if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
-              THROW_ARANGO_EXCEPTION(resp.combinedResult());
+              return resp.combinedResult();
             } else {
               auto slice = resp.slice();
               return VPackBuilder{slice.get("result")}.sharedSlice();
@@ -61,7 +62,7 @@ DocumentStateNetworkHandler::DocumentStateNetworkHandler(
     : _gid(std::move(gid)), _pool(pool) {}
 
 auto DocumentStateNetworkHandler::getLeaderInterface(
-    ParticipantId participantId)
+    ParticipantId participantId) noexcept
     -> std::shared_ptr<IDocumentStateLeaderInterface> {
   return std::make_shared<DocumentStateLeaderInterface>(participantId, _gid,
                                                         _pool);

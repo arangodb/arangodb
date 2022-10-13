@@ -35,6 +35,14 @@ class RestDocumentStateHandler : public RestVocbaseBaseHandler {
   RestDocumentStateHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
   RestStatus execute() final;
   char const* name() const final { return "RestDocumentStateHandler"; }
-  RequestLane lane() const final { return RequestLane::SERVER_REPLICATION; }
+  RequestLane lane() const final { return RequestLane::CLIENT_SLOW; }
+
+ private:
+  RestStatus executeByMethod(replication2::DocumentStateMethods const& methods);
+  RestStatus handleGetRequest(
+      replication2::DocumentStateMethods const& methods);
+  RestStatus handleGetSnapshot(
+      replication2::DocumentStateMethods const& methods,
+      replication2::LogId logId);
 };
 }  // namespace arangodb

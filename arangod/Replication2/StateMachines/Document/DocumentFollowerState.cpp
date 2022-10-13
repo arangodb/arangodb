@@ -57,9 +57,9 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                                             LogIndex waitForIndex) noexcept
     -> futures::Future<Result> {
   auto leaderInterface = _networkHandler->getLeaderInterface(destination);
-  auto snapshot = leaderInterface->getSnapshot(waitForIndex).get();
-  TRI_ASSERT(snapshot.ok());
-  return {TRI_ERROR_NO_ERROR};
+  // A follower may request a snapshot before leadership has been established. A
+  // retry will occur in that case.
+  return leaderInterface->getSnapshot(waitForIndex).get().result();
 }
 
 auto DocumentFollowerState::applyEntries(

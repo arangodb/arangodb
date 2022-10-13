@@ -23,16 +23,21 @@
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
-#include "Basics/ResultT.h"
-#include "Futures/Future.h"
-
 namespace arangodb {
+
+template<typename T>
+class ResultT;
+
+namespace futures {
+template<typename T>
+class Future;
+}
+
 namespace network {
 class ConnectionPool;
 }
-}  // namespace arangodb
 
-namespace arangodb::replication2::replicated_state::document {
+namespace replication2::replicated_state::document {
 
 /**
  * An interface used to communicate with the leader remotely.
@@ -63,7 +68,7 @@ class DocumentStateLeaderInterface : public IDocumentStateLeaderInterface {
  */
 struct IDocumentStateNetworkHandler {
   virtual ~IDocumentStateNetworkHandler() = default;
-  virtual auto getLeaderInterface(ParticipantId participantId)
+  virtual auto getLeaderInterface(ParticipantId participantId) noexcept
       -> std::shared_ptr<IDocumentStateLeaderInterface> = 0;
 };
 
@@ -72,7 +77,7 @@ class DocumentStateNetworkHandler : public IDocumentStateNetworkHandler {
   explicit DocumentStateNetworkHandler(GlobalLogIdentifier gid,
                                        network::ConnectionPool* pool);
 
-  auto getLeaderInterface(ParticipantId participantId)
+  auto getLeaderInterface(ParticipantId participantId) noexcept
       -> std::shared_ptr<IDocumentStateLeaderInterface> override;
 
  private:
@@ -80,4 +85,5 @@ class DocumentStateNetworkHandler : public IDocumentStateNetworkHandler {
   network::ConnectionPool* _pool;
 };
 
-}  // namespace arangodb::replication2::replicated_state::document
+}  // namespace replication2::replicated_state::document
+}  // namespace arangodb
