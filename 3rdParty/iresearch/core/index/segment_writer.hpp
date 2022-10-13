@@ -216,6 +216,9 @@ class IRESEARCH_API segment_writer: util::noncopyable {
 
   void flush(index_meta::index_segment_t& segment);
 
+  const update_contexts& docs_context() noexcept {
+    return docs_context_;
+  };
   const std::string& name() const noexcept { return seg_name_; }
   size_t docs_cached() const noexcept { return docs_context_.size(); }
   bool initialized() const noexcept { return initialized_; }
