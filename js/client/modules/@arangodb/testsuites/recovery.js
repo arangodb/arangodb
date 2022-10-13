@@ -129,13 +129,26 @@ function runArangodRecovery (params, useEncryption) {
   process.env["state-file"] = params.stateFile;
   process.env["crash-log"] = params.crashLog;
   process.env["isAsan"] = params.options.isAsan;
-  params.instanceInfo.pid = pu.executeAndWait(
+  //params.instanceInfo.exitStatus =
+    pu.executeAndWait(
     binary,
     argv,
-    params.options,
-    'recovery',
+      params.options,
+      false,
     params.instance.rootDir,
-    !params.setup && params.options.coreCheck);
+      !params.setup && params.options.coreCheck,
+      0,
+      params.instanceInfo);
+  if (params.setup && !params.instanceInfo.exitStatus.hasOwnProperty('signal')) {
+    let ret= {
+      status: false,
+      timeout: false,
+      message: `setup of test didn't crash as expected: ${JSON.stringify(params.instanceInfo.exitStatus)}`
+    };
+  }
+  return {
+    status: true,
+  };
 }
 
 function recovery (options) {
@@ -204,8 +217,12 @@ function recovery (options) {
           params.keyDir = fs.join(fs.getTempPath(), `arango_encryption_${count}`);
           fs.makeDirectory(params.keyDir);
         }
-        runArangodRecovery(params, useEncryption);
-
+        let res = runArangodRecovery(params, useEncryption);
+        if (!res.status) {
+          results[test] = res;
+          break;
+        }
+          
         ////////////////////////////////////////////////////////////////////////
         print(BLUE + "running recovery #" + iteration + " of test " + count + " - " + test + RESET);
         params.options.disableMonitor = options.disableMonitor;
