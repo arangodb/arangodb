@@ -2028,13 +2028,19 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
         RevisionId removalBound =
             leaderSlice.isEmptyArray()
                 ? RevisionId{currentRange.second}.next()
-                : RevisionId::fromSlice(leaderSlice.at(0));
+                : (encodeAsHLC
+                       ? RevisionId::fromHLC(leaderSlice.at(0).stringView())
+                       : RevisionId::fromSlice(leaderSlice.at(0)));
         TRI_ASSERT(RevisionId{currentRange.first} <= removalBound);
         TRI_ASSERT(removalBound <= RevisionId{currentRange.second}.next());
-        RevisionId mixedBound = leaderSlice.isEmptyArray()
-                                    ? RevisionId{currentRange.second}
-                                    : RevisionId::fromSlice(leaderSlice.at(
-                                          leaderSlice.length() - 1));
+        RevisionId mixedBound =
+            leaderSlice.isEmptyArray()
+                ? RevisionId{currentRange.second}
+                : (encodeAsHLC ? RevisionId::fromHLC(
+                                     leaderSlice.at(leaderSlice.length() - 1)
+                                         .stringView())
+                               : RevisionId::fromSlice(
+                                     leaderSlice.at(leaderSlice.length() - 1)));
         TRI_ASSERT(RevisionId{currentRange.first} <= mixedBound);
         TRI_ASSERT(mixedBound <= RevisionId{currentRange.second});
 
@@ -2046,7 +2052,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
 
         std::size_t index = 0;
         while (local.hasMore() && local.revision() <= mixedBound) {
-          RevisionId leaderRev = RevisionId::fromSlice(leaderSlice.at(index));
+          RevisionId leaderRev;
+          if (encodeAsHLC) {
+            leaderRev = RevisionId::fromHLC(leaderSlice.at(index).stringView());
+          } else {
+            leaderRev = RevisionId::fromSlice(leaderSlice.at(index));
+          }
 
           if (local.revision() < leaderRev) {
             toRemove.emplace_back(local.revision());
@@ -2065,7 +2076,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
           }
         }
         for (; index < leaderSlice.length(); ++index) {
-          RevisionId leaderRev = RevisionId::fromSlice(leaderSlice.at(index));
+          RevisionId leaderRev;
+          if (encodeAsHLC) {
+            leaderRev = RevisionId::fromHLC(leaderSlice.at(index).stringView());
+          } else {
+            leaderRev = RevisionId::fromSlice(leaderSlice.at(index));
+          }
           // fetch any leftovers
           toFetch.emplace_back(leaderRev);
           iterResume = std::max(iterResume, leaderRev.next());
