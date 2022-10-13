@@ -54,6 +54,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Validators.h"
+#include "velocypack/Builder.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
@@ -370,34 +371,21 @@ std::shared_ptr<ShardMap> LogicalCollection::shardIds() const {
   return _sharding->shardIds();
 }
 
-void LogicalCollection::shardsToVelocyPack(
-    arangodb::velocypack::Builder& result, bool details) const {
+void LogicalCollection::shardMapToVelocyPack(
+    arangodb::velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
 
   result.add(VPackValue("shards"));
+  serialize(result, *shardIds());
+}
 
-  // Important: We need this variable here to keep track of the pointer.
-  // Otherwise, it is allowed to be freed.
+void LogicalCollection::shardKeysToVelocyPack(
+    arangodb::velocypack::Builder& result) const {
+  TRI_ASSERT(result.isOpenObject());
+  result.add(VPackValue("shards"));
+
   auto shardids = shardIds();
-  if (details) {
-    result.openObject();
-
-    for (auto const& shards : *shardids) {
-      result.add(VPackValue(shards.first));
-      result.openArray();  // server array
-      for (auto servers : shards.second) {
-        result.add(VPackValue(servers));
-      }
-      result.close();  // server array
-    }
-  } else {
-    result.openArray();
-    for (auto const& shards : *shardids) {
-      result.add(VPackValue(shards.first));
-    }
-  }
-
-  result.close();  // shards (object in details true case, else array)
+  serialize(result, shardKeys());
 }
 
 void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> map) noexcept {
@@ -848,7 +836,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "unable to cast smart edge collection");
     }
-    edgeCollection->shardsToVelocyPack(build);
+    edgeCollection->shardMapToVelocyPack(build);
     bool includeShardsEntry = false;
     _sharding->toVelocyPack(build, ctx != Serialization::List,
                             includeShardsEntry);
@@ -1330,13 +1318,15 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     replication2::replicated_state::document::DocumentLeaderState> {
   auto stateMachine = getDocumentState();
 
-  static constexpr auto throwUnavailable = []<typename... Args>(
-      basics::SourceLocation location, fmt::format_string<Args...> formatString,
-      Args && ... args) {
-    throw basics::Exception(
-        TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
-        fmt::vformat(formatString, fmt::make_format_args(args...)), location);
-  };
+  static constexpr auto throwUnavailable =
+      []<typename... Args>(basics::SourceLocation location,
+                           fmt::format_string<Args...> formatString,
+                           Args&&... args) {
+        throw basics::Exception(
+            TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
+            fmt::vformat(formatString, fmt::make_format_args(args...)),
+            location);
+      };
 
   auto const status = stateMachine->getStatus();
   if (status == std::nullopt) {
