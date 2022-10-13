@@ -14,17 +14,17 @@ Canceled::Canceled(Conductor& conductor) : conductor{conductor} {
 }
 
 auto Canceled::run() -> std::optional<std::unique_ptr<State>> {
-  LOG_PREGEL_CONDUCTOR("dd721", WARN)
+  LOG_PREGEL_CONDUCTOR_STATE("dd721", WARN)
       << "Execution was canceled, conductor and workers are discarded.";
 
   return _cleanupUntilTimeout(std::chrono::steady_clock::now())
       .thenValue([&](auto result) -> std::optional<std::unique_ptr<State>> {
         if (result.fail()) {
-          LOG_PREGEL_CONDUCTOR("f8b3c", ERR) << result.errorMessage();
+          LOG_PREGEL_CONDUCTOR_STATE("f8b3c", ERR) << result.errorMessage();
           return std::nullopt;
         }
 
-        LOG_PREGEL_CONDUCTOR("6928f", DEBUG) << "Conductor is erased";
+        LOG_PREGEL_CONDUCTOR_STATE("6928f", DEBUG) << "Conductor is erased";
         conductor._feature.cleanupConductor(conductor._executionNumber);
         return std::nullopt;
       })
@@ -36,17 +36,17 @@ auto Canceled::_cleanupUntilTimeout(std::chrono::steady_clock::time_point start)
   conductor._cleanup();
 
   if (conductor._feature.isStopping()) {
-    LOG_PREGEL_CONDUCTOR("bd540", DEBUG)
+    LOG_PREGEL_CONDUCTOR_STATE("bd540", DEBUG)
         << "Feature is stopping, workers are already shutting down, no need to "
            "clean them up.";
     return Result{};
   }
 
-  LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Cleanup workers";
+  LOG_PREGEL_CONDUCTOR_STATE("fc187", DEBUG) << "Cleanup workers";
   return conductor._workers.cleanup(Cleanup{}).thenValue(
       [&](auto cleanupFinished) {
         if (cleanupFinished.fail()) {
-          LOG_PREGEL_CONDUCTOR("1c495", ERR) << fmt::format(
+          LOG_PREGEL_CONDUCTOR_STATE("1c495", ERR) << fmt::format(
               "While cleaning up: {}", cleanupFinished.errorMessage());
           if (std::chrono::steady_clock::now() - start >= _timeout) {
             return Result{

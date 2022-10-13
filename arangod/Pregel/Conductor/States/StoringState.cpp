@@ -23,14 +23,14 @@ auto Storing::run() -> std::optional<std::unique_ptr<State>> {
 
   auto store = _store().get();
   if (store.fail()) {
-    LOG_PREGEL_CONDUCTOR("bc495", ERR) << store.errorMessage();
+    LOG_PREGEL_CONDUCTOR_STATE("bc495", ERR) << store.errorMessage();
     return std::make_unique<FatalError>(conductor);
   }
 
-  LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Cleanup workers";
+  LOG_PREGEL_CONDUCTOR_STATE("fc187", DEBUG) << "Cleanup workers";
   auto cleanup = _cleanup().get();
   if (cleanup.fail()) {
-    LOG_PREGEL_CONDUCTOR("4b34d", ERR) << cleanup.errorMessage();
+    LOG_PREGEL_CONDUCTOR_STATE("4b34d", ERR) << cleanup.errorMessage();
     return std::make_unique<FatalError>(conductor);
   }
 

@@ -3,7 +3,6 @@
 #include <fmt/format.h>
 #include <memory>
 #include <optional>
-#include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Metrics/Gauge.h"
 #include "Pregel/MasterContext.h"
@@ -26,18 +25,18 @@ Loading::~Loading() {
 auto Loading::run() -> std::optional<std::unique_ptr<State>> {
   auto create = _createWorkers().get();
   if (create.fail()) {
-    LOG_PREGEL_CONDUCTOR("ae855", ERR)
+    LOG_PREGEL_CONDUCTOR_STATE("ae855", ERR)
         << fmt::format("Loading state: {}", create.errorMessage());
     return std::make_unique<Canceled>(conductor);
   }
 
-  LOG_PREGEL_CONDUCTOR("3a255", DEBUG) << "Telling workers to load the data";
+  LOG_PREGEL_CONDUCTOR_STATE("3a255", DEBUG)
+      << "Telling workers to load the data";
   return _aggregate.doUnderLock(
       [&](auto& agg) -> std::optional<std::unique_ptr<State>> {
         auto aggregate = conductor._workers.loadGraph(LoadGraph{});
         if (aggregate.fail()) {
-          LOG_PREGEL_CONDUCTOR("dddad", ERR)
-              << fmt::format("{} state: {}", name(), aggregate.errorMessage());
+          LOG_PREGEL_CONDUCTOR_STATE("dddad", ERR) << aggregate.errorMessage();
           return std::make_unique<Canceled>(conductor);
         }
         agg = aggregate.get();
@@ -58,8 +57,7 @@ auto Loading::receive(MessagePayload message)
     -> std::optional<std::unique_ptr<State>> {
   auto explicitMessage = getResultTMessage<GraphLoaded>(message);
   if (explicitMessage.fail()) {
-    LOG_PREGEL_CONDUCTOR("7698e", ERR)
-        << fmt::format("{} state: {}", name(), explicitMessage.errorMessage());
+    LOG_PREGEL_CONDUCTOR_STATE("7698e", ERR) << explicitMessage.errorMessage();
     return std::make_unique<Canceled>(conductor);
   }
   auto finishedAggregate =
@@ -73,10 +71,6 @@ auto Loading::receive(MessagePayload message)
   conductor._totalVerticesCount += graphLoadedData.vertexCount;
   conductor._totalEdgesCount += graphLoadedData.edgeCount;
 
-  LOG_PREGEL_CONDUCTOR("76631", INFO)
-      << "Running Pregel " << conductor._algorithm->name() << " with "
-      << conductor._totalVerticesCount << " vertices, "
-      << conductor._totalEdgesCount << " edges";
   if (conductor._masterContext) {
     conductor._masterContext->initialize(conductor._totalVerticesCount,
                                          conductor._totalEdgesCount,

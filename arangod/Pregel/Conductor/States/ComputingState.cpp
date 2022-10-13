@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <optional>
 
-#include "Cluster/ClusterTypes.h"
+#include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Metrics/Gauge.h"
 #include "Pregel/Conductor/States/State.h"
@@ -28,6 +28,11 @@ Computing::~Computing() {
 }
 
 auto Computing::run() -> std::optional<std::unique_ptr<State>> {
+  LOG_PREGEL_CONDUCTOR_STATE("76631", INFO)
+      << fmt::format("Start running Pregel {} with {} vertices, {} edges",
+                     conductor._algorithm->name(),
+                     conductor._totalVerticesCount, conductor._totalEdgesCount);
+
   conductor._timing.gss.emplace_back(Duration{
       ._start = std::chrono::steady_clock::now(), ._finish = std::nullopt});
 
@@ -36,16 +41,15 @@ auto Computing::run() -> std::optional<std::unique_ptr<State>> {
   auto const runGlobalSuperStepCommand = _runGlobalSuperStepCommand();
   VPackBuilder startCommand;
   serialize(startCommand, runGlobalSuperStepCommand);
-  LOG_PREGEL_CONDUCTOR("d98de", DEBUG)
-      << "Initiate starting GSS: " << startCommand.slice().toJson();
+  LOG_PREGEL_CONDUCTOR_STATE("d98de", DEBUG) << fmt::format(
+      "Initiate starting GSS with {}", startCommand.slice().toJson());
 
   return _aggregate.doUnderLock(
       [&](auto& agg) -> std::optional<std::unique_ptr<State>> {
         auto aggregate = conductor._workers.runGlobalSuperStep(
             runGlobalSuperStepCommand, _sendCountPerServer);
         if (aggregate.fail()) {
-          LOG_PREGEL_CONDUCTOR("f34bb", ERR)
-              << fmt::format("Computing state: {}", aggregate.errorMessage());
+          LOG_PREGEL_CONDUCTOR_STATE("f34bb", ERR) << aggregate.errorMessage();
           return std::make_unique<FatalError>(conductor);
         }
         agg = aggregate.get();
@@ -57,8 +61,7 @@ auto Computing::receive(MessagePayload message)
     -> std::optional<std::unique_ptr<State>> {
   auto explicitMessage = getResultTMessage<GlobalSuperStepFinished>(message);
   if (explicitMessage.fail()) {
-    LOG_PREGEL_CONDUCTOR("7698e", ERR)
-        << fmt::format("Computing state: {}", explicitMessage.errorMessage());
+    LOG_PREGEL_CONDUCTOR_STATE("7698e", ERR) << explicitMessage.errorMessage();
     return std::make_unique<FatalError>(conductor);
   }
   auto finishedAggregate =
@@ -92,9 +95,9 @@ auto Computing::receive(MessagePayload message)
     }
     return std::make_unique<Done>(conductor);
   }
-  LOG_PREGEL_CONDUCTOR("39385", DEBUG)
-      << "Finished gss " << conductor._globalSuperstep << " in "
-      << conductor._timing.gss.back().elapsedSeconds().count() << "s";
+  LOG_PREGEL_CONDUCTOR_STATE("39385", DEBUG)
+      << fmt::format("Finished gss {} in {}s", conductor._globalSuperstep,
+                     conductor._timing.gss.back().elapsedSeconds().count());
   conductor._globalSuperstep++;
   conductor._timing.gss.back().finish();
   return run();
