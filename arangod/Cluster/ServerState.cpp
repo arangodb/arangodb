@@ -507,8 +507,10 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
           // duplicate entry!
           LOG_TOPIC("9a134", WARN, Logger::CLUSTER)
               << "found duplicate server entry for endpoint '"
-              << endpointSlice.copyString() << "', already used by other server "
-              << idIter->second << ". it looks like this is a (mis)configuration issue";
+              << endpointSlice.copyString() << "' when processing endpoints configuration "
+              << "for server " << serverId << ": already used by other server "
+              << idIter->second << ". it looks like this is a (mis)configuration issue. "
+              << "full servers registered configuration: " << valueSlice.toJson();
           // anyway, continue with startup
         }
       }
