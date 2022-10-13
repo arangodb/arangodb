@@ -26,6 +26,10 @@
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 
 namespace arangodb {
+namespace futures {
+template<class T>
+class Future;
+}
 namespace replication2::replicated_state::document {
 struct DocumentLeaderState;
 }
@@ -61,6 +65,8 @@ class ReplicatedRocksDBTransactionCollection final
 
   /// @brief number intermediate commits
   uint64_t numIntermediateCommits() const noexcept;
+
+  futures::Future<Result> performIntermediateCommitIfRequired();
 
   uint64_t numOperations() const noexcept;
 

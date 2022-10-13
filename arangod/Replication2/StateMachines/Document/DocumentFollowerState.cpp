@@ -63,7 +63,7 @@ auto DocumentFollowerState::applyEntries(
       [self = shared_from_this(),
        ptr = std::move(ptr)](auto& data) -> futures::Future<Result> {
         if (data.didResign()) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
+          return {TRI_ERROR_CLUSTER_NOT_FOLLOWER};
         }
 
         while (auto entry = ptr->next()) {
