@@ -35,8 +35,6 @@
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 
-#include "index/norm.hpp"
-
 namespace {
 
 using namespace irs;
