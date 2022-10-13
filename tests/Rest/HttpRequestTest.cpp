@@ -128,6 +128,8 @@ TEST(HttpRequestTest, testWrongUrlEncoding) {
   HttpRequest request(ci, 1, true);
 
   std::string_view url("/foo/?a=%fg");
+  // parseUrl doesn't throw on invalid encodings in 3.8
+  request.parseUrl(url.data(), url.size());
 
-  EXPECT_EQ("", request.value("a"));
+  EXPECT_EQ("p", request.value("a"));
 }
