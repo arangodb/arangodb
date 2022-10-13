@@ -52,6 +52,24 @@ using namespace irs;
   return true;
 }
 
+void reorder(std::vector<segment_writer::update_context>& ctxs,
+             const doc_map& docmap) {
+  assert(!docmap.empty());
+
+  for (size_t doc = doc_limits::min(); doc <= ctxs.size(); ++doc) {
+    assert(doc < docmap.size());
+    const auto new_doc = docmap[doc];
+    assert(!doc_limits::eof(new_doc));
+
+    if (new_doc > doc) {
+      assert(new_doc > 0);
+      assert(new_doc <= ctxs.size());
+      std::swap(ctxs[doc - doc_limits::min()],
+                ctxs[new_doc - doc_limits::min()]);
+    }
+  }
+}
+
 }
 
 namespace iresearch {
@@ -293,6 +311,7 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
 
     if (!docmap.empty()) {
       state.docmap = &docmap;
+      reorder(docs_context_, docmap);
     }
   }
 
