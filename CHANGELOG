@@ -1,6 +1,9 @@
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
+* Log better diagnosis information in case multiple servers in a cluster are
+  configured to use the same endpoint.
+
 * BTS-908: Fixed WebUI GraphViewer not being able to create a new edge relation
   between two nodes in cases where only one edge definition has been defined
   inside the graph definition.
