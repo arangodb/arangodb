@@ -1,6 +1,10 @@
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
+* BTS-941: The HTTP API now delivers the correct list of the collection's
+  shards in case a collection from an EnterpriseGraph, SmartGraph, Disjoint
+  EnterpriseGraph, Disjoint SmartGraph or SatelliteGraph is being used.
+
 * BTS-908: Fixed WebUI GraphViewer not being able to create a new edge relation
   between two nodes in cases where only one edge definition has been defined
   inside the graph definition.
