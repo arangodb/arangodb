@@ -129,6 +129,5 @@ TEST(HttpRequestTest, testWrongUrlEncoding) {
 
   std::string_view url("/foo/?a=%fg");
 
-  EXPECT_THROW(request.parseUrl(url.data(), url.size()),
-               arangodb::basics::Exception);
+  EXPECT_EQ("", request.value("a"));
 }
