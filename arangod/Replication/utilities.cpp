@@ -474,7 +474,7 @@ LeaderInfo::LeaderInfo(
     ReplicationApplierConfiguration const& /*applierConfig*/) {}
 
 uint64_t LeaderInfo::version() const {
-  return majorVersion * 10000 + minorVersion * 100;
+  return majorVersion * 10000 + minorVersion * 100 + patchVersion;
 }
 
 /// @brief get leader state
