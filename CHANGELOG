@@ -1,6 +1,8 @@
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
+* Fixed BTS-852 (user's saved queries used to disappear after updating user profile).
+
 * BTS-908: Fixed WebUI GraphViewer not being able to create a new edge relation
   between two nodes in cases where only one edge definition has been defined
   inside the graph definition.
