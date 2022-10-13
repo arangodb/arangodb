@@ -25,14 +25,19 @@ devel
   be ambiguous under some circumstances, which could prevent shards from 
   getting into sync.
 
-* Fixed BTS-852 (user's saved queries used to disappear after updating user 
-  profile).
+* Log better diagnosis information in case multiple servers in a cluster are
+  configured to use the same endpoint.
+
+* Fixed BTS-852 (user's saved queries used to disappear after updating user profile).
 
 * MDS-1016: When creating a new collection the fields "Number of Shards" and
   "Replication factor" are greyed out now when the field "Distribute shards
   like" is not empty.
 
 * MDS-1019: Make user search case-insensitive and allow search by name.
+
+* BTS-465: Added tests for RandomGenerator and warning that other options
+  for creating random values that are not Mersenne are deprecated.
 
 * BTS-1008: Update react-autocomplete-input to fix single letter collection bug
   when creating a link in the views in the WebUI.
