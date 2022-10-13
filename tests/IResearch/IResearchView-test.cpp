@@ -3640,6 +3640,25 @@ TEST_F(IResearchViewTest, test_remove_within_trx) {
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(3, reader->docs_count());
     ASSERT_EQ(1, reader->live_docs_count());
+
+    auto& segment = reader[0];
+    const auto* column = segment.sort();
+    ASSERT_NE(nullptr, column);
+    ASSERT_TRUE(column->name().null());
+    ASSERT_EQ(0, column->payload().size());
+    auto values = column->iterator(false);
+    ASSERT_NE(nullptr, values);
+    auto* value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, value);
+
+    auto docs = segment.docs_iterator();
+    ASSERT_NE(nullptr, docs);
+    ASSERT_TRUE(docs->next());
+    ASSERT_EQ(docs->value(), values->seek(docs->value()));
+    VPackSlice const slice{value->value.c_str()};
+    ASSERT_TRUE(slice.isString());
+    ASSERT_EQ("c", slice.stringView());
+    ASSERT_FALSE(docs->next());
   }
 }
 
