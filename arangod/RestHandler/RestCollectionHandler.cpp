@@ -266,7 +266,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
               RevisionId rid = RevisionId::fromSlice(res.slice());
               {
                 VPackObjectBuilder obj(&_builder, true);
-                obj->add("revision", VPackValue(StringUtils::itoa(rid.id())));
+                obj->add("revision", VPackValue(rid.toString()));
 
                 // no need to use async variant
                 collectionRepresentation(*_ctxt, /*showProperties*/ true,
@@ -290,33 +290,13 @@ RestStatus RestCollectionHandler::handleCommandGet() {
                                /*showProperties*/ true, FiguresType::None,
                                CountType::None);
 
-      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-      auto shards = ci.getShardList(std::to_string(coll->planId().id()));
-
+      auto shardsMap = coll->shardIds();
       if (_request->parsedValue("details", false)) {
         // with details
-        VPackObjectBuilder arr(&_builder, "shards", true);
-        for (ShardID const& shard : *shards) {
-          std::vector<ServerID> servers;
-          ci.getShardServers(shard, servers);
-
-          if (servers.empty()) {
-            continue;
-          }
-
-          VPackArrayBuilder arr2(&_builder, shard);
-
-          for (auto const& server : servers) {
-            arr2->add(VPackValue(server));
-          }
-        }
+        coll->shardMapToVelocyPack(_builder);
       } else {
-        // no details
-        VPackArrayBuilder arr(&_builder, "shards", true);
-
-        for (ShardID const& shard : *shards) {
-          arr->add(VPackValue(shard));
-        }
+        // without details
+        coll->shardIDsToVelocyPack(_builder);
       }
     }
     return standardResponse();
