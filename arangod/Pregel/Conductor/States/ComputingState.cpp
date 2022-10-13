@@ -57,52 +57,47 @@ auto Computing::receive(MessagePayload message)
     -> std::optional<std::unique_ptr<State>> {
   auto explicitMessage = getResultTMessage<GlobalSuperStepFinished>(message);
   if (explicitMessage.fail()) {
-    // TODO The state changes to Canceled if this message fails, but there can
-    // still be other GraphLoaded messages that are/will be sent from workers,
-    // what happens to them? Currently: in Canceled state any received messages
-    // are ignored, this is fine but we have to be careful to change this
     LOG_PREGEL_CONDUCTOR("7698e", ERR)
         << fmt::format("Computing state: {}", explicitMessage.errorMessage());
     return std::make_unique<FatalError>(conductor);
   }
-  auto finishedAggregate = _aggregate.doUnderLock(
-      [&](auto& agg) { return agg.aggregate(explicitMessage.get()); });
+  auto finishedAggregate =
+      _aggregate.doUnderLock([message = std::move(explicitMessage).get()](
+                                 auto& agg) { return agg.aggregate(message); });
+  if (!finishedAggregate.has_value()) {
+    return std::nullopt;
+  }
 
-  if (finishedAggregate.has_value()) {
-    conductor._statistics.accumulate(finishedAggregate.value().messageStats);
-    conductor._aggregators->resetValues();
-    for (auto aggregator :
-         VPackArrayIterator(finishedAggregate.value().aggregators.slice())) {
-      conductor._aggregators->aggregateValues(aggregator);
-    }
-    conductor._statistics.setActiveCounts(
-        finishedAggregate.value().activeCount);
-    conductor._totalVerticesCount = finishedAggregate.value().vertexCount;
-    conductor._totalEdgesCount = finishedAggregate.value().edgeCount;
-    auto sendCountPerServer = std::unordered_map<ServerID, uint64_t>{};
-    for (auto const& [shard, counts] :
-         finishedAggregate.value().sendCountPerShard) {
-      sendCountPerServer[conductor._leadingServerForShard[shard]] += counts;
-    }
-    _sendCountPerServer = _transformSendCountFromShardToServer(
-        std::move(finishedAggregate.value().sendCountPerShard));
+  conductor._statistics.accumulate(finishedAggregate.value().messageStats);
+  conductor._aggregators->resetValues();
+  for (auto aggregator :
+       VPackArrayIterator(finishedAggregate.value().aggregators.slice())) {
+    conductor._aggregators->aggregateValues(aggregator);
+  }
+  conductor._statistics.setActiveCounts(finishedAggregate.value().activeCount);
+  conductor._totalVerticesCount = finishedAggregate.value().vertexCount;
+  conductor._totalEdgesCount = finishedAggregate.value().edgeCount;
+  auto sendCountPerServer = std::unordered_map<ServerID, uint64_t>{};
+  for (auto const& [shard, counts] :
+       finishedAggregate.value().sendCountPerShard) {
+    sendCountPerServer[conductor._leadingServerForShard[shard]] += counts;
+  }
+  _sendCountPerServer = _transformSendCountFromShardToServer(
+      std::move(finishedAggregate.value().sendCountPerShard));
 
-    auto post = conductor._postGlobalSuperStep();
-    if (post.finished) {
-      if (conductor._storeResults) {
-        return std::make_unique<Storing>(conductor);
-      }
-      return std::make_unique<Done>(conductor);
+  auto post = conductor._postGlobalSuperStep();
+  if (post.finished) {
+    if (conductor._storeResults) {
+      return std::make_unique<Storing>(conductor);
     }
-
-    conductor._timing.gss.back().finish();
-    LOG_PREGEL_CONDUCTOR("39385", DEBUG)
-        << "Finished gss " << conductor._globalSuperstep << " in "
-        << conductor._timing.gss.back().elapsedSeconds().count() << "s";
-    conductor._globalSuperstep++;
-    return run();
-  };
-  return std::nullopt;
+    return std::make_unique<Done>(conductor);
+  }
+  LOG_PREGEL_CONDUCTOR("39385", DEBUG)
+      << "Finished gss " << conductor._globalSuperstep << " in "
+      << conductor._timing.gss.back().elapsedSeconds().count() << "s";
+  conductor._globalSuperstep++;
+  conductor._timing.gss.back().finish();
+  return run();
 }
 
 auto Computing::_runGlobalSuperStepCommand() const -> RunGlobalSuperStep {
