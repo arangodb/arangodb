@@ -57,6 +57,8 @@ void reorder(std::vector<segment_writer::update_context>& ctxs,
   }
 }
 
+}
+
 namespace iresearch {
 
 segment_writer::stored_column::stored_column(
