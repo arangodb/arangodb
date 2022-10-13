@@ -2933,7 +2933,7 @@ bool RestReplicationHandler::prepareRevisionOperation(RevisionOperationContext& 
     ctx.resume = RevisionId::fromHLC(resumeString);
   } else {
     // "resumeHLC" is not set. now fall back to the parameter "resume". this
-    // parameter contains either a numeric value of a timestamp-encoded HLC
+    // parameter contains either a numeric value or a timestamp-encoded HLC
     // value
     std::string const& resumeString =
         _request->value(StaticStrings::RevisionTreeResume, found);
