@@ -1,5 +1,9 @@
 devel
 -----
+
+* Log better diagnosis information in case multiple servers in a cluster are
+  configured to use the same endpoint.
+
 * Fixed BTS-852 (user's saved queries used to disappear after updating user profile).
 
 * MDS-1016: When creating a new collection the fields "Number of Shards" and
