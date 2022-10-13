@@ -1,6 +1,8 @@
 v3.8.8 (XXXX-XX-XX)
 -------------------
 
+* ES-1312: fix handling of reaching the WAL archive capacity limit.
+
 * Log better diagnosis information in case multiple servers in a cluster are
   configured to use the same endpoint.
 
