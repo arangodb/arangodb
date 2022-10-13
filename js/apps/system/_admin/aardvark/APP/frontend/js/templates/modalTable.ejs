@@ -28,9 +28,7 @@ function createInput(row) {
     break;
     case 'readonly':
 %>
-    <div class="modal-text" id="<%= row.id  %>" <%= row.style ? 'style="' + row.style + '"' : '' %>>
-        <%= row.value||''  %>
-    </div>
+    <div class="modal-text" id="<%= row.id  %>" <%= row.style ? 'style="' + row.style + '"' : '' %>><%= row.value || ''  %></div>
 <%
     break;
     case 'checkbox':
@@ -48,8 +46,14 @@ function createInput(row) {
 <%
     break;
     case 'select':
+      let selectDisabled = '';
+      let selectTitle = '';
+      if (row.options && row.options.length === 1) {
+        selectDisabled = ' disabled';
+        selectTitle = 'Only one entry available.'
+      }
 %>
-        <select id="<%= row.id  %>" class="modalSelect" <%= row.style ? 'style="' + row.style + '"' : '' %>>
+        <select id="<%= row.id  %>" class="modalSelect" <%= row.style ? 'style="' + row.style + '"' : '' %> <%= selectTitle ? 'title="' + selectTitle + '"' : '' %> <%=selectDisabled%>>
         <% _.each(row.options, function(opt) { %>
             <option value="<%= opt.value  %>" <%= row.selected === opt.value?'selected':''  %>
                     <%= opt.style ? 'style="' + opt.style + '"' : '' %>>
