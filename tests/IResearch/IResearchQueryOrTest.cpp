@@ -55,6 +55,7 @@ std::string_view toString(Analyzer analyzer) noexcept {
     case kAnalyzerTest:
       return "test_analyzer";
   }
+  return "";
 }
 
 class QueryOr : public QueryTest {

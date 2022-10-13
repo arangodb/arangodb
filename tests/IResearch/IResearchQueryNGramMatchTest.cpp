@@ -55,6 +55,7 @@ std::string_view toString(Analyzer analyzer) noexcept {
     case kAnalyzerMyNgramUser:
       return "testVocbase::myngram";
   }
+  return "";
 }
 
 class QueryNGramMatch : public QueryTest {

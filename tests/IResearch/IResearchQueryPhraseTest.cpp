@@ -63,6 +63,7 @@ std::string_view toString(Analyzer analyzer) {
     case kAnalyzerNgram2:
       return "::ngram_test_analyzer2";
   }
+  return "";
 }
 
 void testTerm(TRI_vocbase_t& vocbase,
