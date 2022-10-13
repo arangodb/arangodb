@@ -371,7 +371,12 @@ struct arangodb::VocBaseLogManager {
       auto& state = stateAndLog.state =
           feature.createReplicatedState(type, vocbase.name(), log, logContext);
 
-      auto&& stateHandle = state->createStateHandle();
+      auto maybeMetadata = stateAndLog.storage->readMetadata();
+      if (!maybeMetadata) {
+        throw basics::Exception(std::move(maybeMetadata).result(), ADB_HERE);
+      }
+      auto const& stateParams = maybeMetadata->specification.parameters;
+      auto&& stateHandle = state->createStateHandle(stateParams);
 
       stateAndLog.connection = log->connect(std::move(stateHandle));
 

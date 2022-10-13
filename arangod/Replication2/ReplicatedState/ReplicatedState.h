@@ -101,7 +101,8 @@ struct ReplicatedStateBase {
     return getFollowerBase();
   }
 
-  [[nodiscard]] virtual auto createStateHandle()
+  [[nodiscard]] virtual auto createStateHandle(
+      std::optional<velocypack::SharedSlice> const& coreParameters)
       -> std::unique_ptr<replicated_log::IReplicatedStateHandle> = 0;
 
  private:
@@ -151,10 +152,12 @@ struct ProducerStreamProxy
       : _methods(std::move(methods)) {}
 
   auto insert(EntryType const& v) -> LogIndex override {
+    ADB_PROD_ASSERT(this != nullptr);
     auto builder = velocypack::Builder();
     std::invoke(Serializer{}, streams::serializer_tag<EntryType>, v, builder);
     // TODO avoid the copy
     auto payload = LogPayload::createFromSlice(builder.slice());
+    ADB_PROD_ASSERT(this->_logMethods != nullptr);
     return this->_logMethods->insert(std::move(payload));
   }
 
@@ -337,7 +340,8 @@ struct ReplicatedState final
 
   [[nodiscard]] auto getStatus() -> std::optional<StateStatus> final;
 
-  auto createStateHandle()
+  auto createStateHandle(
+      std::optional<velocypack::SharedSlice> const& coreParameter)
       -> std::unique_ptr<replicated_log::IReplicatedStateHandle> override;
 
   struct IStateManager : IStateManagerBase {

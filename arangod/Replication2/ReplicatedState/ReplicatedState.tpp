@@ -519,11 +519,11 @@ void ReplicatedState<S>::drop() && {
 }
 
 template<typename S>
-auto ReplicatedState<S>::createStateHandle()
+auto ReplicatedState<S>::createStateHandle(
+    std::optional<velocypack::SharedSlice> const& coreParameter)
     -> std::unique_ptr<replicated_log::IReplicatedStateHandle> {
   // TODO Should we make sure not to build the core twice?
-  // TODO Fix or remove the parameter argument
-  auto core = buildCore({});
+  auto core = buildCore(coreParameter);
   auto handle = std::make_unique<ReplicatedStateManager<S>>(
       loggerContext, metrics, std::move(core), factory);
 
