@@ -54,6 +54,7 @@
 #include "Pregel/Conductor/Conductor.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/Messaging/ConductorMessages.h"
+#include "Pregel/Messaging/WorkerMessages.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Worker.h"
 #include "Pregel/Messaging/Message.h"
@@ -700,7 +701,7 @@ auto PregelFeature::apply(ExecutionNumber const& executionNumber,
             }
             scheduler->queue(RequestLane::INTERNAL_LOW,
                              [w = w->shared_from_this(), x = std::move(x)] {
-                               w->loadGraph(x);
+                               w->send(w->loadGraph(x));
                              });
             return {Ok{}};
           },
@@ -709,7 +710,11 @@ auto PregelFeature::apply(ExecutionNumber const& executionNumber,
             if (!w) {
               return workerNotFound(executionNumber, message);
             }
-            return {w->runGlobalSuperStep(x).get()};
+            scheduler->queue(RequestLane::INTERNAL_LOW,
+                             [w = w->shared_from_this(), x = std::move(x)] {
+                               w->send(w->runGlobalSuperStep(x));
+                             });
+            return {Ok{}};
           },
           [&](Store const& x) -> ResultT<MessagePayload> {
             auto w = worker(executionNumber);
@@ -758,10 +763,19 @@ auto PregelFeature::apply(ExecutionNumber const& executionNumber,
             }
             scheduler->queue(RequestLane::INTERNAL_LOW,
                              [c = c->shared_from_this(), x = std::move(x)] {
-                               auto newState = c->_state->receive(x);
-                               if (newState.has_value()) {
-                                 c->_changeState(std::move(newState.value()));
-                               }
+                               c->receive(x);
+                             });
+            return {Ok{}};
+          },
+          [&](ResultT<GlobalSuperStepFinished> const& x)
+              -> ResultT<MessagePayload> {
+            auto c = conductor(executionNumber);
+            if (!c) {
+              return conductorNotFound(executionNumber, message);
+            }
+            scheduler->queue(RequestLane::INTERNAL_LOW,
+                             [c = c->shared_from_this(), x = std::move(x)] {
+                               c->receive(x);
                              });
             return {Ok{}};
           },

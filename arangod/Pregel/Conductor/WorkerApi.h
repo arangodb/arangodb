@@ -53,7 +53,7 @@ struct WorkerApi {
   [[nodiscard]] auto runGlobalSuperStep(
       RunGlobalSuperStep const& data,
       std::unordered_map<ServerID, uint64_t> const& sendCountPerServer)
-      -> futures::Future<ResultT<GlobalSuperStepFinished>>;
+      -> ResultT<Aggregate<GlobalSuperStepFinished>>;
   [[nodiscard]] auto store(Store const& message)
       -> futures::Future<ResultT<Stored>>;
   [[nodiscard]] auto cleanup(Cleanup const& message)
@@ -67,7 +67,12 @@ struct WorkerApi {
   std::unique_ptr<Connection> _connection;
 
   template<Addable Out, typename In>
-  auto sendToAll(In const& in) const -> futures::Future<ResultT<Out>>;
+  auto sendToAll_old(In const& in) const -> futures::Future<ResultT<Out>>;
+  template<typename In>
+  auto sendToAll(In const& in) const -> std::vector<futures::Future<Result>>;
+  template<Addable Out>
+  auto collectAllOks(std::vector<futures::Future<Result>> responses)
+      -> ResultT<Aggregate<Out>>;
 
   // This template enforces In and Out type of the function:
   // 'In' enforces which type of message is sent

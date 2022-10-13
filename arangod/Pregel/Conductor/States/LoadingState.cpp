@@ -68,6 +68,7 @@ auto Loading::receive(MessagePayload message)
   }
   auto finishedAggregate = _aggregate.doUnderLock(
       [&](auto& agg) { return agg.aggregate(explicitMessage.get()); });
+
   if (finishedAggregate.has_value()) {
     conductor._totalVerticesCount += finishedAggregate.value().vertexCount;
     conductor._totalEdgesCount += finishedAggregate.value().edgeCount;
