@@ -38,6 +38,7 @@ ERROR_INCOMPATIBLE_VERSION,35,"incompatible server version","Will be raised when
 ERROR_DISABLED,36,"disabled","Will be raised when a requested resource is not enabled."
 ERROR_MALFORMED_JSON,37,"malformed json","Will be raised when a JSON string could not be parsed."
 ERROR_STARTING_UP,38,"startup ongoing","Will be raised when a call cannot succeed because the server startup phase is still in progress."
+ERROR_DESERIALIZE,39,"error during deserialization","Will be raised when a data structure cannot be deserialized, e.g. because the input is invalid"
 
 ################################################################################
 ## HTTP error status codes
