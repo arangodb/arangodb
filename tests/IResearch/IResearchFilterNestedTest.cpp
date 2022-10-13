@@ -47,39 +47,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "VocBase/Methods/Collections.h"
 
-// exists(name)
-auto makeByColumnExistence(std::string_view name) {
-  return [name](irs::sub_reader const& segment) {
-    auto* col = segment.column(name);
-
-    return col ? col->iterator(irs::ColumnHint::kMask |
-                               irs::ColumnHint::kPrevDoc)
-               : nullptr;
-  };
-}
-
-// name == value
-auto makeByTerm(std::string_view name, std::string_view value,
-                irs::score_t boost) {
-  auto filter = std::make_unique<irs::by_term>();
-  *filter->mutable_field() = name;
-  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
-  filter->boost(boost);
-  return filter;
-}
-
-void makeAnd(
-    irs::Or& root,
-    std::vector<std::tuple<std::string_view, std::string_view, irs::score_t>>
-        parts) {
-  auto& filter = root.add<irs::And>();
-  for (const auto& [name, value, boost] : parts) {
-    auto& sub = filter.add<irs::by_term>();
-    sub =
-        std::move(static_cast<irs::by_term&>(*makeByTerm(name, value, boost)));
-  }
-}
-
 class IResearchFilterNestedTest
     : public ::testing::Test,
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
