@@ -34,7 +34,7 @@ template<typename T>
 class ResultT;
 
 struct AgencyIsBuildingFlags;
-struct PlanCollection;
+struct CreateCollectionBody;
 struct PlanCollectionEntry;
 class LogicalCollection;
 class ClusterInfo;
@@ -58,20 +58,22 @@ struct ClusterCollectionMethods {
   [[nodiscard]] static auto
   createCollectionsOnCoordinator(
       TRI_vocbase_t& vocbase,
-      std::vector<PlanCollection> parametersOfCollections,
+      std::vector<CreateCollectionBody> parametersOfCollections,
       bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-      bool enforceReplicationFactor, bool isNewDatabase) -> arangodb::ResultT<
+      bool enforceReplicationFactor, bool isNewDatabase)
+      -> arangodb::ResultT<
       std::vector<std::shared_ptr<LogicalCollection>>>;
 
   [[nodiscard]] static auto toPlanEntry(
-      PlanCollection col, std::vector<ShardID> shardNames,
+      CreateCollectionBody col, std::vector<ShardID> shardNames,
       std::shared_ptr<IShardDistributionFactory> distributeType,
       AgencyIsBuildingFlags isBuildingFlags) -> PlanCollectionEntry;
 
   [[nodiscard]] static auto generateShardNames(ClusterInfo& ci, uint64_t numberOfShards) -> std::vector<ShardID>;
 
   [[nodiscard]] static auto selectDistributeType(
-      ClusterInfo& ci, std::string_view databaseName, PlanCollection const& col,
+      ClusterInfo& ci, std::string_view databaseName,
+      CreateCollectionBody const& col,
       std::unordered_map<std::string,
                          std::shared_ptr<IShardDistributionFactory>>&
           allUsedDistrbitions) -> std::shared_ptr<IShardDistributionFactory>;

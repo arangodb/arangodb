@@ -54,7 +54,7 @@ namespace velocypack {
 class Slice;
 }
 
-struct PlanCollection {
+struct CreateCollectionBody {
   struct DatabaseConfiguration {
 #if ARANGODB_USE_GOOGLE_TESTS
     // Default constructor for testability.
@@ -81,17 +81,17 @@ struct PlanCollection {
     std::function<DataSourceId()> idGenerator;
   };
 
-  PlanCollection();
+  CreateCollectionBody();
 
-  static ResultT<PlanCollection> fromCreateAPIBody(
+  static ResultT<CreateCollectionBody> fromCreateAPIBody(
       arangodb::velocypack::Slice input, DatabaseConfiguration config);
 
-  static ResultT<PlanCollection> fromCreateAPIV8(
+  static ResultT<CreateCollectionBody> fromCreateAPIV8(
       arangodb::velocypack::Slice properties, std::string const& name,
       TRI_col_type_e type, DatabaseConfiguration config);
 
   static arangodb::velocypack::Builder toCreateCollectionProperties(
-      std::vector<PlanCollection> const& collections);
+      std::vector<CreateCollectionBody> const& collections);
 
   // Temporary method to handOver information from
   [[nodiscard]] arangodb::velocypack::Builder toCollectionsCreate() const;
@@ -106,10 +106,11 @@ struct PlanCollection {
 };
 
 template<class Inspector>
-auto inspect(Inspector& f, PlanCollection& planCollection) {
-  // TODO This is waiting on inspector with fields on same toplevel object
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return f.object(planCollection).fields();
+auto inspect(Inspector& f, CreateCollectionBody& body) {
+  return f.object(body).fields(f.embedFields(body.constantProperties),
+                               f.embedFields(body.mutableProperties),
+                               f.embedFields(body.internalProperties),
+                               f.embedFields(body.options));
 }
 
 }  // namespace arangodb

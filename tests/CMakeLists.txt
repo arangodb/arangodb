@@ -261,11 +261,6 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp
   VocBase/LogicalViewTest.cpp
-  VocBase/PlanCollectionTest.cpp
-  VocBase/CollectionConstantPropertiesTest.cpp
-  VocBase/CollectionMutablePropertiesTest.cpp
-  VocBase/CollectionInternalPropertiesTest.cpp
-  VocBase/CollectionCreateOptionsTest.cpp
   VocBase/VersionTest.cpp
   VocBase/VocbaseTest.cpp
   VPackDeserializer/BasicTests.cpp
@@ -571,3 +566,4 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
 endforeach()
 
 add_subdirectory(sepp)
+add_subdirectory(VocBase/Properties)

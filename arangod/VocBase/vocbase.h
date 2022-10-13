@@ -87,7 +87,7 @@ class DatabaseReplicationApplier;
 class LogicalCollection;
 class LogicalDataSource;
 class LogicalView;
-struct PlanCollection;
+struct CreateCollectionBody;
 class ReplicationClientsProgressTracker;
 class StorageEngine;
 struct VocBaseLogManager;
@@ -377,9 +377,9 @@ struct TRI_vocbase_t {
 
   [[nodiscard]] arangodb::ResultT<
       std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
-  createCollections(
-      std::vector<arangodb::PlanCollection> const& parametersOfCollections,
-      bool allowEnterpriseCollectionsOnSingleServer);
+  createCollections(std::vector<arangodb::CreateCollectionBody> const&
+                        parametersOfCollections,
+                    bool allowEnterpriseCollectionsOnSingleServer);
 
   /// @brief creates a new collection from parameter set
   /// collection id ("cid") is normally passed with a value of 0

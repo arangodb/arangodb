@@ -22,7 +22,7 @@
 
 #include "PlanCollectionEntry.h"
 #include "Inspection/VPack.h"
-#include "VocBase/Properties/PlanCollection.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
 #include "Cluster/Utils/IShardDistributionFactory.h"
 #include "PlanShardToServerMappping.h"
 
@@ -30,7 +30,7 @@
 #include <velocypack/Collection.h>
 
 using namespace arangodb;
-PlanCollectionEntry::PlanCollectionEntry(PlanCollection col,
+PlanCollectionEntry::PlanCollectionEntry(CreateCollectionBody col,
                                          ShardDistribution shardDistribution,
                                          AgencyIsBuildingFlags isBuildingFlags)
     : _constantProperties{std::move(col.constantProperties)},

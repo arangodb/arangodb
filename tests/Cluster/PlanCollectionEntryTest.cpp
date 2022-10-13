@@ -24,7 +24,7 @@
 #include "gtest/gtest.h"
 
 #include "Cluster/Utils/PlanCollectionEntry.h"
-#include "VocBase/Properties/PlanCollection.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
 
 #include "Logger/LogMacros.h"
 #include "Inspection/VPack.h"
@@ -95,7 +95,7 @@ class PlanCollectionEntryTest : public ::testing::Test {
 };
 
 TEST_F(PlanCollectionEntryTest, default_values) {
-  PlanCollection col{};
+  CreateCollectionBody col{};
   col.mutableProperties.name = "test";
   auto numberOfShards = col.constantProperties.numberOfShards;
   auto distProto = std::make_shared<TestShardDistribution>(

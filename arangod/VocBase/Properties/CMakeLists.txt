@@ -4,5 +4,5 @@ target_sources(arango_vocbase PRIVATE
         CollectionIndexesProperties.cpp
         CollectionInternalProperties.cpp
         CollectionMutableProperties.cpp
-        PlanCollection.cpp
+        CreateCollectionBody.cpp
         UtilityInvariants.cpp)

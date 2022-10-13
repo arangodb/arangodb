@@ -102,7 +102,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/Properties/PlanCollection.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
 
 #include <thread>
 #include <absl/strings/str_cat.h>
@@ -1324,15 +1324,15 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
 
 ResultT<std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
 TRI_vocbase_t::createCollections(
-    std::vector<arangodb::PlanCollection> const& collections,
+    std::vector<arangodb::CreateCollectionBody> const& collections,
     bool allowEnterpriseCollectionsOnSingleServer) {
   // TODO: Need to get rid of this collection. Distribute Shards like
-  // is now denoted inside the PlanCollection
+  // is now denoted inside the CreateCollectionBody
   std::shared_ptr<LogicalCollection> colToDistributeShardsLike;
   /// Code from here is copy pasted from original create and
   /// has not been refacored yet.
   VPackBuilder builder =
-      PlanCollection::toCreateCollectionProperties(collections);
+      CreateCollectionBody::toCreateCollectionProperties(collections);
   VPackSlice infoSlice = builder.slice();
 
   TRI_ASSERT(infoSlice.isArray());

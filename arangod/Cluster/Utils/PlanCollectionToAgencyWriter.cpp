@@ -281,7 +281,7 @@ std::vector<std::string> PlanCollectionToAgencyWriter::collectionNames() const {
 
 /*
 PlanCollectionToAgencyWriter::PlanCollectionToAgencyWriter(
-    PlanCollection col, ShardDistribution shardDistribution)
+    CreateCollectionBody col, ShardDistribution shardDistribution)
     : _entry(std::move(col), std::move(shardDistribution)) {}
 
 [[nodiscard]] AgencyOperation PlanCollectionToAgencyWriter::prepareOperation(

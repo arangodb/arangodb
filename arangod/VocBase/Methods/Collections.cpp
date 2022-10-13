@@ -61,7 +61,7 @@
 #include "VocBase/ComputedValues.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
-#include "VocBase/Properties/PlanCollection.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -602,9 +602,9 @@ void Collections::enumerate(
 Collections::create(         // create collection
     TRI_vocbase_t& vocbase,  // collection vocbase
     OperationOptions const& options,
-    std::vector<PlanCollection> collections,  // Collections to create
-    bool createWaitsForSyncReplication,       // replication wait flag
-    bool enforceReplicationFactor,            // replication factor flag
+    std::vector<CreateCollectionBody> collections,  // Collections to create
+    bool createWaitsForSyncReplication,             // replication wait flag
+    bool enforceReplicationFactor,                  // replication factor flag
     bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer,
     bool isRestore) {
   // Let's first check if we are allowed to create the collections
@@ -626,7 +626,7 @@ Collections::create(         // create collection
   // Or should this be a possible error?
   TRI_ASSERT(!vocbase.isDangling());
 
-  PlanCollection::DatabaseConfiguration config(vocbase);
+  CreateCollectionBody::DatabaseConfiguration config(vocbase);
   config.enforceReplicationFactor = enforceReplicationFactor;
 
   ClusterInfo& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();

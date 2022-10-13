@@ -56,7 +56,7 @@ class HashedStringRef;
 }  // namespace velocypack
 
 class ClusterFeature;
-struct PlanCollection;
+struct CreateCollectionBody;
 class NetworkFeature;
 struct OperationOptions;
 class LogicalCollection;

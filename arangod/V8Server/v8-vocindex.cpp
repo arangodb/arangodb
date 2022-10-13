@@ -51,7 +51,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
-#include "VocBase/Properties/PlanCollection.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -272,9 +272,9 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
         isolate, obj, "enforceReplicationFactor", enforceReplicationFactor);
   }
 
-  auto planCollection = PlanCollection::fromCreateAPIV8(
+  auto planCollection = CreateCollectionBody::fromCreateAPIV8(
       propSlice, name, collectionType,
-      PlanCollection::DatabaseConfiguration{vocbase});
+      CreateCollectionBody::DatabaseConfiguration{vocbase});
 
   if (planCollection.fail()) {
     events::CreateCollection(vocbase.name(), name,
@@ -282,7 +282,8 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_V8_THROW_EXCEPTION(planCollection.result());
   }
 
-  std::vector<PlanCollection> collections{std::move(planCollection.get())};
+  std::vector<CreateCollectionBody> collections{
+      std::move(planCollection.get())};
 
   OperationOptions options(ExecContext::current());
   std::shared_ptr<LogicalCollection> coll;

@@ -25,7 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerDefaults.h"
 #include "Logger/LogMacros.h"
-#include "VocBase/Properties/PlanCollection.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
 
 #include "InspectTestHelperMakros.h"
 
@@ -46,7 +46,7 @@ namespace arangodb::tests {
  * TEST SECTION
  *********************/
 
-class PlanCollectionUserAPITest : public ::testing::Test {
+class CreateCollectionBodyTest : public ::testing::Test {
  protected:
   /// @brief this generates the minimal required body, only exchanging one
   /// attribute with the given value should work on all basic types
@@ -77,29 +77,30 @@ class PlanCollectionUserAPITest : public ::testing::Test {
     return body;
   }
 
-  static PlanCollection::DatabaseConfiguration defaultDBConfig() {
+  static CreateCollectionBody::DatabaseConfiguration defaultDBConfig() {
     return {[]() { return DataSourceId(42); }};
   }
 
   // Tries to parse the given body and returns a ResulT of your Type under
   // test.
-  static ResultT<PlanCollection> parse(VPackSlice body) {
-    return PlanCollection::fromCreateAPIBody(body, defaultDBConfig());
+  static ResultT<CreateCollectionBody> parse(VPackSlice body) {
+    return CreateCollectionBody::fromCreateAPIBody(body, defaultDBConfig());
   }
 
   static void assertParsingThrows(VPackBuilder const& body) {
-    auto p = PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+    auto p = CreateCollectionBody::fromCreateAPIBody(body.slice(),
+                                                     defaultDBConfig());
     EXPECT_TRUE(p.fail()) << " On body " << body.toJson();
   }
 };
 
-TEST_F(PlanCollectionUserAPITest, test_requires_some_input) {
+TEST_F(CreateCollectionBodyTest, test_requires_some_input) {
   VPackBuilder body;
   { VPackObjectBuilder guard(&body); }
   assertParsingThrows(body);
 }
 
-TEST_F(PlanCollectionUserAPITest, test_minimal_user_input) {
+TEST_F(CreateCollectionBodyTest, test_minimal_user_input) {
   std::string colName = "test";
   VPackBuilder body;
   {
@@ -107,7 +108,7 @@ TEST_F(PlanCollectionUserAPITest, test_minimal_user_input) {
     body.add("name", VPackValue(colName));
   }
   auto testee =
-      PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
   ASSERT_TRUE(testee.ok());
   // Test Default values
 
@@ -116,7 +117,7 @@ TEST_F(PlanCollectionUserAPITest, test_minimal_user_input) {
   EXPECT_TRUE(testee->options.avoidServers.empty());
 }
 
-TEST_F(PlanCollectionUserAPITest,
+TEST_F(CreateCollectionBodyTest,
        test_writeConcernWinsVersusminReplicationFactor) {
   std::string colName = "test";
   {
@@ -130,8 +131,8 @@ TEST_F(PlanCollectionUserAPITest,
       body.add("replicationFactor", VPackValue(4));
     }
 
-    auto testee =
-        PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+    auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(),
+                                                          defaultDBConfig());
     ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                              << testee.result().errorMessage();
     EXPECT_EQ(testee->mutableProperties.writeConcern, 3);
@@ -149,18 +150,18 @@ TEST_F(PlanCollectionUserAPITest,
       body.add("writeConcern", VPackValue(3));
     }
 
-    auto testee =
-        PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+    auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(),
+                                                          defaultDBConfig());
     ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                              << testee.result().errorMessage();
     EXPECT_EQ(testee->mutableProperties.writeConcern, 3);
   }
 }
 
-TEST_F(PlanCollectionUserAPITest, test_satelliteReplicationFactor) {
+TEST_F(CreateCollectionBodyTest, test_satelliteReplicationFactor) {
   auto shouldBeEvaluatedTo = [&](VPackBuilder const& body, uint64_t number) {
-    auto testee =
-        PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+    auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(),
+                                                          defaultDBConfig());
     ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
     EXPECT_EQ(testee->mutableProperties.replicationFactor, number)
         << "Parsing error in " << body.toJson();
@@ -171,17 +172,17 @@ TEST_F(PlanCollectionUserAPITest, test_satelliteReplicationFactor) {
       createMinimumBodyWithOneValue("replicationFactor", "satellite"), 0);
 }
 
-TEST_F(PlanCollectionUserAPITest, test_configureMaxNumberOfShards) {
+TEST_F(CreateCollectionBodyTest, test_configureMaxNumberOfShards) {
   auto body = createMinimumBodyWithOneValue("numberOfShards", 1024);
 
   // First Step of parsing has to pass
   auto testee =
-      PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
   ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
   EXPECT_EQ(testee->constantProperties.numberOfShards, 1024)
       << "Parsing error in " << body.toJson();
 
-  PlanCollection::DatabaseConfiguration config = defaultDBConfig();
+  CreateCollectionBody::DatabaseConfiguration config = defaultDBConfig();
   EXPECT_EQ(config.maxNumberOfShards, 0);
   EXPECT_EQ(config.shouldValidateClusterSettings, false);
 
@@ -229,7 +230,7 @@ TEST_F(PlanCollectionUserAPITest, test_configureMaxNumberOfShards) {
   }
 }
 
-TEST_F(PlanCollectionUserAPITest, test_isSmartCannotBeSatellite) {
+TEST_F(CreateCollectionBodyTest, test_isSmartCannotBeSatellite) {
   VPackBuilder body;
   {
     VPackObjectBuilder guard(&body);
@@ -241,7 +242,7 @@ TEST_F(PlanCollectionUserAPITest, test_isSmartCannotBeSatellite) {
 
   // Note: We can also make this parsing fail in the first place.
   auto testee =
-      PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
   ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                            << testee.result().errorMessage();
   EXPECT_EQ(testee->constantProperties.isSmart, true);
@@ -253,7 +254,7 @@ TEST_F(PlanCollectionUserAPITest, test_isSmartCannotBeSatellite) {
   EXPECT_FALSE(res.ok()) << "Configured smartCollection as 'satellite'.";
 }
 
-TEST_F(PlanCollectionUserAPITest, test_isSmartChildCannotBeSatellite) {
+TEST_F(CreateCollectionBodyTest, test_isSmartChildCannotBeSatellite) {
   VPackBuilder body;
   {
     VPackObjectBuilder guard(&body);
@@ -265,7 +266,7 @@ TEST_F(PlanCollectionUserAPITest, test_isSmartChildCannotBeSatellite) {
 
   // Note: We can also make this parsing fail in the first place.
   auto testee =
-      PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
   ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                            << testee.result().errorMessage();
   EXPECT_EQ(testee->internalProperties.isSmartChild, true);
@@ -277,7 +278,7 @@ TEST_F(PlanCollectionUserAPITest, test_isSmartChildCannotBeSatellite) {
   EXPECT_FALSE(res.ok()) << "Configured smartChild collection as 'satellite'.";
 }
 
-TEST_F(PlanCollectionUserAPITest, test_oneShardDBCannotBeSatellite) {
+TEST_F(CreateCollectionBodyTest, test_oneShardDBCannotBeSatellite) {
   VPackBuilder body;
   {
     VPackObjectBuilder guard(&body);
@@ -288,7 +289,7 @@ TEST_F(PlanCollectionUserAPITest, test_oneShardDBCannotBeSatellite) {
 
   // Note: We can also make this parsing fail in the first place.
   auto testee =
-      PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
   ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                            << testee.result().errorMessage();
   EXPECT_EQ(testee->mutableProperties.replicationFactor, 0);
@@ -301,7 +302,7 @@ TEST_F(PlanCollectionUserAPITest, test_oneShardDBCannotBeSatellite) {
       << "Configured a oneShardDB collection as 'satellite'.";
 }
 
-TEST_F(PlanCollectionUserAPITest, test_atMost8ShardKeys) {
+TEST_F(CreateCollectionBodyTest, test_atMost8ShardKeys) {
   // We split this string up into characters, to use those as shardKey
   // attributes Just for simplicity reasons, and to avoid having duplicates
   std::string shardKeySelection = "abcdefghijklm";
@@ -313,8 +314,8 @@ TEST_F(PlanCollectionUserAPITest, test_atMost8ShardKeys) {
     auto body = createMinimumBodyWithOneValue("shardKeys", shardKeysToTest);
 
     // The first 8 have to be allowed
-    auto testee =
-        PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+    auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(),
+                                                          defaultDBConfig());
     ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
     EXPECT_EQ(testee->constantProperties.shardKeys, shardKeysToTest)
         << "Parsing error in " << body.toJson();
@@ -326,14 +327,14 @@ TEST_F(PlanCollectionUserAPITest, test_atMost8ShardKeys) {
     auto body = createMinimumBodyWithOneValue("shardKeys", shardKeysToTest);
 
     // The first 8 have to be allowed
-    auto testee =
-        PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+    auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(),
+                                                          defaultDBConfig());
     EXPECT_FALSE(testee.ok())
         << "Created too many shard keys: " << shardKeysToTest.size();
   }
 }
 
-TEST_F(PlanCollectionUserAPITest, test_shardKeyOnSatellites) {
+TEST_F(CreateCollectionBodyTest, test_shardKeyOnSatellites) {
   // We do not need any special configuration
   // default is good enough
   auto config = defaultDBConfig();
@@ -353,8 +354,8 @@ TEST_F(PlanCollectionUserAPITest, test_shardKeyOnSatellites) {
         body.add(VPackValue("testKey"));
       }
     }
-    auto testee =
-        PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+    auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(),
+                                                          defaultDBConfig());
     auto result = testee.result();
     if (result.ok()) {
       result = testee->validateDatabaseConfiguration(config);
@@ -376,8 +377,8 @@ TEST_F(PlanCollectionUserAPITest, test_shardKeyOnSatellites) {
         body.add(VPackValue("_key"));
       }
     }
-    auto testee =
-        PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+    auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(),
+                                                          defaultDBConfig());
     auto result = testee.result();
     if (result.ok()) {
       result = testee->validateDatabaseConfiguration(config);
@@ -402,8 +403,8 @@ TEST_F(PlanCollectionUserAPITest, test_shardKeyOnSatellites) {
         body.add(VPackValue("testKey"));
       }
     }
-    auto testee =
-        PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+    auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(),
+                                                          defaultDBConfig());
     auto result = testee.result();
     if (result.ok()) {
       result = testee->validateDatabaseConfiguration(config);
@@ -413,19 +414,19 @@ TEST_F(PlanCollectionUserAPITest, test_shardKeyOnSatellites) {
   }
 }
 
-TEST_F(PlanCollectionUserAPITest, test_internal_values_as_shardkeys) {
+TEST_F(CreateCollectionBodyTest, test_internal_values_as_shardkeys) {
   // Sharding by internal keys, or prefix/postfix of them is not allowed
   for (auto const& key : {"_id", "_rev", ":_id", "_id:", ":_rev", "_rev:"}) {
     // Specific shardKey is disallowed
     auto body = createMinimumBodyWithOneValue("shardKeys",
                                               std::vector<std::string>{key});
-    auto testee =
-        PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+    auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(),
+                                                          defaultDBConfig());
     EXPECT_FALSE(testee.ok()) << "Created a collection with shardkey: " << key;
   }
 }
 
-TEST_F(PlanCollectionUserAPITest, test_distributeShardsLike_default) {
+TEST_F(CreateCollectionBodyTest, test_distributeShardsLike_default) {
   // We do not need any special configuration
   // default is good enough
   std::string defaultShardBy = "_graphs";
@@ -434,12 +435,12 @@ TEST_F(PlanCollectionUserAPITest, test_distributeShardsLike_default) {
 
   // Specific shardKey is disallowed
   auto body = createMinimumBodyWithOneValue("name", "test");
-  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), config);
+  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
   ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
   EXPECT_EQ(testee->constantProperties.distributeShardsLike, defaultShardBy);
 }
 
-TEST_F(PlanCollectionUserAPITest, test_oneShard_forcesDistributeShardsLike) {
+TEST_F(CreateCollectionBodyTest, test_oneShard_forcesDistributeShardsLike) {
   // We do not need any special configuration
   // default is good enough
   std::string defaultShardBy = "_graphs";
@@ -449,7 +450,7 @@ TEST_F(PlanCollectionUserAPITest, test_oneShard_forcesDistributeShardsLike) {
 
   // Specific shardKey is disallowed
   auto body = createMinimumBodyWithOneValue("distributeShardsLike", "test");
-  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), config);
+  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
   ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
   EXPECT_EQ(testee->constantProperties.distributeShardsLike, "test");
 
@@ -457,7 +458,7 @@ TEST_F(PlanCollectionUserAPITest, test_oneShard_forcesDistributeShardsLike) {
   EXPECT_FALSE(res.ok()) << "Distribute shards like violates oneShard database";
 }
 
-TEST_F(PlanCollectionUserAPITest, test_oneShard_moreShards) {
+TEST_F(CreateCollectionBodyTest, test_oneShard_moreShards) {
   // Configure oneShardDB properly
   std::string defaultShardBy = "_graphs";
   auto config = defaultDBConfig();
@@ -466,7 +467,7 @@ TEST_F(PlanCollectionUserAPITest, test_oneShard_moreShards) {
 
   // Specific shardKey is disallowed
   auto body = createMinimumBodyWithOneValue("numberOfShards", 5);
-  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), config);
+  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
   // This could already fail, as soon as we have a context
   ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
   EXPECT_EQ(testee->constantProperties.numberOfShards, 5);
@@ -475,13 +476,13 @@ TEST_F(PlanCollectionUserAPITest, test_oneShard_moreShards) {
   EXPECT_FALSE(res.ok()) << "Number of Shards violates oneShard database";
 }
 
-TEST_F(PlanCollectionUserAPITest, test_smartJoinAttribute_cannot_be_empty) {
+TEST_F(CreateCollectionBodyTest, test_smartJoinAttribute_cannot_be_empty) {
   auto config = defaultDBConfig();
 
   // Specific shardKey is disallowed
   auto body =
       createMinimumBodyWithOneValue(StaticStrings::SmartJoinAttribute, "");
-  auto testee = PlanCollection::fromCreateAPIBody(body.slice(), config);
+  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
   // This could already fail, as soon as we have a context
   EXPECT_FALSE(testee.ok()) << "Let an empty smartJoinAttribute through";
 }
@@ -532,7 +533,7 @@ class PlanCollectionNamesTest
     return p.allowedFlags & AllowedFlags::WithExtension;
   };
 
-  static PlanCollection::DatabaseConfiguration defaultDBConfig() {
+  static CreateCollectionBody::DatabaseConfiguration defaultDBConfig() {
     return {[]() { return DataSourceId(42); }};
   }
 };
@@ -570,7 +571,7 @@ TEST_P(PlanCollectionNamesTest, test_allowed_without_flags) {
   EXPECT_EQ(config.allowExtendedNames, false);
 
   auto testee =
-      PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
   auto result = testee.result();
   if (result.ok()) {
     result = testee->validateDatabaseConfiguration(config);
@@ -598,7 +599,7 @@ TEST_P(PlanCollectionNamesTest, test_allowed_with_isSystem_flag) {
   EXPECT_EQ(config.allowExtendedNames, false);
 
   auto testee =
-      PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
   auto result = testee.result();
   if (result.ok()) {
     result = testee->validateDatabaseConfiguration(config);
@@ -624,7 +625,7 @@ TEST_P(PlanCollectionNamesTest, test_allowed_with_extendendNames_flag) {
   config.allowExtendedNames = true;
 
   auto testee =
-      PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
   auto result = testee.result();
   if (result.ok()) {
     result = testee->validateDatabaseConfiguration(config);
@@ -652,7 +653,7 @@ TEST_P(PlanCollectionNamesTest,
   config.allowExtendedNames = true;
 
   auto testee =
-      PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
   auto result = testee.result();
   if (result.ok()) {
     result = testee->validateDatabaseConfiguration(config);
@@ -691,8 +692,8 @@ class PlanCollectionReplicationFactorTest
     }
     return body;
   }
-  
-  static PlanCollection::DatabaseConfiguration defaultDBConfig() {
+
+  static CreateCollectionBody::DatabaseConfiguration defaultDBConfig() {
     return {[]() { return DataSourceId(42); }};
   }
 };
@@ -712,7 +713,7 @@ TEST_P(PlanCollectionReplicationFactorTest, test_noMaxReplicationFactor) {
   config.enforceReplicationFactor = true;
 
   auto testee =
-      PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
   // Parsing should always be okay
 
   ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
@@ -746,7 +747,7 @@ TEST_P(PlanCollectionReplicationFactorTest, test_maxReplicationFactor) {
   config.maxReplicationFactor = 5;
 
   auto testee =
-      PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
   // Parsing should always be okay
 
   ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
@@ -781,7 +782,7 @@ TEST_P(PlanCollectionReplicationFactorTest, test_minReplicationFactor) {
   config.minReplicationFactor = 5;
 
   auto testee =
-      PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
   // Parsing should always be okay
 
   ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
@@ -817,7 +818,7 @@ TEST_P(PlanCollectionReplicationFactorTest, test_nonoEnforce) {
   config.maxReplicationFactor = 5;
 
   auto testee =
-      PlanCollection::fromCreateAPIBody(body.slice(), defaultDBConfig());
+      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
   // Parsing should always be okay
 
   ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();

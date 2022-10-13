@@ -64,7 +64,7 @@ bool CollectionConstantProperties::operator==(
     return false;
   }
   if (!basics::VelocyPackHelper::equal(keyOptions.slice(),
-                                       other.keyOptions.slice(), true)) {
+                                       other.keyOptions.slice(), false)) {
     return false;
   }
   return true;

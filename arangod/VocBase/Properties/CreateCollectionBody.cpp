@@ -20,13 +20,12 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "PlanCollection.h"
+#include "CreateCollectionBody.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Inspection/VPack.h"
-#include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/vocbase.h"
@@ -37,10 +36,10 @@
 using namespace arangodb;
 
 namespace {
-PlanCollection initWithDefaults(
-    PlanCollection::DatabaseConfiguration const& config,
+CreateCollectionBody initWithDefaults(
+    CreateCollectionBody::DatabaseConfiguration const& config,
     std::string const& name) {
-  PlanCollection res;
+  CreateCollectionBody res;
   // Inject certain default values.
   res.mutableProperties.name = name;
 
@@ -57,12 +56,12 @@ PlanCollection initWithDefaults(
   return res;
 }
 
-ResultT<PlanCollection> parseAndValidate(
-    PlanCollection::DatabaseConfiguration const& config, VPackSlice input,
+ResultT<CreateCollectionBody> parseAndValidate(
+    CreateCollectionBody::DatabaseConfiguration const& config, VPackSlice input,
     std::string const& defaultName,
-    std::function<void(PlanCollection&)> applyOnSuccess) {
+    std::function<void(CreateCollectionBody&)> applyOnSuccess) {
   try {
-    PlanCollection res = initWithDefaults(config, defaultName);
+    CreateCollectionBody res = initWithDefaults(config, defaultName);
 
     auto status = velocypack::deserializeWithStatus(
         input, res.mutableProperties, {.ignoreUnknownFields = true});
@@ -138,12 +137,12 @@ ResultT<PlanCollection> parseAndValidate(
 }  // namespace
 
 #if ARANGODB_USE_GOOGLE_TESTS
-PlanCollection::DatabaseConfiguration::DatabaseConfiguration(
+CreateCollectionBody::DatabaseConfiguration::DatabaseConfiguration(
     std::function<DataSourceId()> _idGenerator)
     : idGenerator{std::move(_idGenerator)} {}
 #endif
 
-PlanCollection::DatabaseConfiguration::DatabaseConfiguration(
+CreateCollectionBody::DatabaseConfiguration::DatabaseConfiguration(
     TRI_vocbase_t const& vocbase) {
   auto& server = vocbase.server();
   auto& cl = server.getFeature<ClusterFeature>();
@@ -174,24 +173,25 @@ PlanCollection::DatabaseConfiguration::DatabaseConfiguration(
   }
 }
 
-PlanCollection::PlanCollection() {}
+CreateCollectionBody::CreateCollectionBody() {}
 
-ResultT<PlanCollection> PlanCollection::fromCreateAPIBody(
+ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
     VPackSlice input, DatabaseConfiguration config) {
   if (!input.isObject()) {
     // Special handling to be backwards compatible error reporting
     // on "name"
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
-  return ::parseAndValidate(
-      config, input, StaticStrings::Empty, [&config](PlanCollection& col) {
-        if (col.internalProperties.id.empty()) {
-          col.internalProperties.id = config.idGenerator();
-        }
-      });
+  return ::parseAndValidate(config, input, StaticStrings::Empty,
+                            [&config](CreateCollectionBody& col) {
+                              if (col.internalProperties.id.empty()) {
+                                col.internalProperties.id =
+                                    config.idGenerator();
+                              }
+                            });
 }
 
-ResultT<PlanCollection> PlanCollection::fromCreateAPIV8(
+ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
     VPackSlice properties, std::string const& name, TRI_col_type_e type,
     DatabaseConfiguration config) {
   if (name.empty()) {
@@ -199,21 +199,24 @@ ResultT<PlanCollection> PlanCollection::fromCreateAPIV8(
     // on "name"
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
-  return ::parseAndValidate(config, properties, name, [&name, &type, &config](PlanCollection& col) {
-        // If we have given a type, it always wins.
-        // As we hand in an enum the type has to be valid.
-        // TODO: Should we silently do this?
-        // or should we throw an illegal use error?
-        col.constantProperties.type = type;
-        col.mutableProperties.name = name;
-        if (col.internalProperties.id.empty()) {
-          col.internalProperties.id = config.idGenerator();
-        }
-      });
+  return ::parseAndValidate(config, properties, name,
+                            [&name, &type, &config](CreateCollectionBody& col) {
+                              // If we have given a type, it always wins.
+                              // As we hand in an enum the type has to be valid.
+                              // TODO: Should we silently do this?
+                              // or should we throw an illegal use error?
+                              col.constantProperties.type = type;
+                              col.mutableProperties.name = name;
+                              if (col.internalProperties.id.empty()) {
+                                col.internalProperties.id =
+                                    config.idGenerator();
+                              }
+                            });
 }
 
-arangodb::velocypack::Builder PlanCollection::toCreateCollectionProperties(
-    std::vector<PlanCollection> const& collections) {
+arangodb::velocypack::Builder
+CreateCollectionBody::toCreateCollectionProperties(
+    std::vector<CreateCollectionBody> const& collections) {
   arangodb::velocypack::Builder builder;
   VPackArrayBuilder guard{&builder};
   for (auto const& c : collections) {
@@ -224,7 +227,7 @@ arangodb::velocypack::Builder PlanCollection::toCreateCollectionProperties(
   return builder;
 }
 
-arangodb::Result PlanCollection::validateDatabaseConfiguration(
+arangodb::Result CreateCollectionBody::validateDatabaseConfiguration(
     DatabaseConfiguration config) const {
   //  Check name is allowed
   if (!CollectionNameValidator::isAllowedName(constantProperties.isSystem,
@@ -305,7 +308,8 @@ arangodb::Result PlanCollection::validateDatabaseConfiguration(
   return {};
 }
 
-arangodb::velocypack::Builder PlanCollection::toCollectionsCreate() const {
+arangodb::velocypack::Builder CreateCollectionBody::toCollectionsCreate()
+    const {
   arangodb::velocypack::Builder builder;
   arangodb::velocypack::serialize(builder, *this);
   // TODO: This is a hack to erase attributes that are not expected by follow up

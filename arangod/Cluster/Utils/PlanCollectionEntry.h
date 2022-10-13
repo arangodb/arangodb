@@ -36,10 +36,10 @@ namespace velocypack {
 class Builder;
 }
 
-struct PlanCollection;
+struct CreateCollectionBody;
 
 struct PlanCollectionEntry {
-  PlanCollectionEntry(PlanCollection collection,
+  PlanCollectionEntry(CreateCollectionBody collection,
                       ShardDistribution shardDistribution,
                       AgencyIsBuildingFlags isBuildingFlags);
 

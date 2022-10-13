@@ -29,7 +29,7 @@
 #include "Cluster/Utils/EvenDistribution.h"
 #include "Cluster/Utils/PlanCollectionEntry.h"
 #include "Cluster/Utils/PlanCollectionToAgencyWriter.h"
-#include "VocBase/Properties/PlanCollection.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
 
 #include "Logger/LogMacros.h"
 #include "Inspection/VPack.h"
@@ -51,7 +51,7 @@ class PlanCollectionToAgencyWriterTest : public ::testing::Test {
  protected:
   std::string const& dbName() { return databaseName; }
 
-  std::string collectionPlanPath(PlanCollection const& col) {
+  std::string collectionPlanPath(CreateCollectionBody const& col) {
     return cluster::paths::root()
         ->arango()
         ->plan()
@@ -93,7 +93,7 @@ class PlanCollectionToAgencyWriterTest : public ::testing::Test {
   }
 
   PlanCollectionToAgencyWriter createWriterWithTestSharding(
-      PlanCollection col) {
+      CreateCollectionBody col) {
     auto numberOfShards = col.constantProperties.numberOfShards;
     auto distribution = std::make_shared<EvenDistribution>(
         numberOfShards, col.mutableProperties.replicationFactor,
@@ -123,7 +123,7 @@ class PlanCollectionToAgencyWriterTest : public ::testing::Test {
 TEST_F(PlanCollectionToAgencyWriterTest, can_produce_agency_precondition) {}
 
 TEST_F(PlanCollectionToAgencyWriterTest, can_produce_agency_operation) {
-  PlanCollection col{};
+  CreateCollectionBody col{};
   col.mutableProperties.name = "test";
   col.internalProperties.id = DataSourceId(123);
 

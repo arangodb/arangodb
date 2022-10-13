@@ -44,7 +44,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
-#include "VocBase/Properties/PlanCollection.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -351,8 +351,8 @@ void RestCollectionHandler::handleCommandPost() {
   bool enforceReplicationFactor =
       _request->parsedValue("enforceReplicationFactor", true);
 
-  auto planCollection = PlanCollection::fromCreateAPIBody(
-      body, PlanCollection::DatabaseConfiguration{_vocbase});
+  auto planCollection = CreateCollectionBody::fromCreateAPIBody(
+      body, CreateCollectionBody::DatabaseConfiguration{_vocbase});
 
   if (planCollection.fail()) {
     // error message generated in inspect
@@ -366,7 +366,8 @@ void RestCollectionHandler::handleCommandPost() {
                              planCollection.errorNumber());
     return;
   }
-  std::vector<PlanCollection> collections{std::move(planCollection.get())};
+  std::vector<CreateCollectionBody> collections{
+      std::move(planCollection.get())};
 
   OperationOptions options(_context);
   auto result = methods::Collections::create(

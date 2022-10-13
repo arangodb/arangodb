@@ -38,7 +38,7 @@
 #include "Sharding/ShardingInfo.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/Properties/PlanCollection.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/vocbase.h"
 
 // TODO: TEMPORARY!
@@ -314,7 +314,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
 }  // namespace
 
 [[nodiscard]] auto ClusterCollectionMethods::toPlanEntry(
-    PlanCollection col, std::vector<ShardID> shardNames,
+    CreateCollectionBody col, std::vector<ShardID> shardNames,
     std::shared_ptr<IShardDistributionFactory> distributeType,
     AgencyIsBuildingFlags buildingFlags) -> PlanCollectionEntry {
   return {std::move(col),
@@ -340,7 +340,8 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
 }
 
 [[nodiscard]] auto ClusterCollectionMethods::selectDistributeType(
-    ClusterInfo& ci, std::string_view databaseName, PlanCollection const& col,
+    ClusterInfo& ci, std::string_view databaseName,
+    CreateCollectionBody const& col,
     std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>&
         allUsedDistrbitions) -> std::shared_ptr<IShardDistributionFactory> {
   if (col.constantProperties.distributeShardsLike.has_value()) {
@@ -396,7 +397,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
 
 [[nodiscard]] arangodb::ResultT<std::vector<std::shared_ptr<LogicalCollection>>>
 ClusterCollectionMethods::createCollectionsOnCoordinator(
-    TRI_vocbase_t& vocbase, std::vector<PlanCollection> collections,
+    TRI_vocbase_t& vocbase, std::vector<CreateCollectionBody> collections,
     bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
     bool enforceReplicationFactor, bool isNewDatabase) {
 
