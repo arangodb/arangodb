@@ -120,6 +120,13 @@ struct StreamProxy : Interface<EntryType> {
   using WaitForResult = typename streams::Stream<EntryType>::WaitForResult;
   using Iterator = typename streams::Stream<EntryType>::Iterator;
 
+ protected:
+  std::unique_ptr<ILogMethodsT> _logMethods;
+
+ public:
+  explicit StreamProxy(std::unique_ptr<ILogMethodsT> methods)
+      : _logMethods(std::move(methods)) {}
+
   auto waitFor(LogIndex index) -> futures::Future<WaitForResult> override {
     // TODO Delete this, also in streams::Stream
     std::abort();
@@ -133,26 +140,21 @@ struct StreamProxy : Interface<EntryType> {
     // TODO Implement this
     std::abort();
   }
-
-  // TODO Acquire the log methods, handle ownership
-  ILogMethodsT* _logMethods{};
 };
 
 template<typename EntryType, typename Serializer>
 struct ProducerStreamProxy
     : StreamProxy<EntryType, streams::ProducerStream,
                   replicated_log::IReplicatedLogLeaderMethods> {
- private:
-  // TODO Where should the methods live while we're leader?
-  std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> _methods;
-
- public:
   explicit ProducerStreamProxy(
       std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> methods)
-      : _methods(std::move(methods)) {}
+      : StreamProxy<EntryType, streams::ProducerStream,
+                    replicated_log::IReplicatedLogLeaderMethods>(
+            std::move(methods)) {
+    ADB_PROD_ASSERT(this->_logMethods != nullptr);
+  }
 
   auto insert(EntryType const& v) -> LogIndex override {
-    ADB_PROD_ASSERT(this != nullptr);
     auto builder = velocypack::Builder();
     std::invoke(Serializer{}, streams::serializer_tag<EntryType>, v, builder);
     // TODO avoid the copy
@@ -167,9 +169,11 @@ struct ProducerStreamProxy
     std::abort();
   }
 
-  auto methods() -> auto& { return *_methods; }
+  auto methods() -> auto& { return *this->_logMethods; }
 
-  auto resign() && -> decltype(_methods) { return std::move(_methods); }
+  auto resign() && -> decltype(this->_logMethods) {
+    return std::move(this->_logMethods);
+  }
 };
 
 template<typename S>
