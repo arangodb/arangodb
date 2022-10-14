@@ -486,6 +486,7 @@ auto ReplicatedState<S>::buildCore(
     info.stateId = log->getId();
     info.specification.type = S::NAME;
     info.specification.parameters = *coreParameter;
+    LOG_DEVEL << "calling construct core";
     return factory->constructCore(gid, std::move(params));
   }
 }

@@ -51,7 +51,8 @@ replicated_log::ReplicatedLog::ReplicatedLog(
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     std::shared_ptr<IParticipantsFactory> participantsFactory,
     LoggerContext const& logContext, agency::ServerInstanceReference myself)
-    : _logContext(logContext.with<logContextKeyLogId>(core->logId())),
+    : _id(core->logId()),
+      _logContext(logContext.with<logContextKeyLogId>(core->logId())),
       _metrics(std::move(metrics)),
       _options(std::move(options)),
       _participantsFactory(std::move(participantsFactory)),

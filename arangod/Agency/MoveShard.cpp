@@ -660,7 +660,7 @@ std::optional<std::uint64_t> MoveShard::getShardSupervisionVersion() {
   // read
   // arango/Current/ReplicatedState/<database>/<replicated-state-id>/supervision/version
   auto stateId = LogicalCollection::shardIdToStateId(_shard);
-  return _snapshot.hasAsUInt("Current/ReplicatedStates/" + _database + "/" +
+  return _snapshot.hasAsUInt("Current/ReplicatedLogs/" + _database + "/" +
                              to_string(stateId) + "/supervision/version");
 }
 

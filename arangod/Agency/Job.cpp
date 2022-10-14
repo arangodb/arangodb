@@ -1156,7 +1156,7 @@ bool Job::isServerParticipantForState(const Node& snap, std::string const& db,
 
 std::optional<arangodb::replication2::agency::LogTarget> Job::readStateTarget(
     Node const& snap, std::string const& db, replication2::LogId stateId) {
-  auto targetPath = "/Target/ReplicatedStates/" + db + "/" + to_string(stateId);
+  auto targetPath = "/Target/ReplicatedLogs/" + db + "/" + to_string(stateId);
   auto targetNode = snap.get(targetPath);
   if (not targetNode.has_value()) {
     return std::nullopt;
@@ -1170,7 +1170,7 @@ std::optional<arangodb::replication2::agency::LogTarget> Job::readStateTarget(
 std::optional<arangodb::replication2::agency::LogPlanSpecification>
 Job::readLogPlan(Node const& snap, std::string const& db,
                  replication2::LogId stateId) {
-  auto planPath = "/Plan/ReplicatedStates/" + db + "/" + to_string(stateId);
+  auto planPath = "/Plan/ReplicatedLogs/" + db + "/" + to_string(stateId);
   auto planNode = snap.get(planPath);
   if (not planNode.has_value()) {
     return std::nullopt;
