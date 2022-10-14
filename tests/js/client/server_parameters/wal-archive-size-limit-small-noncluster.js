@@ -37,76 +37,15 @@ if (getOptions === true) {
 }
 
 const jsunity = require('jsunity');
+const { deriveTestSuite } = require('@arangodb/test-helper');
+const { WalArchiveSizeLimitSuite, sendLargeServerOperation } = require(fs.join('tests', 'js', 'client', 'server_parameters', 'wal-archive-size-limit.inc'));
 
-function WalArchiveSizeLimitSuite() {
+function WalArchiveSizeLimitSuiteSmall() {
   'use strict';
       
-  const db = require("internal").db;
-  let oldLogLevel;
-
-  return {
-    setUpAll : function() {
-      oldLogLevel = arango.GET("/_admin/log/level").general;
-      // adjusting log levels is necessary to find the messages in the
-      // logs later - otherwise they would be suppressed
-      arango.PUT("/_admin/log/level", { general: "info", engines: "warning" });
-    },
-    
-    tearDownAll : function () {
-      // restore previous log level for "general" topic;
-      arango.PUT("/_admin/log/level", { general: oldLogLevel });
-    },
-      
-    setUp : function () {
-      db._create("UnitTestsCollection");
-    },
-
-    tearDown : function () {
-      db._drop("UnitTestsCollection");
-    },
-
+  let suite = {
     testDoesNotForceDeleteWalFiles: function() {
-      // insert larger amounts of data on the server
-      let res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
-require('console').log("testmann: start"); 
-let docs = [];
-for (let i = 0; i < 1000; ++i) {
-  docs.push({ value1: "test" + i, payload: Array(512).join("x") });
-}
-let db = require("internal").db;
-let time = require("internal").time;
-let start = time();
-do {
-  db.UnitTestsCollection.insert(docs);
-} while (time() - start < 20);
-  
-require('console').log("testmann: done"); 
-return require('internal').options()["log.output"];
-`);
-
-      assertTrue(Array.isArray(res));
-      assertTrue(res.length > 0);
-
-      let logfile = res[res.length - 1].replace(/^file:\/\//, '');
-
-      // log is buffered, so give it a few tries until the log messages appear
-      let tries = 0;
-      let filtered = [];
-      while (++tries < 60) {
-        let content = fs.readFileSync(logfile, 'ascii');
-        let lines = content.split('\n');
-
-        filtered = lines.filter((line) => {
-          // logId "d9793" from RocksDBEngine.cpp
-          return line.match(/(testmann: |d9793)/);
-        });
-
-        if (filtered.length >= 2) {
-          break;
-        }
-
-        require("internal").sleep(0.5);
-      }
+      let filtered = sendLargeServerOperation();
 
       // this will fail if warning d9793 was *not* logged
       let found = false;
@@ -120,9 +59,11 @@ return require('internal').options()["log.output"];
 
       assertTrue(found);
     },
-
   };
+
+  deriveTestSuite(WalArchiveSizeLimitSuite(), suite, '_small');
+  return suite;
 }
 
-jsunity.run(WalArchiveSizeLimitSuite);
+jsunity.run(WalArchiveSizeLimitSuiteSmall);
 return jsunity.done();
