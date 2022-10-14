@@ -1000,7 +1000,7 @@ QueryResult Query::explain(bool optimize) {
         _queryOptions.verbosePlans, _queryOptions.explainInternals,
         _queryOptions.explainRegisters == ExplainRegisterPlan::Yes);
 
-    std::unique_ptr<Optimizer> opt = nullptr;
+    std::unique_ptr<Optimizer> opt;
     if (optimize) {
       // Run the query optimizer:
       enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);

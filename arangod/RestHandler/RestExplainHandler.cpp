@@ -112,12 +112,14 @@ void RestExplainHandler::explainQuery() {
       aql::QueryOptions(optionsSlice));
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // optimization can be turned off for debugging purposes only
   bool optimize = _request->parsedValue("optimize", true);
+#else
+  // optimization cannot be turned off
+  constexpr bool optimize = true;
+#endif
 
   auto queryResult = query->explain(optimize);
-#else
-  auto queryResult = query->explain();
-#endif
 
   if (queryResult.result.fail()) {
     generateError(queryResult.result);
