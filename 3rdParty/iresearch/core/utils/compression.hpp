@@ -105,6 +105,8 @@ struct IRESEARCH_API decompressor {
   virtual bytes_ref decompress(const byte_type* src, size_t src_size,
                                byte_type* dst, size_t dst_size) = 0;
 
+  // FIXME: make sure no compressor relies tha data_input here is the source
+  // of src in decompress call.
   virtual bool prepare(data_input& /*in*/) {
     // NOOP
     return true;

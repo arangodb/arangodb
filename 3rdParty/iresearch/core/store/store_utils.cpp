@@ -165,4 +165,14 @@ int64_t bytes_ref_input::checksum(size_t offset) const {
   return crc.checksum();
 }
 
+size_t remapped_bytes_ref_input::src_to_internal(size_t t) {
+  assert(!mapping_.empty());
+  auto it  = std::lower_bound(mapping_.begin(), mapping_.end(), t,
+                   [](const auto& l, const auto& r) { return l.first < r; });
+  if (it == mapping_.end()) {
+    it = mapping_.end() - 1;
+  }
+  return it->second + (t - it->first);
+}
+
 }

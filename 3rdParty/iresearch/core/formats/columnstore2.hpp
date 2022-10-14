@@ -341,7 +341,8 @@ class reader final : public columnstore_reader {
   void prepare_index(
     const directory& dir,
     const segment_meta& meta,
-    const std::string& filename);
+    const std::string& filename,
+    const std::string& data_filename);
 
   std::vector<column_ptr> sorted_columns_;
   std::vector<const column_ptr::element_type*> columns_;
