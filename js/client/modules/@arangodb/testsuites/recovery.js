@@ -213,7 +213,10 @@ function recovery (options) {
       let iteration = 0;
       let stateFile = fs.getTempFile();
       let exitSuccessOk = test.indexOf('-exitzero') >= 0;
+<<<<<<< HEAD
       let exitFailOk = test.indexOf('-exitone') >= 0;
+=======
+>>>>>>> eb49fd00de5 (make recovery tests be able to exit zero arangods)
 
       while (true) {
         ++iteration;
@@ -239,7 +242,11 @@ function recovery (options) {
           params.keyDir = fs.join(fs.getTempPath(), `arango_encryption_${count}`);
           fs.makeDirectory(params.keyDir);
         }
+<<<<<<< HEAD
         let res = runArangodRecovery(params, useEncryption, exitSuccessOk, exitFailOk);
+=======
+        let res = runArangodRecovery(params, useEncryption, exitSuccessOk);
+>>>>>>> eb49fd00de5 (make recovery tests be able to exit zero arangods)
         if (!res.status) {
           results[test] = res;
           break;
@@ -257,7 +264,11 @@ function recovery (options) {
             duration: -1
           });
         } catch (er) {}
+<<<<<<< HEAD
         runArangodRecovery(params, useEncryption, exitSuccessOk, exitFailOk);
+=======
+        runArangodRecovery(params, useEncryption, exitSuccessOk);
+>>>>>>> eb49fd00de5 (make recovery tests be able to exit zero arangods)
 
         results[test] = tu.readTestResult(
           params.instance.args['temp.path'],
