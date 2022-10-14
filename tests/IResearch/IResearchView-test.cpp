@@ -2403,10 +2403,8 @@ TEST_F(IResearchViewTest, test_remove_within_trx) {
 
     auto& segment = reader[0];
     const auto* column = segment.sort();
-    ASSERT_NE(nullptr, column);
-    ASSERT_TRUE(column->name().null());
-    ASSERT_EQ(0, column->payload().size());
-    auto values = column->iterator(false);
+    ASSERT_NE(nullptr, column);    
+    auto values = column->iterator();
     ASSERT_NE(nullptr, values);
     auto* value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, value);
