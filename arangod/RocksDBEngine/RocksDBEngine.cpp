@@ -2506,8 +2506,8 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       << "number of prunable files: " << _prunableWalFiles.size();
 
   if (_maxWalArchiveSizeLimit > 0 &&
-      totalArchiveSize <= _maxWalArchiveSizeLimit) {
-    // size of the archive is restricted.
+      totalArchiveSize > _maxWalArchiveSizeLimit) {
+    // size of the archive is restricted, and we overflowed the limit.
 
     // print current archive size
     LOG_TOPIC("8d71b", TRACE, Logger::ENGINES)
@@ -2539,13 +2539,19 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       }
 
       if (doPrint) {
+        TRI_ASSERT(totalArchiveSize > _maxWalArchiveSizeLimit);
+
+        // never change this id without adjusting wal-archive-size-limit tests
+        // in tests/js/client/server-parameters
         LOG_TOPIC("d9793", WARN, Logger::ENGINES)
             << "forcing removal of RocksDB WAL file '" << f->PathName()
             << "' with start sequence " << f->StartSequence()
             << " because of overflowing archive. configured maximum archive "
                "size is "
             << _maxWalArchiveSizeLimit
-            << ", actual archive size is: " << totalArchiveSize;
+            << ", actual archive size is: " << totalArchiveSize
+            << ". if these warnings persist, try to increase the value of "
+            << "the startup option `--rocksdb.wal-archive-size-limit`";
       }
 
       TRI_ASSERT(totalArchiveSize >= f->SizeFileBytes());
