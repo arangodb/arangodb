@@ -110,7 +110,16 @@ void RestExplainHandler::explainQuery() {
       transaction::StandaloneContext::Create(_vocbase),
       aql::QueryString(queryString), std::move(bindBuilder),
       aql::QueryOptions(optionsSlice));
-  auto queryResult = query->explain();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // optimization can be turned off for debugging purposes only
+  bool optimize = _request->parsedValue("optimize", true);
+#else
+  // optimization cannot be turned off
+  constexpr bool optimize = true;
+#endif
+
+  auto queryResult = query->explain(optimize);
 
   if (queryResult.result.fail()) {
     generateError(queryResult.result);

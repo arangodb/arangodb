@@ -664,7 +664,7 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       transaction::V8Context::Create(vocbase, true),
       aql::QueryString(std::move(queryString)), std::move(bindVars),
       aql::QueryOptions(options.slice()));
-  auto queryResult = query->explain();
+  auto queryResult = query->explain(true);
 
   if (queryResult.result.fail()) {
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.result.errorNumber(),
