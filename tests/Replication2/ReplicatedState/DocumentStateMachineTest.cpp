@@ -70,6 +70,7 @@ struct MockDocumentStateHandlersFactory : IDocumentStateHandlersFactory {
 
 struct MockDocumentStateTransaction : IDocumentStateTransaction {
   MOCK_METHOD(OperationResult, apply, (DocumentLogEntry const&), (override));
+  MOCK_METHOD(Result, intermediateCommit, (), (override));
   MOCK_METHOD(Result, commit, (), (override));
   MOCK_METHOD(Result, abort, (), (override));
 };
@@ -570,6 +571,15 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_basic) {
   ASSERT_TRUE(result.ok());
   Mock::VerifyAndClearExpectations(transactionMock.get());
   Mock::VerifyAndClearExpectations(handlersFactoryMock.get());
+
+  // An intermediate commit should not affect the transaction
+  EXPECT_CALL(*transactionMock, intermediateCommit).WillOnce(Return(Result{}));
+  doc.operation = OperationType::kIntermediateCommit;
+  result = transactionHandler.applyEntry(doc);
+  ASSERT_TRUE(result.ok());
+  Mock::VerifyAndClearExpectations(transactionMock.get());
+  ASSERT_TRUE(
+      transactionHandler.getActiveTransactions().contains(TransactionId{6}));
 
   // After commit, expect the transaction to be removed
   EXPECT_CALL(*transactionMock, commit).WillOnce(Return(Result{}));

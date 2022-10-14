@@ -171,8 +171,14 @@ Result ClusterTransactionState::abortTransaction(
   return {};
 }
 
-Result ClusterTransactionState::performIntermediateCommitIfRequired(
-    DataSourceId cid) {
+arangodb::Result ClusterTransactionState::triggerIntermediateCommit() {
+  ADB_PROD_ASSERT(false) << "triggerIntermediateCommit is not supported in "
+                            "ClusterTransactionState";
+  return arangodb::Result{TRI_ERROR_INTERNAL};
+}
+
+futures::Future<Result>
+ClusterTransactionState::performIntermediateCommitIfRequired(DataSourceId cid) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "unexpected intermediate commit");
 }

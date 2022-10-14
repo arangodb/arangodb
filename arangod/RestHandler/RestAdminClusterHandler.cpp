@@ -32,6 +32,7 @@
 
 #include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
+#include "Agency/Supervision.h"
 #include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/NumberUtils.h"
@@ -2727,7 +2728,8 @@ RestAdminClusterHandler::collectRebalanceInformation(
 
   std::unordered_set<std::string> activeServers;
   for (auto it : velocypack::ObjectIterator(serversHealthInfo)) {
-    if (it.value.get("Status").stringView() == "GOOD") {
+    if (it.value.get("Status").stringView() ==
+        consensus::Supervision::HEALTH_STATUS_GOOD) {
       activeServers.emplace(it.key.copyString());
     }
   }
