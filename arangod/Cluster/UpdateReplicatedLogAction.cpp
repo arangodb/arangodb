@@ -68,16 +68,19 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
 
   auto result = std::invoke([&] {
     if (spec.has_value()) {
-      if (auto state = guard->getReplicatedStateById(logId); state.ok()) {
-        return guard->updateReplicatedState(logId, *spec->currentTerm,
-                                            spec->participantsConfig);
-      } else {
+      if (auto state = guard->getReplicatedStateById(logId); state.fail()) {
         auto& impl = spec->properties.implementation;
         VPackSlice parameter = impl.parameters ? impl.parameters->slice()
                                                : VPackSlice::noneSlice();
-        return guard->createReplicatedState(logId, impl.type, parameter)
-            .result();
+        if (auto res = guard->createReplicatedState(logId, impl.type, parameter)
+                           .result();
+            res.fail()) {
+          return res;
+        }
       }
+
+      return guard->updateReplicatedState(logId, *spec->currentTerm,
+                                          spec->participantsConfig);
     } else {
       return guard->dropReplicatedState(logId);
     }

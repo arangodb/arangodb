@@ -735,6 +735,8 @@ Result LogFollower::onSnapshotCompleted() {
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+  LOG_CTX("80094", DEBUG, _loggerContext)
+      << "Snapshot status updated to completed on persistent storage";
   guard->_snapshotCompleted = true;
   return {};
 }
