@@ -23,99 +23,84 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
-
-#include <Basics/VelocyPackStringLiteral.h>
-
-#include <velocypack/vpack.h>
-
-#include <fmt/core.h>
-#include <fmt/format.h>
-
-#include <Inspection/VPackPure.h>
-
-#include <string>
 #include <variant>
+#include <Inspection/VPackPure.h>
+#include "WCCGraph.h"
+#include "DisjointSet.h"
 
-using namespace arangodb::velocypack;
-
-struct VertexProperties {
-  uint64_t value;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, VertexProperties& x) {
-  return f.object(x).fields(f.field("value", x.value));
+TEST(GWEN_DISJOINT_SET, test_constructor) {
+  auto ds = DisjointSet(10);
+  EXPECT_EQ(ds.capacity(), static_cast<size_t>(10));
+  auto ds0 = DisjointSet();
+  EXPECT_EQ(ds0.capacity(), static_cast<size_t>(0) );
 }
 
-struct EmptyEdgeProperties {};
-template<typename Inspector>
-auto inspect(Inspector& f, EmptyEdgeProperties& x) {
-  return f.object(x).fields();
+
+TEST(GWEN_DISJOINT_SET, test_add_singleton) {
+  auto ds = DisjointSet();
+  EXPECT_TRUE(ds.addSingleton(2));
+  EXPECT_EQ(ds.capacity(), 3u);
+  EXPECT_FALSE(ds.addSingleton(2));
+  EXPECT_TRUE(ds.addSingleton(1));
+  EXPECT_EQ(ds.capacity(), 3u);
+  EXPECT_TRUE(ds.addSingleton(4));
+  EXPECT_EQ(ds.capacity(), 5u);
+  EXPECT_TRUE(ds.addSingleton(0));
+  EXPECT_EQ(ds.capacity(), 5u);
+  EXPECT_TRUE(ds.addSingleton(5, 6));
+  EXPECT_EQ(ds.capacity(), 6u);
+  EXPECT_TRUE(ds.addSingleton(6, 8));
+  EXPECT_EQ(ds.capacity(), 8u);
+  EXPECT_TRUE(ds.addSingleton(3, 5));
+  EXPECT_EQ(ds.capacity(), 8u);
+  EXPECT_TRUE(ds.addSingleton(7, 5));
+  EXPECT_EQ(ds.capacity(), 8u);
 }
 
-using VertexKey = std::string;
-using EdgeKey = std::string;
-
-template<typename VertexProperties>
-struct Vertex {
-  VertexKey _key;
-  VertexProperties properties;
-};
-
-template<typename Inspector, typename VertexProperties>
-auto inspect(Inspector& f, Vertex<VertexProperties>& p) {
-  return f.object(p).fields(f.field("_key", p._key),
-                            f.embedFields(p.properties));
+TEST(GWEN_DISJOINT_SET, test_merge_and_representatives) {
+  auto ds = DisjointSet(10);
+  for (size_t i = 0; i < 10; ++i) {
+    ds.addSingleton(i);
+  }
+  ds.merge(0, 0);
+  EXPECT_EQ(ds.representative(0), 0u);
+  ds.merge(0, 1);
+  // 0 and 1 have the same rank, so the second parameter
+  // becomes the representative
+  EXPECT_EQ(ds.representative(0), 1u);
+  EXPECT_EQ(ds.representative(1), 1u);
+  ds.merge(0, 1);
+  EXPECT_EQ(ds.representative(0), 1u);
+  EXPECT_EQ(ds.representative(1), 1u);
+  ds.merge(1, 2);
+  EXPECT_EQ(ds.representative(0), 1u);
+  EXPECT_EQ(ds.representative(1), 1u);
+  // 1 has a higher rank
+  EXPECT_EQ(ds.representative(2), 1u);
+  ds.merge(3, 4);
+  ds.merge(5, 6);
+  ds.merge(3, 5);
+  ds.merge(2, 3);
+  // the representative of 3 has a higher rank than that of 2
+  EXPECT_EQ(ds.representative(2), 6u);
 }
 
-template<typename EdgeProperties = EmptyEdgeProperties>
-struct Edge {
-  EdgeKey _key;
-  VertexKey _from;
-  VertexKey _to;
-  EdgeProperties properties;
-};
-
-template<typename Inspector, typename EdgeProperties=EmptyEdgeProperties>
-auto inspect(Inspector& f, Edge<EdgeProperties>& p) {
-  return f.object(p).fields(f.field("_key", p._key),
-                            f.field("_from", p._from),
-                            f.field("_to", p._to),
-                            f.embedFields(p.properties));
-}
-
-template<typename VertexProperties, typename EdgeProperties>
-struct Graph {
-  std::vector<Vertex<VertexProperties>> vertices;
-  std::vector<Edge<EdgeProperties>> edges;
-};
-
-void setup_graph() {
-  auto graphJson =
+SharedSlice setupGraph01() {
+  return
       R"({ "vertices": [ {"_key": "A", "value": 5},
                          {"_key": "B", "value": 10},
                          {"_key": "C", "value": 15} ],
            "edges":    [ {"_key": "", "_from": "A", "_to": "B"},
                          {"_key": "", "_from": "B", "_to": "C"} ] })"_vpack;
 
-  auto graph = Graph<VertexProperties, EmptyEdgeProperties>{};
 
-  auto vs = graphJson["vertices"];
-//  for (size_t i = 0; i < vs.length(); ++i) {
-//    auto res = readVertex(graph, vs[i]);
-//  }
-
-  auto es = graphJson["edges"];
-  for (size_t i = 0; i < es.length(); ++i) {
-    auto edge = Edge<EmptyEdgeProperties>{};
-    auto res = deserializeWithStatus(es[i].slice(), edge);
-  }
 }
 
-
-using namespace arangodb::velocypack;
-
 TEST(GWEN_WCC, test_wcc) {
-  EXPECT_TRUE(false) << "Proved that true = false and got killed on the next zebra crossing";
+  bool const checkDuplicateVertices = true;
+  WCCGraph<EmptyEdgeProperties> graph(setupGraph01(), checkDuplicateVertices);
+  size_t numComponents = graph.computeWCC();
+  ASSERT_EQ(numComponents, 3);
 }
 
 auto main(int argc, char** argv) -> int {
