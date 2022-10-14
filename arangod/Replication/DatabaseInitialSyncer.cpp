@@ -25,7 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/HybridLogicalClock.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
@@ -53,6 +52,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -136,6 +136,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
                                 arangodb::Syncer::SyncerState& state,
                                 arangodb::LogicalCollection& collection,
                                 std::string const& leader,
+                                bool encodeAsHLC,
                                 std::vector<arangodb::RevisionId>& toFetch,
                                 arangodb::ReplicationMetricsFeature::InitialSyncStats& stats) {
   using arangodb::PhysicalCollection;
@@ -168,7 +169,8 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
       RestReplicationHandler::Revisions + "/" + RestReplicationHandler::Documents +
       "?collection=" + arangodb::basics::StringUtils::urlEncode(leader) +
       "&serverId=" + state.localServerIdString +
-      "&batchId=" + std::to_string(config.batch.id);
+      "&batchId=" + std::to_string(config.batch.id) +
+      "&encodeAsHLC=" + (encodeAsHLC ? "true" : "false");
   auto headers = arangodb::replutils::createHeaders();
 
   config.progress.set("fetching documents by revision for collection '" +
@@ -205,7 +207,12 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
     {
       VPackArrayBuilder list(requestBuilder.get());
       for (std::size_t i = 0; i < 5000 && current + i < toFetch.size(); ++i) {
-        requestBuilder->add(toFetch[current + i].toValuePair(ridBuffer));
+        if (encodeAsHLC) {
+          requestBuilder->add(VPackValue(toFetch[current + i].toHLC()));
+        } else {
+          // deprecated, ambiguous format
+          requestBuilder->add(toFetch[current + i].toValuePair(ridBuffer));
+        }
       }
     }
     std::string request = requestBuilder->slice().toJson();
@@ -1485,19 +1492,35 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     return Result{};
   }
 
-  // now lets get the actual ranges and handle the differences
+  // encoding revisions as HLC timestamps is supported from the following
+  // versions:
+  // - 3.8.8 or higher
+  // - 3.9.4 or higher
+  // - 3.10.1 or higher
+  // - 3.11.0 or higher
+  // - 4.0 higher
+  bool encodeAsHLC =
+      _config.leader.majorVersion >= 4 ||
+      (_config.leader.majorVersion >= 3 && _config.leader.minorVersion >= 11) ||
+      (_config.leader.majorVersion >= 3 && _config.leader.minorVersion >= 10 &&
+       _config.leader.patchVersion >= 1) ||
+      (_config.leader.majorVersion >= 3 && _config.leader.minorVersion >= 9 &&
+       _config.leader.patchVersion >= 4) ||
+      (_config.leader.majorVersion >= 3 && _config.leader.minorVersion >= 8 &&
+       _config.leader.patchVersion >= 8);
 
+  TRI_IF_FAILURE("SyncerNoEncodeAsHLC") { encodeAsHLC = false; }
+ 
+  // now lets get the actual ranges and handle the differences
   {
     VPackBuilder requestBuilder;
     {
-      char ridBuffer[arangodb::basics::maxUInt64StringSize];
       VPackArrayBuilder list(&requestBuilder);
-      for (auto& pair : ranges) {
+      for (auto const& pair : ranges) {
         VPackArrayBuilder range(&requestBuilder);
-        requestBuilder.add(
-            basics::HybridLogicalClock::encodeTimeStampToValuePair(pair.first, ridBuffer));
-        requestBuilder.add(
-            basics::HybridLogicalClock::encodeTimeStampToValuePair(pair.second, ridBuffer));
+        // ok to use only HLC encoding here.
+        requestBuilder.add(VPackValue(RevisionId{pair.first}.toHLC()));
+        requestBuilder.add(VPackValue(RevisionId{pair.second}.toHLC()));
       }
     }
     std::string request = requestBuilder.slice().toJson();
@@ -1506,6 +1529,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                       "?collection=" + urlEncode(leaderColl) +
                       "&serverId=" + _state.localServerIdString +
                       "&batchId=" + std::to_string(_config.batch.id);
+    
     auto headers = replutils::createHeaders();
     std::unique_ptr<httpclient::SimpleHttpResult> response;
     RevisionId requestResume{ranges[0].first};  // start with beginning
@@ -1532,8 +1556,24 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
         batchExtend();
       }
 
+      // assemble URL to call.
+      // note that the URL contains both the "resume" and "resumeHLC"
+      // parameters. "resume" contains the stringified revision id value for
+      // where to resume from. that stringification can be ambiguous and is thus
+      // deprecated. we also send a "resumeHLC" parameter now, which always
+      // contains a base64-encoded logical clock value. this is the preferred
+      // way to encode the resume value, and once all leaders support it, we can
+      // remove the "resume" parameter from the protocol
+      bool appendResumeHLC = true;
       std::string batchUrl = url + "&" + StaticStrings::RevisionTreeResume +
                              "=" + requestResume.toString();
+      
+      TRI_IF_FAILURE("SyncerNoEncodeAsHLC") { appendResumeHLC = false; }
+      if (appendResumeHLC) {
+        url += "&" + StaticStrings::RevisionTreeResumeHLC + "=" +
+               urlEncode(requestResume.toHLC()) + "&encodeAsHLC=true";
+      }
+
       std::string msg = "fetching collection revision ranges for collection '" +
                         coll->name() + "' from " + batchUrl;
       _config.progress.set(msg);
@@ -1572,16 +1612,25 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                           ": response is not an object");
       }
 
-      VPackSlice const resumeSlice = slice.get("resume");
-      if (!resumeSlice.isNone() && !resumeSlice.isString()) {
-        ++stats.numFailedConnects;
-        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                      std::string("got invalid response from leader at ") +
-                          _config.leader.endpoint + batchUrl +
-                          ": response field 'resume' is not a number");
+      if (VPackSlice s = slice.get(StaticStrings::RevisionTreeResumeHLC);
+          s.isString()) {
+        // use "resumeHLC" if it is present
+        requestResume = RevisionId::fromHLC(s.stringView());
+      } else {
+        // "resumeHLC" not present.
+        // now fall back to using "resume", which is deprecated
+        VPackSlice resumeSlice = slice.get(StaticStrings::RevisionTreeResume);
+        if (!resumeSlice.isNone() && !resumeSlice.isString()) {
+          ++stats.numFailedConnects;
+          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                        std::string("got invalid response from leader at ") +
+                            _config.leader.endpoint + url +
+                            ": response field 'resume' is not a number");
+        }
+        requestResume = resumeSlice.isNone()
+                            ? RevisionId::max()
+                            : RevisionId::fromSlice(resumeSlice);
       }
-      requestResume = resumeSlice.isNone() ? RevisionId::max()
-                                           : RevisionId::fromSlice(resumeSlice);
 
       VPackSlice const rangesSlice = slice.get("ranges");
       if (!rangesSlice.isArray()) {
@@ -1609,13 +1658,13 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
         RevisionId removalBound = leaderSlice.isEmptyArray()
                                       ? RevisionId{currentRange.second}.next()
-                                      : RevisionId::fromSlice(leaderSlice.at(0));
+                                      : (encodeAsHLC ? RevisionId::fromHLC(leaderSlice.at(0).stringView()) : RevisionId::fromSlice(leaderSlice.at(0)));
         TRI_ASSERT(RevisionId{currentRange.first} <= removalBound);
         TRI_ASSERT(removalBound <= RevisionId{currentRange.second}.next());
         RevisionId mixedBound =
             leaderSlice.isEmptyArray()
                 ? RevisionId{currentRange.second}
-                : RevisionId::fromSlice(leaderSlice.at(leaderSlice.length() - 1));
+                : (encodeAsHLC ? RevisionId::fromHLC(leaderSlice.at(leaderSlice.length() - 1).stringView()) : RevisionId::fromSlice(leaderSlice.at(leaderSlice.length() - 1)));
         TRI_ASSERT(RevisionId{currentRange.first} <= mixedBound);
         TRI_ASSERT(mixedBound <= RevisionId{currentRange.second});
 
@@ -1627,7 +1676,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
         std::size_t index = 0;
         while (local.hasMore() && local.revision() <= mixedBound) {
-          RevisionId leaderRev = RevisionId::fromSlice(leaderSlice.at(index));
+          RevisionId leaderRev;
+          if (encodeAsHLC) {
+            leaderRev = RevisionId::fromHLC(leaderSlice.at(index).stringView());
+          } else {
+            leaderRev = RevisionId::fromSlice(leaderSlice.at(index));
+          }
 
           if (local.revision() < leaderRev) {
             toRemove.emplace_back(local.revision());
@@ -1646,7 +1700,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
           }
         }
         for (; index < leaderSlice.length(); ++index) {
-          RevisionId leaderRev = RevisionId::fromSlice(leaderSlice.at(index));
+          RevisionId leaderRev;
+          if (encodeAsHLC) {
+            leaderRev = RevisionId::fromHLC(leaderSlice.at(index).stringView());
+          } else {
+            leaderRev = RevisionId::fromSlice(leaderSlice.at(index));
+          }
           // fetch any leftovers
           toFetch.emplace_back(leaderRev);
           iterResume = std::max(iterResume, leaderRev.next());
@@ -1671,7 +1730,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       }
       toRemove.clear();
 
-      res = ::fetchRevisions(*trx, _config, _state, *coll, leaderColl, toFetch, stats);
+      res = ::fetchRevisions(*trx, _config, _state, *coll, leaderColl, encodeAsHLC, toFetch, stats);
       if (res.fail()) {
         return res;
       }
