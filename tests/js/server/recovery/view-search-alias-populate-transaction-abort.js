@@ -27,7 +27,8 @@
 /// @author Copyright 2022, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var db = require('@arangodb').db;
+var arangodb = require('@arangodb');
+var db = arangodb.db;
 var internal = require('internal');
 var jsunity = require('jsunity');
 
@@ -58,9 +59,19 @@ function runSetup () {
     waitForSync: true
   };
 
-  db._executeTransaction(tx);
-  internal.debugTerminate('crashing server');
-  return 0;
+  try {
+    db._executeTransaction(tx);
+  } catch (ex) {
+    if ((ex instanceof arangodb.ArangoError &&
+         ex.errorNum === internal.errors.ERROR_TRANSACTION_INTERNAL.code &&
+         ex.message === 'Error: intentional abort')) {
+      internal.debugTerminate('crashing server');
+      return 0;
+    } else {
+      print(ex);
+    }
+  }
+  return 1;
 }
 
 function recoverySuite () {
