@@ -107,7 +107,7 @@ void setup_graph() {
   auto es = graphJson["edges"];
   for (size_t i = 0; i < es.length(); ++i) {
     auto edge = Edge<EmptyEdgeProperties>{};
-//    auto res = deserializeWithStatus(es[i], edge);
+    auto res = deserializeWithStatus(es[i].slice(), edge);
   }
 }
 
