@@ -52,7 +52,7 @@ const testPaths = {
 // / @brief TEST: recovery
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangodRecovery (params, useEncryption, exitSuccessOk) {
+function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
   let additionalParams= {
     'log.foreground-tty': 'true',
     'database.ignore-datafile-errors': 'false', // intentionally false!
@@ -141,7 +141,16 @@ function runArangodRecovery (params, useEncryption, exitSuccessOk) {
   if (params.setup) {
     const hasSignal = params.instanceInfo.exitStatus.hasOwnProperty('signal');
     const hasExitZero = !hasSignal && params.instanceInfo.exitStatus.exit === 0;
-    if (exitSuccessOk) {
+    const hasExitOne = !hasSignal && params.instanceInfo.exitStatus.exit === 1;
+    if (exitFailOk) {
+      if (!hasExitOne) {
+        return {
+          status: false,
+          timeout: false,
+          message: `setup of test didn't exit 1 as expected: ${JSON.stringify(params.instanceInfo.exitStatus)}`
+        };
+      }
+    } else if (exitSuccessOk) {
       if (!hasExitZero) {
         return {
           status: false,
@@ -204,6 +213,7 @@ function recovery (options) {
       let iteration = 0;
       let stateFile = fs.getTempFile();
       let exitSuccessOk = test.indexOf('-exitzero') >= 0;
+      let exitFailOk = test.indexOf('-exitone') >= 0;
 
       while (true) {
         ++iteration;
@@ -229,7 +239,7 @@ function recovery (options) {
           params.keyDir = fs.join(fs.getTempPath(), `arango_encryption_${count}`);
           fs.makeDirectory(params.keyDir);
         }
-        let res = runArangodRecovery(params, useEncryption, exitSuccessOk);
+        let res = runArangodRecovery(params, useEncryption, exitSuccessOk, exitFailOk);
         if (!res.status) {
           results[test] = res;
           break;
@@ -247,7 +257,7 @@ function recovery (options) {
             duration: -1
           });
         } catch (er) {}
-        runArangodRecovery(params, useEncryption, exitSuccessOk);
+        runArangodRecovery(params, useEncryption, exitSuccessOk, exitFailOk);
 
         results[test] = tu.readTestResult(
           params.instance.args['temp.path'],
