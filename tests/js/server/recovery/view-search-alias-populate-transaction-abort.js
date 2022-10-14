@@ -48,6 +48,7 @@ function runSetup () {
       write: ['UnitTestsRecoveryDummy']
     },
     action: function() {
+      var db = require('@arangodb').db;
       var c = db.UnitTestsRecoveryDummy;
       for (let i = 0; i < 10000; i++) {
         c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
@@ -59,6 +60,7 @@ function runSetup () {
 
   db._executeTransaction(tx);
   internal.debugTerminate('crashing server');
+  return 0;
 }
 
 function recoverySuite () {
@@ -103,8 +105,7 @@ function recoverySuite () {
 function main (argv) {
   'use strict';
   if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
+    return runSetup();
   } else {
     jsunity.run(recoverySuite);
     return jsunity.writeDone().status ? 0 : 1;

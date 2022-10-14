@@ -24,7 +24,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-var db = require('@arangodb').db;
+var arangodb = require('@arangodb');
+var db = arangodb.db;
 var internal = require('internal');
 var jsunity = require('jsunity');
 
@@ -46,6 +47,8 @@ function runSetup () {
       write: ['UnitTestsRecoveryDummy']
     },
     action: function() {
+      var db = require('@arangodb').db;
+      var internal = require('internal');
       var c = db.UnitTestsRecoveryDummy;
       for (let i = 0; i < 10000; i++) {
         c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
@@ -56,7 +59,18 @@ function runSetup () {
     },
     waitForSync: true
   };
-  db._executeTransaction(tx);
+  try {
+    db._executeTransaction(tx);
+  } catch (ex) {
+    if (global.arango && (
+      (ex instanceof arangodb.ArangoError &&
+       ex.errorNum === internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code))) {
+      return 0;
+    } else {
+      throw ex;
+    }
+  }
+  return 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,8 +111,7 @@ function recoverySuite () {
 function main (argv) {
   'use strict';
   if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
+    return runSetup();
   } else {
     jsunity.run(recoverySuite);
     return jsunity.writeDone().status ? 0 : 1;
