@@ -27,7 +27,8 @@
 /// @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-const db = require('@arangodb').db;
+const arangodb = require('@arangodb');
+const db = arangodb.db;
 const internal = require('internal');
 const jsunity = require('jsunity');
 const cn = 'UnitTestsTruncateDummy';
@@ -53,7 +54,15 @@ function runSetup () {
 
   c.save({ name: "crashme" }, { waitForSync: true });
   internal.debugSetFailAt("ArangoSearchTruncateFailure");
-  c.truncate();
+  try {
+    c.truncate();
+    throw new Error('did not throw!');
+  } catch (ex) {
+    if (!ex instanceof arangodb.ArangoError ||
+        ex.errorNum !== internal.errors.ERROR_DEBUG.code) {
+      throw ex;
+    }
+  }
   internal.debugTerminate('crashing server');
 }
 
