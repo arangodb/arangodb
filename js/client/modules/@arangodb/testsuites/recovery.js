@@ -52,7 +52,7 @@ const testPaths = {
 // / @brief TEST: recovery
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangodRecovery (params, useEncryption) {
+function runArangodRecovery (params, useEncryption, exitSuccessOk) {
   let additionalParams= {
     'log.foreground-tty': 'true',
     'database.ignore-datafile-errors': 'false', // intentionally false!
@@ -132,21 +132,33 @@ function runArangodRecovery (params, useEncryption) {
   params.instanceInfo.pid = pu.executeAndWait(
     binary,
     argv,
-      params.options,
-      false,
+    params.options,
+    false,
     params.instance.rootDir,
-      !params.setup && params.options.coreCheck,
-      0,
-      params.instanceInfo);
-  if (params.setup && !params.instanceInfo.exitStatus.hasOwnProperty('signal')) {
-    return {
-      status: false,
-      timeout: false,
-      message: `setup of test didn't crash as expected: ${JSON.stringify(params.instanceInfo.exitStatus)}`
-    };
+    !params.setup && params.options.coreCheck,
+    0,
+    params.instanceInfo);
+  if (params.setup) {
+    const hasSignal = params.instanceInfo.exitStatus.hasOwnProperty('signal');
+    const hasExitZero = !hasSignal && params.instanceInfo.exitStatus.exit === 0;
+    if (exitSuccessOk) {
+      if (!hasExitZero) {
+        return {
+          status: false,
+          timeout: false,
+          message: `setup of test didn't exit success as expected: ${JSON.stringify(params.instanceInfo.exitStatus)}`
+        };
+      }
+    } else if (!hasSignal) {
+      return {
+        status: false,
+        timeout: false,
+        message: `setup of test didn't crash as expected: ${JSON.stringify(params.instanceInfo.exitStatus)}`
+      };
+    }
   }
   return {
-    status: true,
+    status: true
   };
 }
 
@@ -191,6 +203,7 @@ function recovery (options) {
       count += 1;
       let iteration = 0;
       let stateFile = fs.getTempFile();
+      let exitSuccessOk = test.indexOf('-exitzero') >= 0;
 
       while (true) {
         ++iteration;
@@ -216,7 +229,7 @@ function recovery (options) {
           params.keyDir = fs.join(fs.getTempPath(), `arango_encryption_${count}`);
           fs.makeDirectory(params.keyDir);
         }
-        let res = runArangodRecovery(params, useEncryption);
+        let res = runArangodRecovery(params, useEncryption, exitSuccessOk);
         if (!res.status) {
           results[test] = res;
           break;
@@ -234,7 +247,7 @@ function recovery (options) {
             duration: -1
           });
         } catch (er) {}
-        runArangodRecovery(params, useEncryption);
+        runArangodRecovery(params, useEncryption, exitSuccessOk);
 
         results[test] = tu.readTestResult(
           params.instance.args['temp.path'],
