@@ -134,7 +134,7 @@ struct MockDocumentStateLeaderInterface : IDocumentStateLeaderInterface {
 
 struct MockDocumentStateNetworkHandler : IDocumentStateNetworkHandler {
   MOCK_METHOD(std::shared_ptr<IDocumentStateLeaderInterface>,
-              getLeaderInterface, (ParticipantId), (override));
+              getLeaderInterface, (ParticipantId), (override, noexcept));
 };
 
 struct DocumentStateMachineTest : test::ReplicatedLogTest {
