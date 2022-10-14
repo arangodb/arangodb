@@ -501,16 +501,34 @@ class IRESEARCH_API remapped_bytes_ref_input : public bytes_ref_input {
   using mapping_value = std::pair<size_t, size_t>;
   using mapping = std::vector<mapping_value>;
 
-  explicit remapped_bytes_ref_input(const bytes_ref& data, mapping&& mapping);
-  virtual int64_t checksum(size_t offset) const override final;
-  virtual size_t read_bytes(size_t offset, byte_type* b,
-                            size_t size) noexcept override final;
-  virtual void seek(size_t pos) noexcept override final;
+  explicit remapped_bytes_ref_input(const bytes_ref& data, mapping&& mapping)
+      : bytes_ref_input(data), mapping_{mapping} {
+    std::sort(mapping_.begin(), mapping_.end(),
+        [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
+  }
+
+  remapped_bytes_ref_input(const remapped_bytes_ref_input& other)
+      : bytes_ref_input(other), mapping_{other.mapping_} {}
+
+  virtual int64_t checksum(size_t offset) const override final {
+    return bytes_ref_input::checksum(src_to_internal(offset));
+  }
+
+  virtual void seek(size_t pos) noexcept override final {
+    bytes_ref_input::seek(src_to_internal(pos));
+  }
+  
   virtual size_t file_pointer() const noexcept override final;
-  virtual size_t read_bytes(size_t offset, byte_type* b,
-                            size_t size) noexcept override final;
+
+  virtual ptr dup() const override {
+    return memory::make_unique<remapped_bytes_ref_input>(*this);
+  }
+
+  virtual size_t read_bytes(size_t offset, byte_type* b,  size_t size) noexcept override final {
+    return bytes_ref_input::read_bytes(src_to_internal(offset), b, size);
+  }
  private:
-  size_t src_to_internal(size_t t);
+  size_t src_to_internal(size_t t) const noexcept;
 
   mapping mapping_;
 }; // remapped_bytes_ref_input

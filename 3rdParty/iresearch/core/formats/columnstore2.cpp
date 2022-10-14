@@ -878,15 +878,21 @@ class buffered_sparse_column final : public sparse_column {
                          compression::decompressor::ptr&& inflater,
                          encryption::stream* cipher) {
     auto blocks = read_blocks_sparse(hdr, index_in);
-    std::vector<column_block> buffered_blocks;
+    irs::index_input::ptr buffered_input;
     std::vector<irs::byte_type> column_data;
-    make_buffered_data(data_in, blocks, buffered_blocks, column_data);
-    irs::bytes_ref_input::ptr buffered_input =
-        std::make_unique<irs::bytes_ref_input>(irs::bytes_ref{column_data.data(), column_data.size()
-  });
+    if (!cipher) {
+      make_buffered_data<false>(data_in, blocks, column_data, nullptr);
+      buffered_input = std::make_unique<irs::bytes_ref_input>(
+          irs::bytes_ref{column_data.data(), column_data.size()});
+    } else {
+      irs::remapped_bytes_ref_input::mapping mapping;
+      make_buffered_data<true>(data_in, blocks, column_data, &mapping);
+      buffered_input = std::make_unique<irs::remapped_bytes_ref_input>(
+          irs::bytes_ref{column_data.data(), column_data.size()}, std::move(mapping));
+	  }
     return memory::make_unique<buffered_sparse_column>(
         std::move(name), std::move(payload), std::move(hdr), std::move(index),
-        std::move(inflater), cipher, std::move(buffered_blocks),
+        std::move(inflater), cipher, std::move(blocks),
         std::move(column_data), std::move(buffered_input));
   }
 
@@ -896,7 +902,7 @@ class buffered_sparse_column final : public sparse_column {
                     encryption::stream* cipher,
                     std::vector<column_block>&& blocks,
                     std::vector<irs::byte_type>&& column_data,
-                    irs::bytes_ref_input::ptr&& buffered_input)
+                    irs::index_input::ptr&& buffered_input)
       : sparse_column{
             std::move(name),  std::move(payload), std::move(hdr),
                       std::move(index),
@@ -910,36 +916,43 @@ class buffered_sparse_column final : public sparse_column {
   
  private:
   
+	template<bool encrypted>
   static void make_buffered_data(
       const irs::index_input& data_in,
-      const std::vector<column_block>& blocks,
-      std::vector<column_block>& buffered_blocks,
-      std::vector<irs::byte_type>& column_data) {
-    // FIXME: figure out how to sort different block types so will be only
-    // forward seeks
-    // std::sort(blocks.begin(), blocks.end(),
-    //          [](auto lhs, auto rhs) { return lhs.adr < rhs.adr; });
+      std::vector<column_block>& blocks,
+      std::vector<irs::byte_type>& column_data,
+      remapped_bytes_ref_input::mapping* mapping) {
+   
     auto in = data_in.reopen();
-    for (auto block : blocks) {
+    for (auto& block : blocks) {
       if (bitpack::ALL_EQUAL == block.bits) {
         size_t length = block.avg * block.last;
         length += block.last_size;
         auto old_size = column_data.size();
         column_data.resize(column_data.size() + length);
         in->read_bytes(block.data, column_data.data() + old_size, length);
-        column_block new_block = block;
-        new_block.data = old_size;
-        new_block.addr = old_size;
-        buffered_blocks.push_back(std::move(new_block));
+        if constexpr (encrypted) {
+          assert(mapping);
+          mapping->emplace_back(block.data, old_size);
+        } else {
+          block.data = old_size;
+          block.addr = old_size;
+        }
       } else {
-        column_block new_block = block;
-        new_block.addr = column_data.size();
+        auto const old_size_adr = column_data.size();
+        if constexpr (encrypted) {
+          assert(mapping);
+          mapping->emplace_back(block.addr, old_size_adr);
+        } else {
+          block.addr = old_size_adr;
+        }
+        
         // address table
         const size_t block_size = block.bits * sizeof(uint64_t);
         const size_t addr_length =
             block_size * ( size_t(block.last / packed::BLOCK_SIZE_64) + 1);
         column_data.resize(column_data.size() + addr_length);
-        in->read_bytes(block.addr, column_data.data() + new_block.addr,
+        in->read_bytes(block.addr, column_data.data() + old_size_adr,
                        addr_length);
         // and now the data
         auto const value_index = block.last % packed::BLOCK_SIZE_64;
@@ -950,16 +963,21 @@ class buffered_sparse_column final : public sparse_column {
         const uint64_t start = block.avg * block.last + start_delta;
 
         size_t length = block.last_size + start;
-        new_block.data = column_data.size();
+        auto const old_size_data = column_data.size();
         column_data.resize(column_data.size() + length);
-        in->read_bytes(block.data, column_data.data() + new_block.data,
+        in->read_bytes(block.data, column_data.data() + old_size_data,
                        length);
-        buffered_blocks.push_back(std::move(new_block));
+        if constexpr (encrypted) {
+          assert(mapping);
+          mapping->emplace_back(block.data, old_size_data);
+        } else {
+          block.data = old_size_data;
+        }
       }
     }
   }
   std::vector<irs::byte_type> column_data_;
-  irs::bytes_ref_input::ptr buffered_input_;
+  irs::index_input::ptr buffered_input_;
 };
 
 template<typename ValueReader>
@@ -1628,7 +1646,7 @@ void reader::prepare_index(
 
       // check hotness
 
-      bool hot = true;
+      bool hot = hdr.type != ColumnType::kMask;
       if (hot && !direct_data_input) {
         direct_data_input =
             dir.open(data_filename, irs::IOAdvice::DIRECT_ACCESS);
