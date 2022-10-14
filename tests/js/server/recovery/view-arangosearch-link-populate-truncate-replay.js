@@ -56,7 +56,7 @@ function runSetup () {
   internal.debugSetFailAt("ArangoSearchTruncateFailure");
   try {
     c.truncate();
-    throw new Error('did not throw!');
+    return 1;
   } catch (ex) {
     if (!ex instanceof arangodb.ArangoError ||
         ex.errorNum !== internal.errors.ERROR_DEBUG.code) {
@@ -102,8 +102,7 @@ function recoverySuite () {
 function main (argv) {
   'use strict';
   if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
+    return runSetup();
   } else {
     jsunity.run(recoverySuite);
     return jsunity.writeDone().status ? 0 : 1;
