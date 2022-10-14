@@ -152,27 +152,28 @@ PlanCollectionToAgencyWriter::prepareStartBuildingTransaction(
   // General Preconditions
   // TODO: beautify:
   // create a builder with just the version number for comparison
-  VPackBuilder versionBuilder;
-  versionBuilder.add(VPackValue(planVersion));
+  auto versionBuilder = std::make_shared<VPackBuilder>();
+  versionBuilder->add(VPackValue(planVersion));
 
-  VPackBuilder serversBuilder;
+  auto serversBuilder = std::make_shared<VPackBuilder>();
   {
-    VPackArrayBuilder a(&serversBuilder);
+    VPackArrayBuilder a(serversBuilder.get());
     for (auto const& i : serversPlanned) {
-      serversBuilder.add(VPackValue(i));
+      serversBuilder->add(VPackValue(i));
     }
   }
   // * plan version unchanged
-  precs.emplace_back(AgencyPrecondition(
-      "Plan/Version", AgencyPrecondition::Type::VALUE, versionBuilder.slice()));
+  precs.emplace_back(AgencyPrecondition("Plan/Version",
+                                        AgencyPrecondition::Type::VALUE,
+                                        std::move(versionBuilder)));
   // * not in to be cleaned server list
   precs.emplace_back(AgencyPrecondition(
       "Target/ToBeCleanedServers", AgencyPrecondition::Type::INTERSECTION_EMPTY,
-      serversBuilder.slice()));
+      serversBuilder));
   // * not in cleaned server list
   precs.emplace_back(AgencyPrecondition(
       "Target/CleanedServers", AgencyPrecondition::Type::INTERSECTION_EMPTY,
-      serversBuilder.slice()));
+      std::move(serversBuilder)));
 
   // TODO: End of to beatuify
 

@@ -25,6 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerDefaults.h"
 #include "Logger/LogMacros.h"
+#include "Inspection/VPack.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
 
 #include "InspectTestHelperMakros.h"
@@ -77,6 +78,12 @@ class CreateCollectionBodyTest : public ::testing::Test {
     return body;
   }
 
+  static VPackBuilder serialize(CreateCollectionBody testee) {
+    VPackBuilder result;
+    velocypack::serialize(result, testee);
+    return result;
+  }
+
   static CreateCollectionBody::DatabaseConfiguration defaultDBConfig() {
     return {[]() { return DataSourceId(42); }};
   }
@@ -109,12 +116,14 @@ TEST_F(CreateCollectionBodyTest, test_minimal_user_input) {
   }
   auto testee =
       CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
+
   ASSERT_TRUE(testee.ok());
   // Test Default values
 
   // This covers only non-documented APIS
-
   EXPECT_TRUE(testee->options.avoidServers.empty());
+
+  __HELPER_equalsAfterSerializeParseCircle(testee.get());
 }
 
 TEST_F(CreateCollectionBodyTest,

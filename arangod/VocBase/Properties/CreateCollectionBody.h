@@ -83,6 +83,8 @@ struct CreateCollectionBody {
 
   CreateCollectionBody();
 
+  bool operator==(CreateCollectionBody const& other) const = default;
+
   static ResultT<CreateCollectionBody> fromCreateAPIBody(
       arangodb::velocypack::Slice input, DatabaseConfiguration config);
 

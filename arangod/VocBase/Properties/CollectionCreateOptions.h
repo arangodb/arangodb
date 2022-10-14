@@ -29,6 +29,8 @@ namespace arangodb {
 struct CollectionCreateOptions {
   // Not documented, actually this is an option, not a configuration parameter
   std::vector<std::string> avoidServers = {};
+
+  bool operator==(CollectionCreateOptions const& other) const = default;
 };
 
 template<class Inspector>
