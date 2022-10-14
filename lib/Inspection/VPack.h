@@ -20,14 +20,12 @@
 ///
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
-#include "Inspection/VPackLoadInspector.h"
-#include "Inspection/VPackSaveInspector.h"
+#include "Inspection/VPackNoThrow.h"
 
 namespace arangodb::velocypack {
 
@@ -42,20 +40,7 @@ void serialize(Builder& builder, T& value) {
   }
 }
 
-template<class T>
-[[nodiscard]] auto serialize(T& value) -> SharedSlice {
-  auto builder = Builder();
-  serialize(builder, value);
-  return std::move(builder).sharedSlice();
-}
-
 namespace detail {
-
-template<class Inspector, class T>
-[[nodiscard]] inspection::Status deserializeWithStatus(Inspector& inspector,
-                                                       T& result) {
-  return inspector.apply(result);
-}
 
 template<class Inspector, class T>
 void deserialize(Inspector& inspector, T& result) {
@@ -66,117 +51,6 @@ void deserialize(Inspector& inspector, T& result) {
   }
 }
 
-template<class Inspector, class T>
-void deserialize(Slice slice, T& result, inspection::ParseOptions options) {
-  Inspector inspector(slice, options);
-  deserialize(inspector, result);
-}
-
-template<class Inspector, class T, class Context>
-void deserialize(Slice slice, T& result, inspection::ParseOptions options,
-                 Context const& context) {
-  Inspector inspector(slice, options, context);
-  deserialize(inspector, result);
-}
-
-template<class Inspector, class T>
-T deserialize(Slice slice, inspection::ParseOptions options) {
-  T result;
-  detail::deserialize<Inspector, T>(slice, result, options);
-  return result;
-}
-
-template<class Inspector, class T, class Context>
-T deserialize(Slice slice, inspection::ParseOptions options,
-              Context const& context) {
-  T result;
-  detail::deserialize<Inspector, T>(slice, result, options, context);
-  return result;
-}
-
-template<class Inspector, class T>
-[[nodiscard]] inspection::Status deserializeWithStatus(
-    Slice slice, T& result, inspection::ParseOptions options) {
-  Inspector inspector(slice, options);
-  return deserializeWithStatus(inspector, result);
-}
-
-template<class Inspector, class T, class Context>
-[[nodiscard]] inspection::Status deserializeWithStatus(
-    Slice slice, T& result, inspection::ParseOptions options,
-    Context const& context) {
-  Inspector inspector(slice, options, context);
-  return deserializeWithStatus(inspector, result);
-}
-
 }  // namespace detail
-
-template<class T>
-void deserialize(Slice slice, T& result,
-                 inspection::ParseOptions options = {}) {
-  detail::deserialize<inspection::VPackLoadInspector<>>(slice, result, options);
-}
-
-template<class T, class Context>
-void deserialize(Slice slice, T& result, inspection::ParseOptions options,
-                 Context const& context) {
-  detail::deserialize<inspection::VPackLoadInspector<Context>>(
-      slice, result, options, context);
-}
-
-template<class T>
-[[nodiscard]] inspection::Status deserializeWithStatus(
-    Slice slice, T& result, inspection::ParseOptions options = {}) {
-  return detail::deserializeWithStatus<inspection::VPackLoadInspector<>>(
-      slice, result, options);
-}
-
-template<class T, class Context>
-[[nodiscard]] inspection::Status deserializeWithStatus(
-    Slice slice, T& result, inspection::ParseOptions options,
-    Context const& context) {
-  return detail::deserializeWithStatus<inspection::VPackLoadInspector<Context>>(
-      slice, result, options, context);
-}
-
-template<class T>
-void deserializeUnsafe(Slice slice, T& result,
-                       inspection::ParseOptions options = {}) {
-  detail::deserialize<inspection::VPackUnsafeLoadInspector<>>(slice, result,
-                                                              options);
-}
-
-template<class T, class Context>
-void deserializeUnsafe(Slice slice, T& result, inspection::ParseOptions options,
-                       Context const& context) {
-  detail::deserialize<inspection::VPackUnsafeLoadInspector<Context>>(
-      slice, result, options, context);
-}
-
-template<class T>
-T deserialize(Slice slice, inspection::ParseOptions options = {}) {
-  return detail::deserialize<inspection::VPackLoadInspector<>, T>(slice,
-                                                                  options);
-}
-
-template<class T, class Context>
-T deserialize(Slice slice, inspection::ParseOptions options,
-              Context const& context) {
-  return detail::deserialize<inspection::VPackLoadInspector<Context>, T>(
-      slice, options, context);
-}
-
-template<class T>
-T deserializeUnsafe(Slice slice, inspection::ParseOptions options = {}) {
-  return detail::deserialize<inspection::VPackUnsafeLoadInspector<>, T>(
-      slice, options);
-}
-
-template<class T, class Context>
-T deserializeUnsafe(Slice slice, inspection::ParseOptions options,
-                    Context const& context) {
-  return detail::deserialize<inspection::VPackUnsafeLoadInspector<Context>, T>(
-      slice, options, context);
-}
 
 }  // namespace arangodb::velocypack
