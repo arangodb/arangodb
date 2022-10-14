@@ -73,7 +73,7 @@ function runSetup () {
       internal.debugTerminate('crashing server');
       return 0;
     } else {
-      print(ex);
+      console.log(ex);
     }
   }
   return 1;
