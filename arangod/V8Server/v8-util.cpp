@@ -166,8 +166,8 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
       return true;
     }
     v8::String::Utf8Value str(isolate, revObj);
-    bool isOld;
-    RevisionId rid = RevisionId::fromString(*str, str.length(), isOld, false);
+    RevisionId rid = 
+        RevisionId::fromString({*str, static_cast<size_t>(str.length())});
 
     if (rid.empty()) {
       return false;

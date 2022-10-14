@@ -72,7 +72,7 @@ rest::RequestType llhttpToRequestType(llhttp_t* p) {
 }  // namespace
 
 template <SocketType T>
-int HttpCommTask<T>::on_message_began(llhttp_t* p) {
+int HttpCommTask<T>::on_message_began(llhttp_t* p) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_lastHeaderField.clear();
   me->_lastHeaderValue.clear();
@@ -89,10 +89,14 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) {
   me->acquireStatistics(1UL).SET_READ_START(TRI_microtime());
 
   return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template <SocketType T>
-int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) {
+int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_request->setRequestType(llhttpToRequestType(p));
   if (me->_request->requestType() == RequestType::ILLEGAL) {
@@ -104,6 +108,10 @@ int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) {
 
   me->_url.append(at, len);
   return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template <SocketType T>
@@ -113,7 +121,7 @@ int HttpCommTask<T>::on_status(llhttp_t* p, const char* at, size_t len) {
 }
 
 template <SocketType T>
-int HttpCommTask<T>::on_header_field(llhttp_t* p, const char* at, size_t len) {
+int HttpCommTask<T>::on_header_field(llhttp_t* p, const char* at, size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   if (me->_lastHeaderWasValue) {
     me->_request->setHeaderV2(std::move(me->_lastHeaderField),
@@ -124,10 +132,14 @@ int HttpCommTask<T>::on_header_field(llhttp_t* p, const char* at, size_t len) {
   }
   me->_lastHeaderWasValue = false;
   return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template <SocketType T>
-int HttpCommTask<T>::on_header_value(llhttp_t* p, const char* at, size_t len) {
+int HttpCommTask<T>::on_header_value(llhttp_t* p, const char* at, size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   if (me->_lastHeaderWasValue) {
     me->_lastHeaderValue.append(at, len);
@@ -136,10 +148,14 @@ int HttpCommTask<T>::on_header_value(llhttp_t* p, const char* at, size_t len) {
   }
   me->_lastHeaderWasValue = true;
   return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template <SocketType T>
-int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
+int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_response.reset();
   if (!me->_lastHeaderField.empty()) {
@@ -182,17 +198,25 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
     return 1;  // 1 is defined by parser
   }
   return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template <SocketType T>
-int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) {
+int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_request->body().append(at, len);
   return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template <SocketType T>
-int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
+int HttpCommTask<T>::on_message_complete(llhttp_t* p) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_request->parseUrl(me->_url.data(), me->_url.size());
 
@@ -200,6 +224,10 @@ int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
   me->_messageDone = true;
 
   return HPE_PAUSED;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template <SocketType T>
