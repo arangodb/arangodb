@@ -2396,7 +2396,7 @@ TEST_F(IResearchViewTest, test_remove_within_trx) {
   // only doc2 must remain
   {
     auto snapshot = link->snapshot();
-    auto reader = snapshot.getDirectoryReader();
+    auto reader = static_cast<irs::directory_reader>(snapshot);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(3, reader->docs_count());
     ASSERT_EQ(1, reader->live_docs_count());
