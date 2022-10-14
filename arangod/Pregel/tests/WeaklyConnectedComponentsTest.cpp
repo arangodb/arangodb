@@ -31,9 +31,8 @@
 #include <fmt/core.h>
 #include <fmt/format.h>
 
-#include <Inspection/VPack.h>
+#include <Inspection/VPackPure.h>
 
-#include "Algorithm.h"
 #include <string>
 #include <variant>
 
@@ -107,7 +106,8 @@ void setup_graph() {
 
   auto es = graphJson["edges"];
   for (size_t i = 0; i < es.length(); ++i) {
-    auto res = deserialize<Edge<EmptyEdgeProperties>>(es[i]);
+    auto edge = Edge<EmptyEdgeProperties>{};
+//    auto res = deserializeWithStatus(es[i], edge);
   }
 }
 
