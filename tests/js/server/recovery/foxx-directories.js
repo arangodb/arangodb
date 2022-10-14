@@ -64,7 +64,6 @@ function runSetup () {
   let path = fs.join(appPath, 'UnitTestsRecovery2');
   let gone = false;
   let tries = 0;
-  throw new Error("blarg");
   while (++tries < 120) {
     if (!fs.isDirectory(path)) {
       gone = true;
