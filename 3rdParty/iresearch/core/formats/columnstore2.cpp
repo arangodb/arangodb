@@ -877,16 +877,20 @@ class buffered_sparse_column final : public sparse_column {
                          index_input& index_in, const index_input& data_in,
                          compression::decompressor::ptr&& inflater,
                          encryption::stream* cipher) {
+	  // Kludge to have size of index bitmap as it is stored
+	  // right before blocks
+    auto const first_block_offset = index_in.file_pointer();
     auto blocks = read_blocks_sparse(hdr, index_in);
     irs::index_input::ptr buffered_input;
     std::vector<irs::byte_type> column_data;
     if (!cipher) {
-      make_buffered_data<false>(data_in, blocks, column_data, nullptr);
+      make_buffered_data<false>(first_block_offset, hdr, data_in, blocks, column_data, nullptr);
       buffered_input = std::make_unique<irs::bytes_ref_input>(
           irs::bytes_ref{column_data.data(), column_data.size()});
     } else {
       irs::remapped_bytes_ref_input::mapping mapping;
-      make_buffered_data<true>(data_in, blocks, column_data, &mapping);
+      make_buffered_data<true>(first_block_offset, hdr, data_in, blocks,
+                               column_data, &mapping);
       buffered_input = std::make_unique<irs::remapped_bytes_ref_input>(
           irs::bytes_ref{column_data.data(), column_data.size()}, std::move(mapping));
 	  }
@@ -918,6 +922,8 @@ class buffered_sparse_column final : public sparse_column {
   
 	template<bool encrypted>
   static void make_buffered_data(
+	    size_t first_block_offset, 
+      column_header& hdr,
       const irs::index_input& data_in,
       std::vector<column_block>& blocks,
       std::vector<irs::byte_type>& column_data,
@@ -940,21 +946,20 @@ class buffered_sparse_column final : public sparse_column {
         }
       } else {
         auto const old_size_adr = column_data.size();
+        // address table
+        const size_t addr_length = packed::bytes_required_64(
+            math::ceil64((block.last + 1), packed::BLOCK_SIZE_64), block.bits);
+        column_data.resize(column_data.size() + addr_length);
+        in->read_bytes(block.addr, column_data.data() + old_size_adr,
+                       addr_length);
         if constexpr (encrypted) {
           assert(mapping);
           mapping->emplace_back(block.addr, old_size_adr);
         } else {
           block.addr = old_size_adr;
         }
-        
-        // address table
-        const size_t block_size = block.bits * sizeof(uint64_t);
-        const size_t addr_length =
-            block_size * ( size_t(block.last / packed::BLOCK_SIZE_64) + 1);
-        column_data.resize(column_data.size() + addr_length);
-        in->read_bytes(block.addr, column_data.data() + old_size_adr,
-                       addr_length);
         // and now the data
+        const size_t block_size = block.bits * sizeof(uint64_t);
         auto const value_index = block.last % packed::BLOCK_SIZE_64;
         const uint64_t start_delta = zig_zag_decode64(packed::fastpack_at(
             reinterpret_cast<const uint64_t*>(column_data.data() +
@@ -974,6 +979,19 @@ class buffered_sparse_column final : public sparse_column {
           block.data = old_size_data;
         }
       }
+    }
+    if (hdr.docs_index) {
+      auto index_size = hdr.docs_index - first_block_offset;
+      auto old_size = column_data.size();
+      column_data.resize(old_size + index_size);
+      in->read_bytes(hdr.docs_index, column_data.data() + old_size, index_size);
+      if constexpr (encrypted) {
+        assert(mapping);
+        mapping->emplace_back(hdr.docs_index, old_size);
+      } else {
+        hdr.docs_index = old_size;
+      }
+      
     }
   }
   std::vector<irs::byte_type> column_data_;
