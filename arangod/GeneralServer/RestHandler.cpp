@@ -33,7 +33,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogStructuredParamsAllowList.h"
@@ -160,15 +159,15 @@ void RestHandler::setStatistics(RequestStatistics::Item&& stat) {
   _statistics = std::move(stat);
 }
 
-futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
+yaclib::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   forwarded = false;
   if (!ServerState::instance()->isCoordinator()) {
-    return futures::makeFuture(Result());
+    return yaclib::MakeFuture<Result>();
   }
 
   ResultT forwardResult = forwardingTarget();
   if (forwardResult.fail()) {
-    return futures::makeFuture(forwardResult.result());
+    return yaclib::MakeFuture(forwardResult.result());
   }
 
   auto forwardContent = forwardResult.get();
@@ -182,7 +181,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
 
   if (serverId.empty()) {
     // no need to actually forward
-    return futures::makeFuture(Result());
+    return yaclib::MakeFuture<Result>();
   }
 
   NetworkFeature& nf = server().getFeature<NetworkFeature>();
@@ -191,7 +190,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     // nullptr happens only during controlled shutdown
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
                   TRI_ERROR_SHUTTING_DOWN, "shutting down server");
-    return futures::makeFuture(Result(TRI_ERROR_SHUTTING_DOWN));
+    return yaclib::MakeFuture<Result>(TRI_ERROR_SHUTTING_DOWN);
   }
   LOG_TOPIC("38d99", DEBUG, Logger::REQUESTS)
       << "forwarding request " << _request->messageId() << " to " << serverId;
@@ -271,7 +270,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_CLUSTER_SERVER_UNKNOWN,
                   std::string("cluster server ") + serverId + " unknown");
-    return Result(TRI_ERROR_CLUSTER_SERVER_UNKNOWN);
+    return yaclib::MakeFuture<Result>(TRI_ERROR_CLUSTER_SERVER_UNKNOWN);
   }
 
   auto future = network::sendRequestRetry(
@@ -313,7 +312,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
 
     return Result();
   };
-  return std::move(future).thenValue(cb);
+  return std::move(future).ThenInline(cb);
 }
 
 void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
@@ -632,17 +631,20 @@ void RestHandler::generateError(arangodb::Result const& r) {
   generateError(code, r.errorNumber(), r.errorMessage());
 }
 
-RestStatus RestHandler::waitForFuture(futures::Future<futures::Unit>&& f) {
-  if (f.isReady()) {             // fast-path out
-    f.result().throwIfFailed();  // just throw the error upwards
+RestStatus RestHandler::waitForFuture(yaclib::Future<>&& f) {
+  // TODO(MBkkt) replace RestHandler manually written fsm with coroutine
+  if (f.Ready()) {                            // fast-path out
+    std::ignore = std::move(f).Touch().Ok();  // just throw the error upwards
     return RestStatus::DONE;
   }
   bool done = false;
-  std::move(f).thenFinal(
-      withLogContext([self = shared_from_this(),
-                      &done](futures::Try<futures::Unit>&& t) -> void {
-        if (t.hasException()) {
-          self->handleExceptionPtr(std::move(t).exception());
+  std::move(f).DetachInline(
+      withLogContext([self = shared_from_this(), &done](auto&& t) -> void {
+        if (t.State() == yaclib::ResultState::Exception) {
+          self->handleExceptionPtr(std::move(t).Exception());
+        } else if (!t) {
+          self->handleExceptionPtr(std::make_exception_ptr(
+              std::runtime_error{"Promise was canceled"}));
         }
         if (std::this_thread::get_id() == self->_executionMutexOwner.load()) {
           done = true;

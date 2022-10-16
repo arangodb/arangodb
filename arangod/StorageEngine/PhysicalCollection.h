@@ -30,7 +30,6 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Containers/MerkleTree.h"
-#include "Futures/Future.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
@@ -40,6 +39,7 @@
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
 
+#include <yaclib/async/future.hpp>
 #include <boost/container/flat_set.hpp>
 
 namespace arangodb {
@@ -130,7 +130,7 @@ class PhysicalCollection {
           filter) const;
 
   /// @brief return the figures for a collection
-  virtual futures::Future<OperationResult> figures(
+  virtual yaclib::Future<OperationResult> figures(
       bool details, OperationOptions const& options);
 
   /// @brief create or restore an index

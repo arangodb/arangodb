@@ -24,7 +24,7 @@
 
 #include "RocksDBKey.h"
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBTypes.h"

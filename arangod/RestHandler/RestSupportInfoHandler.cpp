@@ -186,9 +186,9 @@ RestStatus RestSupportInfoHandler::execute() {
       }
 
       if (!futures.empty()) {
-        auto responses = futures::collectAll(futures).get();
-        for (auto const& it : responses) {
-          auto& resp = it.get();
+        yaclib::Wait(futures.begin(), futures.end());
+        for (auto const& f : futures) {
+          auto& resp = f.Touch().Ok();
           auto res = resp.combinedResult();
           if (res.fail()) {
             THROW_ARANGO_EXCEPTION(res);

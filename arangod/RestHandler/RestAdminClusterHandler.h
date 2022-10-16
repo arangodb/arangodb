@@ -23,10 +23,9 @@
 
 #pragma once
 
-#include "Futures/Future.h"
-#include "Futures/Unit.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
+#include <yaclib/async/future.hpp>
 #include <velocypack/Slice.h>
 
 #include <cstdint>
@@ -145,7 +144,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleFailureOracleFlush();
 
   typedef std::chrono::steady_clock clock;
-  typedef futures::Future<futures::Unit> FutureVoid;
+  typedef yaclib::Future<> FutureVoid;
 
   FutureVoid waitForSupervisionState(bool state,
                                      std::string const& reactivationTime,

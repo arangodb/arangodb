@@ -50,7 +50,7 @@ ModifierOperationType InsertModifierCompletion::accumulate(
   }
 }
 
-futures::Future<OperationResult> InsertModifierCompletion::transact(
+yaclib::Future<OperationResult> InsertModifierCompletion::transact(
     transaction::Methods& trx, VPackSlice const& data) {
   return trx.insertAsync(_infos._aqlCollection->name(), data, _infos._options);
 }

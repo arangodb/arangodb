@@ -119,7 +119,7 @@ RestStatus RestLogHandler::handlePostInsert(ReplicatedLogMethods const& methods,
         methods
             .insertWithoutCommit(logId, LogPayload::createFromSlice(payload),
                                  waitForSync)
-            .thenValue([this](LogIndex idx) {
+            .ThenInline([this](LogIndex idx) {
               VPackBuilder response;
               {
                 VPackObjectBuilder result(&response);
@@ -129,9 +129,10 @@ RestStatus RestLogHandler::handlePostInsert(ReplicatedLogMethods const& methods,
             }));
 
   } else {
+    using WaitForResult = std::pair<LogIndex, replicated_log::WaitForResult>;
     return waitForFuture(
         methods.insert(logId, LogPayload::createFromSlice(payload), waitForSync)
-            .thenValue([this](auto&& waitForResult) {
+            .ThenInline([this](WaitForResult&& waitForResult) {
               VPackBuilder response;
               {
                 VPackObjectBuilder result(&response);
@@ -162,8 +163,10 @@ RestStatus RestLogHandler::handlePostInsertMulti(
     return RestStatus::DONE;
   }
   auto iter = replicated_log::VPackArrayToLogPayloadIterator{payload};
+  using WaitForResult =
+      std::pair<std::vector<LogIndex>, replicated_log::WaitForResult>;
   auto f = methods.insert(logId, iter, waitForSync)
-               .thenValue([this](auto&& waitForResult) {
+               .ThenInline([this](WaitForResult&& waitForResult) {
                  VPackBuilder response;
                  {
                    VPackObjectBuilder result(&response);
@@ -185,7 +188,7 @@ RestStatus RestLogHandler::handlePostRelease(
     ReplicatedLogMethods const& methods, replication2::LogId logId) {
   auto idx = LogIndex{basics::StringUtils::uint64(_request->value("index"))};
   return waitForFuture(
-      methods.release(logId, idx).thenValue([this](Result&& res) {
+      methods.release(logId, idx).ThenInline([this](Result&& res) {
         if (res.fail()) {
           generateError(res);
         } else {
@@ -201,7 +204,7 @@ RestStatus RestLogHandler::handlePost(ReplicatedLogMethods const& methods,
       velocypack::deserialize<ReplicatedLogMethods::CreateOptions>(specSlice);
   return waitForFuture(
       methods.createReplicatedLog(std::move(spec))
-          .thenValue(
+          .ThenInline(
               [this](ResultT<ReplicatedLogMethods::CreateResult>&& result) {
                 if (result.ok()) {
                   VPackBuilder builder;
@@ -261,7 +264,7 @@ RestStatus RestLogHandler::handleDeleteRequest(
 
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
   return waitForFuture(
-      methods.deleteReplicatedLog(logId).thenValue([this](Result&& result) {
+      methods.deleteReplicatedLog(logId).ThenInline([this](Result&& result) {
         if (!result.ok()) {
           generateError(result);
         } else {
@@ -276,8 +279,12 @@ RestLogHandler::RestLogHandler(ArangodServer& server, GeneralRequest* req,
     : RestVocbaseBaseHandler(server, req, resp) {}
 
 RestStatus RestLogHandler::handleGet(ReplicatedLogMethods const& methods) {
-  return waitForFuture(methods.getReplicatedLogs().thenValue([this](
-                                                                 auto&& logs) {
+  using Logs =
+      std::unordered_map<LogId,
+                         std::variant<replicated_log::LogStatus,
+                                      ReplicatedLogMethods::ParticipantsList>>;
+  return waitForFuture(methods.getReplicatedLogs().ThenInline([this](
+                                                                  Logs&& logs) {
     VPackBuilder builder;
     {
       VPackObjectBuilder ob(&builder);
@@ -304,15 +311,15 @@ RestStatus RestLogHandler::handleGet(ReplicatedLogMethods const& methods) {
 
 RestStatus RestLogHandler::handleGetLog(const ReplicatedLogMethods& methods,
                                         replication2::LogId logId) {
-  return waitForFuture(
-      methods.getStatus(logId).thenValue([this](auto&& status) {
+  return waitForFuture(methods.getStatus(logId).ThenInline(
+      [this](ReplicatedLogMethods::GenericLogStatus&& status) {
         std::visit(
             [this](auto&& status) {
               VPackBuilder buffer;
               status.toVelocyPack(buffer);
               generateOk(rest::ResponseCode::OK, buffer.slice());
             },
-            status);
+            std::move(status));
       }));
 }
 
@@ -330,7 +337,7 @@ RestStatus RestLogHandler::handleGetPoll(ReplicatedLogMethods const& methods,
   limit = limitFound ? limit : ReplicatedLogMethods::kDefaultLimit;
 
   auto fut = methods.poll(logId, logIdx, limit)
-                 .thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
+                 .ThenInline([&](std::unique_ptr<PersistedLogIterator> iter) {
                    VPackBuilder builder;
                    {
                      VPackArrayBuilder ab(&builder);
@@ -358,7 +365,7 @@ RestStatus RestLogHandler::handleGetTail(ReplicatedLogMethods const& methods,
   limit = limitFound ? limit : ReplicatedLogMethods::kDefaultLimit;
 
   auto fut = methods.tail(logId, limit)
-                 .thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
+                 .ThenInline([&](std::unique_ptr<PersistedLogIterator> iter) {
                    VPackBuilder builder;
                    {
                      VPackArrayBuilder ab(&builder);
@@ -386,7 +393,7 @@ RestStatus RestLogHandler::handleGetHead(ReplicatedLogMethods const& methods,
   limit = limitFound ? limit : ReplicatedLogMethods::kDefaultLimit;
 
   auto fut = methods.head(logId, limit)
-                 .thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
+                 .ThenInline([&](std::unique_ptr<PersistedLogIterator> iter) {
                    VPackBuilder builder;
                    {
                      VPackArrayBuilder ab(&builder);
@@ -415,7 +422,7 @@ RestStatus RestLogHandler::handleGetSlice(ReplicatedLogMethods const& methods,
   stop = stopFound ? stop : start + ReplicatedLogMethods::kDefaultLimit + 1;
 
   auto fut = methods.slice(logId, start, stop)
-                 .thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
+                 .ThenInline([&](std::unique_ptr<PersistedLogIterator> iter) {
                    VPackBuilder builder;
                    {
                      VPackArrayBuilder ab(&builder);
@@ -438,8 +445,8 @@ RestStatus RestLogHandler::handleGetLocalStatus(
     return RestStatus::DONE;
   }
 
-  return waitForFuture(
-      methods.getLocalStatus(logId).thenValue([this](auto&& status) {
+  return waitForFuture(methods.getLocalStatus(logId).ThenInline(
+      [this](replicated_log::LogStatus&& status) {
         VPackBuilder buffer;
         status.toVelocyPack(buffer);
         generateOk(rest::ResponseCode::OK, buffer.slice());
@@ -461,9 +468,9 @@ RestStatus RestLogHandler::handleGetGlobalStatus(
     }
     return replicated_log::GlobalStatus::SpecificationSource::kRemoteAgency;
   });
-
+  using Status = replicated_log::GlobalStatus;
   return waitForFuture(methods.getGlobalStatus(logId, specSource)
-                           .thenValue([this](auto&& status) {
+                           .ThenInline([this](Status&& status) {
                              VPackBuilder buffer;
                              status.toVelocyPack(buffer);
                              generateOk(rest::ResponseCode::OK, buffer.slice());
@@ -482,7 +489,7 @@ RestStatus RestLogHandler::handleGetEntry(ReplicatedLogMethods const& methods,
 
   return waitForFuture(
       methods.getLogEntryByIndex(logId, logIdx)
-          .thenValue([this](std::optional<PersistingLogEntry>&& entry) {
+          .ThenInline([this](std::optional<PersistingLogEntry>&& entry) {
             if (entry) {
               VPackBuilder result;
               entry->toVelocyPack(result);

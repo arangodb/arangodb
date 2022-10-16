@@ -38,10 +38,10 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
-#include "Basics/debugging.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+#include "Logger/LogMacros.h"
 
 #include <absl/strings/str_cat.h>
 

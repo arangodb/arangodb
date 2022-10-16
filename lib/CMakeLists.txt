@@ -205,6 +205,7 @@ target_link_libraries(arango PUBLIC
   velocypack
   linenoise-ng
   date_interface
+  yaclib
   ${V8_LIBS}
   ${SYSTEM_LIBRARIES}
   ${ICU_LIBS}

@@ -98,10 +98,11 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   auto result = replication2::algorithms::updateReplicatedLog(
       ctx, serverId, rebootId, logId,
       spec.has_value() ? &spec.value() : nullptr, std::move(failureOracle));
-  std::move(result).thenFinal([desc = _description, logId, &feature = _feature](
-                                  futures::Try<Result>&& tryResult) noexcept {
+  std::move(result).DetachInline([desc = _description, logId,
+                                  &feature =
+                                      _feature](auto&& tryResult) noexcept {
     try {
-      auto const& result = tryResult.get();
+      auto result = std::move(tryResult).Ok();
       if (result.fail()) {
         LOG_TOPIC("ba775", ERR, Logger::REPLICATION2)
             << "failed to modify replicated log " << desc.get(DATABASE) << '/'

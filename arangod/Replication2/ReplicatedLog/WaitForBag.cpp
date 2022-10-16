@@ -21,30 +21,30 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "WaitForBag.h"
+#include "Basics/debugging.h"
 
-#include <Futures/Promise.h>
-#include <Futures/Future.h>
-#include <Futures/Unit.h>
+#include <yaclib/async/contract.hpp>
 
 using namespace arangodb;
 
-auto WaitForBag::addWaitFor() -> futures::Future<futures::Unit> {
-  using namespace arangodb::futures;
-  return _waitForBag.emplace_back(Promise<Unit>{}).getFuture();
+auto WaitForBag::addWaitFor() -> yaclib::Future<> {
+  auto [f, p] = yaclib::MakeContract();
+  _waitForBag.emplace_back(std::move(p));
+  return std::move(f);
 }
 
 void WaitForBag::resolveAll() {
   for (auto& promise : _waitForBag) {
-    TRI_ASSERT(promise.valid());
-    promise.setValue();
+    TRI_ASSERT(promise.Valid());
+    std::move(promise).Set();
   }
   _waitForBag.clear();
 }
 
 void WaitForBag::resolveAll(std::exception_ptr const& ex) {
   for (auto& promise : _waitForBag) {
-    TRI_ASSERT(promise.valid());
-    promise.setException(ex);
+    TRI_ASSERT(promise.Valid());
+    std::move(promise).Set(ex);
   }
   _waitForBag.clear();
 }

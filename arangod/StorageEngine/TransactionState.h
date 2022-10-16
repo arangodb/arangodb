@@ -30,7 +30,6 @@
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
-#include "Futures/Future.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
@@ -39,6 +38,7 @@
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
+#include <yaclib/async/future.hpp>
 #include <string_view>
 #include <variant>
 
@@ -200,7 +200,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;
 
   /// @brief commit a transaction
-  virtual futures::Future<arangodb::Result> commitTransaction(
+  virtual yaclib::Future<arangodb::Result> commitTransaction(
       transaction::Methods* trx) = 0;
 
   /// @brief abort a transaction
@@ -208,7 +208,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   virtual Result triggerIntermediateCommit() = 0;
 
-  virtual futures::Future<Result> performIntermediateCommitIfRequired(
+  virtual yaclib::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId cid) = 0;
 
   /// @brief return number of commits.

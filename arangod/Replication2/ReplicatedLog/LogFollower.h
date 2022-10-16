@@ -34,7 +34,7 @@
 #include "Replication2/ReplicatedLog/types.h"
 
 #include <Basics/Guarded.h>
-#include <Futures/Future.h>
+#include <yaclib/async/future.hpp>
 
 #include <condition_variable>
 #include <map>
@@ -58,7 +58,7 @@ class LogFollower : public ILogFollower,
 
   // follower only
   [[nodiscard]] auto appendEntries(AppendEntriesRequest)
-      -> futures::Future<AppendEntriesResult> override;
+      -> yaclib::Future<AppendEntriesResult> override;
 
   [[nodiscard]] auto getStatus() const -> LogStatus override;
   [[nodiscard]] auto getQuickStatus() const -> QuickLogStatus override;
@@ -70,7 +70,7 @@ class LogFollower : public ILogFollower,
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
   [[nodiscard]] auto waitForIterator(LogIndex index)
       -> WaitForIteratorFuture override;
-  [[nodiscard]] auto waitForResign() -> futures::Future<futures::Unit> override;
+  [[nodiscard]] auto waitForResign() -> yaclib::Future<> override;
   [[nodiscard]] auto getParticipantId() const noexcept
       -> ParticipantId const& override;
   [[nodiscard]] auto getLogIterator(LogIndex firstIndex) const
@@ -108,7 +108,7 @@ class LogFollower : public ILogFollower,
     [[nodiscard]] auto didResign() const noexcept -> bool;
 
     [[nodiscard]] auto waitForResign()
-        -> std::pair<futures::Future<futures::Unit>, DeferredAction>;
+        -> std::pair<yaclib::Future<>, DeferredAction>;
 
     LogFollower const& _follower;
     InMemoryLog _inMemoryLog;

@@ -72,7 +72,7 @@ ModifierOperationType RemoveModifierCompletion::accumulate(
   }
 }
 
-futures::Future<OperationResult> RemoveModifierCompletion::transact(
+yaclib::Future<OperationResult> RemoveModifierCompletion::transact(
     transaction::Methods& trx, VPackSlice const& data) {
   return trx.removeAsync(_infos._aqlCollection->name(), data, _infos._options);
 }

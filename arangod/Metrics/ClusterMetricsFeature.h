@@ -158,8 +158,8 @@ class ClusterMetricsFeature final : public ArangodFeature {
 
   void update();
   void repeatUpdate(uint32_t timeoutMs) noexcept;
-  bool writeData(uint64_t version, futures::Try<RawDBServers>&& raw);
-  bool readData(futures::Try<LeaderResponse>&& raw);
+  bool writeData(uint64_t version, yaclib::Result<RawDBServers>&& raw);
+  bool readData(yaclib::Result<LeaderResponse>&& raw);
   Metrics parse(RawDBServers&& metrics) const;
 
   bool wasStop() const noexcept;

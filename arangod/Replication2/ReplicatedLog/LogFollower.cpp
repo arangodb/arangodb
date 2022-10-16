@@ -39,7 +39,8 @@
 #include <Basics/StringUtils.h>
 #include <Basics/debugging.h>
 #include <Basics/voc-errors.h>
-#include <Futures/Promise.h>
+#include <yaclib/async/make.hpp>
+#include <yaclib/async/contract.hpp>
 
 #include <Basics/ScopeGuard.h>
 #include <Basics/application-exit.h>
@@ -146,7 +147,7 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
 }
 
 auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
-    -> arangodb::futures::Future<AppendEntriesResult> {
+    -> yaclib::Future<AppendEntriesResult> {
   MeasureTimeGuard measureTimeGuard{
       _logMetrics->replicatedLogFollowerAppendEntriesRtUs};
 
@@ -157,7 +158,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     // This code block should not modify the local state, only check values.
     if (auto result = appendEntriesPreFlightChecks(dataGuard.get(), req);
         result.has_value()) {
-      return *result;
+      return yaclib::MakeFuture(*result);
     }
 
     dataGuard->_lastRecvMessageId = req.messageId;
@@ -194,8 +195,8 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       if (!res.ok()) {
         LOG_CTX("f17b8", ERR, _loggerContext)
             << "failed to remove log entries after " << req.prevLogEntry.index;
-        return AppendEntriesResult::withPersistenceError(_currentTerm,
-                                                         req.messageId, res);
+        return yaclib::MakeFuture(AppendEntriesResult::withPersistenceError(
+            _currentTerm, req.messageId, res));
       }
 
       // commit the deletion in memory
@@ -217,7 +218,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     inFlightScopeGuard.fire();
     action.fire();
     static_assert(std::is_nothrow_move_constructible_v<AppendEntriesResult>);
-    return {std::move(result)};
+    return yaclib::MakeFuture(std::move(result));
   }
 
   // Allocations
@@ -242,18 +243,17 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   auto checkResultAndCommitIndex =
       [self = shared_from_this(), inFlightGuard = std::move(inFlightScopeGuard),
        req = std::move(req), newInMemoryLog = std::move(newInMemoryLog),
-       toBeResolved =
-           std::move(toBeResolved)](futures::Try<Result>&& tryRes) mutable
+       toBeResolved = std::move(toBeResolved)](auto&& tryRes) mutable
       -> std::pair<AppendEntriesResult, DeferredAction> {
     // We have to release the guard after this lambda is finished.
     // Otherwise it would be released when the lambda is destroyed, which
-    // happens *after* the following thenValue calls have been executed. In
+    // happens *after* the following ThenInline calls have been executed. In
     // particular the lock is held until the end of the future chain is reached.
     // This will cause deadlocks.
     decltype(inFlightGuard) inFlightGuardLocal = std::move(inFlightGuard);
     auto data = self->_guardedFollowerData.getLockedGuard();
 
-    auto const& res = tryRes.get();
+    auto& res = std::as_const(tryRes).Ok();
     {
       // This code block does not throw any exceptions. This is executed after
       // we wrote to the on-disk-log.
@@ -299,15 +299,16 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   // one was processed.
   dataGuard.unlock();
   return std::move(f)
-      .then(std::move(checkResultAndCommitIndex))
-      .then([measureTime = std::move(measureTimeGuard)](auto&& res) mutable {
-        measureTime.fire();
-        auto&& [result, action] = res.get();
-        // It is okay to fire here, because commitToMemoryAndResolve has
-        // released the guard already.
-        action.fire();
-        return std::move(result);
-      });
+      .ThenInline(std::move(checkResultAndCommitIndex))
+      .ThenInline(
+          [measureTime = std::move(measureTimeGuard)](auto&& res) mutable {
+            measureTime.fire();
+            auto [result, action] = std::move(res).Ok();
+            // It is okay to fire here, because commitToMemoryAndResolve has
+            // released the guard already.
+            action.fire();
+            return std::move(result);
+          });
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
@@ -328,9 +329,9 @@ auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
       return DeferredAction([commitIndex = _commitIndex,
                              toBeResolved = std::move(outQueue)]() noexcept {
         for (auto& it : *toBeResolved) {
-          if (!it.second.isFulfilled()) {
+          if (it.second.Valid()) {
             // This only throws if promise was fulfilled earlier.
-            it.second.setValue(
+            std::move(it.second).Set(
                 WaitForResult{commitIndex, std::shared_ptr<QuorumData>{}});
           }
         }
@@ -453,9 +454,11 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<
           std::for_each(
               queues->waitForQueue.begin(), queues->waitForQueue.end(),
               [](auto& pair) {
-                pair.second.setException(ParticipantResignedException(
-                    TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
-                    ADB_HERE));
+                TRI_ASSERT(pair.second.Valid());
+                std::move(pair.second)
+                    .Set(std::make_exception_ptr(ParticipantResignedException(
+                        TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
+                        ADB_HERE)));
               });
           queues->waitForResignQueue.resolveAll();
         };
@@ -497,25 +500,19 @@ auto replicated_log::LogFollower::waitFor(LogIndex idx)
     -> replicated_log::ILogParticipant::WaitForFuture {
   auto self = _guardedFollowerData.getLockedGuard();
   if (self->didResign()) {
-    auto promise = WaitForPromise{};
-    promise.setException(ParticipantResignedException(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE));
-    return promise.getFuture();
+    return yaclib::MakeFuture<WaitForResult>(
+        std::make_exception_ptr(ParticipantResignedException(
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE)));
   }
   if (self->_commitIndex >= idx) {
-    return futures::Future<WaitForResult>{
-        std::in_place, self->_commitIndex,
-        std::make_shared<QuorumData>(idx, _currentTerm)};
+    return yaclib::MakeFuture<WaitForResult>(
+        self->_commitIndex, std::make_shared<QuorumData>(idx, _currentTerm));
   }
+  auto [future, promise] = yaclib::MakeContract<WaitForResult>();
   // emplace might throw a std::bad_alloc but the remainder is noexcept
   // so either you inserted it and or nothing happens
-  // TODO locking ok? Iterator stored but lock guard is temporary
-  auto it =
-      self->_waitForQueue.getLockedGuard()->emplace(idx, WaitForPromise{});
-  auto& promise = it->second;
-  auto future = promise.getFuture();
-  TRI_ASSERT(future.valid());
-  return future;
+  self->_waitForQueue.getLockedGuard()->emplace(idx, std::move(promise));
+  return std::move(future);
 }
 
 auto replicated_log::LogFollower::waitForIterator(LogIndex index)
@@ -524,8 +521,8 @@ auto replicated_log::LogFollower::waitForIterator(LogIndex index)
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "invalid parameter; log index 0 is invalid");
   }
-  return waitFor(index).thenValue([this, self = shared_from_this(), index](
-                                      auto&& quorum) -> WaitForIteratorFuture {
+  return waitFor(index).ThenInline([this, self = shared_from_this(),
+                                    index](WaitForResult&& quorum) {
     auto [fromIndex, iter] = _guardedFollowerData.doUnderLock(
         [&](GuardedFollowerData& followerData)
             -> std::pair<LogIndex, std::unique_ptr<LogRangeIterator>> {
@@ -568,7 +565,7 @@ auto replicated_log::LogFollower::waitForIterator(LogIndex index)
       return waitForIterator(fromIndex);
     }
 
-    return std::move(iter);
+    return yaclib::MakeFuture(std::move(iter));
   });
 }
 
@@ -641,7 +638,7 @@ auto LogFollower::getCommitIndex() const noexcept -> LogIndex {
   return _guardedFollowerData.getLockedGuard()->_commitIndex;
 }
 
-auto LogFollower::waitForResign() -> futures::Future<futures::Unit> {
+auto LogFollower::waitForResign() -> yaclib::Future<> {
   auto&& [future, action] =
       _guardedFollowerData.getLockedGuard()->waitForResign();
 
@@ -711,7 +708,7 @@ auto LogFollower::GuardedFollowerData::checkCompaction() -> Result {
   auto const numberOfCompactedEntries =
       compactionStop.value - _inMemoryLog.getFirstIndex().value;
   auto newLog = _inMemoryLog.release(compactionStop);
-  auto res = _logCore->removeFront(compactionStop).get();
+  auto res = _logCore->removeFront(compactionStop).Get().Ok();
   if (res.ok()) {
     _inMemoryLog = std::move(newLog);
     _follower._logMetrics->replicatedLogNumberCompactedEntries->count(
@@ -722,19 +719,18 @@ auto LogFollower::GuardedFollowerData::checkCompaction() -> Result {
   return res;
 }
 auto LogFollower::GuardedFollowerData::waitForResign()
-    -> std::pair<futures::Future<futures::Unit>, DeferredAction> {
+    -> std::pair<yaclib::Future<>, DeferredAction> {
   if (!didResign()) {
     auto future = _waitForResignQueue.addWaitFor();
     return {std::move(future), DeferredAction{}};
   } else {
     TRI_ASSERT(_waitForResignQueue.empty());
-    auto promise = futures::Promise<futures::Unit>{};
-    auto future = promise.getFuture();
+    auto [future, promise] = yaclib::MakeContract();
 
     auto action =
         DeferredAction([promise = std::move(promise)]() mutable noexcept {
-          TRI_ASSERT(promise.valid());
-          promise.setValue();
+          TRI_ASSERT(promise.Valid());
+          std::move(promise).Set();
         });
 
     return {std::move(future), std::move(action)};

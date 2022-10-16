@@ -62,10 +62,10 @@ namespace paths = arangodb::cluster::paths::aliases;
 
 namespace {
 auto sendAgencyWriteTransaction(VPackBufferUInt8 trx)
-    -> futures::Future<ResultT<uint64_t>> {
+    -> yaclib::Future<ResultT<uint64_t>> {
   AsyncAgencyComm ac;
   return ac.sendWriteTransaction(120s, std::move(trx))
-      .thenValue([](AsyncAgencyCommResult&& res) -> ResultT<uint64_t> {
+      .ThenInline([](AsyncAgencyCommResult&& res) -> ResultT<uint64_t> {
         if (res.fail()) {
           return res.asResult();
         }
@@ -125,7 +125,7 @@ auto methods::updateParticipantsConfigTrx(
 auto methods::updateTermSpecification(DatabaseID const& database, LogId id,
                                       LogPlanTermSpecification const& spec,
                                       std::optional<LogTerm> prevTerm)
-    -> futures::Future<ResultT<uint64_t>> {
+    -> yaclib::Future<ResultT<uint64_t>> {
   VPackBufferUInt8 trx;
   {
     VPackBuilder builder(trx);
@@ -159,7 +159,7 @@ auto methods::deleteReplicatedLogTrx(arangodb::agency::envelope envelope,
 }
 
 auto methods::deleteReplicatedLog(DatabaseID const& database, LogId id)
-    -> futures::Future<ResultT<uint64_t>> {
+    -> yaclib::Future<ResultT<uint64_t>> {
   VPackBufferUInt8 trx;
   {
     VPackBuilder builder(trx);
@@ -195,7 +195,7 @@ auto methods::deleteReplicatedStateTrx(arangodb::agency::envelope envelope,
 }
 
 auto methods::deleteReplicatedState(DatabaseID const& database, LogId id)
-    -> futures::Future<ResultT<uint64_t>> {
+    -> yaclib::Future<ResultT<uint64_t>> {
   VPackBufferUInt8 trx;
   {
     VPackBuilder builder(trx);
@@ -229,7 +229,7 @@ auto methods::createReplicatedLogTrx(arangodb::agency::envelope envelope,
 
 auto methods::createReplicatedLog(DatabaseID const& database,
                                   LogTarget const& spec)
-    -> futures::Future<ResultT<uint64_t>> {
+    -> yaclib::Future<ResultT<uint64_t>> {
   VPackBufferUInt8 trx;
   {
     VPackBuilder builder(trx);
@@ -309,7 +309,7 @@ auto createReplicatedStateTrx(arangodb::agency::envelope envelope,
 
 auto methods::createReplicatedState(
     DatabaseID const& database, replicated_state::agency::Target const& spec)
-    -> futures::Future<ResultT<uint64_t>> {
+    -> yaclib::Future<ResultT<uint64_t>> {
   VPackBufferUInt8 trx;
   {
     VPackBuilder builder(trx);
@@ -325,7 +325,7 @@ auto methods::replaceReplicatedStateParticipant(
     ParticipantId const& participantToRemove,
     ParticipantId const& participantToAdd,
     std::optional<ParticipantId> const& currentLeader)
-    -> futures::Future<Result> {
+    -> yaclib::Future<Result> {
   auto path =
       paths::target()->replicatedStates()->database(databaseName)->state(id);
 
@@ -365,7 +365,7 @@ auto methods::replaceReplicatedStateParticipant(
   }
 
   return sendAgencyWriteTransaction(std::move(trx))
-      .thenValue([](ResultT<std::uint64_t>&& resultT) {
+      .ThenInline([](ResultT<std::uint64_t>&& resultT) {
         if (resultT.ok() && *resultT == 0) {
           return Result(
               TRI_ERROR_HTTP_PRECONDITION_FAILED,
@@ -379,7 +379,7 @@ auto methods::replaceReplicatedStateParticipant(
 
 auto methods::replaceReplicatedSetLeader(
     std::string const& databaseName, LogId id,
-    std::optional<ParticipantId> const& leaderId) -> futures::Future<Result> {
+    std::optional<ParticipantId> const& leaderId) -> yaclib::Future<Result> {
   auto path =
       paths::target()->replicatedStates()->database(databaseName)->state(id);
 
@@ -408,7 +408,7 @@ auto methods::replaceReplicatedSetLeader(
   }
 
   return sendAgencyWriteTransaction(std::move(trx))
-      .thenValue([](ResultT<std::uint64_t>&& resultT) {
+      .ThenInline([](ResultT<std::uint64_t>&& resultT) {
         if (resultT.ok() && *resultT == 0) {
           return Result(TRI_ERROR_HTTP_PRECONDITION_FAILED,
                         "Refused to set the new leader: It's not part of the "

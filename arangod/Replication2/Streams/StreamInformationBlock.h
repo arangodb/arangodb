@@ -59,7 +59,7 @@ struct StreamInformationBlock<stream_descriptor<Id, Type, Tags>> {
   using LogVariantType = std::variant<ContainerType, TransientType>;
 
   using WaitForResult = typename StreamType::WaitForResult;
-  using WaitForPromise = futures::Promise<WaitForResult>;
+  using WaitForPromise = yaclib::Promise<WaitForResult>;
   using WaitForQueue = std::multimap<LogIndex, WaitForPromise>;
 
   LogIndex _releaseIndex{0};
@@ -68,7 +68,7 @@ struct StreamInformationBlock<stream_descriptor<Id, Type, Tags>> {
 
   auto appendEntry(LogIndex index, Type t);
   auto getWaitForResolveSet(LogIndex commitIndex) -> WaitForQueue;
-  auto registerWaitFor(LogIndex index) -> futures::Future<WaitForResult>;
+  auto registerWaitFor(LogIndex index) -> yaclib::Future<WaitForResult>;
   auto getIterator() -> std::unique_ptr<Iterator>;
   auto getIteratorRange(LogIndex start, LogIndex stop)
       -> std::unique_ptr<Iterator>;

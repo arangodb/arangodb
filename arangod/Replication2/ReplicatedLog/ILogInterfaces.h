@@ -28,8 +28,8 @@
 #include "Replication2/ReplicatedLog/LogEntries.h"
 #include "Replication2/ReplicatedLog/types.h"
 
-#include <Futures/Future.h>
-#include <Futures/Promise.h>
+#include <yaclib/async/future.hpp>
+#include <yaclib/async/promise.hpp>
 
 #include <map>
 #include <memory>
@@ -73,17 +73,16 @@ struct ILogParticipant {
   [[nodiscard]] virtual auto
   resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> = 0;
 
-  using WaitForPromise = futures::Promise<WaitForResult>;
-  using WaitForFuture = futures::Future<WaitForResult>;
+  using WaitForPromise = yaclib::Promise<WaitForResult>;
+  using WaitForFuture = yaclib::Future<WaitForResult>;
   using WaitForIteratorFuture =
-      futures::Future<std::unique_ptr<LogRangeIterator>>;
+      yaclib::Future<std::unique_ptr<LogRangeIterator>>;
   using WaitForQueue = std::multimap<LogIndex, WaitForPromise>;
 
   [[nodiscard]] virtual auto waitFor(LogIndex index) -> WaitForFuture = 0;
   [[nodiscard]] virtual auto waitForIterator(LogIndex index)
       -> WaitForIteratorFuture = 0;
-  [[nodiscard]] virtual auto waitForResign()
-      -> futures::Future<futures::Unit> = 0;
+  [[nodiscard]] virtual auto waitForResign() -> yaclib::Future<> = 0;
   [[nodiscard]] virtual auto getTerm() const noexcept -> std::optional<LogTerm>;
   [[nodiscard]] virtual auto getCommitIndex() const noexcept -> LogIndex = 0;
 

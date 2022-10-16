@@ -63,7 +63,7 @@ struct BlackHoleLeaderState
 
  protected:
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
-      -> futures::Future<Result> override;
+      -> yaclib::Future<Result> override;
 
   std::unique_ptr<BlackHoleCore> _core;
 };
@@ -77,9 +77,9 @@ struct BlackHoleFollowerState
 
  protected:
   auto acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept
-      -> futures::Future<Result> override;
+      -> yaclib::Future<Result> override;
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
-      -> futures::Future<Result> override;
+      -> yaclib::Future<Result> override;
 
   std::unique_ptr<BlackHoleCore> _core;
 };

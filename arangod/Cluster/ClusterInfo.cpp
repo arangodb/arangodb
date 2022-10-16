@@ -85,6 +85,10 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
 
+#include <yaclib/async/make.hpp>
+#include <yaclib/async/when_all.hpp>
+#include <yaclib/async/contract.hpp>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -595,12 +599,12 @@ auto ClusterInfo::createDocumentStateSpec(
 auto ClusterInfo::waitForReplicatedStatesCreation(
     std::string const& databaseName,
     std::vector<replication2::replicated_state::agency::Target> const&
-        replicatedStates) -> futures::Future<Result> {
+        replicatedStates) -> yaclib::Future<Result> {
   auto replicatedStateMethods =
       arangodb::replication2::ReplicatedStateMethods::createInstanceCoordinator(
           _server, databaseName);
 
-  std::vector<futures::Future<ResultT<consensus::index_t>>> futureStates;
+  std::vector<yaclib::Future<ResultT<consensus::index_t>>> futureStates;
   futureStates.reserve(replicatedStates.size());
   for (auto const& spec : replicatedStates) {
     futureStates.emplace_back(
@@ -616,19 +620,21 @@ auto ClusterInfo::waitForReplicatedStatesCreation(
     return error;
   };
 
-  return futures::collectAll(std::move(futureStates))
-      .thenValue(
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futureStates.begin(), futureStates.end())
+      .ThenInline(
           [&clusterInfo = _server.getFeature<ClusterFeature>().clusterInfo()](
-              auto&& raftIndices) {
+              std::vector<yaclib::Result<ResultT<consensus::index_t>>>&&
+                  raftIndices) {
             consensus::index_t maxIndex = 0;
-            for (auto& v : raftIndices) {
-              maxIndex = std::max(maxIndex, v.get().get());
+            for (auto&& v : std::move(raftIndices)) {
+              maxIndex = std::max(maxIndex, std::move(v).Ok().get());
             }
             return clusterInfo.waitForPlan(maxIndex);
           })
-      .then([&appendErrorMessage](auto&& tryResult) {
+      .ThenInline([&appendErrorMessage](auto&& tryResult) {
         Result result =
-            basics::catchToResult([&] { return std::move(tryResult.get()); });
+            basics::catchToResult([&] { return std::move(tryResult).Ok(); });
         if (result.fail()) {
           if (result.is(TRI_ERROR_NO_ERROR)) {
             result = Result(TRI_ERROR_INTERNAL, result.errorMessage());
@@ -642,23 +648,21 @@ auto ClusterInfo::waitForReplicatedStatesCreation(
 auto ClusterInfo::deleteReplicatedStates(
     std::string const& databaseName,
     std::vector<replication2::LogId> const& replicatedStatesIds)
-    -> futures::Future<Result> {
+    -> yaclib::Future<Result> {
   auto replicatedStateMethods =
       arangodb::replication2::ReplicatedStateMethods::createInstanceCoordinator(
           _server, databaseName);
 
-  std::vector<futures::Future<Result>> deletedStates;
+  std::vector<yaclib::Future<Result>> deletedStates;
   deletedStates.reserve(replicatedStatesIds.size());
   for (auto const& id : replicatedStatesIds) {
     deletedStates.emplace_back(
         replicatedStateMethods->deleteReplicatedState(id));
   }
-
-  return futures::collectAll(std::move(deletedStates))
-      .then([](futures::Try<std::vector<futures::Try<Result>>>&& tryResult) {
-        auto deletionResults =
-            basics::catchToResultT([&] { return std::move(tryResult.get()); });
-
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             deletedStates.begin(), deletedStates.end())
+      .ThenInline([](std::vector<yaclib::Result<arangodb::Result>>&&
+                         deletionResults) -> Result {
         auto makeResult = [](auto&& result) {
           Result r = result.mapError([](result::Error error) {
             error.appendErrorMessage(
@@ -667,20 +671,15 @@ auto ClusterInfo::deleteReplicatedStates(
           });
           return r;
         };
-
-        auto result = deletionResults.result();
-        if (result.fail()) {
-          return makeResult(std::move(result));
-        }
-        for (auto shardResult : deletionResults.get()) {
+        for (auto&& shardResult : std::move(deletionResults)) {
           auto r = basics::catchToResult(
-              [&] { return std::move(shardResult.get()); });
+              [&] { return std::move(shardResult).Ok(); });
           if (r.fail()) {
             return makeResult(std::move(r));
           }
         }
 
-        return result;
+        return {};
       });
 }
 
@@ -773,14 +772,14 @@ void ClusterInfo::flush() {
 bool ClusterInfo::doesDatabaseExist(std::string_view databaseID) {
   // Wait for sensible data in agency cache
   if (!_planProt.isValid) {
-    Result r = waitForPlan(1).get();
+    Result r = waitForPlan(1).Get().Ok();
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(r);
     }
   }
 
   if (!_currentProt.isValid) {
-    Result r = waitForCurrent(1).get();
+    Result r = waitForCurrent(1).Get().Ok();
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(r);
     }
@@ -833,14 +832,14 @@ std::vector<DatabaseID> ClusterInfo::databases() {
   }
 
   if (!_planProt.isValid) {
-    Result r = waitForPlan(1).get();
+    Result r = waitForPlan(1).Get().Ok();
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(r);
     }
   }
 
   if (!_currentProt.isValid) {
-    Result r = waitForCurrent(1).get();
+    Result r = waitForCurrent(1).Get().Ok();
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(r);
     }
@@ -996,7 +995,7 @@ void ClusterInfo::loadPlan() {
   // This is of great importance to not accidentally delete data facing an
   // empty agency. There are also other measures that guard against such an
   // outcome. But there is also no point continuing with a first agency poll.
-  Result r = agencyCache.waitFor(1).get();
+  Result r = agencyCache.waitFor(1).Get().Ok();
   if (r.fail()) {
     THROW_ARANGO_EXCEPTION(r);
   }
@@ -2122,7 +2121,7 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNT(
   }
 
   if (!_planProt.isValid) {
-    Result r = waitForPlan(1).get();
+    Result r = waitForPlan(1).Get().Ok();
     if (r.fail()) {
       return nullptr;
     }
@@ -2176,7 +2175,7 @@ std::shared_ptr<LogicalDataSource> ClusterInfo::getCollectionOrViewNT(
   }
 
   if (!_planProt.isValid) {
-    Result r = waitForPlan(1).get();
+    Result r = waitForPlan(1).Get().Ok();
     if (r.fail()) {
       return nullptr;
     }
@@ -2235,7 +2234,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterInfo::getCollections(
 std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
     std::string_view databaseID, std::string_view collectionID) {
   if (!_currentProt.isValid) {
-    Result r = waitForCurrent(1).get();
+    Result r = waitForCurrent(1).Get().Ok();
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(r);
     }
@@ -2314,7 +2313,7 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(std::string_view databaseID,
     }
   }
 
-  Result res = fetchAndWaitForPlanVersion(std::chrono::seconds(10)).get();
+  Result res = fetchAndWaitForPlanVersion(std::chrono::seconds(10)).Get().Ok();
   if (res.ok()) {
     READ_LOCKER(readLocker, _planProt.lock);
     auto view = lookupView(_plannedViews);
@@ -2665,7 +2664,7 @@ Result ClusterInfo::waitForDatabaseInCurrent(
 
   if (VPackSlice resultsSlice = res.slice().get("results");
       resultsSlice.length() > 0) {
-    Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+    Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).Get().Ok();
     if (r.fail()) {
       return r;
     }
@@ -2802,7 +2801,7 @@ Result ClusterInfo::createFinalizeDatabaseCoordinator(
   Result r;
   if (VPackSlice resultsSlice = res.slice().get("results");
       resultsSlice.length() > 0) {
-    r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+    r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).Get().Ok();
   }
 
   // The transaction was successful and the database should
@@ -2979,13 +2978,13 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   }
   if (VPackSlice resultsSlice = res.slice().get("results");
       resultsSlice.length() > 0) {
-    Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+    Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).Get().Ok();
     if (r.fail()) {
       return r;
     }
   }
 
-  auto replicatedStatesCleanup = futures::Future<Result>{std::in_place};
+  auto replicatedStatesCleanup = yaclib::MakeFuture<Result>();
   if (!collections.empty() &&
       collections.front()->replicationVersion() == replication::Version::TWO) {
     std::vector<replication2::LogId> replicatedStates;
@@ -3006,7 +3005,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   {
     while (true) {
       if (dbServerResult->load(std::memory_order_acquire).has_value() &&
-          replicatedStatesCleanup.isReady()) {
+          replicatedStatesCleanup.Ready()) {
         cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
         AgencyOperation delCurrentCollection(
             where, AgencySimpleOperationType::DELETE_OP);
@@ -3015,7 +3014,8 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
         AgencyWriteTransaction cx(
             {delCurrentCollection, incrementCurrentVersion});
         res = ac.sendTransactionWithFailover(cx);
-        if (res.successful() && replicatedStatesCleanup.get().ok()) {
+        if (res.successful() &&
+            std::move(replicatedStatesCleanup).Get().Ok().ok()) {
           return Result(TRI_ERROR_NO_ERROR);
         }
         return Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT);
@@ -3484,7 +3484,7 @@ Result ClusterInfo::createCollectionsCoordinator(
                          AgencySimpleOperationType::INCREMENT_OP);
       auto trx = AgencyWriteTransaction{opers, precs};
 
-      auto replicatedStatesCleanup = futures::Future<Result>{std::in_place};
+      auto replicatedStatesCleanup = yaclib::MakeFuture<Result>();
       if (replicationVersion == replication::Version::TWO) {
         std::vector<replication2::LogId> stateIds;
         std::transform(
@@ -3512,11 +3512,11 @@ Result ClusterInfo::createCollectionsCoordinator(
         // so we're fine too.
         if (res.successful() &&
             (replicationVersion == replication::Version::ONE ||
-             replicatedStatesCleanup.isReady())) {
+             replicatedStatesCleanup.Ready())) {
           if (VPackSlice resultsSlice = res.slice().get("results");
               resultsSlice.length() > 0) {
             [[maybe_unused]] Result r =
-                waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+                waitForPlan(resultsSlice[0].getNumber<uint64_t>()).Get().Ok();
           }
           return;
         } else if (res.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
@@ -3610,7 +3610,8 @@ Result ClusterInfo::createCollectionsCoordinator(
 
       if (VPackSlice resultsSlice = res.slice().get("results");
           resultsSlice.length() > 0) {
-        Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+        Result r =
+            waitForPlan(resultsSlice[0].getNumber<uint64_t>()).Get().Ok();
         if (r.fail()) {
           return r;
         }
@@ -3625,12 +3626,12 @@ Result ClusterInfo::createCollectionsCoordinator(
   LOG_TOPIC("98bca", DEBUG, Logger::CLUSTER)
       << "createCollectionCoordinator, Plan changed, waiting for success...";
 
-  auto replicatedStatesWait = std::invoke([&]() -> futures::Future<Result> {
+  auto replicatedStatesWait = std::invoke([&]() -> yaclib::Future<Result> {
     if (replicationVersion == replication::Version::TWO) {
       // TODO could the version of a replicated state change in the meantime?
       return waitForReplicatedStatesCreation(databaseName, replicatedStates);
     }
-    return Result{};
+    return yaclib::MakeFuture<Result>();
   });
 
   do {
@@ -3647,7 +3648,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       if (replicationVersion == replication::Version::TWO) {
         LOG_TOPIC("6d279", ERR, Logger::REPLICATION2)
             << "Replicated states readiness: " << std::boolalpha
-            << replicatedStatesWait.isReady();
+            << replicatedStatesWait.Ready();
       }
 
       // Get a full agency dump for debugging
@@ -3660,9 +3661,9 @@ Result ClusterInfo::createCollectionsCoordinator(
 
     if (nrDone->load(std::memory_order_acquire) == infos.size() &&
         (replicationVersion == replication::Version::ONE ||
-         replicatedStatesWait.isReady())) {
+         replicatedStatesWait.Ready())) {
       if (replicationVersion == replication::Version::TWO) {
-        auto result = replicatedStatesWait.get();
+        auto result = std::move(replicatedStatesWait).Get().Ok();
         if (result.fail()) {
           LOG_TOPIC("ce2be", WARN, Logger::CLUSTER)
               << "Failed createCollectionsCoordinator for " << infos.size()
@@ -3724,7 +3725,8 @@ Result ClusterInfo::createCollectionsCoordinator(
         deleteCollectionGuard.cancel();
         if (VPackSlice resultsSlice = res.slice().get("results");
             resultsSlice.length() > 0) {
-          Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+          Result r =
+              waitForPlan(resultsSlice[0].getNumber<uint64_t>()).Get().Ok();
           if (r.fail()) {
             return r;
           }
@@ -3989,7 +3991,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   }
   if (VPackSlice resultsSlice = res.slice().get("results");
       resultsSlice.length() > 0) {
-    Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+    Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).Get().Ok();
     if (r.fail()) {
       return r;
     }
@@ -4001,7 +4003,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   }
 
   // Delete replicated states in case we are using Replication2
-  auto replicatedStatesCleanup = futures::Future<Result>{std::in_place};
+  auto replicatedStatesCleanup = yaclib::MakeFuture<Result>();
   if (coll->replicationVersion() == replication::Version::TWO) {
     std::vector<replication2::LogId> stateIds;
     for (auto pair : VPackObjectIterator(shardsSlice)) {
@@ -4013,8 +4015,8 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 
   while (true) {
     auto tmpRes = dbServerResult->load();
-    if (tmpRes.has_value() && replicatedStatesCleanup.isReady()) {
-      if (replicatedStatesCleanup.get().fail()) {
+    if (tmpRes.has_value() && replicatedStatesCleanup.Ready()) {
+      if (std::move(replicatedStatesCleanup).Get().Ok().fail()) {
         LOG_TOPIC("f5063", ERR, Logger::CLUSTER)
             << "Failed to successfully remove replicated states"
             << " database: " << dbName << " collection ID: " << collectionID
@@ -4116,7 +4118,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
     Result r;
     if (VPackSlice resultsSlice = res.slice().get("results");
         resultsSlice.length() > 0) {
-      r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+      r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).Get().Ok();
     }
     return r;
   }
@@ -4242,7 +4244,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
   Result r;
   if (VPackSlice resultsSlice = res.slice().get("results");
       resultsSlice.length() > 0) {
-    r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+    r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).Get().Ok();
   }
 
   events::CreateView(databaseName, name, r.errorNumber());
@@ -4276,8 +4278,9 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
   Result result;
 
   if (res.successful() && res.slice().get("results").length()) {
-    result =
-        waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+    result = waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>())
+                 .Get()
+                 .Ok();
   }
 
   if (!res.successful() && !result.fail()) {
@@ -4352,7 +4355,7 @@ Result ClusterInfo::setViewPropertiesCoordinator(
   Result r;
   if (VPackSlice resultsSlice = res.slice().get("results");
       resultsSlice.length() > 0) {
-    r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+    r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).Get().Ok();
   }
   return r;
 }
@@ -4408,7 +4411,8 @@ ClusterInfo::startModifyingAnalyzerCoordinator(std::string_view databaseID) {
             if (results.isArray() && results.length() > 0) {
               readLocker.unlock();  // we want to wait for plan to load -
                                     // release reader
-              Result r = waitForPlan(results[0].getNumber<uint64_t>()).get();
+              Result r =
+                  waitForPlan(results[0].getNumber<uint64_t>()).Get().Ok();
               if (r.fail()) {
                 return std::make_pair(r, AnalyzersRevision::LATEST);
               }
@@ -4472,7 +4476,7 @@ ClusterInfo::startModifyingAnalyzerCoordinator(std::string_view databaseID) {
     } else {
       auto results = res.slice().get("results");
       if (results.isArray() && results.length() > 0) {
-        Result r = waitForPlan(results[0].getNumber<uint64_t>()).get();
+        Result r = waitForPlan(results[0].getNumber<uint64_t>()).Get().Ok();
         if (r.fail()) {
           return std::make_pair(r, AnalyzersRevision::LATEST);
         }
@@ -4590,7 +4594,7 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(
     } else {
       auto results = res.slice().get("results");
       if (results.isArray() && results.length() > 0) {
-        Result r = waitForPlan(results[0].getNumber<uint64_t>()).get();
+        Result r = waitForPlan(results[0].getNumber<uint64_t>()).Get().Ok();
         if (r.fail()) {
           return r;
         }
@@ -4993,7 +4997,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
   if (result.successful()) {
     if (VPackSlice resultsSlice = result.slice().get("results");
         resultsSlice.length() > 0) {
-      Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+      Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).Get().Ok();
       if (r.fail()) {
         return r;
       }
@@ -5106,7 +5110,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
         } else {
           if (VPackSlice resultsSlice = result.slice().get("results");
               resultsSlice.length() > 0) {
-            Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+            Result r =
+                waitForPlan(resultsSlice[0].getNumber<uint64_t>()).Get().Ok();
             if (r.fail()) {
               return r;
             }
@@ -5156,7 +5161,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
             if (VPackSlice updateSlice = update.slice().get("results");
                 updateSlice.length() > 0) {
               Result r =
-                  waitForPlan(updateSlice[0].getNumber<uint64_t>()).get();
+                  waitForPlan(updateSlice[0].getNumber<uint64_t>()).Get().Ok();
               if (r.fail()) {
                 return r;
               }
@@ -5430,7 +5435,7 @@ Result ClusterInfo::dropIndexCoordinatorInner(std::string const& databaseName,
   }
   if (VPackSlice resultSlice = result.slice().get("results");
       resultSlice.length() > 0) {
-    Result r = waitForPlan(resultSlice[0].getNumber<uint64_t>()).get();
+    Result r = waitForPlan(resultSlice[0].getNumber<uint64_t>()).Get().Ok();
     if (r.fail()) {
       return r;
     }
@@ -6028,7 +6033,7 @@ ClusterInfo::getResponsibleServerReplication1(std::string_view shardID) {
   int tries = 0;
 
   if (!_currentProt.isValid) {
-    Result r = waitForCurrent(1).get();
+    Result r = waitForCurrent(1).Get().Ok();
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(r);
     }
@@ -6078,7 +6083,7 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
   int tries = 0;
 
   if (!_planProt.isValid) {
-    Result r = waitForPlan(1).get();
+    Result r = waitForPlan(1).Get().Ok();
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(r);
     }
@@ -6166,7 +6171,7 @@ void ClusterInfo::getResponsibleServersReplication1(
   int tries = 0;
 
   if (!_currentProt.isValid) {
-    Result r = waitForCurrent(1).get();
+    Result r = waitForCurrent(1).Get().Ok();
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(r);
     }
@@ -6231,7 +6236,7 @@ bool ClusterInfo::getResponsibleServersReplication2(
   int tries = 0;
 
   if (!_planProt.isValid) {
-    Result r = waitForPlan(1).get();
+    Result r = waitForPlan(1).Get().Ok();
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(r);
     }
@@ -6387,7 +6392,7 @@ ClusterInfo::getPlan(uint64_t& index,
                      containers::FlatHashSet<std::string> const& dirty) {
   // We should never proceed here, until we have seen an
   // initial agency cache through loadPlan
-  Result r = waitForPlan(1).get();
+  Result r = waitForPlan(1).Get().Ok();
   if (r.fail()) {
     THROW_ARANGO_EXCEPTION(r);
   }
@@ -6414,7 +6419,7 @@ ClusterInfo::getCurrent(uint64_t& index,
                         containers::FlatHashSet<std::string> const& dirty) {
   // We should never proceed here, until we have seen an
   // initial agency cache through loadCurrent
-  Result r = waitForCurrent(1).get();
+  Result r = waitForCurrent(1).Get().Ok();
   if (r.fail()) {
     THROW_ARANGO_EXCEPTION(r);
   }
@@ -6663,7 +6668,7 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
   Result rr;
   if (VPackSlice resultsSlice = r.slice().get("results");
       resultsSlice.length() > 0) {
-    rr = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+    rr = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).Get().Ok();
   }
 
   return rr;
@@ -7020,7 +7025,8 @@ void ClusterInfo::drainSyncers() {
     std::lock_guard g(_waitPlanLock);
     auto pit = _waitPlan.begin();
     while (pit != _waitPlan.end()) {
-      pit->second.setValue(Result(_syncerShutdownCode));
+      TRI_ASSERT(pit->second.Valid());
+      std::move(pit->second).Set(Result(_syncerShutdownCode));
       ++pit;
     }
     _waitPlan.clear();
@@ -7030,7 +7036,8 @@ void ClusterInfo::drainSyncers() {
     std::lock_guard g(_waitCurrentLock);
     auto pit = _waitCurrent.begin();
     while (pit != _waitCurrent.end()) {
-      pit->second.setValue(Result(_syncerShutdownCode));
+      TRI_ASSERT(pit->second.Valid());
+      std::move(pit->second).Set(Result(_syncerShutdownCode));
       ++pit;
     }
     _waitCurrent.clear();
@@ -7223,65 +7230,67 @@ void ClusterInfo::SyncerThread::run() {
   }
 }
 
-futures::Future<arangodb::Result> ClusterInfo::waitForCurrent(
+yaclib::Future<arangodb::Result> ClusterInfo::waitForCurrent(
     uint64_t raftIndex) {
   READ_LOCKER(readLocker, _currentProt.lock);
   if (raftIndex <= _currentIndex) {
-    return futures::makeFuture(arangodb::Result());
+    return yaclib::MakeFuture<Result>();
   }
   // intentionally don't release _storeLock here until we have inserted the
   // promise
+  auto [f, p] = yaclib::MakeContract<Result>();
   std::lock_guard w(_waitCurrentLock);
-  return _waitCurrent.emplace(raftIndex, futures::Promise<arangodb::Result>())
-      ->second.getFuture();
+  _waitCurrent.emplace(raftIndex, std::move(p));
+  return std::move(f);
 }
 
-futures::Future<arangodb::Result> ClusterInfo::waitForCurrentVersion(
+yaclib::Future<arangodb::Result> ClusterInfo::waitForCurrentVersion(
     uint64_t currentVersion) {
   READ_LOCKER(readLocker, _currentProt.lock);
   if (currentVersion <= _currentVersion) {
-    return futures::makeFuture(arangodb::Result());
+    return yaclib::MakeFuture<Result>();
   }
   // intentionally don't release _storeLock here until we have inserted the
   // promise
+  auto [f, p] = yaclib::MakeContract<Result>();
   std::lock_guard w(_waitCurrentVersionLock);
-  return _waitCurrentVersion
-      .emplace(currentVersion, futures::Promise<arangodb::Result>())
-      ->second.getFuture();
+  _waitCurrentVersion.emplace(currentVersion, std::move(p));
+  return std::move(f);
 }
 
-futures::Future<arangodb::Result> ClusterInfo::waitForPlan(uint64_t raftIndex) {
+yaclib::Future<arangodb::Result> ClusterInfo::waitForPlan(uint64_t raftIndex) {
   READ_LOCKER(readLocker, _planProt.lock);
   if (raftIndex <= _planIndex) {
-    return futures::makeFuture(arangodb::Result());
+    return yaclib::MakeFuture<Result>();
   }
 
   // intentionally don't release _storeLock here until we have inserted the
   // promise
+  auto [f, p] = yaclib::MakeContract<Result>();
   std::lock_guard w(_waitPlanLock);
-  return _waitPlan.emplace(raftIndex, futures::Promise<arangodb::Result>())
-      ->second.getFuture();
+  _waitPlan.emplace(raftIndex, std::move(p));
+  return std::move(f);
 }
 
-futures::Future<Result> ClusterInfo::waitForPlanVersion(uint64_t planVersion) {
+yaclib::Future<Result> ClusterInfo::waitForPlanVersion(uint64_t planVersion) {
   READ_LOCKER(readLocker, _planProt.lock);
   if (planVersion <= _planVersion) {
-    return futures::makeFuture(arangodb::Result());
+    return yaclib::MakeFuture<Result>();
   }
 
   // intentionally don't release _storeLock here until we have inserted the
   // promise
+  auto [f, p] = yaclib::MakeContract<Result>();
   std::lock_guard w(_waitPlanVersionLock);
-  return _waitPlanVersion
-      .emplace(planVersion, futures::Promise<arangodb::Result>())
-      ->second.getFuture();
+  _waitPlanVersion.emplace(planVersion, std::move(p));
+  return std::move(f);
 }
 
-futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(
+yaclib::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(
     network::Timeout timeout) const {
   // Save the applicationServer, not the ClusterInfo, in case of shutdown.
-  return cluster::fetchPlanVersion(timeout).thenValue(
-      [&applicationServer = server()](auto maybePlanVersion) {
+  return cluster::fetchPlanVersion(timeout).ThenInline(
+      [&applicationServer = server()](ResultT<uint64_t> maybePlanVersion) {
         if (maybePlanVersion.ok()) {
           auto planVersion = maybePlanVersion.get();
 
@@ -7290,7 +7299,7 @@ futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(
 
           return clusterInfo.waitForPlanVersion(planVersion);
         } else {
-          return futures::Future<Result>{maybePlanVersion.result()};
+          return yaclib::MakeFuture(maybePlanVersion.result());
         }
       });
 }
@@ -7418,7 +7427,7 @@ VPackBuilder ClusterInfo::toVelocyPack() {
 }
 
 void ClusterInfo::triggerWaiting(
-    std::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm,
+    std::multimap<uint64_t, yaclib::Promise<arangodb::Result>>& mm,
     uint64_t commitIndex) {
   auto* scheduler = SchedulerFeature::SCHEDULER;
   auto pit = mm.begin();
@@ -7427,11 +7436,14 @@ void ClusterInfo::triggerWaiting(
       break;
     }
     if (scheduler && !_server.isStopping()) {
-      scheduler->queue(
-          RequestLane::CLUSTER_INTERNAL,
-          [pp = std::move(pit->second)]() mutable { pp.setValue(Result()); });
+      scheduler->queue(RequestLane::CLUSTER_INTERNAL,
+                       [p = std::move(pit->second)]() mutable {
+                         TRI_ASSERT(p.Valid());
+                         std::move(p).Set(Result());
+                       });
     } else {
-      pit->second.setValue(Result(_syncerShutdownCode));
+      TRI_ASSERT(pit->second.Valid());
+      std::move(pit->second).Set(Result(_syncerShutdownCode));
     }
     pit = mm.erase(pit);
   }
@@ -7569,7 +7581,7 @@ std::atomic<int32_t>
 
 namespace {
 template<typename T>
-futures::Future<ResultT<T>> fetchNumberFromAgency(
+yaclib::Future<ResultT<T>> fetchNumberFromAgency(
     std::shared_ptr<cluster::paths::Path const> path,
     network::Timeout timeout) {
   VPackBuffer<uint8_t> trx;
@@ -7586,20 +7598,23 @@ futures::Future<ResultT<T>> fetchNumberFromAgency(
       AsyncAgencyComm().sendReadTransaction(timeout, std::move(trx));
 
   auto fResult =
-      std::move(fAacResult).thenValue([path = std::move(path)](auto&& result) {
-        if (result.ok() && result.statusCode() == fuerte::StatusOK) {
-          return ResultT<T>::success(
-              result.slice().at(0).get(path->vec()).template getNumber<T>());
-        } else {
-          return ResultT<T>::error(result.asResult());
-        }
-      });
+      std::move(fAacResult)
+          .ThenInline([path = std::move(path)](AsyncAgencyCommResult&& result) {
+            if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+              return ResultT<T>::success(result.slice()
+                                             .at(0)
+                                             .get(path->vec())
+                                             .template getNumber<T>());
+            } else {
+              return ResultT<T>::error(result.asResult());
+            }
+          });
 
   return fResult;
 }
 }  // namespace
 
-futures::Future<ResultT<uint64_t>> cluster::fetchPlanVersion(
+yaclib::Future<ResultT<uint64_t>> cluster::fetchPlanVersion(
     network::Timeout timeout) {
   using namespace std::chrono_literals;
 
@@ -7610,7 +7625,7 @@ futures::Future<ResultT<uint64_t>> cluster::fetchPlanVersion(
       timeout);
 }
 
-futures::Future<ResultT<uint64_t>> cluster::fetchCurrentVersion(
+yaclib::Future<ResultT<uint64_t>> cluster::fetchCurrentVersion(
     network::Timeout timeout) {
   using namespace std::chrono_literals;
 

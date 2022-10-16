@@ -1619,9 +1619,9 @@ static void JS_PropagateSelfHeal(
     Result res;
 
     if (!futures.empty()) {
-      auto responses = futures::collectAll(futures).get();
-      for (auto const& it : responses) {
-        auto& resp = it.get();
+      yaclib::Wait(futures.begin(), futures.end());
+      for (auto const& f : futures) {
+        auto& resp = f.Touch().Ok();
         res.reset(resp.combinedResult());
 
         if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {

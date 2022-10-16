@@ -22,7 +22,7 @@
 #pragma once
 #include <utility>
 
-#include <Futures/Future.h>
+#include <yaclib/async/future.hpp>
 
 #include <Replication2/ReplicatedLog/ILogInterfaces.h>
 #include <Replication2/ReplicatedLog/LogCommon.h>

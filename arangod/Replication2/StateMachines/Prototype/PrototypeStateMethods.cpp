@@ -25,7 +25,7 @@
 #include <Basics/Exceptions.h>
 #include <Basics/Exceptions.tpp>
 #include <Basics/voc-errors.h>
-#include <Futures/Future.h>
+#include <yaclib/async/future.hpp>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
@@ -60,7 +60,7 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
   [[nodiscard]] auto compareExchange(LogId id, std::string key,
                                      std::string oldValue, std::string newValue,
                                      PrototypeWriteOptions options) const
-      -> futures::Future<ResultT<LogIndex>> override {
+      -> yaclib::Future<ResultT<LogIndex>> override {
     auto leader = getPrototypeStateLeaderById(id);
     return leader->compareExchange(std::move(key), std::move(oldValue),
                                    std::move(newValue), options);
@@ -69,14 +69,14 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
   [[nodiscard]] auto insert(
       LogId id, std::unordered_map<std::string, std::string> const& entries,
       PrototypeWriteOptions options) const
-      -> futures::Future<LogIndex> override {
+      -> yaclib::Future<LogIndex> override {
     auto leader = getPrototypeStateLeaderById(id);
     return leader->set(entries, options);
   };
 
   auto get(LogId id, std::vector<std::string> keys,
            ReadOptions const& readOptions) const
-      -> futures::Future<
+      -> yaclib::Future<
           ResultT<std::unordered_map<std::string, std::string>>> override {
     auto stateMachine =
         std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
@@ -113,7 +113,7 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
   }
 
   virtual auto waitForApplied(LogId id, LogIndex waitForIndex) const
-      -> futures::Future<Result> override {
+      -> yaclib::Future<Result> override {
     auto stateMachine =
         std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
             _vocbase.getReplicatedStateById(id));
@@ -124,13 +124,13 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
     }
     auto leader = stateMachine->getLeader();
     if (leader != nullptr) {
-      return leader->waitForApplied(waitForIndex).thenValue([](auto&&) {
+      return leader->waitForApplied(waitForIndex).ThenInline([] {
         return Result{};
       });
     }
     auto follower = stateMachine->getFollower();
     if (follower != nullptr) {
-      return follower->waitForApplied(waitForIndex).thenValue([](auto&&) {
+      return follower->waitForApplied(waitForIndex).ThenInline([] {
         return Result{};
       });
     }
@@ -139,7 +139,7 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
   }
 
   [[nodiscard]] auto getSnapshot(LogId id, LogIndex waitForIndex) const
-      -> futures::Future<
+      -> yaclib::Future<
           ResultT<std::unordered_map<std::string, std::string>>> override {
     auto leader = getPrototypeStateLeaderById(id);
     return leader->getSnapshot(waitForIndex);
@@ -147,30 +147,31 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
 
   [[nodiscard]] auto remove(LogId id, std::string key,
                             PrototypeWriteOptions options) const
-      -> futures::Future<LogIndex> override {
+      -> yaclib::Future<LogIndex> override {
     auto leader = getPrototypeStateLeaderById(id);
     return leader->remove(std::move(key), options);
   }
 
   [[nodiscard]] auto remove(LogId id, std::vector<std::string> keys,
                             PrototypeWriteOptions options) const
-      -> futures::Future<LogIndex> override {
+      -> yaclib::Future<LogIndex> override {
     auto leader = getPrototypeStateLeaderById(id);
     return leader->remove(std::move(keys), options);
   }
 
   auto status(LogId id) const
-      -> futures::Future<ResultT<PrototypeStatus>> override {
+      -> yaclib::Future<ResultT<PrototypeStatus>> override {
     std::ignore = getPrototypeStateLeaderById(id);
-    return PrototypeStatus{id};  // TODO
+    // TODO
+    return yaclib::MakeFuture<ResultT<PrototypeStatus>>(PrototypeStatus{id});
   }
 
   auto createState(CreateOptions options) const
-      -> futures::Future<ResultT<CreateResult>> override {
+      -> yaclib::Future<ResultT<CreateResult>> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  auto drop(LogId id) const -> futures::Future<Result> override {
+  auto drop(LogId id) const -> yaclib::Future<Result> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
@@ -206,7 +207,7 @@ struct PrototypeStateMethodsCoordinator final
   [[nodiscard]] auto compareExchange(LogId id, std::string key,
                                      std::string oldValue, std::string newValue,
                                      PrototypeWriteOptions options) const
-      -> futures::Future<ResultT<LogIndex>> override {
+      -> yaclib::Future<ResultT<LogIndex>> override {
     auto path =
         basics::StringUtils::joinT("/", "_api/prototype-state", id, "cmp-ex");
     network::RequestOptions opts;
@@ -229,7 +230,7 @@ struct PrototypeStateMethodsCoordinator final
     return network::sendRequest(_pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Put, path,
                                 builder.bufferRef(), opts)
-        .thenValue([](network::Response&& resp) -> ResultT<LogIndex> {
+        .ThenInline([](network::Response&& resp) -> ResultT<LogIndex> {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             auto r = resp.combinedResult();
             r = r.mapError([&](result::Error error) {
@@ -256,7 +257,7 @@ struct PrototypeStateMethodsCoordinator final
   [[nodiscard]] auto insert(
       LogId id, std::unordered_map<std::string, std::string> const& entries,
       PrototypeWriteOptions options) const
-      -> futures::Future<LogIndex> override {
+      -> yaclib::Future<LogIndex> override {
     auto path =
         basics::StringUtils::joinT("/", "_api/prototype-state", id, "insert");
     network::RequestOptions opts;
@@ -275,14 +276,14 @@ struct PrototypeStateMethodsCoordinator final
     return network::sendRequest(_pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Post, path,
                                 builder.bufferRef(), opts)
-        .thenValue([](network::Response&& resp) -> LogIndex {
+        .ThenInline([](network::Response&& resp) -> LogIndex {
           return processLogIndexResponse(std::move(resp));
         });
   }
 
   auto get(LogId id, std::vector<std::string> keys,
            ReadOptions const& readOptions) const
-      -> futures::Future<
+      -> yaclib::Future<
           ResultT<std::unordered_map<std::string, std::string>>> override {
     auto path = basics::StringUtils::joinT("/", "_api/prototype-state", id,
                                            "multi-get");
@@ -310,7 +311,7 @@ struct PrototypeStateMethodsCoordinator final
     return network::sendRequest(_pool, "server:" + server,
                                 fuerte::RestVerb::Post, path,
                                 builder.bufferRef(), opts)
-        .thenValue(
+        .ThenInline(
             [](network::Response&& resp)
                 -> ResultT<std::unordered_map<std::string, std::string>> {
               if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
@@ -340,7 +341,7 @@ struct PrototypeStateMethodsCoordinator final
   }
 
   [[nodiscard]] auto getSnapshot(LogId id, LogIndex waitForIndex) const
-      -> futures::Future<
+      -> yaclib::Future<
           ResultT<std::unordered_map<std::string, std::string>>> override {
     auto path =
         basics::StringUtils::joinT("/", "_api/prototype-state", id, "snapshot");
@@ -350,7 +351,7 @@ struct PrototypeStateMethodsCoordinator final
 
     return network::sendRequest(_pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Get, path, {}, opts)
-        .thenValue(
+        .ThenInline(
             [](network::Response&& resp)
                 -> ResultT<std::unordered_map<std::string, std::string>> {
               if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
@@ -375,7 +376,7 @@ struct PrototypeStateMethodsCoordinator final
 
   [[nodiscard]] auto remove(LogId id, std::string key,
                             PrototypeWriteOptions options) const
-      -> futures::Future<LogIndex> override {
+      -> yaclib::Future<LogIndex> override {
     auto path = basics::StringUtils::joinT("/", "_api/prototype-state", id,
                                            "entry", key);
     network::RequestOptions opts;
@@ -386,14 +387,14 @@ struct PrototypeStateMethodsCoordinator final
 
     return network::sendRequest(_pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Delete, path, {}, opts)
-        .thenValue([](network::Response&& resp) -> LogIndex {
+        .ThenInline([](network::Response&& resp) -> LogIndex {
           return processLogIndexResponse(std::move(resp));
         });
   }
 
   [[nodiscard]] auto remove(LogId id, std::vector<std::string> keys,
                             PrototypeWriteOptions options) const
-      -> futures::Future<LogIndex> override {
+      -> yaclib::Future<LogIndex> override {
     auto path = basics::StringUtils::joinT("/", "_api/prototype-state", id,
                                            "multi-remove");
     network::RequestOptions opts;
@@ -412,19 +413,19 @@ struct PrototypeStateMethodsCoordinator final
     return network::sendRequest(_pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Delete, path,
                                 builder.bufferRef(), opts)
-        .thenValue([](network::Response&& resp) -> LogIndex {
+        .ThenInline([](network::Response&& resp) -> LogIndex {
           return processLogIndexResponse(std::move(resp));
         });
   }
 
-  auto drop(LogId id) const -> futures::Future<Result> override {
+  auto drop(LogId id) const -> yaclib::Future<Result> override {
     auto methods =
         replication2::ReplicatedStateMethods::createInstance(_vocbase);
     return methods->deleteReplicatedState(id);
   }
 
   auto waitForApplied(LogId id, LogIndex waitForIndex) const
-      -> futures::Future<Result> override {
+      -> yaclib::Future<Result> override {
     auto path = basics::StringUtils::joinT("/", "_api/prototype-state", id,
                                            "wait-for-applied", waitForIndex);
     network::RequestOptions opts;
@@ -432,7 +433,7 @@ struct PrototypeStateMethodsCoordinator final
 
     return network::sendRequest(_pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Get, path, {}, opts)
-        .thenValue([](network::Response&& resp) -> Result {
+        .ThenInline([](network::Response&& resp) -> Result {
           return resp.combinedResult();
         });
   }
@@ -493,14 +494,14 @@ struct PrototypeStateMethodsCoordinator final
   }
 
   auto status(LogId id) const
-      -> futures::Future<ResultT<PrototypeStatus>> override {
+      -> yaclib::Future<ResultT<PrototypeStatus>> override {
     auto path = basics::StringUtils::joinT("/", "_api/prototype-state", id);
     network::RequestOptions opts;
     opts.database = _vocbase.name();
 
     return network::sendRequest(_pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Get, path, {}, opts)
-        .thenValue([](network::Response&& resp) -> ResultT<PrototypeStatus> {
+        .ThenInline([](network::Response&& resp) -> ResultT<PrototypeStatus> {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
           } else {
@@ -511,7 +512,7 @@ struct PrototypeStateMethodsCoordinator final
   }
 
   auto createState(CreateOptions options) const
-      -> futures::Future<ResultT<CreateResult>> override {
+      -> yaclib::Future<ResultT<CreateResult>> override {
     fillCreateOptions(options);
     TRI_ASSERT(options.id.has_value());
     auto target = stateTargetFromCreateOptions(options);
@@ -519,35 +520,37 @@ struct PrototypeStateMethodsCoordinator final
         replication2::ReplicatedStateMethods::createInstance(_vocbase);
 
     return methods->createReplicatedState(std::move(target))
-        .thenValue([options = std::move(options), methods,
-                    self = shared_from_this()](auto&& result) mutable
-                   -> futures::Future<ResultT<CreateResult>> {
+        .ThenInline([options = std::move(options), methods,
+                     self = shared_from_this()](Result&& result) mutable
+                    -> yaclib::Future<ResultT<CreateResult>> {
           auto response = CreateResult{*options.id, std::move(options.servers)};
           if (!result.ok()) {
-            return {result};
+            return yaclib::MakeFuture<ResultT<CreateResult>>(result);
           }
 
           if (options.waitForReady) {
             // wait for the state to be ready
             return methods->waitForStateReady(*options.id, 1)
-                .thenValue([self,
-                            resp = std::move(response)](auto&& result) mutable
-                           -> futures::Future<ResultT<CreateResult>> {
+                .ThenInline([self, resp = std::move(response)](
+                                ResultT<consensus::index_t>&& result) mutable
+                            -> yaclib::Future<ResultT<CreateResult>> {
                   if (result.fail()) {
-                    return {result.result()};
+                    return yaclib::MakeFuture<ResultT<CreateResult>>(
+                        result.result());
                   }
                   return self->_clusterInfo
                       .fetchAndWaitForPlanVersion(std::chrono::seconds{240})
-                      .thenValue([resp = std::move(resp)](auto&& result) mutable
-                                 -> ResultT<CreateResult> {
-                        if (result.fail()) {
-                          return {result};
-                        }
-                        return std::move(resp);
-                      });
+                      .ThenInline(
+                          [resp = std::move(resp)](Result&& result) mutable
+                          -> ResultT<CreateResult> {
+                            if (result.fail()) {
+                              return {result};
+                            }
+                            return std::move(resp);
+                          });
                 });
           }
-          return response;
+          return yaclib::MakeFuture<ResultT<CreateResult>>(response);
         });
   }
 
@@ -614,22 +617,22 @@ auto PrototypeStateMethods::createInstance(TRI_vocbase_t& vocbase)
 
 [[nodiscard]] auto PrototypeStateMethods::get(LogId id, std::string key,
                                               LogIndex waitForApplied) const
-    -> futures::Future<ResultT<std::optional<std::string>>> {
+    -> yaclib::Future<ResultT<std::optional<std::string>>> {
   return get(id, std::move(key), {waitForApplied, false, std::nullopt});
 }
 
 [[nodiscard]] auto PrototypeStateMethods::get(LogId id,
                                               std::vector<std::string> keys,
                                               LogIndex waitForApplied) const
-    -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>> {
+    -> yaclib::Future<ResultT<std::unordered_map<std::string, std::string>>> {
   return get(id, std::move(keys), {waitForApplied, false, std::nullopt});
 }
 
 [[nodiscard]] auto PrototypeStateMethods::get(
     LogId id, std::string key, ReadOptions const& readOptions) const
-    -> futures::Future<ResultT<std::optional<std::string>>> {
+    -> yaclib::Future<ResultT<std::optional<std::string>>> {
   return get(id, std::vector{key}, readOptions)
-      .thenValue(
+      .ThenInline(
           [key](ResultT<std::unordered_map<std::string, std::string>>&& result)
               -> ResultT<std::optional<std::string>> {
             if (result.ok()) {

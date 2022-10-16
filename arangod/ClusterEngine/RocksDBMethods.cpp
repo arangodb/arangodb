@@ -28,7 +28,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "Futures/Utilities.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -89,10 +88,9 @@ Result recalculateCountsOnAllDBServers(ArangodServer& server,
       futures.emplace_back(std::move(f));
     }
   }
-
-  auto responses = futures::collectAll(futures).get();
-  for (auto const& r : responses) {
-    Result res = r.get().combinedResult();
+  yaclib::Wait(futures.begin(), futures.end());
+  for (auto const& f : futures) {
+    Result res = f.Touch().Ok().combinedResult();
     if (res.fail()) {
       return res;
     }

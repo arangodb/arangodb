@@ -42,28 +42,25 @@
 namespace arangodb::replication2::replicated_state {
 
 template<typename S>
-auto FollowerStateManager<S>::waitForApplied(LogIndex idx)
-    -> futures::Future<futures::Unit> {
+auto FollowerStateManager<S>::waitForApplied(LogIndex idx) -> yaclib::Future<> {
   auto guard = _guardedData.getLockedGuard();
   if (guard->_nextWaitForIndex > idx) {
-    return futures::Future<futures::Unit>{std::in_place};
+    return yaclib::MakeFuture();
   }
-
-  auto it = guard->waitForAppliedQueue.emplace(idx, WaitForAppliedPromise{});
-  auto f = it->second.getFuture();
-  TRI_ASSERT(f.valid());
-  return f;
+  auto [f, p] = yaclib::MakeContract();
+  guard->waitForAppliedQueue.emplace(idx, std::move(p));
+  return std::move(f);
 }
 
 namespace {
 inline auto delayedFuture(std::chrono::steady_clock::duration duration)
-    -> futures::Future<futures::Unit> {
+    -> yaclib::Future<> {
   if (SchedulerFeature::SCHEDULER) {
     return SchedulerFeature::SCHEDULER->delay(duration);
   }
 
   std::this_thread::sleep_for(duration);
-  return futures::Future<futures::Unit>{std::in_place};
+  return yaclib::MakeFuture();
 }
 
 inline auto calcRetryDuration(std::uint64_t retryCount)
@@ -87,13 +84,12 @@ void FollowerStateManager<S>::run() noexcept {
     }
   };
 
-  auto const handleErrors = [weak = this->weak_from_this()](
-                                futures::Try<futures::Unit>&& tryResult) {
+  auto const handleErrors = [weak = this->weak_from_this()](auto&& tryResult) {
     // TODO Instead of capturing "this", should we capture the loggerContext
     // instead?
     if (auto self = weak.lock(); self != nullptr) {
       try {
-        [[maybe_unused]] futures::Unit _ = tryResult.get();
+        std::ignore = std::move(tryResult).Ok();
       } catch (replicated_log::ParticipantResignedException const&) {
         LOG_CTX("0a0db", DEBUG, self->loggerContext)
             << "Log follower resigned, stopping replicated state machine. Will "
@@ -122,7 +118,7 @@ void FollowerStateManager<S>::run() noexcept {
   };
 
   auto const transitionTo = [this](FollowerInternalState state) {
-    return [state, weak = this->weak_from_this()](futures::Unit) {
+    return [state, weak = this->weak_from_this()]() {
       if (auto self = weak.lock(); self != nullptr) {
         self->_guardedData.getLockedGuard()->updateInternalState(state);
         self->run();
@@ -133,40 +129,38 @@ void FollowerStateManager<S>::run() noexcept {
   // Note that because `transitionWith` locks the self-ptr before calling `fn`,
   // fn itself is allowed to just capture and use `this`.
   auto const transitionWith = [that = this]<typename F>(F&& fn) {
-    return [
-      weak = that->weak_from_this(), fn = std::forward<F>(fn)
-    ]<typename T, typename F1 = F>(T && arg) mutable {
+    return [weak = that->weak_from_this(),
+            fn = std::forward<F>(fn)](auto&& arg) mutable {
       if (auto self = weak.lock(); self != nullptr) {
         auto const state = std::invoke([&] {
           // Don't pass Unit to make that case more convenient.
-          if constexpr (std::is_same_v<std::decay_t<T>, futures::Unit>) {
-            return std::forward<F1>(fn)();
+          if constexpr (std::is_invocable_v<F&&>) {
+            std::ignore = std::move(arg).Ok();
+            return std::forward<F>(fn)();
           } else {
-            return std::forward<F1>(fn)(std::forward<T>(arg));
+            return std::forward<F>(fn)(std::move(arg));
           }
         });
         self->_guardedData.getLockedGuard()->updateInternalState(state);
         self->run();
+      } else {
+        std::ignore = std::move(arg).Ok();
       }
     };
   };
 
-  static auto constexpr noop = []() {
-    auto promise = futures::Promise<futures::Unit>{};
-    promise.setValue(futures::Unit());
-    return promise.getFuture();
-  };
+  static auto constexpr noop = []() { return yaclib::MakeFuture(); };
 
   auto lastState = _guardedData.getLockedGuard()->internalState;
 
   switch (lastState) {
     case FollowerInternalState::kUninitializedState: {
-      noop().thenValue(
+      noop().DetachInline(
           transitionTo(FollowerInternalState::kWaitForLeaderConfirmation));
     } break;
     case FollowerInternalState::kWaitForLeaderConfirmation: {
       waitForLeaderAcked()
-          .thenValue(transitionWith([this] {
+          .ThenInline(transitionWith([this] {
             instantiateStateMachine();
             if (needsSnapshot()) {
               return FollowerInternalState::kTransferSnapshot;
@@ -175,13 +169,13 @@ void FollowerStateManager<S>::run() noexcept {
               return FollowerInternalState::kWaitForNewEntries;
             }
           }))
-          .thenFinal(handleErrors);
+          .DetachInline(handleErrors);
     } break;
     case FollowerInternalState::kTransferSnapshot: {
       tryTransferSnapshot()
-          .then(transitionWith([this](futures::Try<futures::Unit>&& tryResult) {
-            auto result =
-                basics::catchVoidToResult([&] { std::move(tryResult).get(); });
+          .ThenInline(transitionWith([this](auto&& tryResult) {
+            auto result = basics::catchVoidToResult(
+                [&] { std::ignore = std::move(tryResult).Ok(); });
             if (result.ok()) {
               startService();
               return FollowerInternalState::kWaitForNewEntries;
@@ -190,29 +184,29 @@ void FollowerStateManager<S>::run() noexcept {
               return FollowerInternalState::kSnapshotTransferFailed;
             }
           }))
-          .thenFinal(handleErrors);
+          .DetachInline(handleErrors);
     } break;
     case FollowerInternalState::kSnapshotTransferFailed: {
       backOffSnapshotRetry()
-          .thenValue(transitionTo(FollowerInternalState::kTransferSnapshot))
-          .thenFinal(handleErrors);
+          .ThenInline(transitionTo(FollowerInternalState::kTransferSnapshot))
+          .DetachInline(handleErrors);
     } break;
     case FollowerInternalState::kWaitForNewEntries: {
       waitForNewEntries()
-          .thenValue(transitionWith([this](auto iter) {
-            saveNewEntriesIter(std::move(iter));
+          .ThenInline(transitionWith([this](auto&& iter) {
+            saveNewEntriesIter(std::move(iter).Ok());
             return FollowerInternalState::kApplyRecentEntries;
           }))
-          .thenFinal(handleErrors);
+          .DetachInline(handleErrors);
     } break;
     case FollowerInternalState::kApplyRecentEntries: {
       applyNewEntries()
-          .thenValue(throwResultOnError)
-          .thenValue(transitionWith([this]() {
+          .ThenInline(throwResultOnError)
+          .ThenInline(transitionWith([this]() {
             resolveAppliedEntriesQueue();
             return FollowerInternalState::kWaitForNewEntries;
           }))
-          .thenFinal(handleErrors);
+          .DetachInline(handleErrors);
     } break;
   }
 }
@@ -246,7 +240,8 @@ void FollowerStateManager<S>::resolveAppliedEntriesQueue() {
             DeferredAction([resolveQueue = std::move(resolveQueue)]() noexcept {
               // TODO These should probably be scheduled.
               for (auto& p : *resolveQueue) {
-                p.second.setValue();
+                TRI_ASSERT(p.second.Valid());
+                std::move(p.second).Set();
               }
             });
 
@@ -283,8 +278,7 @@ void FollowerStateManager<S>::registerError(Result error) {
 }
 
 template<typename S>
-auto FollowerStateManager<S>::backOffSnapshotRetry()
-    -> futures::Future<futures::Unit> {
+auto FollowerStateManager<S>::backOffSnapshotRetry() -> yaclib::Future<> {
   constexpr static auto countSuffix = [](auto count) {
     switch (count) {
       case 1:
@@ -416,9 +410,11 @@ auto FollowerStateManager<S>::resign() && noexcept
       std::move(core), std::move(guard->token),
       DeferredAction([resolveQueue = std::move(resolveQueue)]() noexcept {
         for (auto& p : *resolveQueue) {
-          p.second.setException(replicated_log::ParticipantResignedException(
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
-              ADB_HERE));
+          TRI_ASSERT(p.second.Valid());
+          std::move(p.second).Set(std::make_exception_ptr(
+              replicated_log::ParticipantResignedException(
+                  TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
+                  ADB_HERE)));
         }
       }));
 }
@@ -455,21 +451,18 @@ auto FollowerStateManager<S>::needsSnapshot() const noexcept -> bool {
 }
 
 template<typename S>
-auto FollowerStateManager<S>::waitForLeaderAcked()
-    -> futures::Future<futures::Unit> {
+auto FollowerStateManager<S>::waitForLeaderAcked() -> yaclib::Future<> {
   GaugeScopedCounter waitForLeaderCounter(
       metrics->replicatedStateNumberWaitingForLeader);
-  return logFollower->waitForLeaderAcked().thenValue(
+  return logFollower->waitForLeaderAcked().ThenInline(
       [waitForLeaderCounter = std::move(waitForLeaderCounter)](
           replicated_log::WaitForResult const&) mutable {
         waitForLeaderCounter.fire();
-        return futures::Unit();
       });
 }
 
 template<typename S>
-auto FollowerStateManager<S>::tryTransferSnapshot()
-    -> futures::Future<futures::Unit> {
+auto FollowerStateManager<S>::tryTransferSnapshot() -> yaclib::Future<> {
   auto const& leader = logFollower->getLeader();
   ADB_PROD_ASSERT(leader.has_value())
       << "Leader established it's leadership. "
@@ -487,15 +480,16 @@ auto FollowerStateManager<S>::tryTransferSnapshot()
     GaugeScopedCounter snapshotCounter(
         metrics->replicatedStateNumberWaitingForSnapshot);
     return data.state->acquireSnapshot(*leader, commitIndex)
-        .then([ctx = loggerContext,
-               errorCounter =
-                   metrics->replicatedStateNumberAcquireSnapshotErrors,
-               rttGuard = std::move(rttGuard),
-               snapshotCounter = std::move(snapshotCounter)](
-                  futures::Try<Result>&& tryResult) mutable {
+        .ThenInline([ctx = loggerContext,
+                     errorCounter =
+                         metrics->replicatedStateNumberAcquireSnapshotErrors,
+                     rttGuard = std::move(rttGuard),
+                     snapshotCounter =
+                         std::move(snapshotCounter)](auto&& tryResult) mutable {
           rttGuard.fire();
           snapshotCounter.fire();
-          auto result = basics::catchToResult([&] { return tryResult.get(); });
+          auto result =
+              basics::catchToResult([&] { return std::move(tryResult).Ok(); });
           if (result.ok()) {
             LOG_CTX("44d58", DEBUG, ctx)
                 << "snapshot transfer successfully completed";
@@ -525,7 +519,7 @@ void FollowerStateManager<S>::instantiateStateMachine() {
 
 template<typename S>
 auto FollowerStateManager<S>::waitForNewEntries()
-    -> futures::Future<std::unique_ptr<typename Stream::Iterator>> {
+    -> yaclib::Future<std::unique_ptr<typename Stream::Iterator>> {
   auto futureIter = _guardedData.doUnderLock([&](GuardedData& data) {
     TRI_ASSERT(data.stream != nullptr);
     LOG_CTX("a1462", TRACE, loggerContext)
@@ -539,7 +533,7 @@ auto FollowerStateManager<S>::waitForNewEntries()
 }
 
 template<typename S>
-auto FollowerStateManager<S>::applyNewEntries() -> futures::Future<Result> {
+auto FollowerStateManager<S>::applyNewEntries() -> yaclib::Future<Result> {
   auto [state, iter] = _guardedData.doUnderLock([&](GuardedData& data) {
     TRI_ASSERT(data.nextEntriesIter != nullptr);
     auto iter_ = std::move(data.nextEntriesIter);
@@ -551,11 +545,11 @@ auto FollowerStateManager<S>::applyNewEntries() -> futures::Future<Result> {
   LOG_CTX("3678e", TRACE, loggerContext) << "apply entries in range " << range;
   MeasureTimeGuard rttGuard(metrics->replicatedStateApplyEntriesRtt);
   return state->applyEntries(std::move(iter))
-      .then([ctx = loggerContext, rttGuard = std::move(rttGuard),
-             metrics = metrics, range](auto&& tryResult) mutable {
+      .ThenInline([ctx = loggerContext, rttGuard = std::move(rttGuard),
+                   metrics = metrics, range](auto&& tryResult) mutable {
         rttGuard.fire();
         auto result =
-            basics::catchToResult([&] { return std::move(tryResult.get()); });
+            basics::catchToResult([&] { return std::move(tryResult).Ok(); });
         if (result.fail()) {
           LOG_CTX("dd84e", ERR, ctx)
               << "failed to apply log entries: " << result.errorMessage();
@@ -636,9 +630,8 @@ FollowerStateManager<S>::GuardedData::GuardedData(
 
 template<typename S>
 void FollowerStateManager<S>::waitForLogFollowerResign() {
-  logFollower->waitForResign().thenFinal(
-      [weak = this->weak_from_this()](
-          futures::Try<futures::Unit> const&) noexcept {
+  logFollower->waitForResign().DetachInline(
+      [weak = this->weak_from_this()](auto&&) noexcept {
         if (auto self = weak.lock(); self != nullptr) {
           if (auto parentPtr = self->parent.lock(); parentPtr != nullptr) {
             LOG_CTX("654fb", TRACE, self->loggerContext)

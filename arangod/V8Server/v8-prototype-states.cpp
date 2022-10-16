@@ -21,7 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Futures/Future.h>
+#include <yaclib/async/future.hpp>
 
 #include "V8/v8-helper.h"
 #include "v8-prototype-state.h"
@@ -107,7 +107,8 @@ static void JS_GetPrototypeState(
         std::string("No access to prototype state '") + to_string(id) + "'");
   }
 
-  auto res = PrototypeStateMethods::createInstance(vocbase)->status(id).get();
+  auto res =
+      PrototypeStateMethods::createInstance(vocbase)->status(id).Get().Ok();
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res.result());
   }
@@ -139,8 +140,10 @@ static void JS_CreatePrototypeState(
         PrototypeStateMethods::CreateOptions>(builder.slice());
   });
 
-  auto res =
-      PrototypeStateMethods::createInstance(vocbase)->createState(params).get();
+  auto res = PrototypeStateMethods::createInstance(vocbase)
+                 ->createState(params)
+                 .Get()
+                 .Ok();
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res.result());
   }
@@ -202,7 +205,8 @@ static void JS_WriteInternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto const logIndex = PrototypeStateMethods::createInstance(vocbase)
                             ->insert(id, kvs, options)
-                            .get();
+                            .Get()
+                            .Ok();
 
   VPackBuilder response;
   response.add(VPackValue(logIndex));
@@ -224,7 +228,7 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto const result =
-      PrototypeStateMethods::createInstance(vocbase)->drop(id).get();
+      PrototypeStateMethods::createInstance(vocbase)->drop(id).Get().Ok();
   if (result.fail()) {
     TRI_V8_THROW_EXCEPTION(result);
   }
@@ -260,7 +264,8 @@ static void JS_GetSnapshot(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto const result = PrototypeStateMethods::createInstance(vocbase)
                           ->getSnapshot(id, waitForIndex)
-                          .get();
+                          .Get()
+                          .Ok();
   if (result.fail()) {
     TRI_V8_THROW_EXCEPTION(result.result());
   }
@@ -301,7 +306,8 @@ static void JS_WaitFor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto const result = PrototypeStateMethods::createInstance(vocbase)
                           ->waitForApplied(id, waitForIndex)
-                          .get();
+                          .Get()
+                          .Ok();
   if (result.fail()) {
     TRI_V8_THROW_EXCEPTION(result);
   }
@@ -354,7 +360,8 @@ static void JS_ReadInternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto const result = PrototypeStateMethods::createInstance(vocbase)
                           ->get(id, keys, readOptions)
-                          .get();
+                          .Get()
+                          .Ok();
   if (result.fail()) {
     TRI_V8_THROW_EXCEPTION(result.result());
   }

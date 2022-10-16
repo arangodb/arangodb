@@ -26,8 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryContext.h"
-#include "Futures/Future.h"
-#include "Futures/Utilities.h"
+#include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -37,12 +36,13 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 
+#include <yaclib/async/make.hpp>
+#include <yaclib/async/future.hpp>
 #include <utility>
 #include <vector>
 
 using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::futures;
 using namespace arangodb::graph;
 
 using Helper = arangodb::basics::VelocyPackHelper;
@@ -152,19 +152,8 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
   reqOpts.database = trx()->vocbase().name();
   reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(engines->size());
-
-  ScopeGuard sg([&]() noexcept {
-    for (Future<network::Response>& f : futures) {
-      try {
-        // TODO: As soon as we switch to the new future library, we need to
-        // replace the wait with proper *finally* method.
-        f.wait();
-      } catch (...) {
-      }
-    }
-  });
 
   for (auto const& engine : *engines) {
     futures.emplace_back(network::sendRequestRetry(
@@ -173,8 +162,13 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
         reqOpts));
   }
 
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+  // TODO: As soon as we switch to the new future library, we need to
+  // replace the wait with proper *finally* method.
+  //  MBkkt: If you want cancel if any future is contains error,
+  //  you need to use Cancel Executor with WhenAll
+  yaclib::Wait(futures.begin(), futures.end());
+  for (auto const& f : futures) {
+    auto& r = f.Touch().Ok();
 
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(network::fuerteToArangoErrorCode(r));
@@ -259,7 +253,8 @@ void ClusterProvider<StepImpl>::destroyEngines() {
                    "/_internal/traverser/" +
                        arangodb::basics::StringUtils::itoa(engine.second),
                    VPackBuffer<uint8_t>(), options)
-                   .get();
+                   .Get()
+                   .Ok();
 
     if (res.error != fuerte::Error::NoError) {
       // Note If there was an error on server side we do not have
@@ -304,19 +299,8 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   reqOpts.database = trx()->vocbase().name();
   reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(engines->size());
-
-  ScopeGuard sg([&]() noexcept {
-    for (Future<network::Response>& f : futures) {
-      try {
-        // TODO: As soon as we switch to the new future library, we need to
-        // replace the wait with proper *finally* method.
-        f.wait();
-      } catch (...) {
-      }
-    }
-  });
 
   for (auto const& engine : *engines) {
     futures.emplace_back(network::sendRequestRetry(
@@ -326,8 +310,13 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   }
 
   std::vector<std::pair<EdgeType, VertexType>> connectedEdges;
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+  // TODO: As soon as we switch to the new future library, we need to
+  // replace the wait with proper *finally* method.
+  //  MBkkt: If you want cancel if any future is contains error,
+  //  you need to use Cancel Executor with WhenAll
+  yaclib::Wait(futures.begin(), futures.end());
+  for (auto const& f : futures) {
+    auto& r = f.Touch().Ok();
 
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
@@ -452,11 +441,11 @@ auto ClusterProvider<StepImpl>::fetchEdges(
 
 template<class StepImpl>
 auto ClusterProvider<StepImpl>::fetch(std::vector<Step*> const& looseEnds)
-    -> futures::Future<std::vector<Step*>> {
+    -> yaclib::Future<std::vector<Step*>> {
   LOG_TOPIC("03c1b", TRACE, Logger::GRAPHS) << "<ClusterProvider> Fetching...";
   std::vector<Step*> result = fetchVertices(looseEnds);
   fetchEdges(result);
-  return futures::makeFuture(std::move(result));
+  return yaclib::MakeFuture(std::move(result));
 }
 
 template<class StepImpl>

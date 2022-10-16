@@ -69,21 +69,21 @@ struct FollowerStateManager
 
   [[nodiscard]] auto getStream() const noexcept -> std::shared_ptr<Stream>;
 
-  auto waitForApplied(LogIndex) -> futures::Future<futures::Unit>;
+  auto waitForApplied(LogIndex) -> yaclib::Future<>;
 
  private:
   void waitForLogFollowerResign();
-  [[nodiscard]] auto waitForLeaderAcked() -> futures::Future<futures::Unit>;
+  [[nodiscard]] auto waitForLeaderAcked() -> yaclib::Future<>;
   void instantiateStateMachine();
-  [[nodiscard]] auto tryTransferSnapshot() -> futures::Future<futures::Unit>;
+  [[nodiscard]] auto tryTransferSnapshot() -> yaclib::Future<>;
   void startService();
   void registerError(Result error);
   [[nodiscard]] auto waitForNewEntries()
-      -> futures::Future<std::unique_ptr<typename Stream::Iterator>>;
-  [[nodiscard]] auto applyNewEntries() -> futures::Future<Result>;
+      -> yaclib::Future<std::unique_ptr<typename Stream::Iterator>>;
+  [[nodiscard]] auto applyNewEntries() -> yaclib::Future<Result>;
 
   [[nodiscard]] auto needsSnapshot() const noexcept -> bool;
-  [[nodiscard]] auto backOffSnapshotRetry() -> futures::Future<futures::Unit>;
+  [[nodiscard]] auto backOffSnapshotRetry() -> yaclib::Future<>;
   void resolveAppliedEntriesQueue();
   void saveNewEntriesIter(std::unique_ptr<typename Stream::Iterator> iter);
 

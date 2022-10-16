@@ -32,6 +32,7 @@
 #include "Metrics/Fwd.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/TransactionState.h"
+#include "Logger/LogMacros.h"
 
 #include "store/directory_attributes.hpp"
 #include "index/directory_reader.hpp"

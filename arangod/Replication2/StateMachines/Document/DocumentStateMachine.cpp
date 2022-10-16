@@ -30,7 +30,7 @@
 #include "Transaction/Manager.h"
 
 #include <Basics/voc-errors.h>
-#include <Futures/Future.h>
+#include <yaclib/async/future.hpp>
 #include <Logger/LogContextKeys.h>
 
 using namespace arangodb::replication2::replicated_state::document;

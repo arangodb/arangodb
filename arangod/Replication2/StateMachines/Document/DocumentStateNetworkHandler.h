@@ -23,15 +23,12 @@
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
+#include <yaclib/fwd.hpp>
+
 namespace arangodb {
 
 template<typename T>
 class ResultT;
-
-namespace futures {
-template<typename T>
-class Future;
-}
 
 namespace network {
 class ConnectionPool;
@@ -45,7 +42,7 @@ namespace replication2::replicated_state::document {
 struct IDocumentStateLeaderInterface {
   virtual ~IDocumentStateLeaderInterface() = default;
   virtual auto getSnapshot(LogIndex waitForIndex)
-      -> futures::Future<ResultT<velocypack::SharedSlice>> = 0;
+      -> yaclib::Future<ResultT<velocypack::SharedSlice>> = 0;
 };
 
 class DocumentStateLeaderInterface : public IDocumentStateLeaderInterface {
@@ -55,7 +52,7 @@ class DocumentStateLeaderInterface : public IDocumentStateLeaderInterface {
                                         network::ConnectionPool* pool);
 
   auto getSnapshot(LogIndex waitForIndex)
-      -> futures::Future<ResultT<velocypack::SharedSlice>> override;
+      -> yaclib::Future<ResultT<velocypack::SharedSlice>> override;
 
  private:
   ParticipantId _participantId;

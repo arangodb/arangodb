@@ -58,7 +58,7 @@ class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
 
   arangodb::Result triggerIntermediateCommit() override;
 
-  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
+  [[nodiscard]] yaclib::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId collectionId) override;
 
   bool hasOperations() const noexcept override;
@@ -79,7 +79,7 @@ class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
   std::unique_ptr<TransactionCollection> createTransactionCollection(
       DataSourceId cid, AccessMode::Type accessType) override;
 
-  futures::Future<Result> doCommit() override;
+  yaclib::Future<Result> doCommit() override;
   Result doAbort() override;
 
  private:

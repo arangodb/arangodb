@@ -36,7 +36,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Graph/GraphManager.h"
 #include "Logger/LogMacros.h"
@@ -1173,11 +1172,11 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   return res;
 }
 
-futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
-                                            LogicalCollection const& coll) {
+yaclib::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
+                                           LogicalCollection const& coll) {
   ExecContext const& exec = ExecContext::current();  // disallow expensive ops
   if (!exec.canUseCollection(coll.name(), auth::Level::RO)) {
-    return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
+    return yaclib::MakeFuture<Result>(TRI_ERROR_FORBIDDEN);
   }
 
   if (ServerState::instance()->isCoordinator()) {
@@ -1192,7 +1191,7 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
   Result res = trx.begin();
 
   if (res.fail()) {
-    return futures::makeFuture(res);
+    return yaclib::MakeFuture(std::move(res));
   }
 
   auto poster = [](std::function<void()> fn) -> void {
@@ -1212,13 +1211,13 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
   if (queue->status().ok()) {
     res = trx.commit();
   } else {
-    return futures::makeFuture(Result(queue->status()));
+    return yaclib::MakeFuture<Result>(queue->status());
   }
 
-  return futures::makeFuture(res);
+  return yaclib::MakeFuture(std::move(res));
 }
 
-futures::Future<OperationResult> Collections::revisionId(
+yaclib::Future<OperationResult> Collections::revisionId(
     Context& ctxt, OperationOptions const& options) {
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = ctxt.coll()->vocbase().name();
@@ -1234,7 +1233,7 @@ futures::Future<OperationResult> Collections::revisionId(
   VPackBuilder builder;
   builder.add(VPackValue(rid.toString()));
 
-  return futures::makeFuture(
+  return yaclib::MakeFuture(
       OperationResult(Result(), builder.steal(), options));
 }
 
@@ -1294,7 +1293,8 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
     OperationOptions options(ExecContext::current());
     auto res = checksumOnCoordinator(feature, collection.vocbase().name(), cid,
                                      options, withRevisions, withData)
-                   .get();
+                   .Get()
+                   .Ok();
     if (res.ok()) {
       revId = RevisionId::fromSlice(res.slice().get("revision"));
       checksum = res.slice().get("checksum").getUInt();

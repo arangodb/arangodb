@@ -26,8 +26,8 @@
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorInfos.h"
-#include "Futures/Future.h"
 
+#include <yaclib/async/future.hpp>
 #include <velocypack/Builder.h>
 
 namespace arangodb::aql {
@@ -42,8 +42,8 @@ class UpdateReplaceModifierCompletion {
 
   ModifierOperationType accumulate(ModificationExecutorAccumulator& accu,
                                    InputAqlItemRow& row);
-  futures::Future<OperationResult> transact(transaction::Methods& trx,
-                                            VPackSlice data);
+  yaclib::Future<OperationResult> transact(transaction::Methods& trx,
+                                           VPackSlice data);
 
  private:
   ModificationExecutorInfos& _infos;

@@ -188,7 +188,7 @@ void Inception::gossip() {
 
         network::sendRequest(cp, p, fuerte::RestVerb::Post, path, buffer,
                              reqOpts)
-            .thenValue([=, this](network::Response r) {
+            .DetachInline([=, this](network::Response r) {
               ::handleGossipResponse(r, p, &_agent, version);
             });
       }
@@ -219,7 +219,7 @@ void Inception::gossip() {
 
         network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path,
                              buffer, reqOpts)
-            .thenValue([=, this](network::Response r) {
+            .DetachInline([=, this](network::Response r) {
               ::handleGossipResponse(r, pair.second, &_agent, version);
             });
       }
@@ -320,7 +320,8 @@ bool Inception::restartingActiveAgent() {
 
       auto comres = network::sendRequest(cp, p, fuerte::RestVerb::Post, path,
                                          greetBuffer, reqOpts)
-                        .get();
+                        .Get()
+                        .Ok();
 
       if (comres.ok() && comres.statusCode() == fuerte::StatusOK) {
         VPackSlice const theirConfig = comres.slice();
@@ -354,7 +355,8 @@ bool Inception::restartingActiveAgent() {
 
         auto comres = network::sendRequest(cp, p.second, fuerte::RestVerb::Post,
                                            path, greetBuffer, reqOpts)
-                          .get();
+                          .Get()
+                          .Ok();
 
         if (comres.combinedResult().ok()) {
           try {
@@ -388,7 +390,8 @@ bool Inception::restartingActiveAgent() {
                 comres = network::sendRequest(cp, theirLeaderEp,
                                               fuerte::RestVerb::Post, path,
                                               greetBuffer, reqOpts)
-                             .get();
+                             .Get()
+                             .Ok();
 
                 // Failed to contact leader move on until we do. This way at
                 // least we inform everybody individually of the news.

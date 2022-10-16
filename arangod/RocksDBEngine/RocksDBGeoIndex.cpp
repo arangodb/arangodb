@@ -31,7 +31,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "GeoIndex/Covering.h"
 #include "GeoIndex/Near.h"
-#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"

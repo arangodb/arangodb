@@ -28,11 +28,12 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
-#include "Futures/Future.h"
 #include "Inspection/VPack.h"
 #include "Replication2/Methods.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include "Rest/PathMatch.h"
+
+#include <yaclib/async/future.hpp>
 
 arangodb::RestReplicatedStateHandler::RestReplicatedStateHandler(
     arangodb::ArangodServer& server, arangodb::GeneralRequest* request,
@@ -75,15 +76,19 @@ auto arangodb::RestReplicatedStateHandler::handleGetRequest(
     replication2::LogId logId{basics::StringUtils::uint64(suffixes[0])};
 
     if (suffixes[1] == "local-status") {
-      return waitForFuture(
-          methods.getLocalStatus(logId).thenValue([this](auto&& status) {
+      return waitForFuture(methods.getLocalStatus(logId).ThenInline(
+          [this](
+              arangodb::replication2::replicated_state::StateStatus&& status) {
             VPackBuilder buffer;
             status.toVelocyPack(buffer);
             generateOk(rest::ResponseCode::OK, buffer.slice());
           }));
     } else if (suffixes[1] == "snapshot-status") {
-      return waitForFuture(methods.getGlobalSnapshotStatus(logId).thenValue(
-          [this](auto&& status) {
+      return waitForFuture(methods.getGlobalSnapshotStatus(logId).ThenInline(
+          [this](
+              arangodb::ResultT<std::unordered_map<
+                  std::string, arangodb::replication2::ReplicatedStateMethods::
+                                   ParticipantSnapshotStatus>>&& status) {
             if (status.ok()) {
               VPackBuilder buffer;
               velocypack::serialize(buffer, status.get());
@@ -118,7 +123,7 @@ auto arangodb::RestReplicatedStateHandler::handlePostRequest(
         velocypack::deserialize<replication2::replicated_state::agency::Target>(
             body);
     return waitForFuture(methods.createReplicatedState(std::move(spec))
-                             .thenValue([this](auto&& result) {
+                             .ThenInline([this](Result&& result) {
                                if (result.ok()) {
                                  generateOk(rest::ResponseCode::OK,
                                             VPackSlice::emptyObjectSlice());
@@ -156,7 +161,7 @@ auto arangodb::RestReplicatedStateHandler::handlePostRequest(
 
     return waitForFuture(
         methods.replaceParticipant(*logId, toRemove, toAdd, stateTarget.leader)
-            .thenValue([this](auto&& result) {
+            .ThenInline([this](Result&& result) {
               if (result.ok()) {
                 generateOk(rest::ResponseCode::OK,
                            VPackSlice::emptyObjectSlice());
@@ -175,14 +180,15 @@ auto arangodb::RestReplicatedStateHandler::handlePostRequest(
                     basics::StringUtils::concatT("Not a log id: ", logIdStr));
       return RestStatus::DONE;
     }
-    return waitForFuture(
-        methods.setLeader(*logId, newLeader).thenValue([this](auto&& result) {
-          if (result.ok()) {
-            generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
-          } else {
-            generateError(result);
-          }
-        }));
+    return waitForFuture(methods.setLeader(*logId, newLeader)
+                             .ThenInline([this](Result&& result) {
+                               if (result.ok()) {
+                                 generateOk(rest::ResponseCode::OK,
+                                            VPackSlice::emptyObjectSlice());
+                               } else {
+                                 generateError(result);
+                               }
+                             }));
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     return RestStatus::DONE;
@@ -200,8 +206,8 @@ auto arangodb::RestReplicatedStateHandler::handleDeleteRequest(
                     basics::StringUtils::concatT("Not a log id: ", logIdStr));
       return RestStatus::DONE;
     }
-    return waitForFuture(
-        methods.deleteReplicatedState(*logId).thenValue([this](auto&& result) {
+    return waitForFuture(methods.deleteReplicatedState(*logId).ThenInline(
+        [this](Result&& result) {
           if (result.ok()) {
             generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
           } else {
@@ -218,7 +224,7 @@ auto arangodb::RestReplicatedStateHandler::handleDeleteRequest(
       return RestStatus::DONE;
     }
     return waitForFuture(methods.setLeader(*logId, std::nullopt)
-                             .thenValue([this](auto&& result) {
+                             .ThenInline([this](Result&& result) {
                                if (result.ok()) {
                                  generateOk(rest::ResponseCode::OK,
                                             VPackSlice::emptyObjectSlice());

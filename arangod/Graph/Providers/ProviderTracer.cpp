@@ -25,7 +25,6 @@
 
 #include "Basics/ScopeGuard.h"
 #include "Basics/system-functions.h"
-#include "Futures/Future.h"
 #include "Logger/LogMacros.h"
 
 #include "Graph/Providers/ClusterProvider.h"
@@ -37,6 +36,9 @@
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #endif
+
+#include <yaclib/async/make.hpp>
+#include <yaclib/async/future.hpp>
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -66,14 +68,19 @@ typename ProviderImpl::Step ProviderTracer<ProviderImpl>::startVertex(
 }
 
 template<class ProviderImpl>
-futures::Future<std::vector<typename ProviderImpl::Step*>>
+yaclib::Future<std::vector<typename ProviderImpl::Step*>>
 ProviderTracer<ProviderImpl>::fetchVertices(
     std::vector<typename ProviderImpl::Step*> const& looseEnds) {
   double start = TRI_microtime();
   auto sg = arangodb::scopeGuard([&]() noexcept {
     _stats["fetchVertices"].addTiming(TRI_microtime() - start);
   });
-  return _impl.fetchVertices(std::move(looseEnds));
+  auto f = _impl.fetchVertices(std::move(looseEnds));
+  if constexpr (yaclib::is_future_base_v<decltype(f)>) {
+    return std::move(f);
+  } else {
+    return yaclib::MakeFuture(std::move(f));
+  }
 }
 
 template<class ProviderImpl>
@@ -87,7 +94,7 @@ Result ProviderTracer<ProviderImpl>::fetchEdges(
 }
 
 template<class ProviderImpl>
-futures::Future<std::vector<typename ProviderImpl::Step*>>
+yaclib::Future<std::vector<typename ProviderImpl::Step*>>
 ProviderTracer<ProviderImpl>::fetch(
     std::vector<typename ProviderImpl::Step*> const& looseEnds) {
   double start = TRI_microtime();
