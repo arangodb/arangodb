@@ -32,7 +32,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/CollectionInfoCurrent.h"
 #include "Containers/SmallVector.h"
-#include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -405,7 +404,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             // Wait for responses
             // First wait for Leader
             {
-              auto const& res = leaderF.get();
+              auto res = std::move(leaderF).Get().Ok();
               if (res.fail()) {
                 // We did not even get count for leader, use defaults
                 continue;
@@ -444,17 +443,17 @@ void ShardDistributionReporter::helperDistributionForDatabase(
               uint64_t followerResponses = followersInSync;
               uint64_t followerTotal = followersInSync * entry.total;
 
-              auto responses = futures::collectAll(futures).get();
-              for (futures::Try<network::Response> const& response :
-                   responses) {
-                if (!response.hasValue() || response.get().fail()) {
+              yaclib::Wait(futures.begin(), futures.end());
+              for (auto const& f : futures) {
+                auto& r = f.Touch();
+                if (!r || r.Value().fail()) {
                   // We do not care for errors of any kind.
                   // We can continue here because all other requests will be
                   // handled by the accumulated timeout
                   continue;
                 }
 
-                auto const& res = response.get();
+                auto& res = r.Value();
                 VPackSlice slice = res.slice();
                 if (!slice.isObject()) {
                   LOG_TOPIC("fcbb3", WARN, arangodb::Logger::CLUSTER)

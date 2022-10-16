@@ -31,8 +31,7 @@
 #include <Basics/system-compiler.h>
 #include <Basics/voc-errors.h>
 #include <Containers/ImmerMemoryPolicy.h>
-#include <Futures/Future.h>
-#include <Futures/Try.h>
+#include <yaclib/async/future.hpp>
 #include <Logger/LogMacros.h>
 #include <Logger/Logger.h>
 #include <Logger/LoggerStream.h>
@@ -52,9 +51,6 @@
 
 #include "Basics/ErrorCode.h"
 #include "Cluster/FailureOracle.h"
-#include "Futures/Promise-inl.h"
-#include "Futures/Promise.h"
-#include "Futures/Unit.h"
 #include "Logger/LogContextKeys.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
@@ -87,6 +83,8 @@
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
+
+#include <yaclib/async/promise.hpp>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -145,13 +143,13 @@ auto replicated_log::LogLeader::instantiateFollowers(
 
 namespace {
 auto delayedFuture(std::chrono::steady_clock::duration duration)
-    -> futures::Future<futures::Unit> {
+    -> yaclib::Future<> {
   if (SchedulerFeature::SCHEDULER) {
     return SchedulerFeature::SCHEDULER->delay(duration);
   }
 
   // std::this_thread::sleep_for(duration);
-  return futures::Future<futures::Unit>{std::in_place};
+  return yaclib::MakeFuture();
 }
 }  // namespace
 
@@ -166,8 +164,8 @@ void replicated_log::LogLeader::handleResolvedPromiseSet(
   }
 
   for (auto& promise : resolvedPromises._set) {
-    TRI_ASSERT(promise.second.valid());
-    promise.second.setValue(resolvedPromises.result);
+    TRI_ASSERT(promise.second.Valid());
+    std::move(promise.second).Set(resolvedPromises.result);
   }
 }
 
@@ -177,7 +175,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
   for (auto& it : requests) {
     if (it.has_value()) {
       delayedFuture(it->_executionDelay)
-          .thenFinal([it = std::move(it), logMetrics](auto&&) mutable {
+          .DetachInline([it = std::move(it), logMetrics](auto&&) mutable {
             auto follower = it->_follower.lock();
             auto logLeader = it->_parentLog.lock();
             if (logLeader == nullptr || follower == nullptr) {
@@ -227,15 +225,14 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
             // when the request returns. If the locking is successful
             // we are still in the same term.
             follower->_impl->appendEntries(std::move(request))
-                .thenFinal([weakParentLog = it->_parentLog,
-                            followerWeak = it->_follower, lastIndex = lastIndex,
-                            currentCommitIndex = request.leaderCommit,
-                            currentLITK = request.lowestIndexToKeep,
-                            currentTerm = logLeader->_currentTerm,
-                            messageId = messageId, startTime,
-                            logMetrics =
-                                logMetrics](futures::Try<AppendEntriesResult>&&
-                                                res) noexcept {
+                .DetachInline([weakParentLog = it->_parentLog,
+                               followerWeak = it->_follower,
+                               lastIndex = lastIndex,
+                               currentCommitIndex = request.leaderCommit,
+                               currentLITK = request.lowestIndexToKeep,
+                               currentTerm = logLeader->_currentTerm,
+                               messageId = messageId, startTime,
+                               logMetrics = logMetrics](auto&& res) noexcept {
                   // This has to remain noexcept, because the code below is not
                   // exception safe
                   auto const endTime = std::chrono::steady_clock::now();
@@ -424,9 +421,10 @@ auto replicated_log::LogLeader::resign() && -> std::tuple<
     auto action = [queues = std::move(queues)]() mutable noexcept {
       for (auto& [idx, promise] : queues->waitForQueue) {
         // Check this to make sure that setException does not throw
-        if (!promise.isFulfilled()) {
-          promise.setException(ParticipantResignedException(
+        if (promise.Valid()) {
+          auto e = std::make_exception_ptr(ParticipantResignedException(
               TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE));
+          std::move(promise).Set(std::move(e));
         }
       }
       queues->waitForResignQueue.resolveAll();
@@ -589,19 +587,16 @@ auto replicated_log::LogLeader::GuardedLeaderData::insertInternal(
 auto replicated_log::LogLeader::waitFor(LogIndex index) -> WaitForFuture {
   return _guardedLeaderData.doUnderLock([index](auto& leaderData) {
     if (leaderData._didResign) {
-      auto promise = WaitForPromise{};
-      promise.setException(ParticipantResignedException(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE));
-      return promise.getFuture();
+      return yaclib::MakeFuture<WaitForResult>(
+          std::make_exception_ptr(ParticipantResignedException(
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE)));
     }
     if (leaderData._commitIndex >= index) {
-      return futures::Future<WaitForResult>{
-          std::in_place, leaderData._commitIndex, leaderData._lastQuorum};
+      return yaclib::MakeFuture<WaitForResult>(leaderData._commitIndex,
+                                               leaderData._lastQuorum);
     }
-    auto it = leaderData._waitForQueue.emplace(index, WaitForPromise{});
-    auto& promise = it->second;
-    auto&& future = promise.getFuture();
-    TRI_ASSERT(future.valid());
+    auto [future, promise] = yaclib::MakeContract<WaitForResult>();
+    leaderData._waitForQueue.emplace(index, std::move(promise));
     return std::move(future);
   });
 }
@@ -791,7 +786,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
 auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     FollowerInfo& follower, TermIndexPair lastIndex,
     LogIndex currentCommitIndex, LogIndex currentLITK, LogTerm currentTerm,
-    futures::Try<AppendEntriesResult>&& res,
+    yaclib::Result<AppendEntriesResult>&& res,
     std::chrono::steady_clock::duration latency, MessageId messageId)
     -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>,
                  ResolvedPromiseSet> {
@@ -811,8 +806,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     // there is no request in flight currently
     follower._state = FollowerInfo::State::IDLE;
   }
-  if (res.hasValue()) {
-    auto& response = res.get();
+  if (res) {
+    auto& response = std::as_const(res).Value();
     TRI_ASSERT(messageId == response.messageId)
         << messageId << " vs. " << response.messageId;
     if (follower.lastSentMessageId == response.messageId) {
@@ -856,12 +851,12 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
           << ", expected " << messageId << ", latest "
           << follower.lastSentMessageId;
     }
-  } else if (res.hasException()) {
+  } else {
     ++follower.numErrorsSinceLastAnswer;
     follower.lastErrorReason = {
         AppendEntriesErrorReason::ErrorType::kCommunicationError};
     try {
-      res.throwIfFailed();
+      std::ignore = std::move(res).Ok();
     } catch (std::exception const& e) {
       follower.lastErrorReason.details = e.what();
       LOG_CTX("e094b", INFO, follower.logContext)
@@ -872,12 +867,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
           << "exception in appendEntries to follower "
           << follower._impl->getParticipantId() << ".";
     }
-  } else {
-    LOG_CTX("dc441", FATAL, follower.logContext)
-        << "in appendEntries to follower " << follower._impl->getParticipantId()
-        << ", result future has neither value nor exception.";
-    TRI_ASSERT(false);
-    FATAL_ERROR_EXIT();
   }
 
   // checkCommitIndex is called regardless of follower response.
@@ -1042,19 +1031,18 @@ auto replicated_log::LogLeader::GuardedLeaderData::calculateCommitLag()
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::waitForResign()
-    -> std::pair<futures::Future<futures::Unit>, DeferredAction> {
+    -> std::pair<yaclib::Future<>, DeferredAction> {
   if (!_didResign) {
     auto future = _waitForResignQueue.addWaitFor();
     return {std::move(future), DeferredAction{}};
   } else {
     TRI_ASSERT(_waitForResignQueue.empty());
-    auto promise = futures::Promise<futures::Unit>{};
-    auto future = promise.getFuture();
+    auto [future, promise] = yaclib::MakeContract();
 
     auto action =
         DeferredAction([promise = std::move(promise)]() mutable noexcept {
-          TRI_ASSERT(promise.valid());
-          promise.setValue();
+          TRI_ASSERT(promise.Valid());
+          std::move(promise).Set();
         });
 
     return {std::move(future), std::move(action)};
@@ -1083,8 +1071,8 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
                                    "invalid parameter; log index 0 is invalid");
   }
 
-  return waitFor(index).thenValue([this, self = shared_from_this(), index](
-                                      auto&& quorum) -> WaitForIteratorFuture {
+  return waitFor(index).ThenInline([this, self = shared_from_this(),
+                                    index](WaitForResult&& quorum) {
     auto [actualIndex, iter] = _guardedLeaderData.doUnderLock(
         [index](GuardedLeaderData& leaderData)
             -> std::pair<LogIndex, std::unique_ptr<LogRangeIterator>> {
@@ -1121,7 +1109,7 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
       return waitForIterator(actualIndex);
     }
 
-    return std::move(iter);
+    return yaclib::MakeFuture(std::move(iter));
   });
 }
 
@@ -1150,8 +1138,7 @@ auto replicated_log::LogLeader::LocalFollower::getParticipantId() const noexcept
 }
 
 auto replicated_log::LogLeader::LocalFollower::appendEntries(
-    AppendEntriesRequest const request)
-    -> futures::Future<AppendEntriesResult> {
+    AppendEntriesRequest const request) -> yaclib::Future<AppendEntriesResult> {
   MeasureTimeGuard measureTimeGuard(
       _leader._logMetrics->replicatedLogFollowerAppendEntriesRtUs);
 
@@ -1182,26 +1169,27 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(
 
   if (request.entries.empty()) {
     // Nothing to do here, save some work.
-    return returnAppendEntriesResult(Result(TRI_ERROR_NO_ERROR));
+    return yaclib::MakeFuture(
+        returnAppendEntriesResult(Result(TRI_ERROR_NO_ERROR)));
   }
 
   auto iter = std::make_unique<InMemoryPersistedLogIterator>(request.entries);
   return _guardedLogCore.doUnderLock([&](auto& logCore)
-                                         -> futures::Future<
+                                         -> yaclib::Future<
                                              AppendEntriesResult> {
     if (logCore == nullptr) {
       LOG_CTX("e9b70", DEBUG, messageLogContext)
           << "local follower received append entries although the log core is "
              "moved away.";
-      return AppendEntriesResult::withRejection(
+      return yaclib::MakeFuture(AppendEntriesResult::withRejection(
           request.leaderTerm, request.messageId,
-          {AppendEntriesErrorReason::ErrorType::kLostLogCore});
+          {AppendEntriesErrorReason::ErrorType::kLostLogCore}));
     }
 
     // Note that the beginning of iter here is always (and must be) exactly the
     // next index after the last one in the LogCore.
     return logCore->insertAsync(std::move(iter), request.waitForSync)
-        .thenValue(std::move(returnAppendEntriesResult));
+        .ThenInline(std::move(returnAppendEntriesResult));
   });
 }
 
@@ -1248,11 +1236,11 @@ void replicated_log::LogLeader::establishLeadership(
 
   TRI_ASSERT(waitForIndex == _firstIndexOfCurrentTerm);
   waitFor(waitForIndex)
-      .thenFinal([weak = weak_from_this(), config = std::move(config)](
-                     futures::Try<WaitForResult>&& result) mutable noexcept {
+      .DetachInline([weak = weak_from_this(), config = std::move(config)](
+                        auto&& result) mutable noexcept {
         if (auto self = weak.lock(); self) {
           try {
-            result.throwIfFailed();
+            std::ignore = result.Ok();
             self->_guardedLeaderData.doUnderLock([&](auto& data) {
               data._leadershipEstablished = true;
               if (data.activeParticipantsConfig->generation ==
@@ -1405,11 +1393,10 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
 
   triggerAsyncReplication();
   waitFor(waitForIndex)
-      .thenFinal([weak = weak_from_this(),
-                  config](futures::Try<WaitForResult>&& result) noexcept {
+      .DetachInline([weak = weak_from_this(), config](auto&& result) noexcept {
         if (auto self = weak.lock(); self) {
           try {
-            result.throwIfFailed();
+            std::ignore = result.Ok();
             if (auto guard = self->_guardedLeaderData.getLockedGuard();
                 guard->activeParticipantsConfig->generation ==
                 config->generation) {
@@ -1465,9 +1452,7 @@ auto replicated_log::LogLeader::getParticipantConfigGenerations() const noexcept
   });
 }
 
-auto replicated_log::LogLeader::waitForResign()
-    -> futures::Future<futures::Unit> {
-  using namespace arangodb::futures;
+auto replicated_log::LogLeader::waitForResign() -> yaclib::Future<> {
   auto&& [future, action] =
       _guardedLeaderData.getLockedGuard()->waitForResign();
 
@@ -1481,7 +1466,7 @@ auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const
   auto res = _guardedLogCore.doUnderLock([&](auto& core) {
     LOG_CTX("23745", DEBUG, _logContext)
         << "local follower releasing with stop at " << stop;
-    return core->removeFront(stop).get();
+    return core->removeFront(stop).Get().Ok();
   });
   LOG_CTX_IF("2aba1", WARN, _logContext, res.fail())
       << "local follower failed to release log entries: " << res.errorMessage();

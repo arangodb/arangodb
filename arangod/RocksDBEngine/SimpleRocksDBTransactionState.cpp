@@ -32,6 +32,8 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <yaclib/async/make.hpp>
+
 using namespace arangodb;
 
 SimpleRocksDBTransactionState::SimpleRocksDBTransactionState(
@@ -119,8 +121,8 @@ void SimpleRocksDBTransactionState::maybeDisableIndexing() {
 }
 
 /// @brief commit a transaction
-futures::Future<Result> SimpleRocksDBTransactionState::doCommit() {
-  return _rocksMethods->commitTransaction();
+yaclib::Future<Result> SimpleRocksDBTransactionState::doCommit() {
+  return yaclib::MakeFuture(_rocksMethods->commitTransaction());
 }
 
 /// @brief abort and rollback a transaction

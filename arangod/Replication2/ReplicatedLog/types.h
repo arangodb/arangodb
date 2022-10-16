@@ -29,15 +29,11 @@
 #include <vector>
 #include <variant>
 #include <optional>
+#include <yaclib/async/future.hpp>
 
 #include "Basics/StaticStrings.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Inspection/Transformers.h"
-
-namespace arangodb::futures {
-template<typename T>
-class Future;
-}
 
 namespace arangodb::velocypack {
 class Builder;
@@ -221,7 +217,7 @@ struct AbstractFollower {
   [[nodiscard]] virtual auto getParticipantId() const noexcept
       -> ParticipantId const& = 0;
   [[nodiscard]] virtual auto appendEntries(AppendEntriesRequest)
-      -> futures::Future<AppendEntriesResult> = 0;
+      -> yaclib::Future<AppendEntriesResult> = 0;
 };
 
 struct QuorumData {

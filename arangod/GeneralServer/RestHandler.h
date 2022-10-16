@@ -29,7 +29,6 @@
 #include "Logger/LogContext.h"
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
-#include "Futures/Unit.h"
 
 #include <atomic>
 #include <memory>
@@ -43,11 +42,6 @@ class ApplicationServer;
 namespace basics {
 class Exception;
 }
-
-namespace futures {
-template<typename T>
-class Future;
-}  // namespace futures
 
 class GeneralRequest;
 class RequestStatistics;
@@ -106,7 +100,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   bool wakeupHandler();
 
   /// @brief forwards the request to the appropriate server
-  futures::Future<Result> forwardRequest(bool& forwarded);
+  yaclib::Future<Result> forwardRequest(bool& forwarded);
 
   void handleExceptionPtr(std::exception_ptr) noexcept;
 
@@ -155,7 +149,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // generates an error
   void generateError(arangodb::Result const&);
 
-  RestStatus waitForFuture(futures::Future<futures::Unit>&& f);
+  RestStatus waitForFuture(yaclib::Future<>&& f);
 
   enum class HandlerState : uint8_t {
     PREPARE = 0,

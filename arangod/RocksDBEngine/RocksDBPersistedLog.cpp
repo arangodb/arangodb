@@ -21,18 +21,20 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Basics/Exceptions.h>
-#include <Basics/RocksDBUtils.h>
-#include <Basics/ScopeGuard.h>
-#include <Basics/debugging.h>
-#include <Replication2/ReplicatedLog/PersistedLog.h>
-#include <memory>
-
-#include <utility>
+#include "Basics/Exceptions.h"
+#include "Basics/RocksDBUtils.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/debugging.h"
+#include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "RocksDBKey.h"
-#include "RocksDBPersistedLog.h"
-#include "RocksDBValue.h"
+#include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBPersistedLog.h"
+#include "RocksDBEngine/RocksDBValue.h"
+#include "Logger/LogMacros.h"
+
+#include <yaclib/async/contract.hpp>
+#include <memory>
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -123,7 +125,7 @@ auto RocksDBPersistedLog::drop() -> Result {
 }
 
 auto RocksDBPersistedLog::removeFront(replication2::LogIndex stop)
-    -> futures::Future<Result> {
+    -> yaclib::Future<Result> {
   return _persistor->persist(shared_from_this(),
                              RocksDBLogPersistor::RemoveFront{stop}, {});
 }
@@ -155,7 +157,7 @@ auto RocksDBPersistedLog::prepareWriteBatch(PersistedLogIterator& iter,
 
 auto RocksDBPersistedLog::insertAsync(
     std::unique_ptr<PersistedLogIterator> iter, WriteOptions const& opts)
-    -> futures::Future<Result> {
+    -> yaclib::Future<Result> {
   RocksDBLogPersistor::WriteOptions wo;
   wo.waitForSync = opts.waitForSync;
   return _persistor->persist(
@@ -249,7 +251,8 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
         for (; nextReqToResolve != nextReqToWrite; ++nextReqToResolve) {
           _executor->operator()(
               [reqToResolve = std::move(*nextReqToResolve)]() mutable noexcept {
-                reqToResolve.promise.setValue(TRI_ERROR_NO_ERROR);
+                TRI_ASSERT(reqToResolve.promise.Valid());
+                std::move(reqToResolve.promise).Set(TRI_ERROR_NO_ERROR);
               });
         }
       }
@@ -264,11 +267,11 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
         // If a promise is fulfilled before (with a value), nextReqToResolve
         // should always be increased as well; meaning we only exactly iterate
         // over the unfulfilled promises here.
-        TRI_ASSERT(!nextReqToResolve->promise.isFulfilled());
+        TRI_ASSERT(nextReqToResolve->promise.Valid());
         _executor->operator()([reqToResolve = std::move(*nextReqToResolve),
                                result = result]() mutable noexcept {
-          TRI_ASSERT(!reqToResolve.promise.isFulfilled());
-          reqToResolve.promise.setValue(std::move(result));
+          TRI_ASSERT(reqToResolve.promise.Valid());
+          std::move(reqToResolve.promise).Set(std::move(result));
         });
       }
     }
@@ -277,9 +280,8 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
 
 auto RocksDBLogPersistor::persist(
     std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
-    Action action, WriteOptions const& options) -> futures::Future<Result> {
-  auto p = futures::Promise<Result>{};
-  auto f = p.getFuture();
+    Action action, WriteOptions const& options) -> yaclib::Future<Result> {
+  auto [f, p] = yaclib::MakeContract<Result>();
 
   Lane& lane = _lanes[options.waitForSync ? 0 : 1];
   TRI_ASSERT(lane._waitForSync == options.waitForSync);
@@ -293,7 +295,7 @@ auto RocksDBLogPersistor::persist(
                                 lane._activePersistorThreads < 2);
 
     if (!wantNewThread) {
-      return f;
+      return std::move(f);
     } else {
       lane._activePersistorThreads += 1;
     }
@@ -327,7 +329,7 @@ auto RocksDBLogPersistor::persist(
     num_retries += 1;
   }
 
-  return f;
+  return std::move(f);
 }
 
 auto RocksDBLogPersistor::PersistRequest::execute(rocksdb::WriteBatch& wb)

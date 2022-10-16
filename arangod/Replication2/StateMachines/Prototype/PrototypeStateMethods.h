@@ -39,10 +39,6 @@ class ResultT;
 
 class Result;
 
-namespace futures {
-template<typename T>
-class Future;
-}
 }  // namespace arangodb
 
 namespace arangodb::replication2 {
@@ -76,24 +72,24 @@ struct PrototypeStateMethods {
   };
 
   [[nodiscard]] virtual auto createState(CreateOptions options) const
-      -> futures::Future<ResultT<CreateResult>> = 0;
+      -> yaclib::Future<ResultT<CreateResult>> = 0;
 
   [[nodiscard]] virtual auto insert(
       LogId id, std::unordered_map<std::string, std::string> const& entries,
-      PrototypeWriteOptions) const -> futures::Future<LogIndex> = 0;
+      PrototypeWriteOptions) const -> yaclib::Future<LogIndex> = 0;
 
   [[nodiscard]] virtual auto compareExchange(LogId id, std::string key,
                                              std::string oldValue,
                                              std::string newValue,
                                              PrototypeWriteOptions) const
-      -> futures::Future<ResultT<LogIndex>> = 0;
+      -> yaclib::Future<ResultT<LogIndex>> = 0;
 
   [[nodiscard]] virtual auto get(LogId id, std::string key,
                                  LogIndex waitForApplied) const
-      -> futures::Future<ResultT<std::optional<std::string>>>;
+      -> yaclib::Future<ResultT<std::optional<std::string>>>;
   [[nodiscard]] virtual auto get(LogId id, std::vector<std::string> keys,
                                  LogIndex waitForApplied) const
-      -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>>;
+      -> yaclib::Future<ResultT<std::unordered_map<std::string, std::string>>>;
 
   struct ReadOptions {
     LogIndex waitForApplied{0};
@@ -103,27 +99,27 @@ struct PrototypeStateMethods {
 
   [[nodiscard]] virtual auto get(LogId id, std::string key,
                                  ReadOptions const&) const
-      -> futures::Future<ResultT<std::optional<std::string>>>;
+      -> yaclib::Future<ResultT<std::optional<std::string>>>;
 
   [[nodiscard]] virtual auto get(LogId id, std::vector<std::string> keys,
                                  ReadOptions const&) const
-      -> futures::Future<
+      -> yaclib::Future<
           ResultT<std::unordered_map<std::string, std::string>>> = 0;
 
   [[nodiscard]] virtual auto getSnapshot(LogId id, LogIndex waitForIndex) const
-      -> futures::Future<
+      -> yaclib::Future<
           ResultT<std::unordered_map<std::string, std::string>>> = 0;
 
   [[nodiscard]] virtual auto remove(LogId id, std::string key,
                                     PrototypeWriteOptions) const
-      -> futures::Future<LogIndex> = 0;
+      -> yaclib::Future<LogIndex> = 0;
   [[nodiscard]] virtual auto remove(LogId id, std::vector<std::string> keys,
                                     PrototypeWriteOptions) const
-      -> futures::Future<LogIndex> = 0;
+      -> yaclib::Future<LogIndex> = 0;
 
   virtual auto waitForApplied(LogId id, LogIndex waitForIndex) const
-      -> futures::Future<Result> = 0;
-  virtual auto drop(LogId id) const -> futures::Future<Result> = 0;
+      -> yaclib::Future<Result> = 0;
+  virtual auto drop(LogId id) const -> yaclib::Future<Result> = 0;
 
   struct PrototypeStatus {
     // TODO
@@ -131,7 +127,7 @@ struct PrototypeStateMethods {
   };
 
   [[nodiscard]] virtual auto status(LogId) const
-      -> futures::Future<ResultT<PrototypeStatus>> = 0;
+      -> yaclib::Future<ResultT<PrototypeStatus>> = 0;
 
   static auto createInstance(TRI_vocbase_t& vocbase)
       -> std::shared_ptr<PrototypeStateMethods>;

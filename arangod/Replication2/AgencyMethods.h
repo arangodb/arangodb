@@ -22,14 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#include <Agency/TransactionBuilder.h>
-#include <Basics/ResultT.h>
-#include <Cluster/ClusterTypes.h>
-#include <Replication2/ReplicatedLog/AgencyLogSpecification.h>
-#include <optional>
 
-#include "Futures/Future.h"
+#include "Agency/TransactionBuilder.h"
+#include "Basics/ResultT.h"
+#include "Cluster/ClusterTypes.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
+
+#include <yaclib/async/future.hpp>
+#include <optional>
 
 namespace arangodb {
 class Result;
@@ -64,7 +65,7 @@ auto updateParticipantsConfigTrx(arangodb::agency::envelope envelope,
 auto updateTermSpecification(DatabaseID const& database, LogId id,
                              LogPlanTermSpecification const& spec,
                              std::optional<LogTerm> prevTerm = {})
-    -> futures::Future<ResultT<uint64_t>>;
+    -> yaclib::Future<ResultT<uint64_t>>;
 
 auto updateElectionResult(arangodb::agency::envelope envelope,
                           DatabaseID const& database, LogId id,
@@ -78,21 +79,21 @@ auto deleteReplicatedLogTrx(arangodb::agency::envelope envelope,
                             DatabaseID const& database, LogId id)
     -> arangodb::agency::envelope;
 auto deleteReplicatedLog(DatabaseID const& database, LogId id)
-    -> futures::Future<ResultT<uint64_t>>;
+    -> yaclib::Future<ResultT<uint64_t>>;
 
 auto createReplicatedLogTrx(arangodb::agency::envelope envelope,
                             DatabaseID const& database, LogTarget const& spec)
     -> arangodb::agency::envelope;
 auto createReplicatedLog(DatabaseID const& database, LogTarget const& spec)
-    -> futures::Future<ResultT<uint64_t>>;
+    -> yaclib::Future<ResultT<uint64_t>>;
 auto createReplicatedState(DatabaseID const& database,
                            replicated_state::agency::Target const& spec)
-    -> futures::Future<ResultT<uint64_t>>;
+    -> yaclib::Future<ResultT<uint64_t>>;
 auto deleteReplicatedStateTrx(arangodb::agency::envelope envelope,
                               DatabaseID const& database, LogId id)
     -> arangodb::agency::envelope;
 auto deleteReplicatedState(DatabaseID const& database, LogId)
-    -> futures::Future<ResultT<uint64_t>>;
+    -> yaclib::Future<ResultT<uint64_t>>;
 auto getCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)
     -> LogCurrentSupervision;
 
@@ -101,10 +102,10 @@ auto replaceReplicatedStateParticipant(
     ParticipantId const& participantToRemove,
     ParticipantId const& participantToAdd,
     std::optional<ParticipantId> const& currentLeader)
-    -> futures::Future<Result>;
+    -> yaclib::Future<Result>;
 
 auto replaceReplicatedSetLeader(std::string const& databaseName, LogId id,
                                 std::optional<ParticipantId> const& leaderId)
-    -> futures::Future<Result>;
+    -> yaclib::Future<Result>;
 
 }  // namespace arangodb::replication2::agency::methods

@@ -24,9 +24,9 @@
 #include "RestPrototypeStateHandler.h"
 
 #include <velocypack/Iterator.h>
+#include <yaclib/async/future.hpp>
 
 #include "Basics/StringUtils.h"
-#include "Futures/Future.h"
 #include "Inspection/VPack.h"
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -77,7 +77,7 @@ RestStatus RestPrototypeStateHandler::handleCreateState(
   bool isWaitForReady = options.waitForReady;
   return waitForFuture(
       methods.createState(std::move(options))
-          .thenValue(
+          .ThenInline(
               [&, isWaitForReady](
                   ResultT<replication2::PrototypeStateMethods::CreateResult>&&
                       createResult) {
@@ -196,7 +196,7 @@ RestStatus RestPrototypeStateHandler::handlePutCompareExchange(
   auto [key, values] = *entries.begin();
   return waitForFuture(
       methods.compareExchange(logId, key, values.first, values.second, options)
-          .thenValue([this, options](ResultT<LogIndex>&& waitForResult) {
+          .ThenInline([this, options](ResultT<LogIndex>&& waitForResult) {
             if (waitForResult.fail()) {
               generateError(waitForResult.result());
             } else {
@@ -241,7 +241,7 @@ RestStatus RestPrototypeStateHandler::handlePostInsert(
       _request->parsedValue<bool>("waitForApplied").value_or(true);
 
   return waitForFuture(methods.insert(logId, entries, options)
-                           .thenValue([this, options](auto&& logIndex) {
+                           .ThenInline([this, options](LogIndex&& logIndex) {
                              VPackBuilder result;
                              {
                                VPackObjectBuilder ob(&result);
@@ -290,12 +290,10 @@ RestStatus RestPrototypeStateHandler::handlePostRetrieveMulti(
   readOptions.allowDirtyRead =
       _request->parsedValue<bool>("allowDirtyRead").value_or(false);
   readOptions.readFrom = _request->parsedValue<ParticipantId>("readFrom");
-
+  using WaitForResult = ResultT<std::unordered_map<std::string, std::string>>;
   return waitForFuture(
       methods.get(logId, std::move(keys), readOptions)
-          .thenValue([this](
-                         ResultT<std::unordered_map<std::string, std::string>>&&
-                             waitForResult) {
+          .ThenInline([this](WaitForResult&& waitForResult) {
             if (waitForResult.fail()) {
               generateError(waitForResult.result());
             } else {
@@ -320,7 +318,8 @@ RestStatus RestPrototypeStateHandler::handleGetRequest(
   }
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
   if (suffixes.size() == 1) {
-    return waitForFuture(methods.status(logId).thenValue([&](auto&& result) {
+    using Result = ResultT<PrototypeStateMethods::PrototypeStatus>;
+    return waitForFuture(methods.status(logId).ThenInline([&](Result&& result) {
       if (result.fail()) {
         generateError(result.result());
       } else {
@@ -370,7 +369,8 @@ RestStatus RestPrototypeStateHandler::handleGetEntry(
 
   return waitForFuture(
       methods.get(logId, suffixes[2], readOptions)
-          .thenValue([this, key = suffixes[2]](auto&& waitForResult) {
+          .ThenInline([this, key = suffixes[2]](
+                          ResultT<std::optional<std::string>>&& waitForResult) {
             if (waitForResult.fail()) {
               generateError(waitForResult.result());
             } else {
@@ -404,7 +404,7 @@ RestStatus RestPrototypeStateHandler::handleGetWaitForApplied(
   LogIndex idx{basics::StringUtils::uint64(suffixes[2])};
 
   return waitForFuture(methods.waitForApplied(logId, idx)
-                           .thenValue([this](auto&& waitForResult) {
+                           .ThenInline([this](Result&& waitForResult) {
                              if (waitForResult.fail()) {
                                generateError(waitForResult);
                              } else {
@@ -426,8 +426,9 @@ RestStatus RestPrototypeStateHandler::handleGetSnapshot(
   auto waitForIndex =
       LogIndex{_request->parsedValue<decltype(LogIndex::value)>("waitForIndex")
                    .value_or(0)};
+  using WaitForResult = ResultT<std::unordered_map<std::string, std::string>>;
   return waitForFuture(methods.getSnapshot(logId, waitForIndex)
-                           .thenValue([this](auto&& waitForResult) {
+                           .ThenInline([this](WaitForResult&& waitForResult) {
                              if (waitForResult.fail()) {
                                generateError(waitForResult.result());
                              } else {
@@ -456,13 +457,14 @@ RestStatus RestPrototypeStateHandler::handleDeleteRequest(
 
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
   if (suffixes.size() == 1) {
-    return waitForFuture(methods.drop(logId).thenValue([this](auto&& result) {
-      if (result.ok()) {
-        generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
-      } else {
-        generateError(result);
-      }
-    }));
+    return waitForFuture(
+        methods.drop(logId).ThenInline([this](Result&& result) {
+          if (result.ok()) {
+            generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
+          } else {
+            generateError(result);
+          }
+        }));
 
   } else if (auto& verb = suffixes[1]; verb == "entry") {
     return handleDeleteRemove(methods, logId);
@@ -495,18 +497,18 @@ RestStatus RestPrototypeStateHandler::handleDeleteRemove(
   options.waitForApplied =
       _request->parsedValue<bool>("waitForApplied").value_or(true);
 
-  return waitForFuture(methods.remove(logId, suffixes[2], options)
-                           .thenValue([this, options](auto&& waitForResult) {
-                             VPackBuilder result;
-                             {
-                               VPackObjectBuilder ob(&result);
-                               result.add("index", VPackValue(waitForResult));
-                             }
-                             generateOk(options.waitForApplied
-                                            ? rest::ResponseCode::OK
-                                            : rest::ResponseCode::ACCEPTED,
-                                        result.slice());
-                           }));
+  return waitForFuture(
+      methods.remove(logId, suffixes[2], options)
+          .ThenInline([this, options](LogIndex&& waitForResult) {
+            VPackBuilder result;
+            {
+              VPackObjectBuilder ob(&result);
+              result.add("index", VPackValue(waitForResult));
+            }
+            generateOk(options.waitForApplied ? rest::ResponseCode::OK
+                                              : rest::ResponseCode::ACCEPTED,
+                       result.slice());
+          }));
 }
 
 RestStatus RestPrototypeStateHandler::handleDeleteRemoveMulti(
@@ -543,16 +545,16 @@ RestStatus RestPrototypeStateHandler::handleDeleteRemoveMulti(
   options.waitForApplied =
       _request->parsedValue<bool>("waitForApplied").value_or(true);
 
-  return waitForFuture(methods.remove(logId, keys, options)
-                           .thenValue([this, options](auto&& waitForResult) {
-                             VPackBuilder result;
-                             {
-                               VPackObjectBuilder ob(&result);
-                               result.add("index", VPackValue(waitForResult));
-                             }
-                             generateOk(options.waitForApplied
-                                            ? rest::ResponseCode::OK
-                                            : rest::ResponseCode::ACCEPTED,
-                                        result.slice());
-                           }));
+  return waitForFuture(
+      methods.remove(logId, keys, options)
+          .ThenInline([this, options](LogIndex&& waitForResult) {
+            VPackBuilder result;
+            {
+              VPackObjectBuilder ob(&result);
+              result.add("index", VPackValue(waitForResult));
+            }
+            generateOk(options.waitForApplied ? rest::ResponseCode::OK
+                                              : rest::ResponseCode::ACCEPTED,
+                       result.slice());
+          }));
 }

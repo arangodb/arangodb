@@ -43,6 +43,7 @@
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/vocbase.h"
 
+#include <yaclib/async/make.hpp>
 #include <absl/strings/str_cat.h>
 
 using namespace arangodb;
@@ -75,12 +76,12 @@ class CalculationTransactionState final : public arangodb::TransactionState {
   }
 
   /// @brief commit a transaction
-  [[nodiscard]] futures::Future<arangodb::Result> commitTransaction(
+  [[nodiscard]] yaclib::Future<arangodb::Result> commitTransaction(
       arangodb::transaction::Methods*) override {
     updateStatus(
         arangodb::transaction::Status::COMMITTED);  // simulate state changes to
                                                     // make ASSERTS happy
-    return Result{};
+    return yaclib::MakeFuture<Result>();
   }
 
   /// @brief abort a transaction

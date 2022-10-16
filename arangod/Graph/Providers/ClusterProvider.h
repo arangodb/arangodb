@@ -40,11 +40,6 @@
 
 namespace arangodb {
 
-namespace futures {
-template<typename T>
-class Future;
-}
-
 namespace aql {
 class QueryContext;
 }
@@ -84,7 +79,7 @@ class ClusterProvider {
   auto startVertex(const VertexType& vertex, size_t depth = 0,
                    double weight = 0.0) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
-      -> futures::Future<std::vector<Step*>>;
+      -> yaclib::Future<std::vector<Step*>>;
   auto fetchVertices(std::vector<Step*> const& looseEnds) -> std::vector<Step*>;
   auto fetchEdges(const std::vector<Step*>& fetchedVertices) -> Result;
   auto expand(Step const& from, size_t previous,

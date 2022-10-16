@@ -124,7 +124,8 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     if (leaders.size() > 1) {
       res = ClusterTrxMethods::beginTransactionOnLeaders(
                 *this, leaders, transaction::MethodsApi::Synchronous)
-                .get();
+                .Get()
+                .Ok();
       if (res.fail()) {  // something is wrong
         return res;
       }
@@ -136,14 +137,14 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 }
 
 /// @brief commit a transaction
-futures::Future<Result> ClusterTransactionState::commitTransaction(
+yaclib::Future<Result> ClusterTransactionState::commitTransaction(
     transaction::Methods* activeTrx) {
   LOG_TRX("927c0", TRACE, this)
       << "committing " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(_status == transaction::Status::RUNNING);
   TRI_IF_FAILURE("TransactionWriteCommitMarker") {
-    return Result(TRI_ERROR_DEBUG);
+    return yaclib::MakeFuture<Result>(TRI_ERROR_DEBUG);
   }
 
   updateStatus(transaction::Status::COMMITTED);
@@ -152,7 +153,7 @@ futures::Future<Result> ClusterTransactionState::commitTransaction(
         .serverStatistics()
         ._transactionsStatistics._transactionsCommitted;
 
-  return Result{};
+  return yaclib::MakeFuture<Result>();
 }
 
 /// @brief abort and rollback a transaction

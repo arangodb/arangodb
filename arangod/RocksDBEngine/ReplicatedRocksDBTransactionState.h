@@ -79,7 +79,7 @@ class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
   std::unique_ptr<TransactionCollection> createTransactionCollection(
       DataSourceId cid, AccessMode::Type accessType) override;
 
-  futures::Future<Result> doCommit() override;
+  yaclib::Future<Result> doCommit() override;
   Result doAbort() override;
 
  private:

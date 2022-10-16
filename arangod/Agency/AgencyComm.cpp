@@ -40,7 +40,7 @@
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralRequest.h"
 #include "RestServer/DatabaseFeature.h"
@@ -1256,7 +1256,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
       result = comm.withSkipScheduler(true)
                    .sendWriteTransaction(std::chrono::duration<double>(timeout),
                                          std::move(buffer))
-                   .get();
+                   .Get()
+                   .Ok();
     } else {
       LOG_TOPIC("4e44f", TRACE, Logger::AGENCYCOMM)
           << "sendWithFailover: "
@@ -1267,7 +1268,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
                                      std::chrono::duration<double>(timeout),
                                      AsyncAgencyComm::RequestType::READ,
                                      std::move(buffer))
-                   .get();
+                   .Get()
+                   .Ok();
     }
   } else if (method == arangodb::rest::RequestType::GET) {
     LOG_TOPIC("4e448", TRACE, Logger::AGENCYCOMM)
@@ -1279,7 +1281,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
                                    std::chrono::duration<double>(timeout),
                                    AsyncAgencyComm::RequestType::CUSTOM,
                                    std::move(buffer))
-                 .get();
+                 .Get()
+                 .Ok();
   } else {
     return AgencyCommResult{rest::ResponseCode::METHOD_NOT_ALLOWED,
                             "method not supported"};

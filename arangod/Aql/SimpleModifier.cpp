@@ -36,6 +36,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Collection.h>
@@ -191,12 +192,14 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(
   // operations blocking as in previous versions of ArangoDB.
   // TODO: fix this and make it truly non-blocking (requires to
   // fix some lifecycle issues for AQL queries first).
-  result.wait();
+  yaclib::Wait(result);
 
-  if (result.isReady()) {
-    _results = std::move(result.get());
+  if (result.Ready()) {
+    _results = std::move(result).Touch().Ok();
     return ExecutionState::DONE;
   }
+  // See TODO above
+  TRI_ASSERT(false);
 
   _results = Waiting{};
 
@@ -204,21 +207,21 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(
   TRI_ASSERT(_infos.engine() != nullptr);
   TRI_ASSERT(_infos.engine()->sharedState() != nullptr);
 
-  // The guard has to be unlocked before "thenValue" is called, otherwise
+  // The guard has to be unlocked before "ThenInline" is called, otherwise
   // locking the mutex there will cause a deadlock if the result is already
   // available.
   guard.unlock();
 
   auto self = this->shared_from_this();
-  std::move(result).thenFinal([self, sqs = _infos.engine()->sharedState()](
-                                  futures::Try<OperationResult>&& opRes) {
+  std::move(result).DetachInline([self, sqs = _infos.engine()->sharedState()](
+                                     auto&& opRes) {
     sqs->executeAndWakeup([&]() noexcept {
       std::unique_lock<std::mutex> guard(self->_resultMutex);
       try {
         TRI_ASSERT(std::holds_alternative<Waiting>(self->_results));
         if (std::holds_alternative<Waiting>(self->_results)) {
           // get() will throw if opRes holds an exception, which is intended.
-          self->_results = std::move(opRes.get());
+          self->_results = std::move(opRes).Ok();
         } else {
           // This can never happen.
           using namespace std::string_literals;

@@ -32,7 +32,6 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
-#include "Futures/Utilities.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -105,7 +104,7 @@ void ArrayOutCache<M>::flushMessages() {
   reqOpts.database = this->_config->database();
   reqOpts.skipScheduler = true;
 
-  std::vector<futures::Future<network::Response>> responses;
+  std::vector<yaclib::Future<network::Response>> responses;
   for (auto const& it : _shardMap) {
     PregelShard shard = it.first;
     std::unordered_map<std::string, std::vector<M>> const& vertexMessageMap =
@@ -146,7 +145,7 @@ void ArrayOutCache<M>::flushMessages() {
         this->_baseUrl + Utils::messagesPath, std::move(buffer), reqOpts));
   }
 
-  futures::collectAll(responses).wait();
+  yaclib::Wait(responses.begin(), responses.end());
 
   this->_removeContainedMessages();
 }
@@ -217,7 +216,7 @@ void CombiningOutCache<M>::flushMessages() {
   auto const& nf = server.template getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
 
-  std::vector<futures::Future<network::Response>> responses;
+  std::vector<yaclib::Future<network::Response>> responses;
   for (auto const& it : _shardMap) {
     PregelShard shard = it.first;
     std::unordered_map<std::string_view, M> const& vertexMessageMap = it.second;
@@ -261,7 +260,7 @@ void CombiningOutCache<M>::flushMessages() {
         this->_baseUrl + Utils::messagesPath, std::move(buffer), reqOpts));
   }
 
-  futures::collectAll(responses).wait();
+  yaclib::Wait(responses.begin(), responses.end());
 
   _removeContainedMessages();
 }

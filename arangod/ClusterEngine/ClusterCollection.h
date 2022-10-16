@@ -78,7 +78,7 @@ class ClusterCollection final : public PhysicalCollection {
   void getPropertiesVPack(velocypack::Builder&) const override;
 
   /// @brief return the figures for a collection
-  futures::Future<OperationResult> figures(
+  yaclib::Future<OperationResult> figures(
       bool details, OperationOptions const& options) override;
 
   /// @brief closes an open collection

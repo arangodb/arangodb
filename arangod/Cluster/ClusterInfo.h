@@ -33,6 +33,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <yaclib/fwd.hpp>
 
 #include "Agency/AgencyComm.h"
 #include "Basics/Mutex.h"
@@ -49,13 +50,6 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-
-namespace futures {
-template<typename T>
-class Future;
-template<typename T>
-class Promise;
-}  // namespace futures
 
 class Result;
 template<typename T>
@@ -275,15 +269,14 @@ class ClusterInfo final {
    * @param raftIndex Raft index to wait for
    * @return Operation's result
    */
-  [[nodiscard]] futures::Future<Result> waitForPlan(uint64_t raftIndex);
+  [[nodiscard]] yaclib::Future<Result> waitForPlan(uint64_t raftIndex);
 
   /**
    * @brief Wait for Plan cache to be at the given Plan version
    * @param planVersion version to wait for
    * @return Operation's result
    */
-  [[nodiscard]] futures::Future<Result> waitForPlanVersion(
-      uint64_t planVersion);
+  [[nodiscard]] yaclib::Future<Result> waitForPlanVersion(uint64_t planVersion);
 
   /**
    * @brief Fetch the current Plan version and wait for the cache to catch up to
@@ -291,7 +284,7 @@ class ClusterInfo final {
    * @param timeout is for fetching the Plan version only. Waiting for the
    *        Plan version afterwards will never timeout.
    */
-  [[nodiscard]] futures::Future<Result> fetchAndWaitForPlanVersion(
+  [[nodiscard]] yaclib::Future<Result> fetchAndWaitForPlanVersion(
       network::Timeout timeout) const;
 
   /**
@@ -299,14 +292,14 @@ class ClusterInfo final {
    * @param raftIndex Raft index to wait for
    * @return Operation's result
    */
-  futures::Future<Result> waitForCurrent(uint64_t raftIndex);
+  yaclib::Future<Result> waitForCurrent(uint64_t raftIndex);
 
   /**
    * @brief Wait for Current cache to be at the given Raft index
    * @param currentVersion version to wait for
    * @return Operation's result
    */
-  [[nodiscard]] futures::Future<Result> waitForCurrentVersion(
+  [[nodiscard]] yaclib::Future<Result> waitForCurrentVersion(
       uint64_t currentVersion);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -914,7 +907,7 @@ class ClusterInfo final {
   void loadClusterId();
 
   void triggerWaiting(
-      std::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm,
+      std::multimap<uint64_t, yaclib::Promise<arangodb::Result>>& mm,
       uint64_t commitIndex);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -961,7 +954,7 @@ class ClusterInfo final {
   auto waitForReplicatedStatesCreation(
       std::string const& databaseName,
       std::vector<replication2::replicated_state::agency::Target> const&
-          replicatedStates) -> futures::Future<Result>;
+          replicatedStates) -> yaclib::Future<Result>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief deletes replicated states corresponding to shards
@@ -969,7 +962,7 @@ class ClusterInfo final {
   auto deleteReplicatedStates(
       std::string const& databaseName,
       std::vector<replication2::LogId> const& replicatedStatesIds)
-      -> futures::Future<Result>;
+      -> yaclib::Future<Result>;
 
   /// underlying application server
   ArangodServer& _server;
@@ -1194,13 +1187,13 @@ class ClusterInfo final {
   std::unique_ptr<SyncerThread> _curSyncer;
 
   mutable std::mutex _waitPlanLock;
-  std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitPlan;
+  std::multimap<uint64_t, yaclib::Promise<arangodb::Result>> _waitPlan;
   mutable std::mutex _waitPlanVersionLock;
-  std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitPlanVersion;
+  std::multimap<uint64_t, yaclib::Promise<arangodb::Result>> _waitPlanVersion;
   mutable std::mutex _waitCurrentLock;
-  std::multimap<uint64_t, futures::Promise<arangodb::Result>> _waitCurrent;
+  std::multimap<uint64_t, yaclib::Promise<arangodb::Result>> _waitCurrent;
   mutable std::mutex _waitCurrentVersionLock;
-  std::multimap<uint64_t, futures::Promise<arangodb::Result>>
+  std::multimap<uint64_t, yaclib::Promise<arangodb::Result>>
       _waitCurrentVersion;
 
   /// @brief histogram for loadPlan runtime
@@ -1213,9 +1206,8 @@ namespace cluster {
 
 // Note that while a network error will just return a failed `ResultT`, there
 // are still possible exceptions.
-futures::Future<ResultT<uint64_t>> fetchPlanVersion(network::Timeout timeout);
-futures::Future<ResultT<uint64_t>> fetchCurrentVersion(
-    network::Timeout timeout);
+yaclib::Future<ResultT<uint64_t>> fetchPlanVersion(network::Timeout timeout);
+yaclib::Future<ResultT<uint64_t>> fetchCurrentVersion(network::Timeout timeout);
 
 }  // namespace cluster
 

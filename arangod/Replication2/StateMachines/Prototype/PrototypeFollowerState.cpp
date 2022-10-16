@@ -27,6 +27,8 @@
 
 #include "Logger/LogContextKeys.h"
 
+#include <yaclib/async/make.hpp>
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
@@ -43,15 +45,17 @@ PrototypeFollowerState::PrototypeFollowerState(
 
 auto PrototypeFollowerState::acquireSnapshot(ParticipantId const& destination,
                                              LogIndex waitForIndex) noexcept
-    -> futures::Future<Result> {
+    -> yaclib::Future<Result> {
   ResultT<std::shared_ptr<IPrototypeLeaderInterface>> leader =
       _networkInterface->getLeaderInterface(destination);
   if (leader.fail()) {
-    return leader.result();
+    return yaclib::MakeFuture<Result>(leader.result());
   }
   return leader.get()
       ->getSnapshot(_logIdentifier, waitForIndex)
-      .thenValue([self = shared_from_this()](auto&& result) mutable -> Result {
+      .ThenInline([self = shared_from_this()](
+                      ResultT<std::unordered_map<std::string, std::string>>&&
+                          result) mutable -> Result {
         if (result.fail()) {
           return result.result();
         }
@@ -66,7 +70,7 @@ auto PrototypeFollowerState::acquireSnapshot(ParticipantId const& destination,
 }
 
 auto PrototypeFollowerState::applyEntries(
-    std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
+    std::unique_ptr<EntryIterator> ptr) noexcept -> yaclib::Future<Result> {
   auto res = basics::catchToResult([&] {
     return _guardedData.doUnderLock(
         [self = shared_from_this(), ptr = std::move(ptr)](auto& core) mutable {
@@ -82,7 +86,7 @@ auto PrototypeFollowerState::applyEntries(
         });
   });
 
-  return {res};
+  return yaclib::MakeFuture(res);
 }
 
 auto PrototypeFollowerState::resign() && noexcept
@@ -94,30 +98,31 @@ auto PrototypeFollowerState::resign() && noexcept
 }
 
 auto PrototypeFollowerState::get(std::string key, LogIndex waitForIndex)
-    -> futures::Future<ResultT<std::optional<std::string>>> {
+    -> yaclib::Future<ResultT<std::optional<std::string>>> {
   return waitForApplied(waitForIndex)
-      .thenValue([key = std::move(key), weak = weak_from_this()](
-                     auto&&) -> ResultT<std::optional<std::string>> {
-        auto self = weak.lock();
-        if (self == nullptr) {
-          return {TRI_ERROR_CLUSTER_NOT_FOLLOWER};
-        }
-        return self->_guardedData.doUnderLock(
-            [&](auto& core) -> ResultT<std::optional<std::string>> {
-              if (!core) {
-                return {TRI_ERROR_CLUSTER_NOT_FOLLOWER};
-              }
-              return core->get(key);
-            });
-      });
+      .ThenInline(
+          [key = std::move(key),
+           weak = weak_from_this()]() -> ResultT<std::optional<std::string>> {
+            auto self = weak.lock();
+            if (self == nullptr) {
+              return {TRI_ERROR_CLUSTER_NOT_FOLLOWER};
+            }
+            return self->_guardedData.doUnderLock(
+                [&](auto& core) -> ResultT<std::optional<std::string>> {
+                  if (!core) {
+                    return {TRI_ERROR_CLUSTER_NOT_FOLLOWER};
+                  }
+                  return core->get(key);
+                });
+          });
 }
 
 auto PrototypeFollowerState::get(std::vector<std::string> keys,
                                  LogIndex waitForIndex)
-    -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>> {
+    -> yaclib::Future<ResultT<std::unordered_map<std::string, std::string>>> {
   return waitForApplied(waitForIndex)
-      .thenValue([keys = std::move(keys), weak = weak_from_this()](auto&&)
-                     -> ResultT<std::unordered_map<std::string, std::string>> {
+      .ThenInline([keys = std::move(keys), weak = weak_from_this()]()
+                      -> ResultT<std::unordered_map<std::string, std::string>> {
         auto self = weak.lock();
         if (self == nullptr) {
           return {TRI_ERROR_CLUSTER_NOT_FOLLOWER};

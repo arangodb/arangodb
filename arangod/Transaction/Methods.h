@@ -35,6 +35,7 @@
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
 
+#include <yaclib/async/future.hpp>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -50,10 +51,6 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
-namespace futures {
-template<class T>
-class Future;
-}
 namespace basics {
 struct AttributeName;
 }  // namespace basics
@@ -95,7 +92,7 @@ namespace transaction {
 class Methods {
  public:
   template<typename T>
-  using Future = futures::Future<T>;
+  using Future = yaclib::Future<T>;
   using IndexHandle = std::shared_ptr<arangodb::Index>;  // legacy
   using VPackSlice = arangodb::velocypack::Slice;
 
@@ -135,7 +132,7 @@ class Methods {
   /// @param status the new status of the transaction
   ///               will match trx.state()->status() for top-level transactions
   ///               may not match trx.state()->status() for embeded transactions
-  ///               since their staus is not updated from RUNNING
+  ///               since their status is not updated from RUNNING
   typedef std::function<void(transaction::Methods& trx,
                              transaction::Status status)>
       StatusChangeCallback;
@@ -356,9 +353,9 @@ class Methods {
                                        OperationOptions const& options);
 
   /// @brief count the number of documents in a collection
-  futures::Future<OperationResult> countAsync(std::string const& collectionName,
-                                              CountType type,
-                                              OperationOptions const& options);
+  yaclib::Future<OperationResult> countAsync(std::string const& collectionName,
+                                             CountType type,
+                                             OperationOptions const& options);
 
   /// @brief factory for IndexIterator objects from AQL
   /// note: the caller must have read-locked the underlying collection when
@@ -424,7 +421,7 @@ class Methods {
                              velocypack::Builder const* oldDoc,
                              velocypack::Builder const* newDoc);
 
-  futures::Future<OperationResult> documentCoordinator(
+  yaclib::Future<OperationResult> documentCoordinator(
       std::string const& collectionName, VPackSlice value,
       OperationOptions const& options, MethodsApi api);
 
@@ -554,7 +551,7 @@ class Methods {
                                      CountType type,
                                      OperationOptions const& options,
                                      MethodsApi api)
-      -> futures::Future<OperationResult>;
+      -> yaclib::Future<OperationResult>;
 
   /// @brief return the transaction collection for a document collection
   TransactionCollection* trxCollection(
@@ -564,11 +561,11 @@ class Methods {
       std::string const& name,
       AccessMode::Type type = AccessMode::Type::READ) const;
 
-  futures::Future<OperationResult> countCoordinator(
+  yaclib::Future<OperationResult> countCoordinator(
       std::string const& collectionName, CountType type,
       OperationOptions const& options, MethodsApi api);
 
-  futures::Future<OperationResult> countCoordinatorHelper(
+  yaclib::Future<OperationResult> countCoordinatorHelper(
       std::shared_ptr<LogicalCollection> const& collinfo,
       std::string const& collectionName, CountType type,
       OperationOptions const& options, MethodsApi api);

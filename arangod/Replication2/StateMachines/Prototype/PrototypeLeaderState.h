@@ -35,7 +35,7 @@ namespace arangodb::replication2::replicated_state::prototype {
 struct PrototypeLeaderState
     : IReplicatedLeaderState<PrototypeState>,
       std::enable_shared_from_this<PrototypeLeaderState> {
-  using WaitForAppliedPromise = futures::Promise<futures::Unit>;
+  using WaitForAppliedPromise = yaclib::Promise<>;
   using WaitForAppliedQueue = std::multimap<LogIndex, WaitForAppliedPromise>;
 
   explicit PrototypeLeaderState(std::unique_ptr<PrototypeCore> core);
@@ -44,44 +44,44 @@ struct PrototypeLeaderState
       -> std::unique_ptr<PrototypeCore> override;
 
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
-      -> futures::Future<Result> override;
+      -> yaclib::Future<Result> override;
 
   void onSnapshotCompleted() noexcept override;
 
   auto set(std::unordered_map<std::string, std::string> entries,
            PrototypeStateMethods::PrototypeWriteOptions)
-      -> futures::Future<LogIndex>;
+      -> yaclib::Future<LogIndex>;
 
   auto compareExchange(std::string key, std::string oldValue,
                        std::string newValue,
                        PrototypeStateMethods::PrototypeWriteOptions options)
-      -> futures::Future<ResultT<LogIndex>>;
+      -> yaclib::Future<ResultT<LogIndex>>;
 
   auto remove(std::string key, PrototypeStateMethods::PrototypeWriteOptions)
-      -> futures::Future<LogIndex>;
+      -> yaclib::Future<LogIndex>;
   auto remove(std::vector<std::string> keys,
               PrototypeStateMethods::PrototypeWriteOptions)
-      -> futures::Future<LogIndex>;
+      -> yaclib::Future<LogIndex>;
 
   auto get(std::string key, LogIndex waitForApplied)
-      -> futures::Future<ResultT<std::optional<std::string>>>;
+      -> yaclib::Future<ResultT<std::optional<std::string>>>;
   auto get(std::vector<std::string> keys, LogIndex waitForApplied)
-      -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>>;
+      -> yaclib::Future<ResultT<std::unordered_map<std::string, std::string>>>;
 
   auto getSnapshot(LogIndex waitForIndex)
-      -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>>;
+      -> yaclib::Future<ResultT<std::unordered_map<std::string, std::string>>>;
 
-  auto waitForApplied(LogIndex waitForIndex) -> futures::Future<futures::Unit>;
+  auto waitForApplied(LogIndex waitForIndex) -> yaclib::Future<>;
 
   LoggerContext const loggerContext;
 
  private:
   auto executeOp(PrototypeLogEntry const&,
                  PrototypeStateMethods::PrototypeWriteOptions)
-      -> futures::Future<LogIndex>;
+      -> yaclib::Future<LogIndex>;
   auto pollNewEntries();
   void handlePollResult(
-      futures::Future<std::unique_ptr<EntryIterator>>&& pollFuture);
+      yaclib::Future<std::unique_ptr<EntryIterator>>&& pollFuture);
 
   struct GuardedData {
     explicit GuardedData(PrototypeLeaderState& self,
@@ -91,7 +91,7 @@ struct PrototypeLeaderState
     [[nodiscard]] auto applyEntries(std::unique_ptr<EntryIterator> ptr)
         -> DeferredAction;
 
-    auto waitForApplied(LogIndex index) -> futures::Future<futures::Unit>;
+    auto waitForApplied(LogIndex index) -> yaclib::Future<>;
 
     [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
 

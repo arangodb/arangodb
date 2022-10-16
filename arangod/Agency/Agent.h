@@ -32,12 +32,12 @@
 #include "Agency/Inception.h"
 #include "Agency/State.h"
 #include "Agency/Store.h"
-#include "Futures/Promise.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/ReadWriteLock.h"
 #include "RestServer/arangod.h"
 #include "Metrics/Fwd.h"
 
+#include <yaclib/async/promise.hpp>
 #include <atomic>
 #include <chrono>
 #include <map>
@@ -136,8 +136,8 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
 
   /// @brief Long pool for higher index than given if leader or else empty
   /// builder and false
-  std::tuple<futures::Future<query_t>, bool, std::string> poll(index_t index,
-                                                               double timeout);
+  std::tuple<yaclib::Future<query_t>, bool, std::string> poll(index_t index,
+                                                              double timeout);
 
   /// @brief Inquire success of logs given clientIds
   write_ret_t inquire(velocypack::Slice query);
@@ -558,7 +558,7 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   //        to sort out, what is sent to client
   std::mutex _promLock;
   index_t _lowestPromise;
-  std::multimap<SteadyTimePoint, futures::Promise<query_t>> _promises;
+  std::multimap<SteadyTimePoint, yaclib::Promise<query_t>> _promises;
 
   metrics::Counter& _write_ok;
   metrics::Counter& _write_no_leader;

@@ -30,7 +30,8 @@
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Transaction/Manager.h"
 
-#include <Futures/Future.h>
+#include <yaclib/async/make.hpp>
+#include <yaclib/async/future.hpp>
 #include <Logger/LogContextKeys.h>
 
 namespace arangodb::replication2::replicated_state::document {
@@ -68,10 +69,10 @@ auto DocumentLeaderState::resign() && noexcept
 }
 
 auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
-    -> futures::Future<Result> {
+    -> yaclib::Future<Result> {
   return _guardedData.doUnderLock([self = shared_from_this(),
                                    ptr = std::move(ptr)](
-                                      auto& data) -> futures::Future<Result> {
+                                      auto& data) -> yaclib::Future<Result> {
     if (data.didResign()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
     }
@@ -118,15 +119,15 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       }
     }
 
-    return {TRI_ERROR_NO_ERROR};
-  });
+        return yaclib::MakeFuture<Result>(TRI_ERROR_NO_ERROR);
+      });
 }
 
 auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
                                              OperationType operation,
                                              TransactionId transactionId,
                                              ReplicationOptions opts)
-    -> futures::Future<LogIndex> {
+    -> yaclib::Future<LogIndex> {
   // we replicate operations using follower trx ids, but locally we track the
   // actual trx ids
   auto entry =
@@ -139,8 +140,8 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
     if (_activeTransactions.getLockedGuard()->erase(transactionId) == 0) {
       // we have not replicated anything for a transaction with this id, so
       // there is no need to replicate the abort/commit operation
-      return LogIndex{};  // TODO - can we do this differently instead of
-                          // returning a dummy index/
+      // TODO - can we do this differently instead of returning a dummy index
+      return yaclib::MakeFuture(LogIndex{});
     }
   } else {
     _activeTransactions.getLockedGuard()->emplace(transactionId);
@@ -149,11 +150,14 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
   auto idx = stream->insert(entry);
 
   if (opts.waitForCommit) {
-    return stream->waitFor(idx).thenValue(
-        [idx](auto&& result) { return futures::Future<LogIndex>{idx}; });
+    return stream->waitFor(idx).ThenInline(
+        [idx](
+            streams::ProducerStream<DocumentLogEntry>::WaitForResult&& result) {
+          return yaclib::MakeFuture<LogIndex>(idx);
+        });
   }
 
-  return futures::Future<LogIndex>{idx};
+  return yaclib::MakeFuture<LogIndex>(idx);
 }
 
 std::unordered_set<TransactionId> DocumentLeaderState::getActiveTransactions()

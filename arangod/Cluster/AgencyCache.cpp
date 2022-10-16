@@ -31,6 +31,7 @@
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/RestHandler.h"
+#include "Logger/LogMacros.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "Network/NetworkFeature.h"
@@ -150,16 +151,17 @@ std::tuple<query_t, index_t> AgencyCache::read(
   return std::tuple(std::move(result), _commitIndex);
 }
 
-futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index) {
+yaclib::Future<arangodb::Result> AgencyCache::waitFor(index_t index) {
   std::shared_lock s(_storeLock);
   if (index <= _commitIndex) {
-    return futures::makeFuture(arangodb::Result());
+    return yaclib::MakeFuture<Result>();
   }
   // intentionally don't release _storeLock here until we have inserted the
   // promise
+  auto [f, p] = yaclib::MakeContract<Result>();
   std::lock_guard w(_waitLock);
-  return _waiting.emplace(index, futures::Promise<arangodb::Result>())
-      ->second.getFuture();
+  _waiting.emplace(index, std::move(p));
+  return std::move(f);
 }
 
 index_t AgencyCache::index() const {
@@ -395,14 +397,14 @@ void AgencyCache::run() {
       if (server().getFeature<NetworkFeature>().prepared()) {
         auto ret =
             sendTransaction()
-                .thenValue([&](AsyncAgencyCommResult&& rb) {
+                .ThenInline([&](AsyncAgencyCommResult&& rb) {
                   if (!rb.ok() ||
                       rb.statusCode() != arangodb::fuerte::StatusOK) {
                     // Error response, this includes client timeout
                     increaseWaitTime();
                     LOG_TOPIC("9a93e", DEBUG, Logger::CLUSTER)
                         << "Failed to get poll result from agency.";
-                    return futures::makeFuture();
+                    return yaclib::MakeFuture();
                   }
                   // Correct response:
                   index_t curIndex = 0;
@@ -421,7 +423,7 @@ void AgencyCache::run() {
                   VPackSlice firstIndexSlice = rs.get("firstIndex");
                   if (!firstIndexSlice.isNumber()) {
                     // Nothing happened at all, server timeout
-                    return futures::makeFuture();
+                    return yaclib::MakeFuture();
                   }
                   index_t firstIndex = firstIndexSlice.getNumber<uint64_t>();
                   if (firstIndex > 0) {
@@ -436,7 +438,7 @@ void AgencyCache::run() {
                       LOG_TOPIC("457e9", TRACE, Logger::CLUSTER)
                           << "Incoming: " << rs.toJson();
                       increaseWaitTime();
-                      return futures::makeFuture();
+                      return yaclib::MakeFuture();
                     }
                     TRI_ASSERT(rs.hasKey("log"));
                     TRI_ASSERT(rs.get("log").isArray());
@@ -490,22 +492,24 @@ void AgencyCache::run() {
                   } else {
                     invokeAllCallbacks();
                   }
-                  return futures::makeFuture();
+                  return yaclib::MakeFuture();
                 })
-                .thenError<VPackException>(
-                    [&increaseWaitTime](VPackException const& e) {
-                      LOG_TOPIC("9a9f3", ERR, Logger::CLUSTER)
-                          << "Failed to parse poll result from agency: "
-                          << e.what();
-                      increaseWaitTime();
-                    })
-                .thenError<std::exception>([&increaseWaitTime](
-                                               std::exception const& e) {
-                  LOG_TOPIC("9a9e3", ERR, Logger::CLUSTER)
-                      << "Failed to get poll result from agency: " << e.what();
-                  increaseWaitTime();
+                .ThenInline([&increaseWaitTime](auto&& r) {
+                  try {
+                    std::ignore = std::move(r).Ok();
+                  } catch (VPackException const& e) {
+                    LOG_TOPIC("9a9f3", ERR, Logger::CLUSTER)
+                        << "Failed to parse poll result from agency: "
+                        << e.what();
+                    increaseWaitTime();
+                  } catch (std::exception const& e) {
+                    LOG_TOPIC("9a9e3", ERR, Logger::CLUSTER)
+                        << "Failed to get poll result from agency: "
+                        << e.what();
+                    increaseWaitTime();
+                  }
                 });
-        ret.wait();
+        yaclib::Wait(ret);
       } else {
         increaseWaitTime();
         LOG_TOPIC("9393e", DEBUG, Logger::CLUSTER)
@@ -535,13 +539,16 @@ void AgencyCache::triggerWaiting(index_t commitIndex) {
     if (pit->first > commitIndex) {
       break;
     }
-    auto pp =
-        std::make_shared<futures::Promise<Result>>(std::move(pit->second));
+    auto p = std::move(pit->second);
     if (scheduler && !this->isStopping()) {
       scheduler->queue(RequestLane::CLUSTER_INTERNAL,
-                       [pp] { pp->setValue(Result()); });
+                       [p = std::move(p)]() mutable {
+                         TRI_ASSERT(p.Valid());
+                         std::move(p).Set(Result{});
+                       });
     } else {
-      pp->setValue(Result(_shutdownCode));
+      TRI_ASSERT(p.Valid());
+      std::move(p).Set(Result(_shutdownCode));
     }
     pit = _waiting.erase(pit);
   }
@@ -611,7 +618,8 @@ void AgencyCache::beginShutdown() {
     std::lock_guard g(_waitLock);
     auto pit = _waiting.begin();
     while (pit != _waiting.end()) {
-      pit->second.setValue(Result(_shutdownCode));
+      TRI_ASSERT(pit->second.Valid());
+      std::move(pit->second).Set(Result(_shutdownCode));
       ++pit;
     }
     _waiting.clear();

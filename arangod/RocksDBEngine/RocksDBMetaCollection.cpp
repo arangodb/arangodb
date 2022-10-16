@@ -31,6 +31,7 @@
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBFormat.h"

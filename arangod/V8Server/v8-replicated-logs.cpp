@@ -21,7 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Futures/Future.h>
+#include <yaclib/async/future.hpp>
 
 #include "V8/v8-helper.h"
 #include "v8-replicated-logs.h"
@@ -109,7 +109,7 @@ static void JS_GetReplicatedLog(
   }
 
   std::ignore =
-      ReplicatedLogMethods::createInstance(vocbase)->getStatus(id).get();
+      ReplicatedLogMethods::createInstance(vocbase)->getStatus(id).Get().Ok();
   auto result = WrapReplicatedLog(isolate, id);
   TRI_V8_RETURN(result);
 
@@ -140,7 +140,8 @@ static void JS_CreateReplicatedLog(
 
   auto res = ReplicatedLogMethods::createInstance(vocbase)
                  ->createReplicatedLog(spec)
-                 .get();
+                 .Get()
+                 .Ok();
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res.result());
   }
@@ -180,7 +181,8 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (auto res = ReplicatedLogMethods::createInstance(vocbase)
                      ->deleteReplicatedLog(id)
-                     .get();
+                     .Get()
+                     .Ok();
       !res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -240,7 +242,8 @@ static void JS_Insert(v8::FunctionCallbackInfo<v8::Value> const& args) {
         ReplicatedLogMethods::createInstance(vocbase)
             ->insertWithoutCommit(
                 id, LogPayload::createFromSlice(builder.slice()), waitForSync)
-            .get();
+            .Get()
+            .Ok();
     VPackBuilder response;
     {
       VPackObjectBuilder ob(&response);
@@ -251,7 +254,8 @@ static void JS_Insert(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auto result = ReplicatedLogMethods::createInstance(vocbase)
                       ->insert(id, LogPayload::createFromSlice(builder.slice()),
                                waitForSync)
-                      .get();
+                      .Get()
+                      .Ok();
     VPackBuilder response;
     {
       VPackObjectBuilder ob(&response);
@@ -303,7 +307,8 @@ static void JS_MultiInsert(v8::FunctionCallbackInfo<v8::Value> const& args) {
     replicated_log::VPackArrayToLogPayloadIterator iter{slice};
     auto result = ReplicatedLogMethods::createInstance(vocbase)
                       ->insert(id, iter, waitForSync)
-                      .get();
+                      .Get()
+                      .Ok();
 
     VPackBuilder response;
     {
@@ -335,7 +340,7 @@ static void JS_Status(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto result =
-      ReplicatedLogMethods::createInstance(vocbase)->getStatus(id).get();
+      ReplicatedLogMethods::createInstance(vocbase)->getStatus(id).Get().Ok();
   auto response = std::visit(
       [](auto&& r) {
         VPackBuilder response;
@@ -378,7 +383,8 @@ static void JS_GlobalStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto result = ReplicatedLogMethods::createInstance(vocbase)
                     ->getGlobalStatus(id, source)
-                    .get();
+                    .Get()
+                    .Ok();
   VPackBuilder response;
   result.toVelocyPack(response);
   TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
@@ -405,8 +411,10 @@ static void JS_Head(v8::FunctionCallbackInfo<v8::Value> const& args) {
     length = args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
   }
 
-  auto iter =
-      ReplicatedLogMethods::createInstance(vocbase)->head(id, length).get();
+  auto iter = ReplicatedLogMethods::createInstance(vocbase)
+                  ->head(id, length)
+                  .Get()
+                  .Ok();
   VPackBuilder response;
   {
     VPackArrayBuilder ab(&response);
@@ -439,8 +447,10 @@ static void JS_Tail(v8::FunctionCallbackInfo<v8::Value> const& args) {
     length = args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value();
   }
 
-  auto iter =
-      ReplicatedLogMethods::createInstance(vocbase)->tail(id, length).get();
+  auto iter = ReplicatedLogMethods::createInstance(vocbase)
+                  ->tail(id, length)
+                  .Get()
+                  .Ok();
   VPackBuilder response;
   {
     VPackArrayBuilder ab(&response);
@@ -479,7 +489,8 @@ static void JS_Slice(v8::FunctionCallbackInfo<v8::Value> const& args) {
   });
   auto iter = ReplicatedLogMethods::createInstance(vocbase)
                   ->slice(id, start, stop)
-                  .get();
+                  .Get()
+                  .Ok();
   VPackBuilder response;
   {
     VPackArrayBuilder ab(&response);
@@ -518,7 +529,8 @@ static void JS_Poll(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto iter = ReplicatedLogMethods::createInstance(vocbase)
                   ->poll(id, first, limit)
-                  .get();
+                  .Get()
+                  .Ok();
   VPackBuilder response;
   {
     VPackArrayBuilder ab(&response);
@@ -551,7 +563,8 @@ static void JS_At(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto entry = ReplicatedLogMethods::createInstance(vocbase)
                    ->getLogEntryByIndex(id, index)
-                   .get();
+                   .Get()
+                   .Ok();
   VPackBuilder response;
   entry->toVelocyPack(response);
   TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
@@ -577,8 +590,10 @@ static void JS_Release(v8::FunctionCallbackInfo<v8::Value> const& args) {
     index = LogIndex{args[0]->ToUint32(TRI_IGETC).ToLocalChecked()->Value()};
   }
 
-  auto result =
-      ReplicatedLogMethods::createInstance(vocbase)->release(id, index).get();
+  auto result = ReplicatedLogMethods::createInstance(vocbase)
+                    ->release(id, index)
+                    .Get()
+                    .Ok();
   if (result.fail()) {
     THROW_ARANGO_EXCEPTION(result);
   }

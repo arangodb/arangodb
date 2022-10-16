@@ -34,13 +34,8 @@
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/LoggerContext.h"
 
-namespace arangodb::futures {
-template<typename T>
-class Future;
-template<typename T>
-class Promise;
-struct Unit;
-}  // namespace arangodb::futures
+#include <yaclib/async/promise.hpp>
+
 namespace arangodb {
 class Result;
 }
@@ -141,7 +136,7 @@ struct ReplicatedState final
     virtual ~IStateManager() = default;
     virtual void run() = 0;
 
-    using WaitForAppliedPromise = futures::Promise<futures::Unit>;
+    using WaitForAppliedPromise = yaclib::Promise<>;
     using WaitForAppliedQueue = std::multimap<LogIndex, WaitForAppliedPromise>;
 
     [[nodiscard]] virtual auto getStatus() const -> StateStatus = 0;

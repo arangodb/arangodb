@@ -297,7 +297,8 @@ arangodb::Result fetchRevisions(
       TRI_ASSERT(futures.size() == shoppingLists.size());
       auto& f = futures.front();
       double tWait = TRI_microtime();
-      auto& val = f.get();
+      TRI_ASSERT(f.Valid());
+      auto val = std::move(f).Get().Ok();
       stats.waitedForDocs += TRI_microtime() - tWait;
       Result res = val.combinedResult();
       if (res.fail()) {

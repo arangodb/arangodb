@@ -28,7 +28,6 @@
 #include <limits>
 #include <numeric>
 
-#include "Futures/Utilities.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "RocksDBEngine/Methods/RocksDBReadOnlyMethods.h"
@@ -38,6 +37,9 @@
 #include "RocksDBEngine/ReplicatedRocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "VocBase/Identifiers/TransactionId.h"
+
+#include <yaclib/async/make.hpp>
+#include <yaclib/async/when_all.hpp>
 
 using namespace arangodb;
 
@@ -68,7 +70,7 @@ Result ReplicatedRocksDBTransactionState::beginTransaction(
 }
 
 /// @brief commit a transaction
-futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
+yaclib::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
   _hasActiveTrx = false;
 
   if (!mustBeReplicated()) {
@@ -80,26 +82,27 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
         break;
       }
     }
-    return res;
+    return yaclib::MakeFuture(std::move(res));
   }
 
   auto operation =
       replication2::replicated_state::document::OperationType::kCommit;
   auto options = replication2::replicated_state::document::ReplicationOptions{
       .waitForCommit = true};
-  std::vector<futures::Future<Result>> commits;
+  std::vector<yaclib::Future<Result>> commits;
   allCollections([&](TransactionCollection& tc) {
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(tc);
     if (rtc.accessType() != AccessMode::Type::READ) {
       // We have to write to the log and wait for the log entry to be committed
       // (in the log sense), before we can commit locally.
       auto leader = rtc.leaderState();
-      commits.emplace_back(leader
-                               ->replicateOperation(velocypack::SharedSlice{},
-                                                    operation, id(), options)
-                               .thenValue([&rtc](auto&& res) -> Result {
-                                 return rtc.commitTransaction();
-                               }));
+      commits.emplace_back(
+          leader
+              ->replicateOperation(velocypack::SharedSlice{}, operation, id(),
+                                   options)
+              .ThenInline([&rtc](replication2::LogIndex&& res) -> Result {
+                return rtc.commitTransaction();
+              }));
     } else {
       // For read-only transactions the commit is a no-op, but we still have to
       // call it to ensure cleanup.
@@ -110,13 +113,12 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
 
   // We are capturing a shared pointer to this state so we prevent reclamation
   // while we are waiting for the commit operations.
-  return futures::collectAll(commits).thenValue(
-      [self = shared_from_this()](
-          std::vector<futures::Try<Result>>&& results) -> Result {
-        for (auto& res : results) {
-          auto result = res.get();
-          if (result.fail()) {
-            return result;
+  return yaclib::WhenAll<yaclib::WhenPolicy::None>(commits.begin(),
+                                                   commits.end())
+      .ThenInline([self = shared_from_this()](std::vector<yaclib::Result<Result>>&& results) -> Result {
+        for (auto&& result : results) {
+          if (auto r = std::move(result).Ok(); r.fail()) {
+            return r;
           }
         }
         return {};
@@ -153,8 +155,10 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(*col);
     if (rtc.accessType() != AccessMode::Type::READ) {
       auto leader = rtc.leaderState();
-      leader->replicateOperation(velocypack::SharedSlice{}, operation, id(),
-                                 options);
+      leader
+          ->replicateOperation(velocypack::SharedSlice{}, operation, id(),
+                               options)
+          .Detach();
     }
     auto r = rtc.abortTransaction();
     if (r.fail()) {

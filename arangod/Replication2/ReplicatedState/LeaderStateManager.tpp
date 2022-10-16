@@ -49,13 +49,12 @@ void LeaderStateManager<S>::run() noexcept {
       };
 
   auto const handleErrors = [weak = this->weak_from_this()](
-                                futures::Try<futures::Unit>&&
-                                    tryResult) noexcept {
+                                auto&& tryResult) noexcept {
     // TODO Instead of capturing "this", should we capture the loggerContext
     // instead?
     if (auto self = weak.lock(); self != nullptr) {
       try {
-        std::ignore = tryResult.get();
+        std::ignore = std::move(tryResult).Ok();
       } catch (replicated_log::ParticipantResignedException const&) {
         LOG_CTX("7322d", DEBUG, self->loggerContext)
             << "Log leader resigned, stopping replicated state machine. Will "
@@ -84,7 +83,7 @@ void LeaderStateManager<S>::run() noexcept {
   };
 
   auto const transitionTo = [this](LeaderInternalState state) noexcept {
-    return [state, weak = this->weak_from_this()](futures::Unit) noexcept {
+    return [state, weak = this->weak_from_this()]() noexcept {
       if (auto self = weak.lock(); self != nullptr) {
         self->guardedData.getLockedGuard()->updateInternalState(state);
         self->run();
@@ -92,11 +91,12 @@ void LeaderStateManager<S>::run() noexcept {
     };
   };
 
-  auto const toTryUnit = []<typename F>(F&& fn) -> futures::Try<futures::Unit> {
+  auto const toTryUnit = []<typename F>(F&& fn) -> yaclib::Result<> {
     try {
-      return futures::Try<futures::Unit>{std::forward<F>(fn)()};
+      std::forward<F>(fn)();
+      return yaclib::Result<>{yaclib::Unit{}};
     } catch (...) {
-      return futures::Try<futures::Unit>{std::current_exception()};
+      return yaclib::Result<>{std::current_exception()};
     }
   };
 
@@ -106,29 +106,26 @@ void LeaderStateManager<S>::run() noexcept {
       // This transition does nothing except make it visible that run() was
       // actually called.
       std::invoke(
-          transitionTo(LeaderInternalState::kWaitingForLeadershipEstablished),
-          futures::Unit());
+          transitionTo(LeaderInternalState::kWaitingForLeadershipEstablished));
     } break;
     case LeaderInternalState::kWaitingForLeadershipEstablished: {
       waitForLeadership()
-          .thenValue(transitionTo(LeaderInternalState::kRecoveryInProgress))
-          .thenFinal(handleErrors);
+          .ThenInline(transitionTo(LeaderInternalState::kRecoveryInProgress))
+          .DetachInline(handleErrors);
     } break;
     case LeaderInternalState::kRecoveryInProgress: {
       recoverEntries()
-          .thenValue(throwResultOnErrorAsCorrespondingException)
-          .thenValue(transitionTo(LeaderInternalState::kServiceStarting))
-          .thenFinal(handleErrors);
+          .ThenInline(throwResultOnErrorAsCorrespondingException)
+          .ThenInline(transitionTo(LeaderInternalState::kServiceStarting))
+          .DetachInline(handleErrors);
     } break;
     case LeaderInternalState::kServiceStarting: {
-      auto tryResult = toTryUnit([this]() -> futures::Unit {
+      auto tryResult = toTryUnit([this] {
         auto res = startService();
         throwResultOnErrorAsCorrespondingException(std::move(res));
-        return {};
       });
-      if (tryResult.hasValue()) {
-        std::invoke(transitionTo(LeaderInternalState::kServiceAvailable),
-                    futures::Unit());
+      if (tryResult) {
+        std::invoke(transitionTo(LeaderInternalState::kServiceAvailable));
       } else {
         handleErrors(std::move(tryResult));
       }
@@ -140,21 +137,18 @@ void LeaderStateManager<S>::run() noexcept {
 
 template<typename S>
 auto LeaderStateManager<S>::waitForLeadership() noexcept
-    -> futures::Future<futures::Unit> try {
+    -> yaclib::Future<> try {
   GaugeScopedCounter counter(metrics->replicatedStateNumberWaitingForLeader);
-  return logLeader->waitForLeadership().thenValue(
-      [counter =
-           std::move(counter)](replicated_log::WaitForResult const&) mutable {
-        counter.fire();
-        return futures::Unit();
-      });
+  return logLeader->waitForLeadership().ThenInline(
+      [counter = std::move(counter)](
+          replicated_log::WaitForResult const&) mutable { counter.fire(); });
 } catch (...) {
-  return futures::Try<futures::Unit>(std::current_exception());
+  return yaclib::MakeFuture<void>(std::current_exception());
 }
 
 template<typename S>
 auto LeaderStateManager<S>::recoverEntries() noexcept
-    -> futures::Future<Result> try {
+    -> yaclib::Future<Result> try {
   LOG_CTX("53ba1", TRACE, loggerContext) << "LeaderStateManager established";
   auto f = guardedData.doUnderLock([&](GuardedData& data) {
     TRI_ASSERT(data.internalState == LeaderInternalState::kRecoveryInProgress)
@@ -169,13 +163,13 @@ auto LeaderStateManager<S>::recoverEntries() noexcept
     return data.stream->waitForIterator(LogIndex{0});
   });
 
-  if (!f.isReady()) {
+  if (!f.Ready()) {
     LOG_CTX("4448d", ERR, loggerContext)
         << "Logic error: Stream is not ready yet. Will wait for it. "
            "Please report this error to arangodb.com";
     TRI_ASSERT(false);
   }
-  auto&& result = f.get();
+  auto result = std::move(f).Get().Ok();
 
   LOG_CTX("53ba2", TRACE, loggerContext)
       << "receiving committed entries for recovery";
@@ -205,12 +199,12 @@ auto LeaderStateManager<S>::recoverEntries() noexcept
 
   MeasureTimeGuard timeGuard(metrics->replicatedStateRecoverEntriesRtt);
   return machine->recoverEntries(std::move(result))
-      .then([guard = std::move(timeGuard)](auto&& res) mutable {
+      .ThenInline([guard = std::move(timeGuard)](auto&& res) mutable {
         guard.fire();
-        return std::move(res.get());
+        return std::move(res).Ok();
       });
 } catch (...) {
-  return futures::Try<Result>(std::current_exception());
+  return yaclib::MakeFuture<Result>(std::current_exception());
 }
 
 template<typename S>
@@ -309,7 +303,7 @@ auto LeaderStateManager<S>::resign() && noexcept
 
 template<typename S>
 void LeaderStateManager<S>::beginWaitingForLogLeaderResigned() {
-  logLeader->waitForResign().thenFinal(
+  logLeader->waitForResign().DetachInline(
       [weak = this->weak_from_this()](auto&&) noexcept {
         if (auto self = weak.lock(); self != nullptr) {
           if (auto parentPtr = self->parent.lock(); parentPtr != nullptr) {

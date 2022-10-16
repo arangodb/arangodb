@@ -80,14 +80,13 @@ void IReplicatedFollowerState<S>::setStateManager(
 
 template<typename S>
 auto IReplicatedFollowerState<S>::waitForApplied(LogIndex index)
-    -> futures::Future<futures::Unit> {
+    -> yaclib::Future<> {
   if (auto manager = _manager.lock(); manager != nullptr) {
     return manager->waitForApplied(index);
   } else {
-    WaitForAppliedFuture future(
+    return yaclib::MakeFuture<void>(
         std::make_exception_ptr(replicated_log::ParticipantResignedException(
             TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE)));
-    return future;
   }
 }
 

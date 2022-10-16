@@ -42,6 +42,7 @@
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -198,7 +199,8 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
   auto response =
       network::sendRequest(pool, endpoint, fuerte::RestVerb::Get,
                            REPL_HOLD_READ_LOCK, VPackBuffer<uint8_t>(), options)
-          .get();
+          .Get()
+          .Ok();
   auto res = response.combinedResult();
 
   if (res.ok()) {
@@ -299,7 +301,8 @@ static arangodb::Result addShardFollower(
     auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Put,
                                          REPL_ADD_FOLLOWER,
                                          std::move(*body.steal()), options)
-                        .get();
+                        .Get()
+                        .Ok();
     auto result = response.combinedResult();
 
     if (result.fail()) {
@@ -363,7 +366,8 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
   auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete,
                                        REPL_HOLD_READ_LOCK,
                                        std::move(*body.steal()), options)
-                      .get();
+                      .Get()
+                      .Ok();
 
   auto res = response.combinedResult();
   if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
@@ -404,7 +408,8 @@ arangodb::Result SynchronizeShard::collectionCountOnLeader(
       network::sendRequest(pool, leaderEndpoint, fuerte::RestVerb::Get,
                            "/_api/collection/" + getShard() + "/count",
                            VPackBuffer<uint8_t>(), options, std::move(headers))
-          .get();
+          .Get()
+          .Ok();
   auto res = response.combinedResult();
   if (res.fail()) {
     docCountOnLeader = 0;
@@ -482,7 +487,8 @@ arangodb::Result SynchronizeShard::getReadLock(network::ConnectionPool* pool,
 
   auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Post,
                                        REPL_HOLD_READ_LOCK, *buf, options)
-                      .get();
+                      .Get()
+                      .Ok();
 
   auto res = response.combinedResult();
 
@@ -526,7 +532,8 @@ arangodb::Result SynchronizeShard::getReadLock(network::ConnectionPool* pool,
     auto cancelResponse =
         network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete,
                              REPL_HOLD_READ_LOCK, *buf, options)
-            .get();
+            .Get()
+            .Ok();
     auto cancelRes = cancelResponse.combinedResult();
     if (cancelRes.fail()) {
       LOG_TOPIC("4f34d", WARN, Logger::MAINTENANCE)
@@ -1422,7 +1429,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
       auto future = network::sendRequest(pool, ep, fuerte::RestVerb::Put, url,
                                          std::move(buffer), options);
 
-      network::Response const& r = future.get();
+      auto r = std::move(future).Get().Ok();
 
       Result result = r.combinedResult();
 
@@ -1523,22 +1530,22 @@ void SynchronizeShard::setState(ActionState state) {
     auto snooze = std::chrono::milliseconds(100);
     while (!_feature.server().isStopping() &&
            std::chrono::steady_clock::now() < stoppage) {
-      cluster::fetchCurrentVersion(0.1 * timeout)
-          .thenValue([&v](auto&& res) {
-            // we need to check if res is ok() in order to not trigger a
-            // bad_optional_access exception here
-            if (res.ok()) {
-              v = res.get();
-            }
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            LOG_TOPIC("3ae99", ERR, Logger::CLUSTER)
-                << "Failed to acquire current version from agency while "
-                   "increasing shard version"
-                << " for shard " << getDatabase() << "/" << getShard() << ": "
-                << e.what();
-          })
-          .wait();
+      auto r = cluster::fetchCurrentVersion(0.1 * timeout).Get();
+      try {
+        auto res = r.Ok();
+        // we need to check if res is ok() in order to not trigger a
+        // bad_optional_access exception here
+        if (res.ok()) {
+          v = res.get();
+        }
+      } catch (std::exception const& e) {
+        LOG_TOPIC("3ae99", ERR, Logger::CLUSTER)
+            << "Failed to acquire current version from agency while "
+               "increasing shard version"
+            << " for shard " << getDatabase() << "/" << getShard() << ": "
+            << e.what();
+      } catch (...) {
+      }
       if (v > 0) {
         break;
       }
@@ -1553,11 +1560,11 @@ void SynchronizeShard::setState(ActionState state) {
     // some 10 min later. If however v is an actual positive integer, we'll wait
     // for it to sync in out ClusterInfo cache through loadCurrent.
     if (v > 0) {
-      _feature.server()
-          .getFeature<ClusterFeature>()
-          .clusterInfo()
-          .waitForCurrentVersion(v)
-          .wait();
+      auto f = _feature.server()
+                   .getFeature<ClusterFeature>()
+                   .clusterInfo()
+                   .waitForCurrentVersion(v);
+      yaclib::Wait(f);
     }
     _feature.incShardVersion(getShard());
   }

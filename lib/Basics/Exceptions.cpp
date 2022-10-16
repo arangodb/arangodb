@@ -34,9 +34,10 @@
 #include "Basics/debugging.h"
 #include "Basics/application-exit.h"
 #include "Basics/error.h"
-#include "Futures/Try.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+
+#include <yaclib/util/result.hpp>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -174,7 +175,7 @@ std::string Exception::FillFormatExceptionString(char const* format, ...) {
   FATAL_ERROR_ABORT();
 }
 
-auto ::arangodb::basics::tryToResult(futures::Try<Result>&& tryResult) noexcept
-    -> Result {
-  return catchToResult([&] { return std::move(tryResult).get(); });
+auto ::arangodb::basics::tryToResult(
+    yaclib::Result<Result>&& yaclibResult) noexcept -> Result {
+  return catchToResult([&] { return std::move(yaclibResult).Ok(); });
 }

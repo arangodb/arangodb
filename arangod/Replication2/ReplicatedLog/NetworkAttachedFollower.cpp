@@ -51,7 +51,7 @@ auto NetworkAttachedFollower::getParticipantId() const noexcept
 }
 
 auto NetworkAttachedFollower::appendEntries(AppendEntriesRequest request)
-    -> futures::Future<AppendEntriesResult> {
+    -> yaclib::Future<AppendEntriesResult> {
   VPackBufferUInt8 buffer;
   {
     VPackBuilder builder(buffer);
@@ -66,7 +66,7 @@ auto NetworkAttachedFollower::appendEntries(AppendEntriesRequest request)
                                 arangodb::fuerte::RestVerb::Post, path,
                                 std::move(buffer), opts);
 
-  return std::move(f).thenValue(
+  return std::move(f).ThenInline(
       [](network::Response result) -> AppendEntriesResult {
         if (result.fail() || !fuerte::statusIsSuccess(result.statusCode())) {
           THROW_ARANGO_EXCEPTION(result.combinedResult());

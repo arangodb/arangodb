@@ -28,6 +28,7 @@
 #include "Agency/JobContext.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
+#include "Logger/LogMacros.h"
 
 #include <algorithm>
 #include <vector>

@@ -856,7 +856,8 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
 
     network::sendRequestRetry(pool, "server:" + _config.coordinatorId(),
                               fuerte::RestVerb::Post, baseUrl + path,
-                              std::move(buffer), reqOpts);
+                              std::move(buffer), reqOpts)
+        .Detach();
   }
 }
 
@@ -888,7 +889,8 @@ void Worker<V, E, M>::_callConductorWithResponse(
         network::sendRequestRetry(pool, "server:" + _config.coordinatorId(),
                                   fuerte::RestVerb::Post, baseUrl + path,
                                   std::move(buffer), reqOpts)
-            .get();
+            .Get()
+            .Ok();
 
     if (handle) {
       handle(r.slice());

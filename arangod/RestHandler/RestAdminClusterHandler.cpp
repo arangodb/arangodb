@@ -62,6 +62,9 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
 #include "Inspection/VPack.h"
+#include "yaclib/async/when_all.hpp"
+
+#include <yaclib/async/make.hpp>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -73,7 +76,7 @@ namespace {
 
 struct agentConfigHealthResult {
   std::string endpoint, name;
-  futures::Try<network::Response> response;
+  yaclib::Result<network::Response> response;
 };
 
 void removePlanServers(std::unordered_set<std::string>& servers,
@@ -144,7 +147,7 @@ delayedCalculator(F) -> delayedCalculator<std::invoke_result_t<F>, F>;
 
 void buildHealthResult(
     VPackBuilder& builder,
-    std::vector<futures::Try<agentConfigHealthResult>> const& config,
+    std::vector<yaclib::Result<agentConfigHealthResult>> const& config,
     VPackSlice store) {
   auto rootPath = arangodb::cluster::paths::root()->arango();
 
@@ -176,13 +179,13 @@ void buildHealthResult(
 
   // gather information about the agents
   for (auto const& agentTry : config) {
-    TRI_ASSERT(agentTry.hasValue());
+    TRI_ASSERT(agentTry);
 
-    auto& agent = agentTry.get();
+    auto const& agent = agentTry.Ok();
     // check if the agent responded. If not, ignore. This is just for building
     // up agent information.
-    if (agent.response.hasValue()) {
-      auto& response = agent.response.get();
+    if (agent.response) {
+      auto& response = agent.response.Value();
       if (response.ok() && response.statusCode() == fuerte::StatusOK) {
         VPackSlice lastAcked = response.slice().get("lastAcked");
         if (lastAcked.isNone()) {
@@ -225,12 +228,12 @@ void buildHealthResult(
       }
     }
 
-    for (auto& memberTry : config) {
+    for (auto const& memberTry : config) {
       // this should always be true since this future is always fulfilled (even
       // when an exception is thrown)
-      TRI_ASSERT(memberTry.hasValue());
+      TRI_ASSERT(memberTry);
 
-      auto& member = memberTry.get();
+      auto& member = memberTry.Ok();
 
       {
         VPackObjectBuilder obMember(&builder, member.name);
@@ -246,8 +249,8 @@ void buildHealthResult(
           builder.add("LastAckedTime", VPackValue(info->second.lastAcked));
         }
 
-        if (member.response.hasValue()) {
-          if (auto& response = member.response.get();
+        if (member.response) {
+          if (auto& response = member.response.Ok();
               response.ok() && response.statusCode() == fuerte::StatusOK) {
             VPackSlice localConfig = response.slice();
             builder.add("Engine", localConfig.get("engine"));
@@ -399,15 +402,15 @@ RestAdminClusterHandler::FutureVoid
 RestAdminClusterHandler::retryTryDeleteServer(
     std::unique_ptr<RemoveServerContext>&& ctx) {
   if (++ctx->tries < 60) {
-    return SchedulerFeature::SCHEDULER->delay(1s).thenValue(
-        [this, ctx = std::move(ctx)](auto) mutable {
+    return SchedulerFeature::SCHEDULER->delay(1s).ThenInline(
+        [this, ctx = std::move(ctx)]() mutable {
           return tryDeleteServer(std::move(ctx));
         });
   } else {
     generateError(rest::ResponseCode::PRECONDITION_FAILED,
                   TRI_ERROR_HTTP_PRECONDITION_FAILED,
                   "server may not be deleted");
-    return futures::makeFuture();
+    return yaclib::MakeFuture();
   }
 }
 
@@ -428,8 +431,8 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
 
   return AsyncAgencyComm()
       .sendReadTransaction(20s, std::move(trx))
-      .thenValue([this, ctx = std::move(ctx)](
-                     AsyncAgencyCommResult&& result) mutable {
+      .ThenInline([this, ctx = std::move(ctx)](
+                      AsyncAgencyCommResult&& result) mutable {
         auto rootPath = arangodb::cluster::paths::root()->arango();
         if (result.ok() && result.statusCode() == 200) {
           VPackSlice agency = result.slice().at(0);
@@ -511,29 +514,29 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
 
               return AsyncAgencyComm()
                   .sendWriteTransaction(20s, std::move(trx))
-                  .thenValue([this, ctx = std::move(ctx)](
-                                 AsyncAgencyCommResult&& result) mutable {
+                  .ThenInline([this, ctx = std::move(ctx)](
+                                  AsyncAgencyCommResult&& result) mutable {
                     if (result.ok()) {
                       if (result.statusCode() == fuerte::StatusOK) {
                         resetResponse(rest::ResponseCode::OK);
-                        return futures::makeFuture();
+                        return yaclib::MakeFuture();
                       } else if (result.statusCode() ==
                                  fuerte::StatusPreconditionFailed) {
                         TRI_IF_FAILURE("removeServer::noRetry") {
                           generateError(result.asResult());
-                          return futures::makeFuture();
+                          return yaclib::MakeFuture();
                         }
                         return retryTryDeleteServer(std::move(ctx));
                       }
                     }
                     generateError(result.asResult());
-                    return futures::makeFuture();
+                    return yaclib::MakeFuture();
                   });
             }
 
             TRI_IF_FAILURE("removeServer::noRetry") {
               generateError(Result(TRI_ERROR_HTTP_PRECONDITION_FAILED));
-              return futures::makeFuture();
+              return yaclib::MakeFuture();
             }
 
             return retryTryDeleteServer(std::move(ctx));
@@ -545,7 +548,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
           generateError(result.asResult());
         }
 
-        return futures::makeFuture();
+        return yaclib::MakeFuture();
       });
 }
 
@@ -554,14 +557,16 @@ RestStatus RestAdminClusterHandler::handlePostRemoveServer(
   auto ctx = std::make_unique<RemoveServerContext>(server);
 
   return waitForFuture(
-      tryDeleteServer(std::move(ctx))
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-          }));
+      tryDeleteServer(std::move(ctx)).ThenInline([this](auto&& r) {
+        try {
+          std::ignore = std::move(r).Ok();
+        } catch (VPackException const& e) {
+          generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+        } catch (std::exception const& e) {
+          generateError(rest::ResponseCode::SERVER_ERROR,
+                        TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+        }
+      }));
 }
 
 RestStatus RestAdminClusterHandler::handleRemoveServer() {
@@ -739,7 +744,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
   if (!serversFound) {
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "one or both dbservers not found");
-    return futures::makeFuture();
+    return yaclib::MakeFuture();
   }
 
   VPackSlice collection = plan.get(planPath->collections()
@@ -749,14 +754,14 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
   if (!collection.isObject()) {
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "database/collection not found");
-    return futures::makeFuture();
+    return yaclib::MakeFuture();
   }
 
   if (collection.hasKey("distributeShardsLike")) {
     generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "MoveShard only allowed for collections which have "
                   "distributeShardsLike unset.");
-    return futures::makeFuture();
+    return yaclib::MakeFuture();
   }
 
   VPackSlice shard =
@@ -764,7 +769,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
   if (!shard.isArray()) {
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "shard not found");
-    return futures::makeFuture();
+    return yaclib::MakeFuture();
   }
 
   bool fromFound = false;
@@ -779,7 +784,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
   if (!fromFound) {
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "shard is not located on the server");
-    return futures::makeFuture();
+    return yaclib::MakeFuture();
   }
 
   std::string jobId = std::to_string(
@@ -817,8 +822,8 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
 
   return AsyncAgencyComm()
       .sendWriteTransaction(20s, std::move(trx))
-      .thenValue([this, ctx = std::move(ctx),
-                  jobId = std::move(jobId)](AsyncAgencyCommResult&& result) {
+      .ThenInline([this, ctx = std::move(ctx),
+                   jobId = std::move(jobId)](AsyncAgencyCommResult&& result) {
         if (result.ok() && result.statusCode() == fuerte::StatusOK) {
           VPackBuilder builder;
           ;
@@ -868,8 +873,8 @@ RestStatus RestAdminClusterHandler::handlePostMoveShard(
   return waitForFuture(
       AsyncAgencyComm()
           .sendReadTransaction(20s, std::move(trx))
-          .thenValue([this, ctx = std::move(ctx)](
-                         AsyncAgencyCommResult&& result) mutable {
+          .ThenInline([this, ctx = std::move(ctx)](
+                          AsyncAgencyCommResult&& result) mutable {
             if (result.ok()) {
               switch (result.statusCode()) {
                 case fuerte::StatusOK:
@@ -877,21 +882,24 @@ RestStatus RestAdminClusterHandler::handlePostMoveShard(
                 case fuerte::StatusNotFound:
                   generateError(rest::ResponseCode::NOT_FOUND,
                                 TRI_ERROR_HTTP_NOT_FOUND, "unknown collection");
-                  return futures::makeFuture();
+                  return yaclib::MakeFuture();
                 default:
                   break;
               }
             }
 
             generateError(result.asResult());
-            return futures::makeFuture();
+            return yaclib::MakeFuture();
           })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          .ThenInline([this](auto&& r) {
+            try {
+              std::ignore = std::move(r).Ok();
+            } catch (VPackException const& e) {
+              generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+            } catch (std::exception const& e) {
+              generateError(rest::ResponseCode::SERVER_ERROR,
+                            TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+            }
           }));
 }
 
@@ -931,8 +939,8 @@ RestStatus RestAdminClusterHandler::handleQueryJobStatus() {
   return waitForFuture(
       AsyncAgencyComm()
           .sendTransaction(20s, AgencyReadTransaction{std::move(paths)})
-          .thenValue([this, targetPath, jobId = std::move(jobId)](
-                         AsyncAgencyCommResult&& result) {
+          .ThenInline([this, targetPath, jobId = std::move(jobId)](
+                          AsyncAgencyCommResult&& result) {
             if (result.ok() && result.statusCode() == fuerte::StatusOK) {
               auto paths = std::vector{
                   targetPath->pending()->job(jobId)->vec(),
@@ -969,12 +977,15 @@ RestStatus RestAdminClusterHandler::handleQueryJobStatus() {
               generateError(result.asResult());
             }
           })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          .ThenInline([this](auto&& r) {
+            try {
+              std::ignore = std::move(r).Ok();
+            } catch (VPackException const& e) {
+              generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+            } catch (std::exception const& e) {
+              generateError(rest::ResponseCode::SERVER_ERROR,
+                            TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+            }
           }));
 }
 
@@ -1098,7 +1109,7 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
 
         return waitForFuture(
             sendTransaction()
-                .thenValue([=, this](AsyncAgencyCommResult&& wr) {
+                .ThenInline([=, this](AsyncAgencyCommResult&& wr) {
                   if (!wr.ok()) {
                     // Only if no longer pending or todo.
                     if (wr.statusCode() == 412) {
@@ -1127,12 +1138,16 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
                   resetResponse(rest::ResponseCode::OK);
                   response()->setPayload(std::move(payload));
                 })
-                .thenError<VPackException>([this](VPackException const& e) {
-                  generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-                })
-                .thenError<std::exception>([this](std::exception const& e) {
-                  generateError(rest::ResponseCode::SERVER_ERROR,
-                                TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+                .ThenInline([this](auto&& r) {
+                  try {
+                    std::ignore = std::move(r).Ok();
+                  } catch (VPackException const& e) {
+                    generateError(
+                        Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+                  } catch (std::exception const& e) {
+                    generateError(rest::ResponseCode::SERVER_ERROR,
+                                  TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+                  }
                 }));
       }
     }
@@ -1209,7 +1224,7 @@ RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(
   return waitForFuture(
       AsyncAgencyComm()
           .setValue(20s, jobToDoPath, builder.slice())
-          .thenValue(
+          .ThenInline(
               [this, jobId = std::move(jobId)](AsyncAgencyCommResult&& result) {
                 if (result.ok() && result.statusCode() == 200) {
                   VPackBuilder builder;
@@ -1223,12 +1238,15 @@ RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(
                   generateError(result.asResult());
                 }
               })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          .ThenInline([this](auto&& r) {
+            try {
+              std::ignore = std::move(r).Ok();
+            } catch (VPackException const& e) {
+              generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+            } catch (std::exception const& e) {
+              generateError(rest::ResponseCode::SERVER_ERROR,
+                            TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+            }
           }));
 }
 
@@ -1264,7 +1282,7 @@ RestStatus RestAdminClusterHandler::handleProxyGetRequest(
 
   return waitForFuture(
       std::move(frequest)
-          .thenValue([this](network::Response&& result) {
+          .ThenInline([this](network::Response&& result) {
             if (result.ok()) {
               resetResponse(ResponseCode(
                   result.statusCode()));  // I quit if the values are not the
@@ -1289,12 +1307,15 @@ RestStatus RestAdminClusterHandler::handleProxyGetRequest(
               }
             }
           })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          .ThenInline([this](auto&& r) {
+            try {
+              std::ignore = std::move(r).Ok();
+            } catch (VPackException const& e) {
+              generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+            } catch (std::exception const& e) {
+              generateError(rest::ResponseCode::SERVER_ERROR,
+                            TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+            }
           }));
 }
 
@@ -1423,19 +1444,22 @@ RestStatus RestAdminClusterHandler::handleGetMaintenance() {
   return waitForFuture(
       AsyncAgencyComm()
           .getValues(maintenancePath)
-          .thenValue([this](AgencyReadResult&& result) {
+          .ThenInline([this](AgencyReadResult&& result) {
             if (result.ok() && result.statusCode() == fuerte::StatusOK) {
               generateOk(rest::ResponseCode::OK, result.value());
             } else {
               generateError(result.asResult());
             }
           })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          .ThenInline([this](auto&& r) {
+            try {
+              std::ignore = std::move(r).Ok();
+            } catch (VPackException const& e) {
+              generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+            } catch (std::exception const& e) {
+              generateError(rest::ResponseCode::SERVER_ERROR,
+                            TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+            }
           }));
 }
 
@@ -1456,19 +1480,22 @@ RestStatus RestAdminClusterHandler::handleGetDBServerMaintenance(
   return waitForFuture(
       AsyncAgencyComm()
           .getValues(maintenancePath)
-          .thenValue([this](AgencyReadResult&& result) {
+          .ThenInline([this](AgencyReadResult&& result) {
             if (result.ok() && result.statusCode() == fuerte::StatusOK) {
               generateOk(rest::ResponseCode::OK, result.value());
             } else {
               generateError(result.asResult());
             }
           })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          .ThenInline([this](auto&& r) {
+            try {
+              std::ignore = std::move(r).Ok();
+            } catch (VPackException const& e) {
+              generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+            } catch (std::exception const& e) {
+              generateError(rest::ResponseCode::SERVER_ERROR,
+                            TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+            }
           }));
 }
 
@@ -1477,15 +1504,15 @@ RestAdminClusterHandler::waitForSupervisionState(
     bool state, std::string const& reactivationTime,
     clock::time_point startTime) {
   return SchedulerFeature::SCHEDULER->delay(1s)
-      .thenValue([](auto) {
+      .ThenInline([] {
         return AsyncAgencyComm().getValues(arangodb::cluster::paths::root()
                                                ->arango()
                                                ->supervision()
                                                ->state()
                                                ->mode());
       })
-      .thenValue([this, state, startTime,
-                  reactivationTime](AgencyReadResult&& result) {
+      .ThenInline([this, state, startTime,
+                   reactivationTime](AgencyReadResult&& result) {
         auto waitFor = state ? "Maintenance" : "Normal";
         if (result.ok() && result.statusCode() == fuerte::StatusOK) {
           if (!result.value().isEqualString(waitFor)) {
@@ -1520,7 +1547,7 @@ RestAdminClusterHandler::waitForSupervisionState(
           generateError(result.asResult());
         }
 
-        return futures::makeFuture();
+        return yaclib::MakeFuture();
       });
 }
 
@@ -1552,22 +1579,25 @@ RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActivate,
 
   return waitForFuture(
       sendTransaction()
-          .thenValue([this, wantToActivate,
-                      reactivationTime](AsyncAgencyCommResult&& result) {
+          .ThenInline([this, wantToActivate,
+                       reactivationTime](AsyncAgencyCommResult&& result) {
             if (result.ok() && result.statusCode() == 200) {
               return waitForSupervisionState(wantToActivate, reactivationTime,
                                              std::chrono::steady_clock::now());
             } else {
               generateError(result.asResult());
             }
-            return futures::makeFuture();
+            return yaclib::MakeFuture();
           })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          .ThenInline([this](auto&& r) {
+            try {
+              std::ignore = std::move(r).Ok();
+            } catch (VPackException const& e) {
+              generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+            } catch (std::exception const& e) {
+              generateError(rest::ResponseCode::SERVER_ERROR,
+                            TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+            }
           }));
 }
 
@@ -1575,16 +1605,18 @@ RestAdminClusterHandler::FutureVoid
 RestAdminClusterHandler::waitForDBServerMaintenance(std::string const& serverId,
                                                     bool waitForMaintenance) {
   struct Context {
-    explicit Context(std::string serverId, bool waitForMaintenance)
-        : serverId(std::move(serverId)),
+    explicit Context(yaclib::Promise<ResultT<consensus::index_t>>&& promise,
+                     std::string serverId, bool waitForMaintenance)
+        : promise(std::move(promise)),
+          serverId(std::move(serverId)),
           waitForMaintenance(waitForMaintenance) {}
-    futures::Promise<ResultT<consensus::index_t>> promise;
+    yaclib::Promise<ResultT<consensus::index_t>> promise;
     std::string serverId;
     bool waitForMaintenance;
   };
-
-  auto ctx = std::make_shared<Context>(serverId, waitForMaintenance);
-  auto f = ctx->promise.getFuture();
+  auto [f, p] = yaclib::MakeContract<ResultT<consensus::index_t>>();
+  auto ctx =
+      std::make_shared<Context>(std::move(p), serverId, waitForMaintenance);
 
   using namespace cluster::paths;
   // register an agency callback and wait for the given version to appear in
@@ -1596,12 +1628,14 @@ RestAdminClusterHandler::waitForDBServerMaintenance(std::string const& serverId,
         if (ctx->waitForMaintenance) {
           if (slice.isObject() &&
               slice.get("Mode").isEqualString("maintenance")) {
-            ctx->promise.setValue(index);
+            TRI_ASSERT(ctx->promise.Valid());
+            std::move(ctx->promise).Set(index);
             return true;
           }
         } else {
           if (slice.isNone()) {
-            ctx->promise.setValue(index);
+            TRI_ASSERT(ctx->promise.Valid());
+            std::move(ctx->promise).Set(index);
             return true;
           }
         }
@@ -1616,7 +1650,7 @@ RestAdminClusterHandler::waitForDBServerMaintenance(std::string const& serverId,
     return {};
   }
 
-  return std::move(f).then([&cf, cb](auto&& result) {
+  return std::move(f).ThenInline([&cf, cb](auto&& result) {
     cf.agencyCallbackRegistry()->unregisterCallback(cb);
   });
 }
@@ -1676,8 +1710,8 @@ RestStatus RestAdminClusterHandler::setDBServerMaintenance(
 
   return waitForFuture(
       sendTransaction()
-          .thenValue([this, reactivationTime, isMaintenanceMode,
-                      serverId](AsyncAgencyCommResult&& result) {
+          .ThenInline([this, reactivationTime, isMaintenanceMode,
+                       serverId](AsyncAgencyCommResult&& result) {
             if (result.ok() && result.statusCode() == 200) {
               VPackBuilder builder;
               { VPackObjectBuilder obj(&builder); }
@@ -1686,14 +1720,17 @@ RestStatus RestAdminClusterHandler::setDBServerMaintenance(
             } else {
               generateError(result.asResult());
             }
-            return futures::makeFuture();
+            return yaclib::MakeFuture();
           })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          .ThenInline([this](auto&& r) {
+            try {
+              std::ignore = std::move(r).Ok();
+            } catch (VPackException const& e) {
+              generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+            } catch (std::exception const& e) {
+              generateError(rest::ResponseCode::SERVER_ERROR,
+                            TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+            }
           }));
 }
 
@@ -1859,7 +1896,7 @@ RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
   return waitForFuture(
       AsyncAgencyComm()
           .sendReadTransaction(10.0s, std::move(trx))
-          .thenValue([this](AsyncAgencyCommResult&& result) {
+          .ThenInline([this](AsyncAgencyCommResult&& result) {
             auto targetPath =
                 arangodb::cluster::paths::root()->arango()->target();
 
@@ -1885,12 +1922,15 @@ RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
                             "agency communication failed");
             }
           })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          .ThenInline([this](auto&& r) {
+            try {
+              std::ignore = std::move(r).Ok();
+            } catch (VPackException const& e) {
+              generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+            } catch (std::exception const& e) {
+              generateError(rest::ResponseCode::SERVER_ERROR,
+                            TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+            }
           }));
 }
 
@@ -1991,19 +2031,22 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
   return waitForFuture(
       AsyncAgencyComm()
           .sendWriteTransaction(20s, std::move(trx))
-          .thenValue([this](AsyncAgencyCommResult&& result) {
+          .ThenInline([this](AsyncAgencyCommResult&& result) {
             if (result.ok() && result.statusCode() == fuerte::StatusOK) {
               generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
             } else {
               generateError(result.asResult());
             }
           })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          .ThenInline([this](auto&& r) {
+            try {
+              std::ignore = std::move(r).Ok();
+            } catch (VPackException const& e) {
+              generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+            } catch (std::exception const& e) {
+              generateError(rest::ResponseCode::SERVER_ERROR,
+                            TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+            }
           }));
 }
 
@@ -2066,14 +2109,15 @@ RestStatus RestAdminClusterHandler::handleHealth() {
   // TODO handle timeout parameter
 
   auto self(shared_from_this());
-
+  using ConfigResult = std::vector<yaclib::Result<::agentConfigHealthResult>>;
+  using All = std::variant<ConfigResult, AsyncAgencyCommResult>;
   // query the agency config
   auto fConfig =
       AsyncAgencyComm()
           .sendWithFailover(fuerte::RestVerb::Get, "/_api/agency/config", 60.0s,
                             AsyncAgencyComm::RequestType::READ,
                             VPackBuffer<uint8_t>())
-          .thenValue([self](AsyncAgencyCommResult&& result) {
+          .ThenInline([self](AsyncAgencyCommResult&& result) {
             // this lambda has to capture self since collect returns early on
             // an exception and the RestHandler might be freed too early
             // otherwise
@@ -2084,7 +2128,7 @@ RestStatus RestAdminClusterHandler::handleHealth() {
 
             // now connect to all the members and ask for their engine and
             // version
-            std::vector<futures::Future<::agentConfigHealthResult>> fs;
+            std::vector<yaclib::Future<::agentConfigHealthResult>> fs;
 
             auto* pool = self->server().getFeature<NetworkFeature>().pool();
             for (auto member : VPackObjectIterator(result.slice().get(
@@ -2096,21 +2140,22 @@ RestStatus RestAdminClusterHandler::handleHealth() {
                   network::sendRequest(pool, endpoint, fuerte::RestVerb::Get,
                                        "/_api/agency/config",
                                        VPackBuffer<uint8_t>())
-                      .then(
-                          [endpoint = std::move(endpoint),
-                           memberName = std::move(memberName)](
-                              futures::Try<network::Response>&& resp) mutable {
-                            return futures::makeFuture(
-                                ::agentConfigHealthResult{std::move(endpoint),
-                                                          std::move(memberName),
-                                                          std::move(resp)});
-                          });
+                      .ThenInline([endpoint = std::move(endpoint),
+                                   memberName = std::move(memberName)](
+                                      yaclib::Result<network::Response>&&
+                                          resp) mutable {
+                        return yaclib::MakeFuture(::agentConfigHealthResult{
+                            std::move(endpoint), std::move(memberName),
+                            std::move(resp)});
+                      });
 
               fs.emplace_back(std::move(future));
             }
 
-            return futures::collectAll(fs);
-          });
+            return yaclib::WhenAll<yaclib::WhenPolicy::None>(fs.begin(),
+                                                             fs.end());
+          })
+          .ThenInline([](ConfigResult&& r) { return All{std::move(r)}; });
 
   // query information from the store
   auto rootPath = arangodb::cluster::paths::root()->arango();
@@ -2126,13 +2171,25 @@ RestStatus RestAdminClusterHandler::handleHealth() {
         .end()
         .done();
   }
-  auto fStore = AsyncAgencyComm().sendReadTransaction(60.0s, std::move(trx));
-
+  auto fStore = AsyncAgencyComm()
+                    .sendReadTransaction(60.0s, std::move(trx))
+                    .ThenInline([](AsyncAgencyCommResult&& r) {
+                      return All{std::move(r)};
+                    });
   return waitForFuture(
-      futures::collect(std::move(fConfig), std::move(fStore))
-          .thenValue([this](auto&& result) {
+      yaclib::WhenAll(std::move(fConfig), std::move(fStore))
+          .ThenInline([this](std::vector<All>&& result) {
             auto rootPath = arangodb::cluster::paths::root()->arango();
-            auto& [configResult, storeResult] = result;
+            auto [configResult, storeResult] = [&] {
+              if (result[0].index() == 0) {
+                return std::pair{std::get<0>(std::move(result[0])),
+                                 std::get<1>(std::move(result[1]))};
+              } else {
+                return std::pair{std::get<0>(std::move(result[1])),
+                                 std::get<1>(std::move(result[0]))};
+              }
+            }();
+
             if (storeResult.ok() &&
                 storeResult.statusCode() == fuerte::StatusOK) {
               VPackBuilder builder;
@@ -2148,12 +2205,15 @@ RestStatus RestAdminClusterHandler::handleHealth() {
                             "agency communication failed");
             }
           })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          .ThenInline([this](auto&& r) {
+            try {
+              std::ignore = std::move(r).Ok();
+            } catch (VPackException const& e) {
+              generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+            } catch (std::exception const& e) {
+              generateError(rest::ResponseCode::SERVER_ERROR,
+                            TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+            }
           }));
 }
 
@@ -2283,7 +2343,7 @@ RestAdminClusterHandler::handlePostRebalanceShards(
 
   if (moves.empty()) {
     generateOk(rest::ResponseCode::OK, responseBuilder.slice());
-    return futures::makeFuture();
+    return yaclib::MakeFuture();
   }
 
   VPackBuffer<uint8_t> trx;
@@ -2319,8 +2379,8 @@ RestAdminClusterHandler::handlePostRebalanceShards(
 
   return AsyncAgencyComm()
       .sendWriteTransaction(20s, std::move(trx))
-      .thenValue([this, resBuilder = std::move(responseBuilder)](
-                     AsyncAgencyCommResult&& result) {
+      .ThenInline([this, resBuilder = std::move(responseBuilder)](
+                      AsyncAgencyCommResult&& result) {
         if (result.ok() && result.statusCode() == 200) {
           generateOk(rest::ResponseCode::ACCEPTED, resBuilder.slice());
         } else {
@@ -2362,14 +2422,16 @@ RestStatus RestAdminClusterHandler::handleRebalanceShards() {
   }
 
   return waitForFuture(
-      handlePostRebalanceShards(algorithm)
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-          }));
+      handlePostRebalanceShards(algorithm).ThenInline([this](auto&& r) {
+        try {
+          std::ignore = std::move(r).Ok();
+        } catch (VPackException const& e) {
+          generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+        } catch (std::exception const& e) {
+          generateError(rest::ResponseCode::SERVER_ERROR,
+                        TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+        }
+      }));
 }
 
 namespace {
@@ -2464,11 +2526,11 @@ auto inspect(Inspector& f, RebalanceExecuteOptions& x) {
 }
 
 template<typename T, typename F>
-futures::Future<Result> executeMoveShardOperations(std::vector<T> const& batch,
-                                                   ClusterInfo& ci,
-                                                   F const& mapper) {
+yaclib::Future<Result> executeMoveShardOperations(std::vector<T> const& batch,
+                                                  ClusterInfo& ci,
+                                                  F const& mapper) {
   if (batch.empty()) {
-    return Result{};
+    return yaclib::MakeFuture<Result>();
   }
 
   VPackBuffer<uint8_t> trx;
@@ -2503,7 +2565,7 @@ futures::Future<Result> executeMoveShardOperations(std::vector<T> const& batch,
 
   return AsyncAgencyComm()
       .sendWriteTransaction(20s, std::move(trx))
-      .thenValue([](AsyncAgencyCommResult&& result) {
+      .ThenInline([](AsyncAgencyCommResult&& result) {
         if (result.ok() && result.statusCode() == 200) {
           return Result{};
         } else {
@@ -2540,7 +2602,7 @@ RestStatus RestAdminClusterHandler::handleRebalanceExecute() {
   }
 
   return waitForFuture(executeMoveShardOperations(opts.moves, ci, idMapper)
-                           .thenValue([this](auto&& result) {
+                           .ThenInline([this](Result&& result) {
                              if (result.ok()) {
                                generateOk(rest::ResponseCode::ACCEPTED,
                                           VPackSlice::noneSlice());
@@ -2654,7 +2716,7 @@ RestStatus RestAdminClusterHandler::handleRebalancePlan() {
       buildResponse(rest::ResponseCode::ACCEPTED);
       return waitForFuture(
           executeMoveShardOperations(moves, ci, moveShardConverter)
-              .thenValue([&](auto&& result) {
+              .ThenInline([&](Result&& result) {
                 if (!result.ok()) {
                   generateError(result);
                 }
@@ -2905,7 +2967,7 @@ RestStatus RestAdminClusterHandler::handleFailureOracleFlush() {
     // Send flush requests to all servers
     auto fut = std::invoke([isFailed = std::move(isFailed), id = std::move(id),
                             pool = pool]() mutable {
-      std::vector<futures::Future<fuerte::StatusCode>> flushDbs;
+      std::vector<yaclib::Future<fuerte::StatusCode>> flushDbs;
       for (auto const& [pid, pf] : isFailed) {
         auto path = basics::StringUtils::joinT("/", "_admin/cluster",
                                                "failureOracle", "flush");
@@ -2915,34 +2977,35 @@ RestStatus RestAdminClusterHandler::handleFailureOracleFlush() {
         flushDbs.emplace_back(
             network::sendRequest(pool, "server:" + pid, fuerte::RestVerb::Post,
                                  std::move(path), {}, opts)
-                .then([](futures::Try<network::Response>&& tryResult) {
+                .ThenInline([](auto&& tryResult) {
                   auto result = basics::catchToResultT(
-                      [&] { return std::move(tryResult.get()); });
+                      [&] { return std::move(tryResult).Ok(); });
                   return result.ok() ? result->statusCode()
                                      : fuerte::StatusUndefined;
                 }));
       }
-      return futures::collectAll(std::move(flushDbs))
-          .thenValue([status = std::move(isFailed),
-                      id = std::move(id)](auto&& statusCodes) {
+      return yaclib::WhenAll<yaclib::WhenPolicy::None>(flushDbs.begin(),
+                                                       flushDbs.end())
+          .ThenInline([status = std::move(isFailed), id = std::move(id)](
+                          std::vector<yaclib::Result<fuerte::StatusCode>>&&
+                              statusCodes) {
             VPackBuilder response;
             {
               VPackObjectBuilder participantsFlushStatus(&response);
               std::size_t idx = 0;
               for (auto const& [pid, pf] : status) {
                 auto& result = statusCodes.at(idx++);
-                response.add(pid, VPackValue(std::move(result.get())));
+                response.add(pid, VPackValue(std::move(result).Ok()));
               }
               response.add(id, VPackValue(fuerte::StatusAccepted));
             }
             return response;
           });
     });
-
-    return waitForFuture(std::move(fut).thenValue(
+    return waitForFuture(std::move(fut).ThenInline(
         [self = std::static_pointer_cast<RestAdminClusterHandler>(
-             shared_from_this())](auto builder) mutable {
-          self->generateOk(rest::ResponseCode::OK, std::move(builder.slice()));
+             shared_from_this())](VPackBuilder builder) mutable {
+          self->generateOk(rest::ResponseCode::OK, builder.slice());
         }));
   }
 

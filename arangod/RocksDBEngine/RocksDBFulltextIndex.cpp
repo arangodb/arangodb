@@ -31,7 +31,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/memory.h"
 #include "Basics/tri-strings.h"
-#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"

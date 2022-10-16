@@ -46,7 +46,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Futures/Utilities.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 #include "Network/Methods.h"
@@ -705,7 +704,7 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
   auto const& nf =
       _vocbaseGuard.database().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
-  std::vector<futures::Future<network::Response>> responses;
+  std::vector<yaclib::Future<network::Response>> responses;
 
   for (auto const& it : vertexMap) {
     ServerID const& server = it.first;
@@ -811,22 +810,17 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
   }
 
   size_t nrGood = 0;
-  futures::collectAll(responses)
-      .thenValue([&nrGood, this](auto const& results) {
-        for (auto const& tryRes : results) {
-          network::Response const& r =
-              tryRes.get();  // throws exceptions upwards
-          if (r.ok() && r.statusCode() < 400) {
-            nrGood++;
-          } else {
-            LOG_PREGEL("6ae67", ERR)
-                << "received error from worker: '"
-                << (r.ok() ? r.slice().toJson() : fuerte::to_string(r.error))
-                << "'";
-          }
-        }
-      })
-      .wait();
+  yaclib::Wait(responses.begin(), responses.end());
+  for (auto const& response : responses) {
+    auto& r = response.Touch().Ok();  // throws exceptions upwards
+    if (r.ok() && r.statusCode() < 400) {
+      nrGood++;
+    } else {
+      LOG_PREGEL("6ae67", ERR)
+          << "received error from worker: '"
+          << (r.ok() ? r.slice().toJson() : fuerte::to_string(r.error)) << "'";
+    }
+  }
 
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
@@ -1086,7 +1080,7 @@ ErrorCode Conductor::_sendToAllDBServers(
   auto const& nf =
       _vocbaseGuard.database().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
-  std::vector<futures::Future<network::Response>> responses;
+  std::vector<yaclib::Future<network::Response>> responses;
 
   for (auto const& server : _dbServers) {
     responses.emplace_back(network::sendRequestRetry(
@@ -1095,22 +1089,16 @@ ErrorCode Conductor::_sendToAllDBServers(
   }
 
   size_t nrGood = 0;
-
-  futures::collectAll(responses)
-      .thenValue([&](auto results) {
-        for (auto const& tryRes : results) {
-          network::Response const& res =
-              tryRes.get();  // throws exceptions upwards
-          if (res.ok() && res.statusCode() < 400) {
-            nrGood++;
-            if (handle) {
-              handle(res.slice());
-            }
-          }
-        }
-      })
-      .wait();
-
+  yaclib::Wait(responses.begin(), responses.end());
+  for (auto const& response : responses) {
+    auto& res = response.Touch().Ok();  // throws exceptions upwards
+    if (res.ok() && res.statusCode() < 400) {
+      nrGood++;
+      if (handle) {
+        handle(res.slice());
+      }
+    }
+  }
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
 
