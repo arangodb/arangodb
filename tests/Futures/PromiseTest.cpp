@@ -21,11 +21,9 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Futures/Promise.h"
-
 #include "gtest/gtest.h"
 
-using namespace arangodb::futures;
+#include <yaclib/async/promise.hpp>
 
 namespace {
 auto makeValid() {
@@ -34,8 +32,8 @@ auto makeValid() {
   return valid;
 }
 auto makeInvalid() {
-  auto invalid = Promise<int>::makeEmpty();
-  EXPECT_FALSE(invalid.valid());
+  yaclib::Promise<int> invalid;
+  EXPECT_FALSE(invalid.Valid());
   return invalid;
 }
 template<typename T>
@@ -53,8 +51,8 @@ static eggs_t eggs("eggs");
 // -----------------------------------------------------------------------------
 
 TEST(PromiseTest, makeEmpty) {
-  auto p = Promise<int>::makeEmpty();
-  ASSERT_TRUE(p.isFulfilled());
+  yaclib::Promise<int> p;
+  ASSERT_TRUE(!p.Valid());
 }
 
 TEST(PromiseTest, special) {

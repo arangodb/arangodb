@@ -21,25 +21,25 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Futures/Future.h"
-#include "Futures/Utilities.h"
-
 #include "gtest/gtest.h"
+#include "yaclib/async/contract.hpp"
+#include "yaclib/async/run.hpp"
+
+#include <yaclib/async/make.hpp>
+#include <yaclib/async/future.hpp>
 
 #include <condition_variable>
 #include <mutex>
 
-using namespace arangodb::futures;
-
 namespace {
 auto makeValid() {
-  auto valid = makeFuture<int>(42);
-  EXPECT_TRUE(valid.valid());
+  auto valid = yaclib::MakeFuture<int>(42);
+  EXPECT_TRUE(valid.Valid());
   return valid;
 }
 auto makeInvalid() {
-  auto invalid = Future<int>::makeEmpty();
-  EXPECT_FALSE(invalid.valid());
+  yaclib::Future<int> invalid;
+  EXPECT_FALSE(invalid.Valid());
   return invalid;
 }
 
@@ -53,14 +53,18 @@ int onThenHelperAddOne(int i) { return i + 1; }
 
 int onThenHelperAddFive(int i) { return i + 5; }
 
-Future<int> onThenHelperAddFutureFive(int i) { return makeFuture(i + 5); }
+yaclib::Future<int> onThenHelperAddFutureFive(int i) {
+  return yaclib::MakeFuture(i + 5);
+}
 
 typedef std::domain_error eggs_t;
 static eggs_t eggs("eggs");
 
-Future<int> onErrorHelperEggs(const eggs_t&) { return makeFuture(10); }
-Future<int> onErrorHelperGeneric(const std::exception&) {
-  return makeFuture(20);
+yaclib::Future<int> onErrorHelperEggs(const eggs_t&) {
+  return yaclib::MakeFuture(10);
+}
+yaclib::Future<int> onErrorHelperGeneric(const std::exception&) {
+  return yaclib::MakeFuture(20);
 }
 }  // namespace
 
@@ -69,11 +73,14 @@ Future<int> onErrorHelperGeneric(const std::exception&) {
 // -----------------------------------------------------------------------------
 
 TEST(FutureTest, basic) {
-  auto f = Future<int>::makeEmpty();
-  EXPECT_ANY_THROW(f.isReady());
+  yaclib::Future<int> f;
+  EXPECT_FALSE(f.Valid());
 }
 
-TEST(FutureTest, default_ctor) { Future<Unit> abc{}; }
+TEST(FutureTest, default_ctor) {
+  yaclib::Future<> abc;
+  yaclib::Future<> abc2 = yaclib::MakeFuture();
+}
 
 TEST(FutureTest, requires_only_move_ctor) {
   struct MoveCtorOnly {
@@ -86,17 +93,17 @@ TEST(FutureTest, requires_only_move_ctor) {
   };
 
   {
-    auto f = makeFuture<MoveCtorOnly>(MoveCtorOnly(42));
-    ASSERT_TRUE(f.valid());
-    ASSERT_TRUE(f.isReady());
-    auto v = std::move(f).get();
+    auto f = yaclib::MakeFuture<MoveCtorOnly>(MoveCtorOnly(42));
+    ASSERT_TRUE(f.Valid());
+    ASSERT_TRUE(f.Ready());
+    auto v = std::move(f).Get().Ok();
     ASSERT_TRUE(v.id_ == 42);
   }
   {
-    auto f = makeFuture<MoveCtorOnly>(MoveCtorOnly(42));
-    ASSERT_TRUE(f.valid());
-    ASSERT_TRUE(f.isReady());
-    auto v = std::move(f).get();
+    auto f = yaclib::MakeFuture<MoveCtorOnly>(MoveCtorOnly(42));
+    ASSERT_TRUE(f.Valid());
+    ASSERT_TRUE(f.Ready());
+    auto v = std::move(f).Get().Ok();
     ASSERT_TRUE(v.id_ == 42);
   }
 }
@@ -108,28 +115,26 @@ TEST(FutureTest, ctor_post_condition) {
 #define DOIT(CREATION_EXPR)    \
   do {                         \
     auto f1 = (CREATION_EXPR); \
-    ASSERT_TRUE(f1.valid());   \
+    ASSERT_TRUE(f1.Valid());   \
     auto f2 = std::move(f1);   \
-    ASSERT_FALSE(f1.valid());  \
-    ASSERT_TRUE(f2.valid());   \
+    ASSERT_FALSE(f1.Valid());  \
+    ASSERT_TRUE(f2.Valid());   \
   } while (false)
 
   DOIT(makeValid());
-  DOIT(Future<int>(42));
-  DOIT(Future<int>{42});
+  DOIT(yaclib::MakeFuture<int>(42));
   // I did not include Follys Unit type
   // DOIT(Future<Unit>());
   // DOIT(Future<Unit>{});
-  DOIT(makeFuture());
-  // DOIT(makeFuture(Unit{}));
-  // DOIT(makeFuture<Unit>(Unit{}));
-  DOIT(makeFuture(42));
-  DOIT(makeFuture<int>(42));
-  DOIT(makeFuture<int>(except));
-  DOIT(makeFuture<int>(ewrap));
-  DOIT(makeFuture(Try<int>(42)));
-  DOIT(makeFuture<int>(Try<int>(42)));
-  DOIT(makeFuture<int>(Try<int>(ewrap)));
+  DOIT(yaclib::MakeFuture());
+  // DOIT(yaclib::MakeFuture(Unit{}));
+  // DOIT(yaclib::MakeFuture<Unit>(Unit{}));
+  DOIT(yaclib::MakeFuture(42));
+  DOIT(yaclib::MakeFuture<int>(42));
+  DOIT(yaclib::MakeFuture<int>(except));
+  DOIT(yaclib::MakeFuture<int>(ewrap));
+  DOIT(yaclib::MakeFuture<int>(yaclib::Result<int>(42)));
+  DOIT(yaclib::MakeFuture<int>(yaclib::Result<int>(ewrap)));
 #undef DOIT
 }
 
@@ -137,153 +142,14 @@ TEST(FutureTest, ctor_post_condition_invalid) {
 #define DOIT(CREATION_EXPR)    \
   do {                         \
     auto f1 = (CREATION_EXPR); \
-    ASSERT_FALSE(f1.valid());  \
+    ASSERT_FALSE(f1.Valid());  \
     auto f2 = std::move(f1);   \
-    ASSERT_FALSE(f1.valid());  \
-    ASSERT_FALSE(f2.valid());  \
+    ASSERT_FALSE(f1.Valid());  \
+    ASSERT_FALSE(f2.Valid());  \
   } while (false)
 
   DOIT(makeInvalid());
-  DOIT(Future<int>::makeEmpty());
-
-#undef DOIT
-}
-
-TEST(FutureTest, lacksPreconditionValid) {
-  // Ops that don't throw FutureInvalid if !valid() --
-  // without precondition: valid()
-
-#define DOIT(STMT)        \
-  do {                    \
-    auto f = makeValid(); \
-    { STMT; }             \
-    ::copy(std::move(f)); \
-    STMT;                 \
-  } while (false)
-
-  // .valid() itself
-  DOIT(f.valid());
-
-  // move-ctor - move-copy to local, copy(), pass-by-move-value
-  DOIT(auto other = std::move(f));
-  DOIT(copy(std::move(f)));
-  DOIT(([](auto) {})(std::move(f)));
-
-  // move-assignment into either {valid | invalid}
-  DOIT({
-    auto other = makeValid();
-    other = std::move(f);
-  });
-  DOIT({
-    auto other = makeInvalid();
-    other = std::move(f);
-  });
-
-#undef DOIT
-}
-
-TEST(FutureTest, hasPreconditionValid) {
-  // Ops that require validity; precondition: valid();
-  // throw FutureInvalid if !valid()
-
-#define DOIT(STMT)          \
-  do {                      \
-    auto f = makeValid();   \
-    STMT;                   \
-    ::copy(std::move(f));   \
-    EXPECT_ANY_THROW(STMT); \
-  } while (false)
-
-  DOIT(f.isReady());
-  DOIT(f.result());
-  DOIT(std::move(f).get());
-  DOIT(f.result());
-  DOIT(f.hasValue());
-  DOIT(f.hasException());
-  DOIT(f.get());
-  // DOIT(std::move(f).then());
-  DOIT(std::move(f).thenValue([](int&&) noexcept -> void {}));
-  DOIT(std::move(f).thenValue([](auto&&) noexcept -> void {}));
-
-#undef DOIT
-}
-
-TEST(FutureTest, hasPostconditionValid) {
-  // Ops that preserve validity -- postcondition: valid()
-
-#define DOIT(STMT)          \
-  do {                      \
-    auto f = makeValid();   \
-    EXPECT_NO_THROW(STMT);  \
-    ASSERT_TRUE(f.valid()); \
-  } while (false)
-
-  auto const swallow = [](auto) {};
-
-  DOIT(swallow(f.valid()));  // f.valid() itself preserves validity
-  DOIT(swallow(f.isReady()));
-  DOIT(swallow(f.hasValue()));
-  DOIT(swallow(f.hasException()));
-  DOIT(swallow(f.get()));
-  DOIT(swallow(f.getTry()));
-  // DOIT(swallow(f.poll()));
-  // DOIT(f.raise(std::logic_error("foo")));
-  // DOIT(f.cancel());
-  DOIT(swallow(f.getTry()));
-  DOIT(f.wait());
-  // DOIT(std::move(f.wait()));
-
-#undef DOIT
-}
-
-TEST(FutureTest, lacksPostconditionValid) {
-  // Ops that consume *this -- postcondition: !valid()
-
-#define DOIT(CTOR, STMT)     \
-  do {                       \
-    auto f = (CTOR);         \
-    STMT;                    \
-    ASSERT_FALSE(f.valid()); \
-  } while (false)
-
-  // move-ctor of {valid|invalid}
-  DOIT(makeValid(), { auto other{std::move(f)}; });
-  DOIT(makeInvalid(), { auto other{std::move(f)}; });
-
-  // move-assignment of {valid|invalid} into {valid|invalid}
-  DOIT(makeValid(), {
-    auto other = makeValid();
-    other = std::move(f);
-  });
-  DOIT(makeValid(), {
-    auto other = makeInvalid();
-    other = std::move(f);
-  });
-  DOIT(makeInvalid(), {
-    auto other = makeValid();
-    other = std::move(f);
-  });
-  DOIT(makeInvalid(), {
-    auto other = makeInvalid();
-    other = std::move(f);
-  });
-
-  // pass-by-value of {valid|invalid}
-  DOIT(makeValid(), {
-    auto const byval = [](auto) {};
-    byval(std::move(f));
-  });
-  DOIT(makeInvalid(), {
-    auto const byval = [](auto) {};
-    byval(std::move(f));
-  });
-
-  // other consuming ops
-  auto const swallow = [](auto) {};
-  // DOIT(makeValid(), swallow(std::move(f).wait()));
-  // DOIT(makeValid(), swallow(std::move(f.wait())));
-  DOIT(makeValid(), swallow(std::move(f).get()));
-  // DOIT(makeValid(), swallow(std::move(f).semi()));
+  DOIT(yaclib::Future<int>{});
 
 #undef DOIT
 }
@@ -293,66 +159,64 @@ TEST(FutureTest, thenError) {
   auto flag = [&] { theFlag = true; };
 #define EXPECT_FLAG()     \
   do {                    \
-    f.wait();             \
+    Wait(f);              \
     ASSERT_TRUE(theFlag); \
     theFlag = false;      \
-  } while (0);
+  } while (0)
 
 #define EXPECT_NO_FLAG()   \
   do {                     \
     ASSERT_FALSE(theFlag); \
     theFlag = false;       \
-  } while (0);
+  } while (0)
 
   // By reference
   {
-    auto f = makeFuture()
-                 .thenValue([](Unit) { throw std::logic_error("abc"); })
-                 .thenError<std::logic_error>(
-                     [&](const std::logic_error& /* e */) noexcept { flag(); });
+    auto f = yaclib::MakeFuture()
+                 .ThenInline([]() { throw std::logic_error("abc"); })
+                 .ThenInline([&](std::exception_ptr&&) noexcept { flag(); });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(std::move(f).Get().Ok());
   }
 
   // By auto reference
   {
-    auto f =
-        makeFuture()
-            .thenValue([](Unit) { throw eggs; })
-            .thenError<eggs_t>([&](auto const& /* e */) noexcept { flag(); });
+    auto f = yaclib::MakeFuture()
+                 .ThenInline([](yaclib::Unit) { throw eggs; })
+                 .ThenInline([&](std::exception_ptr&&) noexcept { flag(); });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(std::move(f).Get().Ok());
   }
 
   {
-    auto f = makeFuture()
-                 .thenValue([](Unit) { throw eggs; })
-                 .thenError<eggs_t>([&](auto const& /* e */) {
+    auto f = yaclib::MakeFuture()
+                 .ThenInline([]() { throw eggs; })
+                 .ThenInline([&](std::exception_ptr&&) {
                    flag();
-                   return makeFuture();
+                   return yaclib::MakeFuture();
                  });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(std::move(f).Get().Ok());
   }
 
   // By value
   {
-    auto f = makeFuture()
-                 .thenValue([](Unit) { throw eggs; })
-                 .thenError<eggs_t>([&](eggs_t /* e */) noexcept { flag(); });
+    auto f = yaclib::MakeFuture()
+                 .ThenInline([]() { throw eggs; })
+                 .ThenInline([&](std::exception_ptr&&) noexcept { flag(); });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(std::move(f).Get().Ok());
   }
 
   {
-    auto f = makeFuture()
-                 .thenValue([](Unit) { throw eggs; })
-                 .thenError<eggs_t>([&](eggs_t /* e */) {
+    auto f = yaclib::MakeFuture()
+                 .ThenInline([]() { throw eggs; })
+                 .ThenInline([&](std::exception_ptr&&) {
                    flag();
-                   return makeFuture();
+                   return yaclib::MakeFuture();
                  });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(std::move(f).Get().Ok());
   }
 
   //    // Polymorphic
@@ -377,146 +241,181 @@ TEST(FutureTest, thenError) {
   //
   // Non-exceptions
   {
-    auto f = makeFuture()
-                 .thenValue([](Unit) { throw -1; })
-                 .thenError<int>([&](int /* e */) noexcept { flag(); });
+    auto f = yaclib::MakeFuture()
+                 .ThenInline([]() { throw -1; })
+                 .ThenInline([&](std::exception_ptr&&) noexcept { flag(); });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(std::move(f).Get().Ok());
   }
 
   {
-    auto f = makeFuture()
-                 .thenValue([](Unit) { throw -1; })
-                 .thenError<int>([&](int /* e */) {
+    auto f = yaclib::MakeFuture()
+                 .ThenInline([]() { throw -1; })
+                 .ThenInline([&](std::exception_ptr&&) {
                    flag();
-                   return makeFuture();
+                   return yaclib::MakeFuture();
                  });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(std::move(f).Get().Ok());
   }
 
   // Mutable lambda
   {
-    auto f = makeFuture()
-                 .thenValue([](Unit) { throw eggs; })
-                 .thenError<eggs_t&>(
-                     [&](eggs_t& /* e */) mutable noexcept { flag(); });
+    auto f =
+        yaclib::MakeFuture()
+            .ThenInline([]() { throw eggs; })
+            .ThenInline([&](std::exception_ptr&&) mutable noexcept { flag(); });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(std::move(f).Get().Ok());
   }
 
   {
-    auto f = makeFuture()
-                 .thenValue([](Unit) { throw eggs; })
-                 .thenError<eggs_t&>([&](eggs_t& /* e */) mutable {
+    auto f = yaclib::MakeFuture()
+                 .ThenInline([]() { throw eggs; })
+                 .ThenInline([&](std::exception_ptr&&) mutable {
                    flag();
-                   return makeFuture();
+                   return yaclib::MakeFuture();
                  });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(std::move(f).Get().Ok());
   }
 
   // Function pointer
   {
-    auto f = makeFuture()
-                 .thenValue([](Unit) -> int { throw eggs; })
-                 .thenError<const eggs_t&>(onErrorHelperEggs)
-                 .thenError<std::exception const&>(onErrorHelperGeneric);
-    ASSERT_TRUE(10 == f.get());
+    auto f = yaclib::MakeFuture()
+                 .ThenInline([]() -> int { throw eggs; })
+                 .ThenInline([&](std::exception_ptr&& ptr) {
+                   try {
+                     std::rethrow_exception(std::move(ptr));
+                   } catch (eggs_t const& e) {
+                     onErrorHelperEggs(e);
+                   } catch (std::exception const& e) {
+                     onErrorHelperGeneric(e);
+                   }
+                   return 0;
+                 });
+    ASSERT_TRUE(10 == std::move(f).Get().Ok());
   }
   {
-    auto f =
-        makeFuture()
-            .thenValue([](Unit) -> int { throw std::runtime_error("test"); })
-            .thenError<const eggs_t&>(onErrorHelperEggs)
-            .thenError<std::exception>(onErrorHelperGeneric);
-    ASSERT_TRUE(20 == f.get());
+    auto f = yaclib::MakeFuture()
+                 .ThenInline([]() -> int { throw std::runtime_error("test"); })
+                 .ThenInline([&](std::exception_ptr&& ptr) {
+                   try {
+                     std::rethrow_exception(std::move(ptr));
+                   } catch (eggs_t const& e) {
+                     onErrorHelperEggs(e);
+                   } catch (std::exception const& e) {
+                     onErrorHelperGeneric(e);
+                   }
+                   return 0;
+                 });
+    ASSERT_TRUE(20 == std::move(f).Get().Ok());
   }
   {
-    auto f =
-        makeFuture()
-            .thenValue([](Unit) -> int { throw std::runtime_error("test"); })
-            .thenError<const eggs_t&>(onErrorHelperEggs);
-    EXPECT_THROW(f.get(), std::runtime_error);
+    auto f = yaclib::MakeFuture()
+                 .ThenInline([]() -> int { throw std::runtime_error("test"); })
+                 .ThenInline([&](std::exception_ptr&& ptr) {
+                   try {
+                     std::rethrow_exception(std::move(ptr));
+                   } catch (eggs_t const& e) {
+                     onErrorHelperEggs(e);
+                   }
+                   return 0;
+                 });
+    EXPECT_THROW(std::move(f).Get().Ok(), std::runtime_error);
   }
 
   // No throw
   {
-    auto f = makeFuture()
-                 .thenValue([](Unit) noexcept { return 42; })
-                 .thenError<eggs_t&>([&](eggs_t& /* e */) noexcept {
+    auto f = yaclib::MakeFuture()
+                 .ThenInline([]() noexcept { return 42; })
+                 .ThenInline([&](std::exception_ptr&&) {
                    flag();
                    return -1;
                  });
     EXPECT_NO_FLAG();
-    ASSERT_TRUE(42 == f.get());
+    ASSERT_TRUE(42 == std::move(f).Get().Ok());
   }
 
   {
-    auto f = makeFuture()
-                 .thenValue([](Unit) noexcept { return 42; })
-                 .thenError<eggs_t&>([&](eggs_t& /* e */) {
+    auto f = yaclib::MakeFuture()
+                 .ThenInline([]() noexcept { return 42; })
+                 .ThenInline([&](std::exception_ptr&&) {
                    flag();
-                   return makeFuture<int>(-1);
+                   return yaclib::MakeFuture<int>(-1);
                  });
     EXPECT_NO_FLAG();
-    ASSERT_TRUE(42 == f.get());
+    ASSERT_TRUE(42 == std::move(f).Get().Ok());
   }
 
   // Catch different exception
   {
-    auto f = makeFuture()
-                 .thenValue([](Unit) { throw eggs; })
-                 .thenError<std::runtime_error&>(
-                     [&](std::runtime_error& /* e */) noexcept { flag(); });
+    auto f = yaclib::MakeFuture()
+                 .ThenInline([]() { throw eggs; })
+                 .ThenInline([&](std::exception_ptr&& ptr) {
+                   try {
+                     std::rethrow_exception(std::move(ptr));
+                   } catch (std::runtime_error const& e) {
+                     flag();
+                   }
+                 });
     EXPECT_NO_FLAG();
-    EXPECT_THROW(f.get(), eggs_t);
+    EXPECT_THROW(std::move(f).Get().Ok(), eggs_t);
   }
 
   {
-    auto f =
-        makeFuture()
-            .thenValue([](Unit) { throw eggs; })
-            .thenError<std::runtime_error&>([&](std::runtime_error& /* e */) {
-              flag();
-              return makeFuture();
-            });
+    auto f = yaclib::MakeFuture()
+                 .ThenInline([]() { throw eggs; })
+                 .ThenInline([&](std::exception_ptr&& ptr) {
+                   try {
+                     std::rethrow_exception(std::move(ptr));
+                   } catch (std::runtime_error const& e) {
+                     flag();
+                   }
+                   return yaclib::MakeFuture();
+                 });
     EXPECT_NO_FLAG();
-    EXPECT_THROW(f.get(), eggs_t);
+    EXPECT_THROW(std::move(f).Get().Ok(), eggs_t);
   }
 
   // Returned value propagates
   {
-    auto f =
-        makeFuture()
-            .thenValue([](Unit) -> int { throw eggs; })
-            .thenError<eggs_t&>([&](eggs_t& /* e */) noexcept { return 42; });
-    ASSERT_TRUE(42 == f.get());
+    auto f = yaclib::MakeFuture()
+                 .ThenInline([]() -> int { throw eggs; })
+                 .ThenInline([&](std::exception_ptr&&) noexcept { return 42; });
+    ASSERT_TRUE(42 == std::move(f).Get().Ok());
   }
 
   // Returned future propagates
   {
-    auto f = makeFuture()
-                 .thenValue([](Unit) -> int { throw eggs; })
-                 .thenError<eggs_t&>(
-                     [&](eggs_t& /* e */) { return makeFuture<int>(42); });
-    ASSERT_TRUE(42 == f.get());
+    auto f = yaclib::MakeFuture()
+                 .ThenInline([]() -> int { throw eggs; })
+                 .ThenInline([&](std::exception_ptr&&) {
+                   return yaclib::MakeFuture<int>(42);
+                 });
+    ASSERT_TRUE(42 == std::move(f).Get().Ok());
   }
 
   // Throw in callback
   {
-    auto f = makeFuture()
-                 .thenValue([](Unit) -> int { throw eggs; })
-                 .thenError<eggs_t&>([&](eggs_t& e) -> int { throw e; });
-    EXPECT_THROW(f.get(), eggs_t);
+    auto f = yaclib::MakeFuture()
+                 .ThenInline([]() -> int { throw eggs; })
+                 .ThenInline([&](std::exception_ptr&& ptr) {
+                   std::rethrow_exception(std::move(ptr));
+                   return 0;
+                 });
+    EXPECT_THROW(std::move(f).Get().Ok(), eggs_t);
   }
 
   {
-    auto f =
-        makeFuture()
-            .thenValue([](Unit) -> int { throw eggs; })
-            .thenError<eggs_t&>([&](eggs_t& e) -> Future<int> { throw e; });
-    EXPECT_THROW(f.get(), eggs_t);
+    auto f = yaclib::MakeFuture()
+                 .ThenInline([]() -> int { throw eggs; })
+                 .ThenInline([&](std::exception_ptr&& ptr) {
+                   std::rethrow_exception(std::move(ptr));
+                   return yaclib::MakeFuture(0);
+                 });
+
+    EXPECT_THROW(std::move(f).Get().Ok(), eggs_t);
   }
 
 //    // exception_wrapper, return Future<T>
@@ -583,109 +482,117 @@ TEST(FutureTest, thenError) {
 }
 
 TEST(FutureTest, special) {
-  ASSERT_FALSE(std::is_copy_constructible<Future<int>>::value);
-  ASSERT_FALSE(std::is_copy_assignable<Future<int>>::value);
-  ASSERT_TRUE(std::is_move_constructible<Future<int>>::value);
-  ASSERT_TRUE(std::is_move_assignable<Future<int>>::value);
+  ASSERT_FALSE(std::is_copy_constructible<yaclib::Future<int>>::value);
+  ASSERT_FALSE(std::is_copy_assignable<yaclib::Future<int>>::value);
+  ASSERT_TRUE(std::is_move_constructible<yaclib::Future<int>>::value);
+  ASSERT_TRUE(std::is_move_assignable<yaclib::Future<int>>::value);
 }
 
 TEST(FutureTest, then) {
-  auto f =
-      makeFuture<std::string>("0")
-          .thenValue([](std::string) { return makeFuture<std::string>("1"); })
-          .then([](Try<std::string>&& t) { return makeFuture(t.get() + ";2"); })
-          .then([](const Try<std::string>&& t) {
-            return makeFuture(t.get() + ";3");
-          })
-          .then([](const Try<std::string>& t) {
-            return makeFuture(t.get() + ";4");
-          })
-          .then([](Try<std::string> t) { return makeFuture(t.get() + ";5"); })
-          .then([](const Try<std::string> t) {
-            return makeFuture(t.get() + ";6");
-          })
-          .thenValue([](std::string&& s) { return makeFuture(s + ";7"); })
-          .thenValue([](const std::string&& s) { return makeFuture(s + ";8"); })
-          .thenValue([](const std::string& s) { return makeFuture(s + ";9"); })
-          .thenValue([](std::string s) { return makeFuture(s + ";10"); })
-          .thenValue([](const std::string s) { return makeFuture(s + ";11"); });
-  std::string value = f.get();
+  auto f = yaclib::MakeFuture<std::string>("0")
+               .ThenInline([](std::string) {
+                 return yaclib::MakeFuture<std::string>("1");
+               })
+               .ThenInline([](yaclib::Result<std::string>&& t) {
+                 return yaclib::MakeFuture(std::move(t).Ok() + ";2");
+               })
+               .ThenInline([](const yaclib::Result<std::string>&& t) {
+                 return yaclib::MakeFuture(std::move(t).Ok() + ";3");
+               })
+               .ThenInline([](const yaclib::Result<std::string>& t) {
+                 return yaclib::MakeFuture(std::move(t).Ok() + ";4");
+               })
+               .ThenInline([](yaclib::Result<std::string> t) {
+                 return yaclib::MakeFuture(std::move(t).Ok() + ";5");
+               })
+               .ThenInline([](const yaclib::Result<std::string> t) {
+                 return yaclib::MakeFuture(std::move(t).Ok() + ";6");
+               })
+               .ThenInline(
+                   [](std::string&& s) { return yaclib::MakeFuture(s + ";7"); })
+               .ThenInline([](const std::string&& s) {
+                 return yaclib::MakeFuture(s + ";8");
+               })
+               .ThenInline([](const std::string& s) {
+                 return yaclib::MakeFuture(s + ";9");
+               })
+               .ThenInline(
+                   [](std::string s) { return yaclib::MakeFuture(s + ";10"); })
+               .ThenInline([](const std::string s) {
+                 return yaclib::MakeFuture(s + ";11");
+               });
+  std::string value = std::move(f).Get().Ok();
   ASSERT_TRUE(value == "1;2;3;4;5;6;7;8;9;10;11");
 }
 
 TEST(FutureTest, then_static_functions) {
-  auto f = makeFuture<int>(10).thenValue(onThenHelperAddFive);
-  ASSERT_TRUE(f.get() == 15);
+  auto f = yaclib::MakeFuture<int>(10).ThenInline(onThenHelperAddFive);
+  ASSERT_TRUE(std::move(f).Get().Ok() == 15);
 
-  auto f2 = makeFuture<int>(15).thenValue(onThenHelperAddFutureFive);
-  ASSERT_TRUE(f2.get() == 20);
+  auto f2 = yaclib::MakeFuture<int>(15).ThenInline(onThenHelperAddFutureFive);
+  ASSERT_TRUE(std::move(f2).Get().Ok() == 20);
 }
 
 TEST(FutureTest, get) {
-  auto f = makeFuture(std::make_unique<int>(42));
-  auto up = std::move(f).get();
+  auto f = yaclib::MakeFuture(std::make_unique<int>(42));
+  auto up = std::move(f).Get().Ok();
   ASSERT_TRUE(42 == *up);
 
-  EXPECT_THROW(makeFuture<int>(eggs).get(), eggs_t);
+  EXPECT_THROW(yaclib::MakeFuture<int>(eggs).Get().Ok(), eggs_t);
 }
 
 TEST(FutureTest, isReady) {
-  Promise<int> p;
-  auto f = p.getFuture();
-  ASSERT_FALSE(f.isReady());
-  p.setValue(42);
-  ASSERT_TRUE(f.isReady());
+  auto [f, p] = yaclib::MakeContract<int>();
+  ASSERT_FALSE(f.Ready());
+  std::move(p).Set(42);
+  ASSERT_TRUE(f.Ready());
 }
 
-TEST(FutureTest, futureNotReady) {
-  Promise<int> p;
-  Future<int> f = p.getFuture();
-  EXPECT_THROW(f.result().get(), FutureException);
-}
-
-TEST(FutureTest, makeFuture) {
-  ASSERT_TRUE(makeFuture<int>(eggs).getTry().hasException());
-  ASSERT_FALSE(makeFuture(42).getTry().hasException());
+TEST(FutureTest, MakeFuture) {
+  ASSERT_TRUE(yaclib::MakeFuture<int>(eggs).Get().State() ==
+              yaclib::ResultState::Exception);
+  ASSERT_FALSE(yaclib::MakeFuture(42).Get().State() ==
+               yaclib::ResultState::Exception);
 }
 
 TEST(FutureTest, hasValue) {
-  ASSERT_TRUE(makeFuture(42).getTry().hasValue());
-  ASSERT_FALSE(makeFuture<int>(eggs).getTry().hasValue());
+  ASSERT_TRUE(yaclib::MakeFuture(42).Get());
+  ASSERT_FALSE(yaclib::MakeFuture<int>(eggs).Get());
 }
 
 TEST(FutureTest, makeFuture2) {
-  // EXPECT_TYPE(makeFuture(42), Future<int>);
-  ASSERT_TRUE(42 == makeFuture(42).get());
+  // EXPECT_TYPE(yaclib::MakeFuture(42), Future<int>);
+  ASSERT_TRUE(42 == yaclib::MakeFuture(42).Get().Ok());
 
-  // EXPECT_TYPE(makeFuture<float>(42), Future<float>);
-  ASSERT_TRUE(42 == makeFuture<float>(42).get());
+  // EXPECT_TYPE(yaclib::MakeFuture<float>(42), Future<float>);
+  ASSERT_TRUE(42 == yaclib::MakeFuture<float>(42).Get().Ok());
 
   auto fun = [] { return 42; };
   // EXPECT_TYPE(makeFutureWith(fun), Future<int>);
-  ASSERT_TRUE(42 == makeFutureWith(fun).get());
+  ASSERT_TRUE(42 == yaclib::Run(yaclib::MakeInline(), fun).Get().Ok());
 
-  auto funf = [] { return makeFuture<int>(43); };
+  auto funf = [] { return yaclib::MakeFuture<int>(43); };
   // EXPECT_TYPE(makeFutureWith(funf), Future<int>);
-  ASSERT_TRUE(43 == makeFutureWith(funf).get());
+  ASSERT_TRUE(43 == yaclib::Run(yaclib::MakeInline(), funf).Get().Ok());
 
   auto failfun = []() -> int { throw eggs; };
   // EXPECT_TYPE(makeFutureWith(failfun), Future<int>);
-  EXPECT_NO_THROW(makeFutureWith(failfun));
-  EXPECT_THROW(makeFutureWith(failfun).get(), eggs_t);
+  EXPECT_NO_THROW(yaclib::Run(yaclib::MakeInline(), failfun));
+  EXPECT_THROW(yaclib::Run(yaclib::MakeInline(), failfun).Get().Ok(), eggs_t);
 
-  auto failfunf = []() -> Future<int> { throw eggs; };
+  auto failfunf = []() -> yaclib::Future<int> { throw eggs; };
   // EXPECT_TYPE(makeFutureWith(failfunf), Future<int>);
-  EXPECT_NO_THROW(makeFutureWith(failfunf));
-  EXPECT_THROW(makeFutureWith(failfunf).get(), eggs_t);
+  EXPECT_NO_THROW(yaclib::Run(yaclib::MakeInline(), failfunf));
+  EXPECT_THROW(yaclib::Run(yaclib::MakeInline(), failfunf).Get().Ok(), eggs_t);
 
-  // EXPECT_TYPE(makeFuture(), Future<Unit>);
+  // EXPECT_TYPE(yaclib::MakeFuture(), Future<Unit>);
 }
 
 TEST(FutureTest, finish) {
   auto x = std::make_shared<int>(0);
 
-  Promise<int> p;
-  auto f = p.getFuture().then([x](Try<int>&& t) { *x = t.get(); });
+  auto [future, p] = yaclib::MakeContract<int>();
+  auto f = std::move(future).ThenInline([x](int t) { *x = t; });
 
   // The callback hasn't executed
   ASSERT_TRUE(0 == *x);
@@ -693,8 +600,8 @@ TEST(FutureTest, finish) {
   // The callback has a reference to x
   ASSERT_TRUE(2 == x.use_count());
 
-  p.setValue(42);
-  f.wait();
+  std::move(p).Set(42);
+  Wait(f);
 
   // the callback has executed
   ASSERT_EQ(42, *x);
@@ -716,8 +623,9 @@ TEST(FutureTest, detachRace) {
   // slow test so I won't do that but if it ever fails, take it seriously, and
   // run the test binary with "--gtest_repeat=10000 --gtest_filter=*detachRace"
   // (Don't forget to enable ASAN)
-  auto p = std::make_unique<Promise<bool>>();
-  auto f = std::make_unique<Future<bool>>(p->getFuture());
+  auto [future, promise] = yaclib::MakeContract<bool>();
+  auto p = std::make_unique<yaclib::Promise<bool>>(std::move(promise));
+  auto f = std::make_unique<yaclib::Future<bool>>(std::move(future));
   // folly::Baton<> baton;
   std::mutex m;
   std::condition_variable condition;
@@ -738,10 +646,10 @@ TEST(FutureTest, detachRace) {
 // to have one because of possible memory leaks. Here we test that
 // we can handle freeing of the Future while it is running.
 TEST(FutureTest, CircularDependencySharedPtrSelfReset) {
-  Promise<int64_t> promise;
-  auto ptr = std::make_shared<Future<int64_t>>(promise.getFuture());
+  auto [f, promise] = yaclib::MakeContract<int64_t>();
+  auto ptr = std::make_shared<yaclib::Future<int64_t>>(std::move(f));
 
-  std::move(*ptr).then([ptr](Try<int64_t>&& /* uid */) mutable {
+  std::move(*ptr).DetachInline([ptr](auto&& /* uid */) mutable {
     ASSERT_TRUE(1 == ptr.use_count());
 
     // Leaving no references to ourselves.
@@ -753,30 +661,31 @@ TEST(FutureTest, CircularDependencySharedPtrSelfReset) {
 
   ptr.reset();
 
-  promise.setValue(1);
+  std::move(promise).Set(1);
 }
 
 TEST(FutureTest, Constructor) {
-  auto f1 = []() -> Future<int> { return Future<int>(3); }();
-  ASSERT_TRUE(f1.get() == 3);
-  auto f2 = []() -> Future<Unit> { return Future<Unit>(); }();
-  EXPECT_NO_THROW(f2.getTry());
+  auto f1 = []() -> yaclib::Future<int> {
+    return yaclib::MakeFuture<int>(3);
+  }();
+  ASSERT_TRUE(std::move(f1).Get().Ok() == 3);
+  auto f2 = []() -> yaclib::Future<> { return yaclib::MakeFuture(); }();
+  ASSERT_TRUE(std::move(f2).Get().Ok() == yaclib::Unit{});
 }
 
 TEST(FutureTest, ImplicitConstructor) {
-  auto f1 = []() -> Future<int> { return 3; }();
-  ASSERT_TRUE(f1.get() == 3);
-  // Unfortunately, the C++ standard does not allow the
-  // following implicit conversion to work:
-  // auto f2 = []() -> Future<Unit> { }();
+  auto f1 = []() -> yaclib::Future<int> { return yaclib::MakeFuture(3); }();
+  ASSERT_TRUE(std::move(f1).Get().Ok() == 3);
 }
 
 TEST(FutureTest, InPlaceConstructor) {
-  auto f = Future<std::pair<int, double>>(std::in_place, 5, 3.2);
-  ASSERT_TRUE(5 == f.get().first);
+  auto f = yaclib::MakeFuture<std::pair<int, double>>(5, 3.2);
+  ASSERT_TRUE(5 == std::move(f).Get().Ok().first);
 }
 
-TEST(FutureTest, makeFutureNoThrow) { makeFuture().get(); }
+TEST(FutureTest, makeFutureNoThrow) {
+  std::ignore = yaclib::MakeFuture().Get().Ok();
+}
 
 TEST(FutureTest, invokeCallbackReturningValueAsRvalue) {
   struct Foo {
@@ -791,16 +700,22 @@ TEST(FutureTest, invokeCallbackReturningValueAsRvalue) {
   // The continuation will be forward-constructed - copied if given as & and
   // moved if given as && - everywhere construction is required.
   // The continuation will be invoked with the same cvref as it is passed.
-  ASSERT_TRUE(101 == makeFuture<int>(100).thenValue(foo).get());
-  ASSERT_TRUE(202 == makeFuture<int>(200).thenValue(cfoo).get());
-  ASSERT_TRUE(303 == makeFuture<int>(300).thenValue(Foo()).get());
+  ASSERT_TRUE(101 == yaclib::MakeFuture<int>(100).ThenInline(foo).Get().Ok());
+  ASSERT_TRUE(202 == yaclib::MakeFuture<int>(200).ThenInline(cfoo).Get().Ok());
+  ASSERT_TRUE(303 == yaclib::MakeFuture<int>(300).ThenInline(Foo()).Get().Ok());
 }
 
 TEST(FutureTest, invokeCallbackReturningFutureAsRvalue) {
   struct Foo {
-    Future<int> operator()(int x) & { return x + 1; }
-    Future<int> operator()(int x) const& { return x + 2; }
-    Future<int> operator()(int x) && { return x + 3; }
+    yaclib::Future<int> operator()(int x) & {
+      return yaclib::MakeFuture(x + 1);
+    }
+    yaclib::Future<int> operator()(int x) const& {
+      return yaclib::MakeFuture(x + 2);
+    }
+    yaclib::Future<int> operator()(int x) && {
+      return yaclib::MakeFuture(x + 3);
+    }
   };
 
   Foo foo;
@@ -809,23 +724,21 @@ TEST(FutureTest, invokeCallbackReturningFutureAsRvalue) {
   // The continuation will be forward-constructed - copied if given as & and
   // moved if given as && - everywhere construction is required.
   // The continuation will be invoked with the same cvref as it is passed.
-  ASSERT_TRUE(101 == makeFuture<int>(100).thenValue(foo).get());
-  ASSERT_TRUE(202 == makeFuture<int>(200).thenValue(cfoo).get());
-  ASSERT_TRUE(303 == makeFuture<int>(300).thenValue(Foo()).get());
+  ASSERT_TRUE(101 == yaclib::MakeFuture<int>(100).ThenInline(foo).Get().Ok());
+  ASSERT_TRUE(202 == yaclib::MakeFuture<int>(200).ThenInline(cfoo).Get().Ok());
+  ASSERT_TRUE(303 == yaclib::MakeFuture<int>(300).ThenInline(Foo()).Get().Ok());
 }
 
 TEST(FutureTest, basic_example) {
-  Promise<int> p;
-  Future<int> f = p.getFuture();
-  auto f2 = std::move(f).thenValue(onThenHelperAddOne);
-  p.setValue(42);
-  ASSERT_TRUE(f2.get() == 43);
+  auto [f, p] = yaclib::MakeContract<int>();
+  auto f2 = std::move(f).ThenInline(onThenHelperAddOne);
+  std::move(p).Set(42);
+  ASSERT_TRUE(std::move(f2).Get().Ok() == 43);
 }
 
 TEST(FutureTest, basic_example_fpointer) {
-  Promise<int> p;
-  Future<int> f = p.getFuture();
-  auto f2 = std::move(f).thenValue(&onThenHelperAddOne);
-  p.setValue(42);
-  ASSERT_TRUE(f2.get() == 43);
+  auto [f, p] = yaclib::MakeContract<int>();
+  auto f2 = std::move(f).ThenInline(&onThenHelperAddOne);
+  std::move(p).Set(42);
+  ASSERT_TRUE(std::move(f2).Get().Ok() == 43);
 }

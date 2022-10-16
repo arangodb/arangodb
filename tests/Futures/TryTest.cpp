@@ -21,13 +21,9 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Futures/Try.h"
-
 #include "gtest/gtest.h"
 
 #include <memory>
-
-using namespace arangodb::futures;
 
 // from folly Utilities.h
 #if __cpp_lib_as_const || _MSC_VER
