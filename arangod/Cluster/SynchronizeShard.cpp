@@ -694,6 +694,8 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
 }
 
 bool SynchronizeShard::first() {
+  TRI_IF_FAILURE("SynchronizeShard::disable") { return false; }
+
   std::string const& database = getDatabase();
   std::string const& planId = _description.get(COLLECTION);
   std::string const& shard = getShard();
