@@ -290,9 +290,8 @@ void transaction::helpers::extractKeyAndRevFromDocument(VPackSlice slice, VPackS
   // fall back to regular lookup
   {
     keySlice = slice.get(StaticStrings::KeyString);
-    VPackValueLength l;
-    char const* p = slice.get(StaticStrings::RevString).getString(l);
-    revisionId = RevisionId::fromString(p, l, false);
+    revisionId = RevisionId::fromString(
+        slice.get(StaticStrings::RevString).stringView());
   }
 }
 

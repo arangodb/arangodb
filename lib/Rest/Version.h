@@ -77,6 +77,12 @@ class Builder;
 
 namespace rest {
 
+struct FullVersion {
+  int major;
+  int minor;
+  int patch;
+};
+
 class Version {
  private:
   /// @brief create the version information
@@ -88,6 +94,13 @@ class Version {
   /// @brief parse a version string into major, minor
   /// returns -1, -1 when the version string has an invalid format
   static std::pair<int, int> parseVersionString(std::string const&);
+
+  // parse a full version string into major, minor, patch
+  /// returns -1, -1, -1 when the version string has an invalid format
+  /// returns major, -1, -1 when only the major version can be determined,
+  /// returns major, minor, -1 when only the major and minor version can be
+  /// determined.
+  static FullVersion parseFullVersionString(std::string const&);
 
   /// @brief initialize
   static void initialize();

@@ -547,10 +547,7 @@ RevisionId RestVocbaseBaseHandler::extractRevision(char const* header, bool& isV
       --e;
     }
 
-    RevisionId rid = RevisionId::none();
-
-    bool isOld;
-    rid = RevisionId::fromString(s, e - s, isOld, false);
+    RevisionId rid = RevisionId::fromString({s, static_cast<size_t>(e - s)});
     isValid = (rid.isSet() && rid != RevisionId::max());
 
     return rid;
