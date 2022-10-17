@@ -1,6 +1,9 @@
 v3.9.4 (XXXX-XX-XX)
 -------------------
 
+* Fixed BTS-852 (user's saved queries used to disappear after updating user
+  profile).
+
 * Changed the encoding of revision ids returned by the following REST APIs:
   - GET /_api/collection/<collection-name>/revision: the revision id was
     previously returned as numeric value, and now it will be returned as
