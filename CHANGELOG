@@ -5,25 +5,27 @@ v3.10.1 (XXXX-XX-XX)
   - GET /_api/collection/<collection-name>/revision: the revision id was
     previously returned as numeric value, and now it will be returned as
     a string value with either numeric encoding or HLC-encoding inside.
-  - GET /_api/collection/<collection-name>/checksum: the revision id in
-    the "revision" attribute was previously encoded as a numeric value
-    in single server, and as a string in cluster. This is now unified so
-    that the "revision" attribute always contains a string value with
-    either numeric encoding or HLC-encoding inside.
+  - GET /_api/collection/<collection-name>/checksum: the revision id in the
+    "revision" attribute was previously encoded as a numeric value in single
+    server, and as a string in cluster. This is now unified so that the
+    "revision" attribute always contains a string value with either numeric
+    encoding or HLC-encoding inside.
 
 * Fixed handling of empty URL parameters in HTTP request handling.
 
-* Fixed diffing of completely non-overlapping revision trees, which could
-  lead to out-of-bounds reads at the right end of the first (smaller) tree.
+* Fixed diffing of completely non-overlapping revision trees, which could lead
+  to out-of-bounds reads at the right end of the first (smaller) tree.
 
-* Fixed aborting the server process if an exception was thrown in C++ code
-  that was invoked from the llhttp C code dispatcher. That dispatcher code
-  couldn't handle C++ exceptions properly.
+* Fixed aborting the server process if an exception was thrown in C++ code that
+  was invoked from the llhttp C code dispatcher. That dispatcher code couldn't
+  handle C++ exceptions properly.
 
-* Fixed BTS-1073: Fix encoding and decoding of revision ids in replication 
-  incremental sync protocol. Previously, the encoding of revision ids could 
-  be ambiguous under some circumstances, which could prevent shards from 
-  getting into sync.
+* Fixed BTS-1073: Fix encoding and decoding of revision ids in replication
+  incremental sync protocol. Previously, the encoding of revision ids could be
+  ambiguous under some circumstances, which could prevent shards from getting
+  into sync.
+
+* ES-1312: fix handling of reaching the WAL archive capacity limit.
 
 * Log better diagnosis information in case multiple servers in a cluster are
   configured to use the same endpoint.
