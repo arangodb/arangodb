@@ -196,6 +196,7 @@ struct alignas(64) ReplicatedLog {
       agency::ParticipantsConfig config;
     };
 
+    bool resigned{false};
     std::unique_ptr<LogCore> core = nullptr;
     std::shared_ptr<ILogParticipant> participant = nullptr;
     std::optional<LatestConfig> latest;

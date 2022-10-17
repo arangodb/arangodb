@@ -203,6 +203,8 @@ struct arangodb::VocBaseLogManager {
 
         if (res.fail()) {
           TRI_ASSERT(storage != nullptr);
+          LOG_CTX("998cc", ERR, _logContext)
+              << "failed to drop replicated log " << res.errorMessage();
           return res;
         }
         TRI_ASSERT(storage == nullptr);

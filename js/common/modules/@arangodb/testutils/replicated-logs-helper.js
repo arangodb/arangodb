@@ -387,6 +387,7 @@ const createReplicatedLogPlanOnly = function (database, targetConfig, replicatio
     id: logId,
     currentTerm: createTermSpecification(term, servers, leader),
     participantsConfig: createParticipantsConfig(generation, targetConfig, servers),
+    properties: {implementation: {type: "black-hole", parameters: {}}}
   });
 
   // wait for all servers to have reported in current
@@ -407,6 +408,7 @@ const createReplicatedLog = function (database, targetConfig, replicationFactor)
     config: targetConfig,
     participants: getParticipantsObjectForServers(servers),
     supervision: {maxActionsTraceLength: 20},
+    properties: {implementation: {type: "black-hole", parameters: {}}}
   });
 
   waitFor(lpreds.replicatedLogLeaderEstablished(database, logId, undefined, servers));

@@ -432,7 +432,8 @@ auto RocksDBLogStorageMethods::drop() -> Result {
   if (auto s = batch.DeleteRange(logCf, start, end); !s.ok()) {
     return rocksutils::convertStatus(s);
   }
-  if (auto s = db->Write(rocksdb::WriteOptions{}, &batch); !s.ok()) {
+  if (auto s = db->GetRootDB()->Write(rocksdb::WriteOptions{}, &batch);
+      !s.ok()) {
     return rocksutils::convertStatus(s);
   }
   return {};

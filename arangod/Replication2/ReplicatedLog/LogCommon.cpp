@@ -292,7 +292,7 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
     auto operator()(
         CommitFailReason::FewerParticipantsThanWriteConcern const& reason) {
       return fmt::format(
-          "Fewer participants than effectove write concern. Have {} ",
+          "Fewer participants than effective write concern. Have {} ",
           "participants and effectiveWriteConcern={}.", reason.numParticipants,
           reason.effectiveWriteConcern);
     }

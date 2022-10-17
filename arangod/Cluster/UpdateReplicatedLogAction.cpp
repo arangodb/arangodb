@@ -63,11 +63,10 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   auto& df = _feature.server().getFeature<DatabaseFeature>();
   DatabaseGuard guard(df, database);
 
-  ADB_PROD_ASSERT(spec->currentTerm.has_value())
-      << database << "/" << logId << " missing term";
-
   auto result = std::invoke([&] {
     if (spec.has_value()) {
+      ADB_PROD_ASSERT(spec->currentTerm.has_value())
+          << database << "/" << logId << " missing term";
       if (auto state = guard->getReplicatedStateById(logId); state.fail()) {
         auto& impl = spec->properties.implementation;
         VPackSlice parameter = impl.parameters ? impl.parameters->slice()

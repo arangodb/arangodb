@@ -368,8 +368,8 @@ struct CommitFailReason {
     template<class Inspector>
     friend auto inspect(Inspector& f, Why& x) {
       return f.enumeration(x).values(
-          Why::kNotAllowedInQuorum, "NotAllowedInQuorum", Why::kWrongTerm,
-          "WrongTerm", Why::kSnapshotMissing, "SnapshotMissing");
+          Why::kNotAllowedInQuorum, "notAllowedInQuorum", Why::kWrongTerm,
+          "wrongTerm", Why::kSnapshotMissing, "snapshotMissing");
     }
   };
   struct FewerParticipantsThanWriteConcern {
