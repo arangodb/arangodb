@@ -21,9 +21,7 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "gtest/gtest.h"
-
 
 /*TEST(Optimizer2, wrangling_the_foo) {
   EXPECT_TRUE(false) << "Expected true to be false";

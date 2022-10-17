@@ -21,7 +21,6 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "gtest/gtest.h"
 
 #include "Basics/VelocyPackStringLiteral.h"

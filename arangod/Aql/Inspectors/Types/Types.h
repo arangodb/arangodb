@@ -27,7 +27,7 @@ namespace arangodb::aql::inspectors {
 class Types {
  public:
   typedef std::uint64_t NodeId;
-  typedef std::string NodeType; // TODO: Let's use a "numeric" type 'later'.
+  typedef std::string NodeType;  // TODO: Let's use a "numeric" type 'later'.
 };
 
 }  // namespace arangodb::aql::inspectors
