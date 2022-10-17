@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,18 +18,16 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
+namespace arangodb::aql::inspectors {
 
-#include "gtest/gtest.h"
+class Types {
+ public:
+  typedef std::uint64_t NodeId;
+  typedef std::string NodeType; // TODO: Let's use a "numeric" type 'later'.
+};
 
-
-/*TEST(Optimizer2, wrangling_the_foo) {
-  EXPECT_TRUE(false) << "Expected true to be false";
-}*/
-
-int main(int argc, char* argv[]) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
+}  // namespace arangodb::aql::inspectors

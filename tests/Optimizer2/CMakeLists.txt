@@ -1,5 +1,8 @@
+add_subdirectory(PlanNodes)
+
 add_executable(arangodbtests_optimizer2
   ${PROJECT_SOURCE_DIR}/lib/Basics/VelocyPackStringLiteral.cpp
+  PlanNodes/ReturnNode.cpp
   main.cpp)
 
 target_include_directories(arangodbtests_optimizer2 PRIVATE
@@ -7,5 +10,5 @@ target_include_directories(arangodbtests_optimizer2 PRIVATE
   ${PROJECT_BINARY_DIR}/lib
   ${PROJECT_SOURCE_DIR}/arangod)
 
-target_link_libraries(arangodbtests_optimizer2 velocypack fmt gtest)
+target_link_libraries(arangodbtests_optimizer2 optimizer2_plan_nodes velocypack fmt gtest)
 

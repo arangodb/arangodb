@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,18 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
+#include "Aql/Inspectors/Types/Types.h"
 
-#include "gtest/gtest.h"
+namespace arangodb::aql::inspectors {
 
+struct BaseNode {
+  Types::NodeId id;
+  Types::NodeType type;
+};
 
-/*TEST(Optimizer2, wrangling_the_foo) {
-  EXPECT_TRUE(false) << "Expected true to be false";
-}*/
-
-int main(int argc, char* argv[]) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+template<class Inspector>
+auto inspect(Inspector& f, BaseNode& v) {
+  return f.object(v).fields(f.field("id", v.id), f.field("type", v.type));
 }
+
+}  // namespace arangodb::aql::inspectors
