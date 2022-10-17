@@ -1632,7 +1632,10 @@ void ClusterInfo::loadPlan() {
           auto col = newShards.find(
               std::to_string(colPair.second.collection->id().id()));
           if (col != newShards.end()) {
-            if (col->second->size() == 0) {
+            auto logicalColToBeCreated = colPair.second.collection;
+            if (col->second->size() == 0 ||
+                (logicalColToBeCreated->isSmart() &&
+                 logicalColToBeCreated->type() == TRI_COL_TYPE_EDGE)) {
               // Can happen for smart edge collections. But in this case we
               // can ignore the collection.
               continue;
@@ -6221,9 +6224,6 @@ bool ClusterInfo::getResponsibleServersReplication2(
       THROW_ARANGO_EXCEPTION(r);
     }
   }
-
-  auto& clusterFeature = _server.getFeature<ClusterFeature>();
-  auto& agencyCache = clusterFeature.agencyCache();
 
   bool isReplicationTwo = false;
   while (true) {

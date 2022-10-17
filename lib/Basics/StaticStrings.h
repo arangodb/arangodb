@@ -348,7 +348,10 @@ class StaticStrings {
   static std::string const RevisionTreeRangeMin;
   static std::string const RevisionTreeInitialRangeMin;
   static std::string const RevisionTreeRanges;
+  // deprecated
   static std::string const RevisionTreeResume;
+
+  static std::string const RevisionTreeResumeHLC;
   static std::string const RevisionTreeVersion;
   static std::string const FollowingTermId;
 
