@@ -949,8 +949,17 @@ QueryResult Query::parse() {
   return result;
 }
 
-/// @brief explain an AQL query
-QueryResult Query::explain(bool optimize) {
+/// @brief explain an AQL query; this parses and optimizes the query
+/// and returns either one plan or all plans.
+QueryResult Query::explain() { return doExplain(true); }
+
+/// @brief explain an AQL query; this function allows to turn off the optimizer
+/// entirely, leading to a plan that will not, in its current state, be
+/// executable.
+///
+/// This is a temporary step to decouple the optimizer from parsing and
+/// executing.
+QueryResult Query::doExplain(bool optimize) {
   QueryResult result;
 
   try {
