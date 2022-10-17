@@ -1,4 +1,7 @@
-add_library(arango_aql STATIC
+add_subdirectory(Optimizer2)
+
+add_library(
+  arango_aql STATIC
   Aggregator.cpp
   AqlCall.cpp
   AqlCallList.cpp
@@ -175,7 +178,8 @@ add_library(arango_aql STATIC
   WindowExecutor.cpp
   WindowNode.cpp)
 
-target_link_libraries(arango_aql
+target_link_libraries(
+  arango_aql
   arango_geo
   arango_graph
   arango_indexes
@@ -183,21 +187,20 @@ target_link_libraries(arango_aql
   arango_network
   immer)
 
-target_include_directories(arango_aql PRIVATE
-  "${PROJECT_SOURCE_DIR}/arangod"
-  "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+target_include_directories(
+  arango_aql PRIVATE "${PROJECT_SOURCE_DIR}/arangod"
+                     "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
-target_compile_options(arango_aql PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})
+target_compile_options(arango_aql PRIVATE ${CMAKE_DEPRECATE_OPTIONS})
 
-################################################################################
-## BISON/FLEX
-################################################################################
+# ##############################################################################
+# BISON/FLEX
+# ##############################################################################
 
-#note that we check - in the generated FLEX / BISON files, therefore they are
-#generate inside the source tree
+# note that we check - in the generated FLEX / BISON files, therefore they are
+# generate inside the source tree
 
-if (USE_MAINTAINER_MODE AND NOT MSVC)
+if(USE_MAINTAINER_MODE AND NOT MSVC)
   set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM "On")
 
   add_custom_command(
@@ -205,19 +208,18 @@ if (USE_MAINTAINER_MODE AND NOT MSVC)
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMAND ${FLEX_EXECUTABLE} -L -otokens.cpp tokens.ll
     MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/tokens.ll
-    VERBATIM
-  )
+    VERBATIM)
 
   add_custom_command(
     OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/grammar.cpp
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMAND ${CMAKE_SOURCE_DIR}/utils/bison-c.sh
-      ${BISON_EXECUTABLE} grammar.cpp grammar.y
+    COMMAND ${CMAKE_SOURCE_DIR}/utils/bison-c.sh ${BISON_EXECUTABLE} grammar.cpp
+            grammar.y
     MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/grammar.y
-    VERBATIM
-  )
-endif ()
+    VERBATIM)
+endif()
 
-if (CMAKE_COMPILER_IS_GNUCC)
-  set_source_files_properties(tokens.cpp PROPERTIES COMPILE_FLAGS -Wno-sign-compare)
-endif ()
+if(CMAKE_COMPILER_IS_GNUCC)
+  set_source_files_properties(tokens.cpp PROPERTIES COMPILE_FLAGS
+                                                    -Wno-sign-compare)
+endif()
