@@ -23,6 +23,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 
 #include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
@@ -35,9 +36,11 @@ namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateHandlersFactory::DocumentStateHandlersFactory(
     ArangodServer& server, AgencyCache& agencyCache,
+    network::ConnectionPool* connectionPool,
     MaintenanceFeature& maintenaceFeature, DatabaseFeature& databaseFeature)
     : _server(server),
       _agencyCache(agencyCache),
+      _connectionPool(connectionPool),
       _maintenanceFeature(maintenaceFeature),
       _databaseFeature(databaseFeature) {}
 
@@ -92,6 +95,12 @@ auto DocumentStateHandlersFactory::createTransaction(
   }
 
   return std::make_shared<DocumentStateTransaction>(std::move(methods));
+}
+
+auto DocumentStateHandlersFactory::createNetworkHandler(GlobalLogIdentifier gid)
+    -> std::shared_ptr<IDocumentStateNetworkHandler> {
+  return std::make_shared<DocumentStateNetworkHandler>(std::move(gid),
+                                                       _connectionPool);
 }
 
 }  // namespace arangodb::replication2::replicated_state::document
