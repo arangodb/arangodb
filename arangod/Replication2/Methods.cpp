@@ -233,7 +233,6 @@ struct ReplicatedLogMethodsCoordinator final
       std::uint64_t version;
     };
 
-    LOG_DEVEL << "waitForLogReady log = " << id << " version = " << version;
     auto ctx = std::make_shared<Context>(version);
     auto f = ctx->promise.getFuture();
 
@@ -252,13 +251,9 @@ struct ReplicatedLogMethodsCoordinator final
             return false;
           }
 
-          LOG_DEVEL << "callback with " << slice.toJson() << " and index "
-                    << index;
-
           auto supervision = velocypack::deserialize<
               replication2::agency::LogCurrentSupervision>(slice);
           if (supervision.targetVersion >= ctx->version) {
-            LOG_DEVEL << "resolving promise";
             ctx->promise.setValue(ResultT<consensus::index_t>{index});
             return true;
           }

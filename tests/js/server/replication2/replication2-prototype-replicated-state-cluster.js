@@ -124,25 +124,13 @@ const replicatedStateSuite = function () {
         participants[server] = {};
       }
 
-      sh.updateReplicatedStateTarget(database, stateId,
-                                  function(target) {
-                                    return {
-                                      id: stateId,
-                                      participants: participants,
-                                      config: {
-                                        waitForSync: true,
-                                        writeConcern: 2,
-                                        softWriteConcern: 3,
-                                      },
-                                      properties: {
-                                        implementation: {
-                                          type: "prototype"
-                                        }
-                                      }
-                                    };
+      lh.replicatedLogSetTarget(database, stateId, {
+        id: stateId,
+        config: {writeConcern: 2, waitForSync: false},
+        participants: lh.getParticipantsObjectForServers(servers),
+        supervision: {maxActionsTraceLength: 20},
+        properties: {implementation: {type: "prototype", parameters: {}}},
       });
-
-      lh.waitFor(spreds.replicatedStateIsReady(database, stateId, servers));
       lh.waitForReplicatedLogAvailable(stateId);
 
       let {leader} = lh.getReplicatedLogLeaderPlan(database, stateId);
