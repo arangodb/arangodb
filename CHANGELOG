@@ -1,4 +1,4 @@
-v3.8.8 (XXXX-XX-XX)
+v3.8.8 (2022-10-17)
 -------------------
 
 * Fixed BTS-852 (user's saved queries used to disappear after updating user
