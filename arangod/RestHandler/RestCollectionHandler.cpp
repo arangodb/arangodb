@@ -352,7 +352,7 @@ void RestCollectionHandler::handleCommandPost() {
       _request->parsedValue("enforceReplicationFactor", true);
 
   auto planCollection = CreateCollectionBody::fromCreateAPIBody(
-      body, CreateCollectionBody::DatabaseConfiguration{_vocbase});
+      body, _vocbase.getDatabaseConfiguration());
 
   if (planCollection.fail()) {
     // error message generated in inspect

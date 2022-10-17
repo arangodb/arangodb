@@ -23,7 +23,6 @@
 #include "gtest/gtest.h"
 
 #include "Basics/Exceptions.h"
-#include "Cluster/ServerDefaults.h"
 #include "Logger/LogMacros.h"
 #include "Inspection/VPack.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
@@ -33,15 +32,6 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb::tests {
-
-/**********************
- * MACRO SECTION
- *
- * Here are some helper Makros to fill some of the below test code
- * which is highly overlapping
- *********************/
-
-
 
 /**********************
  * TEST SECTION
@@ -144,7 +134,7 @@ TEST_F(CreateCollectionBodyTest,
                                                           defaultDBConfig());
     ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                              << testee.result().errorMessage();
-    EXPECT_EQ(testee->mutableProperties.writeConcern, 3);
+    EXPECT_EQ(testee->mutableProperties.writeConcern, 3ul);
   }
   {
     // We change order of attributes in the input vpack
@@ -192,7 +182,7 @@ TEST_F(CreateCollectionBodyTest, test_configureMaxNumberOfShards) {
       << "Parsing error in " << body.toJson();
 
   CreateCollectionBody::DatabaseConfiguration config = defaultDBConfig();
-  EXPECT_EQ(config.maxNumberOfShards, 0);
+  EXPECT_EQ(config.maxNumberOfShards, 0ul);
   EXPECT_EQ(config.shouldValidateClusterSettings, false);
 
   {

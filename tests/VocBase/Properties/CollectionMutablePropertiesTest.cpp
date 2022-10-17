@@ -106,8 +106,8 @@ TEST_F(CollectionMutablePropertiesTest, test_minimal_user_input) {
   EXPECT_EQ(testee->name, colName);
   // Test Default values
   EXPECT_FALSE(testee->waitForSync);
-  EXPECT_EQ(testee->replicationFactor, 1);
-  EXPECT_EQ(testee->writeConcern, 1);
+  EXPECT_EQ(testee->replicationFactor, 1ul);
+  EXPECT_EQ(testee->writeConcern, 1ul);
 
   // TODO: this is just rudimentary
   // does not test internals yet

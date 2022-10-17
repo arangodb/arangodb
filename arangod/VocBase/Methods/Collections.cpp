@@ -626,7 +626,7 @@ Collections::create(         // create collection
   // Or should this be a possible error?
   TRI_ASSERT(!vocbase.isDangling());
 
-  CreateCollectionBody::DatabaseConfiguration config(vocbase);
+  auto config = vocbase.getDatabaseConfiguration();
   config.enforceReplicationFactor = enforceReplicationFactor;
 
   ClusterInfo& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();

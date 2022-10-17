@@ -34,6 +34,7 @@
 #include "VocBase/Properties/CollectionInternalProperties.h"
 #include "VocBase/Properties/UtilityInvariants.h"
 #include "VocBase/voc-types.h"
+#include "ClusteringProperties.h"
 
 #include <velocypack/Builder.h>
 
@@ -56,13 +57,7 @@ class Slice;
 
 struct CreateCollectionBody {
   struct DatabaseConfiguration {
-#if ARANGODB_USE_GOOGLE_TESTS
-    // Default constructor for testability.
-    // In production, we need to use vocbase
-    // constructor.
     DatabaseConfiguration(std::function<DataSourceId()> idGenerator);
-#endif
-    explicit DatabaseConfiguration(TRI_vocbase_t const& database);
 
     bool allowExtendedNames = false;
     bool shouldValidateClusterSettings = false;
@@ -105,14 +100,17 @@ struct CreateCollectionBody {
   CollectionMutableProperties mutableProperties;
   CollectionInternalProperties internalProperties;
   CollectionCreateOptions options;
+  ClusteringProperties clusteringProperties;
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, CreateCollectionBody& body) {
-  return f.object(body).fields(f.embedFields(body.constantProperties),
-                               f.embedFields(body.mutableProperties),
-                               f.embedFields(body.internalProperties),
-                               f.embedFields(body.options));
+  return f.object(body).fields(
+      f.embedFields(body.constantProperties),
+      f.embedFields(body.mutableProperties),  // name ->
+      f.embedFields(body.internalProperties),
+      f.embedFields(body.clusteringProperties),  // replicationFactor
+      f.embedFields(body.options));
 }
 
 }  // namespace arangodb

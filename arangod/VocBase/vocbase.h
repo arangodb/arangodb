@@ -47,6 +47,9 @@
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/voc-types.h"
 
+// TODO: We can split out DBConfig from CreateBody and get away with forward
+#include "VocBase/Properties/CreateCollectionBody.h"
+
 #include <velocypack/Slice.h>
 
 namespace arangodb {
@@ -211,6 +214,9 @@ struct TRI_vocbase_t {
   [[nodiscard]] auto getReplicatedStateById(arangodb::replication2::LogId id)
       const -> std::shared_ptr<
           arangodb::replication2::replicated_state::ReplicatedStateBase>;
+
+  [[nodiscard]] auto getDatabaseConfiguration() const
+      -> arangodb::CreateCollectionBody::DatabaseConfiguration;
 
  public:
   arangodb::basics::DeadlockDetector<arangodb::TransactionId,

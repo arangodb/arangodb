@@ -22,13 +22,8 @@
 
 #include "CreateCollectionBody.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
 #include "Inspection/VPack.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Utilities/NameValidator.h"
-#include "VocBase/vocbase.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
@@ -136,42 +131,9 @@ ResultT<CreateCollectionBody> parseAndValidate(
 
 }  // namespace
 
-#if ARANGODB_USE_GOOGLE_TESTS
 CreateCollectionBody::DatabaseConfiguration::DatabaseConfiguration(
     std::function<DataSourceId()> _idGenerator)
     : idGenerator{std::move(_idGenerator)} {}
-#endif
-
-CreateCollectionBody::DatabaseConfiguration::DatabaseConfiguration(
-    TRI_vocbase_t const& vocbase) {
-  auto& server = vocbase.server();
-  auto& cl = server.getFeature<ClusterFeature>();
-  auto& db = server.getFeature<DatabaseFeature>();
-  maxNumberOfShards = cl.maxNumberOfShards();
-  allowExtendedNames = db.extendedNamesForCollections();
-  shouldValidateClusterSettings = true;
-  minReplicationFactor = cl.minReplicationFactor();
-  maxReplicationFactor = cl.maxReplicationFactor();
-  enforceReplicationFactor = false;
-  defaultNumberOfShards = 1;
-  defaultReplicationFactor =
-      std::max(vocbase.replicationFactor(), cl.systemReplicationFactor());
-  defaultWriteConcern = vocbase.writeConcern();
-
-  isOneShardDB = cl.forceOneShard() || vocbase.isOneShard();
-  if (isOneShardDB) {
-    defaultDistributeShardsLike = vocbase.shardingPrototypeName();
-  } else {
-    defaultDistributeShardsLike = "";
-  }
-  if (!ServerState::instance()->isCoordinator() &&
-      !ServerState::instance()->isDBServer()) {
-    idGenerator = []() { return DataSourceId(TRI_NewTickServer()); };
-  } else {
-    auto& ci = cl.clusterInfo();
-    idGenerator = [&ci]() { return DataSourceId(ci.uniqid(1)); };
-  }
-}
 
 CreateCollectionBody::CreateCollectionBody() {}
 

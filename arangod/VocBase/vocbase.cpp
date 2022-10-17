@@ -63,6 +63,8 @@
 #include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
 #include "Containers/Helpers.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Logger/LogContextKeys.h"
@@ -2241,6 +2243,43 @@ auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
 [[nodiscard]] auto TRI_vocbase_t::getReplicatedLogsQuickStatus() const
     -> std::unordered_map<LogId, replicated_log::QuickLogStatus> {
   return _logManager->getReplicatedLogsQuickStatus();
+}
+
+[[nodiscard]] auto TRI_vocbase_t::getDatabaseConfiguration() const
+    -> arangodb::CreateCollectionBody::DatabaseConfiguration {
+  auto& cl = server().getFeature<ClusterFeature>();
+  auto& db = server().getFeature<DatabaseFeature>();
+
+  auto config =
+      std::invoke([&]() -> CreateCollectionBody::DatabaseConfiguration {
+        if (!ServerState::instance()->isCoordinator() &&
+            !ServerState::instance()->isDBServer()) {
+          return {[]() { return DataSourceId(TRI_NewTickServer()); }};
+        } else {
+          auto& ci = cl.clusterInfo();
+          return {[&ci]() { return DataSourceId(ci.uniqid(1)); }};
+        }
+      });
+
+  config.maxNumberOfShards = cl.maxNumberOfShards();
+  config.allowExtendedNames = db.extendedNamesForCollections();
+  config.shouldValidateClusterSettings = true;
+  config.minReplicationFactor = cl.minReplicationFactor();
+  config.maxReplicationFactor = cl.maxReplicationFactor();
+  config.enforceReplicationFactor = false;
+  config.defaultNumberOfShards = 1;
+  config.defaultReplicationFactor =
+      std::max(replicationFactor(), cl.systemReplicationFactor());
+  config.defaultWriteConcern = writeConcern();
+
+  config.isOneShardDB = cl.forceOneShard() || isOneShard();
+  if (config.isOneShardDB) {
+    config.defaultDistributeShardsLike = shardingPrototypeName();
+  } else {
+    config.defaultDistributeShardsLike = "";
+  }
+
+  return config;
 }
 
 auto TRI_vocbase_t::createReplicatedLog(

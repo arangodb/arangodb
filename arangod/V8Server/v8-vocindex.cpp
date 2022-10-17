@@ -273,8 +273,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   auto planCollection = CreateCollectionBody::fromCreateAPIV8(
-      propSlice, name, collectionType,
-      CreateCollectionBody::DatabaseConfiguration{vocbase});
+      propSlice, name, collectionType, vocbase.getDatabaseConfiguration());
 
   if (planCollection.fail()) {
     events::CreateCollection(vocbase.name(), name,
