@@ -46,6 +46,8 @@ namespace replicated_state {
 
 template<typename S>
 struct FollowerStateManager;
+template<typename S>
+struct NewFollowerStateManager;
 
 struct IReplicatedLeaderStateBase {
   virtual ~IReplicatedLeaderStateBase() = default;

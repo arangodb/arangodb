@@ -209,6 +209,24 @@ auto ReplicatedLog::getQuickStatus() const -> QuickLogStatus {
   return {};
 }
 
+auto ReplicatedLog::getStateStatus() const
+    -> std::optional<replicated_state::StateStatus> {
+  auto guard = _guarded.getLockedGuard();
+  return guard->stateHandle->getStatus();
+}
+
+auto ReplicatedLog::getLeaderState() const
+    -> std::shared_ptr<replicated_state::IReplicatedLeaderStateBase> {
+  auto guard = _guarded.getLockedGuard();
+  return guard->stateHandle->getLeader();
+}
+
+auto ReplicatedLog::getFollowerState() const
+    -> std::shared_ptr<replicated_state::IReplicatedFollowerStateBase> {
+  auto guard = _guarded.getLockedGuard();
+  return guard->stateHandle->getFollower();
+}
+
 void ReplicatedLogConnection::disconnect() {
   if (_log) {
     _log->disconnect(std::move(*this));

@@ -30,6 +30,8 @@
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
+#include "Replication2/ReplicatedState/StateInterfaces.h"
+#include "Replication2/ReplicatedState/StateStatus.h"
 
 #include <iosfwd>
 #include <memory>
@@ -75,7 +77,7 @@ struct IReplicatedStateHandle {
   // TODO Maybe rename resign; it behaves slightly differently than other
   //      resign() methods, as it does not make this object permanently
   //      unusable.
-  virtual auto resign() noexcept
+  [[nodiscard]] virtual auto resign() noexcept
       -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> = 0;
   virtual void leadershipEstablished(
       std::unique_ptr<IReplicatedLogLeaderMethods>) = 0;
@@ -83,6 +85,12 @@ struct IReplicatedStateHandle {
       std::unique_ptr<IReplicatedLogFollowerMethods>) = 0;
   virtual void acquireSnapshot(ServerID leader, LogIndex) = 0;
   virtual void updateCommitIndex(LogIndex) = 0;
+  [[nodiscard]] virtual auto getStatus() const
+      -> std::optional<replicated_state::StateStatus> = 0;
+  [[nodiscard]] virtual auto getFollower() const
+      -> std::shared_ptr<replicated_state::IReplicatedFollowerStateBase> = 0;
+  [[nodiscard]] virtual auto getLeader() const
+      -> std::shared_ptr<replicated_state::IReplicatedLeaderStateBase> = 0;
   // TODO
   virtual void dropEntries() = 0;  // o.ä. (für waitForSync=false)
 };
@@ -163,25 +171,19 @@ struct alignas(64) ReplicatedLog {
   void updateConfig(agency::LogPlanTermSpecification term,
                     agency::ParticipantsConfig config);
 
-  auto getId() const noexcept -> LogId;
-  //  auto getGlobalLogId() const noexcept -> GlobalLogIdentifier const&;
-  //  auto becomeLeader(
-  //      ParticipantId id, LogTerm term,
-  //      std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-  //      std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
-  //      std::shared_ptr<cluster::IFailureOracle const> failureOracle)
-  //      -> std::shared_ptr<LogLeader>;
-  //  auto becomeFollower(ParticipantId id, LogTerm term,
-  //                      std::optional<ParticipantId> leaderId)
-  //      -> std::shared_ptr<LogFollower>;
-  //
-  auto getParticipant() const -> std::shared_ptr<ILogParticipant>;
-  auto getQuickStatus() const -> QuickLogStatus;
-  //
-  //  auto getLeader() const -> std::shared_ptr<LogLeader>;
-  //  auto getFollower() const -> std::shared_ptr<LogFollower>;
-  //
-  auto resign() && -> std::unique_ptr<LogCore>;
+  [[nodiscard]] auto getId() const noexcept -> LogId;
+
+  [[nodiscard]] auto getParticipant() const -> std::shared_ptr<ILogParticipant>;
+  [[nodiscard]] auto getQuickStatus() const -> QuickLogStatus;
+  [[nodiscard]] auto getStateStatus() const
+      -> std::optional<replicated_state::StateStatus>;
+
+  [[nodiscard]] auto getLeaderState() const
+      -> std::shared_ptr<replicated_state::IReplicatedLeaderStateBase>;
+  [[nodiscard]] auto getFollowerState() const
+      -> std::shared_ptr<replicated_state::IReplicatedFollowerStateBase>;
+
+  [[nodiscard]] auto resign() && -> std::unique_ptr<LogCore>;
 
  private:
   struct GuardedData {

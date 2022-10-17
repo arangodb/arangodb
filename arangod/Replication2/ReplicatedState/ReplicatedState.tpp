@@ -193,6 +193,48 @@ void ReplicatedStateManager<S>::dropEntries() {
 }
 
 template<typename S>
+auto ReplicatedStateManager<S>::getStatus() const
+    -> std::optional<StateStatus> {
+  auto guard = _guarded.getLockedGuard();
+  auto status = std::visit(
+      overload{[](auto const& manager) { return manager->getStatus(); }},
+      guard->_currentManager);
+
+  return status;
+}
+
+template<typename S>
+auto ReplicatedStateManager<S>::getFollower() const
+    -> std::shared_ptr<IReplicatedFollowerStateBase> {
+  auto guard = _guarded.getLockedGuard();
+  return std::visit(
+      overload{
+          [](std::shared_ptr<NewFollowerStateManager<S>> const& manager) {
+            return std::dynamic_pointer_cast<IReplicatedFollowerStateBase>(
+                manager->getStateMachine());
+          },
+          [](auto const&) -> std::shared_ptr<IReplicatedFollowerStateBase> {
+            return nullptr;
+          }},
+      guard->_currentManager);
+}
+
+template<typename S>
+auto ReplicatedStateManager<S>::getLeader() const
+    -> std::shared_ptr<IReplicatedLeaderStateBase> {
+  auto guard = _guarded.getLockedGuard();
+  return std::visit(
+      overload{[](std::shared_ptr<NewLeaderStateManager<S>> const& manager) {
+                 return std::dynamic_pointer_cast<IReplicatedLeaderStateBase>(
+                     manager->getStateMachine());
+               },
+               [](auto const&) -> std::shared_ptr<IReplicatedLeaderStateBase> {
+                 return nullptr;
+               }},
+      guard->_currentManager);
+}
+
+template<typename S>
 void NewLeaderStateManager<S>::recoverEntries() {
   auto future = _guardedData.getLockedGuard()->recoverEntries();
   std::move(future).thenFinal([](futures::Try<Result>&& tryResult) {
@@ -249,6 +291,19 @@ auto NewLeaderStateManager<S>::resign() && noexcept
     -> std::pair<std::unique_ptr<CoreType>,
                  std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
   return std::move(_guardedData.getLockedGuard().get()).resign();
+}
+
+template<typename S>
+auto NewLeaderStateManager<S>::getStatus() const -> StateStatus {
+  LeaderStatus status;
+  // TODO remove
+  return StateStatus{.variant = std::move(status)};
+}
+
+template<typename S>
+auto NewLeaderStateManager<S>::getStateMachine() const
+    -> std::shared_ptr<IReplicatedLeaderState<S>> {
+  return _guardedData.getLockedGuard()->_leaderState;
 }
 
 template<typename S>
@@ -348,6 +403,19 @@ auto NewFollowerStateManager<S>::resign() && noexcept
 }
 
 template<typename S>
+auto NewFollowerStateManager<S>::getStatus() const -> StateStatus {
+  auto followerStatus = FollowerStatus();
+  // TODO remove
+  return StateStatus{.variant = std::move(followerStatus)};
+}
+
+template<typename S>
+auto NewFollowerStateManager<S>::getStateMachine() const
+    -> std::shared_ptr<IReplicatedFollowerState<S>> {
+  return _guardedData.getLockedGuard()->_followerState;
+}
+
+template<typename S>
 NewUnconfiguredStateManager<S>::NewUnconfiguredStateManager(
     LoggerContext loggerContext, std::unique_ptr<CoreType> core) noexcept
     : _loggerContext(std::move(loggerContext)),
@@ -359,6 +427,13 @@ auto NewUnconfiguredStateManager<S>::resign() && noexcept
                  std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
   auto guard = _guardedData.getLockedGuard();
   return {std::move(guard.get()).resign(), nullptr};
+}
+
+template<typename S>
+auto NewUnconfiguredStateManager<S>::getStatus() const -> StateStatus {
+  auto unconfiguredStatus = UnconfiguredStatus();
+  // TODO remove
+  return StateStatus{.variant = std::move(unconfiguredStatus)};
 }
 
 template<typename S>
@@ -425,41 +500,19 @@ ReplicatedState<S>::ReplicatedState(
 
 template<typename S>
 auto ReplicatedState<S>::getFollower() const -> std::shared_ptr<FollowerType> {
-  //  auto guard = guardedData.getLockedGuard();
-  //  if (auto machine = std::dynamic_pointer_cast<FollowerStateManager<S>>(
-  //          guard->currentManager);
-  //      machine) {
-  //    return
-  //    std::static_pointer_cast<FollowerType>(machine->getFollowerState());
-  //  }
-  return nullptr;
+  auto followerState = log->getFollowerState();
+  return std::dynamic_pointer_cast<FollowerType>(followerState);
 }
 
 template<typename S>
 auto ReplicatedState<S>::getLeader() const -> std::shared_ptr<LeaderType> {
-  //  auto guard = guardedData.getLockedGuard();
-  //  if (auto internalState = std::dynamic_pointer_cast<LeaderStateManager<S>>(
-  //          guard->currentManager);
-  //      internalState) {
-  //    if (auto state = internalState->getImplementationState();
-  //        state != nullptr) {
-  //      return std::static_pointer_cast<LeaderType>(state);
-  //    }
-  //  }
-  return nullptr;
+  auto leaderState = log->getLeaderState();
+  return std::dynamic_pointer_cast<LeaderType>(leaderState);
 }
 
 template<typename S>
 auto ReplicatedState<S>::getStatus() -> std::optional<StateStatus> {
-  return guardedData.doUnderLock(
-      [&](GuardedData& data) -> std::optional<StateStatus> {
-        if (data.currentManager == nullptr) {
-          return std::nullopt;
-        }
-        // This is guaranteed to not throw in case the currentManager is not
-        // resigned.
-        return data.currentManager->getStatus();
-      });
+  return log->getStateStatus();
 }
 
 template<typename S>

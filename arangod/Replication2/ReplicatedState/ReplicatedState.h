@@ -194,6 +194,10 @@ struct NewLeaderStateManager
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
+  [[nodiscard]] auto getStatus() const -> StateStatus;
+
+  [[nodiscard]] auto getStateMachine() const
+      -> std::shared_ptr<IReplicatedLeaderState<S>>;
 
  private:
   LoggerContext const _loggerContext;
@@ -232,6 +236,10 @@ struct NewFollowerStateManager
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
+  [[nodiscard]] auto getStatus() const -> StateStatus;
+
+  [[nodiscard]] auto getStateMachine() const
+      -> std::shared_ptr<IReplicatedFollowerState<S>>;
 
  private:
   LoggerContext const _loggerContext;
@@ -255,6 +263,7 @@ struct NewUnconfiguredStateManager
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
+  [[nodiscard]] auto getStatus() const -> StateStatus;
 
  private:
   LoggerContext const _loggerContext;
@@ -294,6 +303,15 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
       override;
 
   void dropEntries() override;
+
+  [[nodiscard]] auto getStatus() const -> std::optional<StateStatus> override;
+  // We could, more specifically, return pointers to FollowerType/LeaderType.
+  // But I currently don't see that it's needed, and would have to do one of
+  // the stunts for covariance here.
+  [[nodiscard]] auto getFollower() const
+      -> std::shared_ptr<IReplicatedFollowerStateBase> override;
+  [[nodiscard]] auto getLeader() const
+      -> std::shared_ptr<IReplicatedLeaderStateBase> override;
 
  private:
   LoggerContext const _loggerContext;
