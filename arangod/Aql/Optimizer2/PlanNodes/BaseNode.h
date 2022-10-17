@@ -36,4 +36,4 @@ auto inspect(Inspector& f, BaseNode& v) {
   return f.object(v).fields(f.field("id", v.id), f.field("type", v.type));
 }
 
-}  // namespace arangodb::aql::inspectors
+}  // namespace arangodb::aql::optimizer2::nodes
