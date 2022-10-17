@@ -37,7 +37,7 @@ auto DisjointSet::addSingleton(size_t element, size_t hintSize) -> bool {
     return false;
   }
   _parent[element] = element;
-  _rank[element] = 1; // 0 reserved for "not added"
+  _rank[element] = 1;  // 0 reserved for "not added"
   return true;
 }
 

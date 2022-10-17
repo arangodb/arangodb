@@ -1,7 +1,6 @@
 #include "WCCGraph.h"
 #include <Inspection/VPackPure.h>
 
-
 template<typename EdgeProperties>
 void WCCGraph<EdgeProperties>::_checkEdgeEnds(
     Edge<EdgeProperties> edge,
