@@ -1,6 +1,8 @@
 v3.8.8 (XXXX-XX-XX)
 -------------------
-* Fixed BTS-852 (user's saved queries used to disappear after updating user profile).
+
+* Fixed BTS-852 (user's saved queries used to disappear after updating user
+  profile).
 
 * Fixed BTS-850: Fixed the removal of already deleted orphan collections out of
   a graph definition. The removal of an already deleted orphan collection out of
