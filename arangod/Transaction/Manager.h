@@ -191,10 +191,6 @@ class Manager final : public IManager {
   bool abortManagedTrx(
       std::function<bool(TransactionState const&, std::string const&)>);
 
-  /// @brief whether or not the transaction is streaming (used for knowing if
-  /// can read from query cache)
-  bool isTransactionStreaming(TransactionId const& tid) const;
-
   /// @brief abort all managed write transactions
   Result abortAllManagedWriteTrx(std::string const& username, bool fanout);
 
@@ -308,6 +304,8 @@ class Manager final : public IManager {
                       // time.
   basics::ReadWriteLock _rwLock;
   bool _writeLockHeld;
+
+  bool _isEarlyTransactionReadOnly;
 
   double _streamingLockTimeout;
 

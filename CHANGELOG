@@ -1,6 +1,9 @@
 devel
 -----
 
+* BTS_483: Added restriction for usage of query cache for streaming and JS 
+  transactions when they are not read-only.
+
 * BTS-1008: Update react-autocomplete-input to fix single letter collection bug
   when creating a link in the views in the WebUI.
 

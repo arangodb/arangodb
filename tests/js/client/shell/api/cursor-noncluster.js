@@ -309,248 +309,332 @@ function testing_the_query_cacheSuite() {
 
 function testing_the_query_cache_in_transcationSuite() {
   const cn = "testCollection";
+  const cn2 = "testCollection2";
+  const cn3 = "testCollection3";
+  const queryCache = require("@arangodb/aql/cache");
   let mode = "demand";
   return {
 
     setUp: function() {
-      let res = arango.POST_RAW(`/_api/collection`, {"name": cn});
+      db._create(cn);
+      db._create(cn2);
+      db._create(cn3);
+
+      let res = queryCache.properties();
+      mode = res.mode;
+      res = queryCache.properties({"mode": "demand"});
+      assertEqual(res.mode, "demand");
+      res = queryCache.clear();
       assertEqual(res.code, 200);
-      res = arango.GET_RAW("/_api/query-cache/properties");
-      mode = res.parsedBody['mode'];
-      arango.PUT_RAW("/_api/query-cache/properties", "{ \"mode\" : \"demand\" }");
-      arango.DELETE_RAW("/_api/query-cache");
     },
 
     tearDown: function() {
-      arango.PUT_RAW("/_api/query-cache/properties", "{ \"mode\" : \"${mode}\" }");
+      const res = queryCache.properties({"mode": mode});
+      assertEqual(res.mode, mode);
       db._drop(cn);
+      db._drop(cn2);
+      db._drop(cn3);
     },
 
     test_testing_streaming_transaction_aborted_set: function() {
-      let trx = null;
-      let res = arango.POST_RAW("/_api/cursor", {"query": `UPSERT { _key: "a" } INSERT { _key: "a", value: 0 } UPDATE { value: 0 } IN ${cn}`});
+      let res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn}`).data;
       assertEqual(res.code, 201);
-      res = arango.POST_RAW("/_api/cursor", {"query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`});
+      res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn2}`).data;
       assertEqual(res.code, 201);
-      assertEqual(res.parsedBody.result[0].value, 0);
-      res = arango.POST_RAW("/_api/transaction/begin", {collections: {write: cn}});
+      res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn3}`).data;
       assertEqual(res.code, 201);
-      assertNotUndefined(res.parsedBody.result.id);
-      trx = res.parsedBody.result.id;
-      assertNotNull(trx);
+      res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`).data;
+      assertEqual(res.code, 201);
+      assertFalse(res.cached);
+      assertEqual(res.result[0].value, 0);
+      let trx = db._createTransaction({collections: {write: [cn, cn2], read: cn3}});
+      let trxStatus = trx.status();
+      assertTrue(trxStatus.hasOwnProperty("id"));
+      assertTrue(trxStatus.hasOwnProperty("status"));
+      const trxId = trxStatus.id;
+      assertEqual(trxStatus.status, "running");
       try {
-        res = arango.POST_RAW("/_api/cursor", {"query": `UPDATE { _key: "a", value: 1 } IN ${cn}`}, {"x-arango-trx-id": trx});
-
+        res = trx.query(`UPDATE { _key: "a", value: 1 } IN ${cn}`).data;
         assertEqual(res.code, 201);
-        assertFalse(res.body.error);
-
-        res = arango.POST_RAW("/_api/cursor", {
-          "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
-          "cache": true
-        });
+        res = trx.query(`UPDATE { _key: "a", value: 1 } IN ${cn2}`).data;
         assertEqual(res.code, 201);
-        assertFalse(res.error);
-        assertEqual(res.parsedBody.result[0].value, 0);
 
 
-        res = arango.POST_RAW("/_api/cursor", {"query": `UPDATE { _key: "a", value: 2 } IN ${cn}`}, {"x-arango-trx-id": trx});
+        res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
         assertEqual(res.code, 201);
-        assertFalse(res.error);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 0);
 
-
-        res = arango.POST_RAW("/_api/cursor", {
-          "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
-          "cache": true
-        }, {"x-arango-trx-id": trx});
+        res = db._query(`FOR doc IN ${cn2} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
         assertEqual(res.code, 201);
-        assertFalse(res.error);
-        assertEqual(res.parsedBody.result[0].value, 2);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 0);
 
-        res = arango.POST_RAW("/_api/cursor", {
-          "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
-          "cache": true
-        });
+        res = db._query(`FOR doc IN ${cn3} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
         assertEqual(res.code, 201);
-        assertFalse(res.error);
-        assertEqual(res.parsedBody.result[0].value, 0);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 0);
 
-        res = arango.POST_RAW("/_api/cursor", {
-          "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
-          "cache": false
-        });
+        res = trx.query(`UPDATE { _key: "a", value: 2 } IN ${cn}`).data;
         assertEqual(res.code, 201);
-        assertFalse(res.error);
-        assertEqual(res.parsedBody.result[0].value, 0);
 
+        res = trx.query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
+        assertEqual(res.code, 201);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 2);
+
+        res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
+        assertEqual(res.code, 201);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 0);
+
+        res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
+        assertEqual(res.code, 201);
+        assertTrue(res.cached);
+        assertEqual(res.result[0].value, 0);
+
+        res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": false}).data;
+        assertEqual(res.code, 201);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 0);
       } finally {
-        res = arango.DELETE("/_api/transaction/" + encodeURIComponent(trx), {}, {});
-        assertEqual(res.code, 200);
-        assertEqual(res.result.id, trx);
-        assertEqual(res.result.status, "aborted");
-        res = arango.POST_RAW("/_api/cursor", {
-          "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
-          "cache": true
-        });
+        res = trx.abort();
+        assertTrue(res.hasOwnProperty("id"));
+        assertTrue(res.hasOwnProperty("status"));
+        assertEqual(res.id, trxId);
+        assertEqual(res.status, "aborted");
+        res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
         assertEqual(res.code, 201);
-        assertFalse(res.error);
-        assertEqual(res.parsedBody.result[0].value, 0);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 0);
 
-        res = arango.POST_RAW("/_api/cursor", {
-          "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
-          "cache": false
-        });
+        res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": false}).data;
         assertEqual(res.code, 201);
-        assertFalse(res.error);
-        assertEqual(res.parsedBody.result[0].value, 0);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 0);
+
+        res = db._query(`FOR doc IN ${cn2} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
+        assertEqual(res.code, 201);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 0);
+
+        res = db._query(`FOR doc IN ${cn3} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
+        assertEqual(res.code, 201);
+        assertTrue(res.cached);
+        assertEqual(res.result[0].value, 0);
       }
     },
 
+
     test_testing_streaming_transaction_committed_set: function() {
-      let trx = null;
-      let res = arango.POST_RAW("/_api/cursor", {"query": `UPSERT { _key: "a" } INSERT { _key: "a", value: 0 } UPDATE { value: 0 } IN ${cn}`});
+      let res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn}`).data;
       assertEqual(res.code, 201);
-      res = arango.POST_RAW("/_api/cursor", {"query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`});
+      res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn2}`).data;
       assertEqual(res.code, 201);
-      assertEqual(res.parsedBody.result[0].value, 0);
-      res = arango.POST_RAW("/_api/transaction/begin", {collections: {write: cn}});
+      res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn3}`).data;
       assertEqual(res.code, 201);
-      assertNotUndefined(res.parsedBody.result.id);
-      trx = res.parsedBody.result.id;
-      assertNotNull(trx);
+      res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`).data;
+      assertEqual(res.code, 201);
+      assertFalse(res.cached);
+      assertEqual(res.result[0].value, 0);
+      let trx = db._createTransaction({collections: {write: [cn, cn2], read: cn3}});
+      let trxStatus = trx.status();
+      assertTrue(trxStatus.hasOwnProperty("id"));
+      assertTrue(trxStatus.hasOwnProperty("status"));
+      const trxId = trxStatus.id;
+      assertEqual(trxStatus.status, "running");
 
-
-      res = arango.POST_RAW("/_api/transaction/begin", {collections: {read: cn}});
-      assertEqual(res.code, 201);
-      assertNotUndefined(res.parsedBody.result.id);
-      const trx2 = res.parsedBody.result.id;
-      assertNotNull(trx2);
-
-
-      res = arango.POST_RAW("/_api/cursor", {
-        "query": `FOR doc IN ${cn} RETURN doc`,
-        "cache": true
-      }, {"x-arango-trx-id": trx2});
-      assertEqual(res.code, 201);
-      assertFalse(res.error);
+      let trx2 = db._createTransaction({collections: {read: cn}});
+      trxStatus = trx2.status();
+      assertTrue(trxStatus.hasOwnProperty("id"));
+      assertTrue(trxStatus.hasOwnProperty("status"));
+      const trx2Id = trxStatus.id;
+      assertEqual(trxStatus.status, "running");
 
       try {
-        res = arango.POST_RAW("/_api/cursor", {"query": `UPDATE { _key: "a", value: 1 } IN ${cn}`}, {"x-arango-trx-id": trx});
-
+        res = trx.query(`UPDATE { _key: "a", value: 2 } IN ${cn}`).data;
         assertEqual(res.code, 201);
-        assertFalse(res.body.error);
 
-        res = arango.POST_RAW("/_api/cursor", {
-          "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
-          "cache": true
-        });
+        res = trx.query(`UPDATE { _key: "a", value: 1 } IN ${cn2}`).data;
         assertEqual(res.code, 201);
-        assertFalse(res.error);
-        assertEqual(res.parsedBody.result[0].value, 0);
 
-        res = arango.POST_RAW("/_api/cursor", {"query": `UPDATE { _key: "a", value: 2 } IN ${cn}`}, {"x-arango-trx-id": trx});
+        res = trx2.query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
         assertEqual(res.code, 201);
-        assertFalse(res.error);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 0);
 
-        res = arango.POST_RAW("/_api/cursor", {
-          "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
-          "cache": true
-        }, {"x-arango-trx-id": trx});
+        res = trx.query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
         assertEqual(res.code, 201);
-        assertFalse(res.error);
-        assertEqual(res.parsedBody.result[0].value, 2);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 2);
 
-        res = arango.POST_RAW("/_api/cursor", {
-          "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
-          "cache": true
-        });
+        res = trx.query(`FOR doc IN ${cn2} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
         assertEqual(res.code, 201);
-        assertFalse(res.error);
-        assertEqual(res.parsedBody.result[0].value, 0);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 1);
 
-        res = arango.POST_RAW("/_api/cursor", {
-          "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
-          "cache": false
-        });
+        res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
         assertEqual(res.code, 201);
-        assertFalse(res.error);
-        assertEqual(res.parsedBody.result[0].value, 0);
+        assertTrue(res.cached);
+        assertEqual(res.result[0].value, 0);
+
+        res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": false}).data;
+        assertEqual(res.code, 201);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 0);
+
+        res = db._query(`FOR doc IN ${cn2} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
+        assertEqual(res.code, 201);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 0);
+
+        res = db._query(`FOR doc IN ${cn2} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
+        assertEqual(res.code, 201);
+        assertTrue(res.cached);
+        assertEqual(res.result[0].value, 0);
+
+        res = db._query(`FOR doc IN ${cn2} FILTER doc._key == "a" RETURN doc`, {}, {"cache": false}).data;
+        assertEqual(res.code, 201);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 0);
+
+        res = db._query(`FOR doc IN ${cn3} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
+        assertEqual(res.code, 201);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 0);
+
+        res = db._query(`FOR doc IN ${cn3} FILTER doc._key == "a" RETURN doc`, {}, {"cache": false}).data;
+        assertEqual(res.code, 201);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 0);
       } finally {
-        res = arango.PUT_RAW("/_api/transaction/" + encodeURIComponent(trx), {}, {});
-        assertEqual(res.code, 200);
-        assertFalse(res.error);
-        assertEqual(res.parsedBody.result.status, "committed");
+        res = trx.commit();
+        assertTrue(res.hasOwnProperty("id"));
+        assertTrue(res.hasOwnProperty("status"));
+        assertEqual(res.id, trxId);
+        assertEqual(res.status, "committed");
 
-        res = arango.POST_RAW("/_api/cursor", {
-          "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
-          "cache": false
-        });
+        res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
         assertEqual(res.code, 201);
-        assertFalse(res.error);
-        assertEqual(res.parsedBody.result[0].value, 2);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 2);
+
+        res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": false}).data;
+        assertEqual(res.code, 201);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 2);
+
+        res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
+        assertEqual(res.code, 201);
+        assertTrue(res.cached);
+        assertEqual(res.result[0].value, 2);
+
+        res = db._query(`FOR doc IN ${cn2} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
+        assertEqual(res.code, 201);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 1);
+
+        res = trx2.query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
+        assertEqual(res.code, 201);
+        assertTrue(res.cached);
+        assertEqual(res.result[0].value, 2);
+
+        res = db._query(`FOR doc IN ${cn3} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
+        assertEqual(res.code, 201);
+        assertTrue(res.cached);
+        assertEqual(res.result[0].value, 0);
+
+        res = trx2.commit();
+        assertTrue(res.hasOwnProperty("id"));
+        assertTrue(res.hasOwnProperty("status"));
+        assertEqual(res.id, trx2Id);
+        assertEqual(res.status, "committed");
       }
     },
 
     test_testing_js_transaction_aborted_set: function() {
-      let res = arango.POST_RAW("/_api/cursor", {"query": `UPSERT { _key: "a" } INSERT { _key: "a", value: 0 } UPDATE { value: 0 } IN ${cn}`});
+      let res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn}`).data;
       assertEqual(res.code, 201);
-      res = arango.POST_RAW("/_api/cursor", {"query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`});
+      res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn2}`).data;
       assertEqual(res.code, 201);
-      assertEqual(res.parsedBody.result[0].value, 0);
+      res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`).data;
+      assertEqual(res.code, 201);
+      assertFalse(res.cached);
+      assertEqual(res.result[0].value, 0);
+      res = db._query(`FOR doc IN ${cn2} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
+      assertEqual(res.code, 201);
+      assertFalse(res.cached);
+      assertEqual(res.result[0].value, 0);
       try {
-        res = arango.POST_RAW("/_api/transaction",
-          {
-            "collections": {"write": [cn]},
-            "action": `function() { const arangodb = require("@arangodb"); const db = arangodb.db; db._query("UPDATE { _key: 'a', value: 1 } IN ${cn}"); db._query("RETURN SLEEP(3)"); let d = new Date(); d = String(d.getSeconds()).padStart(2, "0") + "." + String(d.getMilliseconds())[0]; const err = new arangodb.ArangoError(); err.errorNum = arangodb.ERROR_TRANSACTION_ABORTED; err.errorMessage = "\\n" + d + "  Aborting transaction that updated value to 1\\n"; throw err;}`
-          });
-        assertEqual(res.code, 410);
-        assertTrue(res.parsedBody.error);
-        throw(res.parsedBody.errorNum);
+        res = db._executeTransaction({
+          collections: {write: [cn], read: [cn2]},
+          action: function() {
+            const arangodb = require("@arangodb");
+            const db = arangodb.db;
+            db._query("UPDATE { _key: 'a', value: 1 } IN testCollection");
+            const err = new arangodb.ArangoError();
+            err.errorNum = arangodb.ERROR_TRANSACTION_ABORTED;
+            err.errorMessage = "Aborting transaction that updated value to 1";
+            throw err;
+          }
+        });
+//        throw(res.parsedBody.errorNum);
       } catch (err) {
-        assertEqual(errors.ERROR_TRANSACTION_ABORTED.code, err);
-        res = arango.POST_RAW("/_api/cursor", {
-          "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
-          "bindVars": {},
-          "cache": true
-        });
+        assertEqual(errors.ERROR_TRANSACTION_ABORTED.code, err.errorNum);
+        res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
         assertEqual(res.code, 201);
-        assertEqual(res.parsedBody.result[0].value, 0);
-        res = arango.POST_RAW("/_api/cursor", {
-          "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
-          "bindVars": {},
-          "cache": false
-        });
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 0);
+
+        res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": false}).data;
         assertEqual(res.code, 201);
-        assertEqual(res.parsedBody.result[0].value, 0);
+        assertFalse(res.cached);
+        assertEqual(res.result[0].value, 0);
+
+        res = db._query(`FOR doc IN ${cn2} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
+        assertEqual(res.code, 201);
+        assertTrue(res.cached);
+        assertEqual(res.result[0].value, 0);
       }
     },
 
     test_testing_js_transaction_committed_set: function() {
-      let res = arango.POST_RAW("/_api/cursor", {"query": `UPSERT { _key: "a" } INSERT { _key: "a", value: 0 } UPDATE { value: 0 } IN ${cn}`});
+      let res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn}`).data;
       assertEqual(res.code, 201);
-      res = arango.POST_RAW("/_api/cursor", {"query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`});
+      res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn2}`).data;
       assertEqual(res.code, 201);
-      assertEqual(res.parsedBody.result[0].value, 0);
-      res = arango.POST_RAW("/_api/transaction",
-        {
-          "collections": {"write": [cn]},
-          "action": `function() { const arangodb = require("@arangodb"); const db = arangodb.db; db._query("UPDATE { _key: 'a', value: 2 } IN ${cn}"); db._query("RETURN SLEEP(3)"); }`
-        });
-      assertEqual(res.code, 200);
-      assertFalse(res.parsedBody.error);
-      res = arango.POST_RAW("/_api/cursor", {
-        "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
-        "bindVars": {},
-        "cache": true
+      res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`).data;
+      assertEqual(res.code, 201);
+      assertFalse(res.cached);
+      assertEqual(res.result[0].value, 0);
+      res = db._query(`FOR doc IN ${cn2} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
+      assertEqual(res.code, 201);
+      assertFalse(res.cached);
+      assertEqual(res.result[0].value, 0);
+      res = db._executeTransaction({
+        collections: {write: [cn], read: [cn2]},
+        action: function() {
+          const arangodb = require("@arangodb");
+          const db = arangodb.db;
+          const res = db._query("UPDATE { _key: 'a', value: 1 } IN testCollection");
+          return "updated";
+        }
       });
+      assertEqual(res, "updated");
+      res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
       assertEqual(res.code, 201);
-      assertEqual(res.parsedBody.result[0].value, 2);
-      res = arango.POST_RAW("/_api/cursor", {
-        "query": `FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`,
-        "bindVars": {},
-        "cache": false
-      });
+      assertFalse(res.cached);
+      assertEqual(res.result[0].value, 1);
+
+      res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": false}).data;
       assertEqual(res.code, 201);
-      assertEqual(res.parsedBody.result[0].value, 2);
+      assertFalse(res.cached);
+      assertEqual(res.result[0].value, 1);
+
+      res = db._query(`FOR doc IN ${cn2} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
+      assertEqual(res.code, 201);
+      assertTrue(res.cached);
+      assertEqual(res.result[0].value, 0);
     },
   };
 }

@@ -263,6 +263,9 @@ Result buildOptions(VPackSlice trxOpts, transaction::Options& options,
   }
 
   bool isValid = extractCollections(trxCollections, reads, writes, exclusives);
+  if (!writes.empty() || !exclusives.empty()) {
+    options.isEarlyReadOnly = false;
+  }
 
   if (!isValid) {
     return res.reset(TRI_ERROR_BAD_PARAMETER,
@@ -822,14 +825,22 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
             "not allowed to write lock an AQL transaction");
       }
       if (mtrx.rwlock.tryLockWrite()) {
-        return buildManagedContextUnderLock(tid, mtrx);
+        auto managedContext = buildManagedContextUnderLock(tid, mtrx);
+        if (mtrx.state->options().isEarlyReadOnly) {
+          managedContext->setEarlyReadOnly();
+        }
+        return managedContext;
       }
       // continue the loop after a small pause
     } else {
       TRI_ASSERT(mode == AccessMode::Type::READ);
       // even for side user leases, first try acquiring the read lock
       if (mtrx.rwlock.tryLockRead()) {
-        return buildManagedContextUnderLock(tid, mtrx);
+        auto managedContext = buildManagedContextUnderLock(tid, mtrx);
+        if (mtrx.state->options().isEarlyReadOnly) {
+          managedContext->setEarlyReadOnly();
+        }
+        return managedContext;
       }
       if (isSideUser) {
         // number of side users is atomically increased under the bucket's read
@@ -843,8 +854,12 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
         try {
           std::shared_ptr<TransactionState> state = mtrx.state;
           TRI_ASSERT(state != nullptr);
-          return std::make_shared<ManagedContext>(tid, std::move(state),
-                                                  TransactionContextSideUser{});
+          auto managedContext = std::make_shared<ManagedContext>(
+              tid, std::move(state), TransactionContextSideUser{});
+          if (mtrx.state->options().isEarlyReadOnly) {
+            managedContext->setEarlyReadOnly();
+          }
+          return managedContext;
         } catch (...) {
           // roll back our increase of the number of side users
           auto previous =
@@ -1512,20 +1527,6 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username,
   }
 
   return res;
-}
-
-bool Manager::isTransactionStreaming(TransactionId const& tid) const {
-  size_t const bucket = getBucket(tid);
-  // quick check whether ID exists
-  READ_LOCKER(readLocker, _transactions[bucket]._lock);
-
-  auto const& buck = _transactions[bucket];
-  auto it = buck._managed.find(tid);
-  if (it != buck._managed.end()) {
-    return it->second.state->hasHint(Hints::Hint::GLOBAL_MANAGED);
-  } else {
-    return false;
-  }
 }
 
 bool Manager::transactionIdExists(TransactionId const& tid) const {

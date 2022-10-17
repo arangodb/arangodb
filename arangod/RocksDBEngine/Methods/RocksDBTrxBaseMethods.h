@@ -94,6 +94,18 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   rocksdb::Status RollbackToSavePoint() final override;
   rocksdb::Status RollbackToWriteBatchSavePoint() final override;
   void PopSavePoint() final override;
+  void decreaseNumInserts(uint64_t numInserts) {
+    TRI_ASSERT(numInserts <= _numInserts);
+    _numInserts -= numInserts;
+  }
+  void decreaseNumUpdates(uint64_t numUpdates) {
+    TRI_ASSERT(numUpdates <= _numUpdates);
+    _numUpdates -= numUpdates;
+  }
+  void decreaseNumRemoves(uint64_t numRemoves) {
+    TRI_ASSERT(numRemoves <= _numRemoves);
+    _numRemoves -= numRemoves;
+  }
 
  protected:
   virtual void cleanupTransaction();

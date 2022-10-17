@@ -41,6 +41,7 @@
 #include "Metrics/LogScale.h"
 #include "RocksDBEngine/Methods/RocksDBReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBTrxMethods.h"
+#include "RocksDBEngine/Methods/RocksDBTrxBaseMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -188,7 +189,20 @@ void RocksDBTransactionState::commitCollections(
     // we need this in case of an intermediate commit. The number of
     // initial documents is adjusted and numInserts / removes is set to 0
     // index estimator updates are buffered
+    uint64_t numInserts = coll->numInserts();
+    uint64_t numUpdates = coll->numUpdates();
+    uint64_t numRemoves = coll->numRemoves();
     coll->commitCounts(id(), lastWritten);
+    TRI_ASSERT(coll->numInserts() == 0);
+    TRI_ASSERT(coll->numUpdates() == 0);
+    TRI_ASSERT(coll->numRemoves() == 0);
+    RocksDBTransactionMethods* methods = rocksdbMethods(trxColl->id());
+    reinterpret_cast<RocksDBTrxBaseMethods*>(methods)->decreaseNumInserts(
+        numInserts);
+    reinterpret_cast<RocksDBTrxBaseMethods*>(methods)->decreaseNumUpdates(
+        numUpdates);
+    reinterpret_cast<RocksDBTrxBaseMethods*>(methods)->decreaseNumRemoves(
+        numRemoves);
   }
 }
 
@@ -227,7 +241,6 @@ futures::Future<Result> RocksDBTransactionState::commitTransaction(
   return doCommit().thenValue(
       [self = std::move(self), activeTrx, this](auto&& res) {
         if (res.ok()) {
-          clearQueryCache();
           self->updateStatus(transaction::Status::COMMITTED);
           self->cleanupTransaction();  // deletes trx
           ++self->statistics()._transactionsCommitted;

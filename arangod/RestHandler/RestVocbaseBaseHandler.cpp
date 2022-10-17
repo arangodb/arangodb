@@ -688,9 +688,7 @@ RestVocbaseBaseHandler::createTransactionContext(AccessMode::Type mode) const {
     if (value.compare(pos, std::string::npos, " aql") == 0) {
       auto aqlStandaloneContext =
           std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
-      if (mgr->isTransactionStreaming(tid)) {
-        aqlStandaloneContext->setStreaming();
-      }
+      aqlStandaloneContext->setStreaming();
       return aqlStandaloneContext;
     } else if (value.compare(pos, std::string::npos, " begin") == 0) {
       // this means we lazily start a transaction
@@ -716,9 +714,6 @@ RestVocbaseBaseHandler::createTransactionContext(AccessMode::Type mode) const {
                                        std::to_string(tid.id()) +
                                        "' not found");
   }
-  if (mgr->isTransactionStreaming(tid)) {
-    ctx->setStreaming();
-  }
-
+  ctx->setStreaming();
   return ctx;
 }
