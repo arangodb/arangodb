@@ -119,7 +119,7 @@ void RestExplainHandler::explainQuery() {
   constexpr bool optimize = true;
 #endif
 
-  auto queryResult = query->explain(optimize);
+  auto queryResult = query->doExplain(optimize);
 
   if (queryResult.result.fail()) {
     generateError(queryResult.result);

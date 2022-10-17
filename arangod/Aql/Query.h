@@ -141,7 +141,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   QueryResult parse();
 
   /// @brief explain an AQL query
-  QueryResult explain(bool optimize);
+  QueryResult explain();
+
+  /// @brief the implementation of explain above,
+  /// with a switch to turn the optimizer off.
+  QueryResult doExplain(bool optimize);
 
   /// @brief whether or not a query is a modification query
   bool isModificationQuery() const noexcept final;
