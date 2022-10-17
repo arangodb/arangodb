@@ -25,6 +25,9 @@ v3.10.1 (XXXX-XX-XX)
   ambiguous under some circumstances, which could prevent shards from getting
   into sync.
 
+* Fixed BTS-852 (user's saved queries used to disappear after updating user
+  profile).
+
 * ES-1312: fix handling of reaching the WAL archive capacity limit.
 
 * Log better diagnosis information in case multiple servers in a cluster are
