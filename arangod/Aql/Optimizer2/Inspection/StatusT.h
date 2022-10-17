@@ -34,6 +34,26 @@ namespace arangodb::inspection {
 
 template<typename T>
 struct StatusT {
+  StatusT(StatusT const& other) = delete;
+  StatusT(StatusT&& other) = default;
+
+  StatusT(Status const& status) = delete;
+  StatusT(Status&& status) : status(std::move(status)), _val(std::nullopt) {}
+
+  StatusT(T const& val) : status(), _val(val) {}
+  StatusT(T&& val) : status(), _val(std::move(val)) {}
+
+  StatusT() : status(), _val{T{}} {}
+
+  StatusT& operator=(T const& val_) {
+    _val = val_;
+    return *this;
+  }
+  StatusT& operator=(T&& val_) {
+    _val = std::move(val_);
+    return *this;
+  }
+
   auto ok() const -> bool { return status.ok(); }
   auto error() -> std::string const& { return status.error(); }
   auto path() -> std::string const& { return status.path(); }
@@ -57,26 +77,6 @@ struct StatusT {
            typename = std::enable_if_t<!std::is_same<U, bool>::value>>
   explicit operator bool() const {
     return ok();
-  }
-
-  StatusT(StatusT const& other) = delete;
-  StatusT(StatusT&& other) = default;
-
-  StatusT(Status const& status) = delete;
-  StatusT(Status&& status) : status(std::move(status)), _val(std::nullopt) {}
-
-  StatusT(T const& val) : status(), _val(val) {}
-  StatusT(T&& val) : status(), _val(std::move(val)) {}
-
-  StatusT() : status(), _val{T{}} {}
-
-  StatusT& operator=(T const& val_) {
-    _val = val_;
-    return *this;
-  }
-  StatusT& operator=(T&& val_) {
-    _val = std::move(val_);
-    return *this;
   }
 
  private:
