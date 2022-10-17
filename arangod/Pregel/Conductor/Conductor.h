@@ -135,6 +135,8 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   // with the Inspecotr framework
   ConductorStatus _status;
 
+  std::unordered_map<ShardID, ServerID> _leadingServerForShard;
+
   auto _changeState(std::unique_ptr<conductor::State> newState) -> void;
   auto _initializeWorkers() -> futures::Future<Result>;
   auto _preGlobalSuperStep() -> void;

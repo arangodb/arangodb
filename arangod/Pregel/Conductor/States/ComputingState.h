@@ -46,6 +46,7 @@ struct Computing : State {
  private:
   auto _runGlobalSuperStepCommand() -> RunGlobalSuperStep;
   auto _runGlobalSuperStep() -> futures::Future<Result>;
+  std::unordered_map<ServerID, uint64_t> _sendCountPerServer;
 };
 
 }  // namespace conductor

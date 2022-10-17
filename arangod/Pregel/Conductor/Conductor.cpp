@@ -295,8 +295,13 @@ auto Conductor::_initializeWorkers() -> futures::Future<Result> {
   }
 
   auto servers = std::vector<ServerID>{};
-  for (auto const& [server, _] : vertexMap) {
+  for (auto const& [server, shardsPerCollection] : vertexMap) {
     servers.push_back(server);
+    for (auto const& [_, shards] : shardsPerCollection) {
+      for (auto const& shard : shards) {
+        _leadingServerForShard[shard] = server;
+      }
+    }
   }
   _status = ConductorStatus::forWorkers(servers);
 

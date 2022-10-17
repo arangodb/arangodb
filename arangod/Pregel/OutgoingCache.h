@@ -65,6 +65,7 @@ class OutCache {
   size_t _sendCount = 0;
   size_t _sendCountNextGSS = 0;
   virtual void _removeContainedMessages() = 0;
+  virtual auto _clearSendCountPerShard() -> void = 0;
 
  public:
   OutCache(WorkerConfig* state, MessageFormat<M> const* format);
@@ -90,10 +91,13 @@ class OutCache {
     _sendCount = 0;
     _sendCountNextGSS = 0;
     _removeContainedMessages();
+    _clearSendCountPerShard();
   }
   virtual void appendMessage(PregelShard shard, std::string_view const& key,
                              M const& data) = 0;
   virtual void flushMessages() = 0;
+  virtual auto sendCountPerShard() const
+      -> std::unordered_map<ShardID, uint64_t> = 0;
 };
 
 template<typename M>
@@ -102,8 +106,10 @@ class ArrayOutCache : public OutCache<M> {
   std::unordered_map<PregelShard,
                      std::unordered_map<std::string, std::vector<M>>>
       _shardMap;
+  std::unordered_map<ShardID, uint64_t> _sendCountPerShard;
 
   void _removeContainedMessages() override;
+  auto _clearSendCountPerShard() -> void override { _sendCountPerShard = {}; }
   auto messagesToVPack(std::unordered_map<std::string, std::vector<M>> const&
                            messagesForVertices)
       -> std::tuple<size_t, VPackBuilder>;
@@ -116,6 +122,10 @@ class ArrayOutCache : public OutCache<M> {
   void appendMessage(PregelShard shard, std::string_view const& key,
                      M const& data) override;
   void flushMessages() override;
+  auto sendCountPerShard() const
+      -> std::unordered_map<ShardID, uint64_t> override {
+    return _sendCountPerShard;
+  }
 };
 
 template<typename M>
@@ -125,7 +135,9 @@ class CombiningOutCache : public OutCache<M> {
   /// @brief two stage map: shard -> vertice -> message
   std::unordered_map<PregelShard, std::unordered_map<std::string_view, M>>
       _shardMap;
+  std::unordered_map<ShardID, uint64_t> _sendCountPerShard;
   void _removeContainedMessages() override;
+  auto _clearSendCountPerShard() -> void override { _sendCountPerShard = {}; }
   auto messagesToVPack(
       std::unordered_map<std::string_view, M> const& messagesForVertices)
       -> VPackBuilder;
@@ -138,6 +150,10 @@ class CombiningOutCache : public OutCache<M> {
   void appendMessage(PregelShard shard, std::string_view const& key,
                      M const& data) override;
   void flushMessages() override;
+  auto sendCountPerShard() const
+      -> std::unordered_map<ShardID, uint64_t> override {
+    return _sendCountPerShard;
+  }
 };
 }  // namespace pregel
 }  // namespace arangodb

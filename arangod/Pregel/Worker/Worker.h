@@ -85,6 +85,7 @@ class VertexContext;
 struct VerticesProcessed {
   VPackBuilder aggregator;
   MessageStats stats;
+  std::unordered_map<ShardID, uint64_t> sendCountPerShard;
   size_t activeCount;
 };
 
@@ -141,6 +142,10 @@ class Worker : public IWorker {
   /// current number of running threads
   size_t _runningThreads = 0;
   Scheduler::WorkHandle _workHandle;
+  // distinguishes config.globalSuperStep being initialized to 0 and
+  // config.globalSuperStep being explicitely set to 0 when the first superstep
+  // starts: needed to process incoming messages in its dedicated gss
+  bool _computationStarted = false;
 
   using VerticesProcessedFuture =
       futures::Future<std::vector<futures::Try<ResultT<VerticesProcessed>>>>;
@@ -151,7 +156,9 @@ class Worker : public IWorker {
   [[nodiscard]] auto _processVertices(
       size_t threadId, RangeIterator<Vertex<V, E>>& vertexIterator)
       -> ResultT<VerticesProcessed>;
-  auto _finishProcessing() -> ResultT<GlobalSuperStepFinished>;
+  auto _finishProcessing(
+      std::unordered_map<ShardID, uint64_t> sendCountPerShard)
+      -> ResultT<GlobalSuperStepFinished>;
   void _callConductor(ModernMessage message);
   [[nodiscard]] auto _observeStatus() -> Status const;
   [[nodiscard]] auto _makeStatusCallback() -> std::function<void()>;

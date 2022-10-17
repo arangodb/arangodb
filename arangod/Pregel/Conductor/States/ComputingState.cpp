@@ -56,6 +56,7 @@ auto Computing::_runGlobalSuperStepCommand() -> RunGlobalSuperStep {
   return RunGlobalSuperStep{.gss = conductor._globalSuperstep,
                             .vertexCount = conductor._totalVerticesCount,
                             .edgeCount = conductor._totalEdgesCount,
+                            .sendCount = 0,
                             .aggregators = std::move(aggregators)};
 }
 
@@ -67,7 +68,8 @@ auto Computing::_runGlobalSuperStep() -> futures::Future<Result> {
   serialize(startCommand, runGlobalSuperStepCommand);
   LOG_PREGEL_CONDUCTOR("d98de", DEBUG)
       << "Initiate starting GSS: " << startCommand.slice().toJson();
-  return conductor._workers.runGlobalSuperStep(runGlobalSuperStepCommand)
+  return conductor._workers
+      .runGlobalSuperStep(runGlobalSuperStepCommand, _sendCountPerServer)
       .thenValue([&](auto globalSuperStepFinished) -> Result {
         if (globalSuperStepFinished.fail()) {
           return Result{globalSuperStepFinished.errorNumber(),
@@ -82,6 +84,12 @@ auto Computing::_runGlobalSuperStep() -> futures::Future<Result> {
                  globalSuperStepFinished.get().aggregators.slice())) {
           conductor._aggregators->aggregateValues(aggregator);
         }
+        auto sendCountPerServer = std::unordered_map<ServerID, uint64_t>{};
+        for (auto const& [shard, counts] :
+             globalSuperStepFinished.get().sendCountPerShard) {
+          sendCountPerServer[conductor._leadingServerForShard[shard]] += counts;
+        }
+        _sendCountPerServer = std::move(sendCountPerServer);
         conductor._statistics.setActiveCounts(
             globalSuperStepFinished.get().activeCount);
         conductor._totalVerticesCount =
