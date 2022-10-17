@@ -230,8 +230,9 @@ function transactionReplication2ReplicateOperationSuite() {
       const logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
 
       const logsWithCommit = logs.filter(log => log.head(1000).some(entry => entry.hasOwnProperty('payload') && entry.payload[1].operation === 'Commit'));
-
-      assertEqual([], logsWithCommit, `Found commit operation(s) in one or more log ${JSON.stringify(logsWithCommit[0].head(1000))}.`);
+      if (logsWithCommit.length > 0) {
+        fail(`Found commit operation(s) in one or more log ${JSON.stringify(logsWithCommit[0].head(1000))}.`);
+      }
     },
   };
 }
