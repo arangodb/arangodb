@@ -50,7 +50,7 @@ TEST_F(EstablishLeadershipTest, wait_for_leadership) {
 
   EXPECT_FALSE(follower->hasPendingAppendEntries());
   EXPECT_FALSE(leader->isLeadershipEstablished());
-  EXPECT_FALSE(f.isReady());
+  EXPECT_FALSE(f.Ready());
   leader->triggerAsyncReplication();
   EXPECT_TRUE(follower->hasPendingAppendEntries());
 
@@ -66,7 +66,7 @@ TEST_F(EstablishLeadershipTest, wait_for_leadership) {
         std::get<LeaderStatus>(status.getVariant()).leadershipEstablished);
   }
 
-  EXPECT_TRUE(f.isReady());
+  EXPECT_TRUE(f.Ready());
 }
 
 TEST_F(EstablishLeadershipTest, check_meta_create_leader_entry) {
@@ -139,7 +139,7 @@ TEST_F(EstablishLeadershipTest, excluded_follower) {
 
   EXPECT_FALSE(follower->hasPendingAppendEntries());
   EXPECT_FALSE(leader->isLeadershipEstablished());
-  EXPECT_FALSE(f.isReady());
+  EXPECT_FALSE(f.Ready());
   leader->triggerAsyncReplication();
   EXPECT_TRUE(follower->hasPendingAppendEntries());
 
@@ -156,7 +156,7 @@ TEST_F(EstablishLeadershipTest, excluded_follower) {
         std::get<LeaderStatus>(status.getVariant()).leadershipEstablished);
   }
 
-  EXPECT_FALSE(f.isReady());
+  EXPECT_FALSE(f.Ready());
 
   {
     auto oldConfig =
@@ -171,7 +171,7 @@ TEST_F(EstablishLeadershipTest, excluded_follower) {
     // Leadership is established immediately because the first entry was already
     // acknowledged by the follower, just not committed. Right after the
     // follower becomes available, the first entry is committed.
-    EXPECT_TRUE(f.isReady());
+    EXPECT_TRUE(f.Ready());
     EXPECT_TRUE(leader->isLeadershipEstablished());
     auto [active, committed] = leader->getParticipantConfigGenerations();
     EXPECT_EQ(active, 2);

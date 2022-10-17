@@ -2106,14 +2106,14 @@ arangodb::Result TransactionStateMock::beginTransaction(
   return arangodb::Result();
 }
 
-arangodb::futures::Future<arangodb::Result>
-TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
+yaclib::Future<arangodb::Result> TransactionStateMock::commitTransaction(
+    arangodb::transaction::Methods* trx) {
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
   resetTransactionId();
   //  releaseUsage();
 
-  return arangodb::Result();
+  return yaclib::MakeFuture<arangodb::Result>();
 }
 
 arangodb::Result TransactionStateMock::triggerIntermediateCommit() {

@@ -158,7 +158,7 @@ class IResearchInvertedIndexIteratorTestBase
         EXPECT_TRUE(res);
         ++doc;
       }
-      EXPECT_TRUE(trx.commitAsync().get().ok());
+      EXPECT_TRUE(trx.commitAsync().Get().Ok().ok());
       EXPECT_TRUE(_index->commit(true).ok());
     }
     // second transaction to have more than one segment in the index
@@ -178,7 +178,7 @@ class IResearchInvertedIndexIteratorTestBase
       EXPECT_TRUE(res);
       ++doc;
     }
-    EXPECT_TRUE(trx.commitAsync().get().ok());
+    EXPECT_TRUE(trx.commitAsync().Get().Ok().ok());
     EXPECT_TRUE(_index->commit(true).ok());
   }
 

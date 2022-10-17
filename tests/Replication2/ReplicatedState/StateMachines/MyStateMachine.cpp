@@ -26,7 +26,8 @@
 
 #include <Basics/Result.h>
 #include <Basics/voc-errors.h>
-#include <Futures/Future.h>
+#include <yaclib/async/make.hpp>
+#include <yaclib/async/future.hpp>
 #include <Logger/LogMacros.h>
 
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
@@ -47,21 +48,24 @@ void MyStateBase::applyIterator(
 void MyLeaderState::set(std::string key, std::string value) {
   auto entry = MyEntryType{key, value};
   auto idx = getStream()->insert(entry);
-  getStream()->waitFor(idx).thenValue(
-      [this, key, value](auto&& res) { store[key] = value; });
+  getStream()->waitFor(idx).DetachInline([this, key, value](auto&& res) {
+    if (res) {
+      store[key] = value;
+    }
+  });
 }
 
 auto MyFollowerState::acquireSnapshot(ParticipantId const& destination,
                                       LogIndex) noexcept
-    -> futures::Future<Result> {
-  return futures::Future<Result>{TRI_ERROR_NO_ERROR};
+    -> yaclib::Future<Result> {
+  return yaclib::MakeFuture<Result>(TRI_ERROR_NO_ERROR);
 }
 
 auto MyLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
-    -> futures::Future<Result> {
+    -> yaclib::Future<Result> {
   applyIterator(*ptr);
   recoveryRan = true;
-  return futures::Future<Result>{TRI_ERROR_NO_ERROR};
+  return yaclib::MakeFuture<Result>(TRI_ERROR_NO_ERROR);
 }
 auto MyLeaderState::resign() && noexcept -> std::unique_ptr<MyCoreType> {
   return std::move(_core);
@@ -83,10 +87,10 @@ auto MyFactory::constructCore(GlobalLogIdentifier const&)
 }
 
 auto MyFollowerState::applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
-    -> futures::Future<Result> {
+    -> yaclib::Future<Result> {
   applyIterator(*ptr);
   getStream()->release(ptr->range().to.saturatedDecrement());
-  return futures::Future<Result>{TRI_ERROR_NO_ERROR};
+  return yaclib::MakeFuture<Result>(TRI_ERROR_NO_ERROR);
 }
 
 auto MyFollowerState::resign() && noexcept -> std::unique_ptr<MyCoreType> {

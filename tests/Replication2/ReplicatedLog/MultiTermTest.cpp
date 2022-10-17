@@ -41,11 +41,11 @@ TEST_F(MultiTermTest, add_follower_test) {
     auto f = leader->waitFor(idx);
     // Note that the leader inserts an empty log entry in becomeLeader
     ASSERT_EQ(idx, LogIndex{2});
-    EXPECT_FALSE(f.isReady());
+    EXPECT_FALSE(f.Ready());
     leader->triggerAsyncReplication();
     {
-      ASSERT_TRUE(f.isReady());
-      auto const& result = f.get();
+      ASSERT_TRUE(f.Ready());
+      auto const& result = std::move(f).Get().Ok();
       EXPECT_EQ(result.quorum->quorum, std::vector<ParticipantId>{"leader"});
     }
     {
@@ -72,14 +72,14 @@ TEST_F(MultiTermTest, add_follower_test) {
     }
 
     auto f = leader->waitFor(LogIndex{1});
-    EXPECT_FALSE(f.isReady());
+    EXPECT_FALSE(f.Ready());
     leader->triggerAsyncReplication();
     ASSERT_TRUE(follower->hasPendingAppendEntries());
     while (follower->hasPendingAppendEntries()) {
       follower->runAsyncAppendEntries();
     }
 
-    EXPECT_TRUE(f.isReady());
+    EXPECT_TRUE(f.Ready());
     {
       auto stats =
           std::get<FollowerStatus>(follower->getStatus().getVariant()).local;
@@ -100,12 +100,12 @@ TEST_F(MultiTermTest, resign_leader_wait_for) {
     auto idx = leader->insert(LogPayload::createFromString("first entry"),
                               false, LogLeader::doNotTriggerAsyncReplication);
     auto f = leader->waitFor(idx);
-    EXPECT_FALSE(f.isReady());
+    EXPECT_FALSE(f.Ready());
     leader->triggerAsyncReplication();
     auto newLeader =
         leaderLog->becomeLeader("leader", LogTerm{2}, {follower}, 2);
-    ASSERT_TRUE(f.isReady());
-    EXPECT_ANY_THROW({ std::ignore = f.get(); });
+    ASSERT_TRUE(f.Ready());
+    EXPECT_ANY_THROW({ std::ignore = std::move(f).Get().Ok(); });
     EXPECT_ANY_THROW({ std::ignore = leader->getStatus(); });
     EXPECT_ANY_THROW({
       std::ignore =
@@ -126,13 +126,14 @@ TEST_F(MultiTermTest, resign_leader_release) {
     auto idx = leader->insert(LogPayload::createFromString("first entry"),
                               false, LogLeader::doNotTriggerAsyncReplication);
     auto f = leader->waitFor(idx);
-    EXPECT_FALSE(f.isReady());
+    EXPECT_FALSE(f.Ready());
     leader->triggerAsyncReplication();
     follower->runAsyncAppendEntries();
     auto newLeader =
         leaderLog->becomeLeader("leader", LogTerm{2}, {follower}, 2);
-    ASSERT_TRUE(f.isReady());
-    ASSERT_FALSE(f.hasException());
+    ASSERT_TRUE(f.Ready());
+    ASSERT_FALSE(std::as_const(f).Touch().State() ==
+                 yaclib::ResultState::Exception);
     auto res = leader->release(idx);
     EXPECT_EQ(res.errorNumber(),
               TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
@@ -150,13 +151,14 @@ TEST_F(MultiTermTest, resign_follower_release) {
     auto idx = leader->insert(LogPayload::createFromString("first entry"),
                               false, LogLeader::doNotTriggerAsyncReplication);
     auto f = follower->waitFor(idx);
-    EXPECT_FALSE(f.isReady());
+    EXPECT_FALSE(f.Ready());
     leader->triggerAsyncReplication();
     follower->runAllAsyncAppendEntries();
     auto newFollower =
         followerLog->becomeFollower("follower", LogTerm{2}, "leader");
-    ASSERT_TRUE(f.isReady());
-    ASSERT_FALSE(f.hasException());
+    ASSERT_TRUE(f.Ready());
+    ASSERT_FALSE(std::as_const(f).Touch().State() ==
+                 yaclib::ResultState::Exception);
     auto res = follower->release(idx);
     EXPECT_EQ(res.errorNumber(),
               TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
@@ -174,7 +176,7 @@ TEST_F(MultiTermTest, resign_follower_wait_for) {
     auto idx = leader->insert(LogPayload::createFromString("first entry"),
                               false, LogLeader::doNotTriggerAsyncReplication);
     auto f = leader->waitFor(idx);
-    EXPECT_FALSE(f.isReady());
+    EXPECT_FALSE(f.Ready());
     leader->triggerAsyncReplication();
 
     {
@@ -232,7 +234,7 @@ struct FollowerProxy : AbstractFollower {
     return _follower->getParticipantId();
   }
   auto appendEntries(AppendEntriesRequest request)
-      -> arangodb::futures::Future<AppendEntriesResult> override {
+      -> yaclib::Future<AppendEntriesResult> override {
     return _follower->appendEntries(std::move(request));
   }
 
@@ -254,9 +256,9 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     auto idx = leader->insert(LogPayload::createFromString("first entry"),
                               false, LogLeader::doNotTriggerAsyncReplication);
     auto f = leader->waitFor(idx);
-    EXPECT_FALSE(f.isReady());
+    EXPECT_FALSE(f.Ready());
     leader->triggerAsyncReplication();
-    EXPECT_FALSE(f.isReady());
+    EXPECT_FALSE(f.Ready());
 
     {
       auto stats =
@@ -276,11 +278,12 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     EXPECT_FALSE(follower->hasPendingAppendEntries());
 
     // the old future should have failed
-    ASSERT_TRUE(f.isReady());
-    EXPECT_TRUE(f.hasException());
+    ASSERT_TRUE(f.Ready());
+    EXPECT_TRUE(std::as_const(f).Touch().State() ==
+                yaclib::ResultState::Exception);
 
     auto f2 = leader->waitFor(idx);
-    EXPECT_FALSE(f2.isReady());
+    EXPECT_FALSE(f2.Ready());
     leader->triggerAsyncReplication();
 
     // run the old followers append entries
@@ -296,7 +299,7 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
     follower->runAsyncAppendEntries();
     EXPECT_FALSE(follower->hasPendingAppendEntries());
 
-    ASSERT_FALSE(f2.isReady());
+    ASSERT_FALSE(f2.Ready());
     while (newFollower->hasPendingAppendEntries()) {
       newFollower->runAsyncAppendEntries();
     }
@@ -310,9 +313,9 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
       EXPECT_EQ(stats.commitIndex, LogIndex{3});
     }
 
-    ASSERT_TRUE(f2.isReady());
+    ASSERT_TRUE(f2.Ready());
     {
-      auto result = f2.get();
+      auto result = std::move(f2).Get().Ok();
       EXPECT_EQ(result.currentCommitIndex, LogIndex{3});
       EXPECT_EQ(result.quorum->index, LogIndex{3});
       EXPECT_EQ(result.quorum->term, LogTerm{2});

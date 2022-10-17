@@ -2446,16 +2446,15 @@ class IResearchFeatureTestCoordinator
     agencyTrx("/arango/Current/Databases/" + name, st);
     st = ts.specialize(current_colls_string);
     agencyTrx("/arango/Current/Collections/" + name, st);
-    server.getFeature<arangodb::ClusterFeature>()
-        .clusterInfo()
-        .waitForPlan(
-            agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
-        .wait();
-    server.getFeature<arangodb::ClusterFeature>()
-        .clusterInfo()
-        .waitForCurrent(
-            agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
-        .wait();
+    auto f1 =
+        server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
+            agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="));
+    Wait(f1);
+    auto f2 = server.getFeature<arangodb::ClusterFeature>()
+                  .clusterInfo()
+                  .waitForCurrent(agencyTrx("/arango/Current/Version",
+                                            R"=({"op":"increment"})="));
+    Wait(f2);
   }
 
   void agencyDropDatabase(std::string const& name) {
@@ -2464,16 +2463,15 @@ class IResearchFeatureTestCoordinator
     agencyTrx("/arango/Plan/Collections/" + name, st);
     agencyTrx("/arango/Current/Databases/" + name, st);
     agencyTrx("/arango/Current/Collections/" + name, st);
-    server.getFeature<arangodb::ClusterFeature>()
-        .clusterInfo()
-        .waitForPlan(
-            agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
-        .wait();
-    server.getFeature<arangodb::ClusterFeature>()
-        .clusterInfo()
-        .waitForCurrent(
-            agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
-        .wait();
+    auto f1 =
+        server.getFeature<arangodb::ClusterFeature>().clusterInfo().waitForPlan(
+            agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="));
+    Wait(f1);
+    auto f2 = server.getFeature<arangodb::ClusterFeature>()
+                  .clusterInfo()
+                  .waitForCurrent(agencyTrx("/arango/Current/Version",
+                                            R"=({"op":"increment"})="));
+    Wait(f2);
   }
 
   VPackBuilder agencyCreateIndex(std::string const& db, std::string const& cid,

@@ -458,8 +458,8 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
     auto res = leaderState->replicateOperation(builder.sharedSlice(), operation,
                                                tid, ReplicationOptions{});
 
-    ASSERT_TRUE(res.isReady());
-    auto logIndex = res.result().get();
+    ASSERT_TRUE(res.Ready());
+    auto logIndex = std::as_const(res).Touch().Ok();
 
     inMemoryLog = leader->copyInMemoryLog();
     entry = inMemoryLog.getEntryByIndex(logIndex);
@@ -490,8 +490,8 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
     auto res = leaderState->replicateOperation(builder.sharedSlice(), operation,
                                                tid, ReplicationOptions{});
 
-    ASSERT_TRUE(res.isReady());
-    auto logIndex = res.result().get();
+    ASSERT_TRUE(res.Ready());
+    auto logIndex = std::as_const(res).Touch().Ok();
 
     inMemoryLog = leader->copyInMemoryLog();
     entry = inMemoryLog.getEntryByIndex(logIndex);
@@ -523,15 +523,15 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
         velocypack::SharedSlice{}, operation, tid,
         ReplicationOptions{.waitForCommit = true});
 
-    ASSERT_FALSE(res.isReady());
+    ASSERT_FALSE(res.Ready());
 
     EXPECT_CALL(*transactionHandlerMock, applyEntry(_)).Times(1);
     EXPECT_CALL(*transactionMock, commit).Times(1);
     follower->runAllAsyncAppendEntries();
     Mock::VerifyAndClearExpectations(transactionMock.get());
     Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
-    ASSERT_TRUE(res.isReady());
-    auto logIndex = res.result().get();
+    ASSERT_TRUE(res.Ready());
+    auto logIndex = std::as_const(res).Touch().Ok();
 
     inMemoryLog = follower->copyInMemoryLog();
     entry = inMemoryLog.getEntryByIndex(logIndex);

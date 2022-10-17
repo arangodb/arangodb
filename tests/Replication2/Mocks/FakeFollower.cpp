@@ -110,7 +110,7 @@ auto FakeFollower::addEntry(LogPayload payload) -> LogIndex {
   return index;
 }
 auto FakeFollower::appendEntries(replicated_log::AppendEntriesRequest request)
-    -> futures::Future<replicated_log::AppendEntriesResult> {
+    -> yaclib::Future<replicated_log::AppendEntriesResult> {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -124,14 +124,15 @@ auto FakeFollower::waitFor(LogIndex index) -> WaitForFuture {
 
 auto FakeFollower::waitForIterator(LogIndex index)
     -> replicated_log::ILogParticipant::WaitForIteratorFuture {
-  return waitFor(index).thenValue(
-      [this, index](auto&&) -> std::unique_ptr<LogRangeIterator> {
+  return waitFor(index).ThenInline(
+      [this, index](replicated_log::WaitForResult&&)
+          -> std::unique_ptr<LogRangeIterator> {
         auto guard = guarded.getLockedGuard();
         return guard->log.getIteratorRange(index, guard->commitIndex + 1);
       });
 }
 
-auto FakeFollower::waitForResign() -> futures::Future<futures::Unit> {
+auto FakeFollower::waitForResign() -> yaclib::Future<> {
   return waitForResignQueue.addWaitFor();
 }
 
@@ -144,9 +145,9 @@ void FakeFollower::resign() & {
   auto const exPtr =
       std::make_exception_ptr(replicated_log::ParticipantResignedException(
           TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE));
-  waitForQueue.resolveAll(futures::Try<replicated_log::WaitForResult>(exPtr));
+  waitForQueue.resolveAll(yaclib::Result<replicated_log::WaitForResult>(exPtr));
   waitForLeaderAckedQueue.resolveAll(
-      futures::Try<replicated_log::WaitForResult>(exPtr));
+      yaclib::Result<replicated_log::WaitForResult>(exPtr));
   waitForResignQueue.resolveAll();
 }
 

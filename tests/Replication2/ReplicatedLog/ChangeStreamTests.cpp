@@ -57,10 +57,10 @@ TEST_F(ChangeStreamTests, ask_for_existing_entries) {
   leader->triggerAsyncReplication();
   {
     auto fut = leader->waitForIterator(LogIndex{2});
-    ASSERT_TRUE(fut.isReady());
+    ASSERT_TRUE(fut.Ready());
     {
       auto entry = std::optional<LogEntryView>{};
-      auto iter = std::move(fut).get();
+      auto iter = std::move(fut).Get().Ok();
 
       entry = iter->next();
       ASSERT_TRUE(entry.has_value());
@@ -101,16 +101,16 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries) {
   // Note that the leader inserts an empty log entry in LogLeader::construct
   auto fut = leader->waitForIterator(LogIndex{3});
 
-  ASSERT_FALSE(fut.isReady());
+  ASSERT_FALSE(fut.Ready());
 
   leader->triggerAsyncReplication();
 
-  ASSERT_TRUE(fut.isReady());
-  std::move(fut).then([](auto&&) {});
+  ASSERT_TRUE(fut.Ready());
+  std::move(fut).Detach();
 
   fut = leader->waitForIterator(LogIndex{5});
 
-  ASSERT_FALSE(fut.isReady());
+  ASSERT_FALSE(fut.Ready());
 
   auto const idx4 =
       leader->insert(LogPayload::createFromString("fourth entry"), false,
@@ -124,10 +124,10 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries) {
   EXPECT_EQ(idx5, LogIndex{6});
   leader->triggerAsyncReplication();
 
-  ASSERT_TRUE(fut.isReady());
+  ASSERT_TRUE(fut.Ready());
   {
     auto entry = std::optional<LogEntryView>{};
-    auto iter = std::move(fut).get();
+    auto iter = std::move(fut).Get().Ok();
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
@@ -168,12 +168,12 @@ TEST_F(ChangeStreamTests,
   // The forth entry is inserted in LogLeader::construct - wait for it
   auto fut = leader->waitForIterator(LogIndex{4});
 
-  ASSERT_FALSE(fut.isReady());
+  ASSERT_FALSE(fut.Ready());
 
   leader->triggerAsyncReplication();
 
   // because index 4 is internal, the future is still not ready
-  ASSERT_FALSE(fut.isReady());
+  ASSERT_FALSE(fut.Ready());
 
   // Now insert another entry
   auto const idx5 =
@@ -183,11 +183,11 @@ TEST_F(ChangeStreamTests,
   EXPECT_EQ(idx5, LogIndex{5});
 
   // Now the future is ready
-  ASSERT_TRUE(fut.isReady());
+  ASSERT_TRUE(fut.Ready());
   {
     // We shall only see index 5
     auto entry = std::optional<LogEntryView>{};
-    auto iter = std::move(fut).get();
+    auto iter = std::move(fut).Get().Ok();
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
@@ -231,7 +231,7 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries_with_follower) {
   }
 
   auto fut = leader->waitForIterator(LogIndex{4});
-  ASSERT_FALSE(fut.isReady());
+  ASSERT_FALSE(fut.Ready());
 
   leader->insert(LogPayload::createFromString("fourth entry"), false,
                  LogLeader::doNotTriggerAsyncReplication);
@@ -239,14 +239,14 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries_with_follower) {
                  LogLeader::doNotTriggerAsyncReplication);
   leader->triggerAsyncReplication();
 
-  ASSERT_FALSE(fut.isReady());
+  ASSERT_FALSE(fut.Ready());
   ASSERT_TRUE(follower->hasPendingAppendEntries());
   follower->runAsyncAppendEntries();
-  ASSERT_TRUE(fut.isReady());
+  ASSERT_TRUE(fut.Ready());
 
   {
     auto entry = std::optional<LogEntryView>{};
-    auto iter = std::move(fut).get();
+    auto iter = std::move(fut).Get().Ok();
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
@@ -300,11 +300,11 @@ TEST_F(ChangeStreamTests, ask_for_non_replicated_entries_with_follower) {
   leader->triggerAsyncReplication();
 
   auto fut = leader->waitForIterator(LogIndex{3});
-  ASSERT_TRUE(fut.isReady());
+  ASSERT_TRUE(fut.Ready());
 
   {
     auto entry = std::optional<LogEntryView>{};
-    auto iter = std::move(fut).get();
+    auto iter = std::move(fut).Get().Ok();
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
@@ -351,10 +351,10 @@ TEST_F(ChangeStreamTests, ask_for_existing_entries_follower) {
 
   {
     auto fut = follower->waitForIterator(LogIndex{2});
-    ASSERT_TRUE(fut.isReady());
+    ASSERT_TRUE(fut.Ready());
     {
       auto entry = std::optional<LogEntryView>{};
-      auto iter = std::move(fut).get();
+      auto iter = std::move(fut).Get().Ok();
 
       entry = iter->next();
       ASSERT_TRUE(entry.has_value());
@@ -402,7 +402,7 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries_follower) {
   }
 
   auto fut = follower->waitForIterator(LogIndex{4});
-  ASSERT_FALSE(fut.isReady());
+  ASSERT_FALSE(fut.Ready());
 
   leader->insert(LogPayload::createFromString("fourth entry"), false,
                  LogLeader::doNotTriggerAsyncReplication);
@@ -413,15 +413,15 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries_follower) {
   // replicate entries, not commit index
   ASSERT_TRUE(follower->hasPendingAppendEntries());
   follower->runAsyncAppendEntries();
-  ASSERT_FALSE(fut.isReady());
+  ASSERT_FALSE(fut.Ready());
 
   // replicated commit index
   ASSERT_TRUE(follower->hasPendingAppendEntries());
   follower->runAsyncAppendEntries();
-  ASSERT_TRUE(fut.isReady());
+  ASSERT_TRUE(fut.Ready());
   {
     auto entry = std::optional<LogEntryView>{};
-    auto iter = std::move(fut).get();
+    auto iter = std::move(fut).Get().Ok();
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
@@ -478,11 +478,11 @@ TEST_F(ChangeStreamTests, ask_for_non_committed_entries_follower) {
   follower->runAsyncAppendEntries();
 
   auto fut = follower->waitForIterator(LogIndex{3});
-  ASSERT_TRUE(fut.isReady());
+  ASSERT_TRUE(fut.Ready());
 
   {
     auto entry = std::optional<LogEntryView>{};
-    auto iter = std::move(fut).get();
+    auto iter = std::move(fut).Get().Ok();
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());

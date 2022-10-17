@@ -22,11 +22,13 @@
 
 #pragma once
 
-#include "Futures/Future.h"
-
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
 #include "Replication2/Streams/Streams.h"
+
+#include <yaclib/async/make.hpp>
+#include <yaclib/async/future.hpp>
+#include <yaclib/async/contract.hpp>
 
 namespace arangodb::replication2 {
 namespace test {
@@ -52,12 +54,12 @@ struct EmptyFollowerType : replicated_state::IReplicatedFollowerState<S> {
 
  protected:
   auto applyEntries(std::unique_ptr<EntryIterator>) noexcept
-      -> futures::Future<Result> override {
-    return futures::Future<Result>{std::in_place};
+      -> yaclib::Future<Result> override {
+    return yaclib::MakeFuture<Result>();
   }
   auto acquireSnapshot(ParticipantId const&, LogIndex) noexcept
-      -> futures::Future<Result> override {
-    return futures::Future<Result>{std::in_place};
+      -> yaclib::Future<Result> override {
+    return yaclib::MakeFuture<Result>();
   }
 
   std::unique_ptr<CoreType> _core;
@@ -87,8 +89,8 @@ struct EmptyLeaderType : replicated_state::IReplicatedLeaderState<S> {
 
  protected:
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
-      -> futures::Future<Result> override {
-    return futures::Future<Result>(std::in_place);
+      -> yaclib::Future<Result> override {
+    return yaclib::MakeFuture<Result>();
   }
 
   std::unique_ptr<test::TestCoreType> _core;
@@ -102,25 +104,27 @@ auto EmptyLeaderType<S>::resign() && noexcept
 
 template<typename Input, typename Result>
 struct AsyncOperationMarker {
-  auto trigger(Input inValue) -> futures::Future<Result> {
+  auto trigger(Input inValue) -> yaclib::Future<Result> {
     TRI_ASSERT(in.has_value() == false);
     in.emplace(std::move(inValue));
     triggered = true;
-    return promise.emplace().getFuture();
+    auto [f, p] = yaclib::MakeContract<Result>();
+    promise.emplace(std::move(p));
+    return std::move(f);
   }
 
   auto resolveWith(Result res) {
     TRI_ASSERT(triggered);
-    TRI_ASSERT(!promise->isFulfilled());
-    promise->setValue(std::move(res));
+    TRI_ASSERT(promise->Valid());
+    std::move(*promise).Set(std::move(res));
   }
 
   auto resolveWithAndReset(Result res) {
     TRI_ASSERT(triggered);
-    TRI_ASSERT(!promise->isFulfilled());
+    TRI_ASSERT(promise->Valid());
     auto p = std::move(promise);
     reset();
-    std::move(p)->setValue(std::move(res));
+    std::move(*p).Set(std::move(res));
   }
 
   auto inspectValue() const -> Input const& { return *in; }
@@ -129,7 +133,7 @@ struct AsyncOperationMarker {
 
   void reset() {
     TRI_ASSERT(triggered);
-    TRI_ASSERT(promise->isFulfilled());
+    TRI_ASSERT(!promise->Valid());
     triggered = false;
     in.reset();
     promise.reset();
@@ -138,7 +142,7 @@ struct AsyncOperationMarker {
  private:
   bool triggered = false;
   std::optional<Input> in;
-  std::optional<futures::Promise<Result>> promise;
+  std::optional<yaclib::Promise<Result>> promise;
 };
 
 template<typename S>
@@ -170,7 +174,7 @@ struct FakeLeaderType : replicated_state::IReplicatedLeaderState<S> {
 
  protected:
   auto recoverEntries(std::unique_ptr<EntryIterator> iter)
-      -> futures::Future<Result> override {
+      -> yaclib::Future<Result> override {
     return recovery.trigger(std::move(iter));
   }
 
@@ -195,12 +199,12 @@ struct FakeFollowerType : replicated_state::IReplicatedFollowerState<S> {
 
  protected:
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
-      -> futures::Future<Result> override {
+      -> yaclib::Future<Result> override {
     return apply.trigger(std::move(ptr));
   }
   auto acquireSnapshot(const ParticipantId& leader,
                        LogIndex localCommitIndex) noexcept
-      -> futures::Future<Result> override {
+      -> yaclib::Future<Result> override {
     return acquire.trigger(std::make_pair(leader, localCommitIndex));
   }
 

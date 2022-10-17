@@ -75,7 +75,7 @@ TEST_P(ParticipantResignTest, participant_resign) {
   {  // install first callback
     auto future = participant->waitForResign();
 
-    std::move(future).thenFinal([&](auto) noexcept { alpha = true; });
+    std::move(future).DetachInline([&](auto) noexcept { alpha = true; });
 
     EXPECT_FALSE(alpha);
     // resign
@@ -87,7 +87,7 @@ TEST_P(ParticipantResignTest, participant_resign) {
     auto future = participant->waitForResign();
 
     EXPECT_FALSE(beta);
-    std::move(future).thenFinal([&](auto) noexcept { beta = true; });
+    std::move(future).DetachInline([&](auto) noexcept { beta = true; });
     EXPECT_TRUE(beta);
   }
 }

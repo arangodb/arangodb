@@ -76,8 +76,8 @@ TEST_F(LogMultiplexerTest, leader_follower_test) {
 
   auto futureA = followerStreamA->waitFor(LogIndex{2});
   auto futureB = followerStreamB->waitFor(LogIndex{1});
-  ASSERT_TRUE(futureA.isReady());
-  ASSERT_TRUE(futureB.isReady());
+  ASSERT_TRUE(futureA.Ready());
+  ASSERT_TRUE(futureB.Ready());
 
   {
     auto iter = followerStreamA->getAllEntriesIterator();
@@ -116,7 +116,7 @@ TEST_F(LogMultiplexerTest, leader_wait_for) {
   auto idx = stream->insert(12);
   auto f = stream->waitFor(idx);
   // Future not yet resolved because follower did not answer yet
-  EXPECT_FALSE(f.isReady());
+  EXPECT_FALSE(f.Ready());
 
   // let follower run
   EXPECT_TRUE(follower->hasPendingAppendEntries());
@@ -125,7 +125,7 @@ TEST_F(LogMultiplexerTest, leader_wait_for) {
   }
 
   // future should be ready
-  ASSERT_TRUE(f.isReady());
+  ASSERT_TRUE(f.Ready());
 }
 
 TEST_F(LogMultiplexerTest, leader_wait_for_multiple) {
@@ -145,7 +145,7 @@ TEST_F(LogMultiplexerTest, leader_wait_for_multiple) {
   auto idxA = streamA->insert(12);
   auto fA = streamA->waitFor(idxA);
   // Future not yet resolved because follower did not answer yet
-  EXPECT_FALSE(fA.isReady());
+  EXPECT_FALSE(fA.Ready());
   // Follower has pending append entries
   EXPECT_TRUE(follower->hasPendingAppendEntries());
 
@@ -153,21 +153,21 @@ TEST_F(LogMultiplexerTest, leader_wait_for_multiple) {
   auto idxB = streamB->insert("hello world");
   auto fB = streamB->waitFor(idxB);
   // Both futures are not yet resolved because follower did not answer yet
-  EXPECT_FALSE(fB.isReady());
-  EXPECT_FALSE(fA.isReady());
+  EXPECT_FALSE(fB.Ready());
+  EXPECT_FALSE(fA.Ready());
 
   // Do a single follower run
   follower->runAsyncAppendEntries();
 
   // future A should be ready and follower has still pending append entries
-  EXPECT_TRUE(fA.isReady());
+  EXPECT_TRUE(fA.Ready());
   EXPECT_TRUE(follower->hasPendingAppendEntries());
 
   // Now future B should become ready.
   while (follower->hasPendingAppendEntries()) {
     follower->runAsyncAppendEntries();
   }
-  EXPECT_TRUE(fB.isReady());
+  EXPECT_TRUE(fB.Ready());
 }
 
 TEST_F(LogMultiplexerTest, follower_wait_for) {
@@ -192,17 +192,17 @@ TEST_F(LogMultiplexerTest, follower_wait_for) {
 
   auto idx = inStream->insert(17);
   auto f = outStream->waitFor(idx);
-  EXPECT_FALSE(f.isReady());
+  EXPECT_FALSE(f.Ready());
   EXPECT_TRUE(follower->hasPendingAppendEntries());
 
   // Handle append request, entry not yet committed on follower
   follower->runAsyncAppendEntries();
-  EXPECT_FALSE(f.isReady());
+  EXPECT_FALSE(f.Ready());
   EXPECT_TRUE(follower->hasPendingAppendEntries());
 
   // Receive commit update
   follower->runAsyncAppendEntries();
-  EXPECT_TRUE(f.isReady());
+  EXPECT_TRUE(f.Ready());
 }
 
 TEST_F(LogMultiplexerTest, leader_digest_existing_entries) {
@@ -247,8 +247,8 @@ TEST_F(LogMultiplexerTest, leader_digest_existing_entries) {
     // now read the stream and check if all entries are available
     auto stream = mux->getStreamById<my_int_stream_id>();
     auto f = stream->waitForIterator(LogIndex{0});
-    ASSERT_TRUE(f.isReady());
-    auto iter = std::move(f).get();
+    ASSERT_TRUE(f.Ready());
+    auto iter = std::move(f).Get().Ok();
 
     int i = 0;
     while (auto entry = iter->next()) {
@@ -278,21 +278,23 @@ TEST_F(LogMultiplexerTest, leader_resign_stream) {
 
   // wait for some random log index
   auto f = leader->waitFor(LogIndex{10});
-  ASSERT_FALSE(f.isReady());
+  ASSERT_FALSE(f.Ready());
   auto fs = stream->waitFor(LogIndex{10});
-  ASSERT_FALSE(fs.isReady());
+  ASSERT_FALSE(fs.Ready());
 
   // become leader in new term, this should trigger an exception
   leader = createLeaderWithDefaultFlags(leaderLog, "leader", LogTerm{2},
                                         {follower}, 2);
 
   // leader should have resolved this promise
-  ASSERT_TRUE(f.isReady());
-  EXPECT_TRUE(f.hasException());
+  ASSERT_TRUE(f.Ready());
+  EXPECT_TRUE(std::as_const(f).Touch().State() ==
+              yaclib::ResultState::Exception);
 
   // multiplexer should have resolved this promise
-  ASSERT_TRUE(fs.isReady());
-  EXPECT_TRUE(fs.hasException());
+  ASSERT_TRUE(fs.Ready());
+  EXPECT_TRUE(std::as_const(fs).Touch().State() ==
+              yaclib::ResultState::Exception);
 }
 
 TEST_F(LogMultiplexerTest, follower_resign_stream) {
@@ -305,18 +307,20 @@ TEST_F(LogMultiplexerTest, follower_resign_stream) {
 
   // wait for some random log index
   auto f = follower->waitFor(LogIndex{10});
-  ASSERT_FALSE(f.isReady());
+  ASSERT_FALSE(f.Ready());
   auto fs = stream->waitFor(LogIndex{10});
-  ASSERT_FALSE(fs.isReady());
+  ASSERT_FALSE(fs.Ready());
 
   // become leader in new term, this should trigger an exception
   follower = followerLog->becomeFollower("follower", LogTerm{2}, "leader");
 
   // leader should have resolved this promise
-  ASSERT_TRUE(f.isReady());
-  EXPECT_TRUE(f.hasException());
+  ASSERT_TRUE(f.Ready());
+  EXPECT_TRUE(std::as_const(f).Touch().State() ==
+              yaclib::ResultState::Exception);
 
   // multiplexer should have resolved this promise
-  ASSERT_TRUE(fs.isReady());
-  EXPECT_TRUE(fs.hasException());
+  ASSERT_TRUE(fs.Ready());
+  EXPECT_TRUE(std::as_const(fs).Touch().State() ==
+              yaclib::ResultState::Exception);
 }

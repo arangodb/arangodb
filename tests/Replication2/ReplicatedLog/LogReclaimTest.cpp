@@ -42,10 +42,10 @@ TEST_F(ReplicatedLogTest, reclaim_leader_after_term_change) {
 
   auto idx = leader->insert(LogPayload::createFromString("payload"), false,
                             LogLeader::doNotTriggerAsyncReplication);
-  auto f = leader->waitFor(idx).then([&](futures::Try<WaitForResult>&& quorum) {
-    EXPECT_TRUE(quorum.hasException());
+  auto f = leader->waitFor(idx).ThenInline([&](auto&& quorum) {
+    EXPECT_TRUE(quorum.State() == yaclib::ResultState::Exception);
     try {
-      quorum.throwIfFailed();
+      std::ignore = std::move(quorum).Ok();
     } catch (ParticipantResignedException const& ex) {
       EXPECT_EQ(ex.code(),
                 TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
@@ -59,8 +59,8 @@ TEST_F(ReplicatedLogTest, reclaim_leader_after_term_change) {
   });
 
   leaderLog->becomeLeader("leader", LogTerm{2}, {follower}, 1);
-  ASSERT_TRUE(f.isReady());
-  auto newLeader = std::move(f).get();
+  ASSERT_TRUE(f.Ready());
+  auto newLeader = std::move(f).Get().Ok();
 
   ASSERT_NE(newLeader, nullptr);
 }
@@ -74,26 +74,25 @@ TEST_F(ReplicatedLogTest, reclaim_follower_after_term_change) {
 
   auto idx = leader->insert(LogPayload::createFromString("payload"), false,
                             LogLeader::doNotTriggerAsyncReplication);
-  auto f =
-      follower->waitFor(idx).then([&](futures::Try<WaitForResult>&& quorum) {
-        EXPECT_TRUE(quorum.hasException());
-        try {
-          quorum.throwIfFailed();
-        } catch (ParticipantResignedException const& ex) {
-          EXPECT_EQ(ex.code(),
-                    TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
-        } catch (std::exception const& e) {
-          ADD_FAILURE() << "unexpected exception: " << e.what();
-        } catch (...) {
-          ADD_FAILURE() << "unexpected exception";
-        }
+  auto f = follower->waitFor(idx).ThenInline([&](auto&& quorum) {
+    EXPECT_TRUE(quorum.State() == yaclib::ResultState::Exception);
+    try {
+      std::ignore = std::move(quorum).Ok();
+    } catch (ParticipantResignedException const& ex) {
+      EXPECT_EQ(ex.code(),
+                TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+    } catch (std::exception const& e) {
+      ADD_FAILURE() << "unexpected exception: " << e.what();
+    } catch (...) {
+      ADD_FAILURE() << "unexpected exception";
+    }
 
-        return leaderLog->getLeader();
-      });
+    return leaderLog->getLeader();
+  });
 
   followerLog->becomeLeader("leader", LogTerm{2}, {follower}, 1);
-  ASSERT_TRUE(f.isReady());
-  auto newLeader = std::move(f).get();
+  ASSERT_TRUE(f.Ready());
+  auto newLeader = std::move(f).Get().Ok();
 
   ASSERT_NE(newLeader, nullptr);
 }

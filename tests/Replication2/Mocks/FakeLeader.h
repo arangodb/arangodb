@@ -40,7 +40,7 @@ struct FakeLeader final : replicated_log::ILogLeader,
                                  DeferredAction> override;
   auto waitFor(LogIndex index) -> WaitForFuture override;
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
-  auto waitForResign() -> futures::Future<futures::Unit> override;
+  auto waitForResign() -> yaclib::Future<> override;
   auto getCommitIndex() const noexcept -> LogIndex override;
   auto copyInMemoryLog() const -> replicated_log::InMemoryLog override;
   auto release(LogIndex doneWithIdx) -> Result override;
