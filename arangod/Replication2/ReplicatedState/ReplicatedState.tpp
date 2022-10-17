@@ -365,8 +365,11 @@ template<typename S>
 void NewFollowerStateManager<S>::acquireSnapshot(ServerID leader,
                                                  LogIndex index) {
   LOG_CTX("c4d6b", DEBUG, _loggerContext) << "Acquiring snapshot";
+  MeasureTimeGuard rttGuard(_metrics->replicatedStateAcquireSnapshotRtt);
+  GaugeScopedCounter snapshotCounter(
+      _metrics->replicatedStateNumberWaitingForSnapshot);
   auto fut = _guardedData.doUnderLock([&](auto& self) {
-    return self._followerState->acquireSnapshot(std::move(leader), index);
+    return self._followerState->acquireSnapshot(leader, index);
   });
   // note that we release the lock before calling "then" to avoid deadlocks
 
@@ -374,19 +377,34 @@ void NewFollowerStateManager<S>::acquireSnapshot(ServerID leader,
   auto& scheduler = *SchedulerFeature::SCHEDULER;
   scheduler.queue(
       RequestLane::CLUSTER_INTERNAL,
-      [weak = this->weak_from_this(), fut = std::move(fut)]() mutable {
+      [weak = this->weak_from_this(), fut = std::move(fut),
+       rttGuard = std::move(rttGuard),
+       snapshotCounter = std::move(snapshotCounter), leader, index]() mutable {
         std::move(fut).thenFinal(
-            [weak = std::move(weak)](futures::Try<Result>&& tryResult) {
+            [weak = std::move(weak), rttGuard = std::move(rttGuard),
+             snapshotCounter = std::move(snapshotCounter), leader,
+             index](futures::Try<Result>&& tryResult) mutable noexcept {
+              rttGuard.fire();
+              snapshotCounter.fire();
               if (auto self = weak.lock(); self != nullptr) {
                 LOG_CTX("13f07", DEBUG, self->_loggerContext)
                     << "snapshot completed, informing replicated log";
-                // TODO handle errors
-                ADB_PROD_ASSERT(tryResult.hasValue());
-                ADB_PROD_ASSERT(tryResult.get().ok());
-                auto guard = self->_guardedData.getLockedGuard();
-                auto result = guard->_logMethods->snapshotCompleted();
-                // TODO handle errors
-                ADB_PROD_ASSERT(result.ok());
+                auto result =
+                    basics::catchToResult([&] { return tryResult.get(); });
+                if (result.ok()) {
+                  LOG_CTX("44d58", DEBUG, self->_loggerContext)
+                      << "snapshot transfer successfully completed";
+                  auto guard = self->_guardedData.getLockedGuard();
+                  auto res = guard->_logMethods->snapshotCompleted();
+                  // TODO (How) can we handle this more gracefully?
+                  ADB_PROD_ASSERT(res.ok());
+                } else {
+                  LOG_CTX("9a68a", ERR, self->_loggerContext)
+                      << "failed to transfer snapshot: "
+                      << result.errorMessage() << " - retry scheduled";
+                  // TODO implement a more graceful retry loop with a back-off
+                  self->acquireSnapshot(leader, index);
+                }
               }
             });
       });
