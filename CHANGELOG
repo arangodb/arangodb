@@ -1,6 +1,8 @@
 devel
 -----
 
+* ES-1312: fix handling of reaching the WAL archive capacity limit.
+
 * BTS-941: The HTTP API now delivers the correct list of the collection's
   shards in case a collection from an EnterpriseGraph, SmartGraph, Disjoint
   EnterpriseGraph, Disjoint SmartGraph or SatelliteGraph is being used.
