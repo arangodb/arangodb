@@ -305,8 +305,6 @@ class Manager final : public IManager {
   basics::ReadWriteLock _rwLock;
   bool _writeLockHeld;
 
-  bool _isEarlyTransactionReadOnly;
-
   double _streamingLockTimeout;
 
   std::atomic<bool> _softShutdownOngoing;
