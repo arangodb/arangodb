@@ -268,8 +268,6 @@ struct arangodb::VocBaseLogManager {
 
   struct GuardedData {
     struct StateAndLog {
-      arangodb::replication2::replicated_log::ReplicatedLogConnection
-          connection;
       std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>
           log;
       std::shared_ptr<
@@ -278,6 +276,8 @@ struct arangodb::VocBaseLogManager {
       std::unique_ptr<
           arangodb::replication2::replicated_state::IStorageEngineMethods>
           storage;
+      arangodb::replication2::replicated_log::ReplicatedLogConnection
+          connection;
     };
     absl::flat_hash_map<arangodb::replication2::LogId, StateAndLog>
         statesAndLogs;
