@@ -26,7 +26,7 @@
 #include "Aql/Optimizer2/Inspection/StatusT.h"
 
 #include "Basics/VelocyPackStringLiteral.h"
-#include "Aql/Optimizer2/ReturnNode.h"
+#include "Aql/Optimizer2/PlanNodes/ReturnNode.h"
 
 #include <fmt/core.h>
 

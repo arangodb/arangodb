@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Inspection/VPackInspection.h"
+#include "Aql/Optimizer2/Inspection/VPackInspection.h"
 
 namespace arangodb::aql::optimizer2::nodes {
 
