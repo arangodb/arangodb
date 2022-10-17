@@ -33,16 +33,11 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
-  let platform = internal.platform;
-  if (platform !== 'linux') {
-    // crash handler only available on Linux
-    return;
-  }
   // make log level more verbose, as by default we hide most messages from
   // the test output
   require("internal").logLevel("crash=info");
-  // produces an assertion failure in the server
-  internal.debugTerminate('CRASH-HANDLER-TEST-ASSERT');
+  // produces a segfault in the server
+  internal.debugTerminate('CRASH-HANDLER-TEST-SEGFAULT');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -82,12 +77,12 @@ function recoverySuite () {
 
       // check message
       let line = lines.shift();
-      assertMatch(/FATAL.*thread \d+.*caught unexpected signal 6.*assertion failed.*: a == 2/, line);
-     
+      assertMatch(/FATAL.*thread \d+.*caught unexpected signal 11.*signal handler invoked/, line);
+      
       // check debug symbols
       // it is a bit compiler- and optimization-level-dependent what
       // symbols we get
-      let expected = [ /assertionFailure/, /TerminateDebugging/, /JS_DebugTerminate/ ];
+      let expected = [ /crashHandlerSignalHandler/, /TerminateDebugging/, /JS_DebugTerminate/ ];
       let matches = 0;
       lines.forEach(function(line) {
         expected.forEach(function(ex) {

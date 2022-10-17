@@ -33,16 +33,11 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
-  let platform = internal.platform;
-  if (platform !== 'linux') {
-    // crash handler only available on Linux
-    return;
-  }
   // make log level more verbose, as by default we hide most messages from
   // the test output
   require("internal").logLevel("crash=info");
-  // calls std::terminate() in the server
-  internal.debugTerminate('CRASH-HANDLER-TEST-TERMINATE-ACTIVE');
+  // produces an assertion failure in the server
+  internal.debugTerminate('CRASH-HANDLER-TEST-ASSERT');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -75,10 +70,6 @@ function recoverySuite () {
         return;
       }
 
-      let versionDetails = internal.db._version(true).details;
-      assertTrue(versionDetails.hasOwnProperty("asan"));
-      const asan = versionDetails.asan === "true";
-
       let lines = fs.readFileSync(crashFile).toString().split("\n").filter(function(line) {
         return line.match(/\{crash\}/);
       });
@@ -86,17 +77,12 @@ function recoverySuite () {
 
       // check message
       let line = lines.shift();
-      if (asan) {
-        // using asan,  
-        assertMatch(/FATAL.*thread \d+.*caught unexpected signal 6.*handler for std::terminate\(\) invoked without active exception/, line);
-      } else {
-        assertMatch(/FATAL.*thread \d+.*caught unexpected signal 6.*handler for std::terminate\(\) invoked with an std::exception: /, line);
-      }
-
+      assertMatch(/FATAL.*thread \d+.*caught unexpected signal 6.*assertion failed.*: a == 2/, line);
+     
       // check debug symbols
       // it is a bit compiler- and optimization-level-dependent what
       // symbols we get
-      let expected = [ /std::rethrow_exception/, /installCrashHandler/, /TerminateDebugging/, /JS_DebugTerminate/ ];
+      let expected = [ /assertionFailure/, /TerminateDebugging/, /JS_DebugTerminate/ ];
       let matches = 0;
       lines.forEach(function(line) {
         expected.forEach(function(ex) {

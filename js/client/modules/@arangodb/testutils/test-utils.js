@@ -165,6 +165,10 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     whichFilter.filter = 'graph';
     return false;
   }
+  
+  if (testname.indexOf('-nonwindows') !== -1 && platform.substr(0, 3) === 'win') {
+    whichFilter.filter = 'non-windows';
+  }
 
 // *.<ext>_DISABLED should be used instead
 //  if (testname.indexOf('-disabled') !== -1) {
