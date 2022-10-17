@@ -54,6 +54,8 @@ class WCCGraph {
 
   std::vector<WCCVertex> vertices;
 
+  auto printWccs() -> void;
+
  private:
   std::map<VertexKey, size_t> _vertexPosition;
   DisjointSet _wccs;

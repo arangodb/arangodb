@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <iostream>
 #include "DisjointSet.h"
 
 DisjointSet::DisjointSet(size_t hintSize) {
@@ -12,6 +13,15 @@ auto DisjointSet::capacity() -> size_t { return _parent.size(); }
 
 auto DisjointSet::contains(size_t element) -> bool {
   return element < capacity() and _rank[element] != 0;
+}
+
+auto DisjointSet::print() -> void {
+  for (uint64_t i = 0; i < capacity(); ++i) {
+    if (contains(i)) {
+      std::cout << " " << i << ":" << representative(i);
+    }
+    std::cout << std::endl;
+  }
 }
 
 auto DisjointSet::addSingleton(size_t element, size_t hintSize) -> bool {

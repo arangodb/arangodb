@@ -6,7 +6,7 @@ class DisjointSet {
  public:
   DisjointSet(size_t hintSize = 0);
 
-  auto addSingleton(size_t element, size_t hintSize=0) -> bool;
+  auto addSingleton(size_t element, size_t hintSize = 0) -> bool;
 
   /**
    * Get the representative of element, compress the path from element to the
@@ -25,6 +25,7 @@ class DisjointSet {
 
   [[nodiscard]] auto capacity() -> size_t;
   [[nodiscard]] auto contains(size_t element) -> bool;
+  auto print() -> void;
 
  private:
   std::vector<size_t> _parent;

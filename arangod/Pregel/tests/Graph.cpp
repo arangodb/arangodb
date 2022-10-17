@@ -73,4 +73,9 @@ auto WCCGraph<EdgeProperties>::computeWCC() -> size_t {
   return counter;
 }
 
+template<typename EdgeProperties>
+auto WCCGraph<EdgeProperties>::printWccs() -> void {
+  _wccs.print();
+}
+
 template class WCCGraph<EmptyEdgeProperties>;
