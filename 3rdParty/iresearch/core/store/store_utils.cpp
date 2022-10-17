@@ -64,9 +64,7 @@ float_t read_zvfloat(data_input& in) {
   // positive float (ensure read order)
   const auto part = uint32_t(uint16_t(in.read_short())) << 8;
 
-  return numeric_utils::i32tof(
-    (b << 24) | part | uint32_t(in.read_byte())
-  );
+  return numeric_utils::i32tof((b << 24) | part | uint32_t(in.read_byte()));
 }
 
 void write_zvdouble(data_output& out, double_t v) {
@@ -76,9 +74,9 @@ void write_zvdouble(data_output& out, double_t v) {
     // small signed values between [-1 and 124]
     out.write_byte(static_cast<byte_type>(0x80 | (1 + lv)));
   } else {
-    const float_t fv = static_cast< float_t >(v);
+    const float_t fv = static_cast<float_t>(v);
 
-    if (fv == static_cast< double_t >( v ) ) {
+    if (fv == static_cast<double_t>(v)) {
       out.write_byte(0xFE);
       out.write_int(numeric_utils::ftoi32(fv));
     } else if (!std::signbit(v)) {
@@ -110,9 +108,8 @@ double_t read_zvdouble(data_input& in) {
   const auto part1 = uint64_t(uint32_t(in.read_int())) << 24;
   const auto part2 = uint64_t(uint16_t(in.read_short())) << 8;
 
-  return numeric_utils::i64tod(
-    (b << 56) | part1 | part2 | uint64_t(in.read_byte())
-  );
+  return numeric_utils::i64tod((b << 56) | part1 | part2 |
+                               uint64_t(in.read_byte()));
 }
 
 // ----------------------------------------------------------------------------
@@ -120,8 +117,7 @@ double_t read_zvdouble(data_input& in) {
 // ----------------------------------------------------------------------------
 
 bytes_ref_input::bytes_ref_input(const bytes_ref& ref)
-  : data_(ref), pos_(data_.begin()) {
-}
+    : data_(ref), pos_(data_.begin()) {}
 
 size_t bytes_ref_input::read_bytes(byte_type* b, size_t size) noexcept {
   size = std::min(size, size_t(std::distance(pos_, data_.end())));
@@ -130,7 +126,8 @@ size_t bytes_ref_input::read_bytes(byte_type* b, size_t size) noexcept {
   return size;
 }
 
-size_t bytes_ref_input::read_bytes(size_t offset, byte_type* b, size_t size) noexcept {
+size_t bytes_ref_input::read_bytes(size_t offset, byte_type* b,
+                                   size_t size) noexcept {
   if (offset < data_.size()) {
     size = std::min(size, size_t(data_.size() - offset));
     std::memcpy(b, data_.begin() + offset, sizeof(byte_type) * size);
@@ -148,13 +145,13 @@ void bytes_ref_input::read_bytes(bstring& buf, size_t size) {
 
   buf.resize(used + size);
 
-  #ifdef IRESEARCH_DEBUG
-    const auto read = read_bytes(&(buf[0]) + used, size);
-    assert(read == size);
-    UNUSED(read);
-  #else
-    read_bytes(&(buf[0]) + used, size);
-  #endif // IRESEARCH_DEBUG
+#ifdef IRESEARCH_DEBUG
+  const auto read = read_bytes(&(buf[0]) + used, size);
+  assert(read == size);
+  UNUSED(read);
+#else
+  read_bytes(&(buf[0]) + used, size);
+#endif  // IRESEARCH_DEBUG
 }
 
 int64_t bytes_ref_input::checksum(size_t offset) const {
@@ -167,10 +164,11 @@ int64_t bytes_ref_input::checksum(size_t offset) const {
 
 size_t remapped_bytes_ref_input::src_to_internal(size_t t) const noexcept {
   assert(!mapping_.empty());
-  auto it  = std::lower_bound(mapping_.begin(), mapping_.end(), t,
-                   [](const auto& l, const auto& r) { return l.first < r; });
+  auto it = std::lower_bound(
+      mapping_.begin(), mapping_.end(), t,
+      [](const auto& l, const auto& r) { return l.first < r; });
   if (it == mapping_.end()) {
-      --it;
+    --it;
   } else if (it->first > t) {
     assert(it != mapping_.begin());
     --it;
@@ -197,4 +195,4 @@ size_t remapped_bytes_ref_input::file_pointer() const noexcept {
   return src.first + (adr - src.second);
 }
 
-}
+}  // namespace iresearch
