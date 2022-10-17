@@ -32,9 +32,8 @@ TEST(GWEN_DISJOINT_SET, test_constructor) {
   auto ds = DisjointSet(10);
   EXPECT_EQ(ds.capacity(), static_cast<size_t>(10));
   auto ds0 = DisjointSet();
-  EXPECT_EQ(ds0.capacity(), static_cast<size_t>(0) );
+  EXPECT_EQ(ds0.capacity(), static_cast<size_t>(0));
 }
-
 
 TEST(GWEN_DISJOINT_SET, test_add_singleton) {
   auto ds = DisjointSet();
@@ -85,22 +84,250 @@ TEST(GWEN_DISJOINT_SET, test_merge_and_representatives) {
   EXPECT_EQ(ds.representative(2), 6u);
 }
 
-SharedSlice setupGraph01() {
+SharedSlice setup2Path() {
   return
       R"({ "vertices": [ {"_key": "A", "value": 5},
                          {"_key": "B", "value": 10},
                          {"_key": "C", "value": 15} ],
            "edges":    [ {"_key": "", "_from": "A", "_to": "B"},
                          {"_key": "", "_from": "B", "_to": "C"} ] })"_vpack;
-
-
 }
 
-TEST(GWEN_WCC, test_wcc) {
+SharedSlice setupThreeDisjointDirectedCycles() {
+  return
+      R"({ "vertices": [ {"_key": "a0", "value": 0},
+                         {"_key": "a1", "value": 0},
+                         {"_key": "a2", "value": 0},
+                         {"_key": "b0", "value": 0},
+                         {"_key": "b1", "value": 0},
+                         {"_key": "b2", "value": 0},
+                         {"_key": "b3", "value": 0},
+                         {"_key": "c0", "value": 0},
+                         {"_key": "c1", "value": 0},
+                         {"_key": "c2", "value": 0},
+                         {"_key": "c3", "value": 0},
+                         {"_key": "c4", "value": 0}],
+           "edges":    [ {"_key": "", "_from": "a0", "_to": "a1"},
+                         {"_key": "", "_from": "a1", "_to": "a2"},
+                         {"_key": "", "_from": "a2", "_to": "a0"},
+                         {"_key": "", "_from": "b0", "_to": "b1"},
+                         {"_key": "", "_from": "b1", "_to": "b2"},
+                         {"_key": "", "_from": "b2", "_to": "b3"},
+                         {"_key": "", "_from": "b3", "_to": "b0"},
+                         {"_key": "", "_from": "c0", "_to": "c1"},
+                         {"_key": "", "_from": "c1", "_to": "c2"},
+                         {"_key": "", "_from": "c2", "_to": "c3"},
+                         {"_key": "", "_from": "c3", "_to": "c4"},
+                         {"_key": "", "_from": "c4", "_to": "c0"}] })"_vpack;
+}
+
+SharedSlice setupThreeDisjointAlternatingCycles() {
+  return
+      R"({ "vertices": [ {"_key": "a0", "value": 0},
+                         {"_key": "a1", "value": 0},
+                         {"_key": "a2", "value": 0},
+                         {"_key": "b0", "value": 0},
+                         {"_key": "b1", "value": 0},
+                         {"_key": "b2", "value": 0},
+                         {"_key": "b3", "value": 0},
+                         {"_key": "c0", "value": 0},
+                         {"_key": "c1", "value": 0},
+                         {"_key": "c2", "value": 0},
+                         {"_key": "c3", "value": 0},
+                         {"_key": "c4", "value": 0}],
+           "edges":    [ {"_key": "", "_from": "a0", "_to": "a1"},
+                         {"_key": "", "_from": "a2", "_to": "a1"},
+                         {"_key": "", "_from": "a2", "_to": "a0"},
+                         {"_key": "", "_from": "b0", "_to": "b1"},
+                         {"_key": "", "_from": "b2", "_to": "b1"},
+                         {"_key": "", "_from": "b2", "_to": "b3"},
+                         {"_key": "", "_from": "b0", "_to": "b3"},
+                         {"_key": "", "_from": "c0", "_to": "c1"},
+                         {"_key": "", "_from": "c2", "_to": "c1"},
+                         {"_key": "", "_from": "c2", "_to": "c3"},
+                         {"_key": "", "_from": "c4", "_to": "c3"},
+                         {"_key": "", "_from": "c0", "_to": "c4"}] })"_vpack;
+}
+
+SharedSlice setup1SingleVertex() {
+  return
+      R"({ "vertices": [ {"_key": "A", "value": 0} ],
+           "edges":    [ ] })"_vpack;
+}
+
+SharedSlice setup2IsolatedVertices() {
+  return
+      R"({ "vertices": [ {"_key": "A", "value": 0},
+                         {"_key": "B", "value": 0} ],
+           "edges":    [ ] })"_vpack;
+}
+
+SharedSlice setup1DirectedTree() {
+  return
+      R"({ "vertices": [ {"_key": "a", "value": 5},
+                         {"_key": "a0", "value": 10},
+                         {"_key": "a1", "value": 15},
+                         {"_key": "a00", "value": 10},
+                         {"_key": "a01", "value": 15},
+                         {"_key": "a10", "value": 10},
+                         {"_key": "a11", "value": 15},
+                         {"_key": "a000", "value": 10},
+                         {"_key": "a001", "value": 15},
+                         {"_key": "a010", "value": 10},
+                         {"_key": "a011", "value": 15},
+                         {"_key": "a100", "value": 10},
+                         {"_key": "a101", "value": 15},
+                         {"_key": "a110", "value": 10},
+                         {"_key": "a111", "value": 15} ],
+           "edges":   [ {"_key": "", "_from": "a", "_to": "a0"},
+                        {"_key": "", "_from": "a", "_to": "a1"},
+                        {"_key": "", "_from": "a0", "_to": "a00"},
+                        {"_key": "", "_from": "a0", "_to": "a01"},
+                        {"_key": "", "_from": "a1", "_to": "a10"},
+                        {"_key": "", "_from": "a1", "_to": "a11"},
+                        {"_key": "", "_from": "a00", "_to": "a000"},
+                        {"_key": "", "_from": "a00", "_to": "a001"},
+                        {"_key": "", "_from": "a01", "_to": "a010"},
+                        {"_key": "", "_from": "a01", "_to": "a011"},
+                        {"_key": "", "_from": "a10", "_to": "a100"},
+                        {"_key": "", "_from": "a10", "_to": "a101"},
+                        {"_key": "", "_from": "a11", "_to": "a110"},
+                        {"_key": "", "_from": "a11", "_to": "a111"} ] })"_vpack;
+}
+
+SharedSlice setup1AlternatingTree() {
+  return
+      R"({ "vertices": [ {"_key": "a", "value": 5},
+                         {"_key": "a0", "value": 10},
+                         {"_key": "a1", "value": 15},
+                         {"_key": "a00", "value": 10},
+                         {"_key": "a01", "value": 15},
+                         {"_key": "a10", "value": 10},
+                         {"_key": "a11", "value": 15},
+                         {"_key": "a000", "value": 10},
+                         {"_key": "a001", "value": 15},
+                         {"_key": "a010", "value": 10},
+                         {"_key": "a011", "value": 15},
+                         {"_key": "a100", "value": 10},
+                         {"_key": "a101", "value": 15},
+                         {"_key": "a110", "value": 10},
+                         {"_key": "a111", "value": 15} ],
+           "edges":    [ {"_key": "", "_from": "a", "_to": "a0"},
+                         {"_key": "", "_from": "a", "_to": "a1"},
+                         {"_key": "", "_from": "a00", "_to": "a0"},
+                         {"_key": "", "_from": "a01", "_to": "a0"},
+                         {"_key": "", "_from": "a10", "_to": "a1"},
+                         {"_key": "", "_from": "a11", "_to": "a1"},
+                         {"_key": "", "_from": "a00", "_to": "a000"},
+                         {"_key": "", "_from": "a00", "_to": "a001"},
+                         {"_key": "", "_from": "a01", "_to": "a010"},
+                         {"_key": "", "_from": "a01", "_to": "a011"},
+                         {"_key": "", "_from": "a10", "_to": "a100"},
+                         {"_key": "", "_from": "a10", "_to": "a101"},
+                         {"_key": "", "_from": "a11", "_to": "a110"},
+                         {"_key": "", "_from": "a11", "_to": "a111"} ] })"_vpack;
+}
+
+SharedSlice setup2CliquesConnectedByDirectedEdge() {
+  return
+      R"({ "vertices": [ {"_key": "a0", "value": 5},
+                         {"_key": "a1", "value": 10},
+                         {"_key": "a2", "value": 15},
+                         {"_key": "b0", "value": 5},
+                         {"_key": "b1", "value": 10},
+                         {"_key": "b2", "value": 15}
+ ],
+           "edges":    [ {"_key": "", "_from": "a0", "_to": "a1"},
+                         {"_key": "", "_from": "a1", "_to": "a0"},
+                         {"_key": "", "_from": "a0", "_to": "a2"},
+                         {"_key": "", "_from": "a2", "_to": "a0"},
+                         {"_key": "", "_from": "a1", "_to": "a2"},
+                         {"_key": "", "_from": "a2", "_to": "a1"},
+                         {"_key": "", "_from": "b0", "_to": "b1"},
+                         {"_key": "", "_from": "b1", "_to": "b0"},
+                         {"_key": "", "_from": "b0", "_to": "b2"},
+                         {"_key": "", "_from": "b2", "_to": "b0"},
+                         {"_key": "", "_from": "b1", "_to": "b2"},
+                         {"_key": "", "_from": "b2", "_to": "b1"},
+                         {"_key": "", "_from": "a0", "_to": "b0"} ] })"_vpack;
+}
+
+TEST(GWEN_WCC, test_wcc_2_path) {
   bool const checkDuplicateVertices = true;
-  WCCGraph<EmptyEdgeProperties> graph(setupGraph01(), checkDuplicateVertices);
+  WCCGraph<EmptyEdgeProperties> graph(setup2Path(), checkDuplicateVertices);
   size_t numComponents = graph.computeWCC();
-  ASSERT_EQ(numComponents, 3);
+  ASSERT_EQ(numComponents, 1);
+}
+
+template<typename EdgeProperties>
+auto testWCC(WCCGraph<EdgeProperties>& graph, size_t expectedNumComponents) {
+  size_t numComponents = graph.computeWCC();
+  ASSERT_EQ(numComponents, expectedNumComponents);
+  std::unordered_map<char, uint64_t> value;
+  for (auto const& v : graph.vertices) {
+    EXPECT_GE(v._key.size(), 1);
+    if (value.contains(v._key[0])) {
+      ASSERT_EQ(v.properties.value, value[v._key[0]]);
+    } else {
+      value[v._key[0]] = v.properties.value;
+    }
+  }
+}
+
+TEST(GWEN_WCC, test_wcc_three_disjoint_directed_cycles) {
+  bool const checkDuplicateVertices = true;
+  WCCGraph<EmptyEdgeProperties> graph(setupThreeDisjointDirectedCycles(),
+                                      checkDuplicateVertices);
+  size_t const expectedNumComponents = 3;
+  testWCC(graph, expectedNumComponents);
+}
+
+TEST(GWEN_WCC, test_wcc_three_disjoint_alternating_cycles) {
+  bool const checkDuplicateVertices = true;
+  WCCGraph<EmptyEdgeProperties> graph(setupThreeDisjointAlternatingCycles(),
+                                      checkDuplicateVertices);
+  size_t const expectedNumComponents = 3;
+  testWCC(graph, expectedNumComponents);
+}
+
+TEST(GWEN_WCC, test_wcc_one_single_vertex) {
+  bool const checkDuplicateVertices = true;
+  WCCGraph<EmptyEdgeProperties> graph(setup1SingleVertex(),
+                                      checkDuplicateVertices);
+  size_t const expectedNumComponents = 1;
+  testWCC(graph, expectedNumComponents);
+}
+
+TEST(GWEN_WCC, test_wcc_two_isolated_vertices) {
+  bool const checkDuplicateVertices = true;
+  WCCGraph<EmptyEdgeProperties> graph(setup2IsolatedVertices(),
+                                      checkDuplicateVertices);
+  size_t const expectedNumComponents = 2;
+  testWCC(graph, expectedNumComponents);
+}
+
+TEST(GWEN_WCC, test_wcc_one_directed_tree) {
+  bool const checkDuplicateVertices = true;
+  WCCGraph<EmptyEdgeProperties> graph(setup1DirectedTree(),
+                                      checkDuplicateVertices);
+  size_t const expectedNumComponents = 1;
+  testWCC(graph, expectedNumComponents);
+}
+
+TEST(GWEN_WCC, test_wcc_one_alternating_tree) {
+  bool const checkDuplicateVertices = true;
+  WCCGraph<EmptyEdgeProperties> graph(setup1AlternatingTree(),
+                                      checkDuplicateVertices);
+  size_t const expectedNumComponents = 1;
+  testWCC(graph, expectedNumComponents);
+}
+
+TEST(GWEN_WCC, test_wcc_2_cliques_connected_by_directed_edge) {
+  bool const checkDuplicateVertices = true;
+  WCCGraph<EmptyEdgeProperties> graph(setup2CliquesConnectedByDirectedEdge(),
+                                      checkDuplicateVertices);
+  size_t const expectedNumComponents = 1;
+  testWCC(graph, expectedNumComponents);
 }
 
 auto main(int argc, char** argv) -> int {
