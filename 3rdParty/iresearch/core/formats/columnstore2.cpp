@@ -1689,17 +1689,12 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
         IRS_LIKELY(idx < IRESEARCH_COUNTOF(kFactories))) {
       // check hotness
 
-      bool hot = hdr.type != ColumnType::kMask;
-
-      auto column =
-          hot ? kHotFactories[idx](std::move(name), std::move(payload),
-                                   std::move(hdr), std::move(index), *index_in,
-                                   *data_in_, std::move(inflater),
-                                   data_cipher_.get())
-              : kFactories[idx](std::move(name), std::move(payload),
-                                std::move(hdr), std::move(index), *index_in,
-                                *data_in_, std::move(inflater),
-                                data_cipher_.get());
+      bool hot = hdr.type != ColumnType::kMask &&
+		             (hdr.id == 1 || hdr.id == 0);
+      auto factories = hot ? kHotFactories : kFactories;
+      auto column = factories[idx](std::move(name), std::move(payload), std::move(hdr),
+                           std::move(index), *index_in, *data_in_,
+                           std::move(inflater), data_cipher_.get());
       assert(column);
 
       if (!sorted_columns.empty() &&
