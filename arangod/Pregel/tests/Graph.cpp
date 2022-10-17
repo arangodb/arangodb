@@ -58,16 +58,17 @@ WCCGraph<EdgeProperties>::WCCGraph(SharedSlice graphJson,
 
 template<typename EdgeProperties>
 auto WCCGraph<EdgeProperties>::computeWCC() -> size_t {
-  std::unordered_map<size_t, size_t> markedRepresentatives;
+  std::unordered_set<size_t> markedRepresentatives;
   size_t counter = 0;
   for (size_t i = 0; i < vertices.size(); ++i) {
-    auto id = markedRepresentatives.find(_wccs.representative(i));
-    if (id == markedRepresentatives.end()) {
+    size_t const representative = _wccs.representative(i);
+    if (markedRepresentatives.contains(representative)) {
+      vertices[i].properties.value = vertices[representative].properties.value;
+    } else {
       size_t const newId = counter++;
       vertices[i].properties.value = newId;
-      vertices[_wccs.representative(i)].properties.value = newId;
-    } else {
-      vertices[i].properties.value = id->second;
+      vertices[representative].properties.value = newId;
+      markedRepresentatives.insert(representative);
     }
   }
   return counter;
