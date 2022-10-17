@@ -23,10 +23,10 @@
 
 #include "gtest/gtest.h"
 
-#include "Aql/Optimizer2/Inspection/StatusT.h"
-
 #include "Basics/VelocyPackStringLiteral.h"
-#include "Aql/Optimizer2/PlanNodes/ReturnNode.h"
+
+#include "Inspection/StatusT.h"
+#include "PlanNodes/ReturnNode.h"
 
 #include <fmt/core.h>
 

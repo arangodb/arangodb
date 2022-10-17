@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Aql/Inspectors/Types/Types.h"
-
 namespace arangodb::aql::inspectors {
 
 struct BaseNode {
