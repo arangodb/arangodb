@@ -22,7 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-namespace arangodb::aql::inspectors {
+#include "Aql/Optimizer2/Types/Types.h"
+
+namespace arangodb::aql::optimizer2::nodes {
 
 struct BaseNode {
   Types::NodeId id;

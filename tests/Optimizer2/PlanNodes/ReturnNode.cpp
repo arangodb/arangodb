@@ -23,10 +23,10 @@
 
 #include "gtest/gtest.h"
 
-#include "Basics/VelocyPackStringLiteral.h"
+#include "Aql/Optimizer2/Inspection/StatusT.h"
 
-#include "Inspection/StatusT.h"
-#include "PlanNodes/ReturnNode.h"
+#include "Basics/VelocyPackStringLiteral.h"
+#include "Aql/Optimizer2/PlanNodes/ReturnNode.h"
 
 #include <fmt/core.h>
 
@@ -34,17 +34,23 @@ using namespace arangodb::inspection;
 using namespace arangodb::velocypack;
 using namespace arangodb::aql::optimizer2::nodes;
 
-TEST(Optimizer2Blub, peter_peter) {
-  auto poly = R"({
-    "type": "Polygon",
-    "coordinates": [[10,10],[20,20],[20,10],[10,20],[10,10]]
+TEST(Optimizer2ReturnNode, construction) {
+  auto returnNodeBuffer = R"({
+    "type": "ReturnNode",
+    "id": 3,
+    "count": true,
+    "inVariable": "test"
   })"_vpack;
 
-  auto res = deserializeWithStatus<Return>(poly);
+  auto res = deserializeWithStatus<Return>(returnNodeBuffer);
 
   if (!res) {
     fmt::print("Something went wrong: {}", res.error());
+  } else {
+    auto returnNode = res.get();
+    EXPECT_EQ(returnNode.type, "ReturnNode");
+    EXPECT_EQ(returnNode.inVariable, "test");
+    EXPECT_EQ(returnNode.id, 3u);
+    EXPECT_TRUE(returnNode.count);
   }
-
-  EXPECT_TRUE(false) << "Expected true to be piotr";
 }

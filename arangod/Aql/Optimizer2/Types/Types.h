@@ -18,25 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
+/// @author Heiko  Kernbach
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "Inspection/VPackInspection.h"
-#include "Aql/Optimizer2/PlanNodes/BaseNode.h"
+namespace arangodb::aql::optimizer2 {
 
-namespace arangodb::aql::optimizer2::nodes {
-
-struct Return : BaseNode {
-  std::string inVariable;
-  bool count;
+class Types {
+ public:
+  typedef std::uint64_t NodeId;
+  typedef std::string NodeType;  // TODO: Let's use a "numeric" type 'later'.
 };
 
-template<typename Inspector>
-auto inspect(Inspector& f, Return& x) {
-  return f.object(x).fields(f.embedFields(static_cast<BaseNode&>(x)),
-                            f.field("inVariable", x.inVariable),
-                            f.field("count", x.count));
-}
-
-}  // namespace arangodb::aql::optimizer2::nodes
+}  // namespace arangodb::aql::optimizer2
