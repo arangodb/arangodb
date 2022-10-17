@@ -18,22 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
+
 
 #include "gtest/gtest.h"
 
 #include "Basics/VelocyPackStringLiteral.h"
-#include "Aql/Optimizer2/ReturnNode.h"
+#include "Aql/Inspectors/ReturnNode.h"
 
 using namespace arangodb::velocypack;
 
-TEST(Optimizer2, return_node) {
-  auto json = R"({ "inVariable": "AVariable"})"_vpack;
-  EXPECT_TRUE(false) << "Expected true to be false";
-}
+TEST(Optimizer2Blub, peter_peter) {
+  auto poly = R"({
+    "type": "Polygon",
+    "coordinates": [[10,10],[20,20],[20,10],[10,20],[10,10]]
+  })"_vpack;
 
-int main(int argc, char* argv[]) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+  EXPECT_TRUE(false) << "Expected true to be piotr";
 }

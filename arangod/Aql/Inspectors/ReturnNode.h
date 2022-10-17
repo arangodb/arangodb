@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,22 +18,43 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
-#include "gtest/gtest.h"
+#include "Aql/Inspectors/BaseInspectors/BaseNode.h"
 
-#include "Basics/VelocyPackStringLiteral.h"
-#include "Aql/Optimizer2/ReturnNode.h"
+#include <cinttypes>
 
-using namespace arangodb::velocypack;
+/*
+ * {
+"type": "ReturnNode",
+"dependencies": [
+    2
+],
+"id": 3,
+"estimatedCost": 2,
+"estimatedNrItems": 0,
+"inVariable": {
+    "id": 0,
+    "name": "u",
+    "isFullDocumentFromCollection": true,
+    "isDataFromCollection": true
+},
+"count": true
+}
+ */
 
-TEST(Optimizer2, return_node) {
-  auto json = R"({ "inVariable": "AVariable"})"_vpack;
-  EXPECT_TRUE(false) << "Expected true to be false";
+namespace arangodb::aql::inspectors {
+
+struct ReturnNode : BaseNode {
+  bool count;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, ReturnNode& x) {
+  return f.object(x).fields(f.embedFields(static_cast<BaseNode&>(x)),
+                            f.field("count", x.count));
 }
 
-int main(int argc, char* argv[]) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
+}  // namespace arangodb::aql::inspectors

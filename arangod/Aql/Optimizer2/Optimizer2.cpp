@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,20 +20,3 @@
 ///
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
-
-#include "gtest/gtest.h"
-
-#include "Basics/VelocyPackStringLiteral.h"
-#include "Aql/Optimizer2/ReturnNode.h"
-
-using namespace arangodb::velocypack;
-
-TEST(Optimizer2, return_node) {
-  auto json = R"({ "inVariable": "AVariable"})"_vpack;
-  EXPECT_TRUE(false) << "Expected true to be false";
-}
-
-int main(int argc, char* argv[]) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

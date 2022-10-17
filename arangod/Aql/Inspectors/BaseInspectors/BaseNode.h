@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,22 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
-#include "gtest/gtest.h"
+#include "Aql/Inspectors/Types/Types.h"
 
-#include "Basics/VelocyPackStringLiteral.h"
-#include "Aql/Optimizer2/ReturnNode.h"
+namespace arangodb::aql::inspectors {
 
-using namespace arangodb::velocypack;
+struct BaseNode {
+  Types::NodeId id;
+  Types::NodeType type;
+};
 
-TEST(Optimizer2, return_node) {
-  auto json = R"({ "inVariable": "AVariable"})"_vpack;
-  EXPECT_TRUE(false) << "Expected true to be false";
+template<class Inspector>
+auto inspect(Inspector& f, BaseNode& v) {
+  return f.object(v).fields(f.field("id", v.id), f.field("type", v.type));
 }
 
-int main(int argc, char* argv[]) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
+}  // namespace arangodb::aql::inspectors
