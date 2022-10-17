@@ -111,7 +111,13 @@ class LogFollower : public ILogFollower,
     LogFollower const& _follower;
     InMemoryLog _inMemoryLog;
     std::unique_ptr<LogCore> _logCore;
-    bool _snapshotCompleted{false};
+    enum class SnapshotProgress {
+      kUninitialized,
+      kInProgress,
+      kCompleted,
+    };
+
+    SnapshotProgress _snapshotProgress{SnapshotProgress::kUninitialized};
     LogIndex _commitIndex{0};
     LogIndex _lowestIndexToKeep;
     LogIndex _releaseIndex;

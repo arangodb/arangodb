@@ -91,7 +91,8 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
     return AppendEntriesResult::withRejection(
         _currentTerm, req.messageId,
         {AppendEntriesErrorReason::ErrorType::kLostLogCore},
-        data._snapshotCompleted);
+        data._snapshotProgress ==
+            GuardedFollowerData::SnapshotProgress::kCompleted);
   }
 
   if (data._lastRecvMessageId >= req.messageId) {
@@ -100,7 +101,8 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
     return AppendEntriesResult::withRejection(
         _currentTerm, req.messageId,
         {AppendEntriesErrorReason::ErrorType::kMessageOutdated},
-        data._snapshotCompleted);
+        data._snapshotProgress ==
+            GuardedFollowerData::SnapshotProgress::kCompleted);
   }
 
   if (_appendEntriesInFlight) {
@@ -109,7 +111,8 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
     return AppendEntriesResult::withRejection(
         _currentTerm, req.messageId,
         {AppendEntriesErrorReason::ErrorType::kPrevAppendEntriesInFlight},
-        data._snapshotCompleted);
+        data._snapshotProgress ==
+            GuardedFollowerData::SnapshotProgress::kCompleted);
   }
 
   if (req.leaderId != _leaderId) {
@@ -119,7 +122,8 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
     return AppendEntriesResult::withRejection(
         _currentTerm, req.messageId,
         {AppendEntriesErrorReason::ErrorType::kInvalidLeaderId},
-        data._snapshotCompleted);
+        data._snapshotProgress ==
+            GuardedFollowerData::SnapshotProgress::kCompleted);
   }
 
   if (req.leaderTerm != _currentTerm) {
@@ -129,7 +133,8 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
     return AppendEntriesResult::withRejection(
         _currentTerm, req.messageId,
         {AppendEntriesErrorReason::ErrorType::kWrongTerm},
-        data._snapshotCompleted);
+        data._snapshotProgress ==
+            GuardedFollowerData::SnapshotProgress::kCompleted);
   }
 
   // It is always allowed to replace the log entirely
@@ -141,8 +146,10 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
       LOG_CTX("5971a", DEBUG, _loggerContext)
           << "reject append entries - prev log did not match: "
           << to_string(reason);
-      return AppendEntriesResult::withConflict(_currentTerm, req.messageId,
-                                               next, data._snapshotCompleted);
+      return AppendEntriesResult::withConflict(
+          _currentTerm, req.messageId, next,
+          data._snapshotProgress ==
+              GuardedFollowerData::SnapshotProgress::kCompleted);
     }
   }
 
@@ -215,7 +222,9 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
         LOG_CTX("f17b8", ERR, _loggerContext)
             << "failed to remove log entries after " << req.prevLogEntry.index;
         return AppendEntriesResult::withPersistenceError(
-            _currentTerm, req.messageId, res, dataGuard->_snapshotCompleted);
+            _currentTerm, req.messageId, res,
+            dataGuard->_snapshotProgress ==
+                GuardedFollowerData::SnapshotProgress::kCompleted);
       }
 
       // commit the deletion in memory
@@ -231,9 +240,10 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   if (req.entries.empty()) {
     auto action = dataGuard->checkCommitIndex(
         req.leaderCommit, req.lowestIndexToKeep, std::move(toBeResolved));
-    auto result = AppendEntriesResult::withOk(dataGuard->_follower._currentTerm,
-                                              req.messageId,
-                                              dataGuard->_snapshotCompleted);
+    auto result = AppendEntriesResult::withOk(
+        dataGuard->_follower._currentTerm, req.messageId,
+        dataGuard->_snapshotProgress ==
+            GuardedFollowerData::SnapshotProgress::kCompleted);
     dataGuard.unlock();  // unlock here, action must be executed after
     inFlightScopeGuard.fire();
     action.fire();
@@ -282,10 +292,12 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       if (res.fail()) {
         LOG_CTX("216d8", ERR, data->_follower._loggerContext)
             << "failed to insert log entries: " << res.errorMessage();
-        return std::make_pair(AppendEntriesResult::withPersistenceError(
-                                  data->_follower._currentTerm, req.messageId,
-                                  res, data->_snapshotCompleted),
-                              DeferredAction{});
+        return std::make_pair(
+            AppendEntriesResult::withPersistenceError(
+                data->_follower._currentTerm, req.messageId, res,
+                data->_snapshotProgress ==
+                    GuardedFollowerData::SnapshotProgress::kCompleted),
+            DeferredAction{});
       }
 
       // commit the write in memory
@@ -303,13 +315,16 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     auto action = data->checkCommitIndex(
         req.leaderCommit, req.lowestIndexToKeep, std::move(toBeResolved));
 
-    static_assert(noexcept(
-        AppendEntriesResult::withOk(data->_follower._currentTerm, req.messageId,
-                                    dataGuard->_snapshotCompleted)));
+    static_assert(noexcept(AppendEntriesResult::withOk(
+        data->_follower._currentTerm, req.messageId,
+        dataGuard->_snapshotProgress ==
+            GuardedFollowerData::SnapshotProgress::kCompleted)));
     static_assert(std::is_nothrow_move_constructible_v<DeferredAction>);
     return std::make_pair(
-        AppendEntriesResult::withOk(data->_follower._currentTerm, req.messageId,
-                                    data->_snapshotCompleted),
+        AppendEntriesResult::withOk(
+            data->_follower._currentTerm, req.messageId,
+            data->_snapshotProgress ==
+                GuardedFollowerData::SnapshotProgress::kCompleted),
         std::move(action));
   };
   static_assert(std::is_nothrow_move_constructible_v<
@@ -320,14 +335,15 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   // Release mutex here, otherwise we might deadlock in
   // checkResultAndCommitIndex if another request arrives before the previous
   // one was processed.
-  dataGuard.unlock();
   if (acquireNewSnapshot) {
+    dataGuard->_snapshotProgress =
+        GuardedFollowerData::SnapshotProgress::kInProgress;
     _stateHandle->acquireSnapshot(*_leaderId, req.prevLogEntry.index + 1);
   }
+  dataGuard.unlock();
   return std::move(f)
       .then(std::move(checkResultAndCommitIndex))
-      .then([measureTime = std::move(measureTimeGuard),
-             acquireNewSnapshot](auto&& res) mutable {
+      .then([measureTime = std::move(measureTimeGuard)](auto&& res) mutable {
         measureTime.fire();
         auto&& [result, action] = res.get();
         // It is okay to fire here, because commitToMemoryAndResolve has
@@ -395,6 +411,13 @@ auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
     auto const oldCommitIndex = _commitIndex;
     _commitIndex =
         std::min(newCommitIndex, _inMemoryLog.back().entry().logIndex());
+
+    if (_snapshotProgress == SnapshotProgress::kUninitialized) {
+      _snapshotProgress = SnapshotProgress::kInProgress;
+      _follower._stateHandle->acquireSnapshot(*_follower._leaderId,
+                                              _commitIndex);
+    }
+
     _follower._stateHandle->updateCommitIndex(newCommitIndex);
     _follower._logMetrics->replicatedLogNumberCommittedEntries->count(
         _commitIndex.value - oldCommitIndex.value);
@@ -446,7 +469,8 @@ auto replicated_log::LogFollower::getQuickStatus() const -> QuickLogStatus {
         .term = _currentTerm,
         .local = followerData.getLocalStatistics(),
         .leadershipEstablished = followerData._commitIndex > kBaseIndex,
-        .snapshotAvailable = followerData._snapshotCompleted};
+        .snapshotAvailable = followerData._snapshotProgress ==
+                             GuardedFollowerData::SnapshotProgress::kCompleted};
   });
 }
 
@@ -533,8 +557,13 @@ replicated_log::LogFollower::LogFollower(
   if (snapshotStatus.fail()) {
     THROW_ARANGO_EXCEPTION(snapshotStatus.result());
   }
-  guard->_snapshotCompleted =
-      snapshotStatus == replicated_state::SnapshotStatus::kCompleted;
+  if (snapshotStatus == replicated_state::SnapshotStatus::kCompleted) {
+    guard->_snapshotProgress =
+        GuardedFollowerData::SnapshotProgress::kCompleted;
+  } else {
+    guard->_snapshotProgress =
+        GuardedFollowerData::SnapshotProgress::kUninitialized;
+  }
 
   LOG_CTX("c3791", DEBUG, _loggerContext)
       << "loaded snapshot status: " << to_string(*snapshotStatus);
@@ -737,7 +766,9 @@ Result LogFollower::onSnapshotCompleted() {
   }
   LOG_CTX("80094", DEBUG, _loggerContext)
       << "Snapshot status updated to completed on persistent storage";
-  guard->_snapshotCompleted = true;
+  ADB_PROD_ASSERT(guard->_snapshotProgress ==
+                  GuardedFollowerData::SnapshotProgress::kInProgress);
+  guard->_snapshotProgress = GuardedFollowerData::SnapshotProgress::kCompleted;
   return {};
 }
 
