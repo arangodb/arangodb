@@ -21,19 +21,30 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "gtest/gtest.h"
 
-#include "Basics/VelocyPackStringLiteral.h"
-#include "Aql/Inspectors/ReturnNode.h"
+#include "Aql/Optimizer2/Inspection/StatusT.h"
 
+#include "Basics/VelocyPackStringLiteral.h"
+#include "Aql/Optimizer2/ReturnNode.h"
+
+#include <fmt/core.h>
+
+using namespace arangodb::inspection;
 using namespace arangodb::velocypack;
+using namespace arangodb::aql::optimizer2::nodes;
 
 TEST(Optimizer2Blub, peter_peter) {
   auto poly = R"({
     "type": "Polygon",
     "coordinates": [[10,10],[20,20],[20,10],[10,20],[10,10]]
   })"_vpack;
+
+  auto res = deserializeWithStatus<Return>(poly);
+
+  if (!res) {
+    fmt::print("Something went wrong: {}", res.error());
+  }
 
   EXPECT_TRUE(false) << "Expected true to be piotr";
 }

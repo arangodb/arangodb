@@ -14,34 +14,36 @@
 #include <Inspection/VPackLoadInspector.h>
 #include <Inspection/VPackSaveInspector.h>
 
+#include "StatusT.h"
+
 namespace arangodb::velocypack {
 
 template<typename T>
 [[nodiscard]] auto serializeWithStatus(T& value)
-    -> std::variant<inspection::Status, SharedSlice> {
+    -> inspection::StatusT<SharedSlice> {
   auto builder = Builder();
   inspection::VPackSaveInspector<> inspector(builder);
   auto res = inspector.apply(value);
 
   if (res.ok()) {
-    return std::move(builder).sharedSlice();
+    return inspection::StatusT<SharedSlice>(std::move(builder).sharedSlice());
   } else {
-    return res;
+    return inspection::StatusT<SharedSlice>(std::move(res));
   }
 }
 
 template<typename T>
 [[nodiscard]] auto deserializeWithStatus(SharedSlice slice)
-    -> std::variant<inspection::Status, T> {
+    -> inspection::StatusT<T> {
   inspection::VPackLoadInspector<> inspector(slice.slice(),
                                              inspection::ParseOptions{});
   T data{};
 
   auto res = inspector.apply(data);
   if (res.ok()) {
-    return res;
+    return inspection::StatusT<T>(std::move(data));
   } else {
-    return data;
+    return inspection::StatusT<T>(std::move(res));
   }
 }
 
