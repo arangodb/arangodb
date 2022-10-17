@@ -18,43 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Aql/Inspectors/BaseInspectors/BaseNode.h"
+namespace arangodb::aql::optimizer2::types {
 
-#include <cinttypes>
+using VariableId = size_t;
+using Identifier = std::string;
 
-/*
- * {
-"type": "ReturnNode",
-"dependencies": [
-    2
-],
-"id": 3,
-"estimatedCost": 2,
-"estimatedNrItems": 0,
-"inVariable": {
-    "id": 0,
-    "name": "u",
-    "isFullDocumentFromCollection": true,
-    "isDataFromCollection": true
-},
-"count": true
-}
- */
+struct Variable {
+  VariableId id;
+  Identifier name;
 
-namespace arangodb::aql::inspectors {
-
-struct ReturnNode : BaseNode {
-  bool count;
+  bool isFullDocumentFromCollection;
+  bool isDataFromCollection;
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, ReturnNode& x) {
-  return f.object(x).fields(f.embedFields(static_cast<BaseNode&>(x)),
-                            f.field("count", x.count));
+auto inspect(Inspector& f, Variable& x) {
+  return f.object(x).fields(
+      f.field("id", x.id), f.field("name", x.name),
+      f.field("isFullDocumentFromCollection", x.isFullDocumentFromCollection),
+      f.field("isDataFromCollection", x.isDataFromCollection));
 }
 
-}  // namespace arangodb::aql::inspectors
+}  // namespace arangodb::aql::optimizer2::types
