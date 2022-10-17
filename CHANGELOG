@@ -1,6 +1,9 @@
 v3.8.8 (XXXX-XX-XX)
 -------------------
 
+* Fixed BTS-852 (user's saved queries used to disappear after updating user
+  profile).
+
 * ES-1312: fix handling of reaching the WAL archive capacity limit.
 
 * Changed the encoding of revision ids returned by the following REST APIs:
