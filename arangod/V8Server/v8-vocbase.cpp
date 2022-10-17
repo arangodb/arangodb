@@ -908,7 +908,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
   auto query = arangodb::aql::Query::create(
-      v8Context, aql::QueryString(std::move(queryString)), std::move(bindVars),
+      std::move(v8Context), aql::QueryString(std::move(queryString)), std::move(bindVars),
       aql::QueryOptions(options.slice()));
 
   arangodb::aql::QueryResultV8 queryResult = query->executeV8(isolate);
