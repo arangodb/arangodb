@@ -56,10 +56,22 @@ auto DocumentFollowerState::resign() && noexcept
 auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                                             LogIndex waitForIndex) noexcept
     -> futures::Future<Result> {
-  auto leaderInterface = _networkHandler->getLeaderInterface(destination);
-  // A follower may request a snapshot before leadership has been established. A
-  // retry will occur in that case.
-  return leaderInterface->getSnapshot(waitForIndex).get().result();
+  return _guardedData
+      .doUnderLock(
+          [self = shared_from_this(), &destination, waitForIndex](auto& data) -> futures::Future<ResultT<velocypack::SharedSlice>> {
+            if (data.didResign()) {
+              return ResultT<velocypack::SharedSlice>::error(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
+            }
+
+            // A follower may request a snapshot before leadership has been
+            // established. A retry will occur in that case.
+            auto leaderInterface =
+                self->_networkHandler->getLeaderInterface(destination);
+            return leaderInterface->getSnapshot(waitForIndex);
+          })
+      .thenValue([](auto&& result) -> futures::Future<Result> {
+        return result.result();
+      });
 }
 
 auto DocumentFollowerState::applyEntries(
