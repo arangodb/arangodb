@@ -669,6 +669,9 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     auto insert(LogPayload payload) -> LogIndex override {
       return _log.insert(std::move(payload));
     }
+    auto waitFor(LogIndex index) -> WaitForFuture override {
+      return _log.waitFor(index);
+    }
 
     LogLeader& _log;
   };

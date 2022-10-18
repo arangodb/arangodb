@@ -581,6 +581,9 @@ replicated_log::LogFollower::LogFollower(
     auto snapshotCompleted() -> Result override {
       return _log.onSnapshotCompleted();
     }
+    auto waitFor(LogIndex index) -> WaitForFuture override {
+      return _log.waitFor(index);
+    }
     LogFollower& _log;
   };
   LOG_CTX("f3668", DEBUG, _loggerContext)
