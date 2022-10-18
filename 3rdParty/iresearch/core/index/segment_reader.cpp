@@ -372,15 +372,22 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
     auto warmup = [&field_reader](field_id id,
                                   const std::optional<std::string>& name) {
       if (name) {
-        return name.value() == "_key\1pagerank\1number_of_shipments" ||
+        std::cout << "Checking " << name.value() << "...";
+        auto res =  name.value() == "\1_key\1pagerank\1number_of_shipments" ||
                name.value() == "@_PK";
+        std::cout << res ? "HOT" : "COLD";
+        std::cout << std::endl;
+        return res;
       } else {
         auto field = field_reader->field("clean_company_canon_name");
         if (field) {
           auto& features = field->meta().features;
           auto it = features.find(irs::type<Norm2>::id());
           if (it != features.end()) {
-            return it->second == id;
+            if (it->second == id) {
+              std::cout << "HOT STORED:" << id << std::endl;
+              return true;
+            }
           }
         }
       }
