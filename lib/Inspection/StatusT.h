@@ -52,9 +52,6 @@ struct StatusT {
   StatusT() requires(!std::is_nothrow_default_constructible_v<T>)
       : _contained{T{}} {}
 
-  StatusT& operator=(T const& val_) = default;
-  StatusT& operator=(T&& val_) = default;
-
   [[nodiscard]] auto ok() const noexcept -> bool {
     return std::holds_alternative<T>(_contained);
   }
@@ -69,19 +66,18 @@ struct StatusT {
   [[nodiscard]] auto get() -> T& { return std::get<T>(_contained); }
 
   [[nodiscard]] auto operator->() -> T* { return &get(); }
-  [[nodiscard]] auto operator->() -> T const* const { return &get(); }
+  [[nodiscard]] auto operator->() const -> T const* { return &get(); }
 
   [[nodiscard]] auto operator*() & -> T& { return get(); }
   [[nodiscard]] auto operator*() const& -> T const& { return get(); }
 
-  [[nodiscard]] operator*() &&->T&& { return std::move(get()); }
+  [[nodiscard]] auto operator*() && -> T&& { return std::move(get()); }
 
   explicit operator bool() const noexcept requires(!std::is_same_v<T, bool>) {
     return ok();
   }
 
- private:
-  StatusT(Contained&& val) : _contained(std::move(val)) {}
+ private : StatusT(Contained&& val) : _contained(std::move(val)) {}
   Contained _contained;
 };
 
