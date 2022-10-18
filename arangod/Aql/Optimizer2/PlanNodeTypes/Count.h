@@ -18,27 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer, Heiko Kernbach
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Aql/Optimizer2/PlanNodes/BaseNode.h"
-#include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
-#include "Aql/Optimizer2/PlanNodeTypes/Count.h"
-#include "Inspection/VPackInspection.h"
+namespace arangodb::aql::optimizer2::types {
 
-namespace arangodb::aql::optimizer2::nodes {
-
-struct ReturnNode : optimizer2::nodes::BaseNode, optimizer2::types::Count {
-  optimizer2::types::Variable inVariable;
+struct Count {
+  bool count;
 };
 
-template<typename Inspector>
-auto inspect(Inspector& f, ReturnNode& x) {
-  return f.object(x).fields(
-      f.embedFields(static_cast<optimizer2::nodes::BaseNode&>(x)),
-      f.embedFields(static_cast<optimizer2::types::Count&>(x)),
-      f.field("inVariable", x.inVariable), f.field("count", x.count));
+template<class Inspector>
+auto inspect(Inspector& f, Count& v) {
+  return f.object(v).fields(f.field("count", v.count));
 }
 
-}  // namespace arangodb::aql::optimizer2::nodes
+}  // namespace arangodb::aql::optimizer2::types
