@@ -302,12 +302,6 @@ high level, not including any memory allocator overhead nor any memory used for 
 results calculations (e.g. memory allocated/deallocated inside AQL expressions and function 
 calls).
 
-@RESTSTRUCT{intermediateCommits,post_api_cursor_extra_stats,integer,optional,}
-The number of intermediate commits performed by the query. This is only non-zero
-for write queries, and only for queries that reached either the `intermediateCommitSize`
-or `intermediateCommitCount` thresholds. Note: in a cluster, intermediate commits can happen
-on each participating DB-Server.
-
 @RESTSTRUCT{nodes,post_api_cursor_extra_stats,array,optional,post_api_cursor_extra_stats_nodes}
 When the query is executed with the `profile` option set to at least `2`,
 then this attribute contains runtime statistics per query execution node.
