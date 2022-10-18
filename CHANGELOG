@@ -1,6 +1,10 @@
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
+* Improve cardinality estimate for AQL EnumerateCollectionNode in case a
+  `SORT RAND() LIMIT 1` is used. Here, the estimated number of items is at
+  most 1.
+
 * Changed the encoding of revision ids returned by the following REST APIs:
   - GET /_api/collection/<collection-name>/revision: the revision id was
     previously returned as numeric value, and now it will be returned as
