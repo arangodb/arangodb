@@ -40,6 +40,8 @@ struct DocumentFollowerState
       std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory);
   ~DocumentFollowerState();
 
+  std::string_view const shardId;
+
  protected:
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<DocumentCore> override;
@@ -47,6 +49,10 @@ struct DocumentFollowerState
       -> futures::Future<Result> override;
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
       -> futures::Future<Result> override;
+
+ private:
+  auto truncateLocalShard() -> Result;
+  auto populateLocalShard(velocypack::SharedSlice slice) -> Result;
 
  private:
   struct GuardedData {

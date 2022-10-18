@@ -116,7 +116,6 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
               << "Result ignored while applying transaction " << doc.tid
               << " with operation " << int(doc.operation) << " on shard "
               << doc.shardId << ": " << res;
-          ;
           return Result{};
         }
         return res;
