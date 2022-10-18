@@ -903,13 +903,13 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (v8g->_transactionContext->isTransactionJS()) {
       v8Context->setJStransaction();
     }
-    if (v8g->_transactionContext->isEarlyReadOnly()) {
-      v8Context->setEarlyReadOnly();
+    if (v8g->_transactionContext->isReadOnlyTransaction()) {
+      v8Context->setReadOnly();
     }
   }
   auto query = arangodb::aql::Query::create(
-      std::move(v8Context), aql::QueryString(std::move(queryString)), std::move(bindVars),
-      aql::QueryOptions(options.slice()));
+      std::move(v8Context), aql::QueryString(std::move(queryString)),
+      std::move(bindVars), aql::QueryOptions(options.slice()));
 
   arangodb::aql::QueryResultV8 queryResult = query->executeV8(isolate);
 

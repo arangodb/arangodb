@@ -263,9 +263,6 @@ Result buildOptions(VPackSlice trxOpts, transaction::Options& options,
   }
 
   bool isValid = extractCollections(trxCollections, reads, writes, exclusives);
-  if (!writes.empty() || !exclusives.empty()) {
-    options.isEarlyReadOnly = false;
-  }
 
   if (!isValid) {
     return res.reset(TRI_ERROR_BAD_PARAMETER,
@@ -826,8 +823,8 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
       }
       if (mtrx.rwlock.tryLockWrite()) {
         auto managedContext = buildManagedContextUnderLock(tid, mtrx);
-        if (mtrx.state->options().isEarlyReadOnly) {
-          managedContext->setEarlyReadOnly();
+        if (mtrx.state->isReadOnlyTransaction()) {
+          managedContext->setReadOnly();
         }
         return managedContext;
       }
@@ -837,8 +834,8 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
       // even for side user leases, first try acquiring the read lock
       if (mtrx.rwlock.tryLockRead()) {
         auto managedContext = buildManagedContextUnderLock(tid, mtrx);
-        if (mtrx.state->options().isEarlyReadOnly) {
-          managedContext->setEarlyReadOnly();
+        if (mtrx.state->isReadOnlyTransaction()) {
+          managedContext->setReadOnly();
         }
         return managedContext;
       }
@@ -856,8 +853,8 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
           TRI_ASSERT(state != nullptr);
           auto managedContext = std::make_shared<ManagedContext>(
               tid, std::move(state), TransactionContextSideUser{});
-          if (mtrx.state->options().isEarlyReadOnly) {
-            managedContext->setEarlyReadOnly();
+          if (mtrx.state->isReadOnlyTransaction()) {
+            managedContext->setReadOnly();
           }
           return managedContext;
         } catch (...) {

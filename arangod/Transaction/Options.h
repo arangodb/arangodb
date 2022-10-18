@@ -87,8 +87,6 @@ struct Options {
   /// created.
   bool allowDirtyReads = false;
 
-  bool isEarlyReadOnly = true;
-
   /// @brief originating server of this transaction. will be populated
   /// only in the cluster, and with a coordinator id/coordinator reboot id
   /// then. coordinators fill this in when they start a transaction, and

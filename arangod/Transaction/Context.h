@@ -105,27 +105,27 @@ class Context {
 
   /// @brief whether or not is from a streaming transaction (used to know
   /// whether or not can read from query cache)
-  bool isStreaming() { return _transaction.isStreamingTransaction; }
+  bool isStreaming() const noexcept {
+    return _transaction.isStreamingTransaction;
+  }
 
   /// @brief whether or not transaction is JS (used to know
   /// whether or not can read from query cache)
-  bool isTransactionJS() { return _transaction.isJStransaction; }
+  bool isTransactionJS() const noexcept { return _transaction.isJStransaction; }
 
-  /// @brief whether or not the transaction is read-only (used to know whether
-  /// or not can read from query cache)
-  bool isEarlyReadOnly() { return _transaction.isEarlyReadOnly; }
+  bool isReadOnlyTransaction() const noexcept {
+    return _transaction.isReadOnlyTransaction;
+  }
 
-  /// @brief set whether or not the transaction is read-only (used to know
-  /// whether or not can read from query cache)
-  void setEarlyReadOnly() { _transaction.isEarlyReadOnly = true; }
+  void setReadOnly() noexcept { _transaction.isReadOnlyTransaction = true; }
 
   /// @brief sets the transaction to be streaming (used to know whether or not
   /// can read from query cache)
-  void setStreaming() { _transaction.isStreamingTransaction = true; }
+  void setStreaming() noexcept { _transaction.isStreamingTransaction = true; }
 
   /// @brief sets the transaction to be JS (used to know whether or not
   /// can read from query cache)
-  void setJStransaction() { _transaction.isJStransaction = true; }
+  void setJStransaction() noexcept { _transaction.isJStransaction = true; }
 
   /// @brief whether or not the transaction is embeddable
   virtual bool isEmbeddable() const = 0;
@@ -163,10 +163,9 @@ class Context {
 
   struct {
     TransactionId id;
-    bool isReadOnlyTransaction;
+    bool isReadOnlyTransaction = false;
     bool isFollowerTransaction;
     bool isStreamingTransaction = false;
-    bool isEarlyReadOnly = false;
     bool isJStransaction = false;
   } _transaction;
 };

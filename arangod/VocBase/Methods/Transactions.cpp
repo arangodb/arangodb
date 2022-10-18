@@ -396,7 +396,7 @@ Result executeTransactionJS(v8::Isolate* isolate,
   auto& vocbase = GetContextVocBase(isolate);
   transaction::V8Context ctx(vocbase, embed);
   if (writeCollections.empty() && exclusiveCollections.empty()) {
-    ctx.setEarlyReadOnly();
+    ctx.setReadOnly();
   }
   ctx.setJStransaction();
 
