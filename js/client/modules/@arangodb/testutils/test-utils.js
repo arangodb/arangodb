@@ -168,6 +168,7 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
   
   if (testname.indexOf('-nonwindows') !== -1 && platform.substr(0, 3) === 'win') {
     whichFilter.filter = 'non-windows';
+    return false;
   }
 
 // *.<ext>_DISABLED should be used instead
