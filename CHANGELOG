@@ -4,11 +4,18 @@ devel
 * BTS_483: Added restriction for usage of query cache for streaming and JS 
   transactions when they are not read-only.
 
+* Improve cardinality estimate for AQL EnumerateCollectionNode in case a
+  `SORT RAND() LIMIT 1` is used. Here, the estimated number of items is at
+  most 1.
+
 * ES-1312: fix handling of reaching the WAL archive capacity limit.
 
 * BTS-941: The HTTP API now delivers the correct list of the collection's
   shards in case a collection from an EnterpriseGraph, SmartGraph, Disjoint
   EnterpriseGraph, Disjoint SmartGraph or SatelliteGraph is being used.
+
+* Log the documents counts on leader and follower shards at the end of each
+  successful shard synchronization.
 
 * Changed the encoding of revision ids returned by the following REST APIs:
   - GET /_api/collection/<collection-name>/revision: the revision id was
