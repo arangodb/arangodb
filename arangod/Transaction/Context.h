@@ -26,6 +26,7 @@
 #include <memory>
 
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Containers/SmallVector.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
@@ -121,11 +122,17 @@ class Context {
 
   /// @brief sets the transaction to be streaming (used to know whether or not
   /// can read from query cache)
-  void setStreaming() noexcept { _transaction.isStreamingTransaction = true; }
+  void setStreaming() {
+    TRI_ASSERT(_transaction.isJStransaction == false);
+    _transaction.isStreamingTransaction = true;
+  }
 
   /// @brief sets the transaction to be JS (used to know whether or not
   /// can read from query cache)
-  void setJStransaction() noexcept { _transaction.isJStransaction = true; }
+  void setJStransaction() {
+    TRI_ASSERT(_transaction.isStreamingTransaction == false);
+    _transaction.isJStransaction = true;
+  }
 
   /// @brief whether or not the transaction is embeddable
   virtual bool isEmbeddable() const = 0;
