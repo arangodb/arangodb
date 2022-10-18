@@ -677,7 +677,7 @@ void Logger::log(char const* logid, char const* function, char const* file,
       // sure that the dynamic text part is truncated and not the
       // entries JSON thing
       size_t maxMessageLength = defaultLogGroup().maxLogEntryLength();
-      // cut of prologue, the quotes ('"' --- ' '") and the final '}'
+      // cut off prologue, the quotes ('"' --- ' '") and the final '}'
       if (maxMessageLength >= out.size() + 3) {
         maxMessageLength -= out.size() + 3;
       }
