@@ -77,7 +77,8 @@ struct StatusT {
     return ok();
   }
 
- private : StatusT(Contained&& val) : _contained(std::move(val)) {}
+ private:
+  StatusT(Contained&& val) : _contained(std::move(val)) {}
   Contained _contained;
 };
 
