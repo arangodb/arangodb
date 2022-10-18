@@ -955,7 +955,7 @@ function ahuacatlQueryCacheTestSuite () {
       assertFalse(result.cached);
       assertEqual([ ], result.json);
 
-      var result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
       assertTrue(result.cached);
       assertEqual([ ], result.json);
     }
