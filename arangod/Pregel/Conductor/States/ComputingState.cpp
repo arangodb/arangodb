@@ -89,17 +89,23 @@ auto Computing::receive(MessagePayload message)
       std::move(finishedAggregate.value().sendCountPerShard));
 
   auto post = conductor._postGlobalSuperStep();
+
+  LOG_PREGEL_CONDUCTOR_STATE("39385", DEBUG)
+      << fmt::format("Finished gss {} in {}s", conductor._globalSuperstep,
+                     conductor._timing.gss.back().elapsedSeconds().count());
+  conductor._timing.gss.back().finish();
+
   if (post.finished) {
+    if (conductor._masterContext) {
+      conductor._masterContext->postApplication();
+    }
     if (conductor._storeResults) {
       return std::make_unique<Storing>(conductor);
     }
     return std::make_unique<Done>(conductor);
   }
-  LOG_PREGEL_CONDUCTOR_STATE("39385", DEBUG)
-      << fmt::format("Finished gss {} in {}s", conductor._globalSuperstep,
-                     conductor._timing.gss.back().elapsedSeconds().count());
+
   conductor._globalSuperstep++;
-  conductor._timing.gss.back().finish();
   return run();
 }
 

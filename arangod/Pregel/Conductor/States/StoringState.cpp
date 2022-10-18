@@ -19,8 +19,6 @@ Storing::~Storing() {
 }
 
 auto Storing::run() -> std::optional<std::unique_ptr<State>> {
-  conductor._cleanup();
-
   auto store = _store().get();
   if (store.fail()) {
     LOG_PREGEL_CONDUCTOR_STATE("bc495", ERR) << store.errorMessage();
