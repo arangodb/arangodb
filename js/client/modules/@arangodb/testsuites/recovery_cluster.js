@@ -213,7 +213,7 @@ function runArangodRecovery (params, useEncryption) {
     params.instanceManager.destructor(false);
     return {
       status: false,
-      message: 'Error while launching test:' + err
+      message: 'Error while launching test: ' + err
     };
   }
   if (params.setup) {
