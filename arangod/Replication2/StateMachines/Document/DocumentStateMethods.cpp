@@ -81,7 +81,7 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
     auto stateMachine =
         std::dynamic_pointer_cast<replicated_state::ReplicatedState<
             replicated_state::document::DocumentState>>(
-            _vocbase.getReplicatedStateById(logId));
+            _vocbase.getReplicatedStateById(logId).get());
     if (stateMachine == nullptr) {
       return ResultT<DocumentStateType>::error(
           TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,
