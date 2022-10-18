@@ -18,26 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko  Kernbach
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-namespace arangodb::aql::optimizer2 {
+#include "Aql/Optimizer2/PlanNodes/BaseNode.h"
+#include "Aql/Optimizer2/PlanNodeTypes/Expression.h"
+#include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
 
-struct AttributeTypes {
- public:
-  // General types
-  typedef std::uint64_t Numeric;
-  typedef std::string String;
+#include "Inspection/VPackInspection.h"
 
-  // Specific types BaseNode
-  typedef std::uint64_t NodeId;
-  typedef std::string NodeType;  // TODO: Let's use a "numeric" type 'later'.
-  typedef std::vector<Numeric> Dependencies;
+namespace arangodb::aql::optimizer2::nodes {
 
-  // Specific types Index
-  typedef std::string IndexType;  // TODO: Let's use a "numeric" type 'later'.
+struct CalculationNode : optimizer2::nodes::BaseNode {
+  optimizer2::types::Variable outVariable;
+  optimizer2::types::Expression expression;
 };
 
-}  // namespace arangodb::aql::optimizer2
+template<typename Inspector>
+auto inspect(Inspector& f, CalculationNode& x) {
+  return f.object(x).fields(
+      f.embedFields(static_cast<optimizer2::nodes::BaseNode&>(x)),
+      f.field("outVariable", x.outVariable),
+      f.field("expression", x.expression));
+}
+
+}  // namespace arangodb::aql::optimizer2::nodes
