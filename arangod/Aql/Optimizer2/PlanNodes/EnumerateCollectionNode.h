@@ -18,27 +18,44 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer, Heiko Kernbach
+/// @author  Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
 #include "Aql/Optimizer2/PlanNodes/BaseNode.h"
+#include "Aql/Optimizer2/PlanNodes/DocumentProducingNode.h"
+#include "Aql/Optimizer2/PlanNodes/CollectionAcessingNode.h"
+
 #include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
-#include "Aql/Optimizer2/PlanNodeTypes/Count.h"
+#include "Aql/Optimizer2/PlanNodeTypes/Projections.h"
+#include "Aql/Optimizer2/PlanNodeTypes/Satellite.h"
+#include "Aql/Optimizer2/PlanNodeTypes/IndexHint.h"
+
 #include "Inspection/VPackInspection.h"
 
 namespace arangodb::aql::optimizer2::nodes {
 
-struct ReturnNode : optimizer2::nodes::BaseNode, optimizer2::types::Count {
-  optimizer2::types::Variable inVariable;
+struct EnumerateCollectionNode : optimizer2::nodes::BaseNode,
+                                 optimizer2::nodes::DocumentProducingNode,
+                                 optimizer2::nodes::CollectionAccessingNode,
+                                 optimizer2::types::Satellite {
+  optimizer2::types::Variable outVariable;
+  optimizer2::types::IndexHint indexHint;
+
+  // Boolean values
+  bool random;  // TODO: Check if other nodes use "random" as well.
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, ReturnNode& x) {
+auto inspect(Inspector& f, EnumerateCollectionNode& x) {
   return f.object(x).fields(
       f.embedFields(static_cast<optimizer2::nodes::BaseNode&>(x)),
-      f.embedFields(static_cast<optimizer2::types::Count&>(x)),
-      f.field("inVariable", x.inVariable));
+      f.embedFields(static_cast<optimizer2::nodes::DocumentProducingNode&>(x)),
+      f.embedFields(
+          static_cast<optimizer2::nodes::CollectionAccessingNode&>(x)),
+      f.embedFields(static_cast<optimizer2::types::Satellite&>(x)),
+      f.field("indexHint", x.indexHint), f.field("outVariable", x.outVariable),
+      f.field("random", x.random));
 }
 
 }  // namespace arangodb::aql::optimizer2::nodes

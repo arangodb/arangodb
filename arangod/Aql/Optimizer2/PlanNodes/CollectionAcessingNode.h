@@ -18,25 +18,21 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko  Kernbach
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-namespace arangodb::aql::optimizer2 {
+namespace arangodb::aql::optimizer2::nodes {
 
-struct AttributeTypes {
- public:
-  // General types
-  typedef std::uint64_t Numeric;
-
-  // Specific types BaseNode
-  typedef std::uint64_t NodeId;
-  typedef std::string NodeType;  // TODO: Let's use a "numeric" type 'later'.
-  typedef std::vector<Numeric> Dependencies;
-
-  // Specific types Index
-  typedef std::string IndexType;  // TODO: Let's use a "numeric" type 'later'.
+struct CollectionAccessingNode {
+  std::string database;
+  std::string collection;
 };
 
-}  // namespace arangodb::aql::optimizer2
+template<class Inspector>
+auto inspect(Inspector& f, CollectionAccessingNode& v) {
+  return f.object(v).fields(f.field("database", v.database),
+                            f.field("collection", v.collection));
+}
+
+}  // namespace arangodb::aql::optimizer2::nodes

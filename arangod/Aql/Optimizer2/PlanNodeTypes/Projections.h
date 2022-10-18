@@ -18,25 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko  Kernbach
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-namespace arangodb::aql::optimizer2 {
+#include "velocypack/Builder.h"
 
-struct AttributeTypes {
- public:
-  // General types
-  typedef std::uint64_t Numeric;
+#include "Aql/Optimizer2/Types/Types.h"
 
-  // Specific types BaseNode
-  typedef std::uint64_t NodeId;
-  typedef std::string NodeType;  // TODO: Let's use a "numeric" type 'later'.
-  typedef std::vector<Numeric> Dependencies;
+namespace arangodb::aql::optimizer2::types {
 
-  // Specific types Index
-  typedef std::string IndexType;  // TODO: Let's use a "numeric" type 'later'.
+struct Projections {
+  std::vector<VPackBuilder> projections;
+  std::vector<VPackBuilder> filterProjections;
+  AttributeTypes::Numeric maxProjections;
 };
 
-}  // namespace arangodb::aql::optimizer2
+template<typename Inspector>
+auto inspect(Inspector& f, Projections& x) {
+  return f.object(x).fields(f.field("projections", x.projections),
+                            f.field("filterProjections", x.filterProjections),
+                            f.field("maxProjections", x.maxProjections));
+}
+
+}  // namespace arangodb::aql::optimizer2::types

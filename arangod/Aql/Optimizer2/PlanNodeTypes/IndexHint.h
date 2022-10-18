@@ -18,25 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko  Kernbach
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-namespace arangodb::aql::optimizer2 {
+#include "Aql/Optimizer2/Types/Types.h"
 
-struct AttributeTypes {
- public:
-  // General types
-  typedef std::uint64_t Numeric;
+namespace arangodb::aql::optimizer2::types {
 
-  // Specific types BaseNode
-  typedef std::uint64_t NodeId;
-  typedef std::string NodeType;  // TODO: Let's use a "numeric" type 'later'.
-  typedef std::vector<Numeric> Dependencies;
-
-  // Specific types Index
-  typedef std::string IndexType;  // TODO: Let's use a "numeric" type 'later'.
+struct IndexHint {
+  bool forced;
+  AttributeTypes::Numeric lookahead;
+  AttributeTypes::IndexType type;
 };
 
-}  // namespace arangodb::aql::optimizer2
+template<class Inspector>
+auto inspect(Inspector& f, IndexHint& v) {
+  return f.object(v).fields(f.field("forced", v.forced),
+                            f.field("lookahead", v.lookahead),
+                            f.field("type", v.type));
+}
+
+}  // namespace arangodb::aql::optimizer2::types

@@ -18,25 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko  Kernbach
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-namespace arangodb::aql::optimizer2 {
+#include "Aql/Optimizer2/Types/Types.h"
+#include "Aql/Optimizer2/PlanNodeTypes/Projections.h"
 
-struct AttributeTypes {
- public:
-  // General types
-  typedef std::uint64_t Numeric;
+namespace arangodb::aql::optimizer2::nodes {
 
-  // Specific types BaseNode
-  typedef std::uint64_t NodeId;
-  typedef std::string NodeType;  // TODO: Let's use a "numeric" type 'later'.
-  typedef std::vector<Numeric> Dependencies;
-
-  // Specific types Index
-  typedef std::string IndexType;  // TODO: Let's use a "numeric" type 'later'.
+struct DocumentProducingNode : optimizer2::types::Projections {
+  bool count;
+  bool readOwnWrites;
+  bool useCache;
+  bool producesResult;
 };
 
-}  // namespace arangodb::aql::optimizer2
+template<class Inspector>
+auto inspect(Inspector& f, DocumentProducingNode& v) {
+  return f.object(v).fields(
+      f.embedFields(static_cast<optimizer2::types::Projections&>(v)),
+      f.field("count", v.count), f.field("readOwnWrites", v.readOwnWrites),
+      f.field("useCache", v.useCache),
+      f.field("producesResult", v.producesResult));
+}
+
+}  // namespace arangodb::aql::optimizer2::nodes
