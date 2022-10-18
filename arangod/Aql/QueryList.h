@@ -226,10 +226,6 @@ class QueryList {
   /// @brief default maximum number of slow queries to keep in list
   static constexpr size_t defaultMaxSlowQueries = 64;
 
-  /// @brief default max length of a query when returning it
-  static constexpr size_t defaultMaxQueryStringLength = 4096;
-
- private:
   /// @brief query registry, for keeping track of slow queries counter
   QueryRegistryFeature& _queryRegistryFeature;
 

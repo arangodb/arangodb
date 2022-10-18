@@ -180,6 +180,7 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
 #endif
       _allowCollectionsInExpressions(false),
       _logFailedQueries(false),
+      _maxQueryStringLength(4096),
       _queryGlobalMemoryLimit(
           defaultMemoryLimit(PhysicalMemory::getValue(), 0.1, 0.90)),
       _queryMemoryLimit(
@@ -401,12 +402,27 @@ void QueryRegistryFeature::collectOptions(
                   "allow full collections to be used in AQL expressions",
                   new BooleanParameter(&_allowCollectionsInExpressions),
                   arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800)
       .setDeprecatedIn(30900);
 
   options
-      ->addOption("--query.log-failed-queries", "log failed AQL queries",
+      ->addOption(
+          "--query.max-query-string-log-length",
+          "maximum length of query strings in logs before they get truncated",
+          new SizeTParameter(&_maxQueryStringLength),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31100);
+
+  options
+      ->addOption("--query.log-failed", "log failed AQL queries",
                   new BooleanParameter(&_logFailedQueries),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,

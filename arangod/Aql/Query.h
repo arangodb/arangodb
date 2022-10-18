@@ -42,7 +42,10 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include <atomic>
+#include <memory>
 #include <optional>
+#include <vector>
 
 struct TRI_vocbase_t;
 
@@ -118,6 +121,15 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief return the start time of the query (steady clock value)
   double startTime() const noexcept;
+
+  /// @brief return the total execution time of the query (until
+  /// the start of finalize)
+  double executionTime() const noexcept;
+
+  /// @brief make sure that the query execution time is set.
+  /// only the first call to this function will set the time.
+  /// every following call will be ignored.
+  void ensureExecutionTime() noexcept;
 
   void prepareQuery(SerializationFormat format);
 
@@ -215,6 +227,13 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   bool allowDirtyReads() const noexcept { return _allowDirtyReads; }
 
+  /// @brief convert query bind parameters to a string representation
+  void stringifyBindParameters(std::string& out, std::string_view prefix,
+                               size_t maxLength) const;
+
+  /// @brief convert query data sources to a string representation
+  void stringifyDataSources(std::string& out, std::string_view prefix) const;
+
  protected:
   /// @brief initializes the query
   void init(bool createProfile);
@@ -311,10 +330,9 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief query start time (steady clock value)
   double const _startTime;
 
-  /// @brief query end time. will be set on the first log message that
-  /// reports the query's end. useful so that we return a consistent
-  /// query runtime across multiple log messages
-  double const _endTime;
+  /// @brief query end time (steady clock value), only set once finalize()
+  /// is reached
+  double _endTime;
 
   /// @brief total memory used for building the (partial) result
   size_t _resultMemoryUsage;
@@ -369,7 +387,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
                           // once `preparePlan` has run and can be queried
                           // until the query object is gone!
 
-  /// @brief was this query killed
+  /// @brief was this query killed (can only be set once)
   std::atomic<bool> _queryKilled;
 };
 

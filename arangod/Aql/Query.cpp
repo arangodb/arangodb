@@ -72,7 +72,9 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Sink.h>
 
 #include <optional>
 
@@ -300,6 +302,19 @@ void Query::kill() {
 
 /// @brief return the start time of the query (steady clock value)
 double Query::startTime() const noexcept { return _startTime; }
+
+double Query::executionTime() const noexcept {
+  // should only be called once _endTime has been set
+  TRI_ASSERT(_endTime > 0.0);
+  return _endTime - _startTime;
+}
+
+void Query::ensureExecutionTime() noexcept {
+  if (_endTime == 0.0) {
+    _endTime = currentSteadyClockValue();
+    TRI_ASSERT(_endTime > 0.0);
+  }
+}
 
 void Query::prepareQuery(SerializationFormat format) {
   try {
@@ -885,6 +900,8 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
 }
 
 ExecutionState Query::finalize(VPackBuilder& extras) {
+  ensureExecutionTime();
+
   if (_queryProfile != nullptr &&
       _shutdownState.load(std::memory_order_relaxed) == ShutdownState::None) {
     // the following call removes the query from the list of currently
@@ -904,7 +921,7 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
   if (!_snippets.empty()) {
     _execStats.requests += _numRequests.load(std::memory_order_relaxed);
     _execStats.setPeakMemoryUsage(_resourceMonitor.peak());
-    _execStats.setExecutionTime(elapsedSince(_startTime));
+    _execStats.setExecutionTime(executionTime());
     _execStats.setIntermediateCommits(_trx->state()->numIntermediateCommits());
     for (auto& engine : _snippets) {
       engine->collectExecutionStats(_execStats);
@@ -1231,24 +1248,70 @@ void Query::log() {
 }
 
 void Query::logError(QueryResult const& queryResult) const {
-  if (!_queryString.empty() && queryResult.result.fail() &&
-      vocbase().server().hasFeature<QueryRegistryFeature>() &&
-      vocbase()
-          .server()
-          .getFeature<QueryRegistryFeature>()
-          .logFailedQueries()) {
-    size_t maxLength = 2048;
-    if (vocbase().queryList()) {
-      maxLength = vocbase().queryList()->maxQueryStringLength();
+  if (_queryString.empty() || !queryResult.result.fail() ||
+      !vocbase().server().hasFeature<QueryRegistryFeature>()) {
+    return;
+  }
+  auto const& feature = vocbase().server().getFeature<QueryRegistryFeature>();
+
+  if (!feature.logFailedQueries()) {
+    return;
+  }
+
+  size_t maxLength = feature.maxQueryStringLength();
+  std::string bindParameters;
+  if (feature.trackBindVars()) {
+    // also log bind variables
+    stringifyBindParameters(bindParameters, ", bind vars: ", maxLength);
+  }
+
+  std::string dataSources;
+  if (feature.trackDataSources()) {
+    stringifyDataSources(dataSources, ", data sources: ");
+  }
+
+  LOG_TOPIC("d499d", INFO, Logger::QUERIES)
+      << "AQL " << (queryOptions().stream ? "streaming " : "") << "query '"
+      << _queryString.extract(maxLength) << "'" << bindParameters << dataSources
+      << ", database: " << vocbase().name() << ", user: " << user()
+      << ", id: " << _queryId << ", token: QRY" << _queryId
+      << ", peak memory usage: " << resourceMonitor().peak()
+      << " failed with exit code " << queryResult.result.errorNumber() << ": "
+      << queryResult.result.errorMessage()
+      << ", took: " << Logger::FIXED(executionTime());
+}
+
+void Query::stringifyBindParameters(std::string& out, std::string_view prefix,
+                                    size_t maxLength) const {
+  auto bp = bindParameters();
+  if (bp != nullptr && !bp->slice().isNone()) {
+    out.append(prefix);
+    bp->slice().toJson(out);
+    if (out.size() > maxLength) {
+      out.resize(maxLength - 3);
+      out.append("...");
     }
-    double const elapsed = elapsedSince(startTime());
-    LOG_TOPIC("d499d", INFO, Logger::QUERIES)
-        << "AQL query '" << _queryString.extract(maxLength)
-        << "', id: " << _queryId << ", token: QRY" << _queryId
-        << ", peak memory usage: " << resourceMonitor().peak()
-        << " failed with exit code " << queryResult.result.errorNumber() << ": "
-        << queryResult.result.errorMessage()
-        << ", took: " << Logger::FIXED(elapsed);
+  }
+}
+
+void Query::stringifyDataSources(std::string& out,
+                                 std::string_view prefix) const {
+  auto const d = collectionNames();
+  if (!d.empty()) {
+    out.append(prefix);
+    out.push_back('[');
+
+    velocypack::StringSink sink(&out);
+    velocypack::Dumper dumper(&sink);
+    size_t i = 0;
+    for (auto const& dn : d) {
+      if (i > 0) {
+        out.push_back(',');
+      }
+      dumper.appendString(dn.data(), dn.size());
+      ++i;
+    }
+    out.push_back(']');
   }
 }
 
@@ -1328,6 +1391,8 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 
 /// @brief cleanup plan and engine for current query
 ExecutionState Query::cleanupPlanAndEngine(ErrorCode errorCode, bool sync) {
+  ensureExecutionTime();
+
   if (!_resultCode.has_value()) {  // TODO possible data race here
     // result code not yet set.
     _resultCode = errorCode;

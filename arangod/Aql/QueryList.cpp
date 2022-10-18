@@ -111,7 +111,7 @@ QueryList::QueryList(QueryRegistryFeature& feature)
       _slowQueryThreshold(feature.slowQueryThreshold()),
       _slowStreamingQueryThreshold(feature.slowStreamingQueryThreshold()),
       _maxSlowQueries(defaultMaxSlowQueries),
-      _maxQueryStringLength(defaultMaxQueryStringLength) {
+      _maxQueryStringLength(feature.maxQueryStringLength()) {
   _current.reserve(32);
 }
 
@@ -164,7 +164,7 @@ void QueryList::remove(Query& query) {
   }
 
   // elapsed time since query start
-  double const elapsed = elapsedSince(query.startTime());
+  double const elapsed = query.executionTime();
 
   _queryRegistryFeature.trackQueryEnd(elapsed);
 
@@ -199,34 +199,13 @@ void QueryList::remove(Query& query) {
       std::string bindParameters;
       if (_trackBindVars) {
         // also log bind variables
-        auto bp = query.bindParameters();
-        if (bp != nullptr && !bp->slice().isNone()) {
-          bindParameters.append(", bind vars: ");
-          bp->slice().toJson(bindParameters);
-          if (bindParameters.size() > maxQueryStringLength) {
-            bindParameters.resize(maxQueryStringLength - 3);
-            bindParameters.append("...");
-          }
-        }
+        query.stringifyBindParameters(bindParameters,
+                                      ", bind vars: ", maxQueryStringLength);
       }
 
       std::string dataSources;
       if (_trackDataSources) {
-        auto const d = query.collectionNames();
-        if (!d.empty()) {
-          size_t i = 0;
-          dataSources = ", data sources: [";
-          arangodb::velocypack::StringSink sink(&dataSources);
-          arangodb::velocypack::Dumper dumper(&sink);
-          for (auto const& dn : d) {
-            if (i > 0) {
-              dataSources.push_back(',');
-            }
-            dumper.appendString(dn.data(), dn.size());
-            ++i;
-          }
-          dataSources.push_back(']');
-        }
+        query.stringifyDataSources(dataSources, ", data sources: ");
       }
 
       auto resultCode = query.resultCode();
@@ -331,6 +310,7 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
   {
     READ_LOCKER(readLocker, _lock);
     // reserve the actually needed space
+    //
     result.reserve(_current.size());
     queries.reserve(_current.size());
     for (auto const& it : _current) {
