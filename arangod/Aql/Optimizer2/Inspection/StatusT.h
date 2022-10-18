@@ -34,14 +34,22 @@ namespace arangodb::inspection {
 
 template<typename T>
 struct StatusT {
+  using Contained = std::variant<Status, T>;
+
+  auto static error(Status&& status) -> StatusT<T> {
+    return StatusT(
+        std::move(Contained(std::in_place_index<0>, std::move(status))));
+  }
+  auto static ok(T const& val) -> StatusT<T> {
+    return StatusT(std::move(Contained(std::in_place_index<1>, val)));
+  }
+  auto static ok(T&& val) -> StatusT<T> {
+    return StatusT(
+        std::move(Contained(std::in_place_index<1>, std::move(val))));
+  }
+
   StatusT(StatusT const& other) = delete;
   StatusT(StatusT&& other) = default;
-
-  StatusT(Status const& status) = delete;
-  StatusT(Status&& status) : _contained(std::move(status)) {}
-
-  StatusT(T const& val) : _contained(val) {}
-  StatusT(T&& val) : _contained(std::move(val)) {}
 
   // T is default constructible, otherwise inspection wouldn't work
   StatusT() requires(!std::is_nothrow_default_constructible_v<T>)
@@ -57,14 +65,10 @@ struct StatusT {
   }
 
   auto ok() const -> bool { return std::holds_alternative<T>(_contained); }
-  auto error() -> std::string const& {
-    return std::get<Status>(_contained).error();
-  }
-  auto path() -> std::string const& {
-    return std::get<Status>(_contained).path();
-  }
+  auto error() -> std::string const& { return std::get<0>(_contained).error(); }
+  auto path() -> std::string const& { return std::get<0>(_contained).path(); }
 
-  auto get() const -> T const& { return std::get<T>(_contained); }
+  auto get() const -> T const& { return std::get<1>(_contained); }
   auto get() -> T& { return std::get<T>(_contained); }
 
   T* operator->() { return &get(); }
@@ -83,7 +87,9 @@ struct StatusT {
     return ok();
   }
 
- private : std::variant<Status, T> _contained;
+ private : StatusT(std::variant<Status, T>&& val)
+     : _contained(std::move(val)) {}
+  std::variant<Status, T> _contained;
 };
 
 }  // namespace arangodb::inspection

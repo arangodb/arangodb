@@ -26,9 +26,10 @@ template<typename T>
   auto res = inspector.apply(value);
 
   if (res.ok()) {
-    return inspection::StatusT<SharedSlice>(std::move(builder).sharedSlice());
+    return inspection::StatusT<SharedSlice>::ok(
+        std::move(builder).sharedSlice());
   } else {
-    return inspection::StatusT<SharedSlice>(std::move(res));
+    return inspection::StatusT<SharedSlice>::error(std::move(res));
   }
 }
 
@@ -41,9 +42,9 @@ template<typename T>
 
   auto res = inspector.apply(data);
   if (res.ok()) {
-    return inspection::StatusT<T>(std::move(data));
+    return inspection::StatusT<T>::ok(std::move(data));
   } else {
-    return inspection::StatusT<T>(std::move(res));
+    return inspection::StatusT<T>::error(std::move(res));
   }
 }
 
