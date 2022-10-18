@@ -35,7 +35,7 @@ struct LazyDeserializingIterator
   //      deserializing it generically.
   using From = LogEntryView;
   explicit LazyDeserializingIterator(
-      std::unique_ptr<TypedLogIterator<From>> iterator)
+      std::unique_ptr<TypedLogRangeIterator<From>> iterator)
       : _iterator(std::move(iterator)) {}
 
   auto next() -> std::optional<streams::StreamEntryView<To>> override {
@@ -53,10 +53,12 @@ struct LazyDeserializingIterator
     }
   }
 
-  auto range() const noexcept -> LogRange override { std::abort(); }
+  auto range() const noexcept -> LogRange override {
+    return _iterator->range();
+  }
 
  private:
-  std::unique_ptr<TypedLogIterator<From>> _iterator;
+  std::unique_ptr<TypedLogRangeIterator<From>> _iterator;
   std::optional<std::remove_reference_t<To>> _current;
 };
 

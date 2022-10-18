@@ -247,7 +247,7 @@ void NewLeaderStateManager<S>::recoverEntries() {
 template<typename S>
 auto NewLeaderStateManager<S>::GuardedData::recoverEntries() {
   auto logSnapshot = _stream->methods().getLogSnapshot();
-  auto logIter = logSnapshot.getIteratorFrom(LogIndex{0});
+  auto logIter = logSnapshot.getRangeIteratorFrom(LogIndex{0});
   auto deserializedIter =
       std::make_unique<LazyDeserializingIterator<EntryType, Deserializer>>(
           std::move(logIter));
