@@ -25,8 +25,7 @@
 #pragma once
 
 #include <type_traits>
-
-#include <optional>
+#include <variant>
 
 #include "Inspection/Status.h"
 
@@ -36,16 +35,14 @@ template<typename T>
 struct StatusT {
   using Contained = std::variant<Status, T>;
 
-  auto static error(Status&& status) -> StatusT<T> {
-    return StatusT(
-        std::move(Contained(std::in_place_index<0>, std::move(status))));
+  [[nodiscard]] auto static error(Status&& status) -> StatusT<T> {
+    return StatusT(Contained(std::in_place_index<0>, std::move(status)));
   }
-  auto static ok(T const& val) -> StatusT<T> {
-    return StatusT(std::move(Contained(std::in_place_index<1>, val)));
+  [[nodiscard]] auto static ok(T const& val) -> StatusT<T> {
+    return StatusT(Contained(std::in_place_index<1>, val));
   }
-  auto static ok(T&& val) -> StatusT<T> {
-    return StatusT(
-        std::move(Contained(std::in_place_index<1>, std::move(val))));
+  [[nodiscard]] auto static ok(T&& val) -> StatusT<T> {
+    return StatusT(Contained(std::in_place_index<1>, std::move(val)));
   }
 
   StatusT(StatusT const& other) = delete;
@@ -55,35 +52,31 @@ struct StatusT {
   StatusT() requires(!std::is_nothrow_default_constructible_v<T>)
       : _contained{T{}} {}
 
-  StatusT& operator=(T const& val_) {
-    _contained = val_;
-    return *this;
+  StatusT& operator=(T const& val_) = default;
+  StatusT& operator=(T&& val_) = default;
+
+  [[nodiscard]] auto ok() const noexcept -> bool {
+    return std::holds_alternative<T>(_contained);
   }
-  StatusT& operator=(T&& val_) {
-    _contained = std::move(val_);
-    return *this;
+  [[nodiscard]] auto error() -> std::string const& {
+    return std::get<0>(_contained).error();
+  }
+  [[nodiscard]] auto path() -> std::string const& {
+    return std::get<0>(_contained).path();
   }
 
-  auto ok() const -> bool { return std::holds_alternative<T>(_contained); }
-  auto error() -> std::string const& { return std::get<0>(_contained).error(); }
-  auto path() -> std::string const& { return std::get<0>(_contained).path(); }
+  [[nodiscard]] auto get() const -> T const& { return std::get<1>(_contained); }
+  [[nodiscard]] auto get() -> T& { return std::get<T>(_contained); }
 
-  auto get() const -> T const& { return std::get<1>(_contained); }
-  auto get() -> T& { return std::get<T>(_contained); }
+  [[nodiscard]] auto operator->() -> T* { return &get(); }
+  [[nodiscard]] auto operator->() -> T const* const { return &get(); }
 
-  T* operator->() { return &get(); }
+  [[nodiscard]] auto operator*() & -> T& { return get(); }
+  [[nodiscard]] auto operator*() const& -> T const& { return get(); }
 
-  T const* operator->() const { return &get(); }
+  [[nodiscard]] operator*() &&->T&& { return std::move(get()); }
 
-  T& operator*() & { return get(); }
-
-  T const& operator*() const& { return get(); }
-
-  T&& operator*() && { return std::move(get()); }
-
-  T const&& operator*() const&& { return get(); }
-
-  explicit operator bool() const requires(!std::is_same_v<T, bool>) {
+  explicit operator bool() const except requires(!std::is_same_v<T, bool>) {
     return ok();
   }
 
