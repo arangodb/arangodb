@@ -311,6 +311,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief query start time (steady clock value)
   double const _startTime;
 
+  /// @brief query end time. will be set on the first log message that
+  /// reports the query's end. useful so that we return a consistent
+  /// query runtime across multiple log messages
+  double const _endTime;
+
   /// @brief total memory used for building the (partial) result
   size_t _resultMemoryUsage;
 
@@ -330,6 +335,9 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// > 0 = error, one of TRI_ERROR_...)
   std::optional<ErrorCode> _resultCode;
 
+  /// @brief user that started the query
+  std::string _user;
+
   /// @brief whether or not someone else has acquired a V8 context for us
   bool const _contextOwnedByExterior;
 
@@ -340,16 +348,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// in a v8 context
   bool _registeredInV8Context;
 
-  /// @brief was this query killed
-  std::atomic<bool> _queryKilled;
-
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;
 
-  /// @brief user that started the query
-  std::string _user;
-
-  bool _registeredQueryInTrx{false};
+  bool _registeredQueryInTrx;
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // Intentionally initialized here to not
@@ -357,16 +359,18 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   // Indicator if a query was already killed
   // via a debug failure. This should not
   // retrigger a kill.
-  bool _wasDebugKilled{false};
+  bool _wasDebugKilled;
+
+  bool _wasDestroyed;
 #endif
 
   bool _allowDirtyReads;  // this is set from the information in the
                           // transaction, it is valid and remains valid
                           // once `preparePlan` has run and can be queried
                           // until the query object is gone!
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  bool _wasDestroyed{false};
-#endif
+
+  /// @brief was this query killed
+  std::atomic<bool> _queryKilled;
 };
 
 }  // namespace aql

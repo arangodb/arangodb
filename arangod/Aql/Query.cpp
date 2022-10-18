@@ -109,6 +109,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _queryOptions(std::move(options)),
       _trx(nullptr),
       _startTime(currentSteadyClockValue()),
+      _endTime(0.0),
       _resultMemoryUsage(0),
       _queryHash(DontCache),
       _shutdownState(ShutdownState::None),
@@ -119,9 +120,14 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _embeddedQuery(_transactionContext->isV8Context() &&
                      transaction::V8Context::isEmbedded()),
       _registeredInV8Context(false),
-      _queryKilled(false),
       _queryHashCalculated(false),
-      _allowDirtyReads(false) {
+      _registeredQueryInTrx(false),
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+      _wasDebugKilled(false),
+      _wasDestroyed(false),
+#endif
+      _allowDirtyReads(false),
+      _queryKilled(false) {
   if (!_transactionContext) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "failed to create query transaction context");
@@ -1235,11 +1241,14 @@ void Query::logError(QueryResult const& queryResult) const {
     if (vocbase().queryList()) {
       maxLength = vocbase().queryList()->maxQueryStringLength();
     }
+    double const elapsed = elapsedSince(startTime());
     LOG_TOPIC("d499d", INFO, Logger::QUERIES)
         << "AQL query '" << _queryString.extract(maxLength)
         << "', id: " << _queryId << ", token: QRY" << _queryId
-        << " failed with error code " << queryResult.result.errorNumber()
-        << ": " << queryResult.result.errorMessage();
+        << ", peak memory usage: " << resourceMonitor().peak()
+        << " failed with exit code " << queryResult.result.errorNumber() << ": "
+        << queryResult.result.errorMessage()
+        << ", took: " << Logger::FIXED(elapsed);
   }
 }
 

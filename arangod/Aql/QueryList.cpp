@@ -28,6 +28,7 @@
 #include "Aql/Timing.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/Result.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
@@ -235,7 +236,9 @@ void QueryList::remove(Query& query) {
           << "'" << bindParameters << dataSources
           << ", database: " << query.vocbase().name()
           << ", user: " << query.user() << ", id: " << query.id()
-          << ", token: QRY" << query.id() << ", exit code: " << resultCode
+          << ", token: QRY" << query.id()
+          << ", peak memory usage: " << query.resourceMonitor().peak()
+          << ", exit code: " << resultCode
           << ", took: " << Logger::FIXED(elapsed) << " s";
 
       // acquire the query list lock again
