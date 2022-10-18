@@ -24,6 +24,8 @@
 
 #include "Aql/Optimizer2/Types/Types.h"
 
+#include "velocypack/Builder.h"
+
 namespace arangodb::aql::optimizer2::types {
 
 struct Expression {
@@ -33,6 +35,8 @@ struct Expression {
   AttributeTypes::String vType;
   AttributeTypes::Numeric vTypeID;
   AttributeTypes::String expressionType;
+  std::optional<bool> excludesNull;
+  std::optional<std::vector<Expression>> subNodes;
 };
 
 template<class Inspector>
@@ -41,7 +45,8 @@ auto inspect(Inspector& f, Expression& v) {
       f.field("type", v.type), f.field("typeID", v.typeID),
       f.field("value", v.value), f.field("vType", v.vType),
       f.field("vTypeID", v.vTypeID),
-      f.field("expressionType", v.expressionType));
+      f.field("expressionType", v.expressionType),
+      f.field("excludesNull", v.excludesNull), f.field("subNodes", v.subNodes));
 }
 
 }  // namespace arangodb::aql::optimizer2::types
