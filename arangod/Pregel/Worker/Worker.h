@@ -57,8 +57,7 @@ class IWorker : public std::enable_shared_from_this<IWorker> {
   virtual auto loadGraph(LoadGraph const& graph) -> ResultT<GraphLoaded> = 0;
   [[nodiscard]] virtual auto runGlobalSuperStep(RunGlobalSuperStep const& data)
       -> ResultT<GlobalSuperStepFinished> = 0;
-  [[nodiscard]] virtual auto store(Store const& message)
-      -> futures::Future<ResultT<Stored>> = 0;
+  [[nodiscard]] virtual auto store(Store const& message) -> ResultT<Stored> = 0;
   [[nodiscard]] virtual auto cleanup(Cleanup const& message)
       -> futures::Future<ResultT<CleanupFinished>> = 0;
   [[nodiscard]] virtual auto results(CollectPregelResults const& message) const
@@ -97,7 +96,7 @@ class Worker : public IWorker {
   // friend class arangodb::RestPregelHandler;
 
   enum WorkerState {
-    DEFAULT,    // only initial
+    DEFAULT,    // initial and loading
     IDLE,       // do nothing
     COMPUTING,  // during a superstep
     DONE        // after calling finished
@@ -178,7 +177,7 @@ class Worker : public IWorker {
   auto loadGraph(LoadGraph const& graph) -> ResultT<GraphLoaded> override;
   auto runGlobalSuperStep(RunGlobalSuperStep const& data)
       -> ResultT<GlobalSuperStepFinished> override;
-  auto store(Store const& message) -> futures::Future<ResultT<Stored>> override;
+  auto store(Store const& message) -> ResultT<Stored> override;
   auto cleanup(Cleanup const& message)
       -> futures::Future<ResultT<CleanupFinished>> override;
   auto results(CollectPregelResults const& message) const

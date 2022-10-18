@@ -137,9 +137,8 @@ auto WorkerApi::runGlobalSuperStep(
   return collectAllOks<GlobalSuperStepFinished>(std::move(results));
 }
 
-auto WorkerApi::store(Store const& message)
-    -> futures::Future<ResultT<Stored>> {
-  return sendToAll_old<Stored>(message);
+auto WorkerApi::store(Store const& message) -> ResultT<Aggregate<Stored>> {
+  return collectAllOks<Stored>(sendToAll(message));
 }
 
 auto WorkerApi::cleanup(Cleanup const& message)

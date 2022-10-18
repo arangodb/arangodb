@@ -54,8 +54,7 @@ struct WorkerApi {
       RunGlobalSuperStep const& data,
       std::unordered_map<ServerID, uint64_t> const& sendCountPerServer)
       -> ResultT<Aggregate<GlobalSuperStepFinished>>;
-  [[nodiscard]] auto store(Store const& message)
-      -> futures::Future<ResultT<Stored>>;
+  [[nodiscard]] auto store(Store const& message) -> ResultT<Aggregate<Stored>>;
   [[nodiscard]] auto cleanup(Cleanup const& message)
       -> futures::Future<ResultT<CleanupFinished>>;
   [[nodiscard]] auto results(CollectPregelResults const& message) const
