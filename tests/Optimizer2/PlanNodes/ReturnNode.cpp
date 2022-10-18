@@ -65,8 +65,8 @@ TEST(Optimizer2ReturnNode, construction) {
 
     EXPECT_EQ(returnNode.inVariable.id, 1u);
     EXPECT_EQ(returnNode.inVariable.name, "0");
-    EXPECT_EQ(returnNode.inVariable.isFullDocumentFromCollection, false);
-    EXPECT_EQ(returnNode.inVariable.isDataFromCollection, false);
+    EXPECT_FALSE(returnNode.inVariable.isFullDocumentFromCollection);
+    EXPECT_FALSE(returnNode.inVariable.isDataFromCollection);
     EXPECT_TRUE(returnNode.inVariable.constantValue.has_value());
     EXPECT_EQ(returnNode.inVariable.constantValue->slice().getInt(), 1);
 

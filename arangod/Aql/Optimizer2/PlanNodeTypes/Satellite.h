@@ -18,25 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko  Kernbach
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-namespace arangodb::aql::optimizer2 {
+#include "velocypack/Builder.h"
 
-struct AttributeTypes {
- public:
-  // General types
-  typedef std::uint64_t Numeric;
+namespace arangodb::aql::optimizer2::types {
 
-  // Specific types BaseNode
-  typedef std::uint64_t NodeId;
-  typedef std::string NodeType;  // TODO: Let's use a "numeric" type 'later'.
-  typedef std::vector<Numeric> Dependencies;
-
-  // Specific types Index
-  typedef std::string IndexType;  // TODO: Let's use a "numeric" type 'later'.
+struct Satellite {
+  bool satellite;
+  bool isSatellite;
+  VPackBuilder isSatelliteOf;
 };
 
-}  // namespace arangodb::aql::optimizer2
+template<typename Inspector>
+auto inspect(Inspector& f, Satellite& x) {
+  return f.object(x).fields(f.field("satellite", x.satellite),
+                            f.field("isSatellite", x.isSatellite),
+                            f.field("isSatelliteOf", x.isSatelliteOf));
+}
+
+}  // namespace arangodb::aql::optimizer2::types
