@@ -375,7 +375,7 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
         std::cout << "Checking " << name.value() << "...";
         auto res =  name.value() == "\1_key\1number_of_shipments\1pagerank" ||
                name.value() == "@_PK";
-        std::cout << res ? "HOT" : "COLD";
+        std::cout << (res ? "HOT" : "COLD");
         std::cout << std::endl;
         return res;
       } else {
