@@ -9,4 +9,5 @@ target_include_directories(
 
 target_link_libraries(arangodbtests_optimizer2 velocypack fmt gtest optimizer2)
 
+add_subdirectory(Inspection)
 add_subdirectory(PlanNodes)

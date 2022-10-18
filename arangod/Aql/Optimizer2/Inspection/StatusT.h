@@ -38,28 +38,34 @@ struct StatusT {
   StatusT(StatusT&& other) = default;
 
   StatusT(Status const& status) = delete;
-  StatusT(Status&& status) : status(std::move(status)), _val(std::nullopt) {}
+  StatusT(Status&& status) : _contained(std::move(status)) {}
 
-  StatusT(T const& val) : status(), _val(val) {}
-  StatusT(T&& val) : status(), _val(std::move(val)) {}
+  StatusT(T const& val) : _contained(val) {}
+  StatusT(T&& val) : _contained(std::move(val)) {}
 
-  StatusT() : status(), _val{T{}} {}
+  // T is default constructible, otherwise inspection wouldn't work
+  StatusT() requires(!std::is_nothrow_default_constructible_v<T>)
+      : _contained{T{}} {}
 
   StatusT& operator=(T const& val_) {
-    _val = val_;
+    _contained = val_;
     return *this;
   }
   StatusT& operator=(T&& val_) {
-    _val = std::move(val_);
+    _contained = std::move(val_);
     return *this;
   }
 
-  auto ok() const -> bool { return status.ok(); }
-  auto error() -> std::string const& { return status.error(); }
-  auto path() -> std::string const& { return status.path(); }
+  auto ok() const -> bool { return std::holds_alternative<T>(_contained); }
+  auto error() -> std::string const& {
+    return std::get<Status>(_contained).error();
+  }
+  auto path() -> std::string const& {
+    return std::get<Status>(_contained).path();
+  }
 
-  auto get() const -> T const& { return _val.value(); }
-  auto get() -> T& { return _val.value(); }
+  auto get() const -> T const& { return std::get<T>(_contained); }
+  auto get() -> T& { return std::get<T>(_contained); }
 
   T* operator->() { return &get(); }
 
@@ -73,15 +79,11 @@ struct StatusT {
 
   T const&& operator*() const&& { return get(); }
 
-  template<typename U = T,
-           typename = std::enable_if_t<!std::is_same<U, bool>::value>>
-  explicit operator bool() const {
+  explicit operator bool() const requires(!std::is_same_v<T, bool>) {
     return ok();
   }
 
- private:
-  Status status;
-  std::optional<T> _val;
+ private : std::variant<Status, T> _contained;
 };
 
 }  // namespace arangodb::inspection
