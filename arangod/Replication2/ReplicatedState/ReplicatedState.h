@@ -128,12 +128,15 @@ struct StreamProxy : Interface<EntryType> {
       : _logMethods(std::move(methods)) {}
 
   auto waitFor(LogIndex index) -> futures::Future<WaitForResult> override {
-    // TODO Delete this, also in streams::Stream
-    std::abort();
+    // TODO As far as I can tell right now, we can get rid of this:
+    //      Delete this, also in streams::Stream.
+    return _logMethods->waitFor(index).thenValue(
+        [](auto const&) { return WaitForResult(); });
   }
   auto waitForIterator(LogIndex index)
       -> futures::Future<std::unique_ptr<Iterator>> override {
-    // TODO Delete this, also in streams::Stream
+    // TODO As far as I can tell right now, we can get rid of this:
+    //      Delete this, also in streams::Stream.
     std::abort();
   }
   auto release(LogIndex index) -> void override {
