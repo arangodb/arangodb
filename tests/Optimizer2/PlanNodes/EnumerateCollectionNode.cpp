@@ -75,11 +75,17 @@ TEST(Optimizer2EnumerateCollectionNode, construction) {
   } else {
     auto enumerateCollectionNode = res.get();
     EXPECT_EQ(enumerateCollectionNode.type, "EnumerateCollectionNode");
-    EXPECT_EQ(enumerateCollectionNode.id, 2u);
-    EXPECT_FALSE(enumerateCollectionNode.count);
     EXPECT_EQ(enumerateCollectionNode.dependencies.at(0), 1u);
+    EXPECT_EQ(enumerateCollectionNode.id, 2u);
+
+    // indexHint
+    EXPECT_FALSE(enumerateCollectionNode.indexHint.forced);
+    EXPECT_EQ(enumerateCollectionNode.indexHint.lookahead, 1ul);
+    EXPECT_EQ(enumerateCollectionNode.indexHint.type, "none");
+    // optional
     EXPECT_FALSE(enumerateCollectionNode.canThrow.has_value());
 
+    // outVar
     EXPECT_EQ(enumerateCollectionNode.outVariable.id, 0u);
     EXPECT_EQ(enumerateCollectionNode.outVariable.name, "x");
     EXPECT_TRUE(
@@ -91,10 +97,17 @@ TEST(Optimizer2EnumerateCollectionNode, construction) {
     EXPECT_EQ(enumerateCollectionNode.estimatedNrItems, 0u);
 
     // EnumerateCollectionNode additional specifics
+    EXPECT_EQ(enumerateCollectionNode.projections.size(), 0);
+    EXPECT_EQ(enumerateCollectionNode.filterProjections.size(), 0);
+    EXPECT_FALSE(enumerateCollectionNode.count);
+    EXPECT_TRUE(enumerateCollectionNode.producesResult);
+    EXPECT_FALSE(enumerateCollectionNode.readOwnWrites);
+    EXPECT_TRUE(enumerateCollectionNode.useCache);
+    EXPECT_EQ(enumerateCollectionNode.maxProjections, 5u);
+    EXPECT_EQ(enumerateCollectionNode.database, "_system");
+    EXPECT_EQ(enumerateCollectionNode.collection, "_graphs");
     EXPECT_FALSE(enumerateCollectionNode.satellite);
     EXPECT_FALSE(enumerateCollectionNode.isSatellite);
     EXPECT_EQ(enumerateCollectionNode.isSatelliteOf.slice().toJson(), "null");
-
-    // TODO: Check all attributes (!)
   }
 }
