@@ -4,4 +4,5 @@ target_sources(arangodbtests_optimizer2 PRIVATE
         SingletonNode.cpp
         CalculationNode.cpp
         FilterNode.cpp
+        TraversalNode.cpp
         )
