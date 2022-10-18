@@ -916,7 +916,7 @@ function ahuacatlQueryCacheTestSuite () {
 
     testTransactionRollback : function () {
       AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
-      
+
       var query = "FOR doc IN @@collection RETURN doc.value";
       
       try {
@@ -928,7 +928,7 @@ function ahuacatlQueryCacheTestSuite () {
             assertEqual([ ], result.json);
             
             result = AQL_EXECUTE(query, { "@collection": c1.name() });
-            assertTrue(result.cached);
+            assertFalse(result.cached);
             assertEqual([ ], result.json);
 
             var db = require("@arangodb").db;
@@ -939,7 +939,7 @@ function ahuacatlQueryCacheTestSuite () {
             assertEqual([ "foo" ], result.json);
             
             result = AQL_EXECUTE(query, { "@collection": c1.name() });
-            assertTrue(result.cached);
+            assertFalse(result.cached);
             assertEqual([ "foo" ], result.json);
 
             throw "peng!";
@@ -953,6 +953,10 @@ function ahuacatlQueryCacheTestSuite () {
             
       var result = AQL_EXECUTE(query, { "@collection": c1.name() });
       assertFalse(result.cached);
+      assertEqual([ ], result.json);
+
+      var result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
       assertEqual([ ], result.json);
     }
 

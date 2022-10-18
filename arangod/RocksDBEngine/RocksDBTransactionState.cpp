@@ -193,16 +193,18 @@ void RocksDBTransactionState::commitCollections(
     uint64_t numUpdates = coll->numUpdates();
     uint64_t numRemoves = coll->numRemoves();
     coll->commitCounts(id(), lastWritten);
-    TRI_ASSERT(coll->numInserts() == 0);
-    TRI_ASSERT(coll->numUpdates() == 0);
-    TRI_ASSERT(coll->numRemoves() == 0);
     RocksDBTransactionMethods* methods = rocksdbMethods(trxColl->id());
-    reinterpret_cast<RocksDBTrxBaseMethods*>(methods)->decreaseNumInserts(
-        numInserts);
-    reinterpret_cast<RocksDBTrxBaseMethods*>(methods)->decreaseNumUpdates(
-        numUpdates);
-    reinterpret_cast<RocksDBTrxBaseMethods*>(methods)->decreaseNumRemoves(
-        numRemoves);
+    // if the counters were resetted, means there was no failure, otherwise,
+    // don't update the globals
+    if (coll->numInserts() == 0 && coll->numUpdates() == 0 &&
+        coll->numRemoves() == 0) {
+      reinterpret_cast<RocksDBTrxBaseMethods*>(methods)->decreaseNumInserts(
+          numInserts);
+      reinterpret_cast<RocksDBTrxBaseMethods*>(methods)->decreaseNumUpdates(
+          numUpdates);
+      reinterpret_cast<RocksDBTrxBaseMethods*>(methods)->decreaseNumRemoves(
+          numRemoves);
+    }
   }
 }
 
