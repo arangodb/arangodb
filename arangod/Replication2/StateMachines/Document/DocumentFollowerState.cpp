@@ -66,7 +66,8 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                   TRI_ERROR_CLUSTER_NOT_FOLLOWER);
             }
 
-            if (auto truncateRes = self->truncateLocalShard(); truncateRes.fail()) {
+            if (auto truncateRes = self->truncateLocalShard();
+                truncateRes.fail()) {
               return ResultT<velocypack::SharedSlice>::error(truncateRes);
             }
 
@@ -76,7 +77,8 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                 self->_networkHandler->getLeaderInterface(destination);
             return leaderInterface->getSnapshot(waitForIndex);
           })
-      .thenValue([self = shared_from_this()](auto&& result) -> futures::Future<Result> {
+      .thenValue([self = shared_from_this()](
+                     auto&& result) -> futures::Future<Result> {
         if (result.fail()) {
           return result.result();
         }
@@ -110,25 +112,34 @@ auto DocumentFollowerState::truncateLocalShard() -> Result {
   b.add("collection", VPackValue(shardId));
   b.close();
   auto doc = DocumentLogEntry{std::string(shardId), OperationType::kTruncate,
-                              b.sharedSlice(), TransactionId{0}.asFollowerTransactionId()};
+                              b.sharedSlice(),
+                              TransactionId{0}.asFollowerTransactionId()};
   if (auto applyRes = _transactionHandler->applyEntry(doc); applyRes.fail()) {
-    _transactionHandler->removeTransaction(TransactionId{0}.asFollowerTransactionId());
+    _transactionHandler->removeTransaction(
+        TransactionId{0}.asFollowerTransactionId());
     return applyRes;
   }
-  auto commit = DocumentLogEntry{std::string(shardId), OperationType::kCommit,
-                                 {}, TransactionId{0}.asFollowerTransactionId()};
+  auto commit = DocumentLogEntry{std::string(shardId),
+                                 OperationType::kCommit,
+                                 {},
+                                 TransactionId{0}.asFollowerTransactionId()};
   return _transactionHandler->applyEntry(commit);
 }
 
-auto DocumentFollowerState::populateLocalShard(velocypack::SharedSlice slice) -> Result {
-    auto doc = DocumentLogEntry{std::string(shardId), OperationType::kInsert,
-                                std::move(slice), TransactionId{0}.asFollowerTransactionId()};
+auto DocumentFollowerState::populateLocalShard(velocypack::SharedSlice slice)
+    -> Result {
+  auto doc = DocumentLogEntry{std::string(shardId), OperationType::kInsert,
+                              std::move(slice),
+                              TransactionId{0}.asFollowerTransactionId()};
   if (auto applyRes = _transactionHandler->applyEntry(doc); applyRes.fail()) {
-    _transactionHandler->removeTransaction(TransactionId{0}.asFollowerTransactionId());
+    _transactionHandler->removeTransaction(
+        TransactionId{0}.asFollowerTransactionId());
     return applyRes;
   }
-  auto commit = DocumentLogEntry{std::string(shardId), OperationType::kCommit,
-                                 {}, TransactionId{0}.asFollowerTransactionId()};
+  auto commit = DocumentLogEntry{std::string(shardId),
+                                 OperationType::kCommit,
+                                 {},
+                                 TransactionId{0}.asFollowerTransactionId()};
   return _transactionHandler->applyEntry(commit);
 }
 
