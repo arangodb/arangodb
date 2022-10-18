@@ -39,18 +39,38 @@ TEST(Optimizer2ReturnNode, construction) {
     "type": "ReturnNode",
     "id": 3,
     "count": true,
-    "inVariable": "test"
+    "dependencies": [1],
+    "inVariable": {
+      "id": 1,
+      "name": "0",
+      "isFullDocumentFromCollection": false,
+      "isDataFromCollection": false,
+      "constantValue": 1
+    },
+    "estimatedCost": 3,
+    "estimatedNrItems": 1
   })"_vpack;
 
-  auto res = deserializeWithStatus<Return>(returnNodeBuffer);
+  auto res = deserializeWithStatus<ReturnNode>(returnNodeBuffer);
 
   if (!res) {
     fmt::print("Something went wrong: {}", res.error());
   } else {
     auto returnNode = res.get();
     EXPECT_EQ(returnNode.type, "ReturnNode");
-    EXPECT_EQ(returnNode.inVariable, "test");
     EXPECT_EQ(returnNode.id, 3u);
     EXPECT_TRUE(returnNode.count);
+    EXPECT_EQ(returnNode.dependencies.at(0), 1u);
+    EXPECT_FALSE(returnNode.canThrow.has_value());
+
+    EXPECT_EQ(returnNode.inVariable.id, 1u);
+    EXPECT_EQ(returnNode.inVariable.name, "0");
+    EXPECT_EQ(returnNode.inVariable.isFullDocumentFromCollection, false);
+    EXPECT_EQ(returnNode.inVariable.isDataFromCollection, false);
+    EXPECT_TRUE(returnNode.inVariable.constantValue.has_value());
+    EXPECT_EQ(returnNode.inVariable.constantValue->slice().getInt(), 1);
+
+    EXPECT_EQ(returnNode.estimatedCost, 3u);
+    EXPECT_EQ(returnNode.estimatedNrItems, 1u);
   }
 }

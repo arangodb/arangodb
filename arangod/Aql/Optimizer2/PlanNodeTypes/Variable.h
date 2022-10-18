@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "velocypack/Builder.h"
+
 namespace arangodb::aql::optimizer2::types {
 
 using VariableId = size_t;
@@ -33,6 +35,8 @@ struct Variable {
 
   bool isFullDocumentFromCollection;
   bool isDataFromCollection;
+  std::optional<VPackBuilder>
+      constantValue;  // Hint: Originally AqlValue used here
 };
 
 template<typename Inspector>
@@ -40,7 +44,8 @@ auto inspect(Inspector& f, Variable& x) {
   return f.object(x).fields(
       f.field("id", x.id), f.field("name", x.name),
       f.field("isFullDocumentFromCollection", x.isFullDocumentFromCollection),
-      f.field("isDataFromCollection", x.isDataFromCollection));
+      f.field("isDataFromCollection", x.isDataFromCollection),
+      f.field("constantValue", x.constantValue));
 }
 
 }  // namespace arangodb::aql::optimizer2::types

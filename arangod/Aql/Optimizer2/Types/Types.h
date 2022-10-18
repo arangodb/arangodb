@@ -25,10 +25,15 @@
 
 namespace arangodb::aql::optimizer2 {
 
-class Types {
+struct AttributeTypes {
  public:
+  // General types
+  typedef std::uint64_t Numeric;
+
+  // Specific types BaseNode
   typedef std::uint64_t NodeId;
   typedef std::string NodeType;  // TODO: Let's use a "numeric" type 'later'.
+  typedef std::vector<Numeric> Dependencies;
 };
 
 }  // namespace arangodb::aql::optimizer2
