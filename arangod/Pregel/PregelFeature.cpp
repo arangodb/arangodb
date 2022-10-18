@@ -704,13 +704,6 @@ auto PregelFeature::apply(ExecutionNumber const& executionNumber,
                              });
             return {Ok{}};
           },
-          [&](PrepareGlobalSuperStep const& x) -> ResultT<MessagePayload> {
-            auto w = worker(executionNumber);
-            if (!w) {
-              return workerNotFound(executionNumber, message);
-            }
-            return {w->prepareGlobalSuperStep(x).get()};
-          },
           [&](RunGlobalSuperStep const& x) -> ResultT<MessagePayload> {
             auto w = worker(executionNumber);
             if (!w) {

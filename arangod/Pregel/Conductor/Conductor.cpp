@@ -176,12 +176,10 @@ void Conductor::start() {
 auto Conductor ::_postGlobalSuperStep() -> PostGlobalSuperStepResult {
   // workers are done if all messages were processed and no active vertices
   // are left to process
-  bool done = _globalSuperstep > 0 && _statistics.noActiveVertices() &&
-              _statistics.allMessagesProcessed();
+  bool done =
+      _statistics.noActiveVertices() && _statistics.allMessagesProcessed();
   bool proceed = true;
-  if (_masterContext &&
-      _globalSuperstep > 0) {  // ask algorithm to evaluate aggregated values
-    _masterContext->_globalSuperstep = _globalSuperstep - 1;
+  if (_masterContext) {  // ask algorithm to evaluate aggregated values
     proceed = _masterContext->postGlobalSuperstep();
     if (!proceed) {
       LOG_PREGEL("0aa8e", DEBUG) << "Master context ended execution";

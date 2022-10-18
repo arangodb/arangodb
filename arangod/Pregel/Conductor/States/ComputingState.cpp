@@ -26,9 +26,11 @@ Computing::~Computing() {
 
 auto Computing::run() -> std::optional<std::unique_ptr<State>> {
   do {
-    auto prepared = _prepareGlobalSuperStep().get();
-    if (prepared.fail()) {
-      LOG_PREGEL_CONDUCTOR("04189", ERR) << prepared.errorMessage();
+    conductor._preGlobalSuperStep();
+
+    auto runGlobalSuperStep = _runGlobalSuperStep().get();
+    if (runGlobalSuperStep.fail()) {
+      LOG_PREGEL_CONDUCTOR("f34bb", ERR) << runGlobalSuperStep.errorMessage();
       return std::make_unique<FatalError>(conductor);
     }
 
@@ -39,45 +41,10 @@ auto Computing::run() -> std::optional<std::unique_ptr<State>> {
       }
       return std::make_unique<Done>(conductor);
     }
-    conductor._preGlobalSuperStep();
 
-    auto runGlobalSuperStep = _runGlobalSuperStep().get();
-    if (runGlobalSuperStep.fail()) {
-      LOG_PREGEL_CONDUCTOR("f34bb", ERR) << runGlobalSuperStep.errorMessage();
-      return std::make_unique<FatalError>(conductor);
-    }
+    conductor._globalSuperstep++;
+
   } while (true);
-}
-
-auto Computing::_prepareGlobalSuperStep() -> futures::Future<Result> {
-  if (conductor._feature.isStopping()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-  }
-
-  return conductor._workers
-      .prepareGlobalSuperStep(
-          PrepareGlobalSuperStep{.gss = conductor._globalSuperstep,
-                                 .vertexCount = conductor._totalVerticesCount,
-                                 .edgeCount = conductor._totalEdgesCount})
-      .thenValue([&](auto globalSuperStepPrepared) -> Result {
-        if (globalSuperStepPrepared.fail()) {
-          return Result{globalSuperStepPrepared.errorNumber(),
-                        fmt::format("While preparing global super step {}: {}",
-                                    conductor._globalSuperstep,
-                                    globalSuperStepPrepared.errorMessage())};
-        }
-        conductor._aggregators->resetValues();
-        for (auto aggregator : VPackArrayIterator(
-                 globalSuperStepPrepared.get().aggregators.slice())) {
-          conductor._aggregators->aggregateValues(aggregator);
-        }
-        conductor._statistics.setActiveCounts(
-            globalSuperStepPrepared.get().activeCount);
-        conductor._totalVerticesCount =
-            globalSuperStepPrepared.get().vertexCount;
-        conductor._totalEdgesCount = globalSuperStepPrepared.get().edgeCount;
-        return Result{};
-      });
 }
 
 auto Computing::_runGlobalSuperStepCommand() -> RunGlobalSuperStep {
@@ -110,11 +77,20 @@ auto Computing::_runGlobalSuperStep() -> futures::Future<Result> {
         }
         conductor._statistics.accumulate(
             globalSuperStepFinished.get().messageStats);
+        conductor._aggregators->resetValues();
+        for (auto aggregator : VPackArrayIterator(
+                 globalSuperStepFinished.get().aggregators.slice())) {
+          conductor._aggregators->aggregateValues(aggregator);
+        }
+        conductor._statistics.setActiveCounts(
+            globalSuperStepFinished.get().activeCount);
+        conductor._totalVerticesCount =
+            globalSuperStepFinished.get().vertexCount;
+        conductor._totalEdgesCount = globalSuperStepFinished.get().edgeCount;
         conductor._timing.gss.back().finish();
         LOG_PREGEL_CONDUCTOR("39385", DEBUG)
             << "Finished gss " << conductor._globalSuperstep << " in "
             << conductor._timing.gss.back().elapsedSeconds().count() << "s";
-        conductor._globalSuperstep++;
         return Result{};
       });
 }

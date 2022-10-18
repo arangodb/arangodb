@@ -94,17 +94,44 @@ auto inspect(Inspector& f, GlobalSuperStepPrepared& x) {
 
 struct GlobalSuperStepFinished {
   MessageStats messageStats;
+  uint64_t activeCount;
+  uint64_t vertexCount;
+  uint64_t edgeCount;
+  VPackBuilder aggregators;
   GlobalSuperStepFinished() noexcept = default;
-  GlobalSuperStepFinished(MessageStats messageStats)
-      : messageStats{std::move(messageStats)} {}
+  GlobalSuperStepFinished(MessageStats messageStats, uint64_t activeCount,
+                          uint64_t vertexCount, uint64_t edgeCount,
+                          VPackBuilder aggregators)
+      : messageStats{std::move(messageStats)},
+        activeCount{activeCount},
+        vertexCount{vertexCount},
+        edgeCount{edgeCount},
+        aggregators{std::move(aggregators)} {}
   auto add(GlobalSuperStepFinished const& other) -> void {
     messageStats.accumulate(other.messageStats);
+    activeCount += other.activeCount;
+    vertexCount += other.vertexCount;
+    edgeCount += other.edgeCount;
+    // TODO directly aggregate in here when aggregators have an inspector
+    VPackBuilder newAggregators;
+    {
+      VPackArrayBuilder ab(&newAggregators);
+      if (!aggregators.isEmpty()) {
+        newAggregators.add(VPackArrayIterator(aggregators.slice()));
+      }
+      newAggregators.add(other.aggregators.slice());
+    }
+    aggregators = newAggregators;
   }
 };
 
 template<typename Inspector>
 auto inspect(Inspector& f, GlobalSuperStepFinished& x) {
-  return f.object(x).fields(f.field("messageStats", x.messageStats));
+  return f.object(x).fields(f.field("messageStats", x.messageStats),
+                            f.field("activeCount", x.activeCount),
+                            f.field("vertexCount", x.vertexCount),
+                            f.field("edgeCount", x.edgeCount),
+                            f.field("aggregators", x.aggregators));
 }
 
 struct Stored {

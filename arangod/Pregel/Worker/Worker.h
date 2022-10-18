@@ -53,9 +53,6 @@ class IWorker : public std::enable_shared_from_this<IWorker> {
  public:
   virtual ~IWorker() = default;
   virtual auto loadGraph(LoadGraph const& graph) -> void = 0;
-  [[nodiscard]] virtual auto prepareGlobalSuperStep(
-      PrepareGlobalSuperStep const& data)
-      -> futures::Future<ResultT<GlobalSuperStepPrepared>> = 0;
   [[nodiscard]] virtual auto runGlobalSuperStep(RunGlobalSuperStep const& data)
       -> futures::Future<ResultT<GlobalSuperStepFinished>> = 0;
   [[nodiscard]] virtual auto store(Store const& message)
@@ -98,7 +95,6 @@ class Worker : public IWorker {
   enum WorkerState {
     DEFAULT,    // only initial
     IDLE,       // do nothing
-    PREPARING,  // before starting GSS
     COMPUTING,  // during a superstep
     DONE        // after calling finished
   };
@@ -107,7 +103,6 @@ class Worker : public IWorker {
   PregelFeature& _feature;
   std::atomic<WorkerState> _state = WorkerState::DEFAULT;
   WorkerConfig _config;
-  uint64_t _expectedGSS = 0;
   uint32_t _messageBatchSize = 500;
   std::unique_ptr<Algorithm<V, E, M>> _algorithm;
   std::unique_ptr<WorkerContext> _workerContext;
@@ -134,6 +129,7 @@ class Worker : public IWorker {
   std::vector<InCache<M>*> _inCaches;
   // preallocated ootgoing caches
   std::vector<OutCache<M>*> _outCaches;
+  Guarded<std::vector<PregelMessage>> _messagesForNextGss;
 
   GssObservables _currentGssObservables;
   Guarded<AllGssStatus> _allGssStatus;
@@ -172,8 +168,6 @@ class Worker : public IWorker {
 
   // ====== called by rest handler =====
   auto loadGraph(LoadGraph const& graph) -> void override;
-  auto prepareGlobalSuperStep(PrepareGlobalSuperStep const& data)
-      -> futures::Future<ResultT<GlobalSuperStepPrepared>> override;
   auto runGlobalSuperStep(RunGlobalSuperStep const& data)
       -> futures::Future<ResultT<GlobalSuperStepFinished>> override;
   auto store(Store const& message) -> futures::Future<ResultT<Stored>> override;
