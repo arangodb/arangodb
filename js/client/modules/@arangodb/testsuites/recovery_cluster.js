@@ -198,7 +198,7 @@ function runArangodRecovery (params, useEncryption) {
                       false,
                       0,
                       instanceInfo);
-    if (!instanceInfo.exitStatus.hasOwnProperty('exit') || (instanceInfo.exitStatus.exit !== 0)){
+    if (!instanceInfo.exitStatus.hasOwnProperty('exit') || (instanceInfo.exitStatus.exit !== 0)) {
       print('Nonzero exit code of test: ' + JSON.stringify(instanceInfo.exitStatus));
       params.instanceManager.shutdownInstance(false);
       params.instanceManager.destructor(false);
