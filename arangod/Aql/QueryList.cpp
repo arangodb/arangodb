@@ -195,7 +195,8 @@ void QueryList::remove(Query& query) {
       size_t const maxQueryStringLength =
           _maxQueryStringLength.load(std::memory_order_relaxed);
 
-      std::string q = extractQueryString(query, maxQueryStringLength);
+      std::string q =
+          query.extractQueryString(maxQueryStringLength, trackQueryString());
       std::string bindParameters;
       if (_trackBindVars) {
         // also log bind variables
@@ -304,7 +305,9 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
   // reserve room for some queries outside of the lock already,
   // so we reduce the possibility of having to reserve more room later
   result.reserve(16);
+
   auto const maxLength = _maxQueryStringLength.load(std::memory_order_relaxed);
+  auto showQueryString = trackQueryString();
   double const now = TRI_microtime();
 
   {
@@ -330,7 +333,7 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
       // query inside the Query object.
       result.emplace_back(
           query.id(), query.vocbase().name(), query.user(),
-          extractQueryString(query, maxLength),
+          query.extractQueryString(maxLength, showQueryString),
           _trackBindVars ? query.bindParameters() : nullptr,
           _trackDataSources ? query.collectionNames()
                             : std::vector<std::string>(),
@@ -377,17 +380,9 @@ size_t QueryList::count() {
   return _current.size();
 }
 
-std::string QueryList::extractQueryString(Query const& query,
-                                          size_t maxLength) const {
-  if (trackQueryString()) {
-    return query.queryString().extract(maxLength);
-  }
-  return "<hidden>";
-}
-
 void QueryList::killQuery(Query& query, size_t maxLength, bool silent) {
   std::string msg = "killing AQL query '" +
-                    extractQueryString(query, maxLength) +
+                    query.extractQueryString(maxLength, trackQueryString()) +
                     "', id: " + std::to_string(query.id()) + ", token: QRY" +
                     std::to_string(query.id());
 

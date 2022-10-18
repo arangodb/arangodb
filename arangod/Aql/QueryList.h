@@ -219,8 +219,6 @@ class QueryList {
   size_t count();
 
  private:
-  std::string extractQueryString(Query const& query, size_t maxLength) const;
-
   void killQuery(Query& query, size_t maxLength, bool silent);
 
   /// @brief default maximum number of slow queries to keep in list

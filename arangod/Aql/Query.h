@@ -234,6 +234,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief convert query data sources to a string representation
   void stringifyDataSources(std::string& out, std::string_view prefix) const;
 
+  /// @brief extract query string up to maxLength bytes. if show is false,
+  /// returns "<hidden>" regardless of maxLength
+  std::string extractQueryString(size_t maxLength, bool show) const;
+
  protected:
   /// @brief initializes the query
   void init(bool createProfile);

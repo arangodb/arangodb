@@ -1272,13 +1272,20 @@ void Query::logError(QueryResult const& queryResult) const {
 
   LOG_TOPIC("d499d", INFO, Logger::QUERIES)
       << "AQL " << (queryOptions().stream ? "streaming " : "") << "query '"
-      << _queryString.extract(maxLength) << "'" << bindParameters << dataSources
-      << ", database: " << vocbase().name() << ", user: " << user()
-      << ", id: " << _queryId << ", token: QRY" << _queryId
-      << ", peak memory usage: " << resourceMonitor().peak()
+      << extractQueryString(maxLength, feature.trackQueryString()) << "'"
+      << bindParameters << dataSources << ", database: " << vocbase().name()
+      << ", user: " << user() << ", id: " << _queryId << ", token: QRY"
+      << _queryId << ", peak memory usage: " << resourceMonitor().peak()
       << " failed with exit code " << queryResult.result.errorNumber() << ": "
       << queryResult.result.errorMessage()
       << ", took: " << Logger::FIXED(executionTime());
+}
+
+std::string Query::extractQueryString(size_t maxLength, bool show) const {
+  if (!show) {
+    return "<hidden>";
+  }
+  return queryString().extract(maxLength);
 }
 
 void Query::stringifyBindParameters(std::string& out, std::string_view prefix,
