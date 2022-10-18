@@ -166,8 +166,8 @@ function multiCollectionTestSuite() {
           for (let j = 0; j < cn; ++j) {
             let coln = `${eColl}_${i}_${j}`;
             if (!edgeCols.hasOwnProperty(coln)) {
-            edgeCols[coln] = [];
-          }
+              edgeCols[coln] = [];
+            }
           edgeCols[coln] = edgeCols[coln].concat(edges[i][j]);
           }
         }
