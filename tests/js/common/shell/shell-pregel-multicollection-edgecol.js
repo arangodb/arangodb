@@ -166,9 +166,9 @@ function multiCollectionTestSuite() {
           for (let j = 0; j < cn; ++j) {
             let coln = `${eColl}_${i}_${j}`;
             if (!edgeCols.hasOwnProperty(coln)) {
-              edgeCols[coln] = [];
-            }
-            edgeCols[coln].push(edges[i][j]);
+            edgeCols[coln] = [];
+          }
+          edgeCols[coln] = edgeCols[coln].concat(edges[i][j]);
           }
         }
 
@@ -185,7 +185,7 @@ function multiCollectionTestSuite() {
           if (!cols.hasOwnProperty(coln)) {
             cols[coln] = [];
           }
-          edgeCols[coln].push({ _from: from, _to: to, vertex: String(fromKey) });
+          edgeCols[coln] = edgeCols[coln].concat({ _from: from, _to: to, vertex: String(fromKey) });
         }
       }
       Object.keys(edgeCols).forEach(coln => {
