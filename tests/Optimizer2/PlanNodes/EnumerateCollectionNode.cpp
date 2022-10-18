@@ -85,7 +85,7 @@ TEST(Optimizer2EnumerateCollectionNode, construction) {
     // optional
     EXPECT_FALSE(enumerateCollectionNode.canThrow.has_value());
 
-    // outVar
+    // outVariable
     EXPECT_EQ(enumerateCollectionNode.outVariable.id, 0u);
     EXPECT_EQ(enumerateCollectionNode.outVariable.name, "x");
     EXPECT_TRUE(
