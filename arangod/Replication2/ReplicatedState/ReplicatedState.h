@@ -157,25 +157,31 @@ struct ProducerStreamProxy
     ADB_PROD_ASSERT(this->_logMethods != nullptr);
   }
 
+  // TODO waitForSync parameter is missing
   auto insert(EntryType const& v) -> LogIndex override {
-    auto builder = velocypack::Builder();
-    std::invoke(Serializer{}, streams::serializer_tag<EntryType>, v, builder);
-    // TODO avoid the copy
-    auto payload = LogPayload::createFromSlice(builder.slice());
     ADB_PROD_ASSERT(this->_logMethods != nullptr);
-    return this->_logMethods->insert(std::move(payload));
+    return this->_logMethods->insert(serialize(v));
   }
 
-  auto insertDeferred(EntryType const& t)
+  auto insertDeferred(EntryType const& v)
       -> std::pair<LogIndex, DeferredAction> override {
-    // TODO Delete this, it's superfluous
-    std::abort();
+    // TODO Remove this method, it should be superfluous
+    return this->_logMethods->insertDeferred(serialize(v));
   }
 
   auto methods() -> auto& { return *this->_logMethods; }
 
   auto resign() && -> decltype(this->_logMethods) {
     return std::move(this->_logMethods);
+  }
+
+ private:
+  auto serialize(EntryType const& v) -> LogPayload {
+    auto builder = velocypack::Builder();
+    std::invoke(Serializer{}, streams::serializer_tag<EntryType>, v, builder);
+    // TODO avoid the copy
+    auto payload = LogPayload::createFromSlice(builder.slice());
+    return payload;
   }
 };
 

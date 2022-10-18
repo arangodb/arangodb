@@ -65,7 +65,11 @@ struct IReplicatedLogMethodsBase {
 };
 
 struct IReplicatedLogLeaderMethods : IReplicatedLogMethodsBase {
+  // TODO waitForSync parameter is missing
   virtual auto insert(LogPayload) -> LogIndex = 0;
+  // TODO waitForSync parameter is missing
+  virtual auto insertDeferred(LogPayload)
+      -> std::pair<LogIndex, DeferredAction> = 0;
 };
 
 struct IReplicatedLogFollowerMethods : IReplicatedLogMethodsBase {
