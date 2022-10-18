@@ -35,6 +35,7 @@
 #include "utils/index_utils.hpp"
 #include "utils/singleton.hpp"
 #include "utils/type_limits.hpp"
+#include "norm.hpp"
 
 namespace {
 
@@ -368,9 +369,25 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
   // initialize optional columnstore
   if (irs::has_columnstore(meta)) {
     auto& columnstore_reader = reader->columnstore_reader_;
+    auto warmup = [&field_reader](field_id id,
+                                  const std::optional<std::string>& name) {
+      if (name) {
+        return name.value() == "_key\1pagerank\1number_of_shipments" ||
+               name.value() == "@_PK";
+      } else {
+        auto field = field_reader->field("clean_company_canon_name");
+        if (field) {
+          auto& features = field->meta().features;
+          auto it = features.find(irs::type<Norm2>::id());
+          if (it != features.end()) {
+            return it->second == id;
+          }
+        }
+      }
+      return false;
+    };
     columnstore_reader = codec.get_columnstore_reader();
-
-    if (!columnstore_reader->prepare(dir, meta)) {
+    if (!columnstore_reader->prepare(dir, meta, warmup)) {
       throw index_error(string_utils::to_string(
         "failed to find existing (according to meta) columnstore in segment '%s'",
         meta.name.c_str()

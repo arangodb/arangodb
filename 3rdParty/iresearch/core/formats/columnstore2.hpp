@@ -315,7 +315,8 @@ class reader final : public columnstore_reader {
  public:
   virtual bool prepare(
     const directory& dir,
-    const segment_meta& meta) override;
+    const segment_meta& meta,
+    const column_warmup_callback_f& warmup_callback) override;
 
   const column_header* header(field_id field) const;
 
@@ -342,7 +343,8 @@ class reader final : public columnstore_reader {
     const directory& dir,
     const segment_meta& meta,
     const std::string& filename,
-    const std::string& data_filename);
+    const std::string& data_filename,
+    const column_warmup_callback_f& warmup_callback);
 
   std::vector<column_ptr> sorted_columns_;
   std::vector<const column_ptr::element_type*> columns_;

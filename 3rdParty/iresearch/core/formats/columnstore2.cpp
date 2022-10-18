@@ -1602,7 +1602,8 @@ void reader::prepare_data(const directory& dir, const std::string& filename) {
 // FIXME return result???
 void reader::prepare_index(const directory& dir, const segment_meta& meta,
                            const std::string& filename,
-                           const std::string& data_filename) {
+                           const std::string& data_filename,
+                           const column_warmup_callback_f& warmup_callback) {
   auto index_in = dir.open(filename, irs::IOAdvice::READONCE_SEQUENTIAL);
 
   if (!index_in) {
@@ -1690,7 +1691,7 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
       // check hotness
 
       bool hot = hdr.type != ColumnType::kMask &&
-		             (hdr.id == 1 || hdr.id == 0);
+		             warmup_callback(hdr.id, name);
       auto factories = hot ? kHotFactories : kFactories;
       auto column = factories[idx](std::move(name), std::move(payload), std::move(hdr),
                            std::move(index), *index_in, *data_in_,
@@ -1725,9 +1726,11 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
               data_filename.c_str())};
         }
       }
+      std::cout << "Making buffered " << cb->header().id << std::endl;
       cb->make_buffered(
           *direct_data_input,
           range(sorted_columns.data() + i + 1, sorted_columns.size() - i - 1));
+      std::cout << "Finished buffered " << cb->header().id << std::endl;
     }
   }
   format_utils::check_footer(*index_in, checksum);
@@ -1739,7 +1742,8 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
   assert(columns_.size() == sorted_columns_.size());
 }
 
-bool reader::prepare(const directory& dir, const segment_meta& meta) {
+bool reader::prepare(const directory& dir, const segment_meta& meta,
+                     const column_warmup_callback_f& warmup_callback) {
   bool exists;
   const auto data_filename = data_file_name(meta.name);
 
@@ -1770,7 +1774,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
         "columnstore index file '%s' is missing", index_filename.c_str())};
   }
 
-  prepare_index(dir, meta, index_filename, data_filename);
+  prepare_index(dir, meta, index_filename, data_filename, warmup_callback);
 
   return true;
 }

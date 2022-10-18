@@ -372,11 +372,16 @@ struct IRESEARCH_API columnstore_reader {
 
   virtual ~columnstore_reader() = default;
 
+  using column_warmup_callback_f = std::function<bool(field_id id, const std::optional<std::string>& name)>;
+  static bool nothing_to_warmup(field_id, const std::optional<std::string>&) {
+    return false;
+  }
   // Returns true if conlumnstore is present in a segment, false - otherwise.
   // May throw `io_error` or `index_error`.
   virtual bool prepare(
     const directory& dir,
-    const segment_meta& meta) = 0;
+    const segment_meta& meta,
+    const column_warmup_callback_f& warmup_callback = nothing_to_warmup) = 0;
 
   virtual bool visit(const column_visitor_f& visitor) const = 0;
 
