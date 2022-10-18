@@ -1047,6 +1047,21 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
         db._dropView(queryView);
       }
     };
+  suite.testExistsFilter = function () {
+      var expected = new Set();
+      expected.add("full");
+      expected.add("half");
+      expected.add("other half");
+      expected.add("quarter");
+
+      var result = db._query("FOR doc IN UnitTestsView SEARCH EXISTS(doc.text) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, expected.size); 
+      result.forEach(function(res) {
+        assertTrue(expected.delete(res.name));
+      });
+      assertEqual(expected.size, 0);
+    };
   return suite;
 });
 return jsunity.done();

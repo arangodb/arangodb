@@ -509,22 +509,6 @@ return function (args) {
         assertEqual("baz", result[1].a);
       }
     },
-    testExistsFilter : function () {
-      var expected = new Set();
-      expected.add("full");
-      expected.add("half");
-      expected.add("other half");
-      expected.add("quarter");
-
-      var result = db._query("FOR doc IN UnitTestsView SEARCH EXISTS(doc.text) OPTIONS { waitForSync : true } RETURN doc").toArray();
-
-      assertEqual(result.length, expected.size); 
-      result.forEach(function(res) {
-        assertTrue(expected.delete(res.name));
-      });
-      assertEqual(expected.size, 0);
-    },
-
     testExistsFilterByAnalyzer : function () {
       var expected = new Set();
       expected.add("full");
@@ -572,13 +556,11 @@ return function (args) {
       });
       assertEqual(expected.size, 0);
     },
-
     testExistsFilterByType : function () {
       var result = db._query("FOR doc IN UnitTestsView SEARCH EXISTS(doc.text, 'type') OPTIONS { waitForSync : true } RETURN doc").toArray();
 
       assertEqual(result.length, 0);
     },
-
     testExistsFilterByTypeNull : function () {
       var expected = new Set();
       expected.add("null");

@@ -174,25 +174,25 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
       );
 
       for (let i = 0; i < 5; i++) {
-        c.save({ a: "foo", b: "bar", c: i });
-        c.save({ a: "foo", b: "baz", c: i });
-        c.save({ a: "bar", b: "foo", c: i });
-        c.save({ a: "baz", b: "foo", c: i });
+        c.save({ a: "foo", b: "bar", c: i, anotherNullField: "not null" });
+        c.save({ a: "foo", b: "baz", c: i, anotherNullField: "not null" });
+        c.save({ a: "bar", b: "foo", c: i, anotherNullField: "not null" });
+        c.save({ a: "baz", b: "foo", c: i, anotherNullField: "not null" });
 
         c2.save({ a: "foo", b: "bar", c: i });
         c2.save({ a: "bar", b: "foo", c: i });
         c2.save({ a: "baz", b: "foo", c: i });
       }
 
-      c.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
-      c.save({ name: "half", text: "quick fox over lazy" });
-      c.save({ name: "other half", text: "the brown jumps the dog" });
-      c.save({ name: "quarter", text: "quick quick over" });
+      c.save({ name: "full", text: "the quick brown fox jumps over the lazy dog", anotherNullField: "not null" });
+      c.save({ name: "half", text: "quick fox over lazy", anotherNullField: "not null" });
+      c.save({ name: "other half", text: "the brown jumps the dog", anotherNullField: "not null" });
+      c.save({ name: "quarter", text: "quick quick over", anotherNullField: "not null" });
 
-      c.save({ name: "numeric", anotherNumericField: 0 });
+      c.save({ name: "numeric", anotherNumericField: 0, anotherNullField: "not null" });
       c.save({ name: "null", anotherNullField: null });
-      c.save({ name: "bool", anotherBoolField: true });
-      c.save({ _key: "foo", xyz: 1 });
+      c.save({ name: "bool", anotherBoolField: true, anotherNullField: "not null" });
+      c.save({ _key: "foo", xyz: 1, anotherNullField: "not null" });
     };
 
   suite.tearDown = function () {
