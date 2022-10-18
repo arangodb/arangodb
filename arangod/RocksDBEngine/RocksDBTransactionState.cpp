@@ -183,6 +183,7 @@ rocksdb::SequenceNumber RocksDBTransactionState::prepareCollections() {
 
 void RocksDBTransactionState::commitCollections(
     rocksdb::SequenceNumber lastWritten) {
+  TRI_IF_FAILURE("DisableCommitCounts") { return; }
   TRI_ASSERT(lastWritten > 0);
   for (auto& trxColl : _collections) {
     auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
@@ -194,17 +195,15 @@ void RocksDBTransactionState::commitCollections(
     uint64_t numRemoves = coll->numRemoves();
     coll->commitCounts(id(), lastWritten);
     RocksDBTransactionMethods* methods = rocksdbMethods(trxColl->id());
-    // if the counters were resetted, means there was no failure, otherwise,
-    // don't update the globals
-    if (coll->numInserts() == 0 && coll->numUpdates() == 0 &&
-        coll->numRemoves() == 0) {
-      reinterpret_cast<RocksDBTrxBaseMethods*>(methods)->decreaseNumInserts(
-          numInserts);
-      reinterpret_cast<RocksDBTrxBaseMethods*>(methods)->decreaseNumUpdates(
-          numUpdates);
-      reinterpret_cast<RocksDBTrxBaseMethods*>(methods)->decreaseNumRemoves(
-          numRemoves);
-    }
+    TRI_ASSERT(coll->numInserts() == 0);
+    TRI_ASSERT(coll->numUpdates() == 0);
+    TRI_ASSERT(coll->numRemoves() == 0);
+    reinterpret_cast<RocksDBTrxBaseMethods*>(methods)->decreaseNumInserts(
+        numInserts);
+    reinterpret_cast<RocksDBTrxBaseMethods*>(methods)->decreaseNumUpdates(
+        numUpdates);
+    reinterpret_cast<RocksDBTrxBaseMethods*>(methods)->decreaseNumRemoves(
+        numRemoves);
   }
 }
 

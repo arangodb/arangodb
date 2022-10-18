@@ -122,14 +122,14 @@ class Context {
 
   /// @brief sets the transaction to be streaming (used to know whether or not
   /// can read from query cache)
-  void setStreaming() {
+  void setStreaming() noexcept {
     TRI_ASSERT(_transaction.isJStransaction == false);
     _transaction.isStreamingTransaction = true;
   }
 
   /// @brief sets the transaction to be JS (used to know whether or not
   /// can read from query cache)
-  void setJStransaction() {
+  void setJStransaction() noexcept {
     TRI_ASSERT(_transaction.isStreamingTransaction == false);
     _transaction.isJStransaction = true;
   }
