@@ -192,7 +192,8 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   bool acquireNewSnapshot = false;
   {
     // Invalidate snapshot status
-    if (req.prevLogEntry == TermIndexPair{}) {
+    if (req.prevLogEntry == TermIndexPair{} &&
+        req.entries.front().entry().logIndex() > LogIndex{1}) {
       LOG_CTX("6262d", INFO, _loggerContext)
           << "Log truncated - invalidating snapshot";
       if (auto res = dataGuard->_logCore->updateSnapshotState(
