@@ -1,6 +1,9 @@
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
+* Log the documents counts on leader and follower shards at the end of each
+  successful shard synchronization.
+
 * Changed the encoding of revision ids returned by the following REST APIs:
   - GET /_api/collection/<collection-name>/revision: the revision id was
     previously returned as numeric value, and now it will be returned as
