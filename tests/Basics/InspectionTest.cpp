@@ -36,10 +36,12 @@
 #include <velocypack/ValueType.h>
 #include <velocypack/velocypack-memory.h>
 
+#include "Basics/VelocyPackStringLiteral.h"
 #include "Inspection/Access.h"
 #include "Inspection/Format.h"
 #include "Inspection/Types.h"
 #include "Inspection/VPack.h"
+#include "Inspection/VPackWithStatusT.h"
 #include "Inspection/VPackLoadInspector.h"
 #include "Inspection/VPackSaveInspector.h"
 #include "Inspection/ValidateInspector.h"
@@ -3020,5 +3022,49 @@ TEST(ValidateInspectorContext, validate_with_context) {
     EXPECT_EQ("i", result.path());
   }
 }
+
+using namespace arangodb::velocypack;
+
+struct StatusTTest {
+  std::string s;
+  size_t id;
+  bool operator==(StatusTTest const&) const = default;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, StatusTTest& x) {
+  return f.object(x).fields(f.field("s", x.s), f.field("id", x.id));
+}
+
+
+TEST(VPackWithStatus, statust_test_deserialize) {
+  auto testSlice = R"({
+    "s": "ReturnNode",
+    "id": 3
+  })"_vpack;
+
+  auto res = deserializeWithStatusT<StatusTTest>(testSlice);
+
+  ASSERT_TRUE(res.ok()) << fmt::format("Something went wrong: {}", res.error());
+
+  EXPECT_EQ(res->s, "ReturnNode");
+  EXPECT_EQ(res->id, 3u);
+}
+
+TEST(VPackWithStatus, statust_test_deserialize_fail) {
+  auto testSlice = R"({
+    "s": "ReturnNode",
+    "id": 3,
+    "fehler": 2
+  })"_vpack;
+
+  auto res = deserializeWithStatusT<StatusTTest>(testSlice);
+
+  ASSERT_FALSE(res.ok()) << fmt::format("Did not detect the error we exepct");
+
+  EXPECT_EQ(res.error(), "Found unexpected attribute 'fehler'");
+}
+
+
 
 }  // namespace
