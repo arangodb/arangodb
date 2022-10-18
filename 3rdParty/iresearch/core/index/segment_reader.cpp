@@ -379,7 +379,7 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
         std::cout << std::endl;
         return res;
       } else {
-        auto field = field_reader->field("clean_company_canon_name");
+        auto field = field_reader->field("clean_company_canon_name\1text_en");
         if (field) {
           auto& features = field->meta().features;
           auto it = features.find(irs::type<Norm2>::id());
@@ -388,8 +388,16 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
               std::cout << "HOT STORED:" << id << std::endl;
               return true;
             }
+          } else {
+            it = features.find(irs::type<Norm>::id());
+            if (it != features.end()) {
+              if (it->second == id) {
+                std::cout << "HOT STORED:" << id << std::endl;
+                return true;
+              }
+            }
           }
-        }
+        } 
       }
       return false;
     };
