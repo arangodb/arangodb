@@ -62,18 +62,13 @@ function runSetup () {
   // we need to wait long enough for the DatabaseManagerThread to 
   // physically carry out the deletion
   let path = fs.join(appPath, 'UnitTestsRecovery2');
-  let gone = false;
   let tries = 0;
-  while (++tries < 120) {
+  while (++tries < 60) {
     if (!fs.isDirectory(path)) {
-      gone = true;
       require("console").log("database directory for UnitTestsRecovery2 is gone");
       break;
     }
     internal.wait(1, false);
-  }
-  if (!gone) {
-    throw new Error(`"${path}" did not disappear in 120s!`);
   }
   internal.debugTerminate('crashing server');
 }
