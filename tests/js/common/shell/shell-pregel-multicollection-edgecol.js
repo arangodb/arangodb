@@ -185,7 +185,7 @@ function multiCollectionTestSuite() {
           if (!cols.hasOwnProperty(coln)) {
             cols[coln] = [];
           }
-          edgeCols[coln] = edgeCols[coln].concat({ _from: from, _to: to, vertex: String(fromKey) });
+          edgeCols[coln].push({ _from: from, _to: to, vertex: String(fromKey) });
         }
       }
       Object.keys(edgeCols).forEach(coln => {
