@@ -25,6 +25,7 @@
 
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
+#include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
 #include <Basics/Exceptions.h>
@@ -35,7 +36,8 @@ using namespace arangodb::replication2::replicated_state::document;
 DocumentFollowerState::DocumentFollowerState(
     std::unique_ptr<DocumentCore> core,
     std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory)
-    : _transactionHandler(
+    : _networkHandler(handlersFactory->createNetworkHandler(core->getGid())),
+      _transactionHandler(
           handlersFactory->createTransactionHandler(core->getGid())),
       _guardedData(std::move(core)) {}
 
@@ -52,9 +54,26 @@ auto DocumentFollowerState::resign() && noexcept
 }
 
 auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
-                                            LogIndex) noexcept
+                                            LogIndex waitForIndex) noexcept
     -> futures::Future<Result> {
-  return {TRI_ERROR_NO_ERROR};
+  return _guardedData
+      .doUnderLock(
+          [self = shared_from_this(), &destination, waitForIndex](
+              auto& data) -> futures::Future<ResultT<velocypack::SharedSlice>> {
+            if (data.didResign()) {
+              return ResultT<velocypack::SharedSlice>::error(
+                  TRI_ERROR_CLUSTER_NOT_FOLLOWER);
+            }
+
+            // A follower may request a snapshot before leadership has been
+            // established. A retry will occur in that case.
+            auto leaderInterface =
+                self->_networkHandler->getLeaderInterface(destination);
+            return leaderInterface->getSnapshot(waitForIndex);
+          })
+      .thenValue([](auto&& result) -> futures::Future<Result> {
+        return result.result();
+      });
 }
 
 auto DocumentFollowerState::applyEntries(
