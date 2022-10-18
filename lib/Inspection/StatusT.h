@@ -76,13 +76,13 @@ struct StatusT {
 
   [[nodiscard]] operator*() &&->T&& { return std::move(get()); }
 
-  explicit operator bool() const except requires(!std::is_same_v<T, bool>) {
+  explicit operator bool() const noexcept requires(!std::is_same_v<T, bool>) {
     return ok();
   }
 
  private:
-  StatusT(std::variant<Status, T>&& val) : _contained(std::move(val)) {}
-  std::variant<Status, T> _contained;
+  StatusT(Contained&& val) : _contained(std::move(val)) {}
+  Contained _contained;
 };
 
 }  // namespace arangodb::inspection
