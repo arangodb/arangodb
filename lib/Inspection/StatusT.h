@@ -87,8 +87,8 @@ struct StatusT {
     return ok();
   }
 
- private : StatusT(std::variant<Status, T>&& val)
-     : _contained(std::move(val)) {}
+ private:
+  StatusT(std::variant<Status, T>&& val) : _contained(std::move(val)) {}
   std::variant<Status, T> _contained;
 };
 
