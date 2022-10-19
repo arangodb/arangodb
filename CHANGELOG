@@ -4,10 +4,10 @@ devel
 * Added startup option `--query.log-failed` to optionally log all failed AQL
   queries to the server log. The option is turned off by default.
 
-* Added startup option `--query.max-query-string-log-length` to control the
-  maximum length of logged query strings (this allows truncating overly long
-  query strings to a reasonable length). Previously the cutoff length was
-  hard-coded.
+* Added startup option `--query.max-query-artefact-log-length` to control the
+  maximum length of logged query strings and bind parameter values.
+  This allows truncating overly long query strings and bind parameter values
+  to a reasonable length. Previously the cutoff length was hard-coded.
 
 * Fixed GitHub issue #17291: Fixed a server crash which could occur in case an
   AQL query using a PRUNE or FILTER statement, combined with UDFs (user defined
