@@ -410,15 +410,15 @@ void QueryRegistryFeature::collectOptions(
       .setDeprecatedIn(30900);
 
   options
-      ->addOption(
-          "--query.max-query-string-log-length",
-          "maximum length of query strings in logs before they get truncated",
-          new SizeTParameter(&_maxQueryStringLength),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnAgent,
-              arangodb::options::Flags::OnCoordinator,
-              arangodb::options::Flags::OnSingle))
+      ->addOption("--query.max-artefact-log-length",
+                  "maximum length of query strings and bind parameter values "
+                  "in logs before they get truncated",
+                  new SizeTParameter(&_maxQueryStringLength),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31100);
 
   options
