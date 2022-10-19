@@ -383,8 +383,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   // via a debug failure. This should not
   // retrigger a kill.
   bool _wasDebugKilled;
-
-  bool _wasDestroyed;
 #endif
 
   /// @brief was this query killed (can only be set once)
