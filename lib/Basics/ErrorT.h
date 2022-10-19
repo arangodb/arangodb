@@ -46,25 +46,33 @@ struct ErrorT {
     return ErrorT(Contained(std::in_place_index<1>, std::move(val)));
   }
 
+  template<typename... Args>
+  [[nodiscard]] auto static error(Args... args) -> ErrorT<Error, T> {
+    return ErrorT(
+        Contained(std::in_place_index<0>, std::forward<Args>(args)...));
+  }
+
+  template<typename... Args>
+  [[nodiscard]] auto static ok(Args... args) -> ErrorT<Error, T> {
+    return ErrorT(
+        Contained(std::in_place_index<1>, std::forward<Args>(args)...));
+  }
+
   ErrorT(ErrorT const& other) = delete;
   ErrorT(ErrorT&& other) = default;
 
-  // T is default constructible, otherwise inspection wouldn't work
-  ErrorT() requires(!std::is_nothrow_default_constructible_v<T>)
+  ErrorT() requires(std::is_nothrow_default_constructible_v<T>)
       : _contained{T{}} {}
 
   [[nodiscard]] auto ok() const noexcept -> bool {
-    return std::holds_alternative<T>(_contained);
+    return _contained.index() == 1;
   }
-  [[nodiscard]] auto error() -> std::string const& {
-    return std::get<0>(_contained).error();
-  }
-  [[nodiscard]] auto path() -> std::string const& {
-    return std::get<0>(_contained).path();
+  [[nodiscard]] auto error() const -> Error const& {
+    return std::get<0>(_contained);
   }
 
   [[nodiscard]] auto get() const -> T const& { return std::get<1>(_contained); }
-  [[nodiscard]] auto get() -> T& { return std::get<T>(_contained); }
+  [[nodiscard]] auto get() -> T& { return std::get<1>(_contained); }
 
   [[nodiscard]] explicit operator bool() const noexcept
       requires(!std::convertible_to<T, bool>) {

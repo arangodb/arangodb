@@ -1,4 +1,4 @@
-add_executable(arangodbtests_errors
+add_executable(arangodbtests_errors EXCLUDE_FROM_ALL
 	main.cpp
 	ErrorTTest.cpp)
 
