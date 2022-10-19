@@ -126,6 +126,8 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _registeredQueryInTrx(false),
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
       _wasDebugKilled(false),
+#endif
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _wasDestroyed(false),
 #endif
       _allowDirtyReads(false),
