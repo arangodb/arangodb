@@ -20,21 +20,38 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CollectionMutableProperties.h"
-
-#include "Basics/VelocyPackHelper.h"
+#include "ClusteringProperties.h"
+#include "Basics/Result.h"
 
 using namespace arangodb;
 
-bool CollectionMutableProperties::operator==(
-    CollectionMutableProperties const& other) const {
-  if (!basics::VelocyPackHelper::equal(computedValues.slice(),
-                                       other.computedValues.slice(), true)) {
-    return false;
-  }
-  if (!basics::VelocyPackHelper::equal(schema.slice(), other.schema.slice(),
-                                       true)) {
-    return false;
-  }
-  return true;
+void ClusteringProperties::applyDatabaseDefaults(DatabaseConfiguration const& config) {
+  ClusteringMutableProperties::applyDatabaseDefaults(config);
+  ClusteringConstantProperties::applyDatabaseDefaults(config);
 }
+
+[[nodiscard]] arangodb::Result ClusteringProperties::validateDatabaseConfiguration(
+    DatabaseConfiguration const& config) const {
+  auto mutableRes = ClusteringMutableProperties::validateDatabaseConfiguration(config);
+  if (!mutableRes.ok()) {
+    return mutableRes;
+  }
+  return ClusteringConstantProperties::validateDatabaseConfiguration(config);
+}
+
+/*
+
+ if (numberOfShards != other.numberOfShards) {
+ return false;
+}
+if (distributeShardsLike != other.distributeShardsLike) {
+ return false;
+}
+if (shardingStrategy != other.shardingStrategy) {
+ return false;
+}
+if (shardKeys != other.shardKeys) {
+  return false;
+}
+
+ */

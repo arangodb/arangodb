@@ -45,6 +45,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>

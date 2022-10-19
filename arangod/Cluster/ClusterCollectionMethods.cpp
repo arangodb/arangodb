@@ -344,8 +344,8 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
     CreateCollectionBody const& col,
     std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>&
         allUsedDistrbitions) -> std::shared_ptr<IShardDistributionFactory> {
-  if (col.constantProperties.distributeShardsLike.has_value()) {
-    auto distLike = col.constantProperties.distributeShardsLike.value();
+  if (col.distributeShardsLike.has_value()) {
+    auto distLike = col.distributeShardsLike.value();
     // Empty value has to be rejected by invariants beforehand, assert here just
     // in case.
     TRI_ASSERT(!distLike.empty());
@@ -381,15 +381,17 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
     // Add the Leader to the distribution List
     allUsedDistrbitions.emplace(distLike, distribution);
     return distribution;
-  } else if (col.mutableProperties.replicationFactor == 0) {
+  } else if (col.replicationFactor == 0) {
     // We are a Satellite collection, use Satellite sharding
     auto distribution = std::make_shared<SatelliteDistribution>();
-    allUsedDistrbitions.emplace(col.mutableProperties.name, distribution);
+    allUsedDistrbitions.emplace(col.name, distribution);
     return distribution;
   } else {
     // Just distribute evenly
-    auto distribution = std::make_shared<EvenDistribution>(col.constantProperties.numberOfShards, col.mutableProperties.replicationFactor, col.options.avoidServers);
-    allUsedDistrbitions.emplace(col.mutableProperties.name, distribution);
+    auto distribution = std::make_shared<EvenDistribution>(
+        col.numberOfShards.value(), col.replicationFactor.value(),
+        col.avoidServers);
+    allUsedDistrbitions.emplace(col.name, distribution);
     return distribution;
   }
 }
@@ -432,8 +434,8 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   buildingFlags.coordinatorName = serverState->getId();
   buildingFlags.rebootId = serverState->getRebootId();
   for (auto& c : collections) {
-    auto shards = generateShardNames(feature.clusterInfo(),
-                                     c.constantProperties.numberOfShards);
+    auto shards =
+        generateShardNames(feature.clusterInfo(), c.numberOfShards.value());
     auto distributionType = selectDistributeType(
         feature.clusterInfo(), vocbase.name(), c, shardDistributionList);
     collectionPlanEntries.emplace_back(toPlanEntry(

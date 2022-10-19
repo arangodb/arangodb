@@ -92,13 +92,7 @@ TEST_F(CollectionConstantPropertiesTest, test_minimal_user_input) {
   EXPECT_EQ(testee->type, TRI_col_type_e::TRI_COL_TYPE_DOCUMENT);
   EXPECT_FALSE(testee->isSystem);
   EXPECT_FALSE(testee->cacheEnabled);
-  EXPECT_EQ(testee->numberOfShards, 1);
-  EXPECT_FALSE(testee->distributeShardsLike.has_value());
   EXPECT_FALSE(testee->smartJoinAttribute.has_value());
-  // NOTE: We may want to add some context here
-  EXPECT_EQ(testee->shardingStrategy, "hash");
-  ASSERT_EQ(testee->shardKeys.size(), 1);
-  EXPECT_EQ(testee->shardKeys.at(0), StaticStrings::KeyString);
   {
     // Key Options have a more complex default value
     ASSERT_TRUE(testee->keyOptions.slice().isObject());
@@ -145,45 +139,14 @@ TEST_F(CollectionConstantPropertiesTest, test_collection_type) {
   GenerateFailsOnObject(type);
 }
 
-TEST_F(CollectionConstantPropertiesTest, test_shardingStrategy) {
-  auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,
-                                 std::string const& expected) {
-    auto testee = parse(body.slice());
-    EXPECT_EQ(testee->shardingStrategy, expected)
-        << "Parsing error in " << body.toJson();
-  };
-  std::vector<std::string> allowedStrategies{"",
-                                             "hash",
-                                             "enterprise-hash-smart-edge",
-                                             "community-compat",
-                                             "enterprise-compat",
-                                             "enterprise-smart-edge-compat"};
-
-  for (auto const& strategy : allowedStrategies) {
-    shouldBeEvaluatedTo(
-        createMinimumBodyWithOneValue("shardingStrategy", strategy), strategy);
-  }
-
-  GenerateFailsOnBool(shardingStrategy);
-  GenerateFailsOnNonEmptyString(shardingStrategy);
-  GenerateFailsOnInteger(shardingStrategy);
-  GenerateFailsOnDouble(shardingStrategy);
-  GenerateFailsOnArray(shardingStrategy);
-  GenerateFailsOnObject(shardingStrategy);
-}
-
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isSystem);
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isSmart);
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isDisjoint);
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, cacheEnabled);
 
-GeneratePositiveIntegerAttributeTest(CollectionConstantPropertiesTest,
-                                     numberOfShards);
 GenerateOptionalStringAttributeTest(CollectionConstantPropertiesTest,
                                     smartGraphAttribute);
 
-GenerateOptionalStringAttributeTest(CollectionConstantPropertiesTest,
-                                    distributeShardsLike);
 GenerateOptionalStringAttributeTest(CollectionConstantPropertiesTest,
                                     smartJoinAttribute);
 

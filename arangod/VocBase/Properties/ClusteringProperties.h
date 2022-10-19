@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,28 +17,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <chrono>
-#include <map>
+#include "VocBase/Properties/ClusteringMutableProperties.h"
+#include "VocBase/Properties/ClusteringConstantProperties.h"
 
 namespace arangodb {
-namespace network {
+class Result;
 
-struct Response;
-typedef std::string DestinationId;
+struct ClusteringProperties : public ClusteringMutableProperties, public ClusteringConstantProperties {
+  bool operator==(ClusteringProperties const& other) const = default;
 
-using Headers = std::map<std::string, std::string>;
-using Timeout = std::chrono::duration<double>;
+  void applyDatabaseDefaults(DatabaseConfiguration const& config);
 
-struct EndpointSpec {
-  std::string shardId;
-  std::string serverId;
-  std::string endpoint;
+  [[nodiscard]] arangodb::Result validateDatabaseConfiguration(
+      DatabaseConfiguration const& config) const;
 };
 
-}  // namespace network
-}  // namespace arangodb
+template<class Inspector>
+auto inspect(Inspector& f, ClusteringProperties& props) {
+  return f.object(props).fields(
+      f.template embedFields<ClusteringMutableProperties>(props),
+      f.template embedFields<ClusteringConstantProperties>(props));
+}
+}

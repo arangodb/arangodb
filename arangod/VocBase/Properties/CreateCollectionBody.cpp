@@ -22,8 +22,8 @@
 
 #include "CreateCollectionBody.h"
 
+#include "VocBase/Properties/DatabaseConfiguration.h"
 #include "Inspection/VPack.h"
-#include "Utilities/NameValidator.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
@@ -31,77 +31,25 @@
 using namespace arangodb;
 
 namespace {
-CreateCollectionBody initWithDefaults(
-    CreateCollectionBody::DatabaseConfiguration const& config,
-    std::string const& name) {
+CreateCollectionBody initWithDefaults(DatabaseConfiguration const& config,
+                                      std::string const& name) {
   CreateCollectionBody res;
   // Inject certain default values.
-  res.mutableProperties.name = name;
-
-  // This will make sure the default configuration for Sharding attributes are
-  // applied
-  res.constantProperties.numberOfShards = config.defaultNumberOfShards;
-  res.mutableProperties.replicationFactor = config.defaultReplicationFactor;
-  res.mutableProperties.writeConcern = config.defaultWriteConcern;
-  if (!config.defaultDistributeShardsLike.empty()) {
-    res.constantProperties.distributeShardsLike =
-        config.defaultDistributeShardsLike;
-  }
-
+  res.name = name;
+  res.applyDatabaseDefaults(config);
   return res;
 }
 
+}  // namespace
+
+CreateCollectionBody::CreateCollectionBody() {}
+
 ResultT<CreateCollectionBody> parseAndValidate(
-    CreateCollectionBody::DatabaseConfiguration const& config, VPackSlice input,
+    DatabaseConfiguration const& config, VPackSlice input,
     std::string const& defaultName,
     std::function<void(CreateCollectionBody&)> applyOnSuccess) {
   try {
     CreateCollectionBody res = initWithDefaults(config, defaultName);
-
-    auto status = velocypack::deserializeWithStatus(
-        input, res.mutableProperties, {.ignoreUnknownFields = true});
-    if (!status.ok()) {
-      if (status.path() == "name") {
-        // Special handling to be backwards compatible error reporting
-        // on "name"
-        return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
-      }
-      return Result{
-          TRI_ERROR_BAD_PARAMETER,
-          status.error() +
-              (status.path().empty() ? "" : " on path " + status.path())};
-    }
-
-    status = velocypack::deserializeWithStatus(input, res.constantProperties,
-                                               {.ignoreUnknownFields = true});
-    if (!status.ok()) {
-      if (status.path() == StaticStrings::SmartJoinAttribute) {
-        return Result{TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE, status.error()};
-      }
-      return Result{
-          TRI_ERROR_BAD_PARAMETER,
-          status.error() +
-              (status.path().empty() ? "" : " on path " + status.path())};
-    }
-    status = velocypack::deserializeWithStatus(input, res.internalProperties,
-                                               {.ignoreUnknownFields = true});
-    if (!status.ok()) {
-      return Result{
-          TRI_ERROR_BAD_PARAMETER,
-          status.error() +
-              (status.path().empty() ? "" : " on path " + status.path())};
-    }
-    status = velocypack::deserializeWithStatus(input, res.options,
-                                               {.ignoreUnknownFields = true});
-    if (!status.ok()) {
-      return Result{
-          TRI_ERROR_BAD_PARAMETER,
-          status.error() +
-              (status.path().empty() ? "" : " on path " + status.path())};
-    }
-    applyOnSuccess(res);
-    return res;
-#if false
     auto status = velocypack::deserializeWithStatus(input, res);
     if (status.ok()) {
       // TODO: We can actually call validateDatabaseConfiguration
@@ -121,7 +69,6 @@ ResultT<CreateCollectionBody> parseAndValidate(
         TRI_ERROR_BAD_PARAMETER,
         status.error() +
             (status.path().empty() ? "" : " on path " + status.path())};
-#endif
   } catch (basics::Exception const& e) {
     return Result{e.code(), e.message()};
   } catch (std::exception const& e) {
@@ -129,16 +76,8 @@ ResultT<CreateCollectionBody> parseAndValidate(
   }
 }
 
-}  // namespace
-
-CreateCollectionBody::DatabaseConfiguration::DatabaseConfiguration(
-    std::function<DataSourceId()> _idGenerator)
-    : idGenerator{std::move(_idGenerator)} {}
-
-CreateCollectionBody::CreateCollectionBody() {}
-
 ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
-    VPackSlice input, DatabaseConfiguration config) {
+    VPackSlice input, DatabaseConfiguration const& config) {
   if (!input.isObject()) {
     // Special handling to be backwards compatible error reporting
     // on "name"
@@ -146,16 +85,15 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
   }
   return ::parseAndValidate(config, input, StaticStrings::Empty,
                             [&config](CreateCollectionBody& col) {
-                              if (col.internalProperties.id.empty()) {
-                                col.internalProperties.id =
-                                    config.idGenerator();
+                              if (col.id.empty()) {
+                                col.id = config.idGenerator();
                               }
                             });
 }
 
 ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
     VPackSlice properties, std::string const& name, TRI_col_type_e type,
-    DatabaseConfiguration config) {
+    DatabaseConfiguration const& config) {
   if (name.empty()) {
     // Special handling to be backwards compatible error reporting
     // on "name"
@@ -167,11 +105,10 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
                               // As we hand in an enum the type has to be valid.
                               // TODO: Should we silently do this?
                               // or should we throw an illegal use error?
-                              col.constantProperties.type = type;
-                              col.mutableProperties.name = name;
-                              if (col.internalProperties.id.empty()) {
-                                col.internalProperties.id =
-                                    config.idGenerator();
+                              col.type = type;
+                              col.name = name;
+                              if (col.id.empty()) {
+                                col.id = config.idGenerator();
                               }
                             });
 }
@@ -190,84 +127,8 @@ CreateCollectionBody::toCreateCollectionProperties(
 }
 
 arangodb::Result CreateCollectionBody::validateDatabaseConfiguration(
-    DatabaseConfiguration config) const {
-  //  Check name is allowed
-  if (!CollectionNameValidator::isAllowedName(constantProperties.isSystem,
-                                              config.allowExtendedNames,
-                                              mutableProperties.name)) {
-    return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
-  }
-  if (config.shouldValidateClusterSettings) {
-    if (config.maxNumberOfShards > 0 &&
-        constantProperties.numberOfShards > config.maxNumberOfShards) {
-      return {TRI_ERROR_CLUSTER_TOO_MANY_SHARDS,
-              std::string("too many shards. maximum number of shards is ") +
-                  std::to_string(config.maxNumberOfShards)};
-    }
-  }
-
-  // Check Replication factor
-  if (config.enforceReplicationFactor) {
-    if (config.maxReplicationFactor > 0 &&
-        mutableProperties.replicationFactor > config.maxReplicationFactor) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              std::string("replicationFactor must not be higher than "
-                          "maximum allowed replicationFactor (") +
-                  std::to_string(config.maxReplicationFactor) + ")"};
-    }
-
-    if (mutableProperties.replicationFactor != 0 &&
-        mutableProperties.replicationFactor < config.minReplicationFactor) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              std::string("replicationFactor must not be lower than "
-                          "minimum allowed replicationFactor (") +
-                  std::to_string(config.minReplicationFactor) + ")"};
-    }
-
-    if (mutableProperties.replicationFactor > 0 &&
-        mutableProperties.replicationFactor < mutableProperties.writeConcern) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "writeConcern must not be higher than replicationFactor"};
-    }
-  }
-
-  if (mutableProperties.replicationFactor == 0) {
-    // We are a satellite, we cannot be smart at the same time
-    if (constantProperties.isSmart) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "'isSmart' and replicationFactor 'satellite' cannot be combined"};
-    }
-    if (internalProperties.isSmartChild) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "'isSmartChild' and replicationFactor 'satellite' cannot be "
-              "combined"};
-    }
-    if (constantProperties.shardKeys.size() != 1 ||
-        constantProperties.shardKeys[0] != StaticStrings::KeyString) {
-      return {TRI_ERROR_BAD_PARAMETER, "'satellite' cannot use shardKeys"};
-    }
-  }
-  if (config.isOneShardDB) {
-    if (constantProperties.numberOfShards != 1) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "Collection in a 'oneShardDatabase' must have 1 shard"};
-    }
-
-    if (constantProperties.distributeShardsLike !=
-        config.defaultDistributeShardsLike) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "Collection in a 'oneShardDatabase' cannot define "
-              "'distributeShardsLike'"};
-    }
-
-    if (mutableProperties.replicationFactor == 0) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "Collection in a 'oneShardDatabase' cannot be a "
-              "'satellite'"};
-    }
-  }
-
-  return {};
+    DatabaseConfiguration const& config) const {
+  return CollectionProperties::validateDatabaseConfiguration(config);
 }
 
 arangodb::velocypack::Builder CreateCollectionBody::toCollectionsCreate()

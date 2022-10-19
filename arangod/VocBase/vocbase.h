@@ -85,6 +85,7 @@ class Slice;
 }  // namespace velocypack
 
 class CursorRepository;
+struct DatabaseConfiguration;
 struct DatabaseJavaScriptCache;
 class DatabaseReplicationApplier;
 class LogicalCollection;
@@ -216,7 +217,7 @@ struct TRI_vocbase_t {
           arangodb::replication2::replicated_state::ReplicatedStateBase>;
 
   [[nodiscard]] auto getDatabaseConfiguration() const
-      -> arangodb::CreateCollectionBody::DatabaseConfiguration;
+      -> arangodb::DatabaseConfiguration;
 
  public:
   arangodb::basics::DeadlockDetector<arangodb::TransactionId,

@@ -22,27 +22,18 @@
 
 #pragma once
 
-// TODO Remove me, just used while the inspection is not complete
-#include "Basics/Exceptions.h"
-
-#include "Basics/StaticStrings.h"
 #include "Inspection/Status.h"
 #include "Inspection/VPackLoadInspector.h"
-#include "VocBase/Properties/CollectionConstantProperties.h"
+
+#include "VocBase/Properties/CollectionProperties.h"
 #include "VocBase/Properties/CollectionCreateOptions.h"
-#include "VocBase/Properties/CollectionMutableProperties.h"
-#include "VocBase/Properties/CollectionInternalProperties.h"
-#include "VocBase/Properties/UtilityInvariants.h"
 #include "VocBase/voc-types.h"
-#include "ClusteringProperties.h"
 
 #include <velocypack/Builder.h>
 
-#include <string>
-
 namespace arangodb {
 
-class DataSourceId;
+struct DatabaseConfiguration;
 class Result;
 
 template<typename T>
@@ -55,37 +46,18 @@ namespace velocypack {
 class Slice;
 }
 
-struct CreateCollectionBody {
-  struct DatabaseConfiguration {
-    DatabaseConfiguration(std::function<DataSourceId()> idGenerator);
-
-    bool allowExtendedNames = false;
-    bool shouldValidateClusterSettings = false;
-    uint32_t maxNumberOfShards = 0;
-
-    uint32_t minReplicationFactor = 0;
-    uint32_t maxReplicationFactor = 0;
-    bool enforceReplicationFactor = true;
-
-    uint64_t defaultNumberOfShards = 1;
-    uint64_t defaultReplicationFactor = 1;
-    uint64_t defaultWriteConcern = 1;
-    std::string defaultDistributeShardsLike = "";
-    bool isOneShardDB = false;
-
-    std::function<DataSourceId()> idGenerator;
-  };
-
+struct CreateCollectionBody : public CollectionProperties,
+                              public CollectionCreateOptions {
   CreateCollectionBody();
 
   bool operator==(CreateCollectionBody const& other) const = default;
 
   static ResultT<CreateCollectionBody> fromCreateAPIBody(
-      arangodb::velocypack::Slice input, DatabaseConfiguration config);
+      arangodb::velocypack::Slice input, DatabaseConfiguration const& config);
 
   static ResultT<CreateCollectionBody> fromCreateAPIV8(
       arangodb::velocypack::Slice properties, std::string const& name,
-      TRI_col_type_e type, DatabaseConfiguration config);
+      TRI_col_type_e type, DatabaseConfiguration const& config);
 
   static arangodb::velocypack::Builder toCreateCollectionProperties(
       std::vector<CreateCollectionBody> const& collections);
@@ -94,23 +66,14 @@ struct CreateCollectionBody {
   [[nodiscard]] arangodb::velocypack::Builder toCollectionsCreate() const;
 
   [[nodiscard]] arangodb::Result validateDatabaseConfiguration(
-      DatabaseConfiguration config) const;
-
-  CollectionConstantProperties constantProperties;
-  CollectionMutableProperties mutableProperties;
-  CollectionInternalProperties internalProperties;
-  CollectionCreateOptions options;
-  ClusteringProperties clusteringProperties;
+      DatabaseConfiguration const& config) const;
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, CreateCollectionBody& body) {
   return f.object(body).fields(
-      f.embedFields(body.constantProperties),
-      f.embedFields(body.mutableProperties),  // name ->
-      f.embedFields(body.internalProperties),
-      f.embedFields(body.clusteringProperties),  // replicationFactor
-      f.embedFields(body.options));
+      f.template embedFields<CollectionProperties>(body),
+      f.template embedFields<CollectionCreateOptions>(body));
 }
 
 }  // namespace arangodb

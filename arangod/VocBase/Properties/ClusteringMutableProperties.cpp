@@ -1,0 +1,120 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Michael Hackstein
+////////////////////////////////////////////////////////////////////////////////
+
+#include "ClusteringMutableProperties.h"
+
+#include "Basics/Result.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
+
+#include "Inspection/VPack.h"
+#include <velocypack/Builder.h>
+
+using namespace arangodb;
+
+auto ClusteringMutableProperties::Transformers::ReplicationSatellite::
+    toSerialized(MemoryType v, SerializedType& result)
+        -> arangodb::inspection::Status {
+  result.add(VPackValue(v));
+  return {};
+}
+
+auto ClusteringMutableProperties::Transformers::ReplicationSatellite::
+    fromSerialized(SerializedType const& b, MemoryType& result)
+        -> arangodb::inspection::Status {
+  auto v = b.slice();
+  if (v.isString() && v.isEqualString("satellite")) {
+    result = 0;
+    return {};
+  } else if (v.isNumber()) {
+    result = v.getNumber<MemoryType>();
+    if (result != 0) {
+      return {};
+    }
+  }
+  return {"Only an integer number or 'satellite' is allowed"};
+}
+
+
+void ClusteringMutableProperties::applyDatabaseDefaults(DatabaseConfiguration const& config) {
+  if (!replicationFactor.has_value()) {
+    replicationFactor = config.defaultReplicationFactor;
+  }
+  if (!writeConcern.has_value()) {
+    writeConcern = config.defaultWriteConcern;
+  }
+}
+/*
+
+ if (name != other.name) {
+ return false;
+}
+if (waitForSync != other.waitForSync) {
+ return false;
+}
+if (replicationFactor != other.replicationFactor) {
+ return false;
+}
+if (writeConcern != other.writeConcern) {
+ return false;
+}
+
+*/
+
+[[nodiscard]] arangodb::Result ClusteringMutableProperties::validateDatabaseConfiguration(
+    DatabaseConfiguration const& config) const {
+  // Check Replication factor
+  if (config.enforceReplicationFactor && replicationFactor.has_value()) {
+    if (config.maxReplicationFactor > 0 &&
+        replicationFactor.value() > config.maxReplicationFactor) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              std::string("replicationFactor must not be higher than "
+                          "maximum allowed replicationFactor (") +
+                  std::to_string(config.maxReplicationFactor) + ")"};
+    }
+
+    if (replicationFactor.value() != 0 &&
+        replicationFactor.value() < config.minReplicationFactor) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              std::string("replicationFactor must not be lower than "
+                          "minimum allowed replicationFactor (") +
+                  std::to_string(config.minReplicationFactor) + ")"};
+    }
+
+    if (replicationFactor.value() > 0 &&
+        writeConcern.has_value() && replicationFactor.value() < writeConcern.value()) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "writeConcern must not be higher than replicationFactor"};
+    }
+  }
+
+
+  if (config.isOneShardDB) {
+    if (replicationFactor.has_value()) {
+      if (replicationFactor.value() == 0) {
+        return {TRI_ERROR_BAD_PARAMETER,
+                "Collection in a 'oneShardDatabase' cannot be a "
+                "'satellite'"};
+      }
+    }
+  }
+  return {TRI_ERROR_NO_ERROR};
+}

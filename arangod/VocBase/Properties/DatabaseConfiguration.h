@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,28 +17,36 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <chrono>
-#include <map>
+#include <cstdint>
+#include <functional>
+#include <string>
 
 namespace arangodb {
-namespace network {
 
-struct Response;
-typedef std::string DestinationId;
+class DataSourceId;
 
-using Headers = std::map<std::string, std::string>;
-using Timeout = std::chrono::duration<double>;
+struct DatabaseConfiguration {
+  DatabaseConfiguration(std::function<DataSourceId()> idGenerator);
 
-struct EndpointSpec {
-  std::string shardId;
-  std::string serverId;
-  std::string endpoint;
+  bool allowExtendedNames = false;
+  bool shouldValidateClusterSettings = false;
+  uint32_t maxNumberOfShards = 0;
+
+  uint32_t minReplicationFactor = 0;
+  uint32_t maxReplicationFactor = 0;
+  bool enforceReplicationFactor = true;
+
+  uint64_t defaultNumberOfShards = 1;
+  uint64_t defaultReplicationFactor = 1;
+  uint64_t defaultWriteConcern = 1;
+  std::string defaultDistributeShardsLike = "";
+  bool isOneShardDB = false;
+
+  std::function<DataSourceId()> idGenerator;
 };
-
-}  // namespace network
-}  // namespace arangodb
+}

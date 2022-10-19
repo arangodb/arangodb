@@ -104,6 +104,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
 
 #include <thread>
@@ -2246,20 +2247,19 @@ auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
 }
 
 [[nodiscard]] auto TRI_vocbase_t::getDatabaseConfiguration() const
-    -> arangodb::CreateCollectionBody::DatabaseConfiguration {
+    -> arangodb::DatabaseConfiguration {
   auto& cl = server().getFeature<ClusterFeature>();
   auto& db = server().getFeature<DatabaseFeature>();
 
-  auto config =
-      std::invoke([&]() -> CreateCollectionBody::DatabaseConfiguration {
-        if (!ServerState::instance()->isCoordinator() &&
-            !ServerState::instance()->isDBServer()) {
-          return {[]() { return DataSourceId(TRI_NewTickServer()); }};
-        } else {
-          auto& ci = cl.clusterInfo();
-          return {[&ci]() { return DataSourceId(ci.uniqid(1)); }};
-        }
-      });
+  auto config = std::invoke([&]() -> DatabaseConfiguration {
+    if (!ServerState::instance()->isCoordinator() &&
+        !ServerState::instance()->isDBServer()) {
+      return {[]() { return DataSourceId(TRI_NewTickServer()); }};
+    } else {
+      auto& ci = cl.clusterInfo();
+      return {[&ci]() { return DataSourceId(ci.uniqid(1)); }};
+    }
+  });
 
   config.maxNumberOfShards = cl.maxNumberOfShards();
   config.allowExtendedNames = db.extendedNamesForCollections();

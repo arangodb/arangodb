@@ -96,17 +96,16 @@ class PlanCollectionEntryTest : public ::testing::Test {
 
 TEST_F(PlanCollectionEntryTest, default_values) {
   CreateCollectionBody col{};
-  col.mutableProperties.name = "test";
-  auto numberOfShards = col.constantProperties.numberOfShards;
+  col.name = "test";
+  auto numberOfShards = col.numberOfShards.value();
   auto distProto = std::make_shared<TestShardDistribution>(
-      numberOfShards, col.mutableProperties.replicationFactor);
+      numberOfShards, col.replicationFactor.value());
   auto shards = generateShardNames(numberOfShards);
   ShardDistribution dist{shards, distProto};
   AgencyIsBuildingFlags buildingFlags;
   buildingFlags.rebootId = RebootId(42);
   buildingFlags.coordinatorName = "CRDN_123";
   PlanCollectionEntry entry{col, std::move(dist), std::move(buildingFlags)};
-
   auto builder = entry.toVPackDeprecated();
   LOG_DEVEL << builder.toJson();
 }

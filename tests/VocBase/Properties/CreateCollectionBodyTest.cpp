@@ -26,6 +26,7 @@
 #include "Logger/LogMacros.h"
 #include "Inspection/VPack.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include "InspectTestHelperMakros.h"
 
@@ -74,7 +75,7 @@ class CreateCollectionBodyTest : public ::testing::Test {
     return result;
   }
 
-  static CreateCollectionBody::DatabaseConfiguration defaultDBConfig() {
+  static DatabaseConfiguration defaultDBConfig() {
     return {[]() { return DataSourceId(42); }};
   }
 
@@ -111,7 +112,7 @@ TEST_F(CreateCollectionBodyTest, test_minimal_user_input) {
   // Test Default values
 
   // This covers only non-documented APIS
-  EXPECT_TRUE(testee->options.avoidServers.empty());
+  EXPECT_TRUE(testee->avoidServers.empty());
 
   __HELPER_equalsAfterSerializeParseCircle(testee.get());
 }
@@ -134,7 +135,8 @@ TEST_F(CreateCollectionBodyTest,
                                                           defaultDBConfig());
     ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                              << testee.result().errorMessage();
-    EXPECT_EQ(testee->mutableProperties.writeConcern, 3ul);
+    ASSERT_TRUE(testee->writeConcern.has_value());
+    EXPECT_EQ(testee->writeConcern.value(), 3ul);
   }
   {
     // We change order of attributes in the input vpack
@@ -153,7 +155,8 @@ TEST_F(CreateCollectionBodyTest,
                                                           defaultDBConfig());
     ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                              << testee.result().errorMessage();
-    EXPECT_EQ(testee->mutableProperties.writeConcern, 3);
+    ASSERT_TRUE(testee->writeConcern.has_value());
+    EXPECT_EQ(testee->writeConcern.value(), 3ul);
   }
 }
 
@@ -162,7 +165,8 @@ TEST_F(CreateCollectionBodyTest, test_satelliteReplicationFactor) {
     auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(),
                                                           defaultDBConfig());
     ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-    EXPECT_EQ(testee->mutableProperties.replicationFactor, number)
+    ASSERT_TRUE(testee->replicationFactor.has_value());
+    EXPECT_EQ(testee->replicationFactor.value(), number)
         << "Parsing error in " << body.toJson();
   };
 
@@ -178,10 +182,11 @@ TEST_F(CreateCollectionBodyTest, test_configureMaxNumberOfShards) {
   auto testee =
       CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
   ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-  EXPECT_EQ(testee->constantProperties.numberOfShards, 1024)
+  ASSERT_TRUE(testee->numberOfShards.has_value());
+  EXPECT_EQ(testee->numberOfShards, 1024)
       << "Parsing error in " << body.toJson();
 
-  CreateCollectionBody::DatabaseConfiguration config = defaultDBConfig();
+  DatabaseConfiguration config = defaultDBConfig();
   EXPECT_EQ(config.maxNumberOfShards, 0ul);
   EXPECT_EQ(config.shouldValidateClusterSettings, false);
 
@@ -224,7 +229,7 @@ TEST_F(CreateCollectionBodyTest, test_configureMaxNumberOfShards) {
       auto res = testee->validateDatabaseConfiguration(config);
       EXPECT_FALSE(res.ok())
           << "Configured " << config.maxNumberOfShards << " but "
-          << testee->constantProperties.numberOfShards << "passed.";
+          << testee->numberOfShards.value() << "passed.";
     }
   }
 }
@@ -244,8 +249,8 @@ TEST_F(CreateCollectionBodyTest, test_isSmartCannotBeSatellite) {
       CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
   ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                            << testee.result().errorMessage();
-  EXPECT_EQ(testee->constantProperties.isSmart, true);
-  EXPECT_EQ(testee->mutableProperties.replicationFactor, 0);
+  EXPECT_EQ(testee->isSmart, true);
+  EXPECT_EQ(testee->replicationFactor.value(), 0);
 
   // No special config required, this always fails
   auto config = defaultDBConfig();
@@ -268,8 +273,8 @@ TEST_F(CreateCollectionBodyTest, test_isSmartChildCannotBeSatellite) {
       CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
   ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                            << testee.result().errorMessage();
-  EXPECT_EQ(testee->internalProperties.isSmartChild, true);
-  EXPECT_EQ(testee->mutableProperties.replicationFactor, 0);
+  EXPECT_EQ(testee->isSmartChild, true);
+  EXPECT_EQ(testee->replicationFactor.value(), 0);
 
   // No special config required, this always fails
   auto config = defaultDBConfig();
@@ -291,7 +296,7 @@ TEST_F(CreateCollectionBodyTest, test_oneShardDBCannotBeSatellite) {
       CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
   ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                            << testee.result().errorMessage();
-  EXPECT_EQ(testee->mutableProperties.replicationFactor, 0);
+  EXPECT_EQ(testee->replicationFactor.value(), 0);
 
   // No special config required, this always fails
   auto config = defaultDBConfig();
@@ -316,7 +321,7 @@ TEST_F(CreateCollectionBodyTest, test_atMost8ShardKeys) {
     auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(),
                                                           defaultDBConfig());
     ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-    EXPECT_EQ(testee->constantProperties.shardKeys, shardKeysToTest)
+    EXPECT_EQ(testee->shardKeys, shardKeysToTest)
         << "Parsing error in " << body.toJson();
   }
 
@@ -436,7 +441,7 @@ TEST_F(CreateCollectionBodyTest, test_distributeShardsLike_default) {
   auto body = createMinimumBodyWithOneValue("name", "test");
   auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
   ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
-  EXPECT_EQ(testee->constantProperties.distributeShardsLike, defaultShardBy);
+  EXPECT_EQ(testee->distributeShardsLike.value(), defaultShardBy);
 }
 
 TEST_F(CreateCollectionBodyTest, test_oneShard_forcesDistributeShardsLike) {
@@ -451,7 +456,7 @@ TEST_F(CreateCollectionBodyTest, test_oneShard_forcesDistributeShardsLike) {
   auto body = createMinimumBodyWithOneValue("distributeShardsLike", "test");
   auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
   ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
-  EXPECT_EQ(testee->constantProperties.distributeShardsLike, "test");
+  EXPECT_EQ(testee->distributeShardsLike.value(), "test");
 
   auto res = testee->validateDatabaseConfiguration(config);
   EXPECT_FALSE(res.ok()) << "Distribute shards like violates oneShard database";
@@ -469,7 +474,7 @@ TEST_F(CreateCollectionBodyTest, test_oneShard_moreShards) {
   auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
   // This could already fail, as soon as we have a context
   ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
-  EXPECT_EQ(testee->constantProperties.numberOfShards, 5);
+  EXPECT_EQ(testee->numberOfShards.value(), 5);
 
   auto res = testee->validateDatabaseConfiguration(config);
   EXPECT_FALSE(res.ok()) << "Number of Shards violates oneShard database";
@@ -532,7 +537,7 @@ class PlanCollectionNamesTest
     return p.allowedFlags & AllowedFlags::WithExtension;
   };
 
-  static CreateCollectionBody::DatabaseConfiguration defaultDBConfig() {
+  static DatabaseConfiguration defaultDBConfig() {
     return {[]() { return DataSourceId(42); }};
   }
 };
@@ -580,8 +585,7 @@ TEST_P(PlanCollectionNamesTest, test_allowed_without_flags) {
 
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->mutableProperties.name, getName())
-        << "Parsing error in " << body.toJson();
+    EXPECT_EQ(testee->name, getName()) << "Parsing error in " << body.toJson();
   } else {
     EXPECT_FALSE(result.ok()) << getErrorReason();
   }
@@ -607,8 +611,7 @@ TEST_P(PlanCollectionNamesTest, test_allowed_with_isSystem_flag) {
 
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->mutableProperties.name, getName())
-        << "Parsing error in " << body.toJson();
+    EXPECT_EQ(testee->name, getName()) << "Parsing error in " << body.toJson();
   } else {
     EXPECT_FALSE(result.ok()) << getErrorReason();
   }
@@ -633,8 +636,7 @@ TEST_P(PlanCollectionNamesTest, test_allowed_with_extendendNames_flag) {
 
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->mutableProperties.name, getName())
-        << "Parsing error in " << body.toJson();
+    EXPECT_EQ(testee->name, getName()) << "Parsing error in " << body.toJson();
   } else {
     EXPECT_FALSE(result.ok()) << getErrorReason();
   }
@@ -661,8 +663,7 @@ TEST_P(PlanCollectionNamesTest,
 
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->mutableProperties.name, getName())
-        << "Parsing error in " << body.toJson();
+    EXPECT_EQ(testee->name, getName()) << "Parsing error in " << body.toJson();
   } else {
     EXPECT_FALSE(result.ok()) << getErrorReason();
   }
@@ -692,7 +693,7 @@ class PlanCollectionReplicationFactorTest
     return body;
   }
 
-  static CreateCollectionBody::DatabaseConfiguration defaultDBConfig() {
+  static DatabaseConfiguration defaultDBConfig() {
     return {[]() { return DataSourceId(42); }};
   }
 };
@@ -716,9 +717,9 @@ TEST_P(PlanCollectionReplicationFactorTest, test_noMaxReplicationFactor) {
   // Parsing should always be okay
 
   ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-  EXPECT_EQ(testee->mutableProperties.writeConcern, writeConcern())
+  EXPECT_EQ(testee->writeConcern.value(), writeConcern())
       << "Parsing error in " << body.toJson();
-  EXPECT_EQ(testee->mutableProperties.replicationFactor, replicationFactor())
+  EXPECT_EQ(testee->replicationFactor.value(), replicationFactor())
       << "Parsing error in " << body.toJson();
 
   auto result = testee->validateDatabaseConfiguration(config);
@@ -728,8 +729,8 @@ TEST_P(PlanCollectionReplicationFactorTest, test_noMaxReplicationFactor) {
   bool isAllowed = writeConcern() <= replicationFactor();
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->mutableProperties.writeConcern, writeConcern());
-    EXPECT_EQ(testee->mutableProperties.replicationFactor, replicationFactor());
+    EXPECT_EQ(testee->writeConcern.value(), writeConcern());
+    EXPECT_EQ(testee->replicationFactor.value(), replicationFactor());
   } else {
     EXPECT_FALSE(result.ok()) << result.errorMessage();
   }
@@ -750,9 +751,9 @@ TEST_P(PlanCollectionReplicationFactorTest, test_maxReplicationFactor) {
   // Parsing should always be okay
 
   ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-  EXPECT_EQ(testee->mutableProperties.writeConcern, writeConcern())
+  EXPECT_EQ(testee->writeConcern.value(), writeConcern())
       << "Parsing error in " << body.toJson();
-  EXPECT_EQ(testee->mutableProperties.replicationFactor, replicationFactor())
+  EXPECT_EQ(testee->replicationFactor.value(), replicationFactor())
       << "Parsing error in " << body.toJson();
 
   auto result = testee->validateDatabaseConfiguration(config);
@@ -763,8 +764,8 @@ TEST_P(PlanCollectionReplicationFactorTest, test_maxReplicationFactor) {
                    replicationFactor() <= config.maxReplicationFactor;
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->mutableProperties.writeConcern, writeConcern());
-    EXPECT_EQ(testee->mutableProperties.replicationFactor, replicationFactor());
+    EXPECT_EQ(testee->writeConcern.value(), writeConcern());
+    EXPECT_EQ(testee->replicationFactor.value(), replicationFactor());
   } else {
     EXPECT_FALSE(result.ok()) << result.errorMessage();
   }
@@ -785,9 +786,9 @@ TEST_P(PlanCollectionReplicationFactorTest, test_minReplicationFactor) {
   // Parsing should always be okay
 
   ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-  EXPECT_EQ(testee->mutableProperties.writeConcern, writeConcern())
+  EXPECT_EQ(testee->writeConcern.value(), writeConcern())
       << "Parsing error in " << body.toJson();
-  EXPECT_EQ(testee->mutableProperties.replicationFactor, replicationFactor())
+  EXPECT_EQ(testee->replicationFactor.value(), replicationFactor())
       << "Parsing error in " << body.toJson();
 
   auto result = testee->validateDatabaseConfiguration(config);
@@ -798,8 +799,8 @@ TEST_P(PlanCollectionReplicationFactorTest, test_minReplicationFactor) {
                    replicationFactor() >= config.minReplicationFactor;
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->mutableProperties.writeConcern, writeConcern());
-    EXPECT_EQ(testee->mutableProperties.replicationFactor, replicationFactor());
+    EXPECT_EQ(testee->writeConcern.value(), writeConcern());
+    EXPECT_EQ(testee->replicationFactor.value(), replicationFactor());
   } else {
     EXPECT_FALSE(result.ok()) << result.errorMessage();
   }
@@ -821,9 +822,9 @@ TEST_P(PlanCollectionReplicationFactorTest, test_nonoEnforce) {
   // Parsing should always be okay
 
   ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-  EXPECT_EQ(testee->mutableProperties.writeConcern, writeConcern())
+  EXPECT_EQ(testee->writeConcern.value(), writeConcern())
       << "Parsing error in " << body.toJson();
-  EXPECT_EQ(testee->mutableProperties.replicationFactor, replicationFactor())
+  EXPECT_EQ(testee->replicationFactor.value(), replicationFactor())
       << "Parsing error in " << body.toJson();
 
   auto result = testee->validateDatabaseConfiguration(config);
@@ -832,8 +833,8 @@ TEST_P(PlanCollectionReplicationFactorTest, test_nonoEnforce) {
   bool isAllowed = true;
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
-    EXPECT_EQ(testee->mutableProperties.writeConcern, writeConcern());
-    EXPECT_EQ(testee->mutableProperties.replicationFactor, replicationFactor());
+    EXPECT_EQ(testee->writeConcern.value(), writeConcern());
+    EXPECT_EQ(testee->replicationFactor.value(), replicationFactor());
   } else {
     EXPECT_FALSE(result.ok()) << result.errorMessage();
   }

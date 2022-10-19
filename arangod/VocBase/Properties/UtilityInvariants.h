@@ -44,9 +44,13 @@ struct UtilityInvariants {
 
   [[nodiscard]] static auto isGreaterZero(uint64_t const& value)
       -> inspection::Status;
+  [[nodiscard]] static auto isGreaterZeroIfPresent(
+      std::optional<uint64_t> const& value) -> inspection::Status;
 
   [[nodiscard]] static auto isValidShardingStrategy(std::string const& value)
       -> inspection::Status;
+  [[nodiscard]] static auto isValidShardingStrategyIfPresent(
+      std::optional<std::string> const& value) -> inspection::Status;
 
   [[nodiscard]] static auto isValidCollectionType(
       std::underlying_type_t<TRI_col_type_e> const& value)

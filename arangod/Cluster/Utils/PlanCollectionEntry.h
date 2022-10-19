@@ -25,21 +25,19 @@
 #include "Basics/Exceptions.h"
 
 #include "Cluster/Utils/AgencyIsBuildingFlags.h"
-#include "VocBase/Properties/CollectionConstantProperties.h"
-#include "VocBase/Properties/CollectionMutableProperties.h"
 #include "VocBase/Properties/CollectionIndexesProperties.h"
-#include "VocBase/Properties/CollectionInternalProperties.h"
+#include "VocBase/Properties/CollectionProperties.h"
 #include "ShardDistribution.h"
+#include "Cluster/Utils/PlanShardToServerMappping.h"
+#include "Cluster/Utils/IShardDistributionFactory.h"
 
 namespace arangodb {
 namespace velocypack {
 class Builder;
 }
 
-struct CreateCollectionBody;
-
 struct PlanCollectionEntry {
-  PlanCollectionEntry(CreateCollectionBody collection,
+  PlanCollectionEntry(CollectionProperties collection,
                       ShardDistribution shardDistribution,
                       AgencyIsBuildingFlags isBuildingFlags);
 
@@ -54,11 +52,9 @@ struct PlanCollectionEntry {
 
   // Remove the isBuilding flags, call it if we are completed
   void removeBuildingFlags();
-
+  
  private:
-  CollectionConstantProperties _constantProperties{};
-  CollectionMutableProperties _mutableProperties{};
-  CollectionInternalProperties _internalProperties{};
+  CollectionProperties _properties{};
   std::optional<AgencyIsBuildingFlags> _buildingFlags{AgencyIsBuildingFlags{}};
   CollectionIndexesProperties _indexProperties{};
   ShardDistribution _shardDistribution;

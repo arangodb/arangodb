@@ -29,16 +29,9 @@
 
 namespace arangodb {
 
-namespace velocypack {
-class Builder;
-}
-
 struct CollectionMutableProperties {
   std::string name = StaticStrings::Empty;
-  bool waitForSync = false;
 
-  uint64_t replicationFactor = 1;
-  uint64_t writeConcern = 1;
   // TODO: This can be optimized into it's own struct.
   // Did a short_cut here to avoid concatenated changes
   arangodb::velocypack::Builder computedValues{VPackSlice::nullSlice()};
@@ -46,19 +39,6 @@ struct CollectionMutableProperties {
   // TODO: This can be optimized into it's own struct.
   // Did a short_cut here to avoid concatenated changes
   arangodb::velocypack::Builder schema{VPackSlice::nullSlice()};
-
-  struct Transformers {
-    struct ReplicationSatellite {
-      using MemoryType = uint64_t;
-      using SerializedType = arangodb::velocypack::Builder;
-
-      static arangodb::inspection::Status toSerialized(MemoryType v,
-                                                       SerializedType& result);
-
-      static arangodb::inspection::Status fromSerialized(
-          SerializedType const& v, MemoryType& result);
-    };
-  };
 
   bool operator==(CollectionMutableProperties const&) const;
 };
@@ -69,24 +49,6 @@ auto inspect(Inspector& f, CollectionMutableProperties& props) {
       f.field("name", props.name)
           .fallback(f.keep())
           .invariant(UtilityInvariants::isNonEmpty),
-      f.field("waitForSync", props.waitForSync).fallback(f.keep()),
-      // Deprecated, and not documented anymore
-      // The ordering is important here, minReplicationFactor
-      // has to be before writeConcern, this way we ensure that writeConcern
-      // will overwrite the minReplicationFactor value if present
-      f.field("minReplicationFactor", props.writeConcern).fallback(f.keep()),
-      // Now check the new attribute, if it is not there,
-      // fallback to minReplicationFactor / default, whatever
-      // is set already.
-      // Then do the invariant check, this should now cover both
-      // values.
-      f.field("writeConcern", props.writeConcern)
-          .fallback(f.keep())
-          .invariant(UtilityInvariants::isGreaterZero),
-      f.field("replicationFactor", props.replicationFactor)
-          .fallback(f.keep())
-          .transformWith(CollectionMutableProperties::Transformers::
-                             ReplicationSatellite{}),
       f.field("schema", props.schema).fallback(f.keep()),
       f.field("computedValues", props.computedValues).fallback(f.keep()));
 }

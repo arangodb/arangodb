@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,28 +17,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
 
-#include <chrono>
-#include <map>
+#include "DatabaseConfiguration.h"
 
-namespace arangodb {
-namespace network {
+using namespace arangodb;
 
-struct Response;
-typedef std::string DestinationId;
-
-using Headers = std::map<std::string, std::string>;
-using Timeout = std::chrono::duration<double>;
-
-struct EndpointSpec {
-  std::string shardId;
-  std::string serverId;
-  std::string endpoint;
-};
-
-}  // namespace network
-}  // namespace arangodb
+DatabaseConfiguration::DatabaseConfiguration(
+    std::function<DataSourceId()> _idGenerator)
+    : idGenerator{std::move(_idGenerator)} {}

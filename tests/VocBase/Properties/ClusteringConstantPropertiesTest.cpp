@@ -22,7 +22,7 @@
 
 #include "gtest/gtest.h"
 
-#include "VocBase/Properties/CollectionMutableProperties.h"
+#include "VocBase/Properties/ClusteringConstantProperties.h"
 #include "Basics/ResultT.h"
 #include "Inspection/VPack.h"
 
@@ -31,20 +31,16 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb::tests {
-class CollectionMutablePropertiesTest : public ::testing::Test {
+class ClusteringConstantPropertiesTest : public ::testing::Test {
  protected:
   // Returns minimal, valid JSON object for the struct to test.
   // Only the given attributeName has the given value.
   template<typename T>
   VPackBuilder createMinimumBodyWithOneValue(std::string const& attributeName,
                                              T const& attributeValue) {
-    std::string colName = "test";
     VPackBuilder body;
     {
       VPackObjectBuilder guard(&body);
-      if (attributeName != "name") {
-        body.add("name", VPackValue(colName));
-      }
       if constexpr (std::is_same_v<T, VPackSlice>) {
         body.add(attributeName, attributeValue);
       } else if constexpr (std::is_same_v<T, std::vector<std::string>>) {
@@ -62,8 +58,8 @@ class CollectionMutablePropertiesTest : public ::testing::Test {
 
   // Tries to parse the given body and returns a ResulT of your Type under
   // test.
-  static ResultT<CollectionMutableProperties> parse(VPackSlice body) {
-    CollectionMutableProperties res;
+  static ResultT<ClusteringConstantProperties> parse(VPackSlice body) {
+    ClusteringConstantProperties res;
     try {
       auto status = velocypack::deserializeWithStatus(body, res);
       if (!status.ok()) {
@@ -80,51 +76,59 @@ class CollectionMutablePropertiesTest : public ::testing::Test {
     }
   }
 
-  static VPackBuilder serialize(CollectionMutableProperties testee) {
+  static VPackBuilder serialize(ClusteringConstantProperties testee) {
     VPackBuilder result;
     velocypack::serialize(result, testee);
     return result;
   }
 };
 
-TEST_F(CollectionMutablePropertiesTest, test_requires_some_input) {
+TEST_F(ClusteringConstantPropertiesTest, test_minimal_user_input) {
   VPackBuilder body;
-  { VPackObjectBuilder guard(&body); }
-  auto testee = parse(body.slice());
-  EXPECT_TRUE(testee.fail()) << " On body " << body.toJson();
-}
-
-TEST_F(CollectionMutablePropertiesTest, test_minimal_user_input) {
-  std::string colName = "test";
-  VPackBuilder body;
-  {
-    VPackObjectBuilder guard(&body);
-    body.add("name", VPackValue(colName));
-  }
+  { VPackObjectBuilder bodyBuilder{&body}; }
   auto testee = parse(body.slice());
   ASSERT_TRUE(testee.ok());
-  EXPECT_EQ(testee->name, colName);
   // Test Default values
-  // TODO: this is just rudimentary
-  // does not test internals yet
-  EXPECT_TRUE(testee->computedValues.slice().isNull());
-  EXPECT_TRUE(testee->schema.slice().isNull());
+  EXPECT_FALSE(testee->numberOfShards.has_value());
+  EXPECT_FALSE(testee->distributeShardsLike.has_value());
+  // NOTE: We may want to add some context here
+  EXPECT_FALSE(testee->shardingStrategy.has_value());
+  ASSERT_EQ(testee->shardKeys.size(), 1);
+  EXPECT_EQ(testee->shardKeys.at(0), StaticStrings::KeyString);
+
+  __HELPER_equalsAfterSerializeParseCircle(testee.get());
 }
 
-TEST_F(CollectionMutablePropertiesTest, test_illegal_names) {
-  // The empty string
-  __HELPER_assertParsingThrows(name, "");
+TEST_F(ClusteringConstantPropertiesTest, test_shardingStrategy) {
+  auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,
+                                 std::string const& expected) {
+    auto testee = parse(body.slice());
+    EXPECT_EQ(testee->shardingStrategy, expected)
+        << "Parsing error in " << body.toJson();
+  };
+  std::vector<std::string> allowedStrategies{"",
+                                             "hash",
+                                             "enterprise-hash-smart-edge",
+                                             "community-compat",
+                                             "enterprise-compat",
+                                             "enterprise-smart-edge-compat"};
 
-  // Non String types
-  __HELPER_assertParsingThrows(name, 0);
-  __HELPER_assertParsingThrows(name, VPackSlice::emptyObjectSlice());
-  __HELPER_assertParsingThrows(name, VPackSlice::emptyArraySlice());
+  for (auto const& strategy : allowedStrategies) {
+    shouldBeEvaluatedTo(
+        createMinimumBodyWithOneValue("shardingStrategy", strategy), strategy);
+  }
 
-  GenerateFailsOnBool(name);
-  GenerateFailsOnInteger(name);
-  GenerateFailsOnDouble(name);
-  GenerateFailsOnArray(name);
-  GenerateFailsOnObject(name);
+  GenerateFailsOnBool(shardingStrategy);
+  GenerateFailsOnNonEmptyString(shardingStrategy);
+  GenerateFailsOnInteger(shardingStrategy);
+  GenerateFailsOnDouble(shardingStrategy);
+  GenerateFailsOnArray(shardingStrategy);
+  GenerateFailsOnObject(shardingStrategy);
 }
 
+GeneratePositiveIntegerAttributeTest(ClusteringConstantPropertiesTest,
+                                     numberOfShards);
+
+GenerateOptionalStringAttributeTest(ClusteringConstantPropertiesTest,
+                                    distributeShardsLike);
 }  // namespace arangodb::tests

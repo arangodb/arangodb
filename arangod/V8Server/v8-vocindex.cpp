@@ -52,6 +52,7 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>

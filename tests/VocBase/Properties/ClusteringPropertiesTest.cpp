@@ -22,29 +22,24 @@
 
 #include "gtest/gtest.h"
 
-#include "VocBase/Properties/CollectionMutableProperties.h"
-#include "Basics/ResultT.h"
-#include "Inspection/VPack.h"
-
 #include "InspectTestHelperMakros.h"
+#include "Basics/ResultT.h"
+#include "VocBase/Properties/ClusteringProperties.h"
+#include "Inspection/VPack.h"
 
 #include <velocypack/Builder.h>
 
 namespace arangodb::tests {
-class CollectionMutablePropertiesTest : public ::testing::Test {
+class ClusteringPropertiesTest : public ::testing::Test {
  protected:
   // Returns minimal, valid JSON object for the struct to test.
   // Only the given attributeName has the given value.
   template<typename T>
   VPackBuilder createMinimumBodyWithOneValue(std::string const& attributeName,
                                              T const& attributeValue) {
-    std::string colName = "test";
     VPackBuilder body;
     {
       VPackObjectBuilder guard(&body);
-      if (attributeName != "name") {
-        body.add("name", VPackValue(colName));
-      }
       if constexpr (std::is_same_v<T, VPackSlice>) {
         body.add(attributeName, attributeValue);
       } else if constexpr (std::is_same_v<T, std::vector<std::string>>) {
@@ -62,8 +57,8 @@ class CollectionMutablePropertiesTest : public ::testing::Test {
 
   // Tries to parse the given body and returns a ResulT of your Type under
   // test.
-  static ResultT<CollectionMutableProperties> parse(VPackSlice body) {
-    CollectionMutableProperties res;
+  static ResultT<ClusteringProperties> parse(VPackSlice body) {
+    ClusteringProperties res;
     try {
       auto status = velocypack::deserializeWithStatus(body, res);
       if (!status.ok()) {
@@ -80,51 +75,19 @@ class CollectionMutablePropertiesTest : public ::testing::Test {
     }
   }
 
-  static VPackBuilder serialize(CollectionMutableProperties testee) {
+  static VPackBuilder serialize(ClusteringProperties testee) {
     VPackBuilder result;
     velocypack::serialize(result, testee);
     return result;
   }
 };
 
-TEST_F(CollectionMutablePropertiesTest, test_requires_some_input) {
+TEST_F(ClusteringPropertiesTest, test_minimal_user_input) {
   VPackBuilder body;
-  { VPackObjectBuilder guard(&body); }
+  { VPackObjectBuilder bodyBuilder{&body}; }
   auto testee = parse(body.slice());
-  EXPECT_TRUE(testee.fail()) << " On body " << body.toJson();
+  ASSERT_TRUE(testee.ok()) << testee.errorMessage();
+
+  __HELPER_equalsAfterSerializeParseCircle(testee.get());
 }
-
-TEST_F(CollectionMutablePropertiesTest, test_minimal_user_input) {
-  std::string colName = "test";
-  VPackBuilder body;
-  {
-    VPackObjectBuilder guard(&body);
-    body.add("name", VPackValue(colName));
-  }
-  auto testee = parse(body.slice());
-  ASSERT_TRUE(testee.ok());
-  EXPECT_EQ(testee->name, colName);
-  // Test Default values
-  // TODO: this is just rudimentary
-  // does not test internals yet
-  EXPECT_TRUE(testee->computedValues.slice().isNull());
-  EXPECT_TRUE(testee->schema.slice().isNull());
-}
-
-TEST_F(CollectionMutablePropertiesTest, test_illegal_names) {
-  // The empty string
-  __HELPER_assertParsingThrows(name, "");
-
-  // Non String types
-  __HELPER_assertParsingThrows(name, 0);
-  __HELPER_assertParsingThrows(name, VPackSlice::emptyObjectSlice());
-  __HELPER_assertParsingThrows(name, VPackSlice::emptyArraySlice());
-
-  GenerateFailsOnBool(name);
-  GenerateFailsOnInteger(name);
-  GenerateFailsOnDouble(name);
-  GenerateFailsOnArray(name);
-  GenerateFailsOnObject(name);
-}
-
 }  // namespace arangodb::tests

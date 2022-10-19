@@ -36,19 +36,7 @@ bool CollectionConstantProperties::operator==(
   if (isSystem != other.isSystem) {
     return false;
   }
-  if (numberOfShards != other.numberOfShards) {
-    return false;
-  }
-  if (distributeShardsLike != other.distributeShardsLike) {
-    return false;
-  }
-  if (shardingStrategy != other.shardingStrategy) {
-    return false;
-  }
   if (smartJoinAttribute != other.smartJoinAttribute) {
-    return false;
-  }
-  if (shardKeys != other.shardKeys) {
     return false;
   }
   if (isSmart != other.isSmart) {

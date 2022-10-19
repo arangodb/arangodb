@@ -29,7 +29,7 @@
 #include <velocypack/Builder.h>
 
 #include <optional>
-#include <numeric>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -43,14 +43,7 @@ struct CollectionConstantProperties {
       TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
   bool isSystem = false;
 
-  uint64_t numberOfShards = 1;
-
-  std::optional<std::string> distributeShardsLike = std::nullopt;
-  std::string shardingStrategy = defaultShardingStrategy();
   std::optional<std::string> smartJoinAttribute = std::nullopt;
-
-  std::vector<std::string> shardKeys =
-      std::vector<std::string>{StaticStrings::KeyString};
 
   // TODO: This can be optimized into it's own struct.
   // Did a short_cut here to avoid concatenated changes
@@ -77,18 +70,6 @@ struct CollectionConstantProperties {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionConstantProperties& props) {
-  auto distShardsLikeField = std::invoke([&]() {
-    // Make the Inspector ignore distributeShardsLike on write
-    // if there is no value.
-    auto field = f.field("distributeShardsLike", props.distributeShardsLike)
-                     .invariant(UtilityInvariants::isNonEmptyIfPresent);
-    if constexpr (!Inspector::isLoading) {
-      return field;
-    } else {
-      return std::move(field).fallback(f.keep());
-    }
-  });
-
   return f.object(props).fields(
       f.field("isSystem", props.isSystem).fallback(f.keep()),
       f.field("isSmart", props.isSmart).fallback(f.keep()),
@@ -96,18 +77,8 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
       f.field("cacheEnabled", props.cacheEnabled).fallback(f.keep()),
       f.field("smartGraphAttribute", props.smartGraphAttribute)
           .invariant(UtilityInvariants::isNonEmptyIfPresent),
-      f.field("numberOfShards", props.numberOfShards)
-          .fallback(f.keep())
-          .invariant(UtilityInvariants::isGreaterZero),
-      distShardsLikeField,
       f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute)
           .invariant(UtilityInvariants::isNonEmptyIfPresent),
-      f.field("shardingStrategy", props.shardingStrategy)
-          .fallback(f.keep())
-          .invariant(UtilityInvariants::isValidShardingStrategy),
-      f.field("shardKeys", props.shardKeys)
-          .fallback(f.keep())
-          .invariant(UtilityInvariants::areShardKeysValid),
       f.field("type", props.type)
           .fallback(f.keep())
           .invariant(UtilityInvariants::isValidCollectionType),

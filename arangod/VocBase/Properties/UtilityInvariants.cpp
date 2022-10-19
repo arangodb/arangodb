@@ -37,8 +37,8 @@ auto UtilityInvariants::isNonEmpty(std::string const& value)
 
 auto UtilityInvariants::isNonEmptyIfPresent(
     std::optional<std::string> const& value) -> inspection::Status {
-  if (value.has_value() && value.value().empty()) {
-    return {"Value cannot be empty."};
+  if (value.has_value()) {
+    return isNonEmpty(value.value());
   }
   return inspection::Status::Success{};
 }
@@ -49,6 +49,14 @@ auto UtilityInvariants::isGreaterZero(uint64_t const& value)
     return inspection::Status::Success{};
   }
   return {"Value has to be > 0"};
+}
+
+auto UtilityInvariants::isGreaterZeroIfPresent(
+    std::optional<uint64_t> const& value) -> inspection::Status {
+  if (value.has_value()) {
+    return isGreaterZero(value.value());
+  }
+  return inspection::Status::Success{};
 }
 
 auto UtilityInvariants::isValidShardingStrategy(std::string const& strat)
@@ -64,6 +72,14 @@ auto UtilityInvariants::isValidShardingStrategy(std::string const& strat)
       "Please use 'hash' or remove, advanced users please "
       "pick a strategy from the documentation, " +
       strat + " is not allowed."};
+}
+
+auto UtilityInvariants::isValidShardingStrategyIfPresent(
+    std::optional<std::string> const& value) -> inspection::Status {
+  if (value.has_value()) {
+    return isValidShardingStrategy(value.value());
+  }
+  return inspection::Status::Success{};
 }
 
 auto UtilityInvariants::isValidCollectionType(

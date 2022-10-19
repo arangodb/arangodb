@@ -57,7 +57,7 @@ class PlanCollectionToAgencyWriterTest : public ::testing::Test {
         ->plan()
         ->collections()
         ->database(dbName())
-        ->collection(std::to_string(col.internalProperties.id.id()))
+        ->collection(std::to_string(col.id.id()))
         ->str();
   }
 
@@ -94,15 +94,14 @@ class PlanCollectionToAgencyWriterTest : public ::testing::Test {
 
   PlanCollectionToAgencyWriter createWriterWithTestSharding(
       CreateCollectionBody col) {
-    auto numberOfShards = col.constantProperties.numberOfShards;
+    auto numberOfShards = col.numberOfShards.value();
     auto distribution = std::make_shared<EvenDistribution>(
-        numberOfShards, col.mutableProperties.replicationFactor,
-        std::vector<ServerID>{});
+        numberOfShards, col.replicationFactor.value(), std::vector<ServerID>{});
     auto shards = generateShardNames(numberOfShards);
 
     std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>
         shardDistributionsUsed;
-    shardDistributionsUsed.emplace(col.mutableProperties.name, distribution);
+    shardDistributionsUsed.emplace(col.name, distribution);
 
     ShardDistribution dist{shards, distribution};
     AgencyIsBuildingFlags buildingFlags;
@@ -124,8 +123,8 @@ TEST_F(PlanCollectionToAgencyWriterTest, can_produce_agency_precondition) {}
 
 TEST_F(PlanCollectionToAgencyWriterTest, can_produce_agency_operation) {
   CreateCollectionBody col{};
-  col.mutableProperties.name = "test";
-  col.internalProperties.id = DataSourceId(123);
+  col.name = "test";
+  col.id = DataSourceId(123);
 
   auto writer = createWriterWithTestSharding(col);
 

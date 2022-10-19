@@ -23,63 +23,53 @@
 #include "PlanCollectionEntry.h"
 #include "Inspection/VPack.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
-#include "Cluster/Utils/IShardDistributionFactory.h"
-#include "PlanShardToServerMappping.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 
 using namespace arangodb;
-PlanCollectionEntry::PlanCollectionEntry(CreateCollectionBody col,
+PlanCollectionEntry::PlanCollectionEntry(CollectionProperties col,
                                          ShardDistribution shardDistribution,
                                          AgencyIsBuildingFlags isBuildingFlags)
-    : _constantProperties{std::move(col.constantProperties)},
-      _mutableProperties{std::move(col.mutableProperties)},
-      _internalProperties{std::move(col.internalProperties)},
+    : _properties({col}),
       _buildingFlags{std::move(isBuildingFlags)},
       _indexProperties(
           CollectionIndexesProperties::defaultIndexesForCollectionType(
-              _constantProperties.getType())),
+              col.getType())),
       _shardDistribution(std::move(shardDistribution)) {}
 
 std::string PlanCollectionEntry::getCID() const {
-  TRI_ASSERT(!_internalProperties.id.empty());
-  return std::to_string(_internalProperties.id.id());
+  TRI_ASSERT(!_properties.id.empty());
+  return std::to_string(_properties.id.id());
 }
 
 std::string const& PlanCollectionEntry::getName() const {
-  TRI_ASSERT(!_mutableProperties.name.empty());
-  return {_mutableProperties.name};
+  TRI_ASSERT(!_properties.name.empty());
+  return {_properties.name};
 }
 
 PlanShardToServerMapping PlanCollectionEntry::getShardMapping() const {
   TRI_ASSERT(_shardDistribution.getDistributionForShards().shards.size() ==
-             _constantProperties.numberOfShards);
+             _properties.numberOfShards);
   return _shardDistribution.getDistributionForShards();
+}
+
+// Remove the isBuilding flags, call it if we are completed
+void PlanCollectionEntry::removeBuildingFlags() {
+  _buildingFlags = std::nullopt;
 }
 
 VPackBuilder PlanCollectionEntry::toVPackDeprecated() const {
   // NOTE this is just a deprecated Helper that will be replaced by inspect as
   // soon as inspector feature is merged
-  VPackBuilder constants;
-  velocypack::serialize(constants, _constantProperties);
-  VPackBuilder mutables;
-  velocypack::serialize(mutables, _mutableProperties);
-  auto constMut =
-      VPackCollection::merge(constants.slice(), mutables.slice(), false, false);
-  VPackBuilder internals;
-  velocypack::serialize(internals, _internalProperties);
+  VPackBuilder props;
+  velocypack::serialize(props, _properties);
   VPackBuilder flags;
   if (_buildingFlags.has_value()) {
     velocypack::serialize(flags, _buildingFlags.value());
   } else {
     VPackObjectBuilder flagGuard(&flags);
   }
-  auto intFlags =
-      VPackCollection::merge(internals.slice(), flags.slice(), false, false);
-
-  auto manyFlags =
-      VPackCollection::merge(constMut.slice(), intFlags.slice(), false, false);
   VPackBuilder indexes;
   velocypack::serialize(indexes, _indexProperties);
   auto shardMapping = getShardMapping();
@@ -87,11 +77,8 @@ VPackBuilder PlanCollectionEntry::toVPackDeprecated() const {
   velocypack::serialize(shards, shardMapping);
   auto shardsAndIndexes =
       VPackCollection::merge(shards.slice(), indexes.slice(), false, false);
-  return VPackCollection::merge(manyFlags.slice(), shardsAndIndexes.slice(),
-                                false, false);
-}
-
-// Remove the isBuilding flags, call it if we are completed
-void PlanCollectionEntry::removeBuildingFlags() {
-  _buildingFlags = std::nullopt;
+  auto propsAndBuilding =
+      VPackCollection::merge(props.slice(), flags.slice(), false, false);
+  return VPackCollection::merge(propsAndBuilding.slice(),
+                                shardsAndIndexes.slice(), false, false);
 }
