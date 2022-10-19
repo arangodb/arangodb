@@ -585,6 +585,9 @@ replicated_log::LogFollower::LogFollower(
     auto waitFor(LogIndex index) -> WaitForFuture override {
       return _log.waitFor(index);
     }
+    auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
+      return _log.waitForIterator(index);
+    }
     LogFollower& _log;
   };
   LOG_CTX("f3668", DEBUG, _loggerContext)

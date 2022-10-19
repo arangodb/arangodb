@@ -113,7 +113,7 @@ struct ReplicatedStateBase {
 };
 
 // TODO Clean this up, starting with trimming Stream to its minimum
-template<typename EntryType,
+template<typename EntryType, typename Deserializer,
          template<typename> typename Interface = streams::Stream,
          typename ILogMethodsT = replicated_log::IReplicatedLogMethodsBase>
 struct StreamProxy : Interface<EntryType> {
@@ -134,24 +134,21 @@ struct StreamProxy : Interface<EntryType> {
         [](auto const&) { return WaitForResult(); });
   }
   auto waitForIterator(LogIndex index)
-      -> futures::Future<std::unique_ptr<Iterator>> override {
-    // TODO As far as I can tell right now, we can get rid of this:
-    //      Delete this, also in streams::Stream.
-    std::abort();
-  }
+      -> futures::Future<std::unique_ptr<Iterator>> override;
+
   auto release(LogIndex index) -> void override {
     // TODO Implement this
     std::abort();
   }
 };
 
-template<typename EntryType, typename Serializer>
+template<typename EntryType, typename Deserializer, typename Serializer>
 struct ProducerStreamProxy
-    : StreamProxy<EntryType, streams::ProducerStream,
+    : StreamProxy<EntryType, Deserializer, streams::ProducerStream,
                   replicated_log::IReplicatedLogLeaderMethods> {
   explicit ProducerStreamProxy(
       std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> methods)
-      : StreamProxy<EntryType, streams::ProducerStream,
+      : StreamProxy<EntryType, Deserializer, streams::ProducerStream,
                     replicated_log::IReplicatedLogLeaderMethods>(
             std::move(methods)) {
     ADB_PROD_ASSERT(this->_logMethods != nullptr);
@@ -196,7 +193,8 @@ struct NewLeaderStateManager
       LoggerContext loggerContext,
       std::shared_ptr<ReplicatedStateMetrics> metrics,
       std::shared_ptr<IReplicatedLeaderState<S>> leaderState,
-      std::shared_ptr<ProducerStreamProxy<EntryType, Serializer>> stream);
+      std::shared_ptr<ProducerStreamProxy<EntryType, Deserializer, Serializer>>
+          stream);
 
   void recoverEntries();
   void updateCommitIndex(LogIndex index) noexcept;
@@ -221,7 +219,8 @@ struct NewLeaderStateManager
     LoggerContext const& _loggerContext;
     ReplicatedStateMetrics const& _metrics;
     std::shared_ptr<IReplicatedLeaderState<S>> _leaderState;
-    std::shared_ptr<ProducerStreamProxy<EntryType, Serializer>> _stream;
+    std::shared_ptr<ProducerStreamProxy<EntryType, Deserializer, Serializer>>
+        _stream;
     WaitForQueue _waitQueue;
   };
   Guarded<GuardedData> _guardedData;
@@ -291,6 +290,8 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
   using FollowerType = typename ReplicatedStateTraits<S>::FollowerType;
   using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
+  using Serializer = typename ReplicatedStateTraits<S>::Serializer;
+  using Deserializer = typename ReplicatedStateTraits<S>::Deserializer;
 
   ReplicatedStateManager(LoggerContext loggerContext,
                          std::shared_ptr<ReplicatedStateMetrics> metrics,

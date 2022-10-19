@@ -139,8 +139,8 @@ void ReplicatedStateManager<S>::leadershipEstablished(
                     guard->_currentManager))
           .resign();
   ADB_PROD_ASSERT(oldMethods == nullptr);
-  auto stream = std::make_shared<ProducerStreamProxy<
-      EntryType, typename ReplicatedStateTraits<S>::Serializer>>(
+  auto stream = std::make_shared<
+      ProducerStreamProxy<EntryType, Deserializer, Serializer>>(
       std::move(methods));
   auto leaderState = _factory->constructLeader(std::move(core));
   // TODO Pass the stream during construction already, and delete the
@@ -234,14 +234,34 @@ auto ReplicatedStateManager<S>::getLeader() const
       guard->_currentManager);
 }
 
+template<typename EntryType, typename Deserializer,
+         template<typename> typename Interface, typename ILogMethodsT>
+auto StreamProxy<EntryType, Deserializer, Interface,
+                 ILogMethodsT>::waitForIterator(LogIndex index)
+    -> futures::Future<std::unique_ptr<Iterator>> {
+  // TODO As far as I can tell right now, we can get rid of this:
+  //      Delete this, also in streams::Stream.
+  return _logMethods->waitForIterator(index).thenValue([](auto&& logIter) {
+    std::unique_ptr<Iterator> deserializedIter =
+        std::make_unique<LazyDeserializingIterator<EntryType, Deserializer>>(
+            std::move(logIter));
+    return deserializedIter;
+  });
+}
+
 template<typename S>
 void NewLeaderStateManager<S>::recoverEntries() {
   auto future = _guardedData.getLockedGuard()->recoverEntries();
-  std::move(future).thenFinal([](futures::Try<Result>&& tryResult) {
-    // TODO error handling
-    ADB_PROD_ASSERT(tryResult.hasValue());
-    ADB_PROD_ASSERT(tryResult.get().ok());
-  });
+  std::move(future).thenFinal(
+      [weak = this->weak_from_this()](futures::Try<Result>&& tryResult) {
+        // TODO error handling
+        ADB_PROD_ASSERT(tryResult.hasValue());
+        ADB_PROD_ASSERT(tryResult.get().ok());
+        if (auto self = weak.lock(); self != nullptr) {
+          auto guard = self->_guardedData.getLockedGuard();
+          guard->_leaderState->onRecoveryCompleted();
+        }
+      });
 }
 
 template<typename S>
@@ -280,7 +300,8 @@ NewLeaderStateManager<S>::NewLeaderStateManager(
     LoggerContext loggerContext,
     std::shared_ptr<ReplicatedStateMetrics> metrics,
     std::shared_ptr<IReplicatedLeaderState<S>> leaderState,
-    std::shared_ptr<ProducerStreamProxy<EntryType, Serializer>> stream)
+    std::shared_ptr<ProducerStreamProxy<EntryType, Deserializer, Serializer>>
+        stream)
     : _loggerContext(std::move(loggerContext)),
       _metrics(std::move(metrics)),
       _guardedData{_loggerContext, *_metrics, std::move(leaderState),

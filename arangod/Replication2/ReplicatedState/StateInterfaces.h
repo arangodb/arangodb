@@ -96,7 +96,7 @@ struct IReplicatedLeaderState : IReplicatedStateImplBase<S>,
    * state has been updated. The underlying stream is guaranteed to have been
    * initialized.
    */
-  virtual void onSnapshotCompleted() noexcept {};
+  virtual void onRecoveryCompleted() noexcept {};
 
   void setStream(std::shared_ptr<Stream> stream) noexcept {
     _stream = std::move(stream);

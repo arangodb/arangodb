@@ -690,6 +690,9 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     auto waitFor(LogIndex index) -> WaitForFuture override {
       return _log.waitFor(index);
     }
+    auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
+      return _log.waitForIterator(index);
+    }
 
     LogLeader& _log;
   };

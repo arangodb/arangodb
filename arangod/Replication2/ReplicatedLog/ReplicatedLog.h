@@ -62,6 +62,8 @@ struct IReplicatedLogMethodsBase {
   virtual auto releaseIndex(LogIndex) -> void = 0;
   virtual auto getLogSnapshot() -> InMemoryLog = 0;
   virtual auto waitFor(LogIndex) -> ILogParticipant::WaitForFuture = 0;
+  virtual auto waitForIterator(LogIndex)
+      -> ILogParticipant::WaitForIteratorFuture = 0;
 };
 
 struct IReplicatedLogLeaderMethods : IReplicatedLogMethodsBase {
