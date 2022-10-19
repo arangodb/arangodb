@@ -254,9 +254,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// the QueryRegistry.
   std::unique_ptr<ExecutionPlan> preparePlan();
 
-  /// @brief log a query
-  void log();
-
   /// @brief calculate a hash value for the query string and bind parameters
   uint64_t calculateHash() const;
 
@@ -280,7 +277,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   // a vertex collection yet. This can happen e.g. during anonymous traversal.
   void injectVertexCollectionIntoGraphNodes(ExecutionPlan& plan);
 
-  void logError(QueryResult const& queryResult) const;
+  // log the start of a query (trace mode only)
+  void logAtStart();
+
+  // log the end of a query (warnings only)
+  void logAtEnd(QueryResult const& queryResult) const;
 
   enum class ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
 
