@@ -66,6 +66,9 @@ class QueryRegistryFeature final : public ArangodFeature {
     return _slowStreamingQueryThreshold;
   }
   size_t maxQueryStringLength() const noexcept { return _maxQueryStringLength; }
+  uint64_t peakMemoryUsageThreshold() const noexcept {
+    return _peakMemoryUsageThreshold;
+  }
   bool failOnWarning() const noexcept { return _failOnWarning; }
   bool requireWith() const noexcept { return _requireWith; }
 #ifdef USE_ENTERPRISE
@@ -104,6 +107,7 @@ class QueryRegistryFeature final : public ArangodFeature {
   bool _allowCollectionsInExpressions;
   bool _logFailedQueries;
   size_t _maxQueryStringLength;
+  uint64_t _peakMemoryUsageThreshold;
   uint64_t _queryGlobalMemoryLimit;
   uint64_t _queryMemoryLimit;
   double _queryMaxRuntime;

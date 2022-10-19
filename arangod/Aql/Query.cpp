@@ -1248,17 +1248,28 @@ void Query::log() {
 }
 
 void Query::logError(QueryResult const& queryResult) const {
-  if (_queryString.empty() || !queryResult.result.fail() ||
-      !vocbase().server().hasFeature<QueryRegistryFeature>()) {
+  if (_queryString.empty()) {
+    // nothing to log
     return;
   }
+  if (!vocbase().server().hasFeature<QueryRegistryFeature>()) {
+    return;
+  }
+
   auto const& feature = vocbase().server().getFeature<QueryRegistryFeature>();
 
-  if (!feature.logFailedQueries()) {
+  // log failed queries?
+  bool logFailed = feature.logFailedQueries() && queryResult.result.fail();
+  // log queries exceeded memory usage threshold
+  bool logMemoryUsage =
+      resourceMonitor().peak() >= feature.peakMemoryUsageThreshold();
+
+  if (!logFailed && !logMemoryUsage) {
     return;
   }
 
   size_t maxLength = feature.maxQueryStringLength();
+
   std::string bindParameters;
   if (feature.trackBindVars()) {
     // also log bind variables
@@ -1270,15 +1281,27 @@ void Query::logError(QueryResult const& queryResult) const {
     stringifyDataSources(dataSources, ", data sources: ");
   }
 
-  LOG_TOPIC("d499d", INFO, Logger::QUERIES)
-      << "AQL " << (queryOptions().stream ? "streaming " : "") << "query '"
-      << extractQueryString(maxLength, feature.trackQueryString()) << "'"
-      << bindParameters << dataSources << ", database: " << vocbase().name()
-      << ", user: " << user() << ", id: " << _queryId << ", token: QRY"
-      << _queryId << ", peak memory usage: " << resourceMonitor().peak()
-      << " failed with exit code " << queryResult.result.errorNumber() << ": "
-      << queryResult.result.errorMessage()
-      << ", took: " << Logger::FIXED(executionTime());
+  if (logFailed) {
+    LOG_TOPIC("d499d", WARN, Logger::QUERIES)
+        << "AQL " << (queryOptions().stream ? "streaming " : "") << "query '"
+        << extractQueryString(maxLength, feature.trackQueryString()) << "'"
+        << bindParameters << dataSources << ", database: " << vocbase().name()
+        << ", user: " << user() << ", id: " << _queryId << ", token: QRY"
+        << _queryId << ", peak memory usage: " << resourceMonitor().peak()
+        << " failed with exit code " << queryResult.result.errorNumber() << ": "
+        << queryResult.result.errorMessage()
+        << ", took: " << Logger::FIXED(executionTime());
+  } else {
+    LOG_TOPIC("e0b7c", WARN, Logger::QUERIES)
+        << "AQL " << (queryOptions().stream ? "streaming " : "") << "query '"
+        << extractQueryString(maxLength, feature.trackQueryString()) << "'"
+        << bindParameters << dataSources << ", database: " << vocbase().name()
+        << ", user: " << user() << ", id: " << _queryId << ", token: QRY"
+        << _queryId << ", peak memory usage: " << resourceMonitor().peak()
+        << " used more memory than configured memory usage alerting threshold "
+        << feature.peakMemoryUsageThreshold()
+        << ", took: " << Logger::FIXED(executionTime());
+  }
 }
 
 std::string Query::extractQueryString(size_t maxLength, bool show) const {

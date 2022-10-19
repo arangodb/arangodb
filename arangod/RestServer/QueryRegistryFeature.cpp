@@ -181,6 +181,7 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
       _allowCollectionsInExpressions(false),
       _logFailedQueries(false),
       _maxQueryStringLength(4096),
+      _peakMemoryUsageThreshold(4294967296),  // 4GB
       _queryGlobalMemoryLimit(
           defaultMemoryLimit(PhysicalMemory::getValue(), 0.1, 0.90)),
       _queryMemoryLimit(
@@ -419,6 +420,22 @@ void QueryRegistryFeature::collectOptions(
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30905)
+      .setIntroducedIn(31002)
+      .setIntroducedIn(31100);
+
+  options
+      ->addOption("--query.log-memory-usage-threshold",
+                  "log queries that have a peak memory usage larger than this "
+                  "threshold",
+                  new SizeTParameter(&_peakMemoryUsageThreshold),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30905)
+      .setIntroducedIn(31002)
       .setIntroducedIn(31100);
 
   options
@@ -429,6 +446,8 @@ void QueryRegistryFeature::collectOptions(
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30905)
+      .setIntroducedIn(31002)
       .setIntroducedIn(31100);
 }
 
