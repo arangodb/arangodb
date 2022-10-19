@@ -35,7 +35,7 @@ using namespace arangodb::replication2::replicated_state::document;
 
 DocumentFollowerState::DocumentFollowerState(
     std::unique_ptr<DocumentCore> core,
-    std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory)
+    std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory)
     : shardId(core->getShardId()),
       _networkHandler(handlersFactory->createNetworkHandler(core->getGid())),
       _transactionHandler(
@@ -106,13 +106,12 @@ auto DocumentFollowerState::applyEntries(
       });
 }
 
-auto DocumentFollowerState::truncateLocalShard() -> Result {
-  VPackBuilder b;
-  b.openObject();
-  b.add("collection", VPackValue(shardId));
-  b.close();
-  auto doc = DocumentLogEntry{std::string(shardId), OperationType::kTruncate,
-                              b.sharedSlice(),
+/**
+ * @brief Using the underlying transaction handler to apply a local transaction, for this follower only.
+ */
+auto DocumentFollowerState::forceLocalTransaction(OperationType opType, velocypack::SharedSlice slice) -> Result {
+    auto doc = DocumentLogEntry{std::string(shardId), opType,
+                              std::move(slice),
                               TransactionId{0}.asFollowerTransactionId()};
   if (auto applyRes = _transactionHandler->applyEntry(doc); applyRes.fail()) {
     _transactionHandler->removeTransaction(
@@ -126,21 +125,17 @@ auto DocumentFollowerState::truncateLocalShard() -> Result {
   return _transactionHandler->applyEntry(commit);
 }
 
+auto DocumentFollowerState::truncateLocalShard() -> Result {
+  VPackBuilder b;
+  b.openObject();
+  b.add("collection", VPackValue(shardId));
+  b.close();
+  return forceLocalTransaction(OperationType::kTruncate, b.sharedSlice());
+}
+
 auto DocumentFollowerState::populateLocalShard(velocypack::SharedSlice slice)
     -> Result {
-  auto doc = DocumentLogEntry{std::string(shardId), OperationType::kInsert,
-                              std::move(slice),
-                              TransactionId{0}.asFollowerTransactionId()};
-  if (auto applyRes = _transactionHandler->applyEntry(doc); applyRes.fail()) {
-    _transactionHandler->removeTransaction(
-        TransactionId{0}.asFollowerTransactionId());
-    return applyRes;
-  }
-  auto commit = DocumentLogEntry{std::string(shardId),
-                                 OperationType::kCommit,
-                                 {},
-                                 TransactionId{0}.asFollowerTransactionId()};
-  return _transactionHandler->applyEntry(commit);
+  return forceLocalTransaction(OperationType::kInsert, std::move(slice));
 }
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"

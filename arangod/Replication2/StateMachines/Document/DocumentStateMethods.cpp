@@ -29,6 +29,10 @@
 #include "Futures/Future.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "StorageEngine/PhysicalCollection.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
 #include <memory>
@@ -46,28 +50,23 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
     if (leaderResult.fail()) {
       return leaderResult.result();
     }
+    auto leader = leaderResult.get();
 
-    // Dummy values
-    VPackBuilder builder;
-    {
-      VPackArrayBuilder ab(&builder);
-      {
-        VPackObjectBuilder ob(&builder);
-        builder.add("_key", "test1");
-        builder.add("_id", "testCollection/test1");
-        builder.add("_rev", "_e7EifO6---");
-        builder.add("name", "testInsert1");
-        builder.add("baz", 1);
-      }
-      {
-        VPackObjectBuilder ob(&builder);
-        builder.add("_key", "test2");
-        builder.add("_id", "testCollection/test2");
-        builder.add("_rev", "_e7EifO6--_");
-        builder.add("name", "testInsert2");
-        builder.add("baz", 2);
-      }
+    auto iteratorResult = getReplicationIterator(leader->shardId);
+    if (iteratorResult.fail()) {
+      return iteratorResult.result();
     }
+
+    VPackBuilder builder;
+    builder.openArray();
+    for (auto& revIterator =
+             dynamic_cast<RevisionReplicationIterator&>(*iteratorResult.get());
+         revIterator.hasMore(); revIterator.next()) {
+      auto slice = revIterator.document();
+      builder.add(slice);
+    }
+    builder.close();
+
     return futures::Future<ResultT<velocypack::SharedSlice>>{
         builder.sharedSlice()};
   }
@@ -96,6 +95,32 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
                       logId));
     }
     return leader;
+  }
+
+  [[nodiscard]] auto getReplicationIterator(std::string_view shardId) const
+      -> ResultT<std::unique_ptr<ReplicationIterator>> {
+    auto logicalCollection = _vocbase.lookupCollection(shardId);
+    if (logicalCollection == nullptr) {
+      return ResultT<std::unique_ptr<ReplicationIterator>>::error(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          fmt::format("Collection {} not found", shardId));
+    }
+
+    auto ctx = transaction::StandaloneContext::Create(_vocbase);
+    auto singleCollectionTrx = SingleCollectionTransaction(
+        ctx, *logicalCollection, AccessMode::Type::READ);
+
+    // We call begin here so rocksMethods are initialized
+    if (auto res = singleCollectionTrx.begin(); res.fail()) {
+      return ResultT<std::unique_ptr<ReplicationIterator>>::error(
+          res.errorNumber(), res.errorMessage());
+    }
+
+    auto* physicalCollection = logicalCollection->getPhysical();
+    TRI_ASSERT(physicalCollection != nullptr);
+
+    return physicalCollection->getReplicationIterator(
+        ReplicationIterator::Ordering::Revision, singleCollectionTrx);
   }
 
  private:

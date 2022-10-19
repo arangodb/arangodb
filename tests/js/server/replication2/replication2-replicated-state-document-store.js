@@ -774,6 +774,8 @@ const replicatedStateSnapshotTransferSuite = function () {
       const newParticipant = _.sample(nonParticipants);
       const newParticipants = _.union(_.without(participants, oldParticipant), [newParticipant]).sort();
 
+      collection.insert([{_key: "test1"}, {_key: "test2"}]);
+
       // Replace the follower.
       const result = sh.replaceParticipant(database, logId, oldParticipant, newParticipant);
       assertEqual({}, result);
@@ -795,11 +797,12 @@ const replicatedStateSnapshotTransferSuite = function () {
 
       // The new follower should've executed a snapshot transfer.
       // Expect to find the dummy documents in there, for now.
+      // TODO this is not entirely correct, because we don't have any compaction currently.
       const dummyKeys = ["test1", "test2"];
       let bulk = sh.getBulkDocuments(lh.getServerUrl(newParticipant), database, shardId, dummyKeys);
       let keysSet = new Set(dummyKeys);
       for (let doc of bulk) {
-        assertFalse(doc.hasOwnProperty("error"), `Expected no error, got ${JSON.stringify(doc.error)}`);
+        assertFalse(doc.hasOwnProperty("error"), `Expected no error, got ${JSON.stringify(doc)}`);
         assertTrue(keysSet.has(doc._key));
         keysSet.delete(doc._key);
       }
