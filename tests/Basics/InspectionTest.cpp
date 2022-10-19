@@ -3023,8 +3023,10 @@ TEST(ValidateInspectorContext, validate_with_context) {
   }
 }
 
+using namespace arangodb::inspection;
 using namespace arangodb::velocypack;
 
+namespace {
 struct StatusTTest {
   std::string s;
   size_t id;
@@ -3035,6 +3037,7 @@ template<class Inspector>
 auto inspect(Inspector& f, StatusTTest& x) {
   return f.object(x).fields(f.field("s", x.s), f.field("id", x.id));
 }
+}  // namespace
 
 TEST(VPackWithStatus, statust_test_deserialize) {
   auto testSlice = R"({
@@ -3044,7 +3047,8 @@ TEST(VPackWithStatus, statust_test_deserialize) {
 
   auto res = deserializeWithStatusT<StatusTTest>(testSlice);
 
-  ASSERT_TRUE(res.ok()) << fmt::format("Something went wrong: {}", res.error());
+  ASSERT_TRUE(res.ok()) << fmt::format("Something went wrong: {}",
+                                       res.error().error());
 
   EXPECT_EQ(res->s, "ReturnNode");
   EXPECT_EQ(res->id, 3u);
@@ -3061,7 +3065,7 @@ TEST(VPackWithStatus, statust_test_deserialize_fail) {
 
   ASSERT_FALSE(res.ok()) << fmt::format("Did not detect the error we exepct");
 
-  EXPECT_EQ(res.error(), "Found unexpected attribute 'fehler'");
+  EXPECT_EQ(res.error().error(), "Found unexpected attribute 'fehler'");
 }
 
 }  // namespace

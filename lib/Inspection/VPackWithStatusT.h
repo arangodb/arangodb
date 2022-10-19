@@ -24,39 +24,39 @@
 
 #include <Inspection/VPackLoadInspector.h>
 #include <Inspection/VPackSaveInspector.h>
+#include <Basics/ErrorT.h>
 
-#include "StatusT.h"
-
-namespace arangodb::velocypack {
+namespace arangodb::inspection {
 
 template<typename T>
 [[nodiscard]] auto serializeWithStatusT(T& value)
-    -> inspection::StatusT<SharedSlice> {
-  auto builder = Builder();
-  inspection::VPackSaveInspector<> inspector(builder);
+    -> errors::ErrorT<Status, velocypack::SharedSlice> {
+  auto builder = velocypack::Builder();
+  VPackSaveInspector<> inspector(builder);
   auto res = inspector.apply(value);
 
   if (res.ok()) {
-    return inspection::StatusT<SharedSlice>::ok(
+    return errors::ErrorT<Status, velocypack::SharedSlice>::ok(
         std::move(builder).sharedSlice());
   } else {
-    return inspection::StatusT<SharedSlice>::error(std::move(res));
+    return errors::ErrorT<Status, velocypack::SharedSlice>::error(
+        std::move(res));
   }
 }
 
 template<typename T>
-[[nodiscard]] auto deserializeWithStatusT(SharedSlice slice)
-    -> inspection::StatusT<T> {
+[[nodiscard]] auto deserializeWithStatusT(velocypack::SharedSlice slice)
+    -> errors::ErrorT<Status, T> {
   inspection::VPackLoadInspector<> inspector(slice.slice(),
                                              inspection::ParseOptions{});
   T data{};
 
   auto res = inspector.apply(data);
   if (res.ok()) {
-    return inspection::StatusT<T>::ok(std::move(data));
+    return errors::ErrorT<Status, T>::ok(std::move(data));
   } else {
-    return inspection::StatusT<T>::error(std::move(res));
+    return errors::ErrorT<Status, T>::error(std::move(res));
   }
 }
 
-}  // namespace arangodb::velocypack
+}  // namespace arangodb::inspection
