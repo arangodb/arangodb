@@ -428,7 +428,7 @@ void QueryRegistryFeature::collectOptions(
       ->addOption("--query.log-memory-usage-threshold",
                   "log queries that have a peak memory usage larger than this "
                   "threshold",
-                  new SizeTParameter(&_peakMemoryUsageThreshold),
+                  new UInt64Parameter(&_peakMemoryUsageThreshold),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnAgent,
