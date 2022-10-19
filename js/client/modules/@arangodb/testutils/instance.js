@@ -768,7 +768,13 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
   checkArangoAlive () {
     const res = statusExternal(this.pid, false);
-    const ret = res.status === 'RUNNING' && crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, this, this.options, res);
+    const running = res.status === 'RUNNING';
+    if (!this.options.coreCheck && this.options.setInterruptable && !running) {
+      print(`fatal exit of {self.pid} arangod => {JSON.stringify(res)}! Bye!`);
+      pu.killRemainingProcesses({status: false});
+      process.exit();
+    }
+    const ret = running && crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, this, this.options, res);
 
     if (!ret) {
       if (!this.hasOwnProperty('message')) {

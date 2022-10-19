@@ -5,6 +5,19 @@ devel
   AQL query using a PRUNE or FILTER statement, combined with UDFs (user defined
   functions), got executed.
 
+* Improve cardinality estimate for AQL EnumerateCollectionNode in case a
+  `SORT RAND() LIMIT 1` is used. Here, the estimated number of items is at
+  most 1.
+
+* ES-1312: fix handling of reaching the WAL archive capacity limit.
+
+* BTS-941: The HTTP API now delivers the correct list of the collection's
+  shards in case a collection from an EnterpriseGraph, SmartGraph, Disjoint
+  EnterpriseGraph, Disjoint SmartGraph or SatelliteGraph is being used.
+
+* Log the documents counts on leader and follower shards at the end of each
+  successful shard synchronization.
+
 * Changed the encoding of revision ids returned by the following REST APIs:
   - GET /_api/collection/<collection-name>/revision: the revision id was
     previously returned as numeric value, and now it will be returned as
@@ -46,15 +59,13 @@ devel
 * BTS-1008: Update react-autocomplete-input to fix single letter collection bug
   when creating a link in the views in the WebUI.
 
-<<<<<<< HEAD
 * Improved optimization of functions to be covered by Traversals. Now more functions
   should be optimized into the traversal, and some that are not valid should not be optimized
   anymore. Fixes #16589.
-=======
+
 * BTS-908: Fixed WebUI GraphViewer not being able to create a new edge relation
   between two nodes in cases where only one edge definition has been defined
   inside the graph definition.
->>>>>>> origin/devel
 
 * Fixed BTS-850: Fixed the removal of already deleted orphan collections out
   of a graph definition. The removal of an already deleted orphan collection
