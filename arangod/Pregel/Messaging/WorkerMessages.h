@@ -45,8 +45,8 @@ struct GraphLoaded {
   GraphLoaded(uint64_t vertexCount, uint64_t edgeCount)
       : vertexCount{vertexCount}, edgeCount{edgeCount} {}
   auto add(GraphLoaded const& other) -> void {
-    vertexCount = other.vertexCount;
-    edgeCount = other.edgeCount;
+    vertexCount += other.vertexCount;
+    edgeCount += other.edgeCount;
   }
 };
 

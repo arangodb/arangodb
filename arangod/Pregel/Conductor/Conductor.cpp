@@ -209,7 +209,7 @@ void Conductor::workerStatusUpdated(StatusUpdated const& data) {
 
   VPackBuilder event;
   serialize(event, data);
-  LOG_PREGEL("76632", DEBUG)
+  LOG_PREGEL("76632", TRACE)
       << fmt::format("Update received {}", event.toJson());
 
   _status.updateWorkerStatus(data.senderId, data.status);
