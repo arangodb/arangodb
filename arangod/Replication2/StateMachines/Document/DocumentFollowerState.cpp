@@ -107,11 +107,13 @@ auto DocumentFollowerState::applyEntries(
 }
 
 /**
- * @brief Using the underlying transaction handler to apply a local transaction, for this follower only.
+ * @brief Using the underlying transaction handler to apply a local transaction,
+ * for this follower only.
  */
-auto DocumentFollowerState::forceLocalTransaction(OperationType opType, velocypack::SharedSlice slice) -> Result {
-    auto doc = DocumentLogEntry{std::string(shardId), opType,
-                              std::move(slice),
+auto DocumentFollowerState::forceLocalTransaction(OperationType opType,
+                                                  velocypack::SharedSlice slice)
+    -> Result {
+  auto doc = DocumentLogEntry{std::string(shardId), opType, std::move(slice),
                               TransactionId{0}.asFollowerTransactionId()};
   if (auto applyRes = _transactionHandler->applyEntry(doc); applyRes.fail()) {
     _transactionHandler->removeTransaction(
