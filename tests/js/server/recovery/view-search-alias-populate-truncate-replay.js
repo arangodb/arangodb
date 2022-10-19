@@ -33,6 +33,7 @@ const internal = require('internal');
 const jsunity = require('jsunity');
 const cn = 'UnitTestsTruncateDummy';
 const vn = cn + 'View';
+var truncateFailure = require('@arangodb/test-helper-common').truncateFailure;
 
 function runSetup () {
   'use strict';
@@ -53,16 +54,7 @@ function runSetup () {
 
   c.save({ name: "crashme" }, { waitForSync: true });
   internal.debugSetFailAt("ArangoSearchTruncateFailure");
-  try {
-    c.truncate();
-    return 1;
-  } catch (ex) {
-    if (!ex instanceof arangodb.ArangoError ||
-        ex.errorNum !== internal.errors.ERROR_DEBUG.code) {
-      throw ex;
-    }
-  }
-  internal.debugTerminate('crashing server');
+  return truncateFailure(c);
 }
 
 function recoverySuite () {
