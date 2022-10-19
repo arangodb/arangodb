@@ -78,21 +78,21 @@ function IResearchLshAqlTestSuiteCommunity() {
 
       db._createView("view", "arangosearch", {});
       db.view.properties({
-        "links": {
-          "collection_0": {
-            "fields": {
-              "mh50": {
-                "analyzers": [
+        links: {
+          collection_0: {
+            fields: {
+              mh50: {
+                analyzers: [
+                  identity
+                ]
+              },
+              mh100: {
+                analyzers: [
                   "identity"
                 ]
               },
-              "mh100": {
-                "analyzers": [
-                  "identity"
-                ]
-              },
-              "mh10": {
-                "analyzers": [
+              mh10: {
+                analyzers: [
                   "identity"
                 ]
               }
