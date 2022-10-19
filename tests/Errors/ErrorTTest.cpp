@@ -72,7 +72,6 @@ TEST(ErrorTTest, simple_test_ok) {
   EXPECT_EQ(f.get(), 5);
   EXPECT_EQ(*f, 5);
 
-  // TODO: should mutation of the contained value be possible?
   f.get() = 6;
   EXPECT_EQ(f.get(), 6);
 }
