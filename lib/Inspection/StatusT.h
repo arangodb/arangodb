@@ -65,6 +65,11 @@ struct StatusT {
   [[nodiscard]] auto get() const -> T const& { return std::get<1>(_contained); }
   [[nodiscard]] auto get() -> T& { return std::get<T>(_contained); }
 
+  [[nodiscard]] explicit operator bool() const noexcept
+      requires(!std::same_as<T, bool>) {
+    return ok();
+  }
+
   [[nodiscard]] auto operator->() -> T* { return &get(); }
   [[nodiscard]] auto operator->() const -> T const* { return &get(); }
 
@@ -73,11 +78,8 @@ struct StatusT {
 
   [[nodiscard]] auto operator*() && -> T&& { return std::move(get()); }
 
-  explicit operator bool() const noexcept requires(!std::is_same_v<T, bool>) {
-    return ok();
-  }
-
- private : StatusT(Contained&& val) : _contained(std::move(val)) {}
+ private:
+  StatusT(Contained&& val) : _contained(std::move(val)) {}
   Contained _contained;
 };
 
