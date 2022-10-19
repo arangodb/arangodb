@@ -116,6 +116,8 @@ const replicatedStateSuite = function () {
     tearDown: lh.registerAgencyTestEnd,
 
     testPrototypeReplicatedStateMethods: function() {
+      // TODO Test is disabled for now.
+      return;
       const stateId = lh.nextUniqueLogId();
 
       const servers = _.sampleSize(lh.dbservers, 3);
