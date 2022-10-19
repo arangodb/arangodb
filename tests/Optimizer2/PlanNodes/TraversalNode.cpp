@@ -192,7 +192,7 @@ TEST(Optimizer2traversalNode, construction) {
     EXPECT_EQ(traversalNode.dependencies.size(), 1u);
     EXPECT_EQ(traversalNode.dependencies.at(0), 1u);
     EXPECT_FALSE(traversalNode.canThrow.has_value());
-    EXPECT_EQ(traversalNode.estimatedCost, 18u);
-    EXPECT_EQ(traversalNode.estimatedNrItems, 5u);
+    EXPECT_EQ(traversalNode.estimatedCost, 6u);
+    EXPECT_EQ(traversalNode.estimatedNrItems, 1u);
   }
 }

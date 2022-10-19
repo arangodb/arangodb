@@ -77,7 +77,7 @@ TEST(Optimizer2CalculationNode, construction) {
     // expression
     EXPECT_EQ(calculationNode.expression.type, "value");
     EXPECT_EQ(calculationNode.expression.typeID, 40u);
-    EXPECT_EQ(calculationNode.expression.value, 1u);
+    EXPECT_EQ(calculationNode.expression.value.value().slice().getInt(), 1u);
     EXPECT_EQ(calculationNode.expression.vType, "int");
     EXPECT_EQ(calculationNode.expression.vTypeID, 2u);
     // outVariable
