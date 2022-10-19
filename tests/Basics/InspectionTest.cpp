@@ -3036,7 +3036,6 @@ auto inspect(Inspector& f, StatusTTest& x) {
   return f.object(x).fields(f.field("s", x.s), f.field("id", x.id));
 }
 
-
 TEST(VPackWithStatus, statust_test_deserialize) {
   auto testSlice = R"({
     "s": "ReturnNode",
@@ -3064,7 +3063,5 @@ TEST(VPackWithStatus, statust_test_deserialize_fail) {
 
   EXPECT_EQ(res.error(), "Found unexpected attribute 'fehler'");
 }
-
-
 
 }  // namespace
