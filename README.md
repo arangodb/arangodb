@@ -119,3 +119,4 @@ StackOverflow is great for questions about AQL, usage scenarios etc.
 To chat with the community and the developers we offer a Slack chat:
 
 [https://slack.arangodb.com/](https://slack.arangodb.com/)
+
