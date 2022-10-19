@@ -28,25 +28,41 @@
 
 namespace arangodb::aql::optimizer2::types {
 
+// TODO: Think about "cleaning this up" later. Currently unclear how those types
+// do "mix" each other
+// TODO HINT: "Expression" aka. "Condition" aka. "(partial) AstNode*?"
+// TODO: This will need some cleanup, there are too many optionals IMHO.
 struct Expression {
   AttributeTypes::String type;
   AttributeTypes::Numeric typeID;
-  AttributeTypes::Numeric value;
-  AttributeTypes::String vType;
-  AttributeTypes::Numeric vTypeID;
-  AttributeTypes::String expressionType;
-  std::optional<bool> excludesNull;
+
+  std::optional<VPackBuilder> value;
+  std::optional<AttributeTypes::String> name;
+  std::optional<AttributeTypes::Numeric> id;
+  // if value, then also vType and vTypeID must be set
+  std::optional<AttributeTypes::String> vType;
+  std::optional<AttributeTypes::Numeric> vTypeID;
+  std::optional<AttributeTypes::String> expressionType;
   std::optional<std::vector<Expression>> subNodes;
+  std::optional<AttributeTypes::Numeric>
+      quantifier;  // Quantifier::Type (1,2,3,4)
+  std::optional<AttributeTypes::Numeric> levels;
+  std::optional<bool> booleanize;
+  std::optional<bool> excludesNull;
+  std::optional<bool> sorted;
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, Expression& v) {
   return f.object(v).fields(
-      f.field("type", v.type), f.field("typeID", v.typeID),
-      f.field("value", v.value), f.field("vType", v.vType),
-      f.field("vTypeID", v.vTypeID),
+      f.field("type", v.type), f.field("name", v.name), f.field("id", v.id),
+      f.field("typeID", v.typeID), f.field("value", v.value),
+      f.field("vType", v.vType), f.field("vTypeID", v.vTypeID),
       f.field("expressionType", v.expressionType),
-      f.field("excludesNull", v.excludesNull), f.field("subNodes", v.subNodes));
+      f.field("excludesNull", v.excludesNull), f.field("subNodes", v.subNodes),
+      f.field("quantifier", v.quantifier), f.field("levels", v.levels),
+      f.field("booleanize", v.booleanize),
+      f.field("excludesNull", v.excludesNull), f.field("sorted", v.sorted));
 }
 
 }  // namespace arangodb::aql::optimizer2::types

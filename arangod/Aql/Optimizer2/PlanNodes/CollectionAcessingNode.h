@@ -31,8 +31,12 @@ struct CollectionAccessingNode {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionAccessingNode& v) {
-  return f.object(v).fields(f.field("database", v.database),
-                            f.field("collection", v.collection));
+  return f.object(v).fields(
+      f.field("database", v.database),
+      f.field("collection", v.collection)
+          .fallback(""));  // TODO: Currently we need a fallback here because
+                           // TraversalNode inherits the CollectionAccessingNode
+                           // but does not set a "collection" property
 }
 
 }  // namespace arangodb::aql::optimizer2::nodes
