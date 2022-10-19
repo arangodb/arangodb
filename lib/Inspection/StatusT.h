@@ -66,7 +66,7 @@ struct StatusT {
   [[nodiscard]] auto get() -> T& { return std::get<T>(_contained); }
 
   [[nodiscard]] explicit operator bool() const noexcept
-      requires(!std::same_as<T, bool>) {
+      requires(!std::convertible_to<T, bool>) {
     return ok();
   }
 
