@@ -33,12 +33,8 @@ var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var analyzers = require("@arangodb/analyzers");
 var ERRORS = require("@arangodb").errors;
-
+const longValue = "VeryLongValueToNotFitIntoSSOAndTriggerBufferCopyingIssuesIfAnyBlaBlaBla";
 return function (args) {
-
-  const longValue  = "VeryLongValueToNotFitIntoSSOAndTriggerBufferCopyingIssuesIfAnyBlaBlaBla";
-  
-  
   function getNodes(query, type, bindVars, options) {
     let stmt = db._createStatement(query);
     if (typeof bindVars === "object") {
@@ -54,6 +50,72 @@ return function (args) {
   }
   
   return {
+    internal: {
+       createCollectionsAndData: function() {
+          db._drop("AuxUnitTestsCollection");
+          let auxCol = db._create("AuxUnitTestsCollection");
+          auxCol.save({ foobar: ['foo', 'bar'], foo: ['foo'], bar:['bar'], empty: []});
+
+          db._drop("AnotherUnitTestsCollection");
+          let ac = db._create("AnotherUnitTestsCollection");
+          ac.save({ a: "foo", id : 0 });
+          ac.save({ a: "ba", id : 1 });
+
+          db._drop("UnitTestsWithArrayCollection");
+          let arrayCol = db._create("UnitTestsWithArrayCollection");
+          arrayCol.save({ c: 0, a: ['foo', 'bar', 'baz']});
+          // this will allow to catch if accidentally "all" filter will be used
+          arrayCol.save({ c: 1, a: ['afoo', 'abar', 'abaz']});
+          db._drop("TestsCollectionWithManyFields");
+          let mfc = db._create("TestsCollectionWithManyFields");
+          mfc.save({field1:"1value", field2:"2value", field3: 1, field4: 11111, field5: 1, field6: 1});
+          mfc.save({field1:"1value1", field2:"2value1", field3: 2, field4: 11112, field5: 2, field6: 2});
+          mfc.save({field1:"1value2", field2:"2value2", field3: 3, field4: 11113, field5: 3, field6: 3});
+          mfc.save({field1:"1value3", field2:"2value3", field3: 4, field4: 11114, field5: 4, field6: 4});
+          
+          db._drop("TestsCollectionWithLongFields");
+          let longData = [];
+          let lfc = db._create("TestsCollectionWithLongFields");
+          for (let k = 0; k < 1500; ++k) {
+            longData.push({field1:longValue + k, field2: longValue, field3: k});
+          }
+          lfc.save(longData);
+          {
+              let queryColl = "DisjunctionCollection";
+              db._drop(queryColl);
+           
+              let coll = db._create(queryColl);
+              let documents = [
+                {"value":"test"},
+                // these docs will make STARTS_WITH more "costly" than PHRASE and conjunction will use PHRASE as lead! 
+                {"value":"test1234"},
+                {"value":"test21321312312"},
+                {"value":"test213213123122"},
+                {"value":"test2132131231222"},
+                {"value":"test21321312312222"},
+                {"value":"test2132131231222322"},
+                {"value":"test2132131231231231222322"},
+                // this will make PHRASE iterator not use small_disjunction (more than 5 candidates for LEVENSHTEIN)
+                {"value":"rest"},
+                {"value":"arest"},
+                {"value":"brest"},
+                {"value":"zest"},
+                {"value":"qest"}];
+              db[queryColl].save(documents);
+           }
+       },
+       dropCollections: function() {
+         db._drop("AnotherUnitTestsCollection");
+         db._drop("AuxUnitTestsCollection");
+         db._drop("UnitTestsWithArrayCollection");
+         db._drop("TestsCollectionWithManyFields");
+         db._drop("TestsCollectionWithLongFields");
+         db._drop("DisjunctionCollection");
+       },
+       getLongValue: function() {
+         return longValue;
+       }
+    },
     testViewInFunctionCall : function () {
       try {
         db._query("FOR doc IN 1..1 RETURN COUNT(UnitTestsView)");
@@ -524,7 +586,24 @@ return function (args) {
       });
       assertEqual(expected.size, 0);
     },
+    testExistsFilter : function () {
+      var expected = new Set();
+      expected.add("full");
+      expected.add("half");
+      expected.add("other half");
+      expected.add("quarter");
 
+      var result = db._query("FOR doc IN UnitTestsView SEARCH EXISTS(doc.text) OPTIONS { waitForSync : true } RETURN doc").toArray();
+      if(!args.oldMangling) {
+        assertEqual(result.length, 28);
+        return;
+      }
+      assertEqual(result.length, expected.size); 
+      result.forEach(function(res) {
+        assertTrue(expected.delete(res.name));
+      });
+      assertEqual(expected.size, 0);
+    },
     testExistsFilterByContextAnalyzer: function () {
       var expected = new Set();
       expected.add("full");
@@ -557,9 +636,10 @@ return function (args) {
       assertEqual(expected.size, 0);
     },
     testExistsFilterByType : function () {
+      // FIMXE: decide if it is correct for search-alias
       var result = db._query("FOR doc IN UnitTestsView SEARCH EXISTS(doc.text, 'type') OPTIONS { waitForSync : true } RETURN doc").toArray();
 
-      assertEqual(result.length, 0);
+      assertEqual(result.length, args.oldMangling? 0: 28);
     },
     testExistsFilterByTypeNull : function () {
       var expected = new Set();
@@ -1716,7 +1796,6 @@ return function (args) {
         assertEqual(expected[k], result[k].f1);
       }
     },
-
     testReadStoredValues : function() {
       var result = db._query("FOR doc IN WithStoredValues SEARCH doc.field3 > 0 OPTIONS { waitForSync : true } SORT doc.field3 ASC " +
                              " RETURN {f1:doc.field1, f2: doc.field2, f3: doc.field3}").toArray();
@@ -1726,8 +1805,20 @@ return function (args) {
         assertEqual(longValue + (k + 1), result[k].f1);
         assertEqual(longValue, result[k].f2);
       }
+    },
+    testDisjunctionVisit : function() {
+      if (!args.oldMangling) {
+        // this test require multiple analyzers per field
+        return;
+      }
+      let res = db._query("FOR d IN DisjunctionView SEARCH "
+                  + " (ANALYZER(PHRASE(d.value, {LEVENSHTEIN_MATCH : ['test', 2, true]}), 'text_en') "
+                  + " && ANALYZER(STARTS_WITH(d.value, 'test'),'text_en')) OR "
+                  + " BOOST(PHRASE(d.value, 'test144', 'identity'), 10) "
+                  + " OPTIONS {waitForSync:true} SORT BM25(d) DESC LIMIT 20 "
+                  + " RETURN {'Score':BM25(d), 'Id' : d.value, 'Entity' : d }").toArray();
+      assertEqual(1, res.length);
     }
-    
   };
 }
 }());

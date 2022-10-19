@@ -43,46 +43,22 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
   let suite = {};
 
   deriveTestSuite(
-    iResearchAqlTestSuite(),
+    iResearchAqlTestSuite({ views: true, oldMangling: false}),
     suite,
     "_SearchAlias_NonCluster"
   );
   
   suite.setUpAll = function () {
-      db._drop("AuxUnitTestsCollection");
-      let auxCol = db._create("AuxUnitTestsCollection");
-      auxCol.save({ foobar: ['foo', 'bar'], foo: ['foo'], bar:['bar'], empty: []});
-
-      db._drop("AnotherUnitTestsCollection");
-      let ac = db._create("AnotherUnitTestsCollection");
-      ac.save({ a: "foo", id : 0 });
-      ac.save({ a: "ba", id : 1 });
-
-      db._drop("UnitTestsWithArrayCollection");
-      let arrayCol = db._create("UnitTestsWithArrayCollection");
-      arrayCol.save({ c: 0, a: ['foo', 'bar', 'baz']});
-      // this will allow to catch if accidentally "all" filter will be used
-      arrayCol.save({ c: 1, a: ['afoo', 'abar', 'abaz']});
-
+      suite.internal.createCollectionsAndData();
       db._dropView("UnitTestsViewArrayView");
       
-      arrayCol.ensureIndex({name:"invertedIndex", type:"inverted", includeAllFields:true, fields: [{name:"a[*]", analyzer:"identity"}]});
+      db.UnitTestsWithArrayCollection.ensureIndex(
+        {name:"invertedIndex",
+         type:"inverted",
+         includeAllFields:true,
+         fields: [{name:"a[*]", analyzer:"identity"}]});
 
       db._createView("UnitTestsWithArrayView", "search-alias", {indexes : [ { collection: "UnitTestsWithArrayCollection", index: "invertedIndex" } ]});
-
-      db._drop("TestsCollectionWithManyFields");
-      let mfc = db._create("TestsCollectionWithManyFields");
-      mfc.save({field1:"1value", field2:"2value", field3: 1, field4: 11111, field5: 1, field6: 1});
-      mfc.save({field1:"1value1", field2:"2value1", field3: 2, field4: 11112, field5: 2, field6: 2});
-      mfc.save({field1:"1value2", field2:"2value2", field3: 3, field4: 11113, field5: 3, field6: 3});
-      mfc.save({field1:"1value3", field2:"2value3", field3: 4, field4: 11114, field5: 4, field6: 4});
-      db._drop("TestsCollectionWithLongFields");
-      let longData = [];
-      let lfc = db._create("TestsCollectionWithLongFields");
-      for (let k = 0; k < 1500; ++k) {
-        longData.push({field1:longValue + k, field2:longValue, field3: k});
-      }
-      lfc.save(longData);
       try { analyzers.remove("customAnalyzer", true); } catch(err) {}
       analyzers.save("customAnalyzer", "text",  {"locale": "en.utf-8",
                                                  "case": "lower",
@@ -91,7 +67,7 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
                                                  "stemming": false},
                                                  ["position", "norm", "frequency"]);
                                   
-      lfc.ensureIndex({type:"inverted", analyzer: "customAnalyzer", 
+      db.TestsCollectionWithLongFields.ensureIndex({type:"inverted", analyzer: "customAnalyzer", 
                        fields:["field1", "field2", "field3", "field4", "field5", "field6", "_key"],
                        name:"invertedIndex",  primarySort: { fields: [{field: "field1", direction: "asc"},
                                               {field: "field2", direction: "asc"},
@@ -103,7 +79,7 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
                               {indexes:[{collection:"TestsCollectionWithLongFields",
                                          index:"invertedIndex" }]});
                                   
-      lfc.ensureIndex({type:"inverted", analyzer: "customAnalyzer", 
+      db.TestsCollectionWithLongFields.ensureIndex({type:"inverted", analyzer: "customAnalyzer", 
                        fields:["field1", "field2", "field3"],
                        name:"invertedIndexWithStored", storedValues: [["field1"], ["field2"], ["field3"]]});       
                                
@@ -112,7 +88,7 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
                                {indexes:[{collection:"TestsCollectionWithLongFields",
                                          index:"invertedIndexWithStored" }]});
                             
-     lfc.ensureIndex({type:"inverted", analyzer: "customAnalyzer", 
+     db.TestsCollectionWithLongFields.ensureIndex({type:"inverted", analyzer: "customAnalyzer", 
                        fields:["field1", "field2", "field3"],
                        name:"invertedIndexWithLongPrimarySort",
                        primarySort: {fields:[{field: "field1", direction: "asc"}]},
@@ -121,28 +97,21 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
 
       let wpsl = db._createView("WithLongPrimarySort", "search-alias", 
       {indexes:[{collection:"TestsCollectionWithLongFields", index:"invertedIndexWithLongPrimarySort"}]});
-
     };
   suite.tearDownAll = function () {
-      db._drop("AnotherUnitTestsCollection");
-      db._drop("AuxUnitTestsCollection");
       db._dropView("UnitTestsWithArrayView");
-      db._drop("UnitTestsWithArrayCollection");
       db._dropView("WithPrimarySort");
-      db._drop("TestsCollectionWithManyFields");
       db._dropView("WithStoredValues");
       db._dropView("WithLongPrimarySort");
       db._dropView("UnitTestsView");
-      db._drop("TestsCollectionWithLongFields");
+      suite.internal.dropCollections();
       analyzers.remove("customAnalyzer", true);
     };
   suite.setUp = function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
-
       db._drop("UnitTestsCollection2");
       c2 = db._create("UnitTestsCollection2");
-
      
       db.UnitTestsCollection.ensureIndex({ 
         type: "inverted",
@@ -1008,52 +977,6 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
         db._drop(queryColl);
         db._dropView(queryView);
         analyzers.remove(queryAnalyzer, true);
-      }
-    };
-  suite.testDisjunctionVisit = function() {
-      let queryColl = "DisjunctionCollection";
-      let queryView = "DisjunctionView";
-      try {
-        db._drop(queryColl);
-        db._dropView(queryView);
-        let coll = db._create(queryColl);
-        let view = db._createView(queryView, "arangosearch", { 
-              links: { 
-                  [queryColl] : { 
-                      fields: {
-                        value: { analyzers:['identity', 'text_en'] }
-                      }
-                  }
-              }
-        });
-        let documents = [
-          {"value":"test"},
-          // these docs will make STARTS_WITH more "costly" than PHRASE and conjunction will use PHRASE as lead! 
-          {"value":"test1234"},
-          {"value":"test21321312312"},
-          {"value":"test213213123122"},
-          {"value":"test2132131231222"},
-          {"value":"test21321312312222"},
-          {"value":"test2132131231222322"},
-          {"value":"test2132131231231231222322"},
-          // this will make PHRASE iterator not use small_disjunction (more than 5 candidates for LEVENSHTEIN)
-          {"value":"rest"},
-          {"value":"arest"},
-          {"value":"brest"},
-          {"value":"zest"},
-          {"value":"qest"}];
-        db[queryColl].save(documents);
-        let res = db._query("FOR d IN " + queryView +" SEARCH "
-                  + " (ANALYZER(PHRASE(d.value, {LEVENSHTEIN_MATCH : ['test', 2, true]}), 'text_en') "
-                  + " && ANALYZER(STARTS_WITH(d.value, 'test'),'text_en')) OR "
-                  + " BOOST(PHRASE(d.value, 'test144', 'identity'), 10) "
-                  + " OPTIONS {waitForSync:true} SORT BM25(d) DESC LIMIT 20 "
-                  + " RETURN {'Score':BM25(d), 'Id' : d.value, 'Entity' : d }").toArray();
-        assertEqual(1, res.length);
-        
-      } finally {
-        db._drop(queryColl);
-        db._dropView(queryView);
       }
     };
   return suite;
