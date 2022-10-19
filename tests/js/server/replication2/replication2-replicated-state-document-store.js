@@ -223,7 +223,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       let colCurrent = lh.readAgencyValueAt(`Current/Collections/${database}/${collection._id}`);
 
       for (const shard of collection.shards()) {
-        let {target, plan, current} = sh.readReplicatedStateAgency(database, lh.shardIdToLogId(shard));
+        let {target, plan, current} = lh.readReplicatedLogAgency(database, lh.shardIdToLogId(shard));
         let shardPlan = colPlan.shards[shard];
         let shardCurrent = colCurrent[shard];
 
