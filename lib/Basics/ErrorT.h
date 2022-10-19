@@ -33,33 +33,17 @@ template<typename Error, typename T>
 struct ErrorT {
   using Contained = std::variant<Error, T>;
 
-  [[nodiscard]] auto static error(Error const& error) -> ErrorT<Error, T> {
-    return ErrorT(Contained(std::in_place_index<0>, std::move(error)));
-  }
-  [[nodiscard]] auto static error(Error&& error) -> ErrorT<Error, T> {
-    return ErrorT(Contained(std::in_place_index<0>, std::move(error)));
-  }
-  [[nodiscard]] auto static ok(T const& val) -> ErrorT<Error, T> {
-    return ErrorT(Contained(std::in_place_index<1>, val));
-  }
-  [[nodiscard]] auto static ok(T&& val) -> ErrorT<Error, T> {
-    return ErrorT(Contained(std::in_place_index<1>, std::move(val)));
-  }
-
   template<typename... Args>
-  [[nodiscard]] auto static error(Args... args) -> ErrorT<Error, T> {
+  [[nodiscard]] auto static error(Args&&... args) -> ErrorT<Error, T> {
     return ErrorT(
         Contained(std::in_place_index<0>, std::forward<Args>(args)...));
   }
 
   template<typename... Args>
-  [[nodiscard]] auto static ok(Args... args) -> ErrorT<Error, T> {
+  [[nodiscard]] auto static ok(Args&&... args) -> ErrorT<Error, T> {
     return ErrorT(
         Contained(std::in_place_index<1>, std::forward<Args>(args)...));
   }
-
-  ErrorT(ErrorT const& other) = delete;
-  ErrorT(ErrorT&& other) = default;
 
   ErrorT() requires(std::is_nothrow_default_constructible_v<T>)
       : _contained{T{}} {}
