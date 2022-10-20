@@ -62,9 +62,9 @@ function runSetup () {
       waitForSync: true
     },
     internal.errors.ERROR_TRANSACTION_INTERNAL.code,
-    'intentional abort',
-    false,
-    true);
+    'Error: intentional abort',
+    true,
+    false);
                             
 }
 

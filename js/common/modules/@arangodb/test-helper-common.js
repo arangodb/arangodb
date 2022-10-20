@@ -36,7 +36,7 @@ const fs = require('fs');
 
 let instanceInfo = null;
 
-exports.transactionFailure = function (trx, errorCode, errorMessage, abortArangoshOnly, crashOnSuccess) {
+exports.transactionFailure = function (trx, errorCode, errorMessage, crashOnSuccess, abortArangoshOnly) {
   try {
     db._executeTransaction(trx);
   } catch (ex) {
