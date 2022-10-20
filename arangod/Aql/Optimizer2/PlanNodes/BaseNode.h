@@ -26,6 +26,7 @@
 
 namespace arangodb::aql::optimizer2::nodes {
 
+// Hint: aka. our ExecutionNode - think about renaming this.
 struct BaseNode {
   AttributeTypes::NodeId id;
   AttributeTypes::NodeType type;
