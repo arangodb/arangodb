@@ -48,7 +48,7 @@ struct LogEventRecorder {
 
 struct LogEventRecorderHandle : replicated_log::IReplicatedStateHandle {
   explicit LogEventRecorderHandle(LogEventRecorder& recorder);
-  auto resign() noexcept
+  auto resignCurrentState() noexcept
       -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> override;
   void leadershipEstablished(
       std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> ptr)

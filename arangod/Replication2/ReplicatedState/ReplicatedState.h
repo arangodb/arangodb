@@ -302,7 +302,7 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
 
   void updateCommitIndex(LogIndex index) override;
 
-  [[nodiscard]] auto resign() noexcept
+  [[nodiscard]] auto resignCurrentState() noexcept
       -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> override;
 
   void leadershipEstablished(

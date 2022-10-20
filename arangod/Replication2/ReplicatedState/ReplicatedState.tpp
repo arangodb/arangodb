@@ -107,7 +107,7 @@ void ReplicatedStateManager<S>::updateCommitIndex(LogIndex index) {
 }
 
 template<typename S>
-auto ReplicatedStateManager<S>::resign() noexcept
+auto ReplicatedStateManager<S>::resignCurrentState() noexcept
     -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> {
   auto guard = _guarded.getLockedGuard();
   auto&& [core, methods] =

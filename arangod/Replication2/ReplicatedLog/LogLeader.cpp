@@ -424,7 +424,7 @@ auto replicated_log::LogLeader::resign() && -> std::tuple<
     }
 
     if (leaderData._leadershipEstablished) {
-      auto methods = _stateHandle->resign();
+      auto methods = _stateHandle->resignCurrentState();
       ADB_PROD_ASSERT(methods != nullptr);
     }
 

@@ -25,7 +25,7 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::test;
 
-auto LogEventRecorderHandle::resign() noexcept
+auto LogEventRecorderHandle::resignCurrentState() noexcept
     -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> {
   recorder.events.emplace_back(LogEvent{.type = LogEvent::Type::kResign});
   return std::move(recorder.methods);

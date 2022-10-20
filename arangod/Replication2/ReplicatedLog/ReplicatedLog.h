@@ -81,10 +81,7 @@ struct IReplicatedLogFollowerMethods : IReplicatedLogMethodsBase {
 // TODO Move to namespace replicated_state (and different file?)
 struct IReplicatedStateHandle {
   virtual ~IReplicatedStateHandle() = default;
-  // TODO Maybe rename resign; it behaves slightly differently than other
-  //      resign() methods, as it does not make this object permanently
-  //      unusable.
-  [[nodiscard]] virtual auto resign() noexcept
+  [[nodiscard]] virtual auto resignCurrentState() noexcept
       -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> = 0;
   virtual void leadershipEstablished(
       std::unique_ptr<IReplicatedLogLeaderMethods>) = 0;

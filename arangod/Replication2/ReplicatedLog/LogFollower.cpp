@@ -494,7 +494,7 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<
         }
 
         {
-          auto methods = _stateHandle->resign();
+          auto methods = _stateHandle->resignCurrentState();
           ADB_PROD_ASSERT(methods != nullptr);
         }
 
