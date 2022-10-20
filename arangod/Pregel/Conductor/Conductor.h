@@ -156,6 +156,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   ~Conductor();
 
+  auto receive(MessagePayload message) -> void;
   void start();
   void cancel();
   auto collectAQLResults(bool withId) -> ResultT<PregelResults>;

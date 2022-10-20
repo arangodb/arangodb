@@ -1,3 +1,4 @@
+#include "Pregel/Messaging/WorkerMessages.h"
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -30,6 +31,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
+#include "Pregel/Messaging/WorkerMessages.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Messaging/Message.h"
@@ -52,15 +54,16 @@ class PregelFeature;
 class IWorker : public std::enable_shared_from_this<IWorker> {
  public:
   virtual ~IWorker() = default;
-  virtual auto loadGraph(LoadGraph const& graph) -> void = 0;
+  virtual auto loadGraph(LoadGraph const& graph) -> ResultT<GraphLoaded> = 0;
   [[nodiscard]] virtual auto runGlobalSuperStep(RunGlobalSuperStep const& data)
-      -> futures::Future<ResultT<GlobalSuperStepFinished>> = 0;
+      -> ResultT<GlobalSuperStepFinished> = 0;
   [[nodiscard]] virtual auto store(Store const& message)
       -> futures::Future<ResultT<Stored>> = 0;
   [[nodiscard]] virtual auto cleanup(Cleanup const& message)
       -> futures::Future<ResultT<CleanupFinished>> = 0;
   [[nodiscard]] virtual auto results(CollectPregelResults const& message) const
       -> futures::Future<ResultT<PregelResults>> = 0;
+  virtual auto send(MessagePayload message) -> void = 0;
 
   virtual void cancelGlobalStep(
       VPackSlice const& data) = 0;  // called by coordinator
@@ -172,15 +175,16 @@ class Worker : public IWorker {
   ~Worker();
 
   // ====== called by rest handler =====
-  auto loadGraph(LoadGraph const& graph) -> void override;
+  auto loadGraph(LoadGraph const& graph) -> ResultT<GraphLoaded> override;
   auto runGlobalSuperStep(RunGlobalSuperStep const& data)
-      -> futures::Future<ResultT<GlobalSuperStepFinished>> override;
+      -> ResultT<GlobalSuperStepFinished> override;
   auto store(Store const& message) -> futures::Future<ResultT<Stored>> override;
   auto cleanup(Cleanup const& message)
       -> futures::Future<ResultT<CleanupFinished>> override;
   auto results(CollectPregelResults const& message) const
       -> futures::Future<ResultT<PregelResults>> override;
 
+  auto send(MessagePayload message) -> void override;
   void cancelGlobalStep(VPackSlice const& data) override;
   void receivedMessages(PregelMessage const& data) override;
 };

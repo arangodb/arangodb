@@ -33,6 +33,7 @@
 #include "Pregel/Connection/NetworkConnection.h"
 #include "Pregel/Messaging/Message.h"
 #include "Pregel/IncomingCache.h"
+#include "Pregel/Messaging/WorkerMessages.h"
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/Status.h"
@@ -266,7 +267,7 @@ auto Worker<V, E, M>::_preGlobalSuperStep(RunGlobalSuperStep const& message)
 
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::runGlobalSuperStep(RunGlobalSuperStep const& message)
-    -> futures::Future<ResultT<GlobalSuperStepFinished>> {
+    -> ResultT<GlobalSuperStepFinished> {
   MUTEX_LOCKER(guard, _commandMutex);
 
   if (_state != WorkerState::IDLE) {
@@ -283,8 +284,8 @@ auto Worker<V, E, M>::runGlobalSuperStep(RunGlobalSuperStep const& message)
   }
   LOG_PREGEL("39e20", DEBUG) << "Worker starts new gss: " << message.gss;
 
-  return _processVerticesInThreads().thenValue(
-      [&](auto results) -> ResultT<GlobalSuperStepFinished> {
+  return _processVerticesInThreads()
+      .thenValue([&](auto results) -> ResultT<GlobalSuperStepFinished> {
         if (_state != WorkerState::COMPUTING) {
           return Result{TRI_ERROR_INTERNAL,
                         "Worker execution aborted prematurely."};
@@ -309,7 +310,8 @@ auto Worker<V, E, M>::runGlobalSuperStep(RunGlobalSuperStep const& message)
           _activeCount += verticesProcessed.activeCount;
         }
         return _finishProcessing(sendCountPerShard);
-      });
+      })
+      .get();
 }
 
 /// WARNING only call this while holding the _commandMutex
@@ -645,7 +647,8 @@ auto Worker<V, E, M>::_observeStatus() -> Status const {
 }
 
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::loadGraph(LoadGraph const& graph) -> void {
+auto Worker<V, E, M>::loadGraph(LoadGraph const& graph)
+    -> ResultT<GraphLoaded> {
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
 
   LOG_PREGEL("52070", DEBUG) << fmt::format(
@@ -656,7 +659,17 @@ auto Worker<V, E, M>::loadGraph(LoadGraph const& graph) -> void {
                      _config.executionNumber());
   _makeStatusCallback()();
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
-  _conductor.graphLoaded(graphLoaded);
+  return graphLoaded;
+}
+
+template<typename V, typename E, typename M>
+auto Worker<V, E, M>::send(MessagePayload message) -> void {
+  auto response = _conductor.send(message);
+  if (response.fail()) {
+    LOG_PREGEL("ef90a", DEBUG) << fmt::format(
+        "Got unsuccessful response from Conductor after sending message {}",
+        velocypack::serialize(message).toJson());
+  }
 }
 
 // template types to create

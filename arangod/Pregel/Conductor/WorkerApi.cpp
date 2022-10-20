@@ -10,7 +10,8 @@
 using namespace arangodb::pregel::conductor;
 
 template<Addable Out, typename In>
-auto WorkerApi::sendToAll(In const& in) const -> futures::Future<ResultT<Out>> {
+auto WorkerApi::sendToAll_old(In const& in) const
+    -> futures::Future<ResultT<Out>> {
   auto results = std::vector<futures::Future<ResultT<Out>>>{};
   for (auto&& server : _servers) {
     results.emplace_back(send<Out>(server, in));
@@ -54,6 +55,36 @@ auto WorkerApi::send(ServerID const& server, In const& in) const
       });
 }
 
+template<typename In>
+auto WorkerApi::sendToAll(In const& in) const
+    -> std::vector<futures::Future<Result>> {
+  auto results = std::vector<futures::Future<Result>>{};
+  for (auto&& server : _servers) {
+    results.emplace_back(_connection->post(
+        Destination{Destination::Type::server, server},
+        ModernMessage{.executionNumber = _executionNumber, .payload = {in}}));
+  }
+  return results;
+}
+
+template<Addable Out>
+auto WorkerApi::collectAllOks(std::vector<futures::Future<Result>> responses)
+    -> ResultT<Aggregate<Out>> {
+  return futures::collectAll(responses)
+      .thenValue([](auto responses) -> ResultT<Aggregate<Out>> {
+        for (auto const& response : responses) {
+          if (response.get().fail()) {
+            return Result{
+                response.get().errorNumber(),
+                fmt::format("Got unsuccessful response from worker: {}",
+                            response.get().errorMessage())};
+          }
+        }
+        return Aggregate<Out>::withComponentsCount(responses.size());
+      })
+      .get();
+}
+
 auto WorkerApi::createWorkers(
     std::unordered_map<ServerID, CreateWorker> const& data)
     -> futures::Future<Result> {
@@ -77,71 +108,41 @@ auto WorkerApi::createWorkers(
 
 auto WorkerApi::loadGraph(LoadGraph const& data)
     -> ResultT<Aggregate<GraphLoaded>> {
-  auto results = std::vector<futures::Future<Result>>{};
-  for (auto&& server : _servers) {
-    results.emplace_back(_connection->post(
-        Destination{Destination::Type::server, server},
-        ModernMessage{.executionNumber = _executionNumber, .payload = {data}}));
-  }
-  return futures::collectAll(results)
-      .thenValue([](auto responses) -> ResultT<Aggregate<GraphLoaded>> {
-        for (auto const& response : responses) {
-          if (response.get().fail()) {
-            return Result{
-                response.get().errorNumber(),
-                fmt::format("Got unsuccessful response from worker: {}",
-                            response.get().errorMessage())};
-          }
-        }
-        return Aggregate<GraphLoaded>::withComponentsCount(responses.size());
-      })
-      .get();
+  return collectAllOks<GraphLoaded>(sendToAll(data));
 }
 
 auto WorkerApi::runGlobalSuperStep(
     RunGlobalSuperStep const& data,
     std::unordered_map<ServerID, uint64_t> const& sendCountPerServer)
-    -> futures::Future<ResultT<GlobalSuperStepFinished>> {
-  auto results =
-      std::vector<futures::Future<ResultT<GlobalSuperStepFinished>>>{};
+    -> ResultT<Aggregate<GlobalSuperStepFinished>> {
+  auto results = std::vector<futures::Future<Result>>{};
   for (auto&& server : _servers) {
-    results.emplace_back(send<GlobalSuperStepFinished>(
-        server,
-        RunGlobalSuperStep{.gss = data.gss,
-                           .vertexCount = data.vertexCount,
-                           .edgeCount = data.edgeCount,
-                           .sendCount = sendCountPerServer.contains(server)
-                                            ? sendCountPerServer.at(server)
-                                            : data.sendCount,
-                           .aggregators = data.aggregators}));
+    results.emplace_back(_connection->post(
+        Destination{Destination::Type::server, server},
+        ModernMessage{.executionNumber = _executionNumber,
+                      .payload = RunGlobalSuperStep{
+                          .gss = data.gss,
+                          .vertexCount = data.vertexCount,
+                          .edgeCount = data.edgeCount,
+                          .sendCount = sendCountPerServer.contains(server)
+                                           ? sendCountPerServer.at(server)
+                                           : data.sendCount,
+                          .aggregators = data.aggregators}}));
   }
-  return futures::collectAll(results).thenValue(
-      [](auto responses) -> ResultT<GlobalSuperStepFinished> {
-        auto out = GlobalSuperStepFinished{};
-        for (auto const& response : responses) {
-          if (response.get().fail()) {
-            return Result{
-                response.get().errorNumber(),
-                fmt::format("Got unsuccessful response from worker: {}",
-                            response.get().errorMessage())};
-          }
-          out.add(response.get().get());
-        }
-        return out;
-      });
+  return collectAllOks<GlobalSuperStepFinished>(std::move(results));
 }
 
 auto WorkerApi::store(Store const& message)
     -> futures::Future<ResultT<Stored>> {
-  return sendToAll<Stored>(message);
+  return sendToAll_old<Stored>(message);
 }
 
 auto WorkerApi::cleanup(Cleanup const& message)
     -> futures::Future<ResultT<CleanupFinished>> {
-  return sendToAll<CleanupFinished>(message);
+  return sendToAll_old<CleanupFinished>(message);
 }
 
 auto WorkerApi::results(CollectPregelResults const& message) const
     -> futures::Future<ResultT<PregelResults>> {
-  return sendToAll<PregelResults>(message);
+  return sendToAll_old<PregelResults>(message);
 }

@@ -453,6 +453,13 @@ std::vector<ShardID> Conductor::getShardIds(ShardID const& collection) const {
   return result;
 }
 
+auto Conductor::receive(MessagePayload message) -> void {
+  auto newState = _state->receive(message);
+  if (newState.has_value()) {
+    _changeState(std::move(newState.value()));
+  }
+}
+
 auto Conductor::_changeState(std::unique_ptr<conductor::State> state) -> void {
   _state = std::move(state);
   auto nextState = _state->run();
