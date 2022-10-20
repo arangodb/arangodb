@@ -135,7 +135,18 @@ const coordinators = (function () {
  *       },
  *       plan: {
  *         id: number,
- *         participantsConfig: Object,
+ *         participantsConfig: {
+ *           participants: Object<string, {
+ *             forced: boolean,
+ *             allowedInQuorum: boolean,
+ *             allowedAsLeader: boolean
+ *           }>,
+ *           generation: number,
+ *           config: {
+ *             waitForSync: boolean,
+ *             effectiveWriteConcern: number
+ *           }
+ *         },
  *         currentTerm?: {
  *           term: number,
  *           leader: {
@@ -145,6 +156,7 @@ const coordinators = (function () {
  *         }
  *       },
  *       current: {
+ *         localStatus: Object<string, Object>,
  *         localState: Object,
  *         supervision?: Object,
  *         leader?: Object

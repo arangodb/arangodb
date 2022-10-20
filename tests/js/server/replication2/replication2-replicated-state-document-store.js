@@ -232,11 +232,11 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
         assertTrue(lh.sortedArrayEqualOrError(Object.keys(target.participants)), _.sortBy(shardPlan));
 
         // Check if the replicated state in Plan and the shard in Plan match
-        assertTrue(lh.sortedArrayEqualOrError(Object.keys(plan.participants)), _.sortBy(shardPlan));
+        assertTrue(lh.sortedArrayEqualOrError(Object.keys(plan.participantsConfig.participants)), _.sortBy(shardPlan));
 
         // Check if the replicated state in Current and the shard in Current match
         assertEqual(target.leader, shardCurrent.servers[0]);
-        assertTrue(lh.sortedArrayEqualOrError(Object.keys(current.participants)), _.sortBy(shardCurrent.servers));
+        assertTrue(lh.sortedArrayEqualOrError(Object.keys(current.localStatus)), _.sortBy(shardCurrent.servers));
       }
     },
 
