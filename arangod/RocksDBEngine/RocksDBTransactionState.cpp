@@ -30,48 +30,32 @@
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
 #include "Cache/CacheManagerFeature.h"
-#include "Cache/Manager.h"
-#include "Cache/Transaction.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Random/RandomGenerator.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
-#include "RocksDBEngine/Methods/RocksDBReadOnlyMethods.h"
-#include "RocksDBEngine/Methods/RocksDBTrxMethods.h"
 #include "RocksDBEngine/Methods/RocksDBTrxBaseMethods.h"
-#include "RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.h"
-#include "RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
-#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
-#include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
-#include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #include <rocksdb/options.h>
-#include <rocksdb/status.h>
-#include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
-#include <atomic>
-#include <cstddef>
-#include <memory>
 
 using namespace arangodb;
 
@@ -194,16 +178,16 @@ void RocksDBTransactionState::commitCollections(
     uint64_t numUpdates = coll->numUpdates();
     uint64_t numRemoves = coll->numRemoves();
     coll->commitCounts(id(), lastWritten);
-    RocksDBTransactionMethods* methods = rocksdbMethods(trxColl->id());
     TRI_ASSERT(coll->numInserts() == 0);
     TRI_ASSERT(coll->numUpdates() == 0);
     TRI_ASSERT(coll->numRemoves() == 0);
-    reinterpret_cast<RocksDBTrxBaseMethods*>(methods)->decreaseNumInserts(
-        numInserts);
-    reinterpret_cast<RocksDBTrxBaseMethods*>(methods)->decreaseNumUpdates(
-        numUpdates);
-    reinterpret_cast<RocksDBTrxBaseMethods*>(methods)->decreaseNumRemoves(
-        numRemoves);
+    /*
+    TODO we have counters in two different places, being the collection
+    counters and the RocksDBTrxBaseMethods counters (which belong to the
+    transaction, not each collection), so we should decrease from
+    RocksDBTrxBaseMethods the contribution from the collection that will be
+    committed
+    */
   }
 }
 
