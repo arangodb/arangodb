@@ -106,3 +106,5 @@ struct LoggerContext {
   LOG_TOPIC(id, level, (ctx).topic) << (ctx) << " "
 #define LOG_CTX_IF(id, level, ctx, cond) \
   LOG_TOPIC_IF(id, level, (ctx).topic, cond) << (ctx) << " "
+#define LOG_DEVEL_CTX(ctx) \
+  LOG_TOPIC("xxxxx", LOG_DEVEL_LEVEL, (ctx).topic) << (ctx) << " "
