@@ -26,7 +26,7 @@
 #include "Aql/Optimizer2/Inspection/StatusT.h"
 
 #include "Basics/VelocyPackStringLiteral.h"
-#include "Aql/Optimizer2/PlanNodes/BaseNode.h"
+#include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
 #include "Inspection/VPackInspection.h"
 #include "InspectTestHelperMakros.h"
 #include "velocypack/Collection.h"
@@ -35,24 +35,23 @@
 
 using namespace arangodb::inspection;
 using namespace arangodb::velocypack;
-using namespace arangodb::aql::optimizer2::nodes;
+using namespace arangodb::aql::optimizer2::types;
 
-class Optimizer2BaseNode : public testing::Test {
+class Optimizer2Variable : public testing::Test {
  protected:
   SharedSlice createMinimumBody() {
     return R"({
-      "type": "BaseNode",
-      "dependencies": [],
-      "id": 0,
-      "estimatedCost": 0,
-      "estimatedNrItems": 0
+      "id": 2,
+      "name": "1",
+      "isFullDocumentFromCollection": false,
+      "isDataFromCollection": false
     })"_vpack;
   }
 
   template<typename T>
   VPackBuilder createMinimumBodyWithOneValue(std::string const& attributeName,
                                              T const& attributeValue) {
-    SharedSlice BaseNodeBuffer = createMinimumBody();
+    SharedSlice VariableBuffer = createMinimumBody();
 
     VPackBuilder b;
     {
@@ -64,52 +63,66 @@ class Optimizer2BaseNode : public testing::Test {
       }
     }
 
-    return arangodb::velocypack::Collection::merge(BaseNodeBuffer.slice(),
+    return arangodb::velocypack::Collection::merge(VariableBuffer.slice(),
                                                    b.slice(), false);
   }
 
   // Tries to parse the given body and returns a ResulT of your Type under
   // test.
-  StatusT<BaseNode> parse(SharedSlice body) {
-    return deserializeWithStatus<BaseNode>(body);
+  StatusT<Variable> parse(SharedSlice body) {
+    return deserializeWithStatus<Variable>(body);
   }
   // Tries to serialize the given object of your type and returns
   // a filled VPackBuilder
-  StatusT<SharedSlice> serialize(BaseNode testee) {
-    return serializeWithStatus<BaseNode>(testee);
+  StatusT<SharedSlice> serialize(Variable testee) {
+    return serializeWithStatus<Variable>(testee);
   }
 };
 
 // Generic tests
 
-GenerateIntegerAttributeTest(Optimizer2BaseNode, id);
-GenerateIntegerAttributeTest(Optimizer2BaseNode, estimatedCost);
-GenerateIntegerAttributeTest(Optimizer2BaseNode, estimatedNrItems);
+GenerateIntegerAttributeTest(Optimizer2Variable, id);
+GenerateStringAttributeTest(Optimizer2Variable, name);
+GenerateBoolAttributeTest(Optimizer2Variable, isFullDocumentFromCollection);
+GenerateBoolAttributeTest(Optimizer2Variable, isDataFromCollection);
 
 // Default test
 
-TEST_F(Optimizer2BaseNode, construction) {
-  auto BaseNodeBuffer = R"({
-    "type": "BaseNode",
-    "dependencies": [4],
-    "id": 5,
-    "estimatedCost": 18,
-    "estimatedNrItems": 5
-  })"_vpack;
+TEST_F(Optimizer2Variable, construction) {
+  auto VariableBuffer = createMinimumBody();
 
-  auto res = deserializeWithStatus<BaseNode>(BaseNodeBuffer);
+  auto res = deserializeWithStatus<Variable>(VariableBuffer);
 
   if (!res) {
     fmt::print("Something went wrong: {}", res.error());
   } else {
-    auto BaseNode = res.get();
-    EXPECT_EQ(BaseNode.type, "BaseNode");
+    auto variable = res.get();
+    EXPECT_EQ(variable.id, 2u);
+    EXPECT_EQ(variable.name, "1");
+    EXPECT_FALSE(variable.isDataFromCollection);
+    EXPECT_FALSE(variable.isFullDocumentFromCollection);
+  }
+}
 
-    EXPECT_EQ(BaseNode.id, 5u);
-    EXPECT_EQ(BaseNode.dependencies.size(), 1u);
-    EXPECT_EQ(BaseNode.dependencies.at(0), 4u);
-    EXPECT_FALSE(BaseNode.canThrow.has_value());
-    EXPECT_EQ(BaseNode.estimatedCost, 18u);
-    EXPECT_EQ(BaseNode.estimatedNrItems, 5u);
+TEST_F(Optimizer2Variable, constructionWithConstValue) {
+  auto ConstantValueBuffer = R"([1, 2, 3])"_vpack;
+  auto VariableBuffer = createMinimumBodyWithOneValue(
+      "constantValue", ConstantValueBuffer.slice());
+  auto res = deserializeWithStatus<Variable>(VariableBuffer.sharedSlice());
+
+  if (!res) {
+    fmt::print("Something went wrong: {}", res.error());
+  } else {
+    auto variable = res.get();
+    EXPECT_EQ(variable.id, 2u);
+    EXPECT_EQ(variable.name, "1");
+    EXPECT_FALSE(variable.isDataFromCollection);
+    EXPECT_FALSE(variable.isFullDocumentFromCollection);
+    fmt::print("", variable.constantValue->slice().toString());
+    EXPECT_TRUE(variable.constantValue->slice().isArray());
+    EXPECT_EQ(variable.constantValue->slice().length(), 3u);
+    EXPECT_EQ(variable.constantValue->slice().at(0).getInt(), 1);
+    EXPECT_EQ(variable.constantValue->slice().at(1).getInt(), 2);
+    EXPECT_EQ(variable.constantValue->slice().at(2).getInt(), 3);
   }
 }
