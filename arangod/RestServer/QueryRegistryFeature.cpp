@@ -411,7 +411,7 @@ void QueryRegistryFeature::collectOptions(
       .setDeprecatedIn(30900);
 
   options
-      ->addOption("--query.max-artefact-log-length",
+      ->addOption("--query.max-artifact-log-length",
                   "maximum length of query strings and bind parameter values "
                   "in logs before they get truncated",
                   new SizeTParameter(&_maxQueryStringLength),
