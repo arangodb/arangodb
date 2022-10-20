@@ -43,7 +43,7 @@ exports.transactionFailure = function (trx, errorCode, errorMessage, abortArango
     if ((!abortArangoshOnly || global.arango) &&  // only on arangosh...
         (ex instanceof arangodb.ArangoError) && // only regular arango errors has the subsequent:
         (ex.errorNum === errorCode) && // check for right error code
-        (!errorMessage || (ex.message === `Error: ${errorMessage}`))) { // optional errorMessage
+        (!errorMessage || (ex.message === errorMessage))) { // optional errorMessage
       if (crashOnSuccess) {
         internal.debugTerminate('crashing server');
       }
