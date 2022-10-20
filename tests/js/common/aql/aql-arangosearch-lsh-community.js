@@ -83,7 +83,7 @@ function IResearchLshAqlTestSuiteCommunity() {
             fields: {
               mh50: {
                 analyzers: [
-                  identity
+                  "identity"
                 ]
               },
               mh100: {
