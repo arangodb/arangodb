@@ -1,3 +1,11 @@
+v3.9.5 (XXXX-XX-XX)
+-------------------
+
+* Fixed error handling of coordinator commit of streaming transactions.
+  This bug could mean that a streaming transaction is reported to be
+  successfully committed when in reality it isn't.
+
+
 v3.9.4 (XXXX-XX-XX)
 -------------------
 
