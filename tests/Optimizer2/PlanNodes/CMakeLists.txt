@@ -1,4 +1,5 @@
 target_sources(arangodbtests_optimizer2 PRIVATE
+        BaseNode.cpp
         ReturnNode.cpp
         EnumerateCollectionNode.cpp
         SingletonNode.cpp

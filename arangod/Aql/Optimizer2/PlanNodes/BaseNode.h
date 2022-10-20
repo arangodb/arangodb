@@ -30,9 +30,11 @@ struct BaseNode {
   AttributeTypes::NodeId id;
   AttributeTypes::NodeType type;
   AttributeTypes::Dependencies dependencies;
-  AttributeTypes::Numeric estimatedCost;
+  AttributeTypes::Numeric estimatedCost;  // TODO: might be double. Check this.
   AttributeTypes::Numeric estimatedNrItems;
   std::optional<bool> canThrow;
+
+  bool operator==(BaseNode const&) const = default;
 };
 
 template<class Inspector>
