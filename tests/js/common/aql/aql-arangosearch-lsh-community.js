@@ -76,8 +76,8 @@ function IResearchLshAqlTestSuiteCommunity() {
       collection_0.insert({ body: "the dog jumps over the lazy fox", sub: { body: "the dog jumps over the lazy fox" } });
       collection_0.insert({ body: "roses are red, violets are blue, foxes are quick", sub: { body: "roses are red, violets are blue, foxes are quick" } });
 
-      db._createView("view", "arangosearch", {});
-      db.view.properties({
+      let view = db._createView("view", "arangosearch", {});
+      view.properties({
         links: {
           collection_0: {
             fields: {
