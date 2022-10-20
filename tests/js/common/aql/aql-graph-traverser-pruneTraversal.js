@@ -1,5 +1,5 @@
 /* jshint esnext: true */
-/* global AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON */
+/* global AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Spec for the AQL FOR x IN GRAPH name statement
@@ -31,19 +31,19 @@
 'use strict';
 
 const jsunity = require('jsunity');
-const {assertEqual, assertTrue, assertFalse, fail} = jsunity.jsUnity.assertions;
-
-
+const {assertEqual, assertTrue} = jsunity.jsUnity.assertions;
+const {errors} = require("@arangodb");
 const internal = require('internal');
+const explainer = require('@arangodb/aql/explainer');
+const gh = require('@arangodb/graph/helpers');
 const db = internal.db;
-
 
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
-
-
-const gh = require('@arangodb/graph/helpers');
+const planNodes = function(plan) {
+  return plan.plan.nodes.map(n => n.type);
+};
 
 function pruneTraversalSuite() {
   const optionsToTest = {
@@ -79,7 +79,7 @@ function pruneTraversalSuite() {
             FILTER p.vertices[0]._key != sub4
             RETURN v._key
       `;
-      const res = db._query(q);
+      const res = db._query(q, {}, {count: true});
 
       if (name === "Neighbors") {
         assertEqual(res.count(), 3, `In query ${q}`);
@@ -100,7 +100,7 @@ function pruneTraversalSuite() {
             OPTIONS ${JSON.stringify(opts)}
             RETURN v._key
       `;
-      const res = db._query(q);
+      const res = db._query(q, {}, {count: true});
 
       if (name === "Neighbors") {
         assertEqual(res.count(), 4, `In query ${q}`);
@@ -120,7 +120,7 @@ function pruneTraversalSuite() {
           OPTIONS ${JSON.stringify(opts)}
           RETURN v._key
       `;
-      const res = db._query(q);
+      const res = db._query(q, {}, {count: true});
 
       if (name === "Neighbors") {
         assertEqual(res.count(), 4, `In query ${q}`);
@@ -139,7 +139,7 @@ function pruneTraversalSuite() {
           OPTIONS ${JSON.stringify(opts)}
           RETURN v._key
       `;
-      const res = db._query(q);
+      const res = db._query(q, {}, {count: true});
 
       if (name === "Neighbors") {
         assertEqual(res.count(), 4, `In query ${q}`);
@@ -158,7 +158,7 @@ function pruneTraversalSuite() {
           OPTIONS ${JSON.stringify(opts)}
           RETURN v._key
       `;
-      const res = db._query(q);
+      const res = db._query(q, {}, {count: true});
       if (name === "Neighbors") {
         assertEqual(res.count(), 4, `In query ${q}`);
         assertEqual(res.toArray().sort(), ['A', 'C', 'E', 'F'].sort(), `In query ${q}`);
@@ -176,7 +176,7 @@ function pruneTraversalSuite() {
                   OPTIONS ${JSON.stringify(opts)}
                   RETURN v._key
               `;
-      const res = db._query(q);
+      const res = db._query(q, {}, {count: true});
       if (name === "Neighbors") {
         assertEqual(res.count(), 4, `In query ${q}`);
         assertEqual(res.toArray().sort(), ['A', 'C', 'E', 'F'].sort(), `In query ${q}`);
@@ -194,7 +194,7 @@ function pruneTraversalSuite() {
                   OPTIONS ${JSON.stringify(opts)}
                   RETURN e._id
               `;
-      const res = db._query(q);
+      const res = db._query(q, {}, {count: true});
       if (name === "Neighbors") {
         assertEqual(res.count(), 4, `In query ${q}`);
         assertEqual(res.toArray().sort(), [gh.edge.AB, gh.edge.BC, gh.edge.EB, gh.edge.FE].sort(), `In query ${q}`);
@@ -213,7 +213,7 @@ function pruneTraversalSuite() {
                   OPTIONS ${JSON.stringify(opts)}
                   RETURN v._key
               `;
-      const res = db._query(q);
+      const res = db._query(q, {}, {count: true});
 
       if (name === "Neighbors") {
         const resKeyC = ['A', 'C', 'E', 'F'];
@@ -236,7 +236,7 @@ function pruneTraversalSuite() {
           OPTIONS ${JSON.stringify(opts)}
           RETURN v._key
       `;
-      const res = db._query(q);
+      const res = db._query(q, {}, {count: true});
 
       if (name === "Neighbors") {
         assertEqual(res.count(), 0, `In query ${q}`);
@@ -270,7 +270,7 @@ function pruneTraversalSuite() {
       // A => C,E
       // C => [] // it shall prune the startvertex
       // E => A,C,C 
-      const res = db._query(q);
+      const res = db._query(q, {}, {count: true});
 
       if (name === "Neighbors") {
         // The E part does not find C twice
@@ -282,6 +282,51 @@ function pruneTraversalSuite() {
       }
     };
 
+    testObj[`testPruningWithV8Function${name}`] = () => {
+      const q = `
+                WITH ${vn}, ${en}
+                FOR v IN 1 OUTBOUND {"_id": "${vn}/1"} ${en}
+                PRUNE V8(LENGTH("ServerShouldDenyThis"))
+                RETURN v
+              `;
+
+      try {
+        db._query(q);
+        fail();
+      } catch (err) {
+        // It is forbidden to execute V8 inside PRUNE statements
+        assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+      }
+    };
+
+    testObj[`testPostFilterWithV8Function${name}`] = () => {
+      const q = `
+                WITH ${vn}, ${en}
+                FOR v IN 1 OUTBOUND {"_id": "${vn}/1"} ${en}
+                FILTER V8(LENGTH(v._key))
+                RETURN v
+              `;
+
+      // Query planning phase:
+      const debug = explainer.debug({
+        query: q,
+        bindVars: {},
+        options: {}
+      });
+      const nodes = planNodes(debug.explain);
+      // Make sure we still have the FilterNode and CalculationNode
+      assertTrue(nodes.includes('FilterNode'));
+      assertTrue(nodes.includes('CalculationNode'));
+
+      // Query execution phase:
+      // While in the "testPruningWithV8..." tests, we need to fail hard and abort
+      // execution, in this case we're allowed to proceed with our query. The difference
+      // is that we will not optimize the filter into the TraversalNode.
+      const res = db._query(q, {}, {count: true});
+
+      // We do not care about the result, will be 0 anyway.
+      assertEqual(res.count(), 0);
+    };
   };
 
   const testObj = {
