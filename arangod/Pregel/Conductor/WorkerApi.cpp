@@ -98,9 +98,37 @@ auto WorkerApi::loadGraph(LoadGraph const& data)
       .get();
 }
 
-auto WorkerApi::runGlobalSuperStep(RunGlobalSuperStep const& data)
+auto WorkerApi::runGlobalSuperStep(
+    RunGlobalSuperStep const& data,
+    std::unordered_map<ServerID, uint64_t> const& sendCountPerServer)
     -> futures::Future<ResultT<GlobalSuperStepFinished>> {
-  return sendToAll<GlobalSuperStepFinished>(data);
+  auto results =
+      std::vector<futures::Future<ResultT<GlobalSuperStepFinished>>>{};
+  for (auto&& server : _servers) {
+    results.emplace_back(send<GlobalSuperStepFinished>(
+        server,
+        RunGlobalSuperStep{.gss = data.gss,
+                           .vertexCount = data.vertexCount,
+                           .edgeCount = data.edgeCount,
+                           .sendCount = sendCountPerServer.contains(server)
+                                            ? sendCountPerServer.at(server)
+                                            : data.sendCount,
+                           .aggregators = data.aggregators}));
+  }
+  return futures::collectAll(results).thenValue(
+      [](auto responses) -> ResultT<GlobalSuperStepFinished> {
+        auto out = GlobalSuperStepFinished{};
+        for (auto const& response : responses) {
+          if (response.get().fail()) {
+            return Result{
+                response.get().errorNumber(),
+                fmt::format("Got unsuccessful response from worker: {}",
+                            response.get().errorMessage())};
+          }
+          out.add(response.get().get());
+        }
+        return out;
+      });
 }
 
 auto WorkerApi::store(Store const& message)

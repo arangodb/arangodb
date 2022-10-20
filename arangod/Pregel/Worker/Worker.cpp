@@ -53,6 +53,7 @@
 #include "velocypack/Builder.h"
 
 #include "fmt/core.h"
+#include <chrono>
 #include <variant>
 
 using namespace arangodb;
@@ -190,8 +191,13 @@ void Worker<V, E, M>::receivedMessages(PregelMessage const& message) {
   // make sure the cache and gss are not changed while parsing messages
   MY_READ_LOCKER(guard, _cacheRWLock);
 
-  // queue message if gss was not yet incremented
-  if (message.gss == _config._globalSuperstep + 1) {
+  // queue message if read and write cache are not swapped yet, otherwise you
+  // will loose this message
+  if (message.gss == _config._globalSuperstep + 1 ||
+      // if config.gss == 0 and _computationStarted == false: read and write
+      // cache are not swapped yet, config.gss is currently 0 only due to its
+      // initialization
+      (_config._globalSuperstep == 0 && !_computationStarted)) {
     _messagesForNextGss.doUnderLock(
         [&](auto& messages) { messages.push_back(message); });
     return;
@@ -205,6 +211,20 @@ auto Worker<V, E, M>::_preGlobalSuperStep(RunGlobalSuperStep const& message)
     -> Result {
   const uint64_t gss = message.gss;
 
+  // wait until worker received all messages that were sent to it
+  auto timeout = std::chrono::minutes(5);
+  auto start = std::chrono::steady_clock::now();
+  while (message.sendCount != _writeCache->containedMessageCount()) {
+    if (std::chrono::steady_clock::now() - start >= timeout) {
+      return Result{
+          TRI_ERROR_INTERNAL,
+          fmt::format("gss {}: Worker did not receive all the messages that "
+                      "were send to it. Received count {} != send count {}.",
+                      _config._globalSuperstep,
+                      _writeCache->containedMessageCount(), message.sendCount)};
+    }
+  }
+
   // write cache becomes the readable cache
   {
     MY_WRITE_LOCKER(wguard, _cacheRWLock);
@@ -212,6 +232,10 @@ auto Worker<V, E, M>::_preGlobalSuperStep(RunGlobalSuperStep const& message)
     std::swap(_readCache, _writeCache);
     _config._globalSuperstep = gss;
     _config._localSuperstep = gss;
+    if (gss == 0) {
+      // now config.gss is set explicitely to 0 and the computation started
+      _computationStarted = true;
+    }
   }
 
   // process all queued messages
@@ -265,6 +289,7 @@ auto Worker<V, E, M>::runGlobalSuperStep(RunGlobalSuperStep const& message)
           return Result{TRI_ERROR_INTERNAL,
                         "Worker execution aborted prematurely."};
         }
+        std::unordered_map<ShardID, uint64_t> sendCountPerShard;
         for (auto& result : results) {
           if (result.get().fail()) {
             return Result{result.get().errorNumber(),
@@ -277,9 +302,13 @@ auto Worker<V, E, M>::runGlobalSuperStep(RunGlobalSuperStep const& message)
           _workerAggregators->aggregateValues(
               verticesProcessed.aggregator.slice());
           _messageStats.accumulate(verticesProcessed.stats);
+          for (auto const& [shard, count] :
+               verticesProcessed.sendCountPerShard) {
+            sendCountPerShard[shard] += count;
+          }
           _activeCount += verticesProcessed.activeCount;
         }
-        return _finishProcessing();
+        return _finishProcessing(sendCountPerShard);
       });
 }
 
@@ -346,6 +375,7 @@ auto Worker<V, E, M>::_processVertices(
   outCache->setBatchSize(_messageBatchSize);
   outCache->setLocalCache(inCache);
   TRI_ASSERT(outCache->sendCount() == 0);
+  TRI_ASSERT(outCache->sendCountPerShard().empty());
 
   AggregatorHandler workerAggregator(_algorithm.get());
   // TODO look if we can avoid instantiating this
@@ -401,21 +431,26 @@ auto Worker<V, E, M>::_processVertices(
   _currentGssObservables.memoryBytesUsedForMessages +=
       outCache->sendCount() * sizeof(M);
   stats.superstepRuntimeSecs = TRI_microtime() - start;
-  inCache->clear();
-  outCache->clear();
 
   VPackBuilder aggregatorVPack;
   {
     VPackObjectBuilder ob(&aggregatorVPack);
     workerAggregator.serializeValues(aggregatorVPack);
   }
-  return VerticesProcessed{std::move(aggregatorVPack), std::move(stats),
-                           activeCount};
+  auto out = VerticesProcessed{std::move(aggregatorVPack), std::move(stats),
+                               outCache->sendCountPerShard(), activeCount};
+
+  inCache->clear();
+  outCache->clear();
+
+  return out;
 }
 
 // called at the end of a worker thread, needs mutex
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::_finishProcessing() -> ResultT<GlobalSuperStepFinished> {
+auto Worker<V, E, M>::_finishProcessing(
+    std::unordered_map<ShardID, uint64_t> sendCountPerShard)
+    -> ResultT<GlobalSuperStepFinished> {
   {
     MUTEX_LOCKER(guard, _threadMutex);
     if (_runningThreads != 0) {
@@ -455,9 +490,13 @@ auto Worker<V, E, M>::_finishProcessing() -> ResultT<GlobalSuperStepFinished> {
     VPackObjectBuilder ob(&aggregators);
     _workerAggregators->serializeValues(aggregators);
   }
-  GlobalSuperStepFinished gssFinishedEvent = GlobalSuperStepFinished{
-      _messageStats, _activeCount, _graphStore->localVertexCount(),
-      _graphStore->localEdgeCount(), aggregators};
+  GlobalSuperStepFinished gssFinishedEvent =
+      GlobalSuperStepFinished{_messageStats,
+                              sendCountPerShard,
+                              _activeCount,
+                              _graphStore->localVertexCount(),
+                              _graphStore->localEdgeCount(),
+                              aggregators};
   VPackBuilder event;
   serialize(event, gssFinishedEvent);
   LOG_PREGEL("2de5b", DEBUG) << "Finished GSS: " << event.toJson();

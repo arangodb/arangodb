@@ -209,7 +209,7 @@ void Conductor::workerStatusUpdated(StatusUpdated const& data) {
 
   VPackBuilder event;
   serialize(event, data);
-  LOG_PREGEL("76632", DEBUG)
+  LOG_PREGEL("76632", TRACE)
       << fmt::format("Update received {}", event.toJson());
 
   _status.updateWorkerStatus(data.senderId, data.status);
@@ -295,8 +295,13 @@ auto Conductor::_initializeWorkers() -> futures::Future<Result> {
   }
 
   auto servers = std::vector<ServerID>{};
-  for (auto const& [server, _] : vertexMap) {
+  for (auto const& [server, shardsPerCollection] : vertexMap) {
     servers.push_back(server);
+    for (auto const& [_, shards] : shardsPerCollection) {
+      for (auto const& shard : shards) {
+        _leadingServerForShard[shard] = server;
+      }
+    }
   }
   _status = ConductorStatus::forWorkers(servers);
 
