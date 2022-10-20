@@ -37,6 +37,19 @@ struct Variable {
   bool isDataFromCollection;
   std::optional<VPackBuilder>
       constantValue;  // Hint: Originally AqlValue used here
+
+  bool operator==(Variable const& other) const {
+    bool constantEqual = true;
+    if (constantValue.has_value() && other.constantValue.has_value()) {
+      constantEqual = this->constantValue.value().slice().binaryEquals(
+          other.constantValue.value().slice());
+    }
+    return (this->id == other.id && this->name == other.name &&
+            this->isFullDocumentFromCollection ==
+                other.isFullDocumentFromCollection &&
+            this->isDataFromCollection == other.isDataFromCollection &&
+            constantEqual);
+  }
 };
 
 template<typename Inspector>

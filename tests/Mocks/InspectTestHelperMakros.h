@@ -99,7 +99,7 @@
 #define GenerateBoolAttributeTest(TestClass, attributeName)                   \
   TEST_F(TestClass, test_##attributeName) {                                   \
     auto shouldBeEvaluatedTo = [&](VPackBuilder const& body, bool expected) { \
-      auto testee = parse(body.slice());                                      \
+      auto testee = parse(body.sharedSlice());                                \
       EXPECT_EQ(testee->attributeName, expected)                              \
           << "Parsing error in " << body.toJson();                            \
       __HELPER_equalsAfterSerializeParseCircle(testee.get())                  \
@@ -119,7 +119,7 @@
   TEST_F(TestClass, test_##attributeName) {                                    \
     auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                   \
                                    std::string const& expected) {              \
-      auto testee = parse(body.slice());                                       \
+      auto testee = parse(body.sharedSlice());                                 \
       EXPECT_EQ(testee->attributeName, expected)                               \
           << "Parsing error in " << body.toJson();                             \
       __HELPER_equalsAfterSerializeParseCircle(testee.get())                   \
