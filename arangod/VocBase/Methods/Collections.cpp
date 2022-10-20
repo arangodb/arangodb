@@ -652,16 +652,6 @@ Collections::create(         // create collection
       // TODO: writeConcern is inherited when using replication2
       // col.writeConcern = myColToDistributeLike->writeConcern();
     }
-    // TODO: Maybe we can do this within the parsing Step already.
-    // but that is a cleanup for later.
-    auto res = col.validateDatabaseConfiguration(config);
-    if (res.fail()) {
-      for (auto const& reportCollection : collections) {
-        events::CreateCollection(vocbase.name(), reportCollection.name,
-                                 res.errorNumber());
-      }
-      return res;
-    }
 
     // make sure we have enough servers available for the replication
     // factor

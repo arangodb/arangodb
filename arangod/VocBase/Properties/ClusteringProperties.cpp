@@ -21,37 +21,39 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusteringProperties.h"
+
 #include "Basics/Result.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 
 using namespace arangodb;
 
-void ClusteringProperties::applyDatabaseDefaults(DatabaseConfiguration const& config) {
-  ClusteringMutableProperties::applyDatabaseDefaults(config);
-  ClusteringConstantProperties::applyDatabaseDefaults(config);
-}
+[[nodiscard]] arangodb::Result
+ClusteringProperties::applyDefaultsAndValidateDatabaseConfiguration(
+    DatabaseConfiguration const& config) {
+  // DistributeShardsLike has highest binding. We have to handle this first
+  if (!config.defaultDistributeShardsLike.empty()) {
+    if (!distributeShardsLike.has_value()) {
+      distributeShardsLike = config.defaultDistributeShardsLike;
+    } else {
+      return {TRI_ERROR_NOT_IMPLEMENTED,
+              "Have not yet implemented error messages if "
+              "default-distShardLike mismatches user-value"};
+    }
+  }
+  if (distributeShardsLike.has_value()) {
+    return {TRI_ERROR_NOT_IMPLEMENTED,
+            "Need to apply sharding values of distributeShardsLike partner"};
+  } else {
+    // Apply database defaults
+    ClusteringMutableProperties::applyDatabaseDefaults(config);
+    ClusteringConstantProperties::applyDatabaseDefaults(config);
+  }
 
-[[nodiscard]] arangodb::Result ClusteringProperties::validateDatabaseConfiguration(
-    DatabaseConfiguration const& config) const {
-  auto mutableRes = ClusteringMutableProperties::validateDatabaseConfiguration(config);
+  // Make sure we do not violate conditions anymore
+  auto mutableRes =
+      ClusteringMutableProperties::validateDatabaseConfiguration(config);
   if (!mutableRes.ok()) {
     return mutableRes;
   }
   return ClusteringConstantProperties::validateDatabaseConfiguration(config);
 }
-
-/*
-
- if (numberOfShards != other.numberOfShards) {
- return false;
-}
-if (distributeShardsLike != other.distributeShardsLike) {
- return false;
-}
-if (shardingStrategy != other.shardingStrategy) {
- return false;
-}
-if (shardKeys != other.shardKeys) {
-  return false;
-}
-
- */

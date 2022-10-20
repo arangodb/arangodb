@@ -28,14 +28,9 @@
 
 using namespace arangodb;
 
-void CollectionProperties::applyDatabaseDefaults(
-    DatabaseConfiguration const& config) {
-  ClusteringProperties::applyDatabaseDefaults(config);
-}
-
 [[nodiscard]] arangodb::Result
-CollectionProperties::validateDatabaseConfiguration(
-    DatabaseConfiguration const& config) const {
+CollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
+    DatabaseConfiguration const& config) {
   //  Check name is allowed
   if (!CollectionNameValidator::isAllowedName(
           isSystem, config.allowExtendedNames, name)) {
@@ -58,5 +53,6 @@ CollectionProperties::validateDatabaseConfiguration(
     }
   }
 
-  return ClusteringProperties::validateDatabaseConfiguration(config);
+  return ClusteringProperties::applyDefaultsAndValidateDatabaseConfiguration(
+      config);
 }

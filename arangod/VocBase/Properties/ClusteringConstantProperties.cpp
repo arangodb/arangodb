@@ -22,38 +22,35 @@
 
 #include "ClusteringConstantProperties.h"
 
+#include "Basics/debugging.h"
 #include "Basics/Result.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
 using namespace arangodb;
 
-void ClusteringConstantProperties::applyDatabaseDefaults(DatabaseConfiguration const& config) {
+void ClusteringConstantProperties::applyDatabaseDefaults(
+    DatabaseConfiguration const& config) {
   // This will make sure the default configuration for Sharding attributes are
   // applied
   if (!numberOfShards.has_value()) {
     numberOfShards = config.defaultNumberOfShards;
   }
-
-  if (!config.defaultDistributeShardsLike.empty()) {
-    if (!distributeShardsLike.has_value()) {
-      distributeShardsLike =
-          config.defaultDistributeShardsLike;
-    }
-  }
 }
 
 [[nodiscard]] arangodb::Result ClusteringConstantProperties::validateDatabaseConfiguration(
     DatabaseConfiguration const& config) const {
+  // When we call validate, all default values have been applied
+  TRI_ASSERT(numberOfShards.has_value());
   if (config.shouldValidateClusterSettings) {
     if (config.maxNumberOfShards > 0 &&
-        numberOfShards > config.maxNumberOfShards) {
+        numberOfShards.value() > config.maxNumberOfShards) {
       return {TRI_ERROR_CLUSTER_TOO_MANY_SHARDS,
               std::string("too many shards. maximum number of shards is ") +
                   std::to_string(config.maxNumberOfShards)};
     }
   }
   if (config.isOneShardDB) {
-    if (numberOfShards != 1) {
+    if (numberOfShards.value() != 1) {
       return {TRI_ERROR_BAD_PARAMETER,
               "Collection in a 'oneShardDatabase' must have 1 shard"};
     }

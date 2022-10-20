@@ -28,13 +28,12 @@
 namespace arangodb {
 class Result;
 
-struct ClusteringProperties : public ClusteringMutableProperties, public ClusteringConstantProperties {
+struct ClusteringProperties : public ClusteringMutableProperties,
+                              public ClusteringConstantProperties {
   bool operator==(ClusteringProperties const& other) const = default;
 
-  void applyDatabaseDefaults(DatabaseConfiguration const& config);
-
-  [[nodiscard]] arangodb::Result validateDatabaseConfiguration(
-      DatabaseConfiguration const& config) const;
+  [[nodiscard]] arangodb::Result applyDefaultsAndValidateDatabaseConfiguration(
+      DatabaseConfiguration const& config);
 };
 
 template<class Inspector>

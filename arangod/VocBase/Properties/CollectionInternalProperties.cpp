@@ -23,6 +23,8 @@
 #include "CollectionInternalProperties.h"
 
 #include "Basics/NumberUtils.h"
+#include "Basics/Result.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 #include "Inspection/Status.h"
 
 using namespace arangodb;
@@ -71,4 +73,13 @@ CollectionInternalProperties::Transformers::IdIdentifier::fromSerialized(
   char const* p = v.c_str();
   result = DataSourceId{NumberUtils::atoi_zero<uint64_t>(p, p + v.length())};
   return {};
+}
+
+[[nodiscard]] arangodb::Result
+CollectionInternalProperties::applyDefaultsAndValidateDatabaseConfiguration(
+    DatabaseConfiguration const& config) {
+  if (id.empty()) {
+    id = config.idGenerator();
+  }
+  return {TRI_ERROR_NO_ERROR};
 }

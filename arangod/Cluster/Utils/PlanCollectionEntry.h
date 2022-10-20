@@ -52,7 +52,7 @@ struct PlanCollectionEntry {
 
   // Remove the isBuilding flags, call it if we are completed
   void removeBuildingFlags();
-  
+
  private:
   CollectionProperties _properties{};
   std::optional<AgencyIsBuildingFlags> _buildingFlags{AgencyIsBuildingFlags{}};

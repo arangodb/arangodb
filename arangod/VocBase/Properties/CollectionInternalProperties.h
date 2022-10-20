@@ -30,6 +30,9 @@
 
 namespace arangodb {
 
+struct DatabaseConfiguration;
+class Result;
+
 namespace inspection {
 struct Status;
 }
@@ -67,6 +70,9 @@ struct CollectionInternalProperties {
   uint64_t internalValidatorType = 0;
   std::underlying_type_t<TRI_vocbase_col_status_e> status =
       TRI_VOC_COL_STATUS_LOADED;
+
+  [[nodiscard]] arangodb::Result applyDefaultsAndValidateDatabaseConfiguration(
+      DatabaseConfiguration const& config);
 
   bool operator==(CollectionInternalProperties const&) const = default;
 };

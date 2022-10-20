@@ -64,9 +64,6 @@ struct CreateCollectionBody : public CollectionProperties,
 
   // Temporary method to handOver information from
   [[nodiscard]] arangodb::velocypack::Builder toCollectionsCreate() const;
-
-  [[nodiscard]] arangodb::Result validateDatabaseConfiguration(
-      DatabaseConfiguration const& config) const;
 };
 
 template<class Inspector>

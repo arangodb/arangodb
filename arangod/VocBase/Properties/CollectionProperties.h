@@ -36,10 +36,8 @@ struct CollectionProperties : public CollectionConstantProperties,
                               public ClusteringProperties {
   bool operator==(CollectionProperties const& other) const = default;
 
-  void applyDatabaseDefaults(DatabaseConfiguration const& config);
-
-  [[nodiscard]] arangodb::Result validateDatabaseConfiguration(
-      DatabaseConfiguration const& config) const;
+  [[nodiscard]] arangodb::Result applyDefaultsAndValidateDatabaseConfiguration(
+      DatabaseConfiguration const& config);
 };
 
 template<class Inspector>

@@ -30,17 +30,6 @@
 
 using namespace arangodb;
 
-namespace {
-CreateCollectionBody initWithDefaults(DatabaseConfiguration const& config,
-                                      std::string const& name) {
-  CreateCollectionBody res;
-  // Inject certain default values.
-  res.name = name;
-  res.applyDatabaseDefaults(config);
-  return res;
-}
-
-}  // namespace
 
 CreateCollectionBody::CreateCollectionBody() {}
 
@@ -49,11 +38,16 @@ ResultT<CreateCollectionBody> parseAndValidate(
     std::string const& defaultName,
     std::function<void(CreateCollectionBody&)> applyOnSuccess) {
   try {
-    CreateCollectionBody res = initWithDefaults(config, defaultName);
+    CreateCollectionBody res;
+    // Inject the given defaultName. Json input will overwrite the name
+    res.name = defaultName;
     auto status = velocypack::deserializeWithStatus(input, res);
     if (status.ok()) {
-      // TODO: We can actually call validateDatabaseConfiguration
-      // here, to make sure everything is correct from the very beginning
+      // Inject default values, and finally check if collection is allowed
+      auto result = res.applyDefaultsAndValidateDatabaseConfiguration(config);
+      if (result.fail()) {
+        return result;
+      }
       applyOnSuccess(res);
       return res;
     }
@@ -84,11 +78,7 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
   return ::parseAndValidate(config, input, StaticStrings::Empty,
-                            [&config](CreateCollectionBody& col) {
-                              if (col.id.empty()) {
-                                col.id = config.idGenerator();
-                              }
-                            });
+                            [](CreateCollectionBody& col) {});
 }
 
 ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
@@ -100,16 +90,13 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
   return ::parseAndValidate(config, properties, name,
-                            [&name, &type, &config](CreateCollectionBody& col) {
+                            [&name, &type](CreateCollectionBody& col) {
                               // If we have given a type, it always wins.
                               // As we hand in an enum the type has to be valid.
                               // TODO: Should we silently do this?
                               // or should we throw an illegal use error?
                               col.type = type;
                               col.name = name;
-                              if (col.id.empty()) {
-                                col.id = config.idGenerator();
-                              }
                             });
 }
 
@@ -124,11 +111,6 @@ CreateCollectionBody::toCreateCollectionProperties(
     builder.add(c.toCollectionsCreate().slice());
   }
   return builder;
-}
-
-arangodb::Result CreateCollectionBody::validateDatabaseConfiguration(
-    DatabaseConfiguration const& config) const {
-  return CollectionProperties::validateDatabaseConfiguration(config);
 }
 
 arangodb::velocypack::Builder CreateCollectionBody::toCollectionsCreate()

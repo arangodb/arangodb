@@ -178,14 +178,6 @@ TEST_F(CreateCollectionBodyTest, test_satelliteReplicationFactor) {
 TEST_F(CreateCollectionBodyTest, test_configureMaxNumberOfShards) {
   auto body = createMinimumBodyWithOneValue("numberOfShards", 1024);
 
-  // First Step of parsing has to pass
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
-  ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-  ASSERT_TRUE(testee->numberOfShards.has_value());
-  EXPECT_EQ(testee->numberOfShards, 1024)
-      << "Parsing error in " << body.toJson();
-
   DatabaseConfiguration config = defaultDBConfig();
   EXPECT_EQ(config.maxNumberOfShards, 0ul);
   EXPECT_EQ(config.shouldValidateClusterSettings, false);
@@ -196,38 +188,37 @@ TEST_F(CreateCollectionBodyTest, test_configureMaxNumberOfShards) {
     // effect
     for (uint32_t maxShards : std::vector<uint32_t>{0, 16, 1023, 1024, 1025}) {
       config.maxNumberOfShards = maxShards;
-      auto res = testee->validateDatabaseConfiguration(config);
-      EXPECT_TRUE(res.ok()) << res.errorMessage();
+      auto testee =
+          CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
+      ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
+      ASSERT_TRUE(testee->numberOfShards.has_value());
+      EXPECT_EQ(testee->numberOfShards, 1024)
+          << "Parsing error in " << body.toJson();
     }
   }
   {
     config.shouldValidateClusterSettings = true;
     // If shouldValidateClusterSettings is true, numberOfShards should be
     // checked
-    {
-      // 0 := unlimited shards, 1024 should be okay
-      config.maxNumberOfShards = 0;
-      auto res = testee->validateDatabaseConfiguration(config);
-      EXPECT_TRUE(res.ok()) << res.errorMessage();
+    // Positive cases:
+    // 0 := unlimited shards, 1024 should be okay
+    // 1024 == 1024 should be okay
+    // 1025 >= 1024 should be okay
+    for (uint32_t maxShards : std::vector<uint32_t>{0, 1024, 1025}) {
+      config.maxNumberOfShards = maxShards<;
+      auto testee =
+          CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
+      ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
+      ASSERT_TRUE(testee->numberOfShards.has_value());
+      EXPECT_EQ(testee->numberOfShards, 1024)
+          << "Parsing error in " << body.toJson();
     }
-    {
-      // 1024 == 1024 should be okay
-      config.maxNumberOfShards = 1024;
-      auto res = testee->validateDatabaseConfiguration(config);
-      EXPECT_TRUE(res.ok()) << res.errorMessage();
-    }
-    {
-      // 1025 >= 1024 should be okay
-      config.maxNumberOfShards = 1025;
-      auto res = testee->validateDatabaseConfiguration(config);
-      EXPECT_TRUE(res.ok()) << res.errorMessage();
-    }
-
     {
       // 16 < 1024 should fail
       config.maxNumberOfShards = 16;
-      auto res = testee->validateDatabaseConfiguration(config);
-      EXPECT_FALSE(res.ok())
+      auto testee =
+          CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
+      EXPECT_FALSE(testee.ok())
           << "Configured " << config.maxNumberOfShards << " but "
           << testee->numberOfShards.value() << "passed.";
     }
@@ -247,15 +238,7 @@ TEST_F(CreateCollectionBodyTest, test_isSmartCannotBeSatellite) {
   // Note: We can also make this parsing fail in the first place.
   auto testee =
       CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
-  ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
-                           << testee.result().errorMessage();
-  EXPECT_EQ(testee->isSmart, true);
-  EXPECT_EQ(testee->replicationFactor.value(), 0);
-
-  // No special config required, this always fails
-  auto config = defaultDBConfig();
-  auto res = testee->validateDatabaseConfiguration(config);
-  EXPECT_FALSE(res.ok()) << "Configured smartCollection as 'satellite'.";
+  EXPECT_FALSE(testee.ok()) << "Configured smartCollection as 'satellite'.";
 }
 
 TEST_F(CreateCollectionBodyTest, test_isSmartChildCannotBeSatellite) {
@@ -271,213 +254,8 @@ TEST_F(CreateCollectionBodyTest, test_isSmartChildCannotBeSatellite) {
   // Note: We can also make this parsing fail in the first place.
   auto testee =
       CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
-  ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
-                           << testee.result().errorMessage();
-  EXPECT_EQ(testee->isSmartChild, true);
-  EXPECT_EQ(testee->replicationFactor.value(), 0);
-
-  // No special config required, this always fails
-  auto config = defaultDBConfig();
-  auto res = testee->validateDatabaseConfiguration(config);
-  EXPECT_FALSE(res.ok()) << "Configured smartChild collection as 'satellite'.";
-}
-
-TEST_F(CreateCollectionBodyTest, test_oneShardDBCannotBeSatellite) {
-  VPackBuilder body;
-  {
-    VPackObjectBuilder guard(&body);
-    // has to be greater or equal to used writeConcern
-    body.add("name", VPackValue("test"));
-    body.add("replicationFactor", VPackValue("satellite"));
-  }
-
-  // Note: We can also make this parsing fail in the first place.
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
-  ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
-                           << testee.result().errorMessage();
-  EXPECT_EQ(testee->replicationFactor.value(), 0);
-
-  // No special config required, this always fails
-  auto config = defaultDBConfig();
-  config.isOneShardDB = true;
-  auto res = testee->validateDatabaseConfiguration(config);
-  EXPECT_FALSE(res.ok())
-      << "Configured a oneShardDB collection as 'satellite'.";
-}
-
-TEST_F(CreateCollectionBodyTest, test_atMost8ShardKeys) {
-  // We split this string up into characters, to use those as shardKey
-  // attributes Just for simplicity reasons, and to avoid having duplicates
-  std::string shardKeySelection = "abcdefghijklm";
-
-  std::vector<std::string> shardKeysToTest{};
-  for (size_t i = 0; i < 8; ++i) {
-    // Always add one character from above string, no character is used twice
-    shardKeysToTest.emplace_back(shardKeySelection.substr(i, 1));
-    auto body = createMinimumBodyWithOneValue("shardKeys", shardKeysToTest);
-
-    // The first 8 have to be allowed
-    auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(),
-                                                          defaultDBConfig());
-    ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-    EXPECT_EQ(testee->shardKeys, shardKeysToTest)
-        << "Parsing error in " << body.toJson();
-  }
-
-  for (size_t i = 8; i < 10; ++i) {
-    // Always add one character from above string, no character is used twice
-    shardKeysToTest.emplace_back(shardKeySelection.substr(i, 1));
-    auto body = createMinimumBodyWithOneValue("shardKeys", shardKeysToTest);
-
-    // The first 8 have to be allowed
-    auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(),
-                                                          defaultDBConfig());
-    EXPECT_FALSE(testee.ok())
-        << "Created too many shard keys: " << shardKeysToTest.size();
-  }
-}
-
-TEST_F(CreateCollectionBodyTest, test_shardKeyOnSatellites) {
-  // We do not need any special configuration
-  // default is good enough
-  auto config = defaultDBConfig();
-
-  // Sharding by specific shardKey, or prefix/postfix of _key is not allowed
-  for (auto const& key : {"testKey", "a", ":_key", "_key:"}) {
-    // Specific shardKey is disallowed
-    VPackBuilder body;
-    {
-      VPackObjectBuilder guard(&body);
-      // has to be greater or equal to used writeConcern
-      body.add("name", VPackValue("test"));
-      body.add("replicationFactor", VPackValue("satellite"));
-      body.add(VPackValue("shardKeys"));
-      {
-        VPackArrayBuilder arrayGuard{&body};
-        body.add(VPackValue("testKey"));
-      }
-    }
-    auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(),
-                                                          defaultDBConfig());
-    auto result = testee.result();
-    if (result.ok()) {
-      result = testee->validateDatabaseConfiguration(config);
-    }
-    EXPECT_FALSE(result.ok())
-        << "Created a satellite collection with a shardkey: " << key;
-  }
-  {
-    // Shard by _key is allowed
-    VPackBuilder body;
-    {
-      VPackObjectBuilder guard(&body);
-      // has to be greater or equal to used writeConcern
-      body.add("name", VPackValue("test"));
-      body.add("replicationFactor", VPackValue("satellite"));
-      body.add(VPackValue("shardKeys"));
-      {
-        VPackArrayBuilder arrayGuard{&body};
-        body.add(VPackValue("_key"));
-      }
-    }
-    auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(),
-                                                          defaultDBConfig());
-    auto result = testee.result();
-    if (result.ok()) {
-      result = testee->validateDatabaseConfiguration(config);
-    }
-    EXPECT_TRUE(result.ok())
-        << "Failed to created a satellite collection with default sharding "
-        << result.errorMessage();
-  }
-
-  {
-    // Shard by _key + something is not allowed
-    VPackBuilder body;
-    {
-      VPackObjectBuilder guard(&body);
-      // has to be greater or equal to used writeConcern
-      body.add("name", VPackValue("test"));
-      body.add("replicationFactor", VPackValue("satellite"));
-      body.add(VPackValue("shardKeys"));
-      {
-        VPackArrayBuilder arrayGuard{&body};
-        body.add(VPackValue("_key"));
-        body.add(VPackValue("testKey"));
-      }
-    }
-    auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(),
-                                                          defaultDBConfig());
-    auto result = testee.result();
-    if (result.ok()) {
-      result = testee->validateDatabaseConfiguration(config);
-    }
-    EXPECT_FALSE(result.ok())
-        << "Created a satellite collection with a shardkeys [_key, testKey]";
-  }
-}
-
-TEST_F(CreateCollectionBodyTest, test_internal_values_as_shardkeys) {
-  // Sharding by internal keys, or prefix/postfix of them is not allowed
-  for (auto const& key : {"_id", "_rev", ":_id", "_id:", ":_rev", "_rev:"}) {
-    // Specific shardKey is disallowed
-    auto body = createMinimumBodyWithOneValue("shardKeys",
-                                              std::vector<std::string>{key});
-    auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(),
-                                                          defaultDBConfig());
-    EXPECT_FALSE(testee.ok()) << "Created a collection with shardkey: " << key;
-  }
-}
-
-TEST_F(CreateCollectionBodyTest, test_distributeShardsLike_default) {
-  // We do not need any special configuration
-  // default is good enough
-  std::string defaultShardBy = "_graphs";
-  auto config = defaultDBConfig();
-  config.defaultDistributeShardsLike = defaultShardBy;
-
-  // Specific shardKey is disallowed
-  auto body = createMinimumBodyWithOneValue("name", "test");
-  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
-  ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
-  EXPECT_EQ(testee->distributeShardsLike.value(), defaultShardBy);
-}
-
-TEST_F(CreateCollectionBodyTest, test_oneShard_forcesDistributeShardsLike) {
-  // We do not need any special configuration
-  // default is good enough
-  std::string defaultShardBy = "_graphs";
-  auto config = defaultDBConfig();
-  config.defaultDistributeShardsLike = defaultShardBy;
-  config.isOneShardDB = true;
-
-  // Specific shardKey is disallowed
-  auto body = createMinimumBodyWithOneValue("distributeShardsLike", "test");
-  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
-  ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
-  EXPECT_EQ(testee->distributeShardsLike.value(), "test");
-
-  auto res = testee->validateDatabaseConfiguration(config);
-  EXPECT_FALSE(res.ok()) << "Distribute shards like violates oneShard database";
-}
-
-TEST_F(CreateCollectionBodyTest, test_oneShard_moreShards) {
-  // Configure oneShardDB properly
-  std::string defaultShardBy = "_graphs";
-  auto config = defaultDBConfig();
-  config.defaultDistributeShardsLike = defaultShardBy;
-  config.isOneShardDB = true;
-
-  // Specific shardKey is disallowed
-  auto body = createMinimumBodyWithOneValue("numberOfShards", 5);
-  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
-  // This could already fail, as soon as we have a context
-  ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
-  EXPECT_EQ(testee->numberOfShards.value(), 5);
-
-  auto res = testee->validateDatabaseConfiguration(config);
-  EXPECT_FALSE(res.ok()) << "Number of Shards violates oneShard database";
+  EXPECT_FALSE(testee.ok())
+      << "Configured smartChild collection as 'satellite'.";
 }
 
 TEST_F(CreateCollectionBodyTest, test_smartJoinAttribute_cannot_be_empty) {
@@ -574,12 +352,8 @@ TEST_P(PlanCollectionNamesTest, test_allowed_without_flags) {
   auto config = defaultDBConfig();
   EXPECT_EQ(config.allowExtendedNames, false);
 
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
+  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
   auto result = testee.result();
-  if (result.ok()) {
-    result = testee->validateDatabaseConfiguration(config);
-  }
   bool isAllowed =
       !isDisAllowedInGeneral() && !requiresSystem() && !requiresExtendedNames();
 
@@ -601,12 +375,8 @@ TEST_P(PlanCollectionNamesTest, test_allowed_with_isSystem_flag) {
   auto config = defaultDBConfig();
   EXPECT_EQ(config.allowExtendedNames, false);
 
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
+  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
   auto result = testee.result();
-  if (result.ok()) {
-    result = testee->validateDatabaseConfiguration(config);
-  }
   bool isAllowed = !isDisAllowedInGeneral() && !requiresExtendedNames();
 
   if (isAllowed) {
@@ -626,12 +396,8 @@ TEST_P(PlanCollectionNamesTest, test_allowed_with_extendendNames_flag) {
   auto config = defaultDBConfig();
   config.allowExtendedNames = true;
 
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
+  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
   auto result = testee.result();
-  if (result.ok()) {
-    result = testee->validateDatabaseConfiguration(config);
-  }
   bool isAllowed = !isDisAllowedInGeneral() && !requiresSystem();
 
   if (isAllowed) {
@@ -653,12 +419,8 @@ TEST_P(PlanCollectionNamesTest,
   auto config = defaultDBConfig();
   config.allowExtendedNames = true;
 
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
+  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
   auto result = testee.result();
-  if (result.ok()) {
-    result = testee->validateDatabaseConfiguration(config);
-  }
   bool isAllowed = !isDisAllowedInGeneral();
 
   if (isAllowed) {
@@ -712,17 +474,8 @@ TEST_P(PlanCollectionReplicationFactorTest, test_noMaxReplicationFactor) {
 
   config.enforceReplicationFactor = true;
 
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
-  // Parsing should always be okay
-
-  ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-  EXPECT_EQ(testee->writeConcern.value(), writeConcern())
-      << "Parsing error in " << body.toJson();
-  EXPECT_EQ(testee->replicationFactor.value(), replicationFactor())
-      << "Parsing error in " << body.toJson();
-
-  auto result = testee->validateDatabaseConfiguration(config);
+  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
+  auto result = testee.result();
 
   // We only check if writeConcern is okay there is no upper bound
   // on replicationFactor
@@ -731,6 +484,7 @@ TEST_P(PlanCollectionReplicationFactorTest, test_noMaxReplicationFactor) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
     EXPECT_EQ(testee->writeConcern.value(), writeConcern());
     EXPECT_EQ(testee->replicationFactor.value(), replicationFactor());
+
   } else {
     EXPECT_FALSE(result.ok()) << result.errorMessage();
   }
@@ -746,17 +500,8 @@ TEST_P(PlanCollectionReplicationFactorTest, test_maxReplicationFactor) {
   config.enforceReplicationFactor = true;
   config.maxReplicationFactor = 5;
 
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
-  // Parsing should always be okay
-
-  ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-  EXPECT_EQ(testee->writeConcern.value(), writeConcern())
-      << "Parsing error in " << body.toJson();
-  EXPECT_EQ(testee->replicationFactor.value(), replicationFactor())
-      << "Parsing error in " << body.toJson();
-
-  auto result = testee->validateDatabaseConfiguration(config);
+  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
+  auto result = testee.result();
 
   // We only check if writeConcern is okay there is no upper bound
   // on replicationFactor
@@ -781,17 +526,8 @@ TEST_P(PlanCollectionReplicationFactorTest, test_minReplicationFactor) {
   config.enforceReplicationFactor = true;
   config.minReplicationFactor = 5;
 
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
-  // Parsing should always be okay
-
-  ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-  EXPECT_EQ(testee->writeConcern.value(), writeConcern())
-      << "Parsing error in " << body.toJson();
-  EXPECT_EQ(testee->replicationFactor.value(), replicationFactor())
-      << "Parsing error in " << body.toJson();
-
-  auto result = testee->validateDatabaseConfiguration(config);
+  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
+  auto result = testee.result();
 
   // We only check if writeConcern is okay there is no upper bound
   // on replicationFactor
@@ -817,17 +553,8 @@ TEST_P(PlanCollectionReplicationFactorTest, test_nonoEnforce) {
   config.minReplicationFactor = 2;
   config.maxReplicationFactor = 5;
 
-  auto testee =
-      CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
-  // Parsing should always be okay
-
-  ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-  EXPECT_EQ(testee->writeConcern.value(), writeConcern())
-      << "Parsing error in " << body.toJson();
-  EXPECT_EQ(testee->replicationFactor.value(), replicationFactor())
-      << "Parsing error in " << body.toJson();
-
-  auto result = testee->validateDatabaseConfiguration(config);
+  auto testee = CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
+  auto result = testee.result();
 
   // Without enforcing you can do what you want, including illegal combinations
   bool isAllowed = true;

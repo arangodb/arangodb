@@ -24,7 +24,9 @@
 
 #include "InspectTestHelperMakros.h"
 #include "Basics/ResultT.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Properties/ClusteringProperties.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 #include "Inspection/VPack.h"
 
 #include <velocypack/Builder.h>
@@ -75,10 +77,37 @@ class ClusteringPropertiesTest : public ::testing::Test {
     }
   }
 
+  static ResultT<ClusteringProperties> parseWithDefaultOptions(
+      VPackSlice body, DatabaseConfiguration const& config) {
+    ClusteringProperties res;
+    try {
+      auto status = velocypack::deserializeWithStatus(body, res);
+      if (!status.ok()) {
+        return Result{
+            TRI_ERROR_BAD_PARAMETER,
+            status.error() +
+                (status.path().empty() ? "" : " on path " + status.path())};
+      }
+      auto result = res.applyDefaultsAndValidateDatabaseConfiguration(config);
+      if (result.fail()) {
+        return result;
+      }
+      return res;
+    } catch (basics::Exception const& e) {
+      return Result{e.code(), e.message()};
+    } catch (std::exception const& e) {
+      return Result{TRI_ERROR_INTERNAL, e.what()};
+    }
+  }
+
   static VPackBuilder serialize(ClusteringProperties testee) {
     VPackBuilder result;
     velocypack::serialize(result, testee);
     return result;
+  }
+
+  static DatabaseConfiguration defaultDBConfig() {
+    return {[]() { return DataSourceId(42); }};
   }
 };
 
@@ -90,4 +119,178 @@ TEST_F(ClusteringPropertiesTest, test_minimal_user_input) {
 
   __HELPER_equalsAfterSerializeParseCircle(testee.get());
 }
+
+TEST_F(ClusteringPropertiesTest, test_distributeShardsLike_default) {
+  // We do not need any special configuration
+  // default is good enough
+  std::string defaultShardBy = "_graphs";
+  auto config = defaultDBConfig();
+  config.defaultDistributeShardsLike = defaultShardBy;
+
+  VPackBuilder body;
+  { VPackObjectBuilder bodyBuilder{&body}; }
+  auto testee = parseWithDefaultOptions(body.slice(), config);
+  // Default value should be taken if none is set
+  ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
+  EXPECT_EQ(testee->distributeShardsLike.value(), defaultShardBy);
+}
+
+TEST_F(ClusteringPropertiesTest, test_oneShardDBCannotBeSatellite) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder guard(&body);
+    // has to be greater or equal to used writeConcern
+    body.add("replicationFactor", VPackValue("satellite"));
+  }
+
+  // Note: We can also make this parsing fail in the first place.
+  auto testee = parse(body.slice());
+  ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
+                           << testee.result().errorMessage();
+  EXPECT_EQ(testee->replicationFactor.value(), 0);
+
+  // No special config required, this always fails
+  auto config = defaultDBConfig();
+  config.isOneShardDB = true;
+  auto res = testee->applyDefaultsAndValidateDatabaseConfiguration(config);
+  EXPECT_FALSE(res.ok())
+      << "Configured a oneShardDB collection as 'satellite'.";
+}
+
+TEST_F(ClusteringPropertiesTest, test_atMost8ShardKeys) {
+  // We split this string up into characters, to use those as shardKey
+  // attributes Just for simplicity reasons, and to avoid having duplicates
+  std::string shardKeySelection = "abcdefghijklm";
+
+  std::vector<std::string> shardKeysToTest{};
+  for (size_t i = 0; i < 8; ++i) {
+    // Always add one character from above string, no character is used twice
+    shardKeysToTest.emplace_back(shardKeySelection.substr(i, 1));
+    auto body = createMinimumBodyWithOneValue("shardKeys", shardKeysToTest);
+    // The first 8 have to be allowed
+    auto testee = parseWithDefaultOptions(body.slice(), defaultDBConfig());
+
+    ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
+    EXPECT_EQ(testee->shardKeys, shardKeysToTest)
+        << "Parsing error in " << body.toJson();
+  }
+
+  for (size_t i = 8; i < 10; ++i) {
+    // Always add one character from above string, no character is used twice
+    shardKeysToTest.emplace_back(shardKeySelection.substr(i, 1));
+    auto body = createMinimumBodyWithOneValue("shardKeys", shardKeysToTest);
+
+    // The first 8 have to be allowed
+    auto testee = parseWithDefaultOptions(body.slice(), defaultDBConfig());
+
+    EXPECT_FALSE(testee.ok())
+        << "Created too many shard keys: " << shardKeysToTest.size();
+  }
+}
+
+TEST_F(ClusteringPropertiesTest, test_shardKeyOnSatellites) {
+  // We do not need any special configuration
+  // default is good enough
+  auto config = defaultDBConfig();
+
+  // Sharding by specific shardKey, or prefix/postfix of _key is not allowed
+  for (auto const& key : {"testKey", "a", ":_key", "_key:"}) {
+    // Specific shardKey is disallowed
+    VPackBuilder body;
+    {
+      VPackObjectBuilder guard(&body);
+      // has to be greater or equal to used writeConcern
+      body.add("name", VPackValue("test"));
+      body.add("replicationFactor", VPackValue("satellite"));
+      body.add(VPackValue("shardKeys"));
+      {
+        VPackArrayBuilder arrayGuard{&body};
+        body.add(VPackValue("testKey"));
+      }
+    }
+    auto testee = parseWithDefaultOptions(body.slice(), defaultDBConfig());
+
+    EXPECT_FALSE(testee.ok())
+        << "Created a satellite collection with a shardkey: " << key;
+  }
+  {
+    // Shard by _key is allowed
+    VPackBuilder body;
+    {
+      VPackObjectBuilder guard(&body);
+      body.add("replicationFactor", VPackValue("satellite"));
+      body.add(VPackValue("shardKeys"));
+      {
+        VPackArrayBuilder arrayGuard{&body};
+        body.add(VPackValue("_key"));
+      }
+    }
+    auto testee = parseWithDefaultOptions(body.slice(), defaultDBConfig());
+    auto result = testee.result();
+    EXPECT_TRUE(result.ok())
+        << "Failed to created a satellite collection with default sharding "
+        << result.errorMessage();
+  }
+
+  {
+    // Shard by _key + something is not allowed
+    VPackBuilder body;
+    {
+      VPackObjectBuilder guard(&body);
+      // has to be greater or equal to used writeConcern
+      body.add("name", VPackValue("test"));
+      body.add("replicationFactor", VPackValue("satellite"));
+      body.add(VPackValue("shardKeys"));
+      {
+        VPackArrayBuilder arrayGuard{&body};
+        body.add(VPackValue("_key"));
+        body.add(VPackValue("testKey"));
+      }
+    }
+    auto testee = parseWithDefaultOptions(body.slice(), defaultDBConfig());
+    auto result = testee.result();
+    EXPECT_FALSE(result.ok())
+        << "Created a satellite collection with a shardkeys [_key, testKey]";
+  }
+}
+
+TEST_F(ClusteringPropertiesTest, test_internal_values_as_shardkeys) {
+  // Sharding by internal keys, or prefix/postfix of them is not allowed
+  for (auto const& key : {"_id", "_rev", ":_id", "_id:", ":_rev", "_rev:"}) {
+    // Specific shardKey is disallowed
+    auto body = createMinimumBodyWithOneValue("shardKeys",
+                                              std::vector<std::string>{key});
+    auto testee = parseWithDefaultOptions(body.slice(), defaultDBConfig());
+    EXPECT_FALSE(testee.ok()) << "Created a collection with shardkey: " << key;
+  }
+}
+
+TEST_F(ClusteringPropertiesTest, test_oneShard_forcesDistributeShardsLike) {
+  // We do not need any special configuration
+  // default is good enough
+  std::string defaultShardBy = "_graphs";
+  auto config = defaultDBConfig();
+  config.defaultDistributeShardsLike = defaultShardBy;
+  config.isOneShardDB = true;
+
+  // Specific shardKey is disallowed
+  auto body = createMinimumBodyWithOneValue("distributeShardsLike", "test");
+  auto testee = parseWithDefaultOptions(body.slice(), config);
+  EXPECT_FALSE(testee.ok())
+      << "Distribute shards like violates oneShard database";
+}
+
+TEST_F(ClusteringPropertiesTest, test_oneShard_moreShards) {
+  // Configure oneShardDB properly
+  std::string defaultShardBy = "_graphs";
+  auto config = defaultDBConfig();
+  config.defaultDistributeShardsLike = defaultShardBy;
+  config.isOneShardDB = true;
+
+  // Specific shardKey is disallowed
+  auto body = createMinimumBodyWithOneValue("numberOfShards", 5);
+  auto testee = parseWithDefaultOptions(body.slice(), config);
+  EXPECT_FALSE(testee.ok()) << "Number of Shards violates oneShard database";
+}
+
 }  // namespace arangodb::tests
