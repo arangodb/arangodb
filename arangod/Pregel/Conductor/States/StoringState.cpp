@@ -19,12 +19,30 @@ Storing::~Storing() {
 }
 
 auto Storing::run() -> std::optional<std::unique_ptr<State>> {
-  conductor._cleanup();
+  return _aggregate.doUnderLock(
+      [&](auto& agg) -> std::optional<std::unique_ptr<State>> {
+        auto aggregate = conductor._workers.store(Store{});
+        if (aggregate.fail()) {
+          LOG_PREGEL_CONDUCTOR_STATE("dddad", ERR) << aggregate.errorMessage();
+          return std::make_unique<FatalError>(conductor);
+        }
+        agg = aggregate.get();
+        return std::nullopt;
+      });
+}
 
-  auto store = _store().get();
-  if (store.fail()) {
-    LOG_PREGEL_CONDUCTOR_STATE("bc495", ERR) << store.errorMessage();
+auto Storing::receive(MessagePayload message)
+    -> std::optional<std::unique_ptr<State>> {
+  auto explicitMessage = getResultTMessage<Stored>(message);
+  if (explicitMessage.fail()) {
+    LOG_PREGEL_CONDUCTOR_STATE("7698e", ERR) << explicitMessage.errorMessage();
     return std::make_unique<FatalError>(conductor);
+  }
+  auto finishedAggregate =
+      _aggregate.doUnderLock([message = std::move(explicitMessage).get()](
+                                 auto& agg) { return agg.aggregate(message); });
+  if (!finishedAggregate.has_value()) {
+    return std::nullopt;
   }
 
   LOG_PREGEL_CONDUCTOR_STATE("fc187", DEBUG) << "Cleanup workers";
@@ -35,18 +53,6 @@ auto Storing::run() -> std::optional<std::unique_ptr<State>> {
   }
 
   return std::make_unique<Done>(conductor);
-}
-
-auto Storing::_store() -> futures::Future<Result> {
-  return conductor._workers.store(Store{}).thenValue(
-      [&](auto stored) -> Result {
-        if (stored.fail()) {
-          return Result{
-              stored.errorNumber(),
-              fmt::format("While storing graph: {}", stored.errorMessage())};
-        }
-        return Result{};
-      });
 }
 
 auto Storing::_cleanup() -> futures::Future<Result> {

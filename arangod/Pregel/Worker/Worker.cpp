@@ -513,22 +513,19 @@ auto Worker<V, E, M>::_finishProcessing(
 }
 
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::store(Store const& message)
-    -> futures::Future<ResultT<Stored>> {
+auto Worker<V, E, M>::store(Store const& message) -> ResultT<Stored> {
   _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
   LOG_PREGEL("91264", DEBUG) << "Storing results";
-  // tell graphstore to remove read locks
-  return _graphStore->storeResults(&_config, _makeStatusCallback())
-      .thenValue([&](auto result) -> ResultT<Stored> {
-        _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
-        if (result.fail()) {
-          return result;
-        }
 
-        _state = WorkerState::DONE;
+  auto stored = _graphStore->storeResults(&_config, _makeStatusCallback());
 
-        return Stored{};
-      });
+  _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
+  if (stored.fail()) {
+    return stored;
+  }
+  _state = WorkerState::DONE;
+
+  return stored;
 }
 
 template<typename V, typename E, typename M>
@@ -650,10 +647,11 @@ template<typename V, typename E, typename M>
 auto Worker<V, E, M>::loadGraph(LoadGraph const& graph)
     -> ResultT<GraphLoaded> {
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
-
   LOG_PREGEL("52070", DEBUG) << fmt::format(
       "Worker for execution number {} is loading", _config.executionNumber());
+
   auto graphLoaded = _graphStore->loadShards(&_config, _makeStatusCallback());
+
   LOG_PREGEL("52062", DEBUG)
       << fmt::format("Worker for execution number {} has finished loading.",
                      _config.executionNumber());

@@ -33,8 +33,6 @@ auto Canceled::run() -> std::optional<std::unique_ptr<State>> {
 
 auto Canceled::_cleanupUntilTimeout(std::chrono::steady_clock::time_point start)
     -> futures::Future<Result> {
-  conductor._cleanup();
-
   if (conductor._feature.isStopping()) {
     LOG_PREGEL_CONDUCTOR_STATE("bd540", DEBUG)
         << "Feature is stopping, workers are already shutting down, no need to "

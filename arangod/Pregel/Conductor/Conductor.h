@@ -140,7 +140,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   auto _changeState(std::unique_ptr<conductor::State> newState) -> void;
   auto _preGlobalSuperStep() -> void;
   auto _postGlobalSuperStep() -> PostGlobalSuperStepResult;
-  void _cleanup();
 
   std::vector<ShardID> getShardIds(ShardID const& collection) const;
 

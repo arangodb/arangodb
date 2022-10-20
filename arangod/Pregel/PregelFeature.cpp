@@ -729,7 +729,11 @@ auto PregelFeature::apply(ExecutionNumber const& executionNumber,
             if (!w) {
               return workerNotFound(executionNumber, message);
             }
-            return {w->store(x).get()};
+            scheduler->queue(RequestLane::INTERNAL_LOW,
+                             [w = w->shared_from_this(), x = std::move(x)] {
+                               w->send(w->store(x));
+                             });
+            return {Ok{}};
           },
           [&](Cleanup const& x) -> ResultT<MessagePayload> {
             auto w = worker(executionNumber);
@@ -788,6 +792,17 @@ auto PregelFeature::apply(ExecutionNumber const& executionNumber,
           },
           [&](ResultT<GlobalSuperStepFinished> const& x)
               -> ResultT<MessagePayload> {
+            auto c = conductor(executionNumber);
+            if (!c) {
+              return conductorNotFound(executionNumber, message);
+            }
+            scheduler->queue(RequestLane::INTERNAL_LOW,
+                             [c = c->shared_from_this(), x = std::move(x)] {
+                               c->receive(x);
+                             });
+            return {Ok{}};
+          },
+          [&](ResultT<Stored> const& x) -> ResultT<MessagePayload> {
             auto c = conductor(executionNumber);
             if (!c) {
               return conductorNotFound(executionNumber, message);

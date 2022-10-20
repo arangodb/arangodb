@@ -238,12 +238,6 @@ void Conductor::cancel() {
   }
 }
 
-void Conductor::_cleanup() {
-  if (_masterContext) {
-    _masterContext->postApplication();
-  }
-}
-
 bool Conductor::canBeGarbageCollected() const {
   // we don't want to block other operations for longer, so if we can't
   // immediately acuqire the mutex here, we assume a conductor cannot be
