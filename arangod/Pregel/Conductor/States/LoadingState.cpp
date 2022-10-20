@@ -3,7 +3,6 @@
 #include <fmt/format.h>
 #include <memory>
 #include <optional>
-#include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Metrics/Gauge.h"
 #include "Pregel/MasterContext.h"
@@ -26,21 +25,21 @@ Loading::~Loading() {
 auto Loading::run() -> std::optional<std::unique_ptr<State>> {
   auto create = _createWorkers().get();
   if (create.fail()) {
-    LOG_PREGEL_CONDUCTOR("ae855", ERR)
+    LOG_PREGEL_CONDUCTOR_STATE("ae855", ERR)
         << fmt::format("Loading state: {}", create.errorMessage());
     return std::make_unique<Canceled>(conductor);
   }
 
-  LOG_PREGEL_CONDUCTOR("3a255", DEBUG) << "Telling workers to load the data";
+  LOG_PREGEL_CONDUCTOR_STATE("3a255", DEBUG)
+      << "Telling workers to load the data";
   return _aggregate.doUnderLock(
       [&](auto& agg) -> std::optional<std::unique_ptr<State>> {
-        auto graphLoadedAggregate = conductor._workers.loadGraph(LoadGraph{});
-        if (graphLoadedAggregate.fail()) {
-          LOG_PREGEL_CONDUCTOR("dddad", ERR) << fmt::format(
-              "Loading state: {}", graphLoadedAggregate.errorMessage());
+        auto aggregate = conductor._workers.loadGraph(LoadGraph{});
+        if (aggregate.fail()) {
+          LOG_PREGEL_CONDUCTOR_STATE("dddad", ERR) << aggregate.errorMessage();
           return std::make_unique<Canceled>(conductor);
         }
-        agg = graphLoadedAggregate.get();
+        agg = aggregate.get();
         return std::nullopt;
       });
 }
@@ -58,30 +57,24 @@ auto Loading::receive(MessagePayload message)
     -> std::optional<std::unique_ptr<State>> {
   auto explicitMessage = getResultTMessage<GraphLoaded>(message);
   if (explicitMessage.fail()) {
-    // TODO The state changes to Canceled if this message fails, but there can
-    // still be other GraphLoaded messages that are/will be sent from workers,
-    // what happens to them? Currently: in Canceled state any received messages
-    // are ignored, this is fine but we have to be careful to change this
-    LOG_PREGEL_CONDUCTOR("7698e", ERR)
-        << fmt::format("Loading state: {}", explicitMessage.errorMessage());
+    LOG_PREGEL_CONDUCTOR_STATE("7698e", ERR) << explicitMessage.errorMessage();
     return std::make_unique<Canceled>(conductor);
   }
-  auto finishedAggregate = _aggregate.doUnderLock(
-      [&](auto& agg) { return agg.aggregate(explicitMessage.get()); });
-
-  if (finishedAggregate.has_value()) {
-    conductor._totalVerticesCount += finishedAggregate.value().vertexCount;
-    conductor._totalEdgesCount += finishedAggregate.value().edgeCount;
-    LOG_PREGEL_CONDUCTOR("76631", INFO)
-        << "Running Pregel " << conductor._algorithm->name() << " with "
-        << conductor._totalVerticesCount << " vertices, "
-        << conductor._totalEdgesCount << " edges";
-    if (conductor._masterContext) {
-      conductor._masterContext->initialize(conductor._totalVerticesCount,
-                                           conductor._totalEdgesCount,
-                                           conductor._aggregators.get());
-    }
-    return std::make_unique<Computing>(conductor);
+  auto finishedAggregate =
+      _aggregate.doUnderLock([message = std::move(explicitMessage).get()](
+                                 auto& agg) { return agg.aggregate(message); });
+  if (!finishedAggregate.has_value()) {
+    return std::nullopt;
   }
-  return std::nullopt;
+
+  auto graphLoadedData = finishedAggregate.value();
+  conductor._totalVerticesCount += graphLoadedData.vertexCount;
+  conductor._totalEdgesCount += graphLoadedData.edgeCount;
+
+  if (conductor._masterContext) {
+    conductor._masterContext->initialize(conductor._totalVerticesCount,
+                                         conductor._totalEdgesCount,
+                                         conductor._aggregators.get());
+  }
+  return std::make_unique<Computing>(conductor);
 }
