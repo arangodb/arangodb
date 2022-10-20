@@ -22,8 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Basics/Guarded.h"
-#include "Pregel/Messaging/Aggregate.h"
+#include "Pregel/Conductor/WorkerApi.h"
 #include "State.h"
 
 namespace arangodb::pregel {
@@ -34,7 +33,8 @@ namespace conductor {
 
 struct Computing : State {
   Conductor& conductor;
-  Computing(Conductor& conductor);
+  Computing(Conductor& conductor,
+            WorkerApi<GlobalSuperStepFinished>&& workerApi);
   ~Computing();
   auto run() -> std::optional<std::unique_ptr<State>> override;
   auto receive(MessagePayload message)
@@ -48,13 +48,14 @@ struct Computing : State {
   }
 
  private:
-  auto _runGlobalSuperStepCommand() const -> RunGlobalSuperStep;
+  WorkerApi<GlobalSuperStepFinished> _workerApi;
+  std::unordered_map<ServerID, uint64_t> _sendCountPerServer;
+  auto _runGlobalSuperStepCommand() const
+      -> std::unordered_map<ServerID, RunGlobalSuperStep>;
   auto _runGlobalSuperStep() -> futures::Future<Result>;
   auto _transformSendCountFromShardToServer(
       std::unordered_map<ShardID, uint64_t> sendCountPerShard) const
       -> std::unordered_map<ServerID, uint64_t>;
-  Guarded<Aggregate<GlobalSuperStepFinished>> _aggregate;
-  std::unordered_map<ServerID, uint64_t> _sendCountPerServer;
 };
 
 }  // namespace conductor

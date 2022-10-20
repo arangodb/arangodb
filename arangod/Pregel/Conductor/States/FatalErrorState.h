@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Pregel/Conductor/WorkerApi.h"
 #include "State.h"
 
 namespace arangodb::pregel {
@@ -33,7 +34,7 @@ namespace conductor {
 struct FatalError : State {
   std::chrono::system_clock::time_point expiration;
   Conductor& conductor;
-  FatalError(Conductor& conductor);
+  FatalError(Conductor& conductor, WorkerApi<VoidMessage>&& workerApi);
   ~FatalError() = default;
   auto run() -> std::optional<std::unique_ptr<State>> override {
     return std::nullopt;
@@ -53,6 +54,9 @@ struct FatalError : State {
       -> std::optional<std::chrono::system_clock::time_point> override {
     return expiration;
   };
+
+ private:
+  WorkerApi<VoidMessage> _workerApi;
 };
 
 }  // namespace conductor

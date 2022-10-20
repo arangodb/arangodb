@@ -39,7 +39,6 @@
 #include "Pregel/Status/Status.h"
 #include "Pregel/VertexComputation.h"
 #include "Pregel/Worker/ConductorApi.h"
-#include "Pregel/WorkerInterface.h"
 #include "Pregel/Worker/GraphStore.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"

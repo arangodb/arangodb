@@ -44,7 +44,6 @@
 #include "Pregel/Conductor/States/LoadingState.h"
 #include "Pregel/Conductor/States/State.h"
 #include "Pregel/Conductor/States/StoringState.h"
-#include "Pregel/Conductor/WorkerApi.h"
 #include "Pregel/Connection/DirectConnection.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
@@ -148,22 +147,20 @@ Conductor::Conductor(
 
   _feature.metrics()->pregelConductorsNumber->fetch_add(1);
 
-  _state = std::make_unique<conductor::Initial>(*this);
-
-  // initialize worker api
+  auto connection = std::unique_ptr<Connection>();
   if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
-    _workers = conductor::WorkerApi{
-        _executionNumber,
-        std::make_unique<DirectConnection>(_feature, _vocbaseGuard.database())};
+    connection =
+        std::make_unique<DirectConnection>(_feature, _vocbaseGuard.database());
   } else {
     network::RequestOptions reqOpts;
     reqOpts.timeout = network::Timeout(5.0 * 60.0);
     reqOpts.database = _vocbaseGuard.database().name();
-    _workers = conductor::WorkerApi{
-        _executionNumber,
-        std::make_unique<NetworkConnection>(
-            Utils::apiPrefix, std::move(reqOpts), _vocbaseGuard.database())};
+    connection = std::make_unique<NetworkConnection>(
+        Utils::apiPrefix, std::move(reqOpts), _vocbaseGuard.database());
   }
+  _state = std::make_unique<conductor::Initial>(
+      *this, conductor::WorkerApi<WorkerCreated>::create(
+                 executionNumber, std::move(connection)));
 
   LOG_PREGEL("00f5f", INFO)
       << "Starting " << _algorithm->name() << " in database '" << vocbase.name()

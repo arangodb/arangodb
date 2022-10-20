@@ -1,4 +1,5 @@
 #include "InitialState.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Algorithm.h"
@@ -7,7 +8,8 @@
 
 using namespace arangodb::pregel::conductor;
 
-Initial::Initial(Conductor& conductor) : conductor{conductor} {
+Initial::Initial(Conductor& conductor, WorkerApi<WorkerCreated>&& workerApi)
+    : conductor{conductor}, _workerApi{std::move(workerApi)} {
   conductor._timing.total.start();
 }
 
@@ -22,19 +24,13 @@ auto Initial::run() -> std::optional<std::unique_ptr<State>> {
   }
   conductor._status = ConductorStatus::forWorkers(servers);
 
-  return _aggregate.doUnderLock(
-      [&, workerInitializations = std::move(workerInitializations)](
-          auto& agg) -> std::optional<std::unique_ptr<State>> {
-        auto aggregate =
-            conductor._workers.createWorkers(workerInitializations);
-        if (aggregate.fail()) {
-          LOG_PREGEL_CONDUCTOR_STATE("ae855", ERR)
-              << fmt::format("Initial state: {}", aggregate.errorMessage());
-          return std::make_unique<Canceled>(conductor);
-        }
-        agg = aggregate.get();
-        return std::nullopt;
-      });
+  _workerApi._servers = servers;
+  auto sent = _workerApi.send(workerInitializations);
+  if (sent.fail()) {
+    LOG_PREGEL_CONDUCTOR_STATE("ae855", ERR) << sent.errorMessage();
+    return std::make_unique<Canceled>(conductor, std::move(_workerApi));
+  }
+  return std::nullopt;
 }
 
 auto Initial::receive(MessagePayload message)
@@ -42,17 +38,15 @@ auto Initial::receive(MessagePayload message)
   auto explicitMessage = getResultTMessage<WorkerCreated>(message);
   if (explicitMessage.fail()) {
     LOG_PREGEL_CONDUCTOR_STATE("7698e", ERR) << explicitMessage.errorMessage();
-    return std::make_unique<Canceled>(conductor);
+    return std::make_unique<Canceled>(conductor, std::move(_workerApi));
   }
 
-  auto finishedAggregate = _aggregate.doUnderLock(
-      [&](auto& agg) { return agg.aggregate(explicitMessage.get()); });
-
-  if (!finishedAggregate) {
+  auto aggregatedMessage = _workerApi.collect(explicitMessage.get());
+  if (!aggregatedMessage.has_value()) {
     return std::nullopt;
   }
 
-  return std::make_unique<Loading>(conductor);
+  return std::make_unique<Loading>(conductor, std::move(_workerApi));
 }
 
 namespace {

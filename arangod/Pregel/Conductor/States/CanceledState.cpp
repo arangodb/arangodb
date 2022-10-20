@@ -1,4 +1,5 @@
 #include "CanceledState.h"
+
 #include "fmt/chrono.h"
 #include "Basics/FunctionUtils.h"
 #include "Pregel/Conductor/Conductor.h"
@@ -15,7 +16,8 @@ template<class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 }  // namespace
 
-Canceled::Canceled(Conductor& conductor) : conductor{conductor} {
+Canceled::Canceled(Conductor& conductor, WorkerApi<CleanupFinished>&& workerApi)
+    : conductor{conductor}, _workerApi{std::move(workerApi)} {
   expiration = std::chrono::system_clock::now() + conductor._ttl;
   if (not conductor._timing.total.hasFinished()) {
     conductor._timing.total.finish();
@@ -46,11 +48,8 @@ auto Canceled::receive(MessagePayload message)
                   << explicitMessage.errorMessage();
               return std::nullopt;
             }
-            auto finishedAggregate = _aggregate.doUnderLock(
-                [message = std::move(explicitMessage).get()](auto& agg) {
-                  return agg.aggregate(message);
-                });
-            if (!finishedAggregate.has_value()) {
+            auto aggregatedMessage = _workerApi.collect(explicitMessage.get());
+            if (!aggregatedMessage.has_value()) {
               return std::nullopt;
             }
 
@@ -68,7 +67,8 @@ auto Canceled::receive(MessagePayload message)
           [&](auto const& x) -> std::optional<std::unique_ptr<State>> {
             LOG_PREGEL_CONDUCTOR_STATE("a698e", ERR)
                 << "Received unexpected message type";
-            return std::make_unique<FatalError>(conductor);
+            return std::make_unique<FatalError>(conductor,
+                                                std::move(_workerApi));
           },
       },
       message);
@@ -84,21 +84,18 @@ auto Canceled::_cleanupUntilTimeout(std::chrono::steady_clock::time_point start)
   }
 
   LOG_PREGEL_CONDUCTOR_STATE("fc187", DEBUG) << "Cleanup workers";
-  return _aggregate.doUnderLock([&](auto& agg) -> Result {
-    auto aggregate = conductor._workers.cleanup(Cleanup{});
-    if (aggregate.fail()) {
-      LOG_PREGEL_CONDUCTOR_STATE("1c495", ERR)
-          << fmt::format("While cleaning up: {}", aggregate.errorMessage());
-      if (std::chrono::steady_clock::now() - start >= _timeout) {
-        return Result{
-            TRI_ERROR_INTERNAL,
-            fmt::format("Failed to cancel worker execution for {}, giving up",
-                        _timeout)};
-      }
-      std::this_thread::sleep_for(_retryInterval);
-      return _cleanupUntilTimeout(start);
+  auto sent = _workerApi.sendToAll(Cleanup{});
+  if (sent.fail()) {
+    LOG_PREGEL_CONDUCTOR_STATE("1c495", ERR)
+        << fmt::format("While cleaning up: {}", sent.errorMessage());
+    if (std::chrono::steady_clock::now() - start >= _timeout) {
+      return Result{
+          TRI_ERROR_INTERNAL,
+          fmt::format("Failed to cancel worker execution for {}, giving up",
+                      _timeout)};
     }
-    agg = aggregate.get();
-    return Result{};
-  });
+    std::this_thread::sleep_for(_retryInterval);
+    return _cleanupUntilTimeout(start);
+  }
+  return Result{};
 }

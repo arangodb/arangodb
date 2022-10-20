@@ -22,8 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Basics/Guarded.h"
-#include "Pregel/Messaging/Aggregate.h"
+#include "Pregel/Conductor/WorkerApi.h"
 #include "State.h"
 
 namespace arangodb::pregel {
@@ -34,7 +33,7 @@ namespace conductor {
 
 struct Initial : State {
   Conductor& conductor;
-  Initial(Conductor& conductor);
+  Initial(Conductor& conductor, WorkerApi<WorkerCreated>&& workerApi);
   ~Initial() = default;
   auto run() -> std::optional<std::unique_ptr<State>> override;
   auto receive(MessagePayload message)
@@ -50,7 +49,7 @@ struct Initial : State {
   }
 
  private:
-  Guarded<AggregateCount<WorkerCreated>> _aggregate;
+  WorkerApi<WorkerCreated> _workerApi;
   auto _workerInitializations() const
       -> std::tuple<std::unordered_map<ServerID, CreateWorker>,
                     std::unordered_map<ShardID, ServerID>>;
