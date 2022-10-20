@@ -1,6 +1,8 @@
 v3.9.4 (XXXX-XX-XX)
 -------------------
 
+* Updating properties of a satellite collection breaks replicationFactor.
+
 * Fixed BTS-852 (user's saved queries used to disappear after updating user
   profile).
 
