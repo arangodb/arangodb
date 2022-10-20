@@ -382,7 +382,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   // Indicator if a query was already killed
   // via a debug failure. This should not
   // retrigger a kill.
-  bool _wasDebugKilled;
+  bool _wasDebugKilled = false;
 #endif
 
   /// @brief was this query killed (can only be set once)
