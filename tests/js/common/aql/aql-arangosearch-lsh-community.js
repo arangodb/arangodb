@@ -65,7 +65,7 @@ function IResearchLshAqlTestSuiteCommunity() {
       numberOfShards : 3});
 
       var analyzers = require("@arangodb/analyzers");
-      analyzers.save("delimiter", "delimiter", {"delimiter": "#", "features": []})
+      analyzers.save("delimiter", "delimiter", {"delimiter": "#", "features": []});
 
       collection_0.insert({ _key: "a"});
       collection_0.insert({ body: "the quick brown fox jumps over the lazy dog", sub: { body: "the quick brown fox jumps over the lazy dog" } });
@@ -106,7 +106,7 @@ function IResearchLshAqlTestSuiteCommunity() {
     testMinhashAnalyzer: function() {
       // assert that minhash analyzers are unavailable
       try {
-        analyzers.save("myMinHash10", "minhash", {"numHashes": 10, "analyzer": {"type": "delimiter", "properties": {"delimiter": "#", "features": []}}})
+        analyzers.save("myMinHash10", "minhash", {"numHashes": 10, "analyzer": {"type": "delimiter", "properties": {"delimiter": "#", "features": []}}});
         assertTrue(false);
       } catch (e) {
         assertEqual(errors.ERROR_NOT_IMPLEMENTED.code, e.errorNum);
