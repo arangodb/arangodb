@@ -1,6 +1,10 @@
 v3.8.8 (XXXX-XX-XX)
 -------------------
 
+* Fixed error handling of coordinator commit of streaming transactions.
+  This bug could mean that a streaming transaction is reported to be
+  successfully committed when in reality it isn't.
+
 * Fixed BTS-852 (user's saved queries used to disappear after updating user
   profile).
 
