@@ -68,6 +68,7 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Version.h"
 #include "VocBase/ticks.h"
+#include "VocBase/vocbase.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
@@ -972,15 +973,13 @@ futures::Future<OperationResult> revisionOnCoordinator(
            VPackSlice answer) -> void {
           if (answer.isObject()) {
             VPackSlice r = answer.get("revision");
-            if (r.isString()) {
-              VPackValueLength len;
-              char const* p = r.getString(len);
-              RevisionId cmp = RevisionId::fromString(p, len, false);
+            if (r.isString() || r.isInteger()) {
+              RevisionId cmp = RevisionId::fromSlice(r);
               RevisionId rid = RevisionId::fromSlice(builder.slice());
               if (cmp != RevisionId::max() && cmp > rid) {
                 // get the maximum value
                 builder.clear();
-                builder.add(VPackValue(cmp.id()));
+                builder.add(VPackValue(cmp.toString()));
               }
               return;
             }
@@ -1073,7 +1072,7 @@ futures::Future<OperationResult> checksumOnCoordinator(
       builder.clear();
       VPackObjectBuilder b(&builder);
       builder.add("checksum", VPackValue(checksum));
-      builder.add("revision", VPackValue(rid.id()));
+      builder.add("revision", VPackValue(rid.toString()));
     };
     return handleResponsesFromAllShards(options, results, handler, pre);
   };

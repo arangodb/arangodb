@@ -122,7 +122,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
 
     EXPECT_TRUE(ci.createCollectionCoordinator(
                       vocbase->name(), collectionId, 0, 1, 1, false,
-                      collectionJson->slice(), 0.0, false, nullptr)
+                      collectionJson->slice(), 0.0, false, nullptr,
+                      arangodb::replication::Version::ONE)
                     .ok());
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);

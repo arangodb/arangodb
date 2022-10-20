@@ -1506,7 +1506,7 @@ TEST_F(
     IResearchLinkTest,
     test_write_with_custom_compression_nondefault_mixed_with_sort_encrypted) {
   auto linkCallbackRemover =
-      arangodb::iresearch::IResearchLinkMock::setCallbakForScope([]() {
+      arangodb::iresearch::IResearchLinkMock::setCallbackForScope([]() {
         return irs::directory_attributes{
             0,
             std::make_unique<iresearch::mock::test_encryption>(kEncBlockSize)};
@@ -1639,7 +1639,7 @@ TEST_F(IResearchLinkTest, test_maintenance_disabled_at_creation) {
   auto& feature = server.getFeature<IResearchFeature>();
 
   auto blockQueue = [&]() {
-    { auto lock = irs::make_lock_guard(mtx); }
+    { std::lock_guard lock{mtx}; }
     cv.notify_one();
   };
 
@@ -1687,7 +1687,7 @@ TEST_F(IResearchLinkTest, test_maintenance_disabled_at_creation) {
 
   // block queues
   {
-    auto lock = irs::make_unique_lock(mtx);
+    std::unique_lock lock{mtx};
     ASSERT_TRUE(feature.queue(ThreadGroup::_0, 0ms, blockQueue));
     ASSERT_TRUE(feature.queue(ThreadGroup::_1, 0ms, blockQueue));
 
@@ -1730,7 +1730,7 @@ TEST_F(IResearchLinkTest, test_maintenance_consolidation) {
   std::atomic<size_t> step{0};
   auto blockQueue = [&]() {
     ++step;
-    { auto lock = irs::make_lock_guard(mtx); }
+    { std::lock_guard lock{mtx}; }
     cv.notify_one();
   };
 
@@ -1789,7 +1789,7 @@ TEST_F(IResearchLinkTest, test_maintenance_consolidation) {
 
   // block queue
   {
-    auto lock = irs::make_unique_lock(mtx);
+    std::unique_lock lock{mtx};
     ASSERT_TRUE(feature.queue(ThreadGroup::_1, 0ms, blockQueue));
     waitForBlocker();
 
@@ -1937,7 +1937,7 @@ TEST_F(IResearchLinkTest, test_maintenance_consolidation) {
     // ensure no commit is scheduled after dropping a link
     {
       ASSERT_TRUE(link->drop().ok());
-      ASSERT_TRUE(asyncSelf->terminationRequested());
+      ASSERT_TRUE(asyncSelf->empty());
 
       ASSERT_TRUE(cv.wait_for(lock, 10s, [&feature]() {
         return std::make_tuple(size_t(0), size_t(0), size_t(1)) ==
@@ -1961,7 +1961,7 @@ TEST_F(IResearchLinkTest, test_maintenance_commit) {
   std::atomic<size_t> step{0};
   auto blockQueue = [&]() {
     ++step;
-    { auto lock = irs::make_lock_guard(mtx); }
+    { std::lock_guard lock{mtx}; }
     cv.notify_one();
   };
 
@@ -2020,7 +2020,7 @@ TEST_F(IResearchLinkTest, test_maintenance_commit) {
 
   // block queue
   {
-    auto lock = irs::make_unique_lock(mtx);
+    std::unique_lock lock{mtx};
     ASSERT_TRUE(feature.queue(ThreadGroup::_0, 0ms, blockQueue));
     waitForBlocker();
 
@@ -2146,7 +2146,7 @@ TEST_F(IResearchLinkTest, test_maintenance_commit) {
     // ensure no commit is scheduled after dropping a link
     {
       ASSERT_TRUE(link->drop().ok());
-      ASSERT_TRUE(asyncSelf->terminationRequested());
+      ASSERT_TRUE(asyncSelf->empty());
 
       ASSERT_TRUE(cv.wait_for(lock, 10s, [&feature]() {
         return std::make_tuple(size_t(0), size_t(0), size_t(1)) ==

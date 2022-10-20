@@ -127,7 +127,7 @@ function PregelSuite () {
       assertEqual(result.status, 200);
       assertEqual(5, result.body.length);
       result.body.forEach((task) => {
-        assertEqual("PageRank", task.algorithm);
+        assertEqual("pagerank", task.algorithm);
         assertEqual(db._name(), task.database);
         assertNotEqual(-1, ids.indexOf(task.id));
       });
@@ -153,11 +153,6 @@ function PregelSuite () {
         assertFalse(result.body.error);
         assertEqual(result.status, 200);
       });
-      
-      url = baseUrl;
-      result = sendRequest('GET', url, {}, false);
-      assertEqual(result.status, 200);
-      assertEqual([], result.body);
     },
 
     testPregelForwarding: function() {

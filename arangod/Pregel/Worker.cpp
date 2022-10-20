@@ -39,6 +39,7 @@
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 #include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 
 #include "Inspection/VPack.h"
@@ -932,6 +933,7 @@ template class arangodb::pregel::Worker<int64_t, int64_t, int64_t>;
 template class arangodb::pregel::Worker<uint64_t, uint8_t, uint64_t>;
 template class arangodb::pregel::Worker<float, float, float>;
 template class arangodb::pregel::Worker<double, float, double>;
+template class arangodb::pregel::Worker<float, uint8_t, float>;
 
 // custom algorithm types
 template class arangodb::pregel::Worker<uint64_t, uint64_t,
@@ -941,6 +943,8 @@ template class arangodb::pregel::Worker<WCCValue, uint64_t,
 template class arangodb::pregel::Worker<SCCValue, int8_t,
                                         SenderMessage<uint64_t>>;
 template class arangodb::pregel::Worker<HITSValue, int8_t,
+                                        SenderMessage<double>>;
+template class arangodb::pregel::Worker<HITSKleinbergValue, int8_t,
                                         SenderMessage<double>>;
 template class arangodb::pregel::Worker<ECValue, int8_t, HLLCounter>;
 template class arangodb::pregel::Worker<DMIDValue, float, DMIDMessage>;

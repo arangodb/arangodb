@@ -55,6 +55,9 @@ struct MoveShard : public Job {
   virtual Result abort(std::string const& reason) override;
   JOB_STATUS pendingLeader();
   JOB_STATUS pendingFollower();
+  JOB_STATUS pendingReplication2();
+  bool startReplication2();
+  std::optional<std::uint64_t> getShardSupervisionVersion();
 
   std::string _database;
   std::string _collection;
@@ -65,6 +68,7 @@ struct MoveShard : public Job {
   bool _isLeader;
   bool _remainsFollower;
   bool _toServerIsFollower;
+  uint64_t _expectedTargetVersion{0};
 
   MoveShard& withParent(std::string parentId) {
     _parentJobId = std::move(parentId);

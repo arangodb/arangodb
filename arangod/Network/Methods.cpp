@@ -30,6 +30,7 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Utf8Helper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
@@ -39,6 +40,7 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "RestServer/arangod.h"
+#include "VocBase/ticks.h"
 
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
@@ -210,7 +212,7 @@ static std::unique_ptr<fuerte::Response> buildResponse(
   fuerte::ResponseHeader responseHeader;
   responseHeader.responseCode = statusCode;
   responseHeader.contentType(ContentType::VPack);
-  auto resp = std::make_unique<fuerte::Response>(responseHeader);
+  auto resp = std::make_unique<fuerte::Response>(std::move(responseHeader));
   resp->setPayload(std::move(buffer), 0);
   return resp;
 }

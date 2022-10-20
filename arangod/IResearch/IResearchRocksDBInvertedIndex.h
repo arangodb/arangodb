@@ -54,17 +54,19 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
  public:
   IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection,
                                 uint64_t objectId, std::string const& name);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  virtual ~IResearchRocksDBInvertedIndex() {
-    // if triggered  - no unload was called prior to deleting index object
-    TRI_ASSERT(!_dataStore);
-  }
-#else
-  virtual ~IResearchRocksDBInvertedIndex() = default;
-#endif
 
   Index::IndexType type() const override {
     return Index::TRI_IDX_TYPE_INVERTED_INDEX;
+  }
+
+  std::string getCollectionName() const;
+  std::string const& getShardName() const noexcept;
+
+  void insertMetrics() final;
+  void removeMetrics() final;
+
+  void toVelocyPackFigures(velocypack::Builder& builder) const final {
+    IResearchDataStore::toVelocyPackStats(builder);
   }
 
   void toVelocyPack(
@@ -87,7 +89,7 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
     return IResearchInvertedIndex::inProgress();
   }
 
-  bool covers(arangodb::aql::Projections& projections) const override {
+  bool covers(aql::Projections& projections) const override {
     return IResearchInvertedIndex::covers(projections);
   }
 
@@ -100,8 +102,7 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
     IResearchDataStore::afterTruncate(tick, trx);
   }
 
-  bool matchesDefinition(
-      arangodb::velocypack::Slice const& other) const override;
+  bool matchesDefinition(velocypack::Slice const& other) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
       transaction::Methods* trx, aql::AstNode const* node,
@@ -122,17 +123,19 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
   }
 
   Index::FilterCosts supportsFilterCondition(
+      transaction::Methods& trx,
       std::vector<std::shared_ptr<Index>> const& allIndexes,
       aql::AstNode const* node, aql::Variable const* reference,
       size_t itemsInIndex) const override {
     return IResearchInvertedIndex::supportsFilterCondition(
-        IResearchDataStore::id(), RocksDBIndex::fields(), allIndexes, node,
+        trx, IResearchDataStore::id(), RocksDBIndex::fields(), allIndexes, node,
         reference, itemsInIndex);
   }
 
   aql::AstNode* specializeCondition(
-      aql::AstNode* node, aql::Variable const* reference) const override {
-    return IResearchInvertedIndex::specializeCondition(node, reference);
+      transaction::Methods& trx, aql::AstNode* node,
+      aql::Variable const* reference) const override {
+    return IResearchInvertedIndex::specializeCondition(trx, node, reference);
   }
 
   Result insert(transaction::Methods& trx, RocksDBMethods* /*methods*/,
@@ -152,13 +155,14 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
 
  private:
   // required for calling initFields()
-  friend class arangodb::iresearch::IResearchRocksDBInvertedIndexFactory;
+  friend class iresearch::IResearchRocksDBInvertedIndexFactory;
 
   void initFields() {
     TRI_ASSERT(_fields.empty());
-    *const_cast<std::vector<std::vector<arangodb::basics::AttributeName>>*>(
-        &_fields) = IResearchInvertedIndex::fields(meta());
+    *const_cast<std::vector<std::vector<basics::AttributeName>>*>(&_fields) =
+        IResearchInvertedIndex::fields(meta());
   }
 };
+
 }  // namespace iresearch
 }  // namespace arangodb

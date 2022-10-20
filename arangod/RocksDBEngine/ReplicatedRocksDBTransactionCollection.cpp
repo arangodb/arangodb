@@ -32,6 +32,8 @@
 #include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <algorithm>
 
@@ -137,8 +139,13 @@ TRI_voc_tick_t ReplicatedRocksDBTransactionCollection::lastOperationTick()
   return _rocksMethods->lastOperationTick();
 }
 
-uint64_t ReplicatedRocksDBTransactionCollection::numCommits() const {
+uint64_t ReplicatedRocksDBTransactionCollection::numCommits() const noexcept {
   return _rocksMethods->numCommits();
+}
+
+uint64_t ReplicatedRocksDBTransactionCollection::numIntermediateCommits()
+    const noexcept {
+  return _rocksMethods->numIntermediateCommits();
 }
 
 uint64_t ReplicatedRocksDBTransactionCollection::numOperations()
@@ -152,6 +159,9 @@ bool ReplicatedRocksDBTransactionCollection::ensureSnapshot() {
 
 auto ReplicatedRocksDBTransactionCollection::leaderState() -> std::shared_ptr<
     replication2::replicated_state::document::DocumentLeaderState> {
+  // leaderState should only be requested in cases where we are expected to be
+  // leader, in which case _leaderState should always be initialized!
+  ADB_PROD_ASSERT(_leaderState != nullptr);
   return _leaderState;
 }
 
@@ -162,7 +172,14 @@ auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
     return res;
   }
 
-  if (_leaderState == nullptr) {
+  // We only need to fetch the leaderState for non-read accesses. Note that this
+  // also covers the case that ReplicatedRocksDBTransactionState instances can
+  // be created on followers (but just for read-only access) in which case we
+  // obviously must not attempt to fetch the leaderState.
+  if (accessType() != AccessMode::Type::READ &&
+      // index creation is read-only, but might still use an exclusive lock
+      !_transaction->hasHint(transaction::Hints::Hint::INDEX_CREATION) &&
+      _leaderState == nullptr) {
     // Note that doing this here is only correct as long as we're not supporting
     // distributeShardsLike.
     // Later, we must make sure to get the very same state for all collections

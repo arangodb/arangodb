@@ -60,8 +60,8 @@ class ShardingInfo {
   std::string shardingStrategyName() const;
 
   LogicalCollection* collection() const noexcept;
-  void toVelocyPack(arangodb::velocypack::Builder& result,
-                    bool translateCids) const;
+  void toVelocyPack(arangodb::velocypack::Builder& result, bool translateCids,
+                    bool includeShardsEntry = true) const;
 
   std::string const& distributeShardsLike() const noexcept;
   void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
@@ -113,7 +113,8 @@ class ShardingInfo {
                                 bool& usesDefaultShardKeys,
                                 std::string_view key);
 
-  static void sortShardNamesNumerically(std::vector<ShardID>& list);
+  template<typename T>
+  static void sortShardNamesNumerically(T& list);
 
   static Result extractReplicationFactor(velocypack::Slice info, bool isSmart,
                                          size_t& replicationFactor);

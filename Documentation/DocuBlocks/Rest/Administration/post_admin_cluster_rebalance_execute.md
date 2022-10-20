@@ -1,22 +1,26 @@
 
 @startDocuBlock post_admin_cluster_rebalance_execute
-@brief Execute the given set of move shard operations.
+@brief Executes the given set of move shard operations.
 
-@RESTHEADER{POST /_admin/cluster/rebalance/execute, Execute the given set of move shard operations}
+@RESTHEADER{POST /_admin/cluster/rebalance/execute, Execute a set of move shard operations}
 
 @RESTDESCRIPTION
-Execute the given set of move shard operations. Such a set can be calculated using
-other rebalance apis.
+Execute the given set of move shard operations. You can use the
+`POST /_admin/cluster/rebalance` endpoint to calculate these operations to improve
+the balance of shards, leader shards, and follower shards.
 
 @RESTBODYPARAM{version,number,required,}
 Must be set to `1`.
+
 @RESTBODYPARAM{moves,array,required,move_shard_operation}
-Set of move shard operations to be executed.
+A set of move shard operations to execute.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-This API will return HTTP 200 if no operations were provided.
+This API returns HTTP 200 if no operations are provided.
+
 @RESTRETURNCODE{202}
-This API will return HTTP 202 if the operations have been accepted and scheduled for execution.
+This API returns HTTP 202 if the operations have been accepted and scheduled for execution.
+
 @endDocuBlock

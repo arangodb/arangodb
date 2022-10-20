@@ -632,10 +632,10 @@ function printTraversalDetails(traversals) {
     }
     // else do not add a cell in 4
     if (node.hasOwnProperty('ConditionStr')) {
-      outTable.addCell(5, 'FILTER ' + node.ConditionStr);
+      outTable.addCell(5, keyword('FILTER ') + node.ConditionStr);
     }
     if (node.hasOwnProperty('PruneConditionStr')) {
-      outTable.addCell(5, 'PRUNE ' + node.PruneConditionStr);
+      outTable.addCell(5, keyword('PRUNE ') + node.PruneConditionStr);
     }
   });
   outTable.print(stringBuilder);
@@ -1177,7 +1177,9 @@ function processQuery(query, explain, planIndex) {
     if (node.producesResult || !node.hasOwnProperty('producesResult')) {
       if (node.indexCoversProjections) {
         what += ', index only';
-      } 
+      } else {
+        what += ', index scan + document lookup';
+      }
     } else {
       what += ', scan only';
     }
@@ -2061,7 +2063,6 @@ function processQuery(query, explain, planIndex) {
     if (['EnumerateCollectionNode',
       'EnumerateListNode',
       'EnumerateViewNode',
-      'IndexRangeNode',
       'IndexNode',
       'TraversalNode',
       'SubqueryStartNode',

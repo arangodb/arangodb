@@ -119,7 +119,11 @@ Conductor::Conductor(
   _aggregators = std::make_unique<AggregatorHandler>(_algorithm.get());
 
   _maxSuperstep =
-      VelocyPackHelper::getNumericValue(config, "maxGSS", _maxSuperstep);
+      VelocyPackHelper::getNumericValue(config, Utils::maxGSS, _maxSuperstep);
+  if (config.hasKey(Utils::maxNumIterations)) {
+    // set to "infinity"
+    _maxSuperstep = std::numeric_limits<uint64_t>::max();
+  }
   // configure the async mode as off by default
   VPackSlice async = _userParams.slice().get("async");
   _asyncMode =
@@ -413,7 +417,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   if (_asyncMode == false) {  // in async mode we wait for all responded
     _ensureUniqueResponse(data);
     ServerID sender = data.get(Utils::senderKey).copyString();
-    LOG_PREGEL("08142", WARN)
+    LOG_PREGEL("faeb0", WARN)
         << fmt::format("finishedWorkerStep, got response from {}.", sender);
 
     // wait for the last worker to respond
@@ -861,7 +865,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   }
 
   ServerID sender = data.get(Utils::senderKey).copyString();
-  LOG_PREGEL("08142", WARN)
+  LOG_PREGEL("60f0c", WARN)
       << fmt::format("finishedWorkerFinalize, got response from {}.", sender);
 
   _ensureUniqueResponse(data);
