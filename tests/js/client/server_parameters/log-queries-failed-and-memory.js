@@ -97,11 +97,11 @@ return require('internal').options()["log.output"];
     });
   };
 
-  let oldLogLevel;
+  let oldLogLevels;
 
   return {
     setUpAll : function() {
-      oldLogLevel = arango.GET("/_admin/log/level").general;
+      oldLogLevels = arango.GET("/_admin/log/level");
       // must ramp up log levels because otherwise everything is hidden by
       // default during testing
       arango.PUT("/_admin/log/level", { general: "info", queries: "warn" });
@@ -109,7 +109,7 @@ return require('internal').options()["log.output"];
 
     tearDownAll : function () {
       // restore previous log level for "general" topic;
-      arango.PUT("/_admin/log/level", { general: oldLogLevel });
+      arango.PUT("/_admin/log/level", oldLogLevels);
     },
 
     testLoggedQueries: function () {
