@@ -651,7 +651,7 @@ auto ClusterInfo::deleteReplicatedStates(
   }
 
   auto const cb =
-      [&](futures::Try<std::vector<futures::Try<Result>>>&& tryResult) {
+      [](futures::Try<std::vector<futures::Try<Result>>>&& tryResult) {
         auto deletionResults =
             basics::catchToResultT([&] { return std::move(tryResult.get()); });
 
@@ -6111,7 +6111,7 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
     }
 
     LOG_TOPIC("4fff5", INFO, Logger::CLUSTER)
-        << "getResponsibleServerReplication2: did not found leader,"
+        << "getResponsibleServerReplication2: did not find leader,"
         << "waiting for half a second...";
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
@@ -6263,7 +6263,7 @@ bool ClusterInfo::getResponsibleServersReplication2(
     }
 
     LOG_TOPIC("0f8a7", INFO, Logger::CLUSTER)
-        << "getResponsibleServersReplication2: did not found leader,"
+        << "getResponsibleServersReplication2: did not find leader,"
         << "waiting for half a second...";
 
     if (tries >= 100 || !result.empty() || _server.isStopping()) {

@@ -77,15 +77,16 @@ auto replicated_log::ReplicatedLog::connect(
   return ReplicatedLogConnection(this);
 }
 
-void replicated_log::ReplicatedLog::disconnect(ReplicatedLogConnection conn) {
+auto replicated_log::ReplicatedLog::disconnect(ReplicatedLogConnection conn)
+    -> std::shared_ptr<IReplicatedStateHandle> {
   LOG_CTX("66ada", DEBUG, _logContext) << "disconnecting replicated log";
   ADB_PROD_ASSERT(conn._log.get() == this);
   auto guard = _guarded.getLockedGuard();
-  guard->stateHandle = nullptr;
   conn._log.reset();
   if (not guard->resigned) {
     resetParticipant(guard.get());
   }
+  return std::move(guard->stateHandle);
 }
 
 void replicated_log::ReplicatedLog::updateConfig(

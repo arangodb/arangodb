@@ -234,6 +234,17 @@ auto ReplicatedStateManager<S>::getLeader() const
       guard->_currentManager);
 }
 
+template<typename S>
+auto ReplicatedStateManager<S>::resign() && -> std::unique_ptr<CoreType> {
+  auto guard = _guarded.getLockedGuard();
+  auto&& [core, methods] =
+      std::visit([](auto&& mgr) { return std::move(*mgr).resign(); },
+                 guard->_currentManager);
+  // we should be unconfigured already
+  TRI_ASSERT(methods == nullptr);
+  return std::move(core);
+}
+
 template<typename EntryType, typename Deserializer,
          template<typename> typename Interface, typename ILogMethodsT>
 auto StreamProxy<EntryType, Deserializer, Interface,
@@ -583,22 +594,32 @@ auto ReplicatedState<S>::buildCore(
 }
 
 template<typename S>
-void ReplicatedState<S>::drop() && {
+void ReplicatedState<S>::drop(
+    std::shared_ptr<replicated_log::IReplicatedStateHandle> stateHandle) && {
+  ADB_PROD_ASSERT(stateHandle != nullptr);
+  // opportunistic check that we're the only user.
+  // note that there might be false positives (due to memory_order_relaxed),
+  // and races where a weak_ptr is promoted to a shared_ptr again.
+  // so: TODO remove this later!
+  TRI_ASSERT(stateHandle.use_count() == 1);
+
   auto deferred = guardedData.doUnderLock([&](GuardedData& data) {
     std::unique_ptr<CoreType> core;
     DeferredAction action;
+
+    // TODO remove data.oldCore and data.currentManager
     if (data.currentManager == nullptr) {
       core = std::move(data.oldCore);
     } else {
       std::tie(core, std::ignore, action) =
           std::move(*data.currentManager).resign();
     }
-
-    // This could happen if we are dropping the collection just before we
-    // managed to build the replicated state's core.
-    if (core == nullptr) {
-      return action;
-    }
+    ADB_PROD_ASSERT(core == nullptr);
+    auto stateManager =
+        std::dynamic_pointer_cast<ReplicatedStateManager<S>>(stateHandle);
+    ADB_PROD_ASSERT(stateManager != nullptr);
+    core = std::move(*stateManager).resign();
+    ADB_PROD_ASSERT(core != nullptr);
 
     using CleanupHandler =
         typename ReplicatedStateTraits<S>::CleanupHandlerType;

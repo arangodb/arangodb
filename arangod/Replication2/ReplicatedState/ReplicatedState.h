@@ -90,7 +90,8 @@ using ReplicatedStateStreamSpec =
 struct ReplicatedStateBase {
   virtual ~ReplicatedStateBase() = default;
 
-  virtual void drop() && = 0;
+  virtual void drop(
+      std::shared_ptr<replicated_log::IReplicatedStateHandle>) && = 0;
   [[nodiscard]] virtual auto getStatus() -> std::optional<StateStatus> = 0;
   [[nodiscard]] auto getLeader()
       -> std::shared_ptr<IReplicatedLeaderStateBase> {
@@ -314,6 +315,8 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
 
   void dropEntries() override;
 
+  auto resign() && -> std::unique_ptr<CoreType>;
+
   [[nodiscard]] auto getStatus() const -> std::optional<StateStatus> override;
   // We could, more specifically, return pointers to FollowerType/LeaderType.
   // But I currently don't see that it's needed, and would have to do one of
@@ -358,7 +361,8 @@ struct ReplicatedState final
                            std::shared_ptr<ReplicatedStateMetrics>);
   ~ReplicatedState() override;
 
-  void drop() && override;
+  void drop(std::shared_ptr<replicated_log::IReplicatedStateHandle>) &&
+      override;
   /**
    * Returns the follower state machine. Returns nullptr if no follower state
    * machine is present. (i.e. this server is not a follower)

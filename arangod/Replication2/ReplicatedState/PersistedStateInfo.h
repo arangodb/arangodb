@@ -55,9 +55,9 @@ auto inspect(Inspector& f, PersistedStateInfo& x) {
 
 struct IStorageEngineMethods {
   virtual ~IStorageEngineMethods() = default;
-  virtual auto updateMetadata(PersistedStateInfo) -> Result = 0;
-  virtual auto readMetadata() -> ResultT<PersistedStateInfo> = 0;
-  virtual auto read(LogIndex first)
+  [[nodiscard]] virtual auto updateMetadata(PersistedStateInfo) -> Result = 0;
+  [[nodiscard]] virtual auto readMetadata() -> ResultT<PersistedStateInfo> = 0;
+  [[nodiscard]] virtual auto read(LogIndex first)
       -> std::unique_ptr<PersistedLogIterator> = 0;
 
   struct WriteOptions {

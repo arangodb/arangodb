@@ -170,7 +170,8 @@ struct alignas(64) ReplicatedLog {
 
   [[nodiscard]] auto connect(std::unique_ptr<IReplicatedStateHandle>)
       -> ReplicatedLogConnection;
-  void disconnect(ReplicatedLogConnection);
+  auto disconnect(ReplicatedLogConnection)
+      -> std::shared_ptr<IReplicatedStateHandle>;
 
   void updateConfig(agency::LogPlanTermSpecification term,
                     agency::ParticipantsConfig config);
