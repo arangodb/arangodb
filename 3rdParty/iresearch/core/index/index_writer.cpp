@@ -555,9 +555,10 @@ segment_reader readers_cache::emplace(const segment_meta& meta) {
   cached_reader = std::move(reader); // clear existing reader
 
   // update cache, in case of failure reader stays empty
+  // intentionally never warmup readers for writers
   reader = cached_reader
     ? cached_reader.reopen(meta)
-    : segment_reader::open(dir_, meta);
+               : segment_reader::open(dir_, meta, index_reader_options{});
 
   return reader;
 }

@@ -103,7 +103,8 @@ class IRESEARCH_API directory_reader final : public index_reader {
   ////////////////////////////////////////////////////////////////////////////////
   static directory_reader open(
     const directory& dir,
-    format::ptr codec = nullptr
+    format::ptr codec = nullptr,
+    const index_reader_options& opts = index_reader_options()
   );
 
   ////////////////////////////////////////////////////////////////////////////////

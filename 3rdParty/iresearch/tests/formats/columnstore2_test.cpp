@@ -28,23 +28,43 @@
 
 using namespace irs::columnstore2;
 
-class columnstore2_test_case : public virtual tests::directory_test_case_base<bool> {
+class columnstore2_test_case : public virtual tests::directory_test_case_base<bool, bool> {
  public:
   static std::string to_string(
-      const testing::TestParamInfo<std::tuple<tests::dir_param_f, bool>>& info) {
-    auto [factory, consolidation] = info.param;
+      const testing::TestParamInfo<std::tuple<tests::dir_param_f, bool, bool>>& info) {
+    auto [factory, consolidation, buffered] = info.param;
 
+    std::string name = (*factory)(nullptr).second;
     if (consolidation) {
-      return (*factory)(nullptr).second + "___consolidation";
+      name += "_consolidation";
     }
 
-    return (*factory)(nullptr).second;
+    if (buffered) {
+      name += "_buffered";
+    }
+
+    return name;
   }
+
 
   bool consolidation() const noexcept {
     auto& p = this->GetParam();
-    return std::get<bool>(p);
+    return std::get<1>(p);
   }
+
+  bool buffered() const noexcept {
+    auto& p = this->GetParam();
+    return std::get<2>(p);
+  }
+
+  irs::columnstore_reader::options reader_options() { 
+    irs::columnstore_reader::options options;
+    options.warmup_column = [this](const irs::column_reader&) {
+      return this->buffered();
+    };
+    return options;
+  }
+
 };
 
 TEST_P(columnstore2_test_case, reader_ctor) {
@@ -75,7 +95,7 @@ TEST_P(columnstore2_test_case, empty_columnstore) {
   ASSERT_FALSE(writer.commit(state));
 
   irs::columnstore2::reader reader;
-  ASSERT_FALSE(reader.prepare(dir(), meta));
+  ASSERT_FALSE(reader.prepare(dir(), meta, reader_options()));
 }
 
 TEST_P(columnstore2_test_case, empty_column) {
@@ -118,7 +138,7 @@ TEST_P(columnstore2_test_case, empty_column) {
   ASSERT_TRUE(writer.commit(state));
 
   irs::columnstore2::reader reader;
-  ASSERT_TRUE(reader.prepare(dir(), meta));
+  ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
   ASSERT_EQ(2, reader.size());
 
   // column 0
@@ -216,7 +236,7 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
 
   {
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta));
+    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
     ASSERT_EQ(1, reader.size());
 
     auto* header = reader.header(0);
@@ -356,7 +376,7 @@ TEST_P(columnstore2_test_case, sparse_column) {
 
   {
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta));
+    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
     ASSERT_EQ(1, reader.size());
 
     auto* header = reader.header(0);
@@ -531,7 +551,7 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
     };
 
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta));
+    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
     ASSERT_EQ(1, reader.size());
 
     auto* header = reader.header(0);
@@ -693,7 +713,7 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
 
   {
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta));
+    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
     ASSERT_EQ(1, reader.size());
 
     auto* header = reader.header(0);
@@ -863,7 +883,7 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
 
   {
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta));
+    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
     ASSERT_EQ(1, reader.size());
 
     auto* header = reader.header(0);
@@ -1025,7 +1045,7 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
 
   {
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta));
+    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
     ASSERT_EQ(1, reader.size());
 
     auto* header = reader.header(0);
@@ -1176,7 +1196,7 @@ TEST_P(columnstore2_test_case, dense_column) {
 
   {
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta));
+    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
     ASSERT_EQ(1, reader.size());
 
     auto* header = reader.header(0);
@@ -1332,7 +1352,7 @@ TEST_P(columnstore2_test_case, dense_column_range) {
 
   {
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta));
+    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
     ASSERT_EQ(1, reader.size());
 
     auto* header = reader.header(0);
@@ -1513,7 +1533,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
 
   {
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta));
+    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
     ASSERT_EQ(2, reader.size());
 
     {
@@ -1814,7 +1834,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
 
   {
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta));
+    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
     ASSERT_EQ(1, reader.size());
 
     {
@@ -2003,6 +2023,7 @@ INSTANTIATE_TEST_SUITE_P(
       &tests::rot13_directory<&tests::memory_directory, 16>,
       &tests::rot13_directory<&tests::fs_directory, 16>,
       &tests::rot13_directory<&tests::mmap_directory, 16>),
+    ::testing::Values(false, true),
     ::testing::Values(false, true)),
   &columnstore2_test_case::to_string
 );
