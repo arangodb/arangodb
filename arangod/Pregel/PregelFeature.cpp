@@ -816,7 +816,8 @@ auto PregelFeature::apply(ExecutionNumber const& executionNumber,
           [&](ResultT<CleanupFinished> const& x) -> ResultT<MessagePayload> {
             auto c = conductor(executionNumber);
             if (!c) {
-              return conductorNotFound(executionNumber, message);
+              // garbage collection already deleted the conductor
+              return {Ok{}};
             }
             scheduler->queue(RequestLane::INTERNAL_LOW,
                              [c = c->shared_from_this(), x = std::move(x)] {

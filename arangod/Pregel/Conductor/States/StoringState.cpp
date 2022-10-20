@@ -73,7 +73,7 @@ auto Storing::receive(MessagePayload message)
                   return std::nullopt;
                 });
           },
-          [&](ResultT<ResultT<CleanupFinished>> const& x)
+          [&](ResultT<CleanupFinished> const& x)
               -> std::optional<std::unique_ptr<State>> {
             auto explicitMessage = getResultTMessage<CleanupFinished>(message);
             if (explicitMessage.fail()) {
