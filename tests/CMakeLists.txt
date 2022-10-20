@@ -143,6 +143,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/FilesTest.cpp
   Basics/FpConvTest.cpp
   Basics/HashesTest.cpp
+  Basics/HybridLogicalClockTest.cpp
   Basics/OverloadTest.cpp
   Basics/PriorityQueueTest.cpp
   Basics/StringBufferTest.cpp
@@ -223,6 +224,7 @@ set(ARANGODB_TESTS_SOURCES
   ProgramOptions/InifileParserTest.cpp
   ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
+  Rest/HttpRequestTest.cpp
   Rest/PathMatchTest.cpp
   RestHandler/RestAnalyzerHandlerTest.cpp
   RestHandler/RestDocumentHandlerTest.cpp
@@ -232,7 +234,9 @@ set(ARANGODB_TESTS_SOURCES
   RestServer/FlushFeatureTest.cpp
   RestServer/LanguageFeatureTest.cpp
   Restore/CollectionRestoreOrder.cpp
-  RocksDBEngine/Endian.cpp
+  RocksDBEngine/ChecksumCalculatorTest.cpp
+  RocksDBEngine/ChecksumHelperTest.cpp
+  RocksDBEngine/EndianTest.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/HotBackupTest.cpp
   RocksDBEngine/EncryptionProviderTest.cpp
