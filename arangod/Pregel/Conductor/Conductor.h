@@ -79,8 +79,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   friend struct conductor::FatalError;
 
   conductor::WorkerApi _workers;
-  std::unique_ptr<conductor::State> _state =
-      std::make_unique<conductor::Initial>(*this);
+  std::unique_ptr<conductor::State> _state;
   PregelFeature& _feature;
   std::chrono::system_clock::time_point _created;
   std::chrono::seconds _ttl = std::chrono::seconds(300);
@@ -137,8 +136,8 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   std::unordered_map<ShardID, ServerID> _leadingServerForShard;
 
+  auto _run() -> void;
   auto _changeState(std::unique_ptr<conductor::State> newState) -> void;
-  auto _initializeWorkers() -> futures::Future<Result>;
   auto _preGlobalSuperStep() -> void;
   auto _postGlobalSuperStep() -> PostGlobalSuperStepResult;
   void _cleanup();

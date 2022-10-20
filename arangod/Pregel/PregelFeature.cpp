@@ -688,8 +688,16 @@ auto PregelFeature::apply(ExecutionNumber const& executionNumber,
               auto created = AlgoRegistry::createWorker(vocbase, x, *this);
               TRI_ASSERT(created.get() != nullptr);
               addWorker(std::move(created), executionNumber);
-              return {
-                  WorkerCreated{.senderId = ServerState::instance()->getId()}};
+              auto w = worker(executionNumber);
+              if (!w) {
+                return workerNotFound(executionNumber, message);
+              }
+              scheduler->queue(
+                  RequestLane::INTERNAL_LOW, [w = w->shared_from_this()] {
+                    w->send(WorkerCreated{
+                        .senderId = ServerState::instance()->getId()});
+                  });
+              return {Ok{}};
             } catch (basics::Exception& e) {
               return Result{e.code(), e.message()};
             }
@@ -754,6 +762,17 @@ auto PregelFeature::apply(ExecutionNumber const& executionNumber,
               return conductorNotFound(executionNumber, message);
             }
             c->workerStatusUpdated(x);
+            return {Ok{}};
+          },
+          [&](ResultT<WorkerCreated> const& x) -> ResultT<MessagePayload> {
+            auto c = conductor(executionNumber);
+            if (!c) {
+              return conductorNotFound(executionNumber, message);
+            }
+            scheduler->queue(RequestLane::INTERNAL_LOW,
+                             [c = c->shared_from_this(), x = std::move(x)] {
+                               c->receive(x);
+                             });
             return {Ok{}};
           },
           [&](ResultT<GraphLoaded> const& x) -> ResultT<MessagePayload> {

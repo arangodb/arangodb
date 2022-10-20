@@ -87,23 +87,28 @@ auto WorkerApi::collectAllOks(std::vector<futures::Future<Result>> responses)
 
 auto WorkerApi::createWorkers(
     std::unordered_map<ServerID, CreateWorker> const& data)
-    -> futures::Future<Result> {
-  auto results = std::vector<futures::Future<ResultT<WorkerCreated>>>{};
+    -> ResultT<AggregateCount<WorkerCreated>> {
+  auto results = std::vector<futures::Future<Result>>{};
   for (auto const& [server, message] : data) {
-    results.emplace_back(send<WorkerCreated, CreateWorker>(server, message));
+    results.emplace_back(
+        _connection->post(Destination{Destination::Type::server, server},
+                          ModernMessage{.executionNumber = _executionNumber,
+                                        .payload = {message}}));
+    _servers.emplace_back(server);
   }
-  return futures::collectAll(results).thenValue([&](auto results) -> Result {
-    for (auto const& result : results) {
-      if (result.get().fail()) {
-        return Result{
-            result.get().errorNumber(),
-            fmt::format("Got unsuccessful response while creating worker: {}",
-                        result.get().errorMessage())};
-      }
-      _servers.emplace_back(result.get().get().senderId);
-    }
-    return Result{};
-  });
+  return futures::collectAll(results)
+      .thenValue([&](auto responses) -> ResultT<AggregateCount<WorkerCreated>> {
+        for (auto const& response : responses) {
+          if (response.get().fail()) {
+            return Result{response.get().errorNumber(),
+                          fmt::format("Got unsuccessful response while "
+                                      "creating worker: {}",
+                                      response.get().errorMessage())};
+          }
+        }
+        return AggregateCount<WorkerCreated>{responses.size()};
+      })
+      .get();
 }
 
 auto WorkerApi::loadGraph(LoadGraph const& data)

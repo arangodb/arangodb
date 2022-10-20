@@ -39,8 +39,8 @@ struct Canceled : State {
   ~Canceled() = default;
   auto run() -> std::optional<std::unique_ptr<State>> override;
   // This is a final error state for the Loading state: It is possible that this
-  // state receives WorkerCreated and GraphLoaded messages and this state needs
-  // to ignore them in the receive fct.
+  // state receives WorkerCreated messages and this state needs to ignore them
+  // in the receive fct.
   auto receive(MessagePayload message)
       -> std::optional<std::unique_ptr<State>> override {
     return std::nullopt;
