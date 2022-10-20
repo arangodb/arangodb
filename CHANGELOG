@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updating properties of a satellite collection breaks replicationFactor.
+
 * Fixed GitHub issue #17291: Fixed a server crash which could occur in case an
   AQL query using a PRUNE or FILTER statement, combined with UDFs (user defined
   functions), got executed.
