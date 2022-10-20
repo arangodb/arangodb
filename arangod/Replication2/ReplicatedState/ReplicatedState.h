@@ -254,11 +254,14 @@ struct NewFollowerStateManager
   LoggerContext const _loggerContext;
   std::shared_ptr<ReplicatedStateMetrics> const _metrics;
   struct GuardedData {
-    auto updateCommitIndex(LogIndex index);
+    auto updateCommitIndex(LogIndex index)
+        -> std::optional<futures::Future<Result>>;
 
     std::shared_ptr<IReplicatedFollowerState<S>> _followerState;
     std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> _logMethods;
+    LogIndex _commitIndex = LogIndex{0};
     LogIndex _lastAppliedIndex = LogIndex{0};
+    std::optional<LogIndex> _applyEntriesIndexInFlight = std::nullopt;
   };
   Guarded<GuardedData> _guardedData;
 };

@@ -358,29 +358,59 @@ auto NewLeaderStateManager<S>::GuardedData::resign() && noexcept
 
 template<typename S>
 void NewFollowerStateManager<S>::updateCommitIndex(LogIndex commitIndex) {
-  auto future = _guardedData.getLockedGuard()->updateCommitIndex(commitIndex);
+  // TODO Rewrite this.
+  //      1) update our version of the commit index
+  //      2) check if an applyEntries is running;
+  //      3a) if yes, do nothing
+  //          (but make sure that at the end of applyEntries, we check if it
+  //          needs to be run again)
+  //      3b) if no, run applyEntries
+  //      at the end of apply entries, update the last applied index (if
+  //      successful)
+  auto maybeFuture =
+      _guardedData.getLockedGuard()->updateCommitIndex(commitIndex);
   // note that we release the lock before calling "then"
 
-  std::move(future).then([weak = this->weak_from_this(), commitIndex](auto&&) {
-    if (auto self = weak.lock(); self != nullptr) {
-      // TODO this update here happens asynchronously to the corresponding
-      //      applyEntries. can this be a problem?
-      auto guard = self->_guardedData.getLockedGuard();
-      guard->_lastAppliedIndex =
-          std::max(guard->_lastAppliedIndex, commitIndex);
-    }
-  });
+  // we get a future iff applyEntries was called
+  if (maybeFuture.has_value()) {
+    auto& future = *maybeFuture;
+    std::move(future).then([weak = this->weak_from_this()](auto&& tryResult) {
+      if (auto self = weak.lock(); self != nullptr) {
+        auto res =
+            basics::catchToResult([&] { return std::move(tryResult).get(); });
+        auto guard = self->_guardedData.getLockedGuard();
+        if (res.ok()) {
+          ADB_PROD_ASSERT(guard->_applyEntriesIndexInFlight.has_value());
+          guard->_lastAppliedIndex = *guard->_applyEntriesIndexInFlight;
+          guard->_applyEntriesIndexInFlight = std::nullopt;
+        }
+
+        if (res.fail() || guard->_commitIndex > guard->_lastAppliedIndex) {
+          // TODO retry / continue
+          ADB_PROD_ASSERT(false);
+        }
+      }
+    });
+  }
 }
 
 template<typename S>
 auto NewFollowerStateManager<S>::GuardedData::updateCommitIndex(
-    LogIndex commitIndex) {
-  auto log = _logMethods->getLogSnapshot();
-  auto logIter = log.getIteratorRange(_lastAppliedIndex, commitIndex);
-  auto deserializedIter = std::make_unique<
-      LazyDeserializingIterator<EntryType const&, Deserializer>>(
-      std::move(logIter));
-  return _followerState->applyEntries(std::move(deserializedIter));
+    LogIndex commitIndex) -> std::optional<futures::Future<Result>> {
+  _commitIndex = std::max(_commitIndex, commitIndex);
+  if (_commitIndex > _lastAppliedIndex and
+      not _applyEntriesIndexInFlight.has_value()) {
+    auto log = _logMethods->getLogSnapshot();
+    _applyEntriesIndexInFlight = _commitIndex;
+    auto logIter =
+        log.getIteratorRange(_lastAppliedIndex, *_applyEntriesIndexInFlight);
+    auto deserializedIter = std::make_unique<
+        LazyDeserializingIterator<EntryType const&, Deserializer>>(
+        std::move(logIter));
+    return _followerState->applyEntries(std::move(deserializedIter));
+  } else {
+    return std::nullopt;
+  }
 }
 
 template<typename S>
