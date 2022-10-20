@@ -29,7 +29,7 @@
 namespace arangodb::inspection {
 
 template<typename T>
-[[nodiscard]] auto serializeWithStatusT(T& value)
+[[nodiscard]] auto serializeWithErrorT(T& value)
     -> errors::ErrorT<Status, velocypack::SharedSlice> {
   auto builder = velocypack::Builder();
   VPackSaveInspector<> inspector(builder);
@@ -45,7 +45,7 @@ template<typename T>
 }
 
 template<typename T>
-[[nodiscard]] auto deserializeWithStatusT(velocypack::SharedSlice slice)
+[[nodiscard]] auto deserializeWithErrorT(velocypack::SharedSlice slice)
     -> errors::ErrorT<Status, T> {
   inspection::VPackLoadInspector<> inspector(slice.slice(),
                                              inspection::ParseOptions{});

@@ -41,7 +41,7 @@
 #include "Inspection/Format.h"
 #include "Inspection/Types.h"
 #include "Inspection/VPack.h"
-#include "Inspection/VPackWithStatusT.h"
+#include "Inspection/VPackWithErrorT.h"
 #include "Inspection/VPackLoadInspector.h"
 #include "Inspection/VPackSaveInspector.h"
 #include "Inspection/ValidateInspector.h"
@@ -3027,14 +3027,14 @@ using namespace arangodb::inspection;
 using namespace arangodb::velocypack;
 
 namespace {
-struct StatusTTest {
+struct ErrorTTest {
   std::string s;
   size_t id;
-  bool operator==(StatusTTest const&) const = default;
+  bool operator==(ErrorTTest const&) const = default;
 };
 
 template<class Inspector>
-auto inspect(Inspector& f, StatusTTest& x) {
+auto inspect(Inspector& f, ErrorTTest& x) {
   return f.object(x).fields(f.field("s", x.s), f.field("id", x.id));
 }
 }  // namespace
@@ -3045,7 +3045,7 @@ TEST(VPackWithStatus, statust_test_deserialize) {
     "id": 3
   })"_vpack;
 
-  auto res = deserializeWithStatusT<StatusTTest>(testSlice);
+  auto res = deserializeWithErrorT<ErrorTTest>(testSlice);
 
   ASSERT_TRUE(res.ok()) << fmt::format("Something went wrong: {}",
                                        res.error().error());
@@ -3061,7 +3061,7 @@ TEST(VPackWithStatus, statust_test_deserialize_fail) {
     "fehler": 2
   })"_vpack;
 
-  auto res = deserializeWithStatusT<StatusTTest>(testSlice);
+  auto res = deserializeWithErrorT<ErrorTTest>(testSlice);
 
   ASSERT_FALSE(res.ok()) << fmt::format("Did not detect the error we exepct");
 
