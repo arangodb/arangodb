@@ -650,13 +650,9 @@ void PregelFeature::cleanupConductor(ExecutionNumber executionNumber) {
   _workers.erase(executionNumber);
 }
 
-auto PregelFeature::cleanupWorker(ExecutionNumber executionNumber)
-    -> futures::Future<futures::Unit> {
-  return futures::makeFutureWith([&]() {
-    MUTEX_LOCKER(guard, _mutex);
-    _workers.erase(executionNumber);
-    return futures::Unit{};
-  });
+auto PregelFeature::cleanupWorker(ExecutionNumber executionNumber) -> void {
+  MUTEX_LOCKER(guard, _mutex);
+  _workers.erase(executionNumber);
 }
 
 auto PregelFeature::process(ModernMessage message, TRI_vocbase_t& vocbase)
@@ -743,7 +739,11 @@ auto PregelFeature::apply(ExecutionNumber const& executionNumber,
               // started
               return {CleanupFinished{}};
             }
-            return {w->cleanup(x).get()};
+            scheduler->queue(RequestLane::INTERNAL_LOW,
+                             [w = w->shared_from_this(), x = std::move(x)] {
+                               w->send(w->cleanup(x));
+                             });
+            return {Ok{}};
           },
           [&](CollectPregelResults const& x) -> ResultT<MessagePayload> {
             auto w = worker(executionNumber);
@@ -803,6 +803,17 @@ auto PregelFeature::apply(ExecutionNumber const& executionNumber,
             return {Ok{}};
           },
           [&](ResultT<Stored> const& x) -> ResultT<MessagePayload> {
+            auto c = conductor(executionNumber);
+            if (!c) {
+              return conductorNotFound(executionNumber, message);
+            }
+            scheduler->queue(RequestLane::INTERNAL_LOW,
+                             [c = c->shared_from_this(), x = std::move(x)] {
+                               c->receive(x);
+                             });
+            return {Ok{}};
+          },
+          [&](ResultT<CleanupFinished> const& x) -> ResultT<MessagePayload> {
             auto c = conductor(executionNumber);
             if (!c) {
               return conductorNotFound(executionNumber, message);
