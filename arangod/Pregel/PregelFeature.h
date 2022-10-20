@@ -88,8 +88,7 @@ class PregelFeature final : public ArangodFeature {
   std::shared_ptr<IWorker> worker(ExecutionNumber executionNumber);
 
   void cleanupConductor(ExecutionNumber executionNumber);
-  auto cleanupWorker(ExecutionNumber executionNumber)
-      -> futures::Future<futures::Unit>;
+  auto cleanupWorker(ExecutionNumber executionNumber) -> void;
 
   auto process(ModernMessage message, TRI_vocbase_t& vocbase)
       -> ResultT<ModernMessage>;

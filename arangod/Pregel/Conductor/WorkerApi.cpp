@@ -142,8 +142,8 @@ auto WorkerApi::store(Store const& message) -> ResultT<Aggregate<Stored>> {
 }
 
 auto WorkerApi::cleanup(Cleanup const& message)
-    -> futures::Future<ResultT<CleanupFinished>> {
-  return sendToAll_old<CleanupFinished>(message);
+    -> ResultT<Aggregate<CleanupFinished>> {
+  return collectAllOks<CleanupFinished>(sendToAll(message));
 }
 
 auto WorkerApi::results(CollectPregelResults const& message) const

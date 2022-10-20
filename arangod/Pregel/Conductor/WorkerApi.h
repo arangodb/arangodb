@@ -56,7 +56,7 @@ struct WorkerApi {
       -> ResultT<Aggregate<GlobalSuperStepFinished>>;
   [[nodiscard]] auto store(Store const& message) -> ResultT<Aggregate<Stored>>;
   [[nodiscard]] auto cleanup(Cleanup const& message)
-      -> futures::Future<ResultT<CleanupFinished>>;
+      -> ResultT<Aggregate<CleanupFinished>>;
   [[nodiscard]] auto results(CollectPregelResults const& message) const
       -> futures::Future<ResultT<PregelResults>>;
 

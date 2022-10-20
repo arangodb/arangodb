@@ -50,6 +50,7 @@ struct Storing : State {
  private:
   auto _cleanup() -> futures::Future<Result>;
   Guarded<Aggregate<Stored>> _aggregate;
+  Guarded<Aggregate<CleanupFinished>> _cleanupAggregate;
 };
 }  // namespace conductor
 }  // namespace arangodb::pregel

@@ -537,15 +537,13 @@ void Worker<V, E, M>::cancelGlobalStep(VPackSlice const& data) {
 
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::cleanup(Cleanup const& command)
-    -> futures::Future<ResultT<CleanupFinished>> {
+    -> ResultT<CleanupFinished> {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicious activity
   MUTEX_LOCKER(guard, _commandMutex);
   LOG_PREGEL("4067a", DEBUG) << "Removing worker";
-  return _feature.cleanupWorker(_config.executionNumber())
-      .thenValue([](auto _) -> ResultT<CleanupFinished> {
-        return {CleanupFinished{}};
-      });
+  _feature.cleanupWorker(_config.executionNumber());
+  return CleanupFinished{};
 }
 
 template<typename V, typename E, typename M>

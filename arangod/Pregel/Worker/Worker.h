@@ -59,7 +59,7 @@ class IWorker : public std::enable_shared_from_this<IWorker> {
       -> ResultT<GlobalSuperStepFinished> = 0;
   [[nodiscard]] virtual auto store(Store const& message) -> ResultT<Stored> = 0;
   [[nodiscard]] virtual auto cleanup(Cleanup const& message)
-      -> futures::Future<ResultT<CleanupFinished>> = 0;
+      -> ResultT<CleanupFinished> = 0;
   [[nodiscard]] virtual auto results(CollectPregelResults const& message) const
       -> futures::Future<ResultT<PregelResults>> = 0;
   virtual auto send(MessagePayload message) -> void = 0;
@@ -178,8 +178,7 @@ class Worker : public IWorker {
   auto runGlobalSuperStep(RunGlobalSuperStep const& data)
       -> ResultT<GlobalSuperStepFinished> override;
   auto store(Store const& message) -> ResultT<Stored> override;
-  auto cleanup(Cleanup const& message)
-      -> futures::Future<ResultT<CleanupFinished>> override;
+  auto cleanup(Cleanup const& message) -> ResultT<CleanupFinished> override;
   auto results(CollectPregelResults const& message) const
       -> futures::Future<ResultT<PregelResults>> override;
 
