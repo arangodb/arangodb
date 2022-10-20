@@ -380,11 +380,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   // Indicator if a query was already killed
   // via a debug failure. This should not
   // retrigger a kill.
-  bool _wasDebugKilled;
+  bool _wasDebugKilled = false;
 #endif
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  bool _wasDestroyed;
+  bool _wasDestroyed = false;
 #endif
 
   bool _allowDirtyReads;  // this is set from the information in the
