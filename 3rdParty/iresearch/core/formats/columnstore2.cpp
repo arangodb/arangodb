@@ -992,6 +992,7 @@ class sparse_column : public column_base {
     std::vector <std::tuple<size_t, bool, size_t, size_t, size_t>> chunks;
     size_t chunks_size{0};
     size_t block_idx{0};
+    std::vector<irs::byte_type> addr_buffer;
     for (auto& block : blocks) {
       if (bitpack::ALL_EQUAL == block.bits) {
         size_t length = block.avg * block.last;
@@ -1002,15 +1003,17 @@ class sparse_column : public column_base {
         // addr table size
         const size_t addr_length = packed::bytes_required_64(
             math::ceil64((block.last + 1), packed::BLOCK_SIZE_64), block.bits);
-        column_data.resize(column_data.size() + addr_length);
         chunks.emplace_back(block_idx, true, chunks_size, addr_length, block.addr);
         chunks_size += addr_length;
         // block data size is calculated as end of the data for the last document in block
         const size_t block_size = block.bits * sizeof(uint64_t);
         auto const value_index = block.last % packed::BLOCK_SIZE_64;
+        addr_buffer.resize(block_size);
+        in->read_bytes(block.addr + addr_length - block_size,
+                       addr_buffer.data(), block_size);
         const uint64_t start_delta = zig_zag_decode64(packed::fastpack_at(
-            reinterpret_cast<const uint64_t*>(column_data.data() +
-                                              column_data.size() - block_size),
+            reinterpret_cast<const uint64_t*>(addr_buffer.data() +
+                                              addr_buffer.size() - block_size),
             value_index, block.bits));
         const uint64_t start = block.avg * block.last + start_delta;
 
