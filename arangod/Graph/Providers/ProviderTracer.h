@@ -76,6 +76,11 @@ class ProviderTracer {
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
+
+  // [GraphRefactor] TODO: Temporary method - will be needed until we've
+  // finished the full graph refactor.
+  EdgeDocumentToken getEdgeDocumentToken(typename Step::Edge const& edge);
+
   void addEdgeIDToBuilder(typename Step::Edge const& edge,
                           arangodb::velocypack::Builder& builder);
 
