@@ -32,7 +32,7 @@ if (getOptions === true) {
   return {
     'query.log-failed': 'true',
     'query.log-memory-usage-threshold': '1048576',
-    'query.max-artefact-log-length': '1024',
+    'query.max-artifact-log-length': '1024',
   };
 }
 
