@@ -97,8 +97,8 @@ TEST(Optimizer2EnumerateCollectionNode, construction) {
     EXPECT_EQ(enumerateCollectionNode.estimatedNrItems, 0u);
 
     // EnumerateCollectionNode additional specifics
-    EXPECT_EQ(enumerateCollectionNode.projections.size(), 0);
-    EXPECT_EQ(enumerateCollectionNode.filterProjections.size(), 0);
+    EXPECT_EQ(enumerateCollectionNode.projections.size(), 0ul);
+    EXPECT_EQ(enumerateCollectionNode.filterProjections.size(), 0ul);
     EXPECT_FALSE(enumerateCollectionNode.count);
     EXPECT_TRUE(enumerateCollectionNode.producesResult);
     EXPECT_FALSE(enumerateCollectionNode.readOwnWrites);

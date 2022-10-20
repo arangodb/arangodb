@@ -194,5 +194,8 @@ TEST(Optimizer2traversalNode, construction) {
     EXPECT_FALSE(traversalNode.canThrow.has_value());
     EXPECT_EQ(traversalNode.estimatedCost, 6u);
     EXPECT_EQ(traversalNode.estimatedNrItems, 1u);
+    // TODO
+    // WIP: Not tested all variables here
+    // HINT: We'll use mchackis MAKROS later here to imrove on this.
   }
 }
