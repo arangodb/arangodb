@@ -18,20 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
+/// @author  Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-// TODO: This type may be not required. Please check later.
-namespace arangodb::aql::optimizer2::types {
+#include "Aql/Optimizer2/PlanNodes/BaseNode.h"
 
-struct Count {
-  bool count;
+#include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
+
+namespace arangodb::aql::optimizer2::nodes {
+
+struct EnumerateListNode : optimizer2::nodes::BaseNode {
+  optimizer2::types::Variable inVariable;
+  optimizer2::types::Variable outVariable;
 };
 
-template<class Inspector>
-auto inspect(Inspector& f, Count& v) {
-  return f.object(v).fields(f.field("count", v.count));
+template<typename Inspector>
+auto inspect(Inspector& f, EnumerateListNode& x) {
+  return f.object(x).fields(
+      f.embedFields(static_cast<optimizer2::nodes::BaseNode&>(x)),
+      f.field("inVariable", x.inVariable),
+      f.field("outVariable", x.outVariable));
 }
 
-}  // namespace arangodb::aql::optimizer2::types
+}  // namespace arangodb::aql::optimizer2::nodes
