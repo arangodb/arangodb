@@ -2,7 +2,7 @@
 #include <iostream>
 #include "DisjointSet.h"
 
-DisjointSet::DisjointSet(size_t hintSize) {
+DisjointSet::DisjointSet(size_t hintSize) : _parent(), _rank() {
   if (hintSize != 0) {
     _parent.resize(hintSize);
     _rank.resize(hintSize, 0);

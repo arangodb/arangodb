@@ -2,6 +2,7 @@ add_executable(arangodbtests_wcc
   ${PROJECT_SOURCE_DIR}/lib/Basics/VelocyPackStringLiteral.cpp
   WeaklyConnectedComponentsTest.cpp
   Graph.cpp
+  WCCGraph.cpp
   DisjointSet.cpp)
 
 target_include_directories(arangodbtests_wcc PRIVATE

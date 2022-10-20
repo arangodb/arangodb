@@ -1,10 +1,8 @@
-#include "WCCGraph.h"
-#include <Inspection/VPackPure.h>
+#include "Graph.h"
 
-template<typename EdgeProperties>
-void WCCGraph<EdgeProperties>::_checkEdgeEnds(
-    Edge<EdgeProperties> edge,
-    std::map<VertexKey, size_t> const& vertexPosition) {
+template<typename EdgeProperties, typename VertexProperties>
+void Graph<EdgeProperties, VertexProperties>::_checkEdgeEnds(
+    GraphEdge edge, std::map<VertexKey, size_t> const& vertexPosition) {
   if (not vertexPosition.contains(edge._from)) {
     throw std::runtime_error("Edge " + edge._key + " has a _from vertex " +
                              edge._from +
@@ -18,13 +16,36 @@ void WCCGraph<EdgeProperties>::_checkEdgeEnds(
   }
 }
 
-template<typename EdgeProperties>
-WCCGraph<EdgeProperties>::WCCGraph(SharedSlice graphJson,
-                                   bool checkDuplicateVertices) {
+template<typename EdgeProperties, typename VertexProperties>
+size_t Graph<EdgeProperties, VertexProperties>::readEdges(
+    const SharedSlice& graphJson, bool checkEdgeEnds,
+    std::function<void(GraphEdge edge)> onReadEdge) {
+  auto es = graphJson["edges"];
+  if (not es.isArray()) {
+    throw std::runtime_error("The input graph slice " + es.toString() +
+                             " has not field \"edges\"");
+  }
+  for (EdgeIndex i = 0; i < es.length(); ++i) {
+    GraphEdge edge;
+    auto result = deserializeWithStatus<GraphEdge>(es[i].slice(), edge);
+    if (not result.ok()) {
+      throw std::runtime_error("Could not read edge: " + result.error());
+    }
+
+    if (checkEdgeEnds) {
+      _checkEdgeEnds(edge, _vertexPosition);
+    }
+    onReadEdge(edge);
+  }
+}
+
+template<typename EdgeProperties, typename VertexProperties>
+auto Graph<EdgeProperties, VertexProperties>::readVertices(
+    const SharedSlice& graphJson, bool checkDuplicateVertices) -> void {
   auto vs = graphJson["vertices"];
-  for (size_t i = 0; i < vs.length(); ++i) {
-    WCCVertex vertex;
-    auto result = deserializeWithStatus<WCCVertex>(vs[i].slice(), vertex);
+  for (VertexIndex i = 0; i < vs.length(); ++i) {
+    GraphVertex vertex;
+    auto result = deserializeWithStatus<GraphVertex>(vs[i].slice(), vertex);
     if (not result.ok()) {
       throw std::runtime_error("Could not red vertex: " + result.error());
     }
@@ -35,47 +56,12 @@ WCCGraph<EdgeProperties>::WCCGraph(SharedSlice graphJson,
                                  "more than once.");
       }
     }
-    size_t const vertexPosition = vertices.size();
-    _vertexPosition[vertex._key] = vertexPosition;
+
+    _vertexPosition[vertex._key] = i;
     vertices.push_back(vertex);
-    _wccs.addSingleton(vertexPosition);
-  }
-
-  auto es = graphJson["edges"];
-  for (size_t i = 0; i < es.length(); ++i) {
-    Edge<EmptyEdgeProperties> edge;
-    auto result =
-        deserializeWithStatus<Edge<EmptyEdgeProperties>>(es[i].slice(), edge);
-    if (not result.ok()) {
-      throw std::runtime_error("Could not read edge: " + result.error());
-    }
-
-    _checkEdgeEnds(edge, _vertexPosition);
-    _wccs.merge(_vertexPosition[edge._from], _vertexPosition[edge._to]);
   }
 }
 
-template<typename EdgeProperties>
-auto WCCGraph<EdgeProperties>::computeWCC() -> size_t {
-  std::unordered_set<size_t> markedRepresentatives;
-  size_t counter = 0;
-  for (size_t i = 0; i < vertices.size(); ++i) {
-    size_t const representative = _wccs.representative(i);
-    if (markedRepresentatives.contains(representative)) {
-      vertices[i].properties.value = vertices[representative].properties.value;
-    } else {
-      size_t const newId = counter++;
-      vertices[i].properties.value = newId;
-      vertices[representative].properties.value = newId;
-      markedRepresentatives.insert(representative);
-    }
-  }
-  return counter;
-}
+#include "WCCGraph.h"
 
-template<typename EdgeProperties>
-auto WCCGraph<EdgeProperties>::printWccs() -> void {
-  _wccs.print();
-}
-
-template class WCCGraph<EmptyEdgeProperties>;
+template class Graph<EmptyEdgeProperties, WCCVertexProperties>;

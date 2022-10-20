@@ -254,13 +254,15 @@ SharedSlice setup2CliquesConnectedByDirectedEdge() {
 
 TEST(GWEN_WCC, test_wcc_2_path) {
   bool const checkDuplicateVertices = true;
-  WCCGraph<EmptyEdgeProperties> graph(setup2Path(), checkDuplicateVertices);
+  WCCGraph<EmptyEdgeProperties, WCCVertexProperties> graph(
+      setup2Path(), checkDuplicateVertices);
   size_t numComponents = graph.computeWCC();
   ASSERT_EQ(numComponents, 1);
 }
 
 template<typename EdgeProperties>
-auto testWCC(WCCGraph<EdgeProperties>& graph, size_t expectedNumComponents) {
+auto testWCC(WCCGraph<EdgeProperties, WCCVertexProperties>& graph,
+             size_t expectedNumComponents) {
   size_t numComponents = graph.computeWCC();
   ASSERT_EQ(numComponents, expectedNumComponents);
   std::unordered_map<char, uint64_t> value;
@@ -276,56 +278,56 @@ auto testWCC(WCCGraph<EdgeProperties>& graph, size_t expectedNumComponents) {
 
 TEST(GWEN_WCC, test_wcc_three_disjoint_directed_cycles) {
   bool const checkDuplicateVertices = true;
-  WCCGraph<EmptyEdgeProperties> graph(setupThreeDisjointDirectedCycles(),
-                                      checkDuplicateVertices);
+  WCCGraph<EmptyEdgeProperties, WCCVertexProperties> graph(
+      setupThreeDisjointDirectedCycles(), checkDuplicateVertices);
   size_t const expectedNumComponents = 3;
   testWCC(graph, expectedNumComponents);
 }
 
 TEST(GWEN_WCC, test_wcc_three_disjoint_alternating_cycles) {
   bool const checkDuplicateVertices = true;
-  WCCGraph<EmptyEdgeProperties> graph(setupThreeDisjointAlternatingCycles(),
-                                      checkDuplicateVertices);
+  WCCGraph<EmptyEdgeProperties, WCCVertexProperties> graph(
+      setupThreeDisjointAlternatingCycles(), checkDuplicateVertices);
   size_t const expectedNumComponents = 3;
   testWCC(graph, expectedNumComponents);
 }
 
 TEST(GWEN_WCC, test_wcc_one_single_vertex) {
   bool const checkDuplicateVertices = true;
-  WCCGraph<EmptyEdgeProperties> graph(setup1SingleVertex(),
-                                      checkDuplicateVertices);
+  WCCGraph<EmptyEdgeProperties, WCCVertexProperties> graph(
+      setup1SingleVertex(), checkDuplicateVertices);
   size_t const expectedNumComponents = 1;
   testWCC(graph, expectedNumComponents);
 }
 
 TEST(GWEN_WCC, test_wcc_two_isolated_vertices) {
   bool const checkDuplicateVertices = true;
-  WCCGraph<EmptyEdgeProperties> graph(setup2IsolatedVertices(),
-                                      checkDuplicateVertices);
+  WCCGraph<EmptyEdgeProperties, WCCVertexProperties> graph(
+      setup2IsolatedVertices(), checkDuplicateVertices);
   size_t const expectedNumComponents = 2;
   testWCC(graph, expectedNumComponents);
 }
 
 TEST(GWEN_WCC, test_wcc_one_directed_tree) {
   bool const checkDuplicateVertices = true;
-  WCCGraph<EmptyEdgeProperties> graph(setup1DirectedTree(),
-                                      checkDuplicateVertices);
+  WCCGraph<EmptyEdgeProperties, WCCVertexProperties> graph(
+      setup1DirectedTree(), checkDuplicateVertices);
   size_t const expectedNumComponents = 1;
   testWCC(graph, expectedNumComponents);
 }
 
 TEST(GWEN_WCC, test_wcc_one_alternating_tree) {
   bool const checkDuplicateVertices = true;
-  WCCGraph<EmptyEdgeProperties> graph(setup1AlternatingTree(),
-                                      checkDuplicateVertices);
+  WCCGraph<EmptyEdgeProperties, WCCVertexProperties> graph(
+      setup1AlternatingTree(), checkDuplicateVertices);
   size_t const expectedNumComponents = 1;
   testWCC(graph, expectedNumComponents);
 }
 
 TEST(GWEN_WCC, test_wcc_2_cliques_connected_by_directed_edge) {
   bool const checkDuplicateVertices = true;
-  WCCGraph<EmptyEdgeProperties> graph(setup2CliquesConnectedByDirectedEdge(),
-                                      checkDuplicateVertices);
+  WCCGraph<EmptyEdgeProperties, WCCVertexProperties> graph(
+      setup2CliquesConnectedByDirectedEdge(), checkDuplicateVertices);
   size_t const expectedNumComponents = 1;
   testWCC(graph, expectedNumComponents);
 }
