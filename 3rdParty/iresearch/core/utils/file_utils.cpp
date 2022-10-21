@@ -726,6 +726,9 @@ bool mtime(time_t& result, const file_path_t file) noexcept {
 // -----------------------------------------------------------------------------
 
 handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
+
+  assert(mode & (OpenMode::Write | OpenMode::Read) !=
+                    (OpenMode::Write | OpenMode::Read));
   #ifdef _WIN32
   if (!path) {
     return handle_t(nullptr);
@@ -737,7 +740,8 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
   // with not properly closed files (error will be triggered on cleanup with error code 32)
   DWORD sharing_mode = FILE_SHARE_READ | FILE_SHARE_WRITE;
   DWORD create_disposition = OPEN_EXISTING;
-  switch (mode) {
+  auto read_write = mode & (OpenMode::Write | OpenMode::Read);
+  switch (read_write) {
     case OpenMode::Read:
       desiredAccess = GENERIC_READ;
       break;
@@ -751,6 +755,9 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
       return handle_t(nullptr);
   }
   DWORD dwFlags = FILE_ATTRIBUTE_NORMAL | (static_cast<DWORD>(advice));
+  if ((mode & OpenMode::Direct) == OpenMode::Direct) {
+    dwFlags |= FILE_FLAG_NO_BUFFERING;
+  }
   // cppcheck-suppress unreadVariable
   HANDLE hFile = INVALID_HANDLE_VALUE;
   int try_count = CREATE_FILE_TRIES;
@@ -768,20 +775,34 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
     }
   } while ((--try_count) > 0);
   return handle_t(nullptr);
-  #else
-    auto fd = ::open(path ? path : "/dev/null", (OpenMode::Read == mode ? O_RDONLY : (O_CREAT | O_TRUNC | O_WRONLY)), S_IRUSR | S_IWUSR);
-    if (fd < 0) {
-      IR_FRMT_ERROR("Failed to open file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
-      return handle_t(nullptr);
-    }
-#if (_XOPEN_SOURCE >= 600 || _POSIX_C_SOURCE >= 200112L) && !defined(__APPLE__)
-    posix_fadvise(fd, 0, 0, advice);
+#else
+  auto mode =
+      ((OpenMode::Read & mode == OpenMode::Read) ? O_RDONLY : (O_CREAT | O_TRUNC | O_WRONLY));
+#ifndef __APPLE__
+  if ((mode & OpenMode::Direct) == OpenMode::Direct) {
+    mode |= O_DIRECT;
+  }
 #endif
-    return handle_t(reinterpret_cast<void*>(fd));
+  auto fd = ::open(path ? path : "/dev/null", mode, S_IRUSR | S_IWUSR);
+  if (fd < 0) {
+    IR_FRMT_ERROR("Failed to open file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
+    return handle_t(nullptr);
+  }
+#ifdef __APPLE__
+  if ((mode & OpenMode::Direct) == OpenMode::Direct) {
+    fcntl(fd, F_NOCACHE, 1);
+  }
+#endif
+#if (_XOPEN_SOURCE >= 600 || _POSIX_C_SOURCE >= 200112L) && !defined(__APPLE__)
+  posix_fadvise(fd, 0, 0, advice);
+#endif
+  return handle_t(reinterpret_cast<void*>(fd));
   #endif
 }
 
 handle_t open(void* file, OpenMode mode, int advice) noexcept {
+  assert(mode & (OpenMode::Write | OpenMode::Read) !=
+                    (OpenMode::Write | OpenMode::Read));
   #ifdef _WIN32
     // win32 approach is to get the original filename of the handle and open it again
     // due to a bug from the 1980's the file name is garanteed to not change while the file is open

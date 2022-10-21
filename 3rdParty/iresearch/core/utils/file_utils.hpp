@@ -32,6 +32,7 @@
 #include "shared.hpp"
 #include "string.hpp"
 #include "utils/utf8_path.hpp"
+#include "Utils/bit_utils.hpp"
 
 #ifdef _WIN32  
   #include <tchar.h>
@@ -126,10 +127,14 @@ bool mtime(time_t& result, const file_path_t file) noexcept;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         open file
 // -----------------------------------------------------------------------------
-enum class OpenMode {
-  Read,
-  Write
+enum class OpenMode : uint16_t {
+  Invalid = 0,
+  Read = 1,
+  Write = 2,
+  Direct = 4
 };
+
+ENABLE_BITMASK_ENUM(OpenMode);
 
 struct file_deleter {
   void operator()(void* f) const noexcept;

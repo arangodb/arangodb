@@ -45,7 +45,7 @@ namespace {
 inline int get_posix_fadvice(irs::IOAdvice advice) noexcept {
   switch (advice) {
     case irs::IOAdvice::NORMAL:
-    case irs::IOAdvice::DIRECT_ACCESS:
+    case irs::IOAdvice::DIRECT_READ:
       return IR_FADVICE_NORMAL;
     case irs::IOAdvice::SEQUENTIAL:
       return IR_FADVICE_SEQUENTIAL;
@@ -264,8 +264,12 @@ class fs_index_input : public buffered_index_input {
     assert(name);
 
     auto handle = file_handle::make();
-    handle->posix_open_advice = get_posix_fadvice(advice);
-    handle->handle = irs::file_utils::open(name, irs::file_utils::OpenMode::Read, handle->posix_open_advice);
+    handle->io_advice = advice;
+    auto mode = advice == IOAdvice::DIRECT_READ
+        ? irs::file_utils::OpenMode::Read : irs::file_utils::OpenMode::Read |
+              irs::file_utils::OpenMode::Direct;
+    handle->handle = irs::file_utils::open(
+        name, mode, get_posix_fadvice(handle->io_advice));
 
     if (nullptr == handle->handle) {
 #ifdef _WIN32
@@ -359,7 +363,7 @@ class fs_index_input : public buffered_index_input {
     file_utils::handle_t handle; /* native file handle */
     size_t size{}; /* file size */
     size_t pos{}; /* current file position*/
-    int posix_open_advice{ IR_FADVICE_NORMAL };
+    IOAdvice io_advice{ IOAdvice::NORMAL };
   }; // file_handle
 
   fs_index_input(
@@ -444,7 +448,11 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(const file_handle
   auto handle = const_cast<pooled_fs_index_input*>(this)->fd_pool_->emplace().release();
 
   if (!handle->handle) {
-    handle->handle = irs::file_utils::open(src, irs::file_utils::OpenMode::Read, src.posix_open_advice); // same permission as in fs_index_input::open(...)
+    auto mode = src.io_advice == IOAdvice::DIRECT_READ
+                    ? irs::file_utils::OpenMode::Read
+                    : irs::file_utils::OpenMode::Read |
+                          irs::file_utils::OpenMode::Direct;
+    handle->handle = irs::file_utils::open(src, mode, get_posix_fadvice(src.io_advice)); // same permission as in fs_index_input::open(...)
 
     if (!handle->handle) {
       // even win32 uses 'errno' for error codes in calls to file_open(...)
@@ -457,7 +465,7 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(const file_handle
 #endif
       ));
     }
-    handle->posix_open_advice = src.posix_open_advice;
+    handle->io_advice = src.io_advice;
   }
 
   const auto pos = irs::file_utils::ftell(handle->handle.get()); // match position of file descriptor

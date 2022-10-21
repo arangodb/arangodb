@@ -1738,7 +1738,7 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
       if (opts.warmup_column(*cb)) {
         if (!direct_data_input) {
           direct_data_input =
-              dir.open(data_filename, irs::IOAdvice::DIRECT_ACCESS);
+              dir.open(data_filename, IOAdvice::DIRECT_READ);
           if (!direct_data_input) {
             throw io_error{string_utils::to_string(
                 "Failed to open direct access file, path: %s",
