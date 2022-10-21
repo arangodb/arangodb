@@ -35,7 +35,6 @@
 #include "utils/index_utils.hpp"
 #include "utils/singleton.hpp"
 #include "utils/type_limits.hpp"
-#include "norm.hpp"
 
 namespace {
 
