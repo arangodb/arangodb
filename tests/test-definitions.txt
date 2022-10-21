@@ -59,7 +59,7 @@ fuerte priority=500 single
 
 arangobench priority=1000 cluster -- --dumpAgencyOnError true
 chaos cluster !full -- --dumpAgencyOnError true parallelity=6
-restart priority=1000 sniff cluster -- --dumpAgencyOnError true --forceJson true
+restart priority=1000 cluster -- --dumpAgencyOnError true --forceJson true
 
 load_balancing priority=500 cluster -- --dumpAgencyOnError true
 load_balancing_auth priority=500 cluster -- --dumpAgencyOnError true
