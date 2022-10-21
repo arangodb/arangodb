@@ -134,6 +134,8 @@ auto inspect(Inspector& f, GraphIndex& x) {
  * (above structs used as inner helpers here)
  */
 
+// TODO: Also implement general GraphNode + inheritance
+
 struct TraversalNode : optimizer2::nodes::BaseNode,
                        optimizer2::nodes::CollectionAccessingNode {
   // inner structs
