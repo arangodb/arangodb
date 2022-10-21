@@ -1,6 +1,10 @@
 v3.8.8 (XXXX-XX-XX)
 -------------------
 
+* Solve a case of excessive memory consumption in certain AQL queries with
+  IN filters with very long lists. Free sub-iterators as soon as they are
+  exhausted.
+
 * Fixed BTS-852 (user's saved queries used to disappear after updating user
   profile).
 
