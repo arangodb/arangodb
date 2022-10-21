@@ -810,7 +810,8 @@ AqlValue Expression::executeSimpleExpressionFCall(ExpressionContext& ctx,
   // check that the called function actually has one
   auto func = static_cast<Function*>(node->getData());
   TRI_ASSERT(func != nullptr);
-  if (func->hasCxxImplementation()) {
+  // likely because call js function anyway will be slow
+  if (ADB_LIKELY(func->hasCxxImplementation())) {
     return executeSimpleExpressionFCallCxx(ctx, node, mustDestroy);
   }
   return executeSimpleExpressionFCallJS(ctx, node, mustDestroy);
@@ -1873,6 +1874,13 @@ bool Expression::isDeterministic() {
 bool Expression::willUseV8() {
   TRI_ASSERT(_type != UNPROCESSED);
   return (_type == SIMPLE && _node->willUseV8());
+}
+
+bool Expression::canBeUsedInPrune(bool isOneShard) {
+  if (willUseV8() || !canRunOnDBServer(isOneShard)) {
+    return false;
+  }
+  return true;
 }
 
 std::unique_ptr<Expression> Expression::clone(Ast* ast, bool deepCopy) {

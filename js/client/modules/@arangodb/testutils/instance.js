@@ -707,12 +707,15 @@ class instance {
     try {
       let ret = statusExternal(this.pid, false);
       // OK, something has gone wrong, process still alive. anounce and force kill:
-      print(RED+`was expecting the process ${this.pid} to be gone, but ${JSON.stringify(ret)}` + RESET);
-      killExternal(this.pid, abortSignal);
-      print(statusExternal(this.pid, true));
+      if (ret.status !== "ABORTED") {
+        print(RED+`was expecting the process ${this.pid} to be gone, but ${JSON.stringify(ret)}` + RESET);
+        killExternal(this.pid, abortSignal);
+        print(statusExternal(this.pid, true));
+      }
     } catch(ex) {
       print(ex);
     }
+    this.pid = null;
     print('done');
   }
   waitForExit() {
@@ -765,7 +768,13 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
   checkArangoAlive () {
     const res = statusExternal(this.pid, false);
-    const ret = res.status === 'RUNNING' && crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, this, this.options, res);
+    const running = res.status === 'RUNNING';
+    if (!this.options.coreCheck && this.options.setInterruptable && !running) {
+      print(`fatal exit of {self.pid} arangod => {JSON.stringify(res)}! Bye!`);
+      pu.killRemainingProcesses({status: false});
+      process.exit();
+    }
+    const ret = running && crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, this, this.options, res);
 
     if (!ret) {
       if (!this.hasOwnProperty('message')) {

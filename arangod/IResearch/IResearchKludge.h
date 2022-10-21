@@ -35,11 +35,14 @@
 
 namespace arangodb::iresearch::kludge {
 
+inline constexpr char kNestedDelimiter = '\2';
+
 #ifdef USE_ENTERPRISE
-void mangleNested(std::string& name);
+bool isNestedField(irs::string_ref name) noexcept;
 #endif
 
 bool needTrackPrevDoc(irs::string_ref name, bool nested) noexcept;
+void mangleNested(std::string& name);
 void mangleType(std::string& name);
 void mangleAnalyzer(std::string& name);
 
