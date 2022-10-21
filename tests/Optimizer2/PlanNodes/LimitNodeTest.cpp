@@ -23,38 +23,87 @@
 
 #include "gtest/gtest.h"
 
+// Helpers
 #include "Aql/Optimizer2/Inspection/StatusT.h"
-
 #include "Basics/VelocyPackStringLiteral.h"
+#include "InspectTestHelperMakros.h"
+#include "velocypack/Collection.h"
+
+// Node Class
 #include "Aql/Optimizer2/PlanNodes/LimitNode.h"
 
+// Libraries
 #include <fmt/core.h>
 
 using namespace arangodb::inspection;
 using namespace arangodb::velocypack;
 using namespace arangodb::aql::optimizer2::nodes;
-/* TODO TODO TODO
-TEST(Optimizer2LimitNode, construction) {
-  auto LimitNodeBuffer = R"({
-    "type": "LimitNode",
-    "dependencies": [
-      4
-    ],
-    "id": 5,
-    "estimatedCost": 30022,
-    "estimatedNrItems": 20,
-    "offset": 0,
-    "limit": 20,
-    "fullCount": false
-  })"_vpack;
 
+class Optimizer2LimitNode : public testing::Test {
+ protected:
+  SharedSlice createMinimumBody() {
+    return R"({
+      "type": "LimitNode",
+      "dependencies": [
+        4
+      ],
+      "id": 5,
+      "estimatedCost": 30022,
+      "estimatedNrItems": 20,
+      "offset": 0,
+      "limit": 20,
+      "fullCount": false
+    })"_vpack;
+  }
+
+  template<typename T>
+  VPackBuilder createMinimumBodyWithOneValue(std::string const& attributeName,
+                                             T const& attributeValue) {
+    SharedSlice buffer = createMinimumBody();
+
+    VPackBuilder b;
+    {
+      VPackObjectBuilder guard{&b};
+      if constexpr (std::is_same_v<T, VPackSlice>) {
+        b.add(attributeName, attributeValue);
+      } else {
+        b.add(attributeName, VPackValue(attributeValue));
+      }
+    }
+
+    return arangodb::velocypack::Collection::merge(buffer.slice(), b.slice(),
+                                                   false);
+  }
+
+  // Tries to parse the given body and returns a ResulT of your Type under
+  // test.
+  StatusT<LimitNode> parse(SharedSlice body) {
+    return deserializeWithStatus<LimitNode>(body);
+  }
+  // Tries to serialize the given object of your type and returns
+  // a filled VPackBuilder
+  StatusT<SharedSlice> serialize(LimitNode testee) {
+    return serializeWithStatus<LimitNode>(testee);
+  }
+};
+
+// Generic tests
+
+GenerateIntegerAttributeTest(Optimizer2LimitNode, offset);
+GenerateIntegerAttributeTest(Optimizer2LimitNode, limit);
+GenerateBoolAttributeTest(Optimizer2LimitNode, fullCount);
+
+TEST_F(Optimizer2LimitNode, construction) {
+  auto LimitNodeBuffer = createMinimumBody();
   auto res = deserializeWithStatus<LimitNode>(LimitNodeBuffer);
 
   if (!res) {
     fmt::print("Something went wrong: {}", res.error());
   } else {
     auto limitNode = res.get();
-    EXPECT_EQ(LimitNode.type, "LimitNode");
-    // TODO
+    EXPECT_EQ(limitNode.type, "LimitNode");
+    EXPECT_EQ(limitNode.offset, 0ul);
+    EXPECT_EQ(limitNode.limit, 20ul);
+    EXPECT_FALSE(limitNode.fullCount);
   }
-}*/
+}

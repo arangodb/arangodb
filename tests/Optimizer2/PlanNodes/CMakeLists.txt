@@ -6,6 +6,7 @@ target_sources(arangodbtests_optimizer2 PRIVATE
         SingletonNodeTest.cpp
         CalculationNodeTest.cpp
         FilterNodeTest.cpp
+        LimitNodeTest.cpp
         TraversalNodeTest.cpp
         IndexNodeTest.cpp
         )
