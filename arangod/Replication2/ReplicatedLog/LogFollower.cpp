@@ -482,7 +482,7 @@ auto replicated_log::LogFollower::getParticipantId() const noexcept
 
 auto replicated_log::LogFollower::resign() && -> std::tuple<
     std::unique_ptr<LogCore>, DeferredAction> {
-  return _guardedFollowerData.doUnderLock(
+  auto result = _guardedFollowerData.doUnderLock(
       [this](GuardedFollowerData& followerData) {
         LOG_CTX("838fe", DEBUG, _loggerContext) << "follower resign";
         if (followerData.didResign()) {
@@ -491,11 +491,6 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<
           basics::abortOrThrowException(ParticipantResignedException(
               TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
               ADB_HERE));
-        }
-
-        {
-          auto methods = _stateHandle->resignCurrentState();
-          ADB_PROD_ASSERT(methods != nullptr);
         }
 
         // use a unique ptr because move constructor for multimaps is not
@@ -532,6 +527,11 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<
         return std::make_tuple(std::move(followerData._logCore),
                                DeferredAction{std::move(action)});
       });
+  {
+    auto methods = _stateHandle->resignCurrentState();
+    ADB_PROD_ASSERT(methods != nullptr);
+  }
+  return result;
 }
 
 replicated_log::LogFollower::LogFollower(

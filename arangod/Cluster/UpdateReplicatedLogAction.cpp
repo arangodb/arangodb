@@ -71,7 +71,6 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
         auto& impl = spec->properties.implementation;
         VPackSlice parameter = impl.parameters ? impl.parameters->slice()
                                                : VPackSlice::noneSlice();
-        LOG_DEVEL << "creating replicated log in action " << logId;
         if (auto res = guard->createReplicatedState(logId, impl.type, parameter)
                            .result();
             res.fail()) {
