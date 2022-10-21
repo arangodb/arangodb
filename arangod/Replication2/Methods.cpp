@@ -75,6 +75,18 @@ struct ReplicatedLogMethodsDBServer final
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
+  auto getReplicatedLogs() const -> futures::Future<std::unordered_map<
+      arangodb::replication2::LogId,
+      std::variant<replicated_log::LogStatus, ParticipantsList>>> override {
+    auto result = std::unordered_map<
+        arangodb::replication2::LogId,
+        std::variant<replicated_log::LogStatus, ParticipantsList>>{};
+    for (auto& replicatedLog : vocbase.getReplicatedStatesStatus()) {
+      result[replicatedLog.first] = std::move(replicatedLog.second);
+    }
+    return result;
+  }
+
   auto createReplicatedLog(replication2::agency::LogTarget spec) const
       -> futures::Future<Result> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -336,6 +348,25 @@ struct ReplicatedLogMethodsCoordinator final
       target.participants[server];
     }
     return target;
+  }
+
+  auto getReplicatedLogs() const -> futures::Future<std::unordered_map<
+      arangodb::replication2::LogId,
+      std::variant<replicated_log::LogStatus, ParticipantsList>>> override {
+    auto logsParticipants =
+        clusterInfo.getReplicatedLogsParticipants(vocbaseName);
+
+    if (logsParticipants.fail()) {
+      THROW_ARANGO_EXCEPTION(logsParticipants.result());
+    }
+
+    auto result = std::unordered_map<
+        arangodb::replication2::LogId,
+        std::variant<replicated_log::LogStatus, ParticipantsList>>{};
+    for (auto& replicatedLog : logsParticipants.get()) {
+      result[replicatedLog.first] = std::move(replicatedLog.second);
+    }
+    return result;
   }
 
   auto createReplicatedLog(CreateOptions options) const

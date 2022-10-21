@@ -180,6 +180,7 @@ struct alignas(64) ReplicatedLog {
 
   [[nodiscard]] auto getParticipant() const -> std::shared_ptr<ILogParticipant>;
   [[nodiscard]] auto getQuickStatus() const -> QuickLogStatus;
+  [[nodiscard]] auto getStatus() const -> LogStatus;
   [[nodiscard]] auto getStateStatus() const
       -> std::optional<replicated_state::StateStatus>;
 

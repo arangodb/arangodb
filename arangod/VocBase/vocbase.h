@@ -201,6 +201,10 @@ struct TRI_vocbase_t {
           arangodb::replication2::LogId,
           arangodb::replication2::replicated_log::QuickLogStatus>;
 
+  [[nodiscard]] auto getReplicatedStatesStatus() const
+      -> std::unordered_map<arangodb::replication2::LogId,
+                            arangodb::replication2::replicated_log::LogStatus>;
+
  public:
   // Old Replicated Log API. Still there for compatibility. To be removed.
   auto getReplicatedLogById(arangodb::replication2::LogId id)

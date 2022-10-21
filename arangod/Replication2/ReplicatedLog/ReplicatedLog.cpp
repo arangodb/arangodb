@@ -209,6 +209,12 @@ auto ReplicatedLog::getQuickStatus() const -> QuickLogStatus {
   }
   return {};
 }
+auto ReplicatedLog::getStatus() const -> LogStatus {
+  if (auto guard = _guarded.getLockedGuard(); guard->participant) {
+    return guard->participant->getStatus();
+  }
+  return {};
+}
 
 auto ReplicatedLog::getStateStatus() const
     -> std::optional<replicated_state::StateStatus> {

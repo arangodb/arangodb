@@ -253,6 +253,19 @@ struct arangodb::VocBaseLogManager {
     return result;
   }
 
+  [[nodiscard]] auto getReplicatedStatesStatus() const
+      -> std::unordered_map<arangodb::replication2::LogId,
+                            arangodb::replication2::replicated_log::LogStatus> {
+    std::unordered_map<arangodb::replication2::LogId,
+                       arangodb::replication2::replicated_log::LogStatus>
+        result;
+    auto guard = _guardedData.getLockedGuard();
+    for (auto& [id, value] : guard->statesAndLogs) {
+      result.emplace(id, value.log->getStatus());
+    }
+    return result;
+  }
+
   auto createReplicatedState(replication2::LogId id, std::string_view type,
                              VPackSlice parameter)
       -> ResultT<std::shared_ptr<
@@ -2259,6 +2272,11 @@ auto TRI_vocbase_t::getReplicatedLogById(LogId id)
 auto TRI_vocbase_t::getReplicatedStatesQuickStatus() const
     -> std::unordered_map<LogId, replicated_log::QuickLogStatus> {
   return _logManager->getReplicatedLogsQuickStatus();
+}
+
+auto TRI_vocbase_t::getReplicatedStatesStatus() const
+    -> std::unordered_map<LogId, replicated_log::LogStatus> {
+  return _logManager->getReplicatedStatesStatus();
 }
 
 auto TRI_vocbase_t::createReplicatedState(LogId id, std::string_view type,
