@@ -419,7 +419,8 @@ function generateCoreDumpWindows (instanceInfo) {
     '!analyze -v', // print verbose analysis
     'dv', // analyze local variables (if)
     '~*kb', // print all threads stack traces
-    `.dump /mFhtipcy ${instanceInfo.coreFilePattern}`, // write a compact dump file
+    //`.dump /mFhtipcy ${instanceInfo.coreFilePattern}`, // write a compact dump file
+    `.dump /ma ${instanceInfo.coreFilePattern}`, // write a compact dump file
     '.kill', // terminate the debugged process
     'q' // quit the debugger
   ];
