@@ -41,11 +41,51 @@ class Optimizer2IndexNode : public testing::Test {
  protected:
   SharedSlice createMinimumBody() {
     return R"({
-      "type": "IndexNode",
-      "dependencies": [],
-      "id": 0,
-      "estimatedCost": 0,
-      "estimatedNrItems": 0
+    "type" : "IndexNode",
+    "dependencies" : [
+      1
+    ],
+    "id" : 12,
+    "estimatedCost" : 1,
+    "estimatedNrItems" : 0,
+    "needsGatherNodeSort" : false,
+    "indexCoversProjections" : true,
+    "useCache" : false,
+    "count" : false,
+    "producesResult" : true,
+    "readOwnWrites" : false,
+    "projections" : [
+      "_key"
+    ],
+    "filterProjections" : [ ],
+    "maxProjections" : 5,
+    "limit" : 0,
+    "lookahead" : 1,
+    "database" : "_system",
+    "collection" : "UnitTestsExplain",
+    "satellite" : false,
+    "numberOfShards" : 3,
+    "isSatellite" : false,
+    "isSatelliteOf" : null,
+    "indexes" : [
+      {
+        "id" : "0",
+        "type" : "primary",
+        "name" : "primary",
+        "fields" : [
+          "_key"
+        ],
+        "selectivityEstimate" : 1,
+        "unique" : true,
+        "sparse" : false
+      }
+    ],
+    "allCoveredByOneIndex" : false,
+    "sorted" : true,
+    "ascending" : true,
+    "reverse" : false,
+    "evalFCalls" : true,
+    "waitForSync" : false
     })"_vpack;
   }
 
@@ -90,11 +130,59 @@ GenerateIntegerAttributeTest(Optimizer2IndexNode, estimatedNrItems);
 
 TEST_F(Optimizer2IndexNode, construction) {
   auto IndexNodeBuffer = R"({
-    "type": "IndexNode",
-    "dependencies": [4],
-    "id": 5,
-    "estimatedCost": 18,
-    "estimatedNrItems": 5
+    "type" : "IndexNode",
+      "dependencies" : [
+        1
+      ],
+      "id" : 12,
+      "estimatedCost" : 1,
+      "estimatedNrItems" : 0,
+      "outVariable" : {
+        "id" : 0,
+        "name" : "u",
+        "isFullDocumentFromCollection" : false,
+        "isDataFromCollection" : false
+      },
+      "projections" : [
+        "_key"
+      ],
+      "filterProjections" : [ ],
+      "count" : false,
+      "producesResult" : true,
+      "readOwnWrites" : false,
+      "useCache" : false,
+      "maxProjections" : 5,
+      "database" : "_system",
+      "collection" : "UnitTestsExplain",
+      "satellite" : false,
+      "numberOfShards" : 3,
+      "isSatellite" : false,
+      "isSatelliteOf" : null,
+      "needsGatherNodeSort" : false,
+      "indexCoversProjections" : true,
+      "indexes" : [
+        {
+          "id" : "0",
+          "type" : "primary",
+          "name" : "primary",
+          "fields" : [
+            "_key"
+          ],
+          "selectivityEstimate" : 1,
+          "unique" : true,
+          "sparse" : false
+        }
+      ],
+      "condition" : {
+      },
+      "allCoveredByOneIndex" : false,
+      "sorted" : true,
+      "ascending" : true,
+      "reverse" : false,
+      "evalFCalls" : true,
+      "waitForSync" : false,
+      "limit" : 0,
+      "lookahead" : 1
   })"_vpack;
 
   auto res = deserializeWithStatus<IndexNode>(IndexNodeBuffer);
@@ -105,11 +193,23 @@ TEST_F(Optimizer2IndexNode, construction) {
     auto indexNode = res.get();
     EXPECT_EQ(indexNode.type, "IndexNode");
 
-    EXPECT_EQ(indexNode.id, 5u);
+    EXPECT_EQ(indexNode.id, 12u);
     EXPECT_EQ(indexNode.dependencies.size(), 1u);
-    EXPECT_EQ(indexNode.dependencies.at(0), 4u);
+    EXPECT_EQ(indexNode.dependencies.at(0), 1u);
     EXPECT_FALSE(indexNode.canThrow.has_value());
-    EXPECT_EQ(indexNode.estimatedCost, 18u);
-    EXPECT_EQ(indexNode.estimatedNrItems, 5u);
+    EXPECT_EQ(indexNode.estimatedCost, 1u);
+    EXPECT_EQ(indexNode.estimatedNrItems, 0u);
+    // Specific
+    EXPECT_FALSE(indexNode.needsGatherNodeSort);
+    EXPECT_TRUE(indexNode.indexCoversProjections);
+    EXPECT_EQ(indexNode.limit, 0u);
+    EXPECT_EQ(indexNode.lookahead, 1u);
+    // IndexOperatorOptions
+    EXPECT_FALSE(indexNode.allCoveredByOneIndex);
+    EXPECT_TRUE(indexNode.sorted);
+    EXPECT_TRUE(indexNode.ascending);
+    EXPECT_FALSE(indexNode.reverse);
+    EXPECT_TRUE(indexNode.evalFCalls);
+    EXPECT_FALSE(indexNode.waitForSync);
   }
 }

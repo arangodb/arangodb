@@ -26,28 +26,45 @@
 #include "Aql/Optimizer2/PlanNodes/DocumentProducingNode.h"
 #include "Aql/Optimizer2/PlanNodes/CollectionAcessingNode.h"
 
-#include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
 #include "Aql/Optimizer2/PlanNodeTypes/Expression.h"
+#include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
 
 namespace arangodb::aql::optimizer2::nodes {
 
-struct IndexNode : optimizer2::nodes::BaseNode,
-                   optimizer2::nodes::DocumentProducingNode,
-                   optimizer2::nodes::CollectionAccessingNode {
-  // optimizer2::types::Variable outVariable;
-  optimizer2::types::Expression condition;
-
-  // Boolean values
-  bool needsGatherNodeSort;
-  bool indexCoversProjections;
-  // IndexIteratorOptions
+struct IndexOperatorOptions {
   bool allCoveredByOneIndex;
   bool sorted;
   bool ascending;
   bool reverse;
   bool evalFCalls;
-  bool useCache;
   bool waitForSync;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, IndexOperatorOptions& x) {
+  return f.object(x).fields(
+      f.field("allCoveredByOneIndex", x.allCoveredByOneIndex),
+      f.field("sorted", x.sorted), f.field("ascending", x.ascending),
+      f.field("reverse", x.reverse), f.field("evalFCalls", x.evalFCalls),
+      f.field("waitForSync", x.waitForSync));
+};
+
+struct IndexNode : optimizer2::nodes::BaseNode,
+                   optimizer2::nodes::DocumentProducingNode,
+                   optimizer2::nodes::CollectionAccessingNode,
+                   IndexOperatorOptions {
+  // optionals
+  std::optional<optimizer2::types::Variable> outVariable;
+
+  // TODO: Implement types
+  std::optional<VPackBuilder> projections;
+  std::optional<VPackBuilder> filterProjections;
+  std::optional<VPackBuilder> indexes;
+  std::optional<VPackBuilder> condition;
+
+  // Boolean values
+  bool needsGatherNodeSort;
+  bool indexCoversProjections;
   AttributeTypes::Numeric limit;
   AttributeTypes::Numeric lookahead;
 
@@ -65,13 +82,17 @@ auto inspect(Inspector& f, IndexNode& x) {
       f.embedFields(static_cast<optimizer2::nodes::DocumentProducingNode&>(x)),
       f.embedFields(
           static_cast<optimizer2::nodes::CollectionAccessingNode&>(x)),
+      f.embedFields(static_cast<IndexOperatorOptions&>(x)),
+      // optionals
+      f.field("outVariable", x.outVariable),
+      // bools
       f.field("needsGatherNodeSort", x.needsGatherNodeSort),
       f.field("indexCoversProjections", x.indexCoversProjections),
-      f.field("allCoveredByOneIndex", x.allCoveredByOneIndex),
-      f.field("sorted", x.sorted), f.field("ascending", x.ascending),
-      f.field("reverse", x.reverse), f.field("evalFCalls", x.evalFCalls),
-      f.field("useCache", x.useCache), f.field("waitForSync", x.waitForSync),
       f.field("limit", x.limit), f.field("lookahead", x.lookahead),
+      // TODO: Implement proper types
+      f.field("indexes", x.indexes),
+      // Optionals
+      f.field("condition", x.condition),
       f.field("outNonMaterializedDocId", x.outNonMaterializedDocId),
       f.field("indexIdOfVars", x.indexIdOfVars),
       f.field("indexValuesVars", x.indexValuesVars));

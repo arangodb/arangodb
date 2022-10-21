@@ -22,16 +22,28 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Aql/Optimizer2/PlanNodeTypes/Satellite.h"
+
 namespace arangodb::aql::optimizer2::nodes {
 
-struct CollectionAccessingNode {
-  std::string database;
-  std::string collection;
+struct CollectionAccessingNode : optimizer2::types::Satellite {
+  // optionals
+  std::optional<AttributeTypes::String> prototype;
+  std::optional<AttributeTypes::Numeric> numberOfShards;
+  std::optional<AttributeTypes::String> restrictedTo;
+  // specific
+  AttributeTypes::String database;
+  AttributeTypes::String collection;
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionAccessingNode& v) {
   return f.object(v).fields(
+      f.embedFields(static_cast<optimizer2::types::Satellite&>(v)),
+      // optionals
+      f.field("prototype", v.prototype),
+      f.field("numberOfShards", v.numberOfShards),
+      // specific
       f.field("database", v.database),
       f.field("collection", v.collection)
           .fallback(""));  // TODO: Currently we need a fallback here because

@@ -27,9 +27,9 @@
 namespace arangodb::aql::optimizer2::types {
 
 struct Satellite {
-  bool satellite;
-  bool isSatellite;
-  VPackBuilder isSatelliteOf;
+  bool satellite;              // always set
+  bool isSatellite;            // only in EE set
+  VPackBuilder isSatelliteOf;  // only in EE set
 };
 
 template<typename Inspector>
