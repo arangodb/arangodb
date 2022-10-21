@@ -208,6 +208,17 @@ struct ReplicatedLogMethodsDBServer final
     auto log = vocbase.getReplicatedLogById(id);
     return log->getParticipant()->release(index);
   }
+
+  auto replaceParticipant(LogId id, ParticipantId const& participantToRemove,
+                          ParticipantId const& participantToAdd,
+                          std::optional<ParticipantId> const& currentLeader)
+      const -> futures::Future<Result> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  auto setLeader(LogId id, std::optional<ParticipantId> const& leaderId) const
+      -> futures::Future<Result> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
   TRI_vocbase_t& vocbase;
 };
 
@@ -682,6 +693,20 @@ struct ReplicatedLogMethodsCoordinator final
                                 opts)
         .thenValue(
             [](network::Response&& resp) { return resp.combinedResult(); });
+  }
+
+  auto replaceParticipant(LogId id, ParticipantId const& participantToRemove,
+                          ParticipantId const& participantToAdd,
+                          std::optional<ParticipantId> const& currentLeader)
+      const -> futures::Future<Result> override {
+    return replication2::agency::methods::replaceReplicatedStateParticipant(
+        vocbaseName, id, participantToRemove, participantToAdd, currentLeader);
+  }
+
+  auto setLeader(LogId id, std::optional<ParticipantId> const& leaderId) const
+      -> futures::Future<Result> override {
+    return replication2::agency::methods::replaceReplicatedSetLeader(
+        vocbaseName, id, leaderId);
   }
 
   explicit ReplicatedLogMethodsCoordinator(DatabaseID vocbase,
