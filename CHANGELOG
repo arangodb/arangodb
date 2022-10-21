@@ -1,6 +1,10 @@
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
+* Solve a case of excessive memory consumption in certain AQL queries with
+  IN filters with very long lists. Free sub-iterators as soon as they are
+  exhausted.
+
 * BTS-941: The HTTP API now delivers the correct list of the collection's shards
   in case a collection from an EnterpriseGraph, SmartGraph, Disjoint
   EnterpriseGraph, Disjoint SmartGraph or SatelliteGraph is being used.
