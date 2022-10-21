@@ -1,6 +1,11 @@
 devel
 -----
 
+* FE-159: When creating a database in cluster mode, there are several
+  parameters required. However they are invisible (nothing shown) if I
+  open DB settings after creation. Those settings should be visible in
+  readonly mode (grey out).
+
 * Temporary fix for BTS-1006 (hides new view types).
 
 * Updated arangosync to v2.12.0.
