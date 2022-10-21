@@ -72,38 +72,70 @@ rest::RequestType llhttpToRequestType(llhttp_t* p) {
 }  // namespace
 
 template<SocketType T>
-int HttpCommTask<T>::on_message_began(llhttp_t* p) {
+int HttpCommTask<T>::on_message_began(llhttp_t* p) try {
+  // the caller of this function is a C function, which doesn't have no
+  // idea about exceptions. we must not let an exception escape from here.
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
-  me->_lastHeaderField.clear();
-  me->_lastHeaderValue.clear();
-  me->_origin.clear();
-  me->_url.clear();
-  me->_request = std::make_unique<HttpRequest>(
-      me->_connectionInfo, /*messageId*/ 1, me->_allowMethodOverride);
-  me->_response.reset();
-  me->_lastHeaderWasValue = false;
-  me->_shouldKeepAlive = false;
-  me->_messageDone = false;
+  try {
+    me->_lastHeaderField.clear();
+    me->_lastHeaderValue.clear();
+    me->_origin.clear();
+    me->_url.clear();
+    me->_request = std::make_unique<HttpRequest>(
+        me->_connectionInfo, /*messageId*/ 1, me->_allowMethodOverride);
+    me->_response.reset();
+    me->_lastHeaderWasValue = false;
+    me->_shouldKeepAlive = false;
+    me->_messageDone = false;
 
-  // acquire a new statistics entry for the request
-  me->acquireStatistics(1UL).SET_READ_START(TRI_microtime());
-
-  return HPE_OK;
+    // acquire a new statistics entry for the request
+    me->acquireStatistics(1UL).SET_READ_START(TRI_microtime());
+    return HPE_OK;
+  } catch (basics::Exception const& ex) {
+    me->sendErrorResponse(GeneralResponse::responseCode(ex.code()),
+                          rest::ContentType::UNSET, 1, ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    me->sendErrorResponse(ResponseCode::SERVER_ERROR, rest::ContentType::UNSET,
+                          1, TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    me->sendErrorResponse(ResponseCode::SERVER_ERROR, rest::ContentType::UNSET,
+                          1, TRI_ERROR_INTERNAL);
+  }
+  return HPE_INTERNAL;
+} catch (...) {
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
-int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) {
+int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) try {
+  // the caller of this function is a C function, which doesn't have no
+  // idea about exceptions. we must not let an exception escape from here.
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
-  me->_request->setRequestType(llhttpToRequestType(p));
-  if (me->_request->requestType() == RequestType::ILLEGAL) {
-    me->sendSimpleResponse(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                           rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-    return HPE_USER;
-  }
-  me->statistics(1UL).SET_REQUEST_TYPE(me->_request->requestType());
+  try {
+    me->_request->setRequestType(llhttpToRequestType(p));
+    if (me->_request->requestType() == RequestType::ILLEGAL) {
+      me->sendSimpleResponse(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                             rest::ContentType::UNSET, 1,
+                             VPackBuffer<uint8_t>());
+      return HPE_USER;
+    }
+    me->statistics(1UL).SET_REQUEST_TYPE(me->_request->requestType());
 
-  me->_url.append(at, len);
-  return HPE_OK;
+    me->_url.append(at, len);
+    return HPE_OK;
+  } catch (basics::Exception const& ex) {
+    me->sendErrorResponse(GeneralResponse::responseCode(ex.code()),
+                          rest::ContentType::UNSET, 1, ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    me->sendErrorResponse(ResponseCode::SERVER_ERROR, rest::ContentType::UNSET,
+                          1, TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    me->sendErrorResponse(ResponseCode::SERVER_ERROR, rest::ContentType::UNSET,
+                          1, TRI_ERROR_INTERNAL);
+  }
+  return HPE_INTERNAL;
+} catch (...) {
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
@@ -113,95 +145,179 @@ int HttpCommTask<T>::on_status(llhttp_t* p, const char* at, size_t len) {
 }
 
 template<SocketType T>
-int HttpCommTask<T>::on_header_field(llhttp_t* p, const char* at, size_t len) {
+int HttpCommTask<T>::on_header_field(llhttp_t* p, const char* at,
+                                     size_t len) try {
+  // the caller of this function is a C function, which doesn't have no
+  // idea about exceptions. we must not let an exception escape from here.
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
-  if (me->_lastHeaderWasValue) {
-    me->_request->setHeaderV2(std::move(me->_lastHeaderField),
-                              std::move(me->_lastHeaderValue));
-    me->_lastHeaderField.assign(at, len);
-  } else {
-    me->_lastHeaderField.append(at, len);
-  }
-  me->_lastHeaderWasValue = false;
-  return HPE_OK;
-}
-
-template<SocketType T>
-int HttpCommTask<T>::on_header_value(llhttp_t* p, const char* at, size_t len) {
-  HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
-  if (me->_lastHeaderWasValue) {
-    me->_lastHeaderValue.append(at, len);
-  } else {
-    me->_lastHeaderValue.assign(at, len);
-  }
-  me->_lastHeaderWasValue = true;
-  return HPE_OK;
-}
-
-template<SocketType T>
-int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
-  HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
-  me->_response.reset();
-  if (!me->_lastHeaderField.empty()) {
-    me->_request->setHeaderV2(std::move(me->_lastHeaderField),
-                              std::move(me->_lastHeaderValue));
-  }
-
-  if ((p->http_major != 1 || p->http_minor != 0) &&
-      (p->http_major != 1 || p->http_minor != 1)) {
-    me->sendSimpleResponse(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
-                           rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-    return HPE_USER;
-  }
-  if (p->content_length > GeneralCommTask<T>::MaximalBodySize) {
-    me->sendSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
-                           rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-    return HPE_USER;
-  }
-  me->_shouldKeepAlive = llhttp_should_keep_alive(p);
-
-  bool found;
-  std::string const& expect =
-      me->_request->header(StaticStrings::Expect, found);
-  if (found && StringUtils::trim(expect) == "100-continue") {
-    LOG_TOPIC("2b604", TRACE, arangodb::Logger::REQUESTS)
-        << "received a 100-continue request";
-    char const* response = "HTTP/1.1 100 Continue\r\n\r\n";
-    auto buff = asio_ns::buffer(response, strlen(response));
-    asio_ns::async_write(
-        me->_protocol->socket, buff,
-        [self = me->shared_from_this()](asio_ns::error_code const& ec,
-                                        std::size_t) {
-          if (ec) {
-            static_cast<HttpCommTask<T>*>(self.get())->close(ec);
-          }
-        });
+  try {
+    if (me->_lastHeaderWasValue) {
+      me->_request->setHeaderV2(std::move(me->_lastHeaderField),
+                                std::move(me->_lastHeaderValue));
+      me->_lastHeaderField.assign(at, len);
+    } else {
+      me->_lastHeaderField.append(at, len);
+    }
+    me->_lastHeaderWasValue = false;
     return HPE_OK;
+  } catch (basics::Exception const& ex) {
+    me->sendErrorResponse(GeneralResponse::responseCode(ex.code()),
+                          rest::ContentType::UNSET, 1, ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    me->sendErrorResponse(ResponseCode::SERVER_ERROR, rest::ContentType::UNSET,
+                          1, TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    me->sendErrorResponse(ResponseCode::SERVER_ERROR, rest::ContentType::UNSET,
+                          1, TRI_ERROR_INTERNAL);
   }
-
-  if (me->_request->requestType() == RequestType::HEAD) {
-    // Assume that request/response has no body, proceed parsing next message
-    return 1;  // 1 is defined by parser
-  }
-  return HPE_OK;
+  return HPE_INTERNAL;
+} catch (...) {
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
-int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) {
+int HttpCommTask<T>::on_header_value(llhttp_t* p, const char* at,
+                                     size_t len) try {
+  // the caller of this function is a C function, which doesn't have no
+  // idea about exceptions. we must not let an exception escape from here.
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
-  me->_request->body().append(at, len);
-  return HPE_OK;
+  try {
+    if (me->_lastHeaderWasValue) {
+      me->_lastHeaderValue.append(at, len);
+    } else {
+      me->_lastHeaderValue.assign(at, len);
+    }
+    me->_lastHeaderWasValue = true;
+    return HPE_OK;
+  } catch (basics::Exception const& ex) {
+    me->sendErrorResponse(GeneralResponse::responseCode(ex.code()),
+                          rest::ContentType::UNSET, 1, ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    me->sendErrorResponse(ResponseCode::SERVER_ERROR, rest::ContentType::UNSET,
+                          1, TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    me->sendErrorResponse(ResponseCode::SERVER_ERROR, rest::ContentType::UNSET,
+                          1, TRI_ERROR_INTERNAL);
+  }
+  return HPE_INTERNAL;
+} catch (...) {
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
-int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
+int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
+  // the caller of this function is a C function, which doesn't have no
+  // idea about exceptions. we must not let an exception escape from here.
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
-  me->_request->parseUrl(me->_url.data(), me->_url.size());
+  try {
+    me->_response.reset();
+    if (!me->_lastHeaderField.empty()) {
+      me->_request->setHeaderV2(std::move(me->_lastHeaderField),
+                                std::move(me->_lastHeaderValue));
+    }
 
-  me->statistics(1UL).SET_READ_END();
-  me->_messageDone = true;
+    if ((p->http_major != 1 || p->http_minor != 0) &&
+        (p->http_major != 1 || p->http_minor != 1)) {
+      me->sendSimpleResponse(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
+                             rest::ContentType::UNSET, 1,
+                             VPackBuffer<uint8_t>());
+      return HPE_USER;
+    }
+    if (p->content_length > GeneralCommTask<T>::MaximalBodySize) {
+      me->sendSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
+                             rest::ContentType::UNSET, 1,
+                             VPackBuffer<uint8_t>());
+      return HPE_USER;
+    }
+    me->_shouldKeepAlive = llhttp_should_keep_alive(p);
 
-  return HPE_PAUSED;
+    bool found;
+    std::string const& expect =
+        me->_request->header(StaticStrings::Expect, found);
+    if (found && StringUtils::trim(expect) == "100-continue") {
+      LOG_TOPIC("2b604", TRACE, arangodb::Logger::REQUESTS)
+          << "received a 100-continue request";
+      char const* response = "HTTP/1.1 100 Continue\r\n\r\n";
+      auto buff = asio_ns::buffer(response, strlen(response));
+      asio_ns::async_write(
+          me->_protocol->socket, buff,
+          [self = me->shared_from_this()](asio_ns::error_code const& ec,
+                                          std::size_t) {
+            if (ec) {
+              static_cast<HttpCommTask<T>*>(self.get())->close(ec);
+            }
+          });
+      return HPE_OK;
+    }
+
+    if (me->_request->requestType() == RequestType::HEAD) {
+      // Assume that request/response has no body, proceed parsing next message
+      return 1;  // 1 is defined by parser
+    }
+    return HPE_OK;
+  } catch (basics::Exception const& ex) {
+    me->sendErrorResponse(GeneralResponse::responseCode(ex.code()),
+                          rest::ContentType::UNSET, 1, ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    me->sendErrorResponse(ResponseCode::SERVER_ERROR, rest::ContentType::UNSET,
+                          1, TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    me->sendErrorResponse(ResponseCode::SERVER_ERROR, rest::ContentType::UNSET,
+                          1, TRI_ERROR_INTERNAL);
+  }
+  return HPE_INTERNAL;
+} catch (...) {
+  return HPE_INTERNAL;
+}
+
+template<SocketType T>
+int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) try {
+  // the caller of this function is a C function, which doesn't have no
+  // idea about exceptions. we must not let an exception escape from here.
+  HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
+  try {
+    me->_request->body().append(at, len);
+    return HPE_OK;
+  } catch (basics::Exception const& ex) {
+    me->sendErrorResponse(GeneralResponse::responseCode(ex.code()),
+                          rest::ContentType::UNSET, 1, ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    me->sendErrorResponse(ResponseCode::SERVER_ERROR, rest::ContentType::UNSET,
+                          1, TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    me->sendErrorResponse(ResponseCode::SERVER_ERROR, rest::ContentType::UNSET,
+                          1, TRI_ERROR_INTERNAL);
+  }
+  return HPE_INTERNAL;
+} catch (...) {
+  return HPE_INTERNAL;
+}
+
+template<SocketType T>
+int HttpCommTask<T>::on_message_complete(llhttp_t* p) try {
+  // the caller of this function is a C function, which doesn't have no
+  // idea about exceptions. we must not let an exception escape from here.
+  HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
+  try {
+    me->_request->parseUrl(me->_url.data(), me->_url.size());
+
+    me->statistics(1UL).SET_READ_END();
+    me->_messageDone = true;
+
+    return HPE_PAUSED;
+  } catch (basics::Exception const& ex) {
+    me->sendErrorResponse(GeneralResponse::responseCode(ex.code()),
+                          rest::ContentType::UNSET, 1, ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    me->sendErrorResponse(ResponseCode::SERVER_ERROR, rest::ContentType::UNSET,
+                          1, TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    me->sendErrorResponse(ResponseCode::SERVER_ERROR, rest::ContentType::UNSET,
+                          1, TRI_ERROR_INTERNAL);
+  }
+  return HPE_INTERNAL;
+} catch (...) {
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>

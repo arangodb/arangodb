@@ -46,7 +46,7 @@ RequestItem::RequestItem(std::unique_ptr<Request>&& req, RequestCallback&& cb,
       request(std::move(req)) {}
 
 template <SocketType ST>
-int H1Connection<ST>::on_message_begin(http_parser* p) {
+int H1Connection<ST>::on_message_begin(http_parser* p) try {
   H1Connection<ST>* self = static_cast<H1Connection<ST>*>(p->data);
   self->_lastHeaderField.clear();
   self->_lastHeaderValue.clear();
@@ -54,24 +54,28 @@ int H1Connection<ST>::on_message_begin(http_parser* p) {
   self->_shouldKeepAlive = false;
   self->_messageComplete = false;
   self->_response.reset(new Response());
-  return 0;
+  return HPE_OK;
+} catch (...) {
+  return HPE_CB_message_begin;
 }
 
 template <SocketType ST>
 int H1Connection<ST>::on_status(http_parser* parser, const char* at,
-                                size_t len) {
+                                size_t len) try {
   H1Connection<ST>* self = static_cast<H1Connection<ST>*>(parser->data);
   
   self->_response->header.addMeta(std::string("http/") +
                                       std::to_string(parser->http_major) + '.' +
                                       std::to_string(parser->http_minor),
                                   std::to_string(parser->status_code) + ' ' + std::string(at, len));
-  return 0;
+  return HPE_OK;
+} catch (...) {
+  return HPE_CB_status;
 }
 
 template <SocketType ST>
 int H1Connection<ST>::on_header_field(http_parser* parser, const char* at,
-                                      size_t len) {
+                                      size_t len) try {
   H1Connection<ST>* self = static_cast<H1Connection<ST>*>(parser->data);
   if (self->_lastHeaderWasValue) {
     toLowerInPlace(self->_lastHeaderField);  // in-place
@@ -82,12 +86,14 @@ int H1Connection<ST>::on_header_field(http_parser* parser, const char* at,
     self->_lastHeaderField.append(at, len);
   }
   self->_lastHeaderWasValue = false;
-  return 0;
+  return HPE_OK;
+} catch (...) {
+  return HPE_CB_header_field;
 }
 
 template <SocketType ST>
 int H1Connection<ST>::on_header_value(http_parser* parser, const char* at,
-                                      size_t len) {
+                                      size_t len) try {
   H1Connection<ST>* self = static_cast<H1Connection<ST>*>(parser->data);
   if (self->_lastHeaderWasValue) {
     self->_lastHeaderValue.append(at, len);
@@ -95,11 +101,13 @@ int H1Connection<ST>::on_header_value(http_parser* parser, const char* at,
     self->_lastHeaderValue.assign(at, len);
   }
   self->_lastHeaderWasValue = true;
-  return 0;
+  return HPE_OK;
+} catch (...) {
+  return HPE_CB_header_value;
 }
 
 template <SocketType ST>
-int H1Connection<ST>::on_header_complete(http_parser* parser) {
+int H1Connection<ST>::on_header_complete(http_parser* parser) try {
   H1Connection<ST>* self = static_cast<H1Connection<ST>*>(parser->data);
   self->_response->header.responseCode =
       static_cast<StatusCode>(parser->status_code);
@@ -120,19 +128,21 @@ int H1Connection<ST>::on_header_complete(http_parser* parser) {
     self->_responseBuffer.reserve(maxReserve);
   }
 
-  return 0;
+  return HPE_OK;
+} catch (...) {
+  return HPE_CB_headers_complete;
 }
 
 template <SocketType ST>
 int H1Connection<ST>::on_body(http_parser* parser, const char* at, size_t len) {
   static_cast<H1Connection<ST>*>(parser->data)->_responseBuffer.append(at, len);
-  return 0;
+  return HPE_OK;
 }
 
 template <SocketType ST>
 int H1Connection<ST>::on_message_complete(http_parser* parser) {
   static_cast<H1Connection<ST>*>(parser->data)->_messageComplete = true;
-  return 0;
+  return HPE_OK;
 }
 
 template <SocketType ST>

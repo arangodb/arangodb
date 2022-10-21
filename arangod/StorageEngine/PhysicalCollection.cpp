@@ -289,9 +289,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
     VPackSlice s = newValue.get(StaticStrings::RevString);
     if (s.isString()) {
       b.add(StaticStrings::RevString, s);
-      VPackValueLength l;
-      char const* p = s.getStringUnchecked(l);
-      revisionId = RevisionId::fromString(p, l, false);
+      revisionId = RevisionId::fromString(s.stringView());
       handled = true;
     }
   }
@@ -453,9 +451,7 @@ Result PhysicalCollection::newObjectForInsert(
     s = value.get(StaticStrings::RevString);
     if (s.isString()) {
       builder.add(StaticStrings::RevString, s);
-      VPackValueLength l;
-      char const* str = s.getStringUnchecked(l);
-      revisionId = RevisionId::fromString(str, l, false);
+      revisionId = RevisionId::fromString(s.stringView());
       handled = true;
     }
   }
@@ -542,9 +538,7 @@ Result PhysicalCollection::newObjectForReplace(
     s = newValue.get(StaticStrings::RevString);
     if (s.isString()) {
       builder.add(StaticStrings::RevString, s);
-      VPackValueLength l;
-      char const* p = s.getStringUnchecked(l);
-      revisionId = RevisionId::fromString(p, l, false);
+      revisionId = RevisionId::fromString(s.stringView());
       handled = true;
     }
   }

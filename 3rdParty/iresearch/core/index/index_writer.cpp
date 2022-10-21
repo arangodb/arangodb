@@ -1071,30 +1071,21 @@ uint64_t index_writer::segment_context::flush() {
     return 0; // skip flushing an empty writer
   }
 
-  auto flushed_docs_count = flushed_update_contexts_.size();
-
-  assert(std::numeric_limits<doc_id_t>::max() >= writer_->docs_cached());
-  flushed_update_contexts_.reserve(flushed_update_contexts_.size() + writer_->docs_cached());
+  assert(writer_->docs_cached() <= doc_limits::eof());
   flushed_.emplace_back(std::move(writer_meta_.meta));
-
-  // copy over update_contexts
-  for (size_t doc_id = doc_limits::min(),
-       doc_id_end = writer_->docs_cached() + doc_limits::min();
-       doc_id < doc_id_end;
-       ++doc_id) {
-    assert(doc_id <= std::numeric_limits<doc_id_t>::max());
-    flushed_update_contexts_.emplace_back(writer_->doc_context(doc_id_t(doc_id)));
-  }
 
   auto& segment = flushed_.back();
 
   // flush segment_writer
   try {
     writer_->flush(segment);
+
+    auto& ctxs = writer_->docs_context();
+    flushed_update_contexts_.insert(flushed_update_contexts_.end(),
+                                    ctxs.begin(), ctxs.end());
   } catch (...) {
     // failed to flush segment
     flushed_.pop_back();
-    flushed_update_contexts_.resize(flushed_docs_count);
 
     throw;
   }
