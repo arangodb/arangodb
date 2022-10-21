@@ -1,6 +1,9 @@
 v3.9.4 (XXXX-XX-XX)
 -------------------
 
+* BTS-1070: Fixed query explain not dealing with an aggregate function without
+  arguments and the WINDOW node not being defined as an Ast node type name.
+
 * Fixed BTS-852 (user's saved queries used to disappear after updating user
   profile).
 
