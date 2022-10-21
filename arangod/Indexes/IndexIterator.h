@@ -162,7 +162,9 @@ class IndexIterator {
   /// provides the "nextCovering" method as a performance optimization
   /// The default index has no covering method information
   virtual bool hasCovering() const { return false; }
- 
+
+  void setResetInternals() noexcept { _resetInternals = true; }
+
  protected:
   ReadOwnWrites canReadOwnWrites() const noexcept { return _readOwnWrites; }
 
@@ -185,6 +187,7 @@ class IndexIterator {
   LogicalCollection* _collection;
   transaction::Methods* _trx;
   bool _hasMore;
+  bool _resetInternals;
 
  private:
   ReadOwnWrites const _readOwnWrites;
