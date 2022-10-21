@@ -326,7 +326,7 @@ class column_base : public column_reader, private util::noncopyable {
       // force memory release
       { std::vector<irs::byte_type>().swap(column_data_); }
       if (buffered_memory_accounter_) {
-        buffered_memory_accounter_(released);
+        buffered_memory_accounter_(-released);
       }
     }
   }

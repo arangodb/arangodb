@@ -67,6 +67,7 @@ struct empty_sub_reader final : irs::singleton<empty_sub_reader>, irs::sub_reade
 } // LOCAL
 
 namespace iresearch {
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                         sub_reader implementation
 // -----------------------------------------------------------------------------
