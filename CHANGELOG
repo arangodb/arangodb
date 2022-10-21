@@ -1,6 +1,18 @@
 devel
 -----
 
+* Added startup option `--query.log-failed` to optionally log all failed AQL
+  queries to the server log. The option is turned off by default.
+
+* Added startup option `--query.log-memory-usage-threshold` to optionally log
+  all AQL queries that have a peak memory usage larger than the configured
+  value. The default value is 4GB.
+
+* Added startup option `--query.max-artifact-log-length` to control the
+  maximum length of logged query strings and bind parameter values.
+  This allows truncating overly long query strings and bind parameter values
+  to a reasonable length. Previously the cutoff length was hard-coded.
+
 * Fixed GitHub issue #17291: Fixed a server crash which could occur in case an
   AQL query using a PRUNE or FILTER statement, combined with UDFs (user defined
   functions), got executed.
