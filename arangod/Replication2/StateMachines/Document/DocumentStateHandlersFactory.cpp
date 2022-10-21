@@ -59,10 +59,18 @@ auto DocumentStateHandlersFactory::createShardHandler(GlobalLogIdentifier gid)
 auto DocumentStateHandlersFactory::createTransactionHandler(
     GlobalLogIdentifier gid)
     -> std::unique_ptr<IDocumentStateTransactionHandler> {
-  return std::make_unique<DocumentStateTransactionHandler>(
-      std::move(gid),
-      std::make_unique<DatabaseGuard>(_databaseFeature, gid.database),
-      shared_from_this());
+  try {
+    return std::make_unique<DocumentStateTransactionHandler>(
+        std::move(gid),
+        std::make_unique<DatabaseGuard>(_databaseFeature, gid.database),
+        shared_from_this());
+  } catch (basics::Exception const& ex) {
+    // TODO this is a temporary fix, see CINFRA-588
+    if (ex.code() == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
+      return nullptr;
+    }
+    throw;
+  }
 }
 
 auto DocumentStateHandlersFactory::createTransaction(
