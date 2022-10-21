@@ -571,7 +571,7 @@ void arangodb::maintenance::diffReplicatedLogs(
     containers::FlatHashSet<DatabaseID>& makeDirty, bool& callNotify,
     std::vector<std::shared_ptr<ActionDescription>>& actions) {
   using namespace arangodb::replication2;
-
+  LOG_DEVEL << "diff replicated logs for database " << database;
   auto const createReplicatedLogAction =
       [&](LogId id, agency::LogPlanSpecification const* spec) {
         auto specStr = std::invoke([&] {
@@ -584,7 +584,7 @@ void arangodb::maintenance::diffReplicatedLogs(
           return StringUtils::encodeBase64(slice.startAs<char>(),
                                            slice.byteSize());
         });
-
+        LOG_DEVEL << "create replicated log action for " << id;
         auto description = std::make_shared<ActionDescription>(
             std::map<std::string, std::string>{
                 {std::string(NAME), std::string(UPDATE_REPLICATED_LOG)},
@@ -602,11 +602,11 @@ void arangodb::maintenance::diffReplicatedLogs(
   // check all plan log entries
   for (auto const& [logId, spec] : planLogs) {
     if (spec.currentTerm &&
-        spec.participantsConfig.participants.find(serverId) !=
-            spec.participantsConfig.participants.end()) {
+        spec.participantsConfig.participants.contains(serverId)) {
       // check if there are logs that do not exist locally
       if (auto localIt = localLogs.find(spec.id);
           localIt == std::end(localLogs)) {
+        LOG_DEVEL << "create replicated log " << spec.id;
         createReplicatedLogAction(spec.id, &spec);
       } else {
         // check if the term is the same
@@ -635,6 +635,10 @@ void arangodb::maintenance::diffReplicatedLogs(
           createReplicatedLogAction(spec.id, &spec);
         }
       }
+    } else {
+      LOG_DEVEL << "ignoring replicated log " << database << "/" << spec.id
+                << ": " << bool(spec.currentTerm)
+                << spec.participantsConfig.participants.contains(serverId);
     }
   }
 

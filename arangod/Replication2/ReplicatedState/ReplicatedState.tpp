@@ -374,41 +374,77 @@ void NewFollowerStateManager<S>::updateCommitIndex(LogIndex commitIndex) {
   // we get a future iff applyEntries was called
   if (maybeFuture.has_value()) {
     auto& future = *maybeFuture;
-    std::move(future).then([weak = this->weak_from_this()](auto&& tryResult) {
-      if (auto self = weak.lock(); self != nullptr) {
-        auto res =
-            basics::catchToResult([&] { return std::move(tryResult).get(); });
-        auto guard = self->_guardedData.getLockedGuard();
-        if (res.ok()) {
-          ADB_PROD_ASSERT(guard->_applyEntriesIndexInFlight.has_value());
-          guard->_lastAppliedIndex = *guard->_applyEntriesIndexInFlight;
-          guard->_applyEntriesIndexInFlight = std::nullopt;
-        }
+    std::move(future).thenFinal(
+        [weak = this->weak_from_this()](auto&& tryResult) {
+          if (auto self = weak.lock(); self != nullptr) {
+            auto res = basics::catchToResult([&] {
+              return std::forward<decltype(tryResult)>(tryResult).get();
+            });
+            self->handleApplyEntriesResult(res);
+          }
+        });
+  }
+}
 
-        if (res.fail() || guard->_commitIndex > guard->_lastAppliedIndex) {
-          // TODO retry / continue
-          ADB_PROD_ASSERT(false);
-        }
-      }
-    });
+template<typename S>
+void NewFollowerStateManager<S>::handleApplyEntriesResult(
+    arangodb::Result res) {
+  auto maybeFuture = [&]() -> std::optional<futures::Future<Result>> {
+    auto guard = _guardedData.getLockedGuard();
+    LOG_DEVEL_IF(false) << "applyEntries returned " << res.errorMessage();
+    if (res.ok()) {
+      ADB_PROD_ASSERT(guard->_applyEntriesIndexInFlight.has_value());
+      guard->_lastAppliedIndex = *guard->_applyEntriesIndexInFlight;
+    }
+    guard->_applyEntriesIndexInFlight = std::nullopt;
+
+    if (res.fail() || guard->_commitIndex > guard->_lastAppliedIndex) {
+      LOG_DEVEL_IF(false) << "commit index = " << guard->_commitIndex
+                          << " lastApplied = " << guard->_lastAppliedIndex;
+      return guard->maybeScheduleAppendEntries();
+    }
+    return std::nullopt;
+  }();
+  if (maybeFuture) {
+    std::move(*maybeFuture)
+        .thenFinal([weak = this->weak_from_this()](auto&& tryResult) {
+          if (auto self = weak.lock(); self != nullptr) {
+            auto res = basics::catchToResult([&] {
+              return std::forward<decltype(tryResult)>(tryResult).get();
+            });
+            self->handleApplyEntriesResult(res);
+          }
+        });
   }
 }
 
 template<typename S>
 auto NewFollowerStateManager<S>::GuardedData::updateCommitIndex(
     LogIndex commitIndex) -> std::optional<futures::Future<Result>> {
+  LOG_DEVEL_IF(false) << "updating commit index from " << _commitIndex << " to "
+                      << commitIndex;
   _commitIndex = std::max(_commitIndex, commitIndex);
+  return maybeScheduleAppendEntries();
+}
+
+template<typename S>
+auto NewFollowerStateManager<S>::GuardedData::maybeScheduleAppendEntries()
+    -> std::optional<futures::Future<Result>> {
   if (_commitIndex > _lastAppliedIndex and
       not _applyEntriesIndexInFlight.has_value()) {
     auto log = _logMethods->getLogSnapshot();
     _applyEntriesIndexInFlight = _commitIndex;
-    auto logIter =
-        log.getIteratorRange(_lastAppliedIndex, *_applyEntriesIndexInFlight);
+    // get an iterator for the range [last_applied + 1, commitIndex + 1)
+    auto logIter = log.getIteratorRange(_lastAppliedIndex + 1,
+                                        *_applyEntriesIndexInFlight + 1);
+    LOG_DEVEL_IF(false) << "scheduling apply entries, range = "
+                        << logIter->range();
     auto deserializedIter = std::make_unique<
         LazyDeserializingIterator<EntryType const&, Deserializer>>(
         std::move(logIter));
     return _followerState->applyEntries(std::move(deserializedIter));
   } else {
+    LOG_DEVEL_IF(false) << "apply entries still in progress";
     return std::nullopt;
   }
 }
