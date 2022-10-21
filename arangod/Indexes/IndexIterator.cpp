@@ -36,6 +36,7 @@ IndexIterator::IndexIterator(LogicalCollection* collection,
     : _collection(collection),
       _trx(trx),
       _hasMore(true),
+      _resetInternals(false),
       _readOwnWrites(readOwnWrites) {
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(_trx != nullptr);
@@ -222,7 +223,7 @@ bool MultiIndexIterator::nextImpl(LocalDocumentIdCallback const& callback,
     }
     if (!_current->nextImpl(cb, limit)) {
       // Destroy iterator no longer used:
-      _iterators.at(_currentIdx).reset(nullptr);
+      _current->reset();
       _currentIdx++;
       if (_currentIdx >= _iterators.size()) {
         _current = nullptr;
@@ -254,7 +255,7 @@ bool MultiIndexIterator::nextDocumentImpl(DocumentCallback const& callback,
     }
     if (!_current->nextDocumentImpl(cb, limit)) {
       // Destroy iterator no longer used:
-      _iterators.at(_currentIdx).reset(nullptr);
+      _current->reset();
       _currentIdx++;
       if (_currentIdx >= _iterators.size()) {
         _current = nullptr;
@@ -294,7 +295,7 @@ bool MultiIndexIterator::nextCoveringImpl(DocumentCallback const& callback,
     }
     if (!_current->nextCoveringImpl(cb, limit)) {
       // Destroy iterator no longer used:
-      _iterators.at(_currentIdx).reset(nullptr);
+      _current->reset();
       _currentIdx++;
       if (_currentIdx >= _iterators.size()) {
         _current = nullptr;
