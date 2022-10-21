@@ -108,6 +108,7 @@
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestViewHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
+#include "RestHandler/RestPlanHandler.h"
 #include "RestServer/EndpointFeature.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/CounterBuilder.h"
@@ -582,6 +583,12 @@ void GeneralServerFeature::defineRemainingHandlers(
       RestVocbaseBaseHandler::CURSOR_PATH,
       RestHandlerCreator<RestCursorHandler>::createData<aql::QueryRegistry*>,
       queryRegistry);
+
+  auto planRegistry = QueryRegistryFeature::registry();
+  f.addPrefixHandler(
+      RestVocbaseBaseHandler::PLAN_PATH,
+      RestHandlerCreator<RestPlanHandler>::createData<aql::QueryRegistry*>,
+      planRegistry);
 
   f.addPrefixHandler(RestVocbaseBaseHandler::DATABASE_PATH,
                      RestHandlerCreator<RestDatabaseHandler>::createNoData);

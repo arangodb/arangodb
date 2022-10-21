@@ -70,6 +70,9 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief cursor path
   static std::string const CURSOR_PATH;
 
+  /// @brief plan path
+  static std::string const PLAN_PATH;
+
   /// @brief database path
   static std::string const DATABASE_PATH;
 

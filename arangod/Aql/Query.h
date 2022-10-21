@@ -219,6 +219,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   bool allowDirtyReads() const noexcept { return _allowDirtyReads; }
 
+  static std::shared_ptr<Query> createFromPlan(
+      TRI_vocbase_t& vocbase, std::shared_ptr<transaction::Context> ctx,
+      VPackSlice const plan, VPackSlice const options);
+
  protected:
   /// @brief initializes the query
   void init(bool createProfile);
