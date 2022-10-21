@@ -1,10 +1,7 @@
 #include "LoadingState.h"
 
-#include <fmt/format.h>
-#include <memory>
-#include <optional>
-#include "Pregel/Conductor/Conductor.h"
 #include "Metrics/Gauge.h"
+#include "Pregel/Conductor/Conductor.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/Messaging/Message.h"
 #include "Pregel/Messaging/WorkerMessages.h"
@@ -61,4 +58,8 @@ auto Loading::receive(MessagePayload message)
                                          conductor._aggregators.get());
   }
   return std::make_unique<Computing>(conductor);
+}
+
+auto Loading::cancel() -> std::optional<std::unique_ptr<State>> {
+  return std::make_unique<Canceled>(conductor);
 }

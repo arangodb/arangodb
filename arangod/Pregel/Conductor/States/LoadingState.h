@@ -39,7 +39,7 @@ struct Loading : State {
   auto run() -> std::optional<std::unique_ptr<State>> override;
   auto receive(MessagePayload message)
       -> std::optional<std::unique_ptr<State>> override;
-  auto canBeCanceled() -> bool override { return false; }
+  auto cancel() -> std::optional<std::unique_ptr<State>> override;
   auto name() const -> std::string override { return "loading"; };
   auto isRunning() const -> bool override { return true; }
   auto getExpiration() const

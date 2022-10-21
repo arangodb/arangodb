@@ -43,6 +43,10 @@ auto Done::run() -> std::optional<std::unique_ptr<State>> {
   return std::nullopt;
 }
 
+auto Done::cancel() -> std::optional<std::unique_ptr<State>> {
+  return std::make_unique<Canceled>(conductor);
+}
+
 auto Done::getResults(bool withId) -> ResultT<PregelResults> {
   return conductor._workers.results(CollectPregelResults{.withId = withId})
       .thenValue([&](auto pregelResults) -> ResultT<PregelResults> {

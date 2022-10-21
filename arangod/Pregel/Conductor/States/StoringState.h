@@ -39,7 +39,7 @@ struct Storing : State {
   auto run() -> std::optional<std::unique_ptr<State>> override;
   auto receive(MessagePayload message)
       -> std::optional<std::unique_ptr<State>> override;
-  auto canBeCanceled() -> bool override { return true; }
+  auto cancel() -> std::optional<std::unique_ptr<State>> override;
   auto name() const -> std::string override { return "storing"; };
   auto isRunning() const -> bool override { return true; }
   auto getExpiration() const

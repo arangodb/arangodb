@@ -99,3 +99,7 @@ auto Storing::receive(MessagePayload message)
       },
       message);
 }
+
+auto Storing::cancel() -> std::optional<std::unique_ptr<State>> {
+  return std::make_unique<Canceled>(conductor);
+}

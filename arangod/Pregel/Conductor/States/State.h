@@ -49,7 +49,7 @@ struct State {
       -> std::optional<std::unique_ptr<State>> {
     return std::nullopt;
   }
-  virtual auto canBeCanceled() -> bool = 0;
+  virtual auto cancel() -> std::optional<std::unique_ptr<State>> = 0;
   virtual auto getResults(bool withId) -> ResultT<PregelResults> {
     VPackBuilder emptyArray;
     { VPackArrayBuilder ab(&emptyArray); }
