@@ -51,6 +51,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
+#include "Utils/ExecContext.h"
 #include "frozen/unordered_set.h"
 
 #ifdef USE_PLAN_CACHE
@@ -595,6 +596,13 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
     if (!safe) {
       sharedLock.lock();
     }
+
+    // we may need to check the permissions of the underlying
+    // collections
+    auto const& execCtx = ExecContext::current();
+    bool const checkPermissions =
+        ctx == Serialization::Properties && !execCtx.isSuperuser();
+
     for (auto& [cid, handles] : _indexes) {
       for (auto& handle : handles) {
         if (auto inverted = handle->lock(); inverted) {
@@ -607,6 +615,15 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
           if (!collection) {
             continue;
           }
+
+          if (checkPermissions &&
+              !execCtx.canUseCollection(vocbase().name(), collection->name(),
+                                        auth::Level::RO)) {
+            return {TRI_ERROR_FORBIDDEN,
+                    absl::StrCat("Current user cannot use collection '",
+                                 collection->name(), "'")};
+          }
+
           if (ctx == Serialization::Properties ||
               ctx == Serialization::Inventory) {
             build.add(velocypack::Value{velocypack::ValueType::Object});
@@ -614,8 +631,11 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
             build.add("index", velocypack::Value{index->name()});
           } else {
             build.add(velocypack::Value{velocypack::ValueType::Object});
-            absl::AlphaNum collectionId{collection->id().id()};
-            build.add("collection", velocypack::Value{collectionId.Piece()});
+            if (ServerState::instance()->isSingleServer()) {
+              build.add("collection", velocypack::Value{collection->guid()});
+            } else {
+              build.add("collection", velocypack::Value{collection->name()});
+            }
             absl::AlphaNum indexId{index->id().id()};
             build.add("index", velocypack::Value{indexId.Piece()});
           }
@@ -624,8 +644,9 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
       }
     }
     build.close();
+
     return {};
-  } catch (basics::Exception& e) {
+  } catch (basics::Exception const& e) {
     return {
         e.code(),
         absl::StrCat("caught exception while generating json for search view '",

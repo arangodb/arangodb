@@ -35,6 +35,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
+#include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -51,9 +52,11 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Validators.h"
+#include "velocypack/Builder.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
+#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 
 #include <absl/strings/str_cat.h>
@@ -360,6 +363,29 @@ std::shared_ptr<ShardMap> LogicalCollection::shardIds() const {
   return _sharding->shardIds();
 }
 
+void LogicalCollection::shardMapToVelocyPack(
+    arangodb::velocypack::Builder& result) const {
+  TRI_ASSERT(result.isOpenObject());
+
+  result.add(VPackValue("shards"));
+  serialize(result, *shardIds());
+}
+
+void LogicalCollection::shardIDsToVelocyPack(
+    arangodb::velocypack::Builder& result) const {
+  TRI_ASSERT(result.isOpenObject());
+  result.add(VPackValue("shards"));
+
+  std::vector<ShardID> combinedShardIDs;
+  for (auto const& s : *shardIds()) {
+    combinedShardIDs.push_back(s.first);
+  }
+  std::sort(combinedShardIDs.begin(), combinedShardIDs.end(),
+            [&](ShardID const& a, ShardID const& b) { return a < b; });
+
+  serialize(result, combinedShardIDs);
+}
+
 void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> map) noexcept {
   TRI_ASSERT(_sharding != nullptr);
   _sharding->setShardMap(std::move(map));
@@ -656,7 +682,7 @@ void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
       case Index::TRI_IDX_TYPE_EDGE_INDEX:
         return false;
       default:
-        flags = Index::makeFlags(Index::Serialize::Basics);
+        flags = Index::makeFlags(Index::Serialize::Inventory);
         return !idx->isHidden();
     }
   });
@@ -718,12 +744,12 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
       case Index::TRI_IDX_TYPE_EDGE_INDEX:
         return false;
       default:
-        flags = Index::makeFlags();
+        flags = Index::makeFlags(Index::Serialize::Inventory);
         return !idx->isHidden() && !idx->inProgress();
     }
   });
-  result.add("planVersion",
-             VPackValue(1));  // planVersion is hard-coded to 1 since 3.8
+  // planVersion is hard-coded to 1 since 3.8
+  result.add("planVersion", VPackValue(1));
   result.add("isReady", VPackValue(isReady));
   result.add("allInSync", VPackValue(allInSync));
   result.close();  // CollectionInfo
@@ -806,7 +832,28 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     build.add(StaticStrings::DataSourcePlanId,
               VPackValue(std::to_string(planId().id())));
   }
+
+#ifdef USE_ENTERPRISE
+  if (isSmart() && type() == TRI_COL_TYPE_EDGE &&
+      ServerState::instance()->isRunningInCluster()) {
+    TRI_ASSERT(!isSmartChild());
+    VirtualClusterSmartEdgeCollection const* edgeCollection =
+        static_cast<arangodb::VirtualClusterSmartEdgeCollection const*>(this);
+    if (edgeCollection == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unable to cast smart edge collection");
+    }
+    edgeCollection->shardMapToVelocyPack(build);
+    bool includeShardsEntry = false;
+    _sharding->toVelocyPack(build, ctx != Serialization::List,
+                            includeShardsEntry);
+  } else {
+    _sharding->toVelocyPack(build, ctx != Serialization::List);
+  }
+#else
   _sharding->toVelocyPack(build, ctx != Serialization::List);
+#endif
+
   includeVelocyPackEnterprise(build);
   TRI_ASSERT(build.isOpenObject());
   // We leave the object open

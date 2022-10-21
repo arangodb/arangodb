@@ -136,7 +136,7 @@ void EnvironmentFeature::prepare() {
         << "address significantly bigger regions of memory";
   }
 
-#ifdef __arm__
+#if defined(__arm__) || defined(__arm64__) || defined(__aarch64__)
   // detect alignment settings for ARM
   {
     LOG_TOPIC("6aec3", TRACE, arangodb::Logger::MEMORY)

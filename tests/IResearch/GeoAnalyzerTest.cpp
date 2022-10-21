@@ -122,7 +122,7 @@ TEST(GeoPointAnalyzerTest, ctor) {
     {
       auto* inc = irs::get<irs::increment>(a);
       ASSERT_NE(nullptr, inc);
-      ASSERT_EQ(1, inc->value);
+      ASSERT_EQ(1U, inc->value);
     }
     {
       auto* term = irs::get<irs::term_attribute>(a);

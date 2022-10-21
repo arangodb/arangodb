@@ -2178,6 +2178,60 @@ function testSmallCircleClusterOnlyWithInvalidStartNode(testGraph) {
   }
 }
 
+function testSmallCircleTestDocumentsShardsAPI(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+
+  const vn = testGraph.vertexCollectionName();
+  const en = testGraph.edgeCollectionName();
+  if (isCluster) {
+    // Globally valid
+    assertTrue(db._collection(vn).shards().length > 0, `Collection: "${vn}" does not report shards`);
+    assertTrue(db._collection(en).shards().length > 0, `Collection: "${en}" does not report shards`);
+
+    // Specific tests
+    if (testGraph.isSmart()) {
+      // Valid for:
+      // - Smart Graph
+      // - Disjoint Smart Graph
+      // - Enterprise Graph
+      // - Disjoint Enterprise Graph
+      assertEqual(db._collection(vn).shards().length, testGraph.amountOfShards());
+      if (testGraph.isDisjoint()) {
+        // "x1" (_local_)
+        assertEqual(db._collection(en).shards().length, testGraph.amountOfShards());
+      } else {
+        // "x3" (_local_, _from_, _to_)
+        assertEqual(db._collection(en).shards().length, testGraph.amountOfShards() * 3);
+      }
+    } else if (testGraph.isSatellite()) {
+      assertEqual(db._collection(vn).shards().length, 1);
+      assertEqual(db._collection(en).shards().length, 1);
+    }
+  } else {
+    // SingleServer Test
+    // No matter which graph type we use, the Shards API is not available in a SingleServer environment.
+
+    try {
+      // Test vertex collection
+      db._collection(vn).shards();
+      fail();
+    } catch (err) {
+      assertEqual(err.errorNum, errors.ERROR_NOT_IMPLEMENTED.code);
+      // Unfortunately cannot assert this, different implementations client vs. server (v8)
+      // assertEqual(err.errorMessage, errors.ERROR_NOT_IMPLEMENTED.message);
+    }
+
+    try {
+      // Test edge collection
+      db._collection(en).shards();
+      fail();
+    } catch (err) {
+      assertEqual(err.errorNum, errors.ERROR_NOT_IMPLEMENTED.code);
+      // Unfortunately cannot assert this, different implementations client vs. server (v8)
+      // assertEqual(err.errorMessage, errors.ERROR_NOT_IMPLEMENTED.message);
+    }
+  }
+}
 
 function testSmallCircleClusterOnlyWithoutWithClause(testGraph) {
   if (isCluster) {
@@ -2593,10 +2647,10 @@ const testSmallCircleDFSProjectionsEdges = testGraph => testProjectionsUsage(tes
 const testSmallCircleWeightedProjectionsEdges = testGraph => testProjectionsUsage(testGraph, "weighted", true);
 
 const executeParallelQuery = (makeQuery, expectedTotalNumberOfNodes = -1) => {
-  // We are using 10.000 start nodes here, to give all worker threads something to work on.
+  // We are using 1100 start nodes here, to give all worker threads something to work on.
   // The input will most likely be split into batches of 1000 nodes each (implementation detail)
   // so with the above batch-size there should be enough work to distribute on 4 threads.
-  const numberOfStartNodes = 10000;
+  const numberOfStartNodes = 1100;
 
   const query = makeQuery(true, numberOfStartNodes);
   const nonParallelQuery = makeQuery(false, numberOfStartNodes);
@@ -6417,6 +6471,7 @@ const testsByGraph = {
     testOpenDiamondWeightedUniqueEdgesUniqueNoneVerticesGlobalEnableWeights
   },
   smallCircle: {
+    testSmallCircleTestDocumentsShardsAPI,
     testSmallCircleClusterOnlyWithInvalidStartNode,
     testSmallCircleClusterOnlyWithoutWithClause,
     testSmallCircleDfsUniqueVerticesPath,
