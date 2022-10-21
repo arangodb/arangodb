@@ -524,7 +524,12 @@ auto Worker<V, E, M>::store(Store const& message) -> ResultT<Stored> {
   }
   _state = WorkerState::DONE;
 
-  return stored;
+  auto cleanupFinished = cleanup(Cleanup{});
+  if (cleanupFinished.fail()) {
+    return Result{cleanupFinished.errorNumber(),
+                  cleanupFinished.errorMessage()};
+  }
+  return Stored{};
 }
 
 template<typename V, typename E, typename M>

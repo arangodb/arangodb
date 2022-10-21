@@ -48,8 +48,7 @@ struct Storing : State {
 
  private:
   auto _cleanup() -> futures::Future<Result>;
-  WorkerApi<Stored> _workerStoringApi;
-  WorkerApi<CleanupFinished> _workerCleanupApi;
+  WorkerApi<Stored> _workerApi;
 };
 }  // namespace conductor
 }  // namespace arangodb::pregel
