@@ -383,35 +383,6 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
       };
       columnstore_opts.pinned_memory = reader->opts().pinned_memory_accounting;
     }
-      //if (name.data()) {
-      //  std::cout << "Checking " << name << "...";
-      //  auto res =  name == "\1_key\1number_of_shipments\1pagerank" ||
-      //         name == "@_PK";
-      //  std::cout << (res ? "HOT" : "COLD");
-      //  std::cout << std::endl;
-      //  return res;
-      //} else {
-      //  auto field = field_reader->field("clean_company_canon_name\1text_en");
-      //  if (field) {
-      //    auto& features = field->meta().features;
-      //    auto it = features.find(irs::type<Norm2>::id());
-      //    if (it != features.end()) {
-      //      if (it->second == id) {
-      //        std::cout << "HOT STORED:" << id << std::endl;
-      //        return true;
-      //      }
-      //    } else {
-      //      it = features.find(irs::type<Norm>::id());
-      //      if (it != features.end()) {
-      //        if (it->second == id) {
-      //          std::cout << "HOT STORED:" << id << std::endl;
-      //          return true;
-      //        }
-      //      }
-      //    }
-      //  } 
-      //}
-      //return false;
     columnstore_reader = codec.get_columnstore_reader();
     
     if (!columnstore_reader->prepare(dir, meta, columnstore_opts)) {

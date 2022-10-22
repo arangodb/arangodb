@@ -1412,9 +1412,43 @@ Result IResearchLink::initDataStore(
   auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
   auto& flushFeature = server.getFeature<FlushFeature>();
 
+  irs::index_reader_options readerOptions;
+  readerOptions.warmup_columns = [](const irs::segment_meta&,
+                                    const irs::field_reader& fields,
+                                    const irs::column_reader& column) {
+    if (!column.name().null()) {
+      std::cout << "Checking " << column.name() << "...";
+      auto res = column.name() == "\1_key\1number_of_shipments\1pagerank" ||
+                 column.name() == "@_PK";
+      std::cout << (res ? "HOT" : "COLD");
+      std::cout << std::endl;
+      return res;
+    } else {
+      auto field = fields.field("clean_company_canon_name\1text_en");
+      if (field) {
+        auto& features = field->meta().features;
+        auto it = features.find(irs::type<irs::Norm2>::id());
+        if (it != features.end()) {
+          if (it->second == column.id()) {
+            std::cout << "HOT NORMS2 STORED:" << column.id() << std::endl;
+            return true;
+          }
+        } else {
+          it = features.find(irs::type<irs::Norm>::id());
+          if (it != features.end()) {
+            if (it->second == column.id()) {
+              std::cout << "HOT NORMS STORED:" << column.id() << std::endl;
+              return true;
+            }
+          }
+        }
+      }
+    }
+    return false;
+  };
+
   auto const formatId = getFormat(LinkVersion{version});
   auto format = irs::formats::get(formatId);
-
   if (!format) {
     return {TRI_ERROR_INTERNAL,
             "failed to get data store codec '"s + formatId.data() +
@@ -1475,7 +1509,7 @@ Result IResearchLink::initDataStore(
   if (pathExists) {
     try {
       _dataStore._reader =
-          irs::directory_reader::open(*(_dataStore._directory));
+          irs::directory_reader::open(*(_dataStore._directory), nullptr, readerOptions);
 
       if (!readTick(_dataStore._reader.meta().meta.payload(),
                     _dataStore._recoveryTick)) {
@@ -1576,7 +1610,7 @@ Result IResearchLink::initDataStore(
 
   if (!_dataStore._reader) {
     _dataStore._writer->commit();  // initialize 'store'
-    _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory));
+    _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory), nullptr, readerOptions);
   }
 
   if (!_dataStore._reader) {
