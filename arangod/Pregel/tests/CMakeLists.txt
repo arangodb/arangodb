@@ -1,5 +1,6 @@
 add_executable(arangodbtests_wcc
   ${PROJECT_SOURCE_DIR}/lib/Basics/VelocyPackStringLiteral.cpp
+  GraphsSource.cpp
   WeaklyConnectedComponentsTest.cpp
   Graph.cpp
   WCCGraph.cpp
