@@ -1,5 +1,4 @@
 #include <stdexcept>
-#include <iostream>
 #include "DisjointSet.h"
 
 DisjointSet::DisjointSet(size_t hintSize) : _parent(), _rank() {
@@ -9,18 +8,15 @@ DisjointSet::DisjointSet(size_t hintSize) : _parent(), _rank() {
   }
 }
 
-auto DisjointSet::capacity() -> size_t { return _parent.size(); }
+auto DisjointSet::capacity() const -> size_t { return _parent.size(); }
 
-auto DisjointSet::contains(size_t element) -> bool {
+auto DisjointSet::contains(size_t element) const -> bool {
   return element < capacity() and _rank[element] != 0;
 }
 
-auto DisjointSet::print() -> void {
-  for (uint64_t i = 0; i < capacity(); ++i) {
-    if (contains(i)) {
-      std::cout << " " << i << ":" << representative(i);
-    }
-    std::cout << std::endl;
+auto DisjointSet::removeElement(size_t element) -> void {
+  if (contains(element)) {
+    _rank[element] = 0;
   }
 }
 
@@ -58,11 +54,11 @@ auto DisjointSet::representative(size_t element) -> size_t {
   return running;
 }
 
-auto DisjointSet::merge(size_t first, size_t second) -> void {
+auto DisjointSet::merge(size_t first, size_t second) -> size_t {
   size_t repr_first = representative(first);
   size_t repr_second = representative(second);
   if (repr_first == repr_second) {
-    return;
+    return repr_first;
   }
   if (_rank[repr_first] > _rank[repr_second]) {
     std::swap(repr_first, repr_second);
@@ -71,4 +67,5 @@ auto DisjointSet::merge(size_t first, size_t second) -> void {
   if (_rank[repr_first] == _rank[repr_second]) {
     _rank[repr_second]++;
   }
+  return repr_second;
 }
