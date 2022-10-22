@@ -32,10 +32,8 @@
 
 using namespace arangodb::velocypack;
 
-
 using VertexIndex = size_t;
 using EdgeIndex = size_t;
-
 
 struct WCCVertexProperties {
   uint64_t value;
@@ -46,6 +44,18 @@ auto inspect(Inspector& f, WCCVertexProperties& x) {
   return f.object(x).fields(f.field("value", x.value));
 }
 
+/**
+ * The class is intended solely to compute WCCs. This is on-the-fly while
+ * reading graph edges. The algorithm is performed directly in the constructor.
+ * It uses a UnionFind structure. First, the vertices are read: each vertex is
+ * added to the structure as a singleton. Then the edges are read. When an edge
+ * is read, the sets of the UnionFind structure containing the ends of the edge
+ * are merged if necessary. When the WCCs are computed, they can be written into
+ * the vertices as properties using the function
+ * writeEquivalenceRelationIntoVertices of the parent class.
+ * @tparam EdgeProperties
+ * @tparam VertexProperties
+ */
 template<typename EdgeProperties, VertexPropertiesWithValue VertexProperties>
 class WCCGraph : public ValuedGraph<EdgeProperties, VertexProperties> {
  public:
@@ -55,4 +65,3 @@ class WCCGraph : public ValuedGraph<EdgeProperties, VertexProperties> {
 
   DisjointSet wccs;
 };
-
