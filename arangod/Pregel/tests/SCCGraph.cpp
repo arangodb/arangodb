@@ -162,8 +162,6 @@ auto SCCGraph<EdgeProperties, VertexProperties>::readEdgesBuildSCCs(
 
   // remaining streams
   while (changedTree) {
-    //      not _nextStream.empty() /*todo: test (or read paper) if this is
-    //      correct*/ or changedTree) {
     changedTree = false;
     std::swap(_currentStream, _nextStream);
 
