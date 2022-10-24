@@ -333,7 +333,7 @@ class column_base : public column_reader, private util::noncopyable {
     }
   }
 
-  virtual string_ref name() const final {
+  string_ref name() const final {
     return name_.has_value() ? name_.value() : string_ref::NIL;
   }
 
