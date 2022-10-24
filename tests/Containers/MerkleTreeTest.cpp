@@ -32,6 +32,7 @@
 #include "Basics/hashes.h"
 #include "Containers/MerkleTree.h"
 #include "Logger/LogMacros.h"
+#include "VocBase/Identifiers/RevisionId.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -1857,7 +1858,74 @@ TEST(MerkleTreeTest, overflow_underflow) {
     std::string msg{exc.what()};
     EXPECT_TRUE(msg.find("underflow") != std::string::npos);
   }
-};
+}
+
+TEST(MerkleTreeTest, tree_with_small_and_large_revisions) {
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>
+      t1(6, RevisionId::none().id());
+
+  // test what happens if a tree with very low revision ids get added
+  // some very high revision ids
+  for (uint64_t i = 1ULL; i < 100'000ULL; ++i) {
+    t1.insert(i);
+  }
+  for (uint64_t i = 100'000ULL; i < 100'000'000ULL; i += 100'000ULL) {
+    t1.insert(i);
+  }
+  for (uint64_t i = 100'000'000ULL; i < 1'000'000'000ULL; i += 1'000'000ULL) {
+    t1.insert(i);
+  }
+
+  auto t2 = t1.clone();
+  uint64_t offset = 1152921504606846976ULL;
+  for (uint64_t i = offset; i < offset + 10'000'000'000ULL; i += 10'000'000) {
+    t2->insert(i);
+  }
+
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> d1 = t1.diff(*t2);
+
+  EXPECT_EQ(1, d1.size());
+  std::pair<std::uint64_t, std::uint64_t> expected = {1152921504606846976ULL,
+                                                      1152930300699869183ULL};
+  EXPECT_EQ(expected, d1.front());
+}
+
+TEST(MerkleTreeTest, tree_with_small_and_large_revisions_2) {
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>
+      t1(6, RevisionId::none().id());
+
+  // test what happens if a tree with very low revision ids get added
+  // some very high revision ids
+  for (uint64_t i = 1ULL; i < 100'000ULL; ++i) {
+    t1.insert(i);
+  }
+  for (uint64_t i = 100'000ULL; i < 100'000'000ULL; i += 100'000ULL) {
+    t1.insert(i);
+  }
+  for (uint64_t i = 100'000'000ULL; i < 1'000'000'000ULL; i += 1'000'000ULL) {
+    t1.insert(i);
+  }
+
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>
+      t2(6, RevisionId::lowerBound().id());
+
+  uint64_t offset = 1152921504606846976ULL;
+  for (uint64_t i = offset; i < offset + 10'000'000'000ULL; i += 10'000'000) {
+    t2.insert(i);
+  }
+
+  std::vector<std::pair<std::uint64_t, std::uint64_t>> d1 = t1.diff(t2);
+
+  EXPECT_EQ(2, d1.size());
+
+  std::pair<std::uint64_t, std::uint64_t> expected1 = {0ULL, 2199023255551ULL};
+  EXPECT_EQ(expected1, d1[0]);
+
+  std::pair<std::uint64_t, std::uint64_t> expected2 = {1152921397232664576ULL,
+                                                       1152923596255920127ULL};
+
+  EXPECT_EQ(expected2, d1[1]);
+}
 
 class MerkleTreeSpecialGrowTests
     : public ::arangodb::containers::MerkleTree<
