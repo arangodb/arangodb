@@ -61,9 +61,16 @@ RestStatus RestAdminExecuteHandler::execute() {
 
   TRI_ASSERT(server().getFeature<V8DealerFeature>().allowAdminExecute());
 
-  std::string_view bodyStr = _request->rawPayload();
-  char const* body = bodyStr.data();
-  size_t bodySize = bodyStr.size();
+  std::string_view payload;
+  size_t bodySize;
+  if (_request->header(StaticStrings::ContentTypeHeader) == "text/plain") {
+    payload = _request->rawPayload();
+  } else {
+    VPackSlice payloadParsed = _request->payload(false);
+    payload = payloadParsed.stringView();
+  }
+  char const* body = payload.data();
+  bodySize = payload.size();
 
   if (bodySize == 0) {
     // nothing to execute. return an empty response
