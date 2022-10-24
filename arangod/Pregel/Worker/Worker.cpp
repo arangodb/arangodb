@@ -60,9 +60,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::pregel;
 
-#define LOG_PREGEL(logId, level)          \
-  LOG_TOPIC(logId, level, Logger::PREGEL) \
-      << "[job " << _config.executionNumber() << "] "
+#define LOG_PREGEL(logId, level)                             \
+  LOG_TOPIC(logId, level, Logger::PREGEL)                    \
+      << "[job " << _config.executionNumber() << ", worker " \
+      << ServerState::instance()->getId() << "] "
 
 #define MY_READ_LOCKER(obj, lock)                                              \
   ReadLocker<ReadWriteLock> obj(&lock, arangodb::basics::LockerType::BLOCKING, \
@@ -211,6 +212,13 @@ auto Worker<V, E, M>::_preGlobalSuperStep(RunGlobalSuperStep const& message)
     -> Result {
   const uint64_t gss = message.gss;
 
+  if (message.gss != 0 && message.gss != _config.globalSuperstep() + 1) {
+    return Result{
+        TRI_ERROR_INTERNAL,
+        fmt::format("Expected gss {}, but received message with gss {}",
+                    _config.globalSuperstep() + 1, message.gss)};
+  }
+
   // wait until worker received all messages that were sent to it
   auto timeout = std::chrono::minutes(5);
   auto start = std::chrono::steady_clock::now();
@@ -346,7 +354,7 @@ auto Worker<V, E, M>::_processVerticesInThreads() -> VerticesProcessedFuture {
         futures::makeFuture(_processVertices(i, vertices)));
   }
 
-  LOG_PREGEL("425c3", DEBUG)
+  LOG_PREGEL("425c3", TRACE)
       << "Starting processing using " << _runningThreads << " threads";
   return futures::collectAll(processedVertices);
 }
@@ -506,7 +514,7 @@ auto Worker<V, E, M>::_finishProcessing(
   uint64_t s = _messageStats.sendCount / tn / 2UL;
   _messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
   _messageStats.reset();
-  LOG_PREGEL("13dbf", DEBUG) << "Message batch size: " << _messageBatchSize;
+  LOG_PREGEL("13dbf", TRACE) << "Message batch size: " << _messageBatchSize;
 
   return gssFinishedEvent;
 }
