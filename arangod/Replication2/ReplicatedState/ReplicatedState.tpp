@@ -423,6 +423,9 @@ auto NewFollowerStateManager<S>::GuardedData::updateCommitIndex(
     LogIndex commitIndex) -> std::optional<futures::Future<Result>> {
   LOG_DEVEL_IF(false) << "updating commit index from " << _commitIndex << " to "
                       << commitIndex;
+  if (_logMethods == nullptr) {
+    return std::nullopt;
+  }
   _commitIndex = std::max(_commitIndex, commitIndex);
   return maybeScheduleAppendEntries();
 }

@@ -413,53 +413,55 @@ auto replicated_log::LogLeader::acquireMutex() const -> LogLeader::ConstGuard {
 
 auto replicated_log::LogLeader::resign() && -> std::tuple<
     std::unique_ptr<LogCore>, DeferredAction> {
-  return _guardedLeaderData.doUnderLock([this, &localFollower = *_localFollower,
-                                         &participantId = _id](
-                                            GuardedLeaderData& leaderData) {
-    if (leaderData._didResign) {
-      LOG_CTX("5d3b8", ERR, _logContext)
-          << "Leader " << participantId << " already resigned!";
-      throw ParticipantResignedException(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
-    }
-
-    if (leaderData._leadershipEstablished) {
-      auto methods = _stateHandle->resignCurrentState();
-      ADB_PROD_ASSERT(methods != nullptr);
-    }
-
-    // WARNING! This stunt is here to make things exception safe.
-    // The move constructor of std::multimap is **not** noexcept.
-    // Thus we have to make a new map unique and use std::swap to
-    // transfer the content. And then move the unique_ptr into
-    // the lambda.
-    struct Queues {
-      WaitForQueue waitForQueue;
-      WaitForBag waitForResignQueue;
-    };
-    auto queues = std::make_unique<Queues>();
-    std::swap(queues->waitForQueue, leaderData._waitForQueue);
-    queues->waitForResignQueue = std::move(leaderData._waitForResignQueue);
-    auto action = [queues = std::move(queues)]() mutable noexcept {
-      for (auto& [idx, promise] : queues->waitForQueue) {
-        // Check this to make sure that setException does not throw
-        if (!promise.isFulfilled()) {
-          promise.setException(ParticipantResignedException(
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE));
+  auto [core, actionOuter, leaderEstablished] = _guardedLeaderData.doUnderLock(
+      [this, &localFollower = *_localFollower,
+       &participantId = _id](GuardedLeaderData& leaderData) {
+        if (leaderData._didResign) {
+          LOG_CTX("5d3b8", ERR, _logContext)
+              << "Leader " << participantId << " already resigned!";
+          throw ParticipantResignedException(
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
         }
-      }
-      queues->waitForResignQueue.resolveAll();
-    };
 
-    LOG_CTX("8696f", DEBUG, _logContext) << "resign";
-    leaderData._didResign = true;
-    static_assert(
-        std::is_nothrow_constructible_v<
-            DeferredAction, std::add_rvalue_reference_t<decltype(action)>>);
-    static_assert(noexcept(std::declval<LocalFollower&&>().resign()));
-    return std::make_tuple(std::move(localFollower).resign(),
-                           DeferredAction(std::move(action)));
-  });
+        // WARNING! This stunt is here to make things exception safe.
+        // The move constructor of std::multimap is **not** noexcept.
+        // Thus we have to make a new map unique and use std::swap to
+        // transfer the content. And then move the unique_ptr into
+        // the lambda.
+        struct Queues {
+          WaitForQueue waitForQueue;
+          WaitForBag waitForResignQueue;
+        };
+        auto queues = std::make_unique<Queues>();
+        std::swap(queues->waitForQueue, leaderData._waitForQueue);
+        queues->waitForResignQueue = std::move(leaderData._waitForResignQueue);
+        auto action = [queues = std::move(queues)]() mutable noexcept {
+          for (auto& [idx, promise] : queues->waitForQueue) {
+            // Check this to make sure that setException does not throw
+            if (!promise.isFulfilled()) {
+              promise.setException(ParticipantResignedException(
+                  TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+                  ADB_HERE));
+            }
+          }
+          queues->waitForResignQueue.resolveAll();
+        };
+
+        LOG_CTX("8696f", DEBUG, _logContext) << "resign";
+        leaderData._didResign = true;
+        static_assert(
+            std::is_nothrow_constructible_v<
+                DeferredAction, std::add_rvalue_reference_t<decltype(action)>>);
+        static_assert(noexcept(std::declval<LocalFollower&&>().resign()));
+        return std::make_tuple(std::move(localFollower).resign(),
+                               DeferredAction(std::move(action)),
+                               leaderData._leadershipEstablished);
+      });
+  if (leaderEstablished) {
+    auto methods = _stateHandle->resignCurrentState();
+    ADB_PROD_ASSERT(methods != nullptr);
+  }
+  return std::make_tuple(std::move(core), std::move(actionOuter));
 }
 
 auto replicated_log::LogLeader::readReplicatedEntryByIndex(LogIndex idx) const
