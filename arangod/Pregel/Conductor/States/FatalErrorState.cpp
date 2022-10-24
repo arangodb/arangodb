@@ -12,6 +12,10 @@ FatalError::FatalError(Conductor& conductor) : conductor{conductor} {
   }
 }
 
+auto FatalError::cancel() -> std::optional<std::unique_ptr<State>> {
+  return std::make_unique<Canceled>(conductor);
+}
+
 auto FatalError::getResults(bool withId) -> ResultT<PregelResults> {
   return conductor._workers.results(CollectPregelResults{.withId = withId})
       .thenValue([&](auto pregelResults) -> ResultT<PregelResults> {

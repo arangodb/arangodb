@@ -231,13 +231,6 @@ void Conductor::workerStatusUpdated(StatusUpdated const& data) {
   _status.updateWorkerStatus(data.senderId, data.status);
 }
 
-void Conductor::cancel() {
-  MUTEX_LOCKER(guard, _callbackMutex);
-  if (_state->canBeCanceled()) {
-    _changeState(std::make_unique<conductor::Canceled>(*this));
-  }
-}
-
 bool Conductor::canBeGarbageCollected() const {
   // we don't want to block other operations for longer, so if we can't
   // immediately acuqire the mutex here, we assume a conductor cannot be
@@ -357,6 +350,13 @@ auto Conductor::_run() -> void {
   auto nextState = _state->run();
   if (nextState.has_value()) {
     _changeState(std::move(nextState.value()));
+  }
+}
+
+void Conductor::cancel() {
+  auto newState = _state->cancel();
+  if (newState.has_value()) {
+    _changeState(std::move(newState.value()));
   }
 }
 

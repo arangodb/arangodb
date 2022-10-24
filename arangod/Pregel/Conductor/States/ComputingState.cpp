@@ -131,3 +131,7 @@ auto Computing::_transformSendCountFromShardToServer(
   }
   return sendCountPerServer;
 }
+
+auto Computing::cancel() -> std::optional<std::unique_ptr<State>> {
+  return std::make_unique<Canceled>(conductor);
+}
