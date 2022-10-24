@@ -777,7 +777,7 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
   return handle_t(nullptr);
 #else
   auto posix_mode =
-      ((OpenMode::Read & mode == OpenMode::Read) ? O_RDONLY : (O_CREAT | O_TRUNC | O_WRONLY));
+      (((OpenMode::Read & mode) == OpenMode::Read) ? O_RDONLY : (O_CREAT | O_TRUNC | O_WRONLY));
 #ifndef __APPLE__
   if ((mode & OpenMode::Direct) == OpenMode::Direct) {
     posix_mode |= O_DIRECT;
