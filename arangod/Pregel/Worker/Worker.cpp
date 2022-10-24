@@ -39,7 +39,6 @@
 #include "Pregel/Status/Status.h"
 #include "Pregel/VertexComputation.h"
 #include "Pregel/Worker/ConductorApi.h"
-#include "Pregel/WorkerInterface.h"
 #include "Pregel/Worker/GraphStore.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -525,7 +524,12 @@ auto Worker<V, E, M>::store(Store const& message) -> ResultT<Stored> {
   }
   _state = WorkerState::DONE;
 
-  return stored;
+  auto cleanupFinished = cleanup(Cleanup{});
+  if (cleanupFinished.fail()) {
+    return Result{cleanupFinished.errorNumber(),
+                  cleanupFinished.errorMessage()};
+  }
+  return Stored{};
 }
 
 template<typename V, typename E, typename M>

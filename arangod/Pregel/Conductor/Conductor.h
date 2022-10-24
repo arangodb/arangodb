@@ -45,7 +45,6 @@
 #include "Pregel/Conductor/States/StoringState.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/ExecutionStatus.h"
-#include "Pregel/Conductor/WorkerApi.h"
 #include "velocypack/Builder.h"
 
 #include <chrono>
@@ -78,7 +77,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   friend struct conductor::Done;
   friend struct conductor::FatalError;
 
-  conductor::WorkerApi _workers;
   std::unique_ptr<conductor::State> _state;
   PregelFeature& _feature;
   std::chrono::system_clock::time_point _created;

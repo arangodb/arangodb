@@ -22,64 +22,145 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Cluster/ClusterTypes.h"
-#include "Futures/Future.h"
+#include "Basics/Guarded.h"
+#include "Futures/Utilities.h"
+#include "Pregel/Connection/Connection.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/Messaging/Aggregate.h"
-#include "Pregel/Messaging/WorkerMessages.h"
-#include "Pregel/Messaging/ConductorMessages.h"
-#include "Pregel/WorkerInterface.h"
 #include "Utils/DatabaseGuard.h"
-#include "Pregel/Connection/Connection.h"
 
 namespace arangodb::pregel::conductor {
 
-template<typename T>
-concept Addable = requires(T a, T b) {
-  {a.add(b)};
-};
-
+template<Addable T>
 struct WorkerApi {
-  WorkerApi() = default;
-  WorkerApi(ExecutionNumber executionNumber,
+  WorkerApi(ExecutionNumber executionNumber, std::vector<ServerID> servers,
             std::unique_ptr<Connection> connection)
       : _executionNumber{std::move(executionNumber)},
+        _servers{std::move(servers)},
         _connection{std::move(connection)} {}
-  [[nodiscard]] auto createWorkers(
-      std::unordered_map<ServerID, CreateWorker> const& data)
-      -> ResultT<AggregateCount<WorkerCreated>>;
-  [[nodiscard]] auto loadGraph(LoadGraph const& graph)
-      -> ResultT<Aggregate<GraphLoaded>>;
-  [[nodiscard]] auto runGlobalSuperStep(
-      RunGlobalSuperStep const& data,
-      std::unordered_map<ServerID, uint64_t> const& sendCountPerServer)
-      -> ResultT<Aggregate<GlobalSuperStepFinished>>;
-  [[nodiscard]] auto store(Store const& message) -> ResultT<Aggregate<Stored>>;
-  [[nodiscard]] auto cleanup(Cleanup const& message)
-      -> ResultT<Aggregate<CleanupFinished>>;
-  [[nodiscard]] auto results(CollectPregelResults const& message) const
-      -> futures::Future<ResultT<PregelResults>>;
+  template<Addable S>
+  WorkerApi(WorkerApi<S>&& api)
+      : _executionNumber{std::move(api._executionNumber)},
+        _servers{std::move(api._servers)},
+        _connection{std::move(api._connection)} {}
+  WorkerApi() = default;
+  template<Addable S>
+  auto operator=(WorkerApi<S>&& other) -> WorkerApi<T>& {
+    _executionNumber = std::move(other._executionNumber);
+    _servers = std::move(other._servers);
+    _connection = std::move(other._connection);
+    return *this;
+  }
 
- private:
-  std::vector<ServerID> _servers = {};
-  ExecutionNumber _executionNumber;
-  std::unique_ptr<Connection> _connection;
+  static auto create(ExecutionNumber executionNumber,
+                     std::unique_ptr<Connection> connection) -> WorkerApi<T> {
+    return WorkerApi<T>(std::move(executionNumber), {}, std::move(connection));
+  }
+
+  template<typename In>
+  auto sendToAll(In const& in) -> Result {
+    auto requests = std::vector<futures::Future<Result>>{};
+    for (auto&& server : _servers) {
+      requests.emplace_back(_connection->post(
+          Destination{Destination::Type::server, server},
+          ModernMessage{.executionNumber = _executionNumber, .payload = {in}}));
+    }
+    return _aggregate.doUnderLock([&](auto& aggregate) {
+      auto responses = futures::collectAll(requests).get();
+      for (auto const& response : responses) {
+        if (response.get().fail()) {
+          return Result{
+              response.get().errorNumber(),
+              fmt::format("Got unsuccessful response from worker: {} ",
+                          response.get().errorMessage())};
+        }
+      }
+      aggregate = Aggregate<T>::withComponentsCount(responses.size());
+      return Result{};
+    });
+  }
+
+  template<typename In>
+  auto send(std::unordered_map<ServerID, In> const& in) -> Result {
+    auto requests = std::vector<futures::Future<Result>>{};
+    for (auto&& [server, message] : in) {
+      // TODO check that server is inside _servers
+      requests.emplace_back(
+          _connection->post(Destination{Destination::Type::server, server},
+                            ModernMessage{.executionNumber = _executionNumber,
+                                          .payload = {message}}));
+    }
+    return _aggregate.doUnderLock([&](auto& aggregate) {
+      auto responses = futures::collectAll(requests).get();
+      for (auto const& response : responses) {
+        if (response.get().fail()) {
+          return Result{
+              response.get().errorNumber(),
+              fmt::format("Got unsuccessful response from worker: {} ",
+                          response.get().errorMessage())};
+        }
+      }
+      aggregate = Aggregate<T>::withComponentsCount(responses.size());
+      return Result{};
+    });
+  }
+
+  auto collect(T const& message) -> std::optional<T> {
+    return _aggregate.doUnderLock(
+        [message = std::move(message)](auto& aggregate) {
+          return aggregate.aggregate(message);
+        });
+  }
 
   template<Addable Out, typename In>
-  auto sendToAll_old(In const& in) const -> futures::Future<ResultT<Out>>;
-  template<typename In>
-  auto sendToAll(In const& in) const -> std::vector<futures::Future<Result>>;
-  template<Addable Out>
-  auto collectAllOks(std::vector<futures::Future<Result>> responses)
-      -> ResultT<Aggregate<Out>>;
+  auto requestFromAll(In const& in) -> futures::Future<ResultT<Out>> {
+    auto results = std::vector<futures::Future<ResultT<Out>>>{};
+    for (auto&& server : _servers) {
+      results.emplace_back(
+          _connection
+              ->send(Destination{Destination::Type::server, server},
+                     ModernMessage{.executionNumber = _executionNumber,
+                                   .payload = {in}})
+              .thenValue([](auto&& response) -> futures::Future<ResultT<Out>> {
+                if (response.fail()) {
+                  return Result{response.errorNumber(),
+                                response.errorMessage()};
+                }
+                if (!std::holds_alternative<ResultT<Out>>(
+                        response.get().payload)) {
+                  return Result{TRI_ERROR_INTERNAL,
+                                "Message from worker does not include the "
+                                "expecte type"};
+                }
+                return std::get<ResultT<Out>>(response.get().payload);
+              }));
+    }
+    return futures::collectAll(results).thenValue(
+        [](auto responses) -> ResultT<Out> {
+          auto out = Out{};
+          for (auto const& response : responses) {
+            if (response.get().fail()) {
+              return Result{
+                  response.get().errorNumber(),
+                  fmt::format("Got unsuccessful response from worker: {}",
+                              response.get().errorMessage())};
+            }
+            out.add(response.get().get());
+          }
+          return out;
+        });
+  }
 
-  // This template enforces In and Out type of the function:
-  // 'In' enforces which type of message is sent
-  // 'Out' defines the expected response type:
-  // The function returns an error if this expectation is not fulfilled
-  template<typename Out, typename In>
-  auto send(ServerID const& server, In const& in) const
-      -> futures::Future<ResultT<Out>>;
+  ExecutionNumber _executionNumber;
+  std::vector<ServerID> _servers = {};
+  std::unique_ptr<Connection> _connection;
+
+ private:
+  Guarded<Aggregate<T>> _aggregate;
+};
+
+struct VoidMessage {
+  auto add(VoidMessage const& other) -> void{};
 };
 
 }  // namespace arangodb::pregel::conductor

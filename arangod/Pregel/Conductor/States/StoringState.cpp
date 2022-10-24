@@ -2,7 +2,6 @@
 
 #include "Pregel/Conductor/Conductor.h"
 #include "Metrics/Gauge.h"
-#include "Pregel/Conductor/States/State.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
 
@@ -17,7 +16,8 @@ template<class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 }  // namespace
 
-Storing::Storing(Conductor& conductor) : conductor{conductor} {
+Storing::Storing(Conductor& conductor, WorkerApi<Stored>&& workerApi)
+    : conductor{conductor}, _workerApi{std::move(workerApi)} {
   conductor._timing.storing.start();
   conductor._feature.metrics()->pregelConductorsStoringNumber->fetch_add(1);
 }
@@ -28,78 +28,33 @@ Storing::~Storing() {
 }
 
 auto Storing::run() -> std::optional<std::unique_ptr<State>> {
-  return _aggregate.doUnderLock(
-      [&](auto& agg) -> std::optional<std::unique_ptr<State>> {
-        auto aggregate = conductor._workers.store(Store{});
-        if (aggregate.fail()) {
-          LOG_PREGEL_CONDUCTOR_STATE("dddad", ERR) << aggregate.errorMessage();
-          return std::make_unique<FatalError>(conductor);
-        }
-        agg = aggregate.get();
-        return std::nullopt;
-      });
+  auto sent = _workerApi.sendToAll(Store{});
+  if (sent.fail()) {
+    LOG_PREGEL_CONDUCTOR_STATE("e2dad", ERR) << sent.errorMessage();
+    return std::make_unique<FatalError>(conductor, std::move(_workerApi));
+  }
+  return std::nullopt;
 }
 
 auto Storing::receive(MessagePayload message)
     -> std::optional<std::unique_ptr<State>> {
-  return std::visit(
-      overloaded{
-          [&](ResultT<Stored> const& x)
-              -> std::optional<std::unique_ptr<State>> {
-            auto explicitMessage = getResultTMessage<Stored>(message);
-            if (explicitMessage.fail()) {
-              LOG_PREGEL_CONDUCTOR_STATE("7698e", ERR)
-                  << explicitMessage.errorMessage();
-              return std::make_unique<FatalError>(conductor);
-            }
-            auto finishedAggregate = _aggregate.doUnderLock(
-                [message = std::move(explicitMessage).get()](auto& agg) {
-                  return agg.aggregate(message);
-                });
-            if (!finishedAggregate.has_value()) {
-              return std::nullopt;
-            }
+  auto explicitMessage = getResultTMessage<Stored>(message);
+  if (explicitMessage.fail()) {
+    LOG_PREGEL_CONDUCTOR_STATE("dde4a", ERR) << explicitMessage.errorMessage();
+    return std::make_unique<FatalError>(conductor, std::move(_workerApi));
+  }
+  auto aggregatedMessage = _workerApi.collect(explicitMessage.get());
+  if (!aggregatedMessage.has_value()) {
+    return std::nullopt;
+  }
 
-            LOG_PREGEL_CONDUCTOR_STATE("fc187", DEBUG) << "Cleanup workers";
-            return _cleanupAggregate.doUnderLock(
-                [&](auto& agg) -> std::optional<std::unique_ptr<State>> {
-                  auto aggregate = conductor._workers.cleanup(Cleanup{});
-                  if (aggregate.fail()) {
-                    LOG_PREGEL_CONDUCTOR_STATE("dddad", ERR)
-                        << aggregate.errorMessage();
-                    return std::make_unique<FatalError>(conductor);
-                  }
-                  agg = aggregate.get();
-                  return std::nullopt;
-                });
-          },
-          [&](ResultT<CleanupFinished> const& x)
-              -> std::optional<std::unique_ptr<State>> {
-            auto explicitMessage = getResultTMessage<CleanupFinished>(message);
-            if (explicitMessage.fail()) {
-              LOG_PREGEL_CONDUCTOR_STATE("dde4a", ERR)
-                  << explicitMessage.errorMessage();
-              return std::make_unique<FatalError>(conductor);
-            }
-            auto finishedAggregate = _cleanupAggregate.doUnderLock(
-                [message = std::move(explicitMessage).get()](auto& agg) {
-                  return agg.aggregate(message);
-                });
-            if (!finishedAggregate.has_value()) {
-              return std::nullopt;
-            }
+  // workers deleted themselves after storing
+  _workerApi._servers = {};
 
-            return std::make_unique<Done>(conductor);
-          },
-          [&](auto const& x) -> std::optional<std::unique_ptr<State>> {
-            LOG_PREGEL_CONDUCTOR_STATE("a698e", ERR)
-                << "Received unexpected message type";
-            return std::make_unique<FatalError>(conductor);
-          },
-      },
-      message);
+  return std::make_unique<Done>(conductor, std::move(_workerApi));
 }
 
 auto Storing::cancel() -> std::optional<std::unique_ptr<State>> {
-  return std::make_unique<Canceled>(conductor);
+  // TODO no defined which api to use here
+  return std::make_unique<Canceled>(conductor, std::move(_workerApi));
 }

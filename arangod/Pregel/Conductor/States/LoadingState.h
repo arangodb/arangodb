@@ -22,8 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Basics/Guarded.h"
-#include "Pregel/Messaging/Aggregate.h"
+#include "Pregel/Conductor/WorkerApi.h"
 #include "State.h"
 
 namespace arangodb::pregel {
@@ -34,7 +33,7 @@ namespace conductor {
 
 struct Loading : State {
   Conductor& conductor;
-  Loading(Conductor& conductor);
+  Loading(Conductor& conductor, WorkerApi<GraphLoaded>&& workerApi);
   ~Loading();
   auto run() -> std::optional<std::unique_ptr<State>> override;
   auto receive(MessagePayload message)
@@ -48,7 +47,7 @@ struct Loading : State {
   }
 
  private:
-  Guarded<Aggregate<GraphLoaded>> _aggregate;
+  WorkerApi<GraphLoaded> _workerApi;
 };
 
 }  // namespace conductor

@@ -7,7 +7,8 @@
 
 using namespace arangodb::pregel::conductor;
 
-Done::Done(Conductor& conductor) : conductor{conductor} {
+Done::Done(Conductor& conductor, WorkerApi<VoidMessage>&& workerApi)
+    : conductor{conductor}, _workerApi{std::move(workerApi)} {
   expiration = std::chrono::system_clock::now() + conductor._ttl;
   if (!conductor._timing.total.hasFinished()) {
     conductor._timing.total.finish();
@@ -44,18 +45,18 @@ auto Done::run() -> std::optional<std::unique_ptr<State>> {
 }
 
 auto Done::cancel() -> std::optional<std::unique_ptr<State>> {
-  return std::make_unique<Canceled>(conductor);
+  return std::make_unique<Canceled>(conductor, std::move(_workerApi));
 }
 
 auto Done::getResults(bool withId) -> ResultT<PregelResults> {
-  return conductor._workers.results(CollectPregelResults{.withId = withId})
-      .thenValue([&](auto pregelResults) -> ResultT<PregelResults> {
-        if (pregelResults.fail()) {
-          return Result{pregelResults.errorNumber(),
-                        fmt::format("While requesting pregel results: {}",
-                                    pregelResults.errorMessage())};
-        }
-        return pregelResults;
-      })
-      .get();
+  auto pregelResults =
+      _workerApi
+          .requestFromAll<PregelResults>(CollectPregelResults{.withId = withId})
+          .get();
+  if (pregelResults.fail()) {
+    return Result{pregelResults.errorNumber(),
+                  fmt::format("While requesting pregel results: {}",
+                              pregelResults.errorMessage())};
+  }
+  return pregelResults;
 }

@@ -38,7 +38,6 @@
 #include "Pregel/Worker/ConductorApi.h"
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/Worker/WorkerContext.h"
-#include "Pregel/WorkerInterface.h"
 #include "Scheduler/Scheduler.h"
 
 struct TRI_vocbase_t;

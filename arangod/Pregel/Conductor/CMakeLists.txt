@@ -1,5 +1,4 @@
 target_sources(arango_pregel PRIVATE
-  Conductor.cpp
-  WorkerApi.cpp)
+  Conductor.cpp)
 
 add_subdirectory(States)

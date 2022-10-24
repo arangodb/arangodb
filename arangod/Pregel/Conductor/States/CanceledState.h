@@ -24,8 +24,7 @@
 
 #include <chrono>
 
-#include "Basics/Guarded.h"
-#include "Pregel/Messaging/Aggregate.h"
+#include "Pregel/Conductor/WorkerApi.h"
 #include "State.h"
 
 namespace arangodb::pregel {
@@ -37,7 +36,7 @@ namespace conductor {
 struct Canceled : State {
   std::chrono::system_clock::time_point expiration;
   Conductor& conductor;
-  Canceled(Conductor& conductor);
+  Canceled(Conductor& conductor, WorkerApi<CleanupFinished>&& workerApi);
   ~Canceled() = default;
   auto run() -> std::optional<std::unique_ptr<State>> override;
   auto receive(MessagePayload message)
@@ -53,9 +52,9 @@ struct Canceled : State {
   };
 
  private:
+  WorkerApi<CleanupFinished> _workerApi;
   std::chrono::nanoseconds _retryInterval = std::chrono::seconds(1);
   std::chrono::nanoseconds _timeout = std::chrono::minutes(5);
-  Guarded<Aggregate<CleanupFinished>> _aggregate;
   auto _cleanupUntilTimeout(std::chrono::steady_clock::time_point start)
       -> Result;
 };

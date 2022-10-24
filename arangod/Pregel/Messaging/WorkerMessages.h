@@ -32,6 +32,7 @@ namespace arangodb::pregel {
 
 struct WorkerCreated {
   ServerID senderId;
+  auto add(WorkerCreated const& other) -> void { senderId = ServerID{""}; }
 };
 template<typename Inspector>
 auto inspect(Inspector& f, WorkerCreated& x) {

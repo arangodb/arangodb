@@ -1,19 +1,16 @@
 #include "ComputingState.h"
-#include <cstdint>
-#include <optional>
 
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Metrics/Gauge.h"
-#include "Pregel/Conductor/States/State.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Iterator.h"
 
 using namespace arangodb::pregel::conductor;
 
-Computing::Computing(Conductor& conductor) : conductor{conductor} {
+Computing::Computing(Conductor& conductor,
+                     WorkerApi<GlobalSuperStepFinished>&& workerApi)
+    : conductor{conductor}, _workerApi{std::move(workerApi)} {
   if (!conductor._timing.computation.hasStarted()) {
     conductor._timing.computation.start();
   }
@@ -43,18 +40,12 @@ auto Computing::run() -> std::optional<std::unique_ptr<State>> {
   serialize(startCommand, runGlobalSuperStepCommand);
   LOG_PREGEL_CONDUCTOR_STATE("d98de", DEBUG) << fmt::format(
       "Initiate starting GSS with {}", startCommand.slice().toJson());
-
-  return _aggregate.doUnderLock(
-      [&](auto& agg) -> std::optional<std::unique_ptr<State>> {
-        auto aggregate = conductor._workers.runGlobalSuperStep(
-            runGlobalSuperStepCommand, _sendCountPerServer);
-        if (aggregate.fail()) {
-          LOG_PREGEL_CONDUCTOR_STATE("f34bb", ERR) << aggregate.errorMessage();
-          return std::make_unique<FatalError>(conductor);
-        }
-        agg = aggregate.get();
-        return std::nullopt;
-      });
+  auto sent = _workerApi.send(runGlobalSuperStepCommand);
+  if (sent.fail()) {
+    LOG_PREGEL_CONDUCTOR_STATE("f34bb", ERR) << sent.errorMessage();
+    return std::make_unique<FatalError>(conductor, std::move(_workerApi));
+  }
+  return std::nullopt;
 }
 
 auto Computing::receive(MessagePayload message)
@@ -62,31 +53,29 @@ auto Computing::receive(MessagePayload message)
   auto explicitMessage = getResultTMessage<GlobalSuperStepFinished>(message);
   if (explicitMessage.fail()) {
     LOG_PREGEL_CONDUCTOR_STATE("7698e", ERR) << explicitMessage.errorMessage();
-    return std::make_unique<FatalError>(conductor);
+    return std::make_unique<FatalError>(conductor, std::move(_workerApi));
   }
-  auto finishedAggregate =
-      _aggregate.doUnderLock([message = std::move(explicitMessage).get()](
-                                 auto& agg) { return agg.aggregate(message); });
-  if (!finishedAggregate.has_value()) {
+
+  auto aggregatedMessage = _workerApi.collect(explicitMessage.get());
+  if (!aggregatedMessage.has_value()) {
     return std::nullopt;
   }
 
-  conductor._statistics.accumulate(finishedAggregate.value().messageStats);
+  auto messageValue = aggregatedMessage.value();
+  conductor._statistics.accumulate(messageValue.messageStats);
   conductor._aggregators->resetValues();
-  for (auto aggregator :
-       VPackArrayIterator(finishedAggregate.value().aggregators.slice())) {
+  for (auto aggregator : VPackArrayIterator(messageValue.aggregators.slice())) {
     conductor._aggregators->aggregateValues(aggregator);
   }
-  conductor._statistics.setActiveCounts(finishedAggregate.value().activeCount);
-  conductor._totalVerticesCount = finishedAggregate.value().vertexCount;
-  conductor._totalEdgesCount = finishedAggregate.value().edgeCount;
+  conductor._statistics.setActiveCounts(messageValue.activeCount);
+  conductor._totalVerticesCount = messageValue.vertexCount;
+  conductor._totalEdgesCount = messageValue.edgeCount;
   auto sendCountPerServer = std::unordered_map<ServerID, uint64_t>{};
-  for (auto const& [shard, counts] :
-       finishedAggregate.value().sendCountPerShard) {
+  for (auto const& [shard, counts] : messageValue.sendCountPerShard) {
     sendCountPerServer[conductor._leadingServerForShard[shard]] += counts;
   }
   _sendCountPerServer = _transformSendCountFromShardToServer(
-      std::move(finishedAggregate.value().sendCountPerShard));
+      std::move(messageValue.sendCountPerShard));
 
   auto post = conductor._postGlobalSuperStep();
 
@@ -100,26 +89,38 @@ auto Computing::receive(MessagePayload message)
       conductor._masterContext->postApplication();
     }
     if (conductor._storeResults) {
-      return std::make_unique<Storing>(conductor);
+      return std::make_unique<Storing>(conductor, std::move(_workerApi));
     }
-    return std::make_unique<Done>(conductor);
+    return std::make_unique<Done>(conductor, std::move(_workerApi));
   }
 
   conductor._globalSuperstep++;
   return run();
 }
 
-auto Computing::_runGlobalSuperStepCommand() const -> RunGlobalSuperStep {
+auto Computing::cancel() -> std::optional<std::unique_ptr<State>> {
+  return std::make_unique<Canceled>(conductor, std::move(_workerApi));
+}
+
+auto Computing::_runGlobalSuperStepCommand() const
+    -> std::unordered_map<ServerID, RunGlobalSuperStep> {
   VPackBuilder aggregators;
   {
     VPackObjectBuilder ob(&aggregators);
     conductor._aggregators->serializeValues(aggregators);
   }
-  return RunGlobalSuperStep{.gss = conductor._globalSuperstep,
+  auto out = std::unordered_map<ServerID, RunGlobalSuperStep>();
+  for (auto const& server : _workerApi._servers) {
+    out.emplace(server, RunGlobalSuperStep{
+                            .gss = conductor._globalSuperstep,
                             .vertexCount = conductor._totalVerticesCount,
                             .edgeCount = conductor._totalEdgesCount,
-                            .sendCount = 0,
-                            .aggregators = std::move(aggregators)};
+                            .sendCount = _sendCountPerServer.contains(server)
+                                             ? _sendCountPerServer.at(server)
+                                             : 0,
+                            .aggregators = aggregators});
+  }
+  return out;
 }
 
 auto Computing::_transformSendCountFromShardToServer(
@@ -130,8 +131,4 @@ auto Computing::_transformSendCountFromShardToServer(
     sendCountPerServer[conductor._leadingServerForShard[shard]] += counts;
   }
   return sendCountPerServer;
-}
-
-auto Computing::cancel() -> std::optional<std::unique_ptr<State>> {
-  return std::make_unique<Canceled>(conductor);
 }
