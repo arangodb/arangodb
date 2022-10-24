@@ -52,15 +52,30 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
     }
     auto leader = leaderResult.get();
 
-    auto iteratorResult = getReplicationIterator(leader->shardId);
-    if (iteratorResult.fail()) {
-      return iteratorResult.result();
+    auto logicalCollection = _vocbase.lookupCollection(leader->shardId);
+    if (logicalCollection == nullptr) {
+      return ResultT<velocypack::SharedSlice>::error(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          fmt::format("Collection {} not found", leader->shardId));
     }
+
+    auto ctx = transaction::StandaloneContext::Create(_vocbase);
+    auto singleCollectionTrx = SingleCollectionTransaction(
+        ctx, *logicalCollection, AccessMode::Type::READ);
+    // We call begin here so rocksMethods are initialized
+    if (auto res = singleCollectionTrx.begin(); res.fail()) {
+      return ResultT<velocypack::SharedSlice>::error(res.errorNumber(),
+                                                     res.errorMessage());
+    }
+    auto* physicalCollection = logicalCollection->getPhysical();
+    TRI_ASSERT(physicalCollection != nullptr);
+    auto iterator = physicalCollection->getReplicationIterator(
+        ReplicationIterator::Ordering::Revision, singleCollectionTrx);
 
     VPackBuilder builder;
     builder.openArray();
     for (auto& revIterator =
-             dynamic_cast<RevisionReplicationIterator&>(*iteratorResult.get());
+             dynamic_cast<RevisionReplicationIterator&>(*iterator);
          revIterator.hasMore(); revIterator.next()) {
       auto slice = revIterator.document();
       builder.add(slice);
@@ -95,32 +110,6 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
                       logId));
     }
     return leader;
-  }
-
-  [[nodiscard]] auto getReplicationIterator(std::string_view shardId) const
-      -> ResultT<std::unique_ptr<ReplicationIterator>> {
-    auto logicalCollection = _vocbase.lookupCollection(shardId);
-    if (logicalCollection == nullptr) {
-      return ResultT<std::unique_ptr<ReplicationIterator>>::error(
-          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          fmt::format("Collection {} not found", shardId));
-    }
-
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    auto singleCollectionTrx = SingleCollectionTransaction(
-        ctx, *logicalCollection, AccessMode::Type::READ);
-
-    // We call begin here so rocksMethods are initialized
-    if (auto res = singleCollectionTrx.begin(); res.fail()) {
-      return ResultT<std::unique_ptr<ReplicationIterator>>::error(
-          res.errorNumber(), res.errorMessage());
-    }
-
-    auto* physicalCollection = logicalCollection->getPhysical();
-    TRI_ASSERT(physicalCollection != nullptr);
-
-    return physicalCollection->getReplicationIterator(
-        ReplicationIterator::Ordering::Revision, singleCollectionTrx);
   }
 
  private:
