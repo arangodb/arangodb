@@ -59,6 +59,8 @@ using callback_f = std::function<bool(doc_iterator&)>;
 // FIXME: bring function2 that supports noexcept 
 using memory_accounting_f = std::function<bool(int64_t)>;
 
+bool noop_memory_accounter(int64_t);
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class term_meta
 /// @brief represents metadata associated with the term
@@ -375,6 +377,7 @@ struct IRESEARCH_API columnstore_reader {
   using column_visitor_f = std::function<bool(const column_reader&)>;
 
   struct options {
+    options() : pinned_memory{noop_memory_accounter} {}
     // allows to select "hot" columns
     column_visitor_f warmup_column;
     // allows to restrict "hot" columns memory usage

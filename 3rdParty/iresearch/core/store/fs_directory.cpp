@@ -265,7 +265,7 @@ class fs_index_input : public buffered_index_input {
 
     auto handle = file_handle::make();
     handle->io_advice = advice;
-    auto mode = advice == IOAdvice::DIRECT_READ
+    auto mode = advice != IOAdvice::DIRECT_READ
         ? irs::file_utils::OpenMode::Read : irs::file_utils::OpenMode::Read |
               irs::file_utils::OpenMode::Direct;
     handle->handle = irs::file_utils::open(

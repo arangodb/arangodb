@@ -150,8 +150,6 @@ std::vector<uint64_t> read_blocks_dense(const column_header& hdr,
   return blocks;
 }
 
-bool noop_memory_accounter(int64_t) { return true; }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class range_column_iterator
 /// @brief iterates over a specified contiguous range of documents
@@ -667,7 +665,7 @@ class dense_fixed_length_column final : public column_base {
   void make_buffered(
       irs::index_input& in, const memory_accounting_f& memory_accounter,
       range<std::unique_ptr<column_reader>> next_sorted_columns) override {
-    buffered_memory_accounter_ = memory_accounter? memory_accounter : noop_memory_accounter;
+    buffered_memory_accounter_ = memory_accounter;
     auto& hdr = mutable_header();
     auto const data_size = len_ * hdr.docs_count;
     auto const bitmap_size =

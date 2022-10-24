@@ -757,9 +757,10 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
       return handle_t(nullptr);
   }
   DWORD dwFlags = FILE_ATTRIBUTE_NORMAL | (static_cast<DWORD>(advice));
-  if ((mode & OpenMode::Direct) == OpenMode::Direct) {
-    dwFlags |= FILE_FLAG_NO_BUFFERING;
-  }
+  // Implement Alignment and File Access Requirements from MSDN
+  //if ((mode & OpenMode::Direct) == OpenMode::Direct) {
+  //  dwFlags |= FILE_FLAG_NO_BUFFERING;
+  //}
   // cppcheck-suppress unreadVariable
   HANDLE hFile = INVALID_HANDLE_VALUE;
   int try_count = CREATE_FILE_TRIES;
@@ -781,9 +782,10 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
   auto posix_mode =
       (((OpenMode::Read & mode) == OpenMode::Read) ? O_RDONLY : (O_CREAT | O_TRUNC | O_WRONLY));
 #ifndef __APPLE__
-  if ((mode & OpenMode::Direct) == OpenMode::Direct) {
-    posix_mode |= O_DIRECT;
-  }
+  // Implement Alignment and File Access Requirements
+  //if ((mode & OpenMode::Direct) == OpenMode::Direct) {
+  //  posix_mode |= O_DIRECT;
+  //}
 #endif
   auto fd = ::open(path ? path : "/dev/null", posix_mode, S_IRUSR | S_IWUSR);
   if (fd < 0) {
@@ -791,9 +793,10 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
     return handle_t(nullptr);
   }
 #ifdef __APPLE__
-  if ((mode & OpenMode::Direct) == OpenMode::Direct) {
-    fcntl(fd, F_NOCACHE, 1);
-  }
+  // Implement Alignment and File Access Requirements
+  //if ((mode & OpenMode::Direct) == OpenMode::Direct) {
+  //  fcntl(fd, F_NOCACHE, 1);
+  //}
 #endif
 #if (_XOPEN_SOURCE >= 600 || _POSIX_C_SOURCE >= 200112L) && !defined(__APPLE__)
   posix_fadvise(fd, 0, 0, advice);
