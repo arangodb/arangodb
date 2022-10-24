@@ -31,6 +31,7 @@
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const analyzers = require("@arangodb/analyzers");
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
 const collName1 = "collection_1";
 const collName2 = "collection_2";
@@ -101,7 +102,7 @@ const tearDownAll = () => {
   } catch (e) {}
 };
 
-function IResearchViewEnumerationRegressionTest() {
+function IResearchViewEnumerationRegressionTest(isSearchAlias) {
   return {
     setUpAll: function () {
       tearDownAll();
@@ -128,20 +129,39 @@ function IResearchViewEnumerationRegressionTest() {
       for (let i = 1; i < data1.length; i += 2) {
         c2.save(data1[i]);
       }
-
-      const view = db._createView(viewName, "arangosearch", {
-        links: {
-          [collName1]: {
-            analyzers: [analyzerName, "identity"],
-            includeAllFields: true,
-            trackListPositions: true,
+      if (isSearchAlias) {
+        let i1 = c1.ensureIndex({
+          type: "inverted",
+          includeAllFields: true,
+          trackListPositions: true,
+          analyzer: analyzerName
+        });
+        let i2 = c2.ensureIndex({
+          type: "inverted",
+          includeAllFields: true,
+          analyzer: analyzerName
+        });
+        db._createView(viewName, "search-alias", {
+          indexes: [
+            {collection: c1.name(), index: i1.name},
+            {collection: c2.name(), index: i2.name}
+          ]
+        });
+      } else {
+        const view = db._createView(viewName, "arangosearch", {
+          links: {
+            [collName1]: {
+              analyzers: [analyzerName, "identity"],
+              includeAllFields: true,
+              trackListPositions: true,
+            },
+            [collName2]: {
+              analyzers: [analyzerName, "identity"],
+              includeAllFields: true,
+            },
           },
-          [collName2]: {
-            analyzers: [analyzerName, "identity"],
-            includeAllFields: true,
-          },
-        },
-      });
+        });
+      }
     },
     tearDownAll,
 
@@ -177,5 +197,27 @@ function IResearchViewEnumerationRegressionTest() {
   };
 }
 
-jsunity.run(IResearchViewEnumerationRegressionTest);
+function ArangoSearchEnumerationRegressionTest() {
+  let suite = {};
+  deriveTestSuite(
+    IResearchViewEnumerationRegressionTest(false),
+    suite,
+    "_arangosearch"
+  );
+  return suite;
+}
+
+function SearchAliasEnumerationRegressionTest() {
+  let suite = {};
+  deriveTestSuite(
+    IResearchViewEnumerationRegressionTest(true),
+    suite,
+    "_search-alias"
+  );
+  return suite;
+}
+
+jsunity.run(ArangoSearchEnumerationRegressionTest);
+jsunity.run(SearchAliasEnumerationRegressionTest);
+
 return jsunity.done();

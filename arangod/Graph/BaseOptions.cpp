@@ -23,7 +23,6 @@
 
 #include "BaseOptions.h"
 
-#include "Aql/AqlTransaction.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
@@ -40,7 +39,6 @@
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Containers/HashSet.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserCacheFactory.h"
 #include "Graph/TraverserOptions.h"
