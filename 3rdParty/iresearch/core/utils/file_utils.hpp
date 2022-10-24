@@ -32,7 +32,7 @@
 #include "shared.hpp"
 #include "string.hpp"
 #include "utils/utf8_path.hpp"
-#include "Utils/bit_utils.hpp"
+#include "utils/bit_utils.hpp"
 
 #ifdef _WIN32  
   #include <tchar.h>
