@@ -322,6 +322,8 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   #Replication2/ReplicatedLog/SimpleInsertTests.cpp
   Replication2/ReplicatedLog/SupervisionSimulationTest.cpp
   Replication2/ReplicatedLog/SupervisionTest.cpp
+  Replication2/ReplicatedLog/ReplicatedLogConnectTest.cpp
+  Replication2/ReplicatedLog/StorageEngineMethodsTest.cpp
 
   #Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
   #Replication2/ReplicatedLog/UpdateReplicatedLogTests.cpp
@@ -332,18 +334,13 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   #Replication2/ReplicatedState/FollowerWaitForTest.cpp
   #Replication2/ReplicatedState/LeaderRecoveryTest.cpp
   #Replication2/ReplicatedState/LeaderResignTest.cpp
-  #Replication2/ReplicatedState/MaintenanceTest.cpp
   #Replication2/ReplicatedState/PrototypeConcurrencyTest.cpp
   #Replication2/ReplicatedState/PrototypeStateMachineTest.cpp
   #Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp
   #Replication2/ReplicatedState/ReplicatedStateMetricsTest.cpp
   #Replication2/ReplicatedState/ReplicatedStateTest.cpp
   #Replication2/ReplicatedState/StateCleanupTest.cpp
-  #Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
-  #Replication2/ReplicatedState/SupervisionModelChecker.cpp
-  #Replication2/ReplicatedState/SupervisionTest.cpp
-  Replication2/ReplicatedLog/ReplicatedLogConnectTest.cpp
-  Replication2/ReplicatedLog/StorageEngineMethodsTest.cpp)
+  #Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp)
 
 set(ARANGODB_GRAPH_TEST_SOURCES
   Graph/ClusterTraverserCacheTest.cpp
