@@ -65,6 +65,7 @@ TEST(Optimizer2CalculationNode, construction) {
 
   if (!res) {
     fmt::print("Something went wrong: {}", res.error());
+    EXPECT_TRUE(res.ok());
   } else {
     auto calculationNode = res.get();
     EXPECT_EQ(calculationNode.type, "CalculationNode");

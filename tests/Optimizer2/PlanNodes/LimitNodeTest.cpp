@@ -99,6 +99,7 @@ TEST_F(Optimizer2LimitNode, construction) {
 
   if (!res) {
     fmt::print("Something went wrong: {}", res.error());
+    EXPECT_TRUE(res.ok());
   } else {
     auto limitNode = res.get();
     EXPECT_EQ(limitNode.type, "LimitNode");

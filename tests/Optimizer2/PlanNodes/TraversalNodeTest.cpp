@@ -185,6 +185,7 @@ TEST(Optimizer2traversalNode, construction) {
 
   if (!res) {
     fmt::print("Something went wrong: {}", res.error());
+    EXPECT_TRUE(res.ok());
   } else {
     auto traversalNode = res.get();
     EXPECT_EQ(traversalNode.type, "TraversalNode");

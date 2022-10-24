@@ -47,6 +47,7 @@ TEST(Optimizer2SingletonNode, construction) {
 
   if (!res) {
     fmt::print("Something went wrong: {}", res.error());
+    EXPECT_TRUE(res.ok());
   } else {
     auto SingletonNode = res.get();
     EXPECT_EQ(SingletonNode.type, "SingletonNode");

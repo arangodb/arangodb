@@ -101,6 +101,7 @@ TEST_F(Optimizer2BaseNode, construction) {
 
   if (!res) {
     fmt::print("Something went wrong: {}", res.error());
+    EXPECT_TRUE(res.ok());
   } else {
     auto BaseNode = res.get();
     EXPECT_EQ(BaseNode.type, "BaseNode");

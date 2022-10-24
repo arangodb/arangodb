@@ -142,6 +142,7 @@ TEST_F(Optimizer2CollectNode, construction) {
 
   if (!res) {
     fmt::print("Something went wrong: {}", res.error());
+    EXPECT_TRUE(res.ok());
   } else {
     auto collectNode = res.get();
     EXPECT_EQ(collectNode.type, "CollectNode");

@@ -53,6 +53,7 @@ TEST(Optimizer2FilterNode, construction) {
 
   if (!res) {
     fmt::print("Something went wrong: {}", res.error());
+    EXPECT_TRUE(res.ok());
   } else {
     auto filterNode = res.get();
     EXPECT_EQ(filterNode.type, "FilterNode");

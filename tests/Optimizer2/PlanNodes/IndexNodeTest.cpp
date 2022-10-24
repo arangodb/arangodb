@@ -189,6 +189,7 @@ TEST_F(Optimizer2IndexNode, construction) {
 
   if (!res) {
     fmt::print("Something went wrong: {}", res.error());
+    EXPECT_TRUE(res.ok());
   } else {
     auto indexNode = res.get();
     EXPECT_EQ(indexNode.type, "IndexNode");
