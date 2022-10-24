@@ -293,7 +293,7 @@ class bitmap_column_iterator final : public resettable_doc_iterator,
     return false;
   }
 
-  virtual void reset() override { bitmap_.reset(); }
+  void reset() final { bitmap_.reset(); }
 
  private:
   sparse_bitmap_iterator bitmap_;
