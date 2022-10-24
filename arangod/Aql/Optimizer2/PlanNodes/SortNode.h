@@ -30,19 +30,19 @@
 
 namespace arangodb::aql::optimizer2::nodes {
 
-struct FilterNodeElement : optimizer2::types::Variable {
+struct SortNodeElement : optimizer2::types::Variable {
   optimizer2::types::Variable inVariable;
   bool ascending;
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, FilterNodeElement& x) {
+auto inspect(Inspector& f, SortNodeElement& x) {
   return f.object(x).fields(f.field("inVariable", x.inVariable),
                             f.field("ascending", x.ascending));
 }
 
 struct SortNode : optimizer2::nodes::BaseNode {
-  std::vector<FilterNodeElement> elements;
+  std::vector<SortNodeElement> elements;
   bool stable;
   AttributeTypes::Numeric limit;
   AttributeTypes::String strategy;
