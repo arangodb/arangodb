@@ -151,6 +151,8 @@ struct IResearchInvertedIndexMetaIndexingContext {
 
   void setFeatures(Features const& features);
 
+  std::string_view collectionName() const noexcept;
+
   irs::features_t fieldFeatures() const noexcept {
     return {_fieldFeatures.data(), _fieldFeatures.size()};
   }
@@ -170,7 +172,6 @@ struct IResearchInvertedIndexMetaIndexingContext {
   size_t _primitiveOffset;
   IResearchInvertedIndexMeta const* _meta;
   ValueStorage const _storeValues{ValueStorage::ID};
-  std::string _collectionName;
   IResearchInvertedIndexSort const& _sort;
   IResearchViewStoredValues const& _storedValues;
   MissingFieldsMap _missingFieldsMap;
