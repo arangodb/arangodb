@@ -781,12 +781,14 @@ const char* NODE_VIEW_META_STORED = "metaStored";
 void toVelocyPack(velocypack::Builder& node, SearchMeta const& meta,
                   bool needSort) {
   if (needSort) {
-    VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_SORT};
-    meta.primarySort.toVelocyPack(node);
+    VPackObjectBuilder objectScope{&node, NODE_VIEW_META_SORT};
+    [[maybe_unused]] bool const result = meta.primarySort.toVelocyPack(node);
+    TRI_ASSERT(result);
   }
   {
     VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_STORED};
-    meta.storedValues.toVelocyPack(node);
+    [[maybe_unused]] bool const result = meta.storedValues.toVelocyPack(node);
+    TRI_ASSERT(result);
   }
   {
     VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_FIELDS};
