@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Pregel/Conductor/WorkerApi.h"
 #include "State.h"
 
 namespace arangodb::pregel {
@@ -32,16 +33,26 @@ namespace conductor {
 
 struct Initial : State {
   Conductor& conductor;
-  Initial(Conductor& conductor);
+  Initial(Conductor& conductor, WorkerApi<WorkerCreated>&& workerApi);
   ~Initial() = default;
   auto run() -> std::optional<std::unique_ptr<State>> override;
-  auto canBeCanceled() -> bool override { return false; }
+  auto receive(MessagePayload message)
+      -> std::optional<std::unique_ptr<State>> override;
+  auto cancel() -> std::optional<std::unique_ptr<State>> override {
+    return std::nullopt;
+  }
   auto name() const -> std::string override { return "initial"; };
   auto isRunning() const -> bool override { return true; }
   auto getExpiration() const
       -> std::optional<std::chrono::system_clock::time_point> override {
     return std::nullopt;
   }
+
+ private:
+  WorkerApi<WorkerCreated> _workerApi;
+  auto _workerInitializations() const
+      -> std::tuple<std::unordered_map<ServerID, CreateWorker>,
+                    std::unordered_map<ShardID, ServerID>>;
 };
 
 }  // namespace conductor

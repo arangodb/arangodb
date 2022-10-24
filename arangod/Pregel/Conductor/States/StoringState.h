@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Pregel/Conductor/WorkerApi.h"
 #include "State.h"
 
 namespace arangodb::pregel {
@@ -32,10 +33,12 @@ namespace conductor {
 
 struct Storing : State {
   Conductor& conductor;
-  Storing(Conductor& conductor);
+  Storing(Conductor& conductor, WorkerApi<Stored>&& workerApi);
   ~Storing();
   auto run() -> std::optional<std::unique_ptr<State>> override;
-  auto canBeCanceled() -> bool override { return true; }
+  auto receive(MessagePayload message)
+      -> std::optional<std::unique_ptr<State>> override;
+  auto cancel() -> std::optional<std::unique_ptr<State>> override;
   auto name() const -> std::string override { return "storing"; };
   auto isRunning() const -> bool override { return true; }
   auto getExpiration() const
@@ -44,8 +47,8 @@ struct Storing : State {
   }
 
  private:
-  auto _store() -> futures::Future<Result>;
   auto _cleanup() -> futures::Future<Result>;
+  WorkerApi<Stored> _workerApi;
 };
 }  // namespace conductor
 }  // namespace arangodb::pregel

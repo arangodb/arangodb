@@ -2,13 +2,22 @@
 
 #include "Pregel/Conductor/Conductor.h"
 #include "Metrics/Gauge.h"
-#include "Pregel/Conductor/States/State.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
 
 using namespace arangodb::pregel::conductor;
 
-Storing::Storing(Conductor& conductor) : conductor{conductor} {
+namespace {
+template<class... Ts>
+struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+template<class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
+}  // namespace
+
+Storing::Storing(Conductor& conductor, WorkerApi<Stored>&& workerApi)
+    : conductor{conductor}, _workerApi{std::move(workerApi)} {
   conductor._timing.storing.start();
   conductor._feature.metrics()->pregelConductorsStoringNumber->fetch_add(1);
 }
@@ -19,44 +28,33 @@ Storing::~Storing() {
 }
 
 auto Storing::run() -> std::optional<std::unique_ptr<State>> {
-  conductor._cleanup();
-
-  auto store = _store().get();
-  if (store.fail()) {
-    LOG_PREGEL_CONDUCTOR("bc495", ERR) << store.errorMessage();
-    return std::make_unique<FatalError>(conductor);
+  auto sent = _workerApi.sendToAll(Store{});
+  if (sent.fail()) {
+    LOG_PREGEL_CONDUCTOR_STATE("e2dad", ERR) << sent.errorMessage();
+    return std::make_unique<FatalError>(conductor, std::move(_workerApi));
   }
-
-  LOG_PREGEL_CONDUCTOR("fc187", DEBUG) << "Cleanup workers";
-  auto cleanup = _cleanup().get();
-  if (cleanup.fail()) {
-    LOG_PREGEL_CONDUCTOR("4b34d", ERR) << cleanup.errorMessage();
-    return std::make_unique<FatalError>(conductor);
-  }
-
-  return std::make_unique<Done>(conductor);
+  return std::nullopt;
 }
 
-auto Storing::_store() -> futures::Future<Result> {
-  return conductor._workers.store(Store{}).thenValue(
-      [&](auto stored) -> Result {
-        if (stored.fail()) {
-          return Result{
-              stored.errorNumber(),
-              fmt::format("While storing graph: {}", stored.errorMessage())};
-        }
-        return Result{};
-      });
+auto Storing::receive(MessagePayload message)
+    -> std::optional<std::unique_ptr<State>> {
+  auto explicitMessage = getResultTMessage<Stored>(message);
+  if (explicitMessage.fail()) {
+    LOG_PREGEL_CONDUCTOR_STATE("dde4a", ERR) << explicitMessage.errorMessage();
+    return std::make_unique<FatalError>(conductor, std::move(_workerApi));
+  }
+  auto aggregatedMessage = _workerApi.collect(explicitMessage.get());
+  if (!aggregatedMessage.has_value()) {
+    return std::nullopt;
+  }
+
+  // workers deleted themselves after storing
+  _workerApi._servers = {};
+
+  return std::make_unique<Done>(conductor, std::move(_workerApi));
 }
 
-auto Storing::_cleanup() -> futures::Future<Result> {
-  return conductor._workers.cleanup(Cleanup{}).thenValue(
-      [&](auto cleanupFinished) -> Result {
-        if (cleanupFinished.fail()) {
-          return Result{cleanupFinished.errorNumber(),
-                        fmt::format("While cleaning up: {}",
-                                    cleanupFinished.errorMessage())};
-        }
-        return Result{};
-      });
+auto Storing::cancel() -> std::optional<std::unique_ptr<State>> {
+  // TODO no defined which api to use here
+  return std::make_unique<Canceled>(conductor, std::move(_workerApi));
 }

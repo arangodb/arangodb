@@ -99,6 +99,14 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
   /// "no restriction"
   uint64_t _tailingUpperBoundTick;
 
+  /// @brief initial number of documents on leader
+  uint64_t _initialDocCountOnLeader;
+  /// @brief initial number of documents on follower
+  uint64_t _initialDocCountOnFollower;
+  /// @brief number of documents on follower at end of (successful)
+  /// synchronization
+  uint64_t _docCountAtEnd;
+
   /// @brief end time (timestamp in seconds)
   std::chrono::time_point<std::chrono::steady_clock> _endTimeForAttempt;
 };

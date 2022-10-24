@@ -22,8 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Basics/Guarded.h"
-#include "Pregel/Messaging/Aggregate.h"
+#include "Pregel/Conductor/WorkerApi.h"
 #include "State.h"
 
 namespace arangodb::pregel {
@@ -34,12 +33,12 @@ namespace conductor {
 
 struct Loading : State {
   Conductor& conductor;
-  Loading(Conductor& conductor);
+  Loading(Conductor& conductor, WorkerApi<GraphLoaded>&& workerApi);
   ~Loading();
   auto run() -> std::optional<std::unique_ptr<State>> override;
   auto receive(MessagePayload message)
       -> std::optional<std::unique_ptr<State>> override;
-  auto canBeCanceled() -> bool override { return false; }
+  auto cancel() -> std::optional<std::unique_ptr<State>> override;
   auto name() const -> std::string override { return "loading"; };
   auto isRunning() const -> bool override { return true; }
   auto getExpiration() const
@@ -48,8 +47,7 @@ struct Loading : State {
   }
 
  private:
-  auto _createWorkers() -> futures::Future<Result>;
-  Guarded<Aggregate<GraphLoaded>> _aggregate;
+  WorkerApi<GraphLoaded> _workerApi;
 };
 
 }  // namespace conductor

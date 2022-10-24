@@ -24,7 +24,7 @@
 
 #include "Pregel/Connection/Connection.h"
 #include "Pregel/ExecutionNumber.h"
-#include "Pregel/Messaging/WorkerMessages.h"
+#include "Pregel/Messaging/Message.h"
 
 namespace arangodb::pregel::worker {
 
@@ -35,7 +35,7 @@ struct ConductorApi {
       : _server{std::move(conductorServer)},
         _executionNumber{std::move(executionNumber)},
         _connection{std::move(connection)} {}
-  auto graphLoaded(ResultT<GraphLoaded> const& data) const -> Result;
+  auto send(MessagePayload data) const -> Result;
 
  private:
   ServerID _server;

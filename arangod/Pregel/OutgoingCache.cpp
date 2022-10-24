@@ -68,6 +68,7 @@ template<typename M>
 void ArrayOutCache<M>::appendMessage(PregelShard shard,
                                      std::string_view const& key,
                                      M const& data) {
+  _sendCountPerShard[this->_config->globalShardIDs()[shard]]++;
   if (this->_config->isLocalVertexShard(shard)) {
     if (this->_sendToNextGSS) {  // I use the global cache, we need locking
       this->_localCacheNextGSS->storeMessage(shard, key, data);
@@ -176,6 +177,7 @@ void CombiningOutCache<M>::appendMessage(PregelShard shard,
                                          std::string_view const& key,
                                          M const& data) {
   if (this->_config->isLocalVertexShard(shard)) {
+    _sendCountPerShard[this->_config->globalShardIDs()[shard]]++;
     if (this->_sendToNextGSS) {
       this->_localCacheNextGSS->storeMessage(shard, key, data);
       this->_sendCountNextGSS++;
@@ -187,9 +189,11 @@ void CombiningOutCache<M>::appendMessage(PregelShard shard,
     std::unordered_map<std::string_view, M>& vertexMap = _shardMap[shard];
     auto it = vertexMap.find(key);
     if (it != vertexMap.end()) {  // more than one message
-      auto& ref = (*it).second;   // will be modified by combine(...)
+      // nothing is send here, therfore sendCount is not increased
+      auto& ref = (*it).second;  // will be modified by combine(...)
       _combiner->combine(ref, data);
     } else {  // first message for this vertex
+      _sendCountPerShard[this->_config->globalShardIDs()[shard]]++;
       vertexMap.try_emplace(key, data);
 
       if (++(this->_containedMessages) >= this->_batchSize) {

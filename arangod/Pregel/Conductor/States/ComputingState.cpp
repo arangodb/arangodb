@@ -1,16 +1,16 @@
 #include "ComputingState.h"
 
+#include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Metrics/Gauge.h"
-#include "Pregel/Conductor/States/State.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Iterator.h"
 
 using namespace arangodb::pregel::conductor;
 
-Computing::Computing(Conductor& conductor) : conductor{conductor} {
+Computing::Computing(Conductor& conductor,
+                     WorkerApi<GlobalSuperStepFinished>&& workerApi)
+    : conductor{conductor}, _workerApi{std::move(workerApi)} {
   if (!conductor._timing.computation.hasStarted()) {
     conductor._timing.computation.start();
   }
@@ -25,96 +25,110 @@ Computing::~Computing() {
 }
 
 auto Computing::run() -> std::optional<std::unique_ptr<State>> {
-  do {
-    auto prepared = _prepareGlobalSuperStep().get();
-    if (prepared.fail()) {
-      LOG_PREGEL_CONDUCTOR("04189", ERR) << prepared.errorMessage();
-      return std::make_unique<FatalError>(conductor);
-    }
+  LOG_PREGEL_CONDUCTOR_STATE("76631", INFO)
+      << fmt::format("Start running Pregel {} with {} vertices, {} edges",
+                     conductor._algorithm->name(),
+                     conductor._totalVerticesCount, conductor._totalEdgesCount);
 
-    auto post = conductor._postGlobalSuperStep();
-    if (post.finished) {
-      if (conductor._storeResults) {
-        return std::make_unique<Storing>(conductor);
-      }
-      return std::make_unique<Done>(conductor);
-    }
-    conductor._preGlobalSuperStep();
+  conductor._timing.gss.emplace_back(Duration{
+      ._start = std::chrono::steady_clock::now(), ._finish = std::nullopt});
 
-    auto runGlobalSuperStep = _runGlobalSuperStep().get();
-    if (runGlobalSuperStep.fail()) {
-      LOG_PREGEL_CONDUCTOR("f34bb", ERR) << runGlobalSuperStep.errorMessage();
-      return std::make_unique<FatalError>(conductor);
-    }
-  } while (true);
+  conductor._preGlobalSuperStep();
+
+  auto const runGlobalSuperStepCommand = _runGlobalSuperStepCommand();
+  VPackBuilder startCommand;
+  serialize(startCommand, runGlobalSuperStepCommand);
+  LOG_PREGEL_CONDUCTOR_STATE("d98de", DEBUG) << fmt::format(
+      "Initiate starting GSS with {}", startCommand.slice().toJson());
+  auto sent = _workerApi.send(runGlobalSuperStepCommand);
+  if (sent.fail()) {
+    LOG_PREGEL_CONDUCTOR_STATE("f34bb", ERR) << sent.errorMessage();
+    return std::make_unique<FatalError>(conductor, std::move(_workerApi));
+  }
+  return std::nullopt;
 }
 
-auto Computing::_prepareGlobalSuperStep() -> futures::Future<Result> {
-  if (conductor._feature.isStopping()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+auto Computing::receive(MessagePayload message)
+    -> std::optional<std::unique_ptr<State>> {
+  auto explicitMessage = getResultTMessage<GlobalSuperStepFinished>(message);
+  if (explicitMessage.fail()) {
+    LOG_PREGEL_CONDUCTOR_STATE("7698e", ERR) << explicitMessage.errorMessage();
+    return std::make_unique<FatalError>(conductor, std::move(_workerApi));
   }
 
-  return conductor._workers
-      .prepareGlobalSuperStep(
-          PrepareGlobalSuperStep{.gss = conductor._globalSuperstep,
-                                 .vertexCount = conductor._totalVerticesCount,
-                                 .edgeCount = conductor._totalEdgesCount})
-      .thenValue([&](auto globalSuperStepPrepared) -> Result {
-        if (globalSuperStepPrepared.fail()) {
-          return Result{globalSuperStepPrepared.errorNumber(),
-                        fmt::format("While preparing global super step {}: {}",
-                                    conductor._globalSuperstep,
-                                    globalSuperStepPrepared.errorMessage())};
-        }
-        conductor._aggregators->resetValues();
-        for (auto aggregator : VPackArrayIterator(
-                 globalSuperStepPrepared.get().aggregators.slice())) {
-          conductor._aggregators->aggregateValues(aggregator);
-        }
-        conductor._statistics.setActiveCounts(
-            globalSuperStepPrepared.get().activeCount);
-        conductor._totalVerticesCount =
-            globalSuperStepPrepared.get().vertexCount;
-        conductor._totalEdgesCount = globalSuperStepPrepared.get().edgeCount;
-        return Result{};
-      });
+  auto aggregatedMessage = _workerApi.collect(explicitMessage.get());
+  if (!aggregatedMessage.has_value()) {
+    return std::nullopt;
+  }
+
+  auto messageValue = aggregatedMessage.value();
+  conductor._statistics.accumulate(messageValue.messageStats);
+  conductor._aggregators->resetValues();
+  for (auto aggregator : VPackArrayIterator(messageValue.aggregators.slice())) {
+    conductor._aggregators->aggregateValues(aggregator);
+  }
+  conductor._statistics.setActiveCounts(messageValue.activeCount);
+  conductor._totalVerticesCount = messageValue.vertexCount;
+  conductor._totalEdgesCount = messageValue.edgeCount;
+  auto sendCountPerServer = std::unordered_map<ServerID, uint64_t>{};
+  for (auto const& [shard, counts] : messageValue.sendCountPerShard) {
+    sendCountPerServer[conductor._leadingServerForShard[shard]] += counts;
+  }
+  _sendCountPerServer = _transformSendCountFromShardToServer(
+      std::move(messageValue.sendCountPerShard));
+
+  auto post = conductor._postGlobalSuperStep();
+
+  LOG_PREGEL_CONDUCTOR_STATE("39385", DEBUG)
+      << fmt::format("Finished gss {} in {}s", conductor._globalSuperstep,
+                     conductor._timing.gss.back().elapsedSeconds().count());
+  conductor._timing.gss.back().finish();
+
+  if (post.finished) {
+    if (conductor._masterContext) {
+      conductor._masterContext->postApplication();
+    }
+    if (conductor._storeResults) {
+      return std::make_unique<Storing>(conductor, std::move(_workerApi));
+    }
+    return std::make_unique<Done>(conductor, std::move(_workerApi));
+  }
+
+  conductor._globalSuperstep++;
+  return run();
 }
 
-auto Computing::_runGlobalSuperStepCommand() -> RunGlobalSuperStep {
+auto Computing::cancel() -> std::optional<std::unique_ptr<State>> {
+  return std::make_unique<Canceled>(conductor, std::move(_workerApi));
+}
+
+auto Computing::_runGlobalSuperStepCommand() const
+    -> std::unordered_map<ServerID, RunGlobalSuperStep> {
   VPackBuilder aggregators;
   {
     VPackObjectBuilder ob(&aggregators);
     conductor._aggregators->serializeValues(aggregators);
   }
-  return RunGlobalSuperStep{.gss = conductor._globalSuperstep,
+  auto out = std::unordered_map<ServerID, RunGlobalSuperStep>();
+  for (auto const& server : _workerApi._servers) {
+    out.emplace(server, RunGlobalSuperStep{
+                            .gss = conductor._globalSuperstep,
                             .vertexCount = conductor._totalVerticesCount,
                             .edgeCount = conductor._totalEdgesCount,
-                            .aggregators = std::move(aggregators)};
+                            .sendCount = _sendCountPerServer.contains(server)
+                                             ? _sendCountPerServer.at(server)
+                                             : 0,
+                            .aggregators = aggregators});
+  }
+  return out;
 }
 
-auto Computing::_runGlobalSuperStep() -> futures::Future<Result> {
-  auto runGlobalSuperStepCommand = _runGlobalSuperStepCommand();
-  conductor._timing.gss.emplace_back(Duration{
-      ._start = std::chrono::steady_clock::now(), ._finish = std::nullopt});
-  VPackBuilder startCommand;
-  serialize(startCommand, runGlobalSuperStepCommand);
-  LOG_PREGEL_CONDUCTOR("d98de", DEBUG)
-      << "Initiate starting GSS: " << startCommand.slice().toJson();
-  return conductor._workers.runGlobalSuperStep(runGlobalSuperStepCommand)
-      .thenValue([&](auto globalSuperStepFinished) -> Result {
-        if (globalSuperStepFinished.fail()) {
-          return Result{globalSuperStepFinished.errorNumber(),
-                        fmt::format("While running global super step {}: {}",
-                                    conductor._globalSuperstep,
-                                    globalSuperStepFinished.errorMessage())};
-        }
-        conductor._statistics.accumulate(
-            globalSuperStepFinished.get().messageStats);
-        conductor._timing.gss.back().finish();
-        LOG_PREGEL_CONDUCTOR("39385", DEBUG)
-            << "Finished gss " << conductor._globalSuperstep << " in "
-            << conductor._timing.gss.back().elapsedSeconds().count() << "s";
-        conductor._globalSuperstep++;
-        return Result{};
-      });
+auto Computing::_transformSendCountFromShardToServer(
+    std::unordered_map<ShardID, uint64_t> sendCountPerShard) const
+    -> std::unordered_map<ServerID, uint64_t> {
+  auto sendCountPerServer = std::unordered_map<ServerID, uint64_t>{};
+  for (auto const& [shard, counts] : sendCountPerShard) {
+    sendCountPerServer[conductor._leadingServerForShard[shard]] += counts;
+  }
+  return sendCountPerServer;
 }

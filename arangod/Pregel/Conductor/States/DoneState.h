@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Pregel/Conductor/WorkerApi.h"
 #include "State.h"
 
 namespace arangodb::pregel {
@@ -33,10 +34,10 @@ namespace conductor {
 struct Done : State {
   std::chrono::system_clock::time_point expiration;
   Conductor& conductor;
-  Done(Conductor& conductor);
+  Done(Conductor& conductor, WorkerApi<VoidMessage>&& workerApi);
   ~Done() = default;
   auto run() -> std::optional<std::unique_ptr<State>> override;
-  auto canBeCanceled() -> bool override { return true; }
+  auto cancel() -> std::optional<std::unique_ptr<State>> override;
   auto getResults(bool withId) -> ResultT<PregelResults> override;
   auto name() const -> std::string override { return "done"; };
   auto isRunning() const -> bool override { return false; }
@@ -44,6 +45,9 @@ struct Done : State {
       -> std::optional<std::chrono::system_clock::time_point> override {
     return expiration;
   };
+
+ private:
+  WorkerApi<VoidMessage> _workerApi;
 };
 }  // namespace conductor
 }  // namespace arangodb::pregel

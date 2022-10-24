@@ -49,6 +49,10 @@ namespace aql {
 class QueryContext;
 }
 
+namespace graph {
+struct EdgeDocumentToken;
+}
+
 namespace velocypack {
 class Builder;
 class HashedStringRef;
@@ -287,6 +291,12 @@ class MockGraphProvider {
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
+
+  // [GraphRefactor] TODO: Temporary method - will be needed until we've
+  // finished the full graph refactor.
+  arangodb::graph::EdgeDocumentToken getEdgeDocumentToken(
+      typename Step::Edge const& edge);
+
   void addEdgeIDToBuilder(Step::Edge const& edge,
                           arangodb::velocypack::Builder& builder);
   void addEdgeToLookupMap(typename Step::Edge const& edge,

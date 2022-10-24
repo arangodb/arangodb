@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Pregel/Conductor/WorkerApi.h"
 #include "State.h"
 
 namespace arangodb::pregel {
@@ -32,10 +33,13 @@ namespace conductor {
 
 struct Computing : State {
   Conductor& conductor;
-  Computing(Conductor& conductor);
+  Computing(Conductor& conductor,
+            WorkerApi<GlobalSuperStepFinished>&& workerApi);
   ~Computing();
   auto run() -> std::optional<std::unique_ptr<State>> override;
-  auto canBeCanceled() -> bool override { return true; }
+  auto receive(MessagePayload message)
+      -> std::optional<std::unique_ptr<State>> override;
+  auto cancel() -> std::optional<std::unique_ptr<State>> override;
   auto name() const -> std::string override { return "running"; };
   auto isRunning() const -> bool override { return true; }
   auto getExpiration() const
@@ -44,9 +48,14 @@ struct Computing : State {
   }
 
  private:
-  auto _prepareGlobalSuperStep() -> futures::Future<Result>;
-  auto _runGlobalSuperStepCommand() -> RunGlobalSuperStep;
+  WorkerApi<GlobalSuperStepFinished> _workerApi;
+  std::unordered_map<ServerID, uint64_t> _sendCountPerServer;
+  auto _runGlobalSuperStepCommand() const
+      -> std::unordered_map<ServerID, RunGlobalSuperStep>;
   auto _runGlobalSuperStep() -> futures::Future<Result>;
+  auto _transformSendCountFromShardToServer(
+      std::unordered_map<ShardID, uint64_t> sendCountPerShard) const
+      -> std::unordered_map<ServerID, uint64_t>;
 };
 
 }  // namespace conductor

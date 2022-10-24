@@ -33,12 +33,12 @@
 #include "Pregel/Connection/NetworkConnection.h"
 #include "Pregel/Messaging/Message.h"
 #include "Pregel/IncomingCache.h"
+#include "Pregel/Messaging/WorkerMessages.h"
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/VertexComputation.h"
 #include "Pregel/Worker/ConductorApi.h"
-#include "Pregel/WorkerInterface.h"
 #include "Pregel/Worker/GraphStore.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -53,6 +53,7 @@
 #include "velocypack/Builder.h"
 
 #include "fmt/core.h"
+#include <chrono>
 #include <variant>
 
 using namespace arangodb;
@@ -178,78 +179,30 @@ void Worker<V, E, M>::_initializeMessageCaches() {
 }
 
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::prepareGlobalSuperStep(
-    PrepareGlobalSuperStep const& message)
-    -> futures::Future<ResultT<GlobalSuperStepPrepared>> {
-  return futures::makeFuture(_prepareGlobalSuperStepFct(message));
-}
-
-template<typename V, typename E, typename M>
-auto Worker<V, E, M>::_prepareGlobalSuperStepFct(
-    PrepareGlobalSuperStep const& message) -> ResultT<GlobalSuperStepPrepared> {
-  if (_state != WorkerState::IDLE) {
-    return Result{TRI_ERROR_INTERNAL,
-                  "Cannot prepare a gss when the worker is not idle"};
-  }
-  VPackBuilder serializedMessage;
-  serialize(serializedMessage, message);
-  _state = WorkerState::PREPARING;  // stop any running step
-  LOG_PREGEL("f16f2", DEBUG)
-      << "Received prepare GSS: " << serializedMessage.toJson();
-  const uint64_t gss = message.gss;
-  if (_expectedGSS != gss) {
-    return Result{
-        TRI_ERROR_BAD_PARAMETER,
-        fmt::format(
-            "Seems like this worker missed a gss, expected %u. Data = %s ",
-            _expectedGSS, serializedMessage.toJson().c_str())};
-  }
-
-  // initialize worker context
-  if (_workerContext && gss == 0 && _config.localSuperstep() == 0) {
-    _workerContext->_readAggregators = _conductorAggregators.get();
-    _workerContext->_writeAggregators = _workerAggregators.get();
-    _workerContext->_vertexCount = message.vertexCount;
-    _workerContext->_edgeCount = message.edgeCount;
-    _workerContext->preApplication();
-  }
-
-  // make us ready to receive messages
-  _config._globalSuperstep = gss;
-  // write cache becomes the readable cache
-  MY_WRITE_LOCKER(wguard, _cacheRWLock);
-  TRI_ASSERT(_readCache->containedMessageCount() == 0);
-  std::swap(_readCache, _writeCache);
-  _config._localSuperstep = gss;
-
-  // only place where is makes sense to call this, since startGlobalSuperstep
-  // might not be called again
-  if (_workerContext && gss > 0) {
-    _workerContext->postGlobalSuperstep(gss - 1);
-  }
-
-  // responds with info which allows the conductor to decide whether
-  // to start the next GSS or end the execution
-  VPackBuilder aggregators;
-  {
-    VPackObjectBuilder ob(&aggregators);
-    _workerAggregators->serializeValues(aggregators);
-  }
-  return GlobalSuperStepPrepared{_activeCount, _graphStore->localVertexCount(),
-                                 _graphStore->localEdgeCount(), aggregators};
-}
-
-template<typename V, typename E, typename M>
 void Worker<V, E, M>::receivedMessages(PregelMessage const& message) {
-  if (message.gss != _config._globalSuperstep) {
+  if (message.gss != _config._globalSuperstep &&
+      message.gss != _config._globalSuperstep + 1) {
     LOG_PREGEL("ecd34", ERR)
         << "Expected: " << _config._globalSuperstep << " Got: " << message.gss;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Superstep out of sync");
   }
-  // make sure the pointer is not changed while parsing messages
+
+  // make sure the cache and gss are not changed while parsing messages
   MY_READ_LOCKER(guard, _cacheRWLock);
-  // handles locking for us
+
+  // queue message if read and write cache are not swapped yet, otherwise you
+  // will loose this message
+  if (message.gss == _config._globalSuperstep + 1 ||
+      // if config.gss == 0 and _computationStarted == false: read and write
+      // cache are not swapped yet, config.gss is currently 0 only due to its
+      // initialization
+      (_config._globalSuperstep == 0 && !_computationStarted)) {
+    _messagesForNextGss.doUnderLock(
+        [&](auto& messages) { messages.push_back(message); });
+    return;
+  }
+
   _writeCache->parseMessages(message);
 }
 
@@ -257,12 +210,52 @@ template<typename V, typename E, typename M>
 auto Worker<V, E, M>::_preGlobalSuperStep(RunGlobalSuperStep const& message)
     -> Result {
   const uint64_t gss = message.gss;
-  if (gss != _config.globalSuperstep()) {
-    return Result{TRI_ERROR_BAD_PARAMETER, "Wrong GSS"};
+
+  // wait until worker received all messages that were sent to it
+  auto timeout = std::chrono::minutes(5);
+  auto start = std::chrono::steady_clock::now();
+  while (message.sendCount != _writeCache->containedMessageCount()) {
+    if (std::chrono::steady_clock::now() - start >= timeout) {
+      return Result{
+          TRI_ERROR_INTERNAL,
+          fmt::format("gss {}: Worker did not receive all the messages that "
+                      "were send to it. Received count {} != send count {}.",
+                      _config._globalSuperstep,
+                      _writeCache->containedMessageCount(), message.sendCount)};
+    }
   }
+
+  // write cache becomes the readable cache
+  {
+    MY_WRITE_LOCKER(wguard, _cacheRWLock);
+    TRI_ASSERT(_readCache->containedMessageCount() == 0);
+    std::swap(_readCache, _writeCache);
+    _config._globalSuperstep = gss;
+    _config._localSuperstep = gss;
+    if (gss == 0) {
+      // now config.gss is set explicitely to 0 and the computation started
+      _computationStarted = true;
+    }
+  }
+
+  // process all queued messages
+  _messagesForNextGss.doUnderLock([&](auto& messages) {
+    for (auto const& message : messages) {
+      receivedMessages(message);
+    }
+    messages.clear();
+  });
+
+  if (gss == 0 && _workerContext) {
+    _workerContext->_readAggregators = _conductorAggregators.get();
+    _workerContext->_writeAggregators = _workerAggregators.get();
+    _workerContext->_vertexCount = message.vertexCount;
+    _workerContext->_edgeCount = message.edgeCount;
+    _workerContext->preApplication();
+  }
+
   _workerAggregators->resetValues();
   _conductorAggregators->setAggregatedValues(message.aggregators.slice());
-  // execute context
   if (_workerContext) {
     _workerContext->_vertexCount = message.vertexCount;
     _workerContext->_edgeCount = message.edgeCount;
@@ -273,11 +266,12 @@ auto Worker<V, E, M>::_preGlobalSuperStep(RunGlobalSuperStep const& message)
 
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::runGlobalSuperStep(RunGlobalSuperStep const& message)
-    -> futures::Future<ResultT<GlobalSuperStepFinished>> {
+    -> ResultT<GlobalSuperStepFinished> {
   MUTEX_LOCKER(guard, _commandMutex);
-  if (_state != WorkerState::PREPARING) {
+
+  if (_state != WorkerState::IDLE) {
     return Result{TRI_ERROR_INTERNAL,
-                  "Cannot start a gss when the worker is not prepared"};
+                  "Cannot start a gss when the worker is not idle"};
   }
   VPackBuilder serializedMessage;
   serialize(serializedMessage, message);
@@ -289,12 +283,13 @@ auto Worker<V, E, M>::runGlobalSuperStep(RunGlobalSuperStep const& message)
   }
   LOG_PREGEL("39e20", DEBUG) << "Worker starts new gss: " << message.gss;
 
-  return _processVerticesInThreads().thenValue(
-      [&](auto results) -> ResultT<GlobalSuperStepFinished> {
+  return _processVerticesInThreads()
+      .thenValue([&](auto results) -> ResultT<GlobalSuperStepFinished> {
         if (_state != WorkerState::COMPUTING) {
           return Result{TRI_ERROR_INTERNAL,
                         "Worker execution aborted prematurely."};
         }
+        std::unordered_map<ShardID, uint64_t> sendCountPerShard;
         for (auto& result : results) {
           if (result.get().fail()) {
             return Result{result.get().errorNumber(),
@@ -307,10 +302,15 @@ auto Worker<V, E, M>::runGlobalSuperStep(RunGlobalSuperStep const& message)
           _workerAggregators->aggregateValues(
               verticesProcessed.aggregator.slice());
           _messageStats.accumulate(verticesProcessed.stats);
+          for (auto const& [shard, count] :
+               verticesProcessed.sendCountPerShard) {
+            sendCountPerShard[shard] += count;
+          }
           _activeCount += verticesProcessed.activeCount;
         }
-        return _finishProcessing();
-      });
+        return _finishProcessing(sendCountPerShard);
+      })
+      .get();
 }
 
 /// WARNING only call this while holding the _commandMutex
@@ -376,6 +376,7 @@ auto Worker<V, E, M>::_processVertices(
   outCache->setBatchSize(_messageBatchSize);
   outCache->setLocalCache(inCache);
   TRI_ASSERT(outCache->sendCount() == 0);
+  TRI_ASSERT(outCache->sendCountPerShard().empty());
 
   AggregatorHandler workerAggregator(_algorithm.get());
   // TODO look if we can avoid instantiating this
@@ -431,21 +432,26 @@ auto Worker<V, E, M>::_processVertices(
   _currentGssObservables.memoryBytesUsedForMessages +=
       outCache->sendCount() * sizeof(M);
   stats.superstepRuntimeSecs = TRI_microtime() - start;
-  inCache->clear();
-  outCache->clear();
 
   VPackBuilder aggregatorVPack;
   {
     VPackObjectBuilder ob(&aggregatorVPack);
     workerAggregator.serializeValues(aggregatorVPack);
   }
-  return VerticesProcessed{std::move(aggregatorVPack), std::move(stats),
-                           activeCount};
+  auto out = VerticesProcessed{std::move(aggregatorVPack), std::move(stats),
+                               outCache->sendCountPerShard(), activeCount};
+
+  inCache->clear();
+  outCache->clear();
+
+  return out;
 }
 
 // called at the end of a worker thread, needs mutex
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::_finishProcessing() -> ResultT<GlobalSuperStepFinished> {
+auto Worker<V, E, M>::_finishProcessing(
+    std::unordered_map<ShardID, uint64_t> sendCountPerShard)
+    -> ResultT<GlobalSuperStepFinished> {
   {
     MUTEX_LOCKER(guard, _threadMutex);
     if (_runningThreads != 0) {
@@ -460,6 +466,10 @@ auto Worker<V, E, M>::_finishProcessing() -> ResultT<GlobalSuperStepFinished> {
                   "Worker in wrong state"};  // probably canceled
   }
 
+  if (_workerContext) {
+    _workerContext->postGlobalSuperstep(_config._globalSuperstep);
+  }
+
   // count all received messages
   _messageStats.receivedCount = _readCache->containedMessageCount();
   _feature.metrics()->pregelMessagesReceived->count(
@@ -472,13 +482,22 @@ auto Worker<V, E, M>::_finishProcessing() -> ResultT<GlobalSuperStepFinished> {
   _makeStatusCallback()();
 
   _readCache->clear();  // no need to keep old messages around
-  _expectedGSS = _config._globalSuperstep + 1;
   _config._localSuperstep++;
   // only set the state here, because _processVertices checks for it
   _state = WorkerState::IDLE;
 
+  VPackBuilder aggregators;
+  {
+    VPackObjectBuilder ob(&aggregators);
+    _workerAggregators->serializeValues(aggregators);
+  }
   GlobalSuperStepFinished gssFinishedEvent =
-      GlobalSuperStepFinished{_messageStats};
+      GlobalSuperStepFinished{_messageStats,
+                              sendCountPerShard,
+                              _activeCount,
+                              _graphStore->localVertexCount(),
+                              _graphStore->localEdgeCount(),
+                              aggregators};
   VPackBuilder event;
   serialize(event, gssFinishedEvent);
   LOG_PREGEL("2de5b", DEBUG) << "Finished GSS: " << event.toJson();
@@ -493,22 +512,24 @@ auto Worker<V, E, M>::_finishProcessing() -> ResultT<GlobalSuperStepFinished> {
 }
 
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::store(Store const& message)
-    -> futures::Future<ResultT<Stored>> {
+auto Worker<V, E, M>::store(Store const& message) -> ResultT<Stored> {
   _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
   LOG_PREGEL("91264", DEBUG) << "Storing results";
-  // tell graphstore to remove read locks
-  return _graphStore->storeResults(&_config, _makeStatusCallback())
-      .thenValue([&](auto result) -> ResultT<Stored> {
-        _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
-        if (result.fail()) {
-          return result;
-        }
 
-        _state = WorkerState::DONE;
+  auto stored = _graphStore->storeResults(&_config, _makeStatusCallback());
 
-        return Stored{};
-      });
+  _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
+  if (stored.fail()) {
+    return stored;
+  }
+  _state = WorkerState::DONE;
+
+  auto cleanupFinished = cleanup(Cleanup{});
+  if (cleanupFinished.fail()) {
+    return Result{cleanupFinished.errorNumber(),
+                  cleanupFinished.errorMessage()};
+  }
+  return Stored{};
 }
 
 template<typename V, typename E, typename M>
@@ -520,15 +541,13 @@ void Worker<V, E, M>::cancelGlobalStep(VPackSlice const& data) {
 
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::cleanup(Cleanup const& command)
-    -> futures::Future<ResultT<CleanupFinished>> {
+    -> ResultT<CleanupFinished> {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicious activity
   MUTEX_LOCKER(guard, _commandMutex);
   LOG_PREGEL("4067a", DEBUG) << "Removing worker";
-  return _feature.cleanupWorker(_config.executionNumber())
-      .thenValue([](auto _) -> ResultT<CleanupFinished> {
-        return {CleanupFinished{}};
-      });
+  _feature.cleanupWorker(_config.executionNumber());
+  return CleanupFinished{};
 }
 
 template<typename V, typename E, typename M>
@@ -627,18 +646,30 @@ auto Worker<V, E, M>::_observeStatus() -> Status const {
 }
 
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::loadGraph(LoadGraph const& graph) -> void {
+auto Worker<V, E, M>::loadGraph(LoadGraph const& graph)
+    -> ResultT<GraphLoaded> {
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
-
   LOG_PREGEL("52070", DEBUG) << fmt::format(
       "Worker for execution number {} is loading", _config.executionNumber());
+
   auto graphLoaded = _graphStore->loadShards(&_config, _makeStatusCallback());
+
   LOG_PREGEL("52062", DEBUG)
       << fmt::format("Worker for execution number {} has finished loading.",
                      _config.executionNumber());
   _makeStatusCallback()();
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
-  _conductor.graphLoaded(graphLoaded);
+  return graphLoaded;
+}
+
+template<typename V, typename E, typename M>
+auto Worker<V, E, M>::send(MessagePayload message) -> void {
+  auto response = _conductor.send(message);
+  if (response.fail()) {
+    LOG_PREGEL("ef90a", DEBUG) << fmt::format(
+        "Got unsuccessful response from Conductor after sending message {}",
+        velocypack::serialize(message).toJson());
+  }
 }
 
 // template types to create

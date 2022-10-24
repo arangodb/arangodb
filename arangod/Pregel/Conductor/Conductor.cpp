@@ -44,7 +44,6 @@
 #include "Pregel/Conductor/States/LoadingState.h"
 #include "Pregel/Conductor/States/State.h"
 #include "Pregel/Conductor/States/StoringState.h"
-#include "Pregel/Conductor/WorkerApi.h"
 #include "Pregel/Connection/DirectConnection.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
@@ -148,6 +147,21 @@ Conductor::Conductor(
 
   _feature.metrics()->pregelConductorsNumber->fetch_add(1);
 
+  auto connection = std::unique_ptr<Connection>();
+  if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
+    connection =
+        std::make_unique<DirectConnection>(_feature, _vocbaseGuard.database());
+  } else {
+    network::RequestOptions reqOpts;
+    reqOpts.timeout = network::Timeout(5.0 * 60.0);
+    reqOpts.database = _vocbaseGuard.database().name();
+    connection = std::make_unique<NetworkConnection>(
+        Utils::apiPrefix, std::move(reqOpts), _vocbaseGuard.database());
+  }
+  _state = std::make_unique<conductor::Initial>(
+      *this, conductor::WorkerApi<WorkerCreated>::create(
+                 executionNumber, std::move(connection)));
+
   LOG_PREGEL("00f5f", INFO)
       << "Starting " << _algorithm->name() << " in database '" << vocbase.name()
       << "', ttl: " << _ttl.count() << "s"
@@ -169,19 +183,16 @@ Conductor::~Conductor() {
 
 void Conductor::start() {
   MUTEX_LOCKER(guard, _callbackMutex);
-  _timing.total.start();
-  _changeState(std::make_unique<conductor::Loading>(*this));
+  _run();
 }
 
 auto Conductor ::_postGlobalSuperStep() -> PostGlobalSuperStepResult {
   // workers are done if all messages were processed and no active vertices
   // are left to process
-  bool done = _globalSuperstep > 0 && _statistics.noActiveVertices() &&
-              _statistics.allMessagesProcessed();
+  bool done =
+      _statistics.noActiveVertices() && _statistics.allMessagesProcessed();
   bool proceed = true;
-  if (_masterContext &&
-      _globalSuperstep > 0) {  // ask algorithm to evaluate aggregated values
-    _masterContext->_globalSuperstep = _globalSuperstep - 1;
+  if (_masterContext) {  // ask algorithm to evaluate aggregated values
     proceed = _masterContext->postGlobalSuperstep();
     if (!proceed) {
       LOG_PREGEL("0aa8e", DEBUG) << "Master context ended execution";
@@ -211,135 +222,10 @@ void Conductor::workerStatusUpdated(StatusUpdated const& data) {
 
   VPackBuilder event;
   serialize(event, data);
-  LOG_PREGEL("76632", DEBUG)
+  LOG_PREGEL("76632", TRACE)
       << fmt::format("Update received {}", event.toJson());
 
   _status.updateWorkerStatus(data.senderId, data.status);
-}
-
-void Conductor::cancel() {
-  MUTEX_LOCKER(guard, _callbackMutex);
-  if (_state->canBeCanceled()) {
-    _changeState(std::make_unique<conductor::Canceled>(*this));
-  }
-}
-
-// resolves into an ordered list of shards for each collection on each
-// server
-static void resolveInfo(
-    TRI_vocbase_t* vocbase, CollectionID const& collectionID,
-    std::unordered_map<CollectionID, std::string>& collectionPlanIdMap,
-    std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>>& serverMap,
-    std::vector<ShardID>& allShards) {
-  ServerState* ss = ServerState::instance();
-  if (!ss->isRunningInCluster()) {  // single server mode
-    auto lc = vocbase->lookupCollection(collectionID);
-
-    if (lc == nullptr || lc->deleted()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                     collectionID);
-    }
-
-    collectionPlanIdMap.try_emplace(collectionID,
-                                    std::to_string(lc->planId().id()));
-    allShards.push_back(collectionID);
-    serverMap[ss->getId()][collectionID].push_back(collectionID);
-
-  } else if (ss->isCoordinator()) {  // we are in the cluster
-
-    ClusterInfo& ci =
-        vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-    std::shared_ptr<LogicalCollection> lc =
-        ci.getCollection(vocbase->name(), collectionID);
-    if (lc->deleted()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                     collectionID);
-    }
-    collectionPlanIdMap.try_emplace(collectionID,
-                                    std::to_string(lc->planId().id()));
-
-    std::shared_ptr<std::vector<ShardID>> shardIDs =
-        ci.getShardList(std::to_string(lc->id().id()));
-    allShards.insert(allShards.end(), shardIDs->begin(), shardIDs->end());
-
-    for (auto const& shard : *shardIDs) {
-      std::shared_ptr<std::vector<ServerID> const> servers =
-          ci.getResponsibleServer(shard);
-      if (servers->size() > 0) {
-        serverMap[(*servers)[0]][lc->name()].push_back(shard);
-      }
-    }
-  } else {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
-  }
-}
-
-/// should cause workers to start a new execution
-auto Conductor::_initializeWorkers() -> futures::Future<Result> {
-  _callbackMutex.assertLockedByCurrentThread();
-
-  // int64_t vertexCount = 0, edgeCount = 0;
-  std::unordered_map<CollectionID, std::string> collectionPlanIdMap;
-  std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap,
-      edgeMap;
-  std::vector<ShardID> shardList;
-
-  // resolve plan id's and shards on the servers
-  for (CollectionID const& collectionID : _vertexCollections) {
-    resolveInfo(&(_vocbaseGuard.database()), collectionID, collectionPlanIdMap,
-                vertexMap,
-                shardList);  // store or
-  }
-  for (CollectionID const& collectionID : _edgeCollections) {
-    resolveInfo(&(_vocbaseGuard.database()), collectionID, collectionPlanIdMap,
-                edgeMap,
-                shardList);  // store or
-  }
-
-  auto servers = std::vector<ServerID>{};
-  for (auto const& [server, _] : vertexMap) {
-    servers.push_back(server);
-  }
-  _status = ConductorStatus::forWorkers(servers);
-
-  if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
-    TRI_ASSERT(servers.size() == 1);
-    _workers = conductor::WorkerApi{
-        _executionNumber,
-        std::make_unique<DirectConnection>(_feature, _vocbaseGuard.database())};
-  } else {
-    network::RequestOptions reqOpts;
-    reqOpts.timeout = network::Timeout(5.0 * 60.0);
-    reqOpts.database = _vocbaseGuard.database().name();
-    _workers = conductor::WorkerApi{
-        _executionNumber,
-        std::make_unique<NetworkConnection>(
-            Utils::apiPrefix, std::move(reqOpts), _vocbaseGuard.database())};
-  }
-
-  auto createWorkers = std::unordered_map<ServerID, CreateWorker>{};
-  for (auto const& [server, vertexShards] : vertexMap) {
-    auto const& edgeShards = edgeMap[server];
-    createWorkers.emplace(
-        server,
-        CreateWorker{.executionNumber = _executionNumber,
-                     .algorithm = _algorithm->name(),
-                     .userParameters = _userParams,
-                     .coordinatorId = ServerState::instance()->getId(),
-                     .useMemoryMaps = _useMemoryMaps,
-                     .edgeCollectionRestrictions = _edgeCollectionRestrictions,
-                     .vertexShards = vertexShards,
-                     .edgeShards = edgeShards,
-                     .collectionPlanIds = collectionPlanIdMap,
-                     .allShards = shardList});
-  }
-  return _workers.createWorkers(createWorkers);
-}
-
-void Conductor::_cleanup() {
-  if (_masterContext) {
-    _masterContext->postApplication();
-  }
 }
 
 bool Conductor::canBeGarbageCollected() const {
@@ -450,10 +336,28 @@ std::vector<ShardID> Conductor::getShardIds(ShardID const& collection) const {
   return result;
 }
 
-auto Conductor::_changeState(std::unique_ptr<conductor::State> state) -> void {
-  _state = std::move(state);
+auto Conductor::receive(MessagePayload message) -> void {
+  auto newState = _state->receive(message);
+  if (newState.has_value()) {
+    _changeState(std::move(newState.value()));
+  }
+}
+
+auto Conductor::_run() -> void {
   auto nextState = _state->run();
   if (nextState.has_value()) {
     _changeState(std::move(nextState.value()));
   }
+}
+
+void Conductor::cancel() {
+  auto newState = _state->cancel();
+  if (newState.has_value()) {
+    _changeState(std::move(newState.value()));
+  }
+}
+
+auto Conductor::_changeState(std::unique_ptr<conductor::State> state) -> void {
+  _state = std::move(state);
+  _run();
 }
