@@ -727,8 +727,10 @@ bool mtime(time_t& result, const file_path_t file) noexcept {
 
 handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
 
-  assert(mode & (OpenMode::Write | OpenMode::Read) !=
-                    (OpenMode::Write | OpenMode::Read));
+  // Should be Read or Write but not both or none of them
+  assert(((mode & OpenMode::Read) == OpenMode::Invalid) !=
+         ((mode & OpenMode::Write) == OpenMode::Invalid));
+
   #ifdef _WIN32
   if (!path) {
     return handle_t(nullptr);
@@ -801,6 +803,7 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
 }
 
 handle_t open(void* file, OpenMode mode, int advice) noexcept {
+  // Should be Read or Write but not both or none of them
   assert(((mode & OpenMode::Read) == OpenMode::Invalid) !=
          ((mode & OpenMode::Write) == OpenMode::Invalid));
   #ifdef _WIN32

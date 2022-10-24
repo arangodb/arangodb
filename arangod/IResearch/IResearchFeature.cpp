@@ -86,8 +86,8 @@ DECLARE_GAUGE(arangodb_search_num_out_of_sync_links, uint64_t,
               "Number of arangosearch links currently out of sync");
 
 #ifdef USE_ENTERPRISE
-DECLARE_GAUGE(arangodb_search_cache_size, uint64_t,
-              "ArangoSearch cache usage");
+DECLARE_GAUGE(arangodb_search_columns_cache_size, uint64_t,
+              "ArangoSearch columns cache usage");
 #endif
 
 namespace arangodb {
