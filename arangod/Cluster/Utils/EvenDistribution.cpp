@@ -42,71 +42,68 @@ Result EvenDistribution::planShardsOnServers(
     std::vector<ServerID> availableServers,
     std::unordered_set<ServerID>& serversPlanned) {
   // Caller needs to ensure we have something to place shards on
-  TRI_ASSERT(!availableServers.empty());
+  ADB_PROD_ASSERT(!availableServers.empty());
+
   if (_enforceReplicationFactor &&
       availableServers.size() < _replicationFactor) {
     return {TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS};
   }
-  if (!availableServers.empty()) {
-    auto serversBefore = availableServers.size();
-    // Erase all servers that are not allowed
-    availableServers.erase(
-        std::remove_if(availableServers.begin(), availableServers.end(),
-                       [&](const std::string& x) {
-                         return std::find(_avoidServers.begin(),
-                                          _avoidServers.end(),
-                                          x) != _avoidServers.end();
-                       }),
-        availableServers.end());
 
-    if (_enforceReplicationFactor &&
-        availableServers.size() < _replicationFactor) {
-      // Check if enough servers are left
-      LOG_TOPIC("03682", DEBUG, Logger::CLUSTER)
-          << "Do not have enough DBServers for requested "
-             "replicationFactor,"
-          << " (after considering avoid list),"
-          << " nrDBServers: " << serversBefore
-          << " replicationFactor: " << _replicationFactor
-          << " avoid list size: " << _avoidServers.size();
-      return {TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS};
-    }
+  auto serversBefore = availableServers.size();
+  // Erase all servers that are not allowed
+  availableServers.erase(
+      std::remove_if(availableServers.begin(), availableServers.end(),
+                     [&](const std::string& x) {
+                       return std::find(_avoidServers.begin(),
+                                        _avoidServers.end(),
+                                        x) != _avoidServers.end();
+                     }),
+      availableServers.end());
+
+  if (_enforceReplicationFactor &&
+      availableServers.size() < _replicationFactor) {
+    // Check if enough servers are left
+    LOG_TOPIC("03682", DEBUG, Logger::CLUSTER)
+        << "Do not have enough DBServers for requested "
+           "replicationFactor,"
+        << " (after considering avoid list),"
+        << " nrDBServers: " << serversBefore
+        << " replicationFactor: " << _replicationFactor
+        << " avoid list size: " << _avoidServers.size();
+    return {TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS};
   }
-
-  // Shuffle what we have left.
-  std::random_device rd;
-  std::mt19937 g(rd());
-  std::shuffle(availableServers.begin(), availableServers.end(), g);
+  
   _shardToServerMapping.clear();
+
+  // Example: Servers: A B C D E F G H I (9)
+  // Replication Factor 3, k = 9 / gcd(3, 9) = 3
+  // A B C
+  // D E F
+  // G H I  <- now we do an additional shift
+  // B C D
+  // E F G
+  // H I A  <- shift
+  // C D E
+  // F G H
+  // I A B
 
   // In case we have not enough servers available AND do not enforce replication
   // factor.
   auto serversToPick = std::min(_replicationFactor, availableServers.size());
 
-  size_t leaderIndex = 0;
-  size_t followerIndex = 0;
+  size_t k = availableServers.size() /
+             std::gcd(serversToPick, availableServers.size());
+  size_t offset = 0;
   for (uint64_t i = 0; i < _numberOfShards; ++i) {
+    if (i % k == 0) {
+      offset += 1;
+    }
     // determine responsible server(s)
-    std::vector<ServerID> serverIds;
+    std::vector<std::string> serverIds;
     for (uint64_t j = 0; j < serversToPick; ++j) {
-      if (j >= availableServers.size()) {
-        break;
-      }
-      std::string candidate;
-      // mop: leader
-      if (serverIds.empty()) {
-        candidate = availableServers[leaderIndex++];
-        if (leaderIndex >= availableServers.size()) {
-          leaderIndex = 0;
-        }
-      } else {
-        do {
-          candidate = availableServers[followerIndex++];
-          if (followerIndex >= availableServers.size()) {
-            followerIndex = 0;
-          }
-        } while (candidate == serverIds[0]);  // mop: ignore leader
-      }
+      auto const& candidate =
+          availableServers[offset % availableServers.size()];
+      offset += 1;
       serverIds.push_back(candidate);
       // remember that we use this server
       serversPlanned.emplace(candidate);
@@ -115,5 +112,6 @@ Result EvenDistribution::planShardsOnServers(
     _shardToServerMapping.emplace_back(
         ResponsibleServerList{std::move(serverIds)});
   }
+
   return {TRI_ERROR_NO_ERROR};
 }
