@@ -176,8 +176,8 @@ class range_column_iterator final : public resettable_doc_iterator,
     std::get<irs::cost>(attrs_).reset(header.docs_count);
   }
 
-  virtual attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(
+      irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
