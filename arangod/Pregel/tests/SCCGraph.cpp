@@ -20,7 +20,7 @@ SCCGraph<EdgeProperties, VertexProperties>::SCCGraph(
  * another node on the path from X to the root.
  *
  * Recall that tree edges go from a representative of the source scc to, in
-// general, any vertex in the target scc.
+ * general, any vertex in the target scc.
  * @tparam EdgeProperties
  * @tparam VertexProperties
  * @param from
