@@ -43,7 +43,6 @@ class LogicalCollection;
 class ManagedDocumentResult;
 class RocksDBPrimaryIndex;
 class RocksDBSavePoint;
-class RocksDBVPackIndex;
 class LocalDocumentId;
 
 class RocksDBCollection final : public RocksDBMetaCollection {

@@ -440,12 +440,6 @@ class Index {
       aql::AstNode const* op, aql::Variable const* reference,
       containers::FlatHashSet<std::string>& nonNullAttributes, bool) const;
 
-  /// @brief Transform the list of search slices to search values.
-  ///        This will multiply all IN entries and simply return all other
-  ///        entries.
-  void expandInSearchValues(velocypack::Slice const,
-                            velocypack::Builder&) const;
-
   virtual void warmup(transaction::Methods* trx,
                       std::shared_ptr<basics::LocalTaskQueue> queue);
 

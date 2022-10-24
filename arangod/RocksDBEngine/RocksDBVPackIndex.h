@@ -61,12 +61,14 @@ class Methods;
 enum class RocksDBVPackIndexSearchValueFormat : uint8_t {
   kDetect,
   kOperatorsAndValues,
-  kValuesOnly
+  kValuesOnly,
+  kIn,
 };
 
 class RocksDBVPackIndex : public RocksDBIndex {
   template<bool unique, bool reverse, bool mustCheckBounds>
   friend class RocksDBVPackIndexIterator;
+  friend class RocksDBVPackIndexInIterator;
 
  public:
   static uint64_t HashForKey(rocksdb::Slice const& key);
@@ -131,13 +133,22 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   bool hasStoredValues() const noexcept { return !_storedValues.empty(); }
 
+  void buildEmptySearchValues(velocypack::Builder& result) const;
+
   // build new search values. this can also be called from the
   // VPackIndexIterator
-  void buildSearchValues(aql::AstNode const* node,
+  void buildSearchValues(transaction::Methods* trx, aql::AstNode const* node,
                          aql::Variable const* reference,
-                         VPackBuilder& searchValues,
-                         RocksDBVPackIndexSearchValueFormat& format,
-                         bool& needNormalize) const;
+                         IndexIteratorOptions const& opts,
+                         velocypack::Builder& searchValues,
+                         RocksDBVPackIndexSearchValueFormat& format) const;
+
+  void buildSearchValuesInner(transaction::Methods* trx,
+                              aql::AstNode const* node,
+                              aql::Variable const* reference,
+                              IndexIteratorOptions const& opts,
+                              velocypack::Builder& searchValues,
+                              RocksDBVPackIndexSearchValueFormat& format) const;
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
@@ -154,11 +165,15 @@ class RocksDBVPackIndex : public RocksDBIndex {
                 OperationOptions const& options, bool performChecks) override;
 
  private:
+  void expandInSearchValues(velocypack::Slice base, velocypack::Builder& result,
+                            IndexIteratorOptions const& opts) const;
+
   // build an index iterator from a VelocyPack range description
   std::unique_ptr<IndexIterator> buildIterator(
       transaction::Methods* trx, velocypack::Slice searchValues,
       IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
-      RocksDBVPackIndexSearchValueFormat format) const;
+      RocksDBVPackIndexSearchValueFormat format,
+      bool& isUniqueIndexIterator) const;
 
   // build bounds for an index range
   void buildIndexRangeBounds(transaction::Methods* trx, VPackSlice searchValues,
@@ -166,9 +181,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
                              RocksDBKeyBounds& bounds) const;
 
   std::unique_ptr<IndexIterator> buildIteratorFromBounds(
-      transaction::Methods* trx, bool reverse, ReadOwnWrites readOwnWrites,
-      RocksDBKeyBounds&& bounds, RocksDBVPackIndexSearchValueFormat format,
-      bool useCache) const;
+      transaction::Methods* trx, bool reverse, IndexIteratorOptions const& opts,
+      ReadOwnWrites readOwnWrites, RocksDBKeyBounds&& bounds,
+      RocksDBVPackIndexSearchValueFormat format, bool useCache) const;
 
   /// @brief returns whether the document can be inserted into the index
   /// (or if there will be a conflict)
