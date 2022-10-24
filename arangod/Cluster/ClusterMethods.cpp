@@ -709,11 +709,6 @@ static std::shared_ptr<ShardMap> DistributeShardsEvenly(
     std::vector<std::string> serverIds;
     for (uint64_t j = 0; j < replicationFactor; ++j) {
       if (j >= dbServers.size()) {
-        if (warnAboutReplicationFactor) {
-          LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
-              << "createCollectionCoordinator: replicationFactor is "
-              << "too large for the number of DBservers";
-        }
         break;
       }
       std::string candidate;
@@ -2901,13 +2896,6 @@ ClusterMethods::persistCollectionsInAgency(
         if (!avoid.empty()) {
           // We need to remove all servers that are in the avoid list
           if (dbServers.size() - avoid.size() < replicationFactor) {
-            LOG_TOPIC("03682", DEBUG, Logger::CLUSTER)
-                << "Do not have enough DBServers for requested "
-                   "replicationFactor,"
-                << " (after considering avoid list),"
-                << " nrDBServers: " << dbServers.size()
-                << " replicationFactor: " << replicationFactor
-                << " avoid list size: " << avoid.size();
             // Not enough DBServers left
             THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
           }
