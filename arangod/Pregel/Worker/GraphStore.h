@@ -147,7 +147,7 @@ class GraphStore final {
   /// Write results to database
   auto storeResults(WorkerConfig* config,
                     std::function<void()> const& statusUpdateCallback)
-      -> futures::Future<Result>;
+      -> ResultT<Stored>;
 
  private:
   void loadVertices(ShardID const& vertexShard,

@@ -38,9 +38,10 @@ struct Message;
 
 namespace conductor {
 
-#define LOG_PREGEL_CONDUCTOR(logId, level) \
-  LOG_TOPIC(logId, level, Logger::PREGEL)  \
-      << "[job " << conductor._executionNumber << "] "
+#define LOG_PREGEL_CONDUCTOR_STATE(logId, level)                           \
+  LOG_TOPIC(logId, level, Logger::PREGEL)                                  \
+      << "[job " << conductor._executionNumber << "] Conductor " << name() \
+      << " state "
 
 struct State {
   virtual auto run() -> std::optional<std::unique_ptr<State>> = 0;
