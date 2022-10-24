@@ -98,8 +98,8 @@ auto inspect(Inspector& f, SCCVertexProperties& x) {
  * The authors of the paper claim that the time complexity of the algorithm is
  * O(h*m + (n*log n)) where n is the number of vertices, m the number of edges
  * and h the maximal height of the tree that is reached during the algorithm
- * run. Theoretically, the best upper bound for h is n, however, the authors
- * claim that in their experiments it is close to log n.
+ * run. Theoretically, the best known upper bound for h is n, however, the
+ * authors claim that in their experiments it is close to log n.
  *
  * Discussion.
  *
