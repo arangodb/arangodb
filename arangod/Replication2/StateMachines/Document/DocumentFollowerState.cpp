@@ -126,8 +126,7 @@ auto DocumentFollowerState::forceLocalTransaction(OperationType opType,
   auto doc = DocumentLogEntry{std::string(shardId), opType, std::move(slice),
                               TransactionId{0}.asFollowerTransactionId()};
   if (auto applyRes = _transactionHandler->applyEntry(doc); applyRes.fail()) {
-    _transactionHandler->removeTransaction(
-        TransactionId{0}.asFollowerTransactionId());
+    _transactionHandler->removeTransaction(TransactionId::createFollower());
     return applyRes;
   }
   auto commit = DocumentLogEntry{std::string(shardId),

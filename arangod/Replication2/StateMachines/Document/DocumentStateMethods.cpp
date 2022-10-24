@@ -62,11 +62,13 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     auto singleCollectionTrx = SingleCollectionTransaction(
         ctx, *logicalCollection, AccessMode::Type::READ);
+
     // We call begin here so rocksMethods are initialized
     if (auto res = singleCollectionTrx.begin(); res.fail()) {
       return ResultT<velocypack::SharedSlice>::error(res.errorNumber(),
                                                      res.errorMessage());
     }
+
     auto* physicalCollection = logicalCollection->getPhysical();
     TRI_ASSERT(physicalCollection != nullptr);
     auto iterator = physicalCollection->getReplicationIterator(
