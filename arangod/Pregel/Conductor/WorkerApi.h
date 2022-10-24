@@ -59,13 +59,14 @@ struct WorkerApi {
 
   template<typename In>
   auto sendToAll(In const& in) -> Result {
-    auto requests = std::vector<futures::Future<Result>>{};
-    for (auto&& server : _servers) {
-      requests.emplace_back(_connection->post(
-          Destination{Destination::Type::server, server},
-          ModernMessage{.executionNumber = _executionNumber, .payload = {in}}));
-    }
     return _aggregate.doUnderLock([&](auto& aggregate) {
+      auto requests = std::vector<futures::Future<Result>>{};
+      for (auto&& server : _servers) {
+        requests.emplace_back(
+            _connection->post(Destination{Destination::Type::server, server},
+                              ModernMessage{.executionNumber = _executionNumber,
+                                            .payload = {in}}));
+      }
       auto responses = futures::collectAll(requests).get();
       for (auto const& response : responses) {
         if (response.get().fail()) {
@@ -82,15 +83,15 @@ struct WorkerApi {
 
   template<typename In>
   auto send(std::unordered_map<ServerID, In> const& in) -> Result {
-    auto requests = std::vector<futures::Future<Result>>{};
-    for (auto&& [server, message] : in) {
-      // TODO check that server is inside _servers
-      requests.emplace_back(
-          _connection->post(Destination{Destination::Type::server, server},
-                            ModernMessage{.executionNumber = _executionNumber,
-                                          .payload = {message}}));
-    }
     return _aggregate.doUnderLock([&](auto& aggregate) {
+      auto requests = std::vector<futures::Future<Result>>{};
+      for (auto&& [server, message] : in) {
+        // TODO check that server is inside _servers
+        requests.emplace_back(
+            _connection->post(Destination{Destination::Type::server, server},
+                              ModernMessage{.executionNumber = _executionNumber,
+                                            .payload = {message}}));
+      }
       auto responses = futures::collectAll(requests).get();
       for (auto const& response : responses) {
         if (response.get().fail()) {
