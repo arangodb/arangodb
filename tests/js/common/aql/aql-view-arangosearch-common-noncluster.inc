@@ -1821,5 +1821,5 @@ return function (args) {
       assertEqual(1, res.length);
     }
   };
-}
+};
 }());
