@@ -65,6 +65,10 @@ void LeaderStateManager<S>::run() noexcept {
         LOG_CTX("0dcf7", FATAL, self->loggerContext)
             << "Caught unhandled exception in replicated state machine: "
             << ex.message() << " (exception location: " << ex.location() << ")";
+        if (ex.code() == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
+          // TODO this is a temporary fix, see CINFRA-588
+          return;
+        }
         FATAL_ERROR_EXIT();
       } catch (std::exception const& ex) {
         LOG_CTX("506c2", FATAL, self->loggerContext)

@@ -447,7 +447,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
   // open reader
   auto reader = irs::directory_reader::open(dir);
   ASSERT_TRUE(reader);
-  ASSERT_EQ(1, reader->size());
+  ASSERT_EQ(1U, reader->size());
   auto& segment = (*reader)[0];
   EXPECT_TRUE(reader->docs_count() > 0);
 

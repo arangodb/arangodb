@@ -115,11 +115,14 @@ PathSequence const somePaths = {
 // is merely initialized with a set of "paths" and then outputs them, keeping a
 // record of which paths it produced. This record is used in the validation
 // whether the executor output the correct sequence of rows.
-class FakeKShortestPathsFinder : public KShortestPathsFinder {
+
+class FakeKShortestPathsFinder : public KShortestPathsFinderInterface {
  public:
   FakeKShortestPathsFinder(ShortestPathOptions& options,
                            PathSequence const& kpaths)
-      : KShortestPathsFinder(options), _kpaths(kpaths), _traversalDone(true) {}
+      : KShortestPathsFinderInterface(options),
+        _kpaths(kpaths),
+        _traversalDone(true) {}
   ~FakeKShortestPathsFinder() = default;
 
   auto gotoNextPath() -> bool {
@@ -183,6 +186,23 @@ class FakeKShortestPathsFinder : public KShortestPathsFinder {
     return _calledWith;
   }
 
+  bool shortestPath(arangodb::velocypack::Slice start,
+                    arangodb::velocypack::Slice target,
+                    arangodb::graph::ShortestPathResult& result) override {
+    return false;
+  }
+
+  void clear() override{};
+  bool getNextPathShortestPathResult(ShortestPathResult& path) override {
+    // TODO might need to be implemented.
+    return true;
+  };
+
+  bool getNextPath(Path& path) override {
+    // TODO might need to be implemented.
+    return true;
+  };
+
  private:
   // We emulate a number of paths between PathPair
   PathSequence const& _kpaths;
@@ -232,7 +252,7 @@ class EnumeratePathsExecutorTest : public ::testing::Test {
   // and that doesn't mix with std::move
   KShortestPathsTestParameters parameters;
 
-  MockAqlServer server;
+  MockAqlServer server{};
   ExecutionState state;
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
@@ -241,24 +261,20 @@ class EnumeratePathsExecutorTest : public ::testing::Test {
 
   std::shared_ptr<arangodb::aql::Query> fakedQuery;
   ShortestPathOptions options;
-
   RegisterInfos registerInfos;
-  EnumeratePathsExecutorInfos<KShortestPathsFinder> executorInfos;
-
+  EnumeratePathsExecutorInfos<KShortestPathsFinderInterface> executorInfos;
   FakeKShortestPathsFinder& finder;
-
   SharedAqlItemBlockPtr inputBlock;
   AqlItemBlockInputRange input;
 
   std::shared_ptr<Builder> fakeUnusedBlock;
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher;
 
-  EnumeratePathsExecutor<KShortestPathsFinder> testee;
+  EnumeratePathsExecutor<KShortestPathsFinderInterface> testee;
   OutputAqlItemRow output;
 
   EnumeratePathsExecutorTest(KShortestPathsTestParameters parameters__)
       : parameters(std::move(parameters__)),
-        server{},
         itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
         options(*fakedQuery.get()),
@@ -382,7 +398,7 @@ class EnumeratePathsExecutorTest : public ::testing::Test {
 
   void TestExecutor(
       RegisterInfos& registerInfos,
-      EnumeratePathsExecutorInfos<KShortestPathsFinder>& executorInfos,
+      EnumeratePathsExecutorInfos<KShortestPathsFinderInterface>& executorInfos,
       AqlItemBlockInputRange& input) {
     // This will fetch everything now, unless we give a small enough atMost
 
