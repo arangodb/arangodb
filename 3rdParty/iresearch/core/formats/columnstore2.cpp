@@ -322,7 +322,7 @@ class column_base : public column_reader, private util::noncopyable {
     assert(!is_encrypted(hdr_) || cipher_);
   }
 
-  virtual ~column_base() { 
+  ~column_base() override { 
     if (!column_data_.empty()) {
       auto released = static_cast<int64_t>(column_data_.size());
       // force memory release
