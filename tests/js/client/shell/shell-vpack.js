@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global arango, VPACK_TO_V8, V8_TO_VPACK */
+/*global arango, VPACK_TO_V8, V8_TO_VPACK, assertEqual, assertTrue, assertFalse, assertNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test request module
@@ -37,13 +37,16 @@ var expect = require('chai').expect;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function RequestSuite () {
-  return { 
-    testVersionJsonJson : versionJsonJson,
+function RequestSuite() {
+  return {
+    testVersionJsonJson: versionJsonJson,
     testVersionVpackJson: versionVpackJson,
     testVersionJsonVpack: versionJsonVpack,
     testVersionVpackVpack: versionVpackVpack,
-    testEchoVpackVpack: echoVpackVpack
+    testEchoVpackVpack: echoVpackVpack,
+    testAdminExecuteWithHeaderVpack: adminExecuteWithHeaderVpack,
+    testAdminExecuteWithHeaderVpack2: adminExecuteWithHeaderVpack2,
+    testAdminExecuteNoHeaderVpack: adminExecuteNoHeaderVpack,
   };
 };
 
@@ -52,7 +55,7 @@ function versionJsonJson() {
   var path = '/_api/version';
   var headers = {
     'content-type': 'application/json',
-    'accept'      : 'application/json'
+    'accept': 'application/json'
   };
 
   var res = arango.POST_RAW(path, "", headers);
@@ -67,7 +70,7 @@ function versionJsonJson() {
 
   expect(obj.server).to.be.equal('arango');
   expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
-  
+
   expect(obj.license).to.match(/enterprise|community/g);
 };
 
@@ -75,7 +78,7 @@ function versionVpackJson() {
   var path = '/_api/version';
   var headers = {
     'content-type': 'application/x-velocypack',
-    'accept'      : 'application/json'
+    'accept': 'application/json'
   };
 
   var res = arango.POST_RAW(path, "", headers);
@@ -94,11 +97,11 @@ function versionVpackJson() {
   expect(obj.license).to.match(/enterprise|community/g);
 };
 
-function versionJsonVpack () {
+function versionJsonVpack() {
   var path = '/_api/version';
   var headers = {
     'content-type': 'application/json',
-    'accept'      : 'application/x-velocypack'
+    'accept': 'application/x-velocypack'
   };
 
   var res = arango.POST_RAW(path, "", headers);
@@ -116,11 +119,11 @@ function versionJsonVpack () {
   expect(obj.license).to.match(/enterprise|community/g);
 };
 
-function versionVpackVpack () {
+function versionVpackVpack() {
   var path = '/_api/version';
   var headers = {
     'content-type': 'application/x-velocypack',
-    'accept'      : 'application/x-velocypack'
+    'accept': 'application/x-velocypack'
   };
 
   var res = arango.POST_RAW(path, "", headers);
@@ -140,22 +143,70 @@ function versionVpackVpack () {
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
-function echoVpackVpack () {
+function echoVpackVpack() {
   var path = '/_admin/echo';
   var headers = {
     'content-type': 'application/x-velocypack',
-    'accept'      : 'application/x-velocypack'
+    'accept': 'application/x-velocypack'
   };
 
-  var obj = { "server" : "arango" , "version" : "3.0.devel" };
+  var obj = {"server": "arango", "version": "3.0.devel"};
   var body = V8_TO_VPACK(obj);
-  
+
   var res = arango.POST_RAW(path, body, headers);
 
   expect(res.body).to.be.a('SlowBuffer');
   expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
   var replyBody = VPACK_TO_V8(res.body);
   expect(replyBody.requestBody).to.be.a('string');
+};
+
+
+/*
+The following tests are for requests to _admin/execute in which the body is in velocypack format.
+It's only interpreted as velocypack if the header has the content type for velocypack in the request.
+Otherwise, as it happens when there's no content-type in the header, it's interpreted as JSON and will return an error
+ */
+
+function adminExecuteWithHeaderVpack() {
+  var path = '/_admin/execute';
+  var headers = {
+    'content-type': 'application/x-velocypack',
+  };
+
+  var obj = "require(\"console\").log(\"abc\");";
+  var body = V8_TO_VPACK(obj);
+
+  var res = arango.POST_RAW(path, body, headers);
+  assertEqual(res.code, 200);
+  assertFalse(res.error);
+  assertNull(res.parsedBody);
+};
+
+function adminExecuteWithHeaderVpack2() {
+  var path = '/_admin/execute';
+  var headers = {
+    'content-type': 'application/x-velocypack',
+  };
+
+  var obj = "return \"abc\"";
+  var body = V8_TO_VPACK(obj);
+
+  var res = arango.POST_RAW(path, body, headers);
+  assertEqual(res.code, 200);
+  assertFalse(res.error);
+  assertEqual(res.parsedBody, "abc");
+};
+
+function adminExecuteNoHeaderVpack() {
+  var path = '/_admin/execute';
+
+  var obj = "return \"abc\"";
+  var body = V8_TO_VPACK(obj);
+
+  var res = arango.POST_RAW(path, body);
+  assertEqual(res.code, 400);
+  assertTrue(res.error);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
