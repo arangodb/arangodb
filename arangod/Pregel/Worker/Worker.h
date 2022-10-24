@@ -160,7 +160,6 @@ class Worker : public IWorker {
   auto _finishProcessing(
       std::unordered_map<ShardID, uint64_t> sendCountPerShard)
       -> ResultT<GlobalSuperStepFinished>;
-  void _callConductor(ModernMessage message);
   [[nodiscard]] auto _observeStatus() -> Status const;
   [[nodiscard]] auto _makeStatusCallback() -> std::function<void()>;
 

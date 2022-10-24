@@ -127,14 +127,15 @@ struct WorkerApi {
               }));
     }
     return futures::collectAll(results).thenValue(
-        [](auto responses) -> ResultT<Out> {
+        [in = std::move(in)](auto responses) -> ResultT<Out> {
           auto out = Out{};
           for (auto const& response : responses) {
             if (response.get().fail()) {
-              return Result{
-                  response.get().errorNumber(),
-                  fmt::format("Got unsuccessful response from worker: {}",
-                              response.get().errorMessage())};
+              return Result{response.get().errorNumber(),
+                            fmt::format("Got unsuccessful response from worker "
+                                        "after sending message {}: {}",
+                                        velocypack::serialize(in).toJson(),
+                                        response.get().errorMessage())};
             }
             out.add(response.get().get());
           }
