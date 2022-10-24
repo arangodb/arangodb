@@ -68,7 +68,7 @@ namespace arangodb {
 ExportFeature::ExportFeature(Server& server, int* result)
     : ArangoExportFeature{server, *this},
       _xgmmlLabelAttribute("label"),
-      _typeExport("json"),
+      _typeExport("jsonl"),
       _customQueryMaxRuntime(0.0),
       _useMaxRuntime(false),
       _escapeCsvFormulae(true),
