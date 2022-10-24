@@ -340,7 +340,8 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   #Replication2/ReplicatedState/ReplicatedStateMetricsTest.cpp
   #Replication2/ReplicatedState/ReplicatedStateTest.cpp
   #Replication2/ReplicatedState/StateCleanupTest.cpp
-  #Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp)
+  #Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
+)
 
 set(ARANGODB_GRAPH_TEST_SOURCES
   Graph/ClusterTraverserCacheTest.cpp
