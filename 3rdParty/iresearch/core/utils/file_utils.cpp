@@ -776,14 +776,14 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
   } while ((--try_count) > 0);
   return handle_t(nullptr);
 #else
-  auto mode =
+  auto posix_mode =
       ((OpenMode::Read & mode == OpenMode::Read) ? O_RDONLY : (O_CREAT | O_TRUNC | O_WRONLY));
 #ifndef __APPLE__
   if ((mode & OpenMode::Direct) == OpenMode::Direct) {
-    mode |= O_DIRECT;
+    posix_mode |= O_DIRECT;
   }
 #endif
-  auto fd = ::open(path ? path : "/dev/null", mode, S_IRUSR | S_IWUSR);
+  auto fd = ::open(path ? path : "/dev/null", posix_mode, S_IRUSR | S_IWUSR);
   if (fd < 0) {
     IR_FRMT_ERROR("Failed to open file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
     return handle_t(nullptr);
