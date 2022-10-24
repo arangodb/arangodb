@@ -150,6 +150,8 @@ std::vector<uint64_t> read_blocks_dense(const column_header& hdr,
   return blocks;
 }
 
+bool noop_memory_accounter(int64_t) { return true; }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class range_column_iterator
 /// @brief iterates over a specified contiguous range of documents
@@ -366,12 +368,17 @@ class column_base : public column_reader, private util::noncopyable {
 
   bool allocate_buffered_memory(size_t size) {
     assert(size < static_cast<size_t>(std::numeric_limits<int64_t>::max()));
-    if (buffered_memory_accounter_ &&
-        !buffered_memory_accounter_(static_cast<int64_t>(size))) {
+    assert(buffered_memory_accounter_);
+    if (!buffered_memory_accounter_(static_cast<int64_t>(size))) {
+      // use string to have always null-terminated name
+      std::string col_name{"<anonymous>"};
+      if (!name().null()) {
+        col_name = name();
+      }
       IR_FRMT_WARN(
-          "Failed to allocate memory for buffered column id %d of "
+          "Failed to allocate memory for buffered column id %d name: %s of "
           "size " IR_SIZE_T_SPECIFIER,
-          header().id, size);
+          header().id, col_name.c_str(), size);
       return false;
     }
     // should be only one alllocation
@@ -660,7 +667,7 @@ class dense_fixed_length_column final : public column_base {
   void make_buffered(
       irs::index_input& in, const memory_accounting_f& memory_accounter,
       range<std::unique_ptr<column_reader>> next_sorted_columns) override {
-    buffered_memory_accounter_ = memory_accounter;
+    buffered_memory_accounter_ = memory_accounter? memory_accounter : noop_memory_accounter;
     auto& hdr = mutable_header();
     auto const data_size = len_ * hdr.docs_count;
     auto const bitmap_size =
