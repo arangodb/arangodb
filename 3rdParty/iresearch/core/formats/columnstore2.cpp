@@ -261,8 +261,8 @@ class bitmap_column_iterator final : public resettable_doc_iterator,
     std::get<attribute_ptr<score>>(attrs_) = irs::get_mutable<score>(&bitmap_);
   }
 
-  virtual attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(
+      irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
