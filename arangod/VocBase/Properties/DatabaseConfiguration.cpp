@@ -26,5 +26,8 @@
 using namespace arangodb;
 
 DatabaseConfiguration::DatabaseConfiguration(
-    std::function<DataSourceId()> _idGenerator)
-    : idGenerator{std::move(_idGenerator)} {}
+    std::function<DataSourceId()> _idGenerator,
+    std::function<ResultT<ClusteringProperties>(std::string const&)>
+        _getCollectionGroupSharding)
+    : idGenerator{std::move(_idGenerator)},
+      getCollectionGroupSharding{std::move(_getCollectionGroupSharding)} {}

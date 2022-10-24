@@ -96,7 +96,8 @@ class PlanCollectionToAgencyWriterTest : public ::testing::Test {
       CreateCollectionBody col) {
     auto numberOfShards = col.numberOfShards.value();
     auto distribution = std::make_shared<EvenDistribution>(
-        numberOfShards, col.replicationFactor.value(), std::vector<ServerID>{});
+        numberOfShards, col.replicationFactor.value(), std::vector<ServerID>{},
+        false);
     auto shards = generateShardNames(numberOfShards);
 
     std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>

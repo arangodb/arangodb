@@ -216,7 +216,7 @@ struct TRI_vocbase_t {
       const -> std::shared_ptr<
           arangodb::replication2::replicated_state::ReplicatedStateBase>;
 
-  [[nodiscard]] auto getDatabaseConfiguration() const
+  [[nodiscard]] auto getDatabaseConfiguration()
       -> arangodb::DatabaseConfiguration;
 
  public:

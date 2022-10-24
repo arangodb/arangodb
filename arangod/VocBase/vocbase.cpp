@@ -2246,7 +2246,7 @@ auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
   return _logManager->getReplicatedLogsQuickStatus();
 }
 
-[[nodiscard]] auto TRI_vocbase_t::getDatabaseConfiguration() const
+[[nodiscard]] auto TRI_vocbase_t::getDatabaseConfiguration()
     -> arangodb::DatabaseConfiguration {
   auto& cl = server().getFeature<ClusterFeature>();
   auto& db = server().getFeature<DatabaseFeature>();
@@ -2254,10 +2254,24 @@ auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
   auto config = std::invoke([&]() -> DatabaseConfiguration {
     if (!ServerState::instance()->isCoordinator() &&
         !ServerState::instance()->isDBServer()) {
-      return {[]() { return DataSourceId(TRI_NewTickServer()); }};
+      return {[]() { return DataSourceId(TRI_NewTickServer()); },
+              [](std::string const&) -> ResultT<ClusteringProperties> {
+                return {TRI_ERROR_NOT_IMPLEMENTED};
+              }};
     } else {
       auto& ci = cl.clusterInfo();
-      return {[&ci]() { return DataSourceId(ci.uniqid(1)); }};
+      return {[&ci]() { return DataSourceId(ci.uniqid(1)); },
+              [this](std::string const& name) -> ResultT<ClusteringProperties> {
+                CollectionNameResolver resolver{*this};
+                auto c = resolver.getCollection(name);
+                if (c == nullptr) {
+                  return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+                                "Collection not found: " + name +
+                                    " in database " + this->name()};
+                }
+                // Extract required ShardingProperties
+                return c->getClusteringProperties();
+              }};
     }
   });
 
@@ -2266,7 +2280,7 @@ auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
   config.shouldValidateClusterSettings = true;
   config.minReplicationFactor = cl.minReplicationFactor();
   config.maxReplicationFactor = cl.maxReplicationFactor();
-  config.enforceReplicationFactor = false;
+  config.enforceReplicationFactor = true;
   config.defaultNumberOfShards = 1;
   config.defaultReplicationFactor =
       std::max(replicationFactor(), cl.systemReplicationFactor());

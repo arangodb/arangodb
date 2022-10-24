@@ -39,6 +39,11 @@ namespace arangodb {
  * modified after the Collection is created.
  */
 struct CollectionConstantProperties {
+  struct Invariants {
+    [[nodiscard]] static auto isSmartConfiguration(
+        CollectionConstantProperties const& props) -> inspection::Status;
+  };
+
   std::underlying_type_t<TRI_col_type_e> type =
       TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
   bool isSystem = false;
@@ -75,17 +80,19 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
       f.field("isSmart", props.isSmart).fallback(f.keep()),
       f.field("isDisjoint", props.isDisjoint).fallback(f.keep()),
       f.field("cacheEnabled", props.cacheEnabled).fallback(f.keep()),
-      f.field("smartGraphAttribute", props.smartGraphAttribute)
-          .invariant(UtilityInvariants::isNonEmptyIfPresent),
-      f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute)
-          .invariant(UtilityInvariants::isNonEmptyIfPresent),
-      f.field("type", props.type)
-          .fallback(f.keep())
-          .invariant(UtilityInvariants::isValidCollectionType),
-      f.field("keyOptions", props.keyOptions).fallback(f.keep()),
-      /* Backwards compatibility, fields are allowed (MMFILES) but have no
-         relevance anymore */
-      f.ignoreField("doCompact"), f.ignoreField("isVolatile"));
+          f.field("smartGraphAttribute", props.smartGraphAttribute)
+              .invariant(UtilityInvariants::isNonEmptyIfPresent),
+          f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute)
+              .invariant(UtilityInvariants::isNonEmptyIfPresent),
+          f.field("type", props.type)
+              .fallback(f.keep())
+              .invariant(UtilityInvariants::isValidCollectionType),
+          f.field("keyOptions", props.keyOptions).fallback(f.keep()),
+          /* Backwards compatibility, fields are allowed (MMFILES) but have no
+             relevance anymore */
+          f.ignoreField("doCompact"), f.ignoreField("isVolatile"))
+      .invariant(
+          CollectionConstantProperties::Invariants::isSmartConfiguration);
 }
 
 }  // namespace arangodb

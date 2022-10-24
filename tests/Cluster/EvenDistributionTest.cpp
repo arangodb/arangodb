@@ -107,7 +107,7 @@ TEST_F(EvenDistributionTest, should_create_one_entry_per_shard) {
   uint64_t nrShards = 9;
 
   auto names = generateServerNames(10);
-  EvenDistribution testee{nrShards, 1, {}};
+  EvenDistribution testee{nrShards, 1, {}, true};
 
   std::unordered_set<ServerID> planned;
   auto res = testee.planShardsOnServers(names, planned);
@@ -127,7 +127,7 @@ TEST_F(EvenDistributionTest, should_create_exact_number_of_replicas) {
   uint64_t replicationFactor = 3;
 
   auto names = generateServerNames(10);
-  EvenDistribution testee{nrShards, replicationFactor, {}};
+  EvenDistribution testee{nrShards, replicationFactor, {}, true};
 
   std::unordered_set<ServerID> planned;
   auto res = testee.planShardsOnServers(names, planned);
@@ -157,7 +157,7 @@ TEST_F(EvenDistributionTest, should_not_use_avoid_servers) {
     }
   }
 
-  EvenDistribution testee{nrShards, replicationFactor, forbiddenNames};
+  EvenDistribution testee{nrShards, replicationFactor, forbiddenNames, true};
 
   std::unordered_set<ServerID> planned;
   auto res = testee.planShardsOnServers(names, planned);
@@ -177,8 +177,11 @@ TEST_F(EvenDistributionTest, should_fail_if_replication_is_larger_than_servers) 
   uint64_t replicationFactor = 5;
 
   auto names = generateServerNames(3);
-  EvenDistribution testee{nrShards, replicationFactor, {}};
 
+  ASSERT_LT(names.size(), replicationFactor)
+      << "This test should test that replicationFactor is higher than allowed "
+         "servers, this setup precondition is violated";
+  EvenDistribution testee{nrShards, replicationFactor, {}, true};
 
   std::unordered_set<ServerID> planned;
   auto res = testee.planShardsOnServers(names, planned);
@@ -199,13 +202,82 @@ TEST_F(EvenDistributionTest, should_fail_if_replication_is_larger_than_servers_n
       forbiddenNames.emplace_back(names.at(i));
     }
   }
+  ASSERT_LT(allowedNames.size(), replicationFactor)
+      << "This test should test that replicationFactor is higher than allowed "
+         "servers, this setup precondition is violated";
 
-  // We have 10 server, we dissallow 5 of them => we cannot fulfill replicationFactor 6.
-  EvenDistribution testee{nrShards, replicationFactor, forbiddenNames};
+  // We have 10 server, we dissallow 5 of them => we cannot fulfill
+  // replicationFactor 6.
+  EvenDistribution testee{nrShards, replicationFactor, forbiddenNames, true};
 
   std::unordered_set<ServerID> planned;
   auto res = testee.planShardsOnServers(names, planned);
   EXPECT_FALSE(res.ok());
 }
 
+TEST_F(EvenDistributionTest,
+       should_allow_if_replication_is_larger_than_servers_but_not_forced) {
+  uint64_t nrShards = 9;
+  uint64_t replicationFactor = 5;
+
+  auto names = generateServerNames(3);
+  EvenDistribution testee{nrShards, replicationFactor, {}, false};
+
+  std::unordered_set<ServerID> planned;
+  ASSERT_LT(names.size(), replicationFactor)
+      << "This test should test that replicationFactor is higher than allowed "
+         "servers, this setup precondition is violated";
+  auto res = testee.planShardsOnServers(names, planned);
+  EXPECT_TRUE(res.ok());
+  // We want an even distribution, we have fewer servers than required
+  // so all servers should be used
+  EXPECT_EQ(planned.size(), names.size());
+  // Every Planned server, must be available
+  assertOnlyAllowedServersUsed(planned, names);
+  // We doe not have enough servers, take what we can get.
+  assertAllGetExactFollowers(testee, nrShards, names.size());
+  assertEveryServerIsUsedEquallyOftenAsLeader(testee, names.size(), nrShards);
+  assertEveryServerIsUsedEquallyOften(testee, names.size(), nrShards);
 }
+
+TEST_F(
+    EvenDistributionTest,
+    should_fail_if_replication_is_larger_than_servers_not_ignored_but_not_forced) {
+  uint64_t nrShards = 9;
+  uint64_t replicationFactor = 6;
+
+  auto names = generateServerNames(10);
+  std::vector<ServerID> allowedNames{};
+  std::vector<ServerID> forbiddenNames{};
+  for (size_t i = 0; i < names.size(); ++i) {
+    if (i % 2 == 0) {
+      allowedNames.emplace_back(names.at(i));
+    } else {
+      forbiddenNames.emplace_back(names.at(i));
+    }
+  }
+  ASSERT_LT(allowedNames.size(), replicationFactor)
+      << "This test should test that replicationFactor is higher than allowed "
+         "servers, this setup precondition is violated";
+
+  // We have 10 server, we dissallow 5 of them => we cannot fulfill
+  // replicationFactor 6.
+  EvenDistribution testee{nrShards, replicationFactor, forbiddenNames, false};
+
+  std::unordered_set<ServerID> planned;
+  auto res = testee.planShardsOnServers(names, planned);
+  EXPECT_TRUE(res.ok());
+  // We want an even distribution, we have more servers than required
+  // so all servers should be used
+  EXPECT_EQ(planned.size(), allowedNames.size());
+  // Every Planned server, must be available
+  assertOnlyAllowedServersUsed(planned, allowedNames);
+  // We can only have allowedNames many followers, although replicationFactor is
+  // higher
+  assertAllGetExactFollowers(testee, nrShards, allowedNames.size());
+  assertEveryServerIsUsedEquallyOftenAsLeader(testee, allowedNames.size(),
+                                              nrShards);
+  assertEveryServerIsUsedEquallyOften(testee, allowedNames.size(), nrShards);
+}
+
+}  // namespace arangodb::tests

@@ -27,6 +27,7 @@
 #include "Inspection/VPack.h"
 
 #include "InspectTestHelperMakros.h"
+#include "velocypack/Parser.h"
 
 #include <velocypack/Builder.h>
 
@@ -95,22 +96,6 @@ TEST_F(ClusteringMutablePropertiesTest, test_minimal_user_input) {
   EXPECT_FALSE(testee->replicationFactor.has_value());
   EXPECT_FALSE(testee->writeConcern.has_value());
   __HELPER_equalsAfterSerializeParseCircle(testee.get());
-}
-
-TEST_F(ClusteringMutablePropertiesTest, test_illegal_names) {
-  // The empty string
-  __HELPER_assertParsingThrows(name, "");
-
-  // Non String types
-  __HELPER_assertParsingThrows(name, 0);
-  __HELPER_assertParsingThrows(name, VPackSlice::emptyObjectSlice());
-  __HELPER_assertParsingThrows(name, VPackSlice::emptyArraySlice());
-
-  GenerateFailsOnBool(name);
-  GenerateFailsOnInteger(name);
-  GenerateFailsOnDouble(name);
-  GenerateFailsOnArray(name);
-  GenerateFailsOnObject(name);
 }
 
 GenerateBoolAttributeTest(ClusteringMutablePropertiesTest, waitForSync);

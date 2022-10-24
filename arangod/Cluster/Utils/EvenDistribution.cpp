@@ -31,17 +31,20 @@ using namespace arangodb;
 
 EvenDistribution::EvenDistribution(uint64_t numberOfShards,
                                    uint64_t replicationFactor,
-                                   std::vector<ServerID> avoidServers)
+                                   std::vector<ServerID> avoidServers,
+                                   bool enforceReplicationFactor)
     : _numberOfShards(numberOfShards),
       _replicationFactor(replicationFactor),
-      _avoidServers{std::move(avoidServers)} {}
+      _avoidServers{std::move(avoidServers)},
+      _enforceReplicationFactor{enforceReplicationFactor} {}
 
 Result EvenDistribution::planShardsOnServers(
     std::vector<ServerID> availableServers,
     std::unordered_set<ServerID>& serversPlanned) {
   // Caller needs to ensure we have something to place shards on
   TRI_ASSERT(!availableServers.empty());
-  if (availableServers.size() < _replicationFactor) {
+  if (_enforceReplicationFactor &&
+      availableServers.size() < _replicationFactor) {
     return {TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS};
   }
   if (!availableServers.empty()) {
@@ -56,7 +59,8 @@ Result EvenDistribution::planShardsOnServers(
                        }),
         availableServers.end());
 
-    if (availableServers.size() < _replicationFactor) {
+    if (_enforceReplicationFactor &&
+        availableServers.size() < _replicationFactor) {
       // Check if enough servers are left
       LOG_TOPIC("03682", DEBUG, Logger::CLUSTER)
           << "Do not have enough DBServers for requested "
@@ -75,12 +79,16 @@ Result EvenDistribution::planShardsOnServers(
   std::shuffle(availableServers.begin(), availableServers.end(), g);
   _shardToServerMapping.clear();
 
+  // In case we have not enough servers available AND do not enforce replication
+  // factor.
+  auto serversToPick = std::min(_replicationFactor, availableServers.size());
+
   size_t leaderIndex = 0;
   size_t followerIndex = 0;
   for (uint64_t i = 0; i < _numberOfShards; ++i) {
     // determine responsible server(s)
     std::vector<ServerID> serverIds;
-    for (uint64_t j = 0; j < _replicationFactor; ++j) {
+    for (uint64_t j = 0; j < serversToPick; ++j) {
       if (j >= availableServers.size()) {
         break;
       }

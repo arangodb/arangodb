@@ -73,7 +73,7 @@ struct ClusterCollectionMethods {
 
   [[nodiscard]] static auto selectDistributeType(
       ClusterInfo& ci, std::string_view databaseName,
-      CreateCollectionBody const& col,
+      CreateCollectionBody const& col, bool enforceReplicationFactor,
       std::unordered_map<std::string,
                          std::shared_ptr<IShardDistributionFactory>>&
           allUsedDistrbitions) -> std::shared_ptr<IShardDistributionFactory>;

@@ -53,8 +53,13 @@ auto ClusteringMutableProperties::Transformers::ReplicationSatellite::
   return {"Only an integer number or 'satellite' is allowed"};
 }
 
+[[nodiscard]] bool ClusteringMutableProperties::isSatellite() const noexcept {
+  TRI_ASSERT(replicationFactor.has_value());
+  return replicationFactor.has_value() && replicationFactor.value() == 0;
+}
 
-void ClusteringMutableProperties::applyDatabaseDefaults(DatabaseConfiguration const& config) {
+void ClusteringMutableProperties::applyDatabaseDefaults(
+    DatabaseConfiguration const& config) {
   if (!replicationFactor.has_value()) {
     replicationFactor = config.defaultReplicationFactor;
   }
@@ -62,41 +67,27 @@ void ClusteringMutableProperties::applyDatabaseDefaults(DatabaseConfiguration co
     writeConcern = config.defaultWriteConcern;
   }
 }
-/*
-
- if (name != other.name) {
- return false;
-}
-if (waitForSync != other.waitForSync) {
- return false;
-}
-if (replicationFactor != other.replicationFactor) {
- return false;
-}
-if (writeConcern != other.writeConcern) {
- return false;
-}
-
-*/
 
 [[nodiscard]] arangodb::Result ClusteringMutableProperties::validateDatabaseConfiguration(
     DatabaseConfiguration const& config) const {
   // Check Replication factor
-  if (config.enforceReplicationFactor && replicationFactor.has_value()) {
-    if (config.maxReplicationFactor > 0 &&
-        replicationFactor.value() > config.maxReplicationFactor) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              std::string("replicationFactor must not be higher than "
-                          "maximum allowed replicationFactor (") +
-                  std::to_string(config.maxReplicationFactor) + ")"};
-    }
+  if (replicationFactor.has_value()) {
+    if (config.enforceReplicationFactor) {
+      if (config.maxReplicationFactor > 0 &&
+          replicationFactor.value() > config.maxReplicationFactor) {
+        return {TRI_ERROR_BAD_PARAMETER,
+                std::string("replicationFactor must not be higher than "
+                            "maximum allowed replicationFactor (") +
+                    std::to_string(config.maxReplicationFactor) + ")"};
+      }
 
-    if (replicationFactor.value() != 0 &&
-        replicationFactor.value() < config.minReplicationFactor) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              std::string("replicationFactor must not be lower than "
-                          "minimum allowed replicationFactor (") +
-                  std::to_string(config.minReplicationFactor) + ")"};
+      if (replicationFactor.value() != 0 &&
+          replicationFactor.value() < config.minReplicationFactor) {
+        return {TRI_ERROR_BAD_PARAMETER,
+                std::string("replicationFactor must not be lower than "
+                            "minimum allowed replicationFactor (") +
+                    std::to_string(config.minReplicationFactor) + ")"};
+      }
     }
 
     if (replicationFactor.value() > 0 &&

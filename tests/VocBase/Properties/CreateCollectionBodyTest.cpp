@@ -76,7 +76,9 @@ class CreateCollectionBodyTest : public ::testing::Test {
   }
 
   static DatabaseConfiguration defaultDBConfig() {
-    return {[]() { return DataSourceId(42); }};
+    return DatabaseConfiguration{
+        []() { return DataSourceId(42); },
+        [](std::string const&) { return Result{TRI_ERROR_INTERNAL}; }};
   }
 
   // Tries to parse the given body and returns a ResulT of your Type under
@@ -108,7 +110,7 @@ TEST_F(CreateCollectionBodyTest, test_minimal_user_input) {
   auto testee =
       CreateCollectionBody::fromCreateAPIBody(body.slice(), defaultDBConfig());
 
-  ASSERT_TRUE(testee.ok());
+  ASSERT_TRUE(testee.ok()) << testee.errorMessage();
   // Test Default values
 
   // This covers only non-documented APIS
@@ -205,7 +207,7 @@ TEST_F(CreateCollectionBodyTest, test_configureMaxNumberOfShards) {
     // 1024 == 1024 should be okay
     // 1025 >= 1024 should be okay
     for (uint32_t maxShards : std::vector<uint32_t>{0, 1024, 1025}) {
-      config.maxNumberOfShards = maxShards<;
+      config.maxNumberOfShards = maxShards;
       auto testee =
           CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
       ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
@@ -316,7 +318,9 @@ class PlanCollectionNamesTest
   };
 
   static DatabaseConfiguration defaultDBConfig() {
-    return {[]() { return DataSourceId(42); }};
+    return DatabaseConfiguration{
+        []() { return DataSourceId(42); },
+        [](std::string const&) { return Result{TRI_ERROR_INTERNAL}; }};
   }
 };
 
@@ -456,7 +460,9 @@ class PlanCollectionReplicationFactorTest
   }
 
   static DatabaseConfiguration defaultDBConfig() {
-    return {[]() { return DataSourceId(42); }};
+    return DatabaseConfiguration{
+        []() { return DataSourceId(42); },
+        [](std::string const&) { return Result{TRI_ERROR_INTERNAL}; }};
   }
 };
 
@@ -538,7 +544,7 @@ TEST_P(PlanCollectionReplicationFactorTest, test_minReplicationFactor) {
     EXPECT_EQ(testee->writeConcern.value(), writeConcern());
     EXPECT_EQ(testee->replicationFactor.value(), replicationFactor());
   } else {
-    EXPECT_FALSE(result.ok()) << result.errorMessage();
+    EXPECT_FALSE(result.ok()) << "False positive on " << body.toJson();
   }
 }
 
@@ -558,12 +564,14 @@ TEST_P(PlanCollectionReplicationFactorTest, test_nonoEnforce) {
 
   // Without enforcing you can do what you want, including illegal combinations
   bool isAllowed = true;
+  // THis is stricter than 3.10
+  isAllowed = writeConcern() <= replicationFactor();
   if (isAllowed) {
     ASSERT_TRUE(result.ok()) << result.errorMessage();
     EXPECT_EQ(testee->writeConcern.value(), writeConcern());
     EXPECT_EQ(testee->replicationFactor.value(), replicationFactor());
   } else {
-    EXPECT_FALSE(result.ok()) << result.errorMessage();
+    EXPECT_FALSE(result.ok()) << "False positive on " << body.toJson();
   }
 }
 

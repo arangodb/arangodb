@@ -139,6 +139,12 @@ TEST_F(CollectionConstantPropertiesTest, test_collection_type) {
   GenerateFailsOnObject(type);
 }
 
+TEST_F(CollectionConstantPropertiesTest,
+       test_smartGraphAttribtueRequiresIsSmart) {
+  // Setting only SmartGraphAttribut is disallowed
+  __HELPER_assertParsingThrows(smartGraphAttribute, "test");
+}
+
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isSystem);
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isSmart);
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isDisjoint);
@@ -153,5 +159,49 @@ GenerateOptionalStringAttributeTest(CollectionConstantPropertiesTest,
 // Ignored for backwards compatibility with MMFiles
 GenerateIgnoredAttributeTest(CollectionConstantPropertiesTest, doCompact);
 GenerateIgnoredAttributeTest(CollectionConstantPropertiesTest, isVolatile);
+
+class CollectionConstantSmartPropertiesTest
+    : public CollectionConstantPropertiesTest {
+ protected:
+  // Returns minimal, valid JSON object for the struct to test.
+  // Only the given attributeName has the given value.
+  template<typename T>
+  VPackBuilder createMinimumBodyWithOneValue(std::string const& attributeName,
+                                             T const& attributeValue) {
+    VPackBuilder body;
+    {
+      VPackObjectBuilder guard(&body);
+      if (attributeName != "isSmart") {
+        body.add("isSmart", VPackValue(true));
+      }
+      if constexpr (std::is_same_v<T, VPackSlice>) {
+        body.add(attributeName, attributeValue);
+      } else if constexpr (std::is_same_v<T, std::vector<std::string>>) {
+        body.add(VPackValue(attributeName));
+        VPackArrayBuilder arrayGuard(&body);
+        for (auto const& val : attributeValue) {
+          body.add(VPackValue(val));
+        }
+      } else {
+        body.add(attributeName, VPackValue(attributeValue));
+      }
+    }
+    return body;
+  }
+};
+
+GenerateBoolAttributeTest(CollectionConstantSmartPropertiesTest, isSystem);
+GenerateBoolAttributeTest(CollectionConstantSmartPropertiesTest, isDisjoint);
+GenerateBoolAttributeTest(CollectionConstantSmartPropertiesTest, cacheEnabled);
+
+GenerateOptionalStringAttributeTest(CollectionConstantSmartPropertiesTest,
+                                    smartGraphAttribute);
+
+GenerateOptionalStringAttributeTest(CollectionConstantSmartPropertiesTest,
+                                    smartJoinAttribute);
+
+// Ignored for backwards compatibility with MMFiles
+GenerateIgnoredAttributeTest(CollectionConstantSmartPropertiesTest, doCompact);
+GenerateIgnoredAttributeTest(CollectionConstantSmartPropertiesTest, isVolatile);
 
 }  // namespace arangodb::tests

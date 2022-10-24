@@ -28,10 +28,17 @@
 
 namespace arangodb {
 
+template<typename T>
+class ResultT;
+
 class DataSourceId;
+struct ClusteringProperties;
 
 struct DatabaseConfiguration {
-  DatabaseConfiguration(std::function<DataSourceId()> idGenerator);
+  DatabaseConfiguration(
+      std::function<DataSourceId()> idGenerator,
+      std::function<ResultT<ClusteringProperties>(std::string const&)>
+          getCollectionGroupSharding);
 
   bool allowExtendedNames = false;
   bool shouldValidateClusterSettings = false;
@@ -48,5 +55,7 @@ struct DatabaseConfiguration {
   bool isOneShardDB = false;
 
   std::function<DataSourceId()> idGenerator;
+  std::function<ResultT<ClusteringProperties>(std::string const&)>
+      getCollectionGroupSharding;
 };
 }

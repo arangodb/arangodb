@@ -53,6 +53,7 @@
 #include "VocBase/ComputedValues.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/Properties/ClusteringProperties.h"
 #include "VocBase/Validators.h"
 
 #ifdef USE_ENTERPRISE
@@ -311,6 +312,19 @@ RevisionId LogicalCollection::newRevisionId() const {
 ShardingInfo* LogicalCollection::shardingInfo() const {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding.get();
+}
+
+ClusteringProperties LogicalCollection::getClusteringProperties()
+    const noexcept {
+  ClusteringProperties props;
+  props.numberOfShards = numberOfShards();
+  props.writeConcern = writeConcern();
+  props.replicationFactor = replicationFactor();
+  props.distributeShardsLike = distributeShardsLike();
+  props.shardKeys = shardKeys();
+  props.shardingStrategy = shardingInfo()->shardingStrategyName();
+  props.waitForSync = waitForSync();
+  return props;
 }
 
 size_t LogicalCollection::numberOfShards() const noexcept {

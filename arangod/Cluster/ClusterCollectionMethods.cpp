@@ -341,7 +341,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
 
 [[nodiscard]] auto ClusterCollectionMethods::selectDistributeType(
     ClusterInfo& ci, std::string_view databaseName,
-    CreateCollectionBody const& col,
+    CreateCollectionBody const& col, bool enforceReplicationFactor,
     std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>&
         allUsedDistrbitions) -> std::shared_ptr<IShardDistributionFactory> {
   if (col.distributeShardsLike.has_value()) {
@@ -390,7 +390,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
     // Just distribute evenly
     auto distribution = std::make_shared<EvenDistribution>(
         col.numberOfShards.value(), col.replicationFactor.value(),
-        col.avoidServers);
+        col.avoidServers, enforceReplicationFactor);
     allUsedDistrbitions.emplace(col.name, distribution);
     return distribution;
   }
@@ -436,8 +436,9 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   for (auto& c : collections) {
     auto shards =
         generateShardNames(feature.clusterInfo(), c.numberOfShards.value());
-    auto distributionType = selectDistributeType(
-        feature.clusterInfo(), vocbase.name(), c, shardDistributionList);
+    auto distributionType =
+        selectDistributeType(feature.clusterInfo(), vocbase.name(), c,
+                             enforceReplicationFactor, shardDistributionList);
     collectionPlanEntries.emplace_back(toPlanEntry(
         std::move(c), std::move(shards), distributionType, buildingFlags));
   }

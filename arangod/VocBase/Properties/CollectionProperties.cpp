@@ -37,7 +37,18 @@ CollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
     return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
 
-  if (replicationFactor.has_value() && replicationFactor.value() == 0) {
+  auto res = CollectionInternalProperties::
+      applyDefaultsAndValidateDatabaseConfiguration(config);
+  if (res.fail()) {
+    return res;
+  }
+  res = ClusteringProperties::applyDefaultsAndValidateDatabaseConfiguration(
+      config);
+  if (res.fail()) {
+    return res;
+  }
+
+  if (isSatellite()) {
     // We are a satellite, we cannot be smart at the same time
     if (isSmart) {
       return {TRI_ERROR_BAD_PARAMETER,
@@ -52,7 +63,5 @@ CollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
       return {TRI_ERROR_BAD_PARAMETER, "'satellite' cannot use shardKeys"};
     }
   }
-
-  return ClusteringProperties::applyDefaultsAndValidateDatabaseConfiguration(
-      config);
+  return {TRI_ERROR_NO_ERROR};
 }

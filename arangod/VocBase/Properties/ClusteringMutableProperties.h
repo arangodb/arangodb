@@ -58,11 +58,12 @@ struct ClusteringMutableProperties {
 
   bool operator==(ClusteringMutableProperties const& other) const = default;
 
+  [[nodiscard]] bool isSatellite() const noexcept;
+
   void applyDatabaseDefaults(DatabaseConfiguration const& config);
 
   [[nodiscard]] arangodb::Result validateDatabaseConfiguration(
       DatabaseConfiguration const& config) const;
-
 };
 
 template<class Inspector>

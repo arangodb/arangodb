@@ -64,6 +64,9 @@
     EXPECT_TRUE(testee.fail()) << " On body " << body.toJson();       \
   }
 
+#define GenerateFailsOnNull(attributeName) \
+  __HELPER_assertParsingThrows(attributeName, VPackSlice::nullSlice());
+
 #define GenerateFailsOnBool(attributeName)           \
   __HELPER_assertParsingThrows(attributeName, true); \
   __HELPER_assertParsingThrows(attributeName, false);
@@ -113,6 +116,7 @@
     GenerateFailsOnString(attributeName);                                     \
     GenerateFailsOnArray(attributeName);                                      \
     GenerateFailsOnObject(attributeName);                                     \
+    GenerateFailsOnNull(attributeName)                                        \
   }
 
 #define GenerateStringAttributeTest(TestClass, attributeName)                  \
@@ -133,6 +137,7 @@
     GenerateFailsOnDouble(attributeName);                                      \
     GenerateFailsOnArray(attributeName);                                       \
     GenerateFailsOnObject(attributeName);                                      \
+    GenerateFailsOnNull(attributeName)                                         \
   }
 
 #define GenerateOptionalStringAttributeTest(TestClass, attributeName)          \
@@ -155,6 +160,7 @@
     GenerateFailsOnDouble(attributeName);                                      \
     GenerateFailsOnArray(attributeName);                                       \
     GenerateFailsOnObject(attributeName);                                      \
+    GenerateFailsOnNull(attributeName)                                         \
   }
 
 // This macro generates a basic integer value test, checking if we get 2 and 42
@@ -189,6 +195,7 @@
     GenerateFailsOnString(attributeName);                                      \
     GenerateFailsOnArray(attributeName);                                       \
     GenerateFailsOnObject(attributeName);                                      \
+    GenerateFailsOnNull(attributeName)                                         \
   }
 
 #define GeneratePositiveIntegerAttributeTest(TestClass, attributeName)   \
@@ -216,4 +223,6 @@
                                              VPackSlice::emptyObjectSlice())); \
     shouldPass(createMinimumBodyWithOneValue(#attributeName,                   \
                                              VPackSlice::emptyArraySlice()));  \
+    shouldPass(createMinimumBodyWithOneValue(#attributeName,                   \
+                                             VPackSlice::nullSlice()));        \
   }

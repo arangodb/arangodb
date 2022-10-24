@@ -22,11 +22,25 @@
 
 #include "CollectionConstantProperties.h"
 
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Inspection/Status.h"
 
 #include <velocypack/Builder.h>
 
 using namespace arangodb;
+
+[[nodiscard]] auto
+CollectionConstantProperties::Invariants::isSmartConfiguration(
+    CollectionConstantProperties const& props) -> inspection::Status {
+  if (props.smartGraphAttribute.has_value() && !props.isSmart) {
+    return {
+        "A smart vertex collection needs to be "
+        "marked with \"isSmart: true\"."};
+  }
+
+  return inspection::Status::Success{};
+}
 
 bool CollectionConstantProperties::operator==(
     CollectionConstantProperties const& other) const {
