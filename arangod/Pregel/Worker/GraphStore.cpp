@@ -701,7 +701,7 @@ auto GraphStore<V, E>::storeVertices(
 template<typename V, typename E>
 auto GraphStore<V, E>::storeResults(
     WorkerConfig* config, std::function<void()> const& statusUpdateCallback)
-    -> futures::Future<Result> {
+    -> ResultT<Stored> {
   _config = config;
   double now = TRI_microtime();
 
@@ -734,21 +734,23 @@ auto GraphStore<V, E>::storeResults(
     // TODO can't just write edges with SmartGraphs
   }
 
-  return futures::collectAll(storedVertices).thenValue([&](auto results) {
-    for (auto&& result : results) {
-      if (result.hasException()) {
-        return Result{TRI_ERROR_INTERNAL, "Storing vertex data failed"};
-      }
-      if (result.get().fail()) {
-        return Result{result.get().errorNumber(),
-                      fmt::format("Vertices could not be stored: {}",
-                                  result.get().errorMessage())};
-      }
-    }
-    LOG_PREGEL("b5a21", DEBUG)
-        << "Storing data took " << (TRI_microtime() - now) << "s";
-    return Result{};
-  });
+  return futures::collectAll(storedVertices)
+      .thenValue([&](auto results) -> ResultT<Stored> {
+        for (auto&& result : results) {
+          if (result.hasException()) {
+            return Result{TRI_ERROR_INTERNAL, "Storing vertex data failed"};
+          }
+          if (result.get().fail()) {
+            return Result{result.get().errorNumber(),
+                          fmt::format("Vertices could not be stored: {}",
+                                      result.get().errorMessage())};
+          }
+        }
+        LOG_PREGEL("b5a21", DEBUG)
+            << "Storing data took " << (TRI_microtime() - now) << "s";
+        return Stored{};
+      })
+      .get();
 }
 
 template class arangodb::pregel::GraphStore<int64_t, int64_t>;

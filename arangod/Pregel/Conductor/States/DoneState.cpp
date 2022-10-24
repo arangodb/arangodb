@@ -22,10 +22,10 @@ auto Done::run() -> std::optional<std::unique_ptr<State>> {
   }
   auto stats = velocypack::serialize(conductor._statistics);
 
-  LOG_PREGEL_CONDUCTOR("063b5", INFO)
-      << "Done. We did " << conductor._globalSuperstep << " rounds."
+  LOG_PREGEL_CONDUCTOR_STATE("063b5", INFO)
+      << fmt::format("Done. We did {} rounds.", conductor._globalSuperstep)
       << (conductor._timing.loading.hasStarted()
-              ? fmt::format("Startup time: {}s",
+              ? fmt::format(" Startup time: {}s",
                             conductor._timing.loading.elapsedSeconds().count())
               : "")
       << (conductor._timing.computation.hasStarted()
@@ -37,10 +37,9 @@ auto Done::run() -> std::optional<std::unique_ptr<State>> {
               ? fmt::format(", storage time: {}s",
                             conductor._timing.storing.elapsedSeconds().count())
               : "")
-      << ", overall: " << conductor._timing.total.elapsedSeconds().count()
-      << "s"
-      << ", stats: " << stats.toJson()
-      << ", aggregators: " << debugOut.toJson();
+      << fmt::format(", overall: {}s, stats: {}, aggregators: {}",
+                     conductor._timing.total.elapsedSeconds().count(),
+                     stats.toJson(), debugOut.toJson());
   return std::nullopt;
 }
 

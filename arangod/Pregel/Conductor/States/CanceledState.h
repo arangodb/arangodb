@@ -24,6 +24,8 @@
 
 #include <chrono>
 
+#include "Basics/Guarded.h"
+#include "Pregel/Messaging/Aggregate.h"
 #include "State.h"
 
 namespace arangodb::pregel {
@@ -38,6 +40,8 @@ struct Canceled : State {
   Canceled(Conductor& conductor);
   ~Canceled() = default;
   auto run() -> std::optional<std::unique_ptr<State>> override;
+  auto receive(MessagePayload message)
+      -> std::optional<std::unique_ptr<State>> override;
   auto canBeCanceled() -> bool override { return false; }
   auto name() const -> std::string override { return "canceled"; };
   auto isRunning() const -> bool override { return false; }
@@ -49,8 +53,9 @@ struct Canceled : State {
  private:
   std::chrono::nanoseconds _retryInterval = std::chrono::seconds(1);
   std::chrono::nanoseconds _timeout = std::chrono::minutes(5);
+  Guarded<Aggregate<CleanupFinished>> _aggregate;
   auto _cleanupUntilTimeout(std::chrono::steady_clock::time_point start)
-      -> futures::Future<Result>;
+      -> Result;
 };
 
 }  // namespace conductor

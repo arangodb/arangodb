@@ -47,17 +47,16 @@ struct WorkerApi {
         _connection{std::move(connection)} {}
   [[nodiscard]] auto createWorkers(
       std::unordered_map<ServerID, CreateWorker> const& data)
-      -> futures::Future<Result>;
+      -> ResultT<AggregateCount<WorkerCreated>>;
   [[nodiscard]] auto loadGraph(LoadGraph const& graph)
       -> ResultT<Aggregate<GraphLoaded>>;
-  [[nodiscard]] auto prepareGlobalSuperStep(PrepareGlobalSuperStep const& data)
-      -> futures::Future<ResultT<GlobalSuperStepPrepared>>;
-  [[nodiscard]] auto runGlobalSuperStep(RunGlobalSuperStep const& data)
-      -> futures::Future<ResultT<GlobalSuperStepFinished>>;
-  [[nodiscard]] auto store(Store const& message)
-      -> futures::Future<ResultT<Stored>>;
+  [[nodiscard]] auto runGlobalSuperStep(
+      RunGlobalSuperStep const& data,
+      std::unordered_map<ServerID, uint64_t> const& sendCountPerServer)
+      -> ResultT<Aggregate<GlobalSuperStepFinished>>;
+  [[nodiscard]] auto store(Store const& message) -> ResultT<Aggregate<Stored>>;
   [[nodiscard]] auto cleanup(Cleanup const& message)
-      -> futures::Future<ResultT<CleanupFinished>>;
+      -> ResultT<Aggregate<CleanupFinished>>;
   [[nodiscard]] auto results(CollectPregelResults const& message) const
       -> futures::Future<ResultT<PregelResults>>;
 
@@ -67,7 +66,12 @@ struct WorkerApi {
   std::unique_ptr<Connection> _connection;
 
   template<Addable Out, typename In>
-  auto sendToAll(In const& in) const -> futures::Future<ResultT<Out>>;
+  auto sendToAll_old(In const& in) const -> futures::Future<ResultT<Out>>;
+  template<typename In>
+  auto sendToAll(In const& in) const -> std::vector<futures::Future<Result>>;
+  template<Addable Out>
+  auto collectAllOks(std::vector<futures::Future<Result>> responses)
+      -> ResultT<Aggregate<Out>>;
 
   // This template enforces In and Out type of the function:
   // 'In' enforces which type of message is sent

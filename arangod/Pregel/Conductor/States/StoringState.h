@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Basics/Guarded.h"
+#include "Pregel/Messaging/Aggregate.h"
 #include "State.h"
 
 namespace arangodb::pregel {
@@ -35,6 +37,8 @@ struct Storing : State {
   Storing(Conductor& conductor);
   ~Storing();
   auto run() -> std::optional<std::unique_ptr<State>> override;
+  auto receive(MessagePayload message)
+      -> std::optional<std::unique_ptr<State>> override;
   auto canBeCanceled() -> bool override { return true; }
   auto name() const -> std::string override { return "storing"; };
   auto isRunning() const -> bool override { return true; }
@@ -44,8 +48,9 @@ struct Storing : State {
   }
 
  private:
-  auto _store() -> futures::Future<Result>;
   auto _cleanup() -> futures::Future<Result>;
+  Guarded<Aggregate<Stored>> _aggregate;
+  Guarded<Aggregate<CleanupFinished>> _cleanupAggregate;
 };
 }  // namespace conductor
 }  // namespace arangodb::pregel
