@@ -2476,8 +2476,8 @@ class reader final: public columnstore_reader, public context_provider {
     : context_provider(pool_size) {
   }
 
-  virtual bool prepare(const directory& dir, const segment_meta& meta,
-                       const options& opts = options{}) override;
+  bool prepare(const directory& dir, const segment_meta& meta,
+               const options& opts = options{}) override;
 
   virtual const column_reader* column(field_id field) const override;
 
