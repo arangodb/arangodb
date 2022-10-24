@@ -801,8 +801,8 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
 }
 
 handle_t open(void* file, OpenMode mode, int advice) noexcept {
-  assert(mode & (OpenMode::Write | OpenMode::Read) !=
-                    (OpenMode::Write | OpenMode::Read));
+  assert(((mode & OpenMode::Read) == OpenMode::Invalid) !=
+         ((mode & OpenMode::Write) == OpenMode::Invalid));
   #ifdef _WIN32
     // win32 approach is to get the original filename of the handle and open it again
     // due to a bug from the 1980's the file name is garanteed to not change while the file is open
