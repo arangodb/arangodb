@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "RocksDBEngine/Methods/RocksDBTrxBaseMethods.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 
 namespace arangodb {
@@ -33,7 +34,8 @@ class RocksDBTransactionMethods;
 class ReplicatedRocksDBTransactionState;
 
 class ReplicatedRocksDBTransactionCollection final
-    : public RocksDBTransactionCollection {
+    : public RocksDBTransactionCollection,
+      public IRocksDBTransactionCallback {
  public:
   ReplicatedRocksDBTransactionCollection(ReplicatedRocksDBTransactionState* trx,
                                          DataSourceId cid,
@@ -71,6 +73,11 @@ class ReplicatedRocksDBTransactionCollection final
 
  protected:
   auto ensureCollection() -> Result override;
+
+  // IRocksDBTransactionCallback methods
+  rocksdb::SequenceNumber prepare() override;
+  void cleanup() override;
+  void commit(rocksdb::SequenceNumber lastWritten) override;
 
  private:
   void maybeDisableIndexing();

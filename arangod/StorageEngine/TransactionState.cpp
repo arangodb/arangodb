@@ -505,7 +505,7 @@ void TransactionState::coordinatorRerollTransactionId() {
 }
 
 /// @brief return a reference to the global transaction statistics
-TransactionStatistics& TransactionState::statistics() noexcept {
+TransactionStatistics& TransactionState::statistics() const noexcept {
   return _vocbase.server()
       .getFeature<metrics::MetricsFeature>()
       .serverStatistics()

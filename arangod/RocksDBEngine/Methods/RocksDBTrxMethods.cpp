@@ -36,9 +36,10 @@
 
 using namespace arangodb;
 
-RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state,
+RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState const* state,
+                                     IRocksDBTransactionCallback& callback,
                                      rocksdb::TransactionDB* db)
-    : RocksDBTrxBaseMethods(state, db) {
+    : RocksDBTrxBaseMethods(state, callback, db) {
   TRI_ASSERT(!_state->isSingleOperation());
 }
 
