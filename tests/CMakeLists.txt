@@ -267,8 +267,8 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/ShardAutoRebalancerTest.cpp)
 
 set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
-        #Replication2/Helper/ModelChecker/Actors.cpp
-        #Replication2/Helper/ModelChecker/AgencyTransition.cpp
+        Replication2/Helper/ModelChecker/Actors.cpp
+        Replication2/Helper/ModelChecker/AgencyTransition.cpp
         #Replication2/Helper/WaitForQueue.cpp
         #Replication2/Mocks/AsyncFollower.cpp
         #Replication2/Mocks/AsyncFollower.h
@@ -288,8 +288,8 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
         #Replication2/Mocks/PersistedLog.h
         Replication2/Mocks/ReplicatedLogMetricsMock.cpp
         #Replication2/Mocks/ReplicatedStateMetricsMock.cpp
-        #Replication2/ModelChecker/ModelChecker.cpp
-        #Replication2/ModelChecker/Tests/ModelCheckerTest.cpp
+        Replication2/ModelChecker/ModelChecker.cpp
+        Replication2/ModelChecker/Tests/ModelCheckerTest.cpp
         #Replication2/ReplicatedLog/TestHelper.cpp
         Replication2/Mocks/FakeStorageEngineMethods.cpp
         Replication2/Mocks/FakeAsyncExecutor.cpp
@@ -320,7 +320,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   #Replication2/ReplicatedLog/ReplicatedLogTest.cpp
   #Replication2/ReplicatedLog/RewriteLogTest.cpp
   #Replication2/ReplicatedLog/SimpleInsertTests.cpp
-  #Replication2/ReplicatedLog/SupervisionSimulationTest.cpp
+  Replication2/ReplicatedLog/SupervisionSimulationTest.cpp
   Replication2/ReplicatedLog/SupervisionTest.cpp
 
   #Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
