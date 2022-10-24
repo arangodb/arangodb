@@ -86,7 +86,7 @@ DECLARE_GAUGE(arangodb_search_num_out_of_sync_links, uint64_t,
               "Number of arangosearch links currently out of sync");
 
 #ifdef USE_ENTERPRISE
-DECLARE_GAUGE(arangodb_search_columns_cache_size, uint64_t,
+DECLARE_GAUGE(arangodb_search_columns_cache_size, int64_t,
               "ArangoSearch columns cache usage");
 #endif
 
@@ -882,7 +882,7 @@ IResearchFeature::IResearchFeature(
           arangodb_search_num_out_of_sync_links{}))
   #ifdef USE_ENTERPRISE
       ,_columnsCacheMemoryUsed(server.getFeature<arangodb::MetricsFeature>().add(
-              arangodb_search_cache_size{}))
+              arangodb_search_columns_cache_size{}))
   #endif
        {
   setOptional(true);
@@ -1248,32 +1248,19 @@ void IResearchFeature::registerRecoveryHelper() {
 
 #ifdef USE_ENTERPRISE
 bool IResearchFeature::trackColumnsCacheUsage(int64_t diff) noexcept {
-  bool done{false};
-  auto current = _columnsCacheMemoryUsed.load();
-  if (diff < 0) {
-    uint64_t diffAbs = static_cast<uint64_t>(abs(diff));
+    bool done = false;
+    int64_t current = _columnsCacheMemoryUsed.load(std::memory_order_relaxed);
     do {
-      TRI_ASSERT(current > diffAbs);
-      if (ADB_LIKELY(current > diffAbs)) {
-        done = _columnsCacheMemoryUsed.compare_exchange_weak(current,
-                                                             current - diffAbs);
-      } else {
-        done = _columnsCacheMemoryUsed.compare_exchange_weak(current, 0);
-      }
-    } while (!done);
-  } else {
-    uint64_t diffAbs = static_cast<uint64_t>(diff);
-    do {
-      if (current + diffAbs <= _columnsCacheLimit) {
-        done = _columnsCacheMemoryUsed.compare_exchange_weak(current,
-                                                             current + diffAbs);
+      TRI_ASSERT(current + diff > 0);
+      if (current + diff <= static_cast<int64_t>(_columnsCacheLimit)) {
+        done = _columnsCacheMemoryUsed.compare_exchange_weak(
+            current, current + diff);
       } else {
         return false;
       }
-    } while (!done);
+    } while (done);
+    return true;
   }
-  return true;
-}
 #endif
 
 template<typename Engine, typename std::enable_if_t<

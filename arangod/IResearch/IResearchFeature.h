@@ -149,7 +149,7 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   Gauge<uint64_t>& _outOfSyncLinks;
 
 #ifdef USE_ENTERPRISE
-  Gauge<uint64_t>& _columnsCacheMemoryUsed;
+  Gauge<int64_t>& _columnsCacheMemoryUsed;
   uint64_t _columnsCacheLimit{0};
 #endif
 
