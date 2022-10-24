@@ -29,11 +29,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 (function() {
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
-var analyzers = require("@arangodb/analyzers");
-var ERRORS = require("@arangodb").errors;
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
+const analyzers = require("@arangodb/analyzers");
+const ERRORS = require("@arangodb").errors;
 const longValue = "VeryLongValueToNotFitIntoSSOAndTriggerBufferCopyingIssuesIfAnyBlaBlaBla";
+
 return function (args) {
   function getNodes(query, type, bindVars, options) {
     let stmt = db._createStatement(query);
