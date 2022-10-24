@@ -26,7 +26,7 @@
 
 namespace arangodb::aql::optimizer2::nodes {
 
-struct CollectionAccessingNode : optimizer2::types::Satellite {
+struct CollectionAccessingNode {
   // optionals
   std::optional<AttributeTypes::String> prototype;
   std::optional<AttributeTypes::Numeric> numberOfShards;
@@ -39,7 +39,6 @@ struct CollectionAccessingNode : optimizer2::types::Satellite {
 template<class Inspector>
 auto inspect(Inspector& f, CollectionAccessingNode& v) {
   return f.object(v).fields(
-      f.embedFields(static_cast<optimizer2::types::Satellite&>(v)),
       // optionals
       f.field("prototype", v.prototype),
       f.field("numberOfShards", v.numberOfShards),

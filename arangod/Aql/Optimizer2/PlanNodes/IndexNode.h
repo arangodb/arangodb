@@ -52,6 +52,7 @@ auto inspect(Inspector& f, IndexOperatorOptions& x) {
 struct IndexNode : optimizer2::nodes::BaseNode,
                    optimizer2::nodes::DocumentProducingNode,
                    optimizer2::nodes::CollectionAccessingNode,
+                   optimizer2::types::Satellite,
                    IndexOperatorOptions {
   // optionals
   std::optional<optimizer2::types::Variable> outVariable;
@@ -82,6 +83,7 @@ auto inspect(Inspector& f, IndexNode& x) {
       f.embedFields(static_cast<optimizer2::nodes::DocumentProducingNode&>(x)),
       f.embedFields(
           static_cast<optimizer2::nodes::CollectionAccessingNode&>(x)),
+      f.embedFields(static_cast<optimizer2::types::Satellite&>(x)),
       f.embedFields(static_cast<IndexOperatorOptions&>(x)),
       // optionals
       f.field("outVariable", x.outVariable),
