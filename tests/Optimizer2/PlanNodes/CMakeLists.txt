@@ -1,13 +1,14 @@
 target_sources(arangodbtests_optimizer2 PRIVATE
         BaseNodeTest.cpp
-        ReturnNodeTest.cpp
+        CalculationNodeTest.cpp
+        CollectNodeTest.cpp
         EnumerateCollectionNodeTest.cpp
         EnumerateListNodeTest.cpp
-        SingletonNodeTest.cpp
-        CalculationNodeTest.cpp
         FilterNodeTest.cpp
+        IndexNodeTest.cpp
         LimitNodeTest.cpp
+        SingletonNodeTest.cpp
         SortNodeTest.cpp
         TraversalNodeTest.cpp
-        IndexNodeTest.cpp
+        ReturnNodeTest.cpp
         )
