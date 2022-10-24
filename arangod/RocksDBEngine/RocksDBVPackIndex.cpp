@@ -764,6 +764,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       _resultBuilder.clear();
       _resultIterator = VPackArrayIterator(VPackArrayIterator::Empty{});
     }
+
+    if (_resetInternals) {
+      _iterator.reset();
+    }
   }
 
  private:
@@ -1053,6 +1057,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
             }
             options.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
           });
+      TRI_ASSERT(_mustSeek);
     }
 
     TRI_ASSERT(_iterator != nullptr);

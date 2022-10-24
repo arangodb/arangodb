@@ -38,6 +38,7 @@ IndexIterator::IndexIterator(LogicalCollection* collection,
       _cacheHits(0),
       _cacheMisses(0),
       _hasMore(true),
+      _resetInternals(false),
       _readOwnWrites(readOwnWrites) {
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(_trx != nullptr);

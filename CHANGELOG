@@ -1,6 +1,13 @@
 devel
 -----
 
+* Improve performance and memory usage of IN list lookups for hash, skiplist
+  and persistent indexes.
+
+* Solve a case of excessive memory consumption in certain AQL queries with
+  IN filters with very long lists. Free sub-iterators as soon as they are
+  exhausted.
+
 * Change default output format of arangoexport from `json` to `jsonl`.
 
 * Added startup option `--query.log-failed` to optionally log all failed AQL
