@@ -124,7 +124,7 @@ void ChecksumHelper::checkMissingShaFiles() {
 
   std::vector<std::string> fileList = TRI_FilesDirectory(_rootPath.c_str());
   std::sort(fileList.begin(), fileList.end(),
-            [](std::string const& lhs, std::string const& rhs) {
+            [this](std::string const& lhs, std::string const& rhs) {
               // need to sort in a way that .sha files are returned before .sst
               // and .blob files. this is against the regular lexicographical
               // order
@@ -167,7 +167,9 @@ void ChecksumHelper::checkMissingShaFiles() {
 
               if (lhs.ends_with(".hash")) {
                 // cannot have 2 hash files for the same prefix
-                TRI_ASSERT(!rhs.ends_with(".hash"));
+                TRI_ASSERT(!rhs.ends_with(".hash"))
+                    << "lhs: " << lhs << ", rhs: " << rhs
+                    << ", all: " << TRI_FilesDirectory(_rootPath.c_str());
 
                 // prefixes of lhs and rhs are identical - .hash files should be
                 // sorted first (before .sst or .blob files)
