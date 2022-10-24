@@ -109,9 +109,9 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
     };
   suite.setUp = function () {
       db._drop("UnitTestsCollection");
-      c = db._create("UnitTestsCollection");
+      let c = db._create("UnitTestsCollection");
       db._drop("UnitTestsCollection2");
-      c2 = db._create("UnitTestsCollection2");
+      let c2 = db._create("UnitTestsCollection2");
      
       db.UnitTestsCollection.ensureIndex({ 
         type: "inverted",
@@ -121,7 +121,7 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
                   { name: "text", analyzer: "text_en" } ] });
       db._dropView("UnitTestsView");
       
-      v = db._createView("UnitTestsView", "search-alias", { 
+      db._createView("UnitTestsView", "search-alias", { 
           indexes : [ { collection: "UnitTestsCollection", index: "invertedIndex" } ] });
 
       db._dropView("CompoundView");
@@ -135,7 +135,7 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
 
       
       
-      v2 = db._createView("CompoundView", "search-alias",
+      db._createView("CompoundView", "search-alias",
         { indexes : [
             {collection:"UnitTestsCollection", index: "invertedIndexCompound" },
             {collection:"UnitTestsCollection2", index: "invertedIndexCompound" }
@@ -165,8 +165,8 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
     };
 
   suite.tearDown = function () {
-      v.drop();
-      v2.drop();
+      db._dropView("UnitTestsView");
+      db._dropView("CompoundView");
       db._drop("UnitTestsCollection");
       db._drop("UnitTestsCollection2");
     };

@@ -138,13 +138,13 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
     };
   suite.setUp = function () {
       db._drop("UnitTestsCollection");
-      c = db._create("UnitTestsCollection");
+      let c = db._create("UnitTestsCollection");
 
       db._drop("UnitTestsCollection2");
-      c2 = db._create("UnitTestsCollection2");
+      let c2 = db._create("UnitTestsCollection2");
 
       db._dropView("UnitTestsView");
-      v = db._createView("UnitTestsView", "arangosearch", {});
+      let v = db._createView("UnitTestsView", "arangosearch", {});
       var meta = {
         links: { 
           "UnitTestsCollection": { 
@@ -160,7 +160,7 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
 
       
       db._dropView("CompoundView");
-      v2 = db._createView("CompoundView", "arangosearch",
+      db._createView("CompoundView", "arangosearch",
         { links : {
           UnitTestsCollection: { includeAllFields: true },
           UnitTestsCollection2 : { includeAllFields: true }
@@ -191,9 +191,9 @@ jsunity.run(function IResearchAqlTestSuite_ArangoSearch_Noncluster() {
 
   suite.tearDown = function () {
       var meta = { links : { "UnitTestsCollection": null } };
-      v.properties(meta);
-      v.drop();
-      v2.drop();
+      db._view("UnitTestsView").properties(meta);
+      db._dropView("UnitTestsView");
+      db._dropView("CompoundView");
       db._drop("UnitTestsCollection");
       db._drop("UnitTestsCollection2");
     };

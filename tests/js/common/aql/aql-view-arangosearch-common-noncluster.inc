@@ -256,7 +256,7 @@ return function (args) {
       result = db._executeTransaction({
         collections: {
           allowImplicit: false,
-          read: [ v.name() ]
+          read: [ "UnitTestsView" ]
         },
         action: function () {
           var db = require("@arangodb").db;
@@ -271,7 +271,7 @@ return function (args) {
       result = db._executeTransaction({
         collections: {
           allowImplicit: false,
-          write: [ v.name() ]
+          write: [ "UnitTestsView" ]
         },
         action: function () {
           var db = require("@arangodb").db;
@@ -286,7 +286,7 @@ return function (args) {
       result = db._executeTransaction({
         collections: {
           allowImplicit: false,
-          exclusive: [ v.name() ]
+          exclusive: [ "UnitTestsView" ]
         },
         action: function () {
           var db = require("@arangodb").db;
