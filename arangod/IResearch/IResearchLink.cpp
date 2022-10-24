@@ -58,6 +58,9 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchLinkEE.hpp"
+#endif
 
 #include <velocypack/StringRef.h>
 
@@ -1145,6 +1148,12 @@ Result IResearchLink::init(velocypack::Slice definition,
   TRI_ASSERT(meta._sortCompression);
   auto const primarySortCompression =
       meta._sortCompression ? meta._sortCompression : getDefaultCompression();
+
+  
+  irs::index_reader_options readerOptions;
+#ifdef USE_ENTERPRISE
+  setupReaderEntepriseOptions(readerOptions, vocbase.server(), meta);
+#endif
   if (ServerState::instance()->isCoordinator()) {  // coordinator link
     if (!vocbase.server().hasFeature<ClusterFeature>()) {
       return {
@@ -1262,7 +1271,7 @@ Result IResearchLink::init(velocypack::Slice definition,
       // via the IResearchView::link(...) call
       auto const res =
           initDataStore(initCallback, meta._version, sorted,
-                        storedValuesColumns, primarySortCompression);
+                        storedValuesColumns, primarySortCompression, readerOptions);
 
       if (!res.ok()) {
         return res;
@@ -1341,7 +1350,7 @@ Result IResearchLink::init(velocypack::Slice definition,
     // prepare data-store which can then update options
     // via the IResearchView::link(...) call
     auto const res = initDataStore(initCallback, meta._version, sorted,
-                                   storedValuesColumns, primarySortCompression);
+                                   storedValuesColumns, primarySortCompression, readerOptions);
 
     if (!res.ok()) {
       return res;
@@ -1390,7 +1399,7 @@ Result IResearchLink::init(velocypack::Slice definition,
 Result IResearchLink::initDataStore(
     InitCallback const& initCallback, uint32_t version, bool sorted,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-    irs::type_info::type_id primarySortCompression) {
+    irs::type_info::type_id primarySortCompression, irs::index_reader_options const& readerOptions) {
   std::atomic_store(&_flushSubscription, {});
   // reset together with '_asyncSelf'
   _asyncSelf->reset();
@@ -1411,42 +1420,6 @@ Result IResearchLink::initDataStore(
 
   auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
   auto& flushFeature = server.getFeature<FlushFeature>();
-
-  irs::index_reader_options readerOptions;
-  readerOptions.warmup_columns = [](const irs::segment_meta&,
-                                    const irs::field_reader& fields,
-                                    const irs::column_reader& column) {
-    if (!column.name().null()) {
-      std::cout << "Checking " << column.name() << "...";
-      auto res = column.name() == "\1_key\1number_of_shipments\1pagerank" ||
-                 column.name() == "@_PK";
-      std::cout << (res ? "HOT" : "COLD");
-      std::cout << std::endl;
-      return res;
-    } else {
-      auto field = fields.field("clean_company_canon_name\1text_en");
-      if (field) {
-        auto& features = field->meta().features;
-        auto it = features.find(irs::type<irs::Norm2>::id());
-        if (it != features.end()) {
-          if (it->second == column.id()) {
-            std::cout << "HOT NORMS2 STORED:" << column.id() << std::endl;
-            return true;
-          }
-        } else {
-          it = features.find(irs::type<irs::Norm>::id());
-          if (it != features.end()) {
-            if (it->second == column.id()) {
-              std::cout << "HOT NORMS STORED:" << column.id() << std::endl;
-              return true;
-            }
-          }
-        }
-      }
-    }
-    return false;
-  };
-
   auto const formatId = getFormat(LinkVersion{version});
   auto format = irs::formats::get(formatId);
   if (!format) {
