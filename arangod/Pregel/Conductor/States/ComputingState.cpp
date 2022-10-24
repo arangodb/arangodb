@@ -1,6 +1,5 @@
 #include "ComputingState.h"
 
-#include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Metrics/Gauge.h"
 #include "Pregel/MasterContext.h"
@@ -25,11 +24,6 @@ Computing::~Computing() {
 }
 
 auto Computing::run() -> std::optional<std::unique_ptr<State>> {
-  LOG_PREGEL_CONDUCTOR_STATE("76631", INFO)
-      << fmt::format("Start running Pregel {} with {} vertices, {} edges",
-                     conductor._algorithm->name(),
-                     conductor._totalVerticesCount, conductor._totalEdgesCount);
-
   conductor._timing.gss.emplace_back(Duration{
       ._start = std::chrono::steady_clock::now(), ._finish = std::nullopt});
 

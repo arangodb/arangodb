@@ -1,6 +1,7 @@
 #include "LoadingState.h"
 
 #include "Metrics/Gauge.h"
+#include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
@@ -51,6 +52,12 @@ auto Loading::receive(MessagePayload message)
                                          conductor._totalEdgesCount,
                                          conductor._aggregators.get());
   }
+
+  LOG_PREGEL_CONDUCTOR_STATE("76631", INFO)
+      << fmt::format("Start running Pregel {} with {} vertices, {} edges",
+                     conductor._algorithm->name(),
+                     conductor._totalVerticesCount, conductor._totalEdgesCount);
+
   return std::make_unique<Computing>(conductor, std::move(_workerApi));
 }
 
