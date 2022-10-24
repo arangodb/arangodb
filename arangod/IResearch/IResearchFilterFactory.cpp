@@ -2086,8 +2086,66 @@ Result fromFuncBoost(char const* funcName, irs::boolean_filter* filter,
   return {};
 }
 
+static constexpr std::string_view kTypeAnalyzer{"analyzer"};
+
+using TypeHandler = bool (*)(std::string&, bool isOldMangling,
+                             FieldMeta::Analyzer const&);
+
+static constexpr frozen::map<std::string_view, TypeHandler, 8> kTypeHandlers{
+    // any string
+    {"string",
+     [](std::string& name, bool isOldMangling,
+        FieldMeta::Analyzer const&) -> bool {
+       // We don't make '|| analyzer->requireMangled()'
+       // because we don't want to give opportunity
+       // to find analyzer field by 'string'
+       if (isOldMangling) {
+         kludge::mangleAnalyzer(name);
+       } else {
+         kludge::mangleString(name);
+       }
+       return true;  // a prefix match
+     }},
+    // any non-string type
+    {"type",
+     [](std::string& name, bool, FieldMeta::Analyzer const&) -> bool {
+       kludge::mangleType(name);
+       return true;  // a prefix match
+     }},
+    // concrete analyzer from the context
+    {kTypeAnalyzer,
+     [](std::string& name, bool isOldMangling,
+        FieldMeta::Analyzer const& analyzer) -> bool {
+       kludge::mangleField(name, isOldMangling, analyzer);
+       return false;  // not a prefix match
+     }},
+    {"numeric",
+     [](std::string& name, bool, FieldMeta::Analyzer const&) -> bool {
+       kludge::mangleNumeric(name);
+       return false;  // not a prefix match
+     }},
+    {"bool",
+     [](std::string& name, bool, FieldMeta::Analyzer const&) -> bool {
+       kludge::mangleBool(name);
+       return false;  // not a prefix match
+     }},
+    {"boolean",
+     [](std::string& name, bool, FieldMeta::Analyzer const&) -> bool {
+       kludge::mangleBool(name);
+       return false;  // not a prefix match
+     }},
+    {"nested",
+     [](std::string& name, bool, FieldMeta::Analyzer const&) -> bool {
+       kludge::mangleNested(name);
+       return false;  // not a prefix match
+     }},
+    {"null", [](std::string& name, bool, FieldMeta::Analyzer const&) -> bool {
+       kludge::mangleNull(name);
+       return false;  // not a prefix match
+     }}};
+
 // EXISTS(<attribute>, <"analyzer">, <"analyzer-name">)
-// EXISTS(<attribute>, <"string"|"null"|"bool"|"numeric">)
+// EXISTS(<attribute>, <"string"|"null"|"bool"|"numeric"|"nested">)
 Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
                       FilterContext const& filterCtx,
                       aql::AstNode const& args) {
@@ -2140,63 +2198,10 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
     if (filter || argValue.isConstant()) {  // arg is constant
       std::string strArg(arg);
       basics::StringUtils::tolowerInPlace(strArg);  // normalize user input
-      irs::string_ref const TypeAnalyzer("analyzer");
 
-      typedef bool (*TypeHandler)(std::string&, bool isOldMangling,
-                                  FieldMeta::Analyzer const&);
+      auto const typeHandler = kTypeHandlers.find(strArg);
 
-      static std::map<irs::string_ref, TypeHandler> const TypeHandlers{
-          // any string
-          {irs::string_ref("string"),
-           [](std::string& name, bool isOldMangling,
-              FieldMeta::Analyzer const&) -> bool {
-             // We don't make '|| analyzer->requireMangled()'
-             // because we don't want to give opportunity
-             // to find analyzer field by 'string'
-             if (isOldMangling) {
-               kludge::mangleAnalyzer(name);
-             } else {
-               kludge::mangleString(name);
-             }
-             return true;  // a prefix match
-           }},
-          // any non-string type
-          {irs::string_ref("type"),
-           [](std::string& name, bool, FieldMeta::Analyzer const&) -> bool {
-             kludge::mangleType(name);
-             return true;  // a prefix match
-           }},
-          // concrete analyzer from the context
-          {TypeAnalyzer,
-           [](std::string& name, bool isOldMangling,
-              FieldMeta::Analyzer const& analyzer) -> bool {
-             kludge::mangleField(name, isOldMangling, analyzer);
-             return false;  // not a prefix match
-           }},
-          {irs::string_ref("numeric"),
-           [](std::string& name, bool, FieldMeta::Analyzer const&) -> bool {
-             kludge::mangleNumeric(name);
-             return false;  // not a prefix match
-           }},
-          {irs::string_ref("bool"),
-           [](std::string& name, bool, FieldMeta::Analyzer const&) -> bool {
-             kludge::mangleBool(name);
-             return false;  // not a prefix match
-           }},
-          {irs::string_ref("boolean"),
-           [](std::string& name, bool, FieldMeta::Analyzer const&) -> bool {
-             kludge::mangleBool(name);
-             return false;  // not a prefix match
-           }},
-          {irs::string_ref("null"),
-           [](std::string& name, bool, FieldMeta::Analyzer const&) -> bool {
-             kludge::mangleNull(name);
-             return false;  // not a prefix match
-           }}};
-
-      auto const typeHandler = TypeHandlers.find(strArg);
-
-      if (TypeHandlers.end() == typeHandler) {
+      if (kTypeHandlers.end() == typeHandler) {
         return {TRI_ERROR_BAD_PARAMETER,
                 "'"s.append("' AQL function: 2nd argument must be equal to one "
                             "of the following: "
@@ -2207,7 +2212,7 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
       }
 
       if (argc > 2) {
-        if (TypeAnalyzer.c_str() != typeHandler->first.c_str()) {
+        if (kTypeAnalyzer.data() != typeHandler->first.data()) {
           return {TRI_ERROR_BAD_PARAMETER,
                   "'"s.append(funcName).append(
                       "' AQL function: 3rd argument is intended to be used "
