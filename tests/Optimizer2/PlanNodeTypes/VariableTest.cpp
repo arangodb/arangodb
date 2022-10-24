@@ -95,6 +95,7 @@ TEST_F(Optimizer2Variable, construction) {
 
   if (!res) {
     fmt::print("Something went wrong: {}", res.error());
+    EXPECT_TRUE(res.ok());
   } else {
     auto variable = res.get();
     EXPECT_EQ(variable.id, 2u);
@@ -112,6 +113,7 @@ TEST_F(Optimizer2Variable, constructionWithConstValue) {
 
   if (!res) {
     fmt::print("Something went wrong: {}", res.error());
+    EXPECT_TRUE(res.ok());
   } else {
     auto variable = res.get();
     EXPECT_EQ(variable.id, 2u);
