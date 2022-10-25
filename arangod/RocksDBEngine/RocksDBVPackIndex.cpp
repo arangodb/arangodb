@@ -2488,7 +2488,6 @@ void RocksDBVPackIndex::expandInSearchValues(
     TRI_ASSERT(oneLookup.isArray());
 
     std::unordered_map<size_t, std::vector<VPackSlice>> elements;
-    basics::VelocyPackHelper::VPackLess<true> sorter;
     size_t n = static_cast<size_t>(oneLookup.length());
     for (VPackValueLength i = 0; i < n; ++i) {
       VPackSlice current = oneLookup.at(i);
@@ -2496,26 +2495,31 @@ void RocksDBVPackIndex::expandInSearchValues(
           inList.isArray()) {
         VPackValueLength nList = inList.length();
 
-        std::unordered_set<VPackSlice, basics::VelocyPackHelper::VPackHash,
-                           basics::VelocyPackHelper::VPackEqual>
-            tmp(static_cast<size_t>(nList),
-                basics::VelocyPackHelper::VPackHash(),
-                basics::VelocyPackHelper::VPackEqual());
+        // spit everything into vector at once
+        auto& vector = elements[i];
+        vector.reserve(nList);
 
         for (VPackSlice el : VPackArrayIterator(inList)) {
-          tmp.emplace(el);
+          vector.emplace_back(el);
         }
-        auto& vector = elements[i];
-        vector.insert(vector.end(), tmp.begin(), tmp.end());
-        std::sort(vector.begin(), vector.end(), sorter);
+
+        // sort the vector once
+        std::sort(vector.begin(), vector.end(),
+                  basics::VelocyPackHelper::VPackLess<true>());
+
+        // make it unique
+        vector.erase(std::unique(vector.begin(), vector.end(),
+                                 basics::VelocyPackHelper::VPackEqual()),
+                     vector.end());
+
         if (!opts.ascending) {
+          // reverse what's left, if necessary
           std::reverse(vector.begin(), vector.end());
         }
       }
     }
     // If there is an entry in elements for one depth it was an in,
     // all of them are now unique so we simply have to multiply
-
     size_t level = n - 1;
     std::vector<size_t> positions(n, 0);
     bool done = false;

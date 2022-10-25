@@ -1313,10 +1313,18 @@ std::string Query::extractQueryString(size_t maxLength, bool show) const {
 void Query::stringifyBindParameters(std::string& out, std::string_view prefix,
                                     size_t maxLength) const {
   auto bp = bindParameters();
-  if (bp != nullptr && !bp->slice().isNone()) {
+  if (bp != nullptr && !bp->slice().isNone() && maxLength >= 3) {
+    // append prefix, e.g. "bind parameters: "
     out.append(prefix);
-    bp->slice().toJson(out);
-    if (out.size() > maxLength) {
+
+    // dump at most maxLength chars of bind parameters into our output string
+    velocypack::SizeConstrainedStringSink sink(&out, maxLength);
+    velocypack::Dumper dumper(&sink);
+    dumper.dump(bp->slice());
+
+    if (sink.overflowed()) {
+      // truncate value with "..."
+      TRI_ASSERT(maxLength >= 3);
       out.resize(maxLength - 3);
       out.append("...");
     }
