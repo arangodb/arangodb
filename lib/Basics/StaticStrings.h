@@ -432,6 +432,7 @@ class StaticStrings {
   static std::string_view const ApiLogInternal;
   static std::string_view const ApiLogExternal;
   static std::string_view const ApiReplicatedStateExternal;
+  static std::string_view const ApiDocumentStateExternal;
 
   // TODO: remove me after refactor is done
   static std::string const GraphRefactorFlag;

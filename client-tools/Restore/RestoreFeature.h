@@ -107,7 +107,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
     bool importStructure{true};
     bool includeSystemCollections{false};
     bool overwrite{true};
-    bool useEnvelope{true};
+    bool useEnvelope{false};
     bool enableRevisionTrees{true};
     bool continueRestore{false};
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -171,7 +171,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
   /// @brief Stores all necessary data to restore a single collection or shard
   struct RestoreJob {
     RestoreJob(RestoreFeature& feature, RestoreProgressTracker& progressTracker,
-               Options const& options, Stats& stats, bool useEnvelope,
+               Options const& options, Stats& stats,
                std::string const& collectionName,
                std::shared_ptr<SharedState> sharedState);
 
@@ -189,7 +189,6 @@ class RestoreFeature final : public ArangoRestoreFeature {
     RestoreProgressTracker& progressTracker;
     Options const& options;
     Stats& stats;
-    bool useEnvelope;
     std::string const collectionName;
     std::shared_ptr<SharedState> sharedState;
   };
@@ -217,12 +216,13 @@ class RestoreFeature final : public ArangoRestoreFeature {
 
     ManagedDirectory& directory;
     VPackSlice parameters;
+    bool useEnvelope;
   };
 
   struct RestoreSendJob : public RestoreJob {
     RestoreSendJob(RestoreFeature& feature,
                    RestoreProgressTracker& progressTracker,
-                   Options const& options, Stats& stats, bool useEnvelope,
+                   Options const& options, Stats& stats,
                    std::string const& collectionName,
                    std::shared_ptr<SharedState> sharedState, size_t readOffset,
                    std::unique_ptr<basics::StringBuffer> buffer);
