@@ -405,11 +405,14 @@ class Methods {
   static ErrorCode validateSmartJoinAttribute(LogicalCollection const& collinfo,
                                               velocypack::Slice value);
 
+  Result triggerIntermediateCommit();
+
  private:
   enum class ReplicationType { NONE, LEADER, FOLLOWER };
 
   // perform a (deferred) intermediate commit if required
-  Result performIntermediateCommitIfRequired(DataSourceId collectionId);
+  futures::Future<Result> performIntermediateCommitIfRequired(
+      DataSourceId collectionId);
 
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
