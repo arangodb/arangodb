@@ -51,6 +51,10 @@ const Graph = graphGeneration.Graph;
 
 const epsilon = 0.00001;
 
+const runFinished = (stats) => stats.state === "done" || stats.state === "canceled" || stats.state === "fatal error";
+const runFinishedSuccessfully = (stats) => stats.state === "done";
+const runCanceled = (stats) => stats.state === "canceled";
+
 /**
  * Assert that expected and actual are of the same type and that they are equal up to the tolerance epsilon.
  * @param expected the expected value, a number
@@ -1717,3 +1721,6 @@ exports.epsilon = epsilon;
 exports.makeSetUp = makeSetUp;
 exports.makeTearDown = makeTearDown;
 exports.assertAlmostEquals = assertAlmostEquals;
+exports.runFinished = runFinished;
+exports.runCanceled = runCanceled;
+exports.runFinishedSuccessfully = runFinishedSuccessfully;
