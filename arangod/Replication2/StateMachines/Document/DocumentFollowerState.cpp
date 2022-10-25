@@ -124,15 +124,14 @@ auto DocumentFollowerState::forceLocalTransaction(OperationType opType,
                                                   velocypack::SharedSlice slice)
     -> Result {
   auto trxId = TransactionId::createFollower();
-  auto doc = DocumentLogEntry{std::string(shardId), opType, std::move(slice), trxId};
+  auto doc =
+      DocumentLogEntry{std::string(shardId), opType, std::move(slice), trxId};
   if (auto applyRes = _transactionHandler->applyEntry(doc); applyRes.fail()) {
     _transactionHandler->removeTransaction(trxId);
     return applyRes;
   }
-  auto commit = DocumentLogEntry{std::string(shardId),
-                                 OperationType::kCommit,
-                                 {},
-                                 trxId};
+  auto commit =
+      DocumentLogEntry{std::string(shardId), OperationType::kCommit, {}, trxId};
   return _transactionHandler->applyEntry(commit);
 }
 
