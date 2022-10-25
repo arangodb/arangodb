@@ -918,6 +918,8 @@ ErrorCode TRI_vocbase_t::dropCollectionWorker(
 /// shutdown to clean things up
 void TRI_vocbase_t::stop() {
   try {
+    _logManager->resignAll();
+
     // stop replication
     if (_replicationApplier != nullptr) {
       _replicationApplier->stopAndJoin();
@@ -938,7 +940,6 @@ void TRI_vocbase_t::stop() {
 void TRI_vocbase_t::shutdown() {
   this->stop();
 
-  _logManager->resignAll();
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
 
   {
