@@ -207,7 +207,7 @@ function adminExecuteNoHeaderVpack() {
   var res = arango.POST_RAW(path, body);
   assertEqual(res.code, 400);
   assertTrue(res.error);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
