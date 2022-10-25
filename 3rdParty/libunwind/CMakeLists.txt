@@ -45,6 +45,8 @@ if (LINUX)
       make -j 32
     BUILD_IN_SOURCE
       1
+    BUILD_BYPRODUCTS
+          ${LIBUNWIND_LIB}
     INSTALL_COMMAND
       make install prefix=${CMAKE_CURRENT_BINARY_DIR} DESTDIR=${CMAKE_CURRENT_BINARY_DIR}
     STEP_TARGETS
