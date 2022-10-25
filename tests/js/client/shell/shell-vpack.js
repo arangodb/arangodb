@@ -181,7 +181,7 @@ function adminExecuteWithHeaderVpack() {
   assertEqual(res.code, 200);
   assertFalse(res.error);
   assertNull(res.parsedBody);
-};
+}
 
 function adminExecuteWithHeaderVpack2() {
   var path = '/_admin/execute';
