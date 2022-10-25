@@ -36,6 +36,7 @@ var internal = require("internal");
 var console = require("console");
 var EPS = 0.0001;
 let pregel = require("@arangodb/pregel");
+let pregelTestHelpers = require("@arangodb/graph/pregel-test-helpers");
 
 const graphName = "UnitTest_pregel";
 const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
@@ -51,7 +52,7 @@ function randomTestSuite() {
     do {
       internal.sleep(0.2);
       let stats = pregel.status(key);
-      if (stats.state !== "loading" && stats.state !== "running" && stats.state !== 'storing') {
+      if (pregelTestHelpers.runFinished(stats)) {
         break;
       }
     } while (i-- >= 0);
@@ -67,7 +68,7 @@ function randomTestSuite() {
     do {
       try {
         let stats = pregel.status(key);
-        if (stats.state === "canceled") {
+        if (pregelTestHelpers.runCanceled(stats)) {
           break;
         }
       } catch (err) {
@@ -161,7 +162,7 @@ function randomTestSuite() {
       do {
         internal.sleep(0.2);
         var stats = pregel.status(pid);
-        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
+        if (pregelTestHelpers.runFinished(stats)) {
           assertEqual(stats.vertexCount, n, stats);
           assertEqual(stats.edgeCount, m * 2, stats);
           break;
@@ -182,7 +183,7 @@ function randomTestSuite() {
       do {
         internal.sleep(0.2);
         var stats = pregel.status(pid);
-        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
+        if (pregelTestHelpers.runFinished(stats)) {
           assertEqual(stats.vertexCount, n, stats);
           assertEqual(stats.edgeCount, m * 2, stats);
           break;
@@ -203,7 +204,7 @@ function randomTestSuite() {
       do {
         internal.sleep(0.2);
         var stats = pregel.status(pid);
-        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
+        if (pregelTestHelpers.runFinished(stats)) {
           assertEqual(stats.vertexCount, n, stats);
           assertEqual(stats.edgeCount, m * 2, stats);
           break;
@@ -254,12 +255,12 @@ function randomTestSuite() {
       let i = 1000;
       do {
         stats = pregel.status(key);
-        if (stats.state === "done") {
+        if (pregelTestHelpers.runFinished(stats)) {
           break;
         }
         internal.sleep(0.2);
       } while (i-- >= 0);
-      assertEqual("done", stats.state);
+      assertTrue(pregelTestHelpers.runFinishedSuccessfully(stats), "run did not finish successfully " + stats);
       assertTrue(stats.hasOwnProperty('expires'));
       assertTrue(stats.expires > stats.created);
       assertTrue(i > 0, "timeout in pregel execution");
@@ -269,7 +270,7 @@ function randomTestSuite() {
       do {
         try {
           stats = pregel.status(key);
-          assertEqual("done", stats.state);
+          assertTrue(pregelTestHelpers.runFinishedSuccessfully(stats), "run did not finish successfully " + stats);
         } catch (err) {
           // fine.
           break;

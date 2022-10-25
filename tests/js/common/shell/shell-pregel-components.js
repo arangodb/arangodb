@@ -204,7 +204,7 @@ function componentsTestSuite() {
             do {
                 internal.sleep(0.2);
                 let stats = pregel.status(pid);
-                if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
+                if (pregelTestHelpers.runFinished(stats)) {
                     assertEqual(stats.vertexCount, numComponents * n, stats);
                     assertEqual(stats.edgeCount, numComponents * (m + n), stats);
 
@@ -237,15 +237,12 @@ function componentsTestSuite() {
                 maxGSS: 250, resultField: 'component'
             });
 
-            while (true) {
-                var status = pregel.status(handle);
-                if (status.state !== 'loading' && status.state !== 'running' && status.state !== 'storing') {
-                    console.log(status);
-                    break;
-                } else {
-                    console.log('Waiting for Pregel result...');
-                    internal.sleep(1);
-                }
+            var i = 10000;
+            do {
+                internal.sleep(0.2);
+            } while (!pregelTestHelpers.runFinished(pregel.status(handle)) && i-- >= 0);
+            if (i === 0) {
+                assertTrue(false, "timeout in WCC execution", pregel.status(handle));
             }
 
             const counts = db._query(
@@ -314,7 +311,7 @@ function wccRegressionTestSuite() {
             const maxWaitTimeSecs = 120;
             const sleepIntervalSecs = 0.2;
             let wakeupsLeft = maxWaitTimeSecs / sleepIntervalSecs;
-            while (pregel.status(pid).state !== "done" && wakeupsLeft > 0) {
+            while (!pregelTestHelpers.runFinished(pregel.status(pid)) && wakeupsLeft > 0) {
                 wakeupsLeft--;
                 internal.sleep(0.2);
             }
@@ -384,7 +381,7 @@ function wccRegressionTestSuite() {
             const maxWaitTimeSecs = 120;
             const sleepIntervalSecs = 0.2;
             let wakeupsLeft = maxWaitTimeSecs / sleepIntervalSecs;
-            while (pregel.status(pid).state !== "done" && wakeupsLeft > 0) {
+            while (!pregelTestHelpers.runFinished(pregel.status(pid)) && wakeupsLeft > 0) {
                 wakeupsLeft--;
                 internal.sleep(0.2);
             }

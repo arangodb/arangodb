@@ -36,6 +36,7 @@ var internal = require("internal");
 var console = require("console");
 var EPS = 0.0001;
 let pregel = require("@arangodb/pregel");
+let pregelTestHelpers = require("@arangodb/graph/pregel-test-helpers");
 
 const graphName = "UnitTest_pregel";
 const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
@@ -216,7 +217,7 @@ function multiCollectionTestSuite() {
       do {
         internal.sleep(0.2);
         let stats = pregel.status(pid);
-        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
+        if (pregelTestHelpers.runFinished(stats)) {
           assertEqual(stats.vertexCount, numComponents * n, stats);
           assertEqual(stats.edgeCount, numComponents * (m + n), stats);
           assertFalse(stats.hasOwnProperty("parallelism"));
@@ -248,7 +249,7 @@ function multiCollectionTestSuite() {
         do {
           internal.sleep(0.2);
           let stats = pregel.status(pid);
-          if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
+          if (pregelTestHelpers.runFinished(stats)) {
             assertTrue( stats.gss <= 25);
             assertEqual(stats.vertexCount, numComponents * n, stats);
             assertEqual(stats.edgeCount, numComponents * (m + n), stats);
@@ -283,7 +284,7 @@ function multiCollectionTestSuite() {
         do {
           internal.sleep(0.2);
           let stats = pregel.status(pid);
-          if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
+          if (pregelTestHelpers.runFinished(stats)) {
             assertTrue(stats.gss <= 25);
             assertEqual(stats.vertexCount, numComponents * n, stats);
             assertEqual(stats.edgeCount, numComponents * (m + n), stats);
@@ -324,7 +325,7 @@ function edgeCollectionRestrictionsTestSuite() {
     do {
       internal.sleep(0.2);
       let stats = pregel.status(pid);
-      if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
+      if (pregelTestHelpers.runFinished(stats)) {
         assertEqual(200, stats.vertexCount, stats);
         assertEqual(90, stats.edgeCount, stats);
         assertTrue(stats.hasOwnProperty("parallelism"));

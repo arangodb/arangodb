@@ -34,6 +34,7 @@ var db = require("@arangodb").db;
 var internal = require("internal");
 let pregel = require("@arangodb/pregel");
 var graph_module = require("@arangodb/general-graph");
+let pregelTestHelpers = require("@arangodb/graph/pregel-test-helpers");
 
 var EPS = 0.0001;
 
@@ -61,7 +62,7 @@ function shardKeysTestSuite() {
     tearDown: function () {
 
       if(pid !== 0) {
-        while(pregel.status(pid).state === 'loading' || pregel.status(pid).state === 'running') {
+        while(!pregelTestHelpers.runFinished(pregel.status(pid))) {
           internal.sleep(0.1);
         }
         pregel.cancel(pid); // delete contents
@@ -138,7 +139,7 @@ function basicTestSuite() {
     do {
       internal.wait(0.2);
       var stats = pregel.status(pid);
-      if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
+      if (pregelTestHelpers.runFinished(stats)) {
         assertEqual(stats.vertexCount, 11, stats);
         assertEqual(stats.edgeCount, 17, stats);
   
@@ -260,7 +261,7 @@ function basicTestSuite() {
       do {
         internal.wait(0.2);
         var stats = pregel.status(pid);
-        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
+        if (pregelTestHelpers.runFinished(stats)) {
           assertEqual(stats.vertexCount, 11, stats);
           assertEqual(stats.edgeCount, 17, stats);
 

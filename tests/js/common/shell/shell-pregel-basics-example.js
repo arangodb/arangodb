@@ -36,6 +36,7 @@ var internal = require("internal");
 var console = require("console");
 var EPS = 0.0001;
 let pregel = require("@arangodb/pregel");
+let pregelTestHelpers = require("@arangodb/graph/pregel-test-helpers");
 
 const graphName = "UnitTest_pregel";
 const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
@@ -47,7 +48,7 @@ function testAlgo(a, p) {
   do {
     internal.sleep(0.2);
     let stats = pregel.status(pid);
-    if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
+    if (pregelTestHelpers.runFinished(stats)) {
       assertEqual(stats.vertexCount, 11, stats);
       assertEqual(stats.edgeCount, 17, stats);
       let attrs = ["totalRuntime", "startupTime", "computationTime"];
@@ -181,7 +182,7 @@ function basicTestSuite() {
       do {
         internal.sleep(0.2);
         var stats = pregel.status(pid);
-        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
+        if (pregelTestHelpers.runFinished(stats)) {
           assertEqual(stats.vertexCount, 11, stats);
           assertEqual(stats.edgeCount, 17, stats);
 
@@ -244,7 +245,7 @@ function basicTestSuite() {
       do {
         internal.sleep(0.2);
         var stats = pregel.status(pid);
-        if (stats.state === "done") {
+        if (pregelTestHelpers.runFinished(stats)) {
           assertEqual(stats.vertexCount, 11, stats);
           assertEqual(stats.edgeCount, 17, stats);
 
@@ -269,7 +270,7 @@ function basicTestSuite() {
       do {
         internal.sleep(0.2);
         var stats = pregel.status(pid);
-        if (stats.state === "done") {
+        if (pregelTestHelpers.runFinished(stats)) {
           assertEqual(stats.vertexCount, 11, stats);
           assertEqual(stats.edgeCount, 17, stats);
 
@@ -323,7 +324,7 @@ function exampleTestSuite() {
       do {
         internal.sleep(0.2);
         var stats = pregel.status(key);
-        if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
+        if (pregelTestHelpers.runFinished(stats)) {
           assertEqual(stats.vertexCount, 4, stats);
           assertEqual(stats.edgeCount, 4, stats);
           break;
