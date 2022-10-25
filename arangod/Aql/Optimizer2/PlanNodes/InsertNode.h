@@ -22,29 +22,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Aql/Optimizer2/PlanNodes/ModificationNodeBase.h"
+#include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
+
 #include "Aql/Optimizer2/Types/Types.h"
-#include "Aql/Optimizer2/PlanNodeTypes/Projections.h"
-#include "Aql/Optimizer2/PlanNodeTypes/Expression.h"
 
 namespace arangodb::aql::optimizer2::nodes {
 
-struct DocumentProducingNode : optimizer2::types::Projections {
-  bool count;
-  bool readOwnWrites;
-  bool useCache;
-  bool producesResult;
-  std::optional<optimizer2::types::Expression> filter;
+struct InsertNode : ModificationNodeBase {
+  optimizer2::types::Variable inVariable;
 
-  bool operator==(DocumentProducingNode const&) const = default;
+  bool operator==(InsertNode const&) const = default;
 };
 
 template<class Inspector>
-auto inspect(Inspector& f, DocumentProducingNode& v) {
+auto inspect(Inspector& f, InsertNode& v) {
   return f.object(v).fields(
-      f.embedFields(static_cast<optimizer2::types::Projections&>(v)),
-      f.field("count", v.count), f.field("readOwnWrites", v.readOwnWrites),
-      f.field("useCache", v.useCache),
-      f.field("producesResult", v.producesResult), f.field("filter", v.filter));
+      f.embedFields(static_cast<optimizer2::nodes::ModificationNodeBase&>(v)),
+      f.field("inVariable", v.inVariable));
 }
 
 }  // namespace arangodb::aql::optimizer2::nodes

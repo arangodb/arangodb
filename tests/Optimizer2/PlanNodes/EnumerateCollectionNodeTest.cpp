@@ -25,6 +25,7 @@
 
 #include "Basics/VelocyPackStringLiteral.h"
 
+#include "Aql/Optimizer2/Types/Types.h"
 #include "Aql/Optimizer2/Inspection/StatusT.h"
 #include "Aql/Optimizer2/PlanNodes/EnumerateCollectionNode.h"
 
@@ -79,6 +80,10 @@ TEST(Optimizer2EnumerateCollectionNode, construction) {
     EXPECT_EQ(enumerateCollectionNode.dependencies.at(0), 1u);
     EXPECT_EQ(enumerateCollectionNode.id, 2u);
 
+    // FILTER a == true
+    // FILTER b == true
+    // => 1x FILTER (a == true) && (b == true)
+
     // indexHint
     EXPECT_FALSE(enumerateCollectionNode.indexHint.forced);
     EXPECT_EQ(enumerateCollectionNode.indexHint.lookahead, 1ul);
@@ -98,8 +103,19 @@ TEST(Optimizer2EnumerateCollectionNode, construction) {
     EXPECT_EQ(enumerateCollectionNode.estimatedNrItems, 0u);
 
     // EnumerateCollectionNode additional specifics
-    EXPECT_EQ(enumerateCollectionNode.projections.size(), 0ul);
-    EXPECT_EQ(enumerateCollectionNode.filterProjections.size(), 0ul);
+    /*EXPECT_TRUE(std::holds_alternative<
+                arangodb::aql::optimizer2::ProjectionType::ProjectionArray>(
+        enumerateCollectionNode.projections.projection));
+    EXPECT_EQ(
+        std::get<arangodb::aql::optimizer2::ProjectionType::ProjectionArray>(
+            enumerateCollectionNode.projections.projection)
+            .size(),
+        0ul);
+    EXPECT_EQ(
+        std::get<arangodb::aql::optimizer2::ProjectionType::ProjectionArray>(
+            enumerateCollectionNode.filterProjections.projection)
+            .size(),
+        0ul);*/
     EXPECT_FALSE(enumerateCollectionNode.count);
     EXPECT_TRUE(enumerateCollectionNode.producesResult);
     EXPECT_FALSE(enumerateCollectionNode.readOwnWrites);
@@ -109,6 +125,6 @@ TEST(Optimizer2EnumerateCollectionNode, construction) {
     EXPECT_EQ(enumerateCollectionNode.collection, "_graphs");
     EXPECT_FALSE(enumerateCollectionNode.satellite);
     EXPECT_FALSE(enumerateCollectionNode.isSatellite);
-    EXPECT_EQ(enumerateCollectionNode.isSatelliteOf.slice().toJson(), "null");
+    EXPECT_FALSE(enumerateCollectionNode.isSatelliteOf.has_value());
   }
 }

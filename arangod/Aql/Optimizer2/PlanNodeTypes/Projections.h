@@ -25,20 +25,34 @@
 #include "velocypack/Builder.h"
 
 #include "Aql/Optimizer2/Types/Types.h"
+#include "Inspection/Types.h"
 
 namespace arangodb::aql::optimizer2::types {
 
 struct Projections {
-  std::vector<VPackBuilder> projections;
-  std::vector<VPackBuilder> filterProjections;
+  /*
+   * NOTE:
+   * TODO: Can we drop "string-only" support here?!
+   * projection on a top-level attribute. will be returned as a string
+   * for downwards-compatibility
+   *
+   * projection on a nested attribute (e.g. a.b.c). will be returned as an
+   * array. this kind of projection did not exist before 3.7
+   *
+   * This statement is true for "projections" and "filterProjections".
+   */
+  ProjectionType projections{};
+  ProjectionType filterProjections{};
   AttributeTypes::Numeric maxProjections;
-};
 
-template<typename Inspector>
-auto inspect(Inspector& f, Projections& x) {
-  return f.object(x).fields(f.field("projections", x.projections),
-                            f.field("filterProjections", x.filterProjections),
-                            f.field("maxProjections", x.maxProjections));
-}
+  bool operator==(Projections const&) const = default;
+
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, Projections& x) {
+    return f.object(x).fields(f.field("projections", x.projections),
+                              f.field("filterProjections", x.filterProjections),
+                              f.field("maxProjections", x.maxProjections));
+  }
+};
 
 }  // namespace arangodb::aql::optimizer2::types
