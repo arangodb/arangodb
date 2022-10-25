@@ -27,6 +27,7 @@
 #include "Aql/Optimizer2/PlanNodes/CollectionAcessingNode.h"
 
 #include "Aql/Optimizer2/PlanNodeTypes/Expression.h"
+#include "Aql/Optimizer2/PlanNodeTypes/Indexes.h"
 #include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
 
 namespace arangodb::aql::optimizer2::nodes {
@@ -38,6 +39,8 @@ struct IndexOperatorOptions {
   bool reverse;
   bool evalFCalls;
   bool waitForSync;
+
+  bool operator==(IndexOperatorOptions const&) const = default;
 };
 
 template<typename Inspector>
@@ -56,12 +59,9 @@ struct IndexNode : optimizer2::nodes::BaseNode,
                    IndexOperatorOptions {
   // optionals
   std::optional<optimizer2::types::Variable> outVariable;
+  std::optional<optimizer2::types::Expression> condition;
 
-  // TODO: Implement types
-  std::optional<VPackBuilder> projections;
-  std::optional<VPackBuilder> filterProjections;
-  std::optional<VPackBuilder> indexes;
-  std::optional<VPackBuilder> condition;
+  std::vector<optimizer2::types::IndexHandle> indexes;
 
   // Boolean values
   bool needsGatherNodeSort;
@@ -74,6 +74,8 @@ struct IndexNode : optimizer2::nodes::BaseNode,
   std::optional<AttributeTypes::Numeric>
       indexIdOfVars;  // This is BaseType aka. DocumentId
   std::optional<std::vector<optimizer2::types::Variable>> indexValuesVars;
+
+  bool operator==(IndexNode const&) const = default;
 };
 
 template<typename Inspector>
@@ -91,10 +93,8 @@ auto inspect(Inspector& f, IndexNode& x) {
       f.field("needsGatherNodeSort", x.needsGatherNodeSort),
       f.field("indexCoversProjections", x.indexCoversProjections),
       f.field("limit", x.limit), f.field("lookahead", x.lookahead),
-      // TODO: Implement proper types
-      f.field("indexes", x.indexes),
-      // Optionals
-      f.field("condition", x.condition),
+      // in case: "isLateMaterialized()"
+      f.field("condition", x.condition), f.field("indexes", x.indexes),
       f.field("outNonMaterializedDocId", x.outNonMaterializedDocId),
       f.field("indexIdOfVars", x.indexIdOfVars),
       f.field("indexValuesVars", x.indexValuesVars));

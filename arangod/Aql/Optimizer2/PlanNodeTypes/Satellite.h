@@ -27,9 +27,12 @@
 namespace arangodb::aql::optimizer2::types {
 
 struct Satellite {
-  bool satellite;              // always set
-  bool isSatellite;            // only in EE set
-  VPackBuilder isSatelliteOf;  // only in EE set
+  bool satellite;    // always set
+  bool isSatellite;  // only in EE set
+  std::optional<AttributeTypes::NodeId> isSatelliteOf =
+      std::nullopt;  // only in EE set
+
+  bool operator==(Satellite const& other) const = default;
 };
 
 template<typename Inspector>

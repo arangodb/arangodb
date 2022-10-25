@@ -33,8 +33,10 @@ namespace arangodb::aql::optimizer2::types {
 // TODO HINT: "Expression" aka. "Condition" aka. "(partial) AstNode*?"
 // TODO: This will need some cleanup, there are too many optionals IMHO.
 struct Expression {
-  AttributeTypes::String type;
-  AttributeTypes::Numeric typeID;
+  // now finally those (type, typeID) are optional as well, as we also handle
+  // empty expressions like: " { } "
+  std::optional<AttributeTypes::String> type;
+  std::optional<AttributeTypes::Numeric> typeID;
 
   std::optional<VPackBuilder> value;
   std::optional<AttributeTypes::String> name;
@@ -50,7 +52,31 @@ struct Expression {
   std::optional<bool> booleanize;
   std::optional<bool> excludesNull;
   std::optional<bool> sorted;
-};
+
+  bool operator==(Expression const& other) const {
+    bool valueEquals = false;
+
+    if (this->value.has_value() && other.value.has_value()) {
+      if (this->value.value().slice().binaryEquals(
+              other.value.value().slice())) {
+        // TODO: Check if binaryEquals is the method we want here.
+        valueEquals = true;
+      }
+    }
+
+    return (valueEquals && this->type == other.type &&
+            this->typeID == other.typeID && this->name == other.name &&
+            this->id == other.id && this->vType == other.vType &&
+            this->vTypeID == other.vTypeID &&
+            this->expressionType == other.expressionType &&
+            this->subNodes == other.subNodes &&
+            this->quantifier == other.quantifier &&
+            this->levels == other.levels &&
+            this->booleanize == other.booleanize &&
+            this->excludesNull == other.excludesNull &&
+            this->sorted == other.sorted);
+  };
+};  // namespace arangodb::aql::optimizer2::types
 
 template<class Inspector>
 auto inspect(Inspector& f, Expression& v) {

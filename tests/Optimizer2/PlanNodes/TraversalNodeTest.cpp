@@ -184,7 +184,7 @@ TEST(Optimizer2traversalNode, construction) {
   auto res = deserializeWithStatus<TraversalNode>(TraversalNodeBuffer);
 
   if (!res) {
-    fmt::print("Something went wrong: {}", res.error());
+    fmt::print("Something went wrong: {} {} ", res.error(), res.path());
     EXPECT_TRUE(res.ok());
   } else {
     auto traversalNode = res.get();

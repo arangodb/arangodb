@@ -2930,6 +2930,10 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
       CalculationNode* other = nullptr;
       auto current = n->getFirstParent();
 
+      // [firstParent]
+      // let x = 22
+      // let x = 123 (CalculationNode)
+      //
       while (current != nullptr) {
         current->getVariablesUsedHere(vars);
         if (vars.find(outVariable) != vars.end()) {

@@ -188,7 +188,7 @@ TEST_F(Optimizer2IndexNode, construction) {
   auto res = deserializeWithStatus<IndexNode>(IndexNodeBuffer);
 
   if (!res) {
-    fmt::print("Something went wrong: {}", res.error());
+    fmt::print("Something went wrong: {} {} ", res.error(), res.path());
     EXPECT_TRUE(res.ok());
   } else {
     auto indexNode = res.get();

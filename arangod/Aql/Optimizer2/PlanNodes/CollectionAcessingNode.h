@@ -34,6 +34,8 @@ struct CollectionAccessingNode {
   // specific
   AttributeTypes::String database;
   AttributeTypes::String collection;
+
+  bool operator==(CollectionAccessingNode const&) const = default;
 };
 
 template<class Inspector>
@@ -42,6 +44,7 @@ auto inspect(Inspector& f, CollectionAccessingNode& v) {
       // optionals
       f.field("prototype", v.prototype),
       f.field("numberOfShards", v.numberOfShards),
+      f.field("restrictedTo", v.restrictedTo),
       // specific
       f.field("database", v.database),
       f.field("collection", v.collection)
