@@ -20,4 +20,5 @@ target_include_directories(
   PRIVATE ${PROJECT_SOURCE_DIR}/lib ${PROJECT_BINARY_DIR}/lib
           ${PROJECT_SOURCE_DIR}/arangod/Pregel)
 
-target_link_libraries(arangodbtests_pregel_impl velocypack fmt gtest)
+target_link_libraries(arangodbtests_pregel_impl velocypack fmt gtest
+                      arangodb_actors)

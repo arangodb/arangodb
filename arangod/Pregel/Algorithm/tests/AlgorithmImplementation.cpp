@@ -37,61 +37,51 @@
 #include <fmt/core.h>
 #include <fmt/format.h>
 
-#include <Algorithm/Example.h>
-#include <Algorithm/Graph.h>
+#include <ActorFramework/Actor.h>
+#include <ActorFramework/Runtime.h>
 
 using namespace arangodb::velocypack;
-using namespace arangodb::pregel::graph;
-using namespace arangodb::pregel::algorithm_sdk;
-using namespace arangodb::pregel::algorithms::example;
+using namespace arangodb::actor_framework;
 
-struct ActorHandle {
-  size_t id;
+struct Msg : MsgPayloadBase {};
+
+struct Worker : ActorBase {
+  Worker(PidT pid, Runtime& rt) : ActorBase(pid, rt) {
+    fmt::print("Worker created {}\n", pid.pid);
+  }
+  virtual void process(PidT from,
+                       std::unique_ptr<MsgPayloadBase> msg) override {
+    fmt::print("Hello, world, this is your worker speaking {} \n", from.pid);
+    send<Msg>(from);
+  }
+
+  std::vector<PidT> workers;
 };
 
-template<typename Data>
-struct Actor {
-  ActorHandle handle;
-  Data d;
+struct MsgPayload : MsgPayloadBase {};
+struct Conductor : ActorBase {
+  Conductor(PidT pid, Runtime& rt) : ActorBase(pid, rt) {}
+  virtual void process(PidT from,
+                       std::unique_ptr<MsgPayloadBase> msg) override {
+    fmt::print("Hello, world, this is your conductor speaking\n");
+    for (std::size_t i = 0; i < 5; i++) {
+      auto p = rt.spawn<Worker>();
+      workers.emplace_back(p);
+      send<Msg>(p);
+    }
+  }
+
+  std::vector<PidT> workers;
 };
-
-void setup_graph() {
-  auto graphJson =
-      R"({ "vertices": [ {"_key": "A", "value": 5},
-                         {"_key": "B", "value": 10},
-                         {"_key": "C", "value": 15} ],
-           "edges":    [ {"_key": "", "_from": "A", "_to": "B"},
-                         {"_key": "", "_from": "B", "_to": "C"} ] })"_vpack;
-
-  auto graph = Graph<VertexProperties, EmptyEdgeProperties>{};
-
-  auto vs = graphJson["vertices"];
-  for (size_t i = 0; i < vs.length(); ++i) {
-    auto res = readVertex(graph, vs[i]);
-  }
-
-  auto es = graphJson["edges"];
-  for (size_t i = 0; i < es.length(); ++i) {
-    auto res = readEdge(graph, es[i]);
-  }
-}
-
-void setup() {
-  auto const& settings = Settings{.iterations = 10, .resultField = "result"};
-
-  auto conductor = createConductor<Data>(settings);
-  auto worker = createWorker<Data>(settings /*, conductorHandle */);
-
-  std::vector<Worker<Data>> workers;
-  for (size_t i = 0; i < 16; i++) {
-    fmt::print("foo: {}\n", i);
-    workers.emplace_back(createWorker<Data>(settings));
-  }
-}
 
 auto main(int argc, char** argv) -> int {
   fmt::print("GWEN testbed\n");
-  setup();
+
+  Runtime rt;
+
+  auto pid = rt.spawn<Conductor>();
+  rt.send(pid, pid, std::make_unique<Msg>());
+  rt.run();
 
   return 0;
 }

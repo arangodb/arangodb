@@ -32,6 +32,7 @@ if(USE_FAIL_ON_WARNINGS)
   endif()
 endif()
 
+add_subdirectory(ActorFramework)
 add_subdirectory(Algorithm)
 add_subdirectory(REST)
 add_subdirectory(Algos)

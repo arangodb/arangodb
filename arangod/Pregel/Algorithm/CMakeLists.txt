@@ -1,3 +1,3 @@
-target_sources(arango_pregel PRIVATE Worker.cpp)
+# target_sources(arango_pregel)
 
 add_subdirectory(tests)

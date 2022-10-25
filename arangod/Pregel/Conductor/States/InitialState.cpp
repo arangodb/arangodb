@@ -1,5 +1,4 @@
 #include "InitialState.h"
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Algorithm.h"
@@ -8,29 +7,34 @@
 
 using namespace arangodb::pregel::conductor;
 
-Initial::Initial(Conductor& conductor, WorkerApi<WorkerCreated>&& workerApi)
-    : conductor{conductor}, _workerApi{std::move(workerApi)} {
+Initial::Initial(Conductor &conductor) : conductor{conductor} {
   conductor._timing.total.start();
 }
 
 auto Initial::run() -> std::optional<std::unique_ptr<State>> {
-  auto const& [workerInitializations, leadingServerForShard] =
+  auto const &[workerInitializations, leadingServerForShard] =
       _workerInitializations();
 
   conductor._leadingServerForShard = leadingServerForShard;
   auto servers = std::vector<ServerID>{};
-  for (auto const& [server, _] : workerInitializations) {
+  for (auto const &[server, _] : workerInitializations) {
     servers.push_back(server);
   }
   conductor._status = ConductorStatus::forWorkers(servers);
 
-  _workerApi._servers = servers;
-  auto sent = _workerApi.send(workerInitializations);
-  if (sent.fail()) {
-    LOG_PREGEL_CONDUCTOR_STATE("ae855", ERR) << sent.errorMessage();
-    return std::make_unique<Canceled>(conductor, std::move(_workerApi));
-  }
-  return std::nullopt;
+  return _aggregate.doUnderLock(
+      [&, workerInitializations = std::move(workerInitializations)](
+          auto &agg) -> std::optional<std::unique_ptr<State>> {
+        auto aggregate =
+            conductor._workers.createWorkers(workerInitializations);
+        if (aggregate.fail()) {
+          LOG_PREGEL_CONDUCTOR_STATE("ae855", ERR)
+              << fmt::format("Initial state: {}", aggregate.errorMessage());
+          return std::make_unique<Canceled>(conductor);
+        }
+        agg = aggregate.get();
+        return std::nullopt;
+      });
 }
 
 auto Initial::receive(MessagePayload message)
@@ -38,25 +42,27 @@ auto Initial::receive(MessagePayload message)
   auto explicitMessage = getResultTMessage<WorkerCreated>(message);
   if (explicitMessage.fail()) {
     LOG_PREGEL_CONDUCTOR_STATE("7698e", ERR) << explicitMessage.errorMessage();
-    return std::make_unique<Canceled>(conductor, std::move(_workerApi));
+    return std::make_unique<Canceled>(conductor);
   }
 
-  auto aggregatedMessage = _workerApi.collect(explicitMessage.get());
-  if (!aggregatedMessage.has_value()) {
+  auto finishedAggregate = _aggregate.doUnderLock(
+      [&](auto &agg) { return agg.aggregate(explicitMessage.get()); });
+
+  if (!finishedAggregate) {
     return std::nullopt;
   }
 
-  return std::make_unique<Loading>(conductor, std::move(_workerApi));
+  return std::make_unique<Loading>(conductor);
 }
 
 namespace {
 using namespace arangodb;
 auto resolveInfo(
-    TRI_vocbase_t* vocbase, CollectionID const& collectionID,
-    std::unordered_map<CollectionID, std::string>& collectionPlanIdMap,
-    std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>>& serverMap,
-    std::vector<ShardID>& allShards) -> void {
-  ServerState* ss = ServerState::instance();
+    TRI_vocbase_t *vocbase, CollectionID const &collectionID,
+    std::unordered_map<CollectionID, std::string> &collectionPlanIdMap,
+    std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> &serverMap,
+    std::vector<ShardID> &allShards) -> void {
+  ServerState *ss = ServerState::instance();
   if (!ss->isRunningInCluster()) {
     auto lc = vocbase->lookupCollection(collectionID);
 
@@ -71,7 +77,7 @@ auto resolveInfo(
     serverMap[ss->getId()][collectionID].push_back(collectionID);
 
   } else if (ss->isCoordinator()) {
-    ClusterInfo& ci =
+    ClusterInfo &ci =
         vocbase->server().getFeature<ClusterFeature>().clusterInfo();
     std::shared_ptr<LogicalCollection> lc =
         ci.getCollection(vocbase->name(), collectionID);
@@ -86,7 +92,7 @@ auto resolveInfo(
         ci.getShardList(std::to_string(lc->id().id()));
     allShards.insert(allShards.end(), shardIDs->begin(), shardIDs->end());
 
-    for (auto const& shard : *shardIDs) {
+    for (auto const &shard : *shardIDs) {
       std::shared_ptr<std::vector<ServerID> const> servers =
           ci.getResponsibleServer(shard);
       if (servers->size() > 0) {
@@ -97,7 +103,7 @@ auto resolveInfo(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
   }
 }
-}  // namespace
+} // namespace
 
 auto Initial::_workerInitializations() const
     -> std::tuple<std::unordered_map<ServerID, CreateWorker>,
@@ -108,19 +114,19 @@ auto Initial::_workerInitializations() const
   std::vector<ShardID> shardList;
 
   // resolve plan id's and shards on the servers
-  for (CollectionID const& collectionID : conductor._vertexCollections) {
+  for (CollectionID const &collectionID : conductor._vertexCollections) {
     resolveInfo(&(conductor._vocbaseGuard.database()), collectionID,
                 collectionPlanIdMap, vertexMap, shardList);
   }
-  for (CollectionID const& collectionID : conductor._edgeCollections) {
+  for (CollectionID const &collectionID : conductor._edgeCollections) {
     resolveInfo(&(conductor._vocbaseGuard.database()), collectionID,
                 collectionPlanIdMap, edgeMap, shardList);
   }
 
   auto createWorkers = std::unordered_map<ServerID, CreateWorker>{};
   auto leadingServerForShard = std::unordered_map<ShardID, ServerID>{};
-  for (auto const& [server, vertexShards] : vertexMap) {
-    auto const& edgeShards = edgeMap[server];
+  for (auto const &[server, vertexShards] : vertexMap) {
+    auto const &edgeShards = edgeMap[server];
     createWorkers.emplace(
         server, CreateWorker{.executionNumber = conductor._executionNumber,
                              .algorithm = conductor._algorithm->name(),
@@ -133,12 +139,12 @@ auto Initial::_workerInitializations() const
                              .edgeShards = edgeShards,
                              .collectionPlanIds = collectionPlanIdMap,
                              .allShards = shardList});
-    for (auto const& [_, shards] : vertexShards) {
-      for (auto const& shard : shards) {
+    for (auto const &[_, shards] : vertexShards) {
+      for (auto const &shard : shards) {
         leadingServerForShard[shard] = server;
       }
     }
   }
 
-  return make_tuple(createWorkers, leadingServerForShard);
+  return std::make_tuple(createWorkers, leadingServerForShard);
 }
