@@ -77,6 +77,8 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
 
   bool isHidden() const override { return false; }
 
+  bool needsReversal() const override { return true; }
+
   char const* typeName() const override { return oldtypeName(); }
 
   bool canBeDropped() const override { return true; }

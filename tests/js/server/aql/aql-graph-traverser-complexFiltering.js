@@ -494,7 +494,9 @@ function complexFilteringSuite() {
           assertEqual(node["inVariable"]["name"], "pruneCondition");
         }
       });
-      assertTrue(foundExtraLet);
+
+      // We cannot find an extra LET, as the PruneCondition can be optimized into the Traversal and be transformed into a local
+      assertFalse(foundExtraLet);
     },
 
     testStorePruneConditionVertexInVariableExplainLogicalOrWithOptions: function () {
@@ -517,7 +519,9 @@ function complexFilteringSuite() {
           assertEqual(node["options"]["order"], "bfs");
         }
       });
-      assertTrue(foundExtraLet);
+
+      // We cannot find an extra LET, as the PruneCondition can be optimized into the Traversal and be transformed into a local
+      assertFalse(foundExtraLet);
     },
 
     testStorePruneConditionEdgeInVariableExplain: function () {
@@ -537,7 +541,9 @@ function complexFilteringSuite() {
           assertEqual(node["inVariable"]["name"], "pruneCondition");
         }
       });
-      assertTrue(foundExtraLet);
+
+      // We cannot find an extra LET, as the PruneCondition can be optimized into the Traversal and be transformed into a local
+      assertFalse(foundExtraLet);
     },
 
     testStorePruneConditionEdgeInVariableExplainWithOptions: function () {
@@ -560,7 +566,9 @@ function complexFilteringSuite() {
           assertEqual(node["options"]["order"], "bfs");
         }
       });
-      assertTrue(foundExtraLet);
+
+      // We cannot find an extra LET, as the PruneCondition can be optimized into the Traversal and be transformed into a local
+      assertFalse(foundExtraLet);
     },
 
     testStorePruneConditionPathInVariableExplain: function () {
