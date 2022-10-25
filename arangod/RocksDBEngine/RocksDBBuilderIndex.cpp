@@ -294,8 +294,10 @@ static arangodb::Result fillIndex(
   auto mode =
       snap == nullptr ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE;
   LogicalCollection& coll = ridx.collection();
+  transaction::Options trxOpts;
+  trxOpts.requiresReplication = false;
   trx::BuilderTrx trx(transaction::StandaloneContext::Create(coll.vocbase()),
-                      coll, mode);
+                      coll, mode, trxOpts);
   if (mode == AccessMode::Type::EXCLUSIVE) {
     trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }

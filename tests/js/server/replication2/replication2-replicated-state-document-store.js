@@ -26,9 +26,11 @@
 
 const jsunity = require('jsunity');
 const arangodb = require("@arangodb");
+const internal = require("internal");
 const _ = require('lodash');
 const db = arangodb.db;
 const helper = require('@arangodb/test-helper');
+const request = require("@arangodb/request");
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const lp = require("@arangodb/testutils/replicated-logs-predicates");
 const lhttp = require('@arangodb/testutils/replicated-logs-http-helper');
@@ -80,7 +82,7 @@ const syncShardsWithLogs = function(dbn) {
 };
 
 /**
- * Checks if a given key exists (or not) on all followers.
+ * Checks if a given key exists (or not) on all servers.
  */
 const checkFollowersValue = function (servers, shardId, key, value, isReplication2) {
   let localValues = {};
@@ -190,6 +192,9 @@ const getArrayElements = function(logs, opType, name) {
   return entries.filter(entry => entry.name === name);
 };
 
+/**
+ * This test suite validates the correctness of most basic operations, checking replicated log entries.
+ */
 const replicatedStateDocumentStoreSuiteReplication2 = function () {
   let collection = null;
   let shards = null;
@@ -363,7 +368,112 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
           found.push(colName);
         }
       }
-      assertEqual(found.length, 2); //, `Dumping combined log entries: ${JSON.stringify(allEntries)}`);
+      assertEqual(found.length, 2, `Dumping combined log entries (excluding inserts): ` +
+        JSON.stringify(allEntries.filter(entry => !entry.hasOwnProperty("payload") ||
+          entry.hasOwnProperty("payload") && entry.payload[1].operation !== "Insert")));
+    }
+  };
+};
+
+/**
+ * This test suite intentionally triggers intermediate commit operations and validates their execution.
+ */
+const replicatedStateIntermediateCommitsSuite = function() {
+  const rc = lh.dbservers.length;
+  const servers = Object.assign({}, ...lh.dbservers.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
+  let collection = null;
+  let shards = null;
+  let shardId = null;
+  let logs = null;
+
+  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+    lh.testHelperFunctions(database, {replicationVersion: "2"});
+
+  return {
+    setUpAll,
+    tearDownAll,
+    setUp: setUpAnd(() => {
+      const props = {numberOfShards: 1, writeConcern: rc, replicationFactor: rc};
+      collection = db._create(collectionName, props);
+      shards = collection.shards();
+      shardId = shards[0];
+      logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+    }),
+    tearDown: tearDownAnd(() => {
+      if (collection !== null) {
+        collection.drop();
+      }
+      collection = null;
+    }),
+
+    testIntermediateCommitsNoLogEntries: function(testName) {
+      db._query(`FOR i in 0..10 INSERT {_key: CONCAT('test', i), name: '${testName}', baz: i} INTO ${collectionName}`);
+      let intermediateCommitEntries = getDocumentEntries(mergeLogs(logs), "IntermediateCommit");
+      assertEqual(intermediateCommitEntries.length, 0);
+    },
+
+    testIntermediateCommitsLogEntries: function(testName) {
+      db._query(`FOR i in 0..1000 INSERT {_key: CONCAT('test', i), name: '${testName}', baz: i} INTO ${collectionName}`,
+        {}, {intermediateCommitCount: 1});
+      let intermediateCommitEntries = getDocumentEntries(mergeLogs(logs), "IntermediateCommit");
+      assertEqual(intermediateCommitEntries.length, 2);
+    },
+
+    testIntermediateCommitsFull: function(testName) {
+      db._query(`
+      FOR i in 0..2000 
+      INSERT {_key: CONCAT('test', i), name: '${testName}', value: i} INTO ${collectionName}`,
+        {}, {intermediateCommitCount: 1});
+
+      let keys = [];
+      for (let i = 0; i <= 2000; ++i) {
+        keys.push(`test${i}`);
+      }
+
+      // Wait for the last key to be applied on all servers
+      checkFollowersValue(servers, shardId, `test2000`, 2000, true);
+
+      // Check that all keys are applied on all servers
+      for (let server of Object.values(servers)) {
+        let bulk = sh.getBulkDocuments(server, database, shardId, keys);
+        let keysSet = new Set(keys);
+        for (let doc of bulk) {
+          assertTrue(keysSet.has(doc._key));
+          keysSet.delete(doc._key);
+        }
+      }
+    },
+
+    testIntermediateCommitsPartial: function(testName) {
+      // Intentionally fail the query after an intermediate commit
+      try {
+        db._query(`
+        FOR i in 0..2000
+        FILTER ASSERT(i < 1500, "was erlaube")
+        INSERT {_key: CONCAT('test', i), name: '${testName}', value: i} INTO ${collectionName}`, {},
+          {intermediateCommitCount: 1});
+      } catch (err) {
+        assertEqual(err.errorNum, internal.errors.ERROR_QUERY_USER_ASSERT.code);
+      }
+
+      // AQL operates in batches of 1000 documents. Each batch is processed in a single babies operation.
+      // Intermediate commits are only performed after a babies operation.
+      // The first 1000 documents are part of the first intermediate commit, after which the query fails.
+      let keys = [];
+      for (let i = 0; i <= 2000; ++i) {
+        keys.push(`test${i}`);
+      }
+
+      // Wait for the last key to be applied on all servers
+      checkFollowersValue(servers, shardId, `test999`, 999, true);
+
+      // Check that first batch of keys is applied on all servers
+      for (let server of Object.values(servers)) {
+        let bulk = sh.getBulkDocuments(server, database, shardId, keys);
+        for (let doc of bulk) {
+          assertEqual(doc.value < 1000, doc._key !== undefined);
+        }
+      }
     },
   };
 };
@@ -469,6 +579,9 @@ const replicatedStateFollowerSuite = function (dbParams) {
   };
 };
 
+/**
+ * This test suite checks that everything is left clean after dropping a database.
+ */
 const replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2 = function () {
   let previousDatabase, databaseExisted = true;
   return {
@@ -592,6 +705,9 @@ const replicatedStateRecoverySuite = function () {
   };
 };
 
+/**
+ * This test suite checks that replication2 leaves no side effects when creating a replication1 DB.
+ */
 const replicatedStateDocumentStoreSuiteReplication1 = function () {
   const {setUpAll, tearDownAll, setUp, tearDown} =
     lh.testHelperFunctions(database, {replicationVersion: "1"});
@@ -612,14 +728,55 @@ const replicatedStateDocumentStoreSuiteReplication1 = function () {
   };
 };
 
+/**
+ * This test suite checks the correctness of a DocumentState snapshot transfer and the related REST APIs.
+ */
+const replicatedStateSnapshotTransferSuite = function () {
+  let collection = null;
+  let shards = null;
+  let shardId = null;
+  let logId = null;
+
+  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+      lh.testHelperFunctions(database, {replicationVersion: "2"});
+
+  return {
+    setUpAll,
+    tearDownAll,
+    setUp: setUpAnd(() => {
+      collection = db._create(collectionName, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3});
+      shards = collection.shards();
+      shardId = shards[0];
+      logId = shardId.slice(1);
+    }),
+    tearDown: tearDownAnd(() => {
+      if (collection !== null) {
+        collection.drop();
+      }
+      collection = null;
+    }),
+
+    testLeaderRestAPI: function () {
+      let {leader} = lh.getReplicatedLogLeaderPlan(database, logId);
+      let leaderUrl = lh.getServerUrl(leader);
+      let url = `${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot?waitForIndex=0`;
+      let result = request.get({url: url});
+      lh.checkRequestResult(result);
+    },
+  };
+};
+
+
 function replicatedStateFollowerSuiteV1() { return makeTestSuites(replicatedStateFollowerSuite)[0]; }
 function replicatedStateFollowerSuiteV2() { return makeTestSuites(replicatedStateFollowerSuite)[1]; }
 
 jsunity.run(replicatedStateDocumentStoreSuiteReplication2);
 jsunity.run(replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2);
 jsunity.run(replicatedStateDocumentStoreSuiteReplication1);
+jsunity.run(replicatedStateIntermediateCommitsSuite);
 jsunity.run(replicatedStateFollowerSuiteV1);
 jsunity.run(replicatedStateFollowerSuiteV2);
 jsunity.run(replicatedStateRecoverySuite);
+jsunity.run(replicatedStateSnapshotTransferSuite);
 
 return jsunity.done();
