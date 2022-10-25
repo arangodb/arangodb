@@ -272,7 +272,7 @@ SupervisedScheduler::~SupervisedScheduler() = default;
 bool SupervisedScheduler::queueItem(RequestLane lane,
                                     std::unique_ptr<WorkItemBase> work,
                                     bool bounded) {
-  if (!_acceptingNewJobs.load(std::memory_order_relaxed)) {
+  if (bounded && !_acceptingNewJobs.load(std::memory_order_relaxed)) {
     return false;
   }
 
