@@ -174,7 +174,7 @@ const replaceParticipant = (database, logId, oldParticipant, newParticipant) => 
 };
 
 /**
- * Returns the value of a key from a follower.
+ * Returns the value of a key from a server.
  */
 const getLocalValue = function (endpoint, db, col, key) {
   let res = request.get({
@@ -182,6 +182,21 @@ const getLocalValue = function (endpoint, db, col, key) {
     headers: {
       "X-Arango-Allow-Dirty-Read": true
     },
+  });
+  LH.checkRequestResult(res, true);
+  return res.json;
+};
+
+/**
+ * Returns bulk documents from a server collection.
+ */
+const getBulkDocuments = function (endpoint, db, col, keys) {
+  let res = request.put({
+    url: `${endpoint}/_db/${db}/_api/document/${col}?onlyget=true`,
+    headers: {
+      "X-Arango-Allow-Dirty-Read": true
+    },
+    body: JSON.stringify(keys)
   });
   LH.checkRequestResult(res, true);
   return res.json;
@@ -199,3 +214,4 @@ exports.updateReplicatedStatePlan = updateReplicatedStatePlan;
 exports.updateReplicatedStateTarget = updateReplicatedStateTarget;
 exports.replaceParticipant = replaceParticipant;
 exports.getLocalValue = getLocalValue;
+exports.getBulkDocuments = getBulkDocuments;

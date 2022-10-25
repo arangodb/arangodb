@@ -60,9 +60,13 @@ auto DocumentStateTransaction::apply(DocumentLogEntry const& entry)
           Result{TRI_ERROR_TRANSACTION_INTERNAL,
                  fmt::format(
                      "Transaction of type {} with ID {} could not be applied",
-                     to_string(entry.operation), entry.tid.id())},
+                     int(entry.operation), entry.tid.id())},
           opOptions};
   }
+}
+
+auto DocumentStateTransaction::intermediateCommit() -> Result {
+  return _methods->triggerIntermediateCommit();
 }
 
 auto DocumentStateTransaction::commit() -> Result { return _methods->commit(); }
