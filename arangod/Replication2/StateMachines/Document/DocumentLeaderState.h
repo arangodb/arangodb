@@ -28,6 +28,7 @@
 
 #include "Basics/UnshackledMutex.h"
 
+#include <atomic>
 #include <memory>
 #include <unordered_set>
 
@@ -73,5 +74,6 @@ struct DocumentLeaderState
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
   Guarded<std::unordered_set<TransactionId>, std::mutex> _activeTransactions;
   transaction::IManager& _transactionManager;
+  std::atomic_bool _isResigning;
 };
 }  // namespace arangodb::replication2::replicated_state::document

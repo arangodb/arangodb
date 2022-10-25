@@ -45,10 +45,13 @@ DocumentLeaderState::DocumentLeaderState(
       gid(core->getGid()),
       _handlersFactory(std::move(handlersFactory)),
       _guardedData(std::move(core)),
-      _transactionManager(transactionManager) {}
+      _transactionManager(transactionManager),
+      _isResigning(false) {}
 
 auto DocumentLeaderState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
+  _isResigning.store(true);
+
   auto transactions = getActiveTransactions();
   for (auto trx : transactions) {
     try {
@@ -127,6 +130,14 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
                                              TransactionId transactionId,
                                              ReplicationOptions opts)
     -> futures::Future<LogIndex> {
+  if (_isResigning.load()) {
+    LOG_CTX("ffe2f", INFO, loggerContext)
+        << "replicateOperation called on a resigning leader, will not "
+           "replicate";
+    return LogIndex{};  // TODO - can we do this differently instead of
+                        // returning a dummy index
+  }
+
   // we replicate operations using follower trx ids, but locally we track the
   // actual trx ids
   auto entry =
@@ -140,7 +151,7 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
       // we have not replicated anything for a transaction with this id, so
       // there is no need to replicate the abort/commit operation
       return LogIndex{};  // TODO - can we do this differently instead of
-                          // returning a dummy index/
+                          // returning a dummy index
     }
   } else {
     _activeTransactions.getLockedGuard()->emplace(transactionId);
