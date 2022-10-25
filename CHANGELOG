@@ -1,11 +1,40 @@
 devel
 -----
 
+* Solve a case of excessive memory consumption in certain AQL queries with
+  IN filters with very long lists. Free sub-iterators as soon as they are
+  exhausted.
+
+* Change default output format of arangoexport from `json` to `jsonl`.
+
+* Added startup option `--query.log-failed` to optionally log all failed AQL
+  queries to the server log. The option is turned off by default.
+
+* Added startup option `--query.log-memory-usage-threshold` to optionally log
+  all AQL queries that have a peak memory usage larger than the configured
+  value. The default value is 4GB.
+
+* Added startup option `--query.max-artifact-log-length` to control the
+  maximum length of logged query strings and bind parameter values.
+  This allows truncating overly long query strings and bind parameter values
+  to a reasonable length. Previously the cutoff length was hard-coded.
+
+* Fixed GitHub issue #17291: Fixed a server crash which could occur in case an
+  AQL query using a PRUNE or FILTER statement, combined with UDFs (user defined
+  functions), got executed.
+
+* Improve cardinality estimate for AQL EnumerateCollectionNode in case a
+  `SORT RAND() LIMIT 1` is used. Here, the estimated number of items is at
+  most 1.
+
 * ES-1312: fix handling of reaching the WAL archive capacity limit.
 
 * BTS-941: The HTTP API now delivers the correct list of the collection's
   shards in case a collection from an EnterpriseGraph, SmartGraph, Disjoint
   EnterpriseGraph, Disjoint SmartGraph or SatelliteGraph is being used.
+
+* Log the documents counts on leader and follower shards at the end of each
+  successful shard synchronization.
 
 * Changed the encoding of revision ids returned by the following REST APIs:
   - GET /_api/collection/<collection-name>/revision: the revision id was
@@ -47,6 +76,10 @@ devel
 
 * BTS-1008: Update react-autocomplete-input to fix single letter collection bug
   when creating a link in the views in the WebUI.
+
+* Improved optimization of functions to be covered by Traversals. Now more functions
+  should be optimized into the traversal, and some that are not valid should not be optimized
+  anymore. Fixes #16589.
 
 * BTS-908: Fixed WebUI GraphViewer not being able to create a new edge relation
   between two nodes in cases where only one edge definition has been defined

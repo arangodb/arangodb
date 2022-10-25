@@ -56,6 +56,7 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
+#include "Futures/Future.h"
 
 #include "Mocks/IResearchLinkMock.h"
 
@@ -2115,7 +2116,14 @@ TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
   return arangodb::Result();
 }
 
-arangodb::Result TransactionStateMock::performIntermediateCommitIfRequired(
+arangodb::Result TransactionStateMock::triggerIntermediateCommit() {
+  ADB_PROD_ASSERT(false) << "triggerIntermediateCommit is not supported in "
+                            "TransactionStateMock";
+  return arangodb::Result{TRI_ERROR_INTERNAL};
+}
+
+arangodb::futures::Future<arangodb::Result>
+TransactionStateMock::performIntermediateCommitIfRequired(
     arangodb::DataSourceId cid) {
   return arangodb::Result();
 }

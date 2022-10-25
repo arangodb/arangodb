@@ -55,7 +55,7 @@ std::string QueryString::extract(size_t maxLength) const {
 
     // start of a multi-byte sequence
     if ((c & 192) == 192) {
-      // decrease length by one more, so we the string contains the
+      // decrease length by one more, so the string contains the
       // last part of the previous (multi-byte?) sequence
       break;
     }

@@ -17,6 +17,12 @@ add_subdirectory(Optimizer2)
 add_subdirectory(Fuerte)
 
 # ----------------------------------------
+# Error tests
+# ----------------------------------------
+
+add_subdirectory(Errors)
+
+# ----------------------------------------
 # Link directories
 # ----------------------------------------
 
@@ -201,6 +207,7 @@ set(ARANGODB_TESTS_SOURCES
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
   Containers/SmallVectorTest.cpp
+  Errors/ErrorTTest.cpp
   Futures/FutureTest.cpp
   Futures/PromiseTest.cpp
   Futures/TryTest.cpp
