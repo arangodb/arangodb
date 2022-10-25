@@ -932,7 +932,9 @@ function TransactionsInvocationsParametersSuite () {
       let res = db._query("FOR i IN 1..1000 INSERT { someValue: i } INTO @@cn", {"@cn": cn}, 
         { intermediateCommitCount: 1 });
       assertEqual(1, res.getExtra().stats.intermediateCommits);
-      // this should produce 1000 intermediate commits
+      // AQL operates in batches of 1000 documents. Each batch is processed in a single babies operation.
+      // Intermediate commits are only performed after a babies operation.
+      // This should produce 1 intermediate commit, because we have only 1 batch.
       assertEqual(1000, db._collection(cn).count());
       assertEqual(1000, db._collection(cn).toArray().length);
     },
