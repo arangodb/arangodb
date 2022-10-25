@@ -59,9 +59,6 @@ namespace arangodb::basics {
 template<class LockType>
 class WriteLocker {
  public:
-  WriteLocker(WriteLocker const&) = delete;
-  WriteLocker& operator=(WriteLocker const&) = delete;
-
   /// @brief acquires a write-lock
   /// The constructors acquire a write lock, the destructor unlocks the lock.
   WriteLocker(LockType* readWriteLock, LockerType type, bool condition,
@@ -81,6 +78,28 @@ class WriteLocker {
         _isLocked = tryLock();
       }
     }
+  }
+
+  WriteLocker(WriteLocker const&) = delete;
+  WriteLocker& operator=(WriteLocker const&) = delete;
+
+  WriteLocker(WriteLocker&& other) noexcept
+      : _readWriteLock(other._readWriteLock),
+        _file(other._file),
+        _line(other._line),
+        _isLocked(other._isLocked) {
+    other._isLocked = false;
+  }
+
+  WriteLocker& operator=(WriteLocker&& other) noexcept {
+    if (this != &other) {
+      _readWriteLock = other._readWriteLock;
+      _file = other._file;
+      _line = other._line;
+      _isLocked = other._isLocked;
+      other._isLocked = false;
+    }
+    return *this;
   }
 
   /// @brief releases the write-lock

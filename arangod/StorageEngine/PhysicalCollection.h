@@ -23,24 +23,21 @@
 
 #pragma once
 
-#include <set>
-
-#include <velocypack/Builder.h>
+#include <memory>
+#include <vector>
 
 #include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
 #include "Containers/MerkleTree.h"
 #include "Futures/Future.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "StorageEngine/CollectionIndexes.h"
 #include "StorageEngine/ReplicationIterator.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
-
-#include <boost/container/flat_set.hpp>
 
 namespace arangodb {
 
@@ -51,6 +48,11 @@ class LogicalCollection;
 class ManagedDocumentResult;
 struct OperationOptions;
 class Result;
+
+namespace velocypack {
+class Builder;
+class Slice;
+}  // namespace velocypack
 
 class PhysicalCollection {
  public:
@@ -63,14 +65,14 @@ class PhysicalCollection {
   // path to logical collection
   virtual std::string const& path() const = 0;
   // creation happens atm in engine->createCollection
-  virtual arangodb::Result updateProperties(
-      arangodb::velocypack::Slice const& slice, bool doSync) = 0;
+  virtual Result updateProperties(velocypack::Slice const& slice,
+                                  bool doSync) = 0;
   virtual RevisionId revision(arangodb::transaction::Methods* trx) const = 0;
 
   /// @brief export properties
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
 
-  virtual ErrorCode close() = 0;
+  virtual void close();
 
   // @brief Return the number of documents in this collection
   virtual uint64_t numberDocuments(transaction::Methods* trx) const = 0;
@@ -97,20 +99,6 @@ class PhysicalCollection {
   /// @brief flushes the current index selectivity estimates
   virtual void flushClusterIndexEstimates();
 
-  virtual void prepareIndexes(arangodb::velocypack::Slice indexesSlice) = 0;
-
-  bool hasIndexOfType(arangodb::Index::IndexType type) const;
-
-  /// @brief determines order of index execution on collection
-  struct IndexOrder {
-    bool operator()(std::shared_ptr<Index> const& left,
-                    std::shared_ptr<Index> const& right) const;
-  };
-
-  using IndexContainerType = std::set<std::shared_ptr<Index>, IndexOrder>;
-  /// @brief find index by definition
-  static std::shared_ptr<Index> findIndex(velocypack::Slice info,
-                                          IndexContainerType const& indexes);
   /// @brief Find index by definition
   std::shared_ptr<Index> lookupIndex(velocypack::Slice info) const;
 
@@ -120,14 +108,23 @@ class PhysicalCollection {
   /// @brief Find index by name
   std::shared_ptr<Index> lookupIndex(std::string_view idxName) const;
 
-  /// @brief get list of all indices
+  /// @brief get list of all indexes
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
   void getIndexesVPack(
-      velocypack::Builder&,
-      std::function<bool(arangodb::Index const*,
+      velocypack::Builder& builder,
+      std::function<bool(Index const*,
                          std::underlying_type<Index::Serialize>::type&)> const&
           filter) const;
+
+  // returns a ReadLocked RAII object which holds the read-lock on the list
+  // of indexes for the collection. while that object is in the scope, the
+  // list of indexes is guaranteed to be read-locked. note: this does not lock
+  // the indexes themselves, i.e. inserting into/removing from indexes is
+  // still possible - simply DDL operations on indexes are blocked
+  CollectionIndexes::ReadLocked readLockedIndexes() const;
+
+  virtual void prepareIndexes(velocypack::Slice indexesSlice) = 0;
 
   /// @brief return the figures for a collection
   virtual futures::Future<OperationResult> figures(
@@ -243,15 +240,12 @@ class PhysicalCollection {
   PhysicalCollection(LogicalCollection& collection, velocypack::Slice info);
 
   /// @brief Inject figures that are specific to StorageEngine
-  virtual void figuresSpecific(bool details,
-                               arangodb::velocypack::Builder&) = 0;
+  virtual void figuresSpecific(bool details, velocypack::Builder&) = 0;
 
   LogicalCollection& _logicalCollection;
 
-  mutable basics::ReadWriteLock _indexesLock;
-  // current thread owning '_indexesLock'
-  mutable std::atomic<std::thread::id> _indexesLockWriteOwner;
-  IndexContainerType _indexes;
+  // object that manages the indexes of the collection
+  CollectionIndexes _collectionIndexes;
 };
 
 }  // namespace arangodb

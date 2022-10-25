@@ -56,9 +56,6 @@ namespace arangodb::basics {
 /// the lock when it is destroyed.
 template<class LockType>
 class ReadLocker {
-  ReadLocker(ReadLocker const&) = delete;
-  ReadLocker& operator=(ReadLocker const&) = delete;
-
  public:
   /// @brief acquires a read-lock
   /// The constructor acquires a read lock, the destructor unlocks the lock.
@@ -79,6 +76,28 @@ class ReadLocker {
         _isLocked = tryLock();
       }
     }
+  }
+
+  ReadLocker(ReadLocker const&) = delete;
+  ReadLocker& operator=(ReadLocker const&) = delete;
+
+  ReadLocker(ReadLocker&& other) noexcept
+      : _readWriteLock(other._readWriteLock),
+        _file(other._file),
+        _line(other._line),
+        _isLocked(other._isLocked) {
+    other._isLocked = false;
+  }
+
+  ReadLocker& operator=(ReadLocker&& other) noexcept {
+    if (this != &other) {
+      _readWriteLock = other._readWriteLock;
+      _file = other._file;
+      _line = other._line;
+      _isLocked = other._isLocked;
+      other._isLocked = false;
+    }
+    return *this;
   }
 
   /// @brief releases the read-lock

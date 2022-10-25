@@ -154,8 +154,11 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice,
   TRI_ASSERT(_info.isClosed());
 
   // notify all indexes about the properties change for the collection
-  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  for (auto& idx : _indexes) {
+
+  // acquire a read lock on the collection's list of indexes
+  CollectionIndexes::ReadLocked guard = _collectionIndexes.readLocked();
+
+  for (auto& idx : guard.indexes()) {
     // note: we have to exclude inverted indexes here,
     // as they are a different class type (no relationship to
     // ClusterIndex).
@@ -210,16 +213,6 @@ void ClusterCollection::figuresSpecific(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);  // not used here
 }
 
-/// @brief closes an open collection
-ErrorCode ClusterCollection::close() {
-  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  for (auto it : _indexes) {
-    it->unload();
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 RevisionId ClusterCollection::revision(transaction::Methods* trx) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
@@ -230,48 +223,15 @@ uint64_t ClusterCollection::numberDocuments(transaction::Methods* trx) const {
 
 void ClusterCollection::prepareIndexes(
     arangodb::velocypack::Slice indexesSlice) {
-  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
   TRI_ASSERT(indexesSlice.isArray());
 
   StorageEngine& engine = _logicalCollection.vocbase()
                               .server()
                               .getFeature<EngineSelectorFeature>()
                               .engine();
-  std::vector<std::shared_ptr<Index>> indexes;
 
-  if (indexesSlice.length() == 0 && _indexes.empty()) {
-    engine.indexFactory().fillSystemIndexes(_logicalCollection, indexes);
-
-  } else {
-    engine.indexFactory().prepareIndexes(_logicalCollection, indexesSlice,
-                                         indexes);
-  }
-
-  for (std::shared_ptr<Index>& idx : indexes) {
-    addIndex(std::move(idx));
-  }
-
-  auto it = _indexes.cbegin();
-  if ((*it)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
-      (_logicalCollection.type() == TRI_COL_TYPE_EDGE &&
-       ((*++it)->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
-        (_indexes.size() >= 3 &&
-         _engineType == ClusterEngineType::RocksDBEngine &&
-         (*++it)->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)))) {
-    std::string msg = "got invalid indexes for collection '" +
-                      _logicalCollection.name() + "'";
-
-    LOG_TOPIC("f71d2", ERR, arangodb::Logger::FIXME) << msg;
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    for (auto it : _indexes) {
-      LOG_TOPIC("f83f5", ERR, arangodb::Logger::FIXME) << "- " << it->context();
-    }
-#endif
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
-  }
-
-  TRI_ASSERT(!_indexes.empty());
+  _collectionIndexes.prepare(indexesSlice, _logicalCollection,
+                             engine.indexFactory());
 }
 
 std::shared_ptr<Index> ClusterCollection::createIndex(velocypack::Slice info,
@@ -282,28 +242,33 @@ std::shared_ptr<Index> ClusterCollection::createIndex(velocypack::Slice info,
   // prevent concurrent dropping
   WRITE_LOCKER(guard, _exclusiveLock);
 
-  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  std::shared_ptr<Index> idx = lookupIndex(info);
-  if (idx) {
-    created = false;
-    // We already have this index.
-    return idx;
+  std::shared_ptr<Index> idx;
+  {
+    CollectionIndexes::WriteLocked guard = _collectionIndexes.writeLocked();
+
+    idx = guard.lookup(info);
+    if (idx != nullptr) {
+      created = false;
+      // We already have this index.
+      return idx;
+    }
+
+    StorageEngine& engine = _logicalCollection.vocbase()
+                                .server()
+                                .getFeature<EngineSelectorFeature>()
+                                .engine();
+
+    // We are sure that we do not have an index of this type.
+    // We also hold the lock. Create it
+    idx = engine.indexFactory().prepareIndexFromSlice(
+        info, true, _logicalCollection, false);
+    TRI_ASSERT(idx != nullptr);
+
+    // In the coordinator case we do not fill the index
+    // We only inform the others.
+    guard.add(idx);
   }
 
-  StorageEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine();
-
-  // We are sure that we do not have an index of this type.
-  // We also hold the lock. Create it
-  idx = engine.indexFactory().prepareIndexFromSlice(info, true,
-                                                    _logicalCollection, false);
-  TRI_ASSERT(idx != nullptr);
-
-  // In the coordinator case we do not fill the index
-  // We only inform the others.
-  addIndex(idx);
   created = true;
   return idx;
 }
@@ -315,15 +280,12 @@ bool ClusterCollection::dropIndex(IndexId iid) {
     return true;
   }
 
-  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  for (auto it : _indexes) {
-    if (iid == it->id()) {
-      _indexes.erase(it);
-      events::DropIndex(_logicalCollection.vocbase().name(),
-                        _logicalCollection.name(), std::to_string(iid.id()),
-                        TRI_ERROR_NO_ERROR);
-      return true;
-    }
+  auto removedIndex = _collectionIndexes.remove(iid);
+  if (removedIndex != nullptr) {
+    events::DropIndex(_logicalCollection.vocbase().name(),
+                      _logicalCollection.name(), std::to_string(iid.id()),
+                      TRI_ERROR_NO_ERROR);
+    return true;
   }
 
   // We tried to remove an index that does not exist
@@ -412,18 +374,6 @@ void ClusterCollection::deferDropCollection(
     std::function<bool(LogicalCollection&)> const& /*callback*/
 ) {
   // nothing to do here
-}
-
-void ClusterCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
-  // LOCKED from the outside
-  auto const id = idx->id();
-  for (auto const& it : _indexes) {
-    if (it->id() == id) {
-      // already have this particular index. do not add it again
-      return;
-    }
-  }
-  _indexes.emplace(idx);
 }
 
 }  // namespace arangodb

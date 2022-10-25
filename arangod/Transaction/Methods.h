@@ -96,8 +96,7 @@ class Methods {
  public:
   template<typename T>
   using Future = futures::Future<T>;
-  using IndexHandle = std::shared_ptr<arangodb::Index>;  // legacy
-  using VPackSlice = arangodb::velocypack::Slice;
+  using IndexHandle = std::shared_ptr<Index>;  // legacy
 
   static constexpr int kNoMutableConditionIdx{-1};
 
@@ -235,7 +234,7 @@ class Methods {
 
   /// @brief extract the _id attribute from a slice,
   /// and convert it into a string
-  std::string extractIdString(VPackSlice);
+  std::string extractIdString(velocypack::Slice);
 
   /// @brief read many documents, using skip and limit in arbitrary order
   /// The result guarantees that all documents are contained exactly once
@@ -264,9 +263,10 @@ class Methods {
   ///        revision handling! shouldLock indicates if the transaction should
   ///        lock the collection if set to false it will not lock it (make sure
   ///        it is already locked!)
-  ENTERPRISE_VIRT Result documentFastPath(
-      std::string const& collectionName, arangodb::velocypack::Slice value,
-      OperationOptions const& options, arangodb::velocypack::Builder& result);
+  ENTERPRISE_VIRT Result documentFastPath(std::string const& collectionName,
+                                          velocypack::Slice value,
+                                          OperationOptions const& options,
+                                          velocypack::Builder& result);
 
   /// @brief return one  document from a collection, fast path
   ///        If everything went well the result will contain the found document
@@ -281,60 +281,60 @@ class Methods {
   /// @brief return one or multiple documents from a collection
   /// @deprecated use async variant
   [[deprecated]] OperationResult document(std::string const& collectionName,
-                                          VPackSlice value,
+                                          velocypack::Slice value,
                                           OperationOptions const& options);
 
   /// @brief return one or multiple documents from a collection
   Future<OperationResult> documentAsync(std::string const& collectionName,
-                                        VPackSlice value,
+                                        velocypack::Slice value,
                                         OperationOptions const& options);
 
   /// @deprecated use async variant
   [[deprecated]] OperationResult insert(std::string const& collectionName,
-                                        VPackSlice value,
+                                        velocypack::Slice value,
                                         OperationOptions const& options);
 
   /// @brief create one or multiple documents in a collection
   /// The single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
   Future<OperationResult> insertAsync(std::string const& collectionName,
-                                      VPackSlice value,
+                                      velocypack::Slice value,
                                       OperationOptions const& options);
 
   /// @deprecated use async variant
   [[deprecated]] OperationResult update(std::string const& collectionName,
-                                        VPackSlice updateValue,
+                                        velocypack::Slice updateValue,
                                         OperationOptions const& options);
 
   /// @brief update/patch one or multiple documents in a collection.
   /// The single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
   Future<OperationResult> updateAsync(std::string const& collectionName,
-                                      VPackSlice updateValue,
+                                      velocypack::Slice updateValue,
                                       OperationOptions const& options);
 
   /// @deprecated use async variant
   [[deprecated]] OperationResult replace(std::string const& collectionName,
-                                         VPackSlice replaceValue,
+                                         velocypack::Slice replaceValue,
                                          OperationOptions const& options);
 
   /// @brief replace one or multiple documents in a collection.
   /// The single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
   Future<OperationResult> replaceAsync(std::string const& collectionName,
-                                       VPackSlice replaceValue,
+                                       velocypack::Slice replaceValue,
                                        OperationOptions const& options);
 
   /// @deprecated use async variant
   [[deprecated]] OperationResult remove(std::string const& collectionName,
-                                        VPackSlice value,
+                                        velocypack::Slice value,
                                         OperationOptions const& options);
 
   /// @brief remove one or multiple documents in a collection
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
   Future<OperationResult> removeAsync(std::string const& collectionName,
-                                      VPackSlice value,
+                                      velocypack::Slice value,
                                       OperationOptions const& options);
 
   /// @brief fetches all documents in a collection
@@ -364,9 +364,9 @@ class Methods {
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
   std::unique_ptr<IndexIterator> indexScanForCondition(
-      IndexHandle const&, arangodb::aql::AstNode const*,
-      arangodb::aql::Variable const*, IndexIteratorOptions const&,
-      ReadOwnWrites readOwnWrites, int mutableConditionIdx);
+      IndexHandle const&, aql::AstNode const*, aql::Variable const*,
+      IndexIteratorOptions const&, ReadOwnWrites readOwnWrites,
+      int mutableConditionIdx);
 
   /// @brief factory for IndexIterator objects
   /// note: the caller must have read-locked the underlying collection when
@@ -376,12 +376,10 @@ class Methods {
                                            ReadOwnWrites readOwnWrites);
 
   /// @brief test if a collection is already locked
-  ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*,
-                                AccessMode::Type) const;
+  ENTERPRISE_VIRT bool isLocked(LogicalCollection*, AccessMode::Type) const;
 
   /// @brief fetch the LogicalCollection by name
-  arangodb::LogicalCollection* documentCollection(
-      std::string const& name) const;
+  LogicalCollection* documentCollection(std::string const& name) const;
 
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
@@ -414,7 +412,7 @@ class Methods {
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
   /// argument as a single object.
-  void buildDocumentIdentity(arangodb::LogicalCollection& collection,
+  void buildDocumentIdentity(LogicalCollection& collection,
                              velocypack::Builder& builder, DataSourceId cid,
                              std::string_view key, RevisionId rid,
                              RevisionId oldRid,
@@ -422,20 +420,20 @@ class Methods {
                              velocypack::Builder const* newDoc);
 
   futures::Future<OperationResult> documentCoordinator(
-      std::string const& collectionName, VPackSlice value,
+      std::string const& collectionName, velocypack::Slice value,
       OperationOptions const& options, MethodsApi api);
 
   Future<OperationResult> documentLocal(std::string const& collectionName,
-                                        VPackSlice value,
+                                        velocypack::Slice value,
                                         OperationOptions const& options);
 
   Future<OperationResult> insertCoordinator(std::string const& collectionName,
-                                            VPackSlice value,
+                                            velocypack::Slice value,
                                             OperationOptions const& options,
                                             MethodsApi api);
 
   Future<OperationResult> insertLocal(std::string const& collectionName,
-                                      VPackSlice value,
+                                      velocypack::Slice value,
                                       OperationOptions& options);
 
   Result insertLocalHelper(LogicalCollection& collection,
@@ -466,12 +464,12 @@ class Methods {
                         OperationOptions& options);
 
   Future<OperationResult> modifyCoordinator(
-      std::string const& collectionName, VPackSlice newValue,
+      std::string const& collectionName, velocypack::Slice newValue,
       OperationOptions const& options, TRI_voc_document_operation_e operation,
       MethodsApi api);
 
   Future<OperationResult> modifyLocal(std::string const& collectionName,
-                                      VPackSlice newValue,
+                                      velocypack::Slice newValue,
                                       OperationOptions& options, bool isUpdate);
 
   Result modifyLocalHelper(
@@ -482,12 +480,12 @@ class Methods {
       BatchOptions& batchOptions, bool isUpdate);
 
   Future<OperationResult> removeCoordinator(std::string const& collectionName,
-                                            VPackSlice value,
+                                            velocypack::Slice value,
                                             OperationOptions const& options,
                                             transaction::MethodsApi api);
 
   Future<OperationResult> removeLocal(std::string const& collectionName,
-                                      VPackSlice value,
+                                      velocypack::Slice value,
                                       OperationOptions& options);
 
   Result removeLocalHelper(LogicalCollection& collection,
@@ -527,22 +525,24 @@ class Methods {
       -> Future<Result>;
   // is virtual for IgnoreNoAccessMethods
   ENTERPRISE_VIRT auto documentInternal(std::string const& collectionName,
-                                        VPackSlice value,
+                                        velocypack::Slice value,
                                         OperationOptions const& options,
                                         MethodsApi api)
       -> Future<OperationResult>;
-  auto insertInternal(std::string const& collectionName, VPackSlice value,
-                      OperationOptions const& options, MethodsApi api)
-      -> Future<OperationResult>;
-  auto updateInternal(std::string const& collectionName, VPackSlice updateValue,
+  auto insertInternal(std::string const& collectionName,
+                      velocypack::Slice value, OperationOptions const& options,
+                      MethodsApi api) -> Future<OperationResult>;
+  auto updateInternal(std::string const& collectionName,
+                      velocypack::Slice updateValue,
                       OperationOptions const& options, MethodsApi api)
       -> Future<OperationResult>;
   auto replaceInternal(std::string const& collectionName,
-                       VPackSlice replaceValue, OperationOptions const& options,
-                       MethodsApi api) -> Future<OperationResult>;
-  auto removeInternal(std::string const& collectionName, VPackSlice value,
-                      OperationOptions const& options, MethodsApi api)
+                       velocypack::Slice replaceValue,
+                       OperationOptions const& options, MethodsApi api)
       -> Future<OperationResult>;
+  auto removeInternal(std::string const& collectionName,
+                      velocypack::Slice value, OperationOptions const& options,
+                      MethodsApi api) -> Future<OperationResult>;
   auto truncateInternal(std::string const& collectionName,
                         OperationOptions const& options, MethodsApi api)
       -> Future<OperationResult>;
@@ -580,6 +580,13 @@ class Methods {
   Result addCollection(std::string const&, AccessMode::Type);
 
  private:
+  Future<Result> replicateOperations(
+      TransactionCollection& collection,
+      std::shared_ptr<const std::vector<std::string>> const& followers,
+      OperationOptions const& options,
+      velocypack::Builder const& replicationData,
+      TRI_voc_document_operation_e operation);
+
   /// @brief the state
   std::shared_ptr<TransactionState> _state;
 
@@ -587,13 +594,6 @@ class Methods {
   std::shared_ptr<transaction::Context> _transactionContext;
 
   bool _mainTransaction;
-
-  Future<Result> replicateOperations(
-      TransactionCollection& collection,
-      std::shared_ptr<const std::vector<std::string>> const& followers,
-      OperationOptions const& options,
-      velocypack::Builder const& replicationData,
-      TRI_voc_document_operation_e operation);
 
   /// @brief transaction hints
   transaction::Hints _localHints;

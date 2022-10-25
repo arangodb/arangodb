@@ -81,9 +81,6 @@ class ClusterCollection final : public PhysicalCollection {
   futures::Future<OperationResult> figures(
       bool details, OperationOptions const& options) override;
 
-  /// @brief closes an open collection
-  ErrorCode close() override;
-
   RevisionId revision(arangodb::transaction::Methods* trx) const override;
   uint64_t numberDocuments(transaction::Methods* trx) const override;
 
@@ -163,8 +160,6 @@ class ClusterCollection final : public PhysicalCollection {
   void figuresSpecific(bool details, arangodb::velocypack::Builder&) override;
 
  private:
-  void addIndex(std::shared_ptr<arangodb::Index> idx);
-
   // keep locks just to adhere to behavior in other collections
   mutable basics::ReadWriteLock _exclusiveLock;
   ClusterEngineType _engineType;

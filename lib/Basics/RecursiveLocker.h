@@ -125,6 +125,30 @@ class RecursiveWriteLocker {
     }
   }
 
+  RecursiveWriteLocker(RecursiveWriteLocker const& other) = delete;
+  RecursiveWriteLocker& operator=(RecursiveWriteLocker const& other) = delete;
+
+  RecursiveWriteLocker(RecursiveWriteLocker&& other) noexcept
+      : _locked(other._locked),
+        _locker(std::move(other._locker)),
+        _owner(other._owner),
+        _update(other._update) {
+    other._locked = false;
+    other._update = noop;
+  }
+
+  RecursiveWriteLocker& operator=(RecursiveWriteLocker&& other) noexcept {
+    if (this != &other) {
+      _locked = other._locked;
+      _locker = std::move(other._locker);
+      _owner = other._owner;
+      _update = other._update;
+      other._locked = false;
+      other._update = noop;
+    }
+    return *this;
+  }
+
   ~RecursiveWriteLocker() { unlock(); }
 
   bool isLocked() const noexcept { return _locked; }

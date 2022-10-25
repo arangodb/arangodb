@@ -191,8 +191,10 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   auto bounds = RocksDBKeyBounds::Empty();
   bool set = false;
   {
-    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-    for (auto it : _indexes) {
+    // acquire a read lock on the collection's list of indexes
+    CollectionIndexes::ReadLocked guard = _collectionIndexes.readLocked();
+
+    for (auto const& it : guard.indexes()) {
       if (it->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
         RocksDBIndex const* rix = static_cast<RocksDBIndex const*>(it.get());
         bounds = RocksDBKeyBounds::PrimaryIndex(rix->objectId());
@@ -263,9 +265,11 @@ void RocksDBMetaCollection::compact() {
   auto& engine = selector.engine<RocksDBEngine>();
   engine.compactRange(bounds());
 
-  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  for (std::shared_ptr<Index> i : _indexes) {
-    RocksDBIndex* index = static_cast<RocksDBIndex*>(i.get());
+  // acquire a read lock on the collection's list of indexes
+  CollectionIndexes::ReadLocked guard = _collectionIndexes.readLocked();
+
+  for (auto const& idx : guard.indexes()) {
+    RocksDBIndex* index = static_cast<RocksDBIndex*>(idx.get());
     index->compact();
   }
 }
@@ -290,12 +294,16 @@ void RocksDBMetaCollection::estimateSize(velocypack::Builder& builder) {
   builder.add("documents", VPackValue(out));
   builder.add("indexes", VPackValue(VPackValueType::Object));
 
-  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  for (std::shared_ptr<Index> i : _indexes) {
-    RocksDBIndex* index = static_cast<RocksDBIndex*>(i.get());
-    out = index->memory();
-    builder.add(std::to_string(index->id().id()), VPackValue(out));
-    total += out;
+  {
+    // acquire a read lock on the collection's list of indexes
+    CollectionIndexes::ReadLocked guard = _collectionIndexes.readLocked();
+
+    for (auto const& idx : guard.indexes()) {
+      RocksDBIndex* index = static_cast<RocksDBIndex*>(idx.get());
+      out = index->memory();
+      builder.add(std::to_string(index->id().id()), VPackValue(out));
+      total += out;
+    }
   }
   builder.close();
   builder.add("total", VPackValue(total));

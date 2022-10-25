@@ -1015,14 +1015,6 @@ arangodb::PhysicalCollection* PhysicalCollectionMock::clone(
   return nullptr;
 }
 
-ErrorCode PhysicalCollectionMock::close() {
-  for (auto& index : _indexes) {
-    index->unload();
-  }
-
-  return TRI_ERROR_NO_ERROR;  // assume close successful
-}
-
 std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
     arangodb::velocypack::Slice info, bool restore, bool& created) {
   before();
@@ -1110,7 +1102,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
     TRI_ASSERT(false);
   }
 
-  _indexes.emplace(index);
+  _collectionIndexes.add(index);
   created = true;
 
   res = trx.commit();
@@ -1138,13 +1130,9 @@ void PhysicalCollectionMock::deferDropCollection(
 bool PhysicalCollectionMock::dropIndex(arangodb::IndexId iid) {
   before();
 
-  for (auto itr = _indexes.begin(), end = _indexes.end(); itr != end; ++itr) {
-    if ((*itr)->id() == iid) {
-      if ((*itr)->drop().ok()) {
-        _indexes.erase(itr);
-        return true;
-      }
-    }
+  auto removedIndex = _collectionIndexes.remove(iid);
+  if (removedIndex != nullptr && removedIndex->drop().ok()) {
+    return true;
   }
 
   return false;
@@ -1212,7 +1200,10 @@ arangodb::Result PhysicalCollectionMock::insert(
       _documents.emplace(key, DocElement{std::move(buffer), id.id()});
   TRI_ASSERT(didInsert);
 
-  for (auto& index : _indexes) {
+  // acquire a read lock on the collection's list of indexes
+  auto guard = _collectionIndexes.readLocked();
+
+  for (auto& index : guard.indexes()) {
     if (index->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
       auto* l = static_cast<EdgeIndexMock*>(index.get());
       if (!l->insert(trx, id, newDocument).ok()) {
@@ -1286,16 +1277,18 @@ std::string const& PhysicalCollectionMock::path() const {
 
 bool PhysicalCollectionMock::addIndex(std::shared_ptr<arangodb::Index> idx) {
   auto const id = idx->id();
-  for (auto const& it : _indexes) {
-    if (it->id() == id) {
-      // already have this particular index. do not add it again
-      return false;
-    }
+
+  // acquire a write lock on the collection's list of indexes
+  auto guard = _collectionIndexes.writeLocked();
+
+  if (guard.lookup(id) != nullptr) {
+    // already have this particular index. do not add it again
+    return false;
   }
 
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id.id()));
 
-  _indexes.emplace(idx);
+  guard.add(idx);
   return true;
 }
 
@@ -1338,7 +1331,11 @@ arangodb::IndexEstMap PhysicalCollectionMock::clusterIndexEstimates(
     bool allowUpdating, arangodb::TransactionId tid) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   arangodb::IndexEstMap estimates;
-  for (auto const& it : _indexes) {
+
+  // acquire a read lock on the collection's list of indexes
+  auto guard = _collectionIndexes.readLocked();
+
+  for (auto const& it : guard.indexes()) {
     std::string id = std::to_string(it->id().id());
     if (it->hasSelectivityEstimate()) {
       // Note: This may actually be bad, as this instance cannot

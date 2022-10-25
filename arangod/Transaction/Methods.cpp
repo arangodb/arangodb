@@ -2240,7 +2240,6 @@ Future<OperationResult> transaction::Methods::removeLocal(
       return res;
     }
 
-    bool excludeFromReplication = excludeAllFromReplication;
     TRI_ASSERT(previousDocumentBuilder->slice().isObject());
 
     res = removeLocalHelper(*collection, value, oldDocumentId, oldRevisionId,
@@ -2255,7 +2254,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
           options.returnOld ? previousDocumentBuilder.get() : nullptr, nullptr);
     }
 
-    if (res.ok() && !excludeFromReplication) {
+    if (res.ok() && !excludeAllFromReplication) {
       replicationData->openObject(/*unindexed*/ true);
       replicationData->add(StaticStrings::KeyString, VPackValue(key));
 

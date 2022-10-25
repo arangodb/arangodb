@@ -8,6 +8,7 @@ target_compile_options(arango_health PRIVATE
 	${CMAKE_DEPRECATE_OPTIONS})
 
 add_library(arango_storage_engine STATIC
+  CollectionIndexes.cpp
   EngineSelectorFeature.cpp
   HotBackup.cpp
   PhysicalCollection.cpp

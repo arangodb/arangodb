@@ -65,9 +65,6 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
 
-  /// @brief closes an open collection
-  ErrorCode close() override;
-
   /// return bounds for all documents
   RocksDBKeyBounds bounds() const override;
 
