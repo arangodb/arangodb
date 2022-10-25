@@ -224,3 +224,16 @@ void SimpleRocksDBTransactionState::cleanup() {
     coll->abortCommit(id());
   }
 }
+
+arangodb::Result SimpleRocksDBTransactionState::triggerIntermediateCommit() {
+  return _rocksMethods->triggerIntermediateCommit();
+}
+
+futures::Future<Result>
+SimpleRocksDBTransactionState::performIntermediateCommitIfRequired(
+    DataSourceId cid) {
+  if (_rocksMethods->isIntermediateCommitNeeded()) {
+    return _rocksMethods->triggerIntermediateCommit();
+  }
+  return Result{};
+}

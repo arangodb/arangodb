@@ -69,6 +69,12 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState,
 
   rocksdb::SequenceNumber beginSeq() const override;
 
+  /// @brief only called on replication2 follower
+  virtual arangodb::Result triggerIntermediateCommit() override;
+
+  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
+      DataSourceId collectionId) override;
+
  protected:
   // IRocksDBTransactionCallback methods
   rocksdb::SequenceNumber prepare() override;

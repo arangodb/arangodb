@@ -218,3 +218,22 @@ auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
 
   return res;
 }
+
+futures::Future<Result>
+ReplicatedRocksDBTransactionCollection::performIntermediateCommitIfRequired() {
+  if (_rocksMethods->isIntermediateCommitNeeded()) {
+    auto leader = leaderState();
+    auto operation = replication2::replicated_state::document::OperationType::
+        kIntermediateCommit;
+    auto options = replication2::replicated_state::document::ReplicationOptions{
+        .waitForCommit = true};
+    return leader
+        ->replicateOperation(velocypack::SharedSlice{}, operation,
+                             _transaction->id(), options)
+        .thenValue([state = _transaction->shared_from_this(),
+                    this](auto&& res) -> Result {
+          return _rocksMethods->triggerIntermediateCommit();
+        });
+  }
+  return Result{};
+}
