@@ -301,7 +301,7 @@ auto checkLeaderHealthy(SupervisionContext& ctx, Log const& log,
     return;
   }
   TRI_ASSERT(log.plan.has_value());
-  auto const plan = *log.plan;
+  auto const& plan = *log.plan;
 
   if (!log.current.has_value()) {
     return;
