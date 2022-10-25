@@ -96,9 +96,6 @@ class RocksDBTransactionState : public TransactionState {
                                     RevisionId revisionId,
                                     TRI_voc_document_operation_e opType);
 
-  [[nodiscard]] Result performIntermediateCommitIfRequired(
-      DataSourceId collectionId) override;
-
   /// @brief return wrapper around rocksdb transaction
   [[nodiscard]] virtual RocksDBTransactionMethods* rocksdbMethods(
       DataSourceId collectionId) const = 0;

@@ -6104,6 +6104,10 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
         auto& leader = it->second->currentTerm->leader->serverId;
         auto& participants = it->second->participantsConfig.participants;
         result = std::make_shared<std::vector<ServerID>>();
+
+        // TODO Sanity check, can be removed later
+        TRI_ASSERT(participants.size() < 1000000);
+
         result->reserve(participants.size());
         // participants is an unordered map, but the resulting list requires
         // that the leader is the first entry!

@@ -92,10 +92,16 @@ class CalculationTransactionState final : public arangodb::TransactionState {
     return {};
   }
 
-  [[nodiscard]] arangodb::Result performIntermediateCommitIfRequired(
+  Result triggerIntermediateCommit() override {
+    ADB_PROD_ASSERT(false) << "triggerIntermediateCommit is not supported in "
+                              "CalculationTransactionState";
+    return Result{TRI_ERROR_INTERNAL};
+  }
+
+  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
       arangodb::DataSourceId collectionId) override {
     // Analyzers do not write. so do nothing
-    return {};
+    return Result{};
   }
 
   [[nodiscard]] bool hasFailedOperations() const noexcept override {
