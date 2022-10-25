@@ -26,8 +26,7 @@
 #include "Job.h"
 #include "Supervision.h"
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 struct MoveShard : public Job {
   MoveShard(Node const& snapshot, AgentInterface* agent,
@@ -90,5 +89,4 @@ struct MoveShard : public Job {
 
   bool moveShardFinish(bool unlock, bool success, std::string const& msg);
 };
-}  // namespace consensus
-}  // namespace arangodb
+}  // namespace arangodb::consensus
