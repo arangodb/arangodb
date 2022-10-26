@@ -922,8 +922,9 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice slice, bool) {
       auto& cf = vocbase().server().getFeature<ClusterFeature>();
       replicationFactor = replicationFactorSlice.getNumber<size_t>();
       if ((!isSatellite() && replicationFactor == 0) ||
-          replicationFactor < cf.minReplicationFactor() ||
-          replicationFactor > cf.maxReplicationFactor()) {
+          (ServerState::instance()->isCoordinator() &&
+           (replicationFactor < cf.minReplicationFactor() ||
+            replicationFactor > cf.maxReplicationFactor()))) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "bad value for replicationFactor");
       }
