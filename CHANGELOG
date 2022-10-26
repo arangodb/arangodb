@@ -1,8 +1,8 @@
 v3.9.4.1 (XXXX-XX-XX)
 ---------------------
 
-* Solve a case of excessive memory consumption in certain AQL queries with
-  IN filters with very long lists. Free sub-iterators as soon as they are
+* Solve a case of excessive memory consumption in certain AQL queries with IN
+  filters with very long lists. Free sub-iterators as soon as they are
   exhausted.
 
 * Added startup option `--query.log-failed` to optionally log all failed AQL
@@ -12,10 +12,10 @@ v3.9.4.1 (XXXX-XX-XX)
   all AQL queries that have a peak memory usage larger than the configured
   value. The default value is 4GB.
 
-* Added startup option `--query.max-artifact-log-length` to control the
-  maximum length of logged query strings and bind parameter values.
-  This allows truncating overly long query strings and bind parameter values
-  to a reasonable length. Previously the cutoff length was hard-coded.
+* Added startup option `--query.max-artifact-log-length` to control the maximum
+  length of logged query strings and bind parameter values.
+  This allows truncating overly long query strings and bind parameter values to
+  a reasonable length. Previously the cutoff length was hard-coded.
 
 
 v3.9.4 (2022-10-18)
