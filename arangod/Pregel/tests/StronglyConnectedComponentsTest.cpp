@@ -26,11 +26,15 @@
 #include "SCCGraph.h"
 #include "GraphsSource.h"
 
+using namespace arangodb::slicegraph;
+
 TEST(GWEN_SCC, test_readVertices_2path) {
   bool const checkDuplicateVertices = true;
+  auto sliceGraph = setup2Path();
   auto graph = SCCGraph<EmptyEdgeProperties, SCCVertexProperties>(
-      setup2Path(), checkDuplicateVertices);
-  EXPECT_EQ(graph.vertices.size(), 3u);
+      sliceGraph, checkDuplicateVertices);
+  EXPECT_EQ(graph.vertices.size(),
+            GraphSliceHelper::getNumVertices(sliceGraph));
   std::set<VertexKey> vertices;
   for (auto const& vertex : graph.vertices) {
     vertices.insert(vertex._key);
@@ -44,9 +48,11 @@ TEST(GWEN_SCC, test_readVertices_2path) {
 
 TEST(GWEN_SCC, test_readVertices_ThreeDisjointDirectedCycles) {
   bool const checkDuplicateVertices = true;
+  auto sliceGraph = setupThreeDisjointDirectedCycles();
   auto graph = SCCGraph<EmptyEdgeProperties, SCCVertexProperties>(
-      setupThreeDisjointDirectedCycles(), checkDuplicateVertices);
-  EXPECT_EQ(graph.vertices.size(), 12u);
+      sliceGraph, checkDuplicateVertices);
+  EXPECT_EQ(graph.vertices.size(),
+            GraphSliceHelper::getNumVertices(sliceGraph));
   std::set<VertexKey> vertices;
   for (auto const& vertex : graph.vertices) {
     vertices.insert(vertex._key);
@@ -59,82 +65,82 @@ TEST(GWEN_SCC, test_readVertices_ThreeDisjointDirectedCycles) {
 
 TEST(GWEN_SCC, test_readVertices_DuplicateVertices) {
   bool const checkDuplicateVertices = true;
-  auto graphJSON = setupDuplicateVertices();
+  auto sliceGraph = setupDuplicateVertices();
   using SCCSimpleGraph = SCCGraph<EmptyEdgeProperties, SCCVertexProperties>;
-  EXPECT_THROW((SCCSimpleGraph{graphJSON, checkDuplicateVertices}),
+  EXPECT_THROW((SCCSimpleGraph{sliceGraph, checkDuplicateVertices}),
                std::runtime_error);
-  EXPECT_NO_THROW((SCCSimpleGraph{graphJSON, false}));
+  EXPECT_NO_THROW((SCCSimpleGraph{sliceGraph, false}));
 }
 
 TEST(GWEN_SCC, test_number_sccs_undirectedEdge) {
   bool const checkDuplicateVertices = true;
-  auto graphJSON = setupUndirectedEdge();
+  auto sliceGraph = setupUndirectedEdge();
   auto graph = SCCGraph<EmptyEdgeProperties, SCCVertexProperties>(
-      graphJSON, checkDuplicateVertices);
-  graph.readEdgesBuildSCCs(graphJSON);
+      sliceGraph, checkDuplicateVertices);
+  graph.readEdgesBuildSCCs(sliceGraph);
   EXPECT_EQ(graph.writeEquivalenceRelationIntoVertices(graph.sccs), 1u);
 }
 
 TEST(GWEN_SCC, test_number_sccs_2Path) {
   bool const checkDuplicateVertices = true;
-  auto graphJSON = setup2Path();
+  auto sliceGraph = setup2Path();
   auto graph = SCCGraph<EmptyEdgeProperties, SCCVertexProperties>(
-      graphJSON, checkDuplicateVertices);
-  graph.readEdgesBuildSCCs(graphJSON);
+      sliceGraph, checkDuplicateVertices);
+  graph.readEdgesBuildSCCs(sliceGraph);
   EXPECT_EQ(graph.writeEquivalenceRelationIntoVertices(graph.sccs), 3u);
 }
 
 TEST(GWEN_SCC, test_number_sccs_1SingleVertex) {
   bool const checkDuplicateVertices = true;
-  auto graphJSON = setup1SingleVertex();
+  auto sliceGraph = setup1SingleVertex();
   auto graph = SCCGraph<EmptyEdgeProperties, SCCVertexProperties>(
-      graphJSON, checkDuplicateVertices);
-  graph.readEdgesBuildSCCs(graphJSON);
+      sliceGraph, checkDuplicateVertices);
+  graph.readEdgesBuildSCCs(sliceGraph);
   EXPECT_EQ(graph.writeEquivalenceRelationIntoVertices(graph.sccs), 1u);
 }
 
 TEST(GWEN_SCC, test_number_sccs_2IsolatedVertices) {
   bool const checkDuplicateVertices = true;
-  auto graphJSON = setup2IsolatedVertices();
+  auto sliceGraph = setup2IsolatedVertices();
   auto graph = SCCGraph<EmptyEdgeProperties, SCCVertexProperties>(
-      graphJSON, checkDuplicateVertices);
-  graph.readEdgesBuildSCCs(graphJSON);
+      sliceGraph, checkDuplicateVertices);
+  graph.readEdgesBuildSCCs(sliceGraph);
   EXPECT_EQ(graph.writeEquivalenceRelationIntoVertices(graph.sccs), 2u);
 }
 
 TEST(GWEN_SCC, test_number_sccs_directedTree) {
   bool const checkDuplicateVertices = true;
-  auto graphJSON = setup1DirectedTree();
+  auto sliceGraph = setup1DirectedTree();
   auto graph = SCCGraph<EmptyEdgeProperties, SCCVertexProperties>(
-      graphJSON, checkDuplicateVertices);
-  graph.readEdgesBuildSCCs(graphJSON);
+      sliceGraph, checkDuplicateVertices);
+  graph.readEdgesBuildSCCs(sliceGraph);
   EXPECT_EQ(graph.writeEquivalenceRelationIntoVertices(graph.sccs), 15u);
 }
 
 TEST(GWEN_SCC, test_number_sccs_alternatingTree) {
   bool const checkDuplicateVertices = true;
-  auto graphJSON = setup1AlternatingTree();
+  auto sliceGraph = setup1AlternatingTree();
   auto graph = SCCGraph<EmptyEdgeProperties, SCCVertexProperties>(
-      graphJSON, checkDuplicateVertices);
-  graph.readEdgesBuildSCCs(graphJSON);
+      sliceGraph, checkDuplicateVertices);
+  graph.readEdgesBuildSCCs(sliceGraph);
   EXPECT_EQ(graph.writeEquivalenceRelationIntoVertices(graph.sccs), 15u);
 }
 
 TEST(GWEN_SCC, test_number_sccs_2CliquesConnectedByDirectedEdge) {
   bool const checkDuplicateVertices = true;
-  auto graphJSON = setup2CliquesConnectedByDirectedEdge();
+  auto sliceGraph = setup2CliquesConnectedByDirectedEdge();
   auto graph = SCCGraph<EmptyEdgeProperties, SCCVertexProperties>(
-      graphJSON, checkDuplicateVertices);
-  graph.readEdgesBuildSCCs(graphJSON);
+      sliceGraph, checkDuplicateVertices);
+  graph.readEdgesBuildSCCs(sliceGraph);
   EXPECT_EQ(graph.writeEquivalenceRelationIntoVertices(graph.sccs), 2u);
 }
 
 TEST(GWEN_SCC, test_number_sccs_threeDisjointDirectedCycles) {
   bool const checkDuplicateVertices = true;
-  auto graphJSON = setupThreeDisjointDirectedCycles();
+  auto sliceGraph = setupThreeDisjointDirectedCycles();
   auto graph = SCCGraph<EmptyEdgeProperties, SCCVertexProperties>(
-      graphJSON, checkDuplicateVertices);
-  graph.readEdgesBuildSCCs(graphJSON);
+      sliceGraph, checkDuplicateVertices);
+  graph.readEdgesBuildSCCs(sliceGraph);
   EXPECT_EQ(graph.writeEquivalenceRelationIntoVertices(graph.sccs), 3u);
 }
 

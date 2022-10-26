@@ -129,3 +129,4 @@ auto Graph<EdgeProperties, VertexProperties>::readVertices(
 
 template class Graph<EmptyEdgeProperties, EmptyVertexProperties>;
 template class Graph<EmptyEdgeProperties, WCCVertexProperties>;
+template class Graph<EmptyEdgeProperties, SCCVertexProperties>;
