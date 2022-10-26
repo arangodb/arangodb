@@ -645,7 +645,7 @@ DistributeShardsEvenly(ClusterInfo& ci, uint64_t numberOfShards,
                        bool warnAboutReplicationFactor) {
   auto shards = std::make_shared<
       std::unordered_map<std::string, std::vector<std::string>>>();
-  TRI_ASSERT(not dbServers.empty());
+  TRI_ASSERT(!dbServers.empty());
 
   // mop: distribute SatelliteCollections on all servers
   if (replicationFactor == 0) {
