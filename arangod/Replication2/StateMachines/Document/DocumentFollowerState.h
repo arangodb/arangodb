@@ -31,14 +31,17 @@ namespace arangodb::replication2::replicated_state::document {
 
 struct IDocumentStateNetworkHandler;
 struct IDocumentStateTransactionHandler;
+enum class OperationType;
 
 struct DocumentFollowerState
     : replicated_state::IReplicatedFollowerState<DocumentState>,
       std::enable_shared_from_this<DocumentFollowerState> {
   explicit DocumentFollowerState(
       std::unique_ptr<DocumentCore> core,
-      std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory);
-  ~DocumentFollowerState();
+      std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory);
+  ~DocumentFollowerState() override;
+
+  std::string_view const shardId;
 
  protected:
   [[nodiscard]] auto resign() && noexcept
@@ -47,6 +50,12 @@ struct DocumentFollowerState
       -> futures::Future<Result> override;
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
       -> futures::Future<Result> override;
+
+ private:
+  auto forceLocalTransaction(OperationType opType,
+                             velocypack::SharedSlice slice) -> Result;
+  auto truncateLocalShard() -> Result;
+  auto populateLocalShard(velocypack::SharedSlice slice) -> Result;
 
  private:
   struct GuardedData {

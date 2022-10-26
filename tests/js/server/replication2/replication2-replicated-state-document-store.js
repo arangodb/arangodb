@@ -1,5 +1,5 @@
 /*jshint strict: true */
-/*global assertTrue, assertEqual, assertNotNull, print*/
+/*global assertTrue, assertFalse, assertEqual, assertNotNull, print*/
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -654,7 +654,6 @@ const replicatedStateRecoverySuite = function () {
       let handle = collection.insert({_key: `${testName}-foo`, value: `${testName}-bar`});
       checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-bar`, true);
 
-
       // We unset the leader here so that once the old leader node is resumed we
       // do not move leadership back to that node.
       lh.unsetLeader(database, logId);
@@ -686,7 +685,7 @@ const replicatedStateRecoverySuite = function () {
 
       // Try an AQL query.
       let documents = [...Array(3).keys()].map(i => {return {_key: `${testName}-${i}`, value: i};});
-      db._query(`FOR i in 0..10 INSERT {_key: CONCAT('${testName}-', i), value: i} INTO ${collectionName}`);
+      db._query(`FOR i in 0..3 INSERT {_key: CONCAT('${testName}-', i), value: i} INTO ${collectionName}`);
       for (let doc of documents) {
         checkFollowersValue(servers, shardId, doc._key, doc.value, true);
       }
@@ -732,6 +731,7 @@ const replicatedStateDocumentStoreSuiteReplication1 = function () {
  * This test suite checks the correctness of a DocumentState snapshot transfer and the related REST APIs.
  */
 const replicatedStateSnapshotTransferSuite = function () {
+  const coordinator = lh.coordinators[0];
   let collection = null;
   let shards = null;
   let shardId = null;
@@ -763,6 +763,50 @@ const replicatedStateSnapshotTransferSuite = function () {
       let result = request.get({url: url});
       lh.checkRequestResult(result);
     },
+
+    testFollowerSnapshotTransfer: function () {
+      // Prepare the grounds for replacing a follower.
+      const participants = lhttp.listLogs(coordinator, database).result[logId];
+      const followers = participants.slice(1);
+      const oldParticipant = _.sample(followers);
+      const nonParticipants = _.without(lh.dbservers, ...participants);
+      assertTrue(nonParticipants.length > 0, "Not enough DBServers to run this test");
+      const newParticipant = _.sample(nonParticipants);
+      const newParticipants = _.union(_.without(participants, oldParticipant), [newParticipant]).sort();
+
+      collection.insert([{_key: "test1"}, {_key: "test2"}]);
+
+      // Replace the follower.
+      const result = sh.replaceParticipant(database, logId, oldParticipant, newParticipant);
+      assertEqual({}, result);
+
+      // Wait for replicated state to be available on the new follower.
+      lh.waitFor(() => {
+        const {current} = lh.readReplicatedLogAgency(database, logId);
+        if (current.leader.hasOwnProperty("committedParticipantsConfig")) {
+          return lh.sortedArrayEqualOrError(
+            newParticipants,
+            Object.keys(current.leader.committedParticipantsConfig.participants).sort());
+        } else {
+          return Error(`committedParticipantsConfig not found in ` +
+            JSON.stringify(current.leader));
+        }
+      });
+
+      syncShardsWithLogs(database);
+
+      // The new follower should've executed a snapshot transfer.
+      // Expect to find the dummy documents in there, for now.
+      // TODO this is not entirely correct, because we don't have any compaction currently.
+      const dummyKeys = ["test1", "test2"];
+      let bulk = sh.getBulkDocuments(lh.getServerUrl(newParticipant), database, shardId, dummyKeys);
+      let keysSet = new Set(dummyKeys);
+      for (let doc of bulk) {
+        assertFalse(doc.hasOwnProperty("error"), `Expected no error, got ${JSON.stringify(doc)}`);
+        assertTrue(keysSet.has(doc._key));
+        keysSet.delete(doc._key);
+      }
+    }
   };
 };
 

@@ -35,8 +35,9 @@ using namespace arangodb::replication2::replicated_state::document;
 
 DocumentFollowerState::DocumentFollowerState(
     std::unique_ptr<DocumentCore> core,
-    std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory)
-    : _networkHandler(handlersFactory->createNetworkHandler(core->getGid())),
+    std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory)
+    : shardId(core->getShardId()),
+      _networkHandler(handlersFactory->createNetworkHandler(core->getGid())),
       _transactionHandler(
           handlersFactory->createTransactionHandler(core->getGid())),
       _guardedData(std::move(core)) {}
@@ -65,14 +66,23 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                   TRI_ERROR_CLUSTER_NOT_FOLLOWER);
             }
 
+            if (auto truncateRes = self->truncateLocalShard();
+                truncateRes.fail()) {
+              return ResultT<velocypack::SharedSlice>::error(truncateRes);
+            }
+
             // A follower may request a snapshot before leadership has been
             // established. A retry will occur in that case.
             auto leaderInterface =
                 self->_networkHandler->getLeaderInterface(destination);
             return leaderInterface->getSnapshot(waitForIndex);
           })
-      .thenValue([](auto&& result) -> futures::Future<Result> {
-        return result.result();
+      .thenValue([self = shared_from_this()](
+                     auto&& result) -> futures::Future<Result> {
+        if (result.fail()) {
+          return result.result();
+        }
+        return self->populateLocalShard(result.get());
       });
 }
 
@@ -104,6 +114,38 @@ auto DocumentFollowerState::applyEntries(
     }
     return {TRI_ERROR_NO_ERROR};
   });
+}
+
+/**
+ * @brief Using the underlying transaction handler to apply a local transaction,
+ * for this follower only.
+ */
+auto DocumentFollowerState::forceLocalTransaction(OperationType opType,
+                                                  velocypack::SharedSlice slice)
+    -> Result {
+  auto trxId = TransactionId::createFollower();
+  auto doc =
+      DocumentLogEntry{std::string(shardId), opType, std::move(slice), trxId};
+  if (auto applyRes = _transactionHandler->applyEntry(doc); applyRes.fail()) {
+    _transactionHandler->removeTransaction(trxId);
+    return applyRes;
+  }
+  auto commit =
+      DocumentLogEntry{std::string(shardId), OperationType::kCommit, {}, trxId};
+  return _transactionHandler->applyEntry(commit);
+}
+
+auto DocumentFollowerState::truncateLocalShard() -> Result {
+  VPackBuilder b;
+  b.openObject();
+  b.add("collection", VPackValue(shardId));
+  b.close();
+  return forceLocalTransaction(OperationType::kTruncate, b.sharedSlice());
+}
+
+auto DocumentFollowerState::populateLocalShard(velocypack::SharedSlice slice)
+    -> Result {
+  return forceLocalTransaction(OperationType::kInsert, std::move(slice));
 }
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
