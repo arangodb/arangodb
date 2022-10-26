@@ -11,6 +11,8 @@ devel
   IN filters with very long lists. Free sub-iterators as soon as they are
   exhausted.
 
+* Improved shard distribution during collection creation.
+
 * Change default output format of arangoexport from `json` to `jsonl`.
 
 * Added startup option `--query.log-failed` to optionally log all failed AQL
