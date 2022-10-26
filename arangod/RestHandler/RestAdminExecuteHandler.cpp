@@ -63,11 +63,17 @@ RestStatus RestAdminExecuteHandler::execute() {
 
   std::string_view payload;
   size_t bodySize;
-  if (_request->header(StaticStrings::ContentTypeHeader) == "text/plain") {
+  if (_request->header(StaticStrings::ContentTypeHeader) == "text/plain" ||
+      _request->header(StaticStrings::ContentTypeHeader)
+          .starts_with("text/plain;") ||  // content-type can contain another
+                                          // parameter like charset
+      _request->contentType() == rest::ContentType::UNSET) {
     payload = _request->rawPayload();
   } else {
     VPackSlice payloadParsed = _request->payload(false);
-    payload = payloadParsed.stringView();
+    if (!payloadParsed.isNone()) {
+      payload = payloadParsed.stringView();
+    }
   }
   char const* body = payload.data();
   bodySize = payload.size();
