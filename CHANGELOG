@@ -1,4 +1,4 @@
-v3.8.8 (XXXX-XX-XX)
+v3.8.9 (XXXX-XX-XX)
 -------------------
 
 * Fixed error handling of coordinator commit of streaming transactions.
