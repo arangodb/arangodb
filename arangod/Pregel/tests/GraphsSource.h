@@ -28,6 +28,7 @@
 
 using namespace arangodb::velocypack;
 
+namespace arangodb::slicegraph {
 SharedSlice setup2Path();
 
 SharedSlice setupUndirectedEdge();
@@ -47,3 +48,12 @@ SharedSlice setup1AlternatingTree();
 SharedSlice setup2CliquesConnectedByDirectedEdge();
 
 SharedSlice setupDuplicateVertices();
+
+struct GraphSliceHelper {
+  static auto getNumVertices(SharedSlice const& graphSlice) -> size_t;
+
+  static auto getNumEdges(SharedSlice const& graphSlice) -> size_t;
+
+};
+
+} // namespace arangodb::slicegraph

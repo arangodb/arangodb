@@ -27,6 +27,8 @@
 #include "WCCGraph.h"
 #include "GraphsSource.h"
 
+using namespace arangodb::slicegraph;
+
 TEST(GWEN_WCC, test_wcc_2_path) {
   bool const checkDuplicateVertices = true;
   WCCGraph<EmptyEdgeProperties, WCCVertexProperties> graph(
