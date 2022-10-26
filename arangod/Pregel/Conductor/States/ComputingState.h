@@ -32,13 +32,17 @@ class Conductor;
 namespace conductor {
 
 struct Computing : State {
+ private:
+  using SendCountPerServer = std::unordered_map<ServerID, uint64_t>;
+
+ public:
   Conductor& conductor;
   Computing(Conductor& conductor,
             WorkerApi<GlobalSuperStepFinished>&& workerApi);
-  ~Computing();
+  Computing(Conductor& conductor, SendCountPerServer count,
+            WorkerApi<GlobalSuperStepFinished>&& workerApi);
   auto run() -> std::optional<std::unique_ptr<State>> override;
-  auto receive(MessagePayload message)
-      -> std::optional<std::unique_ptr<State>> override;
+  auto receive(MessagePayload message) -> void override;
   auto cancel() -> std::optional<std::unique_ptr<State>> override;
   auto name() const -> std::string override { return "running"; };
   auto isRunning() const -> bool override { return true; }
@@ -48,8 +52,8 @@ struct Computing : State {
   }
 
  private:
-  WorkerApi<GlobalSuperStepFinished> _workerApi;
   std::unordered_map<ServerID, uint64_t> _sendCountPerServer;
+  WorkerApi<GlobalSuperStepFinished> _workerApi;
   auto _runGlobalSuperStepCommand() const
       -> std::unordered_map<ServerID, RunGlobalSuperStep>;
   auto _runGlobalSuperStep() -> futures::Future<Result>;

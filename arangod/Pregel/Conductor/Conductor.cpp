@@ -181,10 +181,7 @@ Conductor::~Conductor() {
   _feature.metrics()->pregelConductorsNumber->fetch_sub(1);
 }
 
-void Conductor::start() {
-  MUTEX_LOCKER(guard, _callbackMutex);
-  _run();
-}
+void Conductor::start() { _run(); }
 
 auto Conductor ::_postGlobalSuperStep() -> PostGlobalSuperStepResult {
   // workers are done if all messages were processed and no active vertices
@@ -337,10 +334,7 @@ std::vector<ShardID> Conductor::getShardIds(ShardID const& collection) const {
 }
 
 auto Conductor::receive(MessagePayload message) -> void {
-  auto newState = _state->receive(message);
-  if (newState.has_value()) {
-    _changeState(std::move(newState.value()));
-  }
+  _state->receive(message);
 }
 
 auto Conductor::_run() -> void {

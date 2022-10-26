@@ -30,23 +30,21 @@ auto Initial::run() -> std::optional<std::unique_ptr<State>> {
     LOG_PREGEL_CONDUCTOR_STATE("ae855", ERR) << sent.errorMessage();
     return std::make_unique<Canceled>(conductor, std::move(_workerApi));
   }
-  return std::nullopt;
-}
 
-auto Initial::receive(MessagePayload message)
-    -> std::optional<std::unique_ptr<State>> {
-  auto explicitMessage = getResultTMessage<WorkerCreated>(message);
-  if (explicitMessage.fail()) {
-    LOG_PREGEL_CONDUCTOR_STATE("7698e", ERR) << explicitMessage.errorMessage();
+  auto aggregate = _workerApi.aggregateAllResponses();
+  if (aggregate.fail()) {
+    LOG_PREGEL_CONDUCTOR_STATE("1e855", ERR) << aggregate.errorMessage();
     return std::make_unique<Canceled>(conductor, std::move(_workerApi));
   }
 
-  auto aggregatedMessage = _workerApi.collect(explicitMessage.get());
-  if (!aggregatedMessage.has_value()) {
-    return std::nullopt;
-  }
-
   return std::make_unique<Loading>(conductor, std::move(_workerApi));
+}
+
+auto Initial::receive(MessagePayload message) -> void {
+  auto queued = _workerApi.queue(message);
+  if (queued.fail()) {
+    LOG_PREGEL_CONDUCTOR_STATE("7698e", ERR) << queued.errorMessage();
+  }
 }
 
 namespace {

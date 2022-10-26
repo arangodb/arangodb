@@ -27,25 +27,15 @@ auto Loading::run() -> std::optional<std::unique_ptr<State>> {
     LOG_PREGEL_CONDUCTOR_STATE("dddad", ERR) << sent.errorMessage();
     return std::make_unique<FatalError>(conductor, std::move(_workerApi));
   }
-  return std::nullopt;
-}
 
-auto Loading::receive(MessagePayload message)
-    -> std::optional<std::unique_ptr<State>> {
-  auto explicitMessage = getResultTMessage<GraphLoaded>(message);
-  if (explicitMessage.fail()) {
-    LOG_PREGEL_CONDUCTOR_STATE("7698e", ERR) << explicitMessage.errorMessage();
+  auto aggregate = _workerApi.aggregateAllResponses();
+  if (aggregate.fail()) {
+    LOG_PREGEL_CONDUCTOR_STATE("1ddad", ERR) << aggregate.errorMessage();
     return std::make_unique<FatalError>(conductor, std::move(_workerApi));
   }
 
-  auto aggregatedMessage = _workerApi.collect(explicitMessage.get());
-  if (!aggregatedMessage.has_value()) {
-    return std::nullopt;
-  }
-
-  auto graphLoadedData = aggregatedMessage.value();
-  conductor._totalVerticesCount += graphLoadedData.vertexCount;
-  conductor._totalEdgesCount += graphLoadedData.edgeCount;
+  conductor._totalVerticesCount += aggregate.get().vertexCount;
+  conductor._totalEdgesCount += aggregate.get().edgeCount;
 
   if (conductor._masterContext) {
     conductor._masterContext->initialize(conductor._totalVerticesCount,
@@ -59,6 +49,13 @@ auto Loading::receive(MessagePayload message)
                      conductor._totalVerticesCount, conductor._totalEdgesCount);
 
   return std::make_unique<Computing>(conductor, std::move(_workerApi));
+}
+
+auto Loading::receive(MessagePayload message) -> void {
+  auto queued = _workerApi.queue(message);
+  if (queued.fail()) {
+    LOG_PREGEL_CONDUCTOR_STATE("7698e", ERR) << queued.errorMessage();
+  }
 }
 
 auto Loading::cancel() -> std::optional<std::unique_ptr<State>> {

@@ -1,5 +1,6 @@
 #include "CanceledState.h"
 
+#include "Pregel/Messaging/WorkerMessages.h"
 #include "fmt/chrono.h"
 #include "Basics/FunctionUtils.h"
 #include "Pregel/Conductor/Conductor.h"
@@ -28,61 +29,43 @@ auto Canceled::run() -> std::optional<std::unique_ptr<State>> {
   LOG_PREGEL_CONDUCTOR_STATE("dd721", WARN)
       << "Execution was canceled, conductor and workers are discarded.";
 
+  if (conductor._feature.isStopping()) {
+    LOG_PREGEL_CONDUCTOR_STATE("bd540", DEBUG)
+        << "Feature is stopping, workers are already shutting down, no need to "
+           "clean them up.";
+    return std::nullopt;
+  }
+
   auto cleanup = _cleanupUntilTimeout(std::chrono::steady_clock::now());
   if (cleanup.fail()) {
     LOG_PREGEL_CONDUCTOR_STATE("f8b3c", ERR) << cleanup.errorMessage();
     return std::nullopt;
   }
+
+  auto aggregate = _workerApi.aggregateAllResponses();
+  if (aggregate.fail()) {
+    LOG_PREGEL_CONDUCTOR_STATE("cc890", ERR) << aggregate.errorMessage();
+    return std::make_unique<FatalError>(conductor, std::move(_workerApi));
+  }
+
+  LOG_PREGEL_CONDUCTOR_STATE("6928f", DEBUG) << "Conductor is erased";
+  conductor._feature.cleanupConductor(conductor._executionNumber);
   return std::nullopt;
 }
 
-auto Canceled::receive(MessagePayload message)
-    -> std::optional<std::unique_ptr<State>> {
-  return std::visit(
-      overloaded{
-          [&](ResultT<CleanupFinished> const& x)
-              -> std::optional<std::unique_ptr<State>> {
-            auto explicitMessage = getResultTMessage<CleanupFinished>(message);
-            if (explicitMessage.fail()) {
-              LOG_PREGEL_CONDUCTOR_STATE("7698e", ERR)
-                  << explicitMessage.errorMessage();
-              return std::nullopt;
-            }
-            auto aggregatedMessage = _workerApi.collect(explicitMessage.get());
-            if (!aggregatedMessage.has_value()) {
-              return std::nullopt;
-            }
-
-            LOG_PREGEL_CONDUCTOR_STATE("6928f", DEBUG) << "Conductor is erased";
-            conductor._feature.cleanupConductor(conductor._executionNumber);
-            return std::nullopt;
-          },
-          [&](ResultT<WorkerCreated> const& x)
-              -> std::optional<std::unique_ptr<State>> {
-            // This is a final error state for the Loading state: It is possible
-            // that this state receives WorkerCreated messages and this state
-            // needs to ignore them in the receive fct.
-            return std::nullopt;
-          },
-          [&](auto const& x) -> std::optional<std::unique_ptr<State>> {
-            LOG_PREGEL_CONDUCTOR_STATE("a698e", ERR)
-                << "Received unexpected message type";
-            return std::make_unique<FatalError>(conductor,
-                                                std::move(_workerApi));
-          },
-      },
-      message);
+auto Canceled::receive(MessagePayload message) -> void {
+  auto queued = _workerApi.queue(message);
+  // This is a final error state for the Loading state: It is possible
+  // that this state receives WorkerCreated messages and this state
+  // needs to ignore them in the receive fct.
+  if (queued.fail() &&
+      !std::holds_alternative<ResultT<WorkerCreated>>(message)) {
+    LOG_PREGEL_CONDUCTOR_STATE("88911", ERR) << queued.errorMessage();
+  }
 };
 
 auto Canceled::_cleanupUntilTimeout(std::chrono::steady_clock::time_point start)
     -> Result {
-  if (conductor._feature.isStopping()) {
-    LOG_PREGEL_CONDUCTOR_STATE("bd540", DEBUG)
-        << "Feature is stopping, workers are already shutting down, no need to "
-           "clean them up.";
-    return Result{};
-  }
-
   LOG_PREGEL_CONDUCTOR_STATE("fc187", DEBUG) << "Cleanup workers";
   auto sent = _workerApi.sendToAll(Cleanup{});
   if (sent.fail()) {

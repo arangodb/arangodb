@@ -45,10 +45,7 @@ namespace conductor {
 
 struct State {
   virtual auto run() -> std::optional<std::unique_ptr<State>> = 0;
-  virtual auto receive(MessagePayload message)
-      -> std::optional<std::unique_ptr<State>> {
-    return std::nullopt;
-  }
+  virtual auto receive(MessagePayload message) -> void {}
   virtual auto cancel() -> std::optional<std::unique_ptr<State>> = 0;
   virtual auto getResults(bool withId) -> ResultT<PregelResults> {
     VPackBuilder emptyArray;

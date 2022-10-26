@@ -33,28 +33,25 @@ auto Storing::run() -> std::optional<std::unique_ptr<State>> {
     LOG_PREGEL_CONDUCTOR_STATE("e2dad", ERR) << sent.errorMessage();
     return std::make_unique<FatalError>(conductor, std::move(_workerApi));
   }
-  return std::nullopt;
-}
 
-auto Storing::receive(MessagePayload message)
-    -> std::optional<std::unique_ptr<State>> {
-  auto explicitMessage = getResultTMessage<Stored>(message);
-  if (explicitMessage.fail()) {
-    LOG_PREGEL_CONDUCTOR_STATE("dde4a", ERR) << explicitMessage.errorMessage();
+  auto aggregate = _workerApi.aggregateAllResponses();
+  if (aggregate.fail()) {
+    LOG_PREGEL_CONDUCTOR_STATE("00251", ERR) << aggregate.errorMessage();
     return std::make_unique<FatalError>(conductor, std::move(_workerApi));
-  }
-  auto aggregatedMessage = _workerApi.collect(explicitMessage.get());
-  if (!aggregatedMessage.has_value()) {
-    return std::nullopt;
   }
 
   // workers deleted themselves after storing
   _workerApi._servers = {};
-
   return std::make_unique<Done>(conductor, std::move(_workerApi));
 }
 
+auto Storing::receive(MessagePayload message) -> void {
+  auto queued = _workerApi.queue(message);
+  if (queued.fail()) {
+    LOG_PREGEL_CONDUCTOR_STATE("7698e", ERR) << queued.errorMessage();
+  }
+}
+
 auto Storing::cancel() -> std::optional<std::unique_ptr<State>> {
-  // TODO no defined which api to use here
   return std::make_unique<Canceled>(conductor, std::move(_workerApi));
 }

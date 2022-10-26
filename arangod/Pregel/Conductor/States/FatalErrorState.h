@@ -39,13 +39,6 @@ struct FatalError : State {
   auto run() -> std::optional<std::unique_ptr<State>> override {
     return std::nullopt;
   };
-  // This is a final error state: This state can receive any message that was
-  // supposed to be handled by another state and this state needs to ignore them
-  // in the receive fct.
-  auto receive(MessagePayload message)
-      -> std::optional<std::unique_ptr<State>> override {
-    return std::nullopt;
-  };
   auto cancel() -> std::optional<std::unique_ptr<State>> override;
   auto getResults(bool withId) -> ResultT<PregelResults> override;
   auto name() const -> std::string override { return "fatal error"; };
