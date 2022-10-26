@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Aditya Mukhopadhyay
+/// @author Aditya Mukhopadhyay, Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestPlanHandler.h"
@@ -30,12 +30,15 @@
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 
+#include "Aql/Optimizer2/Plan/PlanRPCHandler.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 
 RestPlanHandler::RestPlanHandler(ArangodServer& server, GeneralRequest* request,
-                                 GeneralResponse* response, aql::QueryRegistry* queryRegistry)
+                                 GeneralResponse* response,
+                                 aql::QueryRegistry* queryRegistry)
     : RestCursorHandler(server, request, response, queryRegistry) {}
 
 RestStatus RestPlanHandler::execute() {
@@ -58,6 +61,10 @@ RestStatus RestPlanHandler::execute() {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_MALFORMED_JSON);
       return RestStatus::FAIL;
     }
+
+    /* RPC handler takes over now */
+    using PlanHandler = aql::optimizer2::plan::PlanRPCHandler;
+    PlanHandler handler;
 
     VPackSlice plan = body.get("plan");
     if (!plan.isObject() || plan.isEmptyObject()) {
