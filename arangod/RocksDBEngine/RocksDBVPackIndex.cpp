@@ -28,6 +28,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/cpu-relax.h"
@@ -112,7 +113,8 @@ namespace arangodb {
 
 class RocksDBVPackIndexInIterator final : public IndexIterator {
  public:
-  RocksDBVPackIndexInIterator(LogicalCollection* collection,
+  RocksDBVPackIndexInIterator(ResourceMonitor& monitor,
+                              LogicalCollection* collection,
                               transaction::Methods* trx, Index const* index,
                               std::unique_ptr<IndexIterator> wrapped,
                               velocypack::Slice searchValues,
@@ -120,20 +122,29 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
                               ReadOwnWrites readOwnWrites,
                               RocksDBVPackIndexSearchValueFormat format)
       : IndexIterator(collection, trx, readOwnWrites),
+        _resourceMonitor(monitor),
         _index(static_cast<RocksDBVPackIndex const*>(index)),
         _wrapped(std::move(wrapped)),
         _searchValues(searchValues),
         _current(_searchValues.slice()),
         _indexIteratorOptions(opts),
+        _memoryUsage(0),
         _format(format) {
     TRI_ASSERT(_wrapped != nullptr);
 
     if (_format == RocksDBVPackIndexSearchValueFormat::kValuesOnly) {
       reformatLookupCondition();
     }
+
+    ResourceUsageScope scope(_resourceMonitor, searchValues.byteSize());
+    _memoryUsage += scope.tracked();
+    // now we are responsible for tracking memory usage
+    scope.steal();
   }
 
-  ~RocksDBVPackIndexInIterator() = default;
+  ~RocksDBVPackIndexInIterator() override {
+    _resourceMonitor.decreaseMemoryUsage(_memoryUsage);
+  }
 
   std::string_view typeName() const noexcept override {
     return "rocksdb-vpack-index-in-iterator";
@@ -205,11 +216,15 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
     TRI_ASSERT(node != nullptr);
     TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
+    size_t oldMemoryUsage = _searchValues.slice().byteSize();
+    _resourceMonitor.decreaseMemoryUsage(oldMemoryUsage);
+    _memoryUsage -= oldMemoryUsage;
     _searchValues.clear();
+
     RocksDBVPackIndexSearchValueFormat format =
         RocksDBVPackIndexSearchValueFormat::kDetect;
-    _index->buildSearchValues(_trx, node, variable, _indexIteratorOptions,
-                              _searchValues, format);
+    _index->buildSearchValues(_resourceMonitor, _trx, node, variable,
+                              _indexIteratorOptions, _searchValues, format);
 
     if (_format == RocksDBVPackIndexSearchValueFormat::kValuesOnly &&
         format == RocksDBVPackIndexSearchValueFormat::kIn) {
@@ -217,6 +232,10 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
     }
 
     TRI_ASSERT(_searchValues.slice().isArray());
+
+    size_t newMemoryUsage = _searchValues.slice().byteSize();
+    _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
+    _memoryUsage += newMemoryUsage;
 
     _current = velocypack::ArrayIterator(_searchValues.slice());
     adjustIterator();
@@ -256,11 +275,13 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
     TRI_ASSERT(wasRearmed);
   }
 
+  ResourceMonitor& _resourceMonitor;
   RocksDBVPackIndex const* _index;
   std::unique_ptr<IndexIterator> _wrapped;
   velocypack::Builder _searchValues;
   velocypack::ArrayIterator _current;
   IndexIteratorOptions const _indexIteratorOptions;
+  size_t _memoryUsage;
   RocksDBVPackIndexSearchValueFormat const _format;
 };
 
@@ -271,19 +292,17 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
 // for non-equality lookups or if not all index attributes are used in the
 // lookup condition.
 class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
- private:
   friend class RocksDBVPackIndex;
   friend class RocksDBVPackIndexInIterator;
 
  public:
-  RocksDBVPackUniqueIndexIterator(LogicalCollection* collection,
-                                  transaction::Methods* trx,
-                                  RocksDBVPackIndex const* index,
-                                  std::shared_ptr<cache::Cache> cache,
-                                  VPackSlice indexValues,
-                                  IndexIteratorOptions const& opts,
-                                  ReadOwnWrites readOwnWrites)
+  RocksDBVPackUniqueIndexIterator(
+      ResourceMonitor& monitor, LogicalCollection* collection,
+      transaction::Methods* trx, RocksDBVPackIndex const* index,
+      std::shared_ptr<cache::Cache> cache, VPackSlice indexValues,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites)
       : IndexIterator(collection, trx, readOwnWrites),
+        _resourceMonitor(monitor),
         _index(index),
         _cmp(index->comparator()),
         _cache(std::static_pointer_cast<VPackIndexCacheType>(std::move(cache))),
@@ -330,8 +349,8 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     transaction::BuilderLeaser searchValues(_trx);
     RocksDBVPackIndexSearchValueFormat format =
         RocksDBVPackIndexSearchValueFormat::kValuesOnly;
-    _index->buildSearchValues(_trx, node, variable, _indexIteratorOptions,
-                              *searchValues, format);
+    _index->buildSearchValues(_resourceMonitor, _trx, node, variable,
+                              _indexIteratorOptions, *searchValues, format);
     // note: we only support the simplified format when building index search
     // values! format must not have changed!
     TRI_ASSERT(format == RocksDBVPackIndexSearchValueFormat::kValuesOnly);
@@ -491,6 +510,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     return ::lookupValueFromSlice(_key->string());
   }
 
+  ResourceMonitor& _resourceMonitor;
   RocksDBVPackIndex const* _index;
   rocksdb::Comparator const* _cmp;
   std::shared_ptr<VPackIndexCacheType> _cache;
@@ -502,20 +522,21 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 /// @brief Iterator structure for RocksDB. We require a start and stop node
 template<bool unique, bool reverse, bool mustCheckBounds>
 class RocksDBVPackIndexIterator final : public IndexIterator {
- private:
   friend class RocksDBVPackIndex;
   friend class RocksDBVPackIndexInIterator;
 
  public:
   RocksDBVPackIndexIterator(
-      LogicalCollection* collection, transaction::Methods* trx,
-      RocksDBVPackIndex const* index, RocksDBKeyBounds&& bounds,
-      std::shared_ptr<cache::Cache> cache, IndexIteratorOptions const& opts,
-      ReadOwnWrites readOwnWrites, RocksDBVPackIndexSearchValueFormat format)
+      ResourceMonitor& monitor, LogicalCollection* collection,
+      transaction::Methods* trx, RocksDBVPackIndex const* index,
+      RocksDBKeyBounds&& bounds, std::shared_ptr<cache::Cache> cache,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      RocksDBVPackIndexSearchValueFormat format)
       : IndexIterator(collection, trx, readOwnWrites),
         _index(index),
         _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
         _cache(std::static_pointer_cast<VPackIndexCacheType>(std::move(cache))),
+        _resourceMonitor(monitor),
         _builderOptions(VPackOptions::Defaults),
         _cacheKeyBuilder(&_builderOptions),
         _cacheKeyBuilderSize(0),
@@ -524,6 +545,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         _indexIteratorOptions(opts),
         _bounds(std::move(bounds)),
         _rangeBound(reverse ? _bounds.start() : _bounds.end()),
+        _memoryUsage(0),
         _format(format),
         _mustSeek(true) {
     TRI_ASSERT(index->columnFamily() ==
@@ -557,6 +579,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     }
   }
 
+  ~RocksDBVPackIndexIterator() override {
+    _resourceMonitor.decreaseMemoryUsage(_memoryUsage);
+  }
+
   std::string_view typeName() const noexcept final {
     return "rocksdb-index-iterator";
   }
@@ -572,8 +598,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
     transaction::BuilderLeaser searchValues(_trx);
     RocksDBVPackIndexSearchValueFormat format = _format;
-    _index->buildSearchValues(_trx, node, variable, _indexIteratorOptions,
-                              *searchValues, format);
+    _index->buildSearchValues(_resourceMonitor, _trx, node, variable,
+                              _indexIteratorOptions, *searchValues, format);
     // note: we support two formats when building index search values:
     // - a generic format that supports < > <= >= and ==
     // - a simplified format that only supports ==
@@ -763,10 +789,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     if (_cache != nullptr) {
       _resultBuilder.clear();
       _resultIterator = VPackArrayIterator(VPackArrayIterator::Empty{});
-    }
-
-    if (_resetInternals) {
-      _iterator.reset();
     }
   }
 
@@ -1042,6 +1064,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
   void ensureIterator() {
     if (_iterator == nullptr) {
+      ResourceUsageScope scope(_resourceMonitor, expectedIteratorMemoryUsage);
+
       auto state = RocksDBTransactionState::toState(_trx);
       RocksDBTransactionMethods* mthds =
           state->rocksdbMethods(_collection->id());
@@ -1058,6 +1082,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
             options.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
           });
       TRI_ASSERT(_mustSeek);
+
+      _memoryUsage += scope.tracked();
+      // now we are responsible for tracking the memory usage
+      scope.steal();
     }
 
     TRI_ASSERT(_iterator != nullptr);
@@ -1082,10 +1110,15 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     return _iterator->Valid() && !outOfRange();
   }
 
+  // expected number of bytes that a RocksDB iterator will use.
+  // this is a guess and does not need to be fully accurate.
+  static constexpr size_t expectedIteratorMemoryUsage = 8192;
+
   RocksDBVPackIndex const* _index;
   RocksDBVPackComparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   std::shared_ptr<VPackIndexCacheType> _cache;
+  ResourceMonitor& _resourceMonitor;
   // VPackOptions for _cacheKeyBuilder and _resultBuilder. only used when
   // _cache is set
   velocypack::Options _builderOptions;
@@ -1106,6 +1139,9 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   RocksDBKeyBounds _bounds;
   // used for iterate_upper_bound iterate_lower_bound
   rocksdb::Slice _rangeBound;
+
+  // memory used by this iterator
+  size_t _memoryUsage;
   RocksDBVPackIndexSearchValueFormat const _format;
   bool _mustSeek;
 };
@@ -1961,9 +1997,9 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
 
 // build an index iterator from a VelocyPack range description
 std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIterator(
-    transaction::Methods* trx, VPackSlice searchValues,
-    IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
-    RocksDBVPackIndexSearchValueFormat format,
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    VPackSlice searchValues, IndexIteratorOptions const& opts,
+    ReadOwnWrites readOwnWrites, RocksDBVPackIndexSearchValueFormat format,
     bool& isUniqueIndexIterator) const {
   TRI_ASSERT(searchValues.isArray());
   TRI_ASSERT(format != RocksDBVPackIndexSearchValueFormat::kDetect);
@@ -1979,7 +2015,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIterator(
     // full range scan over the entire index
     TRI_ASSERT(format != RocksDBVPackIndexSearchValueFormat::kIn);
     return buildIteratorFromBounds(
-        trx, reverse, opts, readOwnWrites,
+        monitor, trx, reverse, opts, readOwnWrites,
         _unique ? RocksDBKeyBounds::UniqueVPackIndex(objectId(), reverse)
                 : RocksDBKeyBounds::VPackIndex(objectId(), reverse),
         RocksDBVPackIndexSearchValueFormat::kValuesOnly, /*useCache*/ false);
@@ -2012,7 +2048,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIterator(
     // unique index iterator can only be used if all index fields are
     // covered. we cannot do range lookups etc.
     return std::make_unique<RocksDBVPackUniqueIndexIterator>(
-        &_collection, trx, this, useCache ? _cache : nullptr,
+        monitor, &_collection, trx, this, useCache ? _cache : nullptr,
         leftSearch->slice(), opts, readOwnWrites);
   }
 
@@ -2022,15 +2058,16 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIterator(
   RocksDBKeyBounds bounds = RocksDBKeyBounds::Empty();
   buildIndexRangeBounds(trx, searchValues, *leftSearch, lastNonEq, bounds);
 
-  return buildIteratorFromBounds(trx, reverse, opts, readOwnWrites,
+  return buildIteratorFromBounds(monitor, trx, reverse, opts, readOwnWrites,
                                  std::move(bounds), format,
                                  /*useCache*/ allEq && useCache);
 }
 
 std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIteratorFromBounds(
-    transaction::Methods* trx, bool reverse, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites, RocksDBKeyBounds&& bounds,
-    RocksDBVPackIndexSearchValueFormat format, bool useCache) const {
+    ResourceMonitor& monitor, transaction::Methods* trx, bool reverse,
+    IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+    RocksDBKeyBounds&& bounds, RocksDBVPackIndexSearchValueFormat format,
+    bool useCache) const {
   TRI_ASSERT(!bounds.empty());
   TRI_ASSERT(format != RocksDBVPackIndexSearchValueFormat::kDetect);
 
@@ -2044,22 +2081,22 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIteratorFromBounds(
       // reverse version
       if (mustCheckBounds) {
         return std::make_unique<RocksDBVPackIndexIterator<true, true, true>>(
-            &_collection, trx, this, std::move(bounds),
+            monitor, &_collection, trx, this, std::move(bounds),
             useCache ? _cache : nullptr, opts, readOwnWrites, format);
       }
       return std::make_unique<RocksDBVPackIndexIterator<true, true, false>>(
-          &_collection, trx, this, std::move(bounds),
+          monitor, &_collection, trx, this, std::move(bounds),
           useCache ? _cache : nullptr, opts, readOwnWrites, format);
     }
     // forward version
     if (mustCheckBounds) {
       return std::make_unique<RocksDBVPackIndexIterator<true, false, true>>(
-          &_collection, trx, this, std::move(bounds),
+          monitor, &_collection, trx, this, std::move(bounds),
           useCache ? _cache : nullptr, opts, readOwnWrites, format);
     }
     return std::make_unique<RocksDBVPackIndexIterator<true, false, false>>(
-        &_collection, trx, this, std::move(bounds), useCache ? _cache : nullptr,
-        opts, readOwnWrites, format);
+        monitor, &_collection, trx, this, std::move(bounds),
+        useCache ? _cache : nullptr, opts, readOwnWrites, format);
   }
 
   // non-unique index
@@ -2067,22 +2104,22 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIteratorFromBounds(
     // reverse version
     if (mustCheckBounds) {
       return std::make_unique<RocksDBVPackIndexIterator<false, true, true>>(
-          &_collection, trx, this, std::move(bounds),
+          monitor, &_collection, trx, this, std::move(bounds),
           useCache ? _cache : nullptr, opts, readOwnWrites, format);
     }
     return std::make_unique<RocksDBVPackIndexIterator<false, true, false>>(
-        &_collection, trx, this, std::move(bounds), useCache ? _cache : nullptr,
-        opts, readOwnWrites, format);
+        monitor, &_collection, trx, this, std::move(bounds),
+        useCache ? _cache : nullptr, opts, readOwnWrites, format);
   }
   // forward version
   if (mustCheckBounds) {
     return std::make_unique<RocksDBVPackIndexIterator<false, false, true>>(
-        &_collection, trx, this, std::move(bounds), useCache ? _cache : nullptr,
-        opts, readOwnWrites, format);
+        monitor, &_collection, trx, this, std::move(bounds),
+        useCache ? _cache : nullptr, opts, readOwnWrites, format);
   }
   return std::make_unique<RocksDBVPackIndexIterator<false, false, false>>(
-      &_collection, trx, this, std::move(bounds), useCache ? _cache : nullptr,
-      opts, readOwnWrites, format);
+      monitor, &_collection, trx, this, std::move(bounds),
+      useCache ? _cache : nullptr, opts, readOwnWrites, format);
 }
 
 // build bounds for an index range
@@ -2173,15 +2210,15 @@ aql::AstNode* RocksDBVPackIndex::specializeCondition(
 }
 
 std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
-    transaction::Methods* trx, aql::AstNode const* node,
-    aql::Variable const* reference, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites, int) {
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    aql::AstNode const* node, aql::Variable const* reference,
+    IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
   transaction::BuilderLeaser searchValues(trx);
   RocksDBVPackIndexSearchValueFormat format =
       RocksDBVPackIndexSearchValueFormat::kDetect;
-  buildSearchValues(trx, node, reference, opts, *searchValues, format);
+  buildSearchValues(monitor, trx, node, reference, opts, *searchValues, format);
   // format must have been set to something valid now.
   TRI_ASSERT(format != RocksDBVPackIndexSearchValueFormat::kDetect);
 
@@ -2205,11 +2242,11 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
     // value at a time.
     // note: the call to buildIterator may change the value of
     // isUniqueIndexIterator!
-    auto wrapped = buildIterator(trx, searchSlice.at(0), opts, readOwnWrites,
-                                 format, isUniqueIndexIterator);
+    auto wrapped = buildIterator(monitor, trx, searchSlice.at(0), opts,
+                                 readOwnWrites, format, isUniqueIndexIterator);
 
     return std::make_unique<RocksDBVPackIndexInIterator>(
-        &_collection, trx, this, std::move(wrapped), searchSlice, opts,
+        monitor, &_collection, trx, this, std::move(wrapped), searchSlice, opts,
         readOwnWrites,
         isUniqueIndexIterator
             ? RocksDBVPackIndexSearchValueFormat::kValuesOnly
@@ -2219,7 +2256,8 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
   // anything but IN is handled here
 
   TRI_ASSERT(searchSlice.length() == 1);
-  return buildIterator(trx, searchSlice.at(0), opts, readOwnWrites, format,
+  return buildIterator(monitor, trx, searchSlice.at(0), opts, readOwnWrites,
+                       format,
                        /*unused*/ isUniqueIndexIterator);
 }
 
@@ -2233,15 +2271,16 @@ void RocksDBVPackIndex::buildEmptySearchValues(
 }
 
 void RocksDBVPackIndex::buildSearchValues(
-    transaction::Methods* trx, aql::AstNode const* node,
-    aql::Variable const* reference, IndexIteratorOptions const& opts,
-    VPackBuilder& searchValues,
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    aql::AstNode const* node, aql::Variable const* reference,
+    IndexIteratorOptions const& opts, VPackBuilder& searchValues,
     RocksDBVPackIndexSearchValueFormat& format) const {
   if (node == nullptr) {
     // We only use this index for sort. Empty searchValue
     buildEmptySearchValues(searchValues);
   } else {
-    buildSearchValuesInner(trx, node, reference, opts, searchValues, format);
+    buildSearchValuesInner(monitor, trx, node, reference, opts, searchValues,
+                           format);
   }
 
   TRI_IF_FAILURE("PersistentIndex::noIterator") {
@@ -2262,9 +2301,9 @@ void RocksDBVPackIndex::buildSearchValues(
 }
 
 void RocksDBVPackIndex::buildSearchValuesInner(
-    transaction::Methods* trx, aql::AstNode const* node,
-    aql::Variable const* reference, IndexIteratorOptions const& opts,
-    VPackBuilder& searchValues,
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    aql::AstNode const* node, aql::Variable const* reference,
+    IndexIteratorOptions const& opts, VPackBuilder& searchValues,
     RocksDBVPackIndexSearchValueFormat& format) const {
   // Create the search values for the lookup
   searchValues.openArray();
@@ -2458,7 +2497,8 @@ void RocksDBVPackIndex::buildSearchValuesInner(
   if (needNormalize) {
     // we found an IN clause. now rewrite the lookup conditions accordingly
     transaction::BuilderLeaser expandedSearchValues(trx);
-    expandInSearchValues(searchValues.slice(), *expandedSearchValues, opts);
+    expandInSearchValues(monitor, searchValues.slice(), *expandedSearchValues,
+                         opts);
 
     searchValues.clear();
     searchValues.add(expandedSearchValues->slice());
@@ -2479,7 +2519,7 @@ void RocksDBVPackIndex::buildSearchValuesInner(
 ///        Input: [ [{=: 1}, {in: 2,3}], [{=:2}, {=:3}]
 ///        Result: [ [{=: 1}, {=: 2}],[{=:1}, {=:3}], [{=:2}, {=:3}]]
 void RocksDBVPackIndex::expandInSearchValues(
-    VPackSlice base, VPackBuilder& result,
+    ResourceMonitor& monitor, VPackSlice base, VPackBuilder& result,
     IndexIteratorOptions const& opts) const {
   TRI_ASSERT(base.isArray());
 
@@ -2487,13 +2527,19 @@ void RocksDBVPackIndex::expandInSearchValues(
   for (VPackSlice oneLookup : VPackArrayIterator(base)) {
     TRI_ASSERT(oneLookup.isArray());
 
+    ResourceUsageScope scope(monitor);
     std::unordered_map<size_t, std::vector<VPackSlice>> elements;
+
     size_t n = static_cast<size_t>(oneLookup.length());
+
     for (VPackValueLength i = 0; i < n; ++i) {
       VPackSlice current = oneLookup.at(i);
       if (VPackSlice inList = current.get(StaticStrings::IndexIn);
           inList.isArray()) {
         VPackValueLength nList = inList.length();
+
+        // track potential memory usage
+        scope.increase(nList * sizeof(VPackSlice));
 
         // spit everything into vector at once
         auto& vector = elements[i];

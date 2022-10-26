@@ -104,11 +104,12 @@ void IResearchInvertedIndexMock::afterTruncate(TRI_voc_tick_t tick,
 }
 
 std::unique_ptr<IndexIterator> IResearchInvertedIndexMock::iteratorForCondition(
-    transaction::Methods* trx, aql::AstNode const* node,
-    aql::Variable const* reference, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites, int mutableConditionIdx) {
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    aql::AstNode const* node, aql::Variable const* reference,
+    IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+    int mutableConditionIdx) {
   return IResearchInvertedIndex::iteratorForCondition(
-      &IResearchDataStore::collection(), trx, node, reference, opts,
+      monitor, &IResearchDataStore::collection(), trx, node, reference, opts,
       mutableConditionIdx);
 }
 

@@ -46,6 +46,7 @@ class LocalTaskQueue;
 class IndexIterator;
 class LogicalCollection;
 struct IndexIteratorOptions;
+class ResourceMonitor;
 
 namespace velocypack {
 class Builder;
@@ -431,9 +432,10 @@ class Index {
 
   /// @brief create a new index iterator for the (specialized) condition
   virtual std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, aql::AstNode const* node,
-      aql::Variable const* reference, IndexIteratorOptions const& opts,
-      ReadOwnWrites readOwnWrites, int mutableConditionIdx);
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      aql::AstNode const* node, aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      int mutableConditionIdx);
 
   bool canUseConditionPart(
       aql::AstNode const* access, aql::AstNode const* other,

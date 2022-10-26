@@ -24,6 +24,8 @@
 #include "Aql/Query.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/Index.h"
@@ -207,6 +209,8 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const collectionName(collection->name());
 
+  ResourceMonitor monitor(GlobalResourceMonitor::instance());
+
   auto transactionContext =
       transaction::V8Context::Create(collection->vocbase(), true);
   SingleCollectionTransaction trx(transactionContext, *collection,
@@ -226,8 +230,9 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   resultBuilder.openArray();
 
   // We directly read the entire cursor. so batchsize == limit
-  auto iterator = trx.indexScan(
-      collectionName, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
+  auto iterator =
+      trx.indexScan(monitor, collectionName,
+                    transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
   iterator->allDocuments(
       [&resultBuilder](LocalDocumentId const&, VPackSlice slice) {

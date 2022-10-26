@@ -82,7 +82,8 @@ namespace arangodb {
 
 class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
  public:
-  RocksDBPrimaryIndexEqIterator(LogicalCollection* collection,
+  RocksDBPrimaryIndexEqIterator(ResourceMonitor& monitor,
+                                LogicalCollection* collection,
                                 transaction::Methods* trx,
                                 RocksDBPrimaryIndex* index, VPackBuilder key,
                                 bool lookupByIdAttribute,
@@ -179,7 +180,8 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
 
 class RocksDBPrimaryIndexInIterator final : public IndexIterator {
  public:
-  RocksDBPrimaryIndexInIterator(LogicalCollection* collection,
+  RocksDBPrimaryIndexInIterator(ResourceMonitor& monitor,
+                                LogicalCollection* collection,
                                 transaction::Methods* trx,
                                 RocksDBPrimaryIndex* index, VPackBuilder keys,
                                 bool lookupByIdAttribute)
@@ -291,7 +293,8 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
 template<bool reverse, bool mustCheckBounds>
 class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
  public:
-  RocksDBPrimaryIndexRangeIterator(LogicalCollection* collection,
+  RocksDBPrimaryIndexRangeIterator(ResourceMonitor& monitor,
+                                   LogicalCollection* collection,
                                    transaction::Methods* trx,
                                    RocksDBPrimaryIndex const* index,
                                    RocksDBKeyBounds&& bounds,
@@ -850,9 +853,9 @@ Index::SortCosts RocksDBPrimaryIndex::supportsSortCondition(
 
 /// @brief creates an IndexIterator for the given Condition
 std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
-    transaction::Methods* trx, aql::AstNode const* node,
-    aql::Variable const* reference, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites, int) {
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    aql::AstNode const* node, aql::Variable const* reference,
+    IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
   bool mustCheckBounds =
@@ -865,14 +868,14 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       // forward version
       if (mustCheckBounds) {
         return std::make_unique<RocksDBPrimaryIndexRangeIterator<false, true>>(
-            &_collection /*logical collection*/, trx, this,
+            monitor, &_collection /*logical collection*/, trx, this,
             RocksDBKeyBounds::PrimaryIndex(objectId(),
                                            KeyGeneratorHelper::lowestKey,
                                            KeyGeneratorHelper::highestKey),
             readOwnWrites);
       }
       return std::make_unique<RocksDBPrimaryIndexRangeIterator<false, false>>(
-          &_collection /*logical collection*/, trx, this,
+          monitor, &_collection /*logical collection*/, trx, this,
           RocksDBKeyBounds::PrimaryIndex(objectId(),
                                          KeyGeneratorHelper::lowestKey,
                                          KeyGeneratorHelper::highestKey),
@@ -881,14 +884,14 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
     // reverse version
     if (mustCheckBounds) {
       return std::make_unique<RocksDBPrimaryIndexRangeIterator<true, true>>(
-          &_collection /*logical collection*/, trx, this,
+          monitor, &_collection /*logical collection*/, trx, this,
           RocksDBKeyBounds::PrimaryIndex(objectId(),
                                          KeyGeneratorHelper::lowestKey,
                                          KeyGeneratorHelper::highestKey),
           readOwnWrites);
     }
     return std::make_unique<RocksDBPrimaryIndexRangeIterator<true, false>>(
-        &_collection /*logical collection*/, trx, this,
+        monitor, &_collection /*logical collection*/, trx, this,
         RocksDBKeyBounds::PrimaryIndex(objectId(),
                                        KeyGeneratorHelper::lowestKey,
                                        KeyGeneratorHelper::highestKey),
@@ -906,14 +909,16 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
 
     if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       // a.b == value
-      return createEqIterator(trx, aap.attribute, aap.value, readOwnWrites);
+      return createEqIterator(monitor, trx, aap.attribute, aap.value,
+                              readOwnWrites);
     }
     if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN &&
         aap.value->isArray()) {
       // "in"-checks never need to observe own writes.
       TRI_ASSERT(readOwnWrites == ReadOwnWrites::no);
       // a.b IN array
-      return createInIterator(trx, aap.attribute, aap.value, opts.ascending);
+      return createInIterator(monitor, trx, aap.attribute, aap.value,
+                              opts.ascending);
     }
     // fall-through intentional here
   }
@@ -1077,24 +1082,24 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       // forward version
       if (mustCheckBounds) {
         return std::make_unique<RocksDBPrimaryIndexRangeIterator<false, true>>(
-            &_collection /*logical collection*/, trx, this,
+            monitor, &_collection /*logical collection*/, trx, this,
             RocksDBKeyBounds::PrimaryIndex(objectId(), lower, upper),
             readOwnWrites);
       }
       return std::make_unique<RocksDBPrimaryIndexRangeIterator<false, false>>(
-          &_collection /*logical collection*/, trx, this,
+          monitor, &_collection /*logical collection*/, trx, this,
           RocksDBKeyBounds::PrimaryIndex(objectId(), lower, upper),
           readOwnWrites);
     }
     // reverse version
     if (mustCheckBounds) {
       return std::make_unique<RocksDBPrimaryIndexRangeIterator<true, true>>(
-          &_collection /*logical collection*/, trx, this,
+          monitor, &_collection /*logical collection*/, trx, this,
           RocksDBKeyBounds::PrimaryIndex(objectId(), lower, upper),
           readOwnWrites);
     }
     return std::make_unique<RocksDBPrimaryIndexRangeIterator<true, false>>(
-        &_collection /*logical collection*/, trx, this,
+        monitor, &_collection /*logical collection*/, trx, this,
         RocksDBKeyBounds::PrimaryIndex(objectId(), lower, upper),
         readOwnWrites);
   }
@@ -1113,8 +1118,8 @@ aql::AstNode* RocksDBPrimaryIndex::specializeCondition(
 
 /// @brief create the iterator, for a single attribute, IN operator
 std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::createInIterator(
-    transaction::Methods* trx, aql::AstNode const* attrNode,
-    aql::AstNode const* valNode, bool ascending) {
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    aql::AstNode const* attrNode, aql::AstNode const* valNode, bool ascending) {
   // _key or _id?
   bool const isId = (attrNode->stringEquals(StaticStrings::IdString));
 
@@ -1124,13 +1129,14 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::createInIterator(
 
   fillInLookupValues(trx, keysBuilder, valNode, ascending, isId);
   return std::make_unique<RocksDBPrimaryIndexInIterator>(
-      &_collection, trx, this, std::move(keysBuilder), isId);
+      monitor, &_collection, trx, this, std::move(keysBuilder), isId);
 }
 
 /// @brief create the iterator, for a single attribute, EQ operator
 std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::createEqIterator(
-    transaction::Methods* trx, aql::AstNode const* attrNode,
-    aql::AstNode const* valNode, ReadOwnWrites readOwnWrites) {
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    aql::AstNode const* attrNode, aql::AstNode const* valNode,
+    ReadOwnWrites readOwnWrites) {
   // _key or _id?
   bool const isId = (attrNode->stringEquals(StaticStrings::IdString));
 
@@ -1145,7 +1151,8 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::createEqIterator(
 
   if (!keyBuilder.isEmpty()) {
     return std::make_unique<RocksDBPrimaryIndexEqIterator>(
-        &_collection, trx, this, std::move(keyBuilder), isId, readOwnWrites);
+        monitor, &_collection, trx, this, std::move(keyBuilder), isId,
+        readOwnWrites);
   }
 
   return std::make_unique<EmptyIndexIterator>(&_collection, trx);

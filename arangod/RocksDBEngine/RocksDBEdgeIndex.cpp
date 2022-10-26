@@ -123,7 +123,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   };
 
  public:
-  RocksDBEdgeIndexLookupIterator(LogicalCollection* collection,
+  RocksDBEdgeIndexLookupIterator(ResourceMonitor& monitor,
+                                 LogicalCollection* collection,
                                  transaction::Methods* trx,
                                  RocksDBEdgeIndex const* index,
                                  VPackBuilder&& keys,
@@ -581,9 +582,9 @@ Index::FilterCosts RocksDBEdgeIndex::supportsFilterCondition(
 
 /// @brief creates an IndexIterator for the given Condition
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
-    transaction::Methods* trx, aql::AstNode const* node,
-    aql::Variable const* reference, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites, int) {
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    aql::AstNode const* node, aql::Variable const* reference,
+    IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
   TRI_ASSERT(node != nullptr);
@@ -598,15 +599,16 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
 
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createEqIterator(trx, aap.attribute, aap.value, opts.useCache,
-                            readOwnWrites);
+    return createEqIterator(monitor, trx, aap.attribute, aap.value,
+                            opts.useCache, readOwnWrites);
   }
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // "in"-checks never needs to observe own writes
     TRI_ASSERT(readOwnWrites == ReadOwnWrites::no);
     // a.b IN values
     if (aap.value->isArray()) {
-      return createInIterator(trx, aap.attribute, aap.value, opts.useCache);
+      return createInIterator(monitor, trx, aap.attribute, aap.value,
+                              opts.useCache);
     }
 
     // a.b IN non-array
@@ -849,26 +851,27 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
 
 /// @brief create the iterator
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createEqIterator(
-    transaction::Methods* trx, aql::AstNode const* /*attrNode*/,
-    aql::AstNode const* valNode, bool useCache,
-    ReadOwnWrites readOwnWrites) const {
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    aql::AstNode const* /*attrNode*/, aql::AstNode const* valNode,
+    bool useCache, ReadOwnWrites readOwnWrites) const {
   VPackBuilder keys;
   fillLookupValue(keys, valNode);
   return std::make_unique<RocksDBEdgeIndexLookupIterator>(
-      &_collection, trx, this, std::move(keys), useCache ? _cache : nullptr,
-      readOwnWrites);
+      monitor, &_collection, trx, this, std::move(keys),
+      useCache ? _cache : nullptr, readOwnWrites);
 }
 
 /// @brief create the iterator
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createInIterator(
-    transaction::Methods* trx, aql::AstNode const* /*attrNode*/,
-    aql::AstNode const* valNode, bool useCache) const {
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    aql::AstNode const* /*attrNode*/, aql::AstNode const* valNode,
+    bool useCache) const {
   VPackBuilder keys;
   fillInLookupValues(trx, keys, valNode);
   // "in"-checks never need to observe own writes.
   return std::make_unique<RocksDBEdgeIndexLookupIterator>(
-      &_collection, trx, this, std::move(keys), useCache ? _cache : nullptr,
-      ReadOwnWrites::no);
+      monitor, &_collection, trx, this, std::move(keys),
+      useCache ? _cache : nullptr, ReadOwnWrites::no);
 }
 
 void RocksDBEdgeIndex::fillLookupValue(VPackBuilder& keys,

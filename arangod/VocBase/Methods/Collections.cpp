@@ -26,8 +26,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Basics/Common.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/LocalTaskQueue.h"
-#include "Basics/ReadLocker.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -1264,6 +1265,7 @@ futures::Future<OperationResult> Collections::revisionId(
     }
     return res;
   } else {
+    ResourceMonitor monitor(GlobalResourceMonitor::instance());
     auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
     SingleCollectionTransaction trx(ctx, cname, AccessMode::Type::READ);
     Result res = trx.begin();
@@ -1273,8 +1275,9 @@ futures::Future<OperationResult> Collections::revisionId(
     }
 
     // We directly read the entire cursor. so batchsize == limit
-    auto iterator = trx.indexScan(cname, transaction::Methods::CursorType::ALL,
-                                  ReadOwnWrites::no);
+    auto iterator =
+        trx.indexScan(monitor, cname, transaction::Methods::CursorType::ALL,
+                      ReadOwnWrites::no);
 
     iterator->allDocuments([&](LocalDocumentId const&, VPackSlice doc) {
       cb(doc);
@@ -1302,6 +1305,8 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
     return res.result;
   }
 
+  ResourceMonitor monitor(GlobalResourceMonitor::instance());
+
   auto ctx =
       transaction::V8Context::CreateWhenRequired(collection.vocbase(), true);
   SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::READ);
@@ -1316,8 +1321,8 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
 
   // We directly read the entire cursor. so batchsize == limit
   auto iterator =
-      trx.indexScan(collection.name(), transaction::Methods::CursorType::ALL,
-                    ReadOwnWrites::no);
+      trx.indexScan(monitor, collection.name(),
+                    transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
   iterator->allDocuments([&](LocalDocumentId const& /*token*/,
                              VPackSlice slice) {

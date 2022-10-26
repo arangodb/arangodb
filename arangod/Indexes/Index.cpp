@@ -692,8 +692,8 @@ aql::AstNode* Index::specializeCondition(
 }
 
 std::unique_ptr<IndexIterator> Index::iteratorForCondition(
-    transaction::Methods* /* trx */, aql::AstNode const* /* node */,
-    aql::Variable const* /* reference */,
+    ResourceMonitor& /*monitor*/, transaction::Methods* /* trx */,
+    aql::AstNode const* /* node */, aql::Variable const* /* reference */,
     IndexIteratorOptions const& /* opts */, ReadOwnWrites /* readOwnWrites */,
     int /*mutableConditionIdx*/) {
   // the default implementation should never be called

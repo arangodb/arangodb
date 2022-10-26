@@ -119,9 +119,10 @@ class RocksDBVPackIndex : public RocksDBIndex {
       aql::Variable const* reference) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, aql::AstNode const* node,
-      aql::Variable const* reference, IndexIteratorOptions const& opts,
-      ReadOwnWrites readOwnWrites, int) override;
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      aql::AstNode const* node, aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      int) override;
 
   void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override;
 
@@ -137,13 +138,15 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   // build new search values. this can also be called from the
   // VPackIndexIterator
-  void buildSearchValues(transaction::Methods* trx, aql::AstNode const* node,
+  void buildSearchValues(ResourceMonitor& monitor, transaction::Methods* trx,
+                         aql::AstNode const* node,
                          aql::Variable const* reference,
                          IndexIteratorOptions const& opts,
                          velocypack::Builder& searchValues,
                          RocksDBVPackIndexSearchValueFormat& format) const;
 
-  void buildSearchValuesInner(transaction::Methods* trx,
+  void buildSearchValuesInner(ResourceMonitor& monitor,
+                              transaction::Methods* trx,
                               aql::AstNode const* node,
                               aql::Variable const* reference,
                               IndexIteratorOptions const& opts,
@@ -165,14 +168,15 @@ class RocksDBVPackIndex : public RocksDBIndex {
                 OperationOptions const& options, bool performChecks) override;
 
  private:
-  void expandInSearchValues(velocypack::Slice base, velocypack::Builder& result,
+  void expandInSearchValues(ResourceMonitor& monitor, velocypack::Slice base,
+                            velocypack::Builder& result,
                             IndexIteratorOptions const& opts) const;
 
   // build an index iterator from a VelocyPack range description
   std::unique_ptr<IndexIterator> buildIterator(
-      transaction::Methods* trx, velocypack::Slice searchValues,
-      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
-      RocksDBVPackIndexSearchValueFormat format,
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      velocypack::Slice searchValues, IndexIteratorOptions const& opts,
+      ReadOwnWrites readOwnWrites, RocksDBVPackIndexSearchValueFormat format,
       bool& isUniqueIndexIterator) const;
 
   // build bounds for an index range
@@ -181,9 +185,10 @@ class RocksDBVPackIndex : public RocksDBIndex {
                              RocksDBKeyBounds& bounds) const;
 
   std::unique_ptr<IndexIterator> buildIteratorFromBounds(
-      transaction::Methods* trx, bool reverse, IndexIteratorOptions const& opts,
-      ReadOwnWrites readOwnWrites, RocksDBKeyBounds&& bounds,
-      RocksDBVPackIndexSearchValueFormat format, bool useCache) const;
+      ResourceMonitor& monitor, transaction::Methods* trx, bool reverse,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      RocksDBKeyBounds&& bounds, RocksDBVPackIndexSearchValueFormat format,
+      bool useCache) const;
 
   /// @brief returns whether the document can be inserted into the index
   /// (or if there will be a conflict)

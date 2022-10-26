@@ -284,8 +284,6 @@ class IndexIterator {
   [[nodiscard]] std::pair<std::uint64_t, std::uint64_t>
   getAndResetCacheStats() noexcept;
 
-  void setResetInternals() noexcept { _resetInternals = true; }
-
  protected:
   ReadOwnWrites canReadOwnWrites() const noexcept { return _readOwnWrites; }
 
@@ -334,7 +332,6 @@ class IndexIterator {
   std::uint64_t _cacheMisses;
 
   bool _hasMore;
-  bool _resetInternals;
 
  private:
   ReadOwnWrites const _readOwnWrites;
