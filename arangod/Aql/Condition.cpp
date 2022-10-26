@@ -306,10 +306,10 @@ ConditionPart::ConditionPart(Variable const* variable,
     : variable(variable),
       attributeName(attributeName),
       operatorType(operatorNode->type),
+      isExpanded(false),
       operatorNode(operatorNode),
       valueNode(nullptr),
-      data(data),
-      isExpanded(false) {
+      data(data) {
   if (side == ATTRIBUTE_LEFT) {
     valueNode = operatorNode->getMember(1);
   } else {
