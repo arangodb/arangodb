@@ -1,8 +1,5 @@
-v3.9.4 (XXXX-XX-XX)
+v3.9.5 (XXXX-XX-XX)
 -------------------
-
-* Fixed BTS-852 (user's saved queries used to disappear after updating user
-  profile).
 
 * Added startup option `--query.log-failed` to optionally log all failed AQL
   queries to the server log. The option is turned off by default.
@@ -11,10 +8,17 @@ v3.9.4 (XXXX-XX-XX)
   all AQL queries that have a peak memory usage larger than the configured
   value. The default value is 4GB.
 
-* Added startup option `--query.max-artifact-log-length` to control the
-  maximum length of logged query strings and bind parameter values.
-  This allows truncating overly long query strings and bind parameter values
-  to a reasonable length. Previously the cutoff length was hard-coded.
+* Added startup option `--query.max-artifact-log-length` to control the maximum
+  length of logged query strings and bind parameter values.
+  This allows truncating overly long query strings and bind parameter values to
+  a reasonable length. Previously the cutoff length was hard-coded.
+
+
+v3.9.4 (XXXX-XX-XX)
+-------------------
+
+* Fixed BTS-852 (user's saved queries used to disappear after updating user
+  profile).
 
 * Changed the encoding of revision ids returned by the following REST APIs:
   - GET /_api/collection/<collection-name>/revision: the revision id was
