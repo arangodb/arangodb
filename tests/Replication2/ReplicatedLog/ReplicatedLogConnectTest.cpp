@@ -143,7 +143,8 @@ struct FakeLogLeader : replicated_log::ILogLeader {
     return std::make_tuple(std::move(core), DeferredAction{});
   }
   auto waitFor(LogIndex index) -> WaitForFuture override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    // THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    return {replicated_log::WaitForResult{}};
   }
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

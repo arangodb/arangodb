@@ -173,8 +173,9 @@ struct alignas(64) ReplicatedLog {
   auto disconnect(ReplicatedLogConnection)
       -> std::shared_ptr<IReplicatedStateHandle>;
 
-  void updateConfig(agency::LogPlanTermSpecification term,
-                    agency::ParticipantsConfig config);
+  auto updateConfig(agency::LogPlanTermSpecification term,
+                    agency::ParticipantsConfig config)
+      -> futures::Future<futures::Unit>;
 
   [[nodiscard]] auto getId() const noexcept -> LogId;
 
@@ -211,7 +212,7 @@ struct alignas(64) ReplicatedLog {
     std::shared_ptr<IReplicatedStateHandle> stateHandle;
   };
 
-  void tryBuildParticipant(GuardedData& data);
+  auto tryBuildParticipant(GuardedData& data) -> futures::Future<futures::Unit>;
   void resetParticipant(GuardedData& data);
 
   LogId const _id;

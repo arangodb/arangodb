@@ -65,6 +65,7 @@
 #include "Containers/Helpers.h"
 #include "Cluster/FailureOracleFeature.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/ClusterFeature.h"
 #include "Indexes/Index.h"
 #include "Logger/LogContextKeys.h"
 #include "Logger/LogMacros.h"
@@ -160,7 +161,10 @@ struct arangodb::VocBaseLogManager {
     auto guard = _guardedData.getLockedGuard();
     if (auto iter = guard->statesAndLogs.find(id);
         iter != guard->statesAndLogs.end()) {
-      iter->second.log->updateConfig(term, config);
+      iter->second.log->updateConfig(term, config)
+          .thenFinal([&voc = _vocbase](auto&&) {
+            voc.server().getFeature<ClusterFeature>().addDirty(voc.name());
+          });
       return {};
     } else {
       return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};

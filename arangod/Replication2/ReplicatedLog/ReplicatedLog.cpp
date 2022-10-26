@@ -89,8 +89,9 @@ auto replicated_log::ReplicatedLog::disconnect(ReplicatedLogConnection conn)
   return std::move(guard->stateHandle);
 }
 
-void replicated_log::ReplicatedLog::updateConfig(
-    agency::LogPlanTermSpecification term, agency::ParticipantsConfig config) {
+auto replicated_log::ReplicatedLog::updateConfig(
+    agency::LogPlanTermSpecification term, agency::ParticipantsConfig config)
+    -> futures::Future<futures::Unit> {
   auto guard = _guarded.getLockedGuard();
   LOG_CTX("acb02", DEBUG, _logContext)
       << "reconfiguring replicated log " << _id << " with term = " << term
@@ -116,14 +117,15 @@ void replicated_log::ReplicatedLog::updateConfig(
   }
 
   guard->latest.emplace(std::move(term), std::move(config));
-  tryBuildParticipant(guard.get());
+  return tryBuildParticipant(guard.get());
 }
 
-void replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data) {
+auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
+    -> futures::Future<futures::Unit> {
   if (not data.latest or not data.stateHandle) {
     LOG_CTX("79005", DEBUG, _logContext)
         << "replicated log not ready, config missing";
-    return;  // config or state not yet available
+    return {futures::Unit{}};  // config or state not yet available
   }
 
   auto configShared =
@@ -167,10 +169,12 @@ void replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data) {
     LOG_CTX("2c74c", DEBUG, _logContext)
         << "replicated log participants reconfigured with generation "
         << configShared->generation;
-    leader->updateParticipantsConfig(configShared);
+    auto idx = leader->updateParticipantsConfig(configShared);
+    return leader->waitFor(idx).thenValue([](auto&&) {});
   }
 
   ADB_PROD_ASSERT(data.participant != nullptr && data.core == nullptr);
+  return {futures::Unit{}};
 }
 
 void ReplicatedLog::resetParticipant(GuardedData& data) {
