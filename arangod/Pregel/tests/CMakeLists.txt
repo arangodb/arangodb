@@ -47,11 +47,6 @@ target_include_directories(arangodbtests_disjoint_set PRIVATE
         ${PROJECT_SOURCE_DIR}/arangod/Pregel)
 
 target_link_libraries(arangodbtests_graph velocypack fmt gtest)
-target_include_directories(arangodbtests_disjoint_set PRIVATE
-        ${PROJECT_SOURCE_DIR}/lib
-        ${PROJECT_BINARY_DIR}/lib
-        ${PROJECT_SOURCE_DIR}/arangod/Pregel)
-
 target_link_libraries(arangodbtests_graph velocypack fmt gtest)
 target_link_libraries(arangodbtests_wcc velocypack fmt gtest)
 target_link_libraries(arangodbtests_scc velocypack fmt gtest)

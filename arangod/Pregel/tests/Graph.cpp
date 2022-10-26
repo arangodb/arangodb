@@ -3,6 +3,7 @@
 
 #include "Graph.h"
 #include "WCCGraph.h"
+#include "SCCGraph.h"
 #include "velocypack/Parser.h"
 
 template<typename EdgeProperties, typename VertexProperties>
