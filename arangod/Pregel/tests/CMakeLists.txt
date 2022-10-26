@@ -1,3 +1,9 @@
+add_executable(arangodbtests_graph
+        ${PROJECT_SOURCE_DIR}/lib/Basics/VelocyPackStringLiteral.cpp
+        GraphTest.cpp
+        GraphsSource.cpp
+        Graph.cpp)
+
 add_executable(arangodbtests_wcc
   ${PROJECT_SOURCE_DIR}/lib/Basics/VelocyPackStringLiteral.cpp
   GraphsSource.cpp
@@ -6,9 +12,26 @@ add_executable(arangodbtests_wcc
   WCCGraph.cpp
   DisjointSet.cpp)
 
+add_executable(arangodbtests_disjoint_set
+        ${PROJECT_SOURCE_DIR}/lib/Basics/VelocyPackStringLiteral.cpp
+        DisjointSetTest.cpp
+        GraphsSource.cpp
+        DisjointSet.cpp)
+
+target_include_directories(arangodbtests_graph PRIVATE
+        ${PROJECT_SOURCE_DIR}/lib
+        ${PROJECT_BINARY_DIR}/lib
+        ${PROJECT_SOURCE_DIR}/arangod/Pregel)
+
 target_include_directories(arangodbtests_wcc PRIVATE
   ${PROJECT_SOURCE_DIR}/lib
   ${PROJECT_BINARY_DIR}/lib
   ${PROJECT_SOURCE_DIR}/arangod/Pregel)
 
+target_include_directories(arangodbtests_disjoint_set PRIVATE
+        ${PROJECT_SOURCE_DIR}/lib
+        ${PROJECT_BINARY_DIR}/lib
+        ${PROJECT_SOURCE_DIR}/arangod/Pregel)
+
+target_link_libraries(arangodbtests_graph velocypack fmt gtest)
 target_link_libraries(arangodbtests_wcc velocypack fmt gtest)
