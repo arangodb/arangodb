@@ -232,12 +232,12 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
     }
 
     TRI_ASSERT(_searchValues.slice().isArray());
+    _current = velocypack::ArrayIterator(_searchValues.slice());
 
     size_t newMemoryUsage = _searchValues.slice().byteSize();
     _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
     _memoryUsage += newMemoryUsage;
 
-    _current = velocypack::ArrayIterator(_searchValues.slice());
     adjustIterator();
     return true;
   }

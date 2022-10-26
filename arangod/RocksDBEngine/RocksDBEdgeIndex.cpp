@@ -29,6 +29,7 @@
 #include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
 #include "Basics/LocalTaskQueue.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/cpu-relax.h"
@@ -131,16 +132,27 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
                                  std::shared_ptr<cache::Cache> cache,
                                  ReadOwnWrites readOwnWrites)
       : IndexIterator(collection, trx, readOwnWrites),
+        _resourceMonitor(monitor),
         _index(index),
         _cache(std::static_pointer_cast<EdgeIndexCacheType>(std::move(cache))),
         _keys(std::move(keys)),
         _keysIterator(_keys.slice()),
         _bounds(RocksDBKeyBounds::EdgeIndex(0)),
         _builderIterator(VPackArrayIterator::Empty{}),
-        _lastKey(VPackSlice::nullSlice()) {
+        _lastKey(VPackSlice::nullSlice()),
+        _memoryUsage(0) {
     TRI_ASSERT(_keys.slice().isArray());
 
     TRI_ASSERT(_cache == nullptr || _cache->hasherName() == "BinaryKeyHasher");
+
+    ResourceUsageScope scope(_resourceMonitor, _keys.slice().byteSize());
+    _memoryUsage += scope.tracked();
+    // now we are responsible for tracking memory usage
+    scope.steal();
+  }
+
+  ~RocksDBEdgeIndexLookupIterator() override {
+    _resourceMonitor.decreaseMemoryUsage(_memoryUsage);
   }
 
   std::string_view typeName() const noexcept final {
@@ -188,6 +200,10 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
     TRI_ASSERT(aap.attribute->stringEquals(_index->_directionAttr));
 
+    size_t oldMemoryUsage = _keys.slice().byteSize();
+    _resourceMonitor.decreaseMemoryUsage(oldMemoryUsage);
+    _memoryUsage -= oldMemoryUsage;
+
     _keys.clear();
     TRI_ASSERT(_keys.isEmpty());
 
@@ -195,6 +211,10 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       // a.b == value
       _index->fillLookupValue(_keys, aap.value);
       _keysIterator = VPackArrayIterator(_keys.slice());
+
+      size_t newMemoryUsage = _keys.slice().byteSize();
+      _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
+      _memoryUsage += newMemoryUsage;
       return true;
     }
 
@@ -203,6 +223,11 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       // a.b IN values
       _index->fillInLookupValues(_trx, _keys, aap.value);
       _keysIterator = VPackArrayIterator(_keys.slice());
+
+      size_t newMemoryUsage = _keys.slice().byteSize();
+      _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
+      _memoryUsage += newMemoryUsage;
+
       return true;
     }
 
@@ -315,6 +340,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
   void lookupInRocksDB(std::string_view fromTo) {
     // Bad (slow) case: read from RocksDB
+    ResourceUsageScope scope(_resourceMonitor, expectedIteratorMemoryUsage);
 
     auto* mthds = RocksDBTransactionState::toMethods(_trx, _collection->id());
 
@@ -371,6 +397,10 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     // validate that Iterator is in a good shape and hasn't failed
     rocksutils::checkIteratorStatus(*iterator);
 
+    _memoryUsage += scope.tracked();
+    // now we are responsible for tracking the memory usage
+    scope.steal();
+
     if (_cache != nullptr) {
       // TODO Add cache retry on next call
       // Now we have something in _inplaceMemory.
@@ -384,6 +414,11 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     _builderIterator = VPackArrayIterator(_builder.slice());
   }
 
+  // expected number of bytes that a RocksDB iterator will use.
+  // this is a guess and does not need to be fully accurate.
+  static constexpr size_t expectedIteratorMemoryUsage = 8192;
+
+  ResourceMonitor& _resourceMonitor;
   RocksDBEdgeIndex const* _index;
 
   std::shared_ptr<EdgeIndexCacheType> _cache;
@@ -396,6 +431,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   velocypack::Builder _builder;
   velocypack::ArrayIterator _builderIterator;
   velocypack::Slice _lastKey;
+  size_t _memoryUsage;
 };
 
 }  // namespace arangodb

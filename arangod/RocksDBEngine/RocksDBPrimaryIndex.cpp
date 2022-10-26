@@ -27,6 +27,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/BinaryKeyHasher.h"
@@ -188,11 +189,22 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
       : IndexIterator(collection, trx,
                       ReadOwnWrites::no),  // "in"-checks never need to observe
                                            // own writes.
+        _resourceMonitor(monitor),
         _index(index),
         _keys(std::move(keys)),
         _iterator(_keys.slice()),
+        _memoryUsage(0),
         _isId(lookupByIdAttribute) {
     TRI_ASSERT(_keys.slice().isArray());
+
+    ResourceUsageScope scope(_resourceMonitor, _keys.slice().byteSize());
+    _memoryUsage += scope.tracked();
+    // now we are responsible for tracking memory usage
+    scope.steal();
+  }
+
+  ~RocksDBPrimaryIndexInIterator() override {
+    _resourceMonitor.decreaseMemoryUsage(_memoryUsage);
   }
 
   std::string_view typeName() const noexcept final {
@@ -212,8 +224,17 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     TRI_ASSERT(aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN);
 
     if (aap.value->isArray()) {
+      size_t oldMemoryUsage = _keys.slice().byteSize();
+      _resourceMonitor.decreaseMemoryUsage(oldMemoryUsage);
+      _memoryUsage -= oldMemoryUsage;
+
+      _keys.clear();
       _index->fillInLookupValues(_trx, _keys, aap.value, opts.ascending, _isId);
       _iterator = VPackArrayIterator(_keys.slice());
+
+      size_t newMemoryUsage = _keys.slice().byteSize();
+      _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
+      _memoryUsage += newMemoryUsage;
       return true;
     }
 
@@ -284,9 +305,11 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
   void resetImpl() final { _iterator.reset(); }
 
  private:
+  ResourceMonitor& _resourceMonitor;
   RocksDBPrimaryIndex* _index;
   VPackBuilder _keys;
   velocypack::ArrayIterator _iterator;
+  size_t _memoryUsage;
   bool const _isId;
 };
 
@@ -300,14 +323,20 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
                                    RocksDBKeyBounds&& bounds,
                                    ReadOwnWrites readOwnWrites)
       : IndexIterator(collection, trx, readOwnWrites),
+        _resourceMonitor(monitor),
         _index(index),
         _cmp(index->comparator()),
         _mustSeek(true),
         _bounds(std::move(bounds)),
-        _rangeBound(reverse ? _bounds.start() : _bounds.end()) {
+        _rangeBound(reverse ? _bounds.start() : _bounds.end()),
+        _memoryUsage(0) {
     TRI_ASSERT(index->columnFamily() ==
                RocksDBColumnFamilyManager::get(
                    RocksDBColumnFamilyManager::Family::PrimaryIndex));
+  }
+
+  ~RocksDBPrimaryIndexRangeIterator() override {
+    _resourceMonitor.decreaseMemoryUsage(_memoryUsage);
   }
 
   std::string_view typeName() const noexcept final {
@@ -449,6 +478,8 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
  private:
   void ensureIterator() {
     if (_iterator == nullptr) {
+      ResourceUsageScope scope(_resourceMonitor, expectedIteratorMemoryUsage);
+
       auto state = RocksDBTransactionState::toState(_trx);
       RocksDBTransactionMethods* mthds =
           state->rocksdbMethods(_collection->id());
@@ -463,6 +494,11 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
               options.iterate_upper_bound = &_rangeBound;
             }
           });
+      TRI_ASSERT(_mustSeek);
+
+      _memoryUsage += scope.tracked();
+      // now we are responsible for tracking the memory usage
+      scope.steal();
     }
 
     TRI_ASSERT(_iterator != nullptr);
@@ -500,6 +536,11 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     }
   }
 
+  // expected number of bytes that a RocksDB iterator will use.
+  // this is a guess and does not need to be fully accurate.
+  static constexpr size_t expectedIteratorMemoryUsage = 8192;
+
+  ResourceMonitor& _resourceMonitor;
   RocksDBPrimaryIndex const* _index;
   rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
@@ -507,6 +548,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
   RocksDBKeyBounds const _bounds;
   // used for iterate_upper_bound iterate_lower_bound
   rocksdb::Slice _rangeBound;
+  size_t _memoryUsage;
 };
 
 }  // namespace arangodb
