@@ -174,8 +174,11 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
   return LogIndex{idx};
 }
 
-auto DocumentLeaderState::ActiveTransactions::getReleaseIndex() -> LogIndex {
-  TRI_ASSERT(!logIndices.empty());
+auto DocumentLeaderState::ActiveTransactions::getReleaseIndex() const
+    -> LogIndex {
+  if (logIndices.empty()) {
+    return LogIndex{0};
+  }
   return logIndices.front().first.saturatedDecrement(1);
 }
 

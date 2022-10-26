@@ -40,7 +40,8 @@ DocumentFollowerState::DocumentFollowerState(
       _networkHandler(handlersFactory->createNetworkHandler(core->getGid())),
       _transactionHandler(
           handlersFactory->createTransactionHandler(core->getGid())),
-      _guardedData(std::move(core)) {}
+      _guardedData(std::move(core)),
+      _releaseIndex(LogIndex{0}) {}
 
 DocumentFollowerState::~DocumentFollowerState() = default;
 
@@ -58,31 +59,29 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                                             LogIndex waitForIndex) noexcept
     -> futures::Future<Result> {
   return _guardedData
-      .doUnderLock(
-          [self = shared_from_this(), &destination, waitForIndex](
-              auto& data) -> futures::Future<ResultT<velocypack::SharedSlice>> {
-            if (data.didResign()) {
-              return ResultT<velocypack::SharedSlice>::error(
-                  TRI_ERROR_CLUSTER_NOT_FOLLOWER);
-            }
+      .doUnderLock([self = shared_from_this(), &destination, waitForIndex](
+                       auto& data) -> futures::Future<ResultT<Snapshot>> {
+        if (data.didResign()) {
+          return ResultT<Snapshot>::error(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
+        }
 
-            if (auto truncateRes = self->truncateLocalShard();
-                truncateRes.fail()) {
-              return ResultT<velocypack::SharedSlice>::error(truncateRes);
-            }
+        if (auto truncateRes = self->truncateLocalShard(); truncateRes.fail()) {
+          return ResultT<Snapshot>::error(truncateRes);
+        }
 
-            // A follower may request a snapshot before leadership has been
-            // established. A retry will occur in that case.
-            auto leaderInterface =
-                self->_networkHandler->getLeaderInterface(destination);
-            return leaderInterface->getSnapshot(waitForIndex);
-          })
+        // A follower may request a snapshot before leadership has been
+        // established. A retry will occur in that case.
+        auto leaderInterface =
+            self->_networkHandler->getLeaderInterface(destination);
+        return leaderInterface->getSnapshot(waitForIndex);
+      })
       .thenValue([self = shared_from_this()](
                      auto&& result) -> futures::Future<Result> {
         if (result.fail()) {
           return result.result();
         }
-        return self->populateLocalShard(result.get());
+        self->_releaseIndex = result->releaseIndex;
+        return self->populateLocalShard(result->documents);
       });
 }
 
@@ -106,6 +105,9 @@ auto DocumentFollowerState::applyEntries(
     }
 
     while (auto entry = ptr->next()) {
+      if (entry->first <= self->_releaseIndex) {
+        continue;
+      }
       auto doc = entry->second;
       auto res = self->_transactionHandler->applyEntry(doc);
       if (res.fail()) {

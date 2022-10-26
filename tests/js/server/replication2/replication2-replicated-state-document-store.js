@@ -756,7 +756,8 @@ const replicatedStateSnapshotTransferSuite = function () {
       collection = null;
     }),
 
-    testLeaderRestAPI: function () {
+    testLeaderRestAPI: function (testName) {
+      collection.insert({_key: testName});
       let {leader} = lh.getReplicatedLogLeaderPlan(database, logId);
       let leaderUrl = lh.getServerUrl(leader);
       let url = `${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot?waitForIndex=0`;
@@ -775,6 +776,16 @@ const replicatedStateSnapshotTransferSuite = function () {
       const newParticipants = _.union(_.without(participants, oldParticipant), [newParticipant]).sort();
 
       collection.insert([{_key: "test1"}, {_key: "test2"}]);
+
+      let documents = []
+      for (let counter = 0; counter < 10000; ++counter) {
+        documents.push({_key: `foo${counter}`});
+      }
+
+      // Inserting lots of entries to hopefully trigger compaction.
+      for (let idx = 0; idx < documents.length; ++idx) {
+        collection.insert(documents[idx]);
+      }
 
       // Replace the follower.
       const result = sh.replaceParticipant(database, logId, oldParticipant, newParticipant);
@@ -796,11 +807,10 @@ const replicatedStateSnapshotTransferSuite = function () {
       syncShardsWithLogs(database);
 
       // The new follower should've executed a snapshot transfer.
-      // Expect to find the dummy documents in there, for now.
-      // TODO this is not entirely correct, because we don't have any compaction currently.
-      const dummyKeys = ["test1", "test2"];
-      let bulk = sh.getBulkDocuments(lh.getServerUrl(newParticipant), database, shardId, dummyKeys);
-      let keysSet = new Set(dummyKeys);
+      const allKeys = ["test1", "test2"];
+      allKeys.push(...documents.map(doc => doc._key));
+      let bulk = sh.getBulkDocuments(lh.getServerUrl(newParticipant), database, shardId, allKeys);
+      let keysSet = new Set(allKeys);
       for (let doc of bulk) {
         assertFalse(doc.hasOwnProperty("error"), `Expected no error, got ${JSON.stringify(doc)}`);
         assertTrue(keysSet.has(doc._key));

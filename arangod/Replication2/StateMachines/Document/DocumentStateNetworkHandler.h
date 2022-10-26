@@ -22,6 +22,7 @@
 #pragma once
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 
 namespace arangodb {
 
@@ -45,7 +46,7 @@ namespace replication2::replicated_state::document {
 struct IDocumentStateLeaderInterface {
   virtual ~IDocumentStateLeaderInterface() = default;
   virtual auto getSnapshot(LogIndex waitForIndex)
-      -> futures::Future<ResultT<velocypack::SharedSlice>> = 0;
+      -> futures::Future<ResultT<Snapshot>> = 0;
 };
 
 class DocumentStateLeaderInterface : public IDocumentStateLeaderInterface {
@@ -55,7 +56,7 @@ class DocumentStateLeaderInterface : public IDocumentStateLeaderInterface {
                                         network::ConnectionPool* pool);
 
   auto getSnapshot(LogIndex waitForIndex)
-      -> futures::Future<ResultT<velocypack::SharedSlice>> override;
+      -> futures::Future<ResultT<Snapshot>> override;
 
  private:
   ParticipantId _participantId;

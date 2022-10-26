@@ -69,6 +69,7 @@ struct DocumentFollowerState
   std::shared_ptr<IDocumentStateNetworkHandler> _networkHandler;
   std::unique_ptr<IDocumentStateTransactionHandler> _transactionHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
+  LogIndex _releaseIndex;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

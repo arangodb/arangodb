@@ -29,6 +29,7 @@
 #include "Futures/Future.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -69,6 +70,15 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
                                                      res.errorMessage());
     }
 
+    // We are capturing the release index before taking a snapshot and sending
+    // it to the follower. Because compaction removes entries up to an arbitrary
+    // index, lower than the release index, the follower could end up with
+    // chopped transactions, up to the point of the release index. These are
+    // safe to ignore, because their effect is already visible on the snapshot.
+    // The release index indicates the best point in time when a follower can
+    // resume applying entries, after a snapshot.
+    auto releaseIndex = leader->getReleaseIndex();
+
     auto* physicalCollection = logicalCollection->getPhysical();
     TRI_ASSERT(physicalCollection != nullptr);
     auto iterator = physicalCollection->getReplicationIterator(
@@ -84,8 +94,10 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
     }
     builder.close();
 
+    auto snapshot = replicated_state::document::Snapshot{releaseIndex,
+                                                         builder.sharedSlice()};
     return futures::Future<ResultT<velocypack::SharedSlice>>{
-        builder.sharedSlice()};
+        velocypack::serialize(snapshot)};
   }
 
  private:

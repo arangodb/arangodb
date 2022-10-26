@@ -60,6 +60,10 @@ struct DocumentLeaderState
     return _activeTransactions.getLockedGuard()->transactions.size();
   }
 
+  LogIndex getReleaseIndex() const {
+    return _activeTransactions.getLockedGuard()->getReleaseIndex();
+  }
+
   /**
    * Keeps track of active transactions.
    * Uses a deque instead of a set because log indices increase monotonically.
@@ -70,7 +74,7 @@ struct DocumentLeaderState
     std::unordered_map<TransactionId, LogIndex> transactions;
     std::deque<std::pair<LogIndex, Status>> logIndices;
 
-    auto getReleaseIndex() -> LogIndex;
+    auto getReleaseIndex() const -> LogIndex;
     bool erase(TransactionId const& tid);
     void emplace(TransactionId tid, LogIndex index);
 
