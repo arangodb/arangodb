@@ -198,11 +198,7 @@ bool DocumentLeaderState::ActiveTransactions::erase(TransactionId const& tid) {
   deactivateIdx->second = Status::INACTIVE;
   transactions.erase(it);
 
-  // We should not leave the deque empty, even if the last transaction is
-  // inactive. This ensures that we always have a release index to report.
-  while (logIndices.size() > 1 && logIndices.front().second == INACTIVE) {
-    logIndices.pop_front();
-  }
+  popInactive();
 
   return true;
 }
@@ -215,6 +211,17 @@ void DocumentLeaderState::ActiveTransactions::emplace(TransactionId tid,
                                                       LogIndex index) {
   if (transactions.try_emplace(tid, index).second) {
     logIndices.emplace_back(index, Status::ACTIVE);
+  }
+  popInactive();
+}
+
+/**
+ * We should not leave the deque empty, even if the last transaction is
+ * inactive. This ensures that we always have a release index to report.
+ */
+void DocumentLeaderState::ActiveTransactions::popInactive() {
+  while (logIndices.size() > 1 && logIndices.front().second == INACTIVE) {
+    logIndices.pop_front();
   }
 }
 

@@ -60,19 +60,6 @@ struct DocumentLeaderState
     return _activeTransactions.getLockedGuard()->transactions.size();
   }
 
-  LoggerContext const loggerContext;
-  std::string_view const shardId;
-  GlobalLogIdentifier const gid;
-
- private:
-  struct GuardedData {
-    explicit GuardedData(std::unique_ptr<DocumentCore> core)
-        : core(std::move(core)){};
-    [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
-
-    std::unique_ptr<DocumentCore> core;
-  };
-
   /**
    * Keeps track of active transactions.
    * Uses a deque instead of a set because log indices increase monotonically.
@@ -86,6 +73,22 @@ struct DocumentLeaderState
     auto getReleaseIndex() -> LogIndex;
     bool erase(TransactionId const& tid);
     void emplace(TransactionId tid, LogIndex index);
+
+   private:
+    void popInactive();
+  };
+
+  LoggerContext const loggerContext;
+  std::string_view const shardId;
+  GlobalLogIdentifier const gid;
+
+ private:
+  struct GuardedData {
+    explicit GuardedData(std::unique_ptr<DocumentCore> core)
+        : core(std::move(core)){};
+    [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
+
+    std::unique_ptr<DocumentCore> core;
   };
 
   std::shared_ptr<IDocumentStateHandlersFactory> _handlersFactory;

@@ -282,7 +282,7 @@ TEST_F(DocumentStateMachineTest,
                                                   operation, TransactionId{13},
                                                   ReplicationOptions{});
   }
-  EXPECT_EQ(3, leaderState->getActiveTransactions().size());
+  EXPECT_EQ(3, leaderState->getActiveTransactionsCount());
 
   {
     VPackBuilder builder;
@@ -293,7 +293,7 @@ TEST_F(DocumentStateMachineTest,
         builder.sharedSlice(), OperationType::kCommit, TransactionId{9},
         ReplicationOptions{});
   }
-  EXPECT_EQ(1, leaderState->getActiveTransactions().size());
+  EXPECT_EQ(1, leaderState->getActiveTransactionsCount());
 
   EXPECT_CALL(transactionManagerMock,
               abortManagedTrx(TransactionId{13}, globalId.database))
@@ -754,4 +754,25 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_errors) {
   result = transactionHandler.applyEntry(doc);
   ASSERT_TRUE(result.fail());
   Mock::VerifyAndClearExpectations(transactionMock.get());
+}
+
+TEST(DocumentLeaderStateTest, test_activeTransactions) {
+  auto activeTrx = DocumentLeaderState::ActiveTransactions{};
+  activeTrx.emplace(TransactionId{100}, LogIndex{100});
+  ASSERT_EQ(activeTrx.getReleaseIndex(), LogIndex{99});
+  ASSERT_TRUE(activeTrx.erase(TransactionId{100}));
+  ASSERT_EQ(activeTrx.getReleaseIndex(), LogIndex{99});
+  ASSERT_FALSE(activeTrx.erase(TransactionId{100}));
+  activeTrx.emplace(TransactionId{200}, LogIndex{200});
+  ASSERT_EQ(activeTrx.getReleaseIndex(), LogIndex{199});
+  activeTrx.emplace(TransactionId{300}, LogIndex{300});
+  ASSERT_EQ(activeTrx.getReleaseIndex(), LogIndex{199});
+  activeTrx.emplace(TransactionId{400}, LogIndex{400});
+  ASSERT_EQ(activeTrx.getReleaseIndex(), LogIndex{199});
+  ASSERT_TRUE(activeTrx.erase(TransactionId{200}));
+  ASSERT_EQ(activeTrx.getReleaseIndex(), LogIndex{299});
+  ASSERT_TRUE(activeTrx.erase(TransactionId{400}));
+  ASSERT_EQ(activeTrx.getReleaseIndex(), LogIndex{299});
+  ASSERT_TRUE(activeTrx.erase(TransactionId{300}));
+  ASSERT_EQ(activeTrx.getReleaseIndex(), LogIndex{399});
 }
