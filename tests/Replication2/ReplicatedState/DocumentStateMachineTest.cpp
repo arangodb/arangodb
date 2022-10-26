@@ -153,14 +153,15 @@ struct DocumentStateMachineTest : test::ReplicatedLogTest {
   std::shared_ptr<testing::NiceMock<MockDocumentStateHandlersFactory>>
       handlersFactoryMock = std::make_shared<
           testing::NiceMock<MockDocumentStateHandlersFactory>>();
-  std::shared_ptr<MockDocumentStateTransaction> transactionMock =
-      std::make_shared<MockDocumentStateTransaction>();
-  std::shared_ptr<testing::NaggyMock<MockDocumentStateAgencyHandler>>
-      agencyHandlerMock = std::make_shared<
-          testing::NaggyMock<MockDocumentStateAgencyHandler>>();
-  std::shared_ptr<testing::NaggyMock<MockDocumentStateShardHandler>>
+  std::shared_ptr<testing::NiceMock<MockDocumentStateTransaction>>
+      transactionMock =
+          std::make_shared<testing::NiceMock<MockDocumentStateTransaction>>();
+  std::shared_ptr<testing::NiceMock<MockDocumentStateAgencyHandler>>
+      agencyHandlerMock =
+          std::make_shared<testing::NiceMock<MockDocumentStateAgencyHandler>>();
+  std::shared_ptr<testing::NiceMock<MockDocumentStateShardHandler>>
       shardHandlerMock =
-          std::make_shared<testing::NaggyMock<MockDocumentStateShardHandler>>();
+          std::make_shared<testing::NiceMock<MockDocumentStateShardHandler>>();
   std::shared_ptr<testing::NiceMock<MockDocumentStateNetworkHandler>>
       networkHandlerMock = std::make_shared<
           testing::NiceMock<MockDocumentStateNetworkHandler>>();
@@ -542,6 +543,65 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
     EXPECT_EQ(doc.tid, tid.asFollowerTransactionId());
     EXPECT_TRUE(doc.data.isNone());
   }
+}
+
+TEST_F(DocumentStateMachineTest, test_SnapshotTransfer) {
+  using namespace testing;
+
+  const std::string_view key = "document1_key";
+  const std::string_view value = "document1_value";
+  ON_CALL(*leaderInterfaceMock, getSnapshot)
+      .WillByDefault(
+          [&](LogIndex) -> futures::Future<ResultT<velocypack::SharedSlice>> {
+            VPackBuilder builder;
+            {
+              VPackObjectBuilder ob(&builder);
+              builder.add(key, value);
+            }
+            return ResultT<velocypack::SharedSlice>::success(
+                builder.sharedSlice());
+          });
+  EXPECT_CALL(*leaderInterfaceMock, getSnapshot(_)).Times(1);
+
+  auto allEntries = std::vector<DocumentLogEntry>{};
+  ON_CALL(*transactionMock, apply(_))
+      .WillByDefault([&allEntries](DocumentLogEntry const& entry) {
+        allEntries.emplace_back(entry);
+        return OperationResult{Result{}, OperationOptions{}};
+      });
+  EXPECT_CALL(*transactionMock, apply(_)).Times(2);
+  EXPECT_CALL(*transactionMock, commit()).Times(2);
+
+  auto followerLog = makeReplicatedLog(logId);
+  auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
+
+  auto leaderLog = makeReplicatedLog(logId);
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
+  leader->triggerAsyncReplication();
+
+  auto leaderReplicatedState =
+      std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
+          feature->createReplicatedState(DocumentState::NAME, leaderLog,
+                                         statePersistor));
+  ASSERT_NE(leaderReplicatedState, nullptr);
+  leaderReplicatedState->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+      coreParams.toSharedSlice());
+
+  follower->runAllAsyncAppendEntries();
+  auto followerReplicatedState =
+      std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
+          feature->createReplicatedState(DocumentState::NAME, followerLog,
+                                         statePersistor));
+  followerReplicatedState->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+      coreParams.toSharedSlice());
+
+  Mock::VerifyAndClearExpectations(transactionMock.get());
+  Mock::VerifyAndClearExpectations(leaderInterfaceMock.get());
+  ASSERT_EQ(allEntries.size(), 2);
+  ASSERT_EQ(allEntries[0].operation, OperationType::kTruncate);
+  ASSERT_EQ(allEntries[1].operation, OperationType::kInsert);
 }
 
 TEST(DocumentStateTransactionHandlerTest, test_ensureTransaction) {
