@@ -33,6 +33,8 @@
 #include <Futures/Future.h>
 #include <Logger/LogContextKeys.h>
 
+#include <algorithm>
+
 namespace arangodb::replication2::replicated_state::document {
 
 DocumentLeaderState::DocumentLeaderState(
@@ -52,15 +54,16 @@ auto DocumentLeaderState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
   _isResigning.store(true);
 
-  auto transactions = getActiveTransactions();
-  for (auto trx : transactions) {
-    try {
-      _transactionManager.abortManagedTrx(trx, gid.database);
-    } catch (...) {
-      LOG_CTX("7341f", WARN, loggerContext)
-          << "failed to abort active transaction " << gid << " during resign";
+  _activeTransactions.doUnderLock([&](auto& activeTransactions) {
+    for (auto const& trx : activeTransactions.transactions) {
+      try {
+        _transactionManager.abortManagedTrx(trx.first, gid.database);
+      } catch (...) {
+        LOG_CTX("7341f", WARN, loggerContext)
+            << "failed to abort active transaction " << gid << " during resign";
+      }
     }
-  }
+  });
 
   return _guardedData.doUnderLock([](auto& data) {
     if (data.didResign()) {
@@ -138,38 +141,81 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
                         // returning a dummy index
   }
 
-  // we replicate operations using follower trx ids, but locally we track the
-  // actual trx ids
+  TRI_ASSERT(operation != OperationType::kAbortAllOngoingTrx);
+  if ((operation == OperationType::kCommit ||
+       operation == OperationType::kAbort) &&
+      !_activeTransactions.getLockedGuard()->erase(transactionId)) {
+    // we have not replicated anything for a transaction with this id, so
+    // there is no need to replicate the abort/commit operation
+    return LogIndex{};  // TODO - can we do this differently instead of
+                        // returning a dummy index
+  }
+
+  auto stream = getStream();
   auto entry =
       DocumentLogEntry{std::string(shardId), operation, std::move(payload),
                        transactionId.asFollowerTransactionId()};
 
-  TRI_ASSERT(operation != OperationType::kAbortAllOngoingTrx);
-  if (operation == OperationType::kCommit ||
-      operation == OperationType::kAbort) {
-    if (_activeTransactions.getLockedGuard()->erase(transactionId) == 0) {
-      // we have not replicated anything for a transaction with this id, so
-      // there is no need to replicate the abort/commit operation
-      return LogIndex{};  // TODO - can we do this differently instead of
-                          // returning a dummy index
-    }
-  } else {
-    _activeTransactions.getLockedGuard()->emplace(transactionId);
-  }
-  auto stream = getStream();
+  // Insert and emplace must happen atomically
+  auto transactionsGuard = _activeTransactions.getLockedGuard();
   auto idx = stream->insert(entry);
+  if (operation != OperationType::kCommit &&
+      operation != OperationType::kAbort) {
+    transactionsGuard->emplace(transactionId, idx);
+  }
+  stream->release(transactionsGuard->getReleaseIndex());
+  transactionsGuard.unlock();
 
   if (opts.waitForCommit) {
     return stream->waitFor(idx).thenValue(
         [idx](auto&& result) { return futures::Future<LogIndex>{idx}; });
   }
 
-  return futures::Future<LogIndex>{idx};
+  return LogIndex{idx};
 }
 
-std::unordered_set<TransactionId> DocumentLeaderState::getActiveTransactions()
-    const {
-  return _activeTransactions.getLockedGuard().get();
+auto DocumentLeaderState::ActiveTransactions::getReleaseIndex() -> LogIndex {
+  TRI_ASSERT(!logIndices.empty());
+  return logIndices.front().first.saturatedDecrement(1);
+}
+
+/**
+ * @brief Remove a transaction from the active transactions map and update the
+ * log indices list.
+ * @return true if the transaction was found and removed, false otherwise
+ */
+bool DocumentLeaderState::ActiveTransactions::erase(TransactionId const& tid) {
+  auto it = transactions.find(tid);
+  if (it == std::end(transactions)) {
+    return false;
+  }
+
+  auto deactivateIdx =
+      std::lower_bound(std::begin(logIndices), std::end(logIndices),
+                       std::make_pair(it->second, Status::ACTIVE));
+  TRI_ASSERT(deactivateIdx != std::end(logIndices) &&
+             deactivateIdx->first == it->second);
+  deactivateIdx->second = Status::INACTIVE;
+  transactions.erase(it);
+
+  // We should not leave the deque empty, even if the last transaction is
+  // inactive. This ensures that we always have a release index to report.
+  while (logIndices.size() > 1 && logIndices.front().second == INACTIVE) {
+    logIndices.pop_front();
+  }
+
+  return true;
+}
+
+/**
+ * @brief Try to insert an entry into the active transactions map. If the entry
+ * is new, mark the log index as active.
+ */
+void DocumentLeaderState::ActiveTransactions::emplace(TransactionId tid,
+                                                      LogIndex index) {
+  if (transactions.try_emplace(tid, index).second) {
+    logIndices.emplace_back(index, Status::ACTIVE);
+  }
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

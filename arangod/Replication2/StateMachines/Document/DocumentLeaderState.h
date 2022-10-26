@@ -29,6 +29,7 @@
 #include "Basics/UnshackledMutex.h"
 
 #include <atomic>
+#include <deque>
 #include <memory>
 #include <unordered_set>
 
@@ -55,7 +56,9 @@ struct DocumentLeaderState
                           OperationType operation, TransactionId transactionId,
                           ReplicationOptions opts) -> futures::Future<LogIndex>;
 
-  std::unordered_set<TransactionId> getActiveTransactions() const;
+  std::size_t getActiveTransactionsCount() const {
+    return _activeTransactions.getLockedGuard()->transactions.size();
+  }
 
   LoggerContext const loggerContext;
   std::string_view const shardId;
@@ -70,9 +73,24 @@ struct DocumentLeaderState
     std::unique_ptr<DocumentCore> core;
   };
 
+  /**
+   * Keeps track of active transactions.
+   * Uses a deque instead of a set because log indices increase monotonically.
+   */
+  struct ActiveTransactions {
+    enum Status { ACTIVE, INACTIVE };
+
+    std::unordered_map<TransactionId, LogIndex> transactions;
+    std::deque<std::pair<LogIndex, Status>> logIndices;
+
+    auto getReleaseIndex() -> LogIndex;
+    bool erase(TransactionId const& tid);
+    void emplace(TransactionId tid, LogIndex index);
+  };
+
   std::shared_ptr<IDocumentStateHandlersFactory> _handlersFactory;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
-  Guarded<std::unordered_set<TransactionId>, std::mutex> _activeTransactions;
+  Guarded<ActiveTransactions, std::mutex> _activeTransactions;
   transaction::IManager& _transactionManager;
   std::atomic_bool _isResigning;
 };
