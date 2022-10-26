@@ -25,7 +25,6 @@
 #include "DatabaseFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
@@ -1073,9 +1072,6 @@ ErrorCode DatabaseFeature::dropDatabase(std::string const& name,
     vocbase->setIsOwnAppsDirectory(removeAppsDirectory);
 
     // invalidate all entries for the database
-#if USE_PLAN_CACHE
-    arangodb::aql::PlanCache::instance()->invalidate(vocbase);
-#endif
     arangodb::aql::QueryCache::instance()->invalidate(vocbase);
 
     if (server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {

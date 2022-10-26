@@ -132,15 +132,16 @@ void ClusterQuery::prepareClusterQuery(
     _trx->state()->acceptAnalyzersRevision(analyzersRevision);
   }
 
-  TRI_IF_FAILURE("Query::setupLockTimeout") {
-    if (RandomGenerator::interval(uint32_t(100)) >= 95) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCK_TIMEOUT);
-    }
-  }
-
   Result res = _trx->begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
+  }
+
+  TRI_IF_FAILURE("Query::setupLockTimeout") {
+    if (!_trx->state()->isReadOnlyTransaction() &&
+        RandomGenerator::interval(uint32_t(100)) >= 95) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCK_TIMEOUT);
+    }
   }
 
   enterState(QueryExecutionState::ValueType::PARSING);

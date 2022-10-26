@@ -136,7 +136,7 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
       reformatLookupCondition();
     }
 
-    ResourceUsageScope scope(_resourceMonitor, searchValues.byteSize());
+    ResourceUsageScope scope(_resourceMonitor, _searchValues.size());
     _memoryUsage += scope.tracked();
     // now we are responsible for tracking memory usage
     scope.steal();
@@ -216,7 +216,8 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
     TRI_ASSERT(node != nullptr);
     TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
-    size_t oldMemoryUsage = _searchValues.slice().byteSize();
+    size_t oldMemoryUsage = _searchValues.size();
+    TRI_ASSERT(_memoryUsage >= oldMemoryUsage);
     _resourceMonitor.decreaseMemoryUsage(oldMemoryUsage);
     _memoryUsage -= oldMemoryUsage;
     _searchValues.clear();
@@ -234,7 +235,7 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
     TRI_ASSERT(_searchValues.slice().isArray());
     _current = velocypack::ArrayIterator(_searchValues.slice());
 
-    size_t newMemoryUsage = _searchValues.slice().byteSize();
+    size_t newMemoryUsage = _searchValues.size();
     _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
     _memoryUsage += newMemoryUsage;
 

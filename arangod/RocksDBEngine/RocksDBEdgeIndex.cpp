@@ -142,10 +142,10 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         _lastKey(VPackSlice::nullSlice()),
         _memoryUsage(0) {
     TRI_ASSERT(_keys.slice().isArray());
-
     TRI_ASSERT(_cache == nullptr || _cache->hasherName() == "BinaryKeyHasher");
+    TRI_ASSERT(_builder.size() == 0);
 
-    ResourceUsageScope scope(_resourceMonitor, _keys.slice().byteSize());
+    ResourceUsageScope scope(_resourceMonitor, _keys.size());
     _memoryUsage += scope.tracked();
     // now we are responsible for tracking memory usage
     scope.steal();
@@ -200,7 +200,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
     TRI_ASSERT(aap.attribute->stringEquals(_index->_directionAttr));
 
-    size_t oldMemoryUsage = _keys.slice().byteSize();
+    size_t oldMemoryUsage = _keys.size();
+    TRI_ASSERT(_memoryUsage >= oldMemoryUsage);
     _resourceMonitor.decreaseMemoryUsage(oldMemoryUsage);
     _memoryUsage -= oldMemoryUsage;
 
@@ -212,7 +213,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       _index->fillLookupValue(_keys, aap.value);
       _keysIterator = VPackArrayIterator(_keys.slice());
 
-      size_t newMemoryUsage = _keys.slice().byteSize();
+      size_t newMemoryUsage = _keys.size();
       _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
       _memoryUsage += newMemoryUsage;
       return true;
@@ -224,7 +225,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       _index->fillInLookupValues(_trx, _keys, aap.value);
       _keysIterator = VPackArrayIterator(_keys.slice());
 
-      size_t newMemoryUsage = _keys.slice().byteSize();
+      size_t newMemoryUsage = _keys.size();
       _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
       _memoryUsage += newMemoryUsage;
 
@@ -236,7 +237,14 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   }
 
  private:
-  void resetInplaceMemory() { _builder.clear(); }
+  void resetInplaceMemory() {
+    size_t memoryUsage = _builder.size();
+    TRI_ASSERT(_memoryUsage >= memoryUsage);
+    _resourceMonitor.decreaseMemoryUsage(memoryUsage);
+    _memoryUsage -= memoryUsage;
+
+    _builder.clear();
+  }
 
   /// internal retrieval loop
   template<typename F>
@@ -317,8 +325,13 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
           } else {
             // We need to copy it.
             // And then we just get back to beginning of the loop
-            _builder.clear();
+            resetInplaceMemory();
             _builder.add(cachedData);
+
+            size_t memoryUsage = _builder.size();
+            _resourceMonitor.increaseMemoryUsage(memoryUsage);
+            _memoryUsage += memoryUsage;
+
             TRI_ASSERT(_builder.slice().isArray());
             _builderIterator = VPackArrayIterator(_builder.slice());
             // Do not set limit
@@ -397,6 +410,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     // validate that Iterator is in a good shape and hasn't failed
     rocksutils::checkIteratorStatus(*iterator);
 
+    scope.increase(_builder.size());
     _memoryUsage += scope.tracked();
     // now we are responsible for tracking the memory usage
     scope.steal();

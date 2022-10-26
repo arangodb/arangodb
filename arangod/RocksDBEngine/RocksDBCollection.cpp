@@ -647,9 +647,6 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice info,
       }
       _indexes.emplace(newIdx);
     }
-#if USE_PLAN_CACHE
-    arangodb::aql::PlanCache::instance()->invalidate(vocbase);
-#endif
 
     syncIndexOnCreate(*newIdx);
 

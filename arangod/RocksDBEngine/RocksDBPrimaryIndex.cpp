@@ -197,7 +197,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
         _isId(lookupByIdAttribute) {
     TRI_ASSERT(_keys.slice().isArray());
 
-    ResourceUsageScope scope(_resourceMonitor, _keys.slice().byteSize());
+    ResourceUsageScope scope(_resourceMonitor, _keys.size());
     _memoryUsage += scope.tracked();
     // now we are responsible for tracking memory usage
     scope.steal();
@@ -224,7 +224,8 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     TRI_ASSERT(aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN);
 
     if (aap.value->isArray()) {
-      size_t oldMemoryUsage = _keys.slice().byteSize();
+      size_t oldMemoryUsage = _keys.size();
+      TRI_ASSERT(_memoryUsage >= oldMemoryUsage);
       _resourceMonitor.decreaseMemoryUsage(oldMemoryUsage);
       _memoryUsage -= oldMemoryUsage;
 
@@ -232,7 +233,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
       _index->fillInLookupValues(_trx, _keys, aap.value, opts.ascending, _isId);
       _iterator = VPackArrayIterator(_keys.slice());
 
-      size_t newMemoryUsage = _keys.slice().byteSize();
+      size_t newMemoryUsage = _keys.size();
       _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
       _memoryUsage += newMemoryUsage;
       return true;

@@ -1138,9 +1138,6 @@ std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice info,
 /// @brief drops an index, including index file removal and replication
 bool LogicalCollection::dropIndex(IndexId iid) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-#if USE_PLAN_CACHE
-  aql::PlanCache::instance()->invalidate(_vocbase);
-#endif
 
   aql::QueryCache::instance()->invalidate(&vocbase(), guid());
 
