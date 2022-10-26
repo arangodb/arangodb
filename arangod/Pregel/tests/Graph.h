@@ -25,6 +25,7 @@
 #pragma once
 
 #include <map>
+#include <unordered_set>
 
 #include <Basics/VelocyPackStringLiteral.h>
 
@@ -33,11 +34,12 @@
 using namespace arangodb::velocypack;
 
 struct EmptyEdgeProperties {};
+struct EmptyVertexProperties {};
 
 using VertexKey = std::string;
 using EdgeKey = std::string;
 
-template<typename VertexProperties>
+template<typename VertexProperties = EmptyVertexProperties>
 struct BaseVertex {
   VertexKey _key;
   VertexProperties properties;
@@ -71,10 +73,16 @@ class Graph {
 
   Graph() = default;
 
-  auto readVertices(const SharedSlice& graphJson, bool checkDuplicateVertices)
+  auto readVertices(SharedSlice const& graphJson, bool checkDuplicateVertices)
       -> void;
 
-  size_t readEdges(const SharedSlice& graphJson, bool checkEdgeEnds,
+  auto readVertices(std::istream& file, bool checkDuplicateVertices)
+      -> void;
+
+  size_t readEdges(SharedSlice const& graphJson, bool checkEdgeEnds,
+                   std::function<void(Edge edge)> onReadEdge);
+
+  size_t readEdges(std::istream& file, bool checkEdgeEnds,
                    std::function<void(Edge edge)> onReadEdge);
 
   auto getVertexPosition(VertexKey const& key) -> VertexIndex {
@@ -84,26 +92,46 @@ class Graph {
 
   std::vector<Vertex> vertices;
 
-  /**
-   * Write
-   * Compute the weakly connected components. Each component has an id of type
-   * size_t and is written into the value property of each of its vertices.
-   * @return the number of weakly connected components.
-   */
-
-  auto writeEquivalenceRelationIntoVertices(DisjointSet& eqRel) -> size_t;
-
  private:
   std::map<VertexKey, VertexIndex> _vertexPosition;
 
  protected:
   auto _checkEdgeEnds(Edge, std::map<VertexKey, size_t> const& vertexPosition)
       -> void;
+  void checkSliceAddVertex(Slice vertexSlice, size_t count,
+                           bool checkDuplicateVertices);
+  void checkSliceAddEdge(Slice slice, bool checkEdgeEnds,
+                         std::function<void(Edge)>& onReadEdge);
 };
 
+/**
+   * Write
+   * Compute the weakly connected components. Each component has an id of type
+   * size_t and is written into the value property of each of its vertices.
+   * @return the number of weakly connected components.
+ */
 template<typename EdgeProperties, VertexPropertiesWithValue VertexProperties>
 class ValuedGraph : public Graph<EdgeProperties, VertexProperties> {
-
+ public:
+  size_t writeEquivalenceRelationIntoVertices(DisjointSet& eqRel) {
+    // todo: if a lot of (small) connected components, it may be better to use a
+    //  bitset
+    std::unordered_set<size_t> markedRepresentatives;
+    size_t counter = 0;
+    for (size_t i = 0; i < this->vertices.size(); ++i) {
+      size_t const representative = eqRel.representative(i);
+      if (markedRepresentatives.contains(representative)) {
+        this->vertices[i].properties.value =
+            this->vertices[representative].properties.value;
+      } else {
+        size_t const newId = counter++;
+        this->vertices[i].properties.value = newId;
+        this->vertices[representative].properties.value = newId;
+        markedRepresentatives.insert(representative);
+      }
+    }
+    return counter;
+  };
 };
 
 template<typename Inspector, typename VertexProperties>
@@ -116,6 +144,12 @@ template<typename Inspector>
 auto inspect(Inspector& f, EmptyEdgeProperties& x) {
   return f.object(x).fields();
 }
+
+template<typename Inspector>
+auto inspect(Inspector& f, EmptyVertexProperties& x) {
+  return f.object(x).fields();
+}
+
 
 template<typename Inspector, typename EdgeProperties = EmptyEdgeProperties>
 auto inspect(Inspector& f, BaseEdge<EdgeProperties>& p) {
