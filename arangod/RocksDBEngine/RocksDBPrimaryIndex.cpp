@@ -198,9 +198,8 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
     TRI_ASSERT(_keys.slice().isArray());
 
     ResourceUsageScope scope(_resourceMonitor, _keys.size());
-    _memoryUsage += scope.tracked();
     // now we are responsible for tracking memory usage
-    scope.steal();
+    _memoryUsage += scope.trackedAndSteal();
   }
 
   ~RocksDBPrimaryIndexInIterator() override {
@@ -497,9 +496,8 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
           });
       TRI_ASSERT(_mustSeek);
 
-      _memoryUsage += scope.tracked();
       // now we are responsible for tracking the memory usage
-      scope.steal();
+      _memoryUsage += scope.trackedAndSteal();
     }
 
     TRI_ASSERT(_iterator != nullptr);

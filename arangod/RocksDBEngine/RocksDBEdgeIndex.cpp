@@ -146,9 +146,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     TRI_ASSERT(_builder.size() == 0);
 
     ResourceUsageScope scope(_resourceMonitor, _keys.size());
-    _memoryUsage += scope.tracked();
     // now we are responsible for tracking memory usage
-    scope.steal();
+    _memoryUsage += scope.trackedAndSteal();
   }
 
   ~RocksDBEdgeIndexLookupIterator() override {
@@ -411,9 +410,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     rocksutils::checkIteratorStatus(*iterator);
 
     scope.increase(_builder.size());
-    _memoryUsage += scope.tracked();
     // now we are responsible for tracking the memory usage
-    scope.steal();
+    _memoryUsage += scope.trackedAndSteal();
 
     if (_cache != nullptr) {
       // TODO Add cache retry on next call

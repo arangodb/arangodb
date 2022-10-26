@@ -137,9 +137,8 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
     }
 
     ResourceUsageScope scope(_resourceMonitor, _searchValues.size());
-    _memoryUsage += scope.tracked();
     // now we are responsible for tracking memory usage
-    scope.steal();
+    _memoryUsage += scope.trackedAndSteal();
   }
 
   ~RocksDBVPackIndexInIterator() override {
