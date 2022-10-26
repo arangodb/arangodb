@@ -14,7 +14,7 @@ v3.9.5 (XXXX-XX-XX)
   a reasonable length. Previously the cutoff length was hard-coded.
 
 
-v3.9.4 (XXXX-XX-XX)
+v3.9.4 (2022-10-18)
 -------------------
 
 * Fixed BTS-852 (user's saved queries used to disappear after updating user
