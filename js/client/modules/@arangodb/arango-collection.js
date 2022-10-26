@@ -360,9 +360,9 @@ ArangoCollection.prototype.properties = function (properties) {
     'shardingStrategy': false,
     'cacheEnabled': true,
     'computedValues': true,
-    'syncByRevision': true,
+    'syncByRevision': false,
     'schema' : true,
-    'isDisjoint': true,
+    'isDisjoint': false,
   };
   var a;
 
@@ -400,7 +400,7 @@ ArangoCollection.prototype.properties = function (properties) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief recalculate counts of a acollection
+// / @brief recalculate counts of a collection
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.recalculateCount = function () {

@@ -734,9 +734,12 @@ arangodb::Result Indexes::drop(LogicalCollection* collection,
   } else {
     READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
 
+    transaction::Options trxOpts;
+    trxOpts.requiresReplication = false;
     SingleCollectionTransaction trx(transaction::V8Context::CreateWhenRequired(
                                         collection->vocbase(), false),
-                                    *collection, AccessMode::Type::EXCLUSIVE);
+                                    *collection, AccessMode::Type::EXCLUSIVE,
+                                    trxOpts);
     Result res = trx.begin();
 
     if (!res.ok()) {

@@ -23,12 +23,41 @@
 
 #pragma once
 
+#include "Inspection/Types.h"
 namespace arangodb::aql::optimizer2 {
 
-class Types {
+struct AttributeTypes {
  public:
+  // General types
+  typedef std::uint64_t Numeric;
+  typedef double Double;
+  typedef std::string String;
+
+  // Specific types BaseNode
   typedef std::uint64_t NodeId;
   typedef std::string NodeType;  // TODO: Let's use a "numeric" type 'later'.
+  typedef std::vector<Numeric> Dependencies;
+
+  // Specific types Index
+  typedef std::string IndexType;  // TODO: Let's use a "numeric" type 'later'.
 };
+
+struct ProjectionType {
+  typedef std::vector<AttributeTypes::String> ProjectionArray;
+  typedef AttributeTypes::String ProjectionString;
+  // Specific types Projection(s)
+  std::variant<ProjectionArray, ProjectionString> projection;
+
+  bool operator==(ProjectionType const&) const = default;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ProjectionType& x) {
+  namespace insp = arangodb::inspection;
+  return f.variant(x.projection)
+      .unqualified()
+      .alternatives(insp::inlineType<ProjectionType::ProjectionArray>(),
+                    insp::inlineType<ProjectionType::ProjectionString>());
+}
 
 }  // namespace arangodb::aql::optimizer2

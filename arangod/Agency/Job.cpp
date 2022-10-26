@@ -45,6 +45,10 @@
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
 #include "Helpers.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -1122,4 +1126,115 @@ auto Job::isReplication2Database(std::string_view database) -> bool {
     return false;
   }
   return isReplicationTwoDB(dbs->get(), std::string{database});
+}
+
+bool Job::isServerLeaderForState(const Node& snap, std::string const& db,
+                                 arangodb::replication2::LogId stateId,
+                                 const std::string& server) {
+  auto target = readStateTarget(snap, db, stateId);
+  if (not target) {
+    return false;
+  }
+  if (target->leader == server) {
+    return true;
+  }
+  auto plan = readLogPlan(snap, db, stateId);
+  if (not plan) {
+    return false;
+  }
+  return plan->currentTerm.has_value() and plan->currentTerm->leader and
+         plan->currentTerm->leader->serverId == server;
+}
+
+bool Job::isServerParticipantForState(const Node& snap, std::string const& db,
+                                      arangodb::replication2::LogId stateId,
+                                      const std::string& server) {
+  auto target = readStateTarget(snap, db, stateId);
+  if (target) {
+    return target->participants.contains(server);
+  }
+
+  return false;
+}
+
+std::optional<arangodb::replication2::replicated_state::agency::Target>
+Job::readStateTarget(Node const& snap, std::string const& db,
+                     replication2::LogId stateId) {
+  auto targetPath = "/Target/ReplicatedStates/" + db + "/" + to_string(stateId);
+  auto targetNode = snap.get(targetPath);
+  if (not targetNode.has_value()) {
+    return std::nullopt;
+  }
+  auto target = velocypack::deserialize<
+      arangodb::replication2::replicated_state::agency::Target>(
+      targetNode->get().toBuilder().slice());
+  return std::move(target);
+}
+
+std::optional<arangodb::replication2::replicated_state::agency::Plan>
+Job::readStatePlan(Node const& snap, std::string const& db,
+                   replication2::LogId stateId) {
+  auto planPath = "/Plan/ReplicatedStates/" + db + "/" + to_string(stateId);
+  auto planNode = snap.get(planPath);
+  if (not planNode.has_value()) {
+    return std::nullopt;
+  }
+  auto plan = velocypack::deserialize<
+      arangodb::replication2::replicated_state::agency::Plan>(
+      planNode->get().toBuilder().slice());
+  return std::move(plan);
+}
+
+std::optional<arangodb::replication2::agency::LogPlanSpecification>
+Job::readLogPlan(Node const& snap, std::string const& db,
+                 replication2::LogId stateId) {
+  auto planPath = "/Plan/ReplicatedLogs/" + db + "/" + to_string(stateId);
+  auto planNode = snap.get(planPath);
+  if (not planNode.has_value()) {
+    return std::nullopt;
+  }
+  auto plan = velocypack::deserialize<
+      arangodb::replication2::agency::LogPlanSpecification>(
+      planNode->get().toBuilder().slice());
+  return std::move(plan);
+}
+
+std::string Job::findOtherHealthyParticipant(Node const& snap,
+                                             std::string const& db,
+                                             replication2::LogId stateId,
+                                             std::string const& serverToAvoid) {
+  auto target = readStateTarget(snap, db, stateId);
+  if (not target) {
+    return {};
+  }
+  std::unordered_map<std::string, bool> good;
+  for (const auto& i : snap.hasAsChildren(healthPrefix).value().get()) {
+    good[i.first] = ((*i.second).hasAsString("Status").value() == "GOOD");
+  }
+
+  for (const auto& [id, participantData] : target->participants) {
+    if (id == serverToAvoid) {
+      // Skip current leader for which we are seeking a replacement
+      continue;
+    }
+
+    if (not good[id]) {
+      // Skip unhealthy servers
+      continue;
+    }
+
+    if (snap.has(blockedServersPrefix + id)) {
+      // server is blocked
+      continue;
+    }
+
+    if (snap.has(maintenancePrefix + id)) {
+      // server is in maintenance mode
+      continue;
+    }
+
+    return id;
+  }
+
+  return {};
 }

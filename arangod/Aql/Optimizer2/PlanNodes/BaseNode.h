@@ -26,14 +26,25 @@
 
 namespace arangodb::aql::optimizer2::nodes {
 
+// Hint: aka. our ExecutionNode - think about renaming this.
 struct BaseNode {
-  Types::NodeId id;
-  Types::NodeType type;
+  AttributeTypes::NodeId id;
+  AttributeTypes::NodeType type;
+  AttributeTypes::Dependencies dependencies;
+  AttributeTypes::Numeric estimatedCost;  // TODO: might be double. Check this.
+  AttributeTypes::Numeric estimatedNrItems;
+  std::optional<bool> canThrow;
+
+  bool operator==(BaseNode const&) const = default;
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, BaseNode& v) {
-  return f.object(v).fields(f.field("id", v.id), f.field("type", v.type));
+  return f.object(v).fields(f.field("id", v.id), f.field("type", v.type),
+                            f.field("dependencies", v.dependencies),
+                            f.field("estimatedCost", v.estimatedCost),
+                            f.field("estimatedNrItems", v.estimatedNrItems),
+                            f.field("canThrow", v.canThrow));
 }
 
 }  // namespace arangodb::aql::optimizer2::nodes
