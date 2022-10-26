@@ -1873,8 +1873,13 @@ std::shared_ptr<Query> Query::createFromPlan(
     VPackSlice const plan, VPackSlice const options) {
   ADB_PROD_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
 
-  QueryId queryId =
-      vocbase.server().getFeature<ClusterFeature>().clusterInfo().uniqid();
+  QueryId queryId;
+  if (ServerState::instance()->isCoordinator()) {
+    queryId =
+        vocbase.server().getFeature<ClusterFeature>().clusterInfo().uniqid();
+  } else {
+    queryId = TRI_NewServerSpecificTick();
+  }
 
   auto query = ClusterQuery::create(queryId, ctx, aql::QueryOptions(options));
 
