@@ -1239,55 +1239,6 @@ futures::Future<OperationResult> Collections::revisionId(
       OperationResult(Result(), builder.steal(), options));
 }
 
-/// @brief Helper implementation similar to ArangoCollection.all() in v8
-/*static*/ arangodb::Result Collections::all(TRI_vocbase_t& vocbase,
-                                             std::string const& cname,
-                                             DocCallback const& cb) {
-  // Implement it like this to stay close to the original
-  if (ServerState::instance()->isCoordinator()) {
-    auto empty = std::make_shared<VPackBuilder>();
-    std::string q = "FOR r IN @@coll RETURN r";
-    auto binds = std::make_shared<VPackBuilder>();
-    binds->openObject();
-    binds->add("@coll", VPackValue(cname));
-    binds->close();
-    auto query = arangodb::aql::Query::create(
-        transaction::StandaloneContext::Create(vocbase), aql::QueryString(q),
-        std::move(binds));
-    aql::QueryResult queryResult = query->executeSync();
-
-    Result res = queryResult.result;
-    if (queryResult.result.ok()) {
-      VPackSlice array = queryResult.data->slice();
-      for (VPackSlice doc : VPackArrayIterator(array)) {
-        cb(doc.resolveExternal());
-      }
-    }
-    return res;
-  } else {
-    ResourceMonitor monitor(GlobalResourceMonitor::instance());
-    auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
-    SingleCollectionTransaction trx(ctx, cname, AccessMode::Type::READ);
-    Result res = trx.begin();
-
-    if (res.fail()) {
-      return res;
-    }
-
-    // We directly read the entire cursor. so batchsize == limit
-    auto iterator =
-        trx.indexScan(monitor, cname, transaction::Methods::CursorType::ALL,
-                      ReadOwnWrites::no);
-
-    iterator->allDocuments([&](LocalDocumentId const&, VPackSlice doc) {
-      cb(doc);
-      return true;
-    });
-
-    return trx.finish(res);
-  }
-}
-
 arangodb::Result Collections::checksum(LogicalCollection& collection,
                                        bool withRevisions, bool withData,
                                        uint64_t& checksum, RevisionId& revId) {

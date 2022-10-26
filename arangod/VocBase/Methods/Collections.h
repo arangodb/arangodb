@@ -159,11 +159,6 @@ struct Collections {
   static futures::Future<OperationResult> revisionId(
       Context& ctxt, OperationOptions const& options);
 
-  typedef std::function<void(velocypack::Slice const&)> DocCallback;
-  /// @brief Helper implementation similar to ArangoCollection.all() in v8
-  static arangodb::Result all(TRI_vocbase_t& vocbase, std::string const& cname,
-                              DocCallback const& cb);
-
   static arangodb::Result checksum(LogicalCollection& collection,
                                    bool withRevisions, bool withData,
                                    uint64_t& checksum, RevisionId& revId);

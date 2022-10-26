@@ -229,14 +229,21 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
+  // will track memory usage for the documents built here
+  ResourceUsageScope memoryScope(monitor);
+
   // We directly read the entire cursor. so batchsize == limit
   auto iterator =
       trx.indexScan(monitor, collectionName,
                     transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
   iterator->allDocuments(
-      [&resultBuilder](LocalDocumentId const&, VPackSlice slice) {
+      [&resultBuilder, &memoryScope](LocalDocumentId const&, VPackSlice slice) {
+        auto const& buffer = resultBuilder.bufferRef();
+        size_t memoryUsageOld = buffer.size();
         resultBuilder.add(slice);
+        TRI_ASSERT(buffer.size() > memoryUsageOld);
+        memoryScope.increase(buffer.size() - memoryUsageOld);
         return true;
       });
 
