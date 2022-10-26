@@ -26,6 +26,20 @@ add_executable(arangodbtests_disjoint_set
         GraphsSource.cpp
         DisjointSet.cpp)
 
+add_executable(arangodbtests_scc
+        ${PROJECT_SOURCE_DIR}/lib/Basics/VelocyPackStringLiteral.cpp
+        GraphsSource.cpp
+        StronglyConnectedComponentsTest.cpp
+        Graph.cpp
+        SCCGraph.cpp
+        DisjointSet.cpp)
+
+add_executable(arangodbtests_disjoint_set
+        ${PROJECT_SOURCE_DIR}/lib/Basics/VelocyPackStringLiteral.cpp
+        DisjointSetTest.cpp
+        GraphsSource.cpp
+        DisjointSet.cpp)
+
 target_include_directories(arangodbtests_graph PRIVATE
         ${PROJECT_SOURCE_DIR}/lib
         ${PROJECT_BINARY_DIR}/lib
@@ -50,3 +64,4 @@ target_link_libraries(arangodbtests_graph velocypack fmt gtest)
 target_link_libraries(arangodbtests_graph velocypack fmt gtest)
 target_link_libraries(arangodbtests_wcc velocypack fmt gtest)
 target_link_libraries(arangodbtests_scc velocypack fmt gtest)
+target_link_libraries(arangodbtests_disjoint_set velocypack fmt gtest)
