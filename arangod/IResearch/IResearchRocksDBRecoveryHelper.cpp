@@ -118,7 +118,7 @@ void IResearchRocksDBRecoveryHelper::prepare() {
 void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
                                            const rocksdb::Slice& key,
                                            const rocksdb::Slice& value,
-                                           rocksdb::SequenceNumber /*tick*/) {
+                                           rocksdb::SequenceNumber tick) {
   if (column_family_id != _documentCF) {
     return;
   }
@@ -173,11 +173,11 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
       // link participates in recovery
       if (link.first->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
         basics::downCast<IResearchRocksDBInvertedIndex>(*(link.first))
-            .insert(trx, nullptr, docId, doc, {}, false);
+            .insertInRecovery(trx, docId, doc, tick);
       } else {
         TRI_ASSERT(link.first->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK);
         basics::downCast<IResearchRocksDBLink>(*(link.first))
-            .insert(trx, nullptr, docId, doc, {}, false);
+            .insertInRecovery(trx, docId, doc, tick);
       }
     }
   }
@@ -192,7 +192,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
 // common implementation for DeleteCF / SingleDeleteCF
 void IResearchRocksDBRecoveryHelper::handleDeleteCF(
     uint32_t column_family_id, const rocksdb::Slice& key,
-    rocksdb::SequenceNumber /*tick*/) {
+    rocksdb::SequenceNumber tick) {
   if (column_family_id != _documentCF) {
     return;
   }
@@ -245,14 +245,13 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
     } else {
       // link participates in recovery
       if (link.first->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
-        IResearchRocksDBInvertedIndex& impl =
+        auto& impl =
             basics::downCast<IResearchRocksDBInvertedIndex>(*(link.first));
-        impl.remove(trx, nullptr, docId, VPackSlice::emptyObjectSlice());
+        impl.removeInRecovery(trx, docId, tick);
       } else {
         TRI_ASSERT(link.first->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK);
-        IResearchLink& impl =
-            basics::downCast<IResearchRocksDBLink>(*(link.first));
-        impl.remove(trx, docId, false);
+        auto& impl = basics::downCast<IResearchRocksDBLink>(*(link.first));
+        impl.removeInRecovery(trx, docId, tick);
       }
     }
   }
