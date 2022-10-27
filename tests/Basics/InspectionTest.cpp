@@ -3023,4 +3023,70 @@ TEST(ValidateInspectorContext, validate_with_context) {
   }
 }
 
+struct NonNullOptionalValue {
+  inspection::NonNullOptional<uint64_t> foo{std::nullopt};
+
+  bool operator==(NonNullOptionalValue const& other) const noexcept = default;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, NonNullOptionalValue& props) {
+  return f.object(props).fields(f.field("foo", props.foo));
+}
+
+TEST(NonNullOptional, serializes_internal_value) {
+  VPackBuilder b;
+  {
+    VPackObjectBuilder body(&b);
+    b.add("foo", VPackValue(42));
+  }
+  NonNullOptionalValue v;
+  auto res = velocypack::deserializeWithStatus(b.slice(), v);
+  ASSERT_TRUE(res.ok());
+  EXPECT_TRUE(v.foo.has_value());
+  EXPECT_EQ(v.foo.value(), 42ull);
+
+  auto serialized = velocypack::serialize(v);
+  EXPECT_TRUE(serialized.hasKey("foo"));
+  NonNullOptionalValue other;
+  res = velocypack::deserializeWithStatus(serialized.slice(), other);
+  ASSERT_TRUE(res.ok());
+  // Need to be equal after a serialize-deserialize-circle
+  EXPECT_EQ(v, other);
+}
+
+TEST(NonNullOptional, missing_value_serializes_to_nullopt) {
+  VPackBuilder b;
+  {
+    VPackObjectBuilder body(&b);
+  }
+  NonNullOptionalValue v;
+  auto res = velocypack::deserializeWithStatus(b.slice(), v);
+  ASSERT_TRUE(res.ok());
+  EXPECT_FALSE(v.foo.has_value());
+
+  auto serialized = velocypack::serialize(v);
+  EXPECT_FALSE(serialized.hasKey("foo"));
+  NonNullOptionalValue other;
+  res = velocypack::deserializeWithStatus(serialized.slice(), other);
+  ASSERT_TRUE(res.ok());
+  // Need to be equal after a serialize-deserialize-circle
+  EXPECT_EQ(v, other);
+}
+
+TEST(NonNullOptional, errors_on_null) {
+  VPackBuilder b;
+  {
+    VPackObjectBuilder body(&b);
+    b.add("foo", VPackSlice::nullSlice());
+  }
+  NonNullOptionalValue v;
+  auto res = velocypack::deserializeWithStatus(b.slice(), v);
+  EXPECT_FALSE(res.ok());
+}
+
+// TODO: Add NonNullOptional tests for Transform.
+// TODO: Add NonNullOptional tests for default
+
+
 }  // namespace
