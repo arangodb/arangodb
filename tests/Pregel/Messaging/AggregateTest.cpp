@@ -37,10 +37,3 @@ TEST(PregelAggregate, aggregates_multiple_items) {
   ASSERT_EQ(aggregate.aggregate(AddableStruct{.count = 8}),
             AddableStruct{.count = 11});
 }
-
-struct Mock {};
-TEST(PregelAggregateCount, gives_true_only_when_components_count_is_reached) {
-  auto aggregate = AggregateCount<Mock>(2);
-  ASSERT_FALSE(aggregate.aggregate(Mock{}));
-  ASSERT_TRUE(aggregate.aggregate(Mock{}));
-}
