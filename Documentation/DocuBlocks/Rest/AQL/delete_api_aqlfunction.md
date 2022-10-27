@@ -53,7 +53,7 @@ the server error number
 a descriptive error message
 
 @RESTRETURNCODE{404}
-If the specified user user function does not exist, the server will respond with *HTTP 404*.
+If the specified user function does not exist, the server will respond with *HTTP 404*.
 
 @RESTREPLYBODY{error,boolean,required,}
 boolean flag to indicate whether an error occurred (*true* in this case)
