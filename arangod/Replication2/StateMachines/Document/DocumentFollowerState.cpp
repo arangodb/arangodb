@@ -112,9 +112,10 @@ auto DocumentFollowerState::applyEntries(
       if (doc.operation == OperationType::kAbortAllOngoingTrx) {
         self->_activeTransactions.clear();
       } else if (doc.operation == OperationType::kCommit ||
-          doc.operation == OperationType::kAbort) {
+                 doc.operation == OperationType::kAbort) {
         if (self->_activeTransactions.erase(doc.tid)) {
-          self->getStream()->release(self->_activeTransactions.getReleaseIndex());
+          self->getStream()->release(
+              self->_activeTransactions.getReleaseIndex());
         }
       } else {
         self->_activeTransactions.emplace(doc.tid, entry->first);
