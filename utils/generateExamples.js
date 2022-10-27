@@ -170,7 +170,7 @@ function main(argv) {
 
   if (options.hasOwnProperty('server.endpoint')) {
     if (scriptArguments.hasOwnProperty('onlyThisOne')) {
-      throw("don't run the full suite on pre-existing servers");
+      throw("don't run the full suite on preexisting servers");
     }
     startServer = false;
     serverEndpoint = options['server.endpoint'];
