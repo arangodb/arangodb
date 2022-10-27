@@ -48,6 +48,7 @@ class IResearchViewStoredValues {
     std::vector<std::pair<std::string, std::vector<basics::AttributeName>>>
         fields;
     irs::type_info::type_id compression{getDefaultCompression()};
+    bool cached{false};
 
     bool operator==(StoredColumn const& rhs) const noexcept {
       return name == rhs.name;
@@ -82,7 +83,8 @@ class IResearchViewStoredValues {
       velocypack::Slice const& columnSlice,
       std::unordered_set<std::string>& uniqueColumns,
       std::vector<irs::string_ref>& fieldNames,
-      irs::type_info::type_id compression);
+      irs::type_info::type_id compression,
+      bool cached);
 
   void clear() noexcept { _storedColumns.clear(); }
 
