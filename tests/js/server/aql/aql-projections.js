@@ -305,6 +305,43 @@ function projectionsPlansTestSuite () {
         [`FOR doc IN ${cn} RETURN [doc.foo.bar, doc.foo.baz, doc.unrelated]`, [['foo', 'bar'], ['foo', 'baz'], 'unrelated'] ],
       ];
 
+      queries.forEach(function(query) {
+        let plan = AQL_EXPLAIN(query[0]).plan;
+        let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
+        assertEqual(1, nodes.length, query);
+        assertEqual(query[1], nodes[0].projections, query);
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      });
+    },
+    
+    testPersistentSubAttributesMultiSamePrefix : function () {
+      c.ensureIndex({ type: "persistent", fields: ["foo.bar.a", "foo.bar.b"] });
+      let queries = [
+        [`FOR doc IN ${cn} RETURN doc.foo.bar.a`, 'persistent', [['foo', 'bar', 'a']], true ],
+        [`FOR doc IN ${cn} RETURN doc.foo.bar.b`, 'persistent', [['foo', 'bar', 'b']], true ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.bar.a, doc.foo.bar.b]`, 'persistent', [['foo', 'bar', 'a'], ['foo', 'bar', 'b']], true ],
+      ];
+
+      queries.forEach(function(query) {
+        let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
+        let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
+        assertEqual(1, nodes.length, query);
+        assertEqual(1, nodes[0].indexes.length, query);
+        assertEqual(query[1], nodes[0].indexes[0].type, query);
+        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(query[3], nodes[0].indexCoversProjections, query);
+        if (query[2].length) {
+          assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        } else {
+          assertEqual(-1, plan.rules.indexOf(ruleName));
+        }
+      });
+      
+      queries = [
+        [`FOR doc IN ${cn} RETURN doc.foo`, ['foo'] ],
+        [`FOR doc IN ${cn} RETURN doc.foo.bar`, [['foo', 'bar']] ],
+        [`FOR doc IN ${cn} RETURN doc.foo.bar.c`, [['foo', 'bar', 'c']] ],
+      ];
 
       queries.forEach(function(query) {
         let plan = AQL_EXPLAIN(query[0]).plan;
