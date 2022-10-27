@@ -19,6 +19,7 @@ add_subdirectory(Errors)
 add_subdirectory(Zkd)
 add_subdirectory(Graph)
 add_subdirectory(Replication2)
+add_subdirectory(Zkd)
 
 # ----------------------------------------
 # Link directories
