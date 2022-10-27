@@ -82,6 +82,12 @@ class RocksDBTransactionState final : public TransactionState {
   ///       transaction is committed
   TRI_voc_tick_t lastOperationTick() const noexcept override;
 
+  /// @returns number of insertions/removals in a transaction, update takes 2
+  /// primitive operations
+  /// @note the value is guaranteed to be valid only after
+  ///       transaction is committed
+  virtual TRI_voc_tick_t numPrimitiveOperations() const noexcept;
+
   /// @brief number of commits, including intermediate commits
   uint64_t numCommits() const override;
 
