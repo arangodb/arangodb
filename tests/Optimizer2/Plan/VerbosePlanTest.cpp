@@ -286,6 +286,8 @@ TEST_F(Optimizer2VerbosePlan, construction) {
 }
 
 TEST_F(Optimizer2VerbosePlan, rpcHandler) {
+  // TODO: I think we can get rid not of the rpc handler struct at all
+  // PlanRPCHandler handler;
   /*
    * This will take a verbosed plan and try to execute it using the
    * PlanRPCHandler.
@@ -301,7 +303,7 @@ TEST_F(Optimizer2VerbosePlan, rpcHandler) {
 
     // initialize our rpc handler
     PlanRPCHandler handler;
-    handler.process(cmd);
+    handler.process(PlanBuffer);
 
     // TODO EXPECTS
   }

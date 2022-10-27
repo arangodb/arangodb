@@ -119,7 +119,10 @@ TEST_F(Optimizer2QueryPostBody, rpcHandler) {
     // initialize our rpc handler
     // Currently doi
     PlanRPCHandler handler;
-    handler.process(cmd);
+
+    handler.process(queryBuffer);
+
+    // handler.process(cmd);
 
     // TODO EXPECTS
   }

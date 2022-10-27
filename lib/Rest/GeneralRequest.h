@@ -74,6 +74,10 @@ class GeneralRequest {
   // append RequestType as string value to given String buffer
   static void appendMethod(RequestType, arangodb::basics::StringBuffer*);
 
+  /// @brief if payload was not VPack this will store parsed result
+  std::shared_ptr<velocypack::Builder> _vpackBuilder;
+  // TODO: Check if this change is "okayish" (protected -> public)
+
  protected:
   static RequestType findRequestType(char const*, size_t const);
 
@@ -240,9 +244,6 @@ class GeneralRequest {
   std::unordered_map<std::string, std::string> _headers;
   std::unordered_map<std::string, std::string> _values;
   std::unordered_map<std::string, std::vector<std::string>> _arrayValues;
-
-  /// @brief if payload was not VPack this will store parsed result
-  std::shared_ptr<velocypack::Builder> _vpackBuilder;
 
   uint64_t const _messageId;
 

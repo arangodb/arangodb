@@ -53,10 +53,12 @@ auto inspect(Inspector& f, PlanRPC& x) {
       insp::inlineType<GeneratePlanCMD>(), insp::inlineType<ExecutePlanCMD>());
 }
 
-/*template<class Inspector>
-auto inspect(Inspector& f, PlanRPC& v) {
-  return f.object(v.parsed).fields(f.field("parsed", v.parsed));
-}*/
+template<class... Ts>
+struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+template<class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
 
 struct PlanRPCHandler {
   /*
@@ -67,17 +69,27 @@ struct PlanRPCHandler {
    *    return its result encapsulated into "ResultPlan"
    */
 
-  // TODO FIX ME - implement
-  /*ExecutePlanCMD*/ bool process(GeneratePlanCMD& generatePlan) {
-    fmt::print("generatePlan");
-    return true;
-  };
+  auto process(velocypack::SharedSlice body) -> bool {
+    auto res = deserializeWithStatus<PlanRPC>(body);
+    if (!res.ok()) {
+      // return std::move(res);
+      return false;
+    }
+    auto cmd = res.get().parsed;
 
-  // TODO FIX ME - implement
-  /*ResultPlan*/ bool process(ExecutePlanCMD& executePlan) {
-    fmt::print("executePlan");
+    std::visit(overloaded{[](GeneratePlanCMD const& plan) {
+                            fmt::print("GenerateplaN");
+                            return "generatePlan";
+                          },
+                          [](ExecutePlanCMD const& plan) {
+                            fmt::print("execute eplaN");
+                            return "executePlan";
+                          },
+                          [](auto) { return "not supported"; }},
+               cmd);
+
     return true;
-  };
+  }
 };
 
 }  // namespace arangodb::aql::optimizer2::plan

@@ -31,10 +31,19 @@
 
 namespace arangodb::aql::optimizer2::plan {
 
+struct QueryPostOptions {
+  bool verbosePlans = true;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, QueryPostOptions& v) {
+  return f.object(v).fields(f.field("verbosePlans", v.verbosePlans));
+}
+
 struct QueryPostBody {
   AttributeTypes::String query;
   std::optional<VPackBuilder> bindVars;
-  std::optional<VPackBuilder> options;
+  std::optional<QueryPostOptions> options;
 };
 
 template<class Inspector>

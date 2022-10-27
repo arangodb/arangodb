@@ -28,13 +28,22 @@
 #include "Aql/ExecutionEngine.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
+#include "Transaction/StandaloneContext.h"
 #include "Logger/LogMacros.h"
 
+#include "Aql/Optimizer2/Inspection/VPackInspection.h"
 #include "Aql/Optimizer2/Plan/PlanRPCHandler.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
+
+template<class... Ts>
+struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+template<class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
 
 RestPlanHandler::RestPlanHandler(ArangodServer& server, GeneralRequest* request,
                                  GeneralResponse* response,
@@ -54,31 +63,129 @@ RestStatus RestPlanHandler::execute() {
       return RestStatus::FAIL;
     }
 
-    bool parseSuccess = false;
-    VPackSlice body = this->parseVPackBody(parseSuccess);
+    /* RPC Parsing */
+    bool parseSuccess;                   // needed to populate the _vpackBuilder
+    this->parseVPackBody(parseSuccess);  // needed to populate the _vpackBuilder
 
-    if (!parseSuccess || !body.isObject() || body.isEmptyObject()) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_MALFORMED_JSON);
+    auto res = deserializeWithStatus<optimizer2::plan::PlanRPC>(
+        _request->_vpackBuilder->sharedSlice());
+    if (!res.ok()) {
+      std::string errorMessage =
+          "Error: " + res.error() + ", path: " + res.path();
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_MALFORMED_JSON,
+                    errorMessage);
       return RestStatus::FAIL;
     }
+    auto cmd = res.get().parsed;
 
-    /* RPC handler takes over now */
-    using PlanHandler = aql::optimizer2::plan::PlanRPCHandler;
-    PlanHandler handler;
+    /* Valid Body Inputs */
+    using GeneratePlanCMD = arangodb::aql::optimizer2::plan::QueryPostBody;
+    using ExecutePlanCMD = arangodb::aql::optimizer2::plan::VerbosePlan;
 
-    VPackSlice plan = body.get("plan");
-    if (!plan.isObject() || plan.isEmptyObject()) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN);
-      return RestStatus::FAIL;
-    }
+    auto resultRestStatus = std::visit(
+        overloaded{
+            [this](GeneratePlanCMD const& plan) {
+              //
+              // Generate the initial non optimized query plan
+              //
+              VPackBuilder bindBuilder;
+              VPackBuilder optionsBuilder;
 
-    buildOptions(body);
+              if (plan.bindVars.has_value()) {
+                bindBuilder = std::move(plan.bindVars.value());
+              }
+              if (plan.options.has_value()) {
+                using QueryOpts = aql::optimizer2::plan::QueryPostOptions;
+                QueryOpts x = plan.options.value();
+                auto serializedQueryOpts =
+                    velocypack::serializeWithStatus<QueryOpts>(x);
+                optionsBuilder.add(serializedQueryOpts->slice());
+              } else {
+                optionsBuilder.openObject();
+                optionsBuilder.add("verbosePlans", VPackValue(true));
+                optionsBuilder.close();
+              }
 
-    const AccessMode::Type mode = AccessMode::Type::WRITE;
-    auto query = Query::createFromPlan(_vocbase, createTransactionContext(mode),
-                                       plan, _options->slice());
+              auto query = arangodb::aql::Query::create(
+                  transaction::StandaloneContext::Create(_vocbase),
+                  aql::QueryString(plan.query),
+                  std::make_shared<VPackBuilder>(bindBuilder),
+                  aql::QueryOptions(optionsBuilder.slice()));
 
-    return registerQueryOrCursor(query);
+              constexpr bool optimize = false;
+              auto queryResult = query->doExplain(optimize);
+
+              if (queryResult.result.fail()) {
+                generateError(queryResult.result);
+                return RestStatus::FAIL;
+              }
+
+              // In case of success
+              VPackBuilder result;
+              result.openObject();
+
+              /* Copy paste from RestExplainHandler.cpp (Building queryResult)
+               * TODO: Unify this - use inspector instead maybe?!
+               */
+              if (query->queryOptions().allPlans) {
+                result.add("plans", queryResult.data->slice());
+              } else {
+                result.add("plan", queryResult.data->slice());
+                result.add("cacheable", VPackValue(queryResult.cached));
+              }
+
+              VPackSlice extras = queryResult.extra->slice();
+              if (extras.hasKey("warnings")) {
+                result.add("warnings", extras.get("warnings"));
+              } else {
+                result.add("warnings", VPackSlice::emptyArraySlice());
+              }
+              if (extras.hasKey("stats")) {
+                result.add("stats", extras.get("stats"));
+              }
+
+              result.add(StaticStrings::Error, VPackValue(false));
+              result.add(StaticStrings::Code,
+                         VPackValue(static_cast<int>(ResponseCode::OK)));
+              result.close();
+
+              generateResult(rest::ResponseCode::OK, result.slice());
+              /*
+               * Copy paste section end
+               */
+
+              return RestStatus::DONE;
+            },
+            [this](ExecutePlanCMD const& plan) {
+              //
+              // Execute any query plan
+              //
+              VPackSlice planSlice = plan.plan.slice();
+
+              // Just use always default options for now...
+              VPackBuilder emptyOptions;
+              emptyOptions.openObject();
+              emptyOptions.close();
+              buildOptions(emptyOptions.slice());
+
+              const AccessMode::Type mode = AccessMode::Type::WRITE;
+              auto query = Query::createFromPlan(_vocbase,
+                                                 createTransactionContext(mode),
+                                                 planSlice, _options->slice());
+
+              return registerQueryOrCursor(query);
+            },
+            [this](auto) {
+              //
+              // Fallback if command is not known
+              //
+              generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                            "unsupported body definition");
+              return RestStatus::FAIL;
+            }},
+        cmd);
+
+    return resultRestStatus;
   }
 
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
