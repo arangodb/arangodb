@@ -121,9 +121,9 @@ in this case try to find the boundary at the beginning of the request body).
 @EXAMPLE_ARANGOSH_RUN{RestBatchImplicitBoundary}
     var parts = [
       "Content-Type: application/x-arango-batchpart\r\n\r\n" +
-         "DELETE /_api/collection/notexisting1 HTTP/1.1\r\n",
+         "DELETE /_api/collection/nonexistent1 HTTP/1.1\r\n",
       "Content-Type: application/x-arango-batchpart\r\n\r\n" +
-         "DELETE _api/collection/notexisting2 HTTP/1.1\r\n"
+         "DELETE _api/collection/nonexistent2 HTTP/1.1\r\n"
     ];
     var boundary = "SomeBoundaryValue";
     var body = "--" + boundary + "\r\n" +

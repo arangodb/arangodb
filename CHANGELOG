@@ -7557,7 +7557,7 @@ devel
 * Upgraded bundled Boost library version to 1.71.
 
 * The General Graph document API is now consistent with the document API in its error messages.
-  When attempting to create / modify edges pointing to non existing vertex collections
+  When attempting to create / modify edges pointing to nonexistent vertex collections
   HTTP 400 is returned instead of 404.
 
 * Use `-std=c++17` for ArangoDB compilation.
@@ -20291,7 +20291,7 @@ v1.3.0-rc1 (2013-04-24)
 
 * added API for user-defined AQL functions
 
-* issue #475: A better error message for deleting a non-existent graph
+* issue #475: A better error message for deleting a nonexistent graph
 
 * issue #474: Web interface problems with the JS Shell
 
