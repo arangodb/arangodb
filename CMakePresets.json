@@ -33,14 +33,13 @@
       "inherits": "community",
       "displayName": "Build ArangoDB Community Edition (Developer Build)",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_BUILD_TYPE": "Debug",
         "USE_IPO": "Off",
         "USE_MAINTAINER_MODE": "On",
         "USE_FAIL_ON_WARNINGS": "On",
 	"USE_GOOGLE_TESTS": "On",
 	"USE_FAILURE_TESTS": "On",
-	"USE_STRICT_OPENSSL_VERSION": "Off",
-        "USE_SEPARATE_REPLICATION2_TESTS_BINARY": "On"
+	"USE_STRICT_OPENSSL_VERSION": "Off"
       }
     },
     {
@@ -48,14 +47,13 @@
       "inherits": "enterprise",
       "displayName": "Build ArangoDB Enterprise Edition (Developer Build)",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_BUILD_TYPE": "Debug",
         "USE_IPO": "Off",
         "USE_MAINTAINER_MODE": "On",
         "USE_FAIL_ON_WARNINGS": "On",
 	"USE_GOOGLE_TESTS": "On",
 	"USE_FAILURE_TESTS": "On",
-	"USE_STRICT_OPENSSL_VERSION": "Off",
-        "USE_SEPARATE_REPLICATION2_TESTS_BINARY": "On"
+	"USE_STRICT_OPENSSL_VERSION": "Off"
       }
     },
     {
