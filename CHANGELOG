@@ -885,7 +885,7 @@ devel
 
   Note that this change can affect any custom scripts that check for startup
   failures using the specific exit code 1. These scripts should be adjusted so
-  that they check for a non-zero exit code. They can opt in to more specific
+  that they check for a non-zero exit code. They can opt-in to more specific
   error handling using the additional exit codes mentioned above, in order to
   distinguish between different kinds of startup errors.
 
@@ -908,7 +908,7 @@ devel
   future releases.
 
   Spilling over query results from RAM to disk is off by default and currently
-  in an experimental stage. In order to opt in to the feature, it is required
+  in an experimental stage. In order to opt-in to the feature, it is required
   to set the following startup option `--temp.intermediate-results-path`.
   The directory specified here must not be located underneath the instance's
   database directory.
