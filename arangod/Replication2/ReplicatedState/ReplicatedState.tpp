@@ -252,6 +252,7 @@ auto StreamProxy<EntryType, Deserializer, Interface,
     -> futures::Future<std::unique_ptr<Iterator>> {
   // TODO As far as I can tell right now, we can get rid of this:
   //      Delete this, also in streams::Stream.
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   return _logMethods->waitForIterator(index).thenValue([](auto&& logIter) {
     std::unique_ptr<Iterator> deserializedIter =
         std::make_unique<LazyDeserializingIterator<EntryType, Deserializer>>(
@@ -358,15 +359,6 @@ auto NewLeaderStateManager<S>::GuardedData::resign() && noexcept
 
 template<typename S>
 void NewFollowerStateManager<S>::updateCommitIndex(LogIndex commitIndex) {
-  // TODO Rewrite this.
-  //      1) update our version of the commit index
-  //      2) check if an applyEntries is running;
-  //      3a) if yes, do nothing
-  //          (but make sure that at the end of applyEntries, we check if it
-  //          needs to be run again)
-  //      3b) if no, run applyEntries
-  //      at the end of apply entries, update the last applied index (if
-  //      successful)
   auto maybeFuture =
       _guardedData.getLockedGuard()->updateCommitIndex(commitIndex);
   // note that we release the lock before calling "then"

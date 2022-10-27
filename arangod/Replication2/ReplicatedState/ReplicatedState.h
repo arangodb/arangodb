@@ -138,8 +138,7 @@ struct StreamProxy : Interface<EntryType> {
       -> futures::Future<std::unique_ptr<Iterator>> override;
 
   auto release(LogIndex index) -> void override {
-    // TODO Implement this
-    std::abort();
+    _logMethods->releaseIndex(index);
   }
 };
 

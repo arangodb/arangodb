@@ -79,22 +79,28 @@ void ReplicatedLogFeature::prepare() {
 void ReplicatedLogFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
-  options->addSection("replicatedlog", "Options for replicated logs");
+  options->addSection("replicated-log", "Options for replicated logs");
 
   options->addOption(
-      "--replicatedlog.threshold-network-batch-size",
+      "--replicated-log.threshold-network-batch-size",
       "send a batch of log updates early when threshold "
       "(in bytes) is exceeded",
       new SizeTParameter(
           &_options->_thresholdNetworkBatchSize, /*base*/ 1, /*minValue*/
           ReplicatedLogGlobalSettings::minThresholdNetworkBatchSize));
   options->addOption(
-      "--replicatedlog.threshold-rocksdb-write-batch-size",
+      "--replicated-log.threshold-rocksdb-write-batch-size",
       "write a batch of log updates to RocksDB early "
       "when threshold (in bytes) is exceeded",
       new SizeTParameter(
           &_options->_thresholdRocksDBWriteBatchSize, /*base*/ 1, /*minValue*/
           ReplicatedLogGlobalSettings::minThresholdRocksDBWriteBatchSize));
+  options->addOption(
+      "--replicated-log.threshold-log-compaction",
+      "threshold for log compaction. Number of log entries to wait for before "
+      "compacting.",
+      new SizeTParameter(&_options->_thresholdLogCompaction, /*base*/ 1,
+                         /*minValue*/ 0));
 #endif
 }
 
