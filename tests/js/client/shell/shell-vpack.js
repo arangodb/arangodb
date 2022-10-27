@@ -33,10 +33,6 @@
 var jsunity = require('jsunity');
 var expect = require('chai').expect;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
-
 function RequestSuite() {
   return {
     testVersionJsonJson: versionJsonJson,
@@ -52,17 +48,17 @@ function RequestSuite() {
 
 
 function versionJsonJson() {
-  var path = '/_api/version';
-  var headers = {
+  const path = '/_api/version';
+  const headers = {
     'content-type': 'application/json',
     'accept': 'application/json'
   };
 
-  var res = arango.POST_RAW(path, "", headers);
+  const res = arango.POST_RAW(path, "", headers);
 
   expect(String(res.headers['content-type'])).to.have.string("application/json");
 
-  var obj = JSON.parse(res.body);
+  const obj = JSON.parse(res.body);
 
   expect(obj).to.have.property('server');
   expect(obj).to.have.property('version');
@@ -75,18 +71,18 @@ function versionJsonJson() {
 };
 
 function versionVpackJson() {
-  var path = '/_api/version';
-  var headers = {
+  const path = '/_api/version';
+  const headers = {
     'content-type': 'application/x-velocypack',
     'accept': 'application/json'
   };
 
-  var res = arango.POST_RAW(path, "", headers);
+  const res = arango.POST_RAW(path, "", headers);
 
   expect(res.body).to.be.a('string');
   expect(String(res.headers['content-type'])).to.have.string("application/json");
 
-  var obj = JSON.parse(res.body);
+  const obj = JSON.parse(res.body);
 
   expect(obj).to.have.property('server');
   expect(obj).to.have.property('version');
@@ -98,17 +94,17 @@ function versionVpackJson() {
 };
 
 function versionJsonVpack() {
-  var path = '/_api/version';
-  var headers = {
+  const path = '/_api/version';
+  const headers = {
     'content-type': 'application/json',
     'accept': 'application/x-velocypack'
   };
 
-  var res = arango.POST_RAW(path, "", headers);
+  const res = arango.POST_RAW(path, "", headers);
 
   expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
 
-  var obj = VPACK_TO_V8(res.body);
+  const obj = VPACK_TO_V8(res.body);
 
   expect(obj).to.have.property('server');
   expect(obj).to.have.property('version');
@@ -120,17 +116,17 @@ function versionJsonVpack() {
 };
 
 function versionVpackVpack() {
-  var path = '/_api/version';
-  var headers = {
+  const path = '/_api/version';
+  const headers = {
     'content-type': 'application/x-velocypack',
     'accept': 'application/x-velocypack'
   };
 
-  var res = arango.POST_RAW(path, "", headers);
+  const res = arango.POST_RAW(path, "", headers);
 
   expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
 
-  var obj = VPACK_TO_V8(res.body);
+  const obj = VPACK_TO_V8(res.body);
 
   expect(obj).to.have.property('server');
   expect(obj).to.have.property('version');
@@ -141,23 +137,21 @@ function versionVpackVpack() {
   expect(obj.license).to.match(/enterprise|community/g);
 };
 
-///////////////////////////////////////////////////////////////////////////////////////
-
 function echoVpackVpack() {
-  var path = '/_admin/echo';
-  var headers = {
+  const path = '/_admin/echo';
+  const headers = {
     'content-type': 'application/x-velocypack',
     'accept': 'application/x-velocypack'
   };
 
-  var obj = {"server": "arango", "version": "3.0.devel"};
-  var body = V8_TO_VPACK(obj);
+  const obj = {"server": "arango", "version": "3.0.devel"};
+  const body = V8_TO_VPACK(obj);
 
-  var res = arango.POST_RAW(path, body, headers);
+  const res = arango.POST_RAW(path, body, headers);
 
   expect(res.body).to.be.a('SlowBuffer');
   expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
-  var replyBody = VPACK_TO_V8(res.body);
+  const replyBody = VPACK_TO_V8(res.body);
   expect(replyBody.requestBody).to.be.a('string');
 };
 
@@ -169,49 +163,51 @@ Otherwise, as it happens when there's no content-type in the header, it's interp
  */
 
 function adminExecuteWithHeaderVpack() {
-  var path = '/_admin/execute';
-  var headers = {
+  const path = '/_admin/execute';
+  const headers = {
     'content-type': 'application/x-velocypack',
   };
 
-  var obj = "require(\"console\").log(\"abc\");";
-  var body = V8_TO_VPACK(obj);
+  const obj = "require(\"console\").log(\"abc\");";
+  const body = V8_TO_VPACK(obj);
 
-  var res = arango.POST_RAW(path, body, headers);
+  // correct header set, so everything should work well
+  const res = arango.POST_RAW(path, body, headers);
   assertEqual(res.code, 200);
   assertFalse(res.error);
   assertNull(res.parsedBody);
 }
 
 function adminExecuteWithHeaderVpack2() {
-  var path = '/_admin/execute';
-  var headers = {
+  const path = '/_admin/execute';
+  const headers = {
     'content-type': 'application/x-velocypack',
   };
 
-  var obj = "return \"abc\"";
-  var body = V8_TO_VPACK(obj);
+  const obj = "return \"abc\"";
+  const body = V8_TO_VPACK(obj);
 
-  var res = arango.POST_RAW(path, body, headers);
+  // correct header set, so everything should work well
+  const res = arango.POST_RAW(path, body, headers);
   assertEqual(res.code, 200);
   assertFalse(res.error);
   assertEqual(res.parsedBody, "abc");
 }
 
 function adminExecuteNoHeaderVpack() {
-  var path = '/_admin/execute';
+  const path = '/_admin/execute';
+  const obj = "return \"abc\"";
+  const body = V8_TO_VPACK(obj);
 
-  var obj = "return \"abc\"";
-  var body = V8_TO_VPACK(obj);
-
-  var res = arango.POST_RAW(path, body);
-  assertEqual(res.code, 400);
+  // the request we are making contains binary data,
+  // but we are intentionally not setting the correct
+  // Content-Type header. the server has no chance of
+  // interpreting this properly, so we are expecting a
+  // 500 error back.
+  const res = arango.POST_RAW(path, body);
+  assertEqual(res.code, 500);
   assertTrue(res.error);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(RequestSuite);
 
