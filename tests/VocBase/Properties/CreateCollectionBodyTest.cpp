@@ -194,7 +194,7 @@ TEST_F(CreateCollectionBodyTest, test_configureMaxNumberOfShards) {
           CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
       ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
       ASSERT_TRUE(testee->numberOfShards.has_value());
-      EXPECT_EQ(testee->numberOfShards, 1024)
+      EXPECT_EQ(testee->numberOfShards, 1024ul)
           << "Parsing error in " << body.toJson();
     }
   }
@@ -212,7 +212,7 @@ TEST_F(CreateCollectionBodyTest, test_configureMaxNumberOfShards) {
           CreateCollectionBody::fromCreateAPIBody(body.slice(), config);
       ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
       ASSERT_TRUE(testee->numberOfShards.has_value());
-      EXPECT_EQ(testee->numberOfShards, 1024)
+      EXPECT_EQ(testee->numberOfShards, 1024ul)
           << "Parsing error in " << body.toJson();
     }
     {
@@ -474,8 +474,8 @@ INSTANTIATE_TEST_CASE_P(
 TEST_P(PlanCollectionReplicationFactorTest, test_noMaxReplicationFactor) {
   auto body = testBody();
   auto config = defaultDBConfig();
-  EXPECT_EQ(config.minReplicationFactor, 0);
-  EXPECT_EQ(config.maxReplicationFactor, 0);
+  EXPECT_EQ(config.minReplicationFactor, 0ul);
+  EXPECT_EQ(config.maxReplicationFactor, 0ul);
   EXPECT_EQ(config.enforceReplicationFactor, true);
 
   config.enforceReplicationFactor = true;
@@ -499,8 +499,8 @@ TEST_P(PlanCollectionReplicationFactorTest, test_noMaxReplicationFactor) {
 TEST_P(PlanCollectionReplicationFactorTest, test_maxReplicationFactor) {
   auto body = testBody();
   auto config = defaultDBConfig();
-  EXPECT_EQ(config.minReplicationFactor, 0);
-  EXPECT_EQ(config.maxReplicationFactor, 0);
+  EXPECT_EQ(config.minReplicationFactor, 0ul);
+  EXPECT_EQ(config.maxReplicationFactor, 0ul);
   EXPECT_EQ(config.enforceReplicationFactor, true);
 
   config.enforceReplicationFactor = true;
@@ -525,8 +525,8 @@ TEST_P(PlanCollectionReplicationFactorTest, test_maxReplicationFactor) {
 TEST_P(PlanCollectionReplicationFactorTest, test_minReplicationFactor) {
   auto body = testBody();
   auto config = defaultDBConfig();
-  EXPECT_EQ(config.minReplicationFactor, 0);
-  EXPECT_EQ(config.maxReplicationFactor, 0);
+  EXPECT_EQ(config.minReplicationFactor, 0ul);
+  EXPECT_EQ(config.maxReplicationFactor, 0ul);
   EXPECT_EQ(config.enforceReplicationFactor, true);
 
   config.enforceReplicationFactor = true;

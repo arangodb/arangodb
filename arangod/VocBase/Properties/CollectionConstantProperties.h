@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Basics/StaticStrings.h"
+#include "Inspection/Access.h"
 #include "VocBase/Properties/UtilityInvariants.h"
 #include "VocBase/voc-types.h"
 
@@ -48,7 +49,7 @@ struct CollectionConstantProperties {
       TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
   bool isSystem = false;
 
-  std::optional<std::string> smartJoinAttribute = std::nullopt;
+  inspection::NonNullOptional<std::string> smartJoinAttribute = std::nullopt;
 
   // TODO: This can be optimized into it's own struct.
   // Did a short_cut here to avoid concatenated changes
@@ -59,7 +60,7 @@ struct CollectionConstantProperties {
   bool isDisjoint = false;
   bool cacheEnabled = false;
 
-  std::optional<std::string> smartGraphAttribute = std::nullopt;
+  inspection::NonNullOptional<std::string> smartGraphAttribute = std::nullopt;
 
   // TODO: Maybe this is better off with a transformator Uint -> col_type_e
   [[nodiscard]] TRI_col_type_e getType() const noexcept {

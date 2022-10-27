@@ -33,7 +33,7 @@ namespace arangodb {
 
 namespace inspection {
 struct Status;
-}
+}  // namespace inspection
 
 struct UtilityInvariants {
   [[nodiscard]] static auto isNonEmpty(std::string const& value)

@@ -22,6 +22,7 @@
 
 #include "ClusteringMutableProperties.h"
 
+#include "Basics/StaticStrings.h"
 #include "Basics/Result.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
@@ -33,7 +34,11 @@ using namespace arangodb;
 auto ClusteringMutableProperties::Transformers::ReplicationSatellite::
     toSerialized(MemoryType v, SerializedType& result)
         -> arangodb::inspection::Status {
-  result.add(VPackValue(v));
+  if (v == 0) {
+    result.add(VPackValue(StaticStrings::Satellite));
+  } else {
+    result.add(VPackValue(v));
+  }
   return {};
 }
 
@@ -70,6 +75,7 @@ void ClusteringMutableProperties::applyDatabaseDefaults(
 
 [[nodiscard]] arangodb::Result ClusteringMutableProperties::validateDatabaseConfiguration(
     DatabaseConfiguration const& config) const {
+  TRI_ASSERT(replicationFactor.has_value());
   // Check Replication factor
   if (replicationFactor.has_value()) {
     if (config.enforceReplicationFactor) {
@@ -81,7 +87,7 @@ void ClusteringMutableProperties::applyDatabaseDefaults(
                     std::to_string(config.maxReplicationFactor) + ")"};
       }
 
-      if (replicationFactor.value() != 0 &&
+      if (!isSatellite() &&
           replicationFactor.value() < config.minReplicationFactor) {
         return {TRI_ERROR_BAD_PARAMETER,
                 std::string("replicationFactor must not be lower than "
@@ -90,13 +96,18 @@ void ClusteringMutableProperties::applyDatabaseDefaults(
       }
     }
 
-    if (replicationFactor.value() > 0 &&
-        writeConcern.has_value() && replicationFactor.value() < writeConcern.value()) {
+    if (!isSatellite() && writeConcern.has_value() &&
+        replicationFactor.value() < writeConcern.value()) {
       return {TRI_ERROR_BAD_PARAMETER,
               "writeConcern must not be higher than replicationFactor"};
     }
+    if (isSatellite()) {
+      if (writeConcern != 1ul) {
+        return {TRI_ERROR_BAD_PARAMETER,
+                "For a satellite collection writeConcern must not be set"};
+      }
+    }
   }
-
 
   if (config.isOneShardDB) {
     if (replicationFactor.has_value()) {

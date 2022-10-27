@@ -235,7 +235,7 @@ TEST_F(ClusteringPropertiesTest, test_oneShardDBCannotBeSatellite) {
   auto testee = parse(body.slice());
   ASSERT_TRUE(testee.ok()) << testee.result().errorNumber() << " -> "
                            << testee.result().errorMessage();
-  EXPECT_EQ(testee->replicationFactor.value(), 0);
+  EXPECT_EQ(testee->replicationFactor.value(), 0ul);
 
   // No special config required, this always fails
   auto config = defaultDBConfig();
@@ -340,6 +340,104 @@ TEST_F(ClusteringPropertiesTest, test_shardKeyOnSatellites) {
     EXPECT_FALSE(result.ok())
         << "Created a satellite collection with a shardkeys [_key, testKey]";
   }
+}
+
+TEST_F(ClusteringPropertiesTest, test_satellite) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder bodyBuilder{&body};
+    body.add("replicationFactor", VPackValue("satellite"));
+  }
+  auto testee = parse(body.slice());
+  ASSERT_TRUE(testee.ok());
+  auto config = defaultDBConfig();
+  auto res = testee->applyDefaultsAndValidateDatabaseConfiguration(config);
+  ASSERT_TRUE(res.ok()) << "Failed with " << res.fail();
+  EXPECT_TRUE(testee->isSatellite());
+  ASSERT_TRUE(testee->writeConcern.has_value());
+  EXPECT_EQ(testee->writeConcern.value(), 1ull);
+  ASSERT_TRUE(testee->numberOfShards.has_value());
+  EXPECT_EQ(testee->numberOfShards.value(), 1ull);
+  __HELPER_equalsAfterSerializeParseCircle(testee.get());
+}
+
+TEST_F(ClusteringPropertiesTest, test_satellite_numberOfShards_forbidden) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder bodyBuilder{&body};
+    body.add("replicationFactor", VPackValue("satellite"));
+    body.add("numberOfShards", VPackValue(3));
+  }
+  auto testee = parse(body.slice());
+  ASSERT_TRUE(testee.ok());
+  auto config = defaultDBConfig();
+  auto res = testee->applyDefaultsAndValidateDatabaseConfiguration(config);
+  ASSERT_FALSE(res.ok()) << "Allowed illegal: " << body.toJson();
+}
+
+TEST_F(ClusteringPropertiesTest, test_satellite_numberOfShards_allowed) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder bodyBuilder{&body};
+    body.add("replicationFactor", VPackValue("satellite"));
+    body.add("numberOfShards", VPackValue(1));
+  }
+  auto testee = parse(body.slice());
+  ASSERT_TRUE(testee.ok());
+  auto config = defaultDBConfig();
+  auto res = testee->applyDefaultsAndValidateDatabaseConfiguration(config);
+  ASSERT_TRUE(res.ok()) << "Failed with " << res.fail();
+  EXPECT_TRUE(testee->isSatellite());
+  ASSERT_TRUE(testee->writeConcern.has_value());
+  EXPECT_EQ(testee->writeConcern.value(), 1ull);
+  ASSERT_TRUE(testee->numberOfShards.has_value());
+  EXPECT_EQ(testee->numberOfShards.value(), 1ull);
+  __HELPER_equalsAfterSerializeParseCircle(testee.get());
+}
+
+TEST_F(ClusteringPropertiesTest, test_satellite_writeConcern_forbidden) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder bodyBuilder{&body};
+    body.add("replicationFactor", VPackValue("satellite"));
+    body.add("writeConcern", VPackValue(3));
+  }
+  auto testee = parse(body.slice());
+  ASSERT_TRUE(testee.ok());
+  auto config = defaultDBConfig();
+  auto res = testee->applyDefaultsAndValidateDatabaseConfiguration(config);
+  ASSERT_FALSE(res.ok()) << "Allowed illegal: " << body.toJson();
+}
+
+TEST_F(ClusteringPropertiesTest, test_satellite_writeConcern_forbidden_0) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder bodyBuilder{&body};
+    body.add("replicationFactor", VPackValue("satellite"));
+    body.add("writeConcern", VPackValue(0));
+  }
+  auto testee = parse(body.slice());
+  EXPECT_FALSE(testee.ok()) << "Allowed illegal: " << body.toJson();
+}
+
+TEST_F(ClusteringPropertiesTest, test_satellite_writeConcern_allowed) {
+  VPackBuilder body;
+  {
+    VPackObjectBuilder bodyBuilder{&body};
+    body.add("replicationFactor", VPackValue("satellite"));
+    body.add("writeConcern", VPackValue(1));
+  }
+  auto testee = parse(body.slice());
+  ASSERT_TRUE(testee.ok());
+  auto config = defaultDBConfig();
+  auto res = testee->applyDefaultsAndValidateDatabaseConfiguration(config);
+  ASSERT_TRUE(res.ok()) << "Failed with " << res.fail();
+  EXPECT_TRUE(testee->isSatellite());
+  ASSERT_TRUE(testee->writeConcern.has_value());
+  EXPECT_EQ(testee->writeConcern.value(), 1ull);
+  ASSERT_TRUE(testee->numberOfShards.has_value());
+  EXPECT_EQ(testee->numberOfShards.value(), 1ull);
+  __HELPER_equalsAfterSerializeParseCircle(testee.get());
 }
 
 TEST_F(ClusteringPropertiesTest, test_internal_values_as_shardkeys) {

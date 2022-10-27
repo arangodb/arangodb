@@ -23,6 +23,7 @@
 #include "UtilityInvariants.h"
 
 #include "Basics/StaticStrings.h"
+#include "Inspection/Access.h"
 #include "Inspection/Status.h"
 
 using namespace arangodb;

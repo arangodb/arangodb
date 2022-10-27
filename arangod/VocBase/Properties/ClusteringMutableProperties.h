@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <optional>
 
+#include "Inspection/Access.h"
 #include "VocBase/Properties/UtilityInvariants.h"
 
 namespace arangodb {
@@ -37,7 +38,6 @@ struct DatabaseConfiguration;
 class Result;
 
 struct ClusteringMutableProperties {
-
   struct Transformers {
     struct ReplicationSatellite {
       using MemoryType = uint64_t;
@@ -51,8 +51,8 @@ struct ClusteringMutableProperties {
     };
   };
 
-  std::optional<uint64_t> replicationFactor = std::nullopt;
-  std::optional<uint64_t> writeConcern = std::nullopt;
+  inspection::NonNullOptional<uint64_t> replicationFactor{std::nullopt};
+  inspection::NonNullOptional<uint64_t> writeConcern{std::nullopt};
 
   bool waitForSync = false;
 

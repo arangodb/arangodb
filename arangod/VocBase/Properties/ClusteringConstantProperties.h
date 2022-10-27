@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Basics/StaticStrings.h"
+#include "Inspection/Access.h"
 #include "VocBase/Properties/UtilityInvariants.h"
 
 #include <optional>
@@ -33,10 +34,10 @@ struct DatabaseConfiguration;
 class Result;
 
 struct ClusteringConstantProperties {
-
-  std::optional<uint64_t> numberOfShards = std::nullopt;
-  std::optional<std::string> distributeShardsLike = std::nullopt;
-  std::optional<std::string> shardingStrategy = std::nullopt; // defaultShardingStrategy
+  inspection::NonNullOptional<uint64_t> numberOfShards{std::nullopt};
+  inspection::NonNullOptional<std::string> distributeShardsLike{std::nullopt};
+  std::optional<std::string> shardingStrategy =
+      std::nullopt;  // defaultShardingStrategy
   std::vector<std::string> shardKeys =
       std::vector<std::string>{StaticStrings::KeyString};
 
@@ -73,7 +74,7 @@ auto inspect(Inspector& f, ClusteringConstantProperties& props) {
           .fallback(f.keep())
           .invariant(UtilityInvariants::areShardKeysValid)
 
-      );
+  );
 }
 
 }

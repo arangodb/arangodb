@@ -55,8 +55,7 @@ void ClusteringConstantProperties::applyDatabaseDefaults(
               "Collection in a 'oneShardDatabase' must have 1 shard"};
     }
 
-    if (distributeShardsLike !=
-        config.defaultDistributeShardsLike) {
+    if (distributeShardsLike.value() != config.defaultDistributeShardsLike) {
       return {TRI_ERROR_BAD_PARAMETER,
               "Collection in a 'oneShardDatabase' cannot define "
               "'distributeShardsLike'"};

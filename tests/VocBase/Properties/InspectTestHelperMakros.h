@@ -145,6 +145,8 @@
     auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                   \
                                    std::string const& expected) {              \
       auto testee = parse(body.slice());                                       \
+      ASSERT_TRUE(testee.ok())                                                 \
+          << testee.errorMessage() << " on " << body.toJson();                 \
       ASSERT_TRUE(testee->attributeName.has_value())                           \
           << "Parsing error in " << body.toJson();                             \
       EXPECT_EQ(testee->attributeName.value(), expected)                       \

@@ -151,9 +151,6 @@ GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isDisjoint);
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, cacheEnabled);
 
 GenerateOptionalStringAttributeTest(CollectionConstantPropertiesTest,
-                                    smartGraphAttribute);
-
-GenerateOptionalStringAttributeTest(CollectionConstantPropertiesTest,
                                     smartJoinAttribute);
 
 // Ignored for backwards compatibility with MMFiles
