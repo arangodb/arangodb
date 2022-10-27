@@ -716,28 +716,30 @@ index_writer::documents_context::document::~document() noexcept {
 }
 
 index_writer::documents_context::~documents_context() noexcept {
+  auto& ctx = segment_.ctx();
+
   // failure may indicate a dangling 'document' instance
-  assert(segment_.ctx().use_count() >= 0 &&
-         static_cast<uint64_t>(segment_.ctx().use_count()) == segment_use_count_);
+  assert(ctx.use_count() >= 0 &&
+         static_cast<uint64_t>(ctx.use_count()) == segment_use_count_);
 
-  if (segment_.ctx()) {
-    auto& writer = *segment_.ctx()->writer_;
+  if (!ctx) {
+    return; // nothing to do
+  }
 
-    if (writer.tick() < tick_) {
-      writer.tick(tick_);
-    }
+  if (auto& writer = *ctx->writer_; writer.tick() < last_operation_tick_) {
+    writer.tick(last_operation_tick_);
   }
 
   try {
     // FIXME TODO move emplace into active_segment_context destructor
-    writer_.get_flush_context()->emplace(std::move(segment_)); // commit segment
+    writer_.get_flush_context()->emplace(std::move(segment_), first_operation_tick_); // commit segment
   } catch (...) {
     reset(); // abort segment
   }
 }
 
 void index_writer::documents_context::reset() noexcept {
-  tick_ = 0; // reset tick
+  last_operation_tick_ = 0; // reset tick
 
   auto& ctx = segment_.ctx();
 
@@ -878,7 +880,7 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
   return ctx;
 }
 
-void index_writer::flush_context::emplace(active_segment_context&& segment) {
+void index_writer::flush_context::emplace(active_segment_context&& segment, uint64_t generation_base) {
   if (!segment.ctx_) {
     return; // nothing to do
   }
@@ -893,7 +895,6 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
 
   auto& ctx = *(segment.ctx_);
   freelist_t::node_type* freelist_node = nullptr;
-  size_t generation_base;
   size_t modification_count;
 
   // prevent concurrent flush related modifications,
@@ -950,9 +951,11 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
     assert(ctx.uncomitted_modification_queries_ <= ctx.modification_queries_.size());
     modification_count =
       ctx.modification_queries_.size() - ctx.uncomitted_modification_queries_;
-    if (segment.flush_ctx_ && this != segment.flush_ctx_) generation_base = segment.flush_ctx_->generation_ += modification_count; else  // FIXME TODO remove this condition once col_writer tail is writen correctly
-    generation_base = generation_ += modification_count; // atomic increment to end of unique generation range
-    generation_base -= modification_count; // start of generation range
+    if (!generation_base) {
+      if (segment.flush_ctx_ && this != segment.flush_ctx_) generation_base = segment.flush_ctx_->generation_ += modification_count; else  // FIXME TODO remove this condition once col_writer tail is writen correctly
+      generation_base = generation_ += modification_count; // atomic increment to end of unique generation range
+      generation_base -= modification_count; // start of generation range
+    }
   }
 
   // ...........................................................................

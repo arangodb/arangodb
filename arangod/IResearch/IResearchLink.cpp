@@ -215,7 +215,7 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
   }
 
   if (trx.state()->hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
-    ctx.tick(engine->currentTick());
+    ctx.SetLastTick(engine->currentTick());
   }
 
   return {};
@@ -639,10 +639,8 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       _lastCommittedTick{0},
       _cleanupIntervalCount{0},
       _createdInRecovery{false} {
-  auto* key = this;
-
   // initialize transaction callback
-  _trxCallback = [key](transaction::Methods& trx, transaction::Status status) {
+  _trxCallback = [this](transaction::Methods& trx, transaction::Status status) {
     auto* state = trx.state();
     TRI_ASSERT(state != nullptr);
 
@@ -651,7 +649,7 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       return;  // NOOP
     }
 
-    auto prev = state->cookie(key, nullptr);  // get existing cookie
+    auto prev = state->cookie(this, nullptr);  // get existing cookie
 
     if (prev) {
 // TODO FIXME find a better way to look up a ViewState
@@ -664,7 +662,14 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       if (transaction::Status::COMMITTED != status) {  // rollback
         ctx.reset();
       } else {
-        ctx._ctx.tick(state->lastOperationTick());
+        uint64_t const lastOperationTick{state->lastOperationTick()};
+
+        ctx._ctx.SetLastTick(lastOperationTick);
+
+        if (ADB_LIKELY(!_engine->inRecovery())) {
+          ctx._ctx.SetFirstTick(lastOperationTick -
+                                state->numPrimitiveOperations());
+        }
       }
     }
 
