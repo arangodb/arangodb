@@ -61,6 +61,9 @@ class RestLogHandler : public RestVocbaseBaseHandler {
   RestStatus handlePostRelease(
       replication2::ReplicatedLogMethods const& methods,
       replication2::LogId logId);
+  RestStatus handlePostCompact(
+      replication2::ReplicatedLogMethods const& methods,
+      replication2::LogId logId);
 
   RestStatus handleGet(replication2::ReplicatedLogMethods const& methods);
   RestStatus handleGetPoll(replication2::ReplicatedLogMethods const& methods,

@@ -779,6 +779,15 @@ Result LogFollower::onSnapshotCompleted() {
   return {};
 }
 
+auto LogFollower::compact() -> Result {
+  auto guard = _guardedFollowerData.getLockedGuard();
+  auto compactionStop =
+      std::min(guard->_lowestIndexToKeep, guard->_releaseIndex + 1);
+  LOG_CTX("aed29", INFO, _loggerContext)
+      << "starting explicit compaction up to index " << compactionStop;
+  return guard->runCompaction(compactionStop);
+}
+
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()
     const noexcept -> LogStatistics {
   auto result = LogStatistics{};
@@ -801,6 +810,11 @@ auto LogFollower::GuardedFollowerData::checkCompaction() -> Result {
         << _inMemoryLog.getFirstIndex();
     return {};
   }
+  return runCompaction(compactionStop);
+}
+
+auto LogFollower::GuardedFollowerData::runCompaction(LogIndex compactionStop)
+    -> Result {
   auto const numberOfCompactedEntries =
       compactionStop.value - _inMemoryLog.getFirstIndex().value;
   auto newLog = _inMemoryLog.release(compactionStop);
@@ -814,6 +828,7 @@ auto LogFollower::GuardedFollowerData::checkCompaction() -> Result {
       << "compaction result = " << res.errorMessage();
   return res;
 }
+
 auto LogFollower::GuardedFollowerData::waitForResign()
     -> std::pair<futures::Future<futures::Unit>, DeferredAction> {
   if (!didResign()) {

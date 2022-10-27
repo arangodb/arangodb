@@ -203,6 +203,11 @@ struct ReplicatedLogMethodsDBServer final
     return {idx};
   }
 
+  auto compact(LogId id) const -> futures::Future<Result> {
+    auto log = vocbase.getReplicatedLogById(id);
+    return log->getParticipant()->compact();
+  }
+
   auto release(LogId id, LogIndex index) const
       -> futures::Future<Result> override {
     auto log = vocbase.getReplicatedLogById(id);
@@ -707,6 +712,46 @@ struct ReplicatedLogMethodsCoordinator final
       -> futures::Future<Result> override {
     return replication2::agency::methods::replaceReplicatedSetLeader(
         vocbaseName, id, leaderId);
+  }
+
+  auto compact(LogId id) const -> futures::Future<Result> override {
+    auto spec = clusterInfo.getReplicatedLogPlanSpecification(id).get();
+
+    auto const compactParticipant =
+        [&](ParticipantId const& participant) -> futures::Future<Result> {
+      auto path = basics::StringUtils::joinT("/", "_api/log", id, "compact");
+      network::RequestOptions opts;
+      opts.database = vocbaseName;
+      opts.timeout = std::chrono::seconds{5};
+      VPackBufferUInt8 buffer;
+      {
+        VPackBuilder builder(buffer);
+        builder.add(VPackSlice::emptyObjectSlice());
+      }
+      return network::sendRequest(pool, "server:" + participant,
+                                  fuerte::RestVerb::Post, path, buffer, opts)
+          .thenValue([participant](network::Response&& resp) {
+            return resp.combinedResult().withError([&](auto& err) {
+              return err.appendErrorMessage("; compaction for participant " +
+                                            participant);
+            });
+          });
+    };
+
+    std::vector<futures::Future<Result>> futs;
+    for (auto const& [participant, p] : spec->participantsConfig.participants) {
+      futs.emplace_back(compactParticipant(participant));
+    }
+
+    return futures::collectAll(std::move(futs)).thenValue([](auto&& results) {
+      // return first error
+      for (auto const& tryRes : results) {
+        if (auto res = tryRes.get(); res.fail()) {
+          return res;
+        }
+      }
+      return Result{};
+    });
   }
 
   explicit ReplicatedLogMethodsCoordinator(DatabaseID vocbase,

@@ -130,6 +130,7 @@ struct ReplicatedLogMethods {
       -> futures::Future<LogIndex> = 0;
 
   virtual auto release(LogId, LogIndex) const -> futures::Future<Result> = 0;
+  virtual auto compact(LogId) const -> futures::Future<Result> = 0;
 
   /*
    * Wait until the supervision reports that the replicated log has converged

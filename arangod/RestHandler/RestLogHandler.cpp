@@ -157,6 +157,8 @@ RestStatus RestLogHandler::handlePostRequest(
     return handlePostInsert(methods, logId, body);
   } else if (verb == "release") {
     return handlePostRelease(methods, logId);
+  } else if (verb == "compact") {
+    return handlePostCompact(methods, logId);
   } else if (verb == "multi-insert") {
     return handlePostInsertMulti(methods, logId, body);
   } else {
@@ -252,6 +254,17 @@ RestStatus RestLogHandler::handlePostRelease(
           generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::noneSlice());
         }
       }));
+}
+
+RestStatus RestLogHandler::handlePostCompact(
+    ReplicatedLogMethods const& methods, replication2::LogId logId) {
+  return waitForFuture(methods.compact(logId).thenValue([this](Result&& res) {
+    if (res.fail()) {
+      generateError(res);
+    } else {
+      generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::noneSlice());
+    }
+  }));
 }
 
 RestStatus RestLogHandler::handlePost(ReplicatedLogMethods const& methods,
