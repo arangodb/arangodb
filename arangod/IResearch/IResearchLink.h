@@ -184,7 +184,7 @@ class IResearchLink {
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
   Result insert(transaction::Methods& trx, LocalDocumentId documentId,
-                velocypack::Slice doc);
+                velocypack::Slice doc, TRI_voc_tick_t const* recoveryTick);
 
   static bool isHidden();  // arangodb::Index override
   static bool isSorted();  // arangodb::Index override
@@ -227,7 +227,7 @@ class IResearchLink {
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                velocypack::Slice doc);
+                velocypack::Slice doc, TRI_voc_tick_t const* recoveryTick);
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief 'this' for the lifetime of the link data-store

@@ -1734,17 +1734,16 @@ void IResearchLink::scheduleConsolidation(std::chrono::milliseconds delay) {
 }
 
 Result IResearchLink::insert(transaction::Methods& trx,
-                             LocalDocumentId documentId,
-                             velocypack::Slice doc) {
+                             LocalDocumentId documentId, velocypack::Slice doc,
+                             TRI_voc_tick_t const* recoveryTick) {
   TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 
   auto& state = *(trx.state());
 
-  if (_dataStore._inRecovery.load(std::memory_order_acquire) &&
-      _engine->recoveryTick() <= _dataStore._recoveryTick) {
+  if (recoveryTick && *recoveryTick <= _dataStore._recoveryTick) {
     LOG_TOPIC("7c228", TRACE, TOPIC)
-        << "skipping 'insert', operation tick '" << _engine->recoveryTick()
+        << "skipping 'insert', operation tick '" << *recoveryTick
         << "', recovery tick '" << _dataStore._recoveryTick << "'";
 
     return {};
@@ -1960,7 +1959,8 @@ void IResearchLink::properties(LinkLock linkLock,
 
 Result IResearchLink::remove(transaction::Methods& trx,
                              LocalDocumentId documentId,
-                             velocypack::Slice doc) {
+                             velocypack::Slice /*doc*/,
+                             TRI_voc_tick_t const* recoveryTick) {
   TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 
@@ -1968,10 +1968,9 @@ Result IResearchLink::remove(transaction::Methods& trx,
 
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::INDEX_CREATION));
 
-  if (_dataStore._inRecovery.load(std::memory_order_acquire) &&
-      _engine->recoveryTick() <= _dataStore._recoveryTick) {
+  if (recoveryTick && *recoveryTick <= _dataStore._recoveryTick) {
     LOG_TOPIC("7d228", TRACE, TOPIC)
-        << "skipping 'removal', operation tick '" << _engine->recoveryTick()
+        << "skipping 'removal', operation tick '" << *recoveryTick
         << "', recovery tick '" << _dataStore._recoveryTick << "'";
 
     return {};
