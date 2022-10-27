@@ -12490,7 +12490,7 @@ v3.2.alpha3 (2017-03-22)
   that have been there already. Performance may therefore suffer a bit for the
   initial requests sent to ArangoDB or when there are only few but performance-
   critical situations in which new V8 contexts will be created. If this is a
-  concern, it can easily be fixed by setting `--javascipt.v8-contexts-minimum`
+  concern, it can easily be fixed by setting `--javascript.v8-contexts-minimum`
   and `--javascript.v8-contexts` to a relatively high value, which will guarantee
   that many number of V8 contexts to be created at startup and kept around even
   when unused.
@@ -20169,7 +20169,7 @@ v1.4.0-alpha1 (2013-08-02)
 
 * changed AQL COLLECT to use a stable sort, so any previous SORT order is preserved
 
-* issue #547: Javascript error in the web interface
+* issue #547: JavaScript error in the web interface
 
 * issue #550: Make AQL graph functions support key in addition to id
 
@@ -20559,11 +20559,11 @@ v1.2.beta3 (2013-02-22)
   * require("org/arangodb/crypto").sha256()
   * require("org/arangodb/crypto").rand()
 
-* added replaceByExample() Javascript and REST API method
+* added replaceByExample() JavaScript and REST API method
 
-* added updateByExample() Javascript and REST API method
+* added updateByExample() JavaScript and REST API method
 
-* added optional "limit" parameter for removeByExample() Javascript and REST API method
+* added optional "limit" parameter for removeByExample() JavaScript and REST API method
 
 * fixed issue #413
 
@@ -20593,7 +20593,7 @@ v1.2.beta2 (2013-02-15)
   values with the upper 32 bits cleared and the 33rd bit set were broken.
 
 * issue #395:  Collection properties() function should return 'isSystem' for
-  Javascript and REST API
+  JavaScript and REST API
 
 * make server stop after upgrade procedure when invoked with `--upgrade option`.
   When started with the `--upgrade` option, the server will perfom
@@ -20644,7 +20644,7 @@ v1.2.beta1 (2013-02-01)
   precision loss) for clients that do not support big integers natively and store
   such values in IEEE754 doubles internally. This type loses precision after about
   52 bits and is thus not safe to hold an id.
-  Javascript and 32 bit-PHP are examples for clients that may cause such problems.
+  JavaScript and 32 bit-PHP are examples for clients that may cause such problems.
   Therefore, ids are now returned by ArangoDB as strings, with the string
   content being the integer value as before.
 
@@ -20661,7 +20661,7 @@ v1.2.beta1 (2013-02-01)
   - Collection returned by ArangoDB 1.2: { "id": "11734292", "hasMore": true, ... }
 
 * global variables are not automatically available anymore when starting the
-  arangod Javascript emergency console (i.e. ```arangod --console```).
+  arangod JavaScript emergency console (i.e. ```arangod --console```).
 
   Especially, the variables `db`, `edges`, and `internal` are not available
   anymore. `db` and `internal` can be made available in 1.2 by
@@ -20795,7 +20795,7 @@ v1.2.beta1 (2013-02-01)
 
 * issue #324: add limit optimization to AQL
 
-* removed arango-password script and added Javascript functionality to add/delete
+* removed arango-password script and added JavaScript functionality to add/delete
   users instead. The functionality is contained in module `users` and can be invoked
   as follows from arangosh and arangod:
   * require("users").save("name", "passwd");
@@ -20913,7 +20913,7 @@ v1.1.3 (2013-XX-XX)
 
 * fixed issue #381:  db._collection("_users").getIndexes();
 
-* fixed issue #379: arango-password fatal issue javscript.startup-directory
+* fixed issue #379: arango-password fatal issue javascript.startup-directory
 
 * fixed issue #372: Command-Line Options for the Authentication and Authorization
 
@@ -20971,7 +20971,7 @@ v1.1.2 (2013-01-20)
 
 * fixed issue #328: 1.1 compile warnings
 
-* fixed issue #327: Javascript parse errors in front end
+* fixed issue #327: JavaScript parse errors in front end
 
 
 v1.1.1 (2012-12-18)
@@ -21064,7 +21064,7 @@ v1.1.0 (2012-12-05)
 
 * added UPGRADING help text
 
-* fixed issue #284: fixed Javascript errors when adding edges/vertices without own
+* fixed issue #284: fixed JavaScript errors when adding edges/vertices without own
   attributes
 
 * fixed issue #283: AQL LENGTH() now works on documents, too
@@ -21251,14 +21251,14 @@ v1.1.beta1 (2012-10-24)
 * issue #153: edge collection should be a flag for a collection
   collections now have a type so that the distinction between document and edge
   collections can now be done at runtime using a collection's type value.
-  A collection's type can be queried in Javascript using the <collection>.type() method.
+  A collection's type can be queried in JavaScript using the <collection>.type() method.
 
   When new collections are created using db._create(), they will be document
   collections by default. When edge._create() is called, an edge collection will be created.
   To explicitly create a collection of a specific/different type, use the methods
   _createDocumentCollection() or _createEdgeCollection(), which are available for
   both the db and the edges object.
-  The Javascript objects ArangoEdges and ArangoEdgesCollection have been removed
+  The JavaScript objects ArangoEdges and ArangoEdgesCollection have been removed
   completely.
   All internal and test code has been adjusted for this, and client code
   that uses edges.* should also still work because edges is still there and creates
@@ -21281,7 +21281,7 @@ v1.1.beta1 (2012-10-24)
 
   The REST API for documents now offers an HTTP PATCH method to partially update
   documents. Overwriting/replacing documents is still available via the HTTP PUT method
-  as before. The Javascript API in the shell also offers a new update() method in extension to
+  as before. The JavaScript API in the shell also offers a new update() method in extension to
   the previously existing replace() method.
 
 
