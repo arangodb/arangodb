@@ -777,7 +777,7 @@ const replicatedStateSnapshotTransferSuite = function () {
 
       collection.insert([{_key: "test1"}, {_key: "test2"}]);
 
-      let documents = []
+      let documents = [];
       for (let counter = 0; counter < 10000; ++counter) {
         documents.push({_key: `foo${counter}`});
       }
@@ -821,7 +821,7 @@ const replicatedStateSnapshotTransferSuite = function () {
 
     testRecoveryAfterCompaction: function () {
       collection.insert([{_key: "test1"}, {_key: "test2"}]);
-      let documents = []
+      let documents = [];
       for (let counter = 0; counter < 10000; ++counter) {
         documents.push({_key: `foo${counter}`});
       }
