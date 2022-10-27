@@ -86,7 +86,7 @@ copies take over, usually without an error being reported.
 @RESTBODYPARAM{writeConcern,integer,optional,int64}
 Write concern for this collection (default: 1).
 It determines how many copies of each shard are required to be
-in sync on the different DB-Servers. If there are less then these many copies
+in sync on the different DB-Servers. If there are less than these many copies
 in the cluster a shard will refuse to write. Writes to shards with enough
 up-to-date copies will succeed at the same time however. The value of
 *writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
