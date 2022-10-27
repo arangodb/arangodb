@@ -36,10 +36,13 @@ Whether an error occurred. `false` in this case.
 @RESTREPLYBODY{code,integer,required,}
 The status code. `200` in this case.
 
-@RESTRETURNCODE{400} if the request contained an invalid body
+@RESTRETURNCODE{400}
+if the request contained an invalid body
 
-@RESTRETURNCODE{412} if the request was sent to an Agency node
+@RESTRETURNCODE{412}
+if the request was sent to an Agency node
 
-@RESTRETURNCODE{504} if the request timed out while enabling the maintenance mode
+@RESTRETURNCODE{504}
+if the request timed out while enabling the maintenance mode
 
 @endDocuBlock

@@ -34,10 +34,13 @@ The mode of the DB-Server. The value is `"maintenance"`.
 Until what date and time the maintenance mode currently lasts, in the
 ISO 8601 date/time format.
 
-@RESTRETURNCODE{400} if the request contained an invalid body
+@RESTRETURNCODE{400}
+if the request contained an invalid body
 
-@RESTRETURNCODE{412} if the request was sent to an Agent node
+@RESTRETURNCODE{412}
+if the request was sent to an Agent node
 
-@RESTRETURNCODE{504} if the request timed out while enabling the maintenance mode
+@RESTRETURNCODE{504}
+if the request timed out while enabling the maintenance mode
 
 @endDocuBlock
