@@ -9,7 +9,7 @@
     {
       "name": "community",
       "displayName": "Build ArangoDB Community Edition",
-      "binaryDir": "${sourceDir}/build/community",
+      "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "USE_ENTERPRISE": "Off",
@@ -19,8 +19,8 @@
     },
     {
       "name": "enterprise",
+      "inherits": "community",
       "displayName": "Build ArangoDB Enterprise Edition",
-      "binaryDir": "${sourceDir}/build/enterprise",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "USE_ENTERPRISE": "On",
@@ -32,7 +32,6 @@
       "name": "community-developer",
       "inherits": "community",
       "displayName": "Build ArangoDB Community Edition (Developer Build)",
-      "binaryDir": "${sourceDir}/build/community-developer",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "USE_IPO": "Off",
@@ -45,7 +44,6 @@
       "name": "enterprise-developer",
       "inherits": "enterprise",
       "displayName": "Build ArangoDB Enterprise Edition (Developer Build)",
-      "binaryDir": "${sourceDir}/build/enterprise-developer",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "USE_IPO": "Off",
@@ -58,7 +56,6 @@
       "name": "community-developer-tsan",
       "inherits": "community-developer",
       "displayName": "Build ArangoDB Community Edition (TSAN Build)",
-      "binaryDir": "${sourceDir}/build/community-developer-tsan",
       "cacheVariables": {
         "CMAKE_CXX_FLAGS": "-fsanitize=thread"
       }
@@ -67,7 +64,6 @@
       "name": "enterprise-developer-tsan",
       "inherits": "enterprise-developer",
       "displayName": "Build ArangoDB Enterprise Edition (TSAN Build)",
-      "binaryDir": "${sourceDir}/build/enterprise-developer-tsan",
       "cacheVariables": {
         "CMAKE_CXX_FLAGS": "-fsanitize=thread"
       }
@@ -76,7 +72,6 @@
       "name": "community-developer-asan-ubsan",
       "inherits": "community-developer",
       "displayName": "Build ArangoDB Community Edition (ASAN and UBSAN Build)",
-      "binaryDir": "${sourceDir}/build/community-developer-asan-ubsan",
       "cacheVariables": {
         "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fno-sanitize-address-use-after-scope -fno-sanitize=alignment -fno-var-tracking-assignments -fno-sanitize=vptr"
       }
@@ -85,7 +80,6 @@
       "name": "enterprise-developer-asan-ubsan",
       "inherits": "enterprise-developer",
       "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build)",
-      "binaryDir": "${sourceDir}/build/enterprise-developer-asan-ubsan",
       "cacheVariables": {
         "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fno-sanitize-address-use-after-scope -fno-sanitize=alignment -fno-var-tracking-assignments -fno-sanitize=vptr"
       }
