@@ -1081,7 +1081,8 @@ function collectionCountsSuiteNewFormat () {
 }
 
 let res = request({ method: "GET", url: getCoordinators()[0].url + "/_admin/debug/failat" });
-if (res.body === "true") {
+// these tests only make sense with the old replication protocol
+if (res.body === "true" && db._properties().replicationVersion !== "2") {
   jsunity.run(collectionCountsSuiteOldFormat);
   jsunity.run(collectionCountsSuiteNewFormat);
 }

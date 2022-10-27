@@ -672,26 +672,14 @@ void ClusterMethods::realNameFromSmartName(std::string&) {}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a shard distribution for a new collection, the list
 /// dbServers must be a list of DBserver ids to distribute across.
-/// If this list is empty, the complete current list of DBservers is
-/// fetched from ClusterInfo and with shuffle to mix it up.
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::shared_ptr<ShardMap> DistributeShardsEvenly(
     ClusterInfo& ci, uint64_t numberOfShards, uint64_t replicationFactor,
-    std::vector<std::string>& dbServers, bool warnAboutReplicationFactor) {
+    std::vector<std::string> const& dbServers,
+    bool warnAboutReplicationFactor) {
   auto shards = std::make_shared<ShardMap>();
-
-  if (dbServers.empty()) {
-    ci.loadCurrentDBServers();
-    dbServers = ci.getCurrentDBServers();
-    if (dbServers.empty()) {
-      return shards;
-    }
-
-    std::random_device rd;
-    std::mt19937 g(rd());
-    std::shuffle(dbServers.begin(), dbServers.end(), g);
-  }
+  ADB_PROD_ASSERT(not dbServers.empty());
 
   // mop: distribute SatelliteCollections on all servers
   if (replicationFactor == 0) {
@@ -701,9 +689,24 @@ static std::shared_ptr<ShardMap> DistributeShardsEvenly(
   // fetch a unique id for each shard to create
   uint64_t const id = ci.uniqid(numberOfShards);
 
-  size_t leaderIndex = 0;
-  size_t followerIndex = 0;
+  // Example: Servers: A B C D E F G H I (9)
+  // Replication Factor 3, k = 9 / gcd(3, 9) = 3
+  // A B C
+  // D E F
+  // G H I  <- now we do an additional shift
+  // B C D
+  // E F G
+  // H I A  <- shift
+  // C D E
+  // F G H
+  // I A B
+
+  size_t k = dbServers.size() / std::gcd(replicationFactor, dbServers.size());
+  size_t offset = 0;
   for (uint64_t i = 0; i < numberOfShards; ++i) {
+    if (i % k == 0) {
+      offset += 1;
+    }
     // determine responsible server(s)
     std::vector<std::string> serverIds;
     for (uint64_t j = 0; j < replicationFactor; ++j) {
@@ -715,27 +718,14 @@ static std::shared_ptr<ShardMap> DistributeShardsEvenly(
         }
         break;
       }
-      std::string candidate;
-      // mop: leader
-      if (serverIds.empty()) {
-        candidate = dbServers[leaderIndex++];
-        if (leaderIndex >= dbServers.size()) {
-          leaderIndex = 0;
-        }
-      } else {
-        do {
-          candidate = dbServers[followerIndex++];
-          if (followerIndex >= dbServers.size()) {
-            followerIndex = 0;
-          }
-        } while (candidate == serverIds[0]);  // mop: ignore leader
-      }
+
+      auto const& candidate = dbServers[offset % dbServers.size()];
+      offset += 1;
       serverIds.push_back(candidate);
     }
 
     // determine shard id
     std::string shardId = "s" + StringUtils::itoa(id + i);
-
     shards->try_emplace(shardId, serverIds);
   }
 
@@ -973,15 +963,13 @@ futures::Future<OperationResult> revisionOnCoordinator(
            VPackSlice answer) -> void {
           if (answer.isObject()) {
             VPackSlice r = answer.get("revision");
-            if (r.isString()) {
-              VPackValueLength len;
-              char const* p = r.getString(len);
-              RevisionId cmp = RevisionId::fromString(p, len, false);
+            if (r.isString() || r.isInteger()) {
+              RevisionId cmp = RevisionId::fromSlice(r);
               RevisionId rid = RevisionId::fromSlice(builder.slice());
               if (cmp != RevisionId::max() && cmp > rid) {
                 // get the maximum value
                 builder.clear();
-                builder.add(VPackValue(cmp.id()));
+                builder.add(VPackValue(cmp.toString()));
               }
               return;
             }
@@ -1074,7 +1062,7 @@ futures::Future<OperationResult> checksumOnCoordinator(
       builder.clear();
       VPackObjectBuilder b(&builder);
       builder.add("checksum", VPackValue(checksum));
-      builder.add("revision", VPackValue(rid.id()));
+      builder.add("revision", VPackValue(rid.toString()));
     };
     return handleResponsesFromAllShards(options, results, handler, pre);
   };

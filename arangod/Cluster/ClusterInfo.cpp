@@ -43,6 +43,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Cluster/AgencyCache.h"
@@ -705,6 +706,13 @@ void ClusterInfo::logAgencyDump() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t ClusterInfo::uniqid(uint64_t count) {
+  TRI_IF_FAILURE("deterministic-cluster-wide-uniqid") {
+    // we want to use value range which HLC encoded starts with a digit.
+    // 54 * 64 ^ 3 HLC encoded is "0---"
+    static std::atomic<uint64_t> idCounter = 54 * 64 * 64 * 64;
+    return idCounter.fetch_add(1);
+  }
+
   MUTEX_LOCKER(mutexLocker, _idLock);
 
   if (_uniqid._currentValue + count - 1 <= _uniqid._upperValue) {
@@ -1632,7 +1640,10 @@ void ClusterInfo::loadPlan() {
           auto col = newShards.find(
               std::to_string(colPair.second.collection->id().id()));
           if (col != newShards.end()) {
-            if (col->second->size() == 0) {
+            auto logicalColToBeCreated = colPair.second.collection;
+            if (col->second->size() == 0 ||
+                (logicalColToBeCreated->isSmart() &&
+                 logicalColToBeCreated->type() == TRI_COL_TYPE_EDGE)) {
               // Can happen for smart edge collections. But in this case we
               // can ignore the collection.
               continue;
@@ -6093,6 +6104,10 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
         auto& leader = it->second->currentTerm->leader->serverId;
         auto& participants = it->second->participantsConfig.participants;
         result = std::make_shared<std::vector<ServerID>>();
+
+        // TODO Sanity check, can be removed later
+        TRI_ASSERT(participants.size() < 1000000);
+
         result->reserve(participants.size());
         // participants is an unordered map, but the resulting list requires
         // that the leader is the first entry!
@@ -6221,9 +6236,6 @@ bool ClusterInfo::getResponsibleServersReplication2(
       THROW_ARANGO_EXCEPTION(r);
     }
   }
-
-  auto& clusterFeature = _server.getFeature<ClusterFeature>();
-  auto& agencyCache = clusterFeature.agencyCache();
 
   bool isReplicationTwo = false;
   while (true) {

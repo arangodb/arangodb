@@ -29,11 +29,13 @@ var ERRORS = require("@arangodb").errors;
 var internal = require('internal');
 var fs = require("fs");
 var isCluster = require("internal").isCluster();
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function iResearchFeatureAqlServerSideTestSuite () {
+function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
   return {
     setUpAll : function () {
     },
@@ -52,8 +54,20 @@ function iResearchFeatureAqlServerSideTestSuite () {
       try { db._dropView(docsViewName); } catch(e) {}
       internal.debugSetFailAt('HashIndexAlwaysLast'); 
       let docsCollection = db._create(docsCollectionName);
-      let docsView = db._createView(docsViewName, "arangosearch", {
-        "links": {
+      let docsView;
+      let i;
+      if (isSearchAlias) {
+        i = docsCollection.ensureIndex({
+          type: "inverted", "includeAllFields": true
+        });
+        docsView = db._createView(docsViewName, "search-alias", {
+          indexes: [
+            {collection: docsCollection.name(), index: i.name}
+          ]
+        });
+      } else {
+        docsView = db._createView(docsViewName, "arangosearch", {
+          "links": {
             "docs": {
               "analyzers": ["identity"],
               "fields": {},
@@ -62,9 +76,10 @@ function iResearchFeatureAqlServerSideTestSuite () {
               "trackListPositions": false
             }
           } ,
-        consolidationIntervalMsec:0,
-        cleanupIntervalStep:0
-      });
+          consolidationIntervalMsec:0,
+          cleanupIntervalStep:0
+        });
+      }
       let docs = [];
       for (let i = 0; i < 10; i++) {
         let docId = "TestDoc" + i;
@@ -148,8 +163,17 @@ function iResearchFeatureAqlServerSideTestSuite () {
       try { db._dropView(docsViewName); } catch(e) {}
       internal.debugSetFailAt('HashIndexAlwaysLast'); 
       let docsCollection = db._create(docsCollectionName);
-      let docsView = db._createView(docsViewName, "arangosearch", {
-        "links": {
+      let docsView;
+      if (isSearchAlias) {
+        let i = docsCollection.ensureIndex({type: "inverted", "includeAllFields": true});
+        docsView = db._createView(docsViewName, "search-alias", {
+          indexes: [
+            {collection: docsCollection.name(), index: i.name}
+          ]
+        });
+      } else {
+        docsView = db._createView(docsViewName, "arangosearch", {
+          "links": {
             "docs": {
               "analyzers": ["identity"],
               "fields": {},
@@ -157,11 +181,11 @@ function iResearchFeatureAqlServerSideTestSuite () {
               "storeValues": "id",
               "trackListPositions": false
             }
-          } ,
-        consolidationIntervalMsec:0,
-        cleanupIntervalStep:0
-      });
-
+          },
+          consolidationIntervalMsec: 0,
+          cleanupIntervalStep: 0
+        });
+      }
       let docs = [];
       for (let i = 0; i < 10; i++) {
         let docId = "TestDoc" + i;
@@ -210,8 +234,17 @@ function iResearchFeatureAqlServerSideTestSuite () {
       try { db._dropView(docsViewName); } catch(e) {}
       internal.debugSetFailAt('HashIndexAlwaysLast'); 
       let docsCollection = db._create(docsCollectionName);
-      let docsView = db._createView(docsViewName, "arangosearch", {
-        "links": {
+      let docsView;
+      if (isSearchAlias) {
+        let i = docsCollection.ensureIndex({type: "inverted", "includeAllFields": true});
+        docsView = db._createView(docsViewName, "search-alias", {
+          indexes: [
+            {collection: docsCollection.name(), index: i.name}
+          ]
+        });
+      } else {
+        docsView = db._createView(docsViewName, "arangosearch", {
+          "links": {
             "docs": {
               "analyzers": ["identity"],
               "fields": {},
@@ -219,11 +252,11 @@ function iResearchFeatureAqlServerSideTestSuite () {
               "storeValues": "id",
               "trackListPositions": false
             }
-          } ,
-        consolidationIntervalMsec:0,
-        cleanupIntervalStep:0
-      });
-
+          },
+          consolidationIntervalMsec: 0,
+          cleanupIntervalStep: 0
+        });
+      }
       let docs = [];
       for (let i = 0; i < 10; i++) {
         let docId = "TestDoc" + i;
@@ -272,8 +305,18 @@ function iResearchFeatureAqlServerSideTestSuite () {
       let docsCollection = db._create(docsCollectionName);
       docsCollection.save({"some_field": "some_value"});
       try {
-        let docsView = db._createView(docsViewName, "arangosearch", {
-          "links": {
+        if (isSearchAlias) {
+          let i = docsCollection.ensureIndex({type: "inverted", "includeAllFields": true});
+          let docsView = db._createView(docsViewName, "search-alias", {
+            indexes: [
+              {collection: docsCollection.name(), index: i.name}
+            ]
+          });
+          let properties = docsView.properties();
+          assertEqual(properties.indexes, [{collection: docsCollection.name(), index: i.name}]);
+        } else {
+          let docsView = db._createView(docsViewName, "arangosearch", {
+            "links": {
               "docs": {
                 "analyzers": ["identity"],
                 "fields": {},
@@ -281,13 +324,14 @@ function iResearchFeatureAqlServerSideTestSuite () {
                 "storeValues": "id",
                 "trackListPositions": false
               }
-            } ,
-          consolidationIntervalMsec:0,
-          cleanupIntervalStep:0
-        });
-        let properties = docsView.properties();
-        assertTrue(Object === properties.links.constructor);
-        assertEqual(1, Object.keys(properties.links).length);
+            },
+            consolidationIntervalMsec: 0,
+            cleanupIntervalStep: 0
+          });
+          let properties = docsView.properties();
+          assertTrue(Object === properties.links.constructor);
+          assertEqual(1, Object.keys(properties.links).length);
+        }
       } finally {
         db._drop(docsCollectionName);
         db._dropView(docsViewName);
@@ -306,8 +350,18 @@ function iResearchFeatureAqlServerSideTestSuite () {
       let docsCollection = db._create(docsCollectionName);
       docsCollection.save({"some_field": "some_value"});
       try {
-        let docsView = db._createView(docsViewName, "arangosearch", {
-          "links": {
+        if (isSearchAlias) {
+          let i = docsCollection.ensureIndex({type: "inverted", "includeAllFields": true});
+          let docsView = db._createView(docsViewName, "search-alias", {
+            indexes: [
+              {collection: docsCollection.name(), index: i.name}
+            ]
+          });
+          let properties = docsView.properties();
+          assertEqual(properties.indexes, [{collection: docsCollection.name(), index: i.name}]);
+        } else {
+          let docsView = db._createView(docsViewName, "arangosearch", {
+            "links": {
               "docs": {
                 "analyzers": ["identity"],
                 "fields": {},
@@ -315,15 +369,15 @@ function iResearchFeatureAqlServerSideTestSuite () {
                 "storeValues": "id",
                 "trackListPositions": false
               }
-            } ,
-          consolidationIntervalMsec:0,
-          cleanupIntervalStep:0
-        });
-        let properties = docsView.properties();
-        assertTrue(Object === properties.links.constructor);
-        assertEqual(1, Object.keys(properties.links).length);
-        
-        internal.debugSetFailAt('ArangoSearch::BlockInsertsWithoutIndexCreationHint'); 
+            },
+            consolidationIntervalMsec: 0,
+            cleanupIntervalStep: 0
+          });
+          let properties = docsView.properties();
+          assertTrue(Object === properties.links.constructor);
+          assertEqual(1, Object.keys(properties.links).length);
+        }
+        internal.debugSetFailAt('ArangoSearch::BlockInsertsWithoutIndexCreationHint');
         // now regular save to collection should trigger fail on index insert
         // as there should be no hint!
         try {
@@ -420,6 +474,27 @@ function iResearchFeatureAqlServerSideTestSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(iResearchFeatureAqlServerSideTestSuite);
+function arangoSearchFeatureAqlServerSideTestSuite() {
+  let suite = {};
+  deriveTestSuite(
+    iResearchFeatureAqlServerSideTestSuite(false),
+    suite,
+    "_arangosearch"
+  );
+  return suite;
+}
+
+function searchAliasFeatureAqlServerSideTestSuite() {
+  let suite = {};
+  deriveTestSuite(
+    iResearchFeatureAqlServerSideTestSuite(true),
+    suite,
+    "_search-alias"
+  );
+  return suite;
+}
+
+jsunity.run(arangoSearchFeatureAqlServerSideTestSuite);
+jsunity.run(searchAliasFeatureAqlServerSideTestSuite);
 
 return jsunity.done();

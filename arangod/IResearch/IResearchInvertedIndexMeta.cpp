@@ -126,12 +126,11 @@ const IResearchInvertedIndexMeta& IResearchInvertedIndexMeta::DEFAULT() {
   return meta;
 }
 
-IResearchInvertedIndexMeta::IResearchInvertedIndexMeta()
-    : _indexingContext{
-          std::make_unique<IResearchInvertedIndexMetaIndexingContext>(this,
-                                                                      false)} {
+IResearchInvertedIndexMeta::IResearchInvertedIndexMeta() {
   _analyzers[0] = FieldMeta::identity();
   _primitiveOffset = _analyzers.size();
+  _indexingContext =
+      std::make_unique<IResearchInvertedIndexMetaIndexingContext>(this, false);
 }
 
 // FIXME(Dronplane): make all constexpr defines consistent
@@ -1012,4 +1011,11 @@ void IResearchInvertedIndexMetaIndexingContext::addField(
 #endif
   }
 }
+
+std::string_view IResearchInvertedIndexMetaIndexingContext::collectionName()
+    const noexcept {
+  TRI_ASSERT(_meta);
+  return _meta->_collectionName;
+}
+
 }  // namespace arangodb::iresearch

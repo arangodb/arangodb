@@ -1,6 +1,95 @@
 devel
 -----
 
+* BTS-1070: Fixed query explain not dealing with an aggregate function without
+  arguments and the WINDOW node not being defined as an Ast node type name.
+
+* Solve a case of excessive memory consumption in certain AQL queries with
+  IN filters with very long lists. Free sub-iterators as soon as they are
+  exhausted.
+
+* Improved shard distribution during collection creation.
+
+* Change default output format of arangoexport from `json` to `jsonl`.
+
+* Added startup option `--query.log-failed` to optionally log all failed AQL
+  queries to the server log. The option is turned off by default.
+
+* Added startup option `--query.log-memory-usage-threshold` to optionally log
+  all AQL queries that have a peak memory usage larger than the configured
+  value. The default value is 4GB.
+
+* Added startup option `--query.max-artifact-log-length` to control the
+  maximum length of logged query strings and bind parameter values.
+  This allows truncating overly long query strings and bind parameter values
+  to a reasonable length. Previously the cutoff length was hard-coded.
+
+* Fixed GitHub issue #17291: Fixed a server crash which could occur in case an
+  AQL query using a PRUNE or FILTER statement, combined with UDFs (user defined
+  functions), got executed.
+
+* Improve cardinality estimate for AQL EnumerateCollectionNode in case a
+  `SORT RAND() LIMIT 1` is used. Here, the estimated number of items is at
+  most 1.
+
+* ES-1312: fix handling of reaching the WAL archive capacity limit.
+
+* BTS-941: The HTTP API now delivers the correct list of the collection's
+  shards in case a collection from an EnterpriseGraph, SmartGraph, Disjoint
+  EnterpriseGraph, Disjoint SmartGraph or SatelliteGraph is being used.
+
+* Log the documents counts on leader and follower shards at the end of each
+  successful shard synchronization.
+
+* Changed the encoding of revision ids returned by the following REST APIs:
+  - GET /_api/collection/<collection-name>/revision: the revision id was
+    previously returned as numeric value, and now it will be returned as
+    a string value with either numeric encoding or HLC-encoding inside.
+  - GET /_api/collection/<collection-name>/checksum: the revision id in
+    the "revision" attribute was previously encoded as a numeric value
+    in single server, and as a string in cluster. This is now unified so
+    that the "revision" attribute always contains a string value with
+    either numeric encoding or HLC-encoding inside.
+
+* Fixed handling of empty URL parameters in HTTP request handling.
+
+* Fixed diffing of completely non-overlapping revision trees, which could
+  lead to out-of-bounds reads at the right end of the first (smaller) tree.
+
+* Fixed aborting the server process if an exception was thrown in C++ code
+  that was invoked from the llhttp C code dispatcher. That dispatcher code
+  couldn't handle C++ exceptions properly.
+
+* Fixed BTS-1073: Fix encoding and decoding of revision ids in replication 
+  incremental sync protocol. Previously, the encoding of revision ids could 
+  be ambiguous under some circumstances, which could prevent shards from 
+  getting into sync.
+
+* Log better diagnosis information in case multiple servers in a cluster are
+  configured to use the same endpoint.
+
+* Fixed BTS-852 (user's saved queries used to disappear after updating user profile).
+
+* MDS-1016: When creating a new collection the fields "Number of Shards" and
+  "Replication factor" are greyed out now when the field "Distribute shards
+  like" is not empty.
+
+* MDS-1019: Make user search case-insensitive and allow search by name.
+
+* BTS-465: Added tests for RandomGenerator and warning that other options
+  for creating random values that are not Mersenne are deprecated.
+
+* BTS-1008: Update react-autocomplete-input to fix single letter collection bug
+  when creating a link in the views in the WebUI.
+
+* Improved optimization of functions to be covered by Traversals. Now more functions
+  should be optimized into the traversal, and some that are not valid should not be optimized
+  anymore. Fixes #16589.
+
+* BTS-908: Fixed WebUI GraphViewer not being able to create a new edge relation
+  between two nodes in cases where only one edge definition has been defined
+  inside the graph definition.
+
 * Fixed BTS-850: Fixed the removal of already deleted orphan collections out
   of a graph definition. The removal of an already deleted orphan collection
   out of a graph definition failed and has been rejected in case the
@@ -304,7 +393,6 @@ devel
 
 * Added more specific process exit codes for arangod and all client tools,
   and changed the executables' exit code for the following situations:
- 
   - an unknown startup option name is used: previously the exit code was 1.
     Now the exit code when using an invalid option is 3 (symbolic exit code
     name EXIT_INVALID_OPTION_NAME).
@@ -335,7 +423,6 @@ devel
   "underscore". We recommend always bundling your own copy of third-party
   modules as all previously included third-party modules are now considered
   deprecated and may be removed in future versions of ArangoD
- 
 * APM-84: Added option to spill intermediate AQL query results from RAM to
   disk when their size exceeds certain thresholds. Currently the only AQL
   operation that can make use of this is the SortExecutor (AQL SORT operation
