@@ -769,5 +769,5 @@ TEST(ActiveTransactionsQueueTEst, test_activeTransactions) {
   ASSERT_TRUE(activeTrx.erase(TransactionId{400}));
   ASSERT_EQ(activeTrx.getReleaseIndex(LogIndex{1000}), LogIndex{299});
   ASSERT_TRUE(activeTrx.erase(TransactionId{300}));
-  ASSERT_EQ(activeTrx.getReleaseIndex(LogIndex{1000}), LogIndex{399});
+  ASSERT_EQ(activeTrx.getReleaseIndex(LogIndex{1000}), LogIndex{1000});
 }
