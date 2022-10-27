@@ -6,6 +6,15 @@ devel
 
 * Upgrade bundled version of RocksDB to 7.7.
 
+* BTS-1070: Fixed query explain not dealing with an aggregate function without
+  arguments and the WINDOW node not being defined as an Ast node type name.
+
+* Solve a case of excessive memory consumption in certain AQL queries with
+  IN filters with very long lists. Free sub-iterators as soon as they are
+  exhausted.
+
+* Improved shard distribution during collection creation.
+
 * Change default output format of arangoexport from `json` to `jsonl`.
 
 * Added startup option `--query.log-failed` to optionally log all failed AQL
