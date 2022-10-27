@@ -40,8 +40,7 @@ DocumentFollowerState::DocumentFollowerState(
       _networkHandler(handlersFactory->createNetworkHandler(core->getGid())),
       _transactionHandler(
           handlersFactory->createTransactionHandler(core->getGid())),
-      _guardedData(std::move(core)),
-      _releaseIndex(LogIndex{0}) {}
+      _guardedData(std::move(core)) {}
 
 DocumentFollowerState::~DocumentFollowerState() = default;
 
@@ -80,7 +79,6 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
         if (result.fail()) {
           return result.result();
         }
-        self->_releaseIndex = result->releaseIndex;
         return self->populateLocalShard(result->documents);
       });
 }
@@ -105,13 +103,22 @@ auto DocumentFollowerState::applyEntries(
     }
 
     while (auto entry = ptr->next()) {
-      if (entry->first <= self->_releaseIndex) {
-        continue;
-      }
       auto doc = entry->second;
       auto res = self->_transactionHandler->applyEntry(doc);
       if (res.fail()) {
         return res;
+      }
+
+      if (doc.operation == OperationType::kAbortAllOngoingTrx) {
+        self->_activeTransactions.clear();
+      } else if (doc.operation == OperationType::kCommit ||
+          doc.operation == OperationType::kAbort) {
+        if (self->_activeTransactions.erase(doc.tid)) {
+          self->getStream()->release(self->_activeTransactions.getReleaseIndex());
+        }
+      } else {
+        self->_activeTransactions.emplace(doc.tid, entry->first);
+        self->getStream()->release(self->_activeTransactions.getReleaseIndex());
       }
     }
     return {TRI_ERROR_NO_ERROR};

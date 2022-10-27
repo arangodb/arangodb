@@ -76,9 +76,6 @@ auto DocumentStateHandlersFactory::createTransactionHandler(
 auto DocumentStateHandlersFactory::createTransaction(
     DocumentLogEntry const& doc, IDatabaseGuard const& dbGuard)
     -> std::shared_ptr<IDocumentStateTransaction> {
-  TRI_ASSERT(doc.operation != OperationType::kCommit &&
-             doc.operation != OperationType::kAbort);
-
   auto options = transaction::Options();
   options.isFollowerTransaction = true;
   options.allowImplicitCollectionsForWrite = true;

@@ -48,7 +48,7 @@ struct IDocumentStateTransactionHandler {
   virtual auto ensureTransaction(DocumentLogEntry const& doc)
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
   virtual void removeTransaction(TransactionId tid) = 0;
-  virtual auto getActiveTransactions() const -> TransactionMap const& = 0;
+  virtual auto getUnfinishedTransactions() const -> TransactionMap const& = 0;
 };
 
 class DocumentStateTransactionHandler
@@ -61,7 +61,7 @@ class DocumentStateTransactionHandler
   auto ensureTransaction(DocumentLogEntry const& doc)
       -> std::shared_ptr<IDocumentStateTransaction> override;
   void removeTransaction(TransactionId tid) override;
-  auto getActiveTransactions() const -> TransactionMap const& override;
+  auto getUnfinishedTransactions() const -> TransactionMap const& override;
 
  private:
   auto getTrx(TransactionId tid) -> std::shared_ptr<IDocumentStateTransaction>;
@@ -71,6 +71,31 @@ class DocumentStateTransactionHandler
   std::unique_ptr<IDatabaseGuard> _dbGuard;
   std::shared_ptr<IDocumentStateHandlersFactory> _factory;
   TransactionMap _transactions;
+};
+
+/**
+ * Keeps track of active transactions.
+ * Uses a deque instead of a set because log indices are always given in
+ * increasing order.
+ */
+class ActiveTransactionsQueue {
+  enum Status { ACTIVE, INACTIVE };
+
+ public:
+  LogIndex getReleaseIndex() const;
+  bool erase(TransactionId const& tid);
+  void emplace(TransactionId tid, LogIndex index);
+  std::size_t size() const noexcept;
+  auto getTransactions() const
+      -> std::unordered_map<TransactionId, LogIndex> const&;
+  void clear();
+
+ private:
+  void popInactive();
+
+ private:
+  std::unordered_map<TransactionId, LogIndex> _transactions;
+  std::deque<std::pair<LogIndex, Status>> _logIndices;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

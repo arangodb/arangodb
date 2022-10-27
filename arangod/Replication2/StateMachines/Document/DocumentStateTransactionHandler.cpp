@@ -146,15 +146,13 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
 
 auto DocumentStateTransactionHandler::ensureTransaction(
     DocumentLogEntry const& doc) -> std::shared_ptr<IDocumentStateTransaction> {
+  TRI_ASSERT(doc.operation != OperationType::kAbortAllOngoingTrx);
+
   auto tid = doc.tid;
   auto trx = getTrx(tid);
   if (trx != nullptr) {
     return trx;
   }
-
-  TRI_ASSERT(doc.operation != OperationType::kCommit);
-  TRI_ASSERT(doc.operation != OperationType::kAbort);
-  TRI_ASSERT(doc.operation != OperationType::kAbortAllOngoingTrx);
 
   trx = _factory->createTransaction(doc, *_dbGuard);
   _transactions.emplace(tid, trx);
@@ -165,9 +163,75 @@ void DocumentStateTransactionHandler::removeTransaction(TransactionId tid) {
   _transactions.erase(tid);
 }
 
-auto DocumentStateTransactionHandler::getActiveTransactions() const
+auto DocumentStateTransactionHandler::getUnfinishedTransactions() const
     -> TransactionMap const& {
   return _transactions;
+}
+
+LogIndex ActiveTransactionsQueue::getReleaseIndex() const {
+  if (_logIndices.empty()) {
+    return LogIndex{0};
+  }
+  return _logIndices.front().first.saturatedDecrement(1);
+}
+
+/**
+ * @brief Remove a transaction from the active transactions map and update the
+ * log indices list.
+ * @return true if the transaction was found and removed, false otherwise
+ */
+bool ActiveTransactionsQueue::erase(TransactionId const& tid) {
+  auto it = _transactions.find(tid);
+  if (it == std::end(_transactions)) {
+    return false;
+  }
+
+  auto deactivateIdx =
+      std::lower_bound(std::begin(_logIndices), std::end(_logIndices),
+                       std::make_pair(it->second, Status::ACTIVE));
+  TRI_ASSERT(deactivateIdx != std::end(_logIndices) &&
+             deactivateIdx->first == it->second);
+  deactivateIdx->second = Status::INACTIVE;
+  _transactions.erase(it);
+
+  popInactive();
+
+  return true;
+}
+
+/**
+ * @brief Try to insert an entry into the active transactions map. If the entry
+ * is new, mark the log index as active.
+ */
+void ActiveTransactionsQueue::emplace(TransactionId tid, LogIndex index) {
+  if (_transactions.try_emplace(tid, index).second) {
+    _logIndices.emplace_back(index, Status::ACTIVE);
+  }
+  popInactive();
+}
+
+/**
+ * We should not leave the deque empty, even if the last transaction is
+ * inactive. This ensures that we always have a release index to report.
+ */
+void ActiveTransactionsQueue::popInactive() {
+  while (_logIndices.size() > 1 && _logIndices.front().second == INACTIVE) {
+    _logIndices.pop_front();
+  }
+}
+
+std::size_t ActiveTransactionsQueue::size() const noexcept {
+  return _transactions.size();
+}
+
+auto ActiveTransactionsQueue::getTransactions() const
+    -> std::unordered_map<TransactionId, LogIndex> const& {
+  return _transactions;
+}
+
+void ActiveTransactionsQueue::clear() {
+  _transactions.clear();
+  _logIndices.clear();
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

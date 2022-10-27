@@ -807,10 +807,35 @@ const replicatedStateSnapshotTransferSuite = function () {
       syncShardsWithLogs(database);
 
       // The new follower should've executed a snapshot transfer.
-      const allKeys = ["test1", "test2"];
-      allKeys.push(...documents.map(doc => doc._key));
-      let bulk = sh.getBulkDocuments(lh.getServerUrl(newParticipant), database, shardId, allKeys);
-      let keysSet = new Set(allKeys);
+      const checkKeys = ["test1", "test2"];
+      // Skipping some documents to save time
+      checkKeys.push(...documents.filter((doc, idx) => idx % 100 === 0).map(doc => doc._key));
+      let bulk = sh.getBulkDocuments(lh.getServerUrl(newParticipant), database, shardId, checkKeys);
+      let keysSet = new Set(checkKeys);
+      for (let doc of bulk) {
+        assertFalse(doc.hasOwnProperty("error"), `Expected no error, got ${JSON.stringify(doc)}`);
+        assertTrue(keysSet.has(doc._key));
+        keysSet.delete(doc._key);
+      }
+    },
+
+    testRecoveryAfterCompaction: function () {
+      collection.insert([{_key: "test1"}, {_key: "test2"}]);
+      let documents = []
+      for (let counter = 0; counter < 10000; ++counter) {
+        documents.push({_key: `foo${counter}`});
+      }
+      for (let idx = 0; idx < documents.length; ++idx) {
+        collection.insert(documents[idx]);
+      }
+
+      lh.bumpTermOfLogsAndWaitForConfirmation(database, collection);
+
+      // Skipping some documents to save time
+      let checkKeys = documents.filter((doc, idx) => idx % 100 === 0).map(doc => doc._key);
+      let {leader} = lh.getReplicatedLogLeaderPlan(database, logId);
+      let bulk = sh.getBulkDocuments(lh.getServerUrl(leader), database, shardId, checkKeys);
+      let keysSet = new Set(checkKeys);
       for (let doc of bulk) {
         assertFalse(doc.hasOwnProperty("error"), `Expected no error, got ${JSON.stringify(doc)}`);
         assertTrue(keysSet.has(doc._key));

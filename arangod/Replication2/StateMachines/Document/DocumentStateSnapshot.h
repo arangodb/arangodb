@@ -30,13 +30,11 @@
 
 namespace arangodb::replication2::replicated_state::document {
 struct Snapshot {
-  LogIndex releaseIndex;
   velocypack::SharedSlice documents;
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, Snapshot& s) {
-    return f.object(s).fields(f.field("releaseIndex", s.releaseIndex),
-                              f.field("documents", s.documents));
+    return f.object(s).fields(f.field("documents", s.documents));
   }
 };
 }  // namespace arangodb::replication2::replicated_state::document

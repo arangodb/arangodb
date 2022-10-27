@@ -25,6 +25,7 @@
 
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
 #include "Basics/UnshackledMutex.h"
 
@@ -56,31 +57,9 @@ struct DocumentLeaderState
                           OperationType operation, TransactionId transactionId,
                           ReplicationOptions opts) -> futures::Future<LogIndex>;
 
-  std::size_t getActiveTransactionsCount() const {
-    return _activeTransactions.getLockedGuard()->transactions.size();
+  std::size_t getActiveTransactionsCount() const noexcept {
+    return _activeTransactions.getLockedGuard()->size();
   }
-
-  LogIndex getReleaseIndex() const {
-    return _activeTransactions.getLockedGuard()->getReleaseIndex();
-  }
-
-  /**
-   * Keeps track of active transactions.
-   * Uses a deque instead of a set because log indices increase monotonically.
-   */
-  struct ActiveTransactions {
-    enum Status { ACTIVE, INACTIVE };
-
-    std::unordered_map<TransactionId, LogIndex> transactions;
-    std::deque<std::pair<LogIndex, Status>> logIndices;
-
-    auto getReleaseIndex() const -> LogIndex;
-    bool erase(TransactionId const& tid);
-    void emplace(TransactionId tid, LogIndex index);
-
-   private:
-    void popInactive();
-  };
 
   LoggerContext const loggerContext;
   std::string_view const shardId;
@@ -97,7 +76,7 @@ struct DocumentLeaderState
 
   std::shared_ptr<IDocumentStateHandlersFactory> _handlersFactory;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
-  Guarded<ActiveTransactions, std::mutex> _activeTransactions;
+  Guarded<ActiveTransactionsQueue, std::mutex> _activeTransactions;
   transaction::IManager& _transactionManager;
   std::atomic_bool _isResigning;
 };

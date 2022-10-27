@@ -55,7 +55,7 @@ auto DocumentLeaderState::resign() && noexcept
   _isResigning.store(true);
 
   _activeTransactions.doUnderLock([&](auto& activeTransactions) {
-    for (auto const& trx : activeTransactions.transactions) {
+    for (auto const& trx : activeTransactions.getTransactions()) {
       try {
         _transactionManager.abortManagedTrx(trx.first, gid.database);
       } catch (...) {
@@ -110,7 +110,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     auto stream = self->getStream();
     stream->insert(doc);
 
-    for (auto& [tid, trx] : transactionHandler->getActiveTransactions()) {
+    for (auto& [tid, trx] : transactionHandler->getUnfinishedTransactions()) {
       try {
         // the log entries contain follower ids, which is fine since during
         // recovery we apply the entries like a follower, but we have to
@@ -151,7 +151,7 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
                         // returning a dummy index
   }
 
-  auto stream = getStream();
+  auto const& stream = getStream();
   auto entry =
       DocumentLogEntry{std::string(shardId), operation, std::move(payload),
                        transactionId.asFollowerTransactionId()};
@@ -172,60 +172,6 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
   }
 
   return LogIndex{idx};
-}
-
-auto DocumentLeaderState::ActiveTransactions::getReleaseIndex() const
-    -> LogIndex {
-  if (logIndices.empty()) {
-    return LogIndex{0};
-  }
-  return logIndices.front().first.saturatedDecrement(1);
-}
-
-/**
- * @brief Remove a transaction from the active transactions map and update the
- * log indices list.
- * @return true if the transaction was found and removed, false otherwise
- */
-bool DocumentLeaderState::ActiveTransactions::erase(TransactionId const& tid) {
-  auto it = transactions.find(tid);
-  if (it == std::end(transactions)) {
-    return false;
-  }
-
-  auto deactivateIdx =
-      std::lower_bound(std::begin(logIndices), std::end(logIndices),
-                       std::make_pair(it->second, Status::ACTIVE));
-  TRI_ASSERT(deactivateIdx != std::end(logIndices) &&
-             deactivateIdx->first == it->second);
-  deactivateIdx->second = Status::INACTIVE;
-  transactions.erase(it);
-
-  popInactive();
-
-  return true;
-}
-
-/**
- * @brief Try to insert an entry into the active transactions map. If the entry
- * is new, mark the log index as active.
- */
-void DocumentLeaderState::ActiveTransactions::emplace(TransactionId tid,
-                                                      LogIndex index) {
-  if (transactions.try_emplace(tid, index).second) {
-    logIndices.emplace_back(index, Status::ACTIVE);
-  }
-  popInactive();
-}
-
-/**
- * We should not leave the deque empty, even if the last transaction is
- * inactive. This ensures that we always have a release index to report.
- */
-void DocumentLeaderState::ActiveTransactions::popInactive() {
-  while (logIndices.size() > 1 && logIndices.front().second == INACTIVE) {
-    logIndices.pop_front();
-  }
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

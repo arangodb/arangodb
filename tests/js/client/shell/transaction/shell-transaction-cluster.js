@@ -54,23 +54,6 @@ function transactionReplication2ReplicateOperationSuite() {
   const rc = replicatedLogsHelper.dbservers.length;
   var c = null;
 
-  const bumpTermOfLogsAndWaitForConfirmation = (col) => {
-    const shards = col.shards();
-    const stateMachineIds = shards.map(s => s.replace(/^s/, ''));
-
-    const terms = Object.fromEntries(
-      stateMachineIds.map(stateId => [stateId, replicatedLogsHelper.readReplicatedLogAgency(dbn, stateId).plan.currentTerm.term]),
-    );
-
-    const increaseTerm = ([stateId, term]) => replicatedLogsHelper.replicatedLogSetPlanTerm(dbn, stateId, term + 1);
-
-    Object.entries(terms).forEach(increaseTerm);
-
-    const leaderReady = ([stateId, term]) => replicatedLogsPredicates.replicatedLogLeaderEstablished(dbn, stateId, term, []);
-
-    Object.entries(terms).forEach(x => replicatedLogsHelper.waitFor(leaderReady(x)));
-  };
-
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
     replicatedLogsHelper.testHelperFunctions(dbn, {replicationVersion: "2"});
 
@@ -213,7 +196,7 @@ function transactionReplication2ReplicateOperationSuite() {
       tc.save({_key: 'foo'});
       tc.save({_key: 'bar'});
 
-      bumpTermOfLogsAndWaitForConfirmation(c);
+      replicatedLogsHelper.bumpTermOfLogsAndWaitForConfirmation(dbn, c);
 
       let committed = false;
       try {
