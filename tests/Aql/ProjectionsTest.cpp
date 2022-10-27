@@ -25,8 +25,12 @@
 #include "Basics/Common.h"
 
 #include "gtest/gtest.h"
+#include "Mocks/Servers.h"
+#include "Mocks/StorageEngineMock.h"
 
 #include "Aql/Projections.h"
+#include "Indexes/IndexIterator.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -34,6 +38,7 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::tests;
 
 TEST(ProjectionsTest, buildEmpty) {
   Projections p;
@@ -379,7 +384,7 @@ TEST(ProjectionsTest, toVelocyPackFromDocumentSimple1) {
   }
 }
 
-TEST(ProjectionsTest, toVelocyPackFromDocument) {
+TEST(ProjectionsTest, toVelocyPackFromDocumentComplex) {
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
       AttributeNamePath(std::vector<std::string>({"a", "b", "c"})),
       AttributeNamePath(std::vector<std::string>({"a", "b", "d"})),
@@ -467,5 +472,139 @@ TEST(ProjectionsTest, toVelocyPackFromDocument) {
     EXPECT_TRUE(s.get({"a", "d"}).isObject());
     EXPECT_TRUE(s.get({"a", "d", "e", "f"}).isInteger());
     EXPECT_TRUE(s.get({"a", "z"}).isString());
+  }
+}
+
+TEST(ProjectionsTest, toVelocyPackFromIndexSimple) {
+  mocks::MockAqlServer server;
+  auto& vocbase = server.getSystemDatabase();
+  auto collectionJson = velocypack::Parser::fromJson("{\"name\":\"test\"}");
+  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+
+  bool created;
+  auto indexJson = velocypack::Parser::fromJson(
+      "{\"type\":\"hash\", \"fields\":[\"a\", \"b\"]}");
+  auto index = logicalCollection->createIndex(indexJson->slice(), created);
+
+  std::vector<arangodb::aql::AttributeNamePath> attributes = {
+      AttributeNamePath(std::vector<std::string>({"a"})),
+      AttributeNamePath(std::vector<std::string>({"b"})),
+  };
+  Projections p(std::move(attributes));
+
+  p.setCoveringContext(DataSourceId(1), index);
+
+  velocypack::Builder out;
+
+  auto prepareResult = [&p](std::string_view json, velocypack::Builder& out) {
+    auto document = velocypack::Parser::fromJson(json.data(), json.size());
+    out.clear();
+    out.openObject();
+    auto data = IndexIterator::SliceCoveringData(document->slice());
+    p.toVelocyPackFromIndex(out, data, nullptr);
+    out.close();
+    return out.slice();
+  };
+
+  EXPECT_TRUE(index->covers(p));
+
+  {
+    VPackSlice s = prepareResult("[null,1]", out);
+    EXPECT_EQ(2, s.length());
+    EXPECT_TRUE(s.get("a").isNull());
+    EXPECT_TRUE(s.get("b").isInteger());
+  }
+
+  {
+    VPackSlice s = prepareResult("[\"1234\",true]", out);
+    EXPECT_EQ(2, s.length());
+    EXPECT_TRUE(s.get("a").isString());
+    EXPECT_TRUE(s.get("b").getBool());
+  }
+}
+
+TEST(ProjectionsTest, toVelocyPackFromIndexComplex1) {
+  mocks::MockAqlServer server;
+  auto& vocbase = server.getSystemDatabase();
+  auto collectionJson = velocypack::Parser::fromJson("{\"name\":\"test\"}");
+  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+
+  bool created;
+  auto indexJson = velocypack::Parser::fromJson(
+      "{\"type\":\"hash\", \"fields\":[\"sub.a\", \"sub.b\", \"c\"]}");
+  auto index = logicalCollection->createIndex(indexJson->slice(), created);
+
+  std::vector<arangodb::aql::AttributeNamePath> attributes = {
+      AttributeNamePath(std::vector<std::string>({"sub", "a"})),
+      AttributeNamePath(std::vector<std::string>({"sub", "b"})),
+      AttributeNamePath(std::vector<std::string>({"c"})),
+  };
+  Projections p(std::move(attributes));
+
+  p.setCoveringContext(DataSourceId(1), index);
+
+  velocypack::Builder out;
+
+  auto prepareResult = [&p](std::string_view json, velocypack::Builder& out) {
+    auto document = velocypack::Parser::fromJson(json.data(), json.size());
+    out.clear();
+    out.openObject();
+    auto data = IndexIterator::SliceCoveringData(document->slice());
+    p.toVelocyPackFromIndex(out, data, nullptr);
+    out.close();
+    return out.slice();
+  };
+
+  EXPECT_TRUE(index->covers(p));
+
+  {
+    VPackSlice s = prepareResult("[\"foo\",\"bar\",false]", out);
+    EXPECT_EQ(2, s.length());
+    EXPECT_TRUE(s.get({"sub", "a"}).isString());
+    EXPECT_TRUE(s.get({"sub", "b"}).isString());
+    EXPECT_FALSE(s.get("c").getBool());
+  }
+}
+
+TEST(ProjectionsTest, toVelocyPackFromIndexComplex2) {
+  mocks::MockAqlServer server;
+  auto& vocbase = server.getSystemDatabase();
+  auto collectionJson = velocypack::Parser::fromJson("{\"name\":\"test\"}");
+  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+
+  bool created;
+  auto indexJson = velocypack::Parser::fromJson(
+      "{\"type\":\"hash\", \"fields\":[\"sub\", \"c\"]}");
+  auto index = logicalCollection->createIndex(indexJson->slice(), created);
+
+  std::vector<arangodb::aql::AttributeNamePath> attributes = {
+      AttributeNamePath(std::vector<std::string>({"sub", "a"})),
+      AttributeNamePath(std::vector<std::string>({"sub", "b"})),
+      AttributeNamePath(std::vector<std::string>({"c"})),
+  };
+  Projections p(std::move(attributes));
+
+  p.setCoveringContext(DataSourceId(1), index);
+
+  velocypack::Builder out;
+
+  auto prepareResult = [&p](std::string_view json, velocypack::Builder& out) {
+    auto document = velocypack::Parser::fromJson(json.data(), json.size());
+    out.clear();
+    out.openObject();
+    auto data = IndexIterator::SliceCoveringData(document->slice());
+    p.toVelocyPackFromIndex(out, data, nullptr);
+    out.close();
+    return out.slice();
+  };
+
+  EXPECT_TRUE(index->covers(p));
+
+  {
+    VPackSlice s = prepareResult("[{\"a\":\"foo\",\"b\":\"bar\"},false]", out);
+    EXPECT_EQ(2, s.length());
+    EXPECT_TRUE(s.get({"sub", "a"}).isString());
+    EXPECT_TRUE(s.get({"sub", "b"}).isString());
+    EXPECT_FALSE(s.get("c").getBool());
   }
 }
