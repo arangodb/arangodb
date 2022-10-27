@@ -193,8 +193,10 @@ class IRESEARCH_API index_writer : private util::noncopyable {
       : segment_(std::move(other.segment_)),
         segment_use_count_(std::move(other.segment_use_count_)),
         last_operation_tick_(other.last_operation_tick_),
+        first_operation_tick_(other.first_operation_tick_),
         writer_(other.writer_) {
       other.last_operation_tick_ = 0;
+      other.first_operation_tick_ = 0;
       other.segment_use_count_ = 0;
     }
 
