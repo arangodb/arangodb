@@ -27,8 +27,8 @@
 
 'use strict';
 
-var jsunity = require('jsunity');
-var expect = require('chai').expect;
+const jsunity = require('jsunity');
+const path = '/_admin/execute';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -44,7 +44,6 @@ function RequestSuite() {
     testAdminExecuteWithHeaderPlainText: adminExecuteWithHeaderPlainText,
     testAdminExecuteWithHeaderPlainText2: adminExecuteWithHeaderPlainText2,
     testAdminExecuteWithWrongHeaderPlainText: adminExecuteWithWrongHeaderPlainText,
-    testAdminExecuteNoHeaderPlainText: adminExecuteNoHeaderPlainText,
   };
 };
 
@@ -56,42 +55,38 @@ Otherwise, as it happens when there's no content-type in the header, it's interp
  */
 
 function adminExecuteWithHeaderVpack() {
-  var path = '/_admin/execute';
-  var headers = {
+  const headers = {
     'content-type': 'application/x-velocypack',
   };
 
-  var obj = "require(\"console\").log(\"abc\");";
-  var body = V8_TO_VPACK(obj);
+  const obj = "require(\"console\").log(\"abc\");";
+  const body = V8_TO_VPACK(obj);
 
-  var res = arango.POST_RAW(path, body, headers);
+  const res = arango.POST_RAW(path, body, headers);
   assertEqual(res.code, 200);
   assertFalse(res.error);
   assertNull(res.parsedBody);
 };
 
 function adminExecuteWithHeaderVpack2() {
-  var path = '/_admin/execute';
-  var headers = {
+  const headers = {
     'content-type': 'application/x-velocypack',
   };
 
-  var obj = "return \"abc\"";
-  var body = V8_TO_VPACK(obj);
+  const obj = "return \"abc\"";
+  const body = V8_TO_VPACK(obj);
 
-  var res = arango.POST_RAW(path, body, headers);
+  const res = arango.POST_RAW(path, body, headers);
   assertEqual(res.code, 200);
   assertFalse(res.error);
   assertEqual(res.parsedBody, "abc");
 };
 
 function adminExecuteNoHeaderVpack() {
-  var path = '/_admin/execute';
+  const obj = "return \"abc\"";
+  const body = V8_TO_VPACK(obj);
 
-  var obj = "return \"abc\"";
-  var body = V8_TO_VPACK(obj);
-
-  var res = arango.POST_RAW(path, body);
+  const res = arango.POST_RAW(path, body);
   assertEqual(res.code, 500);
   assertTrue(res.error);
 };
@@ -104,30 +99,24 @@ Otherwise, as it happens when there's no content-type in the header, it's interp
  */
 
 function adminExecuteWithHeaderJson() {
-  var path = '/_admin/execute';
-  var headers = {
+  const headers = {
     'content-type': 'application/json',
   };
 
-  var obj = '"return \"abc\";"';
-  var body = V8_TO_VPACK(obj);
-
-  var res = arango.POST_RAW(path, body, headers);
+  const body = `"return 'abc';"`;
+  const res = arango.POST_RAW(path, body, headers);
   assertEqual(res.code, 200);
   assertFalse(res.error);
   assertEqual(res.parsedBody, "abc");
 };
 
+//POST_RAW treats the body as JSON by default
 function adminExecuteNoHeaderJson() {
-  var path = '/_admin/execute';
-
-  var obj = '"return \"abc\";"';
-  var body = V8_TO_VPACK(obj);
-
-  var res = arango.POST_RAW(path, body);
+  const body = `"return 'abc';"`;
+  const res = arango.POST_RAW(path, body);
   assertEqual(res.code, 200);
   assertFalse(res.error);
-  assertNull(res.parsedBody);
+  assertEqual(res.parsedBody, "abc");
 };
 
 /*
@@ -136,62 +125,40 @@ It's interpreted as such both if the header's content-type is plain/text or the 
  */
 
 function adminExecuteWithHeaderPlainText() {
-  var path = '/_admin/execute';
-  var headers = {
+  const headers = {
     'content-type': 'plain/text',
   };
 
-  var obj = 'return "abc";';
-  var body = V8_TO_VPACK(obj);
-
-  var res = arango.POST_RAW(path, body, headers);
+  const body = 'return "abc";';
+  const res = arango.POST_RAW(path, body, headers);
   assertEqual(res.code, 200);
   assertFalse(res.error);
   assertEqual(res.parsedBody, "abc");
 };
 
 function adminExecuteWithHeaderPlainText2() {
-  var path = '/_admin/execute';
-  var headers = {
-    'content-type': 'plain/text; charset=utf-8',
+  const headers = {
+    'content-type': 'text/plain; charset=utf-8',
   };
 
-  var obj = 'return "abc";';
-  var body = V8_TO_VPACK(obj);
-
-  var res = arango.POST_RAW(path, body, headers);
+  const body = 'return "abc";';
+  const res = arango.POST_RAW(path, body, headers);
   assertEqual(res.code, 200);
   assertFalse(res.error);
   assertEqual(res.parsedBody, "abc");
 };
 
 function adminExecuteWithWrongHeaderPlainText() {
-  var path = '/_admin/execute';
-  var headers = {
-    'content-type': 'application/json; abc',
+  const headers = {
+    'content-type': 'text/plain; abc', //still considered as text/plain even with garbage after it
   };
 
-  var obj = 'return "abc";';
-  var body = V8_TO_VPACK(obj);
-
-  var res = arango.POST_RAW(path, body, headers);
-  assertEqual(res.code, 400);
-  assertTrue(res.error);
-  assertNull(res.parsedBody);
-};
-
-function adminExecuteNoHeaderPlainText() {
-  var path = '/_admin/execute';
-
-  var obj = 'return "abc";';
-  var body = V8_TO_VPACK(obj);
-
-  var res = arango.POST_RAW(path, body);
+  const body = 'return "abc";';
+  const res = arango.POST_RAW(path, body, headers);
   assertEqual(res.code, 200);
   assertFalse(res.error);
   assertEqual(res.parsedBody, "abc");
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
