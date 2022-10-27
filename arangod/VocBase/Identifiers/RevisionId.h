@@ -29,6 +29,9 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Identifier.h"
 
+#include <string>
+#include <string_view>
+
 namespace arangodb {
 class ClusterInfo;
 class LocalDocumentId;
@@ -39,6 +42,13 @@ class RevisionId final : public arangodb::basics::Identifier {
   constexpr RevisionId() noexcept : Identifier() {}
   constexpr explicit RevisionId(BaseType id) noexcept : Identifier(id) {}
   explicit RevisionId(LocalDocumentId id);
+
+  /// @brief tick limit for internal encoding switch
+  /// all revisions <= tickLimit will be encoded numerically by
+  /// toString() and toValuePair().
+  /// all revisions > tickLimit will be HLC-encoded.
+  constexpr static BaseType tickLimit =
+      BaseType(2016ULL - 1970ULL) * 1000ULL * 60ULL * 60ULL * 24ULL * 365ULL;
 
   /// @brief whether or not the id is set (not 0)
   bool isSet() const noexcept;
@@ -61,6 +71,9 @@ class RevisionId final : public arangodb::basics::Identifier {
   /// the length of the encoded value and the start position into
   /// the result buffer are returned
   std::pair<size_t, size_t> toString(char* buffer) const;
+
+  /// @brief Convert a revision ID to an HLC-encoded string value
+  std::string toHLC() const;
 
   /// @brief Convert revision ID to a string using the provided buffer,
   /// returning the result as a value pair for convenience
@@ -86,18 +99,11 @@ class RevisionId final : public arangodb::basics::Identifier {
   static RevisionId createClusterWideUnique(ClusterInfo& ci);
 
   /// @brief Convert a string into a revision ID, returns none() if invalid
-  static RevisionId fromString(std::string const& ridStr);
+  static RevisionId fromString(std::string_view rid);
 
-  /// @brief Convert a string into a revision ID, returns none() if invalid
-  static RevisionId fromString(std::string const& ridStr, bool& isOld,
-                               bool warn);
-
-  /// @brief Convert a string into a revision ID, no check variant
-  static RevisionId fromString(char const* p, size_t len, bool warn);
-
-  /// @brief Convert a string into a revision ID, returns none() if invalid
-  static RevisionId fromString(char const* p, size_t len, bool& isOld,
-                               bool warn);
+  /// @brief Convert a HLC-encoded value into a revision ID, returns none() if
+  /// invalid
+  static RevisionId fromHLC(std::string_view rid);
 
   /// @brief extract revision from slice; expects either an integer or string,
   /// or an object with a string or integer _rev attribute

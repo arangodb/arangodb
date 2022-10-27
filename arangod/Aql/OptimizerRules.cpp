@@ -6385,37 +6385,56 @@ void arangodb::aql::removeFiltersCoveredByTraversal(
         auto traversalCondition = traversalNode->condition();
 
         if (traversalCondition != nullptr && !traversalCondition->isEmpty()) {
-          /*auto const& indexesUsed = traversalNode->get
-          //indexNode->getIndexes();
-
-          if (indexesUsed.size() == 1) {*/
-          // single index. this is something that we can handle
-          Variable const* outVariable = traversalNode->pathOutVariable();
           VarSet varsUsedByCondition;
           Ast::getReferencedVariables(condition.root(), varsUsedByCondition);
-          if (outVariable != nullptr && varsUsedByCondition.find(outVariable) !=
-                                            varsUsedByCondition.end()) {
+
+          auto remover = [&](Variable const* outVariable,
+                             bool isPathCondition) -> bool {
+            if (outVariable == nullptr) {
+              return false;
+            }
+            if (varsUsedByCondition.find(outVariable) ==
+                varsUsedByCondition.end()) {
+              return false;
+            }
+
             auto newNode = condition.removeTraversalCondition(
-                plan.get(), outVariable, traversalCondition->root());
+                plan.get(), outVariable, traversalCondition->root(),
+                isPathCondition);
             if (newNode == nullptr) {
               // no condition left...
               // FILTER node can be completely removed
               toUnlink.emplace(node);
               // note: we must leave the calculation node intact, in case it
               // is still used by other nodes in the plan
-              modified = true;
-              handled = true;
+              return true;
             } else if (newNode != condition.root()) {
               // some condition is left, but it is a different one than
               // the one from the FILTER node
               auto expr = std::make_unique<Expression>(plan->getAst(), newNode);
-              CalculationNode* cn = new CalculationNode(
+              auto* cn = plan->createNode<CalculationNode>(
                   plan.get(), plan->nextId(), std::move(expr),
                   calculationNode->outVariable());
-              plan->registerNode(cn);
               plan->replaceNode(setter, cn);
+              return true;
+            }
+
+            return false;
+          };
+
+          std::array<std::pair<Variable const*, bool>, 3> vars = {
+              std::make_pair(traversalNode->pathOutVariable(),
+                             /*isPathCondition*/ true),
+              std::make_pair(traversalNode->vertexOutVariable(),
+                             /*isPathCondition*/ false),
+              std::make_pair(traversalNode->edgeOutVariable(),
+                             /*isPathCondition*/ false)};
+
+          for (auto [v, isPathCondition] : vars) {
+            if (remover(v, isPathCondition)) {
               modified = true;
               handled = true;
+              break;
             }
           }
         }

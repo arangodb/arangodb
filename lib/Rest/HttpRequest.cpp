@@ -496,8 +496,12 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
       continue;
     }
 
-    if (q + 1 == end || *(q + 1) == '&') {
-      ++q;  // skip ahead
+    bool isAmpersand = (*q == '&');
+
+    if (q + 1 == end || *(q + 1) == '&' || isAmpersand) {
+      if (!isAmpersand) {
+        ++q;  // skip ahead
+      }
 
       std::string val = ::url_decode(valueBegin, q);
       if (keyEnd - keyBegin > 2 && *(keyEnd - 2) == '[' &&
@@ -510,7 +514,10 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
       }
       keyPhase = true;
       keyBegin = q + 1;
-      continue;
+
+      if (!isAmpersand) {
+        continue;
+      }
     }
     ++q;
   }

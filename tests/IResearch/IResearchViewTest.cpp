@@ -3635,6 +3635,83 @@ TEST_F(IResearchViewTest, test_insert) {
   }
 }
 
+TEST_F(IResearchViewTest, test_remove_within_trx) {
+  using namespace arangodb;
+
+  auto collectionJson =
+      velocypack::Parser::fromJson(R"({ "name": "testCollection" })");
+  auto linkJson = velocypack::Parser::fromJson(
+      R"({ "view": "testView",
+           "includeAllFields": true,
+           "primarySort": [ { "field" : "name", "asc": false } ] })");
+  auto json = velocypack::Parser::fromJson(
+      R"({ "name": "testView", "type":"arangosearch", "cleanupIntervalStep":0, "commitIntervalMsec": 0, "consolidationIntervalMsec" : 0 })");
+
+  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                  testDBInfo(server.server()));
+  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  ASSERT_NE(nullptr, logicalCollection);
+  auto logicalView = vocbase.createView(json->slice(), true);
+  ASSERT_NE(nullptr, logicalView);
+  auto* view =
+      dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+  ASSERT_NE(nullptr, view);
+  auto index = StorageEngineMock::buildLinkMock(IndexId{42}, *logicalCollection,
+                                                linkJson->slice());
+  ASSERT_NE(nullptr, index.get());
+  auto link =
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+  ASSERT_NE(nullptr, link);
+
+  // transaction
+  {
+    std::vector<std::string> const empty;
+
+    auto doc0 = velocypack::Parser::fromJson(R"({ "name": "a" })");
+    auto doc1 = velocypack::Parser::fromJson(R"({ "name": "b" })");
+    auto doc2 = velocypack::Parser::fromJson(R"({ "name": "c" })");
+
+    transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
+                             empty, empty, empty, transaction::Options());
+    EXPECT_TRUE(trx.begin().ok());
+    EXPECT_TRUE(link->insert(trx, LocalDocumentId(0), doc0->slice()).ok());
+    EXPECT_TRUE(link->remove(trx, LocalDocumentId(0), false).ok());
+    EXPECT_TRUE(link->insert(trx, LocalDocumentId(1), doc1->slice()).ok());
+    EXPECT_TRUE(link->remove(trx, LocalDocumentId(1), false).ok());
+    EXPECT_TRUE(link->insert(trx, LocalDocumentId(2), doc2->slice()).ok());
+    EXPECT_TRUE(trx.commit().ok());
+    EXPECT_TRUE(link->commit().ok());
+  }
+
+  // only doc2 must remain
+  {
+    auto snapshot = link->snapshot();
+    auto reader = snapshot.getDirectoryReader();
+    ASSERT_EQ(1, reader->size());
+    ASSERT_EQ(3, reader->docs_count());
+    ASSERT_EQ(1, reader->live_docs_count());
+
+    auto& segment = reader[0];
+    const auto* column = segment.sort();
+    ASSERT_NE(nullptr, column);
+    ASSERT_TRUE(column->name().null());
+    ASSERT_EQ(0, column->payload().size());
+    auto values = column->iterator(irs::ColumnHint::kNormal);
+    ASSERT_NE(nullptr, values);
+    auto* value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, value);
+
+    auto docs = segment.docs_iterator();
+    ASSERT_NE(nullptr, docs);
+    ASSERT_TRUE(docs->next());
+    ASSERT_EQ(docs->value(), values->seek(docs->value()));
+    VPackSlice const slice{value->value.c_str()};
+    ASSERT_TRUE(slice.isString());
+    ASSERT_EQ("c", slice.stringView());
+    ASSERT_FALSE(docs->next());
+  }
+}
+
 TEST_F(IResearchViewTest, test_remove) {
   static std::vector<std::string> const EMPTY;
   auto collectionJson = arangodb::velocypack::Parser::fromJson(

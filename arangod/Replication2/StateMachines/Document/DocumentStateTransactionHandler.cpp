@@ -114,7 +114,7 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
 
           LOG_CTX("0da00", INFO, logContext)
               << "Result ignored while applying transaction " << doc.tid
-              << " with operation " << to_string(doc.operation) << " on shard "
+              << " with operation " << int(doc.operation) << " on shard "
               << doc.shardId << ": " << res;
           ;
           return Result{};
@@ -133,6 +133,8 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
       }
       case OperationType::kAbortAllOngoingTrx:
         TRI_ASSERT(false);  // should never happen as it should be handled above
+      case OperationType::kIntermediateCommit:
+        return trx->intermediateCommit();
       default:
         THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
     }

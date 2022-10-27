@@ -62,6 +62,7 @@ function runSetup () {
     waitForSync: true
   };
 
+  db._executeTransaction(tx);
   internal.debugTerminate('crashing server');
 }
 

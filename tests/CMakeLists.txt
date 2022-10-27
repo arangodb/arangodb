@@ -11,6 +11,12 @@ add_subdirectory(Greenspun)
 add_subdirectory(Fuerte)
 
 # ----------------------------------------
+# Error tests
+# ----------------------------------------
+
+add_subdirectory(Errors)
+
+# ----------------------------------------
 # Link directories
 # ----------------------------------------
 
@@ -143,6 +149,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/FilesTest.cpp
   Basics/FpConvTest.cpp
   Basics/HashesTest.cpp
+  Basics/HybridLogicalClockTest.cpp
   Basics/OverloadTest.cpp
   Basics/PriorityQueueTest.cpp
   Basics/StringBufferTest.cpp
@@ -199,6 +206,7 @@ set(ARANGODB_TESTS_SOURCES
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
   Containers/SmallVectorTest.cpp
+  Errors/ErrorTTest.cpp
   Futures/FutureTest.cpp
   Futures/PromiseTest.cpp
   Futures/TryTest.cpp
@@ -228,6 +236,7 @@ set(ARANGODB_TESTS_SOURCES
   ProgramOptions/InifileParserTest.cpp
   ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
+  Rest/HttpRequestTest.cpp
   Rest/PathMatchTest.cpp
   RestHandler/RestAnalyzerHandlerTest.cpp
   RestHandler/RestDocumentHandlerTest.cpp

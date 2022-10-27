@@ -230,7 +230,7 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
 
   // Stored value field
   {
-    StoredValue field(trx, meta._collectionName, document, id);
+    StoredValue field(trx, meta.collectionName(), document, id);
     for (auto const& column : meta._storedValues.columns()) {
       field.fieldName = column.name;
       field.fields = &column.fields;
@@ -1522,7 +1522,7 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
       [&meta, &trx, &doc, &documentId, id = id(),
        engine = _engine](irs::index_writer::documents_context& ctx) -> Result {
     try {
-      FieldIteratorType body(trx, meta._collectionName, id);
+      FieldIteratorType body(trx, meta.collectionName(), id);
 
       return insertDocument(ctx, trx, body, doc, documentId, meta, id, engine);
     } catch (basics::Exception const& e) {

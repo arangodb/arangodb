@@ -1080,12 +1080,7 @@
       var from = self.contextState._from;
       var to = self.contextState._to;
 
-      var collection;
-      if ($('.modal-body #new-edge-collection-attr').val() === '') {
-        collection = $('.modal-body #new-edge-collection-attr').text();
-      } else {
-        collection = $('.modal-body #new-edge-collection-attr').val();
-      }
+      const collection = $('.modal-body #new-edge-collection-attr').val();
       var key = $('.modal-body #new-edge-key-attr').last().val();
 
       var callback = function (error, id, msg) {
@@ -1180,35 +1175,24 @@
           );
         }
 
-        if (edgeDefinitions.length > 1) {
-          var collections = [];
+        var collections = [];
 
-          _.each(edgeDefinitions, function (val) {
-            collections.push({
-              label: val,
-              value: val
-            });
+        _.each(edgeDefinitions, function (val) {
+          collections.push({
+            label: val,
+            value: val
           });
+        });
 
-          tableContent.push(
-            window.modalView.createSelectEntry(
-              'new-edge-collection-attr',
-              'Edge collection',
-              undefined,
-              'Please select the target collection for the new edge.',
-              collections
-            )
-          );
-        } else {
-          tableContent.push(
-            window.modalView.createReadOnlyEntry(
-              'new-edge-collection-attr',
-              'Edge collection',
-              edgeDefinitions[0],
-              'The edge collection to be used.'
-            )
-          );
-        }
+        tableContent.push(
+          window.modalView.createSelectEntry(
+            'new-edge-collection-attr',
+            'Edge collection',
+            collections[0].value,
+            'Please select the target collection for the new edge.',
+            collections
+          )
+        );
 
         tableContent.push(window.modalView.createJsonEditor());
 

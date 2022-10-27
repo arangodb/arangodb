@@ -53,6 +53,12 @@ void SingleServerProvider<Step>::addEdgeToBuilder(
   }
 };
 
+template<class StepImpl>
+auto SingleServerProvider<StepImpl>::getEdgeDocumentToken(
+    typename Step::Edge const& edge) -> EdgeDocumentToken {
+  return edge.getID();
+}
+
 template<class Step>
 void SingleServerProvider<Step>::addEdgeIDToBuilder(
     typename Step::Edge const& edge, arangodb::velocypack::Builder& builder) {

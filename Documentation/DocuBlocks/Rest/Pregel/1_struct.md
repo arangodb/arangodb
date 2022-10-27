@@ -58,7 +58,7 @@ Is shown when the storing started.
 Computation time of each global super step. Is shown when the computation started.
 
 @RESTSTRUCT{reports,get_api_control_pregel,array,required,object}
-This attribute is used by Programmable Pregel Algorithms (`air`, experimental).
+This attribute is used by Programmable Pregel Algorithms (`ppa`, experimental).
 The value is only populated once the algorithm has finished.
 
 @RESTSTRUCT{vertexCount,get_api_control_pregel,integer,optional,int64}

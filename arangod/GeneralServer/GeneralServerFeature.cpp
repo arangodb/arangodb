@@ -73,6 +73,7 @@
 #include "RestHandler/RestDatabaseHandler.h"
 #include "RestHandler/RestDebugHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
+#include "RestHandler/RestDocumentStateHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
 #include "RestHandler/RestEndpointHandler.h"
 #include "RestHandler/RestEngineHandler.h"
@@ -656,6 +657,9 @@ void GeneralServerFeature::defineRemainingHandlers(
     f.addPrefixHandler(
         "/_api/prototype-state",
         RestHandlerCreator<RestPrototypeStateHandler>::createNoData);
+    f.addPrefixHandler(
+        std::string{StaticStrings::ApiDocumentStateExternal},
+        RestHandlerCreator<RestDocumentStateHandler>::createNoData);
   }
 
   // This is the only handler were we need to inject

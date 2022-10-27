@@ -7,6 +7,8 @@ target_sources(arango_replication2 PRIVATE
   DocumentStateHandlersFactory.cpp
   DocumentStateMachine.cpp
   DocumentStateMachineFeature.cpp
+  DocumentStateNetworkHandler.cpp
   DocumentStateShardHandler.cpp
   DocumentStateTransaction.cpp
-  DocumentStateTransactionHandler.cpp)
+  DocumentStateTransactionHandler.cpp
+  DocumentStateMethods.cpp)

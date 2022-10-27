@@ -229,7 +229,35 @@ fuerte::RestVerb RequestFuzzer::generateHeader(std::string& header) {
       randomizeCharOperation(firstLine, 1);
     }
   }
-  firstLine.append(" ");
+  // URL parameters
+  uint32_t numParameters = generateRandNumWithinRange<uint32_t>(0, 5);
+  for (uint32_t i = 0; i < numParameters; ++i) {
+    if (i == 0) {
+      firstLine.push_back('?');
+    } else {
+      firstLine.push_back('&');
+    }
+    uint32_t paramLength = generateRandNumWithinRange<uint32_t>(1, 5);
+    for (uint32_t j = 0; j < paramLength; ++j) {
+      firstLine.push_back(alphaNumericChars[_randContext.mt() %
+                                            (sizeof(alphaNumericChars) - 1)]);
+    }
+    firstLine.push_back('=');
+    uint32_t valueLength = generateRandNumWithinRange<uint32_t>(0, 5);
+    for (uint32_t j = 0; j < valueLength; ++j) {
+      if (_randContext.mt() % 5 == 0) {
+        // create URL-encoded parameters. after the percent sign, there must
+        // be two valid hex characters (i.e. 0-9a-f), but here we intentionally
+        // generate _random_ follow-up characters, in order to see if the server
+        // side can cope with it
+        firstLine.push_back('%');
+      }
+      firstLine.push_back(alphaNumericChars[_randContext.mt() %
+                                            (sizeof(alphaNumericChars) - 1)]);
+    }
+  }
+
+  firstLine.push_back(' ');
   if (generateRandNumWithinRange<uint32_t>(0, 99) > 0) {
     firstLine.append(" HTTP/");
   } else {

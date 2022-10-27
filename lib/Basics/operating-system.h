@@ -43,7 +43,8 @@
 
 // aligned / unaligned access
 
-#if defined(__sparc__) || defined(__arm__)
+#if defined(__sparc__) || defined(__arm__) || defined(__arm64__) || \
+    defined(__aarch64__)
 /* unaligned accesses not allowed */
 #undef TRI_UNALIGNED_ACCESS
 #elif defined(__ppc__) || defined(__POWERPC__) || defined(_M_PPC)
@@ -62,7 +63,7 @@
 // --Section--                                                       v8 features
 // -----------------------------------------------------------------------------
 
-#if defined(__arm__) || defined(__aarch64__)
+#if defined(__arm__) || defined(__arm64__) || defined(__aarch64__)
 #define TRI_V8_MAXHEAP 1 * 1024
 #elif TRI_PADDING_32
 #define TRI_V8_MAXHEAP 1 * 1024

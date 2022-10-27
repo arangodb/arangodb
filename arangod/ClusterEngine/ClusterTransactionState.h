@@ -52,7 +52,9 @@ class ClusterTransactionState final : public TransactionState {
   /// @brief abort a transaction
   [[nodiscard]] Result abortTransaction(transaction::Methods* trx) override;
 
-  [[nodiscard]] Result performIntermediateCommitIfRequired(
+  Result triggerIntermediateCommit() override;
+
+  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId cid) override;
 
   /// @brief return number of commits, including intermediate commits

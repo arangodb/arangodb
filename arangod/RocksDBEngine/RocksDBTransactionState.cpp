@@ -161,44 +161,6 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   return res;
 }
 
-rocksdb::SequenceNumber RocksDBTransactionState::prepareCollections() {
-  auto& engine = vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
-
-  rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
-
-  for (auto& trxColl : _collections) {
-    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
-
-    rocksdb::SequenceNumber seq = coll->prepareTransaction(id());
-    preSeq = std::max(seq, preSeq);
-  }
-
-  return preSeq;
-}
-
-void RocksDBTransactionState::commitCollections(
-    rocksdb::SequenceNumber lastWritten) {
-  TRI_ASSERT(lastWritten > 0);
-  for (auto& trxColl : _collections) {
-    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
-    // we need this in case of an intermediate commit. The number of
-    // initial documents is adjusted and numInserts / removes is set to 0
-    // index estimator updates are buffered
-    coll->commitCounts(id(), lastWritten);
-  }
-}
-
-void RocksDBTransactionState::cleanupCollections() {
-  for (auto& trxColl : _collections) {
-    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
-    coll->abortCommit(id());
-  }
-}
-
 void RocksDBTransactionState::cleanupTransaction() noexcept {
   if (_cacheTx != nullptr) {
     // note: endTransaction() will delete _cacheTrx!
@@ -305,11 +267,6 @@ Result RocksDBTransactionState::addOperation(
   }
 
   return result;
-}
-
-Result RocksDBTransactionState::performIntermediateCommitIfRequired(
-    DataSourceId cid) {
-  return rocksdbMethods(cid)->checkIntermediateCommit();
 }
 
 RocksDBTransactionCollection::TrackedOperations&

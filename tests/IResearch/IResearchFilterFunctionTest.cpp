@@ -1446,6 +1446,37 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
         "RETURN d");
   }
 
+  // field + nested
+  {
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    *exists.mutable_field() = mangleNested("name");
+
+    assertFilterSuccess(
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'nested') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'nested') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'Nested') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'NESTED') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER analyzer(exists(d.name, 'NESTED'), "
+        "'test_analyzer') RETURN d",
+        expected);
+
+    // invalid 3rd argument
+    assertFilterFail(
+        vocbase(),
+        "FOR d IN myView FILTER exists(d.name, 'nested', 'test_analyzer') "
+        "RETURN d");
+  }
+
   // invalid 2nd argument
   assertFilterFail(vocbase(),
                    "FOR d IN myView FILTER exists(d.name, 'foo') RETURN d");

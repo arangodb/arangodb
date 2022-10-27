@@ -134,7 +134,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   [[nodiscard]] char const* actorName() const noexcept;
 
   /// @brief return a reference to the global transaction statistics/counters
-  TransactionStatistics& statistics() noexcept;
+  TransactionStatistics& statistics() const noexcept;
 
   [[nodiscard]] double lockTimeout() const { return _options.lockTimeout; }
   void lockTimeout(double value) {
@@ -206,7 +206,9 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// @brief abort a transaction
   virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;
 
-  virtual arangodb::Result performIntermediateCommitIfRequired(
+  virtual Result triggerIntermediateCommit() = 0;
+
+  virtual futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId cid) = 0;
 
   /// @brief return number of commits.

@@ -390,7 +390,7 @@ TEST(GeoFilterTest, query) {
 
   auto reader = irs::directory_reader::open(dir);
   ASSERT_NE(nullptr, reader);
-  ASSERT_EQ(2, reader->size());
+  ASSERT_EQ(2U, reader->size());
   ASSERT_EQ(docs->slice().length(), reader->docs_count());
   ASSERT_EQ(docs->slice().length(), reader->live_docs_count());
 

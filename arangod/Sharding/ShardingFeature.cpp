@@ -139,11 +139,33 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::fromVelocyPack(
     if (s.isString()) {
       name = s.copyString();
     } else {
-      name = getDefaultShardingStrategyForNewCollection(slice);
+      name = getDefaultShardingStrategy(sharding);
     }
   }
 
   return create(name, sharding);
+}
+
+std::string ShardingFeature::getDefaultShardingStrategy(
+    ShardingInfo const* sharding) const {
+  TRI_ASSERT(ServerState::instance()->isRunningInCluster());
+  // TODO change these to use better algorithms when we no longer
+  //      need to support collections created before 3.4
+
+  // before 3.4, there were only hard-coded sharding strategies
+
+  // no sharding strategy found in collection meta data
+#ifdef USE_ENTERPRISE
+  if (sharding->collection()->isSmart() &&
+      sharding->collection()->type() == TRI_COL_TYPE_EDGE) {
+    // smart edge collection
+    return ShardingStrategyEnterpriseSmartEdgeCompat::NAME;
+  }
+
+  return ShardingStrategyEnterpriseCompat::NAME;
+#else
+  return ShardingStrategyCommunityCompat::NAME;
+#endif
 }
 
 std::unique_ptr<ShardingStrategy> ShardingFeature::create(

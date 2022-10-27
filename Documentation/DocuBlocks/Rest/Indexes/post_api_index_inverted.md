@@ -25,7 +25,7 @@ attribute path in the `name` property), or a mix of both.
 
 @RESTSTRUCT{name,post_api_index_inverted_fields,string,required,}
 An attribute path. The `.` character denotes sub-attributes.
-You can expand one array with `[*]`.
+You can expand one array attribute with `[*]`.
 
 @RESTSTRUCT{analyzer,post_api_index_inverted_fields,string,optional,}
 The name of an Analyzer to use for this field.

@@ -100,12 +100,12 @@ void mangleString(std::string& name) {
   name.append(kStringSuffix);
 }
 
-#ifdef USE_ENTERPRISE
 void mangleNested(std::string& name) {
   normalizeExpansion(name);
   name += kNestedDelimiter;
 }
 
+#ifdef USE_ENTERPRISE
 bool isNestedField(irs::string_ref name) noexcept {
   return !name.empty() && name.back() == kNestedDelimiter;
 }

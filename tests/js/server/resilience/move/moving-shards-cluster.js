@@ -587,18 +587,33 @@ function MovingShardsSuite({useData, replVersion}) {
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
     var req;
-    try {
-      req = request({
-        method: "POST",
-        url: url + "/_admin/cluster/cancelAgencyJob",
-        body: JSON.stringify({id: id})
-      });
-    } catch (err) {
-      console.error(
-          "Exception for POS /_admin/cluster/cancelAgencyJob:" + {id: id}, err.stack);
-      return false;
+    for (let i = 0; i < 10; i++) {
+      try {
+        req = request({
+          method: "POST",
+          url: url + "/_admin/cluster/cancelAgencyJob",
+          body: JSON.stringify({id: id})
+        });
+      } catch (err) {
+        console.error(
+            "Exception for POS /_admin/cluster/cancelAgencyJob:" + {id: id}, err.stack);
+        return false;
+      }
+
+      const result = JSON.parse(req.body);
+      if (result.error === false) {
+        return true;
+      } else if (result.code !== 404) {
+        console.error("Failed to cancel job " + id + ": " + JSON.stringify(result));
+        return false;
+      } else {
+        console.log("Job not yet detected by coordinator");
+      }
+
+      wait(1.0);
     }
-    return JSON.parse(req.body).error === false;
+    console.error("Failed to cancel job" + id + ", job not visible to coordinator.");
+    return false;
   }
 
 
@@ -1112,10 +1127,10 @@ function MovingShardsSuite({useData, replVersion}) {
       let id = JSON.parse(result.body).id;
       assertTrue(cancelAgencyJob(id));
       assertTrue(maintenanceMode("off"));
+      assertTrue(waitForSupervision());
       var job = queryAgencyJob(result.json.id);
       assertEqual(job.status, "Failed");
       assertEqual(job.abort);
-      assertTrue(waitForSupervision());
       checkCollectionContents();
     },
 
@@ -1235,7 +1250,7 @@ function MovingShardsSuite({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
-/*
+
 jsunity.run(function MovingShardsSuite_nodata() {
   let derivedSuite = {};
   deriveTestSuite(MovingShardsSuite({ useData: false, replVersion: "1" }), derivedSuite, "_nodata_R1");
@@ -1246,7 +1261,7 @@ jsunity.run(function MovingShardsSuite_data() {
   let derivedSuite = {};
   deriveTestSuite(MovingShardsSuite({ useData: true, replVersion: "1" }), derivedSuite, "_data_R1");
   return derivedSuite;
-});*/
+});
 
 jsunity.run(function MovingShardsSuite_data() {
   let derivedSuite = {};

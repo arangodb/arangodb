@@ -217,7 +217,7 @@ auto ReplicatedState<S>::buildCore(
 }
 
 template<typename S>
-void ReplicatedState<S>::drop() {
+void ReplicatedState<S>::drop() && {
   auto deferred = guardedData.doUnderLock([&](GuardedData& data) {
     std::unique_ptr<CoreType> core;
     DeferredAction action;
@@ -226,6 +226,12 @@ void ReplicatedState<S>::drop() {
     } else {
       std::tie(core, std::ignore, action) =
           std::move(*data.currentManager).resign();
+    }
+
+    // This could happen if we are dropping the collection just before we
+    // managed to build the replicated state's core.
+    if (core == nullptr) {
+      return action;
     }
 
     using CleanupHandler =
@@ -242,6 +248,25 @@ void ReplicatedState<S>::drop() {
     return action;
   });
   deferred.fire();
+}
+
+template<typename S>
+auto ReplicatedState<S>::resign() && -> std::unique_ptr<ReplicatedStateToken> {
+  auto token = std::unique_ptr<ReplicatedStateToken>();
+  auto action = DeferredAction();
+  std::tie(token, action) = guardedData.doUnderLock(
+      [](auto&& self)
+          -> std::pair<std::unique_ptr<ReplicatedStateToken>, DeferredAction> {
+        if (self.currentManager == nullptr) {
+          return {};
+        } else {
+          auto&& [core, token_, action_] =
+              std::move(*self.currentManager).resign();
+          return {std::move(token_), std::move(action_)};
+        }
+      });
+  action.fire();
+  return token;
 }
 
 template<typename S>

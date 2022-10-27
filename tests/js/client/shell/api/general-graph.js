@@ -29,6 +29,8 @@
 'use strict';
 
 const internal = require('internal');
+const arangodb = require('@arangodb');
+const db = arangodb.db;
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
 const contentType = forceJson ? "application/json" :  "application/x-velocypack";
@@ -358,8 +360,26 @@ function check_creation_of_graphSuite () {
       let first_def = { "collection": friend_collection, "from": [user_collection], "to": [user_collection] };
       let edge_definition = [first_def];
       create_graph(sync, graph_name, edge_definition );
-      additional_vertex_collection(sync,  graph_name, product_collection );
-      let doc = delete_vertex_collection(sync,  graph_name, product_collection );
+      additional_vertex_collection(sync, graph_name, product_collection);
+      const doc = delete_vertex_collection(sync,  graph_name, product_collection);
+
+      assertEqual(doc.code, 202);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 202);
+      assertEqual(doc.parsedBody['graph']['name'], graph_name);
+      assertEqual(doc.parsedBody['graph']['_rev'], doc.headers['etag']);
+      assertEqual(doc.parsedBody['graph']['edgeDefinitions'], edge_definition);
+      assertEqual(doc.parsedBody['graph']['orphanCollections'], []);
+    },
+
+    test_can_delete_an_already_removed_orphan_collection: function() {
+      let edge_definition = [];
+      create_graph(sync, graph_name, edge_definition);
+      additional_vertex_collection(sync, graph_name, product_collection);
+      db._drop(product_collection);
+      assertFalse(db._collection(product_collection));
+
+      const doc = delete_vertex_collection(sync,  graph_name, product_collection );
 
       assertEqual(doc.code, 202);
       assertFalse(doc.parsedBody['error']);
@@ -401,7 +421,7 @@ function check_creation_of_graphSuite () {
     },
 
     test_can_get_a_graph_by_name: function() {
-      let orphans = [product_collection];;
+      let orphans = [product_collection];
       let doc = create_graph_orphans(sync, graph_name, [], orphans);
       let rev = doc.parsedBody['graph']['_rev'];
 

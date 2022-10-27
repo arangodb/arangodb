@@ -1411,12 +1411,36 @@ function ReplicationIncrementalMalarkeyNewFormatIntermediateCommits() {
   return suite;
 }
 
+function ReplicationIncrementalMalarkeyNoHLC() {
+  'use strict';
+
+  let suite = {
+    setUp: function () {
+      connectToFollower();
+      // clear all failure points except the one that will lead to the follower
+      // sending requests without forced HLCs
+      clearFailurePoints();
+      setFailurePoint("SyncerNoEncodeAsHLC");
+      db._drop(cn);
+
+      connectToLeader();
+      // clear all failure points
+      clearFailurePoints();
+      db._drop(cn);
+    },
+  };
+
+  deriveTestSuite(BaseTestConfig(), suite, '_NoHLC');
+  return suite;
+}
+
 let res = arango.GET("/_admin/debug/failat");
 if (res === true) {
   // tests only work when compiled with -DUSE_FAILURE_TESTS
   jsunity.run(ReplicationIncrementalMalarkeyOldFormat);
   jsunity.run(ReplicationIncrementalMalarkeyNewFormat);
   jsunity.run(ReplicationIncrementalMalarkeyNewFormatIntermediateCommits);
+  jsunity.run(ReplicationIncrementalMalarkeyNoHLC);
 }
 
 return jsunity.done();

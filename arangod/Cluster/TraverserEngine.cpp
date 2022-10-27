@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraverserEngine.h"
-#include "Aql/AqlTransaction.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"

@@ -199,8 +199,7 @@ struct OptionalAccess {
       if (val) {
         return f.apply(*val);
       }
-      f.apply(Null{});
-      return {};
+      return f.apply(Null{});
     }
   }
 

@@ -38,24 +38,24 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 std::unique_ptr<AqlTransaction> AqlTransaction::create(
-    std::shared_ptr<transaction::Context> const& transactionContext,
+    std::shared_ptr<transaction::Context> transactionContext,
     aql::Collections const& collections, transaction::Options const& options,
     std::unordered_set<std::string> inaccessibleCollections) {
 #ifdef USE_ENTERPRISE
   if (!inaccessibleCollections.empty()) {
     return std::make_unique<transaction::IgnoreNoAccessAqlTransaction>(
-        transactionContext, collections, options,
+        std::move(transactionContext), collections, options,
         std::move(inaccessibleCollections));
   }
 #endif
-  return std::make_unique<AqlTransaction>(transactionContext, collections,
-                                          options);
+  return std::make_unique<AqlTransaction>(std::move(transactionContext),
+                                          collections, options);
 }
 
 AqlTransaction::AqlTransaction(
-    std::shared_ptr<transaction::Context> const& transactionContext,
+    std::shared_ptr<transaction::Context> transactionContext,
     transaction::Options const& options)
-    : transaction::Methods(transactionContext, options) {
+    : transaction::Methods(std::move(transactionContext), options) {
   if (options.isIntermediateCommitEnabled()) {
     addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
   }
@@ -63,9 +63,9 @@ AqlTransaction::AqlTransaction(
 
 /// protected so we can create different subclasses
 AqlTransaction::AqlTransaction(
-    std::shared_ptr<transaction::Context> const& transactionContext,
+    std::shared_ptr<transaction::Context> transactionContext,
     aql::Collections const& collections, transaction::Options const& options)
-    : transaction::Methods(transactionContext, options) {
+    : transaction::Methods(std::move(transactionContext), options) {
   TRI_ASSERT(state() != nullptr);
   if (options.isIntermediateCommitEnabled()) {
     addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);

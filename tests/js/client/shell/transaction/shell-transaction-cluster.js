@@ -219,20 +219,20 @@ function transactionReplication2ReplicateOperationSuite() {
       try {
         trx.commit();
         committed = true;
-        fail('Commit was expected to fail due to leader change, but reported success.');
       } catch (ex) {
         // The actual error code is a little bit strange, but happens due to
         // automatic retry of the commit request on the coordinator.
         assertEqual(internal.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, ex.errorNum);
       }
-      assertFalse(committed);
+      assertFalse(committed, "Transaction should not have been committed!");
 
       const shards = c.shards();
       const logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
 
       const logsWithCommit = logs.filter(log => log.head(1000).some(entry => entry.hasOwnProperty('payload') && entry.payload[1].operation === 'Commit'));
-
-      assertEqual([], logsWithCommit, 'Found commit operation(s) in one or more log');
+      if (logsWithCommit.length > 0) {
+        fail(`Found commit operation(s) in one or more log ${JSON.stringify(logsWithCommit[0].head(1000))}.`);
+      }
     },
   };
 }

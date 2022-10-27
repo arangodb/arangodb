@@ -94,7 +94,7 @@ const replicatedLogLeaderEstablished = function (database, logId, term, particip
       }
     }
 
-    if (!current.leader) {
+    if (!current.leader || current.leader.term < term) {
       return Error("Leader has not yet established its term");
     }
     if (!current.leader.leadershipEstablished) {

@@ -22,11 +22,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchQueryCommon.h"
+#include <regex>
 
 #include "Aql/OptimizerRule.h"
-
-#include <regex>
+#include "IResearchQueryCommon.h"
 
 namespace arangodb::tests {
 namespace {
@@ -452,7 +451,7 @@ class QueryJoin : public QueryTest {
       EXPECT_TRUE(result.isArray());
 
       velocypack::ArrayIterator resultIt(result);
-      ASSERT_EQ(10000, resultIt.size());
+      ASSERT_EQ(10000U, resultIt.size());
 
       // Check documents
       for (; resultIt.valid(); resultIt.next()) {

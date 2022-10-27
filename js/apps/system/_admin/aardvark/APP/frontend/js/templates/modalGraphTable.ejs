@@ -152,8 +152,14 @@
             <%
                 break;
                 case "select":
+                  let selectDisabled = '';
+                  let selectTitle = '';
+                  if (row.options && row.options.length === 1) {
+                    selectDisabled = ' disabled';
+                    selectTitle = 'Only one entry available.'
+                  }
             %>
-            <select id="<%=row.id%>" class="modalSelect">
+            <select id="<%=row.id%>" class="modalSelect" <%= selectTitle ? 'title="' + selectTitle + '"' : '' %> <%=selectDisabled%>>
             <%
                   _.each(row.options, function(opt) {
             %>

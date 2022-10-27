@@ -86,7 +86,7 @@ TEST_F(ReplicatedStateCleanupTest, complete_run_without_resign) {
   state->start(std::make_unique<ReplicatedStateToken>(stateGeneration),
                std::nullopt);
 
-  state->drop();
+  std::move(*state).drop();
   auto cleanupHandler = factory->lastCleanupHandler;
   ASSERT_NE(cleanupHandler, nullptr);
   EXPECT_EQ(cleanupHandler->cores.size(), 1);

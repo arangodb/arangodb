@@ -30,8 +30,9 @@ const internal = require("internal");
 const db = internal.db;
 const jsunity = require("jsunity");
 const errors = internal.errors;
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
-function aqlOptionsVerificationSuite() {
+function aqlOptionsVerificationSuite(isSearchAlias) {
   const cn = 'UnitTestsCollection';
 
   let checkQueries = (operation, queries) => {
@@ -53,13 +54,18 @@ function aqlOptionsVerificationSuite() {
 
     setUpAll: function () {
       db._drop(cn);
-      db._create(cn);
+      let c = db._create(cn);
 
       db._drop(cn + "Edge");
       db._createEdgeCollection(cn + "Edge");
 
       db._dropView(cn + "View");
-      db._createView(cn + "View", "arangosearch", {links: {[cn]: {includeAllFields: true}}});
+      if (isSearchAlias) {
+        let i1 = c.ensureIndex({type: "inverted", includeAllFields: true});
+        db._createView(cn + "View", "search-alias", {indexes: [{collection: c.name(), index: i1.name}]});
+      } else {
+        db._createView(cn + "View", "arangosearch", {links: {[cn]: {includeAllFields: true}}});
+      }
     },
 
     tearDownAll: function () {
@@ -418,5 +424,27 @@ function aqlOptionsVerificationSuite() {
   };
 }
 
-jsunity.run(aqlOptionsVerificationSuite);
+function aqlOptionsVerificationArangoSearchSuite() {
+  let suite = {};
+  deriveTestSuite(
+    aqlOptionsVerificationSuite(false),
+    suite,
+    "_arangosearch"
+  );
+  return suite;
+}
+
+function aqlOptionsVerificationSearchAliasSuite() {
+  let suite = {};
+  deriveTestSuite(
+    aqlOptionsVerificationSuite(true),
+    suite,
+    "_search-alias"
+  );
+  return suite;
+}
+
+jsunity.run(aqlOptionsVerificationArangoSearchSuite);
+jsunity.run(aqlOptionsVerificationSearchAliasSuite);
+
 return jsunity.done();

@@ -29,6 +29,7 @@
 
 namespace arangodb::replication2::replicated_state::document {
 
+struct IDocumentStateNetworkHandler;
 struct IDocumentStateTransactionHandler;
 
 struct DocumentFollowerState
@@ -56,6 +57,7 @@ struct DocumentFollowerState
     std::unique_ptr<DocumentCore> core;
   };
 
+  std::shared_ptr<IDocumentStateNetworkHandler> _networkHandler;
   std::unique_ptr<IDocumentStateTransactionHandler> _transactionHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
 };

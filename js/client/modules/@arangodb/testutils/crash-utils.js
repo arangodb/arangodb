@@ -565,6 +565,11 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
 }
 
 function generateCrashDump (binary, instanceInfo, options, checkStr) {
+  if (!options.coreCheck && !options.setInterruptable) {
+    print("fatal exit of arangod! Bye!");
+    pu.killRemainingProcesses({status: false});
+    process.exit();
+  }
   GDB_OUTPUT += `Forced shutdown of ${instanceInfo.name} PID[${instanceInfo.pid}]: ${checkStr}\n`;
   if (instanceInfo.hasOwnProperty('debuggerInfo')) {
     throw new Error("this process is already debugged: " + JSON.stringify(instanceInfo.getStructure()));

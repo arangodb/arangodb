@@ -303,7 +303,8 @@ class QueryTest : public IResearchQueryTest {
     }
   }
 
-  void checkView(LogicalView const& view, size_t expected = 2) {
+  void checkView(LogicalView const& view, size_t expected = 2,
+                 std::string_view viewName = "testView") {
     containers::FlatHashSet<std::pair<DataSourceId, IndexId>> cids;
     size_t count = 0;
     view.visitCollections([&](DataSourceId cid, LogicalView::Indexes* indexes) {
@@ -320,9 +321,10 @@ class QueryTest : public IResearchQueryTest {
     });
     EXPECT_EQ(expected, count);
     EXPECT_EQ(count, cids.size());
-    auto r = executeQuery(_vocbase,
-                          "FOR d IN testView SEARCH 1 == 1"
-                          " OPTIONS { waitForSync: true } RETURN d");
+    auto r = executeQuery(
+        _vocbase, absl::Substitute("FOR d IN $0 SEARCH 1 == 1"
+                                   " OPTIONS { waitForSync: true } RETURN d",
+                                   viewName));
     EXPECT_TRUE(r.result.ok()) << r.result.errorMessage();
   }
 
@@ -355,8 +357,7 @@ class QueryTest : public IResearchQueryTest {
       auto createJson = VPackParser::fromJson(absl::Substitute(
           R"({ "name": "testIndex0", "type": "inverted",
                "version": $0, $1
-               "includeAllFields": true,
-               "fields": [ { "name": "this_field_no_exist_just_stub_for_definition_parser" } ] })",
+               "includeAllFields": true })",
           version(), definition1));
       auto collection = _vocbase.lookupCollection("testCollection0");
       ASSERT_TRUE(collection);
@@ -370,8 +371,7 @@ class QueryTest : public IResearchQueryTest {
       auto createJson = VPackParser::fromJson(absl::Substitute(
           R"({ "name": "testIndex1", "type": "inverted",
                "version": $0, $1
-               "includeAllFields": true,
-               "fields": [ { "name": "this_field_no_exist_just_stub_for_definition_parser" } ] })",
+               "includeAllFields": true })",
           version(), definition2));
       auto collection = _vocbase.lookupCollection("testCollection1");
       ASSERT_TRUE(collection);
@@ -435,7 +435,7 @@ class QueryTest : public IResearchQueryTest {
         errorCount += !checkSlices(resolved, expected->slice());
       }
     }
-    EXPECT_EQ(errorCount, 0);
+    EXPECT_EQ(errorCount, 0U);
     return it.size() == expectedCount && errorCount == 0;
   }
 

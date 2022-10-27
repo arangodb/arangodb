@@ -228,6 +228,7 @@ struct IResearchLinkMeta : public FieldMeta {
   // there is no problem but solved recovery issue - we will be able to index
   // _id attribute without doing agency request for collection name
   std::string _collectionName;
+  std::string_view collectionName() const noexcept { return _collectionName; }
 
   IResearchLinkMeta();
   IResearchLinkMeta(IResearchLinkMeta const& other) = default;

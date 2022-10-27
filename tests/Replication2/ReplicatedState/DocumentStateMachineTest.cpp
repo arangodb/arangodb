@@ -32,6 +32,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
+#include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
@@ -66,10 +67,13 @@ struct MockDocumentStateHandlersFactory : IDocumentStateHandlersFactory {
               createTransactionHandler, (GlobalLogIdentifier), (override));
   MOCK_METHOD(std::shared_ptr<IDocumentStateTransaction>, createTransaction,
               (DocumentLogEntry const&, IDatabaseGuard const&), (override));
+  MOCK_METHOD(std::shared_ptr<IDocumentStateNetworkHandler>,
+              createNetworkHandler, (GlobalLogIdentifier), (override));
 };
 
 struct MockDocumentStateTransaction : IDocumentStateTransaction {
   MOCK_METHOD(OperationResult, apply, (DocumentLogEntry const&), (override));
+  MOCK_METHOD(Result, intermediateCommit, (), (override));
   MOCK_METHOD(Result, commit, (), (override));
   MOCK_METHOD(Result, abort, (), (override));
 };
@@ -124,6 +128,16 @@ struct MockDocumentStateShardHandler : IDocumentStateShardHandler {
   MOCK_METHOD(Result, dropLocalShard, (std::string const&), (override));
 };
 
+struct MockDocumentStateLeaderInterface : IDocumentStateLeaderInterface {
+  MOCK_METHOD(futures::Future<ResultT<velocypack::SharedSlice>>, getSnapshot,
+              (LogIndex), (override));
+};
+
+struct MockDocumentStateNetworkHandler : IDocumentStateNetworkHandler {
+  MOCK_METHOD(std::shared_ptr<IDocumentStateLeaderInterface>,
+              getLeaderInterface, (ParticipantId), (override, noexcept));
+};
+
 struct DocumentStateMachineTest : test::ReplicatedLogTest {
   DocumentStateMachineTest() {
     feature->registerStateType<DocumentState>(std::string{DocumentState::NAME},
@@ -147,6 +161,12 @@ struct DocumentStateMachineTest : test::ReplicatedLogTest {
   std::shared_ptr<testing::NaggyMock<MockDocumentStateShardHandler>>
       shardHandlerMock =
           std::make_shared<testing::NaggyMock<MockDocumentStateShardHandler>>();
+  std::shared_ptr<testing::NiceMock<MockDocumentStateNetworkHandler>>
+      networkHandlerMock = std::make_shared<
+          testing::NiceMock<MockDocumentStateNetworkHandler>>();
+  std::shared_ptr<testing::NiceMock<MockDocumentStateLeaderInterface>>
+      leaderInterfaceMock = std::make_shared<
+          testing::NiceMock<MockDocumentStateLeaderInterface>>();
   MockTransactionManager transactionManagerMock;
 
   void SetUp() override {
@@ -157,6 +177,13 @@ struct DocumentStateMachineTest : test::ReplicatedLogTest {
     ON_CALL(*transactionMock, apply(_)).WillByDefault([]() {
       return OperationResult{Result{}, OperationOptions{}};
     });
+
+    ON_CALL(*leaderInterfaceMock, getSnapshot).WillByDefault([&](LogIndex) {
+      return futures::Future<ResultT<velocypack::SharedSlice>>{std::in_place};
+    });
+
+    ON_CALL(*networkHandlerMock, getLeaderInterface)
+        .WillByDefault(Return(leaderInterfaceMock));
 
     ON_CALL(*handlersFactoryMock, createAgencyHandler)
         .WillByDefault([&](GlobalLogIdentifier gid) {
@@ -184,6 +211,9 @@ struct DocumentStateMachineTest : test::ReplicatedLogTest {
 
     ON_CALL(*handlersFactoryMock, createTransaction)
         .WillByDefault(Return(transactionMock));
+
+    ON_CALL(*handlersFactoryMock, createNetworkHandler)
+        .WillByDefault(Return(networkHandlerMock));
   }
 
   void TearDown() override {
@@ -570,6 +600,15 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_basic) {
   ASSERT_TRUE(result.ok());
   Mock::VerifyAndClearExpectations(transactionMock.get());
   Mock::VerifyAndClearExpectations(handlersFactoryMock.get());
+
+  // An intermediate commit should not affect the transaction
+  EXPECT_CALL(*transactionMock, intermediateCommit).WillOnce(Return(Result{}));
+  doc.operation = OperationType::kIntermediateCommit;
+  result = transactionHandler.applyEntry(doc);
+  ASSERT_TRUE(result.ok());
+  Mock::VerifyAndClearExpectations(transactionMock.get());
+  ASSERT_TRUE(
+      transactionHandler.getActiveTransactions().contains(TransactionId{6}));
 
   // After commit, expect the transaction to be removed
   EXPECT_CALL(*transactionMock, commit).WillOnce(Return(Result{}));
