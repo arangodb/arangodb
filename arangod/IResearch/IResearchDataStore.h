@@ -169,6 +169,7 @@ class IResearchDataStore {
   /// @note arangodb::Index override
   //////////////////////////////////////////////////////////////////////////////
   LogicalCollection& collection() const noexcept { return _collection; }
+  StorageEngine* engine() const noexcept { return _engine; }
 
   static bool hasSelectivityEstimate();  // arangodb::Index override
 
