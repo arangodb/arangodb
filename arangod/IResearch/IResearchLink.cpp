@@ -27,6 +27,7 @@
 #include <utils/encryption.hpp>
 #include <utils/file_utils.hpp>
 #include <utils/singleton.hpp>
+#include <absl/strings/numbers.h>
 
 #include "IResearchDocument.h"
 #include "IResearchLink.h"
@@ -34,12 +35,17 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/StaticStrings.h"
+#include "Replication/common-defines.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "RocksDBEngine/RocksDBWalAccess.h"
 #ifdef USE_ENTERPRISE
 #include "Cluster/ClusterMethods.h"
 #endif
 #include "IResearch/IResearchCommon.h"
+#include "RocksDBEngine/RocksDBMetaCollection.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
+#include "RocksDBEngine/RocksDBLogValue.h"
 #include "IResearch/IResearchCompression.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkHelper.h"
@@ -659,6 +665,12 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
         ctx.reset();
       } else {
         ctx._ctx.tick(state->lastOperationTick());
+        if (trx.vocbase().server().getFeature<RocksDBEngine>().inRecovery()) {
+          ctx._ctx.num_ops = std::numeric_limits<uint64_t>::max();
+        } else {
+          ctx._ctx.num_ops = static_cast<RocksDBTransactionState*>(state)
+                                 ->numPrimitiveOperations();
+        }
       }
     }
 
@@ -875,10 +887,74 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
 
     auto const lastCommittedTick = _lastCommittedTick;
 
+    uint64_t lastRocksDBTick = 0;
+    containers::FlatHashMap<size_t, TRI_replication_operation_e> ops;
+    std::vector<size_t> rdbTicks;
+    std::function<uint64_t(uint64_t, std::vector<uint64_t>&)> callback =
+        [](uint64_t, std::vector<uint64_t>&) { return 0; };
+    if (!_engine->inRecovery()) {
+      callback = [&](uint64_t end, std::vector<uint64_t>& ticks) {
+        RocksDBWalAccess wa{*static_cast<RocksDBEngine*>(_engine)};
+        RocksDBWalAccess::Filter filter{};
+        filter.collection = _collection.id();
+        filter.vocbase = _collection.vocbase().id();
+        filter.includeFoxxQueues = false;
+        filter.tickStart = lastCommittedTick;
+        filter.tickEnd = end;
+
+        std::stringstream ss;
+        size_t ii = 0;
+
+        wa.tail(filter, std::numeric_limits<size_t>::max(),
+                [&](TRI_vocbase_t*, velocypack::Slice blob) {
+                  const auto typeSlice = blob.get("type");
+                  const auto type =
+                      typeSlice.getNumber<TRI_replication_operation_e>();
+
+                  uint64_t tickValue;
+                  basics::StringUtils::toNumber(blob.get("tick").toString(),
+                                                tickValue);
+
+                  ++ii;
+                  if (filter.tickEnd < tickValue) {
+                    // std::cerr << "WTF ARANGO\n";
+                    return;
+                  }
+
+                  switch (type) {
+                    case REPLICATION_TRANSACTION_START: {
+                      // ss << "BEGIN " << tickValue << "\n";
+                      //           TransactionId tid =
+                      //           RocksDBLogValue::transactionId();
+                      //           TRI_voc_tick_t dbid =
+                      //           RocksDBLogValue::databaseId(blob);
+                    } break;
+                    case REPLICATION_TRANSACTION_COMMIT: {
+                      ops[tickValue] = type;
+                      lastRocksDBTick = tickValue;
+                      ss << tickValue << "\n";
+                      rdbTicks.push_back(tickValue);
+                      ticks.push_back(tickValue);
+                      break;
+                    }
+                    default:
+                      break;
+                  }
+                });
+
+        std::cerr << "WAL SIZE " << ii;
+
+        return lastRocksDBTick;
+      };
+    }
+
+    std::vector<size_t> ticks;
+
     try {
       // _lastCommittedTick is being updated in '_before_commit'
-      *code = _dataStore._writer->commit() ? CommitResult::DONE
-                                           : CommitResult::NO_CHANGES;
+      *code = _dataStore._writer->commit(&ticks, callback)
+                  ? CommitResult::DONE
+                  : CommitResult::NO_CHANGES;
     } catch (...) {
       // restore last committed tick in case of any error
       _lastCommittedTick = lastCommittedTick;
@@ -886,7 +962,7 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
     }
 
     if (CommitResult::NO_CHANGES == *code) {
-      LOG_TOPIC("7e319", TRACE, TOPIC)
+      LOG_TOPIC("7e319", INFO, TOPIC)
           << "no changes registered for arangosearch link '" << id()
           << "' got last operation tick '" << _lastCommittedTick << "'";
 
@@ -894,6 +970,67 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
       impl.tick(lastTickBeforeCommit);
       _lastCommittedTick = lastTickBeforeCommit;
       return {};
+    }
+
+    if (!_engine->inRecovery()) {
+      std::sort(ticks.begin(), ticks.end());
+      auto rdbTick = rdbTicks.empty() ? 0 : rdbTicks.back();
+      auto arsTick = ticks.empty() ? 0 : ticks.back();
+
+      if (lastRocksDBTick != rdbTick) {
+        std::cerr << "Commit point doesn't match, RDB[" << rdbTick
+                  << "] vs ARS[" << lastRocksDBTick << "]\n";
+      }
+
+      if (ticks != rdbTicks) {
+        std::cerr << "BILLY count:" << ticks.size() << " vs " << rdbTicks.size()
+                  << "\n";
+
+        std::vector<size_t> diff;
+        std::cerr << "Flushed but not seen in WAL:\n";
+        std::set_difference(ticks.begin(), ticks.end(), rdbTicks.begin(),
+                            rdbTicks.end(), std::back_inserter(diff));
+        for (auto tick : diff) {
+          std::cerr << tick << " " << ops[tick] << "\n";
+        }
+        std::cerr << "==============\n";
+
+        std::cerr << "Seen in WAL but not flushed:\n";
+        diff.clear();
+        std::set_difference(rdbTicks.begin(), rdbTicks.end(), ticks.begin(),
+                            ticks.end(), std::back_inserter(diff));
+        for (auto tick : diff) {
+          std::cerr << tick << " " << ops[tick] << "\n";
+        }
+
+        std::cerr << "==============\n";
+      } else {
+        std::cerr << "OK\n";
+      }
+
+      if (rdbTick < arsTick) {
+        std::cerr << "VAN committed MORE: " << rdbTick << " vs " << arsTick
+                  << "\n";
+      }
+
+      if (rdbTick > arsTick) {
+        std::cerr << "LUBE committed LESS: " << rdbTick << " vs " << arsTick
+                  << "\n";
+      }
+
+      //      std::string str1;
+      //      for (auto t : ticks) {
+      //        str1 += std::to_string(t);
+      //        str1 += "\n";
+      //      }
+      //
+      //      if (auto str = ss.str(); !str.empty()) {
+      //        static std::atomic<size_t> kkk{0};
+      //        const auto num = ++kkk;
+      //        std::fstream f{"Ticks_" + std::to_string(num),
+      //        std::fstream::out}; f << "Committed: \n"; f << str << "\n"; f <<
+      //        "Flushed: \n"; f << str1 << "\n";
+      //      }
     }
 
     // get new reader
@@ -920,7 +1057,7 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
     aql::QueryCache::instance()->invalidate(&(_collection.vocbase()),
                                             _viewGuid);
 
-    LOG_TOPIC("7e328", DEBUG, TOPIC)
+    LOG_TOPIC("7e328", INFO, TOPIC)
         << "successful sync of arangosearch link '" << id() << "', segments '"
         << reader->size() << "', docs count '" << reader->docs_count()
         << "', live docs count '" << reader->docs_count()
@@ -991,8 +1128,8 @@ Result IResearchLink::drop() {
   // scenario where links are persisted) on coordinator and db-server the
   // IResearchView is immutable and lives in ClusterInfo therefore on
   // coordinator and db-server a new plan will already have an IResearchView
-  // without the link this avoids deadlocks with ClusterInfo::loadPlan() during
-  // lookup in ClusterInfo
+  // without the link this avoids deadlocks with ClusterInfo::loadPlan()
+  // during lookup in ClusterInfo
   if (ServerState::instance()->isSingleServer()) {
     auto logicalView = _collection.vocbase().lookupView(_viewGuid);
     auto* view = LogicalView::cast<IResearchView>(logicalView.get());
@@ -1005,10 +1142,10 @@ Result IResearchLink::drop() {
     // then the vocbase was destroyed calling
     // collection close()-> link unload() -> link drop() due to collection
     // marked as dropped thus returning an error here will cause
-    // ~TRI_vocbase_t() on RocksDB to receive an exception which is not handled
-    // in the destructor the reverse happens during drop of a collection with
-    // MMFiles i.e. collection drop() -> collection close()-> link unload(),
-    // then link drop()
+    // ~TRI_vocbase_t() on RocksDB to receive an exception which is not
+    // handled in the destructor the reverse happens during drop of a
+    // collection with MMFiles i.e. collection drop() -> collection close()->
+    // link unload(), then link drop()
     if (!view) {
       LOG_TOPIC("f4e2c", WARN, TOPIC)
           << "unable to find arangosearch view '" << _viewGuid
@@ -1055,8 +1192,8 @@ Result IResearchLink::drop() {
 }
 
 bool IResearchLink::hasSelectivityEstimate() {
-  return false;  // selectivity can only be determined per query since multiple
-                 // fields are indexed
+  return false;  // selectivity can only be determined per query since
+                 // multiple fields are indexed
 }
 
 Result IResearchLink::init(velocypack::Slice definition,
@@ -1095,10 +1232,10 @@ Result IResearchLink::init(velocypack::Slice definition,
       meta._sortCompression ? meta._sortCompression : getDefaultCompression();
   if (ServerState::instance()->isCoordinator()) {  // coordinator link
     if (!vocbase.server().hasFeature<ClusterFeature>()) {
-      return {
-          TRI_ERROR_INTERNAL,
-          "failure to get cluster info while initializing arangosearch link '" +
-              std::to_string(_id.id()) + "'"};
+      return {TRI_ERROR_INTERNAL,
+              "failure to get cluster info while initializing arangosearch "
+              "link '" +
+                  std::to_string(_id.id()) + "'"};
     }
     auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
@@ -1139,10 +1276,10 @@ Result IResearchLink::init(velocypack::Slice definition,
     }
   } else if (ServerState::instance()->isDBServer()) {  // db-server link
     if (!vocbase.server().hasFeature<ClusterFeature>()) {
-      return {
-          TRI_ERROR_INTERNAL,
-          "failure to get cluster info while initializing arangosearch link '" +
-              std::to_string(_id.id()) + "'"};
+      return {TRI_ERROR_INTERNAL,
+              "failure to get cluster info while initializing arangosearch "
+              "link '" +
+                  std::to_string(_id.id()) + "'"};
     }
 
     bool const clusterWideLink =
@@ -1173,7 +1310,8 @@ Result IResearchLink::init(velocypack::Slice definition,
           LOG_TOPIC_IF("67da6", WARN, TOPIC, meta.willIndexIdAttribute())
               << "Failed to init collection name for the link '"
               << this->id().id()
-              << "'. Link will not index '_id' attribute. Please recreate the "
+              << "'. Link will not index '_id' attribute. Please recreate "
+                 "the "
                  "link if this is necessary!";
         }
 
@@ -1247,13 +1385,13 @@ Result IResearchLink::init(velocypack::Slice definition,
           auto shardIds = _collection.shardIds();
 
           // go through all shard IDs of the collection and try to link any
-          // links missing links will be populated when they are created in the
-          // per-shard collection
+          // links missing links will be populated when they are created in
+          // the per-shard collection
           if (shardIds) {
             for (auto& entry : *shardIds) {
               auto collection = vocbase.lookupCollection(
-                  entry
-                      .first);  // per-shard collections are always in 'vocbase'
+                  entry.first);  // per-shard collections are always in
+                                 // 'vocbase'
 
               if (!collection) {
                 continue;  // missing collection should be created after Plan
@@ -1375,8 +1513,8 @@ Result IResearchLink::initDataStore(
 
   _dataStore._path = getPersistedPath(dbPathFeature, *this);
 
-  // must manually ensure that the data store directory exists (since not using
-  // a lockfile)
+  // must manually ensure that the data store directory exists (since not
+  // using a lockfile)
   if (irs::file_utils::exists_directory(pathExists, _dataStore._path.c_str()) &&
       !pathExists && !irs::file_utils::mkdir(_dataStore._path.c_str(), true)) {
     return {TRI_ERROR_CANNOT_CREATE_DIRECTORY,
@@ -1409,7 +1547,8 @@ Result IResearchLink::initDataStore(
       break;
     }
 
-    case RecoveryState::IN_PROGRESS: {  // link is being created during recovery
+    case RecoveryState::IN_PROGRESS: {  // link is being created during
+                                        // recovery
       // both MMFiles and RocksDB will fill out link based on
       // actual data in linked collections, we can treat recovery as done
       _createdInRecovery = true;
@@ -1523,7 +1662,7 @@ Result IResearchLink::initDataStore(
   }
 
   if (!_dataStore._reader) {
-    _dataStore._writer->commit();  // initialize 'store'
+    _dataStore._writer->commit(nullptr, {});  // initialize 'store'
     _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory));
   }
 
@@ -1546,6 +1685,13 @@ Result IResearchLink::initDataStore(
   LOG_TOPIC("7e128", TRACE, TOPIC) << "data store reader for link '" << id()
                                    << "' is initialized with recovery tick '"
                                    << _dataStore._recoveryTick << "'";
+
+  auto* collection =
+      static_cast<RocksDBMetaCollection*>(_collection.getPhysical());
+  TRI_ASSERT(collection);
+
+  numDocs = _dataStore._reader->docs_count();
+  numLiveDocs = _dataStore._reader->live_docs_count();
 
   // reset data store meta, will be updated at runtime via properties(...)
   _dataStore._meta._cleanupIntervalStep = 0;        // 0 == disable
@@ -1574,14 +1720,15 @@ Result IResearchLink::initDataStore(
         auto linkLock = asyncSelf->lock();
         // ensure link does not get deallocated before callback finishes
         if (!linkLock) {
-          return {};  // link no longer in recovery state, i.e. during recovery
+          return {};  // link no longer in recovery state, i.e. during
+                      // recovery
           // it was created and later dropped
         }
         if (!linkLock->_flushSubscription) {
-          return {
-              TRI_ERROR_INTERNAL,
-              "failed to register flush subscription for arangosearch link '" +
-                  std::to_string(linkLock->id().id()) + "'"};
+          return {TRI_ERROR_INTERNAL,
+                  "failed to register flush subscription for arangosearch "
+                  "link '" +
+                      std::to_string(linkLock->id().id()) + "'"};
         }
 
         auto& dataStore = linkLock->_dataStore;
@@ -1611,6 +1758,20 @@ Result IResearchLink::initDataStore(
 
         LOG_TOPIC("0e0ca", TRACE, TOPIC)
             << "finished sync for arangosearch link '" << linkLock->id() << "'";
+
+        auto* collection = static_cast<RocksDBMetaCollection*>(
+            linkLock->_collection.getPhysical());
+        TRI_ASSERT(collection);
+
+        LOG_TOPIC("32112", ERR, TOPIC)
+            << collection->meta().numberDocuments() << " vs BEFORE["
+            << linkLock->numLiveDocs << ", " << linkLock->numDocs << "], AFTER["
+            << linkLock->_dataStore._reader->live_docs_count() << ", "
+            << linkLock->_dataStore._reader->docs_count() << "]";
+
+        LOG_TOPIC("32112", ERR, TOPIC)
+            << "Last Seen vs Engine: " << linkLock->_last_seen_recovery_tick
+            << " vs " << linkLock->_engine->recoveryTick();
 
         // register flush subscription
         flushFeature.registerFlushSubscription(linkLock->_flushSubscription);
@@ -1655,19 +1816,53 @@ void IResearchLink::scheduleConsolidation(std::chrono::milliseconds delay) {
   task.schedule(delay);
 }
 
+std::atomic<size_t> kek{0};
+
 Result IResearchLink::insert(transaction::Methods& trx,
-                             LocalDocumentId documentId,
-                             velocypack::Slice doc) {
+                             LocalDocumentId documentId, velocypack::Slice doc,
+                             TRI_voc_tick_t const* tick) {
   TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 
   auto& state = *(trx.state());
 
-  if (_dataStore._inRecovery.load(std::memory_order_acquire) &&
-      _engine->recoveryTick() <= _dataStore._recoveryTick) {
+  if (tick) {
+    if (*tick > _dataStore._recoveryTick) {
+      PrimaryKeyFilter f(*_engine, documentId);
+      auto prep = f.prepare(*_dataStore._reader);
+      for (auto& s : _dataStore._reader) {
+        auto docs = prep->execute(s);
+        if (docs->next()) {
+          LOG_TOPIC("7d228", INFO, TOPIC) << "PIZDA 3";
+        }
+      }
+    } else {
+      if (*tick != _engine->recoveryTick()) {
+        LOG_TOPIC("7d228", INFO, TOPIC) << "PIZDA 1";
+      }
+
+      LOG_TOPIC("7d228", INFO, TOPIC)
+          << "'insertion', operation tick '" << *tick << "', recovery tick '"
+          << _dataStore._recoveryTick << ", DOC " << documentId.id();
+    }
+  } else if (_dataStore._inRecovery.load(std::memory_order_acquire) &&
+             _engine->recoveryTick() <= _dataStore._recoveryTick) {
+    LOG_TOPIC("7d228", INFO, TOPIC)
+        << "'insertion', operation tick '" << *tick << "', recovery tick '"
+        << _dataStore._recoveryTick << ", engine tick '"
+        << _engine->recoveryTick() << "', DOC " << documentId.id();
+  } else {
+  }
+
+  if (_dataStore._inRecovery.load(std::memory_order_acquire) && tick &&
+      *tick <= _dataStore._recoveryTick) {
+    _last_seen_recovery_tick = *tick;
+
+    ++kek;
     LOG_TOPIC("7c228", TRACE, TOPIC)
         << "skipping 'insert', operation tick '" << _engine->recoveryTick()
-        << "', recovery tick '" << _dataStore._recoveryTick << "'";
+        << "', recovery tick '" << _dataStore._recoveryTick << "', NUM "
+        << kek.load() << ", DOC " << documentId.id();
 
     return {};
   }
@@ -1680,23 +1875,23 @@ Result IResearchLink::insert(transaction::Methods& trx,
       return insertDocument(ctx, trx, body, doc, documentId, _meta, id(),
                             engine);
     } catch (basics::Exception const& e) {
-      return {
-          e.code(),
-          "caught exception while inserting document into arangosearch link '" +
-              std::to_string(id().id()) + "', revision '" +
-              std::to_string(documentId.id()) + "': " + e.what()};
+      return {e.code(),
+              "caught exception while inserting document into arangosearch "
+              "link '" +
+                  std::to_string(id().id()) + "', revision '" +
+                  std::to_string(documentId.id()) + "': " + e.what()};
     } catch (std::exception const& e) {
-      return {
-          TRI_ERROR_INTERNAL,
-          "caught exception while inserting document into arangosearch link '" +
-              std::to_string(id().id()) + "', revision '" +
-              std::to_string(documentId.id()) + "': " + e.what()};
+      return {TRI_ERROR_INTERNAL,
+              "caught exception while inserting document into arangosearch "
+              "link '" +
+                  std::to_string(id().id()) + "', revision '" +
+                  std::to_string(documentId.id()) + "': " + e.what()};
     } catch (...) {
-      return {
-          TRI_ERROR_INTERNAL,
-          "caught exception while inserting document into arangosearch link '" +
-              std::to_string(id().id()) + "', revision '" +
-              std::to_string(documentId.id()) + "'"};
+      return {TRI_ERROR_INTERNAL,
+              "caught exception while inserting document into arangosearch "
+              "link '" +
+                  std::to_string(id().id()) + "', revision '" +
+                  std::to_string(documentId.id()) + "'"};
     }
   };
 
@@ -1794,15 +1989,15 @@ bool IResearchLink::matchesDefinition(velocypack::Slice slice) const {
   // NOTE: below will not match if 'viewId' is 'id' or 'name',
   //       but ViewIdField should always contain GUID
   if (!viewId.isString() || !viewId.isEqualString(_viewGuid)) {
-    return false;  // IResearch View identifiers of current object and slice do
-                   // not match
+    return false;  // IResearch View identifiers of current object and slice
+                   // do not match
   }
 
   IResearchLinkMeta other;
   std::string errorField;
 
-  // for db-server analyzer validation should have already passed on coordinator
-  // (missing analyzer == no match)
+  // for db-server analyzer validation should have already passed on
+  // coordinator (missing analyzer == no match)
   return other.init(_collection.vocbase().server(), slice, errorField,
                     _collection.vocbase().name()) &&
          _meta == other;
@@ -1829,7 +2024,8 @@ Result IResearchLink::properties(IResearchViewMeta const& meta) {
   auto linkLock = _asyncSelf->lock();
   // '_dataStore' can be asynchronously modified
   if (!linkLock) {
-    // the current link is no longer valid (checked after ReadLock acquisition)
+    // the current link is no longer valid (checked after ReadLock
+    // acquisition)
     return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
             "failed to lock arangosearch link while modifying properties "
             "of arangosearch link '" +
@@ -1871,8 +2067,8 @@ void IResearchLink::properties(LinkLock linkLock,
 }
 
 Result IResearchLink::remove(transaction::Methods& trx,
-                             LocalDocumentId documentId,
-                             velocypack::Slice doc) {
+                             LocalDocumentId documentId, velocypack::Slice doc,
+                             TRI_voc_tick_t const* tick) {
   TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 
@@ -1880,11 +2076,29 @@ Result IResearchLink::remove(transaction::Methods& trx,
 
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::INDEX_CREATION));
 
-  if (_dataStore._inRecovery.load(std::memory_order_acquire) &&
-      _engine->recoveryTick() <= _dataStore._recoveryTick) {
+  if (tick && *tick <= _dataStore._recoveryTick) {
+    if (*tick != _engine->recoveryTick()) {
+      LOG_TOPIC("7d228", INFO, TOPIC) << "PIZDA 2";
+    }
+    LOG_TOPIC("7d228", INFO, TOPIC)
+        << "'removal', operation tick '" << *tick << "', recovery tick '"
+        << _dataStore._recoveryTick << ", DOC " << documentId.id();
+  } else if (_dataStore._inRecovery.load(std::memory_order_acquire) &&
+             _engine->recoveryTick() <= _dataStore._recoveryTick) {
+    LOG_TOPIC("7d228", INFO, TOPIC)
+        << "'removal', operation tick '" << *tick << "', recovery tick '"
+        << _dataStore._recoveryTick << ", engine tick '"
+        << _engine->recoveryTick() << "', DOC " << documentId.id();
+  }
+
+  if (_dataStore._inRecovery.load(std::memory_order_acquire) && tick &&
+      *tick <= _dataStore._recoveryTick) {
+    _last_seen_recovery_tick = *tick;
+    ++kek;
     LOG_TOPIC("7d228", TRACE, TOPIC)
         << "skipping 'removal', operation tick '" << _engine->recoveryTick()
-        << "', recovery tick '" << _dataStore._recoveryTick << "'";
+        << "', recovery tick '" << _dataStore._recoveryTick << "', NUM "
+        << kek.load() << ", DOC " << documentId.id();
 
     return {};
   }
@@ -1929,8 +2143,8 @@ Result IResearchLink::remove(transaction::Methods& trx,
   }
 
   // ...........................................................................
-  // if an exception occurs below than the transaction is dropped including all
-  // of its fid stores, no impact to iResearch View data integrity
+  // if an exception occurs below than the transaction is dropped including
+  // all of its fid stores, no impact to iResearch View data integrity
   // ...........................................................................
   try {
     ctx->remove(*_engine, documentId);
@@ -2007,8 +2221,8 @@ bool IResearchLink::setCollectionName(irs::string_ref name) noexcept {
 
 Result IResearchLink::unload() {
   // this code is used by the MMFilesEngine
-  // if the collection is in the process of being removed then drop it from the
-  // view
+  // if the collection is in the process of being removed then drop it from
+  // the view
   // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes
   // explicitly
   if (_collection.deleted()  // collection deleted

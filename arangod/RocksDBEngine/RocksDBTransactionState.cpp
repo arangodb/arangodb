@@ -364,6 +364,10 @@ uint64_t RocksDBTransactionState::numOperations() const noexcept {
   return _rocksMethods->numOperations();
 }
 
+uint64_t RocksDBTransactionState::numPrimitiveOperations() const noexcept {
+  return _rocksMethods->numPrimitiveOperations();
+}
+
 void RocksDBTransactionState::prepareOperation(
     DataSourceId cid, RevisionId rid,
     TRI_voc_document_operation_e operationType) {

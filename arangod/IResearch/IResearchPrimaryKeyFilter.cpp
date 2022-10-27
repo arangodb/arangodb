@@ -27,8 +27,10 @@
 #include "StorageEngine/StorageEngine.h"
 
 #include "index/index_reader.hpp"
+#include "search/cost.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/numeric_utils.hpp"
+#include "boost/core/demangle.hpp"
 
 namespace {
 
@@ -76,30 +78,47 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
     return irs::doc_iterator::empty();
   }
 
-  auto docs = segment.mask(
-      term->postings(irs::IndexFeatures::NONE));  // must not match removed docs
-
-  if (!docs->next()) {
-    return irs::doc_iterator::empty();
+  auto docs = term->postings(irs::IndexFeatures::NONE);
+  if (irs::filter::type() == irs::type<typeRecovery>::id()) {
+    if (!irs::doc_limits::eof(docs->value())) {
+      auto* cost = irs::get<irs::cost>(*docs);
+      if (cost && cost->estimate() > 1) {
+        std::cerr << "PK: " << _pk << " Count: " << cost->estimate() << "\n";
+      } else if (!cost) {
+        std::cerr << "PK: " << _pk << " Count: N/A, Type: "
+                  << boost::core::demangle(typeid(docs.get()).name()) << "\n";
+      }
+    } else {
+      std::cerr << "PK: " << _pk << " Oh Shit\n";
+    }
   }
+  return docs;
 
-  _pkIterator.reset(docs->value());
-
-  // optimization, since during:
-  // * regular runtime should have at most 1 identical live primary key in the
-  // entire datastore
-  // * recovery should have at most 2 identical live primary keys in the entire
-  // datastore
-  if (irs::filter::type() ==
-      irs::type<typeDefault>::id()) {  // explicitly check type of instance
-    TRI_ASSERT(!docs->next());  // primary key duplicates should NOT happen in
-                                // the same segment in regular runtime
-    _pkSeen =
-        true;  // already matched 1 primary key (should be at most 1 at runtime)
-  }
-
-  return irs::memory::to_managed<irs::doc_iterator, false>(
-      const_cast<PrimaryKeyIterator*>(&_pkIterator));
+  //  if (!docs->next()) {
+  //    return irs::doc_iterator::empty();
+  //  }
+  //
+  //  _pkIterator.reset(docs->value());
+  //
+  //  // optimization, since during:
+  //  // * regular runtime should have at most 1 identical live primary key in
+  //  the
+  //  // entire datastore
+  //  // * recovery should have at most 2 identical live primary keys in the
+  //  entire
+  //  // datastore
+  //  if (irs::filter::type() ==
+  //      irs::type<typeDefault>::id()) {  // explicitly check type of instance
+  //    TRI_ASSERT(!docs->next());  // primary key duplicates should NOT happen
+  //    in
+  //                                // the same segment in regular runtime
+  //    _pkSeen =
+  //        true;  // already matched 1 primary key (should be at most 1 at
+  //        runtime)
+  //  }
+  //
+  //  return irs::memory::to_managed<irs::doc_iterator, false>(
+  //      const_cast<PrimaryKeyIterator*>(&_pkIterator));
 }
 
 size_t PrimaryKeyFilter::hash() const noexcept {

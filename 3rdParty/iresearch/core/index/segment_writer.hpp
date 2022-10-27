@@ -64,7 +64,7 @@ enum class Action {
   /// @note Field must satisfy 'Attribute' concept
   ////////////////////////////////////////////////////////////////////////////
   STORE_SORTED = 4
-}; // Action
+};  // Action
 
 ENABLE_BITMASK_ENUM(Action);
 
@@ -86,13 +86,13 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   /// @class document
   /// @brief Facade for the insertion logic
   //////////////////////////////////////////////////////////////////////////////
-  class document: private util::noncopyable {
+  class document : private util::noncopyable {
    public:
     ////////////////////////////////////////////////////////////////////////////
     /// @brief constructor
     ////////////////////////////////////////////////////////////////////////////
     // cppcheck-suppress constParameter
-    explicit document(segment_writer& writer) noexcept: writer_(writer) {}
+    explicit document(segment_writer& writer) noexcept : writer_(writer) {}
 
     ////////////////////////////////////////////////////////////////////////////
     /// @return current state of the object
@@ -145,15 +145,13 @@ class IRESEARCH_API segment_writer : util::noncopyable {
 
    private:
     segment_writer& writer_;
-  }; // document
+  };  // document
 
   DECLARE_UNIQUE_PTR(segment_writer);
 
-  static ptr make(
-    directory& dir,
-    const column_info_provider_t& column_info,
-    const feature_info_provider_t& feature_info,
-    const comparer* comparator);
+  static ptr make(directory& dir, const column_info_provider_t& column_info,
+                  const feature_info_provider_t& feature_info,
+                  const comparer* comparator);
 
   // begin document-write transaction
   // @return doc_id_t as per type_limits<type_t::doc_id_t>
@@ -190,7 +188,7 @@ class IRESEARCH_API segment_writer : util::noncopyable {
         return index_and_store<true>(std::forward<Field>(field));
       }
 
-      assert(false); // unsupported action
+      assert(false);  // unsupported action
       valid_ = false;
     }
 
@@ -220,8 +218,10 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   // implicitly noexcept since we reserve memory in 'begin'
   void rollback() {
     // mark as removed since not fully inserted
-    assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
-    remove(doc_id_t(docs_cached() + doc_limits::min() - 1)); // -1 for 0-based offset
+    assert(docs_cached() + doc_limits::min() - 1 <
+           doc_limits::eof());  // user should check return of begin() != eof()
+    remove(doc_id_t(docs_cached() + doc_limits::min() -
+                    1));  // -1 for 0-based offset
     valid_ = false;
   }
 
@@ -233,9 +233,6 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   bool valid() const noexcept { return valid_; }
   void reset() noexcept;
   void reset(const segment_meta& meta);
-
-  void tick(uint64_t tick) noexcept { tick_ = tick; }
-  uint64_t tick() const noexcept { return tick_; }
 
  private:
   struct stored_column : util::noncopyable {
@@ -254,64 +251,59 @@ class IRESEARCH_API segment_writer : util::noncopyable {
     struct eq {
       using is_transparent = void;
 
-      bool operator()(const stored_column& lhs, const stored_column& rhs) const noexcept {
+      bool operator()(const stored_column& lhs,
+                      const stored_column& rhs) const noexcept {
         return lhs.name == rhs.name;
       }
 
-      bool operator()(const stored_column& lhs, const hashed_string_ref& rhs) const noexcept {
+      bool operator()(const stored_column& lhs,
+                      const hashed_string_ref& rhs) const noexcept {
         return lhs.name == rhs;
       }
 
-      bool operator()(const hashed_string_ref& lhs, const stored_column& rhs) const noexcept {
+      bool operator()(const hashed_string_ref& lhs,
+                      const stored_column& rhs) const noexcept {
         return this->operator()(rhs, lhs);
       }
     };
 
-    stored_column(
-      const hashed_string_ref& name,
-      columnstore_writer& columnstore,
-      const column_info_provider_t& column_info,
-      std::deque<cached_column>& cached_columns,
-      bool cache);
+    stored_column(const hashed_string_ref& name,
+                  columnstore_writer& columnstore,
+                  const column_info_provider_t& column_info,
+                  std::deque<cached_column>& cached_columns, bool cache);
 
     std::string name;
     size_t name_hash;
     columnstore_writer::values_writer_f writer;
-    mutable field_id id{ field_limits::invalid() };
-  }; // stored_column
+    mutable field_id id{field_limits::invalid()};
+  };  // stored_column
 
   // FIXME consider refactor this
-  // we can't use flat_hash_set as stored_column stores 'this' in non-cached case
-  using stored_columns = absl::node_hash_set<
-    stored_column,
-    stored_column::hash,
-    stored_column::eq>;
+  // we can't use flat_hash_set as stored_column stores 'this' in non-cached
+  // case
+  using stored_columns = absl::node_hash_set<stored_column, stored_column::hash,
+                                             stored_column::eq>;
 
   struct sorted_column : util::noncopyable {
     explicit sorted_column(
         const column_info_provider_t& column_info,
         columnstore_writer::column_finalizer_f finalizer) noexcept
-      : stream(column_info(string_ref::NIL)), // get compression for sorted column
-        finalizer{std::move(finalizer)} {
-    }
+        : stream(column_info(
+              string_ref::NIL)),  // get compression for sorted column
+          finalizer{std::move(finalizer)} {}
 
-    field_id id{ field_limits::invalid() };
+    field_id id{field_limits::invalid()};
     irs::sorted_column stream;
     columnstore_writer::column_finalizer_f finalizer;
-  }; // sorted_column
+  };  // sorted_column
 
-  segment_writer(
-    directory& dir,
-    const column_info_provider_t& column_info,
-    const feature_info_provider_t& feature_info,
-    const comparer* comparator) noexcept;
+  segment_writer(directory& dir, const column_info_provider_t& column_info,
+                 const feature_info_provider_t& feature_info,
+                 const comparer* comparator) noexcept;
 
-  bool index(
-    const hashed_string_ref& name,
-    const doc_id_t doc,
-    IndexFeatures index_features,
-    const features_t& features,
-    token_stream& tokens);
+  bool index(const hashed_string_ref& name, const doc_id_t doc,
+             IndexFeatures index_features, const features_t& features,
+             token_stream& tokens);
 
   template<typename Writer>
   bool store_sorted(const doc_id_t doc, Writer& writer) {
@@ -336,10 +328,8 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   }
 
   template<typename Writer>
-  bool store(
-      const hashed_string_ref& name,
-      const doc_id_t doc,
-      Writer& writer) {
+  bool store(const hashed_string_ref& name, const doc_id_t doc,
+             Writer& writer) {
     assert(doc < doc_limits::eof());
 
     auto& out = stream(name, doc);
@@ -358,10 +348,13 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   bool store(Field&& field) {
     REGISTER_TIMER_DETAILED();
 
-    const auto field_name = make_hashed_ref(static_cast<const string_ref&>(field.name()));
+    const auto field_name =
+        make_hashed_ref(static_cast<const string_ref&>(field.name()));
 
-    assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
-    const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
+    assert(docs_cached() + doc_limits::min() - 1 <
+           doc_limits::eof());  // user should check return of begin() != eof()
+    const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() -
+                                 1);  // -1 for 0-based offset
 
     return store(field_name, doc_id, field);
   }
@@ -370,8 +363,10 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   bool store_sorted(Field&& field) {
     REGISTER_TIMER_DETAILED();
 
-    assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
-    const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
+    assert(docs_cached() + doc_limits::min() - 1 <
+           doc_limits::eof());  // user should check return of begin() != eof()
+    const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() -
+                                 1);  // -1 for 0-based offset
 
     return store_sorted(doc_id, field);
   }
@@ -380,14 +375,17 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   bool index(Field&& field) {
     REGISTER_TIMER_DETAILED();
 
-    const auto field_name = make_hashed_ref(static_cast<const string_ref&>(field.name()));
+    const auto field_name =
+        make_hashed_ref(static_cast<const string_ref&>(field.name()));
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const features_t&>(field.features());
     const IndexFeatures index_features = field.index_features();
 
-    assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
-    const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
+    assert(docs_cached() + doc_limits::min() - 1 <
+           doc_limits::eof());  // user should check return of begin() != eof()
+    const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() -
+                                 1);  // -1 for 0-based offset
 
     return index(field_name, doc_id, index_features, features, tokens);
   }
@@ -396,17 +394,21 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   bool index_and_store(Field&& field) {
     REGISTER_TIMER_DETAILED();
 
-    const auto field_name = make_hashed_ref(static_cast<const string_ref&>(field.name()));
+    const auto field_name =
+        make_hashed_ref(static_cast<const string_ref&>(field.name()));
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const features_t&>(field.features());
     const IndexFeatures index_features = field.index_features();
 
-    assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof()); // user should check return of begin() != eof()
-    const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1); // -1 for 0-based offset
+    assert(docs_cached() + doc_limits::min() - 1 <
+           doc_limits::eof());  // user should check return of begin() != eof()
+    const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() -
+                                 1);  // -1 for 0-based offset
 
-    if (IRS_UNLIKELY(!index(field_name, doc_id, index_features, features, tokens))) {
-      return false; // indexing failed
+    if (IRS_UNLIKELY(
+            !index(field_name, doc_id, index_features, features, tokens))) {
+      return false;  // indexing failed
     }
 
     if constexpr (Sorted) {
@@ -423,9 +425,7 @@ class IRESEARCH_API segment_writer : util::noncopyable {
   }
 
   // returns stream for storing attributes
-  column_output& stream(
-    const hashed_string_ref& name,
-    const doc_id_t doc);
+  column_output& stream(const hashed_string_ref& name, const doc_id_t doc);
 
   // finishes document
   void finish() {
@@ -435,32 +435,36 @@ class IRESEARCH_API segment_writer : util::noncopyable {
     }
   }
 
-  size_t flush_doc_mask(const segment_meta& meta); // flushes document mask to directory, returns number of masked documens
-  void flush_fields(const doc_map& docmap); // flushes indexed fields to directory
+  size_t flush_doc_mask(
+      const segment_meta& meta);  // flushes document mask to directory, returns
+                                  // number of masked documens
+  void flush_fields(
+      const doc_map& docmap);  // flushes indexed fields to directory
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::deque<cached_column> cached_columns_; // pointers remain valid
+  std::deque<cached_column> cached_columns_;  // pointers remain valid
   sorted_column sort_;
   update_contexts docs_context_;
-  bitvector docs_mask_; // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)
+  bitvector docs_mask_;  // invalid/removed doc_ids (e.g. partially indexed due
+                         // to indexing failure)
   fields_data fields_;
   stored_columns columns_;
   std::vector<const stored_column*> sorted_columns_;
-  std::vector<const field_data*> doc_; // document fields
+  std::vector<const field_data*> doc_;  // document fields
   std::string seg_name_;
   field_writer::ptr field_writer_;
   const column_info_provider_t* column_info_;
   columnstore_writer::ptr col_writer_;
   tracking_directory dir_;
-  uint64_t tick_{0};
   bool initialized_;
-  bool valid_{ true }; // current state
+  bool valid_{true};  // current state
   IRESEARCH_API_PRIVATE_VARIABLES_END
-}; // segment_writer
+};  // segment_writer
 
-}
+}  // namespace iresearch
 
 // segment_writer::ptr
-MSVC_ONLY(template class IRESEARCH_API std::unique_ptr<irs::segment_writer>;) // cppcheck-suppress unknownMacro 
+MSVC_ONLY(template class IRESEARCH_API std::unique_ptr<
+              irs::segment_writer>;)  // cppcheck-suppress unknownMacro
 
-#endif // IRESEARCH_SEGMENT_WRITER_H
+#endif  // IRESEARCH_SEGMENT_WRITER_H

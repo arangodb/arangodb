@@ -114,7 +114,7 @@ void IResearchRocksDBRecoveryHelper::prepare() {
 void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
                                            const rocksdb::Slice& key,
                                            const rocksdb::Slice& value,
-                                           rocksdb::SequenceNumber /*tick*/) {
+                                           rocksdb::SequenceNumber tick) {
   if (column_family_id != _documentCF) {
     return;
   }
@@ -163,7 +163,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
     IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*link);
 #endif
 
-    impl.insert(trx, docId, doc);
+    impl.insert(trx, docId, doc, &tick);
   }
 
   res = trx.commit();
@@ -176,7 +176,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
 // common implementation for DeleteCF / SingleDeleteCF
 void IResearchRocksDBRecoveryHelper::handleDeleteCF(
     uint32_t column_family_id, const rocksdb::Slice& key,
-    rocksdb::SequenceNumber /*tick*/) {
+    rocksdb::SequenceNumber tick) {
   if (column_family_id != _documentCF) {
     return;
   }
@@ -216,7 +216,8 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
     IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*link);
 #endif
 
-    impl.remove(trx, docId, arangodb::velocypack::Slice::emptyObjectSlice());
+    impl.remove(trx, docId, arangodb::velocypack::Slice::emptyObjectSlice(),
+                &tick);
   }
 
   res = trx.commit();

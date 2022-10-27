@@ -88,6 +88,7 @@ class RocksDBTransactionState final : public TransactionState {
   bool hasOperations() const noexcept;
 
   uint64_t numOperations() const noexcept;
+  uint64_t numPrimitiveOperations() const noexcept;
 
   bool hasFailedOperations() const override {
     return (_status == transaction::Status::ABORTED) && hasOperations();

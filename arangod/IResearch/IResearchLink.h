@@ -182,7 +182,7 @@ class IResearchLink {
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
   Result insert(transaction::Methods& trx, LocalDocumentId documentId,
-                velocypack::Slice doc);
+                velocypack::Slice doc, const TRI_voc_tick_t* tick = nullptr);
 
   static bool isHidden();  // arangodb::Index override
   static bool isSorted();  // arangodb::Index override
@@ -225,7 +225,7 @@ class IResearchLink {
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                velocypack::Slice doc);
+                velocypack::Slice doc, const TRI_voc_tick_t* tick = nullptr);
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief 'this' for the lifetime of the link data-store
@@ -410,6 +410,8 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   void scheduleConsolidation(std::chrono::milliseconds delay);
 
+  size_t numDocs{}, numLiveDocs{};
+  TRI_voc_tick_t _last_seen_recovery_tick{};
   StorageEngine* _engine;
   VPackComparer _comparer;
   IResearchFeature*

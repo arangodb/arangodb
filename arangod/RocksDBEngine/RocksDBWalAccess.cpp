@@ -928,12 +928,13 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
 
   MyWALDumper dumper(_engine, filter, func, maxTrxChunkSize);
   const uint64_t since = dumper.safeBeginTick();
-  TRI_ASSERT(since <= filter.tickStart);
-  TRI_ASSERT(since <= filter.tickEnd);
+  //  TRI_ASSERT(since <= filter.tickStart);
+  //  TRI_ASSERT(since <= filter.tickEnd);
 
-  uint64_t firstTick = UINT64_MAX;   // first tick to actually print (exclusive)
-  uint64_t lastScannedTick = since;  // last (begin) tick of batch we looked at
-  uint64_t lastWrittenTick = 0;      // lastTick at the end of a write batch
+  uint64_t firstTick = UINT64_MAX;  // first tick to actually print (exclusive)
+  uint64_t lastScannedTick = std::min(
+      since, filter.tickEnd);    // last (begin) tick of batch we looked at
+  uint64_t lastWrittenTick = 0;  // lastTick at the end of a write batch
   uint64_t latestTick = db->GetLatestSequenceNumber();
 
   // prevent purging of WAL files while we are in here
@@ -1029,7 +1030,8 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   latestTick = db->GetLatestSequenceNumber();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (s.ok() && lastScannedTick > latestTick) {
+  if (s.ok() && lastScannedTick > latestTick &&
+      lastScannedTick <= filter.tickEnd) {
     // this is an unexpected condition. in this case we print the WAL for
     // debug purposes and error out
     printWal(filter, chunkSize, func);

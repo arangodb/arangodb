@@ -66,6 +66,10 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
     return _numInserts + _numUpdates + _numRemoves;
   }
 
+  uint64_t numPrimitiveOperations() const noexcept final override {
+    return _numInserts + 2 * _numUpdates + _numRemoves;
+  }
+
   /// @brief add an operation for a transaction collection
   /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
   /// performed
