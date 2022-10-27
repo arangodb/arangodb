@@ -174,11 +174,25 @@ auto getIndexFeatures() {
 /// @brief inserts ArangoDB document into an IResearch data store
 ////////////////////////////////////////////////////////////////////////////////
 template<typename FieldIteratorType, typename MetaType>
-Result insertDocument(irs::index_writer::documents_context& ctx,
-                      transaction::Methods const& trx, FieldIteratorType& body,
+Result insertDocument(IResearchDataStore const& dataStore,
+                      irs::index_writer::documents_context& ctx,
+                      transaction::Methods const& trx,
                       velocypack::Slice document, LocalDocumentId documentId,
-                      MetaType const& meta, IndexId id,
-                      arangodb::StorageEngine* engine) {
+                      MetaType const& meta, IndexId id) {
+  auto const collectionNameString = [&] {
+    if (!ServerState::instance()->isSingleServer()) {
+      return std::string{};
+    }
+    auto name = dataStore.collection().name();
+#ifdef USE_ENTERPRISE
+    ClusterMethods::realNameFromSmartName(name);
+#endif
+    return name;
+  }();
+  std::string_view collection = collectionNameString.empty()
+                                    ? meta.collectionName()
+                                    : collectionNameString;
+  FieldIteratorType body{collection};
   body.reset(document, meta);  // reset reusable container to doc
 
   if (!body.valid()) {
@@ -194,9 +208,8 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
   auto doc = ctx.insert(body.disableFlush());
   if (!doc) {
     return {TRI_ERROR_INTERNAL,
-            "failed to insert document into arangosearch link '" +
-                std::to_string(id.id()) + "', revision '" +
-                std::to_string(documentId.id()) + "'"};
+            absl::StrCat("failed to insert document into arangosearch link '",
+                         id.id(), "', revision '", documentId.id(), "'")};
   }
 
   // User fields
@@ -213,15 +226,10 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
     }
     ++body;
   }
+
   // Sorted field
   {
-    struct SortedField {
-      bool write(irs::data_output& out) const {
-        out.write_bytes(slice.start(), slice.byteSize());
-        return true;
-      }
-      VPackSlice slice;
-    } field;  // SortedField
+    SortedValue field{collection, document};
     for (auto& sortField : meta._sort.fields()) {
       field.slice = get(document, sortField, VPackSlice::nullSlice());
       doc.template insert<irs::Action::STORE_SORTED>(field);
@@ -230,7 +238,7 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
 
   // Stored value field
   {
-    StoredValue field(trx, meta.collectionName(), document, id);
+    StoredValue field{collection, document};
     for (auto const& column : meta._storedValues.columns()) {
       field.fieldName = column.name;
       field.fields = &column.fields;
@@ -247,7 +255,7 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
   doc.template insert<irs::Action::INDEX | irs::Action::STORE>(field);
 
   if (trx.state()->hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
-    ctx.tick(engine->currentTick());
+    ctx.tick(dataStore.engine()->currentTick());
   }
   return {};
 }
@@ -275,10 +283,7 @@ void clusterCollectionName(LogicalCollection const& collection, ClusterInfo* ci,
              "Please recreate the link if this is necessary!";
     }
 #ifdef USE_ENTERPRISE
-    // enterprise name is not used in _id so should not be here!
-    if (ADB_LIKELY(!name.empty())) {
-      ClusterMethods::realNameFromSmartName(name);
-    }
+    ClusterMethods::realNameFromSmartName(name);
 #endif
   }
 }
@@ -1518,31 +1523,28 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
     return {};
   }
 
-  auto insertImpl =
-      [&meta, &trx, &doc, &documentId, id = id(),
-       engine = _engine](irs::index_writer::documents_context& ctx) -> Result {
+  auto insertImpl = [&, &self = *this, id = id()](
+                        irs::index_writer::documents_context& ctx) -> Result {
     try {
-      FieldIteratorType body(trx, meta.collectionName(), id);
-
-      return insertDocument(ctx, trx, body, doc, documentId, meta, id, engine);
+      return insertDocument<FieldIteratorType>(self, ctx, trx, doc, documentId,
+                                               meta, id);
     } catch (basics::Exception const& e) {
-      return {e.code(),
-              "caught exception while inserting document into arangosearch "
-              "index '" +
-                  std::to_string(id.id()) + "', revision '" +
-                  std::to_string(documentId.id()) + "': " + e.what()};
+      return {e.code(), absl::StrCat("caught exception while inserting "
+                                     "document into arangosearch index '",
+                                     id.id(), "', revision '", documentId.id(),
+                                     "': ", e.what())};
     } catch (std::exception const& e) {
       return {TRI_ERROR_INTERNAL,
-              "caught exception while inserting document into arangosearch "
-              "index '" +
-                  std::to_string(id.id()) + "', revision '" +
-                  std::to_string(documentId.id()) + "': " + e.what()};
+              absl::StrCat("caught exception while inserting document into "
+                           "arangosearch index '",
+                           id.id(), "', revision '", documentId.id(),
+                           "': ", e.what())};
     } catch (...) {
       return {TRI_ERROR_INTERNAL,
-              "caught exception while inserting document into arangosearch "
-              "index '" +
-                  std::to_string(id.id()) + "', revision '" +
-                  std::to_string(documentId.id()) + "'"};
+              absl::StrCat(
+                  "caught exception while inserting document into arangosearch "
+                  "index '",
+                  id.id(), "', revision '", documentId.id(), "'")};
     }
   };
 
