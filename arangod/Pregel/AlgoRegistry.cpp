@@ -42,8 +42,8 @@
 #include "Pregel/Utils.h"
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
 #include "Pregel/Algos/ReadWrite.h"
-#include "Pregel/Algos/ColorPropagation.h"
 #endif
+#include "Pregel/Algos/ColorPropagation.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
