@@ -112,7 +112,8 @@ exports.deriveTestSuite = function (deriveFrom, deriveTo, namespace, blacklist =
     if (testcase === "setUp" ||
         testcase === "tearDown" ||
         testcase === "setUpAll" ||
-        testcase === "tearDownAll") {
+        testcase === "tearDownAll" ||
+        testcase === "internal") {
       targetTestCase = testcase;
     }
     if ((blacklist.length > 0) && blacklist.find(oneTestcase => testcase === oneTestcase)){
