@@ -1,4 +1,4 @@
-v3.9.4.1 (XXXX-XX-XX)
+v3.9.4.1 (2022-10-27)
 ---------------------
 
 * Solve a case of excessive memory consumption in certain AQL queries with IN
