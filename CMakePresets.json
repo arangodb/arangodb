@@ -37,9 +37,9 @@
         "USE_IPO": "Off",
         "USE_MAINTAINER_MODE": "On",
         "USE_FAIL_ON_WARNINGS": "On",
-	"USE_GOOGLE_TESTS": "On",
-	"USE_FAILURE_TESTS": "On",
-	"USE_STRICT_OPENSSL_VERSION": "Off"
+        "USE_GOOGLE_TESTS": "On",
+        "USE_FAILURE_TESTS": "On",
+        "USE_STRICT_OPENSSL_VERSION": "Off"
       }
     },
     {
@@ -51,9 +51,9 @@
         "USE_IPO": "Off",
         "USE_MAINTAINER_MODE": "On",
         "USE_FAIL_ON_WARNINGS": "On",
-	"USE_GOOGLE_TESTS": "On",
-	"USE_FAILURE_TESTS": "On",
-	"USE_STRICT_OPENSSL_VERSION": "Off"
+        "USE_GOOGLE_TESTS": "On",
+        "USE_FAILURE_TESTS": "On",
+        "USE_STRICT_OPENSSL_VERSION": "Off"
       }
     },
     {
