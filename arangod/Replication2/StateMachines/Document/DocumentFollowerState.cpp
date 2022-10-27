@@ -111,17 +111,18 @@ auto DocumentFollowerState::applyEntries(
 
       if (doc.operation == OperationType::kAbortAllOngoingTrx) {
         self->_activeTransactions.clear();
+        self->getStream()->release(
+            self->_activeTransactions.getReleaseIndex(entry->first));
       } else if (doc.operation == OperationType::kCommit ||
                  doc.operation == OperationType::kAbort) {
-        if (self->_activeTransactions.erase(doc.tid)) {
-          self->getStream()->release(
-              self->_activeTransactions.getReleaseIndex());
-        }
+        self->_activeTransactions.erase(doc.tid);
+        self->getStream()->release(
+            self->_activeTransactions.getReleaseIndex(entry->first));
       } else {
         self->_activeTransactions.emplace(doc.tid, entry->first);
-        self->getStream()->release(self->_activeTransactions.getReleaseIndex());
       }
     }
+
     return {TRI_ERROR_NO_ERROR};
   });
 }

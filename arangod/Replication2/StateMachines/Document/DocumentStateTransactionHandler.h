@@ -73,29 +73,4 @@ class DocumentStateTransactionHandler
   TransactionMap _transactions;
 };
 
-/**
- * Keeps track of active transactions.
- * Uses a deque instead of a set because log indices are always given in
- * increasing order.
- */
-class ActiveTransactionsQueue {
-  enum Status { ACTIVE, INACTIVE };
-
- public:
-  LogIndex getReleaseIndex() const;
-  bool erase(TransactionId const& tid);
-  void emplace(TransactionId tid, LogIndex index);
-  std::size_t size() const noexcept;
-  auto getTransactions() const
-      -> std::unordered_map<TransactionId, LogIndex> const&;
-  void clear();
-
- private:
-  void popInactive();
-
- private:
-  std::unordered_map<TransactionId, LogIndex> _transactions;
-  std::deque<std::pair<LogIndex, Status>> _logIndices;
-};
-
 }  // namespace arangodb::replication2::replicated_state::document

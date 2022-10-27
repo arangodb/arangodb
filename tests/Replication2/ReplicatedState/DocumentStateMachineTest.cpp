@@ -754,23 +754,20 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_errors) {
   Mock::VerifyAndClearExpectations(transactionMock.get());
 }
 
-TEST(DocumentStateTransactionHandlerTest, test_activeTransactions) {
+TEST(ActiveTransactionsQueueTEst, test_activeTransactions) {
   auto activeTrx = ActiveTransactionsQueue{};
+  ASSERT_EQ(activeTrx.getReleaseIndex(LogIndex{99}), LogIndex{99});
   activeTrx.emplace(TransactionId{100}, LogIndex{100});
-  ASSERT_EQ(activeTrx.getReleaseIndex(), LogIndex{99});
   ASSERT_TRUE(activeTrx.erase(TransactionId{100}));
-  ASSERT_EQ(activeTrx.getReleaseIndex(), LogIndex{99});
+  ASSERT_EQ(activeTrx.getReleaseIndex(LogIndex{103}), LogIndex{103});
   ASSERT_FALSE(activeTrx.erase(TransactionId{100}));
   activeTrx.emplace(TransactionId{200}, LogIndex{200});
-  ASSERT_EQ(activeTrx.getReleaseIndex(), LogIndex{199});
   activeTrx.emplace(TransactionId{300}, LogIndex{300});
-  ASSERT_EQ(activeTrx.getReleaseIndex(), LogIndex{199});
   activeTrx.emplace(TransactionId{400}, LogIndex{400});
-  ASSERT_EQ(activeTrx.getReleaseIndex(), LogIndex{199});
   ASSERT_TRUE(activeTrx.erase(TransactionId{200}));
-  ASSERT_EQ(activeTrx.getReleaseIndex(), LogIndex{299});
+  ASSERT_EQ(activeTrx.getReleaseIndex(LogIndex{1000}), LogIndex{299});
   ASSERT_TRUE(activeTrx.erase(TransactionId{400}));
-  ASSERT_EQ(activeTrx.getReleaseIndex(), LogIndex{299});
+  ASSERT_EQ(activeTrx.getReleaseIndex(LogIndex{1000}), LogIndex{299});
   ASSERT_TRUE(activeTrx.erase(TransactionId{300}));
-  ASSERT_EQ(activeTrx.getReleaseIndex(), LogIndex{399});
+  ASSERT_EQ(activeTrx.getReleaseIndex(LogIndex{1000}), LogIndex{399});
 }

@@ -33,8 +33,6 @@
 #include <Futures/Future.h>
 #include <Logger/LogContextKeys.h>
 
-#include <algorithm>
-
 namespace arangodb::replication2::replicated_state::document {
 
 DocumentLeaderState::DocumentLeaderState(
@@ -162,8 +160,9 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
   if (operation != OperationType::kCommit &&
       operation != OperationType::kAbort) {
     transactionsGuard->emplace(transactionId, idx);
+  } else {
+    stream->release(transactionsGuard->getReleaseIndex(idx));
   }
-  stream->release(transactionsGuard->getReleaseIndex());
   transactionsGuard.unlock();
 
   if (opts.waitForCommit) {

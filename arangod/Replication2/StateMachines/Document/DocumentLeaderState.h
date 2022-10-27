@@ -23,16 +23,14 @@
 
 #pragma once
 
+#include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-#include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
 #include "Basics/UnshackledMutex.h"
 
 #include <atomic>
-#include <deque>
 #include <memory>
-#include <unordered_set>
 
 namespace arangodb::transaction {
 struct IManager;
