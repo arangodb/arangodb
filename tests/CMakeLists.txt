@@ -16,6 +16,8 @@ add_subdirectory(Fuerte)
 
 add_subdirectory(Errors)
 
+add_subdirectory(Zkd)
+
 # ----------------------------------------
 # Link directories
 # ----------------------------------------
