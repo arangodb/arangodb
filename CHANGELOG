@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed issue #17934: Unnecessary document-lookup instead of Index-Only query.
+  This change improves projection handling so that more projections can be
+  served from indexes.
+
 * Updated arangosync to v2.13.0-preview-2.
 
 * BTS-1070: Fixed query explain not dealing with an aggregate function without
