@@ -113,7 +113,7 @@ const viewName = (name, isSearchAlias) => {
   } else {
     return name + "_as";
   }
-}
+};
 
 const checkViewConsistency = (cn, isSearchAlias, isMaterialize) => {
   let runQuery = (query) => {
@@ -134,7 +134,7 @@ const checkViewConsistency = (cn, isSearchAlias, isMaterialize) => {
       // print(result);
       // assertEqual(expected, result);
     }
-  }
+  };
 
   vn = viewName(cn + "_view", isSearchAlias);
   checkView(isMaterialize);
@@ -170,7 +170,7 @@ function BaseChaosSuite(testOpts) {
     } catch (e) {
     }
     a.save("testAnalyzer", "delimiter", { delimiter: "/" });
-  }
+  };
 
   const removeViews = (isSearchAlias) => {
     let vn = viewName(cn + "_view", isSearchAlias);
