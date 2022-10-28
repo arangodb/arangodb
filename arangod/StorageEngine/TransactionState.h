@@ -320,7 +320,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
-  void clearQueryCache();
+  void clearQueryCache() const;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // reset the internal Transaction ID to none.
