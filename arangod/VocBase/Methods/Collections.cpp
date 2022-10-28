@@ -965,7 +965,7 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
   if (queue->status().ok()) {
     res = trx.commit();
   } else {
-    return futures::makeFuture(Result(queue->status()));
+    res = queue->status();
   }
 
   return futures::makeFuture(res);

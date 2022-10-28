@@ -1,6 +1,8 @@
 v3.9.4 (2022-10-18)
 -------------------
 
+* Repair "load indexes into memory" functions for cluster collections.
+
 * Fixed BTS-852 (user's saved queries used to disappear after updating user
   profile).
 
