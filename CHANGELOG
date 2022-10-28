@@ -1,10 +1,14 @@
 v3.9.4 (XXXX-XX-XX)
 -------------------
 
+* Improved shard distribution during collection creation.
+
+
+v3.9.4 (XXXX-XX-XX)
+-------------------
+
 * Fixed BTS-852 (user's saved queries used to disappear after updating user
   profile).
-
-* Improved shard distribution during collection creation.
 
 * Changed the encoding of revision ids returned by the following REST APIs:
   - GET /_api/collection/<collection-name>/revision: the revision id was
