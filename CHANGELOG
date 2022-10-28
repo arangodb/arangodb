@@ -10978,7 +10978,7 @@ v3.3.4 (2018-03-01)
 
 * fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
 
-* remove long disfunctional admin/long_echo handler
+* remove long dysfunctional admin/long_echo handler
 
 * fixed Foxx API:
 
@@ -11446,7 +11446,7 @@ v3.2.13 (2018-04-13)
 v3.2.12 (2018-02-27)
 --------------------
 
-* remove long disfunctional admin/long_echo handler
+* remove long dysfunctional admin/long_echo handler
 
 * fixed Foxx API:
 
