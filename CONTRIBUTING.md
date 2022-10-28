@@ -237,7 +237,7 @@ Note: Make sure that your source path does not contain spaces otherwise the buil
 ArangoDB uses a build system called [Oskar](https://github.com/arangodb/oskar).
 Please refer to the documentation of Oskar for details.
 
-Optimizations and limit of architecture (list of possible CPU instuctions) are set using this `cmake` option
+Optimizations and limit of architecture (list of possible CPU instructions) are set using this `cmake` option
 in addition to the other options:
 
 ```
