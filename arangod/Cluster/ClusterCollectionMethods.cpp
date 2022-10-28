@@ -343,15 +343,15 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
     ClusterInfo& ci, std::string_view databaseName,
     CreateCollectionBody const& col, bool enforceReplicationFactor,
     std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>&
-        allUsedDistrbitions) -> std::shared_ptr<IShardDistributionFactory> {
+        allUsedDistributions) -> std::shared_ptr<IShardDistributionFactory> {
   if (col.distributeShardsLike.has_value()) {
     auto distLike = col.distributeShardsLike.value();
     // Empty value has to be rejected by invariants beforehand, assert here just
     // in case.
     TRI_ASSERT(!distLike.empty());
-    if (allUsedDistrbitions.contains(distLike)) {
+    if (allUsedDistributions.contains(distLike)) {
       // We are already set, use the other one.
-      return allUsedDistrbitions.at(distLike);
+      return allUsedDistributions.at(distLike);
     }
     // Follow the given distribution
     auto distribution = std::make_shared<DistributeShardsLike>(
@@ -379,19 +379,19 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
           return result;
         });
     // Add the Leader to the distribution List
-    allUsedDistrbitions.emplace(distLike, distribution);
+    allUsedDistributions.emplace(distLike, distribution);
     return distribution;
-  } else if (col.replicationFactor == 0) {
+  } else if (col.isSatellite()) {
     // We are a Satellite collection, use Satellite sharding
     auto distribution = std::make_shared<SatelliteDistribution>();
-    allUsedDistrbitions.emplace(col.name, distribution);
+    allUsedDistributions.emplace(col.name, distribution);
     return distribution;
   } else {
     // Just distribute evenly
     auto distribution = std::make_shared<EvenDistribution>(
         col.numberOfShards.value(), col.replicationFactor.value(),
         col.avoidServers, enforceReplicationFactor);
-    allUsedDistrbitions.emplace(col.name, distribution);
+    allUsedDistributions.emplace(col.name, distribution);
     return distribution;
   }
 }
