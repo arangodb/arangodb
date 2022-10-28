@@ -89,7 +89,8 @@ Result EvenDistribution::planShardsOnServers(
 
   // In case we have not enough servers available AND do not enforce replication
   // factor.
-  auto serversToPick = std::min(_replicationFactor, availableServers.size());
+  size_t serversToPick = std::min(
+      _replicationFactor, static_cast<uint64_t>(availableServers.size()));
 
   size_t k = availableServers.size() /
              std::gcd(serversToPick, availableServers.size());
