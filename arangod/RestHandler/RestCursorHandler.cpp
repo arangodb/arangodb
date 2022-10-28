@@ -258,8 +258,6 @@ RestStatus RestCursorHandler::registerQueryOrCursor(
   return processQuery();
 }
 
-
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Process the query registered in _query.
 /// The function is repeatable, so whenever we need to WAIT
