@@ -11131,7 +11131,7 @@ v3.3.1 (2017-12-28)
 
 * Agency performance improvement by finer grained locking.
 
-* Use steady_clock in agency whereever possible.
+* Use steady_clock in agency wherever possible.
 
 * Agency prevent Supervision thread crash.
 
