@@ -808,7 +808,7 @@ devel
   values for `_key`. That check was missing since 3.8 in this particular
   combination and has now been added back. AQL queries attempting to insert
   documents into a collection like this will now fail with the error "must not
-  specifiy _key for this collection", as they used to do before 3.8.
+  specify _key for this collection", as they used to do before 3.8.
 
 * Updated ArangoDB Starter to 0.15.5-preview-1.
 
@@ -6388,7 +6388,7 @@ devel
 
 * Display "geoJson" value for geo indexes in index overview in web UI.
 
-* Allow specifiying arbitrary vertex attributes when creating a vertex via the
+* Allow specifying arbitrary vertex attributes when creating a vertex via the
   graph viewer in the web UI. This is necessary for collections that have a
   schema and that require new vertices to have certain attributes/values.
 
@@ -7107,7 +7107,7 @@ devel
 * Use OpenSSL's EVP interface for SHA256 instead of the deprecated low-level
   message digest APIs.
 
-* Prevent startup error "specifiy either '--server.jwt-secret-keyfile' or
+* Prevent startup error "specify either '--server.jwt-secret-keyfile' or
   '--server.jwt-secret-folder' but not both." from occurring when specifying the
   JWT secret keyfile option.
 
