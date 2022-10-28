@@ -901,67 +901,122 @@ void IResearchFeature::collectOptions(
   options->addSection("arangosearch", std::string{name()}.append(" feature"));
   options
       ->addOption(THREADS_PARAM,
-                  "the exact number of threads to use for asynchronous "
-                  "tasks (0 == autodetect)",
+                  "The exact number of threads to use for asynchronous "
+                  "tasks (0 = auto-detect).",
                   new options::UInt32Parameter(&_threads))
-      .setDeprecatedIn(30705);
+      .setDeprecatedIn(30705)
+      .setLongDescription(std::string{
+          "From version 3.7.5 on, the commit and consolidation thread counts "
+          "should be set separately via the following options instead:"
+          "- `--arangosearch.commit-threads`\n"
+          "- `--arangosearch.commit-threads-idle`\n"
+          "- `--arangosearch.consolidation-threads`\n"
+          "- `--arangosearch.consolidation-threads-idle`\n"
+          "\n"
+          "If either `--arangosearch.commit-threads` or "
+          "`--arangosearch.consolidation-threads` is set, then "
+          "`--arangosearch.threads` and `arangosearch.threads-limit` are "
+          "ignored. If only the legacy options are set, then the commit and "
+          "consolidation thread counts are calculated as follows:\n"
+          "- Maximum: The smaller value out of `--arangosearch.threads` and "
+          "`arangosearch.threads-limit` divided by 2, but at least 1.\n"
+          "- Minimum: the maximum divided by 2, but at least 1.\n"});
   options
-      ->addOption(THREADS_LIMIT_PARAM,
-                  "upper limit to the autodetected number of threads to use "
-                  "for asynchronous tasks (0 == use default)",
-                  new options::UInt32Parameter(&_threadsLimit))
-      .setDeprecatedIn(30705);
+      ->addOption(
+          THREADS_LIMIT_PARAM,
+          "The upper limit to the auto-detected number of threads to use "
+          "for asynchronous tasks (0 = use default).",
+          new options::UInt32Parameter(&_threadsLimit))
+      .setDeprecatedIn(30705)
+      .setLongDescription(std::string{
+          "From version 3.7.5 on, you should set the commit and consolidation "
+          "thread counts "
+          "separately via the following options instead:"
+          "- `--arangosearch.commit-threads`\n"
+          "- `--arangosearch.commit-threads-idle`\n"
+          "- `--arangosearch.consolidation-threads`\n"
+          "- `--arangosearch.consolidation-threads-idle`\n"
+          "\n"
+          "If either `--arangosearch.commit-threads` or "
+          "`--arangosearch.consolidation-threads` is set, then "
+          "`--arangosearch.threads` and `arangosearch.threads-limit` are "
+          "ignored. If only the legacy options are set, then the commit and "
+          "consolidation thread counts are calculated as follows:\n"
+          "- Maximum: The smaller value out of `--arangosearch.threads` and "
+          "`arangosearch.threads-limit` divided by 2, but at least 1.\n"
+          "- Minimum: the maximum divided by 2, but at least 1.\n"});
   options
-      ->addOption(CONSOLIDATION_THREADS_PARAM,
-                  "upper limit to the allowed number of consolidation threads "
-                  "(0 == autodetect)",
-                  new options::UInt32Parameter(&_consolidationThreads))
-      .setIntroducedIn(30705);
+      ->addOption(
+          CONSOLIDATION_THREADS_PARAM,
+          "The upper limit to the allowed number of consolidation threads "
+          "(0 = auto-detect).",
+          new options::UInt32Parameter(&_consolidationThreads))
+      .setIntroducedIn(30705) setLongDescription(
+          std::string{"The option value must fall in the range `[ "
+                      "1..arangosearch.consolidation-threads ]`. Set it to `0` "
+                      "to automatically choose a sensible number based on the "
+                      "number of cores in the system."});
   options
-      ->addOption(CONSOLIDATION_THREADS_IDLE_PARAM,
-                  "upper limit to the allowed number of idle threads to use "
-                  "for consolidation tasks (0 == autodetect)",
-                  new options::UInt32Parameter(&_consolidationThreadsIdle))
+      ->addOption(
+          CONSOLIDATION_THREADS_IDLE_PARAM,
+          "The upper limit to the allowed number of idle threads to use "
+          "for consolidation tasks (0 = auto-detect).",
+          new options::UInt32Parameter(&_consolidationThreadsIdle))
       .setIntroducedIn(30705);
   options
       ->addOption(COMMIT_THREADS_PARAM,
-                  "upper limit to the allowed number of commit threads "
-                  "(0 == autodetect)",
+                  "The upper limit to the allowed number of commit threads "
+                  "(0 = auto-detect).",
                   new options::UInt32Parameter(&_commitThreads))
-      .setIntroducedIn(30705);
-  options
-      ->addOption(COMMIT_THREADS_IDLE_PARAM,
-                  "upper limit to the allowed number of idle threads to use "
-                  "for commit tasks (0 == autodetect)",
-                  new options::UInt32Parameter(&_commitThreadsIdle))
-      .setIntroducedIn(30705);
+      .setIntroducedIn(30705)
+      .setLongDescription(std::string{
+          "The option value must fall in the range `[ 1..4 * NumberOfCores ]`. "
+          "Set it to `0` to automatically choose a sensible number based on "
+          "the number of cores in the system."});
   options
       ->addOption(
-          SKIP_RECOVERY,
-          "skip data recovery for the specified view links and inverted "
-          "indexes on startup. "
-          "entries here should have the format "
-          "'<collection-name>/<index-id>' "
-          "or '<collection-name>/<index-name>'. "
-          "the pseudo-entry 'all' will disable recovery for all view "
-          "links/inverted indexes. "
-          "all links/inverted indexes skipped during recovery will be marked "
-          "as out of sync when "
-          "the recovery is completed. these links/indexes will need to be "
-          "recreated manually "
-          "afterwards (note: using this option will cause data of affected "
-          "links/inverted indexes to become incomplete or more incomplete "
-          "until "
-          "they have been manually recreated)",
+          COMMIT_THREADS_IDLE_PARAM,
+          "The upper limit to the allowed number of idle threads to use "
+          "for commit tasks (0 = auto-detect)",
+          new options::UInt32Parameter(&_commitThreadsIdle))
+      .setIntroducedIn(30705)
+      .setLongDescription(std::string{
+          "The option value must fall in the range `[ 1..arangosearch.commit-threads ]`. Set it to `0` to automatically choose a sensible number based on the
+          number of cores in the system."
+      });
+  options
+      ->addOption(
+          SKIP_RECOVERY,  // TODO: Move parts of the descriptions to
+                          // longDescription?
+          "Skip the data recovery for the specified View link or inverted "
+          "index on startup. The value for this option needs to have the "
+          "format '<collection-name>/<index-id>' or "
+          "'<collection-name>/<index-name>'. You can use the option multiple "
+          "times, for each View link and inverted index to skip the recovery "
+          "for. The pseudo-value 'all' disables the recovery for all View "
+          "links and inverted indexes. The links/indexes skipped during the "
+          "recovery are marked as out-of-sync when the recovery completes. You "
+          "need to recreate them manually afterwards.\n"
+          "WARNING: Using this option causes data of affected links/indexes to "
+          "become incomplete or more incomplete until they have been manually "
+          "recreated.",
           new options::VectorParameter<options::StringParameter>(
               &_skipRecoveryItems))
       .setIntroducedIn(30904);
   options
       ->addOption(FAIL_ON_OUT_OF_SYNC,
-                  "whether or not retrieval queries on out of sync "
-                  "links/indexes should fail",
+                  "Whether or not retrieval queries on out-of-sync "
+                  "View links and inverted indexes should fail.",
                   new options::BooleanParameter(&_failQueriesOnOutOfSync))
-      .setIntroducedIn(30904);
+      .setIntroducedIn(30904)
+      .setLongDescription(std::string{
+          "If set to `true`, any data retrieval queries on out-of-sync "
+          "links/indexes fail with the error 'collection/view is out of sync' "
+          " (error code 1481).\n"
+          "\n"
+          "If set to `false`, queries on out-of-sync links/indexes are "
+          "answered "
+          "normally, but the returned data may be incomplete."});
 }
 
 void IResearchFeature::validateOptions(
