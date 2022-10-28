@@ -667,7 +667,7 @@ devel
 
 * Updated ArangoDB Starter to 0.15.5-preview-3.
 
-* Fixed a rare occuring issue where paths inside a DisjointSmart traversal
+* Fixed a rare occurring issue where paths inside a DisjointSmart traversal
   containing only satellite relevant nodes were not returned properly
   (ES-1265).
 
@@ -6422,7 +6422,7 @@ devel
 
 * Updated ArangoDB Starter to 0.14.15.
 
-* Fixed a spuriously occuring shutdown deadlock between AgencyCallbackRegistry
+* Fixed a spuriously occurring shutdown deadlock between AgencyCallbackRegistry
   and AgencyCache.
 
 * Fixed `"Plan" is not an object in agency` error messages when restarting
@@ -11658,7 +11658,7 @@ v3.2.9 (2017-12-04)
 v3.2.8 (2017-11-18)
 -------------------
 
-* fixed a race condition occuring when upgrading via linux package manager
+* fixed a race condition occurring when upgrading via linux package manager
 
 * fixed authentication issue during replication
 
