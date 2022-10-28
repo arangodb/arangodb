@@ -3000,7 +3000,7 @@ devel
   access patterns for the different participating DB servers.
   The timeouts on coordinators remain unchanged, so any queries/transactions
   that are abandoned will be aborted there, which will also be propagated to
-  DB servers. In addition, if a particpating server in an AQL query becomes
+  DB servers. In addition, if a participating server in an AQL query becomes
   unavailable, the coordinator is now notified of that and will terminate the
   query more eagerly.
 
