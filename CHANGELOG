@@ -14270,7 +14270,7 @@ v2.8.6 (2016-03-23)
 v2.8.5 (2016-03-11)
 -------------------
 
-* Add OpenSSL handler for TLS V1.2 as sugested by kurtkincaid in #1771
+* Add OpenSSL handler for TLS V1.2 as suggested by kurtkincaid in #1771
 
 * fixed issue #1765 (The webinterface should display the correct query time)
   and #1770 (Display ACTUAL query time in aardvark's AQL editor)
