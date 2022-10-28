@@ -12039,7 +12039,7 @@ v3.2.2 (2017-08-23)
 
 * upgrade jemalloc version to 5.0.1
 
-  This fixes problems with the memory allocator returing "out of memory" when
+  This fixes problems with the memory allocator returning "out of memory" when
   calling munmap to free memory in order to return it to the OS.
 
   It seems that calling munmap on Linux can increase the number of mappings, at least
