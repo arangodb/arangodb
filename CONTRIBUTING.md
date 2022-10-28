@@ -411,7 +411,7 @@ You now will get log entries with the contents being passed between the blocks.
 
 ### Crashes
 
-The Linux builds of the arangod execuable contain a built-in crash handler
+The Linux builds of the arangod executable contain a built-in crash handler
 (introduced in v3.7.0).
 The crash handler is supposed to log basic crash information to the ArangoDB logfile in
 case the arangod process receives one of the signals SIGSEGV, SIGBUS, SIGILL, SIGFPE or
