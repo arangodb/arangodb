@@ -2490,7 +2490,7 @@ devel
 
 * Add basic overload control to arangod.
   This change adds the `x-arango-queue-time-seconds` header to all responses
-  sent by arangod. This header contains the most recent request dequeing time
+  sent by arangod. This header contains the most recent request dequeuing time
   (in seconds) as tracked by the scheduler. This value can be used by client
   applications and drivers to detect server overload and react on it.
   The new startup option `--http.return-queue-time-header` can be set to
@@ -2500,9 +2500,9 @@ devel
   requests sent to arangod with a header of the same name. If set, the
   value of the header should contain the maximum queuing time (in seconds)
   that the client is willing to accept. If the header is set in an incoming
-  request, arangod will compare the current dequeing time from its scheduler
+  request, arangod will compare the current dequeuing time from its scheduler
   with the maximum queue time value contained in the request. If the current
-  dequeing time exceeds the value set in the header, arangod will reject the
+  dequeuing time exceeds the value set in the header, arangod will reject the
   request and return HTTP 412 (precondition failed) with the new error code
   21004 (queue time violated).
 
