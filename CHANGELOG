@@ -14719,7 +14719,7 @@ v2.8.0-alpha1 (2015-12-03)
     the regular replication status check APIs.
 
   - added `async` attribute for `sync` and `syncCollection` operations called from
-    the ArangoShell. Setthing this attribute to `true` will make the synchronization
+    the ArangoShell. Setting this attribute to `true` will make the synchronization
     job on the server go into the background, so that the shell does not block. The
     status of the started asynchronous synchronization job can be queried from the
     ArangoShell like this:
