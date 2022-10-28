@@ -14694,7 +14694,7 @@ v2.8.0-alpha1 (2015-12-03)
     These parameters can be used to control the minimum and maximum wait time the
     slave will (intentionally) idle and not poll for master log changes in case the
     master had sent the full logs already.
-    The `idleMaxWaitTime` value will only be used when `adapativePolling` is set
+    The `idleMaxWaitTime` value will only be used when `adaptivePolling` is set
     to `true`. When `adaptivePolling` is disable, only `idleMinWaitTime` will be
     used as a constant time span in which the slave will not poll the master for
     further changes. The default values are 0.5 seconds for `idleMinWaitTime` and
@@ -14958,7 +14958,7 @@ v2.7.2 (2015-12-01)
     These parameters can be used to control the minimum and maximum wait time the
     slave will (intentionally) idle and not poll for master log changes in case the
     master had sent the full logs already.
-    The `idleMaxWaitTime` value will only be used when `adapativePolling` is set
+    The `idleMaxWaitTime` value will only be used when `adaptivePolling` is set
     to `true`. When `adaptivePolling` is disable, only `idleMinWaitTime` will be
     used as a constant time span in which the slave will not poll the master for
     further changes. The default values are 0.5 seconds for `idleMinWaitTime` and
