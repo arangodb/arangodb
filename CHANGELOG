@@ -10740,7 +10740,7 @@ v3.3.9 (2018-05-17)
   a document while scanning a collection via an EnumerateCollectionNode.
   Additionally the new version of the optimizer rule can also produce projections
   when scanning an index via an IndexNode.
-  The optimization is benefial especially for huge documents because it will copy
+  The optimization is beneficial especially for huge documents because it will copy
   out only the projected attributes from the document instead of copying the entire
   document data from the storage engine.
 
