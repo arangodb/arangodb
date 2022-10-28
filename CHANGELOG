@@ -4580,7 +4580,7 @@ devel
   server are all using v3.8 or higher, and the dumps will never be stored into
   earlier versions.
   The default value for this option is `true`, meaning the JSON wrappers will
-  be stored as part of the dump. This is compatible with all previous verions.
+  be stored as part of the dump. This is compatible with all previous version.
 
 * Fix some issues with key generators not properly taking into account the
   `allowUserKeys` attribute when in a cluster.
