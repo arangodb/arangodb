@@ -102,7 +102,7 @@ void ClusteringMutableProperties::applyDatabaseDefaults(
               "writeConcern must not be higher than replicationFactor"};
     }
     if (isSatellite()) {
-      if (writeConcern != 1ul) {
+      if (writeConcern != 1ull) {
         return {TRI_ERROR_BAD_PARAMETER,
                 "For a satellite collection writeConcern must not be set"};
       }
