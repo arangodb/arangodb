@@ -5071,7 +5071,7 @@ devel
   `/_admin/cluster/maintenance`. This API stored a boolean value instead of
   an (expected) maintenance period end date/time string.
 
-* Make the cancel operation safe for asynchronoulsly started JavaScript
+* Make the cancel operation safe for asynchronously started JavaScript
   transactions (via HTTP POST to `/_api/transaction` with the `x-arango-async`
   header set).
 
