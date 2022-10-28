@@ -766,7 +766,7 @@ devel
   week counting from when the year started in ISO calendar and also the year
   it's in.
 
-* Added handling of requests with Transfer-Encodign chunked, which is
+* Added handling of requests with Transfer-Encoding chunked, which is
   not implemented, so returns code HTTP code 501.
 
 * Add progress reporting to RocksDB WAL recovery, in case there are many WAL
