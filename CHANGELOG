@@ -9146,7 +9146,7 @@ v3.4.1 (2018-12-19)
     options, such as `--version`, `--dump-options`, `--dump-dependencies` etc.,
     and "option" for all others.
 
-* Fixed a bug in synchroneous replication intialization for, where a
+* Fixed a bug in synchroneous replication initialization for, where a
   shard's db server is rebooted during that period
 
 
