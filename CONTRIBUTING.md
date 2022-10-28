@@ -72,7 +72,7 @@ in the ArangoDB source tree:
 
 ### Style Guide
 
-We use `clang-format` to enfore consistent code formatting. Check 
+We use `clang-format` to enforce consistent code formatting. Check 
 [STYLEGUIDE.md](STYLEGUIDE.md) for a comprehensive description of ArangoDB's 
 Coding Guidelines.
 
