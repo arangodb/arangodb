@@ -6185,7 +6185,7 @@ devel
   the elements are not clickable.
 
 * The Web UI now displays an error message inside the node information view in
-  case the user has no access to retreive the neccessary information.
+  case the user has no access to retreive the necessary information.
 
 * Web UI: Removed unnecessary menubar entry in case of database node inspection.
 
