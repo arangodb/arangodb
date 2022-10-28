@@ -24,7 +24,7 @@ and their format is subject to change. By default, `details` is set to `false`,
 so no details are returned and the behavior is identical to previous versions
 of ArangoDB.
 Please note that requesting `details` may cause additional load and thus have
-an impact on performace.
+an impact on performance.
 
 @RESTDESCRIPTION
 In addition to the above, the result also contains the number of documents
