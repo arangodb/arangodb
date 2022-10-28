@@ -16795,7 +16795,7 @@ v2.5.0-beta2 (2015-02-23)
   coordinate values may have caused errors on insertion when the geo index' `unique` flag was set
   and its `ignoreNull` flag was not.
 
-  This was confusing and has been rectified in 2.5. The method `ensureGeoConstaint()` now does the
+  This was confusing and has been rectified in 2.5. The method `ensureGeoConstraint()` now does the
   same as `ensureGeoIndex()`. Furthermore, the attributes `constraint`, `unique`, `ignoreNull` and
   `sparse` flags are now completely ignored when creating geo indexes.
 
