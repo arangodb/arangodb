@@ -10795,7 +10795,7 @@ v3.3.9 (2018-05-17)
   to be `sorted`, the optimizer will now not produce an alternative
   version of the plan using the hash method.
 
-  additionally, if the user explcitly asks for the COLLECT method to
+  additionally, if the user explicitly asks for the COLLECT method to
   be `hash`, the optimizer will now change the existing plan to use
   the hash method if possible instead of just creating an alternative
   plan.
