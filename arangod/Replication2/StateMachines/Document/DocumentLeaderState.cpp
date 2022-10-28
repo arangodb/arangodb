@@ -155,15 +155,16 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
                        transactionId.asFollowerTransactionId()};
 
   // Insert and emplace must happen atomically
-  auto transactionsGuard = _activeTransactions.getLockedGuard();
-  auto idx = stream->insert(entry);
-  if (operation != OperationType::kCommit &&
-      operation != OperationType::kAbort) {
-    transactionsGuard->emplace(transactionId, idx);
-  } else {
-    stream->release(transactionsGuard->getReleaseIndex(idx));
-  }
-  transactionsGuard.unlock();
+  auto idx = _activeTransactions.doUnderLock([&](auto& activeTransactions) {
+    auto idx = stream->insert(entry);
+    if (operation != OperationType::kCommit &&
+        operation != OperationType::kAbort) {
+      activeTransactions.emplace(transactionId, idx);
+    } else {
+      stream->release(activeTransactions.getReleaseIndex(idx));
+    }
+    return idx;
+  });
 
   if (opts.waitForCommit) {
     return stream->waitFor(idx).thenValue(

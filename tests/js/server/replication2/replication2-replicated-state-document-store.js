@@ -736,6 +736,7 @@ const replicatedStateSnapshotTransferSuite = function () {
   let shards = null;
   let shardId = null;
   let logId = null;
+  let log = null;
 
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
       lh.testHelperFunctions(database, {replicationVersion: "2"});
@@ -748,6 +749,7 @@ const replicatedStateSnapshotTransferSuite = function () {
       shards = collection.shards();
       shardId = shards[0];
       logId = shardId.slice(1);
+      log = db._replicatedLog(logId);
     }),
     tearDown: tearDownAnd(() => {
       if (collection !== null) {
@@ -778,14 +780,15 @@ const replicatedStateSnapshotTransferSuite = function () {
       collection.insert([{_key: "test1"}, {_key: "test2"}]);
 
       let documents = [];
-      for (let counter = 0; counter < 10000; ++counter) {
+      for (let counter = 0; counter < 100; ++counter) {
         documents.push({_key: `foo${counter}`});
       }
-
-      // Inserting lots of entries to hopefully trigger compaction.
       for (let idx = 0; idx < documents.length; ++idx) {
         collection.insert(documents[idx]);
       }
+
+      // Trigger compaction intentionally.
+      log.compact();
 
       // Replace the follower.
       const result = sh.replaceParticipant(database, logId, oldParticipant, newParticipant);
@@ -809,7 +812,7 @@ const replicatedStateSnapshotTransferSuite = function () {
       // The new follower should've executed a snapshot transfer.
       const checkKeys = ["test1", "test2"];
       // Skipping some documents to save time
-      checkKeys.push(...documents.filter((doc, idx) => idx % 100 === 0).map(doc => doc._key));
+      checkKeys.push(...documents.map(doc => doc._key));
       let bulk = sh.getBulkDocuments(lh.getServerUrl(newParticipant), database, shardId, checkKeys);
       let keysSet = new Set(checkKeys);
       for (let doc of bulk) {
@@ -822,17 +825,20 @@ const replicatedStateSnapshotTransferSuite = function () {
     testRecoveryAfterCompaction: function () {
       collection.insert([{_key: "test1"}, {_key: "test2"}]);
       let documents = [];
-      for (let counter = 0; counter < 10000; ++counter) {
+      for (let counter = 0; counter < 100; ++counter) {
         documents.push({_key: `foo${counter}`});
       }
       for (let idx = 0; idx < documents.length; ++idx) {
         collection.insert(documents[idx]);
       }
 
+      // Trigger compaction intentionally.
+      log.compact();
+
       lh.bumpTermOfLogsAndWaitForConfirmation(database, collection);
 
       // Skipping some documents to save time
-      let checkKeys = documents.filter((doc, idx) => idx % 100 === 0).map(doc => doc._key);
+      let checkKeys = documents.map(doc => doc._key);
       let {leader} = lh.getReplicatedLogLeaderPlan(database, logId);
       let bulk = sh.getBulkDocuments(lh.getServerUrl(leader), database, shardId, checkKeys);
       let keysSet = new Set(checkKeys);

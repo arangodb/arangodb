@@ -72,6 +72,9 @@ bool ActiveTransactionsQueue::erase(TransactionId const& tid) {
  */
 void ActiveTransactionsQueue::emplace(TransactionId tid, LogIndex index) {
   if (_transactions.try_emplace(tid, index).second) {
+    if (!_logIndices.empty()) {
+      TRI_ASSERT(index > _logIndices.back().first);
+    }
     _logIndices.emplace_back(index, Status::ACTIVE);
   }
 }
