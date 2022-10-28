@@ -1229,7 +1229,7 @@ Currently available Analyzers are:
 - unitTestTabularPrintResults - prints a table, add one (or more) of the following columns to print by adding it to `--tableColumns`:
 
   - `duration` - the time spent in the complete testfile
-  - `status` - sucess/fail
+  - `status` - success/fail
   - `failed` - fail?
   - `total` - the time spent in the testcase
   - `totalSetUp` - the time spent in setup summarized
