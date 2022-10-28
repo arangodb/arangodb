@@ -119,17 +119,17 @@ bool FieldMeta::operator==(FieldMeta const& rhs) const noexcept {
     }
   }
 
-  if (_includeAllFields != rhs._includeAllFields) {
+  if (_includeAllFields != rhs._includeAllFields ||
+      _trackListPositions != rhs._trackListPositions ||
+      _storeValues != rhs._storeValues) {
     return false;  // values do not match
   }
 
-  if (_trackListPositions != rhs._trackListPositions) {
+#ifdef USE_ENTERPRISE
+  if (_cache != rhs._cache) {
     return false;  // values do not match
   }
-
-  if (_storeValues != rhs._storeValues) {
-    return false;  // values do not match
-  }
+#endif
 
   return true;
 }

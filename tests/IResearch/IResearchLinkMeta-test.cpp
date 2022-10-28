@@ -208,6 +208,11 @@ TEST_F(IResearchLinkMetaTest, test_readDefaults) {
     EXPECT_TRUE(meta._fields.empty());
     EXPECT_FALSE(meta._includeAllFields);
     EXPECT_FALSE(meta._trackListPositions);
+#ifdef USE_ENTERPRISE
+    EXPECT_FALSE(meta._cache);
+    EXPECT_FALSE(meta._pkCache);
+    EXPECT_FALSE(meta._sortCache);
+#endif
     EXPECT_EQ(arangodb::iresearch::ValueStorage::NONE, meta._storeValues);
     EXPECT_EQ(1U, meta._analyzers.size());
     EXPECT_TRUE(*(meta._analyzers.begin()));
@@ -3742,8 +3747,102 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitions) {
     ASSERT_TRUE(field.get()->_cache);
     auto const& foo = field.get()->_fields.findPtr("foo");
     ASSERT_FALSE(foo->get()->_cache);
+    auto const& hotfoo = field.get()->_fields.findPtr("hotfoo");
+    ASSERT_TRUE(hotfoo->get()->_cache);
   }
 }
+
+TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsGlobalCache) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
+
+  auto json = VPackParser::fromJson(
+      R"({
+      "analyzerDefinitions": [ 
+         { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+      ],
+      "cache": true,
+      "primaryKeyCache": true,
+      "fields" : {
+        "globalhot": {
+        },
+        "field": {
+          "cache": true,
+          "fields": {
+            "foo": {"cache":false},
+            "hotfoo": { "includeAllFields":true}
+          },
+          "analyzers": [ "identity", "empty", "_system::empty", "::empty"]
+      }}
+    })");
+  arangodb::iresearch::IResearchLinkMeta meta;
+  std::string errorField;
+  EXPECT_TRUE(
+      meta.init(server.server(), json->slice(), errorField, vocbase.name()));
+  ASSERT_TRUE(meta._pkCache);
+  ASSERT_FALSE(meta._sortCache);
+  ASSERT_EQ(2, meta._fields.size());
+  {
+    auto const& field = meta._fields["globalhot"];
+    ASSERT_TRUE(field.get()->_cache);
+  }
+  {
+    auto const& field = meta._fields["field"];
+    ASSERT_TRUE(field.get()->_cache);
+    auto const& foo = field.get()->_fields.findPtr("foo");
+    ASSERT_FALSE(foo->get()->_cache);
+    auto const& hotfoo = field.get()->_fields.findPtr("hotfoo");
+    ASSERT_TRUE(hotfoo->get()->_cache);
+  }
+}
+
+TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsSortCache) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
+
+  auto json = VPackParser::fromJson(
+      R"({
+      "analyzerDefinitions": [ 
+         { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+      ],
+      "cache": true,
+      "primaryKeyCache": false,
+      "primarySortCache": true,
+      "fields" : {
+        "globalhot": {
+        },
+        "field": {
+          "cache": true,
+          "fields": {
+            "foo": {"cache":false},
+            "hotfoo": { "includeAllFields":true}
+          },
+          "analyzers": [ "identity", "empty", "_system::empty", "::empty"]
+      }}
+    })");
+  arangodb::iresearch::IResearchLinkMeta meta;
+  std::string errorField;
+  EXPECT_TRUE(
+      meta.init(server.server(), json->slice(), errorField, vocbase.name()));
+  ASSERT_FALSE(meta._pkCache);
+  ASSERT_TRUE(meta._sortCache);
+  ASSERT_EQ(2, meta._fields.size());
+  {
+    auto const& field = meta._fields["globalhot"];
+    ASSERT_TRUE(field.get()->_cache);
+  }
+  {
+    auto const& field = meta._fields["field"];
+    ASSERT_TRUE(field.get()->_cache);
+    auto const& foo = field.get()->_fields.findPtr("foo");
+    ASSERT_FALSE(foo->get()->_cache);
+    auto const& hotfoo = field.get()->_fields.findPtr("hotfoo");
+    ASSERT_TRUE(hotfoo->get()->_cache);
+  }
+}
+
 // Circumventing fakeit inability to build a mock 
 // for class with pure virtual functions in base
 class mock_term_reader : public irs::term_reader {
@@ -3778,12 +3877,44 @@ class mock_term_reader : public irs::term_reader {
   irs::field_meta const* field_meta_;
 };
 
+void makeCachedColumnsTest(std::vector<irs::field_meta> const& mockedFields,
+  IResearchLinkMeta const& meta,
+  std::set<irs::field_id> expected) {
+  std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
+  mock_term_reader mockTermReader;
+
+  fakeit::Mock<irs::field_iterator> mockFieldIterator;
+  fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
+    if (field == mockedFields.end()) {
+      field = mockedFields.begin();
+      mockTermReader.field_meta_ = &(*field);
+      return true;
+    }
+    ++field;
+    if (field != mockedFields.end()) {
+      mockTermReader.field_meta_ = &(*field);
+    }
+    return field != mockedFields.end();
+  });
+  fakeit::When(Method(mockFieldIterator, value))
+      .AlwaysDo([&]() -> irs::term_reader const& { return mockTermReader; });
+
+  fakeit::Mock<irs::field_reader> mockFieldsReader;
+  fakeit::When(Method(mockFieldsReader, iterator)).AlwaysDo([&]() {
+    return irs::memory::to_managed<irs::field_iterator, false>(
+        &mockFieldIterator.get());
+  });
+  std::set<irs::field_id> actual;
+  collectCachedNormColumns(actual, mockFieldsReader.get(), meta);
+  ASSERT_EQ(actual, expected);
+}
+
 TEST_F(IResearchLinkMetaTest, test_cachedColumns) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
 
   auto json = VPackParser::fromJson(
-     R"({
+   R"({
       "analyzerDefinitions": [ 
          { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
          { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
@@ -3803,7 +3934,6 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumns) {
   arangodb::iresearch::IResearchLinkMeta meta;
   std::string errorField;
   EXPECT_TRUE(meta.init(server.server(), json->slice(), errorField, vocbase.name()));
-  std::set<irs::field_id> actual;
   std::vector<irs::field_meta> mockedFields;
   {
     irs::field_meta field_meta;
@@ -3925,19 +4055,108 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumns) {
   fakeit::When(Method(mockFieldsReader, iterator)).AlwaysDo([&]() {
     return irs::memory::to_managed<irs::field_iterator, false>(&mockFieldIterator.get());
   });
+  std::set<irs::field_id> expected{1,2,3,4,5,10,11,12,13,14,15};
+  makeCachedColumnsTest(mockedFields, meta, expected);
+}
 
-  collectCachedNormColumns(actual, mockFieldsReader.get(), meta);
-  ASSERT_EQ(11, actual.size());
-  ASSERT_NE(actual.end(), actual.find(1));
-  ASSERT_NE(actual.end(), actual.find(2));
-  ASSERT_NE(actual.end(), actual.find(3));
-  ASSERT_NE(actual.end(), actual.find(4));
-  ASSERT_NE(actual.end(), actual.find(5));
-  ASSERT_NE(actual.end(), actual.find(10));
-  ASSERT_NE(actual.end(), actual.find(11));
-  ASSERT_NE(actual.end(), actual.find(12));
-  ASSERT_NE(actual.end(), actual.find(13));
-  ASSERT_NE(actual.end(), actual.find(14));
-  ASSERT_NE(actual.end(), actual.find(15));
+TEST_F(IResearchLinkMetaTest, test_cachedColumnsIncludeAllFields) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
+
+  auto json = VPackParser::fromJson(
+      R"({
+      "analyzerDefinitions": [ 
+         { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+      ],
+      "cache":true,
+      "includeAllFields":true,
+      "fields" : {
+        "nothot": {
+        },
+        "field": {
+          "cache": false,
+          "fields": {
+            "foo": {"cache":false},
+            "hotfoo": { "includeAllFields":true}
+          },
+          "analyzers": [ "identity", "empty", "_system::empty", "::empty"]
+      }}
+    })");
+  arangodb::iresearch::IResearchLinkMeta meta;
+  std::string errorField;
+  EXPECT_TRUE(
+      meta.init(server.server(), json->slice(), errorField, vocbase.name()));
+  std::vector<irs::field_meta> mockedFields;
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field\1empty";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 1);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 2);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field[1]\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 3);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field[123456789]\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 4);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field\0_d";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 5);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    // should be ignored as foo is explicitly not cached
+    irs::field_meta field_meta;
+    field_meta.name = "field[1].foo.bii[2344].aaa[2343].foo\0_d";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 6);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field[1].boo.bii[2344].aaa[2343].foo\0_d";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 7);
+    mockedFields.push_back(std::move(field_meta));
+  }
+
+  std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
+  mock_term_reader mockTermReader;
+
+  fakeit::Mock<irs::field_iterator> mockFieldIterator;
+  fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
+    if (field == mockedFields.end()) {
+      field = mockedFields.begin();
+      mockTermReader.field_meta_ = &(*field);
+      return true;
+    }
+    ++field;
+    if (field != mockedFields.end()) {
+      mockTermReader.field_meta_ = &(*field);
+    }
+    return field != mockedFields.end();
+  });
+  fakeit::When(Method(mockFieldIterator, value))
+      .AlwaysDo([&]() -> irs::term_reader const& { return mockTermReader; });
+
+  fakeit::Mock<irs::field_reader> mockFieldsReader;
+  fakeit::When(Method(mockFieldsReader, iterator)).AlwaysDo([&]() {
+    return irs::memory::to_managed<irs::field_iterator, false>(
+        &mockFieldIterator.get());
+  });
+  std::set<irs::field_id> expected{1, 2, 3, 4, 5, 7};
+  makeCachedColumnsTest(mockedFields, meta, expected);
 }
 #endif
