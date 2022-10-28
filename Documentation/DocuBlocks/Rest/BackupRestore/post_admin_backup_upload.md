@@ -48,7 +48,7 @@ operation is aborted.
 If all is well, code 202 is returned if a new operation is scheduled.
 
 @RESTRETURNCODE{400}
-If the upload command is invoced with bad parameters or any HTTP
+If the upload command is invoked with bad parameters or any HTTP
 method other than `POST`, then an *HTTP 400* is returned.
 
 @RESTRETURNCODE{401}
