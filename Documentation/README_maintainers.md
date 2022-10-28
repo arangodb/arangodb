@@ -71,7 +71,7 @@ Attributes:
   - *type*:
   - *[required|optionas]* Optional is not supported anymore. Split the docublock into one with and one without.
 
-Folowed by a long description.
+Followed by a long description.
 
 ## RESTALLBODYPARAM
 
