@@ -4494,7 +4494,7 @@ devel
   different steps of the replication process.
 
 * Added metric `arangodb_scheduler_low_prio_queue_last_dequeue_time` that
-  provides the time (in millseconds) it took for the most recent low priority
+  provides the time (in milliseconds) it took for the most recent low priority
   scheduler queue item to bubble up to the queue's head. This metric can be
   used to estimate the queuing time for incoming requests.
   The metric will be updated probabilistically when a request is pulled from
