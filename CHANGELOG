@@ -4727,7 +4727,7 @@ devel
   As previously, a memory limit value of `0` means no limitation.
   The limit values are per AQL query, so they may still be too high in case queries
   run in parallel. The defaults are intentionally high in order to not stop any valid,
-  previously working queries from succedding.
+  previously working queries from succeeding.
 
 * Added startup option `--audit.queue` to control audit logging queuing
   behavior (Enterprise Edition only):
