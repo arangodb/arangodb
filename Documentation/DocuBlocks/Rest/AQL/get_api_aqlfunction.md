@@ -1,6 +1,6 @@
 
 @startDocuBlock get_api_aqlfunction
-@brief gets all reqistered AQL user functions
+@brief gets all registered AQL user functions
 
 @RESTHEADER{GET /_api/aqlfunction, Return registered AQL user functions, RestAqlUserFunctionsHandler:List}
 

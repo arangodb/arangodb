@@ -10072,7 +10072,7 @@ v3.4.0-rc.1 (2018-09-06)
   `DATE_DIFF`, `DATE_COMPARE`, `TRANSLATE` and `SHA512`
 
 * fixed a bug where clusterinfo missed changes to plan after agency
-  callback is registred for create collection
+  callback is registered for create collection
 
 * Foxx manifest.json files can now contain a $schema key with the value
   of "http://json.schemastore.org/foxx-manifest" to improve tooling support.
