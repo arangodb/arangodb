@@ -4504,7 +4504,7 @@ devel
 
 * Allow {USER} placeholder string also in `--ldap.search-filter`.
 
-* Fix agency restart with mismatching compation and log indexes.
+* Fix agency restart with mismatching computation and log indexes.
 
 * Added metrics for document read and write operations:
 
