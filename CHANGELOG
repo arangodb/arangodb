@@ -12408,7 +12408,7 @@ v3.2.alpha4 (2017-04-25)
   FOR v,e IN OUTBOUND SHORTEST_PATH @start TO @target edges [...]
   ```
 
-  This change is due to avoid dead-lock sitations in clustered case.
+  This change is due to avoid dead-lock situations in clustered case.
   An error stating the above is included.
 
 * add implicit use of geo indexes when using SORT/FILTER in AQL, without
