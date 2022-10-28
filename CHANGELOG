@@ -3596,7 +3596,7 @@ devel
 * change arangosh client behavior:
  - *_RAW methods will never add a `body` to HEAD responses
  - *_RAW methods will now always return velocypack-typed responses in Buffers
- - `--server.force-json` will now be applied as default, overrideable
+ - `--server.force-json` will now be applied as default, overridable
    by user code
 
 * Add HTTP REST API endpoint POST `/_api/cursor/<cursor-id>` as a drop-in
