@@ -4075,7 +4075,6 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsIncludeAllFields) {
         "nothot": {
         },
         "field": {
-          "cache": false,
           "fields": {
             "foo": {"cache":false},
             "hotfoo": { "includeAllFields":true}

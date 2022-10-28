@@ -122,15 +122,14 @@ bool FieldMeta::operator==(FieldMeta const& rhs) const noexcept {
   if (_includeAllFields != rhs._includeAllFields ||
       _trackListPositions != rhs._trackListPositions ||
       _storeValues != rhs._storeValues) {
-    return false;  // values do not match
+    return false;
   }
 
 #ifdef USE_ENTERPRISE
   if (_cache != rhs._cache) {
-    return false;  // values do not match
+    return false;
   }
 #endif
-
   return true;
 }
 
@@ -576,6 +575,11 @@ bool IResearchLinkMeta::operator==(
     return false;
   }
 
+#ifdef USE_ENTERPRISE
+  if (_pkCache != other._pkCache || _sortCache != other._sortCache) {
+    return false;
+  }
+#endif
   // Intentionally do not compare _collectioName here.
   // It should be filled equally during upgrade/creation
   // And during upgrade difference in name (filled/not filled) should not
