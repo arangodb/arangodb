@@ -12514,7 +12514,7 @@ v3.2.alpha3 (2017-03-22)
 * fixed variables parsing in GraphQL
 
 * added `--translate` option for arangoimp to translate attribute names from
-  the input files to attriubte names expected by ArangoDB
+  the input files to attribute names expected by ArangoDB
 
   The `--translate` option can be specified multiple times (once per translation
   to be executed). The following example renames the "id" column from the input

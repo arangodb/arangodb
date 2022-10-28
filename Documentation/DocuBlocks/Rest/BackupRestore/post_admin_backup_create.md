@@ -76,6 +76,6 @@ within the timeout, then an *HTTP 408* is returned.
     };
 @END_EXAMPLE_ARANGOSH_RUN
 
-The result `body` contains besides the above discussed error codes the `result` object, if `code` is equal to `201`, which holds the unique identifier of this hot backup as the string attibute `id`, the full size in bytes as `sizeInBytes`, the number of idividual files as `nrFiles` and the number of database servers as `nrDBServers`. Single server deployments list potentially misleadingly `nrDBServers: 1`. Furthermore, the body contains a `datetime` time stamp and the flag `potentiallyInconsistent`, which indicates that the backup could inconsistent. This only happens if `allowInconsistent` has happened.
+The result `body` contains besides the above discussed error codes the `result` object, if `code` is equal to `201`, which holds the unique identifier of this hot backup as the string attribute `id`, the full size in bytes as `sizeInBytes`, the number of idividual files as `nrFiles` and the number of database servers as `nrDBServers`. Single server deployments list potentially misleadingly `nrDBServers: 1`. Furthermore, the body contains a `datetime` time stamp and the flag `potentiallyInconsistent`, which indicates that the backup could inconsistent. This only happens if `allowInconsistent` has happened.
 
 @endDocuBlock
