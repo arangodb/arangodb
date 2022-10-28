@@ -77,6 +77,10 @@ class GeneralRequest {
   /// @brief if payload was not VPack this will store parsed result
   std::shared_ptr<velocypack::Builder> _vpackBuilder;
   // TODO: Check if this change is "okayish" (protected -> public)
+  // Let's keep this TODO and fix it later. Alternative is here, to let is stay
+  // protected and implement two new methods (VST + HTTP) to actually create
+  // us a ShardSlice for our use (and also populate the vpackBuilder in those
+  // methods).
 
  protected:
   static RequestType findRequestType(char const*, size_t const);

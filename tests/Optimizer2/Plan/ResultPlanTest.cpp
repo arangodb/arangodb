@@ -59,7 +59,7 @@ class Optimizer2ResultPlan : public testing::Test {
            "cacheMisses": 0,
            "filtered": 0,
            "httpRequests": 0,
-           "executionTime": 4.573070036713034e-4,
+           "executionTime": 4.57,
            "peakMemoryUsage": 0,
            "intermediateCommits": 0
          }
@@ -114,7 +114,30 @@ TEST_F(Optimizer2ResultPlan, construction) {
     fmt::print("Something went wrong: {} {} ", res.error(), res.path());
     EXPECT_TRUE(res.ok());
   } else {
-    auto variable = res.get();
-    // TODO: Write expects
+    auto result = res.get();
+
+    // top level
+    EXPECT_TRUE(result.result.slice().isArray());
+    EXPECT_EQ(result.result.slice().at(0).getInt(), 1u);
+    EXPECT_FALSE(result.error);
+    EXPECT_FALSE(result.hasMore);
+    EXPECT_FALSE(result.cached);
+    EXPECT_EQ(result.code, 201u);
+
+    // stats
+    EXPECT_EQ(result.extra.warnings.size(), 0u);
+    EXPECT_EQ(result.extra.stats.writesExecuted, 0u);
+    EXPECT_EQ(result.extra.stats.writesIgnored, 0u);
+    EXPECT_EQ(result.extra.stats.scannedFull, 0u);
+    EXPECT_EQ(result.extra.stats.scannedIndex, 0u);
+    EXPECT_EQ(result.extra.stats.cursorsCreated, 0u);
+    EXPECT_EQ(result.extra.stats.cursorsRearmed, 0u);
+    EXPECT_EQ(result.extra.stats.cacheHits, 0u);
+    EXPECT_EQ(result.extra.stats.cacheMisses, 0u);
+    EXPECT_EQ(result.extra.stats.filtered, 0u);
+    EXPECT_EQ(result.extra.stats.httpRequests, 0u);
+    EXPECT_EQ(result.extra.stats.executionTime, 4.57);
+    EXPECT_EQ(result.extra.stats.peakMemoryUsage, 0u);
+    EXPECT_EQ(result.extra.stats.intermediateCommits, 0u);
   }
 }
