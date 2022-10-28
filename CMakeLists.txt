@@ -556,7 +556,7 @@ if (CMAKE_COMPILER_IS_CLANG AND NOT MSVC) # exclude clang-cl
 endif ()
 
 # need c++20
-# XXX this should really be set on a per target level using cmake compile_features capabilties
+# XXX this should really be set on a per target level using cmake compile_features capabilities
 set(CMAKE_CXX_STANDARD 20)
 # turn off compiler language extensions (e.g. don't use -std=gnu++20, but
 # -std=c++20).
