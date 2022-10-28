@@ -66,7 +66,7 @@ sub formatFile ($$$) {
   # state definition
   # -----------------------------------------------------------------------------
 
-  # set to true, if we see a @file, @auther, DISCLAIMER
+  # set to true, if we see a @file, @author, DISCLAIMER
   my $headerSeen = 0;
 
   # set to true, if we see a @file
