@@ -4096,7 +4096,7 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsIncludeAllFields) {
   {
     irs::field_meta field_meta;
     field_meta.name = "field\1identity";
-    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 2);
+    field_meta.features.emplace(irs::type<irs::Norm>::id(), 2);
     mockedFields.push_back(std::move(field_meta));
   }
   {
@@ -4121,7 +4121,7 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsIncludeAllFields) {
     // should be ignored as foo is explicitly not cached
     irs::field_meta field_meta;
     field_meta.name = "field[1].foo.bii[2344].aaa[2343].foo\0_d";
-    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 6);
+    field_meta.features.emplace(irs::type<irs::Norm>::id(), 6);
     mockedFields.push_back(std::move(field_meta));
   }
   {
