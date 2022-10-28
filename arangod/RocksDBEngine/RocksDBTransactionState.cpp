@@ -146,58 +146,6 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   return res;
 }
 
-rocksdb::SequenceNumber RocksDBTransactionState::prepareCollections() {
-  auto& engine = vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
-
-  rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
-
-  for (auto& trxColl : _collections) {
-    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
-
-    rocksdb::SequenceNumber seq = coll->prepareTransaction(id());
-    preSeq = std::max(seq, preSeq);
-  }
-
-  return preSeq;
-}
-
-void RocksDBTransactionState::commitCollections(
-    rocksdb::SequenceNumber lastWritten) {
-  TRI_IF_FAILURE("DisableCommitCounts") { return; }
-  TRI_ASSERT(lastWritten > 0);
-  for (auto& trxColl : _collections) {
-    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
-    // we need this in case of an intermediate commit. The number of
-    // initial documents is adjusted and numInserts / removes is set to 0
-    // index estimator updates are buffered
-    uint64_t numInserts = coll->numInserts();
-    uint64_t numUpdates = coll->numUpdates();
-    uint64_t numRemoves = coll->numRemoves();
-    coll->commitCounts(id(), lastWritten);
-    TRI_ASSERT(coll->numInserts() == 0);
-    TRI_ASSERT(coll->numUpdates() == 0);
-    TRI_ASSERT(coll->numRemoves() == 0);
-    /*
-    TODO we have counters in two different places, being the collection
-    counters and the RocksDBTrxBaseMethods counters (which belong to the
-    transaction, not each collection), so we should decrease from
-    RocksDBTrxBaseMethods the contribution from the collection that will be
-    committed
-    */
-  }
-}
-
-void RocksDBTransactionState::cleanupCollections() {
-  for (auto& trxColl : _collections) {
-    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
-    coll->abortCommit(id());
-  }
-}
-
 void RocksDBTransactionState::cleanupTransaction() noexcept {
   if (_cacheTx != nullptr) {
     // note: endTransaction() will delete _cacheTrx!
