@@ -43,7 +43,7 @@
 namespace arangodb {
 
 class LocalDocumentId;
-class ResourceMonitor;
+struct ResourceMonitor;
 
 namespace aql {
 class TraversalStats;

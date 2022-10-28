@@ -84,7 +84,7 @@ class LogicalDataSource;
 struct IndexIteratorOptions;
 struct OperationOptions;
 struct OperationResult;
-class ResourceMonitor;
+struct ResourceMonitor;
 class Result;
 class RevisionId;
 class TransactionId;

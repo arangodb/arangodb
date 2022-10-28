@@ -46,7 +46,7 @@ class LocalTaskQueue;
 class IndexIterator;
 class LogicalCollection;
 struct IndexIteratorOptions;
-class ResourceMonitor;
+struct ResourceMonitor;
 
 namespace velocypack {
 class Builder;

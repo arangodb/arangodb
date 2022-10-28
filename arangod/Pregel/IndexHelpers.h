@@ -33,7 +33,7 @@ namespace arangodb {
 class Index;
 class IndexIterator;
 class LogicalCollection;
-class ResourceMonitor;
+struct ResourceMonitor;
 
 namespace transaction {
 class Methods;

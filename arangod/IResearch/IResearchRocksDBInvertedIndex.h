@@ -27,7 +27,7 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 
 namespace arangodb {
-class ResourceMonitor;
+struct ResourceMonitor;
 
 namespace iresearch {
 

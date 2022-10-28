@@ -35,7 +35,7 @@
 #include "Basics/ResourceUsage.h"
 
 namespace arangodb {
-class ResourceMonitor;
+struct ResourceMonitor;
 
 namespace futures {
 template<typename T>

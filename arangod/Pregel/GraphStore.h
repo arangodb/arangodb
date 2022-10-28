@@ -43,7 +43,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 class LogicalCollection;
-class ResourceMonitor;
+struct ResourceMonitor;
 
 namespace transaction {
 class Methods;

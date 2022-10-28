@@ -35,7 +35,7 @@
 namespace arangodb {
 class LocalDocumentId;
 class LogicalCollection;
-class ResourceMonitor;
+struct ResourceMonitor;
 
 namespace aql {
 struct Variable;
