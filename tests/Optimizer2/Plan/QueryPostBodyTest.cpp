@@ -31,7 +31,6 @@
 #include "velocypack/Collection.h"
 
 #include "Aql/Optimizer2/Plan/QueryPostBody.h"
-#include "Aql/Optimizer2/Plan/PlanRPCHandler.h"
 
 #include <fmt/core.h>
 
@@ -45,7 +44,9 @@ class Optimizer2QueryPostBody : public testing::Test {
     return R"({
       "query": "RETURN 1",
       "bindVars": {},
-      "options": {}
+      "options": {
+        "verbosePlans": true
+      }
     })"_vpack;
   }
 
@@ -94,36 +95,11 @@ TEST_F(Optimizer2QueryPostBody, construction) {
     fmt::print("Something went wrong: {} {} ", res.error(), res.path());
     EXPECT_TRUE(res.ok());
   } else {
-    auto variable = res.get();
-    // TODO EXPECTS
-  }
-}
-
-TEST_F(Optimizer2QueryPostBody, rpcHandler) {
-  /*
-   * This will take a well-defined query post body. The query itself
-   * should be explained with verbosity enabled and return a new Plan
-   * of type "VerbosePlan" - using the PlanRPCHandler.
-   */
-  auto queryBuffer = createMinimumBody();
-  auto res = deserializeWithStatus<QueryPostBody>(queryBuffer);
-
-  if (!res) {
-    fmt::print("Something went wrong: {} {} ", res.error(), res.path());
-    EXPECT_TRUE(res.ok());
-  } else {
-    auto cmd = res.get();
-    fmt::print("Test: {}", cmd.query);
-
-    // TODO FIX ME - USE HANDLER
-    // initialize our rpc handler
-    // Currently doi
-    PlanRPCHandler handler;
-
-    handler.process(queryBuffer);
-
-    // handler.process(cmd);
-
-    // TODO EXPECTS
+    auto query = res.get();
+    EXPECT_EQ(query.query, "RETURN 1");
+    EXPECT_TRUE(query.bindVars.has_value());
+    EXPECT_TRUE(query.bindVars.value().slice().isEmptyObject());
+    EXPECT_TRUE(query.options.has_value());
+    EXPECT_TRUE(query.options.value().verbosePlans);
   }
 }

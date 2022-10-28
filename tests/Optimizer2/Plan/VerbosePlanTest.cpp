@@ -280,31 +280,10 @@ TEST_F(Optimizer2VerbosePlan, construction) {
     fmt::print("Something went wrong: {} {} ", res.error(), res.path());
     EXPECT_TRUE(res.ok());
   } else {
-    auto variable = res.get();
-    // TODO EXPECTS
-  }
-}
-
-TEST_F(Optimizer2VerbosePlan, rpcHandler) {
-  // TODO: I think we can get rid not of the rpc handler struct at all
-  // PlanRPCHandler handler;
-  /*
-   * This will take a verbosed plan and try to execute it using the
-   * PlanRPCHandler.
-   */
-  auto PlanBuffer = createMinimumBody();
-  auto res = deserializeWithStatus<VerbosePlan>(PlanBuffer);
-
-  if (!res) {
-    fmt::print("Something went wrong: {} {} ", res.error(), res.path());
-    EXPECT_TRUE(res.ok());
-  } else {
-    auto cmd = res.get();
-
-    // initialize our rpc handler
-    PlanRPCHandler handler;
-    handler.process(PlanBuffer);
-
-    // TODO EXPECTS
+    auto verbosePlan = res.get();
+    auto plan = verbosePlan.plan.slice();
+    EXPECT_TRUE(plan.isObject());
+    EXPECT_TRUE(plan.hasKey("nodes"));
+    EXPECT_TRUE(plan.get("nodes").isArray());
   }
 }

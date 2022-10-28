@@ -53,43 +53,4 @@ auto inspect(Inspector& f, PlanRPC& x) {
       insp::inlineType<GeneratePlanCMD>(), insp::inlineType<ExecutePlanCMD>());
 }
 
-template<class... Ts>
-struct overloaded : Ts... {
-  using Ts::operator()...;
-};
-template<class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
-
-struct PlanRPCHandler {
-  /*
-   * If we receive:
-   *  - QueryPostBody (GeneratePlanCMD), we will generate a detailed
-   *    (verbose) query plan => "VerbosePlan"
-   *  - VerbosePlan, we will try to execute the plan (ExecutePlanCMD) and
-   *    return its result encapsulated into "ResultPlan"
-   */
-
-  auto process(velocypack::SharedSlice body) -> bool {
-    auto res = deserializeWithStatus<PlanRPC>(body);
-    if (!res.ok()) {
-      // return std::move(res);
-      return false;
-    }
-    auto cmd = res.get().parsed;
-
-    std::visit(overloaded{[](GeneratePlanCMD const& plan) {
-                            fmt::print("GenerateplaN");
-                            return "generatePlan";
-                          },
-                          [](ExecutePlanCMD const& plan) {
-                            fmt::print("execute eplaN");
-                            return "executePlan";
-                          },
-                          [](auto) { return "not supported"; }},
-               cmd);
-
-    return true;
-  }
-};
-
 }  // namespace arangodb::aql::optimizer2::plan
