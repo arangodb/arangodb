@@ -18062,7 +18062,7 @@ v2.2.1 (2014-07-24)
   The problem was that in Google's V8, signed and unsigned chars are not always declared cleanly.
   so we need to force v8 to compile with forced signed chars which is done by the Flag:
     -fsigned-char
-  at least it is enough to follow the instructions of compiling arango on rasperry
+  at least it is enough to follow the instructions of compiling arango on raspberry
   and add "CFLAGS='-fsigned-char'" to the make command of V8 and remove the armv7=0
 
 * Fixed a bug with the replication client. In the case of single document
