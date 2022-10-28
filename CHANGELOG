@@ -14669,7 +14669,7 @@ v2.8.0-alpha1 (2015-12-03)
       FOR doc IN `OUTBOUND`
         RETURN doc.`any`
 
-* issue #1593: added AQL `POW` function for exponentation
+* issue #1593: added AQL `POW` function for exponentiation
 
 * added cluster execution site info in explain output for AQL queries
 
