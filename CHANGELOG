@@ -6247,7 +6247,7 @@ devel
     RETURN new
   )
   LIMIT 5, 10
-  REUTRN {x,sub}
+  RETURN {x,sub}
 
   If a shard in Collection, has enough entries to fill a batch, the second shard
   could run into the issue that it actually does not skip the first 5 main
@@ -8397,7 +8397,7 @@ v3.5.0-rc.1 (2019-05-14)
 
   Previously hidden program options were only returned when invoking arangod or
   a client tool with the cryptic `--help-.` option. Now `--help-all` simply
-  retuns them as well.
+  returns them as well.
 
   The program options JSON description returned by `--dump-options` was also
   improved as follows:
@@ -9127,7 +9127,7 @@ v3.4.1 (2018-12-19)
 
   Previously hidden program options were only returned when invoking arangod or
   a client tool with the cryptic `--help-.` option. Now `--help-all` simply
-  retuns them as well.
+  returns them as well.
 
   The program options JSON description returned by `--dump-options` was also
   improved as follows:
