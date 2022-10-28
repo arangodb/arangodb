@@ -10771,7 +10771,7 @@ v3.3.9 (2018-05-17)
   Not fetching the document values from the storage engine will provide a
   considerable speedup when using the RocksDB engine, but may also help a bit
   in case of the MMFiles engine. The optimization will only be applied when
-  full-scanning or index-scanning a collection without refering to any of its
+  full-scanning or index-scanning a collection without referring to any of its
   documents later on, and, for an IndexNode, if all filter conditions for the
   documents of the collection are covered by the index.
 
