@@ -12679,7 +12679,7 @@ v3.1.20 (2016-05-16)
 
 * improve reliability of AgencyComm communication with Agency
 
-* fixed shard numbering bug, where ids were erouneously incremented by 1
+* fixed shard numbering bug, where ids were erroneously incremented by 1
 
 * remove an unnecessary precondition in createCollectionCoordinator
 
