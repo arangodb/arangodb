@@ -1,3 +1,9 @@
+v3.9.5 (XXXX-XX-XX)
+-------------------
+
+* Improved shard distribution during collection creation.
+
+
 v3.9.4 (2022-10-18)
 -------------------
 
