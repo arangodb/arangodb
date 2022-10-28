@@ -2405,7 +2405,7 @@ devel
   in the same query afterwards. With the RocksDB engine and its snapshots,
   we never need to read the entire input into memory first.
 
-* Fix windows installer PATH manipulation issue by replaceng the NSIS plugin
+* Fix windows installer PATH manipulation issue by replacing the NSIS plugin
   (BTS-176).
 
 * Fixed counting of all read transaction as aborted. Added a new
