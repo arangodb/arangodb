@@ -152,10 +152,6 @@ class RocksDBTransactionState : public TransactionState {
   virtual Result doAbort() = 0;
 
  private:
-  rocksdb::SequenceNumber prepareCollections();
-  void commitCollections(rocksdb::SequenceNumber lastWritten);
-  void cleanupCollections();
-
   void maybeDisableIndexing();
 
   /// @brief delete transaction, snapshot and cache trx
