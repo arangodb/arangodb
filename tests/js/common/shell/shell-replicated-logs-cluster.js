@@ -254,6 +254,20 @@ function ReplicatedLogsWriteSuite() {
       assertEqual(s2.local.firstIndex, 1501);
     },
 
+    testCompact: function () {
+      for (let i = 0; i < 100; i++) {
+        log.insert({foo: i});
+      }
+      const s1 = getLeaderStatus();
+      assertEqual(s1.local.firstIndex, 1);
+      log.release(100);
+      const s2 = getLeaderStatus();
+      assertEqual(s2.local.firstIndex, 1);
+      log.compact();
+      const s3 = getLeaderStatus();
+      assertEqual(s3.local.firstIndex, 101);
+    },
+
     testPoll: function () {
       let index = 0;
       for (let i = 0; i < 100; i++) {

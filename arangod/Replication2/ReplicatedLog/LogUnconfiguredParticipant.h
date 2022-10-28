@@ -55,6 +55,7 @@ struct LogUnconfiguredParticipant final
       -> WaitForFuture override;
   [[nodiscard]] auto release(arangodb::replication2::LogIndex doneWithIdx)
       -> arangodb::Result override;
+  [[nodiscard]] auto compact() -> Result override;
   [[nodiscard]] auto waitForIterator(arangodb::replication2::LogIndex index)
       -> WaitForIteratorFuture override;
   [[nodiscard]] auto waitForResign() -> futures::Future<futures::Unit> override;

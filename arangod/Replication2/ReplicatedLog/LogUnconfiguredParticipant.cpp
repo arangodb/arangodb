@@ -74,6 +74,10 @@ auto LogUnconfiguredParticipant::release(LogIndex doneWithIdx) -> Result {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED);
 }
 
+auto LogUnconfiguredParticipant::compact() -> Result {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED);
+}
+
 auto LogUnconfiguredParticipant::getCommitIndex() const noexcept -> LogIndex {
   return LogIndex{0};  // index 0 is always committed.
 }

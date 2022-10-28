@@ -89,6 +89,7 @@ struct ILogParticipant {
 
   [[nodiscard]] virtual auto copyInMemoryLog() const -> InMemoryLog = 0;
   [[nodiscard]] virtual auto release(LogIndex doneWithIdx) -> Result = 0;
+  [[nodiscard]] virtual auto compact() -> Result = 0;
 };
 
 /**
