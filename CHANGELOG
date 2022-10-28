@@ -8338,7 +8338,7 @@ v3.5.0-rc.1 (2019-05-14)
 
 * Fixed bind values of `null` are not replaced by
   empty string anymore, when toggling between json and table
-  view in the web-ui. (Interal issue #7900)
+  view in the web-ui. (Internal issue #7900)
 
 * Fixed regression on ISO8601 string compatibility in AQL. (Internal issue #2786)
 
@@ -11440,7 +11440,7 @@ v3.2.13 (2018-04-13)
 * fix for internal issue #2215. supervision will now wait for agent to
   fully prepare before adding 10 second grace period after leadership change
 
-* fixed interal issue #2215 FailedLeader timeout bug
+* fixed internal issue #2215 FailedLeader timeout bug
 
 
 v3.2.12 (2018-02-27)
