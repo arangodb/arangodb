@@ -137,6 +137,12 @@ struct Option {
   // format multiple version strings, comma-separated
   std::string toVersionString(std::vector<uint32_t> const& version) const;
 
+  // provide a detailed explanation of an option
+  Option& setLongDescription(std::string const&& longDesc) {
+    longDescription = longDesc;
+    return *this;
+  }
+
   // specifies in which version the option was introduced. version numbers
   // should be specified such as 30402 (version 3.4.2)
   // a version number of 0 means "unknown"
@@ -152,6 +158,9 @@ struct Option {
     deprecatedInVersions.push_back(version);
     return *this;
   }
+
+  // returns whether or not a long description was set
+  bool hasLongDescription() const { return !longDescription.empty(); }
 
   // returns whether or not we know in which version(s) an option was added
   bool hasIntroducedIn() const { return !introducedInVersions.empty(); }
@@ -210,6 +219,7 @@ struct Option {
   std::string section;
   std::string name;
   std::string description;
+  std::string longDescription;
   std::string shorthand;
   std::unique_ptr<Parameter> parameter;
 

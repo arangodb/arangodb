@@ -1,6 +1,9 @@
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
+* Added detailed explanations for some startup options.
+  They are only exposed via `--dump-options` under the `longDescription` key.
+
 * Improved shard distribution during collection creation.
 
 * BTS-941: The HTTP API now delivers the correct list of the collection's shards
