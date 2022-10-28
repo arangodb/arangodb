@@ -60,9 +60,6 @@ class analyzer;
 }  // namespace iresearch
 
 namespace arangodb {
-
-class CollectionNameResolver;
-
 namespace aql {
 
 struct AstNode;
@@ -113,16 +110,16 @@ struct Field {
 #ifdef USE_ENTERPRISE
   bool _root{false};
 #endif
-};  // Field
+};
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief allows to iterate over the provided VPack accoring the specified
+/// @brief allows to iterate over the provided VPack according the specified
 ///        IResearchLinkMeta
 ////////////////////////////////////////////////////////////////////////////////
 template<typename IndexMetaStruct>
 class FieldIterator {
  public:
-  explicit FieldIterator(std::string_view collection);
+  FieldIterator(std::string_view collection, IndexId indexId);
 
   Field const& operator*() const noexcept { return _value; }
 
@@ -239,6 +236,7 @@ class FieldIterator {
   VPackBuffer<uint8_t> _buffer;
   std::string_view _collection;
   Field _value;  // iterator's value
+  IndexId _indexId;
 
   // Support for outputting primitive type from analyzer
   AnalyzerPool::CacheType::ptr _currentTypedAnalyzer;
@@ -280,13 +278,14 @@ struct DocumentPrimaryKey {
 };
 
 struct Value {
-  Value(std::string_view c, velocypack::Slice d);
+  Value(std::string_view c, IndexId i, velocypack::Slice d);
 
  protected:
   bool writeSlice(irs::data_output& out, VPackSlice slice) const;
 
   mutable VPackBuffer<uint8_t> buffer;
   std::string_view collection;
+  IndexId indexId;
   velocypack::Slice const document;
 };
 

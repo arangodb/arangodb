@@ -403,8 +403,9 @@ namespace iresearch {
 // --SECTION--                                     FieldIterator implementation
 // ----------------------------------------------------------------------------
 template<typename IndexMetaStruct>
-FieldIterator<IndexMetaStruct>::FieldIterator(std::string_view collection)
-    : _collection{collection} {
+FieldIterator<IndexMetaStruct>::FieldIterator(std::string_view collection,
+                                              IndexId indexId)
+    : _collection{collection}, _indexId{indexId} {
   // initialize iterator's value
 }
 
@@ -526,7 +527,9 @@ bool FieldIterator<IndexMetaStruct>::setValue(
       if (ADB_UNLIKELY(_collection.empty())) {
         LOG_TOPIC("fb53c", WARN, arangodb::iresearch::TOPIC)
             << "Value for `_id` attribute could not be indexed for document "
-            << transaction::helpers::extractKeyFromDocument(_slice).toString();
+            << transaction::helpers::extractKeyFromDocument(_slice).toString()
+            << ". To recover please recreate corresponding index '" << _indexId
+            << "'";
         return false;
       }
       _valueBuffer = getDocumentId(_collection, _slice);
@@ -869,8 +872,8 @@ void FieldIterator<IndexMetaStruct>::next() {
   return true;
 }
 
-Value::Value(std::string_view c, velocypack::Slice d)
-    : collection{c}, document{d} {}
+Value::Value(std::string_view c, IndexId i, velocypack::Slice d)
+    : collection{c}, indexId{i}, document{d} {}
 
 bool Value::writeSlice(irs::data_output& out, VPackSlice slice) const {
   // _id field, anyway will be slow so unlikely
@@ -880,7 +883,9 @@ bool Value::writeSlice(irs::data_output& out, VPackSlice slice) const {
     if (ADB_UNLIKELY(collection.empty())) {
       LOG_TOPIC("bf98c", WARN, TOPIC)
           << "Value for `_id` attribute could not be stored for document "
-          << transaction::helpers::extractKeyFromDocument(document).toString();
+          << transaction::helpers::extractKeyFromDocument(document).toString()
+          << ". To recover please recreate corresponding index '" << indexId
+          << "'";
       return false;
     }
     builder.add(VPackValue(getDocumentId(collection, document)));
