@@ -393,6 +393,7 @@ class column_base : public column_reader, private util::noncopyable {
     }
     for (const auto& c : next_sorted_columns) {
       auto column = static_cast<column_base*>(c.get());
+      assert(columns != nullptr);
       if (column->header().docs_index) {
         file_len = column->header().docs_index;
         break;
@@ -1014,8 +1015,7 @@ class sparse_column : public column_base {
         in.read_bytes(block.addr + addr_length - block_size,
                        addr_buffer.data(), block_size);
         const uint64_t start_delta = zig_zag_decode64(packed::fastpack_at(
-            reinterpret_cast<const uint64_t*>(addr_buffer.data() +
-                                              addr_buffer.size() - block_size),
+            reinterpret_cast<const uint64_t*>(addr_buffer.data()),
             value_index, block.bits));
         const uint64_t start = block.avg * block.last + start_delta;
 
