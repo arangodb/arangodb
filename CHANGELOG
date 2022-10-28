@@ -2446,7 +2446,7 @@ devel
     character, or a space ` ` character will be displayed if it is not a
     visible character. The same will happen to `DEL` character (code `\xF7`),
     even though it is not a control character, because it is not visible. For
-    example, control characer `\n` is visible, so a `\n` will be displayed in
+    example, control character `\n` is visible, so a `\n` will be displayed in
     the log, and control character `BEL` is not visible, so a space ` ` would
     be displayed. When its value is set to true, the hex code for the character
     is displayed, for example, `BEL` character would be displayed as its hex
