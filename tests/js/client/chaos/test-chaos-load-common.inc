@@ -213,7 +213,7 @@ function BaseChaosSuite(testOpts) {
         type: "inverted",
         includeAllFields: true,
         analyzer: "testAnalyzer",
-        primarySort: {fields: [{field: "_key", asc: false}]},
+        primarySort: {fields: [{field: "_id", asc: false}, {field: "_key", asc: true}]},
       });
       db._createView(vn, "search-alias", {
         indexes: [{collection: cn, index: i.name}]
@@ -221,7 +221,7 @@ function BaseChaosSuite(testOpts) {
     } else {
       db._createView(vn, "arangosearch", {
         links: {[cn]: {includeAllFields: true}},
-        primarySort: [{field: "_key", asc: false}]
+        primarySort: [{field: "_id", asc: false}, {field: "_key", asc: true}],
       });
     }
 
@@ -250,7 +250,7 @@ function BaseChaosSuite(testOpts) {
         includeAllFields: true,
         analyzer: "testAnalyzer",
         storedValues: [["_id"], ["_key"]],
-        primarySort: {fields: [{field: "_key", asc: false}]},
+        primarySort: {fields: [{field: "_id", asc: false}, {field: "_key", asc: true}]},
       });
       db._createView(vn, "search-alias", {
         indexes: [{collection: cn, index: i.name}]
@@ -259,7 +259,7 @@ function BaseChaosSuite(testOpts) {
       db._createView(vn, "arangosearch", {
         links: {[cn]: {includeAllFields: true}},
         storedValues: [["_id"], ["_key"]],
-        primarySort: [{field: "_key", asc: false}]
+        primarySort: [{field: "_id", asc: false}, {field: "_key", asc: true}],
       });
     }
   };
