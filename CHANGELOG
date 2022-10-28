@@ -11253,7 +11253,7 @@ v3.3.rc1 (2017-11-17)
   settable via the `--console.prompt` option in arangosh:
 
   - '%t': current time as timestamp
-  - '%a': elpased time since ArangoShell start in seconds
+  - '%a': elapsed time since ArangoShell start in seconds
   - '%p': duration of last command in seconds
   - '%d': name of current database
   - '%e': current endpoint
