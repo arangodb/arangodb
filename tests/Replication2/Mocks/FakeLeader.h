@@ -51,6 +51,9 @@ struct FakeLeader final : replicated_log::ILogLeader,
   void triggerAsyncReplication() override;
   auto isLeadershipEstablished() const noexcept -> bool override;
   auto waitForLeadership() -> WaitForFuture override;
+  auto compact() -> Result override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
 
   template<typename State>
   auto insertMultiplexedValue(typename State::EntryType const& t) -> LogIndex {

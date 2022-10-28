@@ -47,6 +47,9 @@ struct FakeFollower final : replicated_log::ILogFollower,
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
 
   auto release(LogIndex doneWithIdx) -> Result override;
+  auto compact() -> Result override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
 
   auto getParticipantId() const noexcept -> ParticipantId const& override;
 

@@ -599,7 +599,7 @@ static void JS_Compact(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   LogIndex index;
   if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("release()");
+    TRI_V8_THROW_EXCEPTION_USAGE("compact()");
   }
 
   auto result =
