@@ -44,7 +44,7 @@ class ExecutionPlan;
 struct Variable;
 
 namespace optimizer2::nodes {
-  struct CollectionAccessingNode;
+struct CollectionAccessingNode;
 }
 
 class CollectionAccessingNode {
