@@ -26,12 +26,13 @@
 #include "Cluster/Utils/PlanShardToServerMappping.h"
 #include "Inspection/VPack.h"
 
+#include <algorithm>
+
 using namespace arangodb;
 
 auto CurrentCollectionEntry::hasError() const noexcept -> bool {
-  return std::ranges::any_of(shards, [](auto const& s) {
-    return s.second.isError;
-  });
+  return std::ranges::any_of(shards,
+                             [](auto const& s) { return s.second.isError; });
 }
 
 auto CurrentCollectionEntry::createErrorReport() const noexcept -> std::string {
