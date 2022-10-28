@@ -35,6 +35,9 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
+#include "Aql/Optimizer2/PlanNodes/CollectionAcessingNode.h"
+#include "Aql/Optimizer2/Types/Types.h"
+
 #include <velocypack/Iterator.h>
 
 using namespace arangodb;
@@ -80,6 +83,29 @@ TRI_vocbase_t* CollectionAccessingNode::vocbase() const {
 void CollectionAccessingNode::collection(aql::Collection const* collection) {
   TRI_ASSERT(collection != nullptr);
   _collectionAccess.setCollection(collection);
+}
+
+optimizer2::nodes::CollectionAccessingNode
+CollectionAccessingNode::toInspectable() {
+  return {
+      .prototype =
+          prototypeCollection() == nullptr
+              ? std::optional<optimizer2::AttributeTypes::String>{std::nullopt}
+              : std::optional<
+                    optimizer2::AttributeTypes::String>{prototypeCollection()
+                                                            ->name()},
+      .numberOfShards =
+          ServerState::instance()->isCoordinator()
+              ? std::optional<
+                    optimizer2::AttributeTypes::Numeric>{collection()
+                                                             ->numberOfShards()}
+              : std::optional<
+                    optimizer2::AttributeTypes::Numeric>{std::nullopt},
+      .restrictedTo = !_restrictedTo.empty()
+                          ? _restrictedTo
+                          : std::optional<std::string>{std::nullopt},
+      .database = collection()->vocbase()->name(),
+      .collection = !_usedShard.empty() ? _usedShard : collection()->name()};
 }
 
 void CollectionAccessingNode::toVelocyPack(

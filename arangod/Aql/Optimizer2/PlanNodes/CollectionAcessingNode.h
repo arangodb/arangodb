@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Aql/Optimizer2/PlanNodeTypes/Satellite.h"
+#include "Aql/Optimizer2/Types/Types.h"
 
 namespace arangodb::aql::optimizer2::nodes {
 

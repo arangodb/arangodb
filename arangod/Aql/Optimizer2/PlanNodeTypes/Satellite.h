@@ -24,6 +24,8 @@
 
 #include "velocypack/Builder.h"
 
+#include "Aql/Optimizer2/Types/Types.h"
+
 namespace arangodb::aql::optimizer2::types {
 
 struct Satellite {
