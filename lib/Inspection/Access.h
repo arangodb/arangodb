@@ -375,9 +375,11 @@ struct NonNullOptional : std::optional<T> {
   using std::optional<T>::optional;
 
   bool operator==(NonNullOptional<T> const& other) const noexcept = default;
-  bool operator==(T const& other) const noexcept {
+
+  template<typename U>
+  bool operator==(U const& other) const noexcept {
     return this->has_value() && this->value() == other;
-  };
+  }
 };
 
 template<class T>
