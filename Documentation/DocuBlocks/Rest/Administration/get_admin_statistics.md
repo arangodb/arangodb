@@ -228,7 +228,7 @@ The number of spawned worker threads
 The number of currently busy worker threads
 
 @RESTSTRUCT{queued,server_threads_struct,integer,required,}
-The number of jobs queued up waiting for worker threads becomming available
+The number of jobs queued up waiting for worker threads becoming available
 
 @EXAMPLES
 
