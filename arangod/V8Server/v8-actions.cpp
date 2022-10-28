@@ -120,7 +120,6 @@ class v8_action_t final : public TRI_action_t {
   TRI_action_result_t execute(TRI_vocbase_t* vocbase, GeneralRequest* request,
                               GeneralResponse* response, Mutex* dataLock,
                               void** data) override {
-    LOG_DEVEL << "v8 execute";
     TRI_action_result_t result;
 
     // allow use database execution in rest calls?
@@ -341,7 +340,6 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
                                           TRI_v8_global_t const* v8g,
                                           arangodb::GeneralRequest* request,
                                           TRI_action_t const* action) {
-  LOG_DEVEL << "TRI_RequestCppToV8";
   // setup the request
   v8::Handle<v8::Object> req = v8::Object::New(isolate);
   auto context = TRI_IGETC;
@@ -511,24 +509,19 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
     }
   }
 
-  LOG_DEVEL << "request->contentType()";
   switch (request->contentType()) {
     case ContentType::UNSET:
-      LOG_DEVEL << "is unset";
     case ContentType::CUSTOM:  // use Content-Type from _headers
       break;
     case ContentType::JSON:  // application/json
-      LOG_DEVEL << "is json";
       headers.emplace(StaticStrings::ContentTypeHeader,
                       StaticStrings::MimeTypeJson);
       break;
     case ContentType::VPACK:  // application/x-velocypack
-      LOG_DEVEL << "is vpack";
       headers.emplace(StaticStrings::ContentTypeHeader,
                       StaticStrings::MimeTypeVPack);
       break;
     case ContentType::TEXT:  // text/plain
-      LOG_DEVEL << "is text/plain";
       headers.emplace(StaticStrings::ContentTypeHeader,
                       StaticStrings::MimeTypeText);
       break;
