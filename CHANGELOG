@@ -13521,7 +13521,7 @@ v3.0.10 (2016-09-26)
 
 * fixed issue #2070
 
-* fixed slow cluster starup issues. supervision will demonstrate more
+* fixed slow cluster startup issues. supervision will demonstrate more
   patience with db servers
 
 
