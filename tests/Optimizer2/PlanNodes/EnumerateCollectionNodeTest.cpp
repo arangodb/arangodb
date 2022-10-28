@@ -92,12 +92,14 @@ TEST(Optimizer2EnumerateCollectionNode, construction) {
     EXPECT_FALSE(enumerateCollectionNode.canThrow.has_value());
 
     // outVariable
-    EXPECT_EQ(enumerateCollectionNode.outVariable.id, 0u);
-    EXPECT_EQ(enumerateCollectionNode.outVariable.name, "x");
+    EXPECT_EQ(enumerateCollectionNode.outVariable.value().id, 0u);
+    EXPECT_EQ(enumerateCollectionNode.outVariable.value().name, "x");
+    EXPECT_TRUE(enumerateCollectionNode.outVariable.value()
+                    .isFullDocumentFromCollection);
     EXPECT_TRUE(
-        enumerateCollectionNode.outVariable.isFullDocumentFromCollection);
-    EXPECT_TRUE(enumerateCollectionNode.outVariable.isDataFromCollection);
-    EXPECT_FALSE(enumerateCollectionNode.outVariable.constantValue.has_value());
+        enumerateCollectionNode.outVariable.value().isDataFromCollection);
+    EXPECT_FALSE(
+        enumerateCollectionNode.outVariable.value().constantValue.has_value());
 
     EXPECT_EQ(enumerateCollectionNode.estimatedCost, 2u);
     EXPECT_EQ(enumerateCollectionNode.estimatedNrItems, 0u);

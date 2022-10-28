@@ -39,7 +39,6 @@ struct EnumerateCollectionNode : optimizer2::nodes::BaseNode,
                                  optimizer2::nodes::DocumentProducingNode,
                                  optimizer2::nodes::CollectionAccessingNode,
                                  optimizer2::types::Satellite {
-  optimizer2::types::Variable outVariable;
   optimizer2::types::IndexHint indexHint;
 
   // Boolean values
@@ -54,8 +53,7 @@ auto inspect(Inspector& f, EnumerateCollectionNode& x) {
       f.embedFields(
           static_cast<optimizer2::nodes::CollectionAccessingNode&>(x)),
       f.embedFields(static_cast<optimizer2::types::Satellite&>(x)),
-      f.field("indexHint", x.indexHint), f.field("outVariable", x.outVariable),
-      f.field("random", x.random));
+      f.field("indexHint", x.indexHint), f.field("random", x.random));
 }
 
 }  // namespace arangodb::aql::optimizer2::nodes

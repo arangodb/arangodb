@@ -58,7 +58,6 @@ struct IndexNode : optimizer2::nodes::BaseNode,
                    optimizer2::types::Satellite,
                    IndexOperatorOptions {
   // optionals
-  std::optional<optimizer2::types::Variable> outVariable;
   std::optional<optimizer2::types::Expression> condition;
 
   std::vector<optimizer2::types::IndexHandle> indexes;
@@ -87,8 +86,6 @@ auto inspect(Inspector& f, IndexNode& x) {
           static_cast<optimizer2::nodes::CollectionAccessingNode&>(x)),
       f.embedFields(static_cast<optimizer2::types::Satellite&>(x)),
       f.embedFields(static_cast<IndexOperatorOptions&>(x)),
-      // optionals
-      f.field("outVariable", x.outVariable),
       // bools
       f.field("needsGatherNodeSort", x.needsGatherNodeSort),
       f.field("indexCoversProjections", x.indexCoversProjections),
