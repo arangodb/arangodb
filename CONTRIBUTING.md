@@ -1107,7 +1107,7 @@ At the time being phpunit version 6.5 is supported. Install it like this:
 
 Once this is completed, you may run it like this:
 
-    ./scipts/unittest php_driver --phpsource ../arangodb-php/ \
+    ./scripts/unittest php_driver --phpsource ../arangodb-php/ \
         --testCase testSaveVerticesAndEdgeBetweenThemAndRemoveOneByOne \
         --cluster true \
         --phpkeepalive false
