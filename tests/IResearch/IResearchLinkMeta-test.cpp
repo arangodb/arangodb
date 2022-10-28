@@ -3810,6 +3810,8 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsSortCache) {
       "cache": true,
       "primaryKeyCache": false,
       "primarySortCache": true,
+      "storedValues": [{"fields":["foo"], "cache":true},
+                       {"fields":["boo"], "cache":false}],
       "fields" : {
         "globalhot": {
         },
@@ -3841,6 +3843,14 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsSortCache) {
     auto const& hotfoo = field.get()->_fields.findPtr("hotfoo");
     ASSERT_TRUE(hotfoo->get()->_cache);
   }
+  ASSERT_EQ(2, meta._storedValues.columns().size());
+  ASSERT_TRUE(meta._storedValues.columns()[0].cached);
+  ASSERT_FALSE(meta._storedValues.columns()[1].cached);
+
+  VPackBuilder builder;
+  builder.openObject();
+  EXPECT_TRUE(meta.json(server.server(), builder, false));
+  builder.close();
 }
 
 // Circumventing fakeit inability to build a mock 
