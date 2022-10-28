@@ -1,4 +1,4 @@
-add_library(arango_replication2_tests OBJECT
+add_library(arango_tests_replication2 OBJECT
   Helper/ModelChecker/Actors.cpp
   Helper/ModelChecker/AgencyTransition.cpp
   Helper/WaitForQueue.cpp
@@ -80,7 +80,7 @@ add_library(arango_replication2_tests OBJECT
   Mocks/MockStatePersistorInterface.cpp
   Mocks/MockStatePersistorInterface.h)
 
-target_include_directories(arango_replication2_tests PUBLIC
+target_include_directories(arango_tests_replication2 PUBLIC
     ${PROJECT_SOURCE_DIR}/arangod
     ${PROJECT_SOURCE_DIR}/lib
     ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
@@ -88,7 +88,7 @@ target_include_directories(arango_replication2_tests PUBLIC
     ${PROJECT_SOURCE_DIR}/tests/Mocks/
   )
 
-target_link_libraries(arango_replication2_tests
+target_link_libraries(arango_tests_replication2
     arango
     arango_replication2
     arango_tests_basics
@@ -102,7 +102,7 @@ add_executable(arangodbtests_replication2
 target_link_libraries(arangodbtests_replication2
     gtest
     arango_tests_basics
-    arango_replication2_tests
+    arango_test_replication2
     arango_agency
     arango_cluster_engine
     arango_rocksdb

@@ -1,4 +1,4 @@
-add_library(arango_graph_tests OBJECT
+add_library(arango_tests_graph OBJECT
   ClusterTraverserCacheTest.cpp
   TraverserCacheTest.cpp
   ConstantWeightShortestPathFinder.cpp
@@ -17,7 +17,7 @@ add_library(arango_graph_tests OBJECT
   SingleServerProviderTest.cpp
   ${ADDITIONAL_GRAPH_TEST_SOURCES})
 
-target_include_directories(arango_graph_tests PUBLIC
+target_include_directories(arango_tests_graph PUBLIC
     ${PROJECT_SOURCE_DIR}/arangod
     ${PROJECT_SOURCE_DIR}/lib
     ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
@@ -25,7 +25,7 @@ target_include_directories(arango_graph_tests PUBLIC
     ${PROJECT_SOURCE_DIR}/tests/Mocks/
   )
 
-target_link_libraries(arango_graph_tests
+target_link_libraries(arango_tests_graph
     arango
     arango_replication2
     arango_tests_basics
@@ -38,7 +38,7 @@ add_executable(arangodbtests_graph
 target_link_libraries(arangodbtests_graph
     gtest
     arango_tests_basics
-    arango_graph_tests
+    arango_tests_graph
     arango_agency
     arango_cluster_engine
     arango_rocksdb

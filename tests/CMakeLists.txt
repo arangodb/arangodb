@@ -31,22 +31,6 @@ if (WINDOWS)
   set(RCFILE Maintenance/json.rc)
 endif ()
 
-set(ARANGODB_TESTS_COMMON_SOURCES
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchLinkMock.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchInvertedIndexMock.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/LogLevels.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/PreparedResponseConnectionPool.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/StorageEngineMock.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Servers.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/MockGraph.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/MockGraphProvider.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Basics/icu-helper.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/AgencyMock.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/common.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/ExpressionContextMock.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/RestHandlerMock.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Aql/VelocyPackHelper.cpp
-)
 add_library(arango_tests_basics OBJECT
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchLinkMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchInvertedIndexMock.cpp
@@ -77,7 +61,6 @@ target_link_libraries(arango_tests_basics gtest velocypack fmt fuerte arango_ire
 add_subdirectory(IResearch)
 
 set(ARANGODB_TESTS_SOURCES
-  ${ARANGODB_TESTS_COMMON_SOURCES}
   Agency/ActiveFailoverTest.cpp
   Agency/AddFollowerTest.cpp
   Agency/CleanOutServerTest.cpp
@@ -164,7 +147,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/TraversalNodeTest.cpp
   Aql/UpdateExecutorTest.cpp
   Aql/UpsertExecutorTest.cpp
-  Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
   Aql/WindowExecutorTest.cpp
   Aql/DecaysFunctionTest.cpp
@@ -318,8 +300,7 @@ if (LINUX)
 endif ()
 add_executable(
   arangodbtests
-  ${ARANGODB_TESTS_SOURCES}
-  ${ARANGODB_GRAPH_TEST_SOURCES})
+  ${ARANGODB_TESTS_SOURCES})
 
 #required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
@@ -327,14 +308,16 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 endif()
 
 target_link_libraries(arangodbtests
+  arango
+  arango_tests_basics
+  arango_tests_replication2
+  arango_tests_graph
   arango_agency
   arango_cluster_engine
   arango_rocksdb
   arango_v8server
   arangoserver
   arango_restore
-  arango_replication2_tests
-  arango_graph_tests
   fuerte
   rocksdb
   snappy
