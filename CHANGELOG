@@ -11992,11 +11992,11 @@ v3.2.2 (2017-08-23)
 
   The problem with the previous shard-based approach was that responsibilities
   for shards may change from one server to another at runtime, after the query
-  was already instanciated. The coordinator and other parts of the query then
+  was already instantiated. The coordinator and other parts of the query then
   sent further requests for the query to the servers now responsible for the
   shards.
   However, an AQL query must send all further requests to the same servers on
-  which the query was originally instanciated, even in case of failover.
+  which the query was originally instantiated, even in case of failover.
   Otherwise this would potentially send requests to servers that do not know
   about the query, and would also send query shutdown requests to the wrong
   servers, leading to abandoned queries piling up and using resources until
