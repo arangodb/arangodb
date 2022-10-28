@@ -1,6 +1,11 @@
 devel
 -----
 
+* Deprecate the startup option `--agency.pool-size`. This option was never
+  properly supported for any values other than the value of `--agency.size`.
+  Now any value set for `--agency.pool-size` other than the value set for
+  `--agency.size` will not produce a fatal error on startup.
+
 * Updated arangosync to v2.13.0-preview-2.
 
 * BTS-1070: Fixed query explain not dealing with an aggregate function without

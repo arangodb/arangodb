@@ -89,11 +89,14 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                          arangodb::options::Flags::DefaultNoComponents,
                          arangodb::options::Flags::OnAgent));
 
-  options->addOption("--agency.pool-size", "number of agent pool",
-                     new UInt64Parameter(&_poolSize),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnAgent));
+  options
+      ->addOption("--agency.pool-size", "number of agent pool",
+                  new UInt64Parameter(&_poolSize),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent))
+      .setDeprecatedIn(31100);
 
   options->addOption(
       "--agency.election-timeout-min",
@@ -220,15 +223,14 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   // Agency pool size
-  if (result.touched("agency.pool-size")) {
-    if (_poolSize < _size) {
-      LOG_TOPIC("af108", FATAL, Logger::AGENCY)
-          << "agency pool size must be larger than agency size.";
-      FATAL_ERROR_EXIT();
-    }
-  } else {
-    _poolSize = _size;
+  if (result.touched("agency.pool-size") && _poolSize != _size) {
+    // using a pool size different to the number of agents
+    // has never been implemented properly, so bail out early here.
+    LOG_TOPIC("af108", FATAL, Logger::AGENCY)
+        << "agency pool size is deprecated and is not expected to be set";
+    FATAL_ERROR_EXIT();
   }
+  TRI_ASSERT(_poolSize == _size);
 
   // Size needs to be odd
   if (_size % 2 == 0) {
@@ -355,7 +357,7 @@ void AgencyFeature::prepare() {
 
   _agent = std::make_unique<consensus::Agent>(
       server(),
-      consensus::config_t(_recoveryId, _size, _poolSize, _minElectionTimeout,
+      consensus::config_t(_recoveryId, _size, _minElectionTimeout,
                           _maxElectionTimeout, endpoint, _agencyEndpoints,
                           _supervision, _supervisionTouched, _waitForSync,
                           _supervisionFrequency, _compactionStepSize,
