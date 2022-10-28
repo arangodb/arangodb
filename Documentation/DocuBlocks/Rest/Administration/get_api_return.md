@@ -125,7 +125,7 @@ the version of the used velocypack implementation
 the version of the bundled zlib
 
 @RESTSTRUCT{mode,version_details_struct,string,optional,}
-the mode we're runnig as - one of [*server*, *console*, *script*]
+the mode we're running as - one of [*server*, *console*, *script*]
 
 @RESTSTRUCT{host,version_details_struct,string,optional,}
 the host ID
