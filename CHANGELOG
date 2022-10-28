@@ -21226,7 +21226,7 @@ v1.1.beta1 (2012-10-24)
 
 * fixed issue #179: strange text in import manual
 
-* fixed issue #178: test for aragoimp is missing
+* fixed issue #178: test for arangoimp is missing
 
 * fixed issue #177: a misleading error message was returned if unknown variables
   were used in certain positions in an AQL query.
