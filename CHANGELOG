@@ -831,7 +831,7 @@ devel
   specified path.
 
 * Added OFFSET_INFO function (Enterprise Edition only) to support search results
-  highliting.
+  highlighting.
 
 * Updated Rclone to v1.59.0.
 
