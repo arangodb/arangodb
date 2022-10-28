@@ -1258,7 +1258,7 @@ bool IResearchFeature::trackColumnsCacheUsage(int64_t diff) noexcept {
       } else {
         return false;
       }
-    } while (done);
+    } while (!done);
     return true;
   }
 #endif
