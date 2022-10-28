@@ -1549,7 +1549,7 @@ arangodb::velocypack::Builder Collections::filterInput(
 
 #ifndef USE_ENTERPRISE
 void Collections::appendSmartEdgeCollections(
-    PlanCollection&, std::vector<PlanCollection>&,
+    CreateCollectionBody&, std::vector<CreateCollectionBody>&,
     std::function<DataSourceId()> const&) {
   // Nothing to do here.
 }
