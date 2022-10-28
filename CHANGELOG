@@ -10868,7 +10868,7 @@ v3.3.7 (2018-04-11)
 
 * fixed dump and restore of SmartGraphs:
   a) The dump will not include the hidden shadow collections anymore, they were dumped
-     accidentially and only contain duplicated data.
+     accidentally and only contain duplicated data.
   b) Restore will now ignore hidden shadow collections as all data is contained
      in the smart-edge collection. You can manually include these collections from an
      old dump (3.3.5 or earlier) by using `--force`.
