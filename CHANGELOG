@@ -14589,7 +14589,7 @@ v2.8.0-beta2 (2015-12-16)
   to `will be unloaded`.
 
 * unloading a collection via the web interface will now trigger garbage collection
-  in all v8 contexts and force a WAL flush. This increases the chances of perfoming
+  in all v8 contexts and force a WAL flush. This increases the chances of performing
   the unload faster.
 
 * added the following attributes to the result of `collection.figures()` and the
@@ -20596,7 +20596,7 @@ v1.2.beta2 (2013-02-15)
   JavaScript and REST API
 
 * make server stop after upgrade procedure when invoked with `--upgrade option`.
-  When started with the `--upgrade` option, the server will perfom
+  When started with the `--upgrade` option, the server will perform
   the upgrade, and then exit with a status code indicating the result of the
   upgrade (0 = success, 1 = failure). To start the server regularly in either
   daemon or console mode, the `--upgrade` option must not be specified.
