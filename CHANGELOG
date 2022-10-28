@@ -20173,7 +20173,7 @@ v1.4.0-alpha1 (2013-08-02)
 
 * issue #550: Make AQL graph functions support key in addition to id
 
-* issue #526: Unable to escape when an errorneous command is entered into the js shell
+* issue #526: Unable to escape when an erroneous command is entered into the js shell
 
 * issue #523: Graph and vertex methods for the javascript api
 
