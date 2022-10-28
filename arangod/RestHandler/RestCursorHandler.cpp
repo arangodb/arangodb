@@ -205,10 +205,8 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
                          arangodb::aql::QueryString(querySlice.stringView()),
                          std::move(bindVarsBuilder), aql::QueryOptions(opts));
 
-
   return registerQueryOrCursor(query);
 }
-
 
 RestStatus RestCursorHandler::registerQueryOrCursor(
     std::shared_ptr<aql::Query> query) {
