@@ -11812,7 +11812,7 @@ v3.2.6 (2017-10-26)
 * fixed Foxxmaster failover
 
 * purging or removing the Debian/Ubuntu arangodb3 packages now properly stops
-  the arangod instance before actuallying purging or removing
+  the arangod instance before actually purging or removing
 
 
 v3.2.5 (2017-10-16)
