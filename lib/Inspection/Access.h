@@ -387,6 +387,10 @@ struct Access<arangodb::inspection::NonNullOptional<T>> {
     static_assert(Inspector::isLoading && !Inspector::isLoading,
                   "Apply cannot be called, this type has to be a field and "
                   "cannot be embedded into a container.");
+    // Added the return only to make some compilers happy.
+    // The above assert is ALWAYS true => The method can never be
+    // executed, or let alone end in this return statement.
+    return {"internal-error: static assertion violated."};
   }
 
   template<class Inspector>
