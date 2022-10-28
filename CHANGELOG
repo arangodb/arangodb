@@ -12160,7 +12160,7 @@ v3.2.1 (2017-08-09)
 * ui: allows now to edit default access level for collections in database
   _system for all users except the root user.
 
-* The _users collection is no longer accessible outside the arngod process, _queues is always read-only
+* The _users collection is no longer accessible outside the arangod process, _queues is always read-only
 
 * added new option "--rocksdb.max-background-jobs"
 
@@ -20221,7 +20221,7 @@ v1.3.1 (2013-05-24)
 
 * removed currently unused _ids collection
 
-* fixed usage of --temp-path in aranogd and arangosh
+* fixed usage of --temp-path in arangod and arangosh
 
 * issue #540: suppress return of temporary internal variables in AQL
 
@@ -20237,7 +20237,7 @@ v1.3.1 (2013-05-24)
 
 * issue #529: Really weird transaction issue
 
-* fixed usage of --temp-path in aranogd and arangosh
+* fixed usage of --temp-path in arangod and arangosh
 
 
 v1.3.0 (2013-05-10)
