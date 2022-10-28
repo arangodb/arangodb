@@ -1064,6 +1064,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
   void ensureIterator() {
     if (_iterator == nullptr) {
+      // the RocksDB iterator _iterator is only built once during the
+      // lifetime of the RocksVPackIndexIterator. so it is ok
+      // to track its expected memory usage here and only count it down
+      // when we destroy the RocksDBVPackIndexIterator object
       ResourceUsageScope scope(_resourceMonitor, expectedIteratorMemoryUsage);
 
       auto state = RocksDBTransactionState::toState(_trx);

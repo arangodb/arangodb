@@ -352,8 +352,6 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
   void lookupInRocksDB(std::string_view fromTo) {
     // Bad (slow) case: read from RocksDB
-    ResourceUsageScope scope(_resourceMonitor, expectedIteratorMemoryUsage);
-
     auto* mthds = RocksDBTransactionState::toMethods(_trx, _collection->id());
 
     // create iterator only on demand, so we save the allocation in case
@@ -380,34 +378,41 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     // mitigated by that edge lookups are normally using the in-memory edge
     // cache, so we only hit this method when connections are not yet in the
     // cache.
-    std::unique_ptr<rocksdb::Iterator> iterator =
-        mthds->NewIterator(_index->columnFamily(), [this](ReadOptions& ro) {
-          ro.fill_cache = EdgeIndexFillBlockCache;
-          ro.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
-        });
+    ResourceUsageScope scope(_resourceMonitor, expectedIteratorMemoryUsage);
 
-    TRI_ASSERT(iterator != nullptr);
+    {
+      std::unique_ptr<rocksdb::Iterator> iterator =
+          mthds->NewIterator(_index->columnFamily(), [this](ReadOptions& ro) {
+            ro.fill_cache = EdgeIndexFillBlockCache;
+            ro.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
+          });
 
-    _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->objectId(), fromTo);
-    rocksdb::Comparator const* cmp = _index->comparator();
-    auto end = _bounds.end();
+      TRI_ASSERT(iterator != nullptr);
 
-    resetInplaceMemory();
-    _builder.openArray(true);
-    for (iterator->Seek(_bounds.start());
-         iterator->Valid() && (cmp->Compare(iterator->key(), end) < 0);
-         iterator->Next()) {
-      LocalDocumentId const docId = RocksDBKey::edgeDocumentId(iterator->key());
+      _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->objectId(), fromTo);
+      rocksdb::Comparator const* cmp = _index->comparator();
+      auto end = _bounds.end();
 
-      // adding documentId and _from or _to value
-      _builder.add(VPackValue(docId.id()));
-      std::string_view vertexId = RocksDBValue::vertexId(iterator->value());
-      _builder.add(VPackValue(vertexId));
+      resetInplaceMemory();
+      _builder.openArray(true);
+      for (iterator->Seek(_bounds.start());
+           iterator->Valid() && (cmp->Compare(iterator->key(), end) < 0);
+           iterator->Next()) {
+        LocalDocumentId const docId =
+            RocksDBKey::edgeDocumentId(iterator->key());
+
+        // adding documentId and _from or _to value
+        _builder.add(VPackValue(docId.id()));
+        std::string_view vertexId = RocksDBValue::vertexId(iterator->value());
+        _builder.add(VPackValue(vertexId));
+      }
+      _builder.close();
+
+      // validate that Iterator is in a good shape and hasn't failed
+      rocksutils::checkIteratorStatus(*iterator);
     }
-    _builder.close();
-
-    // validate that Iterator is in a good shape and hasn't failed
-    rocksutils::checkIteratorStatus(*iterator);
+    // iterator not needed anymore
+    scope.decrease(expectedIteratorMemoryUsage);
 
     scope.increase(_builder.size());
     // now we are responsible for tracking the memory usage

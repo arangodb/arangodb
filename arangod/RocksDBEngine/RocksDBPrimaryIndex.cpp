@@ -83,7 +83,7 @@ namespace arangodb {
 
 class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
  public:
-  RocksDBPrimaryIndexEqIterator(ResourceMonitor& monitor,
+  RocksDBPrimaryIndexEqIterator(ResourceMonitor& /*monitor*/,
                                 LogicalCollection* collection,
                                 transaction::Methods* trx,
                                 RocksDBPrimaryIndex* index, VPackBuilder key,
@@ -95,6 +95,11 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
         _isId(lookupByIdAttribute),
         _done(false) {
     TRI_ASSERT(_key.slice().isString());
+
+    // no need to track memory usage here, as this iterator is not
+    // employing a RocksDB iterator in the background, but only performs
+    // simple RocksDB Get operations. The lookup value is also only a
+    // single key, so tracking memory usage would not be justified
   }
 
   std::string_view typeName() const noexcept final {
@@ -478,6 +483,10 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
  private:
   void ensureIterator() {
     if (_iterator == nullptr) {
+      // the RocksDB iterator _iterator is only built once during the
+      // lifetime of the RocksPrimaryIndexRangeIterator. so it is ok
+      // to track its expected memory usage here and only count it down
+      // when we destroy the RocksDBPrimaryIndexRangeIterator object
       ResourceUsageScope scope(_resourceMonitor, expectedIteratorMemoryUsage);
 
       auto state = RocksDBTransactionState::toState(_trx);
