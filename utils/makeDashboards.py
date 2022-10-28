@@ -24,7 +24,7 @@ def print_usage():
       - "user": Pure user of ArangoDB
       - "oasiscustomer": Customer of Oasis
       - "appdeveloper": Application developer
-      - "oasisoncall": Oasis on call personell
+      - "oasisoncall": Oasis on call personnel
       - "arangodbdeveloper": ArangoDB developer
       - "all": Produce all metrics (default)
 
