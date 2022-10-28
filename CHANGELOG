@@ -2482,7 +2482,7 @@ devel
 
 * Fix issue #14807: Fix crash during optimization of certain AQL queries during
   the remove-collect-variables optimizer rule, when a COLLECT node without output
-  variables (this includes RETURN DISTINCT) occured in the plan.
+  variables (this includes RETURN DISTINCT) occurred in the plan.
 
 * Update iresearch library to the upstream. Fixed TSan/ASan detected issues.
 
@@ -2904,7 +2904,7 @@ devel
 * Fixed ES-867 and ES-922: removed eslint from NPM packages descriptions and
   updated netmask package to non-vulnerable version.
 
-* Web UI: Fixes a logical error which occured after re-visiting the logs view
+* Web UI: Fixes a logical error which occurred after re-visiting the logs view
   which lead to not displaying the logs view and its entries correctly
   (BTS-507).
 
@@ -4017,7 +4017,7 @@ devel
   from some unusual locations, when it can't find its `tzdata` directory
   automatically.
 
-* Fixed a bug in query cost estimation when a NoResults node occured in a spliced
+* Fixed a bug in query cost estimation when a NoResults node occurred in a spliced
   subquery. This could lead to a server crash.
 
 * Fix slower-than-necessary arangoimport behavior:
@@ -5396,7 +5396,7 @@ devel
   may need adjustment now.
 
 * Added a --continue option to arangorestore. arangorestore now keeps track of the progress
-  and can continue the restore operation when some error occured.
+  and can continue the restore operation when some error occurred.
 
 * Added the following metrics for synchronous replication in the cluster:
 
@@ -6160,7 +6160,7 @@ devel
   API always produced an empty result. Now it will return the engine statistics
   as an object, with an entry for each individual DB-Server.
 
-* Fixed a document parsing bug in the Web UI. This issue occured in the
+* Fixed a document parsing bug in the Web UI. This issue occurred in the
   document list view in case a document had an attribute called `length`.
   The result was an incorrect representation of the document preview.
 
@@ -7278,7 +7278,7 @@ devel
 
 * Internal statistics API now uses integer timestamps instead of doubles. The
   old behavior sometimes leads to failed requests because of parse errors
-  which occured in the internal used JavaScript joi library.
+  which occurred in the internal used JavaScript joi library.
 
 * Support trailing commas in AQL object and array definitions as follows:
 
@@ -12694,7 +12694,7 @@ v3.1.20 (2016-05-16)
 v3.1.19 (2017-04-28)
 --------------------
 
-* Fixed a StackOverflow issue in Traversal and ShortestPath. Occured if many (>1000) input
+* Fixed a StackOverflow issue in Traversal and ShortestPath. Occurred if many (>1000) input
   values in a row do not return any result. Fixes issue: #2445
 
 * fixed issue #2448
@@ -12707,7 +12707,7 @@ v3.1.19 (2017-04-28)
 
 * fixed issue #2440
 
-* Fixed a StackOverflow issue in Traversal and ShortestPath. Occured if many (>1000) input
+* Fixed a StackOverflow issue in Traversal and ShortestPath. Occurred if many (>1000) input
   values in a row do not return any result. Fixes issue: #2445
 
 * fix occasional hanging shutdowns on OS X
