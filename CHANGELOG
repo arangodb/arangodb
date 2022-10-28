@@ -3095,7 +3095,7 @@ devel
   of the agency's correctly reported version. This also fixes the agency
   version in the startup log messages of the cluster.
 
-* Fixed an issue in index selection, when the selectivty estimate of another
+* Fixed an issue in index selection, when the selectivity estimate of another
   prefix index was used without checking if the other index covered the
   FILTER condition.
 
@@ -3115,7 +3115,7 @@ devel
   The actual bug happened when comparing the usefulness of the candidate
   indexes, when figuring out that even though the selectivity estimate for
   index 1 could not be used, but that there existed a prefix index of index
-  1 (index 2). The selecivity estimate of this index was taken _without_
+  1 (index 2). The selectivity estimate of this index was taken _without_
   checking that prefix index actually satisfied the FILTER condition fully.
   The prefix index' selectivity estimate must only be used if it fully
   satisfies the FILTER condition, which was not the case here.
