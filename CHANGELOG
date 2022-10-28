@@ -1,6 +1,9 @@
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
+* Remove superfluous dash character from startup option name
+  `--temp.-intermediate-results-encryption-hardware-acceleration`.
+
 * BTS-941: The HTTP API now delivers the correct list of the collection's shards
   in case a collection from an EnterpriseGraph, SmartGraph, Disjoint
   EnterpriseGraph, Disjoint SmartGraph or SatelliteGraph is being used.

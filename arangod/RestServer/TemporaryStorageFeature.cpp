@@ -179,7 +179,7 @@ void TemporaryStorageFeature::collectOptions(
 
   options
       ->addOption(
-          "--temp.-intermediate-results-encryption-hardware-acceleration",
+          "--temp.intermediate-results-encryption-hardware-acceleration",
           "use Intel intrinsics-based encryption, requiring a CPU with "
           "the AES-NI instruction set. "
           "If turned off, then OpenSSL is used, which may use "
@@ -189,6 +189,11 @@ void TemporaryStorageFeature::collectOptions(
               arangodb::options::Flags::Enterprise,
               arangodb::options::Flags::Experimental))
       .setIntroducedIn(31000);
+
+  // this fixes an option with a typo in 3.10.x
+  options->addOldOption(
+      "temp.-intermediate-results-encryption-hardware-acceleration",
+      "temp.intermediate-results-encryption-hardware-acceleration");
 #endif
 }
 
