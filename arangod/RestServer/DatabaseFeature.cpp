@@ -693,13 +693,11 @@ void DatabaseFeature::stop() {
   }
 #endif
 
-  for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
-
+  auto stopVocbase = [](TRI_vocbase_t* vocbase) {
     // iterate over all databases
     TRI_ASSERT(vocbase != nullptr);
     if (vocbase->type() != TRI_VOCBASE_TYPE_NORMAL) {
-      continue;
+      return;
     }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -730,6 +728,13 @@ void DatabaseFeature::stop() {
         << "shutting down database " << currentVocbase->name() << ": "
         << (void*)currentVocbase << " successful";
 #endif
+  };
+
+  for (auto& [name, vocbase] : theLists->_databases) {
+    stopVocbase(vocbase);
+  }
+  for (auto& vocbase : theLists->_droppedDatabases) {
+    stopVocbase(vocbase);
   }
 
   // flush again so we are sure no query is left in the cache here
