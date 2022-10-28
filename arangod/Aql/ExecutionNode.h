@@ -97,6 +97,10 @@ struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 struct Variable;
 
+namespace optimizer2::nodes {
+struct ReturnNode;
+}
+
 /// @brief sort element, consisting of variable, sort direction, and a possible
 /// attribute path to dig into the document
 
@@ -1020,6 +1024,8 @@ class ReturnNode : public ExecutionNode {
              Variable const* inVariable);
 
   ReturnNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+
+  optimizer2::nodes::ReturnNode toInspectable() const;
 
   /// @brief return the type of the node
   NodeType getType() const override final;

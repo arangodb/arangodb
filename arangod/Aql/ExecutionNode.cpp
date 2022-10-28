@@ -70,6 +70,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
+#include "Aql/Optimizer2/PlanNodes/ReturnNode.h"
 
 #include <velocypack/Iterator.h>
 
@@ -79,6 +80,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace materialize;
+using namespace arangodb::aql::optimizer2;
 
 namespace {
 
@@ -2581,6 +2583,51 @@ ReturnNode::ReturnNode(ExecutionPlan* plan,
     : ExecutionNode(plan, base),
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")),
       _count(VelocyPackHelper::getBooleanValue(base, "count", false)) {}
+
+optimizer2::nodes::ReturnNode ReturnNode::toInspectable() const {
+  VPackBuilder becauseWeCan;
+  {
+    if (_inVariable->type() == Variable::Type::Const) {
+      VPackObjectBuilder b(&becauseWeCan);
+    }
+  }
+
+  optimizer2::nodes::ReturnNode planReturnNode = {
+      .inVariable = {
+          .id = _inVariable->id,
+          .name = _inVariable->name,
+          .isFullDocumentFromCollection =
+              _inVariable->isFullDocumentFromCollection,
+          .isDataFromCollection = _inVariable->isFullDocumentFromCollection,
+          .constantValue = becauseWeCan.slice().isObject()
+                               ? std::optional<VPackBuilder>{becauseWeCan}
+                               : std::optional<VPackBuilder>{std::nullopt}}};
+
+  // TODO - fixme start
+  // This whole section will be necessary for every PlanNode which inherits from
+  // BaseNode which is basically every PlanNode ...
+  // This is the "ExecutionNode -> BaseNode (PlanNode)" part.
+  // Reason right now to do it like this is because, we cannot set
+  // embeddedFields directly. I do not like this approach. I want to add some
+  // mechanism that does this for us automatically and not manually like this.
+  // We need to think about a better implementation here.
+  planReturnNode.count = _count;
+  planReturnNode.id = AttributeTypes::Numeric{id().id()};
+  for (auto const& it : _dependencies) {
+    planReturnNode.dependencies.emplace_back(it->id().id());
+  }
+
+  // Think about getting rid of this in total.
+  CostEstimate estimate = getCost();
+  // Think about getting rid of this in total.
+  planReturnNode.estimatedCost = estimate.estimatedCost;
+  // Think about getting rid of this in total.
+  planReturnNode.estimatedNrItems = estimate.estimatedNrItems;
+  // "canThrow" attribute seems to be ignored in this case here.
+  // TODO - fixme end
+
+  return std::move(planReturnNode);
+}
 
 /// @brief doToVelocyPack, for ReturnNode
 void ReturnNode::doToVelocyPack(VPackBuilder& nodes, unsigned /*flags*/) const {

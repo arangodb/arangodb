@@ -86,7 +86,7 @@ void CollectionAccessingNode::collection(aql::Collection const* collection) {
 }
 
 optimizer2::nodes::CollectionAccessingNode
-CollectionAccessingNode::toInspectable() {
+CollectionAccessingNode::toInspectable() const {
   return {
       .prototype =
           prototypeCollection() == nullptr

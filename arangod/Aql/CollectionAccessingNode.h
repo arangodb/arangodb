@@ -55,7 +55,7 @@ class CollectionAccessingNode {
   virtual ~CollectionAccessingNode() = default;
 
  public:
-  optimizer2::nodes::CollectionAccessingNode toInspectable();
+  optimizer2::nodes::CollectionAccessingNode toInspectable() const;
 
   void toVelocyPack(arangodb::velocypack::Builder& builder,
                     unsigned flags) const;
