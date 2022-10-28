@@ -84,7 +84,7 @@ extern const char* ARGV0;  // defined in main.cpp
 namespace {
 
 struct custom_sort : public irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "custom_sort";
   }
 
@@ -101,7 +101,7 @@ struct custom_sort : public irs::sort {
         }
       }
 
-      virtual void collect(irs::bytes_ref in) override {}
+      virtual void collect(irs::bytes_view in) override {}
 
       virtual void reset() override {}
 
@@ -123,7 +123,7 @@ struct custom_sort : public irs::sort {
         }
       }
 
-      virtual void collect(irs::bytes_ref in) override {}
+      virtual void collect(irs::bytes_view in) override {}
 
       virtual void reset() override {}
 
@@ -405,9 +405,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
         return true;
       }
 
-      irs::string_ref name() const { return "name"; }
+      std::string_view name() const { return "name"; }
 
-      irs::string_ref str;
+      std::string_view str;
     } storedField;
 
     auto writer =
@@ -702,7 +702,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
       EXPECT_TRUE(docs->next());
       EXPECT_EQ(docs->value(), columnValues->seek(docs->value()));
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
-                  irs::to_string<irs::string_ref>(value->value.c_str()));
+                  irs::to_string<std::string_view>(value->value.data()));
     }
     EXPECT_FALSE(docs->next());
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
@@ -798,7 +798,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
       EXPECT_TRUE(docs->next());
       EXPECT_EQ(docs->value(), columnValues->seek(docs->value()));
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
-                  irs::to_string<irs::string_ref>(value->value.c_str()));
+                  irs::to_string<std::string_view>(value->value.data()));
     }
     EXPECT_FALSE(docs->next());
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
@@ -892,7 +892,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
       EXPECT_TRUE(docs->next());
       EXPECT_EQ(docs->value(), columnValues->seek(docs->value()));
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
-                  irs::to_string<irs::string_ref>(value->value.c_str()));
+                  irs::to_string<std::string_view>(value->value.data()));
     }
     EXPECT_FALSE(docs->next());
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
@@ -1141,7 +1141,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
       EXPECT_TRUE(docs->next());
       EXPECT_EQ(docs->value(), columnValues->seek(docs->value()));
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
-                  irs::to_string<irs::string_ref>(value->value.c_str()));
+                  irs::to_string<std::string_view>(value->value.data()));
       it.next();
     }
 
@@ -1292,7 +1292,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
       (*score)(&scoreValue);
       EXPECT_EQ(docs->value(), columnValues->seek(docs->value()));
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
-                  irs::to_string<irs::string_ref>(value->value.c_str()));
+                  irs::to_string<std::string_view>(value->value.data()));
       it.next();
     }
 
@@ -1419,7 +1419,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
       EXPECT_TRUE(docs->next());
       EXPECT_EQ(docs->value(), columnValues->seek(docs->value()));
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
-                  irs::to_string<irs::string_ref>(value->value.c_str()));
+                  irs::to_string<std::string_view>(value->value.data()));
       it.next();
     }
 

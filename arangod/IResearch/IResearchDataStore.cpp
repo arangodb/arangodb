@@ -92,14 +92,14 @@ class IResearchFlushSubscription final : public FlushSubscription {
   std::atomic<TRI_voc_tick_t> _tick;
 };
 
-bool readTick(irs::bytes_ref const& payload, TRI_voc_tick_t& tick) noexcept {
+bool readTick(irs::bytes_view const& payload, TRI_voc_tick_t& tick) noexcept {
   static_assert(sizeof(uint64_t) == sizeof(TRI_voc_tick_t));
 
   if (payload.size() != sizeof(uint64_t)) {
     return false;
   }
 
-  std::memcpy(&tick, payload.c_str(), sizeof(uint64_t));
+  std::memcpy(&tick, payload.data(), sizeof(uint64_t));
   tick = TRI_voc_tick_t(irs::numeric_utils::ntoh64(tick));
 
   return true;
@@ -1197,8 +1197,8 @@ Result IResearchDataStore::initDataStore(
       (nullptr != _dataStore._directory->attributes().encryption());
   options.column_info =
       [nested, encrypt, compressionMap = std::move(compressionMap),
-       primarySortCompression](irs::string_ref name) -> irs::column_info {
-    if (name.null()) {
+       primarySortCompression](std::string_view name) -> irs::column_info {
+    if (irs::IsNull(name)) {
       return {.compression = primarySortCompression(),
               .options = {},
               .encryption = encrypt,

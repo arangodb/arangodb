@@ -423,7 +423,7 @@ class QueryScorer : public QueryTest {
     // #2[0].seq) LET #2 = (FOR j IN testView SEARCH j.name == 'A' SORT BM25(j)
     // RETURN j) RETURN { d, 'score' : #1 ) }
     {
-      std::map<size_t, irs::string_ref> expectedDocs{{0, "B"}};
+      std::map<size_t, std::string_view> expectedDocs{{0, "B"}};
 
       std::string const query =
           "FOR d in testView SEARCH d.name == 'B' "
@@ -451,7 +451,7 @@ class QueryScorer : public QueryTest {
     // test that moves an unrelated subquery out of the loop (same case as
     // above, but with the subquery moved)
     {
-      std::map<size_t, irs::string_ref> expectedDocs{{0, "B"}};
+      std::map<size_t, std::string_view> expectedDocs{{0, "B"}};
 
       std::string const query =
           "FOR d in testView SEARCH d.name == 'B' "
@@ -485,7 +485,7 @@ class QueryScorer : public QueryTest {
     // test case covers:
     // https://github.com/arangodb/arangodb/issues/9660
     {
-      std::map<size_t, irs::string_ref> expectedDocs{{2, "A"}};
+      std::map<size_t, std::string_view> expectedDocs{{2, "A"}};
 
       std::string const query =
           "LET x = FIRST(FOR y IN collection_1 FILTER y.seq == 0 RETURN "

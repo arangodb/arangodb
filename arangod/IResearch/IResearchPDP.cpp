@@ -40,7 +40,7 @@ namespace {
 using namespace arangodb::iresearch;
 
 irs::parametric_description readParametricDescription(
-    std::pair<irs::bytes_ref, size_t> args) {
+    std::pair<irs::bytes_view, size_t> args) {
   auto const rawSize = args.second;
   const auto& data = args.first;
 
@@ -59,7 +59,7 @@ irs::parametric_description readParametricDescription(
     return {};
   }
 
-  irs::bytes_ref_input in({dst.c_str(), rawSize});
+  irs::bytes_view_input in({dst.c_str(), rawSize});
   return irs::read(in);
 }
 

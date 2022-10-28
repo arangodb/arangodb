@@ -346,19 +346,19 @@ class IndexReadBuffer {
     return std::vector<size_t>{_rows.begin() + start, _rows.end()};
   }
 
-  void setStoredValue(size_t idx, irs::bytes_ref value) {
+  void setStoredValue(size_t idx, irs::bytes_view value) {
     TRI_ASSERT(idx < _storedValuesBuffer.size());
     _storedValuesBuffer[idx] = value;
   }
 
-  void pushStoredValue(irs::bytes_ref value) {
+  void pushStoredValue(irs::bytes_view value) {
     TRI_ASSERT(_storedValuesBuffer.size() < _storedValuesBuffer.capacity());
-    _storedValuesBuffer.emplace_back(value.c_str(), value.size());
+    _storedValuesBuffer.emplace_back(value.data(), value.size());
   }
 
   using StoredValuesContainer =
       typename std::conditional<copyStored, std::vector<irs::bstring>,
-                                std::vector<irs::bytes_ref>>::type;
+                                std::vector<irs::bytes_view>>::type;
 
   StoredValuesContainer const& getStoredValues() const noexcept;
 

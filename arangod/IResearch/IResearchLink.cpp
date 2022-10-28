@@ -405,7 +405,7 @@ char const* IResearchLink::typeName() {
   return StaticStrings::ViewArangoSearchType.data();
 }
 
-bool IResearchLink::setCollectionName(irs::string_ref name) noexcept {
+bool IResearchLink::setCollectionName(std::string_view name) noexcept {
   TRI_ASSERT(!name.empty());
   if (_meta._collectionName.empty()) {
     _meta._collectionName = name;
@@ -439,7 +439,7 @@ Result IResearchLink::unload() noexcept {
 AnalyzerPool::ptr IResearchLink::findAnalyzer(
     AnalyzerPool const& analyzer) const {
   auto const it =
-      _meta._analyzerDefinitions.find(irs::string_ref(analyzer.name()));
+      _meta._analyzerDefinitions.find(std::string_view(analyzer.name()));
 
   if (it == _meta._analyzerDefinitions.end()) {
     return nullptr;

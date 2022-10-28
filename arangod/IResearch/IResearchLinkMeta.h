@@ -86,11 +86,11 @@ struct FieldMeta {
     }
 
     bool operator()(AnalyzerPool::ptr const& lhs,
-                    irs::string_ref rhs) const noexcept {
+                    std::string_view rhs) const noexcept {
       return lhs->name() < rhs;
     }
 
-    bool operator()(irs::string_ref lhs,
+    bool operator()(std::string_view lhs,
                     AnalyzerPool::ptr const& rhs) const noexcept {
       return lhs < rhs->name();
     }
@@ -139,7 +139,7 @@ struct FieldMeta {
   /// @param referencedAnalyzers analyzers referenced in this link
   ////////////////////////////////////////////////////////////////////////////////
   bool init(ArangodServer& server, velocypack::Slice const& slice,
-            std::string& errorField, irs::string_ref defaultVocbase,
+            std::string& errorField, std::string_view defaultVocbase,
             LinkVersion version, FieldMeta const& defaults,
             std::set<AnalyzerPool::ptr, AnalyzerComparer>& referencedAnalyzers,
             Mask* mask);
@@ -262,7 +262,7 @@ struct IResearchLinkMeta : public FieldMeta {
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
   bool init(ArangodServer& server, VPackSlice slice, std::string& errorField,
-            irs::string_ref defaultVocbase = irs::string_ref::NIL,
+            std::string_view defaultVocbase = std::string_view{},
             LinkVersion defaultVersion = LinkVersion::MIN,
             Mask* mask = nullptr);
 
