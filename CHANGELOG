@@ -14361,7 +14361,7 @@ v2.8.2 (2016-02-09)
 
   If the command is run while the slave's replication applier is already running,
   it will first stop the running applier, drop its configuration and do a
-  resynchronization of data with the master. It will then use the provided configration,
+  resynchronization of data with the master. It will then use the provided configuration,
   overwriting any previously existing replication configuration on the slave.
 
   The following example demonstrates how to use the command for setting up replication
