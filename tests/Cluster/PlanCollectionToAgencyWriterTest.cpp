@@ -114,6 +114,16 @@ class PlanCollectionToAgencyWriterTest : public ::testing::Test {
         std::move(shardDistributionsUsed)};
   }
 
+  static CreateCollectionBody prepareMinimalCollection(
+      uint64_t nrShards, uint64_t replicationFactor) {
+    CreateCollectionBody col{};
+    col.name = "test";
+    col.id = DataSourceId(123);
+    col.numberOfShards = nrShards;
+    col.replicationFactor = replicationFactor;
+    return col;
+  }
+
  private:
   // On purpose private and accisbale via above methods to be easily
   // exchangable without rewriting the tests.
@@ -123,9 +133,7 @@ class PlanCollectionToAgencyWriterTest : public ::testing::Test {
 TEST_F(PlanCollectionToAgencyWriterTest, can_produce_agency_precondition) {}
 
 TEST_F(PlanCollectionToAgencyWriterTest, can_produce_agency_operation) {
-  CreateCollectionBody col{};
-  col.name = "test";
-  col.id = DataSourceId(123);
+  auto col = prepareMinimalCollection(1, 1);
 
   auto writer = createWriterWithTestSharding(col);
 

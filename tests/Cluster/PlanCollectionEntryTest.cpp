@@ -83,8 +83,8 @@ struct TestShardDistribution : public IShardDistributionFactory {
 
 class PlanCollectionEntryTest : public ::testing::Test {
  protected:
-  std::vector<ShardID> generateShardNames(uint64_t numberOfShards,
-                                          uint64_t idOffset = 0) {
+  static std::vector<ShardID> generateShardNames(uint64_t numberOfShards,
+                                                 uint64_t idOffset = 0) {
     std::vector<ShardID> result;
     result.reserve(numberOfShards);
     for (uint64_t i = 0; i < numberOfShards; ++i) {
@@ -92,11 +92,20 @@ class PlanCollectionEntryTest : public ::testing::Test {
     }
     return result;
   }
+
+  static CreateCollectionBody prepareMinimalCollection(
+      uint64_t nrShards, uint64_t replicationFactor) {
+    CreateCollectionBody col{};
+    col.name = "test";
+    col.id = DataSourceId(123);
+    col.numberOfShards = nrShards;
+    col.replicationFactor = replicationFactor;
+    return col;
+  }
 };
 
 TEST_F(PlanCollectionEntryTest, default_values) {
-  CreateCollectionBody col{};
-  col.name = "test";
+  auto col = prepareMinimalCollection(1, 1);
   auto numberOfShards = col.numberOfShards.value();
   auto distProto = std::make_shared<TestShardDistribution>(
       numberOfShards, col.replicationFactor.value());
