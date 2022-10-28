@@ -49,6 +49,7 @@ struct AsyncLeader : replicated_log::ILogLeader,
   auto waitForResign() -> futures::Future<futures::Unit> override;
   [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
   auto release(LogIndex doneWithIdx) -> Result override;
+  auto compact() -> Result override;
   auto insert(LogPayload payload, bool waitForSync) -> LogIndex override;
   auto insert(LogPayload payload, bool waitForSync,
               DoNotTriggerAsyncReplication replication) -> LogIndex override;

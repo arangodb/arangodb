@@ -145,6 +145,7 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower,
   auto release(LogIndex doneWithIdx) -> Result override {
     return _follower->release(doneWithIdx);
   }
+  auto compact() -> Result override { return _follower->compact(); }
 
  private:
   Guarded<std::deque<std::shared_ptr<AsyncRequest>>> _asyncQueue;
