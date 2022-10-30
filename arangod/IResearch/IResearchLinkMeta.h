@@ -104,10 +104,7 @@ struct FieldMeta {
           _trackListPositions(mask),
           _storeValues(mask)
 #ifdef USE_ENTERPRISE
-          ,
-          _cache {
-      mask
-    }
+          , _cache(mask)
 #endif
     {}
 

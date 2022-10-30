@@ -393,7 +393,7 @@ class column_base : public column_reader, private util::noncopyable {
     }
     for (const auto& c : next_sorted_columns) {
       auto column = static_cast<column_base*>(c.get());
-      assert(columns != nullptr);
+      assert(column != nullptr);
       if (column->header().docs_index) {
         file_len = column->header().docs_index;
         break;
@@ -1735,6 +1735,8 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
     }
   }
   if (opts.warmup_column) {
+    auto memory_accounting =
+        opts.pinned_memory ? opts.pinned_memory : noop_memory_accounter;
     for (size_t i = 0; i < sorted_columns.size(); ++i) {
       auto cb = static_cast<column_base*>(sorted_columns[i].get());
       if (opts.warmup_column(*cb)) {
@@ -1742,13 +1744,13 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
           direct_data_input =
               dir.open(data_filename, IOAdvice::DIRECT_READ);
           if (!direct_data_input) {
-            throw io_error{string_utils::to_string(
-                "Failed to open direct access file, path: %s",
-                data_filename.c_str())};
+            IR_FRMT_WARN("Failed to open direct access file, path: %s. Columns buffering stopped.",
+                         data_filename.c_str());
+            break;
           }
         }
         IR_FRMT_TRACE("Making buffered: %d", cb->header().id);
-        cb->make_buffered(*direct_data_input, opts.pinned_memory, 
+        cb->make_buffered(*direct_data_input, memory_accounting, 
                           range(sorted_columns.data() + i + 1,
                                 sorted_columns.size() - i - 1));
         IR_FRMT_TRACE("Finished buffered: %d", cb->header().id);

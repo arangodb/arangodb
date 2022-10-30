@@ -44,11 +44,9 @@ using column_warmup_callback_f =
                        const column_reader& column)>;
 
 
-bool noop_memory_accounter(int64_t);
-
 struct index_reader_options {
   column_warmup_callback_f warmup_columns;
-  memory_accounting_f pinned_memory_accounting{noop_memory_accounter};
+  memory_accounting_f pinned_memory_accounting;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -151,7 +151,7 @@ index_input::ptr mmap_directory::open(
     const std::string& name,
     IOAdvice advice) const noexcept {
   try {
-    if (advice == IOAdvice::DIRECT_READ) {
+    if (IOAdvice::DIRECT_READ == (advice & IOAdvice::DIRECT_READ)) {
       return fs_directory::open(name, advice);
     }
     const auto path = directory() / name;

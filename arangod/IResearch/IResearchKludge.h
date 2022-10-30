@@ -37,8 +37,8 @@ namespace arangodb {
 namespace iresearch {
 namespace kludge {
 
-const char TYPE_DELIMITER = '\0';
-const char ANALYZER_DELIMITER = '\1';
+inline constexpr char TYPE_DELIMITER = '\0';
+inline constexpr char ANALYZER_DELIMITER = '\1';
 
 void mangleType(std::string& name);
 void mangleAnalyzer(std::string& name);

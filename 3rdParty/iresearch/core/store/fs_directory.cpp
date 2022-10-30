@@ -66,6 +66,13 @@ inline int get_posix_fadvice(irs::IOAdvice advice) noexcept {
   return IR_FADVICE_NORMAL;
 }
 
+inline irs::file_utils::OpenMode get_read_mode(irs::IOAdvice advice) {
+  if (irs::IOAdvice::DIRECT_READ == (advice & irs::IOAdvice::DIRECT_READ)) {
+    return irs::file_utils::OpenMode::Read | irs::file_utils::OpenMode::Direct;
+  }
+  return irs::file_utils::OpenMode::Read;
+}
+
 }
 
 namespace iresearch {
@@ -265,11 +272,9 @@ class fs_index_input : public buffered_index_input {
 
     auto handle = file_handle::make();
     handle->io_advice = advice;
-    auto mode = advice != IOAdvice::DIRECT_READ
-        ? irs::file_utils::OpenMode::Read : irs::file_utils::OpenMode::Read |
-              irs::file_utils::OpenMode::Direct;
-    handle->handle = irs::file_utils::open(
-        name, mode, get_posix_fadvice(handle->io_advice));
+    handle->handle =
+        irs::file_utils::open(name, get_read_mode(handle->io_advice),
+                              get_posix_fadvice(handle->io_advice));
 
     if (nullptr == handle->handle) {
 #ifdef _WIN32
@@ -448,11 +453,10 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(const file_handle
   auto handle = const_cast<pooled_fs_index_input*>(this)->fd_pool_->emplace().release();
 
   if (!handle->handle) {
-    auto mode = src.io_advice == IOAdvice::DIRECT_READ
-                    ? irs::file_utils::OpenMode::Read
-                    : irs::file_utils::OpenMode::Read |
-                          irs::file_utils::OpenMode::Direct;
-    handle->handle = irs::file_utils::open(src, mode, get_posix_fadvice(src.io_advice)); // same permission as in fs_index_input::open(...)
+    handle->handle = irs::file_utils::open(
+        src, get_read_mode(src.io_advice),
+        get_posix_fadvice(
+            src.io_advice));  // same permission as in fs_index_input::open(...)
 
     if (!handle->handle) {
       // even win32 uses 'errno' for error codes in calls to file_open(...)
