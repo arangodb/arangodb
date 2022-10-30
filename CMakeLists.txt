@@ -791,8 +791,8 @@ if (USE_MAINTAINER_MODE)
     add_definitions("-D_FORTIFY_SOURCE=2")
   endif()
 
-  find_package(FLEX)
-  find_package(BISON)
+  find_package(FLEX REQUIRED)
+  find_package(BISON REQUIRED)
   # these are required for generateREADME.sh
   find_program(FGREP_EXECUTABLE fgrep)
   find_program(SED_EXECUTABLE sed)
