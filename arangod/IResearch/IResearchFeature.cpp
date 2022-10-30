@@ -951,11 +951,12 @@ void IResearchFeature::collectOptions(
           "The upper limit to the allowed number of consolidation threads "
           "(0 = auto-detect).",
           new options::UInt32Parameter(&_consolidationThreads))
-      .setIntroducedIn(30705) setLongDescription(
-          std::string{"The option value must fall in the range `[ "
-                      "1..arangosearch.consolidation-threads ]`. Set it to `0` "
-                      "to automatically choose a sensible number based on the "
-                      "number of cores in the system."});
+      .setIntroducedIn(30705)
+      .setLongDescription(std::string{
+          "The option value must fall in the range "
+          "`[ 1..arangosearch.consolidation-threads ]`. Set it to `0` to "
+          "automatically choose a sensible number based on the number of cores "
+          "in the system."});
   options
       ->addOption(
           CONSOLIDATION_THREADS_IDLE_PARAM,
@@ -981,9 +982,10 @@ void IResearchFeature::collectOptions(
           new options::UInt32Parameter(&_commitThreadsIdle))
       .setIntroducedIn(30705)
       .setLongDescription(std::string{
-          "The option value must fall in the range `[ 1..arangosearch.commit-threads ]`. Set it to `0` to automatically choose a sensible number based on the
-          number of cores in the system."
-      });
+          "The option value must fall in the range "
+          "`[ 1..arangosearch.commit-threads ]`. Set it to `0` to "
+          "automatically choose a sensible number based on the number of cores "
+          "in the system."});
   options
       ->addOption(
           SKIP_RECOVERY,  // TODO: Move parts of the descriptions to
