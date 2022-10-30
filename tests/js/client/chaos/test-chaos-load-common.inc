@@ -121,32 +121,33 @@ const checkViewConsistency = (cn, isSearchAlias, isMaterialize) => {
   };
   let expected = runQuery("FOR d IN " + cn + " COLLECT WITH COUNT INTO length RETURN length");
   // TODO uncomment assert when will be fixed SEARCH-419
-  // print("Collection: " + expected + " search: " + isSearchAlias + " materialize: " + isMaterialize);
+  print("Collection: " + expected + " search: " + isSearchAlias + " materialize: " + isMaterialize);
   let vn;
-  const checkView = (isMaterialize) => {
+  const checkView = (isMaterialize, check) => {
     let result;
     if (isMaterialize) {
       result = runQuery("RETURN LENGTH(FOR d IN " + vn + " OPTIONS {waitForSync: true} RETURN d)");
-      // print(result);
-      // assertEqual(expected, result);
     } else {
       result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length");
-      // print(result);
-      // assertEqual(expected, result);
+    }
+    if (check) {
+      assertEqual(expected, result);
+    } else {
+      print(result);
     }
   };
 
   vn = viewName(cn + "_view", isSearchAlias);
-  checkView(isMaterialize);
+  checkView(isMaterialize, true);
 
   vn = viewName(cn + "_view_ps", isSearchAlias);
-  checkView(isMaterialize);
+  checkView(isMaterialize, false);
 
   vn = viewName(cn + "_view_sv", isSearchAlias);
-  checkView(isMaterialize);
+  checkView(isMaterialize, true);
 
   vn = viewName(cn + "_view_ps_sv", isSearchAlias);
-  checkView(isMaterialize);
+  checkView(isMaterialize, false);
 };
 
 const clearAllFailurePoints = () => {
@@ -483,6 +484,7 @@ function BaseChaosSuite(testOpts) {
       clearAllFailurePoints();
       waitForShardsInSync(cn);
       checkCollectionConsistency(cn);
+      require("internal").sleep(60);
       checkViewConsistency(cn, false, false);
       checkViewConsistency(cn, true, false);
       checkViewConsistency(cn, false, true);
