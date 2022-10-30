@@ -56,10 +56,10 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
-#include "Futures/Future.h"
 
 #include "Mocks/IResearchLinkMock.h"
 
+#include <yaclib/async/make.hpp>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 
@@ -2122,10 +2122,10 @@ arangodb::Result TransactionStateMock::triggerIntermediateCommit() {
   return arangodb::Result{TRI_ERROR_INTERNAL};
 }
 
-arangodb::futures::Future<arangodb::Result>
+yaclib::Future<arangodb::Result>
 TransactionStateMock::performIntermediateCommitIfRequired(
     arangodb::DataSourceId cid) {
-  return arangodb::Result();
+  return yaclib::MakeFuture<arangodb::Result>();
 }
 
 uint64_t TransactionStateMock::numCommits() const noexcept {

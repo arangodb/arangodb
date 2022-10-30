@@ -45,7 +45,7 @@ TEST_F(MultiTermTest, add_follower_test) {
     leader->triggerAsyncReplication();
     {
       ASSERT_TRUE(f.Ready());
-      auto const& result = std::move(f).Get().Ok();
+      auto result = std::move(f).Get().Ok();
       EXPECT_EQ(result.quorum->quorum, std::vector<ParticipantId>{"leader"});
     }
     {

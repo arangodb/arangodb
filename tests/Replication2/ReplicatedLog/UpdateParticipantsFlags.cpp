@@ -367,7 +367,7 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_add_new_follower) {
 
     auto fut = leader->waitFor(LogIndex{2});
     ASSERT_TRUE(fut.Ready());
-    auto const& quorumData = *std::move(fut).Get().Ok().quorum;
+    auto const& quorumData = *std::as_const(fut).Touch().Ok().quorum;
     EXPECT_EQ(quorumData.index, LogIndex{2});
     EXPECT_EQ(quorumData.term, startTerm);
     // follower 3 should now be part of the quorum
@@ -417,7 +417,7 @@ TEST_F(UpdateParticipantsFlagsTest,
 
     auto fut = leader->waitFor(LogIndex{2});
     ASSERT_TRUE(fut.Ready());
-    auto const& quorumData = *std::move(fut).Get().Ok().quorum;
+    auto const& quorumData = *std::as_const(fut).Touch().Ok().quorum;
     EXPECT_EQ(quorumData.index, LogIndex{2});
     EXPECT_EQ(quorumData.term, startTerm);
     // follower 3 should now be part of the quorum
@@ -478,7 +478,7 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_remove_exclude_flag) {
 
     auto fut = leader->waitFor(LogIndex{2});
     ASSERT_TRUE(fut.Ready());
-    auto const& quorumData = *std::move(fut).Get().Ok().quorum;
+    auto const& quorumData = *std::as_const(fut).Touch().Ok().quorum;
     EXPECT_EQ(quorumData.index, LogIndex{2});
     EXPECT_EQ(quorumData.term, startTerm);
     // follower 3 must not be part of the quorum yet
@@ -513,7 +513,7 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_remove_exclude_flag) {
 
     auto fut = leader->waitFor(LogIndex{3});
     ASSERT_TRUE(fut.Ready());
-    auto const& quorumData = *std::move(fut).Get().Ok().quorum;
+    auto const& quorumData = *std::as_const(fut).Touch().Ok().quorum;
     EXPECT_EQ(quorumData.index, LogIndex{3});
     EXPECT_EQ(quorumData.term, startTerm);
     // follower 3 should now be part of the quorum
@@ -564,7 +564,7 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_remove_follower) {
 
     auto fut = leader->waitFor(LogIndex{2});
     ASSERT_TRUE(fut.Ready());
-    auto const& quorumData = *std::move(fut).Get().Ok().quorum;
+    auto const& quorumData = *std::as_const(fut).Touch().Ok().quorum;
     EXPECT_EQ(quorumData.index, LogIndex{2});
     EXPECT_EQ(quorumData.term, startTerm);
     // follower 1 must not be part of the quorum any more
@@ -620,7 +620,7 @@ TEST_F(UpdateParticipantsFlagsTest,
 
     auto fut = leader->waitFor(LogIndex{2});
     ASSERT_TRUE(fut.Ready());
-    auto const& quorumData = *std::move(fut).Get().Ok().quorum;
+    auto const& quorumData = *std::as_const(fut).Touch().Ok().quorum;
     EXPECT_EQ(quorumData.index, LogIndex{2});
     EXPECT_EQ(quorumData.term, startTerm);
     // follower 1 must not be part of the quorum any more

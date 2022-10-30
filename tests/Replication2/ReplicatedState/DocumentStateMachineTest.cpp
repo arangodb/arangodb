@@ -129,7 +129,7 @@ struct MockDocumentStateShardHandler : IDocumentStateShardHandler {
 };
 
 struct MockDocumentStateLeaderInterface : IDocumentStateLeaderInterface {
-  MOCK_METHOD(futures::Future<ResultT<velocypack::SharedSlice>>, getSnapshot,
+  MOCK_METHOD(yaclib::Future<ResultT<velocypack::SharedSlice>>, getSnapshot,
               (LogIndex), (override));
 };
 
@@ -179,7 +179,7 @@ struct DocumentStateMachineTest : test::ReplicatedLogTest {
     });
 
     ON_CALL(*leaderInterfaceMock, getSnapshot).WillByDefault([&](LogIndex) {
-      return futures::Future<ResultT<velocypack::SharedSlice>>{std::in_place};
+      return yaclib::MakeFuture<ResultT<velocypack::SharedSlice>>();
     });
 
     ON_CALL(*networkHandlerMock, getLeaderInterface)
