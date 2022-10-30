@@ -288,7 +288,7 @@ struct ReplicatedLogMethodsCoordinator final
     return std::move(f).ThenInline(
         [self = shared_from_this(), cb](auto&& result) {
           self->clusterFeature.agencyCallbackRegistry()->unregisterCallback(cb);
-          return std::move(result.Ok());
+          return std::move(result).Ok();
         });
   }
 

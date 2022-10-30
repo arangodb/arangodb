@@ -1532,7 +1532,7 @@ void SynchronizeShard::setState(ActionState state) {
            std::chrono::steady_clock::now() < stoppage) {
       auto r = cluster::fetchCurrentVersion(0.1 * timeout).Get();
       try {
-        auto res = r.Ok();
+        auto res = std::move(r).Ok();
         // we need to check if res is ok() in order to not trigger a
         // bad_optional_access exception here
         if (res.ok()) {

@@ -459,8 +459,8 @@ arangodb::Result fetchRevisions(
 
       auto fut =
           trx.state()->performIntermediateCommitIfRequired(collection.id());
-      TRI_ASSERT(fut.isReady());
-      res = fut.get();
+      TRI_ASSERT(fut.Ready());
+      res = std::move(fut).Get().Ok();
 
       if (res.fail()) {
         return res;
@@ -2122,8 +2122,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       toFetch.clear();
 
       auto fut = trx->state()->performIntermediateCommitIfRequired(coll->id());
-      TRI_ASSERT(fut.isReady());
-      res = fut.get();
+      TRI_ASSERT(fut.Ready());
+      res = std::move(fut).Get().Ok();
 
       if (res.fail()) {
         return res;

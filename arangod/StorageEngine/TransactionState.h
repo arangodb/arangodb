@@ -208,7 +208,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   virtual Result triggerIntermediateCommit() = 0;
 
-  virtual futures::Future<Result> performIntermediateCommitIfRequired(
+  virtual yaclib::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId cid) = 0;
 
   /// @brief return number of commits.

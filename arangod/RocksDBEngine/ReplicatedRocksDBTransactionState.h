@@ -58,7 +58,7 @@ class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
 
   arangodb::Result triggerIntermediateCommit() override;
 
-  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
+  [[nodiscard]] yaclib::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId collectionId) override;
 
   bool hasOperations() const noexcept override;

@@ -1323,7 +1323,7 @@ yaclib::Future<metrics::RawDBServers> metricsOnLeader(NetworkFeature& network,
       .ThenInline([](Responses&& responses) {
         metrics::RawDBServers metrics;
         metrics.reserve(responses.size());
-        for (auto& response : responses) {
+        for (auto const& response : responses) {
           if (!response || !response.Value().hasResponse() ||
               response.Value().fail()) {
             continue;  // Shit happens, just ignore it
@@ -1366,12 +1366,12 @@ yaclib::Future<metrics::LeaderResponse> metricsFromLeader(
   auto future = network::sendRequest(
       pool, absl::StrCat("server:", leader), fuerte::RestVerb::Get,
       "/_admin/metrics", {}, std::move(options), std::move(headers));
-  return std::move(future).ThenInline([](auto&& response) {
+  return std::move(future).ThenInline([](auto const& response) {
     if (!response || !response.Value().hasResponse() ||
         response.Value().fail()) {
       return metrics::LeaderResponse{};
     }
-    return std::move(response).Value().response().stealPayload();
+    return response.Value().response().stealPayload();
   });
 }
 

@@ -231,11 +231,11 @@ arangodb::Result SimpleRocksDBTransactionState::triggerIntermediateCommit() {
   return _rocksMethods->triggerIntermediateCommit();
 }
 
-futures::Future<Result>
+yaclib::Future<Result>
 SimpleRocksDBTransactionState::performIntermediateCommitIfRequired(
     DataSourceId cid) {
   if (_rocksMethods->isIntermediateCommitNeeded()) {
-    return _rocksMethods->triggerIntermediateCommit();
+    return yaclib::MakeFuture(_rocksMethods->triggerIntermediateCommit());
   }
-  return Result{};
+  return yaclib::MakeFuture<Result>();
 }

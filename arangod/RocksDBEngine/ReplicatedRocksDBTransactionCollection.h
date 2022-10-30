@@ -68,7 +68,7 @@ class ReplicatedRocksDBTransactionCollection final
   /// @brief number intermediate commits
   uint64_t numIntermediateCommits() const noexcept;
 
-  futures::Future<Result> performIntermediateCommitIfRequired();
+  yaclib::Future<Result> performIntermediateCommitIfRequired();
 
   uint64_t numOperations() const noexcept;
 

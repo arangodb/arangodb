@@ -253,7 +253,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     decltype(inFlightGuard) inFlightGuardLocal = std::move(inFlightGuard);
     auto data = self->_guardedFollowerData.getLockedGuard();
 
-    auto const& res = tryRes.Ok();
+    auto& res = std::as_const(tryRes).Ok();
     {
       // This code block does not throw any exceptions. This is executed after
       // we wrote to the on-disk-log.

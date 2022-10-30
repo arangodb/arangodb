@@ -24,9 +24,10 @@
 #include "RestHandler/RestDocumentStateHandler.h"
 
 #include "Basics/ResultT.h"
-#include "Futures/Future.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentStateMethods.h"
+
+#include <yaclib/async/future.hpp>
 
 namespace arangodb {
 
@@ -95,14 +96,14 @@ RestStatus RestDocumentStateHandler::handleGetSnapshot(
   }
 
   auto waitForIndex = replication2::LogIndex{waitForIndexParam.value()};
-  return waitForFuture(methods.getSnapshot(logId, waitForIndex)
-                           .thenValue([this](auto&& waitForResult) {
-                             if (waitForResult.fail()) {
-                               generateError(waitForResult.result());
-                             } else {
-                               generateOk(rest::ResponseCode::OK,
-                                          waitForResult.get().slice());
-                             }
-                           }));
+  return waitForFuture(
+      methods.getSnapshot(logId, waitForIndex)
+          .ThenInline([this](ResultT<velocypack::SharedSlice>&& waitForResult) {
+            if (waitForResult.fail()) {
+              generateError(waitForResult.result());
+            } else {
+              generateOk(rest::ResponseCode::OK, waitForResult.get().slice());
+            }
+          }));
 }
 }  // namespace arangodb

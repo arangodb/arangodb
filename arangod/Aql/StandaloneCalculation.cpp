@@ -99,10 +99,10 @@ class CalculationTransactionState final : public arangodb::TransactionState {
     return Result{TRI_ERROR_INTERNAL};
   }
 
-  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
+  [[nodiscard]] yaclib::Future<Result> performIntermediateCommitIfRequired(
       arangodb::DataSourceId collectionId) override {
     // Analyzers do not write. so do nothing
-    return Result{};
+    return yaclib::MakeFuture<Result>();
   }
 
   [[nodiscard]] bool hasFailedOperations() const noexcept override {

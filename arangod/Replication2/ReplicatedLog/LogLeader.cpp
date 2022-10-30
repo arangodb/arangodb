@@ -1240,7 +1240,7 @@ void replicated_log::LogLeader::establishLeadership(
                         auto&& result) mutable noexcept {
         if (auto self = weak.lock(); self) {
           try {
-            std::ignore = result.Ok();
+            std::ignore = std::move(result).Ok();
             self->_guardedLeaderData.doUnderLock([&](auto& data) {
               data._leadershipEstablished = true;
               if (data.activeParticipantsConfig->generation ==
@@ -1396,7 +1396,7 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
       .DetachInline([weak = weak_from_this(), config](auto&& result) noexcept {
         if (auto self = weak.lock(); self) {
           try {
-            std::ignore = result.Ok();
+            std::ignore = std::move(result).Ok();
             if (auto guard = self->_guardedLeaderData.getLockedGuard();
                 guard->activeParticipantsConfig->generation ==
                 config->generation) {

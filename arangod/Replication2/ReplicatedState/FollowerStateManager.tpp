@@ -89,7 +89,7 @@ void FollowerStateManager<S>::run() noexcept {
     // instead?
     if (auto self = weak.lock(); self != nullptr) {
       try {
-        std::ignore = tryResult.Ok();
+        std::ignore = std::move(tryResult).Ok();
       } catch (replicated_log::ParticipantResignedException const&) {
         LOG_CTX("0a0db", DEBUG, self->loggerContext)
             << "Log follower resigned, stopping replicated state machine. Will "
@@ -131,13 +131,11 @@ void FollowerStateManager<S>::run() noexcept {
   auto const transitionWith = [that = this]<typename F>(F&& fn) {
     return [weak = that->weak_from_this(),
             fn = std::forward<F>(fn)](auto&& arg) mutable {
-      if constexpr (std::is_invocable_v<F&&>) {
-        std::ignore = std::move(arg).Ok();
-      }
       if (auto self = weak.lock(); self != nullptr) {
         auto const state = std::invoke([&] {
           // Don't pass Unit to make that case more convenient.
           if constexpr (std::is_invocable_v<F&&>) {
+            std::ignore = std::move(arg).Ok();
             return std::forward<F>(fn)();
           } else {
             return std::forward<F>(fn)(std::move(arg));
@@ -145,6 +143,8 @@ void FollowerStateManager<S>::run() noexcept {
         });
         self->_guardedData.getLockedGuard()->updateInternalState(state);
         self->run();
+      } else {
+        std::ignore = std::move(arg).Ok();
       }
     };
   };
@@ -488,7 +488,8 @@ auto FollowerStateManager<S>::tryTransferSnapshot() -> yaclib::Future<> {
                          std::move(snapshotCounter)](auto&& tryResult) mutable {
           rttGuard.fire();
           snapshotCounter.fire();
-          auto result = basics::catchToResult([&] { return tryResult.Ok(); });
+          auto result =
+              basics::catchToResult([&] { return std::move(tryResult).Ok(); });
           if (result.ok()) {
             LOG_CTX("44d58", DEBUG, ctx)
                 << "snapshot transfer successfully completed";

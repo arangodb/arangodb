@@ -178,7 +178,7 @@ arangodb::Result ClusterTransactionState::triggerIntermediateCommit() {
   return arangodb::Result{TRI_ERROR_INTERNAL};
 }
 
-futures::Future<Result>
+yaclib::Future<Result>
 ClusterTransactionState::performIntermediateCommitIfRequired(DataSourceId cid) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "unexpected intermediate commit");

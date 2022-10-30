@@ -1591,7 +1591,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
              resultBuilder.slice().length() == value.length());
 
   std::shared_ptr<VPackBufferUInt8> resDocs = resultBuilder.steal();
-  auto intermediateCommit = futures::makeFuture(res);
+  auto intermediateCommit = yaclib::MakeFuture(res);
   if (res.ok()) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
     StorageEngine& engine = collection->vocbase()
@@ -1641,8 +1641,8 @@ Future<OperationResult> transaction::Methods::insertLocal(
   }
 
   return std::move(intermediateCommit)
-      .thenValue([options, errorCounter = std::move(errorCounter),
-                  resDocs = std::move(resDocs)](auto&& res) mutable {
+      .ThenInline([options, errorCounter = std::move(errorCounter),
+                   resDocs = std::move(resDocs)](Result&& res) mutable {
         return OperationResult(res, std::move(resDocs), options,
                                std::move(errorCounter));
       });
@@ -1956,7 +1956,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
              resultBuilder.slice().length() == newValue.length());
 
   auto resDocs = resultBuilder.steal();
-  auto intermediateCommit = futures::makeFuture(res);
+  auto intermediateCommit = yaclib::MakeFuture(res);
   if (res.ok()) {
     if (replicationType == ReplicationType::LEADER &&
         (!followers->empty() ||
@@ -2000,8 +2000,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   }
 
   return std::move(intermediateCommit)
-      .thenValue([options, errorCounter = std::move(errorCounter),
-                  resDocs = std::move(resDocs)](auto&& res) mutable {
+      .ThenInline([options, errorCounter = std::move(errorCounter),
+                   resDocs = std::move(resDocs)](Result&& res) mutable {
         return OperationResult(res, std::move(resDocs), options,
                                std::move(errorCounter));
       });
@@ -2342,8 +2342,8 @@ Future<OperationResult> transaction::Methods::removeLocal(
   }
 
   return std::move(intermediateCommit)
-      .thenValue([options, errorCounter = std::move(errorCounter),
-                  resDocs = std::move(resDocs)](auto&& res) mutable {
+      .ThenInline([options, errorCounter = std::move(errorCounter),
+                   resDocs = std::move(resDocs)](Result&& res) mutable {
         return OperationResult(res, std::move(resDocs), options,
                                std::move(errorCounter));
       });
@@ -3154,7 +3154,8 @@ Future<Result> Methods::replicateOperations(
   // we continue with the operation, since most likely, the follower was
   // simply dropped in the meantime.
   // In any case, we drop the follower here (just in case).
-  auto cb = [=, this](std::vector<yaclib::Result<network::Response>>&& responses)
+  auto cb = [=,
+             this](std::vector<yaclib::Result<network::Response>>&& responses)
       -> yaclib::Future<Result> {
     auto duration = std::chrono::steady_clock::now() - startTimeReplication;
     auto& replMetrics =
@@ -3273,7 +3274,8 @@ Future<Result> Methods::replicateOperations(
     }
 
     if (didRefuse) {  // case (1), caller may abort this transaction
-      return Result{TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
+      return yaclib::MakeFuture<Result>(
+          TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
     } else {
       // execute a deferred intermediate commit, if required.
       return performIntermediateCommitIfRequired(collection->id());
@@ -3593,7 +3595,7 @@ yaclib::Future<OperationResult> Methods::countInternal(
 }
 
 // perform a (deferred) intermediate commit if required
-futures::Future<Result> Methods::performIntermediateCommitIfRequired(
+yaclib::Future<Result> Methods::performIntermediateCommitIfRequired(
     DataSourceId collectionId) {
   return _state->performIntermediateCommitIfRequired(collectionId);
 }

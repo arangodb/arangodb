@@ -81,20 +81,20 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
         self->_handlersFactory->createTransactionHandler(self->gid);
     if (transactionHandler == nullptr) {
       // TODO this is a temporary fix, see CINFRA-588
-      return Result{
+      return yaclib::MakeFuture<Result>(
           TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
           fmt::format("Transaction handler is missing from DocumentLeaderState "
                       "during recoverEntries "
                       "{}! This happens if the vocbase cannot be found during "
                       "DocumentState construction.",
-                      to_string(self->gid))};
+                      to_string(self->gid)));
     }
 
     while (auto entry = ptr->next()) {
       auto doc = entry->second;
       auto res = transactionHandler->applyEntry(doc);
       if (res.fail()) {
-        return res;
+        return yaclib::MakeFuture(res);
       }
     }
 
@@ -119,8 +119,8 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       }
     }
 
-        return yaclib::MakeFuture<Result>(TRI_ERROR_NO_ERROR);
-      });
+    return yaclib::MakeFuture<Result>(TRI_ERROR_NO_ERROR);
+  });
 }
 
 auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,

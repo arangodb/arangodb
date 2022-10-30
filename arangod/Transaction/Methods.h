@@ -408,7 +408,7 @@ class Methods {
   enum class ReplicationType { NONE, LEADER, FOLLOWER };
 
   // perform a (deferred) intermediate commit if required
-  futures::Future<Result> performIntermediateCommitIfRequired(
+  yaclib::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId collectionId);
 
   /// @brief build a VPack object with _id, _key and _rev and possibly

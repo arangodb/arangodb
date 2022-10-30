@@ -72,7 +72,7 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState,
   /// @brief only called on replication2 follower
   virtual arangodb::Result triggerIntermediateCommit() override;
 
-  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
+  [[nodiscard]] yaclib::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId collectionId) override;
 
  protected:

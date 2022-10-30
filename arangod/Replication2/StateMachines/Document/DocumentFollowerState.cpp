@@ -56,7 +56,7 @@ auto DocumentFollowerState::resign() && noexcept
 
 auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                                             LogIndex waitForIndex) noexcept
-    -> futures::Future<Result> {
+    -> yaclib::Future<Result> {
   return _guardedData
       .doUnderLock(
           [self = shared_from_this(), &destination, waitForIndex](
@@ -72,8 +72,9 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                 self->_networkHandler->getLeaderInterface(destination);
             return leaderInterface->getSnapshot(waitForIndex);
           })
-      .thenValue([](auto&& result) -> yaclib::Future<Result> {
-        return result.result();
+      .ThenInline([](ResultT<velocypack::SharedSlice>&& result)
+                      -> yaclib::Future<Result> {
+        return yaclib::MakeFuture(result.result());
       });
 }
 

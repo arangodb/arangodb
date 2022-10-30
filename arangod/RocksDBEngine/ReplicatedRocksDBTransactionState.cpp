@@ -115,7 +115,8 @@ yaclib::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
   // while we are waiting for the commit operations.
   return yaclib::WhenAll<yaclib::WhenPolicy::None>(commits.begin(),
                                                    commits.end())
-      .ThenInline([self = shared_from_this()](std::vector<yaclib::Result<Result>>&& results) -> Result {
+      .ThenInline([self = shared_from_this()](
+                      std::vector<yaclib::Result<Result>>&& results) -> Result {
         for (auto&& result : results) {
           if (auto r = std::move(result).Ok(); r.fail()) {
             return r;
@@ -245,7 +246,7 @@ ReplicatedRocksDBTransactionState::triggerIntermediateCommit() {
   return arangodb::Result{TRI_ERROR_INTERNAL};
 }
 
-futures::Future<Result>
+yaclib::Future<Result>
 ReplicatedRocksDBTransactionState::performIntermediateCommitIfRequired(
     DataSourceId cid) {
   auto* coll =
