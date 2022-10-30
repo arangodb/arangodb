@@ -880,11 +880,12 @@ IResearchFeature::IResearchFeature(
       _threadsLimit(0),
       _outOfSyncLinks(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_search_num_out_of_sync_links{}))
-  #ifdef USE_ENTERPRISE
-      ,_columnsCacheMemoryUsed(server.getFeature<arangodb::MetricsFeature>().add(
-              arangodb_search_columns_cache_size{}))
-  #endif
-       {
+#ifdef USE_ENTERPRISE
+      ,
+      _columnsCacheMemoryUsed(server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_search_columns_cache_size{}))
+#endif
+{
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
   startsAfter<IResearchAnalyzerFeature>();
@@ -956,9 +957,10 @@ void IResearchFeature::collectOptions(
       .setIntroducedIn(30904);
 #ifdef USE_ENTERPRISE
   options
-      ->addOption(CACHE_LIMIT,
-                  "Limit in bytes for ArangoSearch columns cache. (0 = no caching)",
-                  new options::UInt64Parameter(&_columnsCacheLimit))
+      ->addOption(
+          CACHE_LIMIT,
+          "Limit in bytes for ArangoSearch columns cache. (0 = no caching)",
+          new options::UInt64Parameter(&_columnsCacheLimit))
       .setIntroducedIn(30905);
 #endif
 }
@@ -1111,8 +1113,7 @@ void IResearchFeature::start() {
 
 #ifdef USE_ENTERPRISE
     LOG_TOPIC("c2c74", INFO, arangodb::iresearch::TOPIC)
-        << "ArangoSearch columns cache limit: "
-        << _columnsCacheLimit;
+        << "ArangoSearch columns cache limit: " << _columnsCacheLimit;
 #endif
 
     {
@@ -1248,19 +1249,19 @@ void IResearchFeature::registerRecoveryHelper() {
 
 #ifdef USE_ENTERPRISE
 bool IResearchFeature::trackColumnsCacheUsage(int64_t diff) noexcept {
-    bool done = false;
-    int64_t current = _columnsCacheMemoryUsed.load(std::memory_order_relaxed);
-    do {
-      if (current + diff <= static_cast<int64_t>(_columnsCacheLimit)) {
-        TRI_ASSERT(current + diff > 0);
-        done = _columnsCacheMemoryUsed.compare_exchange_weak(
-            current, current + diff);
-      } else {
-        return false;
-      }
-    } while (!done);
-    return true;
-  }
+  bool done = false;
+  int64_t current = _columnsCacheMemoryUsed.load(std::memory_order_relaxed);
+  do {
+    if (current + diff <= static_cast<int64_t>(_columnsCacheLimit)) {
+      TRI_ASSERT(current + diff > 0);
+      done = _columnsCacheMemoryUsed.compare_exchange_weak(current,
+                                                           current + diff);
+    } else {
+      return false;
+    }
+  } while (!done);
+  return true;
+}
 #endif
 
 template<typename Engine, typename std::enable_if_t<

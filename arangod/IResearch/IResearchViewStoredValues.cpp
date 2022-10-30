@@ -25,7 +25,6 @@
 #include "IResearchCommon.h"
 #include "IResearchViewStoredValues.h"
 
-
 namespace {
 bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
               std::vector<arangodb::basics::AttributeName> const& attrs) {
@@ -83,8 +82,7 @@ bool IResearchViewStoredValues::buildStoredColumnFromSlice(
     velocypack::Slice const& columnSlice,
     std::unordered_set<std::string>& uniqueColumns,
     std::vector<irs::string_ref>& fieldNames,
-    irs::type_info::type_id compression,
-    bool cached) {
+    irs::type_info::type_id compression, bool cached) {
   if (columnSlice.isArray()) {
     // skip empty column
     if (columnSlice.length() == 0) {
@@ -211,8 +209,8 @@ bool IResearchViewStoredValues::fromVelocyPack(velocypack::Slice slice,
           auto cachedField = columnSlice.get(StaticStrings::kCacheField);
           if (!cachedField.isNone()) {
             if (!cachedField.isBool()) {
-              errorField =
-                  "[" + std::to_string(idx) + "]." + std::string(StaticStrings::kCacheField);
+              errorField = "[" + std::to_string(idx) + "]." +
+                           std::string(StaticStrings::kCacheField);
               return false;
             }
             cached = cachedField.getBool();

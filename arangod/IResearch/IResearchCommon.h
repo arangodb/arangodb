@@ -165,7 +165,8 @@ struct StaticStrings {
 
   static constexpr velocypack::StringRef kCacheField{"cache"};
 
-  static constexpr velocypack::StringRef kCachePrimaryKeyField{"primaryKeyCache"};
+  static constexpr velocypack::StringRef kCachePrimaryKeyField{
+      "primaryKeyCache"};
 };
 
 }  // namespace iresearch

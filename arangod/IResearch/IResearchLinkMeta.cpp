@@ -339,7 +339,7 @@ bool FieldMeta::init(
 
 #ifdef USE_ENTERPRISE
   // optional caching
-  { 
+  {
     auto const field = slice.get(StaticStrings::kCacheField);
     mask->_cache = !field.isNone();
     if (!mask->_cache) {
@@ -521,7 +521,8 @@ bool FieldMeta::json(application_features::ApplicationServer& server,
   }
 
 #ifdef USE_ENTERPRISE
-  if (((!ignoreEqual && _cache) ||  (ignoreEqual && _cache != ignoreEqual->_cache)) &&
+  if (((!ignoreEqual && _cache) ||
+       (ignoreEqual && _cache != ignoreEqual->_cache)) &&
       (!mask || mask->_cache)) {
     builder.add(StaticStrings::kCacheField, velocypack::Value(_cache));
   }
@@ -647,7 +648,7 @@ bool IResearchLinkMeta::init(
       _sortCache = field.getBoolean();
     }
   }
-  { 
+  {
     auto const field = slice.get(StaticStrings::kCachePrimaryKeyField);
     mask->_pkCache = !field.isNone();
     if (mask->_pkCache) {

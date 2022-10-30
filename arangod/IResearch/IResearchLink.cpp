@@ -1149,7 +1149,6 @@ Result IResearchLink::init(velocypack::Slice definition,
   auto const primarySortCompression =
       meta._sortCompression ? meta._sortCompression : getDefaultCompression();
 
-  
   irs::index_reader_options readerOptions;
 #ifdef USE_ENTERPRISE
   setupReaderEntepriseOptions(readerOptions, vocbase.server(), meta);
@@ -1269,9 +1268,9 @@ Result IResearchLink::init(velocypack::Slice definition,
       }
       // prepare data-store which can then update options
       // via the IResearchView::link(...) call
-      auto const res =
-          initDataStore(initCallback, meta._version, sorted,
-                        storedValuesColumns, primarySortCompression, readerOptions);
+      auto const res = initDataStore(initCallback, meta._version, sorted,
+                                     storedValuesColumns,
+                                     primarySortCompression, readerOptions);
 
       if (!res.ok()) {
         return res;
@@ -1349,8 +1348,9 @@ Result IResearchLink::init(velocypack::Slice definition,
   } else if (ServerState::instance()->isSingleServer()) {  // single-server link
     // prepare data-store which can then update options
     // via the IResearchView::link(...) call
-    auto const res = initDataStore(initCallback, meta._version, sorted,
-                                   storedValuesColumns, primarySortCompression, readerOptions);
+    auto const res =
+        initDataStore(initCallback, meta._version, sorted, storedValuesColumns,
+                      primarySortCompression, readerOptions);
 
     if (!res.ok()) {
       return res;
@@ -1399,7 +1399,8 @@ Result IResearchLink::init(velocypack::Slice definition,
 Result IResearchLink::initDataStore(
     InitCallback const& initCallback, uint32_t version, bool sorted,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-    irs::type_info::type_id primarySortCompression, irs::index_reader_options const& readerOptions) {
+    irs::type_info::type_id primarySortCompression,
+    irs::index_reader_options const& readerOptions) {
   std::atomic_store(&_flushSubscription, {});
   // reset together with '_asyncSelf'
   _asyncSelf->reset();
@@ -1481,8 +1482,8 @@ Result IResearchLink::initDataStore(
 
   if (pathExists) {
     try {
-      _dataStore._reader =
-          irs::directory_reader::open(*(_dataStore._directory), nullptr, readerOptions);
+      _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory),
+                                                       nullptr, readerOptions);
 
       if (!readTick(_dataStore._reader.meta().meta.payload(),
                     _dataStore._recoveryTick)) {
@@ -1583,7 +1584,8 @@ Result IResearchLink::initDataStore(
 
   if (!_dataStore._reader) {
     _dataStore._writer->commit();  // initialize 'store'
-    _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory), nullptr, readerOptions);
+    _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory),
+                                                     nullptr, readerOptions);
   }
 
   if (!_dataStore._reader) {
