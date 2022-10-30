@@ -25,8 +25,8 @@
 #include <Basics/voc-errors.h>
 
 #include <yaclib/async/make.hpp>
-#include <yaclib/async/future.hpp>
-#include <yaclib/async/when_all.hpp>
+#include <yaclib/coro/future.hpp>
+#include <yaclib/coro/await.hpp>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/AgencyCallback.h"
@@ -836,60 +836,38 @@ struct ReplicatedLogMethodsCoordinator final
       std::shared_ptr<replication2::agency::LogPlanSpecification const> spec,
       GlobalStatus::SpecificationSource source) const
       -> yaclib::Future<GlobalStatus> {
-    // TODO(MBkkt) Make a coroutine. It will be better!
-    // send of a request to all participants
-    using Participants =
-        std::vector<yaclib::Result<GlobalStatus::ParticipantStatus>>;
-    using All = std::variant<GlobalStatus::SupervisionStatus, Participants>;
+    std::vector<yaclib::Future<GlobalStatus::ParticipantStatus>> pfs;
+    {
+      auto const& participants = spec->participantsConfig.participants;
+      pfs.reserve(participants.size());
+      for (auto const& [id, flags] : participants) {
+        pfs.emplace_back(queryParticipantsStatus(spec->id, id));
+      }
+    }
+    auto af = readSupervisionStatus(spec->id);
 
-    auto psf =
-        std::invoke([&] {
-          auto const& participants = spec->participantsConfig.participants;
-          std::vector<yaclib::Future<GlobalStatus::ParticipantStatus>> pfs;
-          pfs.reserve(participants.size());
-          for (auto const& [id, flags] : participants) {
-            pfs.emplace_back(queryParticipantsStatus(spec->id, id));
-          }
-          return yaclib::WhenAll<yaclib::WhenPolicy::None>(pfs.begin(),
-                                                           pfs.end());
-        }).ThenInline([](Participants&& r) { return All{std::move(r)}; });
+    co_await yaclib::Await(pfs.begin(), pfs.end());
+    co_await yaclib::Await(af);
 
-    auto af = readSupervisionStatus(spec->id).ThenInline(
-        [](GlobalStatus::SupervisionStatus&& r) { return All{std::move(r)}; });
+    auto& agency = std::as_const(af).Touch().Ok();
 
-    return yaclib::WhenAll(std::move(af), std::move(psf))
-        .ThenInline([spec, source](std::vector<All>&& pairResult) {
-          auto [agency, participantResults] = [&] {
-            if (pairResult[0].index() == 0) {
-              return std::pair{std::get<0>(pairResult[0]),
-                               std::get<1>(pairResult[1])};
-            } else {
-              return std::pair{std::get<0>(pairResult[1]),
-                               std::get<1>(pairResult[0])};
-            }
-          }();
+    auto leader = std::optional<ParticipantId>{};
+    if (spec->currentTerm && spec->currentTerm->leader) {
+      leader = spec->currentTerm->leader->serverId;
+    }
+    auto participantsMap =
+        std::unordered_map<ParticipantId, GlobalStatus::ParticipantStatus>{};
 
-          auto leader = std::optional<ParticipantId>{};
-          if (spec->currentTerm && spec->currentTerm->leader) {
-            leader = spec->currentTerm->leader->serverId;
-          }
-          auto participantsMap =
-              std::unordered_map<ParticipantId,
-                                 GlobalStatus::ParticipantStatus>{};
+    auto const& participants = spec->participantsConfig.participants;
+    std::size_t idx = 0;
+    for (auto const& [id, flags] : participants) {
+      participantsMap[id] = std::move(pfs.at(idx++)).Touch().Ok();
+    }
 
-          auto const& participants = spec->participantsConfig.participants;
-          std::size_t idx = 0;
-          for (auto const& [id, flags] : participants) {
-            auto& result = participantResults.at(idx++);
-            participantsMap[id] = std::move(result).Ok();
-          }
-
-          return GlobalStatus{
-              .supervision = agency,
-              .participants = participantsMap,
-              .specification = {.source = source, .plan = *spec},
-              .leaderId = std::move(leader)};
-        });
+    co_return GlobalStatus{.supervision = agency,
+                           .participants = participantsMap,
+                           .specification = {.source = source, .plan = *spec},
+                           .leaderId = std::move(leader)};
   }
 
   TRI_vocbase_t& vocbase;
