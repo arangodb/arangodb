@@ -48,6 +48,10 @@ std::string const& PlanCollectionEntry::getName() const {
   return {_properties.name};
 }
 
+bool PlanCollectionEntry::requiresCurrentWatcher() const {
+  return _properties.numberOfShards != 0ull;
+}
+
 PlanShardToServerMapping PlanCollectionEntry::getShardMapping() const {
   TRI_ASSERT(_shardDistribution.getDistributionForShards().shards.size() ==
              _properties.numberOfShards);

@@ -24,6 +24,7 @@
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyPaths.h"
 #include "Basics/Guarded.h"
+#include "Cluster/Utils/CurrentWatcher.h"
 #include "Cluster/Utils/CurrentCollectionEntry.h"
 #include "Cluster/Utils/PlanCollectionEntry.h"
 #include "Cluster/Utils/PlanShardToServerMappping.h"
@@ -60,71 +61,56 @@ PlanCollectionToAgencyWriter::PlanCollectionToAgencyWriter(
     : _collectionPlanEntries{std::move(collectionPlanEntries)},
       _shardDistributionsUsed{std::move(shardDistributionsUsed)} {}
 
-std::vector<std::pair<std::string, std::function<bool(velocypack::Slice)>>>
+std::shared_ptr<CurrentWatcher>
 PlanCollectionToAgencyWriter::prepareCurrentWatcher(
-    std::string_view databaseName, bool waitForSyncReplication,
-    std::shared_ptr<Guarded<absl::flat_hash_map<std::string, Result>>> const&
-        report) const {
-  std::vector<std::pair<std::string, std::function<bool(velocypack::Slice)>>>
-      result;
+    std::string_view databaseName, bool waitForSyncReplication) const {
+  auto report = std::make_shared<CurrentWatcher>();
+
   // One callback per collection
-  result.reserve(_collectionPlanEntries.size());
+  report->reserve(_collectionPlanEntries.size());
   auto const baseCollectionPath = pathCollectioInCurrent(databaseName);
   for (auto const& entry : _collectionPlanEntries) {
-    auto const collectionPath = baseCollectionPath + entry.getCID();
-    auto expectedShards = entry.getShardMapping();
-    auto cid = entry.getCID();
+    if (entry.requiresCurrentWatcher()) {
+      auto const collectionPath = baseCollectionPath + entry.getCID();
+      auto expectedShards = entry.getShardMapping();
+      auto cid = entry.getCID();
 
-    auto callback = [cid, expectedShards, waitForSyncReplication,
-                     report](VPackSlice result) -> bool {
-      if (report->doUnderLock([&cid](auto const& collectionReport) {
-            return collectionReport.find(cid) != collectionReport.end();
-          })) {
-        // This collection has already reported
-        return true;
-      }
-
-      CurrentCollectionEntry state;
-      auto status = velocypack::deserializeWithStatus(result, state);
-      // We ignore parsing errors here, only react on positive case
-      if (status.ok()) {
-        if (state.haveAllShardsReported(expectedShards.shards.size())) {
-          if (state.hasError()) {
-            // At least on shard has reported an error.
-            auto message = state.createErrorReport();
-            report->doUnderLock([&cid, message = std::move(message)](
-                                    auto& collectionReport) {
-              if (collectionReport.find(cid) != collectionReport.end()) {
-                // Avoid, races, we are the first one to report here
-                collectionReport.emplace(
-                    cid, Result{TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
-                                message});
-              }
-            });
-            return true;
-          } else if (!waitForSyncReplication ||
-                     state.doExpectedServersMatch(expectedShards)) {
-            // All servers reported back without error.
-            // If waitForSyncReplication is requested full server lists match
-            // Let us return done!
-            report->doUnderLock([&cid](auto& collectionReport) {
-              if (collectionReport.find(cid) == collectionReport.end()) {
-                // Avoid, races, we are the first one to report here
-                collectionReport.emplace(cid, Result{TRI_ERROR_NO_ERROR});
-              }
-            });
-            return true;
+      auto callback = [cid, expectedShards, waitForSyncReplication,
+                       report](VPackSlice result) -> bool {
+        if (report->hasReported(cid)) {
+          // This collection has already reported
+          return true;
+        }
+        CurrentCollectionEntry state;
+        auto status = velocypack::deserializeWithStatus(result, state);
+        // We ignore parsing errors here, only react on positive case
+        if (status.ok()) {
+          if (state.haveAllShardsReported(expectedShards.shards.size())) {
+            if (state.hasError()) {
+              // At least on shard has reported an error.
+              report->addReport(
+                  cid, Result{TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
+                              state.createErrorReport()});
+              return true;
+            } else if (!waitForSyncReplication ||
+                       state.doExpectedServersMatch(expectedShards)) {
+              // All servers reported back without error.
+              // If waitForSyncReplication is requested full server lists match
+              // Let us return done!
+              report->addReport(cid, Result{TRI_ERROR_NO_ERROR});
+              return true;
+            }
           }
         }
-      }
-      // TODO: Maybe we want to do trace-logging if current cannot be parsed?
+        // TODO: Maybe we want to do trace-logging if current cannot be parsed?
 
-      return true;
-    };
-    result.emplace_back(collectionPath, callback);
+        return true;
+      };
+      report->addWatchPath(collectionPath, callback);
+    }
   }
 
-  return result;
+  return report;
 }
 
 ResultT<AgencyWriteTransaction>

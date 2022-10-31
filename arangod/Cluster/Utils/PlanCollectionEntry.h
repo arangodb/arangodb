@@ -45,6 +45,8 @@ struct PlanCollectionEntry {
 
   [[nodiscard]] std::string const& getName() const;
 
+  [[nodiscard]] bool requiresCurrentWatcher() const;
+
   // To be replaced by Inspect below, as soon as same-level fields are merged.
   [[nodiscard]] velocypack::Builder toVPackDeprecated() const;
 

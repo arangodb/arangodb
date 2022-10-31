@@ -41,7 +41,9 @@ class Result;
 
 template<typename T>
 class ResultT;
+
 struct AgencyWriteTransaction;
+struct CurrentWatcher;
 struct PlanCollectionEntry;
 struct IShardDistributionFactory;
 
@@ -52,12 +54,8 @@ struct PlanCollectionToAgencyWriter {
                          std::shared_ptr<IShardDistributionFactory>>
           shardDistributionsUsed);
 
-  [[nodiscard]] std::vector<
-      std::pair<std::string, std::function<bool(velocypack::Slice)>>>
-  prepareCurrentWatcher(
-      std::string_view databaseName, bool waitForSyncReplication,
-      std::shared_ptr<Guarded<absl::flat_hash_map<std::string, Result>>> const&
-          report) const;
+  [[nodiscard]] std::shared_ptr<CurrentWatcher> prepareCurrentWatcher(
+      std::string_view databaseName, bool waitForSyncReplication) const;
 
   [[nodiscard]] AgencyWriteTransaction prepareUndoTransaction(
       std::string_view databaseName) const;

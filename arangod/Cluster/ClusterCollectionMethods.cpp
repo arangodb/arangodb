@@ -29,6 +29,7 @@
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/Utils/CurrentWatcher.h"
 #include "Cluster/Utils/DistributeShardsLike.h"
 #include "Cluster/Utils/EvenDistribution.h"
 #include "Cluster/Utils/IShardDistributionFactory.h"
@@ -72,10 +73,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
     if (buildingTransaction.fail()) {
       return buildingTransaction.result();
     }
-    auto currentReport =
-        std::make_shared<Guarded<absl::flat_hash_map<std::string, Result>>>();
-    auto callbackInfos =
-        writer.prepareCurrentWatcher(databaseName, false, currentReport);
+    auto callbackInfos = writer.prepareCurrentWatcher(databaseName, false);
 
     std::vector<std::pair<std::shared_ptr<AgencyCallback>, std::string>>
         callbackList;
@@ -94,7 +92,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
         });
 
     // First register all callbacks
-    for (auto const& [path, cb] : callbackInfos) {
+    for (auto const& [path, cb] : callbackInfos->getCallbackInfos()) {
       auto agencyCallback =
           std::make_shared<AgencyCallback>(server, path, cb, true, false);
       Result r = callbackRegistry.registerCallback(agencyCallback);
@@ -105,6 +103,8 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
       callbackList.emplace_back(
           std::make_pair(std::move(agencyCallback), StaticStrings::Empty));
     }
+    callbackInfos->clearCallbacks();
+
     // Then send the transaction
     auto res = ac.sendTransactionWithFailover(buildingTransaction.get());
     if (res.successful()) {
@@ -176,24 +176,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
 
         // Now "busy-loop"
         while (!server.isStopping()) {
-          auto maybeFinalResult = currentReport->doUnderLock(
-              [expected = collectionNames.size()](
-                  auto const& collectionReport) -> std::optional<Result> {
-                for (auto const& [_, result] : collectionReport) {
-                  // Test if there is an error reported
-                  if (!result.ok()) {
-                    return result;
-                  }
-                }
-                // If we get here, all reports are OK.
-                // let's check if we have all reports
-                if (collectionReport.size() == expected) {
-                  // We have all, complete the operation, no error
-                  return TRI_ERROR_NO_ERROR;
-                }
-                // Not yet complete, cannot report a Result.
-                return std::nullopt;
-              });
+          auto maybeFinalResult = callbackInfos->getResultIfAllReported();
           if (maybeFinalResult.has_value()) {
             // We have a final result. we are complete
             auto const& finalResult = maybeFinalResult.value();
@@ -268,10 +251,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
           // We do not have a final result. Let's wait for more input
           // Wait for the next incomplete callback
           for (auto& [cb, cid] : callbackList) {
-            if (currentReport->doUnderLock([&cid = cid](
-                                               auto const& collectionReport) {
-                  return collectionReport.find(cid) == collectionReport.end();
-                })) {
+            if (!callbackInfos->hasReported(cid)) {
               // We do not have result for this collection, wait for it.
               bool gotTimeout;
               {
@@ -283,11 +263,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
                 // We got woken up by waittime, not by  callback.
                 // Let us check if we skipped other callbacks as well
                 for (auto& [cb2, cid2] : callbackList) {
-                  if (currentReport->doUnderLock(
-                          [&cid2 = cid2](auto const& collectionReport) {
-                            return collectionReport.find(cid2) ==
-                                   collectionReport.end();
-                          })) {
+                  if (callbackInfos->hasReported(cid2)) {
                     // Only re check those where we have not yet found a result.
                     cb2->refetchAndUpdate(true, false);
                   }

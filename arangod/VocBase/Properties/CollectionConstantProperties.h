@@ -24,6 +24,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Properties/UtilityInvariants.h"
 #include "VocBase/voc-types.h"
 
@@ -61,6 +62,8 @@ struct CollectionConstantProperties {
   bool cacheEnabled = false;
 
   inspection::NonNullOptional<std::string> smartGraphAttribute = std::nullopt;
+  inspection::NonNullOptional<std::vector<DataSourceId>> shadowCollections =
+      std::nullopt;
 
   // TODO: Maybe this is better off with a transformator Uint -> col_type_e
   [[nodiscard]] TRI_col_type_e getType() const noexcept {
@@ -76,11 +79,23 @@ struct CollectionConstantProperties {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionConstantProperties& props) {
-  return f.object(props).fields(
-      f.field("isSystem", props.isSystem).fallback(f.keep()),
-      f.field("isSmart", props.isSmart).fallback(f.keep()),
-      f.field("isDisjoint", props.isDisjoint).fallback(f.keep()),
-      f.field("cacheEnabled", props.cacheEnabled).fallback(f.keep()),
+  auto shadowCollectionsField = std::invoke([&]() {
+    if constexpr (!Inspector::isLoading) {
+      // Write out the shadowCollections
+      return f.field("shadowCollections", props.shadowCollections);
+    } else {
+      // Ignore the shadowCollections on input, this is not a user-modifyable
+      // value
+      return f.ignoreField("shadowCollections");
+    }
+  });
+
+  return f.object(props)
+      .fields(
+          f.field("isSystem", props.isSystem).fallback(f.keep()),
+          f.field("isSmart", props.isSmart).fallback(f.keep()),
+          f.field("isDisjoint", props.isDisjoint).fallback(f.keep()),
+          f.field("cacheEnabled", props.cacheEnabled).fallback(f.keep()),
           f.field("smartGraphAttribute", props.smartGraphAttribute)
               .invariant(UtilityInvariants::isNonEmptyIfPresent),
           f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute)
@@ -91,7 +106,8 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
           f.field("keyOptions", props.keyOptions).fallback(f.keep()),
           /* Backwards compatibility, fields are allowed (MMFILES) but have no
              relevance anymore */
-          f.ignoreField("doCompact"), f.ignoreField("isVolatile"))
+          f.ignoreField("doCompact"), f.ignoreField("isVolatile"),
+          std::move(shadowCollectionsField))
       .invariant(
           CollectionConstantProperties::Invariants::isSmartConfiguration);
 }
