@@ -25,11 +25,11 @@
 #include "Basics/StaticStrings.h"
 
 #include "Aql/QueryContext.h"
-#include "Futures/Future.h"
-#include "Futures/Utilities.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Logger/LogMacros.h"
 #include "Graph/EdgeDocumentToken.h"
 
+#include <yaclib/async/make.hpp>
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
 #include <velocypack/Value.h>
@@ -112,7 +112,7 @@ auto MockGraphProvider::startVertex(VertexType v, size_t depth, double weight)
 }
 
 auto MockGraphProvider::fetchVertices(const std::vector<Step*>& looseEnds)
-    -> futures::Future<std::vector<Step*>> {
+    -> yaclib::Future<std::vector<Step*>> {
   return fetch(looseEnds);
 }
 
@@ -123,7 +123,7 @@ auto MockGraphProvider::fetchEdges(const std::vector<Step*>& fetchedVertices)
 }
 
 auto MockGraphProvider::fetch(std::vector<Step*> const& looseEnds)
-    -> futures::Future<std::vector<Step*>> {
+    -> yaclib::Future<std::vector<Step*>> {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
       << "<MockGraphProvider> Fetching...";
   std::vector<Step*> result{};
@@ -133,7 +133,7 @@ auto MockGraphProvider::fetch(std::vector<Step*> const& looseEnds)
     s->resolve();
     result.emplace_back(s);
   }
-  return futures::makeFuture(std::move(result));
+  return yaclib::MakeFuture(std::move(result));
 }
 
 auto MockGraphProvider::expand(Step const& step, size_t previous,

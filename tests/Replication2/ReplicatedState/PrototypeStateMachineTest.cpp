@@ -24,6 +24,7 @@
 
 #include <array>
 #include <utility>
+#include <yaclib/async/make.hpp>
 
 #include "Replication2/ReplicatedLog/TestHelper.h"
 
@@ -55,11 +56,12 @@ struct MockPrototypeLeaderInterface : public IPrototypeLeaderInterface {
         defaultSnapshot{{"a", "b"}, {"c", "d"}} {}
 
   auto getSnapshot(GlobalLogIdentifier const&, LogIndex waitForIndex)
-      -> futures::Future<
+      -> yaclib::Future<
           ResultT<std::unordered_map<std::string, std::string>>> override {
     if (useDefaultSnapshot) {
-      return ResultT<std::unordered_map<std::string, std::string>>::success(
-          defaultSnapshot);
+      return yaclib::MakeFuture(
+          ResultT<std::unordered_map<std::string, std::string>>::success(
+              defaultSnapshot));
     }
     return leaderState->getSnapshot(waitForIndex);
   }
@@ -171,8 +173,8 @@ TEST_F(PrototypeStateMachineTest, prototype_core_flush) {
     auto result = leaderState->set(
         entries,
         PrototypeStateMethods::PrototypeWriteOptions{.waitForApplied = false});
-    ASSERT_TRUE(result.isReady());
-    auto index = result.get().value;
+    ASSERT_TRUE(result.Ready());
+    auto index = std::as_const(result).Touch().Ok().value;
     ASSERT_EQ(index, cnt + 2);
   }
   follower->runAllAsyncAppendEntries();
@@ -181,8 +183,8 @@ TEST_F(PrototypeStateMachineTest, prototype_core_flush) {
   ASSERT_EQ(storageMock->putCalled, 2);
 
   auto snapshot = leaderState->getSnapshot(LogIndex{1});
-  ASSERT_TRUE(snapshot.isReady());
-  auto leaderMap = snapshot.get().get();
+  ASSERT_TRUE(snapshot.Ready());
+  auto leaderMap = std::as_const(snapshot).Touch().Ok().get();
   ASSERT_EQ(expected, leaderMap);
 
   auto prototypeDump = storageMock->get(GlobalLogIdentifier{"database", logId});
@@ -228,15 +230,15 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
   // Compare-exchange before insert
   {
     auto result =
-        leaderState->compareExchange("cmp", "cmp1", "cmp2", options).get();
+        leaderState->compareExchange("cmp", "cmp1", "cmp2", options).Get().Ok();
     ASSERT_EQ(result.errorNumber(), TRI_ERROR_ARANGO_CONFLICT);
   }
 
   // Get before insert
   {
-    auto result = leaderState->get("baz", LogIndex{index}).get();
+    auto result = leaderState->get("baz", LogIndex{index}).Get().Ok();
     ASSERT_EQ(result.get(), std::nullopt);
-    result = followerState->get("baz", LogIndex{index}).get();
+    result = followerState->get("baz", LogIndex{index}).Get().Ok();
     ASSERT_EQ(result.get(), std::nullopt);
   }
 
@@ -245,20 +247,20 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
     auto entries = std::unordered_map<std::string, std::string>{{"foo", "bar"}};
     auto result = leaderState->set(std::move(entries), options);
     follower->runAllAsyncAppendEntries();
-    index = result.get().value;
+    index = std::move(result).Get().Ok().value;
     ASSERT_EQ(index, 2);
   }
 
   // Single get
   {
-    auto result = leaderState->get("foo", LogIndex{index}).get();
+    auto result = leaderState->get("foo", LogIndex{index}).Get().Ok();
     ASSERT_EQ(result.get(), "bar");
-    result = leaderState->get("baz", LogIndex{index}).get();
+    result = leaderState->get("baz", LogIndex{index}).Get().Ok();
     ASSERT_EQ(result.get(), std::nullopt);
 
-    result = followerState->get("foo", LogIndex{index}).get();
+    result = followerState->get("foo", LogIndex{index}).Get().Ok();
     ASSERT_EQ(result.get(), "bar");
-    result = followerState->get("baz", LogIndex{index}).get();
+    result = followerState->get("baz", LogIndex{index}).Get().Ok();
     ASSERT_EQ(result.get(), std::nullopt);
   }
 
@@ -268,8 +270,8 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
         {"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}};
     auto result = leaderState->set(std::move(entries), options);
     follower->runAllAsyncAppendEntries();
-    ASSERT_TRUE(result.isReady());
-    index = result.get().value;
+    ASSERT_TRUE(result.Ready());
+    index = std::as_const(result).Touch().Ok().value;
     ASSERT_EQ(index, 3);
   }
 
@@ -277,13 +279,13 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
   {
     std::vector<std::string> entries = {"foo1", "foo2", "foo3", "nofoo"};
     std::unordered_map<std::string, std::string> result =
-        leaderState->get(entries, LogIndex{index}).get().get();
+        leaderState->get(entries, LogIndex{index}).Get().Ok().get();
     ASSERT_EQ(result.size(), 3);
     ASSERT_EQ(result["foo1"], "bar1");
     ASSERT_EQ(result["foo2"], "bar2");
     ASSERT_EQ(result["foo3"], "bar3");
 
-    result = followerState->get(entries, LogIndex{index}).get().get();
+    result = followerState->get(entries, LogIndex{index}).Get().Ok().get();
     ASSERT_EQ(result.size(), 3);
     ASSERT_EQ(result["foo1"], "bar1");
     ASSERT_EQ(result["foo2"], "bar2");
@@ -294,10 +296,10 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
   {
     auto result = leaderState->remove("foo1", options);
     follower->runAllAsyncAppendEntries();
-    ASSERT_TRUE(result.isReady());
-    index = result.get().value;
+    ASSERT_TRUE(result.Ready());
+    index = std::move(result).Get().Ok().value;
     ASSERT_EQ(index, 4);
-    ASSERT_EQ(leaderState->get("foo1", LogIndex{index}).get().get(),
+    ASSERT_EQ(leaderState->get("foo1", LogIndex{index}).Get().Ok().get(),
               std::nullopt);
   }
 
@@ -306,40 +308,45 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
     std::vector<std::string> entries = {"nofoo", "foo2"};
     auto result = leaderState->remove(std::move(entries), options);
     follower->runAllAsyncAppendEntries();
-    ASSERT_TRUE(result.isReady());
-    index = result.get().value;
+    ASSERT_TRUE(result.Ready());
+    index = std::as_const(result).Touch().Ok().value;
     ASSERT_EQ(index, 5);
-    ASSERT_EQ(leaderState->get("foo2", LogIndex{index}).get().get(),
+    ASSERT_EQ(leaderState->get("foo2", LogIndex{index}).Get().Ok().get(),
               std::nullopt);
-    ASSERT_EQ(leaderState->get("foo3", LogIndex{index}).get().get(), "bar3");
-    ASSERT_EQ(followerState->get("foo2", LogIndex{index}).get().get(),
+    ASSERT_EQ(leaderState->get("foo3", LogIndex{index}).Get().Ok().get(),
+              "bar3");
+    ASSERT_EQ(followerState->get("foo2", LogIndex{index}).Get().Ok().get(),
               std::nullopt);
-    ASSERT_EQ(followerState->get("foo3", LogIndex{index}).get().get(), "bar3");
+    ASSERT_EQ(followerState->get("foo3", LogIndex{index}).Get().Ok().get(),
+              "bar3");
   }
 
   // Compare Exchange
   {
     auto wrongValue =
-        leaderState->compareExchange("foo3", "foobar", "foobar", options).get();
+        leaderState->compareExchange("foo3", "foobar", "foobar", options)
+            .Get()
+            .Ok();
     ASSERT_EQ(wrongValue.errorNumber(), TRI_ERROR_ARANGO_CONFLICT);
     auto result =
         leaderState->compareExchange("foo3", "bar3", "foobar", options);
     follower->runAllAsyncAppendEntries();
-    ASSERT_TRUE(result.isReady());
-    index = result.get().get().value;
+    ASSERT_TRUE(result.Ready());
+    index = std::as_const(result).Touch().Ok().get().value;
     ASSERT_EQ(index, 6);
   }
 
   // Check final state
   {
     auto result = leaderState->getSnapshot(LogIndex{3});
-    ASSERT_TRUE(result.isReady());
-    auto map = result.get();
+    ASSERT_TRUE(result.Ready());
+    auto map = std::move(result).Get().Ok();
     auto expected = std::unordered_map<std::string, std::string>{
         {"foo", "bar"}, {"foo3", "foobar"}};
     ASSERT_EQ(map, expected);
-    ASSERT_EQ(followerState->get("foo", LogIndex{index}).get().get(), "bar");
-    ASSERT_EQ(followerState->get("foo3", LogIndex{index}).get().get(),
+    ASSERT_EQ(followerState->get("foo", LogIndex{index}).Get().Ok().get(),
+              "bar");
+    ASSERT_EQ(followerState->get("foo3", LogIndex{index}).Get().Ok().get(),
               "foobar");
   }
 }
@@ -378,6 +385,6 @@ TEST_F(PrototypeStateMachineTest, snapshot_transfer) {
 
   auto followerState = followerReplicatedState->getFollower();
   ASSERT_NE(followerState, nullptr);
-  ASSERT_EQ(followerState->get("a", LogIndex{0}).get().get(), "b");
-  ASSERT_EQ(followerState->get("c", LogIndex{0}).get().get(), "d");
+  ASSERT_EQ(followerState->get("a", LogIndex{0}).Get().Ok().get(), "b");
+  ASSERT_EQ(followerState->get("c", LogIndex{0}).Get().Ok().get(), "d");
 }

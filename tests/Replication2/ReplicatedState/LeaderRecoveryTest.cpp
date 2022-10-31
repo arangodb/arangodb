@@ -32,6 +32,8 @@
 
 #include "StateMachines/MyStateMachine.h"
 
+#include <yaclib/async/contract.hpp>
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
@@ -56,14 +58,18 @@ struct MyHelperState {
 
 struct MyHelperLeaderState : IReplicatedLeaderState<MyHelperState> {
   explicit MyHelperLeaderState(std::unique_ptr<MyCoreType> core)
-      : _core(std::move(core)) {}
+      : _core(std::move(core)) {
+    auto [f, p] = yaclib::MakeContract<Result>();
+    promise = std::move(p);
+    f.GetCore().Release();
+  }
 
  protected:
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
-      -> futures::Future<Result> override {
+      -> yaclib::Future<Result> override {
     TRI_ASSERT(recoveryTriggered == false);
     recoveryTriggered = true;
-    return promise.getFuture();
+    return {promise.GetCore()};
   }
 
   [[nodiscard]] auto resign() && noexcept
@@ -71,10 +77,15 @@ struct MyHelperLeaderState : IReplicatedLeaderState<MyHelperState> {
   std::unique_ptr<MyCoreType> _core;
 
  public:
-  void runRecovery(Result res = {}) { promise.setValue(res); }
+  void runRecovery(Result res = {}) {
+    TRI_ASSERT(promise.Valid());
+    std::move(promise).Set(std::move(res));
+  }
+
+  ~MyHelperLeaderState() { TRI_ASSERT(recoveryTriggered); }
 
   bool recoveryTriggered = false;
-  futures::Promise<Result> promise;
+  yaclib::Promise<Result> promise;
 };
 
 auto MyHelperLeaderState::resign() && noexcept -> std::unique_ptr<MyCoreType> {

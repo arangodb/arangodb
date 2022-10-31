@@ -52,8 +52,10 @@ struct LogMultiplexerConcurrencyTest : LogMultiplexerTestBase {
     void start() { waitForStream(LogIndex{1}); }
 
     void waitForStream(LogIndex next) {
-      _stream->waitForIterator(next).thenValue(
-          [weak = this->weak_from_this()](auto&& iter) {
+      _stream->waitForIterator(next).DetachInline(
+          [weak = this->weak_from_this()](
+              std::unique_ptr<typename streams::Stream<ValueType>::Iterator>&&
+                  iter) {
             if (auto self = weak.lock(); self) {
               auto [start, stop] = iter->range();
               TRI_ASSERT(start != stop);
@@ -141,19 +143,19 @@ TEST_F(LogMultiplexerConcurrencyTest, test) {
       for (std::size_t i = 0; i < num_inserts_per_thread; i++) {
         index = producer->insert((int)i);
       }
-      producer->waitFor(index).wait();
+      std::ignore = producer->waitFor(index).Get();
     });
   }
 
   threads.joinAll();
 
-  asyncFollower->waitFor(lastIndex).wait();
+  std::ignore = asyncFollower->waitFor(lastIndex).Get();
   asyncFollower->stop();
-  asyncLeader->waitFor(lastIndex).wait();
+  std::ignore = asyncLeader->waitFor(lastIndex).Get();
   asyncLeader->stop();
 
-  auto iterA = follower->waitForIterator(LogIndex{1}).get();
-  auto iterB = leader->waitForIterator(LogIndex{1}).get();
+  auto iterA = follower->waitForIterator(LogIndex{1}).Get().Ok();
+  auto iterB = leader->waitForIterator(LogIndex{1}).Get().Ok();
 
   EXPECT_EQ(iterA->range(), iterB->range());
   while (auto A = iterA->next()) {
@@ -173,8 +175,8 @@ TEST_F(LogMultiplexerConcurrencyTest, test) {
     auto streamB =
         followerInstance->_demux->getStreamByDescriptor<Descriptor>();
 
-    auto iterA = streamA->waitForIterator(LogIndex{1}).get();
-    auto iterB = streamB->waitForIterator(LogIndex{1}).get();
+    auto iterA = streamA->waitForIterator(LogIndex{1}).Get().Ok();
+    auto iterB = streamB->waitForIterator(LogIndex{1}).Get().Ok();
 
     EXPECT_EQ(iterA->range(), iterB->range());
     while (auto A = iterA->next()) {

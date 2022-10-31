@@ -24,6 +24,7 @@
 
 #include "AsyncLeader.h"
 
+#include <yaclib/async/contract.hpp>
 #include <utility>
 
 using namespace arangodb;
@@ -85,28 +86,30 @@ test::AsyncLeader::AsyncLeader(
       _asyncResolver([this] { this->runWorker(); }) {}
 
 template<typename T>
-auto test::AsyncLeader::resolveFutureAsync(futures::Future<T> f)
-    -> futures::Future<T> {
-  futures::Promise<T> promise;
-  auto future = promise.getFuture();
-  std::move(f).thenFinal(
-      [self = shared_from_this(), promise = std::move(promise)](
-          futures::Try<T>&& result) mutable noexcept {
+auto test::AsyncLeader::resolveFutureAsync(yaclib::Future<T> f)
+    -> yaclib::Future<T> {
+  auto [future, promise] = yaclib::MakeContract<T>();
+  std::move(f).DetachInline(
+      [self = shared_from_this(),
+       promise = std::move(promise)](auto&& result) mutable noexcept {
         self->resolvePromiseAsync(std::move(promise), std::move(result));
       });
 
-  return future;
+  return std::move(future);
 }
 
 template<typename T>
-void test::AsyncLeader::resolvePromiseAsync(futures::Promise<T> p,
-                                            futures::Try<T> t) noexcept {
+void test::AsyncLeader::resolvePromiseAsync(yaclib::Promise<T> p,
+                                            yaclib::Result<T> t) noexcept {
   struct PromiseResolveAction : Action {
-    PromiseResolveAction(futures::Promise<T> p, futures::Try<T> t)
+    PromiseResolveAction(yaclib::Promise<T> p, yaclib::Result<T> t)
         : p(std::move(p)), t(std::move(t)) {}
-    void execute() noexcept override { p.setTry(std::move(t)); }
-    futures::Promise<T> p;
-    futures::Try<T> t;
+    void execute() noexcept override {
+      TRI_ASSERT(p.Valid());
+      std::move(p).Set(std::move(t));
+    }
+    yaclib::Promise<T> p;
+    yaclib::Result<T> t;
   };
 
   std::unique_lock guard(_mutex);
@@ -153,6 +156,6 @@ test::AsyncLeader::~AsyncLeader() {
   }
 }
 
-auto test::AsyncLeader::waitForResign() -> futures::Future<futures::Unit> {
+auto test::AsyncLeader::waitForResign() -> yaclib::Future<> {
   return _leader->waitForResign();
 }

@@ -607,15 +607,12 @@ void MockClusterServer::agencyCreateDatabase(std::string const& name) {
   st = ts.specialize(current_dbs_string);
   agencyTrx("/arango/Current/Databases/" + name, st);
 
-  _server.getFeature<ClusterFeature>()
-      .clusterInfo()
-      .waitForPlan(agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
-      .wait();
-  _server.getFeature<ClusterFeature>()
-      .clusterInfo()
-      .waitForCurrent(
-          agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
-      .wait();
+  auto f1 = _server.getFeature<ClusterFeature>().clusterInfo().waitForPlan(
+      agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="));
+  Wait(f1);
+  auto f2 = _server.getFeature<ClusterFeature>().clusterInfo().waitForCurrent(
+      agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="));
+  Wait(f2);
 }
 
 void MockClusterServer::agencyCreateCollections(std::string const& name) {
@@ -625,15 +622,12 @@ void MockClusterServer::agencyCreateCollections(std::string const& name) {
   st = ts.specialize(current_colls_string);
   agencyTrx("/arango/Current/Collections/" + name, st);
 
-  _server.getFeature<ClusterFeature>()
-      .clusterInfo()
-      .waitForPlan(agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
-      .wait();
-  _server.getFeature<ClusterFeature>()
-      .clusterInfo()
-      .waitForCurrent(
-          agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
-      .wait();
+  auto f1 = _server.getFeature<ClusterFeature>().clusterInfo().waitForPlan(
+      agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="));
+  Wait(f1);
+  auto f2 = _server.getFeature<ClusterFeature>().clusterInfo().waitForCurrent(
+      agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="));
+  Wait(f2);
 }
 
 void MockClusterServer::agencyDropDatabase(std::string const& name) {
@@ -644,15 +638,12 @@ void MockClusterServer::agencyDropDatabase(std::string const& name) {
   agencyTrx("/arango/Current/Databases/" + name, st);
   agencyTrx("/arango/Current/Collections/" + name, st);
 
-  _server.getFeature<ClusterFeature>()
-      .clusterInfo()
-      .waitForPlan(agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
-      .wait();
-  _server.getFeature<ClusterFeature>()
-      .clusterInfo()
-      .waitForCurrent(
-          agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
-      .wait();
+  auto f1 = _server.getFeature<ClusterFeature>().clusterInfo().waitForPlan(
+      agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="));
+  Wait(f1);
+  auto f2 = _server.getFeature<ClusterFeature>().clusterInfo().waitForCurrent(
+      agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="));
+  Wait(f2);
 }
 
 ServerID const& MockClusterServer::getServerID() const { return _serverId; }
@@ -735,16 +726,13 @@ void MockClusterServer::injectCollectionToAgency(
               current.toJson());
   }
 
-  _server.getFeature<ClusterFeature>()
-      .clusterInfo()
-      .waitForPlan(agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
-      .wait();
+  auto f1 = _server.getFeature<ClusterFeature>().clusterInfo().waitForPlan(
+      agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="));
+  Wait(f1);
 
-  _server.getFeature<ClusterFeature>()
-      .clusterInfo()
-      .waitForCurrent(
-          agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
-      .wait();
+  auto f2 = _server.getFeature<ClusterFeature>().clusterInfo().waitForCurrent(
+      agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="));
+  Wait(f2);
 }
 
 // Create a clusterWide Collection.
@@ -944,11 +932,9 @@ std::pair<std::string, std::string> MockCoordinator::registerFakedDBServer(
   }
   agencyTrx("/arango/Current/ServersRegistered/" + serverName,
             builder.toJson());
-  _server.getFeature<ClusterFeature>()
-      .clusterInfo()
-      .waitForCurrent(
-          agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
-      .wait();
+  auto f = _server.getFeature<ClusterFeature>().clusterInfo().waitForCurrent(
+      agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="));
+  Wait(f);
   return std::make_pair(fakedHost, fakedPort);
 }
 

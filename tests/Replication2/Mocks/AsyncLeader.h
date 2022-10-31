@@ -46,7 +46,7 @@ struct AsyncLeader : replicated_log::ILogLeader,
                                  DeferredAction> override;
   auto waitFor(LogIndex index) -> WaitForFuture override;
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
-  auto waitForResign() -> futures::Future<futures::Unit> override;
+  auto waitForResign() -> yaclib::Future<> override;
   [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
   auto release(LogIndex doneWithIdx) -> Result override;
   auto insert(LogPayload payload, bool waitForSync) -> LogIndex override;
@@ -62,9 +62,9 @@ struct AsyncLeader : replicated_log::ILogLeader,
 
  private:
   template<typename T>
-  auto resolveFutureAsync(futures::Future<T> f) -> futures::Future<T>;
+  auto resolveFutureAsync(yaclib::Future<T> f) -> yaclib::Future<T>;
   template<typename T>
-  void resolvePromiseAsync(futures::Promise<T>, futures::Try<T>) noexcept;
+  void resolvePromiseAsync(yaclib::Promise<T>, yaclib::Result<T>) noexcept;
 
   void runWorker();
 

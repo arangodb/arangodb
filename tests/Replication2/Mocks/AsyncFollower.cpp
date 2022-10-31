@@ -22,6 +22,7 @@
 #include "AsyncFollower.h"
 
 #include <utility>
+#include <yaclib/async/contract.hpp>
 
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
@@ -77,10 +78,12 @@ auto AsyncFollower::getLeader() const noexcept
 }
 
 auto AsyncFollower::appendEntries(AppendEntriesRequest request)
-    -> futures::Future<AppendEntriesResult> {
+    -> yaclib::Future<AppendEntriesResult> {
+  auto [f, p] = yaclib::MakeContract<replicated_log::AppendEntriesResult>();
   std::unique_lock guard(_mutex);
-  _cv.notify_all();
-  return _requests.emplace_back(std::move(request)).promise.getFuture();
+  _cv.notify_all();  // TODO(Lars Maier) Notify after emplace_back/unlock
+  _requests.emplace_back(std::move(request), std::move(p));
+  return std::move(f);
 }
 
 AsyncFollower::AsyncFollower(
@@ -111,8 +114,9 @@ void AsyncFollower::runWorker() {
 
     for (auto& req : requests) {
       _follower->appendEntries(req.request)
-          .thenFinal([promise = std::move(req.promise)](auto&& res) mutable {
-            promise.setValue(std::forward<decltype(res)>(res));
+          .DetachInline([promise = std::move(req.promise)](auto&& res) mutable {
+            TRI_ASSERT(promise.Valid());
+            std::move(promise).Set(std::forward<decltype(res)>(res));
           });
     }
   }
@@ -129,12 +133,14 @@ void AsyncFollower::stop() noexcept {
   _asyncWorker.join();
 }
 
-auto AsyncFollower::waitForResign() -> futures::Future<futures::Unit> {
+auto AsyncFollower::waitForResign() -> yaclib::Future<> {
   return _follower->waitForResign();
 }
 InMemoryLog AsyncFollower::copyInMemoryLog() const {
   return _follower->copyInMemoryLog();
 }
 
-AsyncFollower::AsyncRequest::AsyncRequest(AppendEntriesRequest request)
-    : request(std::move(request)) {}
+AsyncFollower::AsyncRequest::AsyncRequest(
+    AppendEntriesRequest request,
+    yaclib::Promise<replicated_log::AppendEntriesResult>&& promise)
+    : request(std::move(request)), promise(std::move(promise)) {}

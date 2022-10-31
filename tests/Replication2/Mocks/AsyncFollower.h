@@ -44,9 +44,9 @@ struct AsyncFollower : replicated_log::ILogFollower {
   [[nodiscard]] auto getParticipantId() const noexcept
       -> ParticipantId const& override;
   auto appendEntries(replicated_log::AppendEntriesRequest request)
-      -> futures::Future<replicated_log::AppendEntriesResult> override;
+      -> yaclib::Future<replicated_log::AppendEntriesResult> override;
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
-  auto waitForResign() -> futures::Future<futures::Unit> override;
+  auto waitForResign() -> yaclib::Future<> override;
   [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
   auto getLeader() const noexcept
       -> std::optional<ParticipantId> const& override;
@@ -60,9 +60,11 @@ struct AsyncFollower : replicated_log::ILogFollower {
   void runWorker();
 
   struct AsyncRequest {
-    AsyncRequest(replicated_log::AppendEntriesRequest request);
+    AsyncRequest(
+        replicated_log::AppendEntriesRequest request,
+        yaclib::Promise<replicated_log::AppendEntriesResult>&& promise);
     replicated_log::AppendEntriesRequest request;
-    futures::Promise<replicated_log::AppendEntriesResult> promise;
+    yaclib::Promise<replicated_log::AppendEntriesResult> promise;
   };
 
   std::mutex _mutex;

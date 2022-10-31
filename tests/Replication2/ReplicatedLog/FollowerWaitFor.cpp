@@ -48,7 +48,7 @@ TEST_F(FollowerWaitForTest, update_send_append_entries) {
   auto follower = log->getFollower();
 
   auto future = follower->waitFor(LogIndex{1});
-  EXPECT_FALSE(future.isReady());
+  EXPECT_FALSE(future.Ready());
   MessageId nextMessageId{0};
 
   {
@@ -62,9 +62,9 @@ TEST_F(FollowerWaitForTest, update_send_append_entries) {
         PersistingLogEntry(LogTerm{1}, LogIndex{1},
                            LogPayload::createFromString("some payload")))};
     auto f = follower->appendEntries(std::move(request));
-    ASSERT_TRUE(f.isReady());
+    ASSERT_TRUE(f.Ready());
     {
-      auto result = f.get();
+      auto result = std::move(f).Get().Ok();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
       EXPECT_EQ(result.reason, AppendEntriesErrorReason{});
@@ -72,7 +72,7 @@ TEST_F(FollowerWaitForTest, update_send_append_entries) {
   }
 
   // Entry is there, but not committed. Future should not be resolved
-  EXPECT_FALSE(future.isReady());
+  EXPECT_FALSE(future.Ready());
   {
     AppendEntriesRequest request;
     request.leaderId = "leader";
@@ -82,18 +82,18 @@ TEST_F(FollowerWaitForTest, update_send_append_entries) {
     request.messageId = ++nextMessageId;
     request.entries = {};
     auto f = follower->appendEntries(std::move(request));
-    ASSERT_TRUE(f.isReady());
+    ASSERT_TRUE(f.Ready());
     {
-      auto result = f.get();
+      auto result = std::move(f).Get().Ok();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
       EXPECT_EQ(result.reason, AppendEntriesErrorReason{});
     }
   }
 
-  ASSERT_TRUE(future.isReady());
+  ASSERT_TRUE(future.Ready());
   {
-    auto const result = future.get();
+    auto const result = std::move(future).Get().Ok();
     // TODO what do we expect the result so be?
   }
 }
