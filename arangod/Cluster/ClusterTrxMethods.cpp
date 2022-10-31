@@ -277,8 +277,8 @@ yaclib::Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
         pool, "server:" + server, verb, path, VPackBuffer<uint8_t>(), reqOpts));
   }
 
-  return yaclib::WhenAll<yaclib::WhenPolicy::None>(requests.begin(),
-                                                   requests.end())
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             requests.begin(), requests.end())
       .ThenInline(
           [=](std::vector<yaclib::Result<network::Response>>&& responses)
               -> Result {
@@ -423,8 +423,8 @@ yaclib::Future<Result> beginTransactionOnLeaders(
     const TransactionId tid = state.id().child();
 
     Result fastPathResult =
-        yaclib::WhenAll<yaclib::WhenPolicy::None>(requests.begin(),
-                                                  requests.end())
+        yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+            requests.begin(), requests.end())
             .ThenInline(
                 [&tid, &state](
                     std::vector<yaclib::Result<network::Response>>&& responses)

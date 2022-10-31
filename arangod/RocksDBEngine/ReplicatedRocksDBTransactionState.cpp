@@ -113,8 +113,8 @@ yaclib::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
 
   // We are capturing a shared pointer to this state so we prevent reclamation
   // while we are waiting for the commit operations.
-  return yaclib::WhenAll<yaclib::WhenPolicy::None>(commits.begin(),
-                                                   commits.end())
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             commits.begin(), commits.end())
       .ThenInline([self = shared_from_this()](
                       std::vector<yaclib::Result<Result>>&& results) -> Result {
         for (auto&& result : results) {

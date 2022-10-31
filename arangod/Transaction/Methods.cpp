@@ -3281,8 +3281,8 @@ Future<Result> Methods::replicateOperations(
       return performIntermediateCommitIfRequired(collection->id());
     }
   };
-  return yaclib::WhenAll<yaclib::WhenPolicy::None>(futures.begin(),
-                                                   futures.end())
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futures.begin(), futures.end())
       .ThenInline(std::move(cb));
 }
 

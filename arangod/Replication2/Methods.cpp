@@ -850,23 +850,21 @@ struct ReplicatedLogMethodsCoordinator final
           for (auto const& [id, flags] : participants) {
             pfs.emplace_back(queryParticipantsStatus(spec->id, id));
           }
-          return yaclib::WhenAll<yaclib::WhenPolicy::None>(pfs.begin(),
-                                                           pfs.end());
+          return yaclib::WhenAll<yaclib::FailPolicy::None,
+                                 yaclib::OrderPolicy::Same>(pfs.begin(),
+                                                            pfs.end());
         }).ThenInline([](Participants&& r) { return All{std::move(r)}; });
 
     auto af = readSupervisionStatus(spec->id).ThenInline(
         [](GlobalStatus::SupervisionStatus&& r) { return All{std::move(r)}; });
 
-    return yaclib::WhenAll(std::move(af), std::move(psf))
+    return yaclib::WhenAll<yaclib::FailPolicy::FirstFail,
+                           yaclib::OrderPolicy::Same>(std::move(af),
+                                                      std::move(psf))
         .ThenInline([spec, source](std::vector<All>&& pairResult) {
           auto [agency, participantResults] = [&] {
-            if (pairResult[0].index() == 0) {
-              return std::pair{std::get<0>(pairResult[0]),
-                               std::get<1>(pairResult[1])};
-            } else {
-              return std::pair{std::get<0>(pairResult[1]),
-                               std::get<1>(pairResult[0])};
-            }
+            return std::pair{std::get<0>(pairResult[0]),
+                             std::get<1>(pairResult[1])};
           }();
 
           auto leader = std::optional<ParticipantId>{};

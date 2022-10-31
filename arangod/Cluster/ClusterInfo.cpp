@@ -620,8 +620,8 @@ auto ClusterInfo::waitForReplicatedStatesCreation(
     return error;
   };
 
-  return yaclib::WhenAll<yaclib::WhenPolicy::None>(futureStates.begin(),
-                                                   futureStates.end())
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futureStates.begin(), futureStates.end())
       .ThenInline(
           [&clusterInfo = _server.getFeature<ClusterFeature>().clusterInfo()](
               std::vector<yaclib::Result<ResultT<consensus::index_t>>>&&
@@ -659,8 +659,8 @@ auto ClusterInfo::deleteReplicatedStates(
     deletedStates.emplace_back(
         replicatedStateMethods->deleteReplicatedState(id));
   }
-  return yaclib::WhenAll<yaclib::WhenPolicy::None>(deletedStates.begin(),
-                                                   deletedStates.end())
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             deletedStates.begin(), deletedStates.end())
       .ThenInline([](std::vector<yaclib::Result<arangodb::Result>>&&
                          deletionResults) -> Result {
         auto makeResult = [](auto&& result) {

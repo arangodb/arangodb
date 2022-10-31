@@ -2152,8 +2152,9 @@ RestStatus RestAdminClusterHandler::handleHealth() {
               fs.emplace_back(std::move(future));
             }
 
-            return yaclib::WhenAll<yaclib::WhenPolicy::None>(fs.begin(),
-                                                             fs.end());
+            return yaclib::WhenAll<yaclib::FailPolicy::None,
+                                   yaclib::OrderPolicy::Same>(fs.begin(),
+                                                              fs.end());
           })
           .ThenInline([](ConfigResult&& r) { return All{std::move(r)}; });
 
@@ -2177,17 +2178,13 @@ RestStatus RestAdminClusterHandler::handleHealth() {
                       return All{std::move(r)};
                     });
   return waitForFuture(
-      yaclib::WhenAll(std::move(fConfig), std::move(fStore))
+      yaclib::WhenAll<yaclib::FailPolicy::FirstFail, yaclib::OrderPolicy::Same>(
+          std::move(fConfig), std::move(fStore))
           .ThenInline([this](std::vector<All>&& result) {
             auto rootPath = arangodb::cluster::paths::root()->arango();
             auto [configResult, storeResult] = [&] {
-              if (result[0].index() == 0) {
-                return std::pair{std::get<0>(std::move(result[0])),
-                                 std::get<1>(std::move(result[1]))};
-              } else {
-                return std::pair{std::get<0>(std::move(result[1])),
-                                 std::get<1>(std::move(result[0]))};
-              }
+              return std::pair{std::get<0>(std::move(result[0])),
+                               std::get<1>(std::move(result[1]))};
             }();
 
             if (storeResult.ok() &&
@@ -2984,8 +2981,9 @@ RestStatus RestAdminClusterHandler::handleFailureOracleFlush() {
                                      : fuerte::StatusUndefined;
                 }));
       }
-      return yaclib::WhenAll<yaclib::WhenPolicy::None>(flushDbs.begin(),
-                                                       flushDbs.end())
+      return yaclib::WhenAll<yaclib::FailPolicy::None,
+                             yaclib::OrderPolicy::Same>(flushDbs.begin(),
+                                                        flushDbs.end())
           .ThenInline([status = std::move(isFailed), id = std::move(id)](
                           std::vector<yaclib::Result<fuerte::StatusCode>>&&
                               statusCodes) {

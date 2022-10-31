@@ -1607,8 +1607,8 @@ yaclib::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
     futures.emplace_back(std::move(f));
   }
 
-  return yaclib::WhenAll<yaclib::WhenPolicy::None>(futures.begin(),
-                                                   futures.end())
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futures.begin(), futures.end())
       .ThenInline([](std::vector<yaclib::Result<Result>>&& results) -> Result {
         for (auto&& tryRes : std::move(results)) {
           if (auto r = std::move(tryRes).Ok(); r.fail()) {

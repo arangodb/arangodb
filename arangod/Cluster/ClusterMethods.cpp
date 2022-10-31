@@ -979,8 +979,8 @@ yaclib::Future<OperationResult> revisionOnCoordinator(
           result.reset(TRI_ERROR_INTERNAL);
         });
   };
-  return yaclib::WhenAll<yaclib::WhenPolicy::None>(futures.begin(),
-                                                   futures.end())
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futures.begin(), futures.end())
       .ThenInline(std::move(cb));
 }
 
@@ -1069,8 +1069,8 @@ yaclib::Future<OperationResult> checksumOnCoordinator(
     };
     return handleResponsesFromAllShards(options, results, handler, pre);
   };
-  return yaclib::WhenAll<yaclib::WhenPolicy::None>(futures.begin(),
-                                                   futures.end())
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futures.begin(), futures.end())
       .ThenInline(std::move(cb));
 }
 
@@ -1122,8 +1122,8 @@ yaclib::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
           // succeeded
         });
   };
-  return yaclib::WhenAll<yaclib::WhenPolicy::None>(futures.begin(),
-                                                   futures.end())
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futures.begin(), futures.end())
       .ThenInline(std::move(cb))
       .ThenInline(
           [](OperationResult&& opRes) -> Result { return opRes.result; });
@@ -1190,8 +1190,8 @@ yaclib::Future<OperationResult> figuresOnCoordinator(
     };
     return handleResponsesFromAllShards(options, results, handler, pre);
   };
-  return yaclib::WhenAll<yaclib::WhenPolicy::None>(futures.begin(),
-                                                   futures.end())
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futures.begin(), futures.end())
       .ThenInline(std::move(cb));
 }
 
@@ -1291,8 +1291,8 @@ yaclib::Future<OperationResult> countOnCoordinator(
     };
     return handleResponsesFromAllShards(options, results, handler, pre, post);
   };
-  return yaclib::WhenAll<yaclib::WhenPolicy::None>(futures.begin(),
-                                                   futures.end())
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futures.begin(), futures.end())
       .ThenInline(std::move(cb));
 }
 
@@ -1318,8 +1318,8 @@ yaclib::Future<metrics::RawDBServers> metricsOnLeader(NetworkFeature& network,
         std::move(headers)));
   }
   using Responses = std::vector<yaclib::Result<network::Response>>;
-  return yaclib::WhenAll<yaclib::WhenPolicy::None>(futures.begin(),
-                                                   futures.end())
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futures.begin(), futures.end())
       .ThenInline([](Responses&& responses) {
         metrics::RawDBServers metrics;
         metrics.reserve(responses.size());
@@ -1641,8 +1641,8 @@ yaclib::Future<OperationResult> createDocumentOnCoordinator(
       return std::move(futures[0]).ThenInline(cb);
     }
 
-    return yaclib::WhenAll<yaclib::WhenPolicy::None>(futures.begin(),
-                                                     futures.end())
+    return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+               futures.begin(), futures.end())
         .ThenInline(
             [opCtx(std::move(opCtx))](
                 std::vector<yaclib::Result<network::Response>>&& results)
@@ -1768,8 +1768,9 @@ yaclib::Future<OperationResult> removeDocumentOnCoordinator(
             return std::move(futures[0]).ThenInline(cb);
           }
 
-          return yaclib::WhenAll<yaclib::WhenPolicy::None>(futures.begin(),
-                                                           futures.end())
+          return yaclib::WhenAll<yaclib::FailPolicy::None,
+                                 yaclib::OrderPolicy::Same>(futures.begin(),
+                                                            futures.end())
               .ThenInline([opCtx = std::move(opCtx)](
                               std::vector<yaclib::Result<network::Response>>&&
                                   results) -> OperationResult {
@@ -1788,51 +1789,51 @@ yaclib::Future<OperationResult> removeDocumentOnCoordinator(
     f = ::beginTransactionOnAllLeaders(trx, *shardIds, api);
   }
 
-  return std::move(f).ThenInline(
-      [=, &trx](Result&& r) mutable -> yaclib::Future<OperationResult> {
-        if (r.fail()) {
-          return yaclib::MakeFuture<OperationResult>(r, options);
-        }
+  return std::move(f).ThenInline([=, &trx](Result&& r) mutable
+                                 -> yaclib::Future<OperationResult> {
+    if (r.fail()) {
+      return yaclib::MakeFuture<OperationResult>(r, options);
+    }
 
-        // We simply send the body to all shards and await their results.
-        // As soon as we have the results we merge them in the following way:
-        // For 1 .. slice.length()
-        //    for res : allResults
-        //      if res != NOT_FOUND => insert this result. skip other results
-        //    end
-        //    if (!skipped) => insert NOT_FOUND
+    // We simply send the body to all shards and await their results.
+    // As soon as we have the results we merge them in the following way:
+    // For 1 .. slice.length()
+    //    for res : allResults
+    //      if res != NOT_FOUND => insert this result. skip other results
+    //    end
+    //    if (!skipped) => insert NOT_FOUND
 
-        auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-        std::vector<yaclib::Future<network::Response>> futures;
-        futures.reserve(shardIds->size());
+    auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
+    std::vector<yaclib::Future<network::Response>> futures;
+    futures.reserve(shardIds->size());
 
-        const size_t expectedLen = useMultiple ? slice.length() : 0;
-        VPackBuffer<uint8_t> buffer;
-        buffer.append(slice.begin(), slice.byteSize());
+    const size_t expectedLen = useMultiple ? slice.length() : 0;
+    VPackBuffer<uint8_t> buffer;
+    buffer.append(slice.begin(), slice.byteSize());
 
-        for (auto const& shardServers : *shardIds) {
-          ShardID const& shard = shardServers.first;
-          network::Headers headers;
-          // Just make sure that no dirty read flag makes it here, since we
-          // are writing and then `addTransactionHeaderForShard` might
-          // misbehave!
-          TRI_ASSERT(!trx.state()->options().allowDirtyReads);
-          addTransactionHeaderForShard(trx, *shardIds, shard, headers);
-          futures.emplace_back(network::sendRequestRetry(
-              pool, "shard:" + shard, fuerte::RestVerb::Delete,
-              "/_api/document/" + StringUtils::urlEncode(shard),
-              /*cannot move*/ buffer, reqOpts, std::move(headers)));
-        }
+    for (auto const& shardServers : *shardIds) {
+      ShardID const& shard = shardServers.first;
+      network::Headers headers;
+      // Just make sure that no dirty read flag makes it here, since we
+      // are writing and then `addTransactionHeaderForShard` might
+      // misbehave!
+      TRI_ASSERT(!trx.state()->options().allowDirtyReads);
+      addTransactionHeaderForShard(trx, *shardIds, shard, headers);
+      futures.emplace_back(network::sendRequestRetry(
+          pool, "shard:" + shard, fuerte::RestVerb::Delete,
+          "/_api/document/" + StringUtils::urlEncode(shard),
+          /*cannot move*/ buffer, reqOpts, std::move(headers)));
+    }
 
-        return yaclib::WhenAll<yaclib::WhenPolicy::None>(futures.begin(),
-                                                         futures.end())
-            .ThenInline([=](std::vector<yaclib::Result<network::Response>>&&
-                                responses) mutable -> OperationResult {
-              return ::handleCRUDShardResponsesSlow(
-                  network::clusterResultRemove, expectedLen, std::move(options),
-                  responses);
-            });
-      });
+    return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+               futures.begin(), futures.end())
+        .ThenInline([=](std::vector<yaclib::Result<network::Response>>&&
+                            responses) mutable -> OperationResult {
+          return ::handleCRUDShardResponsesSlow(network::clusterResultRemove,
+                                                expectedLen, std::move(options),
+                                                responses);
+        });
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1908,8 +1909,8 @@ yaclib::Future<OperationResult> truncateCollectionOnCoordinator(
         options, results,
         [](Result&, VPackBuilder&, ShardID const&, VPackSlice) -> void {});
   };
-  return yaclib::WhenAll<yaclib::WhenPolicy::None>(futures.begin(),
-                                                   futures.end())
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futures.begin(), futures.end())
       .ThenInline(std::move(cb));
 }
 
@@ -2062,8 +2063,9 @@ yaclib::Future<OperationResult> getDocumentOnCoordinator(
             });
       }
 
-      return yaclib::WhenAll<yaclib::WhenPolicy::None>(futures.begin(),
-                                                       futures.end())
+      return yaclib::WhenAll<yaclib::FailPolicy::None,
+                             yaclib::OrderPolicy::Same>(futures.begin(),
+                                                        futures.end())
           .ThenInline(
               [opCtx = std::move(opCtx)](
                   std::vector<yaclib::Result<network::Response>>&& results) {
@@ -2147,8 +2149,8 @@ yaclib::Future<OperationResult> getDocumentOnCoordinator(
     }
   }
 
-  return yaclib::WhenAll<yaclib::WhenPolicy::None>(futures.begin(),
-                                                   futures.end())
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futures.begin(), futures.end())
       .ThenInline([=](std::vector<yaclib::Result<network::Response>>&&
                           responses) mutable -> OperationResult {
         return ::handleCRUDShardResponsesSlow(network::clusterResultDocument,
@@ -2636,8 +2638,9 @@ yaclib::Future<OperationResult> modifyDocumentOnCoordinator(
             return std::move(futures[0]).ThenInline(cb);
           }
 
-          return yaclib::WhenAll<yaclib::WhenPolicy::None>(futures.begin(),
-                                                           futures.end())
+          return yaclib::WhenAll<yaclib::FailPolicy::None,
+                                 yaclib::OrderPolicy::Same>(futures.begin(),
+                                                            futures.end())
               .ThenInline([opCtx = std::move(opCtx)](
                               std::vector<yaclib::Result<network::Response>>&&
                                   results) -> OperationResult {
@@ -2655,48 +2658,48 @@ yaclib::Future<OperationResult> modifyDocumentOnCoordinator(
     f = ::beginTransactionOnAllLeaders(trx, *shardIds, api);
   }
 
-  return std::move(f).ThenInline(
-      [=, &trx](Result&&) mutable -> yaclib::Future<OperationResult> {
-        auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-        std::vector<yaclib::Future<network::Response>> futures;
-        futures.reserve(shardIds->size());
+  return std::move(f).ThenInline([=, &trx](Result&&) mutable
+                                 -> yaclib::Future<OperationResult> {
+    auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
+    std::vector<yaclib::Future<network::Response>> futures;
+    futures.reserve(shardIds->size());
 
-        const size_t expectedLen = useMultiple ? slice.length() : 0;
-        VPackBuffer<uint8_t> buffer;
-        buffer.append(slice.begin(), slice.byteSize());
+    const size_t expectedLen = useMultiple ? slice.length() : 0;
+    VPackBuffer<uint8_t> buffer;
+    buffer.append(slice.begin(), slice.byteSize());
 
-        for (auto const& shardServers : *shardIds) {
-          ShardID const& shard = shardServers.first;
-          network::Headers headers;
-          // Just make sure that no dirty read flag makes it here, since we
-          // are writing and then `addTransactionHeaderForShard` might
-          // misbehave!
-          TRI_ASSERT(!trx.state()->options().allowDirtyReads);
-          addTransactionHeaderForShard(trx, *shardIds, shard, headers);
+    for (auto const& shardServers : *shardIds) {
+      ShardID const& shard = shardServers.first;
+      network::Headers headers;
+      // Just make sure that no dirty read flag makes it here, since we
+      // are writing and then `addTransactionHeaderForShard` might
+      // misbehave!
+      TRI_ASSERT(!trx.state()->options().allowDirtyReads);
+      addTransactionHeaderForShard(trx, *shardIds, shard, headers);
 
-          std::string url;
-          if (!useMultiple) {  // send to single API
-            std::string_view const key(
-                slice.get(StaticStrings::KeyString).stringView());
-            url = "/_api/document/" + StringUtils::urlEncode(shard) + "/" +
-                  StringUtils::urlEncode(key.data(), key.size());
-          } else {
-            url = "/_api/document/" + StringUtils::urlEncode(shard);
-          }
-          futures.emplace_back(network::sendRequestRetry(
-              pool, "shard:" + shard, restVerb, std::move(url),
-              /*cannot move*/ buffer, reqOpts, std::move(headers)));
-        }
+      std::string url;
+      if (!useMultiple) {  // send to single API
+        std::string_view const key(
+            slice.get(StaticStrings::KeyString).stringView());
+        url = "/_api/document/" + StringUtils::urlEncode(shard) + "/" +
+              StringUtils::urlEncode(key.data(), key.size());
+      } else {
+        url = "/_api/document/" + StringUtils::urlEncode(shard);
+      }
+      futures.emplace_back(network::sendRequestRetry(
+          pool, "shard:" + shard, restVerb, std::move(url),
+          /*cannot move*/ buffer, reqOpts, std::move(headers)));
+    }
 
-        return yaclib::WhenAll<yaclib::WhenPolicy::None>(futures.begin(),
-                                                         futures.end())
-            .ThenInline([=](std::vector<yaclib::Result<network::Response>>&&
-                                responses) mutable -> OperationResult {
-              return ::handleCRUDShardResponsesSlow(
-                  network::clusterResultModify, expectedLen, std::move(options),
-                  responses);
-            });
-      });
+    return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+               futures.begin(), futures.end())
+        .ThenInline([=](std::vector<yaclib::Result<network::Response>>&&
+                            responses) mutable -> OperationResult {
+          return ::handleCRUDShardResponsesSlow(network::clusterResultModify,
+                                                expectedLen, std::move(options),
+                                                responses);
+        });
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
