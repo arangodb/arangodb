@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 
@@ -30,7 +31,6 @@
 
 #include <atomic>
 #include <memory>
-#include <unordered_set>
 
 namespace arangodb::transaction {
 struct IManager;
@@ -55,7 +55,9 @@ struct DocumentLeaderState
                           OperationType operation, TransactionId transactionId,
                           ReplicationOptions opts) -> futures::Future<LogIndex>;
 
-  std::unordered_set<TransactionId> getActiveTransactions() const;
+  std::size_t getActiveTransactionsCount() const noexcept {
+    return _activeTransactions.getLockedGuard()->size();
+  }
 
   LoggerContext const loggerContext;
   std::string_view const shardId;
@@ -72,7 +74,7 @@ struct DocumentLeaderState
 
   std::shared_ptr<IDocumentStateHandlersFactory> _handlersFactory;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
-  Guarded<std::unordered_set<TransactionId>, std::mutex> _activeTransactions;
+  Guarded<ActiveTransactionsQueue, std::mutex> _activeTransactions;
   transaction::IManager& _transactionManager;
   std::atomic_bool _isResigning;
 };

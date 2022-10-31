@@ -597,7 +597,6 @@ static void JS_Compact(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("No access to replicated log '") + to_string(id) + "'");
   }
 
-  LogIndex index;
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("compact()");
   }

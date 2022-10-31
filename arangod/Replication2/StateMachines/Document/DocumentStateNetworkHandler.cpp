@@ -37,7 +37,7 @@ DocumentStateLeaderInterface::DocumentStateLeaderInterface(
       _pool(pool) {}
 
 auto DocumentStateLeaderInterface::getSnapshot(LogIndex waitForIndex)
-    -> futures::Future<ResultT<velocypack::SharedSlice>> {
+    -> futures::Future<ResultT<Snapshot>> {
   auto path = basics::StringUtils::joinT(
       "/", StaticStrings::ApiDocumentStateExternal, _gid.id, "snapshot");
   network::RequestOptions opts;
@@ -46,15 +46,14 @@ auto DocumentStateLeaderInterface::getSnapshot(LogIndex waitForIndex)
 
   return network::sendRequest(_pool, "server:" + _participantId,
                               fuerte::RestVerb::Get, path, {}, opts)
-      .thenValue(
-          [](network::Response&& resp) -> ResultT<velocypack::SharedSlice> {
-            if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
-              return resp.combinedResult();
-            } else {
-              auto slice = resp.slice();
-              return VPackBuilder{slice.get("result")}.sharedSlice();
-            }
-          });
+      .thenValue([](network::Response&& resp) -> ResultT<Snapshot> {
+        if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
+          return resp.combinedResult();
+        } else {
+          auto slice = resp.slice();
+          return velocypack::deserialize<Snapshot>(slice.get("result"));
+        }
+      });
 }
 
 DocumentStateNetworkHandler::DocumentStateNetworkHandler(

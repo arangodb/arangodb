@@ -23,14 +23,15 @@
 
 #pragma once
 
+#include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
 #include "Basics/UnshackledMutex.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
 struct IDocumentStateNetworkHandler;
-struct IDocumentStateTransactionHandler;
 enum class OperationType;
 
 struct DocumentFollowerState
@@ -69,6 +70,7 @@ struct DocumentFollowerState
   std::shared_ptr<IDocumentStateNetworkHandler> _networkHandler;
   std::unique_ptr<IDocumentStateTransactionHandler> _transactionHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
+  ActiveTransactionsQueue _activeTransactions;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

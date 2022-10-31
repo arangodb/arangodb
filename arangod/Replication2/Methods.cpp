@@ -201,7 +201,7 @@ struct ReplicatedLogMethodsDBServer final
     return {idx};
   }
 
-  auto compact(LogId id) const -> futures::Future<Result> {
+  auto compact(LogId id) const -> futures::Future<Result> override {
     auto log = vocbase.getReplicatedLogById(id);
     return log->getParticipant()->compact();
   }
