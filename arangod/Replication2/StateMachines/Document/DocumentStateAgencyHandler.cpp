@@ -35,10 +35,10 @@ namespace arangodb::replication2::replicated_state::document {
 
 // TODO this would do with an AgencyCache, there is no real need for
 // ClusterFeature
-DocumentStateAgencyHandler::DocumentStateAgencyHandler(
-    GlobalLogIdentifier gid, ArangodServer& server,
-    ClusterFeature& clusterFeature)
-    : _gid(std::move(gid)), _server(server), _clusterFeature(clusterFeature) {}
+DocumentStateAgencyHandler::DocumentStateAgencyHandler(GlobalLogIdentifier gid,
+                                                       ArangodServer& server,
+                                                       AgencyCache& agencyCache)
+    : _gid(std::move(gid)), _server(server), _agencyCache(agencyCache) {}
 
 auto DocumentStateAgencyHandler::getCollectionPlan(
     std::string const& collectionId) -> std::shared_ptr<VPackBuilder> {
@@ -47,9 +47,14 @@ auto DocumentStateAgencyHandler::getCollectionPlan(
                   ->collections()
                   ->database(_gid.database)
                   ->collection(collectionId);
-  _clusterFeature.agencyCache().get(*builder, path);
+  _agencyCache.get(*builder, path);
 
-  ADB_PROD_ASSERT(!builder->isEmpty())
+  // TODO
+  // This can happen if the collection was dropped in the meantime, but we
+  // already started creating it.
+  // It would make sense to handle this gracefully, perhaps abort the core
+  // construction.
+  ADB_PROD_ASSERT(!builder->slice().isEmptyObject())
       << "Could not get collection from plan " << path->str();
 
   return builder;

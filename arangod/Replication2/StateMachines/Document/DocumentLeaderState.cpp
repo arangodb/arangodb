@@ -69,46 +69,57 @@ auto DocumentLeaderState::resign() && noexcept
 
 auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     -> futures::Future<Result> {
-  return _guardedData.doUnderLock(
-      [self = shared_from_this(),
-       ptr = std::move(ptr)](auto& data) -> futures::Future<Result> {
-        if (data.didResign()) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
-        }
+  return _guardedData.doUnderLock([self = shared_from_this(),
+                                   ptr = std::move(ptr)](
+                                      auto& data) -> futures::Future<Result> {
+    if (data.didResign()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
+    }
 
-        auto transactionHandler =
-            self->_handlersFactory->createTransactionHandler(self->gid);
-        while (auto entry = ptr->next()) {
-          auto doc = entry->second;
-          auto res = transactionHandler->applyEntry(doc);
-          if (res.fail()) {
-            return res;
-          }
-        }
+    auto transactionHandler =
+        self->_handlersFactory->createTransactionHandler(self->gid);
+    if (transactionHandler == nullptr) {
+      // TODO this is a temporary fix, see CINFRA-588
+      return Result{
+          TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+          fmt::format("Transaction handler is missing from DocumentLeaderState "
+                      "during recoverEntries "
+                      "{}! This happens if the vocbase cannot be found during "
+                      "DocumentState construction.",
+                      to_string(self->gid))};
+    }
 
-        auto doc = DocumentLogEntry{std::string(self->shardId),
-                                    OperationType::kAbortAllOngoingTrx,
-                                    {},
-                                    TransactionId{0}};
-        auto stream = self->getStream();
-        stream->insert(doc);
+    while (auto entry = ptr->next()) {
+      auto doc = entry->second;
+      auto res = transactionHandler->applyEntry(doc);
+      if (res.fail()) {
+        return res;
+      }
+    }
 
-        for (auto& [tid, trx] : transactionHandler->getActiveTransactions()) {
-          try {
-            // the log entries contain follower ids, which is fine since during
-            // recovery we apply the entries like a follower, but we have to
-            // register tombstones in the trx managers for the leader trx id.
-            self->_transactionManager.abortManagedTrx(
-                tid.asLeaderTransactionId(), self->gid.database);
-          } catch (...) {
-            LOG_CTX("894f1", WARN, self->loggerContext)
-                << "failed to abort active transaction " << self->gid
-                << " during recovery";
-          }
-        }
+    auto doc = DocumentLogEntry{std::string(self->shardId),
+                                OperationType::kAbortAllOngoingTrx,
+                                {},
+                                TransactionId{0}};
+    auto stream = self->getStream();
+    stream->insert(doc);
 
-        return {TRI_ERROR_NO_ERROR};
-      });
+    for (auto& [tid, trx] : transactionHandler->getActiveTransactions()) {
+      try {
+        // the log entries contain follower ids, which is fine since during
+        // recovery we apply the entries like a follower, but we have to
+        // register tombstones in the trx managers for the leader trx id.
+        self->_transactionManager.abortManagedTrx(tid.asLeaderTransactionId(),
+                                                  self->gid.database);
+      } catch (...) {
+        LOG_CTX("894f1", WARN, self->loggerContext)
+            << "failed to abort active transaction " << self->gid
+            << " during recovery";
+      }
+    }
+
+    return {TRI_ERROR_NO_ERROR};
+  });
 }
 
 auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,

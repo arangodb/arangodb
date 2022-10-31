@@ -455,7 +455,12 @@ arangodb::Result fetchRevisions(
       futures.pop_front();
       shoppingLists.pop_front();
       TRI_ASSERT(futures.size() == shoppingLists.size());
-      res = trx.state()->performIntermediateCommitIfRequired(collection.id());
+
+      auto fut =
+          trx.state()->performIntermediateCommitIfRequired(collection.id());
+      TRI_ASSERT(fut.isReady());
+      res = fut.get();
+
       if (res.fail()) {
         return res;
       }
@@ -1640,8 +1645,8 @@ void DatabaseInitialSyncer::fetchRevisionsChunk(
   }
 }
 
-/// @brief incrementally fetch data from a collection using keys as the primary
-/// document identifier
+/// @brief incrementally fetch data from a collection using revisions as the
+/// primary document identifier
 Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
     arangodb::LogicalCollection* coll, std::string const& leaderColl,
     TRI_voc_tick_t maxTick) {
@@ -2115,7 +2120,9 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       }
       toFetch.clear();
 
-      res = trx->state()->performIntermediateCommitIfRequired(coll->id());
+      auto fut = trx->state()->performIntermediateCommitIfRequired(coll->id());
+      TRI_ASSERT(fut.isReady());
+      res = fut.get();
 
       if (res.fail()) {
         return res;
