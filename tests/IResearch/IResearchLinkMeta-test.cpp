@@ -3864,7 +3864,7 @@ class mock_term_reader : public irs::term_reader {
     return nullptr;
   }
 
-  irs::attribute* get_mutable(irs::type_info::type_id) { return nullptr; }
+  irs::attribute* get_mutable(irs::type_info::type_id) override { return nullptr; }
 
   size_t bit_union(const cookie_provider& provider,
                    size_t* bitset) const override {
