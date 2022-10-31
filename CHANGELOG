@@ -1,11 +1,20 @@
 devel
 -----
 
-* FE-159: When creating a database in cluster mode, there are several
-  parameters required. However they are invisible (nothing shown) if I
-  open DB settings after creation. Those settings should be visible in
-  readonly mode (grey out).
-  
+* FE-159: When creating a database in cluster mode, there are several parameters
+  required. However they are invisible (nothing shown) if I open DB settings
+  after creation. Those settings should be visible in readonly mode (grey out).
+
+* BTS-209: Fixed requests to `_admin/execute` treating every payload as plain 
+  text when they're in JSON or velocypack format, but will only treat the 
+  payload as velocypack if specified in the header's `content-type`.
+
+* Fixed issue #17394: Unnecessary document-lookup instead of Index-Only query.
+  This change improves projection handling so that more projections can be
+  served from indexes.
+
+* Updated arangosync to v2.13.0-preview-2.
+
 * BTS-1070: Fixed query explain not dealing with an aggregate function without
   arguments and the WINDOW node not being defined as an Ast node type name.
 
