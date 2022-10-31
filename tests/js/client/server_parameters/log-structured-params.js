@@ -28,7 +28,6 @@
 
 const fs = require('fs');
 
-
 if (getOptions === true) {
   return {
     'log.structured-param': ['database=true', 'url', 'username', "pregelId=false"],
