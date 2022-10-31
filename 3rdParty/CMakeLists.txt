@@ -304,7 +304,6 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/fmt)
 ## YACLib
 ################################################################################
 UpdateModule(${GIT_EXECUTABLE} "yaclib" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
-set(YACLIB_FLAGS "CORO")
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/yaclib)
 
 ################################################################################

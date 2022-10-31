@@ -75,8 +75,7 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
 
-#include <yaclib/coro/future.hpp>
-#include <yaclib/coro/await.hpp>
+#include <yaclib/async/when_all.hpp>
 #include <sstream>
 
 using namespace arangodb;
@@ -3023,9 +3022,7 @@ Future<Result> Methods::replicateOperations(
             state()->id(),
             replication2::replicated_state::document::ReplicationOptions{})
         .Detach();
-    auto f = performIntermediateCommitIfRequired(collection->id());
-    co_await yaclib::Await(f);
-    co_return std::move(f).Touch();
+    return performIntermediateCommitIfRequired(collection->id());
   }
 
   // path and requestType are different for insert/remove/modify.
@@ -3157,7 +3154,9 @@ Future<Result> Methods::replicateOperations(
   // we continue with the operation, since most likely, the follower was
   // simply dropped in the meantime.
   // In any case, we drop the follower here (just in case).
-  auto cb = [=, this, &futures]() -> yaclib::Future<Result> {
+  auto cb = [=,
+             this](std::vector<yaclib::Result<network::Response>>&& responses)
+      -> yaclib::Future<Result> {
     auto duration = std::chrono::steady_clock::now() - startTimeReplication;
     auto& replMetrics =
         vocbase().server().getFeature<ReplicationMetricsFeature>();
@@ -3168,7 +3167,7 @@ Future<Result> Methods::replicateOperations(
     bool didRefuse = false;
     // We drop all followers that were not successful:
     for (size_t i = 0; i < followerList->size(); ++i) {
-      auto& resp = std::as_const(futures[i]).Touch().Ok();
+      auto& resp = std::as_const(responses[i]).Ok();
       ServerID const& follower = (*followerList)[i];
 
       std::string replicationFailureReason;
@@ -3282,10 +3281,9 @@ Future<Result> Methods::replicateOperations(
       return performIntermediateCommitIfRequired(collection->id());
     }
   };
-  co_await yaclib::Await(futures.begin(), futures.end());
-  auto f = cb();
-  co_await yaclib::Await(f);
-  co_return std::move(f).Touch();
+  return yaclib::WhenAll<yaclib::WhenPolicy::None>(futures.begin(),
+                                                   futures.end())
+      .ThenInline(std::move(cb));
 }
 
 Future<Result> Methods::commitInternal(MethodsApi api) noexcept try {
