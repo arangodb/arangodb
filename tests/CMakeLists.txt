@@ -397,6 +397,9 @@ add_executable(
   ${ARANGODB_GRAPH_TEST_SOURCES}
   main.cpp)
 
+add_test(NAME arangodbtests
+	 COMMAND arangodbtests)
+
 set(USE_SEPARATE_REPLICATION2_TESTS_BINARY FALSE CACHE BOOL
   "Write a separate binary 'arangodbtests_replication2', containing only the Replication 2.0 tests.")
 
