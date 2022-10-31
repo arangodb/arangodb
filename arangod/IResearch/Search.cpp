@@ -280,7 +280,7 @@ std::string check(SearchMeta const& search,
   return {};
 }
 
-void add(SearchMeta::Map& search, InvertedIndexField const& index) {
+void addImpl(SearchMeta::Map& search, InvertedIndexField const& index) {
   for (auto const& field : index._fields) {
     auto it = search.lower_bound(field.path());
     if (it == search.end() || it->first != field.path()) {
@@ -292,9 +292,13 @@ void add(SearchMeta::Map& search, InvertedIndexField const& index) {
       it->second.includeAllFields |= field._includeAllFields;
     }
 #ifdef USE_ENTERPRISE
-    add(search, field);
+    addImpl(search, field);
 #endif
   }
+}
+
+void add(SearchMeta::Map& search, InvertedIndexField const& index) {
+  addImpl(search, index);
   if (index._includeAllFields) {
     search.emplace("", SearchMeta::Field{index.analyzer()._shortName, true,
                                          index._isSearchField});
@@ -693,7 +697,7 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
     auto value = *it;
     auto collectionSlice = value.get("collection");
     if (!collectionSlice.isString()) {
-      return {TRI_ERROR_BAD_PARAMETER, "'index' should be a string"};
+      return {TRI_ERROR_BAD_PARAMETER, "'collection' should be a string"};
     }
     auto collection = resolver.getCollection(collectionSlice.stringView());
     if (!collection) {

@@ -1640,8 +1640,8 @@ void DatabaseInitialSyncer::fetchRevisionsChunk(
   }
 }
 
-/// @brief incrementally fetch data from a collection using keys as the primary
-/// document identifier
+/// @brief incrementally fetch data from a collection using revisions as the
+/// primary document identifier
 Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
     arangodb::LogicalCollection* coll, std::string const& leaderColl,
     TRI_voc_tick_t maxTick) {

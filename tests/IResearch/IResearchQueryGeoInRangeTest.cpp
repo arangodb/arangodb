@@ -22,13 +22,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchQueryCommon.h"
-
-#include "IResearch/MakeViewSnapshot.h"
-#include "Geo/ShapeContainer.h"
-#include "Geo/GeoJson.h"
-
 #include <s2/s2latlng.h>
+
+#include "Geo/GeoJson.h"
+#include "Geo/ShapeContainer.h"
+#include "IResearch/MakeViewSnapshot.h"
+#include "IResearchQueryCommon.h"
 
 namespace arangodb::tests {
 namespace {
@@ -225,7 +224,7 @@ class QueryGeoInRange : public QueryTest {
           makeViewSnapshot(trx, iresearch::ViewSnapshotMode::FindOrCreate,
                            links(), view.get(), view->name());
       ASSERT_NE(nullptr, snapshot);
-      ASSERT_EQ(1, snapshot->size());
+      ASSERT_EQ(1U, snapshot->size());
       ASSERT_EQ(_insertedDocs.size(), snapshot->docs_count());
       ASSERT_EQ(_insertedDocs.size(), snapshot->live_docs_count());
 
@@ -479,7 +478,7 @@ class QueryGeoInRange : public QueryTest {
           makeViewSnapshot(trx, iresearch::ViewSnapshotMode::FindOrCreate,
                            links(), view.get(), view->name());
       ASSERT_NE(nullptr, snapshot);
-      ASSERT_EQ(1, snapshot->size());
+      ASSERT_EQ(1U, snapshot->size());
       ASSERT_EQ(_insertedDocs.size(), snapshot->docs_count());
       ASSERT_EQ(_insertedDocs.size(), snapshot->live_docs_count());
 
@@ -498,7 +497,7 @@ class QueryGeoInRange : public QueryTest {
       for (; it->next(); ++doc) {
         auto const storedValue = iresearch::slice(payload->value);
         ASSERT_TRUE(storedValue.isArray());
-        ASSERT_EQ(2, storedValue.length());
+        ASSERT_EQ(2U, storedValue.length());
         EXPECT_DOUBLE_EQ(
             storedValue.at(0).getDouble(),
             doc->slice().get({"geometry", "coordinates"}).at(1).getDouble());
@@ -774,7 +773,7 @@ class QueryGeoInRange : public QueryTest {
           makeViewSnapshot(trx, iresearch::ViewSnapshotMode::FindOrCreate,
                            links(), view.get(), view->name());
       ASSERT_NE(nullptr, snapshot);
-      ASSERT_EQ(1, snapshot->size());
+      ASSERT_EQ(1U, snapshot->size());
       ASSERT_EQ(_insertedDocs.size(), snapshot->docs_count());
       ASSERT_EQ(_insertedDocs.size(), snapshot->live_docs_count());
 
@@ -792,7 +791,7 @@ class QueryGeoInRange : public QueryTest {
       for (; it->next(); ++doc) {
         auto const storedValue = iresearch::slice(payload->value);
         ASSERT_TRUE(storedValue.isArray());
-        ASSERT_EQ(2, storedValue.length());
+        ASSERT_EQ(2U, storedValue.length());
         EXPECT_DOUBLE_EQ(
             storedValue.at(0).getDouble(),
             doc->slice().get({"geometry", "coordinates", "lon"}).getDouble());
