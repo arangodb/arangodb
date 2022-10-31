@@ -29,44 +29,81 @@
 ////////////////////////////////////////////////////////////////////////////////
 (function() {
   var db = require("@arangodb").db;
-  return function (isCluster, newDbName, dbArgs) {
+  return function (isSearchAlias, isCluster, newDbName, dbArgs) {
     const ruleName = "arangosearch-constrained-sort";
     const cn = "UnitTestsCollection";
     const cn1 = "UnitTestsCollection1";
     const vn = "UnitTestsView";
-    const longValue  = "VeryLongValueToNotFitIntoSSOAndTriggerBufferCopyingIssuesIfAnyBlaBlaBla";
+    const longValue = "VeryLongValueToNotFitIntoSSOAndTriggerBufferCopyingIssuesIfAnyBlaBlaBla";
     return {
-      setUpAll : function () {
+      setUpAll: function () {
         db._useDatabase("_system");
-        try { db._dropDatabase(newDbName); } catch (err) {}
+        try {
+          db._dropDatabase(newDbName);
+        } catch (err) {
+        }
         db._createDatabase(newDbName, dbArgs);
         db._useDatabase(newDbName);
 
-        let c = db._create(cn, { numberOfShards: 3 });
-        let c1 = db._create(cn1, { numberOfShards: 3 });
+        let c = db._create(cn, {numberOfShards: 3});
+        let c1 = db._create(cn1, {numberOfShards: 3});
+        if (isSearchAlias) {
+          let props = {
+            type: "inverted", includeAllFields: true,
+            consolidationIntervalMsec: 5000,
+            primarySort: {
+              fields: [{"field": "obj.a.a1", "direction": "asc"}, {"field": "obj.b", "direction": "desc"}],
+              compression: "none"
+            },
+            storedValues: [["obj.a.a1"],
+              {fields: ["obj.c"], compression: "none"},
+              ["storedVal"],
+              {fields: ["obj.d.d1", "obj.e.e1"], compression: "lz4"},
+              ["obj.f", "obj.g", "obj.h"]],
+            fields: [{name: "strval", analyzer: "text_en"}]
+          };
+          let i = c.ensureIndex(props);
+          let i1 = c1.ensureIndex(props);
+          db._createView(vn, "search-alias", {
+            indexes: [
+              {collection: cn, index: i.name},
+              {collection: cn1, index: i1.name},
+            ]
+          });
+        } else {
+          db._createView(vn, "arangosearch", {
+            consolidationIntervalMsec: 5000,
+            primarySort: [{"field": "obj.a.a1", "direction": "asc"}, {"field": "obj.b", "direction": "desc"}],
+            primarySortCompression: "none",
+            storedValues: [["obj.a.a1"],
+              {fields: ["obj.c"], compression: "none"},
+              ["storedVal"],
+              {fields: ["obj.d.d1", "obj.e.e1"], compression: "lz4"},
+              ["obj.f", "obj.g", "obj.h"]],
+            links: {
+              [cn]: {includeAllFields: true, fields: {strval: {analyzers: ['text_en']}}},
+              [cn1]: {includeAllFields: true, fields: {strval: {analyzers: ['text_en']}}}
+            }
+          });
+        }
 
-        db._createView(vn, "arangosearch", {
-          consolidationIntervalMsec: 5000,
-          primarySort: [{"field": "obj.a.a1", "direction": "asc"}, {"field": "obj.b", "direction": "desc"}],
-          primarySortCompression: "none",
-          storedValues: [["obj.a.a1"],
-                        {fields:["obj.c"], compression:"none"},
-                        ["storedVal"],
-                        {fields:["obj.d.d1", "obj.e.e1"], compression:"lz4"},
-                        ["obj.f", "obj.g", "obj.h"]],
-          links: {
-            [cn] : { includeAllFields: true, fields:{ strval:{analyzers:['text_en']}}},
-            [cn1] : { includeAllFields: true, fields:{ strval:{analyzers:['text_en']}}}
-          }});
+        c.save({_key: 'c0', obj: {a: {a1: 0}, b: {b1: 1}, c: 2, d: {d1: 3}, e: {e1: 4}, f: 5, g: 6, h: 7, j: 8}});
+        c1.save({
+          _key: 'c_0',
+          obj: {a: {a1: 10}, b: {b1: 11}, c: 12, d: {d1: 13}, e: {e1: 14}, f: 15, g: 16, h: 17, j: 18}
+        });
+        c.save({
+          _key: 'c1',
+          obj: {a: {a1: 20}, b: {b1: 21}, c: 22, d: {d1: 23}, e: {e1: 24}, f: 25, g: 26, h: 27, j: 28}
+        });
+        c1.save({
+          _key: 'c_1',
+          obj: {a: {a1: 30}, b: {b1: 31}, c: 32, d: {d1: 33}, e: {e1: 34}, f: 35, g: 36, h: 37, j: 38}
+        });
 
-        c.save({ _key: 'c0', obj: {a: {a1: 0}, b: {b1: 1}, c: 2, d: {d1: 3}, e: {e1: 4}, f: 5, g: 6, h: 7, j: 8 } });
-        c1.save({ _key: 'c_0', obj: {a: {a1: 10}, b: {b1: 11}, c: 12, d: {d1: 13}, e: {e1: 14}, f: 15, g: 16, h: 17, j: 18 } });
-        c.save({ _key: 'c1', obj: {a: {a1: 20}, b: {b1: 21}, c: 22, d: {d1: 23}, e: {e1: 24}, f: 25, g: 26, h: 27, j: 28 } });
-        c1.save({ _key: 'c_1', obj: {a: {a1: 30}, b: {b1: 31}, c: 32, d: {d1: 33}, e: {e1: 34}, f: 35, g: 36, h: 37, j: 38 } });
-        
         // some data for multi-batch tests
-        let data =[];
-        let data2 =[];
+        let data = [];
+        let data2 = [];
         let cats = "cat";
         for (let i = 0; i < 5000; ++i) {
           data.push({field1:i, field2: "A" + i % 1000, field3: "B" + i % 100, strval: cats, idx:i, storedVal: longValue + i});

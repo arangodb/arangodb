@@ -1,6 +1,27 @@
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
+* FE-159: When creating a database in cluster mode, there are several parameters
+  required. However they are invisible (nothing shown) if I open DB settings
+  after creation. Those settings should be visible in readonly mode (grey out).
+
+* Added startup option `--query.log-failed` to optionally log all failed AQL
+  queries to the server log. The option is turned off by default.
+
+* Added startup option `--query.log-memory-usage-threshold` to optionally log
+  all AQL queries that have a peak memory usage larger than the configured
+  value. The default value is 4GB.
+
+* Added startup option `--query.max-artifact-log-length` to control the maximum
+  length of logged query strings and bind parameter values.
+  This allows truncating overly long query strings and bind parameter values to
+  a reasonable length. Previously the cutoff length was hard-coded.
+
+* Improve cardinality estimate for AQL EnumerateCollectionNode in case a `SORT
+  RAND() LIMIT 1` is used. Here, the estimated number of items is at most 1.
+
+* Improved shard distribution during collection creation.
+
 * BTS-941: The HTTP API now delivers the correct list of the collection's shards
   in case a collection from an EnterpriseGraph, SmartGraph, Disjoint
   EnterpriseGraph, Disjoint SmartGraph or SatelliteGraph is being used.
