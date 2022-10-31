@@ -770,9 +770,9 @@ class fixed_length_column final: public column_base {
       : column_base{std::move(name), std::move(payload),
                     std::move(hdr),  std::move(index),
                     data_in,         cipher},
+        inflater_{std::move(inflater)},
         blocks_{blocks},
-        len_{len},
-        inflater_{std::move(inflater)} {
+        len_{len} {
     assert(header().docs_count);
     assert(ColumnType::kFixed == header().type);
   }
