@@ -27,7 +27,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Basics/fasthash.h"
-#include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -940,34 +939,14 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
     return warmupOnCoordinator(feature, vocbase.name(), cid, options);
   }
 
-  auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, false);
-  SingleCollectionTransaction trx(ctx, coll, AccessMode::Type::READ);
-  Result res = trx.begin();
-
-  if (res.fail()) {
-    return futures::makeFuture(res);
-  }
-
-  auto poster = [](std::function<void()> fn) -> void {
-    return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
-  };
-
-  auto queue =
-      std::make_shared<basics::LocalTaskQueue>(vocbase.server(), poster);
-
+  Result res;
   auto idxs = coll.getIndexes();
   for (auto& idx : idxs) {
-    idx->warmup(&trx, queue);
+    res = idx->scheduleWarmup();
+    if (res.fail()) {
+      break;
+    }
   }
-
-  queue->dispatchAndWait();
-
-  if (queue->status().ok()) {
-    res = trx.commit();
-  } else {
-    res = queue->status();
-  }
-
   return futures::makeFuture(res);
 }
 

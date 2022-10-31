@@ -1,7 +1,7 @@
 v3.9.5 (XXXX-XX-XX)
 -------------------
 
-* Repair "load indexes into memory" functions for cluster collections.
+* Repair "load indexes into memory" function in the web UI.
 
 * Improved shard distribution during collection creation.
 
