@@ -107,6 +107,11 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
       _skipRecoveryItems;
 
   containers::FlatHashSet<IndexId> _skippedIndexes;
+
+  // Snapshots for links at state prior to recovery.
+  // Used to decide if insert should be replayed
+  // FIXME: use LinkTrxState unique ptrs
+  std::map<void const*, IResearchLink::Snapshot> _cookies;
 };
 
 }  // end namespace iresearch

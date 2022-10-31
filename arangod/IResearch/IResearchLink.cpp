@@ -944,6 +944,12 @@ Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
       return {};
     }
 
+    // now commit what has possibly accumulated in the second flush context
+    // but will not move the tick as it possibly contains "3rd" generation changes
+    auto secondCommit = _dataStore._writer->commit();
+    LOG_TOPIC("21bda", TRACE, TOPIC) << "Second commit for arangosearch link '" << id()
+                                     << "' result is " << secondCommit;
+
     // get new reader
     auto reader = _dataStore._reader.reopen();
 
@@ -1736,6 +1742,50 @@ void IResearchLink::scheduleConsolidation(std::chrono::milliseconds delay) {
   _maintenanceState->pendingConsolidations.fetch_add(1,
                                                      std::memory_order_release);
   task.schedule(delay);
+}
+
+Result IResearchLink::exists(transaction::Methods& trx,
+                             LocalDocumentId documentId,
+                             TRI_voc_tick_t const* recoveryTick) {
+  TRI_ASSERT(_engine);
+  TRI_ASSERT(trx.state());
+
+  auto& state = *(trx.state());
+
+  if (recoveryTick && *recoveryTick <= _dataStore._recoveryTick) {
+    LOG_TOPIC("6e128", TRACE, TOPIC)
+        << "skipping 'exists', operation tick '" << *recoveryTick
+        << "', recovery tick '" << _dataStore._recoveryTick << "'";
+
+    return {};
+  }
+  auto* key = this;
+
+// TODO FIXME find a better way to look up a ViewState
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto* ctx = dynamic_cast<LinkTrxState*>(state.cookie(key));
+#else
+  auto* ctx = static_cast<LinkTrxState*>(state.cookie(key));
+#endif
+
+  if (!ctx) {
+    // '_dataStore' can be asynchronously modified
+    auto linkLock = _asyncSelf->lock();
+    if (!linkLock) {
+      // the current link is no longer valid
+      // (checked after ReadLock acquisition)
+      return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
+              "failed to lock arangosearch link while checking a "
+              "document in arangosearch link '" +
+                  std::to_string(id().id()) + "'"};
+    }
+    TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->lock() is valid
+    auto ptr = std::make_unique<LinkTrxState>(std::move(linkLock),
+                                              *(_dataStore._writer));
+
+    ctx = ptr.get();
+    state.cookie(key, std::move(ptr));
+  }
 }
 
 Result IResearchLink::insert(transaction::Methods& trx,

@@ -186,6 +186,9 @@ class IResearchLink {
   Result insert(transaction::Methods& trx, LocalDocumentId documentId,
                 velocypack::Slice doc, TRI_voc_tick_t const* recoveryTick);
 
+  Result exists(transaction::Methods& trx, LocalDocumentId documentId,
+                TRI_voc_tick_t const* recoveryTick);
+
   static bool isHidden();  // arangodb::Index override
   static bool isSorted();  // arangodb::Index override
 

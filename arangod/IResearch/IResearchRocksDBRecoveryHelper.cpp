@@ -154,6 +154,58 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
 
   transaction::StandaloneContext ctx(coll->vocbase());
 
+  // FIXME: check ticks range and possibly omit this step
+  {
+    
+    SingleCollectionTransaction trx(std::shared_ptr<transaction::Context>(
+                                        std::shared_ptr<transaction::Context>(),
+                                        &ctx),  // aliasing ctor
+                                    *coll, arangodb::AccessMode::Type::READ);
+
+    Result res = trx.begin();
+
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    for (auto const& link : links) {
+      if (link.second) {
+        // link excluded from recovery
+        _skippedIndexes.emplace(link.first->id());
+      } else {
+        // link participates in recovery
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        IResearchLink& impl =
+            dynamic_cast<IResearchRocksDBLink&>(*(link.first));
+#else
+        IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*(link.first));
+#endif
+        auto snapshotCookie = _cookies.find(link.first.get());
+        if (snapshotCookie == _cookies.end()) {
+          snapshotCookie =
+              _cookies.emplace(link.first.get(), impl.snapshot()).first;
+        } 
+        IResearchLink::exists(docId, *snapshotCookie);
+      }
+    }
+    res = trx.commit();
+
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    for (auto const& link : links) {
+      if (!link.second) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        IResearchLink& impl =
+            dynamic_cast<IResearchRocksDBLink&>(*(link.first));
+#else
+        IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*(link.first));
+#endif
+
+        impl.commit(true);
+      }
+    }
+  }
+
   SingleCollectionTransaction trx(std::shared_ptr<transaction::Context>(
                                       std::shared_ptr<transaction::Context>(),
                                       &ctx),  // aliasing ctor

@@ -48,10 +48,12 @@ class PrimaryKeyFilter final : public irs::filter,
   static irs::type_info type(StorageEngine& engine);
 
   PrimaryKeyFilter(StorageEngine& engine,
-                   arangodb::LocalDocumentId const& value) noexcept
+                   arangodb::LocalDocumentId const& value,
+                   bool ignoreMasked = false) noexcept
       : irs::filter(PrimaryKeyFilter::type(engine)),
         _pk(DocumentPrimaryKey::encode(value)),
-        _pkSeen(false) {}
+        _pkSeen(false),
+        _ignoreMasked(ignoreMasked){}
 
   // ----------------------------------------------------------------------------
   // --SECTION-- irs::filter::prepared
@@ -112,7 +114,9 @@ class PrimaryKeyFilter final : public irs::filter,
   mutable PrimaryKeyIterator _pkIterator;
   mutable bool _pkSeen;  // true == do not perform further execution
                          // (first-match optimization)
+  bool _ignoreMasked;
 };                       // PrimaryKeyFilter
+
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class PrimaryKeyFilterContainer

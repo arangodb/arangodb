@@ -76,7 +76,9 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
     return irs::doc_iterator::empty();
   }
 
-  auto docs = segment.mask(
+  auto docs = _ignoreMasked
+      ? term->postings(irs::IndexFeatures::NONE) :
+    segment.mask(
       term->postings(irs::IndexFeatures::NONE));  // must not match removed docs
 
   if (!docs->next()) {
