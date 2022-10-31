@@ -404,6 +404,7 @@ def generateArangoshOutput(testName):
   var outputDir = '%s';
   var sourceFile = '%s';
   var startTime = time();
+  var assert = function(a) { globalAssert(a, testName, sourceFile); };
   internal.startCaptureMode();
 '''    %   (
         ('/'*80),
@@ -435,7 +436,7 @@ def generateArangoshOutput(testName):
             l[0] = l[0][4:]
             fakeVar = 'true'
 
-        print("  runTestLine('%s', testName, sourceFile, %s, lineCount++, %s, %s, %s, %s);" % (
+        print("  runTestLine('%s', testName, sourceFile, %s, lineCount++, %s, %s, %s, %s, assert);" % (
             l[0],                         # the test string
             l[2],                         # line in the source file
             'true' if l[1] else 'false',  # Is it visible in the documentation?
