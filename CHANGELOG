@@ -1,9 +1,11 @@
-v3.9.4 (XXXX-XX-XX)
+v3.9.5 (XXXX-XX-XX)
 -------------------
 
-* Improve cardinality estimate for AQL EnumerateCollectionNode in case a
-  `SORT RAND() LIMIT 1` is used. Here, the estimated number of items is at
-  most 1.
+* Improve cardinality estimate for AQL EnumerateCollectionNode in case a `SORT
+  RAND() LIMIT 1` is used. Here, the estimated number of items is at most 1.
+
+v3.9.4 (XXXX-XX-XX)
+-------------------
 
 * Fixed BTS-852 (user's saved queries used to disappear after updating user
   profile).
