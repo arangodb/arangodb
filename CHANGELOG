@@ -3,6 +3,13 @@ v3.10.1 (XXXX-XX-XX)
 
 * Updating properties of a satellite collection breaks replicationFactor.
 
+* Remove superfluous dash character from startup option name
+  `--temp.-intermediate-results-encryption-hardware-acceleration`.
+
+* FE-159: When creating a database in cluster mode, there are several parameters
+  required. However they are invisible (nothing shown) if I open DB settings
+  after creation. Those settings should be visible in readonly mode (grey out).
+
 * Added startup option `--query.log-failed` to optionally log all failed AQL
   queries to the server log. The option is turned off by default.
 
