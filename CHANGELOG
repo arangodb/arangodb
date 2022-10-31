@@ -1,6 +1,8 @@
 devel
 -----
 
+* Repair "load indexes into memory" function in the web UI.
+
 * BTS-209: Fixed requests to `_admin/execute` treating every payload as plain 
   text when they're in JSON or velocypack format, but will only treat the 
   payload as velocypack if specified in the header's `content-type`.
