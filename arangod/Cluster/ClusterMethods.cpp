@@ -636,8 +636,6 @@ void ClusterMethods::realNameFromSmartName(std::string&) {}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a shard distribution for a new collection, the list
 /// dbServers must be a list of DBserver ids to distribute across.
-/// If this list is empty, the complete current list of DBservers is
-/// fetched from ClusterInfo and with shuffle to mix it up.
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::shared_ptr<
@@ -648,18 +646,7 @@ DistributeShardsEvenly(ClusterInfo& ci, uint64_t numberOfShards,
                        bool warnAboutReplicationFactor) {
   auto shards = std::make_shared<
       std::unordered_map<std::string, std::vector<std::string>>>();
-
-  if (dbServers.empty()) {
-    ci.loadCurrentDBServers();
-    dbServers = ci.getCurrentDBServers();
-    if (dbServers.empty()) {
-      return shards;
-    }
-
-    std::random_device rd;
-    std::mt19937 g(rd());
-    std::shuffle(dbServers.begin(), dbServers.end(), g);
-  }
+  TRI_ASSERT(!dbServers.empty());
 
   // mop: distribute SatelliteCollections on all servers
   if (replicationFactor == 0) {
@@ -669,9 +656,24 @@ DistributeShardsEvenly(ClusterInfo& ci, uint64_t numberOfShards,
   // fetch a unique id for each shard to create
   uint64_t const id = ci.uniqid(numberOfShards);
 
-  size_t leaderIndex = 0;
-  size_t followerIndex = 0;
+  // Example: Servers: A B C D E F G H I (9)
+  // Replication Factor 3, k = 9 / gcd(3, 9) = 3
+  // A B C
+  // D E F
+  // G H I  <- now we do an additional shift
+  // B C D
+  // E F G
+  // H I A  <- shift
+  // C D E
+  // F G H
+  // I A B
+
+  size_t k = dbServers.size() / std::gcd(replicationFactor, dbServers.size());
+  size_t offset = 0;
   for (uint64_t i = 0; i < numberOfShards; ++i) {
+    if (i % k == 0) {
+      offset += 1;
+    }
     // determine responsible server(s)
     std::vector<std::string> serverIds;
     for (uint64_t j = 0; j < replicationFactor; ++j) {
@@ -683,27 +685,14 @@ DistributeShardsEvenly(ClusterInfo& ci, uint64_t numberOfShards,
         }
         break;
       }
-      std::string candidate;
-      // mop: leader
-      if (serverIds.empty()) {
-        candidate = dbServers[leaderIndex++];
-        if (leaderIndex >= dbServers.size()) {
-          leaderIndex = 0;
-        }
-      } else {
-        do {
-          candidate = dbServers[followerIndex++];
-          if (followerIndex >= dbServers.size()) {
-            followerIndex = 0;
-          }
-        } while (candidate == serverIds[0]);  // mop: ignore leader
-      }
+
+      auto const& candidate = dbServers[offset % dbServers.size()];
+      offset += 1;
       serverIds.push_back(candidate);
     }
 
     // determine shard id
     std::string shardId = "s" + StringUtils::itoa(id + i);
-
     shards->try_emplace(shardId, serverIds);
   }
 

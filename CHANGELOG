@@ -3,6 +3,8 @@ v3.9.5 (XXXX-XX-XX)
 
 * Repair "load indexes into memory" functions for cluster collections.
 
+* Improved shard distribution during collection creation.
+
 
 v3.9.4 (2022-10-18)
 -------------------
