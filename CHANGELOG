@@ -1,6 +1,10 @@
 devel
 -----
 
+* BTS-209: Fixed requests to `_admin/execute` treating every payload as plain 
+  text when they're in JSON or velocypack format, but will only treat the 
+  payload as velocypack if specified in the header's `content-type`.
+
 * Fixed issue #17394: Unnecessary document-lookup instead of Index-Only query.
   This change improves projection handling so that more projections can be
   served from indexes.
