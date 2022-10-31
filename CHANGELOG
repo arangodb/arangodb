@@ -1,7 +1,7 @@
 devel
 -----
 
-* Fixed issue #17934: Unnecessary document-lookup instead of Index-Only query.
+* Fixed issue #17394: Unnecessary document-lookup instead of Index-Only query.
   This change improves projection handling so that more projections can be
   served from indexes.
 
