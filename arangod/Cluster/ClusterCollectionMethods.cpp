@@ -467,7 +467,10 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
     // We never get a nullptr here because an exception is thrown if the
     // collection does not exist. Also, the create collection should have
     // failed before.
-    results.emplace_back(std::move(c));
+    if (!c->isSmartChild()) {
+      // Smart Child collections should be visible after create.
+      results.emplace_back(std::move(c));
+    }
   }
   return {std::move(results)};
 }
