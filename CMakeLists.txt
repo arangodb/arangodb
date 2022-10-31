@@ -785,11 +785,15 @@ option(USE_MAINTAINER_MODE
   OFF
 )
 
+if ((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG)
+    AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_definitions("-D_FORTIFY_SOURCE=2")
+endif()
+
+
+
 if (USE_MAINTAINER_MODE)
   add_definitions("-DARANGODB_ENABLE_MAINTAINER_MODE=1")
-  if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_definitions("-D_FORTIFY_SOURCE=2")
-  endif()
 
   find_package(FLEX)
   find_package(BISON)
