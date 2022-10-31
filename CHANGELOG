@@ -1,9 +1,14 @@
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
-* Improve cardinality estimate for AQL EnumerateCollectionNode in case a
-  `SORT RAND() LIMIT 1` is used. Here, the estimated number of items is at
-  most 1.
+* Improve cardinality estimate for AQL EnumerateCollectionNode in case a `SORT
+  RAND() LIMIT 1` is used. Here, the estimated number of items is at most 1.
+
+* Improved shard distribution during collection creation.
+
+* BTS-941: The HTTP API now delivers the correct list of the collection's shards
+  in case a collection from an EnterpriseGraph, SmartGraph, Disjoint
+  EnterpriseGraph, Disjoint SmartGraph or SatelliteGraph is being used.
 
 * Changed the encoding of revision ids returned by the following REST APIs:
   - GET /_api/collection/<collection-name>/revision: the revision id was
