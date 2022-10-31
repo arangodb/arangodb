@@ -102,7 +102,7 @@ add_executable(arangodbtests_replication2
 target_link_libraries(arangodbtests_replication2
     gtest
     arango_tests_basics
-    arango_test_replication2
+    arango_tests_replication2
     arango_agency
     arango_cluster_engine
     arango_rocksdb

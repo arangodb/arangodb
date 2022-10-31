@@ -17,14 +17,6 @@ add_library(arango_tests_graph OBJECT
   SingleServerProviderTest.cpp
   ${ADDITIONAL_GRAPH_TEST_SOURCES})
 
-target_include_directories(arango_tests_graph PUBLIC
-    ${PROJECT_SOURCE_DIR}/arangod
-    ${PROJECT_SOURCE_DIR}/lib
-    ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
-    ${PROJECT_SOURCE_DIR}/tests
-    ${PROJECT_SOURCE_DIR}/tests/Mocks/
-  )
-
 target_link_libraries(arango_tests_graph
     arango
     arango_replication2

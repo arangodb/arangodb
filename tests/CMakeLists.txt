@@ -49,7 +49,8 @@ add_library(arango_tests_basics OBJECT
   ../cmake/activeCodePage.manifest
   main.cpp)
 
-target_include_directories(arango_tests_basics PRIVATE
+target_include_directories(arango_tests_basics
+  PUBLIC
     ${PROJECT_SOURCE_DIR}/arangod/
     ${PROJECT_SOURCE_DIR}/lib/
     ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
