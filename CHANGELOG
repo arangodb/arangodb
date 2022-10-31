@@ -1,6 +1,8 @@
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
+* Repair "load indexes into memory" function in the web UI.
+
 * Improve cardinality estimate for AQL EnumerateCollectionNode in case a `SORT
   RAND() LIMIT 1` is used. Here, the estimated number of items is at most 1.
 
