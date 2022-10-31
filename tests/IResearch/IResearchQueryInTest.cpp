@@ -229,7 +229,7 @@ class QueryIn : public QueryTest {
                            _insertedDocs[13].slice(), resolved, true));
           ++i;
         }
-        EXPECT_EQ(i, 2);
+        EXPECT_EQ(i, 2U);
       }
     }
 
