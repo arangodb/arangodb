@@ -51,7 +51,7 @@ irs::parametric_description readParametricDescription(
 
   irs::bstring dst(rawSize, 0);
   const auto lz4_size = ::LZ4_decompress_safe(
-      reinterpret_cast<char const*>(data.begin()),
+      reinterpret_cast<char const*>(data.data()),
       reinterpret_cast<char*>(&dst[0]), static_cast<int>(data.size()),
       static_cast<int>(rawSize));
 

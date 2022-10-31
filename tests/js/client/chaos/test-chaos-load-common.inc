@@ -484,7 +484,7 @@ function BaseChaosSuite(testOpts) {
       clearAllFailurePoints();
       waitForShardsInSync(cn);
       checkCollectionConsistency(cn);
-      require("internal").sleep(60);
+      require("internal").sleep(3 * 60); // wait while iresearch commit all changes
       checkViewConsistency(cn, false, false);
       checkViewConsistency(cn, true, false);
       checkViewConsistency(cn, false, true);
