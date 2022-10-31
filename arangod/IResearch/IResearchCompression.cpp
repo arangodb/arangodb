@@ -44,7 +44,7 @@ std::string_view columnCompressionToString(
          *(demangled_start - 1) != ':') {
     demangled_start--;
   }
-  return std::string_view(demangled_start,
+  return std::string_view(&(*demangled_start),
                           std::distance(demangled_start, mangled_name.end()));
 }
 
