@@ -39,6 +39,7 @@
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/ClusterQuery.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
@@ -762,41 +763,9 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8ToVPack(isolate, options, args[1], false);
   }
 
-  arangodb::aql::QueryId queryId;
-  if (ServerState::instance()->isCoordinator()) {
-    queryId =
-        vocbase.server().getFeature<ClusterFeature>().clusterInfo().uniqid();
-  } else {
-    queryId = TRI_NewServerSpecificTick();
-  }
-
-  auto query = arangodb::aql::ClusterQuery::create(
-      queryId, transaction::V8Context::Create(vocbase, true),
-      aql::QueryOptions(options.slice()));
-
-  VPackSlice collections = queryBuilder.slice().get("collections");
-  VPackSlice variables = queryBuilder.slice().get("variables");
-
-  QueryAnalyzerRevisions analyzersRevision;
-  auto revisionRes = analyzersRevision.fromVelocyPack(queryBuilder.slice());
-  if (ADB_UNLIKELY(revisionRes.fail())) {
-    TRI_V8_THROW_EXCEPTION(revisionRes);
-  }
-
-  // simon: hack to get the behaviour of old second aql::Query constructor
-  VPackBuilder snippetBuilder;  // simon: hack to make format conform
-  snippetBuilder.openObject();
-  snippetBuilder.add("0", VPackValue(VPackValueType::Object));
-  snippetBuilder.add("nodes", queryBuilder.slice().get("nodes"));
-  snippetBuilder.close();
-  snippetBuilder.close();
-
-  TRI_ASSERT(!ServerState::instance()->isDBServer());
-  VPackBuilder ignoreResponse;
-  query->prepareClusterQuery(VPackSlice::emptyObjectSlice(), collections,
-                             variables, snippetBuilder.slice(),
-                             VPackSlice::noneSlice(), ignoreResponse,
-                             analyzersRevision);
+  auto query = aql::Query::createFromPlan(
+      vocbase, transaction::V8Context::Create(vocbase, true),
+      queryBuilder.slice(), options.slice());
 
   aql::QueryResult queryResult = query->executeSync();
 

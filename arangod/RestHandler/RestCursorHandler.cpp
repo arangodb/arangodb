@@ -198,22 +198,29 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   TRI_ASSERT(_options != nullptr);
   VPackSlice opts = _options->slice();
 
-  bool stream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
-  if (ServerState::instance()->isDBServer()) {
-    stream = false;
-  }
-  size_t batchSize =
-      VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
-  double ttl = VelocyPackHelper::getNumericValue<double>(
-      opts, "ttl", _queryRegistry->defaultTTL());
-  bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
-
   // simon: access mode can always be write on the coordinator
   const AccessMode::Type mode = AccessMode::Type::WRITE;
   auto query =
       aql::Query::create(createTransactionContext(mode),
                          arangodb::aql::QueryString(querySlice.stringView()),
                          std::move(bindVarsBuilder), aql::QueryOptions(opts));
+
+  return registerQueryOrCursor(query);
+}
+
+RestStatus RestCursorHandler::registerQueryOrCursor(
+    std::shared_ptr<aql::Query> query) {
+  VPackSlice opts = _options->slice();
+
+  bool stream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
+  if (ServerState::instance()->isDBServer()) {
+    stream = false;
+  }
+  auto batchSize =
+      VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
+  auto ttl = VelocyPackHelper::getNumericValue<double>(
+      opts, "ttl", _queryRegistry->defaultTTL());
+  bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
 
   if (stream) {
     TRI_ASSERT(!ServerState::instance()->isDBServer());

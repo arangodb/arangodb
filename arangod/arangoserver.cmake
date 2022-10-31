@@ -180,7 +180,9 @@ add_library(arangoserver STATIC
   Transaction/ReplicatedContext.cpp
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
-  Transaction/Status.cpp)
+  Transaction/Status.cpp
+  RestHandler/RestPlanHandler.cpp
+  RestHandler/RestPlanHandler.h)
 if (MSVC)
   target_sources(arangoserver PRIVATE
     RestServer/WindowsServiceFeature.cpp)

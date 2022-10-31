@@ -231,6 +231,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   bool allowDirtyReads() const noexcept { return _allowDirtyReads; }
 
+  static std::shared_ptr<Query> createFromPlan(
+      TRI_vocbase_t& vocbase, std::shared_ptr<transaction::Context> ctx,
+      VPackSlice const plan, VPackSlice const options);
+
   /// @brief convert query bind parameters to a string representation
   void stringifyBindParameters(std::string& out, std::string_view prefix,
                                size_t maxLength) const;
