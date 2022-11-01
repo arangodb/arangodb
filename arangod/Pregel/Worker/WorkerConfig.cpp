@@ -53,9 +53,9 @@ void WorkerConfig::updateConfig(PregelFeature& feature,
   // list of all shards, equal on all workers. Used to avoid storing strings of
   // shard names
   // Instead we have an index identifying a shard name in this vector
-  PregelShard i = 0;
+  size_t i = 0;
   for (auto const& shard : _globalShardIDs) {
-    _pregelShardIDs.try_emplace(shard, i++);  // Cache these ids
+    _pregelShardIDs.try_emplace(shard, PregelShard(i++));  // Cache these ids
   }
 
   // To access information based on a user defined collection name we need the

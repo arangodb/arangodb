@@ -32,34 +32,10 @@
 #include <string>
 #include <utility>
 
+#include "Messaging/PregelShard.h"
+#include "Messaging/PregelId.h"
+
 namespace arangodb::pregel {
-
-typedef uint16_t PregelShard;
-const PregelShard InvalidPregelShard = -1;
-
-struct PregelID {
-  std::string key;    // std::string 24
-  PregelShard shard;  // uint16_t
-
-  PregelID() : shard(InvalidPregelShard) {}
-  PregelID(PregelShard s, std::string k) : key(std::move(k)), shard(s) {}
-
-  bool operator==(const PregelID& rhs) const {
-    return shard == rhs.shard && key == rhs.key;
-  }
-
-  bool operator!=(const PregelID& rhs) const {
-    return shard != rhs.shard || key != rhs.key;
-  }
-
-  bool operator<(const PregelID& rhs) const {
-    return shard < rhs.shard || (shard == rhs.shard && key < rhs.key);
-  }
-
-  [[nodiscard]] bool isValid() const {
-    return shard != InvalidPregelShard && !key.empty();
-  }
-};
 
 template<typename V, typename E>
 class GraphStore;
@@ -112,7 +88,7 @@ class Vertex {
   uint16_t _active : 1;      // uint16_t (shared with _keyLength)
   uint16_t _keyLength : 15;  // uint16_t (shared with _active)
 
-  PregelShard _shard;  // uint16_t
+  PregelShard _shard;
 
   V _data;  // variable byte size
 
@@ -123,7 +99,7 @@ class Vertex {
         _edgeCount(0),
         _active(1),
         _keyLength(0),
-        _shard(InvalidPregelShard) {
+        _shard() {
     TRI_ASSERT(keyLength() == 0);
     TRI_ASSERT(active());
   }
@@ -188,20 +164,3 @@ class Vertex {
 
 }  // namespace arangodb::pregel
 
-namespace std {
-template<>
-struct hash<arangodb::pregel::PregelID> {
-  std::size_t operator()(const arangodb::pregel::PregelID& k) const noexcept {
-    using std::hash;
-    using std::size_t;
-    using std::string;
-
-    // Compute individual hash values for first,
-    // second and third and combine them using XOR
-    // and bit shifting:
-    size_t h1 = std::hash<std::string>()(k.key);
-    size_t h2 = std::hash<size_t>()(k.shard);
-    return h2 ^ (h1 << 1);
-  }
-};
-}  // namespace std
