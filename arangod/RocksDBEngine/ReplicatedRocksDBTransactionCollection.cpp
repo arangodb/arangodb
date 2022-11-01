@@ -63,9 +63,9 @@ Result ReplicatedRocksDBTransactionCollection::beginTransaction() {
   } else {
     if (trx->isSingleOperation()) {
       _rocksMethods =
-          std::make_unique<RocksDBSingleOperationTrxMethods>(trx, db);
+          std::make_unique<RocksDBSingleOperationTrxMethods>(trx, *this, db);
     } else {
-      _rocksMethods = std::make_unique<RocksDBTrxMethods>(trx, db);
+      _rocksMethods = std::make_unique<RocksDBTrxMethods>(trx, *this, db);
     }
   }
 
@@ -165,6 +165,32 @@ auto ReplicatedRocksDBTransactionCollection::leaderState() -> std::shared_ptr<
   return _leaderState;
 }
 
+rocksdb::SequenceNumber ReplicatedRocksDBTransactionCollection::prepare() {
+  auto* trx = static_cast<RocksDBTransactionState*>(_transaction);
+  auto& engine = trx->vocbase()
+                     .server()
+                     .getFeature<EngineSelectorFeature>()
+                     .engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
+  rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
+  rocksdb::SequenceNumber seq = prepareTransaction(_transaction->id());
+  return std::max(seq, preSeq);
+}
+
+void ReplicatedRocksDBTransactionCollection::commit(
+    rocksdb::SequenceNumber lastWritten) {
+  TRI_ASSERT(lastWritten > 0);
+
+  // we need this in case of an intermediate commit. The number of
+  // initial documents is adjusted and numInserts / removes is set to 0
+  // index estimator updates are buffered
+  commitCounts(_transaction->id(), lastWritten);
+}
+
+void ReplicatedRocksDBTransactionCollection::cleanup() {
+  abortCommit(_transaction->id());
+}
+
 auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
   auto res = RocksDBTransactionCollection::ensureCollection();
 
@@ -191,4 +217,23 @@ auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
   }
 
   return res;
+}
+
+futures::Future<Result>
+ReplicatedRocksDBTransactionCollection::performIntermediateCommitIfRequired() {
+  if (_rocksMethods->isIntermediateCommitNeeded()) {
+    auto leader = leaderState();
+    auto operation = replication2::replicated_state::document::OperationType::
+        kIntermediateCommit;
+    auto options = replication2::replicated_state::document::ReplicationOptions{
+        .waitForCommit = true};
+    return leader
+        ->replicateOperation(velocypack::SharedSlice{}, operation,
+                             _transaction->id(), options)
+        .thenValue([state = _transaction->shared_from_this(),
+                    this](auto&& res) -> Result {
+          return _rocksMethods->triggerIntermediateCommit();
+        });
+  }
+  return Result{};
 }

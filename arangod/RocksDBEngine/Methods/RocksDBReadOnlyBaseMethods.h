@@ -33,7 +33,7 @@ namespace arangodb {
 
 class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
  public:
-  explicit RocksDBReadOnlyBaseMethods(RocksDBTransactionState* state,
+  explicit RocksDBReadOnlyBaseMethods(RocksDBTransactionState const* state,
                                       rocksdb::TransactionDB* db);
 
   ~RocksDBReadOnlyBaseMethods();

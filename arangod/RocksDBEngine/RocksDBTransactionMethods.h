@@ -45,7 +45,7 @@ struct ReadOptions : public rocksdb::ReadOptions {
 
 class RocksDBTransactionMethods : public RocksDBMethods {
  public:
-  explicit RocksDBTransactionMethods(RocksDBTransactionState* state)
+  explicit RocksDBTransactionMethods(RocksDBTransactionState const* state)
       : _state(state) {}
   virtual ~RocksDBTransactionMethods() = default;
 
@@ -56,7 +56,12 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   virtual Result abortTransaction() = 0;
 
   // Only relevant for RocksDBTrxMethods
-  virtual Result checkIntermediateCommit() { return {}; }
+  virtual bool isIntermediateCommitNeeded() { return false; }
+  virtual Result triggerIntermediateCommit() {
+    ADB_PROD_ASSERT(false) << "triggerIntermediateCommit is not supported in "
+                              "RocksDBTransactionMethods";
+    return Result{TRI_ERROR_INTERNAL};
+  };
 
   /// @returns tick of last operation in a transaction
   /// @note the value is guaranteed to be valid only after
@@ -108,7 +113,7 @@ class RocksDBTransactionMethods : public RocksDBMethods {
 #endif
 
  protected:
-  RocksDBTransactionState* _state;
+  RocksDBTransactionState const* _state;
 };
 
 }  // namespace arangodb
