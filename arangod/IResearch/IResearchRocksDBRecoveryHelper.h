@@ -34,6 +34,7 @@
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
+#include "IResearch/IResearchLink.h"
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -60,6 +61,10 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
   virtual ~IResearchRocksDBRecoveryHelper() override = default;
 
   virtual void prepare() override;
+
+  void unprepare() noexcept  override { 
+    _cookies.clear();
+  }
 
   virtual void PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                      const rocksdb::Slice& value,
@@ -110,8 +115,7 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
 
   // Snapshots for links at state prior to recovery.
   // Used to decide if insert should be replayed
-  // FIXME: use LinkTrxState unique ptrs
-  std::map<void const*, IResearchLink::Snapshot> _cookies;
+  containers::FlatHashMap<void const*, IResearchLink::Snapshot> _cookies;
 };
 
 }  // end namespace iresearch

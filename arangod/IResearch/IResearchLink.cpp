@@ -636,9 +636,11 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       _error(DataStoreError::kNoError),
       _maintenanceState{std::make_shared<MaintenanceState>()},
       _id{iid},
-      _lastCommittedTick{0},
+      _lastCommittedTickStageOne{0},
+      _lastCommittedTickStageTwo{0},
       _cleanupIntervalCount{0},
-      _createdInRecovery{false} {
+      _createdInRecovery{false},
+      _commitStageOne{true} {
   // initialize transaction callback
   _trxCallback = [this](transaction::Methods& trx, transaction::Status status) {
     auto* state = trx.state();
@@ -744,13 +746,17 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
   }
 
   std::lock_guard guard{_commitMutex};
-  auto const lastCommittedTick = _lastCommittedTick;
+  auto const lastCommittedTickStageOne = _lastCommittedTickStageOne;
+  auto const lastCommittedTickStageTwo = _lastCommittedTickStageTwo;
+  _lastCommittedTickStageTwo = tick;
   bool recoverCommittedTick = true;
-
+  _commitStageOne = true;
   auto lastCommittedTickGuard =
-      irs::make_finally([lastCommittedTick, this, &recoverCommittedTick] {
+      irs::make_finally([lastCommittedTickStageOne, lastCommittedTickStageTwo,
+                         this, &recoverCommittedTick] {
         if (recoverCommittedTick) {
-          _lastCommittedTick = lastCommittedTick;
+          _lastCommittedTickStageOne = lastCommittedTickStageOne;
+          _lastCommittedTickStageTwo = lastCommittedTickStageTwo;
         }
       });
 
@@ -758,7 +764,7 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
     _dataStore._writer->clear(tick);
     recoverCommittedTick = false;
     // _lastCommittedTick now updated and data is written to storage
-
+    _lastCommittedTickStageTwo = _lastCommittedTickStageOne;
     // get new reader
     auto reader = _dataStore._reader.reopen();
 
@@ -779,7 +785,7 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
     if (subscription) {
       auto& impl = static_cast<IResearchFlushSubscription&>(*subscription);
 
-      impl.tick(_lastCommittedTick);
+      impl.tick(_lastCommittedTickStageOne);
     }
   } catch (std::exception const& e) {
     LOG_TOPIC("a3c57", ERR, TOPIC)
@@ -888,7 +894,7 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
 Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->lock() is valid
-
+  _commitStageOne = true;
   auto subscription = std::atomic_load(&_flushSubscription);
 
   if (!subscription) {
@@ -921,7 +927,7 @@ Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
       commitLock.lock();
     }
 
-    auto const lastCommittedTick = _lastCommittedTick;
+    auto const lastCommittedTick = _lastCommittedTickStageOne;
 
     try {
       // _lastCommittedTick is being updated in '_before_commit'
@@ -929,27 +935,39 @@ Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
                                            : CommitResult::NO_CHANGES;
     } catch (...) {
       // restore last committed tick in case of any error
-      _lastCommittedTick = lastCommittedTick;
+      _lastCommittedTickStageOne = lastCommittedTick;
       throw;
     }
 
     if (CommitResult::NO_CHANGES == *code) {
       LOG_TOPIC("7e319", TRACE, TOPIC)
           << "no changes registered for arangosearch link '" << id()
-          << "' got last operation tick '" << _lastCommittedTick << "'";
+          << "' got last operation tick '" << _lastCommittedTickStageOne << "'";
 
       // no changes, can release the latest tick before commit
       impl.tick(lastTickBeforeCommit);
-      _lastCommittedTick = lastTickBeforeCommit;
+      _lastCommittedTickStageOne = lastTickBeforeCommit;
+      _lastCommittedTickStageTwo = lastTickBeforeCommit;
       return {};
     }
 
+    _commitStageOne = false;
+    auto lastCommittedTickStageTwo = _lastCommittedTickStageTwo;
     // now commit what has possibly accumulated in the second flush context
     // but will not move the tick as it possibly contains "3rd" generation changes
-    auto secondCommit = _dataStore._writer->commit();
-    LOG_TOPIC("21bda", TRACE, TOPIC) << "Second commit for arangosearch link '" << id()
-                                     << "' result is " << secondCommit;
-
+    try {
+      auto secondCommit = _dataStore._writer->commit();
+      LOG_TOPIC("21bda", TRACE, TOPIC)
+          << "Second commit for arangosearch link '" << id() << "' result is "
+          << secondCommit << " tick " << _lastCommittedTickStageTwo;
+      if (!secondCommit) {
+        _lastCommittedTickStageTwo = _lastCommittedTickStageOne;
+      }
+    } catch (...) {
+      // restore last committed tick in case of any error
+      _lastCommittedTickStageTwo = lastCommittedTickStageTwo;
+      throw;
+    }
     // get new reader
     auto reader = _dataStore._reader.reopen();
 
@@ -968,7 +986,7 @@ Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
     _dataStore._reader = reader;
 
     // update last committed tick
-    impl.tick(_lastCommittedTick);
+    impl.tick(_lastCommittedTickStageOne);
 
     // invalidate query cache
     aql::QueryCache::instance()->invalidate(&(_collection.vocbase()),
@@ -979,7 +997,7 @@ Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
         << reader->size() << "', docs count '" << reader->docs_count()
         << "', live docs count '" << reader->docs_count()
         << "', live docs count '" << reader->live_docs_count()
-        << "', last operation tick '" << _lastCommittedTick << "'";
+        << "', last operation tick '" << _lastCommittedTickStageOne << "'";
   } catch (basics::Exception const& e) {
     return {e.code(), "caught exception while committing arangosearch link '" +
                           std::to_string(id().id()) + "': " + e.what()};
@@ -1505,7 +1523,8 @@ Result IResearchLink::initDataStore(
       // NOOP
     }
   }
-  _lastCommittedTick = _dataStore._recoveryTick;
+  _lastCommittedTickStageOne = _dataStore._recoveryTick;
+  _lastCommittedTickStageTwo = _lastCommittedTickStageOne;
   _flushSubscription =
       std::make_shared<IResearchFlushSubscription>(_dataStore._recoveryTick);
 
@@ -1527,9 +1546,13 @@ Result IResearchLink::initDataStore(
   options.meta_payload_provider = [this](uint64_t tick, irs::bstring& out) {
     // call from commit under lock _commitMutex (_dataStore._writer->commit())
     // update last tick
-    _lastCommittedTick = std::max(_lastCommittedTick, TRI_voc_tick_t{tick});
+    auto lastCommittedTick = _commitStageOne ? &_lastCommittedTickStageOne
+                                             : &_lastCommittedTickStageTwo;
+    *lastCommittedTick = std::max(*lastCommittedTick, TRI_voc_tick_t{tick});
     // convert to BE
-    tick = irs::numeric_utils::hton64(uint64_t{_lastCommittedTick});
+    tick = irs::numeric_utils::hton64(
+        uint64_t{_commitStageOne ? _lastCommittedTickStageTwo
+                                 : _lastCommittedTickStageOne});
 
     out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof tick);
 
@@ -1744,48 +1767,25 @@ void IResearchLink::scheduleConsolidation(std::chrono::milliseconds delay) {
   task.schedule(delay);
 }
 
-Result IResearchLink::exists(transaction::Methods& trx,
-                             LocalDocumentId documentId,
-                             TRI_voc_tick_t const* recoveryTick) {
-  TRI_ASSERT(_engine);
-  TRI_ASSERT(trx.state());
-
-  auto& state = *(trx.state());
-
+bool IResearchLink::exists(IResearchLink::Snapshot const& snapshot,
+                           LocalDocumentId documentId, TRI_voc_tick_t const* recoveryTick) const {
   if (recoveryTick && *recoveryTick <= _dataStore._recoveryTick) {
     LOG_TOPIC("6e128", TRACE, TOPIC)
         << "skipping 'exists', operation tick '" << *recoveryTick
         << "', recovery tick '" << _dataStore._recoveryTick << "'";
 
-    return {};
+    return false;
   }
-  auto* key = this;
-
-// TODO FIXME find a better way to look up a ViewState
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* ctx = dynamic_cast<LinkTrxState*>(state.cookie(key));
-#else
-  auto* ctx = static_cast<LinkTrxState*>(state.cookie(key));
-#endif
-
-  if (!ctx) {
-    // '_dataStore' can be asynchronously modified
-    auto linkLock = _asyncSelf->lock();
-    if (!linkLock) {
-      // the current link is no longer valid
-      // (checked after ReadLock acquisition)
-      return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
-              "failed to lock arangosearch link while checking a "
-              "document in arangosearch link '" +
-                  std::to_string(id().id()) + "'"};
+  PrimaryKeyFilter filter(documentId);
+  auto prepared = filter.prepare(snapshot.getDirectoryReader());
+  TRI_ASSERT(prepared);
+  for (auto const& segment : snapshot.getDirectoryReader()) {
+    auto executed = prepared->execute(segment);
+    if (executed->next()) {
+      return true;
     }
-    TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->lock() is valid
-    auto ptr = std::make_unique<LinkTrxState>(std::move(linkLock),
-                                              *(_dataStore._writer));
-
-    ctx = ptr.get();
-    state.cookie(key, std::move(ptr));
   }
+  return false;
 }
 
 Result IResearchLink::insert(transaction::Methods& trx,

@@ -186,8 +186,9 @@ class IResearchLink {
   Result insert(transaction::Methods& trx, LocalDocumentId documentId,
                 velocypack::Slice doc, TRI_voc_tick_t const* recoveryTick);
 
-  Result exists(transaction::Methods& trx, LocalDocumentId documentId,
-                TRI_voc_tick_t const* recoveryTick);
+  bool exists(IResearchLink::Snapshot const& snapshot,
+              LocalDocumentId documentId,
+              TRI_voc_tick_t const* recoveryTick) const;
 
   static bool isHidden();  // arangodb::Index override
   static bool isSorted();  // arangodb::Index override
@@ -465,7 +466,8 @@ class IResearchLink {
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;
   IndexId const _id;                  // the index identifier
-  TRI_voc_tick_t _lastCommittedTick;  // protected by _commitMutex
+  TRI_voc_tick_t _lastCommittedTickStageOne;  // protected by _commitMutex
+  TRI_voc_tick_t _lastCommittedTickStageTwo;  // protected by _commitMutex
   size_t _cleanupIntervalCount;
   IResearchLinkMeta const _meta;  // how this collection should be indexed
                                   // (read-only, set via init())
@@ -475,6 +477,7 @@ class IResearchLink {
   std::string const _viewGuid;  // the identifier of the desired view
                                 // (read-only, set via init())
   bool _createdInRecovery;      // link was created based on recovery marker
+  bool _commitStageOne;   // protected by _commitMutex
 };
 
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,

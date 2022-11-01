@@ -39,7 +39,6 @@
 #include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "IResearch/IResearchCommon.h"
-#include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchRocksDBLink.h"
 #include "Logger/LogMacros.h"
@@ -155,18 +154,9 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
   transaction::StandaloneContext ctx(coll->vocbase());
 
   // FIXME: check ticks range and possibly omit this step
+  containers::FlatHashSet<IndexId> skipInsert;
+  mustReplay = false;
   {
-    
-    SingleCollectionTransaction trx(std::shared_ptr<transaction::Context>(
-                                        std::shared_ptr<transaction::Context>(),
-                                        &ctx),  // aliasing ctor
-                                    *coll, arangodb::AccessMode::Type::READ);
-
-    Result res = trx.begin();
-
-    if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
     for (auto const& link : links) {
       if (link.second) {
         // link excluded from recovery
@@ -184,26 +174,17 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
           snapshotCookie =
               _cookies.emplace(link.first.get(), impl.snapshot()).first;
         } 
-        IResearchLink::exists(docId, *snapshotCookie);
+        if (impl.exists(snapshotCookie->second, docId, &tick)) {
+          skipInsert.emplace(link.first->id());
+        } else {
+          mustReplay = true;
+        }
       }
     }
-    res = trx.commit();
+  }
 
-    if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-    for (auto const& link : links) {
-      if (!link.second) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        IResearchLink& impl =
-            dynamic_cast<IResearchRocksDBLink&>(*(link.first));
-#else
-        IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*(link.first));
-#endif
-
-        impl.commit(true);
-      }
-    }
+  if (!mustReplay) {
+    return;
   }
 
   SingleCollectionTransaction trx(std::shared_ptr<transaction::Context>(
@@ -222,6 +203,9 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
       // link excluded from recovery
       _skippedIndexes.emplace(link.first->id());
     } else {
+      if (skipInsert.find(link.first->id()) != skipInsert.end()) {
+        continue;
+      }
       // link participates in recovery
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       IResearchLink& impl = dynamic_cast<IResearchRocksDBLink&>(*(link.first));

@@ -44,6 +44,12 @@ struct typeRecovery {
   }
 };
 
+struct typeExistsCheck {
+  static constexpr irs::string_ref type_name() noexcept {
+    return "::typeExistsCheck";
+  }
+};
+
 }  // namespace
 
 namespace arangodb {
@@ -52,6 +58,12 @@ namespace iresearch {
 // ----------------------------------------------------------------------------
 // --SECTION--                                  PrimaryKeyFilter implementation
 // ----------------------------------------------------------------------------
+
+PrimaryKeyFilter::PrimaryKeyFilter(
+    arangodb::LocalDocumentId const& value) noexcept
+    : irs::filter(irs::type<typeExistsCheck>::get()),
+      _pk(DocumentPrimaryKey::encode(value)),
+      _pkSeen(false) {}
 
 irs::doc_iterator::ptr PrimaryKeyFilter::execute(
     irs::sub_reader const& segment, irs::order::prepared const& /*order*/,
@@ -76,10 +88,11 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
     return irs::doc_iterator::empty();
   }
 
-  auto docs = _ignoreMasked
-      ? term->postings(irs::IndexFeatures::NONE) :
-    segment.mask(
-      term->postings(irs::IndexFeatures::NONE));  // must not match removed docs
+  auto docs =
+      irs::filter::type() == irs::type<typeExistsCheck>::id()
+          ? term->postings(irs::IndexFeatures::NONE)
+          : segment.mask(term->postings(
+                irs::IndexFeatures::NONE));  // must not match removed docs
 
   if (!docs->next()) {
     return irs::doc_iterator::empty();
