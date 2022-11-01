@@ -1,3 +1,6 @@
+
+add_subdirectory(GraphStore)
+
 add_executable(arangodbtests_wcc
   ${PROJECT_SOURCE_DIR}/lib/Basics/VelocyPackStringLiteral.cpp
   WeaklyConnectedComponentsTest.cpp)
