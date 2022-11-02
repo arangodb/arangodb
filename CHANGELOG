@@ -4,6 +4,20 @@ devel
 * Fixed issue #17367: FILTER fails when using negation (!) on variable whose
   name starts with "in". Add trailing context to NOT IN token.
 
+* Improved help texts for the collection type and satellite collection
+  options in the web UI.
+
+* APM-517: Add tooltips with values of the displayed properties after
+  clicking a node or an edge in the graph viewer.
+
+* Deprecate the startup option `--agency.pool-size`. This option was never
+  properly supported for any values other than the value of `--agency.size`.
+  Now any value set for `--agency.pool-size` other than the value set for
+  `--agency.size` will now produce a fatal error on startup.
+
+* BTS-1082: Updating properties of a satellite collection breaks
+  replicationFactor.
+
 * FE-159: When creating a database in cluster mode, there are several parameters
   required. However they are invisible (nothing shown) if I open DB settings
   after creation. Those settings should be visible in readonly mode (grey out).
