@@ -179,7 +179,7 @@ void TemporaryStorageFeature::collectOptions(
 
   options
       ->addOption(
-          "--temp.-intermediate-results-encryption-hardware-acceleration",
+          "--temp.intermediate-results-encryption-hardware-acceleration",
           "use Intel intrinsics-based encryption, requiring a CPU with "
           "the AES-NI instruction set. "
           "If turned off, then OpenSSL is used, which may use "
