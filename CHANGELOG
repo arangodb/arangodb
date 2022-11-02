@@ -3,6 +3,10 @@ devel
 
 * Repair "load indexes into memory" function in the web UI.
 
+* FE-159: When creating a database in cluster mode, there are several parameters
+  required. However they are invisible (nothing shown) if I open DB settings
+  after creation. Those settings should be visible in readonly mode (grey out).
+
 * BTS-209: Fixed requests to `_admin/execute` treating every payload as plain 
   text when they're in JSON or velocypack format, but will only treat the 
   payload as velocypack if specified in the header's `content-type`.
