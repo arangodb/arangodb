@@ -48,23 +48,24 @@ TEST(IResearchComparerTest, test_comparer_single_entry) {
   arangodb::iresearch::IResearchViewSort sort;
   sort.emplace_back({{std::string_view("name"), false}}, false);  // name DESC
 
-  std::vector<irs::bytes_ref> expected_values;
+  std::vector<irs::bytes_view> expected_values;
   expected_values.reserve(docsSlice.length());
-  std::vector<irs::bytes_ref> actual_values;
+  std::vector<irs::bytes_view> actual_values;
   actual_values.reserve(docsSlice.length());
 
   for (auto doc : arangodb::velocypack::ArrayIterator(docsSlice)) {
     auto slice = doc.get("name");
     EXPECT_TRUE(slice.isString());
-    actual_values.emplace_back(irs::bytes_ref(slice.start(), slice.byteSize()));
+    actual_values.emplace_back(
+        irs::bytes_view(slice.start(), slice.byteSize()));
     expected_values.emplace_back(
-        irs::bytes_ref(slice.start(), slice.byteSize()));
+        irs::bytes_view(slice.start(), slice.byteSize()));
   }
 
   // sorted expected docs
-  auto expectedComparer = [](irs::bytes_ref const& lhs, irs::bytes_ref& rhs) {
+  auto expectedComparer = [](irs::bytes_view const& lhs, irs::bytes_view& rhs) {
     return arangodb::basics::VelocyPackHelper::compare(
-               VPackSlice(lhs.c_str()), VPackSlice(rhs.c_str()), true) > 0;
+               VPackSlice(lhs.data()), VPackSlice(rhs.data()), true) > 0;
   };
   EXPECT_FALSE(std::is_sorted(expected_values.begin(), expected_values.end(),
                               expectedComparer));
@@ -118,10 +119,10 @@ TEST(IResearchComparerTest, test_comparer_multiple_entries) {
   }
 
   // sorted expected docs
-  auto expectedComparer = [](irs::bytes_ref const& lhs,
-                             irs::bytes_ref const& rhs) {
-    VPackSlice const lhsSlice(lhs.c_str());
-    VPackSlice const rhsSlice(rhs.c_str());
+  auto expectedComparer = [](irs::bytes_view const& lhs,
+                             irs::bytes_view const& rhs) {
+    VPackSlice const lhsSlice(lhs.data());
+    VPackSlice const rhsSlice(rhs.data());
 
     // 2nd bucket defines the order
     return arangodb::basics::VelocyPackHelper::compare(

@@ -267,6 +267,11 @@ uint64_t ReplicatedRocksDBTransactionState::numOperations() const noexcept {
       });
 }
 
+uint64_t ReplicatedRocksDBTransactionState::numPrimitiveOperations()
+    const noexcept {
+  return 0;
+}
+
 bool ReplicatedRocksDBTransactionState::ensureSnapshot() {
   return std::any_of(_collections.begin(), _collections.end(), [](auto& col) {
     return static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
