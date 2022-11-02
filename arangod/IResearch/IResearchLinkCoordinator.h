@@ -78,10 +78,9 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
     return IResearchLink::matchesDefinition(slice);
   }
 
-  size_t memory() const final {
-    return stats().indexSize;  // TODO add in memory size
-  }
+  Stats stats() const final;
 
+  size_t memory() const final { return stats().indexSize; }
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
@@ -93,7 +92,7 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
       std::underlying_type<arangodb::Index::Serialize>::type flags) const final;
 
   void toVelocyPackFigures(velocypack::Builder& builder) const final {
-    IResearchLink::toVelocyPackStats(builder);
+    IResearchDataStore::toVelocyPackStats(builder);
   }
 
   IndexType type() const final { return IResearchLink::type(); }

@@ -1,0 +1,13 @@
+name: arangodb_replication2_replicated_log_number_meta_entries_total
+introducedIn: "3.10.0"
+help: |
+  Number of meta log entries.
+unit: number
+type: counter
+category: Replication
+complexity: simple
+exposedBy:
+  - dbserver
+description: |
+  Number of meta log entries. A meta log entry is used to create artificial write barriers, for example during a
+  configuration change or move shard operation.

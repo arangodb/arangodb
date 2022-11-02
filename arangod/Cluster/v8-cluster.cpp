@@ -34,6 +34,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Network/NetworkFeature.h"
@@ -50,6 +51,7 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -769,10 +771,18 @@ static void JS_GetCollectionInfoClusterInfo(
   }
 
   std::unordered_set<std::string> ignoreKeys{
-      "allowUserKeys",    "avoidServers",   "cid",
-      "globallyUniqueId", "count",          "distributeShardsLike",
-      "keyOptions",       "numberOfShards", "path",
-      "planId",           "version",        "objectId"};
+      StaticStrings::AllowUserKeys,
+      "avoidServers",
+      StaticStrings::DataSourceCid,
+      StaticStrings::DataSourceGuid,
+      "count",
+      StaticStrings::DistributeShardsLike,
+      StaticStrings::KeyOptions,
+      StaticStrings::NumberOfShards,
+      "path",
+      StaticStrings::DataSourcePlanId,
+      StaticStrings::Version,
+      StaticStrings::ObjectId};
   VPackBuilder infoBuilder = col->toVelocyPackIgnore(
       ignoreKeys, LogicalDataSource::Serialization::List);
   VPackSlice info = infoBuilder.slice();

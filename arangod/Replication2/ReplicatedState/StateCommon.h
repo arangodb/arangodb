@@ -31,6 +31,9 @@
 
 #include <velocypack/Slice.h>
 #include "Basics/Result.h"
+#include "Inspection/VPackLoadInspector.h"
+#include "Inspection/VPackSaveInspector.h"
+#include "Inspection/Transformers.h"
 
 namespace arangodb::velocypack {
 class Value;
@@ -55,11 +58,29 @@ struct StateGeneration {
                           StateGeneration const&) = default;
 
   [[nodiscard]] auto operator+(std::uint64_t delta) const -> StateGeneration;
+  auto operator++() noexcept -> StateGeneration&;
+  auto operator++(int) noexcept -> StateGeneration;
 
   friend auto operator<<(std::ostream&, StateGeneration) -> std::ostream&;
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
+
+auto to_string(StateGeneration) -> std::string;
+
+template<class Inspector>
+auto inspect(Inspector& f, StateGeneration& x) {
+  if constexpr (Inspector::isLoading) {
+    auto v = uint64_t{0};
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = StateGeneration(v);
+    }
+    return res;
+  } else {
+    return f.apply(x.value);
+  }
+}
 
 enum class SnapshotStatus {
   kUninitialized,
@@ -72,11 +93,9 @@ struct SnapshotInfo {
   using clock = std::chrono::system_clock;
 
   struct Error {
-    ErrorCode error;
+    ErrorCode error{0};
     std::optional<std::string> message;
     clock::time_point retryAt;
-    void toVelocyPack(velocypack::Builder& builder) const;
-    [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Error;
 
     friend auto operator==(Error const&, Error const&) noexcept
         -> bool = default;
@@ -90,15 +109,41 @@ struct SnapshotInfo {
 
   friend auto operator==(SnapshotInfo const&, SnapshotInfo const&) noexcept
       -> bool = default;
-
-  void toVelocyPack(velocypack::Builder& builder) const;
-  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> SnapshotInfo;
 };
 
 auto to_string(SnapshotStatus) noexcept -> std::string_view;
 auto snapshotStatusFromString(std::string_view) noexcept -> SnapshotStatus;
 auto operator<<(std::ostream&, SnapshotStatus const&) -> std::ostream&;
 auto operator<<(std::ostream&, StateGeneration) -> std::ostream&;
+
+struct SnapshotStatusStringTransformer {
+  using SerializedType = std::string;
+  auto toSerialized(SnapshotStatus source, std::string& target) const
+      -> inspection::Status;
+  auto fromSerialized(std::string const& source, SnapshotStatus& target) const
+      -> inspection::Status;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, SnapshotInfo& x) {
+  return f.object(x).fields(
+      f.field("timestamp", x.timestamp)
+          .transformWith(inspection::TimeStampTransformer{}),
+      f.field("error", x.error),
+      f.field("status", x.status)
+          .transformWith(SnapshotStatusStringTransformer{}));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, SnapshotInfo::Error& x) {
+  return f.object(x).fields(
+      f.field("retryAt", x.retryAt)
+          .transformWith(inspection::TimeStampTransformer{}),
+      f.field("error", x.error)
+          .transformWith(inspection::ErrorCodeTransformer{}),
+      f.field("message", x.message));
+}
+
 }  // namespace replication2::replicated_state
 
 template<>

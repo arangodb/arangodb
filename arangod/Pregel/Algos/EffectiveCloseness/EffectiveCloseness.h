@@ -36,7 +36,7 @@ struct EffectiveCloseness
   explicit EffectiveCloseness(application_features::ApplicationServer& server,
                               VPackSlice params)
       : SimpleAlgorithm<ECValue, int8_t, HLLCounter>(
-            server, "EffectiveCloseness", params) {}
+            server, "effectivecloseness", params) {}
 
   GraphFormat<ECValue, int8_t>* inputFormat() const override;
   MessageFormat<HLLCounter>* messageFormat() const override;

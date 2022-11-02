@@ -32,6 +32,9 @@ namespace arangodb::aql {
 
 class TraversalStats {
  public:
+  template<class Inspector>
+  friend auto inspect(Inspector& f, TraversalStats& stats);
+
   TraversalStats() noexcept
       : _filtered(0),
         _scannedIndex(0),
@@ -123,6 +126,18 @@ inline ExecutionStats& operator+=(
   executionStats.cacheHits += traversalStats.getCacheHits();
   executionStats.cacheMisses += traversalStats.getCacheMisses();
   return executionStats;
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, TraversalStats& stats) {
+  return f.object(stats).fields(
+      f.field("filtered", stats._filtered),
+      f.field("scannedIndex", stats._scannedIndex),
+      f.field("httpRequests", stats._httpRequests),
+      f.field("cursorsCreated", stats._cursorsCreated),
+      f.field("cursorsRearmed", stats._cursorsRearmed),
+      f.field("cacheHits", stats._cacheHits),
+      f.field("cacheMisses", stats._cacheMisses));
 }
 
 }  // namespace arangodb::aql

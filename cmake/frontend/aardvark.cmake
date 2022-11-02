@@ -1,6 +1,6 @@
 
 ################################################################################
-## frontend build
+## web interface build
 ################################################################################
 add_custom_target(frontend
   COMMENT "create frontend build"

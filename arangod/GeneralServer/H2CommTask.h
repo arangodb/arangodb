@@ -26,10 +26,19 @@
 #include "GeneralServer/AsioSocket.h"
 #include "GeneralServer/GeneralCommTask.h"
 
-#include <nghttp2/nghttp2.h>
 #include <boost/lockfree/queue.hpp>
 #include <memory>
 #include <map>
+
+// Work-around for nghttp2 non-standard definition ssize_t under windows
+// https://github.com/nghttp2/nghttp2/issues/616
+#if defined(_WIN32) && defined(_MSC_VER)
+#define ssize_t long
+#endif
+#include <nghttp2/nghttp2.h>
+#if defined(_WIN32) && defined(_MSC_VER)
+#undef ssize_t
+#endif
 
 namespace arangodb {
 class HttpRequest;
@@ -93,6 +102,7 @@ class H2CommTask final : public GeneralCommTask<T> {
 
     std::unique_ptr<HttpRequest> request;
     std::unique_ptr<H2Response> response;  // hold response memory
+    bool mustSendAuthHeader = true;
 
     size_t headerBuffSize = 0;  // total header size
     size_t responseOffset = 0;  // current offset in response body

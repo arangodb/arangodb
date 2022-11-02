@@ -31,6 +31,7 @@
 #include "Basics/debugging.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -629,6 +630,27 @@ void RestHandler::generateError(rest::ResponseCode code,
 void RestHandler::generateError(arangodb::Result const& r) {
   ResponseCode code = GeneralResponse::responseCode(r.errorNumber());
   generateError(code, r.errorNumber(), r.errorMessage());
+}
+
+RestStatus RestHandler::waitForFuture(futures::Future<futures::Unit>&& f) {
+  if (f.isReady()) {             // fast-path out
+    f.result().throwIfFailed();  // just throw the error upwards
+    return RestStatus::DONE;
+  }
+  bool done = false;
+  std::move(f).thenFinal(
+      withLogContext([self = shared_from_this(),
+                      &done](futures::Try<futures::Unit>&& t) -> void {
+        if (t.hasException()) {
+          self->handleExceptionPtr(std::move(t).exception());
+        }
+        if (std::this_thread::get_id() == self->_executionMutexOwner.load()) {
+          done = true;
+        } else {
+          self->wakeupHandler();
+        }
+      }));
+  return done ? RestStatus::DONE : RestStatus::WAITING;
 }
 
 // -----------------------------------------------------------------------------

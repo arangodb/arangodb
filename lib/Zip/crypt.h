@@ -32,8 +32,7 @@
 /***********************************************************************
  * Return the next byte in the pseudo-random sequence
  */
-static int decrypt_byte(unsigned long* pkeys,
-                        const unsigned long* pcrc_32_tab) {
+static int decrypt_byte(unsigned long* pkeys, const z_crc_t* pcrc_32_tab) {
   unsigned temp; /* POTENTIAL BUG:  temp*(temp^1) may overflow in an
                   * unpredictable manner on 16-bit systems; not a problem
                   * with any known compiler so far, though */
@@ -45,7 +44,7 @@ static int decrypt_byte(unsigned long* pkeys,
 /***********************************************************************
  * Update the encryption keys with the next byte of plain text
  */
-static int update_keys(unsigned long* pkeys, const unsigned long* pcrc_32_tab,
+static int update_keys(unsigned long* pkeys, const z_crc_t* pcrc_32_tab,
                        int c) {
   (*(pkeys + 0)) = CRC32((*(pkeys + 0)), c);
   (*(pkeys + 1)) += (*(pkeys + 0)) & 0xff;
@@ -62,7 +61,7 @@ static int update_keys(unsigned long* pkeys, const unsigned long* pcrc_32_tab,
  * the given password.
  */
 static void init_keys(char const* passwd, unsigned long* pkeys,
-                      const unsigned long* pcrc_32_tab) {
+                      const z_crc_t* pcrc_32_tab) {
   *(pkeys + 0) = 305419896L;
   *(pkeys + 1) = 591751049L;
   *(pkeys + 2) = 878082192L;
@@ -90,8 +89,7 @@ static void init_keys(char const* passwd, unsigned long* pkeys,
 static int crypthead(char const* passwd, /* password string */
                      unsigned char* buf, /* where to write header */
                      int bufSize, unsigned long* pkeys,
-                     const unsigned long* pcrc_32_tab,
-                     unsigned long crcForCrypting) {
+                     const z_crc_t* pcrc_32_tab, unsigned long crcForCrypting) {
   int n;                                   /* index in random header */
   int t;                                   /* temporary */
   int c;                                   /* random byte */

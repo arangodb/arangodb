@@ -49,13 +49,14 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower,
 
   DelayedFollowerLog(LoggerContext const& logContext,
                      std::shared_ptr<ReplicatedLogMetricsMock> logMetricsMock,
+                     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
                      ParticipantId const& id,
                      std::unique_ptr<replicated_log::LogCore> logCore,
                      LogTerm term, ParticipantId leaderId)
       : DelayedFollowerLog([&] {
           return replicated_log::LogFollower::construct(
-              logContext, std::move(logMetricsMock), id, std::move(logCore),
-              term, std::move(leaderId));
+              logContext, std::move(logMetricsMock), std::move(options), id,
+              std::move(logCore), term, std::move(leaderId));
         }()) {}
 
   auto appendEntries(replicated_log::AppendEntriesRequest req)
@@ -90,6 +91,10 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower,
 
   auto getCommitIndex() const noexcept -> LogIndex override {
     return _follower->getCommitIndex();
+  }
+
+  auto copyInMemoryLog() const -> replicated_log::InMemoryLog override {
+    return _follower->copyInMemoryLog();
   }
 
   using WaitForAsyncPromise =

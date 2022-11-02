@@ -72,6 +72,11 @@ class QueryResultCursor final : public arangodb::Cursor {
   /// If no extras are set this will return a NONE slice.
   arangodb::velocypack::Slice extra() const;
 
+  /// @brief Remember, if dirty reads were allowed:
+  bool allowDirtyReads() const override final {
+    return _result.allowDirtyReads;
+  }
+
  private:
   DatabaseGuard _guard;
   aql::QueryResult _result;
@@ -110,6 +115,14 @@ class QueryStreamCursor final : public arangodb::Cursor {
 
   std::shared_ptr<transaction::Context> context() const override final;
 
+  // The following method returns, if the transaction the query is using
+  // allows dirty reads (reads from followers).
+  virtual bool allowDirtyReads() const override final {
+    // We got this information from the query directly in the constructor,
+    // when `prepareQuery` has been called:
+    return _allowDirtyReads;
+  }
+
  private:
   // Writes from _queryResults to builder. Removes copied blocks from
   // _queryResults and sets _queryResultPos appropriately. Relies on the caller
@@ -134,6 +147,9 @@ class QueryStreamCursor final : public arangodb::Cursor {
   transaction::Methods::StatusChangeCallback _stateChangeCb;
 
   bool _finalization;
+
+  bool _allowDirtyReads;  // keep this information when the query is already
+                          // gone.
 };
 
 }  // namespace aql

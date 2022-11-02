@@ -32,6 +32,7 @@
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::traverser;

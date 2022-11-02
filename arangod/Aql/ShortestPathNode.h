@@ -71,7 +71,8 @@ class ShortestPathNode : public virtual GraphNode {
       std::vector<TRI_edge_direction_e> const& directions,
       Variable const* inStartVariable, std::string const& startVertexId,
       Variable const* inTargetVariable, std::string const& targetVertexId,
-      std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph);
+      std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph,
+      Variable const* distributeVariable);
 
  public:
   /// @brief return the type of the node
@@ -96,6 +97,8 @@ class ShortestPathNode : public virtual GraphNode {
   std::string const getStartVertex() const { return _startVertexId; }
 
   void setStartInVariable(Variable const* inVariable);
+  void setTargetInVariable(Variable const* inVariable);
+  void setDistributeVariable(Variable const* distVariable);
 
   /// @brief Test if this node uses an in variable or constant for target
   bool usesTargetInVariable() const { return _inTargetVariable != nullptr; }
@@ -150,6 +153,14 @@ class ShortestPathNode : public virtual GraphNode {
 
   /// @brief The hard coded condition on _to
   AstNode* _toCondition;
+
+  /// @brief Variable that contains the value on which the distribution is
+  /// determined. This is required for hybrid disjoint smart graphs
+  /// Note: The variable is not really used here, but we need to make sure
+  /// it is retained up to this point node for the query instantiation,
+  /// otherwise it will be discarded on coordinator (mapped to server), but the
+  /// DBServer cannot map the Vertex to its shard.
+  Variable const* _distributeVariable;
 };
 
 }  // namespace aql

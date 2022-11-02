@@ -160,8 +160,8 @@ using namespace arangodb;
 // and they get access to a (read) transaction trx, a logical
 // collection and a geo index to use. Both objects are supposed to
 // be an `IndexIterator`, this means, once the query is set up, it
-// supports the next/nextDocument/nextExtra methods by implementing the
-// nextImpl/nextDocumentImpl/nextExtraImpl virtual methods. Furthermore,
+// supports the next/nextDocument methods by implementing the
+// nextImpl/nextDocumentImpl virtual methods. Furthermore,
 // it needs to support skip and friends.
 //
 // For the `RDBNearIterator` object is templated on the sorting
@@ -224,7 +224,9 @@ class RDBNearIterator final : public IndexIterator {
     estimateDensity();
   }
 
-  char const* typeName() const override { return "geo-index-iterator"; }
+  std::string_view typeName() const noexcept final {
+    return "geo-index-iterator";
+  }
 
   /// internal retrieval loop
   template<typename F>
@@ -251,7 +253,7 @@ class RDBNearIterator final : public IndexIterator {
     return !_near.isDone();
   }
 
-  bool nextDocumentImpl(DocumentCallback const& cb, size_t limit) override {
+  bool nextDocumentImpl(DocumentCallback const& cb, uint64_t limit) override {
     return nextToken(
         [this, &cb](geo_index::Document const& gdoc) -> bool {
           bool result = true;  // this is updated by the callback
@@ -291,7 +293,7 @@ class RDBNearIterator final : public IndexIterator {
         limit);
   }
 
-  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, uint64_t limit) override {
     return nextToken(
         [this, &cb](geo_index::Document const& gdoc) -> bool {
           geo::FilterType const ft = _near.filterType();
@@ -332,7 +334,7 @@ class RDBNearIterator final : public IndexIterator {
         limit);
   }
 
-  void resetImpl() override {
+  void resetImpl() final {
     _near.reset();
     estimateDensity();
   }
@@ -392,7 +394,7 @@ class RDBNearIterator final : public IndexIterator {
       }
 
       // validate that Iterator is in a good shape and hasn't failed
-      arangodb::rocksutils::checkIteratorStatus(_iter.get());
+      rocksutils::checkIteratorStatus(*_iter);
     }
 
     _near.didScanIntervals();  // calculate next bounds
@@ -441,13 +443,13 @@ class RDBCoveringIterator final : public IndexIterator {
                    ->GetID());
   }
 
-  char const* typeName() const override {
+  std::string_view typeName() const noexcept override {
     return "geo-index-covering-iterator";
   }
 
   /// internal retrieval loop
   template<typename F>
-  inline bool nextToken(F&& cb, size_t limit) {
+  inline bool nextToken(F&& cb, uint64_t limit) {
     if (_covering.isDone()) {
       // we already know that no further results will be returned by the index
       return false;
@@ -471,7 +473,7 @@ class RDBCoveringIterator final : public IndexIterator {
     return !_covering.isDone() || _scanningInterval < _scan.size();
   }
 
-  bool nextDocumentImpl(DocumentCallback const& cb, size_t limit) override {
+  bool nextDocumentImpl(DocumentCallback const& cb, uint64_t limit) override {
     return nextToken(
         [this, &cb](LocalDocumentId const& docid) -> bool {
           bool result = true;  // this is updated by the callback
@@ -509,7 +511,7 @@ class RDBCoveringIterator final : public IndexIterator {
         limit);
   }
 
-  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, uint64_t limit) override {
     return nextToken(
         [this, &cb](LocalDocumentId const& docid) -> bool {
           geo::FilterType const ft = _covering.filterType();
@@ -550,7 +552,7 @@ class RDBCoveringIterator final : public IndexIterator {
         limit);
   }
 
-  void resetImpl() override { _covering.reset(); }
+  void resetImpl() final { _covering.reset(); }
 
  private:
   void performScan() {
@@ -603,7 +605,7 @@ class RDBCoveringIterator final : public IndexIterator {
       }
 
       // validate that Iterator is in a good shape and hasn't failed
-      arangodb::rocksutils::checkIteratorStatus(_iter.get());
+      rocksutils::checkIteratorStatus(*_iter);
 
       ++_scanningInterval;
       if (_covering.bufferSize() > 1024) {

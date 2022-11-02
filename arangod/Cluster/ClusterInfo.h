@@ -27,266 +27,64 @@
 
 #include "Basics/Common.h"
 
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
 #include <memory>
 #include <mutex>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <unordered_map>
 
 #include "Agency/AgencyComm.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/Result.h"
-#include "Basics/ResultT.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/Thread.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Cluster/AgencyCallback.h"
-#include "Cluster/AgencyCallbackRegistry.h"
+#include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
-#include "Futures/Future.h"
 #include "Network/types.h"
 #include "Metrics/Fwd.h"
-#include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/VocbaseInfo.h"
-#include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
+#include "Replication2/AgencyCollectionSpecification.h"
+#include "Replication2/Version.h"
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
+
+namespace futures {
+template<typename T>
+class Future;
+template<typename T>
+class Promise;
+}  // namespace futures
+
+class Result;
+template<typename T>
+class ResultT;
+
 namespace velocypack {
 class Builder;
 class Slice;
 }  // namespace velocypack
 
-namespace replication2::agency {
+namespace replication2 {
+class LogId;
+namespace agency {
 struct LogPlanSpecification;
-struct CollectionGroupId;
-struct CollectionGroup;
-}  // namespace replication2::agency
+}  // namespace agency
+namespace replicated_state::agency {
+struct Target;
+}  // namespace replicated_state::agency
+}  // namespace replication2
 
-class ClusterInfo;
-class LogicalCollection;
+class AgencyCallbackRegistry;
 struct ClusterCollectionCreationInfo;
-
-// make sure a collection is still in Plan
-// we are only going from *assuming* that it is present
-// to it being changed to not present.
-class CollectionWatcher
-    : public std::enable_shared_from_this<CollectionWatcher> {
- public:
-  CollectionWatcher(CollectionWatcher const&) = delete;
-  CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry,
-                    LogicalCollection const& collection);
-  ~CollectionWatcher();
-
-  bool isPresent() {
-    // Make sure we did not miss a callback
-    _agencyCallback->refetchAndUpdate(true, false);
-    return _present.load();
-  }
-
- private:
-  AgencyCallbackRegistry* _agencyCallbackRegistry;
-  std::shared_ptr<AgencyCallback> _agencyCallback;
-
-  // TODO: this does not really need to be atomic: We only write to it
-  //       in the callback, and we only read it in `isPresent`; it does
-  //       not actually matter whether this value is "correct".
-  std::atomic<bool> _present;
-};
-
-class CollectionInfoCurrent {
-  friend class ClusterInfo;
-
- public:
-  explicit CollectionInfoCurrent(uint64_t currentVersion);
-
-  CollectionInfoCurrent(CollectionInfoCurrent const&) = delete;
-
-  CollectionInfoCurrent(CollectionInfoCurrent&&) = delete;
-
-  CollectionInfoCurrent& operator=(CollectionInfoCurrent const&) = delete;
-
-  CollectionInfoCurrent& operator=(CollectionInfoCurrent&&) = delete;
-
-  virtual ~CollectionInfoCurrent();
-
- public:
-  bool add(std::string_view shardID, VPackSlice slice) {
-    auto it = _vpacks.find(shardID);
-    if (it == _vpacks.end()) {
-      _vpacks.emplace(shardID, std::make_shared<VPackBuilder>(slice));
-      return true;
-    }
-    return false;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the indexes
-  //////////////////////////////////////////////////////////////////////////////
-
-  [[nodiscard]] VPackSlice getIndexes(std::string_view shardID) const {
-    auto it = _vpacks.find(shardID);
-    if (it != _vpacks.end()) {
-      VPackSlice slice = it->second->slice();
-      return slice.get("indexes");
-    }
-    return VPackSlice::noneSlice();
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the error flag for a shardID
-  //////////////////////////////////////////////////////////////////////////////
-
-  [[nodiscard]] bool error(std::string_view shardID) const {
-    return getFlag(StaticStrings::Error, shardID);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the error flag for all shardIDs
-  //////////////////////////////////////////////////////////////////////////////
-
-  [[nodiscard]] containers::FlatHashMap<ShardID, bool> error() const {
-    return getFlag(StaticStrings::Error);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the errorNum for one shardID
-  //////////////////////////////////////////////////////////////////////////////
-
-  [[nodiscard]] int errorNum(std::string_view shardID) const {
-    auto it = _vpacks.find(shardID);
-    if (it != _vpacks.end()) {
-      VPackSlice slice = it->second->slice();
-      return arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-          slice, StaticStrings::ErrorNum, 0);
-    }
-    return 0;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the errorNum for all shardIDs
-  //////////////////////////////////////////////////////////////////////////////
-
-  [[nodiscard]] containers::FlatHashMap<ShardID, int> errorNum() const {
-    containers::FlatHashMap<ShardID, int> m;
-
-    for (auto const& it : _vpacks) {
-      int s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-          it.second->slice(), StaticStrings::ErrorNum, 0);
-      m.insert(std::make_pair(it.first, s));
-    }
-    return m;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the current leader and followers for a shard
-  //////////////////////////////////////////////////////////////////////////////
-
-  [[nodiscard]] TEST_VIRTUAL std::vector<ServerID> servers(
-      std::string_view shardID) const {
-    std::vector<ServerID> v;
-
-    auto it = _vpacks.find(shardID);
-    if (it != _vpacks.end()) {
-      VPackSlice slice = it->second->slice();
-
-      VPackSlice servers = slice.get("servers");
-      if (servers.isArray()) {
-        for (VPackSlice server : VPackArrayIterator(servers)) {
-          if (server.isString()) {
-            v.push_back(server.copyString());
-          }
-        }
-      }
-    }
-    return v;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the current failover candidates for the given shard
-  //////////////////////////////////////////////////////////////////////////////
-
-  [[nodiscard]] TEST_VIRTUAL std::vector<ServerID> failoverCandidates(
-      std::string_view shardID) const {
-    std::vector<ServerID> v;
-
-    auto it = _vpacks.find(shardID);
-    if (it != _vpacks.end()) {
-      VPackSlice slice = it->second->slice();
-
-      VPackSlice servers = slice.get(StaticStrings::FailoverCandidates);
-      if (servers.isArray()) {
-        for (VPackSlice server : VPackArrayIterator(servers)) {
-          TRI_ASSERT(server.isString());
-          if (server.isString()) {
-            v.emplace_back(server.copyString());
-          }
-        }
-      }
-    }
-    return v;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the errorMessage entry for one shardID
-  //////////////////////////////////////////////////////////////////////////////
-
-  [[nodiscard]] std::string errorMessage(std::string_view shardID) const {
-    auto it = _vpacks.find(shardID);
-    if (it != _vpacks.end()) {
-      VPackSlice slice = it->second->slice();
-      if (slice.isObject() && slice.hasKey(StaticStrings::ErrorMessage)) {
-        return slice.get(StaticStrings::ErrorMessage).copyString();
-      }
-    }
-    return std::string();
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get version that underlies this info in Current in the agency
-  //////////////////////////////////////////////////////////////////////////////
-
-  [[nodiscard]] uint64_t getCurrentVersion() const { return _currentVersion; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief local helper to return boolean flags
-  //////////////////////////////////////////////////////////////////////////////
-
- private:
-  [[nodiscard]] bool getFlag(std::string_view name,
-                             std::string_view shardID) const {
-    auto it = _vpacks.find(shardID);
-    if (it != _vpacks.end()) {
-      return arangodb::basics::VelocyPackHelper::getBooleanValue(
-          it->second->slice(), name, false);
-    }
-    return false;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief local helper to return a map to boolean
-  //////////////////////////////////////////////////////////////////////////////
-
-  [[nodiscard]] containers::FlatHashMap<ShardID, bool> getFlag(
-      std::string_view name) const {
-    containers::FlatHashMap<ShardID, bool> m;
-    for (auto const& it : _vpacks) {
-      auto vpack = it.second;
-      bool b = arangodb::basics::VelocyPackHelper::getBooleanValue(
-          vpack->slice(), name, false);
-      m.emplace(it.first, b);
-    }
-    return m;
-  }
-
-  containers::FlatHashMap<ShardID, std::shared_ptr<VPackBuilder>> _vpacks;
-
-  uint64_t _currentVersion;  // Version of Current in the agency that
-                             // underpins the data presented in this object
-};
+class ClusterInfo;
+class CollectionInfoCurrent;
+class CreateDatabaseInfo;
+class IndexId;
+class LogicalDataSource;
+class LogicalCollection;
+class LogicalView;
 
 class AnalyzerModificationTransaction {
  public:
@@ -366,26 +164,7 @@ class ClusterInfo final {
       containers::FlatHashMap<ViewID, std::shared_ptr<LogicalView>>;
   using AllViews = containers::FlatHashMap<DatabaseID, DatabaseViews>;
 
-  class SyncerThread final : public arangodb::ServerThread<ArangodServer> {
-   public:
-    explicit SyncerThread(Server&, std::string const& section,
-                          std::function<void()> const&,
-                          AgencyCallbackRegistry*);
-    ~SyncerThread() override;
-    void beginShutdown() override;
-    void run() override;
-    bool start();
-    bool notify();
-
-   private:
-    std::mutex _m;
-    std::condition_variable _cv;
-    bool _news;
-    std::string _section;
-    std::function<void()> _f;
-    AgencyCallbackRegistry* _cr;
-    std::shared_ptr<AgencyCallback> _acb;
-  };
+  class SyncerThread;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes library
@@ -696,7 +475,8 @@ class ClusterInfo final {
       bool waitForReplication, arangodb::velocypack::Slice json,
       double timeout,  // request timeout
       bool isNewDatabase,
-      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike);
+      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
+      replication::Version replicationVersion);
 
   /// @brief this method does an atomic check of the preconditions for the
   /// collections to be created, using the currently loaded plan.
@@ -713,8 +493,8 @@ class ClusterInfo final {
       std::string const& databaseName,
       std::vector<ClusterCollectionCreationInfo>&, double endTime,
       bool isNewDatabase,
-      std::shared_ptr<const LogicalCollection> const&
-          colToDistributeShardsLike);
+      std::shared_ptr<const LogicalCollection> const& colToDistributeShardsLike,
+      replication::Version replicationVersion);
 
   /// @brief drop collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
@@ -777,6 +557,45 @@ class ClusterInfo final {
 
   Result finishModifyingAnalyzerCoordinator(std::string_view databaseId,
                                             bool restore);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Init metrics state
+  /// @note Current server should be Coordinator
+  /// Try to propose current server as leader or know that someone
+  /// was a leader. No return while we don't know that or server should stop.
+  //////////////////////////////////////////////////////////////////////////////
+  void initMetricsState();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief The MetricsState that stored in agency.
+  /// @note If `leader` is `nullopt` that means we ourselves are the leader.
+  //////////////////////////////////////////////////////////////////////////////
+  struct [[nodiscard]] MetricsState {
+    std::optional<ServerID> leader;
+  };
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Gets the current MetricsState from the agencyCache.
+  /// @param wantLeader If it is `true`, a RebootTracker event is set,
+  /// in which we will try to become the new leader ourselves, if the current
+  /// leader dies. If the flag is `false`, no new event is set,
+  /// but the old one is also not deleted.
+  /// @note This method can throw exceptions of various types, if
+  /// something is not founded or some other error occurs, so the called
+  /// must guard against this. In particular, this can happen in the
+  /// bootstrap phase if the `AgencyCache` has not yet heard about this.
+  /// @note If `wantLeader` is true, then thread-safe, otherwise not
+  /// @return Who is the leader, and what cache version is current.
+  //////////////////////////////////////////////////////////////////////////////
+  MetricsState getMetricsState(bool wantLeader);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Try to propose current server as new leader
+  /// @note Current server should be Coordinator
+  /// @param oldRebootId last leader RebootId
+  /// @param oldServerId last leader ServerID
+  //////////////////////////////////////////////////////////////////////////////
+  void proposeMetricsLeader(uint64_t oldRebootId, std::string_view oldServerId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Creates cleanup transaction for first found dangling operation
@@ -873,6 +692,12 @@ class ClusterInfo final {
   std::shared_ptr<std::vector<ServerID> const> getResponsibleServer(
       std::string_view shardID);
 
+  std::shared_ptr<std::vector<ServerID> const> getResponsibleServerReplication1(
+      std::string_view shardID);
+
+  std::shared_ptr<std::vector<ServerID> const> getResponsibleServerReplication2(
+      std::string_view shardID);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief atomically find all servers who are responsible for the given
   /// shards (only the leaders).
@@ -884,6 +709,36 @@ class ClusterInfo final {
 
   containers::FlatHashMap<ShardID, ServerID> getResponsibleServers(
       containers::FlatHashSet<ShardID> const&);
+
+  void getResponsibleServersReplication1(
+      containers::FlatHashSet<ShardID> const& shardIds,
+      containers::FlatHashMap<ShardID, ServerID>& result);
+
+  bool getResponsibleServersReplication2(
+      containers::FlatHashSet<ShardID> const& shardIds,
+      containers::FlatHashMap<ShardID, ServerID>& result);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief atomically find all servers who are responsible for the given
+  /// shards (choose either the leader or some follower for each, but
+  /// make the choice consistent with `distributeShardsLike` dependencies.
+  /// Will throw an exception if no leader can be found for any
+  /// of the shards. Will return an empty result if the shards couldn't be
+  /// determined after a while - it is the responsibility of the caller to
+  /// check for an empty result!
+  /// The map `result` can already contain a partial choice, this method
+  /// ensures that all the shards in `list` are in the end set in the
+  /// `result` map. Additional shards can be added to `result` as needed,
+  /// in particular the shard prototypes of the shards in list will be added.
+  /// It is not allowed that `result` contains a setting for a shard but
+  /// no setting (or a different one) for its shard prototype!
+  //////////////////////////////////////////////////////////////////////////////
+
+#ifdef USE_ENTERPRISE
+  void getResponsibleServersReadFromFollower(
+      containers::FlatHashSet<ShardID> const& list,
+      containers::FlatHashMap<ShardID, ServerID>& result);
+#endif
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find the shard list of a collection, sorted numerically
@@ -934,6 +789,16 @@ class ClusterInfo final {
 
   void setServerAdvertisedEndpoints(
       containers::FlatHashMap<ServerID, std::string> advertisedEndpoints);
+
+  void setShardToShardGroupLeader(
+      containers::FlatHashMap<ShardID, ShardID> shardToShardGroupLeader);
+
+  void setShardGroups(
+      containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ShardID>>>);
+
+  void setShardIds(
+      containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
+          shardIds);
 #endif
 
   bool serverExists(std::string_view serverID) const noexcept;
@@ -968,17 +833,17 @@ class ClusterInfo final {
   /// @brief map shardId to collection name (not ID)
   CollectionID getCollectionNameForShard(std::string_view shardId);
 
-  auto getReplicatedLogLeader(std::string_view database,
-                              replication2::LogId) const -> ResultT<ServerID>;
+  auto getReplicatedLogLeader(replication2::LogId) const -> ResultT<ServerID>;
 
-  auto getReplicatedLogParticipants(std::string_view database,
-                                    replication2::LogId) const
+  auto getReplicatedLogParticipants(replication2::LogId) const
       -> ResultT<std::vector<ServerID>>;
 
-  auto getReplicatedLogPlanSpecification(std::string_view database,
-                                         replication2::LogId) const
+  auto getReplicatedLogPlanSpecification(replication2::LogId) const -> ResultT<
+      std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
+
+  auto getReplicatedLogsParticipants(std::string_view database) const
       -> ResultT<
-          std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
+          std::unordered_map<replication2::LogId, std::vector<std::string>>>;
 
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds
@@ -1016,11 +881,6 @@ class ClusterInfo final {
   Result dropIndexCoordinatorInner(std::string const& databaseName,
                                    std::string const& collectionID, IndexId iid,
                                    double endTime);
-
-  /// @brief helper function to build a new LogicalCollection object from the
-  /// velocypack input
-  static std::shared_ptr<LogicalCollection> createCollectionObject(
-      arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase);
 
   /// @brief create a new collecion object from the data, using the cache if
   /// possible
@@ -1084,6 +944,33 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
   void triggerBackgroundGetIds();
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief a replicated state is created for each shard, only when using
+  /// Replication2
+  //////////////////////////////////////////////////////////////////////////////
+  static auto createDocumentStateSpec(std::string const& shardId,
+                                      std::vector<std::string> const& serverIds,
+                                      ClusterCollectionCreationInfo const& info,
+                                      std::string const& databaseName)
+      -> replication2::replicated_state::agency::Target;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns a future which can be used to wait for the successful
+  /// creation of replicated states
+  //////////////////////////////////////////////////////////////////////////////
+  auto waitForReplicatedStatesCreation(
+      std::string const& databaseName,
+      std::vector<replication2::replicated_state::agency::Target> const&
+          replicatedStates) -> futures::Future<Result>;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief deletes replicated states corresponding to shards
+  //////////////////////////////////////////////////////////////////////////////
+  auto deleteReplicatedStates(
+      std::string const& databaseName,
+      std::vector<replication2::LogId> const& replicatedStatesIds)
+      -> futures::Future<Result>;
+
   /// underlying application server
   ArangodServer& _server;
 
@@ -1122,7 +1009,7 @@ class ClusterInfo final {
   };
 
   cluster::RebootTracker _rebootTracker;
-
+  cluster::CallbackGuard _metricsGuard;
   /// @brief error code sent to all remaining promises of the syncers at
   /// shutdown. normally this is TRI_ERROR_SHUTTING_DOWN, but it can be
   /// overridden during testing
@@ -1189,7 +1076,8 @@ class ClusterInfo final {
   // responsible and Current contains the actual current responsibility.
 
   // The Plan state:
-  AllCollections _plannedCollections;  // from Plan/Collections/
+  AllCollections _plannedCollections;     // from Plan/Collections/
+  AllCollections _newPlannedCollections;  // TODO
   containers::FlatHashMap<CollectionID,
                           std::shared_ptr<std::vector<std::string>>>
       _shards;  // from Plan/Collections/
@@ -1198,6 +1086,44 @@ class ClusterInfo final {
   containers::FlatHashMap<ShardID, std::vector<ServerID>> _shardServers;
   // planned shard ID => collection name
   containers::FlatHashMap<ShardID, CollectionID> _shardToName;
+
+  // planned shard ID => shard ID of shard group leader
+  // This deserves an explanation. If collection B has `distributeShardsLike`
+  // collection A, then A and B have the same number of shards. We say that
+  // the k-th shard of A and the k-th shard of B are in the same "shard group".
+  // This can be true for multiple collections, but they must then always
+  // have the same collection A under `distributeShardsLike`. The shard of
+  // collection A is then called the "shard group leader". It is guaranteed that
+  // the shards of a shard group are always planned to be on the same
+  // dbserver, and the leader is always the same for all shards in the group.
+  // If a shard is a shard group leader, it does not appear in this map.
+  // Example:
+  //        Collection:      A        B        C
+  //        Shard index 0:   s1       s5       s9
+  //        Shard index 1:   s2       s6       s10
+  //        Shard index 2:   s3       s7       s11
+  //        Shard index 3:   s4       s8       s12
+  // Here, collection B has "distributeShardsLike" set to "A",
+  //       collection C has "distributeShardsLike" set to "B",
+  //       the `numberOfShards` is 4 for all three collections.
+  // Shard groups are: s1, s5, s9
+  //              and: s2, s6, s10
+  //              and: s3, s7, s11
+  //              and: s4, s8, s12
+  // Shard group leaders are s1, s2, s3 and s4.
+  // That is, "shard group" is across collections, "shard index" is
+  // within a collection.
+  // All three collections must have the same `replicationFactor`, and
+  // it is guaranteed, that all shards in a group always have the same
+  // leader and the same list of followers.
+  // Note however, that a follower for a shard group can be in sync with
+  // its leader for some of the shards in the group and not for others!
+  // Note that shard group leaders themselves do not appear in this map:
+  containers::FlatHashMap<ShardID, ShardID> _shardToShardGroupLeader;
+  // In the following map we store for each shard group leader the list
+  // of shards in the group, including the leader.
+  containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ShardID>>>
+      _shardGroups;
 
   AllViews _plannedViews;     // from Plan/Views/
   AllViews _newPlannedViews;  // views that have been created during `loadPlan`
@@ -1217,6 +1143,16 @@ class ClusterInfo final {
   struct NewStuffByDatabase;
   containers::FlatHashMap<DatabaseID, std::shared_ptr<NewStuffByDatabase>>
       _newStuffByDatabase;
+
+  using ReplicatedLogsMap = containers::FlatHashMap<
+      replication2::LogId,
+      std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
+  // note: protected by _planProt!
+  ReplicatedLogsMap _replicatedLogs;
+
+  using CollectionGroupMap = containers::FlatHashMap<
+      replication2::agency::CollectionGroupId,
+      std::shared_ptr<replication2::agency::CollectionGroup const>>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief uniqid sequence

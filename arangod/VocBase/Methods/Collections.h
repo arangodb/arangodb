@@ -40,6 +40,7 @@ class ClusterFeature;
 class LogicalCollection;
 struct CollectionCreationInfo;
 class CollectionNameResolver;
+struct PlanCollection;
 
 namespace transaction {
 class Methods;
@@ -90,14 +91,27 @@ struct Collections {
 
   /// Create collection, ownership of collection in callback is
   /// transferred to callee
-  static arangodb::Result create(  // create collection
-      TRI_vocbase_t& vocbase,      // collection vocbase
+  [[nodiscard]] static arangodb::ResultT<
+      std::vector<std::shared_ptr<LogicalCollection>>>
+  create(                      // create collection
+      TRI_vocbase_t& vocbase,  // collection vocbase
       OperationOptions const& options,
-      std::string const& name,                        // collection name
-      TRI_col_type_e collectionType,                  // collection type
-      arangodb::velocypack::Slice const& properties,  // collection properties
-      bool createWaitsForSyncReplication,             // replication wait flag
-      bool enforceReplicationFactor,                  // replication factor flag
+      std::vector<PlanCollection> collections,  // Collections to create
+      bool createWaitsForSyncReplication,       // replication wait flag
+      bool enforceReplicationFactor,            // replication factor flag
+      bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer = false,
+      bool isRestore = false);  // whether this is being called during restore
+
+  /// Create collection, ownership of collection in callback is
+  /// transferred to callee
+  [[nodiscard]] static arangodb::Result create(  // create collection
+      TRI_vocbase_t& vocbase,                    // collection vocbase
+      OperationOptions const& options,
+      std::string const& name,                 // collection name
+      TRI_col_type_e collectionType,           // collection type
+      arangodb::velocypack::Slice properties,  // collection properties
+      bool createWaitsForSyncReplication,      // replication wait flag
+      bool enforceReplicationFactor,           // replication factor flag
       bool isNewDatabase,
       std::shared_ptr<LogicalCollection>& ret,  // invoke on collection creation
       bool allowSystem = false,
@@ -123,12 +137,9 @@ struct Collections {
       std::string const& collectionName, VPackBuilder& builder,
       TRI_vocbase_t const&);
 
-  static Result load(TRI_vocbase_t& vocbase, LogicalCollection* coll);
-  static Result unload(TRI_vocbase_t* vocbase, LogicalCollection* coll);
-
   static Result properties(Context& ctxt, velocypack::Builder&);
   static Result updateProperties(LogicalCollection& collection,
-                                 velocypack::Slice const& props,
+                                 velocypack::Slice props,
                                  OperationOptions const& options);
 
   static Result rename(LogicalCollection& collection,

@@ -63,21 +63,35 @@
     },
     getFiguresCombined: function (callback, isCluster) {
       var self = this;
-      var shardsCallback = function (error, data) {
+      var propertiesCallback = function (error, data) {
         if (error) {
           callback(true);
+        } else {
+          var figures = data;
+          self.getProperties(function (error, data) {
+            if (error) {
+              callback(true, figures);
+            } else {
+              callback(false, Object.assign(figures, { properties: data }));
+            }
+          });
+        }
+      };
+      var shardsCallback = function (error, data) {
+        if (error) {
+          propertiesCallback(true);
         } else {
           var figures = data;
           if (isCluster) {
             self.getShards(function (error, data) {
               if (error) {
-                callback(true);
+                propertiesCallback(true, data);
               } else {
-                callback(false, Object.assign(figures, { shards: data.shards }));
+                propertiesCallback(false, Object.assign(figures, { shards: data.shards }));
               }
             });
           } else {
-            callback(false, figures);
+            propertiesCallback(false, figures);
           }
         }
       };
@@ -139,64 +153,70 @@
 
     createIndex: function (postParameter, callback) {
       var self = this;
-
-      $.ajax({
-        cache: false,
-        type: 'POST',
-        url: arangoHelper.databaseUrl('/_api/index?collection=' + encodeURIComponent(self.get('id'))),
-        headers: {
-          'x-arango-async': 'store'
-        },
-        data: JSON.stringify(postParameter),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data, textStatus, xhr) {
-          if (xhr.getResponseHeader('x-arango-async-id')) {
-            window.arangoHelper.addAardvarkJob({
-              id: xhr.getResponseHeader('x-arango-async-id'),
-              type: 'index',
-              desc: 'Creating Index',
-              collection: self.get('id')
-            });
-            callback(false, data);
-          } else {
+      arangoHelper.checkDatabasePermissions(function () {
+        arangoHelper.arangoError("You do not have permission to create indexes in this database.");
+      }, function () {
+        $.ajax({
+          cache: false,
+          type: 'POST',
+          url: arangoHelper.databaseUrl('/_api/index?collection=' + encodeURIComponent(self.get('id'))),
+          headers: {
+            'x-arango-async': 'store'
+          },
+          data: JSON.stringify(postParameter),
+          contentType: 'application/json',
+          processData: false,
+          success: function (data, textStatus, xhr) {
+            if (xhr.getResponseHeader('x-arango-async-id')) {
+              window.arangoHelper.addAardvarkJob({
+                id: xhr.getResponseHeader('x-arango-async-id'),
+                type: 'index',
+                desc: 'Creating Index',
+                collection: self.get('id')
+              });
+              callback(false, data);
+            } else {
+              callback(true, data);
+            }
+          },
+          error: function (data) {
             callback(true, data);
           }
-        },
-        error: function (data) {
-          callback(true, data);
-        }
+        });
       });
     },
 
     deleteIndex: function (id, callback) {
       var self = this;
-
-      $.ajax({
-        cache: false,
-        type: 'DELETE',
-        url: arangoHelper.databaseUrl('/_api/index/' + encodeURIComponent(this.get('name')) + '/' + encodeURIComponent(id)),
-        headers: {
-          'x-arango-async': 'store'
-        },
-        success: function (data, textStatus, xhr) {
-          if (xhr.getResponseHeader('x-arango-async-id')) {
-            window.arangoHelper.addAardvarkJob({
-              id: xhr.getResponseHeader('x-arango-async-id'),
-              type: 'index',
-              desc: 'Removing Index',
-              collection: self.get('id')
-            });
-            callback(false, data);
-          } else {
+      arangoHelper.checkDatabasePermissions(function () {
+          arangoHelper.arangoError("You do not have permission to delete indexes in this" +
+            " database.");
+        }, function () {
+        $.ajax({
+          cache: false,
+          type: 'DELETE',
+          url: arangoHelper.databaseUrl('/_api/index/' + encodeURIComponent(self.get('name')) + '/' + encodeURIComponent(id)),
+          headers: {
+            'x-arango-async': 'store'
+          },
+          success: function (data, textStatus, xhr) {
+            if (xhr.getResponseHeader('x-arango-async-id')) {
+              window.arangoHelper.addAardvarkJob({
+                id: xhr.getResponseHeader('x-arango-async-id'),
+                type: 'index',
+                desc: 'Removing Index',
+                collection: self.get('id')
+              });
+              callback(false, data);
+            } else {
+              callback(true, data);
+            }
+          },
+          error: function (data) {
             callback(true, data);
           }
-        },
-        error: function (data) {
-          callback(true, data);
-        }
+        });
       });
-      callback();
     },
 
     truncateCollection: function () {
@@ -278,8 +298,7 @@
       });
     },
 
-    changeCollection: function (wfs, replicationFactor, writeConcern, callback) {
-      var result = false;
+    changeCollection: function (wfs, replicationFactor, writeConcern, cacheEnabled, callback) {
       if (wfs === 'true') {
         wfs = true;
       } else if (wfs === 'false') {
@@ -288,6 +307,15 @@
       var data = {
         waitForSync: wfs
       };
+
+      if (cacheEnabled === 'true' || cacheEnabled === true) {
+        cacheEnabled = true;
+      } else {
+        cacheEnabled = false;
+      }
+      if (cacheEnabled !== null && cacheEnabled !== undefined) {
+        data.cacheEnabled = cacheEnabled;
+      }
 
       if (replicationFactor) {
         data.replicationFactor = parseInt(replicationFactor, 10);
@@ -311,24 +339,18 @@
           callback(true, data);
         }
       });
-      return result;
     },
 
-    changeValidation: function (validation, callback) {
-      var result = false;
-      if (!validation) {
-        validation = null;
+    changeComputedValues: function (computedValues, callback) {
+      if (!computedValues) {
+        computedValues = null;
       }
-
-      var data = {
-        schema: validation
-      };
 
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/properties'),
-        data: JSON.stringify(data),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('name')) + '/properties'),
+        data: JSON.stringify({ computedValues: computedValues }),
         contentType: 'application/json',
         processData: false,
         success: function () {
@@ -338,7 +360,27 @@
           callback(true, data);
         }
       });
-      return result;
+    },
+
+    changeValidation: function (validation, callback) {
+      if (!validation) {
+        validation = null;
+      }
+
+      $.ajax({
+        cache: false,
+        type: 'PUT',
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/properties'),
+        data: JSON.stringify({ schema: validation }),
+        contentType: 'application/json',
+        processData: false,
+        success: function () {
+          callback(false);
+        },
+        error: function (data) {
+          callback(true, data);
+        }
+      });
     }
 
   });

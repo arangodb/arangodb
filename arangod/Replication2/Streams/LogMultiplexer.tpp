@@ -378,7 +378,8 @@ struct LogMultiplexerImplementation
 
   template<typename StreamDescriptor,
            typename T = stream_descriptor_type_t<StreamDescriptor>>
-  auto insertInternal(T const& t) -> LogIndex {
+  auto insertInternalDeferred(T const& t)
+      -> std::pair<LogIndex, DeferredAction> {
     auto serialized = std::invoke([&] {
       velocypack::Builder builder;
       MultiplexedValues::toVelocyPack<StreamDescriptor>(t, builder);
@@ -403,15 +404,30 @@ struct LogMultiplexerImplementation
           block.appendEntry(insertIndex, t);
           return std::make_pair(insertIndex, self.checkWaitFor());
         });
-    // TODO - HACK: because LogLeader::insert can resolve waitFor promises
-    //    we have a possible deadlock with triggerWaitForIndex callback.
-    //    This is circumvented by first inserting the entry but not triggering
-    //    replication immediately. We trigger it here instead.
-    _interface->triggerAsyncReplication();
 
     if (waitForIndex.has_value()) {
       triggerWaitForIndex(*waitForIndex);
     }
+
+    // TODO - HACK: because LogLeader::insert can
+    // resolve waitFor promises
+    // we have a possible deadlock with
+    // triggerWaitForIndex callback. This is
+    // circumvented by first inserting the entry but
+    // not triggering replication immediately. We
+    // trigger it here instead.
+    // Note that the MSVC STL has a #define interface... macro.
+    return std::make_pair(index,
+                          DeferredAction([interface_ = _interface]() noexcept {
+                            interface_->triggerAsyncReplication();
+                          }));
+  }
+
+  template<typename StreamDescriptor,
+           typename T = stream_descriptor_type_t<StreamDescriptor>>
+  auto insertInternal(T const& t) -> LogIndex {
+    auto [index, da] = insertInternalDeferred<StreamDescriptor>(t);
+    da.fire();
     return index;
   }
 

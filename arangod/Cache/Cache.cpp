@@ -103,11 +103,20 @@ std::uint64_t Cache::usageLimit() const noexcept {
 
 std::uint64_t Cache::usage() const noexcept {
   if (ADB_UNLIKELY(isShutdown())) {
-    return false;
+    return 0;
   }
 
   SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
   return _metadata.usage;
+}
+
+std::pair<std::uint64_t, std::uint64_t> Cache::sizeAndUsage() const noexcept {
+  if (ADB_UNLIKELY(isShutdown())) {
+    return {0, 0};
+  }
+
+  SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
+  return {_metadata.allocatedSize, _metadata.usage};
 }
 
 void Cache::sizeHint(uint64_t numElements) {

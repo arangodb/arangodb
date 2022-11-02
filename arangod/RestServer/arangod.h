@@ -74,6 +74,7 @@ class HttpEndpointProvider;
 class EngineSelectorFeature;
 class EnvironmentFeature;
 class FileDescriptorsFeature;
+class FileSystemFeature;
 class FlushFeature;
 class FortuneFeature;
 class FoxxFeature;
@@ -113,6 +114,7 @@ class StatisticsFeature;
 class StorageEngineFeature;
 class SystemDatabaseFeature;
 class TempFeature;
+class TemporaryStorageFeature;
 class TtlFeature;
 class UpgradeFeature;
 class V8DealerFeature;
@@ -170,6 +172,10 @@ struct BlackHoleStateMachineFeature;
 namespace prototype {
 struct PrototypeStateMachineFeature;
 }
+
+namespace document {
+struct DocumentStateMachineFeature;
+}
 }  // namespace replication2::replicated_state
 
 using namespace application_features;
@@ -209,6 +215,7 @@ using ArangodFeatures = TypeList<
     HttpEndpointProvider,
     EngineSelectorFeature,
     EnvironmentFeature,
+    FileSystemFeature,
     FlushFeature,
     FortuneFeature,
     FoxxFeature,
@@ -248,6 +255,7 @@ using ArangodFeatures = TypeList<
     StorageEngineFeature,
     SystemDatabaseFeature,
     TempFeature,
+    TemporaryStorageFeature,
     TtlFeature,
     UpgradeFeature,
     V8DealerFeature,
@@ -286,7 +294,8 @@ using ArangodFeatures = TypeList<
     cluster::FailureOracleFeature,
     replication2::replicated_state::ReplicatedStateAppFeature,
     replication2::replicated_state::black_hole::BlackHoleStateMachineFeature,
-    replication2::replicated_state::prototype::PrototypeStateMachineFeature
+    replication2::replicated_state::prototype::PrototypeStateMachineFeature,
+    replication2::replicated_state::document::DocumentStateMachineFeature
 >;  // clang-format on
 
 using ArangodServer = application_features::ApplicationServerT<ArangodFeatures>;

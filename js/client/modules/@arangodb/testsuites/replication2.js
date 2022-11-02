@@ -55,10 +55,12 @@ function replication2Client(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function replication2Server(options) {
-  const testCases = tu.scanTestPaths(testPaths.replication2_server, options);
+  let testCases = tu.scanTestPaths(testPaths.replication2_server, options);
+  testCases = tu.splitBuckets(options, testCases);
 
   const opts = _.clone(options);
-  opts.dbServers = Math.max(opts.dbServers, 5);
+  opts.cluster = true;
+  opts.dbServers = Math.max(opts.dbServers, 6);
 
   return new tu.runOnArangodRunner(opts, 'replication2_server', {
     'javascript.allow-external-process-control': 'true',

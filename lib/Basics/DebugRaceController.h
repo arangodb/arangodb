@@ -48,19 +48,15 @@ class DebugRaceController {
   // and remove the didTrigger flag
   void reset();
 
-  // Test if this RaceController did trigger once.
-  // It can be de-activated after the first waiting
-  bool didTrigger() const;
-
   // Access the data stored by waiting threads.
   std::vector<std::any> data() const;
 
   // Caller is required to COPY the data to store here.
   // Otherwise a concurrent thread might try to read it,
   // after the caller has freed the memory.
-  void waitForOthers(
+  auto waitForOthers(
       size_t numberOfThreadsToWaitFor, std::any myData,
-      arangodb::application_features::ApplicationServer const& server);
+      arangodb::application_features::ApplicationServer const& server) -> bool;
 
  private:
   bool _didTrigger{false};

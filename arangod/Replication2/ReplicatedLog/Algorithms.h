@@ -100,16 +100,8 @@ auto operator<=>(ParticipantState const& left,
 auto operator<<(std::ostream& os, ParticipantState const& p) noexcept
     -> std::ostream&;
 
-struct CalculateCommitIndexOptions {
-  std::size_t const _writeConcern{0};
-  std::size_t const _softWriteConcern{0};
-
-  CalculateCommitIndexOptions(std::size_t writeConcern,
-                              std::size_t softWriteConcern);
-};
-
 auto calculateCommitIndex(std::vector<ParticipantState> const& participants,
-                          CalculateCommitIndexOptions opt,
+                          size_t effectiveWriteConcern,
                           LogIndex currentCommitIndex,
                           TermIndexPair lastTermIndex)
     -> std::tuple<LogIndex, replicated_log::CommitFailReason,

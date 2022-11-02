@@ -35,13 +35,13 @@
 #include "Metrics/MetricsFeature.h"
 
 #include "Agency/AgencyComm.h"
-#include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/TimeString.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
 #include "Cluster/Action.h"
@@ -109,6 +109,8 @@ DECLARE_GAUGE(arangodb_shards_leader_number, uint64_t,
               "Number of leader shards on this machine");
 DECLARE_GAUGE(arangodb_shards_not_replicated, uint64_t,
               "Number of shards not replicated at all");
+DECLARE_COUNTER(arangodb_sync_timeouts_total,
+                "Number of shard synchronization attempts that timed out");
 
 namespace {
 
@@ -231,8 +233,7 @@ void MaintenanceFeature::collectOptions(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnDBServer,
           arangodb::options::Flags::Uncommon));
-
-}  // MaintenanceFeature::collectOptions
+}
 
 void MaintenanceFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
@@ -302,6 +303,7 @@ void MaintenanceFeature::initializeMetrics() {
   _shards_leader_count = &metricsFeature.add(arangodb_shards_leader_number{});
   _shards_not_replicated_count =
       &metricsFeature.add(arangodb_shards_not_replicated{});
+  _sync_timeouts_total = &metricsFeature.add(arangodb_sync_timeouts_total{});
 
   _action_duplicated_counter =
       &metricsFeature.add(arangodb_maintenance_action_duplicate_total{});
@@ -476,8 +478,13 @@ void MaintenanceFeature::stop() {
       _workerCompletion.wait(std::chrono::milliseconds(10));
     }  // if
   }    // for
+}
 
-}  // MaintenanceFeature::stop
+void MaintenanceFeature::countTimedOutSyncAttempt() {
+  if (_sync_timeouts_total != nullptr) {
+    ++(*_sync_timeouts_total);
+  }
+}
 
 /// @brief Move an incomplete action to failed state
 Result MaintenanceFeature::deleteAction(uint64_t action_id) {

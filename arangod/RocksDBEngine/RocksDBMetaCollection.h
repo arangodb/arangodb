@@ -78,7 +78,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   std::unique_ptr<containers::RevisionTree> revisionTree(
       transaction::Methods& trx) override;
   std::unique_ptr<containers::RevisionTree> revisionTree(
-      uint64_t batchId) override;
+      rocksdb::SequenceNumber trxSeq) override;
   std::unique_ptr<containers::RevisionTree> computeRevisionTree(
       uint64_t batchId) override;
 
@@ -143,11 +143,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   void corruptRevisionTree(std::uint64_t count, std::uint64_t hash);
 #endif
-
- protected:
-  /// @brief track the usage of waitForSync option in an operation
-  void trackWaitForSync(arangodb::transaction::Methods* trx,
-                        OperationOptions& options);
 
  private:
   /// @brief sends the collection's revision tree to hibernation

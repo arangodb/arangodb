@@ -51,7 +51,8 @@ adaptive polling is thus useful to reduce the amount of work for both the
 applier and the logger server for cases when there are only infrequent
 changes. The downside is that when using adaptive polling, it might take
 longer for the replication applier to detect that there are new replication
-events on the logger server.<br>
+events on the logger server.
+
 Setting *adaptivePolling* to false will make the replication applier
 contact the logger server in a constant interval, regardless of whether
 the logger server provides updates frequently or seldom.

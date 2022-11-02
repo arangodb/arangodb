@@ -32,18 +32,17 @@
 #include "Aql/Collection.h"
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/FilterExecutor.h"
-#include "Aql/FixedVarExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
-#include "Aql/KShortestPathsNode.h"
+#include "Aql/EnumeratePathsNode.h"
 #include "Aql/LimitExecutor.h"
 #include "Aql/MaterializeExecutor.h"
 #include "Aql/ModificationNodes.h"
@@ -109,7 +108,7 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::UPSERT), "UpsertNode"},
     {static_cast<int>(ExecutionNode::TRAVERSAL), "TraversalNode"},
     {static_cast<int>(ExecutionNode::SHORTEST_PATH), "ShortestPathNode"},
-    {static_cast<int>(ExecutionNode::K_SHORTEST_PATHS), "KShortestPathsNode"},
+    {static_cast<int>(ExecutionNode::ENUMERATE_PATHS), "EnumeratePathsNode"},
     {static_cast<int>(ExecutionNode::REMOTESINGLE),
      "SingleRemoteOperationNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW),
@@ -122,9 +121,23 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::ASYNC), "AsyncNode"},
     {static_cast<int>(ExecutionNode::MUTEX), "MutexNode"},
     {static_cast<int>(ExecutionNode::WINDOW), "WindowNode"},
+    {static_cast<int>(ExecutionNode::OFFSET_INFO_MATERIALIZE),
+     "OffsetMaterializeNode"},
 };
 
 }  // namespace
+
+namespace arangodb::aql {
+ExecutionNode* createOffsetMaterializeNode(ExecutionPlan*, velocypack::Slice);
+
+#ifndef USE_ENTERPRISE
+ExecutionNode* createOffsetMaterializeNode(ExecutionPlan*, velocypack::Slice) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                 "Function 'OFFSET_INFO' is available in "
+                                 "ArangoDB Enterprise Edition only.");
+}
+#endif
+}  // namespace arangodb::aql
 
 /// @brief resolve nodeType to a string.
 std::string const& ExecutionNode::getTypeString(NodeType type) {
@@ -339,8 +352,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       return new TraversalNode(plan, slice);
     case SHORTEST_PATH:
       return new ShortestPathNode(plan, slice);
-    case K_SHORTEST_PATHS:
-      return new KShortestPathsNode(plan, slice);
+    case ENUMERATE_PATHS:
+      return new EnumeratePathsNode(plan, slice);
     case REMOTESINGLE:
       return new SingleRemoteOperationNode(plan, slice);
     case ENUMERATE_IRESEARCH_VIEW:
@@ -353,6 +366,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       return new DistributeConsumerNode(plan, slice);
     case MATERIALIZE:
       return createMaterializeNode(plan, slice);
+    case OFFSET_INFO_MATERIALIZE:
+      return aql::createOffsetMaterializeNode(plan, slice);
     case ASYNC:
       return new AsyncNode(plan, slice);
     case MUTEX:
@@ -540,7 +555,7 @@ void ExecutionNode::allToVelocyPack(VPackBuilder& builder,
   } nodeSerializer{builder, flags};
 
   VPackArrayBuilder guard(&builder);
-  const_cast<ExecutionNode*>(this)->walk(nodeSerializer);
+  const_cast<ExecutionNode*>(this)->flatWalk(nodeSerializer, true);
 }
 
 /// @brief execution Node clone utility to be called by derived classes
@@ -678,8 +693,8 @@ void ExecutionNode::invalidateCost() {
 CostEstimate ExecutionNode::getCost() const {
   if (!_costEstimate.isValid()) {
     // Use a walker to estimate cost of all direct and indirect dependencies.
-    // This is necessary to avoid deeply nested recursive calls in estimateCosts
-    // which could result in a stack overflow.
+    // This is necessary to avoid deeply nested recursive calls in
+    // estimateCosts which could result in a stack overflow.
     struct CostEstimator : WalkerWorkerBase<ExecutionNode> {
       void after(ExecutionNode* n) override {
         if (!n->_costEstimate.isValid()) {
@@ -696,7 +711,7 @@ CostEstimate ExecutionNode::getCost() const {
 
 /// @brief functionality to walk an execution plan recursively
 bool ExecutionNode::walk(WalkerWorkerBase<ExecutionNode>& worker) {
-  return doWalk(worker, false);
+  return doWalk(worker, false, FlattenType::NONE);
 }
 
 /// @brief functionality to walk an execution plan recursively.
@@ -707,36 +722,103 @@ bool ExecutionNode::walk(WalkerWorkerBase<ExecutionNode>& worker) {
 /// recursing into the subquery.
 bool ExecutionNode::walkSubqueriesFirst(
     WalkerWorkerBase<ExecutionNode>& worker) {
-  return doWalk(worker, true);
+  return doWalk(worker, true, FlattenType::NONE);
+}
+
+bool ExecutionNode::flatWalk(WalkerWorkerBase<ExecutionNode>& worker,
+                             bool onlyFlattenAsync) {
+  if (onlyFlattenAsync) {
+    return doWalk(worker, false, FlattenType::INLINE_ASYNC);
+  }
+  return doWalk(worker, false, FlattenType::INLINE_ALL);
 }
 
 bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
-                           bool subQueryFirst) {
+                           bool subQueryFirst, FlattenType flattenType) {
   enum class State { Pending, Processed, InSubQuery };
 
   using Entry = std::pair<ExecutionNode*, State>;
   // we can be quite generous with the buffer size since the implementation is
   // not recursive.
   constexpr std::size_t NumBufferedEntries = 1000;
-  constexpr std::size_t BufferSize = sizeof(Entry) * NumBufferedEntries;
-  containers::SmallVectorWithArena<Entry, BufferSize> nodes;
-  // Our stackbased arena can hold NumBufferedEntries, so we reserve everythhing
-  // at once.
-  nodes.reserve(NumBufferedEntries);
+  containers::SmallVector<Entry, NumBufferedEntries> nodes;
   nodes.emplace_back(const_cast<ExecutionNode*>(this), State::Pending);
 
   auto enqueDependencies = [&nodes](std::vector<ExecutionNode*>& deps) {
-    // we enqueue the dependencies in reversed order, because we always continue
-    // with the _last_ node in the list.
+    // we enqueue the dependencies in reversed order, because we always
+    // continue with the _last_ node in the list.
     for (auto it = deps.rbegin(); it != deps.rend(); ++it) {
       nodes.emplace_back(*it, State::Pending);
     }
   };
 
+  constexpr std::size_t NumJumpBackPointers = 10;
+  struct ParallelEntry {
+    explicit ParallelEntry(ExecutionNode* n) : _node(n), _nextVisit(1) {}
+
+    /// @brief Indicates that we have now visited all parallel paths
+    bool isComplete() const {
+      return _node->getDependencies().size() <= _nextVisit;
+    }
+
+    /// @brief Return the Next child to visit
+    ExecutionNode* visitNext() {
+      TRI_ASSERT(!isComplete());
+      return _node->getDependencies().at(_nextVisit++);
+    }
+
+   private:
+    ExecutionNode* _node;
+    size_t _nextVisit;
+  };
+
+  containers::SmallVector<ParallelEntry, NumJumpBackPointers> parallelStarter;
+
   while (!nodes.empty()) {
     auto& [n, state] = nodes.back();
     switch (state) {
       case State::Pending: {
+        if (flattenType != FlattenType::NONE && n->getParents().size() > 1) {
+          // This assert is not strictly necessary,
+          // by the time this code was implemented only
+          // SCATTER, MUTEX and DISTRIBUTE nodes were allowed to have more
+          // than one parent, so all others indicated an issue on plan
+          if (!(n->getType() == SCATTER || n->getType() == MUTEX ||
+                n->getType() == DISTRIBUTE)) {
+            VPackBuilder builder;
+
+            n->toVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
+            std::vector<ExecutionNode*> parents{};
+            n->parents(parents);
+
+            for (auto p : parents) {
+              builder.clear();
+              p->toVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
+            }
+          }
+          TRI_ASSERT(n->getType() == SCATTER || n->getType() == MUTEX ||
+                     n->getType() == DISTRIBUTE);
+          if (flattenType == FlattenType::INLINE_ALL || n->getType() == MUTEX) {
+            ADB_PROD_ASSERT(!parallelStarter.empty());
+            // If we are not INLINE_ALL, only flatten the MUTEX, which is the
+            // counterpart of ASYNC
+            auto& starter = parallelStarter.back();
+            if (starter.isComplete()) {
+              // All parallel steps complete drop the corresponding parallel
+              // starter
+              parallelStarter.pop_back();
+            } else {
+              // Discard this state, we will visit it in the next time around
+              // on the parallel branch
+              nodes.pop_back();
+              // Jump back, and continue visiting the next parallel branch.
+              nodes.emplace_back(starter.visitNext(), State::Pending);
+              // Just pretend we have not seen this
+              // and continue with the next one to visit
+              continue;
+            }
+          }
+        }
         if (worker.done(n)) {
           nodes.pop_back();
           break;
@@ -757,7 +839,41 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
           }
         }
         state = State::Processed;
-        enqueDependencies(n->_dependencies);
+        if (flattenType == FlattenType::NONE ||
+            n->getDependencies().size() <= 1) {
+          enqueDependencies(n->_dependencies);
+        } else {
+          if (n->getDependencies().size() > 1) {
+            // We have a multi-dependency node, that we need to handle
+
+            // This assert is not strictly necessary,
+            // by the time this code was implemented only
+            // GATHER nodes were allowed to have more than
+            // one dependency, so all others indicated an issue on plan
+            TRI_ASSERT(n->getType() == GATHER);
+            if (flattenType == FlattenType::INLINE_ALL) {
+              // Remember where we started the flattening process
+              parallelStarter.emplace_back(n);
+              // Add the next dependency to continue
+              nodes.emplace_back(n->getFirstDependency(), State::Pending);
+            } else {
+              TRI_ASSERT(flattenType == FlattenType::INLINE_ASYNC);
+              auto peek = n->getFirstDependency();
+              if (peek->getType() == ASYNC) {
+                // Only Async nodes shall be flattened
+                // So yes we found the combination we want to falten here
+
+                // Remember where we started the flattening process
+                parallelStarter.emplace_back(n);
+                // Add the next dependency to continue
+                nodes.emplace_back(n->getFirstDependency(), State::Pending);
+              } else {
+                // Non-Async gather, do not flatten.
+                enqueDependencies(n->_dependencies);
+              }
+            }
+          }
+        }
         break;
       }
 
@@ -811,7 +927,7 @@ ExecutionNode const* ExecutionNode::getLoop() const {
 
     if (type == ENUMERATE_COLLECTION || type == INDEX || type == TRAVERSAL ||
         type == ENUMERATE_LIST || type == SHORTEST_PATH ||
-        type == K_SHORTEST_PATHS || type == ENUMERATE_IRESEARCH_VIEW) {
+        type == ENUMERATE_PATHS || type == ENUMERATE_IRESEARCH_VIEW) {
       return node;
     }
   }
@@ -1298,7 +1414,7 @@ void ExecutionNode::setParent(ExecutionNode* p) {
   _parents.emplace_back(p);
 }
 
-void ExecutionNode::getVariablesUsedHere(VarSet& vars) const {
+void ExecutionNode::getVariablesUsedHere(VarSet&) const {
   // do nothing!
 }
 
@@ -1365,9 +1481,9 @@ RegIdSet const& ExecutionNode::getRegsToClear() const {
   return _regsToClear;
 }
 
-bool ExecutionNode::isVarUsedLater(Variable const* variable) const {
+bool ExecutionNode::isVarUsedLater(Variable const* variable) const noexcept {
   TRI_ASSERT(_varUsageValid);
-  return (getVarsUsedLater().find(variable) != getVarsUsedLater().end());
+  return getVarsUsedLater().contains(variable);
 }
 
 bool ExecutionNode::isInInnerLoop() const { return getLoop() != nullptr; }
@@ -1403,7 +1519,7 @@ bool ExecutionNode::isIncreaseDepth(ExecutionNode::NodeType type) {
 
     case TRAVERSAL:
     case SHORTEST_PATH:
-    case K_SHORTEST_PATHS:
+    case ENUMERATE_PATHS:
 
     case REMOTESINGLE:
     case ENUMERATE_IRESEARCH_VIEW:
@@ -1439,13 +1555,14 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case TRAVERSAL:
     case INDEX:
     case SHORTEST_PATH:
-    case K_SHORTEST_PATHS:
+    case ENUMERATE_PATHS:
     case REMOTESINGLE:
     case ENUMERATE_IRESEARCH_VIEW:
     case DISTRIBUTE_CONSUMER:
     case SUBQUERY_START:
     case SUBQUERY_END:
     case MATERIALIZE:
+    case OFFSET_INFO_MATERIALIZE:
     case RETURN:
       return true;
     case CALCULATION:
@@ -1515,7 +1632,7 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
 }
 
 /// @brief doToVelocyPack, for SingletonNode
-void SingletonNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void SingletonNode::doToVelocyPack(VPackBuilder&, unsigned) const {
   // nothing to do here!
 }
 
@@ -1661,11 +1778,15 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
 
   TRI_ASSERT(!_dependencies.empty());
   CostEstimate estimate = _dependencies.at(0)->getCost();
-  auto const estimatedNrItems =
+  auto estimatedNrItems =
       collection()->count(&trx, transaction::CountType::TryCache);
-  if (!doCount()) {
-    // if "count" mode is active, the estimated number of items from above must
-    // not be multiplied with the number of items in this collection
+  if (_random) {
+    // we retrieve at most one random document from the collection.
+    // so the estimate is at most 1
+    estimatedNrItems = 1;
+  } else if (!doCount()) {
+    // if "count" mode is active, the estimated number of items from above
+    // must not be multiplied with the number of items in this collection
     estimate.estimatedNrItems *= estimatedNrItems;
   }
   // We do a full collection scan for each incoming item.
@@ -1686,7 +1807,7 @@ EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
 
 /// @brief doToVelocyPack, for EnumerateListNode
 void EnumerateListNode::doToVelocyPack(VPackBuilder& nodes,
-                                       unsigned flags) const {
+                                       unsigned /*flags*/) const {
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
 
@@ -1838,7 +1959,7 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
 }
 
 // @brief doToVelocyPack, for LimitNode
-void LimitNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void LimitNode::doToVelocyPack(VPackBuilder& nodes, unsigned /*flags*/) const {
   nodes.add("offset", VPackValue(_offset));
   nodes.add("limit", VPackValue(_limit));
   nodes.add("fullCount", VPackValue(_fullCount));
@@ -2203,13 +2324,13 @@ bool SubqueryNode::mayAccessCollections() {
       ExecutionNode::UPSERT,
       ExecutionNode::TRAVERSAL,
       ExecutionNode::SHORTEST_PATH,
-      ExecutionNode::K_SHORTEST_PATHS};
+      ExecutionNode::ENUMERATE_PATHS};
 
-  ::arangodb::containers::SmallVectorWithArena<ExecutionNode*> nodes;
+  containers::SmallVector<ExecutionNode*, 8> nodes;
 
   NodeFinder<std::initializer_list<ExecutionNode::NodeType>,
              WalkerUniqueness::Unique>
-      finder(types, nodes.vector(), true);
+      finder(types, nodes, true);
   _subquery->walk(finder);
 
   if (!nodes.empty()) {
@@ -2221,8 +2342,8 @@ bool SubqueryNode::mayAccessCollections() {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
+    ExecutionEngine&,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "cannot instantiate SubqueryExecutor");
@@ -2385,7 +2506,7 @@ FilterNode::FilterNode(ExecutionPlan* plan,
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")) {}
 
 /// @brief doToVelocyPack, for FilterNode
-void FilterNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void FilterNode::doToVelocyPack(VPackBuilder& nodes, unsigned /*flags*/) const {
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
 }
@@ -2462,7 +2583,7 @@ ReturnNode::ReturnNode(ExecutionPlan* plan,
       _count(VelocyPackHelper::getBooleanValue(base, "count", false)) {}
 
 /// @brief doToVelocyPack, for ReturnNode
-void ReturnNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void ReturnNode::doToVelocyPack(VPackBuilder& nodes, unsigned /*flags*/) const {
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
   nodes.add("count", VPackValue(_count));
@@ -2564,7 +2685,7 @@ Variable const* ReturnNode::inVariable() const { return _inVariable; }
 void ReturnNode::inVariable(Variable const* v) { _inVariable = v; }
 
 /// @brief doToVelocyPack, for NoResultsNode
-void NoResultsNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void NoResultsNode::doToVelocyPack(VPackBuilder&, unsigned) const {
   // nothing to do here!
 }
 
@@ -2582,8 +2703,8 @@ std::unique_ptr<ExecutionBlock> NoResultsNode::createBlock(
 
 /// @brief estimateCost, the cost of a NoResults is nearly 0
 CostEstimate NoResultsNode::estimateCost() const {
-  // we have trigger cost estimation for parent nodes because this node could be
-  // spliced into a subquery.
+  // we have trigger cost estimation for parent nodes because this node could
+  // be spliced into a subquery.
   CostEstimate estimate = _dependencies.at(0)->getCost();
   estimate.estimatedNrItems = 0;
   estimate.estimatedCost = 0.5;  // just to make it non-zero
@@ -2674,7 +2795,7 @@ SortInformation::Match SortInformation::isCoveredBy(
 }
 
 /// @brief doToVelocyPack, for AsyncNode
-void AsyncNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void AsyncNode::doToVelocyPack(VPackBuilder&, unsigned) const {
   // nothing to do here!
 }
 
@@ -2741,7 +2862,7 @@ MaterializeNode::MaterializeNode(ExecutionPlan* plan,
           plan->getAst(), base, MATERIALIZE_NODE_OUT_VARIABLE_PARAM)) {}
 
 void MaterializeNode::doToVelocyPack(arangodb::velocypack::Builder& nodes,
-                                     unsigned flags) const {
+                                     unsigned /*flags*/) const {
   nodes.add(VPackValue(MATERIALIZE_NODE_IN_NM_DOC_PARAM));
   _inNonMaterializedDocId->toVelocyPack(nodes);
 

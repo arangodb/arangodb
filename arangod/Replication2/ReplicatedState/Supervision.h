@@ -22,18 +22,66 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+#include <optional>
 
-#include <Agency/TransactionBuilder.h>
-#include <Replication2/ReplicatedLog/AgencyLogSpecification.h>
-#include <Replication2/ReplicatedState/AgencySpecification.h>
-#include <Replication2/ReplicatedState/SupervisionAction.h>
-
-#include <memory>
+#include "Agency/TransactionBuilder.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Replication2/ReplicatedState/SupervisionAction.h"
 
 namespace arangodb::replication2::replicated_state {
 
-auto checkReplicatedState(
+struct SupervisionContext {
+  SupervisionContext() = default;
+  SupervisionContext(SupervisionContext const&) = delete;
+  SupervisionContext(SupervisionContext&&) noexcept = delete;
+  SupervisionContext& operator=(SupervisionContext const&) = delete;
+  SupervisionContext& operator=(SupervisionContext&&) noexcept = delete;
+
+  template<typename ActionType, typename... Args>
+  void createAction(Args&&... args) {
+    if (std::holds_alternative<EmptyAction>(_action)) {
+      _action.emplace<ActionType>(ActionType{std::forward<Args>(args)...});
+    }
+  }
+
+  void reportStatus(agency::StatusCode code,
+                    std::optional<ParticipantId> participant) {
+    if (_isErrorReportingEnabled) {
+      _reports.emplace_back(code, std::move(participant));
+    }
+  }
+
+  void enableErrorReporting() noexcept { _isErrorReportingEnabled = true; }
+
+  auto getAction() noexcept -> Action& { return _action; }
+  auto getReport() noexcept -> agency::StatusReport& { return _reports; }
+
+  auto hasUpdates() noexcept -> bool {
+    return !std::holds_alternative<EmptyAction>(_action) || !_reports.empty();
+  }
+
+  auto isErrorReportingEnabled() const noexcept {
+    return _isErrorReportingEnabled;
+  }
+
+  std::size_t numberServersInTarget;
+  std::size_t numberServersOk;
+
+ private:
+  bool _isErrorReportingEnabled{false};
+  Action _action;
+  agency::StatusReport _reports;
+};
+
+void checkReplicatedState(
+    SupervisionContext& ctx,
     std::optional<arangodb::replication2::agency::Log> const& log,
-    agency::State const& state) -> Action;
+    agency::State const& state);
+
+auto executeCheckReplicatedState(
+    DatabaseID const& database, agency::State state,
+    std::optional<arangodb::replication2::agency::Log> log,
+    arangodb::agency::envelope) noexcept -> arangodb::agency::envelope;
 
 }  // namespace arangodb::replication2::replicated_state

@@ -48,6 +48,10 @@ RocksDBValue RocksDBValue::ReplicatedLog(VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::ReplicatedLog, data);
 }
 
+RocksDBValue RocksDBValue::ReplicatedState(VPackSlice data) {
+  return RocksDBValue(RocksDBEntryType::ReplicatedState, data);
+}
+
 RocksDBValue RocksDBValue::PrimaryIndexValue(LocalDocumentId const& docId,
                                              RevisionId rev) {
   return RocksDBValue(RocksDBEntryType::PrimaryIndexValue, docId, rev);
@@ -283,6 +287,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, std::string_view data)
 RocksDBValue::RocksDBValue(RocksDBEntryType type,
                            replication2::PersistingLogEntry const& entry) {
   TRI_ASSERT(type == RocksDBEntryType::LogEntry);
+  _type = type;
   VPackBuilder builder;
   entry.toVelocyPack(builder, replication2::PersistingLogEntry::omitLogIndex);
   _buffer.reserve(builder.size());

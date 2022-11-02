@@ -61,3 +61,39 @@ TEST(TermIndexPair, compare_operator) {
   EXPECT_TRUE(B < C);
   EXPECT_TRUE(A < C);
 }
+
+struct SimpleReplicatedLogTest : ReplicatedLogTest {
+  LogId const logId{12};
+  std::shared_ptr<TestReplicatedLog> const log = makeReplicatedLog(logId);
+};
+
+TEST_F(SimpleReplicatedLogTest, become_leader_test) {
+  auto leader = log->becomeLeader("leader", LogTerm{1}, {}, 1);
+  ASSERT_NE(leader, nullptr);
+}
+
+TEST_F(SimpleReplicatedLogTest, become_follower_test) {
+  auto follower = log->becomeFollower("follower", LogTerm{1}, "leader");
+  ASSERT_NE(follower, nullptr);
+}
+
+TEST_F(SimpleReplicatedLogTest, become_leader_test_same_term) {
+  auto leader = log->becomeLeader("leader", LogTerm{1}, {}, 1);
+  ASSERT_NE(leader, nullptr);
+  EXPECT_ANY_THROW(
+      { auto newLeader = log->becomeLeader("leader", LogTerm{1}, {}, 1); });
+  auto newLeader = log->becomeLeader("leader", LogTerm{2}, {}, 1);
+  ASSERT_NE(newLeader, nullptr);
+  EXPECT_TRUE(leader->waitForResign().isReady());
+}
+
+TEST_F(SimpleReplicatedLogTest, become_follower_test_same_term) {
+  auto follower = log->becomeFollower("follower", LogTerm{1}, "leader");
+  ASSERT_NE(follower, nullptr);
+  EXPECT_ANY_THROW({
+    auto newFollower = log->becomeFollower("follower", LogTerm{1}, "leader");
+  });
+  auto newFollower = log->becomeFollower("follower", LogTerm{2}, "leader");
+  ASSERT_NE(newFollower, nullptr);
+  EXPECT_TRUE(follower->waitForResign().isReady());
+}

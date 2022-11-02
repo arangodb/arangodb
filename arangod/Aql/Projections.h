@@ -24,12 +24,12 @@
 #pragma once
 
 #include "Aql/AttributeNamePath.h"
-#include "Transaction/Methods.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <string_view>
 #include <unordered_set>
 #include <vector>
 
@@ -62,6 +62,9 @@ class Projections {
     /// @brief attribute length in a covering index entry. this can be shorter
     /// than the projection
     uint16_t coveringIndexCutoff;
+
+    uint16_t startsAtLevel;
+    uint16_t levelsToClose;
     /// @brief attribute type
     AttributeNamePath::Type type;
   };
@@ -73,9 +76,8 @@ class Projections {
 
   /// @brief create projections from the vector of attributes passed.
   /// attributes will be sorted and made unique inside
-  explicit Projections(std::vector<arangodb::aql::AttributeNamePath> paths);
-  explicit Projections(
-      std::unordered_set<arangodb::aql::AttributeNamePath> const& paths);
+  explicit Projections(std::vector<AttributeNamePath> paths);
+  explicit Projections(std::unordered_set<AttributeNamePath> paths);
 
   Projections(Projections&&) = default;
   Projections& operator=(Projections&&) = default;
@@ -84,13 +86,15 @@ class Projections {
 
   static bool isCoveringIndexPosition(uint16_t position) noexcept;
 
+  /// @brief reset all projections
+  void clear() noexcept;
+
   /// @brief set covering index context for these projections
   void setCoveringContext(DataSourceId const& id,
-                          std::shared_ptr<arangodb::Index> const& index);
+                          std::shared_ptr<Index> const& index);
 
   /// @brief whether or not the projections are backed by the specific index
-  bool usesCoveringIndex(
-      std::shared_ptr<arangodb::Index> const& index) const noexcept {
+  bool usesCoveringIndex(std::shared_ptr<Index> const& index) const noexcept {
     return _index == index;
   }
 
@@ -103,8 +107,10 @@ class Projections {
   /// @brief number of projections
   size_t size() const noexcept { return _projections.size(); }
 
+  bool contains(Projection const& other) const noexcept;
+
   /// @brief checks if we have a single attribute projection on the attribute
-  bool isSingle(std::string const& attribute) const noexcept;
+  bool isSingle(std::string_view attribute) const noexcept;
 
   // return the covering index position for a specific attribute type.
   // will throw if the index does not cover!
@@ -117,28 +123,40 @@ class Projections {
   Projection& operator[](size_t index);
 
   /// @brief extract projections from a full document
-  void toVelocyPackFromDocument(arangodb::velocypack::Builder& b,
-                                arangodb::velocypack::Slice slice,
+  void toVelocyPackFromDocument(velocypack::Builder& b, velocypack::Slice slice,
                                 transaction::Methods const* trxPtr) const;
 
   /// @brief extract projections from a covering index
-  void toVelocyPackFromIndex(arangodb::velocypack::Builder& b,
+  void toVelocyPackFromIndex(velocypack::Builder& b,
                              IndexIteratorCoveringData& covering,
                              transaction::Methods const* trxPtr) const;
 
-  /// @brief serialize the projections to velocypack
-  void toVelocyPack(arangodb::velocypack::Builder& b) const;
+  /// @brief serialize the projections to velocypack, under the attribute
+  /// name "projections"
+  void toVelocyPack(velocypack::Builder& b) const;
+  /// @brief serialize the projections to velocypack, under a custom
+  /// attribute name
+  void toVelocyPack(velocypack::Builder& b,
+                    std::string_view attributeName) const;
 
-  /// @brief build projections from velocypack
-  static Projections fromVelocyPack(arangodb::velocypack::Slice slice);
+  std::vector<Projection> const& projections() const noexcept;
+
+  /// @brief build projections from velocypack, looking for the attribute
+  /// name "projections"
+  static Projections fromVelocyPack(velocypack::Slice slice);
+
+  /// @brief build projections from velocypack, looking for a custom
+  /// attribute name
+  static Projections fromVelocyPack(velocypack::Slice slice,
+                                    std::string_view attributeName);
 
  private:
   /// @brief shared init function
   void init();
 
-  /// @brief clean up projections, so that there are no 2 projections with a
-  /// shared prefix
-  void removeSharedPrefixes();
+  /// @brief clean up projections, so that there are no 2 projections where one
+  /// is a true prefix of another. also sets level attributes
+  void handleSharedPrefixes();
 
   /// @brief all our projections (sorted, unique)
   std::vector<Projection> _projections;
@@ -148,8 +166,13 @@ class Projections {
   DataSourceId _datasourceId;
 
   /// @brief whether or not the projections are backed by a covering index
-  std::shared_ptr<arangodb::Index> _index;
+  std::shared_ptr<Index> _index;
 };
+
+std::ostream& operator<<(std::ostream& stream,
+                         Projections::Projection const& projection);
+
+std::ostream& operator<<(std::ostream& stream, Projections const& projections);
 
 }  // namespace aql
 }  // namespace arangodb

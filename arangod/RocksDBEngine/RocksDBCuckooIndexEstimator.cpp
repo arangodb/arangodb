@@ -295,7 +295,7 @@ bool RocksDBCuckooIndexEstimator<Key>::lookup(Key const& k) const {
 
 /// @brief only call directly during startup/recovery; otherwise buffer
 template<class Key>
-bool RocksDBCuckooIndexEstimator<Key>::insert(Key const& k) {
+void RocksDBCuckooIndexEstimator<Key>::insert(Key const& k) {
   // insert the key k
   //
   // The inserted key will have its fingerprint input entered in the table. If
@@ -317,7 +317,7 @@ bool RocksDBCuckooIndexEstimator<Key>::insert(Key const& k) {
     WRITE_LOCKER(guard, _lock);
     Slot slot = findSlotCuckoo(pos1, pos2, fingerprint);
     if (slot.isEmpty()) {
-      // Free slot insert ourself.
+      // Free slot. insert ourself.
       slot.init(fingerprint);
       ++_nrUsed;
       TRI_ASSERT(_nrUsed > 0);
@@ -328,8 +328,39 @@ bool RocksDBCuckooIndexEstimator<Key>::insert(Key const& k) {
     ++_nrTotal;
     _needToPersist.store(true, std::memory_order_release);
   }
+}
 
-  return true;
+/// @brief vectorized version of insert, for multiple keys at once
+template<class Key>
+void RocksDBCuckooIndexEstimator<Key>::insert(std::vector<Key> const& keys) {
+  if (!keys.empty()) {
+    WRITE_LOCKER(guard, _lock);
+
+    for (auto const& k : keys) {
+      uint64_t hash1 = _hasherKey(k);
+      uint64_t pos1 = hashToPos(hash1);
+      uint16_t fingerprint = keyToFingerprint(k);
+      // We compute the second hash already here to let it survive a
+      // mispredicted
+      // branch in the first loop:
+      uint64_t hash2 = _hasherPosFingerprint(pos1, fingerprint);
+      uint64_t pos2 = hashToPos(hash2);
+
+      Slot slot = findSlotCuckoo(pos1, pos2, fingerprint);
+      if (slot.isEmpty()) {
+        // Free slot. insert ourself.
+        slot.init(fingerprint);
+        ++_nrUsed;
+        TRI_ASSERT(_nrUsed > 0);
+      } else {
+        TRI_ASSERT(slot.isEqual(fingerprint));
+        slot.increase();
+      }
+      ++_nrTotal;
+    }
+
+    _needToPersist.store(true, std::memory_order_release);
+  }
 }
 
 /// @brief only call directly during startup/recovery; otherwise buffer
@@ -359,19 +390,58 @@ bool RocksDBCuckooIndexEstimator<Key>::remove(Key const& k) {
         slot.reset();
         --_nrUsed;
       }
-      _needToPersist.store(true, std::memory_order_release);
-      return true;
-    }
-    // If we get here we assume that the element was once inserted, but
-    // removed by cuckoo
-    // Reduce nrCuckood;
-    if (_nrCuckood > 0) {
+    } else if (_nrCuckood > 0) {
+      // If we get here we assume that the element was once inserted, but
+      // removed by cuckoo
+      // Reduce nrCuckood;
       // not included in _nrTotal, just decrease here
       --_nrCuckood;
     }
     _needToPersist.store(true, std::memory_order_release);
   }
-  return false;
+
+  return found;
+}
+
+/// @brief only call directly during startup/recovery; otherwise buffer
+template<class Key>
+void RocksDBCuckooIndexEstimator<Key>::remove(std::vector<Key> const& keys) {
+  if (!keys.empty()) {
+    WRITE_LOCKER(guard, _lock);
+
+    for (auto const& k : keys) {
+      // remove one element with key k, if one is in the table. Return true if
+      // a key was removed and false otherwise.
+      // look up a key, return either false if no pair with key k is
+      // found or true.
+      uint64_t hash1 = _hasherKey(k);
+      uint64_t pos1 = hashToPos(hash1);
+      uint16_t fingerprint = keyToFingerprint(k);
+      // We compute the second hash already here to allow the result to
+      // survive a mispredicted branch in the first loop. Is this sensible?
+      uint64_t hash2 = _hasherPosFingerprint(pos1, fingerprint);
+      uint64_t pos2 = hashToPos(hash2);
+
+      bool found = false;
+      Slot slot = findSlotNoCuckoo(pos1, pos2, fingerprint, found);
+      if (found) {
+        // only decrease the total if we actually found it
+        --_nrTotal;
+        if (!slot.decrease()) {
+          // Removed last element. Have to remove
+          slot.reset();
+          --_nrUsed;
+        }
+      } else if (_nrCuckood > 0) {
+        // If we get here we assume that the element was once inserted, but
+        // removed by cuckoo
+        // Reduce nrCuckood;
+        // not included in _nrTotal, just decrease here
+        --_nrCuckood;
+      }
+    }
+    _needToPersist.store(true, std::memory_order_release);
+  }
 }
 
 /**
@@ -477,15 +547,11 @@ rocksdb::SequenceNumber RocksDBCuckooIndexEstimator<Key>::applyUpdates(
       }
 
       // apply inserts
-      for (auto const& key : inserts) {
-        insert(key);
-      }
+      insert(inserts);
       inserts.clear();
 
       // apply removals
-      for (auto const& key : removals) {
-        remove(key);
-      }
+      remove(removals);
       removals.clear();
     }  // </while(true)>
   });

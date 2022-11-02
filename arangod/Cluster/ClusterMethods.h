@@ -23,12 +23,10 @@
 
 #pragma once
 
-#include "Agency/AgencyComm.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Basics/FileUtils.h"
-#include "Cluster/ClusterFeature.h"
+#include "Indexes/IndexIterator.h"
 #include "Futures/Future.h"
 #include "Network/types.h"
 #include "Metrics/Parse.h"
@@ -36,7 +34,7 @@
 #include "Rest/GeneralResponse.h"
 #include "Transaction/MethodsApi.h"
 #include "Utils/OperationResult.h"
-#include "VocBase/LogicalCollection.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
@@ -54,26 +52,10 @@ class Builder;
 class HashedStringRef;
 }  // namespace velocypack
 
-namespace traverser {
-struct TraverserOptions;
-}
-
 class ClusterFeature;
+class NetworkFeature;
 struct OperationOptions;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a list of attributes have the same values in two vpack
-/// documents
-////////////////////////////////////////////////////////////////////////////////
-
-bool shardKeysChanged(LogicalCollection const& collection,
-                      VPackSlice const& oldValue, VPackSlice const& newValue,
-                      bool isPatch);
-
-/// @brief check if the value of the smartJoinAttribute has changed
-bool smartJoinAttributeChanged(LogicalCollection const& collection,
-                               VPackSlice const& oldValue,
-                               VPackSlice const& newValue, bool isPatch);
+class LogicalCollection;
 
 /// @brief aggregate the results of multiple figures responses (e.g. from
 /// multiple shards or for a smart edge collection)
@@ -127,8 +109,16 @@ futures::Future<OperationResult> countOnCoordinator(
 /// @brief gets the metrics from DBServers
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<metrics::RawDBServers> metricsOnCoordinator(
-    NetworkFeature& network, ClusterFeature& cluster);
+futures::Future<metrics::RawDBServers> metricsOnLeader(NetworkFeature& network,
+                                                       ClusterFeature& cluster);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the metrics from leader Coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+futures::Future<metrics::LeaderResponse> metricsFromLeader(
+    NetworkFeature& network, ClusterFeature& cluster, std::string_view leader,
+    std::string serverId, uint64_t rebootId, uint64_t version);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the selectivity estimates from DBservers

@@ -38,6 +38,8 @@ class LogLeader;
 }  // namespace arangodb::replication2::replicated_log
 
 namespace arangodb::replication2::replicated_state {
+struct ReplicatedStateMetrics;
+struct StatePersistorInterface;
 
 struct ReplicatedStateFeature {
   /**
@@ -53,8 +55,10 @@ struct ReplicatedStateFeature {
     static_assert(std::is_constructible_v<Factory, Args...>);
     auto factory = std::make_shared<InternalFactory<S, Factory>>(
         std::in_place, std::forward<Args>(args)...);
-    auto [iter, wasInserted] =
-        factories.try_emplace(std::move(name), std::move(factory));
+    auto metrics = createMetricsObjectIndirect(name);
+    auto [iter, wasInserted] = implementations.try_emplace(
+        std::move(name),
+        StateImplementation{std::move(factory), std::move(metrics)});
     assertWasInserted(name, wasInserted);
   }
 
@@ -66,21 +70,43 @@ struct ReplicatedStateFeature {
    * @return
    */
   auto createReplicatedState(std::string_view name,
-                             std::shared_ptr<replicated_log::ReplicatedLog> log)
+                             std::shared_ptr<replicated_log::ReplicatedLog> log,
+                             std::shared_ptr<StatePersistorInterface>)
       -> std::shared_ptr<ReplicatedStateBase>;
 
   auto createReplicatedState(std::string_view name,
                              std::shared_ptr<replicated_log::ReplicatedLog> log,
+                             std::shared_ptr<StatePersistorInterface>,
                              LoggerContext const&)
       -> std::shared_ptr<ReplicatedStateBase>;
 
   template<typename S>
   auto createReplicatedStateAs(
-      std::string_view name, std::shared_ptr<replicated_log::ReplicatedLog> log)
+      std::string_view name, std::shared_ptr<replicated_log::ReplicatedLog> log,
+      std::shared_ptr<StatePersistorInterface> persistor)
       -> std::shared_ptr<ReplicatedState<S>> {
     return std::dynamic_pointer_cast<ReplicatedState<S>>(
-        createReplicatedState(name, std::move(log)));
+        createReplicatedState(name, std::move(log), std::move(persistor)));
   }
+
+  virtual ~ReplicatedStateFeature() = default;
+
+ protected:
+  /*
+   * This stunt is here to work around an internal compiler error that is
+   * triggered when using GCC 11 on ARM, with LTO.
+   */
+#if (defined(__GNUC__) && !defined(__clang__))
+#define ABD_CREATE_METRICS_OBJECT_NO_INLINE __attribute__((noinline))
+#else
+#define ABD_CREATE_METRICS_OBJECT_NO_INLINE
+#endif
+  auto ABD_CREATE_METRICS_OBJECT_NO_INLINE createMetricsObjectIndirect(
+      std::string_view impl) -> std::shared_ptr<ReplicatedStateMetrics> {
+    return createMetricsObject(impl);
+  }
+  virtual auto createMetricsObject(std::string_view impl)
+      -> std::shared_ptr<ReplicatedStateMetrics>;
 
  private:
   static void assertWasInserted(std::string_view name, bool wasInserted);
@@ -88,15 +114,21 @@ struct ReplicatedStateFeature {
       : std::enable_shared_from_this<InternalFactoryBase> {
     virtual ~InternalFactoryBase() = default;
     virtual auto createReplicatedState(
-        std::shared_ptr<replicated_log::ReplicatedLog>, LoggerContext)
+        std::shared_ptr<replicated_log::ReplicatedLog>,
+        std::shared_ptr<StatePersistorInterface>, LoggerContext,
+        std::shared_ptr<ReplicatedStateMetrics>)
         -> std::shared_ptr<ReplicatedStateBase> = 0;
   };
 
   template<typename S, typename Factory>
   struct InternalFactory;
 
-  std::unordered_map<std::string, std::shared_ptr<InternalFactoryBase>>
-      factories;
+  struct StateImplementation {
+    std::shared_ptr<InternalFactoryBase> factory;
+    std::shared_ptr<ReplicatedStateMetrics> metrics;
+  };
+
+  std::unordered_map<std::string, StateImplementation> implementations;
 };
 
 template<typename S,
@@ -108,10 +140,13 @@ struct ReplicatedStateFeature::InternalFactory : InternalFactoryBase,
       : Factory(std::forward<Args>(args)...) {}
 
   auto createReplicatedState(std::shared_ptr<replicated_log::ReplicatedLog> log,
-                             LoggerContext loggerContext)
+                             std::shared_ptr<StatePersistorInterface> persistor,
+                             LoggerContext loggerContext,
+                             std::shared_ptr<ReplicatedStateMetrics> metrics)
       -> std::shared_ptr<ReplicatedStateBase> override {
     return std::make_shared<ReplicatedState<S>>(
-        std::move(log), getStateFactory(), std::move(loggerContext));
+        std::move(log), getStateFactory(), std::move(loggerContext),
+        std::move(metrics), std::move(persistor));
   }
 
   auto getStateFactory() -> std::shared_ptr<Factory> {
@@ -124,6 +159,11 @@ struct ReplicatedStateAppFeature : ArangodFeature, ReplicatedStateFeature {
     return "ReplicatedState";
   }
 
+ protected:
+  auto createMetricsObject(std::string_view impl)
+      -> std::shared_ptr<ReplicatedStateMetrics> override;
+
+ public:
   explicit ReplicatedStateAppFeature(Server& server);
 };
 

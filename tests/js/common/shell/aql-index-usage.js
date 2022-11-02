@@ -84,8 +84,9 @@ function IndexUsageSuite () {
               comm.update("runner1", { value: ++success });
             } catch (err) {
               // if the index that was picked for the query is dropped in the meantime,
-              // we will get the following error back
-              assertEqual(err.errorNum, errors.ERROR_QUERY_BAD_JSON_PLAN.code);
+              // we will get one of the following errors back
+              assertTrue(err.errorNum === errors.ERROR_QUERY_BAD_JSON_PLAN.code || 
+                         err.errorNum === errors.ERROR_ARANGO_INDEX_NOT_FOUND.code);
             }
           } while (time() - start < 10.0);
         },

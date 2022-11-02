@@ -50,18 +50,18 @@ class GeneralServer {
   GeneralServer const& operator=(GeneralServer const&) = delete;
 
  public:
-  explicit GeneralServer(GeneralServerFeature&, uint64_t numIoThreads);
+  explicit GeneralServer(GeneralServerFeature&, uint64_t numIoThreads,
+                         bool allowEarlyConnections);
   ~GeneralServer();
 
- public:
   void registerTask(std::shared_ptr<rest::CommTask>);
   void unregisterTask(rest::CommTask*);
-  void setEndpointList(EndpointList const* list);
-  void startListening();   /// start accepting connections
-  void stopListening();    /// stop accepting new connections
-  void stopConnections();  /// stop connections
+  void startListening(EndpointList& list);  /// start accepting connections
+  void stopListening();                     /// stop accepting new connections
+  void stopConnections();                   /// stop connections
   void stopWorking();
 
+  bool allowEarlyConnections() const noexcept;
   IoContext& selectIoContext();
   SslServerFeature::SslContextList sslContexts();
   SSL_CTX* getSSL_CTX(size_t index);
@@ -75,8 +75,8 @@ class GeneralServer {
 
  private:
   GeneralServerFeature& _feature;
-  EndpointList const* _endpointList;
   std::vector<IoContext> _contexts;
+  bool const _allowEarlyConnections;
 
   std::recursive_mutex _tasksLock;
   std::vector<std::unique_ptr<Acceptor>> _acceptors;

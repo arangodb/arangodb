@@ -33,7 +33,7 @@ namespace arangodb {
 
 class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
  public:
-  explicit RocksDBReadOnlyBaseMethods(RocksDBTransactionState* state,
+  explicit RocksDBReadOnlyBaseMethods(RocksDBTransactionState const* state,
                                       rocksdb::TransactionDB* db);
 
   ~RocksDBReadOnlyBaseMethods();
@@ -45,6 +45,8 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
   TRI_voc_tick_t lastOperationTick() const noexcept override { return 0; }
 
   uint64_t numCommits() const noexcept override { return 0; }
+
+  uint64_t numIntermediateCommits() const noexcept override { return 0; }
 
   bool hasOperations() const noexcept override { return false; }
 

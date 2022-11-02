@@ -39,6 +39,7 @@
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
 #include "Basics/voc-errors.h"
+#include "Containers/FlatHashMap.h"
 #include "Replication2/Version.h"
 #include "RestServer/arangod.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -72,6 +73,7 @@ struct ReplicatedLog;
 namespace replicated_state {
 struct ReplicatedStateBase;
 struct StateStatus;
+struct PersistedStateInfo;
 }  // namespace replicated_state
 }  // namespace replication2
 namespace velocypack {
@@ -139,12 +141,15 @@ struct TRI_vocbase_t {
   std::vector<std::shared_ptr<arangodb::LogicalCollection>>
       _deadCollections;  // collections dropped that can be removed later
 
-  std::unordered_map<arangodb::DataSourceId,
-                     std::shared_ptr<arangodb::LogicalDataSource>>
+  arangodb::containers::FlatHashMap<
+      arangodb::DataSourceId,
+      std::shared_ptr<arangodb::LogicalDataSource>>
       _dataSourceById;  // data-source by id
-  std::unordered_map<std::string, std::shared_ptr<arangodb::LogicalDataSource>>
+  arangodb::containers::FlatHashMap<
+      std::string, std::shared_ptr<arangodb::LogicalDataSource>>
       _dataSourceByName;  // data-source by name
-  std::unordered_map<std::string, std::shared_ptr<arangodb::LogicalDataSource>>
+  arangodb::containers::FlatHashMap<
+      std::string, std::shared_ptr<arangodb::LogicalDataSource>>
       _dataSourceByUuid;  // data-source by uuid
   mutable arangodb::basics::ReadWriteLock
       _dataSourceLock;  // data-source iterator lock
@@ -190,15 +195,13 @@ struct TRI_vocbase_t {
 
  public:
   auto createReplicatedState(arangodb::replication2::LogId id,
-                             std::string_view type,
-                             arangodb::velocypack::Slice data)
+                             std::string_view type)
       -> arangodb::ResultT<std::shared_ptr<
           arangodb::replication2::replicated_state::ReplicatedStateBase>>;
   auto dropReplicatedState(arangodb::replication2::LogId id)
       -> arangodb::Result;
   auto ensureReplicatedState(arangodb::replication2::LogId id,
-                             std::string_view type,
-                             arangodb::velocypack::Slice data)
+                             std::string_view type)
       -> std::shared_ptr<
           arangodb::replication2::replicated_state::ReplicatedStateBase>;
   [[nodiscard]] auto getReplicatedStateStatus() const -> std::unordered_map<
@@ -305,7 +308,7 @@ struct TRI_vocbase_t {
 
   /// @brief creates a new view from parameter set
   std::shared_ptr<arangodb::LogicalView> createView(
-      arangodb::velocypack::Slice parameters);
+      arangodb::velocypack::Slice parameters, bool isUserRequest);
 
   /// @brief drops a view
   arangodb::Result dropView(arangodb::DataSourceId cid, bool allowDropSystem);
@@ -323,7 +326,7 @@ struct TRI_vocbase_t {
 
   /// @brief looks up a collection by name or stringified cid or uuid
   std::shared_ptr<arangodb::LogicalCollection> lookupCollection(
-      std::string const& nameOrId) const noexcept;
+      std::string_view nameOrId) const noexcept;
 
   /// @brief looks up a collection by uuid
   std::shared_ptr<arangodb::LogicalCollection> lookupCollectionByUuid(
@@ -335,7 +338,7 @@ struct TRI_vocbase_t {
 
   /// @brief looks up a data-source by name or stringified cid or uuid
   std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(
-      std::string const& nameOrId) const noexcept;
+      std::string_view nameOrId) const noexcept;
 
   /// @brief looks up a replicated log by identifier
   std::shared_ptr<arangodb::replication2::replicated_log::ILogParticipant>
@@ -357,6 +360,20 @@ struct TRI_vocbase_t {
   arangodb::Result renameView(arangodb::DataSourceId cid,
                               std::string const& oldName);
 
+  /// @brief creates an array of new collections from parameter set. the
+  /// input slice must be an array of collection description objects.
+  /// all collection descriptions are validated first. upon validation error,
+  /// an exception is thrown. if all collection descriptions have passed
+  /// validation, the collection objects will be created and registered,
+  /// so that the collections can be looked up and found by name, guid etc.
+  /// if creating or registering any of the collections fails after the
+  /// initial validation, any already created collections are not deleted
+  /// (i.e. no rollback if only some of the collections can be created or
+  /// registered after initial validation).
+  std::vector<std::shared_ptr<arangodb::LogicalCollection>> createCollections(
+      arangodb::velocypack::Slice infoSlice,
+      bool allowEnterpriseCollectionsOnSingleServer);
+
   /// @brief creates a new collection from parameter set
   /// collection id ("cid") is normally passed with a value of 0
   /// this means that the system will assign a new collection id automatically
@@ -370,6 +387,10 @@ struct TRI_vocbase_t {
   /// write lock for using the collection.
   arangodb::Result dropCollection(arangodb::DataSourceId cid,
                                   bool allowDropSystem, double timeout);
+
+  /// @brief validate parameters for collection creation.
+  arangodb::Result validateCollectionParameters(
+      arangodb::velocypack::Slice parameters);
 
   /// @brief locks a collection for usage by id
   /// Note that this will READ lock the collection you have to release the
@@ -396,10 +417,45 @@ struct TRI_vocbase_t {
       dataSourceVisitor;
   bool visitDataSources(dataSourceVisitor const& visitor);
 
-  std::shared_ptr<arangodb::LogicalCollection> persistCollection(
-      std::shared_ptr<arangodb::LogicalCollection>& collection);
+  /// @brief creates a collection object (of type LogicalCollection or one of
+  /// the SmartGraph-specific subtypes). the object only exists on the heap and
+  /// is not yet persisted anywhere. note: this should only be called for
+  /// valid collection definitions (i.e. validation should be done before!).
+  /// the method will throw if the collection cannot be created.
+  /// the isAStub flag should be set to true for collections created by
+  /// ClusterInfo.
+  std::shared_ptr<arangodb::LogicalCollection> createCollectionObject(
+      arangodb::velocypack::Slice data, bool isAStub);
+
+  /// @brief creates a collection object (of type LogicalCollection or one of
+  /// the SmartGraph-specific subtypes) for storage. The object is augmented
+  /// with storage engine-specific data (e.g. objectId). the object only exists
+  /// on the heap and is not yet persisted anywhere. note: this should only be
+  /// called for valid collection definitions (i.e. validation should be done
+  /// before!) and not on coordinators (coordinators are not expected to store
+  /// any collections).
+  std::shared_ptr<arangodb::LogicalCollection> createCollectionObjectForStorage(
+      arangodb::velocypack::Slice parameters);
 
  private:
+  /// @brief adds further SmartGraph-specific sub-collections to the vector of
+  /// collections if collection is a SmartGraph edge collection that requires
+  /// it. otherwise does nothing.
+  void addSmartGraphCollections(
+      std::shared_ptr<arangodb::LogicalCollection> const& collection,
+      std::vector<std::shared_ptr<arangodb::LogicalCollection>>& collections)
+      const;
+
+  /// @brief validates SmartGraph-specific collection parameters. does nothing
+  /// in community edition or if the collection is not a SmartGraph collection.
+  arangodb::Result validateExtendedCollectionParameters(
+      arangodb::velocypack::Slice parameters);
+
+  /// @brief stores the collection object in the list of available collections,
+  /// so it can later be looked up and found by name, guid etc.
+  void persistCollection(
+      std::shared_ptr<arangodb::LogicalCollection> const& collection);
+
   /// @brief callback for collection dropping
   static bool dropCollectionCallback(arangodb::LogicalCollection& collection);
 
@@ -423,10 +479,6 @@ struct TRI_vocbase_t {
   /// This function is called when a collection is dropped.
   void unregisterCollection(arangodb::LogicalCollection& collection);
 
-  /// @brief creates a new collection, worker function
-  std::shared_ptr<arangodb::LogicalCollection> createCollectionWorker(
-      arangodb::velocypack::Slice parameters);
-
   /// @brief drops a collection, worker function
   ErrorCode dropCollectionWorker(arangodb::LogicalCollection* collection,
                                  DropState& state, double timeout);
@@ -444,14 +496,12 @@ struct TRI_vocbase_t {
   void registerReplicatedLog(
       arangodb::replication2::LogId,
       std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>);
-
-  /// @brief removes the replicated log with the given id
-  void unregisterReplicatedLog(arangodb::replication2::LogId);
+  /// @brief adds a new replicated log with given log id
+  void registerReplicatedState(
+      arangodb::replication2::replicated_state::PersistedStateInfo const& info);
 };
 
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open
-void TRI_SanitizeObject(arangodb::velocypack::Slice const slice,
+void TRI_SanitizeObject(arangodb::velocypack::Slice slice,
                         arangodb::velocypack::Builder& builder);
-void TRI_SanitizeObjectWithEdges(arangodb::velocypack::Slice const slice,
-                                 arangodb::velocypack::Builder& builder);

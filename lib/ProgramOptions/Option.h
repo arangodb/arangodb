@@ -26,6 +26,11 @@
 #include "Basics/Common.h"
 #include "ProgramOptions/Parameters.h"
 
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <vector>
+
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -110,9 +115,16 @@ struct Option {
 
   // create an option, consisting of single string
   Option(std::string const& value, std::string const& description,
-         Parameter* parameter, std::underlying_type<Flags>::type flags);
+         std::unique_ptr<Parameter> parameter,
+         std::underlying_type<Flags>::type flags);
 
-  void toVPack(arangodb::velocypack::Builder& builder) const;
+  Option(Option const& other) = delete;
+  Option& operator=(Option const& other) = delete;
+  Option(Option&& other) = default;
+  Option& operator=(Option&& other) = default;
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder,
+                    bool detailed) const;
 
   bool hasFlag(Flags flag) const {
     return (static_cast<std::underlying_type<Flags>::type>(flag) & flags) ==
@@ -199,10 +211,10 @@ struct Option {
   std::string name;
   std::string description;
   std::string shorthand;
-  std::shared_ptr<Parameter> parameter;
+  std::unique_ptr<Parameter> parameter;
 
   /// @brief option flags
-  std::underlying_type<Flags>::type const flags;
+  std::underlying_type<Flags>::type flags;
 
   std::vector<uint32_t> introducedInVersions;
   std::vector<uint32_t> deprecatedInVersions;

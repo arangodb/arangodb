@@ -26,6 +26,7 @@
 #include "Statistics/ServerStatistics.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/vocbase.h"
 
 namespace rocksdb {
 class PinnableSlice;
@@ -47,15 +48,13 @@ class LocalDocumentId;
 
 class RocksDBCollection final : public RocksDBMetaCollection {
   friend class RocksDBEngine;
-  friend class RocksDBFulltextIndex;
-  friend class RocksDBVPackIndex;
 
   RocksDBCollection(LogicalCollection& collection,
                     PhysicalCollection const*);  // use in cluster only!!!!!
 
  public:
   explicit RocksDBCollection(LogicalCollection& collection,
-                             arangodb::velocypack::Slice info);
+                             velocypack::Slice info);
   ~RocksDBCollection();
 
   arangodb::Result updateProperties(VPackSlice const& slice,
@@ -76,13 +75,14 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   // -- SECTION Indexes --
   ///////////////////////////////////
 
-  void prepareIndexes(arangodb::velocypack::Slice indexesSlice) override;
+  void prepareIndexes(velocypack::Slice indexesSlice) override;
 
-  std::shared_ptr<Index> createIndex(arangodb::velocypack::Slice const& info,
-                                     bool restore, bool& created) override;
+  std::shared_ptr<Index> createIndex(velocypack::Slice info, bool restore,
+                                     bool& created) override;
 
   /// @brief Drop an index with the given iid.
   bool dropIndex(IndexId iid) override;
+
   std::unique_ptr<IndexIterator> getAllIterator(
       transaction::Methods* trx, ReadOwnWrites readOwnWrites) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(
@@ -97,8 +97,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  Result truncate(transaction::Methods& trx,
-                  OperationOptions& options) override;
+  Result truncate(transaction::Methods& trx, OperationOptions& options,
+                  bool& usedRangeDelete) override;
 
   /// @brief returns the LocalDocumentId and the revision id for the document
   /// with the specified key.
@@ -122,44 +122,54 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                     ManagedDocumentResult& result,
                     ReadOwnWrites readOwnWrites) const override;
 
-  Result insert(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice newSlice,
-                arangodb::ManagedDocumentResult& resultMdr,
-                OperationOptions& options) override;
+  Result insert(transaction::Methods& trx, RevisionId newRevisionId,
+                velocypack::Slice newDocument,
+                OperationOptions const& options) override;
 
-  Result update(arangodb::transaction::Methods* trx,
-                arangodb::velocypack::Slice newSlice,
-                ManagedDocumentResult& resultMdr, OperationOptions& options,
-                ManagedDocumentResult& previousMdr) override;
+  Result update(transaction::Methods& trx, LocalDocumentId previousDocumentId,
+                RevisionId previousRevisionId,
+                velocypack::Slice previousDocument, RevisionId newRevisionId,
+                velocypack::Slice newDocument,
+                OperationOptions const& options) override;
 
-  Result replace(transaction::Methods* trx,
-                 arangodb::velocypack::Slice newSlice,
-                 ManagedDocumentResult& resultMdr, OperationOptions& options,
-                 ManagedDocumentResult& previousMdr) override;
+  Result replace(transaction::Methods& trx, LocalDocumentId previousDocumentId,
+                 RevisionId previousRevisionId,
+                 velocypack::Slice previousDocument, RevisionId newRevisionId,
+                 velocypack::Slice newDocument,
+                 OperationOptions const& options) override;
 
-  Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                ManagedDocumentResult& previous,
-                OperationOptions& options) override;
-
-  Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                ManagedDocumentResult& previous,
-                OperationOptions& options) override;
+  Result remove(transaction::Methods& trx, LocalDocumentId previousDocumentId,
+                RevisionId previousRevisionId,
+                velocypack::Slice previousDocument,
+                OperationOptions const& options) override;
 
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
   bool hasDocuments() override;
 
+  /// @brief lookup document in cache and / or rocksdb
+  /// @param readCache attempt to read from cache
+  /// @param fillCache fill cache with found document
+  Result lookupDocument(transaction::Methods& trx, LocalDocumentId documentId,
+                        velocypack::Builder& builder, bool readCache,
+                        bool fillCache,
+                        ReadOwnWrites readOwnWrites) const override;
+
  private:
-  [[nodiscard]] Result remove(transaction::Methods& trx,
-                              LocalDocumentId documentId,
-                              RevisionId expectedRev,
-                              ManagedDocumentResult& previous,
+  // optimized truncate, using DeleteRange operations.
+  // this can only be used if the truncate is performed as a standalone
+  // operation (i.e. not part of a larger transaction)
+  Result truncateWithRangeDelete(transaction::Methods& trx);
+
+  // slow truncate that performs a document-by-document removal.
+  Result truncateWithRemovals(transaction::Methods& trx,
                               OperationOptions& options);
 
   [[nodiscard]] Result performUpdateOrReplace(
-      transaction::Methods* trx, velocypack::Slice newSlice,
-      ManagedDocumentResult& resultMdr, OperationOptions& options,
-      ManagedDocumentResult& previousMdr, bool isUpdate);
+      transaction::Methods& trx, LocalDocumentId previousDocumentId,
+      RevisionId previousRevisionId, velocypack::Slice previousDocument,
+      RevisionId newRevisionId, velocypack::Slice newDocument,
+      OperationOptions const& options, TRI_voc_document_operation_e opType);
 
   /// @brief return engine-specific figures
   void figuresSpecific(bool details, velocypack::Builder&) override;
@@ -175,26 +185,24 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   arangodb::Result insertDocument(arangodb::transaction::Methods* trx,
                                   RocksDBSavePoint& savepoint,
-                                  LocalDocumentId const& documentId,
+                                  LocalDocumentId documentId,
                                   arangodb::velocypack::Slice doc,
                                   OperationOptions const& options,
-                                  RevisionId const& revisionId) const;
+                                  RevisionId revisionId) const;
 
   arangodb::Result removeDocument(arangodb::transaction::Methods* trx,
                                   RocksDBSavePoint& savepoint,
-                                  LocalDocumentId const& documentId,
+                                  LocalDocumentId documentId,
                                   arangodb::velocypack::Slice doc,
                                   OperationOptions const& options,
-                                  RevisionId const& revisionId) const;
+                                  RevisionId revisionId) const;
 
-  arangodb::Result modifyDocument(transaction::Methods* trx,
-                                  RocksDBSavePoint& savepoint,
-                                  LocalDocumentId const& oldDocumentId,
-                                  arangodb::velocypack::Slice const& oldDoc,
-                                  LocalDocumentId const& newDocumentId,
-                                  arangodb::velocypack::Slice const& newDoc,
-                                  OperationOptions& options,
-                                  RevisionId const& revisionId) const;
+  arangodb::Result modifyDocument(
+      transaction::Methods* trx, RocksDBSavePoint& savepoint,
+      LocalDocumentId oldDocumentId, velocypack::Slice oldDoc,
+      LocalDocumentId newDocumentId, velocypack::Slice newDoc,
+      RevisionId oldRevisionId, RevisionId newRevisionId,
+      OperationOptions const& options) const;
 
   /// @brief lookup document in cache and / or rocksdb
   /// @param readCache attempt to read from cache
@@ -204,6 +212,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                                        rocksdb::PinnableSlice& ps,
                                        bool readCache, bool fillCache,
                                        ReadOwnWrites readOwnWrites) const;
+
   Result lookupDocumentVPack(transaction::Methods*,
                              LocalDocumentId const& documentId,
                              IndexIterator::DocumentCallback const& cb,

@@ -35,10 +35,6 @@ void ClusterRestReplicationHandler::handleCommandBatch() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-void ClusterRestReplicationHandler::handleCommandBarrier() {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 void ClusterRestReplicationHandler::handleCommandLoggerFollow() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

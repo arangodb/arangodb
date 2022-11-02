@@ -143,7 +143,7 @@ var updateFishbowlFromZip = function (filename) {
         try {
           fishbowl = db._create('_fishbowl', { isSystem: true, distributeShardsLike: '_users' });
         } catch (err) {
-          require('console').warn('Unable to create _fishbowl collection for application results:' + String(err));
+          require('console').warn('Unable to create _fishbowl collection for application results: ' + String(err));
         }
       }
     }

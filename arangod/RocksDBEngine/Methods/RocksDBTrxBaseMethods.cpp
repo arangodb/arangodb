@@ -30,14 +30,16 @@
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Statistics/ServerStatistics.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 #include <rocksdb/utilities/write_batch_with_index.h>
 
 using namespace arangodb;
 
-RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(RocksDBTransactionState* state,
-                                             rocksdb::TransactionDB* db)
-    : RocksDBTransactionMethods(state), _db(db) {
+RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
+    RocksDBTransactionState const* state, IRocksDBTransactionCallback& callback,
+    rocksdb::TransactionDB* db)
+    : RocksDBTransactionMethods(state), _callback(callback), _db(db) {
   TRI_ASSERT(!_state->isReadOnlyTransaction());
   _readOptions.prefix_same_as_start = true;  // should always be true
   _readOptions.fill_cache = _state->options().fillBlockCache;
@@ -71,7 +73,11 @@ Result RocksDBTrxBaseMethods::beginTransaction() {
   createTransaction();
   TRI_ASSERT(_rocksTransaction != nullptr);
   _readOptions.snapshot = _rocksTransaction->GetSnapshot();
-
+  // we at least are at this point
+  TRI_ASSERT(_db || _readOptions.snapshot);
+  _lastWrittenOperationTick = _readOptions.snapshot
+                                  ? _readOptions.snapshot->GetSequenceNumber()
+                                  : _db->GetLatestSequenceNumber();
   return {};
 }
 
@@ -263,9 +269,20 @@ void RocksDBTrxBaseMethods::createTransaction() {
   rocksdb::TransactionOptions trxOpts;
   trxOpts.set_snapshot = true;
 
-  // when trying to lock the same keys, we want to return quickly and not
-  // spend the default 1000ms before giving up
-  trxOpts.lock_timeout = 1;
+  if (_state->hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX)) {
+    // write operations for the same keys on followers should normally be
+    // serialized by the key locks held on the leaders. so we don't expect
+    // to run into lock conflicts on followers. however, the lock_timeout
+    // set here also includes locking the striped mutex for _all_ key locks,
+    // which may be contended under load. to avoid timeouts caused by
+    // waiting for the contented striped mutex, increase it to a higher
+    // value on followers that makes this situation unlikely.
+    trxOpts.lock_timeout = 3000;
+  } else {
+    // when trying to lock the same keys, we want to return quickly and not
+    // spend the default 1000ms before giving up
+    trxOpts.lock_timeout = 1;
+  }
 
   // unclear performance implications do not use for now
   // trxOpts.deadlock_detect = !hasHint(transaction::Hints::Hint::NO_DLD);
@@ -312,7 +329,6 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   }
 
   // we are actually going to attempt a commit
-
   ++_numCommits;
   uint64_t numOperations = this->numOperations();
 
@@ -334,14 +350,15 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
           << " numInserts: " << _numInserts << ", numRemoves: " << _numRemoves
           << ", numUpdates: " << _numUpdates << ", numLogdata: " << _numLogdata
           << ", numRollbacks: " << _numRollbacks
-          << ", numCommits: " << _numCommits;
+          << ", numCommits: " << _numCommits
+          << ", numIntermediateCommits: " << _numIntermediateCommits;
     }
     // begin transaction + commit transaction + n doc removes
     TRI_ASSERT(_numLogdata == (2 + _numRemoves));
   }
   TRI_ASSERT(numOperations > 0);
 
-  rocksdb::SequenceNumber previousSeqNo = _state->prepareCollections();
+  rocksdb::SequenceNumber previousSeqNo = _callback.prepare();
 
   TRI_IF_FAILURE("TransactionChaos::randomSync") {
     if (RandomGenerator::interval(uint32_t(1000)) > 950) {
@@ -350,7 +367,7 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
       auto& engine = selector.engine<RocksDBEngine>();
       auto* sm = engine.settingsManager();
       if (sm) {
-        sm->sync(true);  // force
+        sm->sync(/*force*/ true);
       }
     }
   }
@@ -358,7 +375,7 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   // if we fail during commit, make sure we remove blockers, etc.
   auto cleanupCollTrx = scopeGuard([this]() noexcept {
     try {
-      _state->cleanupCollections();
+      _callback.cleanup();
     } catch (std::exception const& e) {
       LOG_TOPIC("62772", ERR, Logger::ENGINES)
           << "failed to cleanup collections: " << e.what();
@@ -392,7 +409,14 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
 
   TRI_ASSERT(postCommitSeq <= _db->GetLatestSequenceNumber());
 
-  _state->commitCollections(_lastWrittenOperationTick);
+  // This resets the counters in the collection(s), so we also need to reset
+  // our counters here for consistency.
+  _callback.commit(_lastWrittenOperationTick);
+  _numInserts = 0;
+  _numUpdates = 0;
+  _numRemoves = 0;
+  TRI_ASSERT(this->numOperations() == 0);
+
   cleanupCollTrx.cancel();
 
   // wait for sync if required

@@ -26,110 +26,29 @@
 #include <utility>
 
 #include "Agency/TransactionBuilder.h"
+#include "Replication2/Supervision/ModifyContext.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/ReplicatedState/StateCommon.h"
 
 namespace arangodb::replication2::replicated_state {
 
-template<typename T>
-struct ModifySomeType {
-  explicit ModifySomeType(std::optional<T> const& value) : value(value) {}
-  template<typename F>
-  auto modifyMyValue(F&& fn) {
-    static_assert(std::is_invocable_r_v<void, F, T&>);
-    TRI_ASSERT(value.has_value())
-        << "modifying action expects value to be present";
-    wasModified = true;
-    return std::invoke(std::forward<F>(fn), *value);
-  }
-
-  template<typename... Vs>
-  void setMyValue(Vs&&... args) {
-    value.emplace(std::forward<Vs>(args)...);
-    wasModified = true;
-  }
-
-  auto getMyValue() const -> T const& { return value.value(); }
-
-  std::optional<T> value;
-  bool wasModified = false;
-};
-
-template<typename... Ts>
-struct ModifyContext : private ModifySomeType<Ts>... {
-  explicit ModifyContext(std::optional<Ts>... values)
-      : ModifySomeType<Ts>(std::move(values))... {}
-
-  [[nodiscard]] auto hasModification() const noexcept -> bool {
-    return (forType<Ts>().wasModified || ...);
-  }
-
-  template<typename... T, typename F>
-  auto modify(F&& fn) {
-    static_assert(std::is_invocable_v<F, T&...>);
-    TRI_ASSERT((forType<T>().value.has_value() && ...))
-        << "modifying action expects value to be present";
-    ((forType<T>().wasModified = true), ...);
-    return std::invoke(std::forward<F>(fn), (*forType<T>().value)...);
-  }
-
-  template<typename... T, typename F>
-  auto modifyOrCreate(F&& fn) {
-    static_assert(std::is_invocable_v<F, T&...>);
-    (
-        [&] {
-          if (!forType<T>().value.has_value()) {
-            static_assert(std::is_default_constructible_v<T>);
-            forType<T>().value.emplace();
-          }
-        }(),
-        ...);
-    ((forType<T>().wasModified = true), ...);
-    return std::invoke(std::forward<F>(fn), (*forType<T>().value)...);
-  }
-
-  template<typename T, typename... Args>
-  auto setValue(Args&&... args) {
-    return forType<T>().setMyValue(std::forward<Args>(args)...);
-  }
-
-  template<typename T>
-  auto getValue() const -> T const& {
-    return forType<T>().getMyValue();
-  }
-
-  template<typename T>
-  [[nodiscard]] auto hasModificationFor() const noexcept -> bool {
-    return forType<T>().wasModified;
-  }
-
- private:
-  template<typename T>
-  auto forType() -> ModifySomeType<T>& {
-    return static_cast<ModifySomeType<T>&>(*this);
-  }
-  template<typename T>
-  auto forType() const -> ModifySomeType<T> const& {
-    return static_cast<ModifySomeType<T> const&>(*this);
-  }
-};
-
 using ActionContext = ModifyContext<replication2::agency::LogTarget,
                                     agency::Plan, agency::Current::Supervision>;
+
 struct EmptyAction {
   void execute(ActionContext&) {}
 };
 
 struct AddParticipantAction {
   ParticipantId participant;
-  StateGeneration generation;
 
   void execute(ActionContext& ctx) {
     ctx.modify<agency::Plan, replication2::agency::LogTarget>(
         [&](auto& plan, auto& logTarget) {
           logTarget.participants[participant] = ParticipantFlags{
               .allowedInQuorum = false, .allowedAsLeader = false};
+          logTarget.version = logTarget.version.value_or(0) + 1;
 
           plan.participants[participant].generation = plan.generation;
           plan.generation.value += 1;
@@ -144,6 +63,7 @@ struct RemoveParticipantFromLogTargetAction {
     ctx.modify<agency::Plan, replication2::agency::LogTarget>(
         [&](auto& plan, auto& logTarget) {
           logTarget.participants.erase(participant);
+          logTarget.version = logTarget.version.value_or(0) + 1;
         });
   }
 };
@@ -155,6 +75,7 @@ struct RemoveParticipantFromStatePlanAction {
     ctx.modify<agency::Plan, replication2::agency::LogTarget>(
         [&](auto& plan, auto& logTarget) {
           plan.participants.erase(participant);
+          logTarget.version = logTarget.version.value_or(0) + 1;
         });
   }
 };
@@ -174,8 +95,10 @@ struct UpdateParticipantFlagsAction {
   ParticipantFlags flags;
 
   void execute(ActionContext& ctx) {
-    ctx.modify<replication2::agency::LogTarget>(
-        [&](auto& target) { target.participants.at(participant) = flags; });
+    ctx.modify<replication2::agency::LogTarget>([&](auto& target) {
+      target.participants.at(participant) = flags;
+      target.version = target.version.value_or(0) + 1;
+    });
   }
 };
 
@@ -192,22 +115,34 @@ struct SetLeaderAction {
   std::optional<ParticipantId> leader;
 
   void execute(ActionContext& ctx) {
-    ctx.modify<replication2::agency::LogTarget>(
-        [&](replication2::agency::LogTarget& target) {
-          target.leader = leader;
-        });
+    ctx.modify<replication2::agency::LogTarget>([&](auto& target) {
+      target.leader = leader;
+      target.version = target.version.value_or(0) + 1;
+    });
   }
 };
 
-using Action = std::variant<
-    EmptyAction, AddParticipantAction, RemoveParticipantFromLogTargetAction,
-    RemoveParticipantFromStatePlanAction, AddStateToPlanAction,
-    UpdateParticipantFlagsAction, CurrentConvergedAction, SetLeaderAction>;
+struct SetLogConfigAction {
+  replication2::agency::LogTargetConfig config;
 
-auto execute(LogId id, DatabaseID const& database, Action action,
-             std::optional<agency::Plan> state,
-             std::optional<agency::Current::Supervision> currentSupervision,
-             std::optional<replication2::agency::LogTarget> log,
-             arangodb::agency::envelope envelope) -> arangodb::agency::envelope;
+  void execute(ActionContext& ctx) {
+    ctx.modify<replication2::agency::LogTarget>([&](auto& target) {
+      target.config = config;
+      target.version = target.version.value_or(0) + 1;
+    });
+  }
+};
+
+using Action =
+    std::variant<EmptyAction, AddParticipantAction,
+                 RemoveParticipantFromLogTargetAction,
+                 RemoveParticipantFromStatePlanAction, AddStateToPlanAction,
+                 UpdateParticipantFlagsAction, CurrentConvergedAction,
+                 SetLeaderAction, SetLogConfigAction>;
+
+auto executeAction(
+    arangodb::replication2::replicated_state::agency::State state,
+    std::optional<replication2::agency::Log> log, Action& action)
+    -> ActionContext;
 
 }  // namespace arangodb::replication2::replicated_state

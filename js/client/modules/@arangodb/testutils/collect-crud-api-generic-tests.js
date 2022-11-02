@@ -27,7 +27,7 @@
 
 const jsunity = require("jsunity");
 const {CollectionWrapper} = require("@arangodb/testutils/collection-wrapper-util");
-const {assertEqual, assertTrue, assertNotEqual, assertFalse}
+const {assertEqual, assertTrue, assertNotEqual, assertFalse, assertNotUndefined}
   = jsunity.jsUnity.assertions;
 
 // The post fix is used to make testName unique accross suites in the same file
@@ -36,27 +36,41 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
   assertTrue(collectionWrapper instanceof CollectionWrapper);
 
   const runAllCrudOperationsOnDocuments = (generator) => {
+    const isEnterpriseGraphEdge = collectionWrapper._isEnterpriseGraphEdge;
+
     const collection = collectionWrapper.rawCollection();
     const cn = collection.name();
     const baseUrl = "/_api/document/" + encodeURIComponent(cn);
     for (const doc of generator) {
-      assertTrue(doc.hasOwnProperty("_key"));
-      const keyUrl = baseUrl + "/" + encodeURIComponent(doc._key);
+      let keyUrl;
+      let documentKey;
+
+      if (!isEnterpriseGraphEdge) {
+        assertTrue(doc.hasOwnProperty("_key"));
+        documentKey = doc._key;
+        keyUrl = baseUrl + "/" + encodeURIComponent(doc._key);
+      }
+
       // create document
       let result = arango.POST_RAW(baseUrl, doc);
-      assertEqual(202, result.code, `Creating document with key ${doc._key}`);
+      if (isEnterpriseGraphEdge) {
+        assertTrue(result.parsedBody.hasOwnProperty("_key"));
+        documentKey = result.parsedBody._key;
+        keyUrl = baseUrl + "/" + encodeURIComponent(result.parsedBody._key);
+      }
+      assertEqual(202, result.code, `Creating document with key ${documentKey}`);
       let rev = result.parsedBody._rev;
 
       // read document back
       result = arango.GET_RAW(keyUrl);
-      assertEqual(200, result.code, `Reading document with key ${doc._key}`);
+      assertEqual(200, result.code, `Reading document with key ${documentKey}`);
 
       // Get cannot modify the revision
       assertEqual(result.parsedBody._rev, rev);
 
       // HEAD request
       result = arango.HEAD_RAW(keyUrl);
-      assertEqual(200, result.code, `Head document with key ${doc._key}`);
+      assertEqual(200, result.code, `Head document with key ${documentKey}`);
 
       // PATCH request
       assertNotEqual(doc.test, "testmann");
@@ -69,14 +83,14 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
         assertNotEqual(doc[key], value);
       }
       result = arango.PATCH_RAW(keyUrl, patch);
-      assertEqual(202, result.code, `Patching document with key ${doc._key}`);
+      assertEqual(202, result.code, `Patching document with key ${documentKey}`);
       // Patch needs to update the revision
       assertNotEqual(result.parsedBody._rev, rev);
       {
         // Test patch was applied
         // read document back
         let result = arango.GET_RAW(keyUrl);
-        assertEqual(200, result.code, `Reading document with key ${doc._key}`);
+        assertEqual(200, result.code, `Reading document with key ${documentKey}`);
         for (const [key, value] of Object.entries(patch)) {
           // All values in Patch need to be updated
           assertEqual(result.parsedBody[key], value);
@@ -98,8 +112,14 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
       // Locally apply the replace
       updatedDoc = {...updatedDoc, ...replace};
 
+      if (isEnterpriseGraphEdge) {
+        // As in EnterpriseGraphs, the _key cannot be given during creation,
+        // we have to insert it here into our original doc for the replace operation.
+        updatedDoc._key = documentKey;
+      }
+
       result = arango.PUT_RAW(keyUrl, updatedDoc);
-      assertEqual(202, result.code, `Replacing document with key ${doc._key}`);
+      assertEqual(202, result.code, `Replacing document with key "${documentKey}"`);
       // Replace needs to update the revision
       assertNotEqual(result.parsedBody._rev, rev);
 
@@ -107,7 +127,7 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
         // Local Document and DBState now need to be identical
         // read document back
         let result = arango.GET_RAW(keyUrl);
-        assertEqual(200, result.code, `Reading document with key ${doc._key}`);
+        assertEqual(200, result.code, `Reading document with key "${documentKey}"`);
         for (const [key, value] of Object.entries(updatedDoc)) {
           // All values in Patch need to be updated
           assertEqual(result.parsedBody[key], value);
@@ -118,12 +138,13 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
         rev = result.parsedBody._rev;
       }
 
+
       // Check if count is now 1, we have only inserted Once, afterwards only read
       assertEqual(1, collection.count());
 
       // remove document
       result = arango.DELETE_RAW(keyUrl);
-      assertEqual(202, result.code, `Deleting document with key ${doc._key}`);
+      assertEqual(202, result.code, `Deleting document with key ${documentKey}`);
 
       // No document in collection anymore
       assertEqual(0, collection.count());
@@ -163,16 +184,29 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
       const cn = collection.name();
       const baseUrl = "/_api/document/" + encodeURIComponent(cn);
       const documents = [];
+      const isEnterpriseGraphEdge = collectionWrapper._isEnterpriseGraphEdge;
       for (const doc of collectionWrapper.documentGeneratorWithKeys(collectionWrapper.validKeyGenerator())) {
         documents.push(doc);
       }
+
+      let keys = [];
       {
         // create all documents in one call
         const result = arango.POST_RAW(baseUrl, documents);
         assertEqual(202, result.code);
-        assertFalse(result.headers.hasOwnProperty("x-arango-error-codes"), `Got errors on insert: ${JSON.stringify(result.headers["x-arango-error-codes"])}`);
+        assertFalse(
+          result.headers.hasOwnProperty("x-arango-error-codes"),
+          `Got errors on insert: ${JSON.stringify(result.headers["x-arango-error-codes"])}`
+        );
         // Validate all documents are successfully created
         assertEqual(documents.length, collection.count());
+
+        if (isEnterpriseGraphEdge) {
+          // Keys are not provided by us, they are auto-generated.
+          keys = result.parsedBody.map(d => d._key);
+        } else {
+          keys = documents.map(d => d._key);
+        }
       }
       const sortByKey = (l, r) => {
         if (l._key < r._key) {
@@ -183,11 +217,11 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
         }
         return 0;
       };
-      const keys = documents.map(d => d._key);
       {
         // Try to find one by key
         // This defaults to a SingleRemoteOperation
         const lookupUrl = "/_api/simple/lookup-by-keys";
+        assertNotUndefined(keys.slice(0, 1));
         const body = {
           collection: collection.name(),
           keys: keys.slice(0, 1)

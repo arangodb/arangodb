@@ -144,38 +144,13 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
   }
 };
 
-struct IResearchInvertedIndexFactory : public DefaultIndexFactory {
-  explicit IResearchInvertedIndexFactory(ArangodServer& server)
+struct IResearchInvertedIndexClusterFactory : public DefaultIndexFactory {
+  explicit IResearchInvertedIndexClusterFactory(ArangodServer& server)
       : DefaultIndexFactory(server, IRESEARCH_INVERTED_INDEX_TYPE.data()) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
                                      velocypack::Slice definition, IndexId id,
                                      bool isClusterConstructor) const override {
-    IResearchViewMeta indexMeta;
-    std::string errField;
-    if (!indexMeta.init(definition, errField)) {
-      LOG_TOPIC("a9cce", ERR, TOPIC)
-          << (errField.empty()
-                  ? ("failed to initialize index meta from definition: " +
-                     definition.toString())
-                  : ("failed to initialize index meta from definition, "
-                     "error in attribute '" +
-                     errField + "': " + definition.toString()));
-      return nullptr;
-    }
-    IResearchInvertedIndexMeta fieldsMeta;
-    if (!fieldsMeta.init(_server, definition, true, errField,
-                         collection.vocbase().name())) {
-      LOG_TOPIC("18c18", ERR, TOPIC)
-          << (errField.empty()
-                  ? ("failed to initialize index fields from "
-                     "definition: " +
-                     definition.toString())
-                  : ("failed to initialize index fields from definition, "
-                     "error in attribute '" +
-                     errField + "': " + definition.toString()));
-      return nullptr;
-    }
     auto nameSlice = definition.get(arangodb::StaticStrings::IndexName);
     std::string indexName;
     if (!nameSlice.isNone()) {
@@ -191,11 +166,16 @@ struct IResearchInvertedIndexFactory : public DefaultIndexFactory {
     }
     auto objectId = basics::VelocyPackHelper::stringUInt64(
         definition, arangodb::StaticStrings::ObjectId);
-    return std::make_shared<IResearchInvertedClusterIndex>(
-        id, objectId, collection, indexName, std::move(fieldsMeta));
+    auto index = std::make_shared<IResearchInvertedClusterIndex>(
+        id, objectId, collection, indexName);
+    bool pathExists = false;
+    if (index->init(definition, pathExists).fail()) {
+      return nullptr;
+    }
+    index->initFields();
+    return index;
   }
 };
-
 }  // namespace
 
 namespace arangodb {
@@ -213,7 +193,8 @@ void ClusterIndexFactory::linkIndexFactories(ArangodServer& server,
   static const DefaultIndexFactory skiplistIndexFactory(server, "skiplist");
   static const DefaultIndexFactory ttlIndexFactory(server, "ttl");
   static const DefaultIndexFactory zkdIndexFactory(server, "zkd");
-  static const IResearchInvertedIndexFactory invertedIndexFactory(server);
+  static const IResearchInvertedIndexClusterFactory invertedIndexFactory(
+      server);
 
   factory.emplace(edgeIndexFactory._type, edgeIndexFactory);
   factory.emplace(fulltextIndexFactory._type, fulltextIndexFactory);

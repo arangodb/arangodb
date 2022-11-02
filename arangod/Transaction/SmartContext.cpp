@@ -24,17 +24,14 @@
 #include "SmartContext.h"
 
 #include "Basics/Exceptions.h"
-#include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
-#include "VocBase/ticks.h"
 
 struct TRI_vocbase_t;
 
-namespace arangodb {
-namespace transaction {
+namespace arangodb::transaction {
 
 SmartContext::SmartContext(TRI_vocbase_t& vocbase, TransactionId globalId,
                            std::shared_ptr<TransactionState> state)
@@ -45,7 +42,7 @@ SmartContext::SmartContext(TRI_vocbase_t& vocbase, TransactionId globalId,
 SmartContext::~SmartContext() = default;
 
 /// @brief order a custom type handler for the collection
-arangodb::velocypack::CustomTypeHandler*
+velocypack::CustomTypeHandler*
 transaction::SmartContext::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
     _customTypeHandler =
@@ -59,70 +56,6 @@ transaction::SmartContext::orderCustomTypeHandler() {
 
 TransactionId transaction::SmartContext::generateId() const {
   return _globalId;
-}
-
-//  ============= ManagedContext =============
-
-ManagedContext::ManagedContext(TransactionId globalId,
-                               std::shared_ptr<TransactionState> state,
-                               bool responsibleForCommit, bool cloned)
-    : SmartContext(state->vocbase(), globalId, state),
-      _responsibleForCommit(responsibleForCommit),
-      _cloned(cloned),
-      _isSideUser(false) {}
-
-ManagedContext::ManagedContext(TransactionId globalId,
-                               std::shared_ptr<TransactionState> state,
-                               TransactionContextSideUser /*sideUser*/)
-    : SmartContext(state->vocbase(), globalId, state),
-      _responsibleForCommit(false),
-      _cloned(true),
-      _isSideUser(true) {}
-
-ManagedContext::~ManagedContext() {
-  bool doReturn = false;
-
-  if (_state != nullptr && !_cloned) {
-    TRI_ASSERT(!_responsibleForCommit);
-    TRI_ASSERT(!_isSideUser);
-    doReturn = true;
-  } else if (_isSideUser) {
-    TRI_ASSERT(!_responsibleForCommit);
-    TRI_ASSERT(_cloned);
-    doReturn = true;
-  }
-
-  if (doReturn) {
-    // we are responsible for returning the lease for the managed transaction
-    transaction::Manager* mgr = transaction::ManagerFeature::manager();
-    TRI_ASSERT(mgr != nullptr);
-    mgr->returnManagedTrx(_globalId, _isSideUser);
-  }
-}
-
-/// @brief get transaction state, determine commit responsiblity
-/*virtual*/ std::shared_ptr<TransactionState>
-transaction::ManagedContext::acquireState(transaction::Options const& options,
-                                          bool& responsibleForCommit) {
-  TRI_ASSERT(_state);
-  // single document transaction should never be leased out
-  TRI_ASSERT(!_state->hasHint(Hints::Hint::SINGLE_OPERATION));
-  responsibleForCommit = _responsibleForCommit;
-  return _state;
-}
-
-void ManagedContext::unregisterTransaction() noexcept {
-  TRI_ASSERT(_responsibleForCommit);
-  _state = nullptr;
-}
-
-std::shared_ptr<transaction::Context> ManagedContext::clone() const {
-  // cloned transactions may never be responsible for commits
-  auto clone = std::make_shared<transaction::ManagedContext>(
-      _globalId, _state,
-      /*responsibleForCommit*/ false, /*cloned*/ true);
-  TRI_ASSERT(clone->_state == _state);
-  return clone;
 }
 
 // ============= AQLStandaloneContext =============
@@ -160,5 +93,4 @@ std::shared_ptr<transaction::Context> AQLStandaloneContext::clone() const {
   return clone;
 }
 
-}  // namespace transaction
-}  // namespace arangodb
+}  // namespace arangodb::transaction

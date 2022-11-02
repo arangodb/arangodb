@@ -32,6 +32,7 @@
 
 #include <Cluster/ClusterFeature.h>
 
+#include "Inspection/VPack.h"
 #include "Replication2/AgencyMethods.h"
 #include "Replication2/Methods.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
@@ -196,17 +197,20 @@ RestStatus RestLogHandler::handlePostRelease(
 RestStatus RestLogHandler::handlePost(ReplicatedLogMethods const& methods,
                                       velocypack::Slice specSlice) {
   // create a new log
-  replication2::agency::LogTarget spec(replication2::agency::from_velocypack,
-                                       specSlice);
-  return waitForFuture(methods.createReplicatedLog(std::move(spec))
-                           .thenValue([this](Result&& result) {
-                             if (result.ok()) {
-                               generateOk(rest::ResponseCode::OK,
-                                          VPackSlice::emptyObjectSlice());
-                             } else {
-                               generateError(result);
-                             }
-                           }));
+  auto spec =
+      velocypack::deserialize<ReplicatedLogMethods::CreateOptions>(specSlice);
+  return waitForFuture(
+      methods.createReplicatedLog(std::move(spec))
+          .thenValue(
+              [this](ResultT<ReplicatedLogMethods::CreateResult>&& result) {
+                if (result.ok()) {
+                  VPackBuilder builder;
+                  velocypack::serialize(builder, result.get());
+                  generateOk(rest::ResponseCode::OK, builder.slice());
+                } else {
+                  generateError(result.result());
+                }
+              }));
 }
 
 RestStatus RestLogHandler::handleGetRequest(
@@ -272,20 +276,30 @@ RestLogHandler::RestLogHandler(ArangodServer& server, GeneralRequest* req,
     : RestVocbaseBaseHandler(server, req, resp) {}
 
 RestStatus RestLogHandler::handleGet(ReplicatedLogMethods const& methods) {
-  return waitForFuture(
-      methods.getReplicatedLogs().thenValue([this](auto&& logs) {
-        VPackBuilder builder;
-        {
-          VPackObjectBuilder ob(&builder);
+  return waitForFuture(methods.getReplicatedLogs().thenValue([this](
+                                                                 auto&& logs) {
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder ob(&builder);
 
-          for (auto const& [idx, status] : logs) {
-            builder.add(VPackValue(std::to_string(idx.id())));
-            status.toVelocyPack(builder);
-          }
-        }
+      for (auto const& [idx, logInfo] : logs) {
+        builder.add(VPackValue(std::to_string(idx.id())));
+        std::visit(overload{[&](replicated_log::LogStatus const& status) {
+                              status.toVelocyPack(builder);
+                            },
+                            [&](ReplicatedLogMethods::ParticipantsList const&
+                                    participants) {
+                              VPackArrayBuilder ab(&builder);
+                              for (auto&& pid : participants) {
+                                builder.add(VPackValue(pid));
+                              }
+                            }},
+                   logInfo);
+      }
+    }
 
-        generateOk(rest::ResponseCode::OK, builder.slice());
-      }));
+    generateOk(rest::ResponseCode::OK, builder.slice());
+  }));
 }
 
 RestStatus RestLogHandler::handleGetLog(const ReplicatedLogMethods& methods,

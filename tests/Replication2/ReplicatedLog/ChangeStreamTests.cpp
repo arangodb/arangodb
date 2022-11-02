@@ -220,8 +220,8 @@ TEST_F(ChangeStreamTests, ask_for_non_existing_entries_with_follower) {
 
   auto coreB = makeLogCore(LogId{2});
   auto follower = std::make_shared<DelayedFollowerLog>(
-      defaultLogger(), _logMetricsMock, "follower", std::move(coreB),
-      LogTerm{3}, "leader");
+      defaultLogger(), _logMetricsMock, _optionsMock, "follower",
+      std::move(coreB), LogTerm{3}, "leader");
   auto leader = createLeaderWithDefaultFlags("leader", LogTerm{3},
                                              std::move(coreA), {follower}, 2);
 
@@ -283,8 +283,8 @@ TEST_F(ChangeStreamTests, ask_for_non_replicated_entries_with_follower) {
 
   auto coreB = makeLogCore(LogId{2});
   auto follower = std::make_shared<DelayedFollowerLog>(
-      defaultLogger(), _logMetricsMock, "follower", std::move(coreB),
-      LogTerm{3}, "leader");
+      defaultLogger(), _logMetricsMock, _optionsMock, "follower",
+      std::move(coreB), LogTerm{3}, "leader");
   auto leader = createLeaderWithDefaultFlags("leader", LogTerm{3},
                                              std::move(coreA), {follower}, 2);
 

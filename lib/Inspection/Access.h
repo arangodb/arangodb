@@ -30,10 +30,13 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <variant>
 
 #include <velocypack/Value.h>
 
 #include "Inspection/detail/traits.h"
+#include "velocypack/Builder.h"
+#include "velocypack/Slice.h"
 
 namespace arangodb::inspection {
 
@@ -158,7 +161,7 @@ struct AccessBase {
                                                  std::string_view name,
                                                  bool isPresent, Value& val,
                                                  Transformer& transformer) {
-    typename Transformer::SerializedType v;
+    typename Transformer::SerializedType v{};
     return inspection::loadField(f, name, isPresent, v)             //
            | [&]() { return transformer.fromSerialized(v, val); };  //
   }
@@ -290,6 +293,53 @@ struct Access<std::unique_ptr<T, Deleter>>
 template<class T>
 struct Access<std::shared_ptr<T>> : OptionalAccess<std::shared_ptr<T>> {
   static auto make() { return std::make_shared<T>(); }
+};
+
+template<>
+struct Access<std::monostate> : AccessBase<std::monostate> {
+  template<class Inspector>
+  static auto apply(Inspector& f, std::monostate&) {
+    if constexpr (Inspector::isLoading) {
+      if (!f.slice().isEmptyObject()) {
+        return Status{"Expected empty object"};
+      }
+      return Status{};
+    } else {
+      f.builder().add(VPackSlice::emptyObjectSlice());
+      return Status::Success{};
+    }
+  }
+};
+
+template<>
+struct Access<VPackBuilder> : AccessBase<VPackBuilder> {
+  template<class Inspector>
+  static auto apply(Inspector& f, VPackBuilder& x) {
+    if constexpr (Inspector::isLoading) {
+      x.clear();
+      x.add(f.slice());
+      return Status{};
+    } else {
+      if (!x.isClosed()) {
+        return Status{"Exected closed VPackBuilder"};
+      }
+      f.builder().add(x.slice());
+      return Status{};
+    }
+  }
+};
+
+template<typename T>
+struct Access<std::reference_wrapper<T>>
+    : AccessBase<std::reference_wrapper<T>> {
+  template<class Inspector>
+  static auto apply(Inspector& f, std::reference_wrapper<T>& x) {
+    static_assert(!Inspector::isLoading,
+                  "a reference_wrapper cannot be deserialized because it "
+                  "cannot be default constructed (default construction is "
+                  "required for the deserialization result type)");
+    return f.apply(x.get());
+  }
 };
 
 template<class T, class StorageT>

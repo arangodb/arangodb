@@ -23,6 +23,7 @@
 
 #include "Cluster/Maintenance.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 using namespace arangodb;
 using namespace arangodb::maintenance;
@@ -43,24 +44,22 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_participant) {
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{};
-  auto const defaultConfig = LogConfig{};
+  auto const defaultConfig = agency::LogPlanConfig{};
 
   auto const planLogs = ReplicatedLogSpecMap{{
       logId,
       {logId,
        agency::LogPlanTermSpecification{
            LogTerm{3},
-           defaultConfig,
            std::nullopt,
        },
-       ParticipantsConfig{
-           .generation = 0,
-           .participants =
-               {
-                   {ParticipantId{"A"}, {}},
-                   {ParticipantId{"leader"}, {}},
-               },
-       }},
+       agency::ParticipantsConfig{.generation = 0,
+                                  .participants =
+                                      {
+                                          {ParticipantId{"A"}, {}},
+                                          {ParticipantId{"leader"}, {}},
+                                      },
+                                  .config = defaultConfig}},
   }};
 
   diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
@@ -80,7 +79,7 @@ TEST_F(ReplicationMaintenanceTest,
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{};
-  auto const defaultConfig = LogConfig{};
+  auto const defaultConfig = agency::LogPlanConfig{};
 
   auto const planLogs = ReplicatedLogSpecMap{{
       logId,
@@ -88,16 +87,16 @@ TEST_F(ReplicationMaintenanceTest,
           logId,
           agency::LogPlanTermSpecification{
               LogTerm{3},
-              defaultConfig,
               std::nullopt,
           },
-          ParticipantsConfig{
+          agency::ParticipantsConfig{
               .generation = 0,
               .participants =
                   {
                       {ParticipantId{"B"}, {}},
                       {ParticipantId{"leader"}, {}},
                   },
+              .config = defaultConfig,
           },
       },
   }};
@@ -119,7 +118,7 @@ TEST_F(ReplicationMaintenanceTest,
        replicated_log::QuickLogStatus{
            replicated_log::ParticipantRole::kUnconfigured}},
   };
-  auto const defaultConfig = LogConfig{};
+  auto const defaultConfig = agency::LogPlanConfig{};
 
   auto const planLogs = ReplicatedLogSpecMap{{
       logId,
@@ -127,16 +126,16 @@ TEST_F(ReplicationMaintenanceTest,
           logId,
           agency::LogPlanTermSpecification{
               LogTerm{3},
-              defaultConfig,
               std::nullopt,
           },
-          ParticipantsConfig{
+          agency::ParticipantsConfig{
               .generation = 0,
               .participants =
                   {
                       {ParticipantId{"B"}, {}},
                       {ParticipantId{"leader"}, {}},
                   },
+              .config = defaultConfig,
           },
       },
   }};
@@ -161,7 +160,7 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_unconfigured) {
        replicated_log::QuickLogStatus{
            replicated_log::ParticipantRole::kUnconfigured}},
   };
-  auto const defaultConfig = LogConfig{};
+  auto const defaultConfig = agency::LogPlanConfig{};
 
   auto const planLogs = ReplicatedLogSpecMap{{
       logId,
@@ -169,16 +168,16 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_unconfigured) {
           logId,
           agency::LogPlanTermSpecification{
               LogTerm{3},
-              defaultConfig,
               std::nullopt,
           },
-          ParticipantsConfig{
+          agency::ParticipantsConfig{
               .generation = 0,
               .participants =
                   {
                       {ParticipantId{"A"}, {}},
                       {ParticipantId{"leader"}, {}},
                   },
+              .config = defaultConfig,
           },
       },
   }};
@@ -205,7 +204,7 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_term) {
           .term = LogTerm{4},
           .local = {}},
   }};
-  auto const defaultConfig = LogConfig{};
+  auto const defaultConfig = agency::LogPlanConfig{};
 
   auto const planLogs = ReplicatedLogSpecMap{{
       logId,
@@ -213,16 +212,16 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_term) {
           logId,
           agency::LogPlanTermSpecification{
               LogTerm{3},
-              defaultConfig,
               std::nullopt,
           },
-          ParticipantsConfig{
+          agency::ParticipantsConfig{
               .generation = 0,
               .participants =
                   {
                       {ParticipantId{"A"}, {}},
                       {ParticipantId{"leader"}, {}},
                   },
+              .config = defaultConfig,
           },
       },
   }};
@@ -243,28 +242,32 @@ TEST_F(ReplicationMaintenanceTest,
        create_replicated_log_detect_wrong_generation) {
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
+  auto const defaultConfig = agency::LogPlanConfig{};
 
   // Expect updates in case we are leader
   auto participantsConfig =
-      ParticipantsConfig{1,
-                         {
-                             {ParticipantId{"A"}, {}},
-                             {ParticipantId{"leader"}, {}},
-                         }};
+      agency::ParticipantsConfig{.generation = 1,
+                                 .participants =
+                                     {
+                                         {ParticipantId{"A"}, {}},
+                                         {ParticipantId{"leader"}, {}},
+                                     },
+                                 .config = defaultConfig};
   auto leaderStatus = replicated_log::QuickLogStatus{
       .role = replicated_log::ParticipantRole::kLeader,
       .term = LogTerm{3},
       .local = {},
       .leadershipEstablished = true,
       .activeParticipantsConfig =
-          std::make_shared<ParticipantsConfig const>(participantsConfig),
+          std::make_shared<agency::ParticipantsConfig const>(
+              participantsConfig),
       .committedParticipantsConfig =
-          std::make_shared<ParticipantsConfig const>(participantsConfig)};
+          std::make_shared<agency::ParticipantsConfig const>(
+              participantsConfig)};
 
   auto localLogs = ReplicatedLogStatusMap{
       {logId, replicated_log::QuickLogStatus{std::move(leaderStatus)}},
   };
-  auto const defaultConfig = LogConfig{};
 
   // Modify generation to trigger an update
   participantsConfig.generation = 2;
@@ -273,7 +276,6 @@ TEST_F(ReplicationMaintenanceTest,
       {logId,
        agency::LogPlanTermSpecification{
            LogTerm{3},
-           defaultConfig,
            std::nullopt,
        },
        participantsConfig},

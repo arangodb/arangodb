@@ -39,14 +39,15 @@
 #include "Enterprise/RocksDBEngine/RocksDBEngineEE.h"
 #endif
 
+#include <rocksdb/db.h>
 #include <rocksdb/options.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 namespace rocksdb {
-
-class TransactionDB;
 class EncryptionProvider;
+class Env;
+class TransactionDB;
 }  // namespace rocksdb
 
 namespace arangodb {
@@ -76,6 +77,7 @@ struct Options;
 }  // namespace transaction
 
 class RocksDBEngine;  // forward
+struct RocksDBOptionsProvider;
 
 /// @brief helper class to make file-purging thread-safe
 /// while there is an object of this type around, it will prevent
@@ -130,7 +132,8 @@ class RocksDBEngine final : public StorageEngine {
   static constexpr std::string_view name() noexcept { return "RocksDBEngine"; }
 
   // create the storage engine
-  explicit RocksDBEngine(Server& server);
+  explicit RocksDBEngine(Server& server,
+                         RocksDBOptionsProvider const& optionsProvider);
   ~RocksDBEngine();
 
   // inherited from ApplicationFeature
@@ -180,6 +183,8 @@ class RocksDBEngine final : public StorageEngine {
 
   void getReplicatedLogs(TRI_vocbase_t& vocbase,
                          arangodb::velocypack::Builder& result);
+  void getReplicatedStates(TRI_vocbase_t& vocbase,
+                           arangodb::velocypack::Builder& result);
   ErrorCode getViews(TRI_vocbase_t& vocbase,
                      arangodb::velocypack::Builder& result) override;
 
@@ -190,6 +195,8 @@ class RocksDBEngine final : public StorageEngine {
   std::string databasePath(TRI_vocbase_t const* /*vocbase*/) const override {
     return _basePath;
   }
+  std::string idxPath() const { return _idxPath; }
+
   void cleanupReplicationContexts() override;
 
   velocypack::Builder getReplicationApplierConfiguration(
@@ -272,6 +279,13 @@ class RocksDBEngine final : public StorageEngine {
       std::shared_ptr<
           arangodb::replication2::replicated_log::PersistedLog> const&)
       -> Result override;
+
+  auto updateReplicatedState(
+      TRI_vocbase_t& vocbase,
+      replication2::replicated_state::PersistedStateInfo const& info)
+      -> Result override;
+  auto dropReplicatedState(TRI_vocbase_t& vocbase,
+                           arangodb::replication2::LogId id) -> Result override;
 
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
@@ -389,6 +403,9 @@ class RocksDBEngine final : public StorageEngine {
       std::string const& keystorePath,
       std::vector<enterprise::EncryptionSecret>& userKeys,
       std::string& encryptionKey) const;
+
+  void configureEnterpriseRocksDBOptions(rocksdb::DBOptions& options,
+                                         bool createdEngineDir);
 #endif
 
   // returns whether sha files are created or not
@@ -405,7 +422,7 @@ class RocksDBEngine final : public StorageEngine {
 #endif
   }
 
-  rocksdb::Options const& rocksDBOptions() const { return _options; }
+  rocksdb::DBOptions const& rocksDBOptions() const { return _dbOptions; }
 
   /// @brief recovery manager
   RocksDBSettingsManager* settingsManager() const {
@@ -430,6 +447,16 @@ class RocksDBEngine final : public StorageEngine {
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const&
   recoveryHelpers();
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  uint64_t recoveryStartSequence() const noexcept {
+    return _recoveryStartSequence;
+  }
+  void recoveryStartSequence(uint64_t value) noexcept {
+    TRI_ASSERT(_recoveryStartSequence == 0);
+    _recoveryStartSequence = value;
+  }
+#endif
+
  private:
   void shutdownRocksDBInstance() noexcept;
   void waitForCompactionJobsToFinish();
@@ -448,12 +475,13 @@ class RocksDBEngine final : public StorageEngine {
 
   std::string getCompressionSupport() const;
 
+  void verifySstFiles(rocksdb::Options const& options) const;
+
 #ifdef USE_ENTERPRISE
   void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void validateEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void prepareEnterprise();
-  void configureEnterpriseRocksDBOptions(rocksdb::Options& options,
-                                         bool createdEngineDir);
+
   void validateJournalFiles() const;
 
   Result readUserEncryptionSecrets(
@@ -471,14 +499,21 @@ class RocksDBEngine final : public StorageEngine {
   static constexpr std::string_view kEngineName = "rocksdb";
 
  private:
+  bool checkExistingDB(
+      std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
+
+  RocksDBOptionsProvider const& _optionsProvider;
+
   /// single rocksdb database used in this storage engine
   rocksdb::TransactionDB* _db;
   /// default read options
-  rocksdb::Options _options;
+  rocksdb::DBOptions _dbOptions;
   /// path used by rocksdb (inside _basePath)
   std::string _path;
   /// path to arangodb data dir
   std::string _basePath;
+  /// path used for index creation
+  std::string _idxPath;
 
   /// @brief repository for replication contexts
   std::unique_ptr<RocksDBReplicationManager> _replicationManager;
@@ -562,7 +597,10 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief whether or not the in-memory cache for edges is used
   bool _useEdgeCache;
 
-  /// @brief activate generation of SHA256 files to parallel .sst files
+  /// @brief whether or not to verify the sst files present in the db path
+  bool _verifySst;
+
+  /// @brief activate generation of SHA256 files for .sst and .blob files
   bool _createShaFiles;
 
   // whether or not to issue range delete markers in the write-ahead log
@@ -634,6 +672,12 @@ class RocksDBEngine final : public StorageEngine {
   // Lower bound for computed write bandwidth of throttle:
   uint64_t _throttleLowerBoundBps = 10 * 1024 * 1024;
 
+  // sequence number from which WAL recovery was started. used only
+  // for testing
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  uint64_t _recoveryStartSequence = 0;
+#endif
+
   metrics::Gauge<uint64_t>& _metricsWalSequenceLowerBound;
   metrics::Gauge<uint64_t>& _metricsArchivedWalFiles;
   metrics::Gauge<uint64_t>& _metricsPrunableWalFiles;
@@ -646,6 +690,11 @@ class RocksDBEngine final : public StorageEngine {
 
   // @brief persistor for replicated logs
   std::shared_ptr<RocksDBLogPersistor> _logPersistor;
+
+  // Checksum env for when creation of sha files is enabled
+  // this is for when encryption is enabled, sha files will be created
+  // after the encryption of the .sst and .blob files
+  std::unique_ptr<rocksdb::Env> _checksumEnv;
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";

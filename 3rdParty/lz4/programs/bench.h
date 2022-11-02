@@ -26,7 +26,8 @@
 #include <stddef.h>
 
 int BMK_benchFiles(const char** fileNamesTable, unsigned nbFiles,
-                   int cLevel, int cLevelLast);
+                   int cLevel, int cLevelLast,
+                   const char* dictFileName);
 
 /* Set Parameters */
 void BMK_setNbSeconds(unsigned nbLoops);

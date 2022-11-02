@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, assertNotEqual, assertNull, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertEqual, assertNotEqual, assertNull, assertFalse, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ COUNT
@@ -44,16 +44,18 @@ function optimizerCountTestSuite () {
   var c;
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection", { numberOfShards: 4 });
 
+      let docs = [];
       for (var i = 0; i < 1000; ++i) {
-        c.save({ group: "test" + (i % 10), value: i });
+        docs.push({ group: "test" + (i % 10), value: i });
       }
+      c.save(docs);
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
 
@@ -170,73 +172,6 @@ function optimizerCountTestSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
-
-    testCountTotalFilteredIndexed : function () {
-      c.ensureIndex({ type: "persistent", fields: ["group"] });
-      var query = "FOR i IN " + c.name() + " FILTER i.group == 'test5' COLLECT WITH COUNT INTO count RETURN count";
-
-      var results = AQL_EXECUTE(query);
-      assertEqual(1, results.json.length);
-      assertEqual(100, results.json[0]);
-
-      var plan = AQL_EXPLAIN(query).plan;
-      // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
-      if (isCluster) {
-        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      }
-    },
-
-    testCountTotalFilteredSkippedIndexed : function () {
-      c.ensureIndex({ type: "persistent", fields: ["group"] });
-      var query = "FOR i IN " + c.name() + " FILTER i.group == 'test5' LIMIT 25, 100 COLLECT WITH COUNT INTO count RETURN count";
-
-      var results = AQL_EXECUTE(query);
-      assertEqual(1, results.json.length);
-      assertEqual(75, results.json[0]);
-
-      var plan = AQL_EXPLAIN(query).plan;
-      // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
-      if (isCluster) {
-        assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      }
-    },
-
-    testCountTotalFilteredPostFilteredIndexed : function () {
-      c.ensureIndex({ type: "persistent", fields: ["group"] });
-      var query = "FOR i IN " + c.name() + " FILTER CHAR_LENGTH(i.group) == 5 COLLECT WITH COUNT INTO count RETURN count";
-
-      var results = AQL_EXECUTE(query);
-      assertEqual(1, results.json.length);
-      assertEqual(1000, results.json[0]);
-
-      var plan = AQL_EXPLAIN(query).plan;
-      // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
-      if (isCluster) {
-        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      }
-    },
-
-    testCountTotalFilteredPostFilteredSkippedIndexed : function () {
-      c.ensureIndex({ type: "persistent", fields: ["group"] });
-      var query = "FOR i IN " + c.name() + " FILTER CHAR_LENGTH(i.group) == 5 LIMIT 25, 100 COLLECT WITH COUNT INTO count RETURN count";
-
-      var results = AQL_EXECUTE(query);
-      assertEqual(1, results.json.length);
-      assertEqual(100, results.json[0]);
-
-      var plan = AQL_EXPLAIN(query).plan;
-      // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
-      if (isCluster) {
-        assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      }
-    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test count
@@ -267,33 +202,6 @@ function optimizerCountTestSuite () {
       var results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
       assertEqual(0, results.json[0]);
-
-      var plan = AQL_EXPLAIN(query).plan;
-      // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
-      if (isCluster) {
-        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
-
-    testCountTotalFilteredBig : function () {
-      var i;
-      for (i = 0; i < 10000; ++i) {
-        c.save({ age: 10 + (i % 80), type: 1 });
-      }
-      for (i = 0; i < 10000; ++i) {
-        c.save({ age: 10 + (i % 80), type: 2 });
-      }
-
-      var query = "FOR i IN " + c.name() + " FILTER i.age >= 20 && i.age < 50 && i.type == 1 COLLECT WITH COUNT INTO count RETURN count";
-
-      var results = AQL_EXECUTE(query);
-      assertEqual(1, results.json.length);
-      assertEqual(125 * 30, results.json[0]);
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
@@ -426,37 +334,6 @@ function optimizerCountTestSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
-
-    testCountFilteredBig : function () {
-      var i;
-      for (i = 0; i < 10000; ++i) {
-        c.save({ age: 10 + (i % 80), type: 1 });
-      }
-      for (i = 0; i < 10000; ++i) {
-        c.save({ age: 10 + (i % 80), type: 2 });
-      }
-
-      var query = "FOR i IN " + c.name() + " FILTER i.age >= 20 && i.age < 50 && i.type == 1 COLLECT age = i.age WITH COUNT INTO count RETURN [ age, count ]";
-
-      var results = AQL_EXECUTE(query);
-      assertEqual(30, results.json.length);
-      for (i = 0; i < results.json.length; ++i) {
-        var group = results.json[i];
-        assertTrue(Array.isArray(group));
-        assertEqual(20 + i, group[0]);
-        assertEqual(125, group[1]);
-      }
-
-      var plan = AQL_EXPLAIN(query).plan;
-      // must have a SortNode
-      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
-      if (isCluster) {
-        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      }
-    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test count
@@ -548,10 +425,278 @@ function optimizerCountTestSuite () {
   };
 }
 
+function optimizerCountWriteTestSuite () {
+  var c;
+
+  return {
+    setUp : function () {
+      db._drop("UnitTestsCollection");
+      c = db._create("UnitTestsCollection", { numberOfShards: 4 });
+
+      let docs = [];
+      for (var i = 0; i < 1000; ++i) {
+        docs.push({ group: "test" + (i % 10), value: i });
+      }
+      c.save(docs);
+    },
+
+    tearDown : function () {
+      db._drop("UnitTestsCollection");
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+
+    testCountTotalFilteredIndexed : function () {
+      c.ensureIndex({ type: "persistent", fields: ["group"] });
+      var query = "FOR i IN " + c.name() + " FILTER i.group == 'test5' COLLECT WITH COUNT INTO count RETURN count";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(100, results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
+    },
+
+    testCountTotalFilteredSkippedIndexed : function () {
+      c.ensureIndex({ type: "persistent", fields: ["group"] });
+      var query = "FOR i IN " + c.name() + " FILTER i.group == 'test5' LIMIT 25, 100 COLLECT WITH COUNT INTO count RETURN count";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(75, results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
+    },
+
+    testCountTotalFilteredPostFilteredIndexed : function () {
+      c.ensureIndex({ type: "persistent", fields: ["group"] });
+      var query = "FOR i IN " + c.name() + " FILTER CHAR_LENGTH(i.group) == 5 COLLECT WITH COUNT INTO count RETURN count";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(1000, results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
+    },
+
+    testCountTotalFilteredPostFilteredSkippedIndexed : function () {
+      c.ensureIndex({ type: "persistent", fields: ["group"] });
+      var query = "FOR i IN " + c.name() + " FILTER CHAR_LENGTH(i.group) == 5 LIMIT 25, 100 COLLECT WITH COUNT INTO count RETURN count";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(100, results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
+    },
+
+    testCountFilteredBig : function () {
+      var i;
+      let docs = [];
+      for (i = 0; i < 10000; ++i) {
+        docs.push({ age: 10 + (i % 80), type: 1 });
+      }
+      c.save(docs);
+      docs=[];
+      for (i = 0; i < 10000; ++i) {
+        docs.push({ age: 10 + (i % 80), type: 2 });
+      }
+      c.save(docs);
+
+      var query = "FOR i IN " + c.name() + " FILTER i.age >= 20 && i.age < 50 && i.type == 1 COLLECT age = i.age WITH COUNT INTO count RETURN [ age, count ]";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(30, results.json.length);
+      for (i = 0; i < results.json.length; ++i) {
+        var group = results.json[i];
+        assertTrue(Array.isArray(group));
+        assertEqual(20 + i, group[0]);
+        assertEqual(125, group[1]);
+      }
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must have a SortNode
+      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
+    },
+    testCountTotalFilteredBig : function () {
+      var i;
+      let docs = [];
+      for (i = 0; i < 10000; ++i) {
+        docs.push({ age: 10 + (i % 80), type: 1 });
+      }
+      c.save(docs);
+      docs=[];
+      for (i = 0; i < 10000; ++i) {
+        docs.push({ age: 10 + (i % 80), type: 2 });
+      }
+      c.save(docs);
+
+      var query = "FOR i IN " + c.name() + " FILTER i.age >= 20 && i.age < 50 && i.type == 1 COLLECT WITH COUNT INTO count RETURN count";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(125 * 30, results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
+    }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count
+////////////////////////////////////////////////////////////////////////////////
+
+function optimizerDoubleCollectTestSuite() {
+  const generateData = () => {
+    // Static data we will use in our AQL Queries.
+    // We do not need collection/document access or dynamic data.
+    return [
+      {"friend": {"name": "piotr"}, id: 10},
+      {"friend": {"name": "heiko"}, id: 11},
+      {"friend": {"name": "micha"}, id: 12},
+      {"friend": {"name": "micha"}, id: 13},
+      {"friend": {"name": "micha"}, id: 14},
+      {"friend": {"name": "piotr"}, id: 10},
+      {"friend": {"name": "micha"}, id: 12},
+      {"friend": {"name": "heiko"}, id: 11},
+      {"friend": {"name": "piotr"}, id: 10},
+      {"friend": {"name": "heiko"}, id: 9}
+    ];
+  };
+
+  const hasDuplicates = (values) => {
+    let seen = new Set();
+    let checkedName;
+
+    let duplicatesFound = values.some(function (currentObject) {
+      checkedName = currentObject.name;
+      return seen.size === seen.add(currentObject.name).size;
+    });
+
+    return {duplicatesFound, checkedName};
+  };
+
+  return {
+    testDoubleCollectSort: function () {
+      // Forces SORT NULL on first COLLECT statement
+
+      const query = `
+        LET friends = ${JSON.stringify(generateData())}
+        FOR f in friends
+          COLLECT friend_temp = f.friend, id = f.id WITH COUNT INTO messageCount
+          COLLECT friend = friend_temp INTO countryData = {id, messageCount}
+
+          SORT friend.name
+          RETURN {"name": friend.name, countryData}
+      `;
+
+      const results = AQL_EXECUTE(query);
+      // Our result must contain 3. Rows with collected data
+      const duplicatesChecker = hasDuplicates(results.json);
+      assertFalse(duplicatesChecker.duplicatesFound, `Found duplicate entry for: "${duplicatesChecker.checkedName}"`);
+      assertEqual(3, results.json.length);
+    },
+
+    testDoubleCollectSortNullRemoveSecondCalculationRule: function () {
+      const query = `
+        LET friends = ${JSON.stringify(generateData())}
+        FOR f in friends
+          COLLECT friend_temp = f.friend, id = f.id WITH COUNT INTO messageCount SORT NULL
+          COLLECT friend = friend_temp INTO countryData = {id, messageCount}
+
+          SORT friend.name
+          RETURN {"name": friend.name, countryData}
+      `;
+
+      const results = db._query(query).toArray();
+
+      // Our result must contain 3. Rows with collected data
+      const duplicatesChecker = hasDuplicates(results);
+      assertFalse(duplicatesChecker.duplicatesFound, `Found duplicate entry for: "${duplicatesChecker.checkedName}"`);
+      assertEqual(3, results.length);
+    },
+
+    testDoubleCollectSortNull: function () {
+      // Forces SORT NULL on first COLLECT statement
+
+      const query = `
+        LET friends = ${JSON.stringify(generateData())}
+        FOR f in friends
+          COLLECT friend_temp = f.friend, id = f.id WITH COUNT INTO messageCount SORT NULL
+          COLLECT friend = friend_temp INTO countryData = {id, messageCount}
+
+          SORT friend.name
+          RETURN {"name": friend.name, countryData}
+      `;
+
+      const results = AQL_EXECUTE(query);
+      // Our result must contain 3. Rows with collected data
+      const duplicatesChecker = hasDuplicates(results.json);
+      assertFalse(duplicatesChecker.duplicatesFound, `Found duplicate entry for: "${duplicatesChecker.checkedName}"`);
+      assertEqual(3, results.json.length);
+    },
+
+    testDoubleCollectSortNullWithForcedHashMethod: function () {
+      // Forces SORT NULL on first COLLECT statement
+      // Forces HASH method on second COLLECT
+
+      const query = `
+        LET friends = ${JSON.stringify(generateData())}
+        FOR f in friends
+          COLLECT friend_temp = f.friend, id = f.id WITH COUNT INTO messageCount SORT NULL
+          COLLECT friend = friend_temp INTO countryData = {id, messageCount} OPTIONS {method: "hash"}
+
+          SORT friend.name
+          RETURN {"name": friend.name, countryData}
+      `;
+
+      const results = AQL_EXECUTE(query);
+      // Our result must contain 3. Rows with collected data
+      const duplicatesChecker = hasDuplicates(results.json);
+      assertFalse(duplicatesChecker.duplicatesFound, `Found duplicate entry for: "${duplicatesChecker.checkedName}"`);
+      assertEqual(3, results.json.length);
+    },
+  };
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(optimizerCountTestSuite);
+jsunity.run(optimizerCountWriteTestSuite);
+jsunity.run(optimizerDoubleCollectTestSuite);
 
 return jsunity.done();

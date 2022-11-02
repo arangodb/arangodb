@@ -47,6 +47,7 @@ class VariableGenerator;
 }  // namespace aql
 
 namespace graph {
+struct BaseOptions;
 class EdgeCursor;
 struct ShortestPathOptions;
 }  // namespace graph
@@ -87,6 +88,8 @@ class BaseEngine {
 
   arangodb::aql::EngineId engineId() const noexcept { return _engineId; }
 
+  virtual graph::BaseOptions const& options() const = 0;
+
  protected:
   arangodb::aql::EngineId const _engineId;
   arangodb::aql::QueryContext& _query;
@@ -116,6 +119,9 @@ class BaseTraverserEngine : public BaseEngine {
   virtual void smartSearch(arangodb::velocypack::Slice,
                            arangodb::velocypack::Builder&) = 0;
 
+  virtual void smartSearchUnified(arangodb::velocypack::Slice,
+                                  arangodb::velocypack::Builder&) = 0;
+
   EngineType getType() const override { return TRAVERSER; }
 
   bool produceVertices() const override;
@@ -124,6 +130,8 @@ class BaseTraverserEngine : public BaseEngine {
   void injectVariables(arangodb::velocypack::Slice variables);
 
   aql::VariableGenerator const* variables() const;
+
+  graph::BaseOptions const& options() const override;
 
  protected:
   std::unique_ptr<traverser::TraverserOptions> _opts;
@@ -151,6 +159,8 @@ class ShortestPathEngine : public BaseEngine {
 
   EngineType getType() const override { return SHORTESTPATH; }
 
+  graph::BaseOptions const& options() const override;
+
  private:
   void addEdgeData(arangodb::velocypack::Builder& builder, bool backward,
                    std::string_view v);
@@ -177,6 +187,9 @@ class TraverserEngine : public BaseTraverserEngine {
 
   void smartSearch(arangodb::velocypack::Slice,
                    arangodb::velocypack::Builder&) override;
+
+  void smartSearchUnified(arangodb::velocypack::Slice,
+                          arangodb::velocypack::Builder&) override;
 };
 
 }  // namespace traverser

@@ -96,6 +96,9 @@ class Expression {
   /// @brief whether or not the expression will use V8
   bool willUseV8();
 
+  /// @brief whether or not the expression can be used inside a PRUNE statement
+  bool canBeUsedInPrune(bool isOneShard);
+
   /// @brief clone the expression, needed to clone execution plans
   std::unique_ptr<Expression> clone(Ast* ast, bool deepCopy = false);
 
@@ -155,6 +158,9 @@ class Expression {
   /// changed
   void invalidateAfterReplacements();
 
+  // prepare the expression for execution
+  void prepareForExecution();
+
  private:
   // free the internal data structures
   void freeInternals() noexcept;
@@ -167,10 +173,7 @@ class Expression {
   void determineType();
 
   // init the accessor specialization
-  void initAccessor(ExpressionContext& ctx);
-
-  // prepare the expression for execution
-  void prepareForExecution(ExpressionContext& ctx);
+  void initAccessor();
 
   // execute an expression of type SIMPLE
   static AqlValue executeSimpleExpression(ExpressionContext& ctx,

@@ -200,6 +200,14 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
 
     auto nextReqToWrite = pendingRequests.begin();
     auto nextReqToResolve = nextReqToWrite;
+    // We sort the logs by their ids. This will make the write batch sorted
+    // in ascending order, which should improve performance in RocksDB.
+    // Remember, the keys for the individual log entries are constructed as
+    // <8-byte big endian log id> <8-byte big endian index>
+    std::sort(pendingRequests.begin(), pendingRequests.end(),
+              [](PersistRequest const& left, PersistRequest const& right) {
+                return left.log->id() < right.log->id();
+              });
 
     auto result = basics::catchToResult([&] {
       rocksdb::WriteBatch wb;
@@ -238,9 +246,11 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
         }
 
         // resolve all promises in [nextReqToResolve, nextReqToWrite)
-        // TODO resolve those promises async using _executor
         for (; nextReqToResolve != nextReqToWrite; ++nextReqToResolve) {
-          nextReqToResolve->promise.setValue(TRI_ERROR_NO_ERROR);
+          _executor->operator()(
+              [reqToResolve = std::move(*nextReqToResolve)]() mutable noexcept {
+                reqToResolve.promise.setValue(TRI_ERROR_NO_ERROR);
+              });
         }
       }
 
@@ -255,7 +265,11 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
         // should always be increased as well; meaning we only exactly iterate
         // over the unfulfilled promises here.
         TRI_ASSERT(!nextReqToResolve->promise.isFulfilled());
-        nextReqToResolve->promise.setValue(result);
+        _executor->operator()([reqToResolve = std::move(*nextReqToResolve),
+                               result = result]() mutable noexcept {
+          TRI_ASSERT(!reqToResolve.promise.isFulfilled());
+          reqToResolve.promise.setValue(std::move(result));
+        });
       }
     }
   }

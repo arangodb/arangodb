@@ -42,14 +42,11 @@ class Methods;
 class RocksDBPrimaryIndex final : public RocksDBIndex {
   friend class RocksDBPrimaryIndexEqIterator;
   friend class RocksDBPrimaryIndexInIterator;
-  template<bool reverse>
+  template<bool reverse, bool mustCheckBounds>
   friend class RocksDBPrimaryIndexRangeIterator;
-  friend class RocksDBAllIndexIterator;
-  friend class RocksDBAnyIndexIterator;
 
  public:
-  RocksDBPrimaryIndex(arangodb::LogicalCollection& collection,
-                      arangodb::velocypack::Slice info);
+  RocksDBPrimaryIndex(LogicalCollection& collection, velocypack::Slice info);
 
   ~RocksDBPrimaryIndex();
 
@@ -61,8 +58,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   bool isSorted() const override { return true; }
 
-  std::vector<std::vector<arangodb::basics::AttributeName>> const&
-  coveredFields() const override;
+  std::vector<std::vector<basics::AttributeName>> const& coveredFields()
+      const override;
 
   bool hasSelectivityEstimate() const override { return true; }
 
@@ -93,25 +90,23 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                       ReadOwnWrites) const;
 
   Index::FilterCosts supportsFilterCondition(
-      std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-      arangodb::aql::AstNode const* node,
-      arangodb::aql::Variable const* reference,
+      transaction::Methods& trx,
+      std::vector<std::shared_ptr<Index>> const& allIndexes,
+      aql::AstNode const* node, aql::Variable const* reference,
       size_t itemsInIndex) const override;
 
-  Index::SortCosts supportsSortCondition(
-      arangodb::aql::SortCondition const* node,
-      arangodb::aql::Variable const* reference,
-      size_t itemsInIndex) const override;
+  Index::SortCosts supportsSortCondition(aql::SortCondition const* node,
+                                         aql::Variable const* reference,
+                                         size_t itemsInIndex) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, arangodb::aql::AstNode const* node,
-      arangodb::aql::Variable const* reference,
-      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
-      int) override;
+      transaction::Methods* trx, aql::AstNode const* node,
+      aql::Variable const* reference, IndexIteratorOptions const& opts,
+      ReadOwnWrites readOwnWrites, int) override;
 
-  arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode* node,
-      arangodb::aql::Variable const* reference) const override;
+  aql::AstNode* specializeCondition(
+      transaction::Methods& trx, aql::AstNode* node,
+      aql::Variable const* reference) const override;
 
   /// @brief returns whether the document can be inserted into the primary index
   /// (or if there will be a conflict)
@@ -143,36 +138,33 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   /// @brief test if the specified key (keySlice) already exists.
   /// if it exists and the key exists, lock it for updates!
   Result probeKey(transaction::Methods& trx, RocksDBMethods* mthd,
-                  RocksDBKeyLeaser const& key,
-                  arangodb::velocypack::Slice keySlice,
+                  RocksDBKeyLeaser const& key, velocypack::Slice keySlice,
                   OperationOptions const& options, bool insert);
 
   /// @brief create the iterator, for a single attribute, IN operator
   std::unique_ptr<IndexIterator> createInIterator(transaction::Methods*,
-                                                  arangodb::aql::AstNode const*,
-                                                  arangodb::aql::AstNode const*,
+                                                  aql::AstNode const*,
+                                                  aql::AstNode const*,
                                                   bool ascending);
 
   /// @brief create the iterator, for a single attribute, EQ operator
   std::unique_ptr<IndexIterator> createEqIterator(transaction::Methods*,
-                                                  arangodb::aql::AstNode const*,
-                                                  arangodb::aql::AstNode const*,
+                                                  aql::AstNode const*,
+                                                  aql::AstNode const*,
                                                   ReadOwnWrites readOwnWrites);
 
   /// @brief populate the keys builder with the keys from the array, in either
   /// forward or backward order
-  void fillInLookupValues(transaction::Methods*,
-                          arangodb::velocypack::Builder& keys,
-                          arangodb::aql::AstNode const* values, bool ascending,
+  void fillInLookupValues(transaction::Methods*, velocypack::Builder& keys,
+                          aql::AstNode const* values, bool ascending,
                           bool isId) const;
 
   /// @brief add a single value node to the iterator's keys
   void handleValNode(transaction::Methods* trx, VPackBuilder& keys,
-                     arangodb::aql::AstNode const* valNode, bool isId) const;
+                     aql::AstNode const* valNode, bool isId) const;
 
  private:
-  std::vector<std::vector<arangodb::basics::AttributeName>> const
-      _coveredFields;
+  std::vector<std::vector<basics::AttributeName>> const _coveredFields;
 
   bool const _isRunningInCluster;
 };

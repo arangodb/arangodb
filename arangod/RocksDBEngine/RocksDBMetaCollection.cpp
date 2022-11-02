@@ -61,7 +61,7 @@ namespace {
 rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
   auto* sm = engine.settingsManager();
   if (sm) {
-    sm->sync(true);  // force
+    sm->sync(/*force*/ true);
   }
   return engine.db()->GetLatestSequenceNumber();
 }
@@ -138,17 +138,6 @@ ErrorCode RocksDBMetaCollection::lockRead(double timeout) {
 
 /// @brief read unlocks a collection
 void RocksDBMetaCollection::unlockRead() { _exclusiveLock.unlockRead(); }
-
-void RocksDBMetaCollection::trackWaitForSync(
-    arangodb::transaction::Methods* trx, OperationOptions& options) {
-  if (_logicalCollection.waitForSync() && !options.isRestore) {
-    options.waitForSync = true;
-  }
-
-  if (options.waitForSync) {
-    trx->state()->waitForSync(true);
-  }
-}
 
 // rescans the collection to update document count
 uint64_t RocksDBMetaCollection::recalculateCounts() {
@@ -291,11 +280,10 @@ void RocksDBMetaCollection::estimateSize(velocypack::Builder& builder) {
   RocksDBKeyBounds bounds = this->bounds();
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out = 0, total = 0;
-  db->GetApproximateSizes(
-      bounds.columnFamily(), &r, 1, &out,
-      static_cast<uint8_t>(
-          rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
-          rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+
+  rocksdb::SizeApproximationOptions options{.include_memtables = true,
+                                            .include_files = true};
+  db->GetApproximateSizes(options, bounds.columnFamily(), &r, 1, &out);
   total += out;
 
   builder.openObject();
@@ -415,20 +403,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
 }
 
 std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
-    uint64_t batchId) {
-  RocksDBEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine<RocksDBEngine>();
-  RocksDBReplicationManager* manager = engine.replicationManager();
-  RocksDBReplicationContext* ctx =
-      batchId == 0 ? nullptr : manager->find(batchId);
-  if (!ctx) {
-    return nullptr;
-  }
-  auto guard =
-      scopeGuard([manager, ctx]() noexcept -> void { manager->release(ctx); });
-  rocksdb::SequenceNumber trxSeq = ctx->snapshotTick();
+    rocksdb::SequenceNumber trxSeq) {
   TRI_ASSERT(trxSeq != 0);
 
   return revisionTree(
@@ -1603,12 +1578,30 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(
 
       // apply inserts
       if (inserts) {
-        tree.insert(*inserts);
+        try {
+          tree.insert(*inserts);
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("7a4d5", ERR, Logger::ENGINES)
+              << "unable to apply revision tree inserts for "
+              << _logicalCollection.vocbase().name() << "/"
+              << _logicalCollection.name() << " for commit seq " << commitSeq
+              << ": " << ex.what();
+          throw;
+        }
       }
 
       // apply removals
       if (removals) {
-        tree.remove(*removals);
+        try {
+          tree.remove(*removals);
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("f37b2", ERR, Logger::ENGINES)
+              << "unable to apply revision tree removals for "
+              << _logicalCollection.vocbase().name() << "/"
+              << _logicalCollection.name() << " for commit seq " << commitSeq
+              << ": " << ex.what();
+          throw;
+        }
       }
     }
   });

@@ -21,6 +21,10 @@ You are expected to format your local changes via clang-format. Here are your op
    correctly formatted, and will abort the commit process in case of a formatting
    violation.
 
+   Note that using `git commit -a` invokes the pre-commit check **before** adding
+   the files, so that the pre-commit check will run on the wrong version of the
+   file. Thus using `git commit -a` is not supported.
+
 2. Reformat code with a **local shell script** (OS-dependent)
     * pre-requisites
         * Docker
@@ -28,7 +32,7 @@ You are expected to format your local changes via clang-format. Here are your op
         * On Linux: bash, with some common tools installed
     * how-to (must run manually)
         * `cd arangodb`
-        * `./scripts/clang-format-[linux, macos, windows].sh`
+        * `./scripts/clang-format.sh`
 
 3. Lint with your **custom clang-format setup**
     * This would be up to you to configure, if you do not want to rely on Docker and/or already have a way of automatically linting your changes via clang-format. We still highly encourage that you use `clang-format 12` or higher.

@@ -1,0 +1,21 @@
+name: arangodb_sync_timeouts_total
+introducedIn: "3.9.2"
+help: |
+  Number of times the synchronization of a follower shard synchronization
+  attempt ran into a timeout.
+unit: number
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Number of times a follower shard synchronization attempt ran into the
+  timeout controlled by the startup option `--cluster.shard-synchronization-attempt-timeout`.
+  Running into this timeout is not an error. The timeout simply restricts
+  individual shard synchronization attempts to a certain maximum runtime.
+  When it happens, the shard synchronization attempt is aborted by the
+  follower, but immediately retried afterwards. This abort-and-retry
+  operation allows the leader DB servers to purge their archived WAL files
+  for the aborted snapshots timely, so that long-running shard synchronization
+  aborts do not lead to overly long WAL file retention periods on leaders.

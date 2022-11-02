@@ -29,6 +29,7 @@
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Futures/Future.h"
+#include "Inspection/VPack.h"
 #include "Replication2/Methods.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include "Rest/PathMatch.h"
@@ -70,19 +71,34 @@ auto arangodb::RestReplicatedStateHandler::handleGetRequest(
     replication2::ReplicatedStateMethods const& methods)
     -> arangodb::RestStatus {
   std::vector<std::string> const& suffixes = _request->suffixes();
-  if (suffixes.size() < 2 || suffixes[1] != "local-status") {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting _api/replicated-state/<state-id>/local-status");
-    return RestStatus::DONE;
-  }
+  if (suffixes.size() == 2) {
+    replication2::LogId logId{basics::StringUtils::uint64(suffixes[0])};
 
-  replication2::LogId logId{basics::StringUtils::uint64(suffixes[0])};
-  return waitForFuture(
-      methods.getLocalStatus(logId).thenValue([this](auto&& status) {
-        VPackBuilder buffer;
-        status.toVelocyPack(buffer);
-        generateOk(rest::ResponseCode::OK, buffer.slice());
-      }));
+    if (suffixes[1] == "local-status") {
+      return waitForFuture(
+          methods.getLocalStatus(logId).thenValue([this](auto&& status) {
+            VPackBuilder buffer;
+            status.toVelocyPack(buffer);
+            generateOk(rest::ResponseCode::OK, buffer.slice());
+          }));
+    } else if (suffixes[1] == "snapshot-status") {
+      return waitForFuture(methods.getGlobalSnapshotStatus(logId).thenValue(
+          [this](auto&& status) {
+            if (status.ok()) {
+              VPackBuilder buffer;
+              velocypack::serialize(buffer, status.get());
+              generateOk(rest::ResponseCode::OK, buffer.slice());
+            } else {
+              generateError(status.result());
+            }
+          }));
+    }
+  }
+  generateError(
+      rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      "expecting "
+      "_api/replicated-state/<state-id>/[local-status|snapshot-status]");
+  return RestStatus::DONE;
 }
 
 auto arangodb::RestReplicatedStateHandler::handlePostRequest(
@@ -99,7 +115,8 @@ auto arangodb::RestReplicatedStateHandler::handlePostRequest(
 
     // create a new state
     auto spec =
-        replication2::replicated_state::agency::Target::fromVelocyPack(body);
+        velocypack::deserialize<replication2::replicated_state::agency::Target>(
+            body);
     return waitForFuture(methods.createReplicatedState(std::move(spec))
                              .thenValue([this](auto&& result) {
                                if (result.ok()) {
@@ -134,7 +151,7 @@ auto arangodb::RestReplicatedStateHandler::handlePostRequest(
     auto&& [res, raftIdx] =
         agencyCache.get(path->str(paths::SkipComponents{1}));
     auto stateTarget =
-        replication2::replicated_state::agency::Target::fromVelocyPack(
+        velocypack::deserialize<replication2::replicated_state::agency::Target>(
             res->slice());
 
     return waitForFuture(
@@ -176,8 +193,24 @@ auto arangodb::RestReplicatedStateHandler::handleDeleteRequest(
     arangodb::replication2::ReplicatedStateMethods const& methods)
     -> arangodb::RestStatus {
   auto const& suffixes = _request->suffixes();
-  if (std::string_view logIdStr;
-      rest::Match(suffixes).against(&logIdStr, "leader")) {
+  if (std::string_view logIdStr; rest::Match(suffixes).against(&logIdStr)) {
+    auto const logId = replication2::LogId::fromString(logIdStr);
+    if (!logId) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    basics::StringUtils::concatT("Not a log id: ", logIdStr));
+      return RestStatus::DONE;
+    }
+    return waitForFuture(
+        methods.deleteReplicatedState(*logId).thenValue([this](auto&& result) {
+          if (result.ok()) {
+            generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
+          } else {
+            generateError(result);
+          }
+        }));
+
+  } else if (std::string_view logIdStr;
+             rest::Match(suffixes).against(&logIdStr, "leader")) {
     auto const logId = replication2::LogId::fromString(logIdStr);
     if (!logId) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,

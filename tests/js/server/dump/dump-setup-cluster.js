@@ -36,18 +36,21 @@ const base = require("fs").join(
 const setup = require(base);
 
 (function () {
-
   setup.cleanup();
   setup.createEmpty();
   setup.createMany();
   setup.createOrder();
   setup.createModifyCollection();
   setup.createMultiShard();
+  setup.createComputedValues();
   setup.createPaddedKeyGen();
+  setup.createAutoIncKeyGen();
   setup.createUUIDKeyGen();
   setup.createStrings();
   setup.createPersistent();
   setup.createView();
+  setup.createSearch();
+  setup.createInvertedIndex();
   setup.createSmartGraph();
   setup.createSmartArangoSearch();
   setup.createSatelliteCollections();
@@ -60,12 +63,15 @@ const setup = require(base);
 
   // all types of enterprise related graphs
   setup.createEmptySmartGraph();
+  setup.createEmptyEnterpriseGraph();
   setup.createEmptySatelliteGraph();
   setup.createEmptyDisjointGraph();
   setup.createSmartGraphWithoutData();
+  setup.createEnterpriseGraphWithoutData();
   setup.createSatelliteGraphWithoutData();
   setup.createDisjointGraphWithoutData();
   setup.createSmartGraphSingleServer();
+  setup.createEnterpriseGraphSingleServer();
   setup.createSatelliteGraphSingleServer();
   setup.createDisjointGraphSingleServer();
   setup.createHybridSmartGraphSingleServer();

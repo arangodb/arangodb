@@ -30,12 +30,14 @@
 
 #include "Agency/AgencyFeature.h"
 #include "Agency/AgentCallback.h"
+#include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/system-functions.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
@@ -95,7 +97,7 @@ std::string const NO_LEADER("");
 Agent::Agent(ArangodServer& server, config_t const& config)
     : arangodb::ServerThread<ArangodServer>(server, "Agent"),
       _constituent(server),
-      _supervision(server),
+      _supervision(std::make_unique<Supervision>(server)),
       _state(server),
       _config(config),
       _commitIndex(0),
@@ -138,6 +140,35 @@ Agent::Agent(ArangodServer& server, config_t const& config)
   } else {
     _leaderSince = 0;
   }
+
+  auto const notifySupervision = [this](std::string_view, VPackSlice) {
+    _supervision->notify();
+  };
+
+  _spearhead.registerPrefixTrigger("/arango/Target/ReplicatedLogs",
+                                   notifySupervision);
+  _spearhead.registerPrefixTrigger("/arango/Plan/ReplicatedLogs",
+                                   notifySupervision);
+  _spearhead.registerPrefixTrigger("/arango/Current/ReplicatedLogs",
+                                   notifySupervision);
+
+  _spearhead.registerPrefixTrigger("/arango/Target/ReplicatedStates",
+                                   notifySupervision);
+  _spearhead.registerPrefixTrigger("/arango/Plan/ReplicatedStates",
+                                   notifySupervision);
+  _spearhead.registerPrefixTrigger("/arango/Current/ReplicatedStates",
+                                   notifySupervision);
+}
+
+/// Dtor shuts down thread
+Agent::~Agent() {
+  waitForThreadsStop();
+  // This usually was already done called from AgencyFeature::unprepare,
+  // but since this only waits for the threads to stop, it can be done
+  // multiple times, and we do it just in case the Agent object was
+  // created but never really started. Here, we exit with a fatal error
+  // if the threads do not stop in time.
+  shutdown();  // wait for the main Agent thread to terminate
 }
 
 /// This agent's id
@@ -168,15 +199,11 @@ bool Agent::mergeConfiguration(VPackSlice persisted) {
   return res;
 }
 
-/// Dtor shuts down thread
-Agent::~Agent() {
-  waitForThreadsStop();
-  // This usually was already done called from AgencyFeature::unprepare,
-  // but since this only waits for the threads to stop, it can be done
-  // multiple times, and we do it just in case the Agent object was
-  // created but never really started. Here, we exit with a fatal error
-  // if the threads do not stop in time.
-  shutdown();  // wait for the main Agent thread to terminate
+/// Wakeup main loop of the agent (needed from Constituent)
+void Agent::wakeupMainLoop() {
+  CONDITION_LOCKER(guard, _appendCV);
+  _agentNeedsWakeup = true;
+  _appendCV.broadcast();
 }
 
 /// Wait until threads are terminated:
@@ -185,7 +212,7 @@ void Agent::waitForThreadsStop() {
   // and from AgencyFeature::unprepare.
   int counter = 0;
   while (_constituent.isRunning() || _compactor.isRunning() ||
-         (_config.supervision() && _supervision.isRunning()) ||
+         (_config.supervision() && _supervision->isRunning()) ||
          (_inception != nullptr && _inception->isRunning())) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -223,7 +250,7 @@ std::string Agent::endpoint() const { return _config.endpoint(); }
 /// Handle voting
 priv_rpc_ret_t Agent::requestVote(term_t termOfPeer, std::string const& id,
                                   index_t lastLogIndex, index_t lastLogTerm,
-                                  query_t const& query, int64_t timeoutMult) {
+                                  int64_t timeoutMult) {
   if (timeoutMult != -1 && timeoutMult != _config.timeoutMult()) {
     adjustTimeoutMult(timeoutMult);
     LOG_TOPIC("81f2a", WARN, Logger::AGENCY)
@@ -480,7 +507,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term,
                                            std::string const& leaderId,
                                            index_t prevIndex, term_t prevTerm,
                                            index_t leaderCommitIndex,
-                                           query_t const& queries) {
+                                           velocypack::Slice payload) {
   using namespace std::chrono;
   using clock = high_resolution_clock;
 
@@ -493,8 +520,6 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term,
     LOG_TOPIC("7e96c", DEBUG, Logger::AGENCY) << "Agent is not ready yet.";
     return priv_rpc_ret_t(false, t);
   }
-
-  VPackSlice const payload = queries->slice();
 
   // Update commit index
   if (payload.type() != VPackValueType::Array) {
@@ -925,20 +950,20 @@ void Agent::advanceCommitIndex() {
   index_t index = temp[temp.size() - quorum];
 
   term_t t = _constituent.term();
+
+  auto ci = _commitIndex.load(std::memory_order_relaxed);
+  auto slices = _state.slices(ci + 1, index);
   {
     WRITE_LOCKER(oLocker, _outputLock);
-    auto ci = _commitIndex.load(std::memory_order_relaxed);
+
     if (index > ci) {
       CONDITION_LOCKER(guard, _waitForCV);
       LOG_TOPIC("e24a9", TRACE, Logger::AGENCY)
-          << "Critical mass for commiting "
-          << _commitIndex.load(std::memory_order_relaxed) + 1 << " through "
-          << index << " to read db";
+          << "Critical mass for commiting " << ci + 1 << " through " << index
+          << " to read db";
 
       // Change _readDB and _commitIndex atomically together:
-      _readDB.applyLogEntries(_state.slices(/* inform others by callbacks */
-                                            ci + 1, index),
-                              ci, t, true);
+      _readDB.applyLogEntries(slices, ci, t, true);
 
       LOG_TOPIC("e24aa", DEBUG, Logger::AGENCY)
           << "Critical mass for commiting " << ci + 1 << " through " << index
@@ -1102,7 +1127,7 @@ void Agent::load() {
   if (_config.supervision()) {
     LOG_TOPIC("7658f", DEBUG, Logger::AGENCY)
         << "Starting cluster supervision facilities";
-    _supervision.start(this);
+    _supervision->start(this);
   }
 
   if (_inception != nullptr) {  // resilient agency only
@@ -1216,7 +1241,7 @@ void Agent::lastAckedAgo(Builder& ret) const {
   }
 }
 
-trans_ret_t Agent::transact(query_t const& queries) {
+trans_ret_t Agent::transact(velocypack::Slice qs) {
   arangodb::consensus::index_t maxind = 0;  // maximum write index
 
   // Note that we are leading (_constituent.leading()) if and only
@@ -1236,7 +1261,6 @@ trans_ret_t Agent::transact(query_t const& queries) {
   }
 
   // Apply to spearhead and get indices for log entries
-  auto qs = queries->slice();
   addTrxsOngoing(qs);  // remember that these are ongoing
   size_t failed;
   auto ret = std::make_shared<arangodb::velocypack::Builder>();
@@ -1266,7 +1290,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
     _tiLock.assertNotLockedByCurrentThread();
     MUTEX_LOCKER(ioLocker, _ioLock);
 
-    for (const auto& query : VPackArrayIterator(qs)) {
+    for (auto query : VPackArrayIterator(qs)) {
       // Check that we are actually still the leader:
       if (!leading()) {
         return trans_ret_t(false, NO_LEADER);
@@ -1294,6 +1318,8 @@ trans_ret_t Agent::transact(query_t const& queries) {
   reportIn(id(), maxind);
 
   if (size() == 1) {
+    std::unique_lock<std::mutex> guard(
+        _protectAdvanceCommitIndexInSingleServerAgency);
     advanceCommitIndex();
   }
 
@@ -1301,7 +1327,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
 }
 
 // Non-persistent write to non-persisted key-value store
-trans_ret_t Agent::transient(query_t const& queries) {
+trans_ret_t Agent::transient(velocypack::Slice queries) {
   // Note that we are leading (_constituent.leading()) if and only
   // if _constituent.leaderId == our own ID. Therefore, we do not have
   // to use leading() or _constituent.leading() here, but can simply
@@ -1333,7 +1359,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
     MUTEX_LOCKER(transientLocker, _transientLock);
 
     // Read and writes
-    for (const auto& query : VPackArrayIterator(queries->slice())) {
+    for (auto query : VPackArrayIterator(queries)) {
       if (query[0].isObject()) {
         ret->add(VPackValue(_transient.applyTransaction(query).successful()));
       } else if (query[0].isString()) {
@@ -1345,7 +1371,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
   return trans_ret_t(true, id(), 0, 0, std::move(ret));
 }
 
-write_ret_t Agent::inquire(query_t const& query) {
+write_ret_t Agent::inquire(velocypack::Slice query) {
   // Note that we are leading (_constituent.leading()) if and only
   // if _constituent.leaderId == our own ID. Therefore, we do not have
   // to use leading() or _constituent.leading() here, but can simply
@@ -1360,7 +1386,7 @@ write_ret_t Agent::inquire(query_t const& query) {
   while (true) {
     // Check ongoing ones:
     bool found = false;
-    for (VPackSlice s : VPackArrayIterator(query->slice())) {
+    for (VPackSlice s : VPackArrayIterator(query)) {
       std::string ss = s.copyString();
       if (isTrxOngoing(ss)) {
         found = true;
@@ -1390,7 +1416,7 @@ write_ret_t Agent::inquire(query_t const& query) {
 bool Agent::loaded() const { return _loaded.load(); }
 
 /// Write new entries to replicated state and store
-write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
+write_ret_t Agent::write(velocypack::Slice query, WriteMode const& wmode) {
   using namespace std::chrono;
   std::vector<apply_ret_t> applied;
   std::vector<index_t> indices;
@@ -1415,10 +1441,9 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   }
 
   {
-    auto slice = query->slice();
-    addTrxsOngoing(slice);  // remember that these are ongoing
+    addTrxsOngoing(query);  // remember that these are ongoing
     auto sg =
-        arangodb::scopeGuard([&]() noexcept { removeTrxsOngoing(slice); });
+        arangodb::scopeGuard([&]() noexcept { removeTrxsOngoing(query); });
     // Note that once the transactions are in our log, we can remove them
     // from the list of ongoing ones, although they might not yet be committed.
     // This is because then, inquire will find them in the log and draw its
@@ -1426,7 +1451,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
     // from when we receive the request until we have appended the trxs
     // ourselves.
 
-    size_t ntrans = slice.length();
+    size_t ntrans = query.length();
     size_t npacks = ntrans / _config.maxAppendSize();
     if (ntrans % _config.maxAppendSize() != 0) {
       npacks++;
@@ -1450,7 +1475,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
         VPackArrayBuilder b(&chunk);
         for (size_t j = 0; j < _config.maxAppendSize() && l < ntrans;
              ++j, ++l) {
-          chunk.add(slice.at(l));
+          chunk.add(query.at(l));
         }
       }
 
@@ -1489,6 +1514,8 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   reportIn(id(), maxind);
 
   if (size() == 1) {
+    std::unique_lock<std::mutex> guard(
+        _protectAdvanceCommitIndexInSingleServerAgency);
     advanceCommitIndex();
   }
 
@@ -1497,7 +1524,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
 }
 
 /// Read from store
-read_ret_t Agent::read(query_t const& query) {
+read_ret_t Agent::read(velocypack::Slice query) {
   // Note that we are leading (_constituent.leading()) if and only
   // if _constituent.leaderId == our own ID. Therefore, we do not have
   // to use leading() or _constituent.leading() here, but can simply
@@ -1529,7 +1556,7 @@ read_ret_t Agent::read(query_t const& query) {
   READ_LOCKER(oLocker, _outputLock);
 
   // Retrieve data from readDB
-  std::vector<bool> success = _readDB.readMultiple(query->slice(), *result);
+  std::vector<bool> success = _readDB.readMultiple(query, *result);
 
   ++_read_ok;
   return read_ret_t(true, std::move(leader), std::move(success),
@@ -1693,28 +1720,27 @@ void Agent::run() {
 
 void Agent::persistConfiguration(term_t t) {
   // Agency configuration
-  auto agency = std::make_shared<Builder>();
+  velocypack::Builder agency;
   {
-    VPackArrayBuilder trxs(agency.get());
+    VPackArrayBuilder trxs(&agency);
     {
-      VPackArrayBuilder trx(agency.get());
+      VPackArrayBuilder trx(&agency);
       {
-        VPackObjectBuilder oper(agency.get());
-        agency->add(VPackValue(RECONFIGURE));
+        VPackObjectBuilder oper(&agency);
+        agency.add(VPackValue(RECONFIGURE));
         {
-          VPackObjectBuilder a(agency.get());
-          agency->add("op", VPackValue("set"));
-          agency->add(VPackValue("new"));
+          VPackObjectBuilder a(&agency);
+          agency.add("op", VPackValue("set"));
+          agency.add(VPackValue("new"));
           {
-            VPackObjectBuilder aa(agency.get());
-            agency->add("term", VPackValue(t));
-            agency->add(config_t::idStr, VPackValue(id()));
-            agency->add(config_t::activeStr,
-                        _config.activeToBuilder()->slice());
-            agency->add(config_t::poolStr, _config.poolToBuilder()->slice());
-            agency->add("size", VPackValue(size()));
-            agency->add(config_t::timeoutMultStr,
-                        VPackValue(_config.timeoutMult()));
+            VPackObjectBuilder aa(&agency);
+            agency.add("term", VPackValue(t));
+            agency.add(config_t::idStr, VPackValue(id()));
+            agency.add(config_t::activeStr, _config.activeToBuilder()->slice());
+            agency.add(config_t::poolStr, _config.poolToBuilder()->slice());
+            agency.add("size", VPackValue(size()));
+            agency.add(config_t::timeoutMultStr,
+                       VPackValue(_config.timeoutMult()));
           }
         }
       }
@@ -1732,7 +1758,7 @@ void Agent::persistConfiguration(term_t t) {
   }
   // In case we've lost leadership, no harm will arise as the failed write
   // prevents bogus agency configuration to be replicated among agents. ***
-  write(agency, WriteMode(true, true));
+  write(agency.slice(), WriteMode(true, true));
 }
 
 /// Orderly shutdown
@@ -1744,7 +1770,7 @@ void Agent::beginShutdown() {
 
   // Stop supervision
   if (_config.supervision()) {
-    _supervision.beginShutdown();
+    _supervision->beginShutdown();
   }
 
   // Stop inception process
@@ -1831,26 +1857,25 @@ int64_t Agent::leaderFor() const {
          _leaderSince;
 }
 
-void Agent::updatePeerEndpoint(query_t const& message) {
-  VPackSlice slice = message->slice();
-
-  if (!slice.isObject() || slice.length() == 0) {
+void Agent::updatePeerEndpoint(velocypack::Slice message) {
+  if (!message.isObject() || message.length() == 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT,
-        std::string("Improper greeting: ") + slice.toJson());
+        std::string("Improper greeting: ") + message.toJson());
   }
 
-  std::string uuid, endpoint;
+  std::string uuid;
   try {
-    uuid = slice.keyAt(0).copyString();
+    uuid = message.keyAt(0).copyString();
   } catch (std::exception const& e) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT,
         std::string("Cannot deal with UUID: ") + e.what());
   }
 
+  std::string endpoint;
   try {
-    endpoint = slice.valueAt(0).copyString();
+    endpoint = message.valueAt(0).copyString();
   } catch (std::exception const& e) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT,
@@ -1872,38 +1897,36 @@ void Agent::updatePeerEndpoint(std::string const& id, std::string const& ep) {
   }
 }
 
-void Agent::notify(query_t const& message) {
-  VPackSlice slice = message->slice();
-
-  if (!slice.isObject()) {
+void Agent::notify(velocypack::Slice message) {
+  if (!message.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_AGENCY_INFORM_MUST_BE_OBJECT,
         std::string("Inform message must be an object. Incoming type is ") +
-            slice.typeName());
+            message.typeName());
   }
 
-  if (!slice.hasKey("id") || !slice.get("id").isString()) {
+  if (!message.get("id").isString()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_ID);
   }
-  if (!slice.hasKey("term")) {
+  if (!message.hasKey("term")) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM);
   }
-  _constituent.update(slice.get("id").copyString(),
-                      slice.get("term").getUInt());
+  _constituent.update(message.get("id").copyString(),
+                      message.get("term").getUInt());
 
-  if (!slice.hasKey("active") || !slice.get("active").isArray()) {
+  if (!message.get("active").isArray()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE);
   }
-  if (!slice.hasKey("pool") || !slice.get("pool").isObject()) {
+  if (!message.get("pool").isObject()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL);
   }
-  if (!slice.hasKey("min ping") || !slice.get("min ping").isNumber()) {
+  if (!message.get("min ping").isNumber()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_MIN_PING);
   }
-  if (!slice.hasKey("max ping") || !slice.get("max ping").isNumber()) {
+  if (!message.get("max ping").isNumber()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING);
   }
-  if (!slice.hasKey("timeoutMult") || !slice.get("timeoutMult").isInteger()) {
+  if (!message.get("timeoutMult").isInteger()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT);
   }
 
@@ -2214,21 +2237,22 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
       } else {  // leader magic
         auto tmp = _config;
         tmp.upsertPool(pslice, id);
-        auto query = std::make_shared<VPackBuilder>();
+
+        velocypack::Builder query;
         {
-          VPackArrayBuilder trs(query.get());
+          VPackArrayBuilder trs(&query);
           {
-            VPackArrayBuilder tr(query.get());
+            VPackArrayBuilder tr(&query);
             {
-              VPackObjectBuilder o(query.get());
-              query->add(VPackValue(RECONFIGURE));
+              VPackObjectBuilder o(&query);
+              query.add(VPackValue(RECONFIGURE));
               {
-                VPackObjectBuilder o(query.get());
-                query->add("op", VPackValue("set"));
-                query->add(VPackValue("new"));
+                VPackObjectBuilder o(&query);
+                query.add("op", VPackValue("set"));
+                query.add(VPackValue("new"));
                 {
-                  VPackObjectBuilder c(query.get());
-                  tmp.toBuilder(*query);
+                  VPackObjectBuilder c(&query);
+                  tmp.toBuilder(query);
                 }
               }
             }
@@ -2237,12 +2261,12 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
 
         LOG_TOPIC("e85f0", DEBUG, Logger::AGENCY)
             << "persisting new agency configuration via RAFT: "
-            << query->toJson();
+            << query.toJson();
 
         // Do write
         write_ret_t ret;
         try {
-          ret = write(query, WriteMode(false, true));
+          ret = write(query.slice(), WriteMode(false, true));
           arangodb::consensus::index_t max_index = 0;
           if (ret.indices.size() > 0) {
             max_index =
@@ -2378,7 +2402,7 @@ void Agent::emptyCbTrashBin() {
                      [&server = server(), envelope = std::move(envelope)] {
                        auto* agent = server.getFeature<AgencyFeature>().agent();
                        if (!server.isStopping() && agent) {
-                         agent->write(envelope);
+                         agent->write(envelope->slice());
                        }
                      });
   }
@@ -2468,7 +2492,7 @@ void Agent::updateConfiguration(Slice slice) {
   syncActiveAndAcknowledged();
 }
 
-void Agent::updateSomeConfigValues(VPackSlice data) {
+void Agent::updateSomeConfigValues(velocypack::Slice data) {
   if (!data.isObject()) {
     return;
   }
@@ -2479,7 +2503,7 @@ void Agent::updateSomeConfigValues(VPackSlice data) {
     LOG_TOPIC("12341", DEBUG, Logger::SUPERVISION)
         << "Updating okThreshold to " << d;
     _config.setSupervisionOkThreshold(d);
-    _supervision.setOkThreshold(d);
+    _supervision->setOkThreshold(d);
   }
   slice = data.get("gracePeriod");
   if (slice.isNumber()) {
@@ -2487,7 +2511,7 @@ void Agent::updateSomeConfigValues(VPackSlice data) {
     LOG_TOPIC("12342", DEBUG, Logger::SUPERVISION)
         << "Updating gracePeriod to " << d;
     _config.setSupervisionGracePeriod(d);
-    _supervision.setGracePeriod(d);
+    _supervision->setGracePeriod(d);
   }
 }
 

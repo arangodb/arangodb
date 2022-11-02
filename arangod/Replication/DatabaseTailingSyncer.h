@@ -85,6 +85,10 @@ class DatabaseTailingSyncer : public TailingSyncer {
   Result registerOnLeader();
   void unregisterFromLeader(bool hardLocked);
 
+  void setCancellationCheckCallback(std::function<bool()> const& cb) {
+    _checkCancellation = cb;
+  }
+
  protected:
   Result syncCollectionCatchupInternal(std::string const& collectionName,
                                        double timeout, bool hard,
@@ -111,6 +115,12 @@ class DatabaseTailingSyncer : public TailingSyncer {
 
   /// @brief upper bound tick used for tailing. "0" means "no restriction"
   uint64_t _toTick;
+
+  // custom callback to check if the sync should be cancelled
+  std::function<bool()> _checkCancellation;
+
+  // point in time when we last executed the _checkCancellation callback
+  mutable std::chrono::steady_clock::time_point _lastCancellationCheck;
 
   bool _queriedTranslations;
 

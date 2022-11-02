@@ -26,7 +26,7 @@
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
-#include "utils/frozen_attributes.hpp"
+#include "utils/attribute_helper.hpp"
 #include "Aql/Ast.h"
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AqlItemBlockManager.h"
@@ -120,8 +120,6 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
   Options _options;
   aql::AqlValue _valueBuffer;
   std::unique_ptr<aql::QueryContext> _query;
-  containers::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type
-      _params_arena;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   aql::AqlItemBlockManager _itemBlockManager;
   aql::ExecutionEngine _engine;

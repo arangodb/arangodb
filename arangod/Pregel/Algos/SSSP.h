@@ -38,16 +38,22 @@ class SSSPAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
  public:
   explicit SSSPAlgorithm(application_features::ApplicationServer& server,
                          VPackSlice userParams)
-      : Algorithm(server, "SSSP") {
+      : Algorithm(server, "sssp") {
     if (!userParams.isObject() || !userParams.hasKey("source")) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           "You need to specify the source document id");
     }
     _sourceDocumentId = userParams.get("source").copyString();
-    VPackSlice slice = userParams.get("_resultField");
+
+    VPackSlice slice = userParams.get("resultField");
     if (slice.isString()) {
       _resultField = slice.copyString();
+    } else {
+      VPackSlice slice = userParams.get("_resultField");
+      if (slice.isString()) {
+        _resultField = slice.copyString();
+      }
     }
   }
 

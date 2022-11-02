@@ -27,69 +27,42 @@
 #include "Basics/StringUtils.h"
 #include "velocypack/Builder.h"
 
+namespace RLA = arangodb::replication2::agency;
+namespace RSA = arangodb::replication2::replicated_state::agency;
 namespace paths = arangodb::cluster::paths::aliases;
 
 using namespace arangodb::replication2;
 
-auto replicated_state::execute(
-    LogId id, DatabaseID const& database, Action action,
-    std::optional<agency::Plan> state,
-    std::optional<agency::Current::Supervision> currentSupervision,
-    std::optional<replication2::agency::LogTarget> log,
-    arangodb::agency::envelope envelope) -> arangodb::agency::envelope {
-  auto logTargetPath =
-      paths::target()->replicatedLogs()->database(database)->log(id)->str();
-  auto statePlanPath =
-      paths::plan()->replicatedStates()->database(database)->state(id)->str();
-  auto currentSupervisionPath = paths::current()
-                                    ->replicatedStates()
-                                    ->database(database)
-                                    ->state(id)
-                                    ->supervision()
-                                    ->str();
+namespace arangodb::replication2::replicated_state {
 
-  if (std::holds_alternative<EmptyAction>(action)) {
-    return envelope;
-  }
+auto executeAction(RSA::State state, std::optional<RLA::Log> log,
+                   Action& action) -> ActionContext {
+  auto logTarget = std::invoke([&]() -> std::optional<RLA::LogTarget> {
+    if (log) {
+      return std::move(log->target);
+    }
+    return std::nullopt;
+  });
 
-  auto ctx = replicated_state::ActionContext{std::move(log), std::move(state),
-                                             std::move(currentSupervision)};
-  std::visit([&](auto& action) { action.execute(ctx); }, action);
-  if (!ctx.hasModification()) {
-    return envelope;
-  }
+  auto statePlan = std::invoke([&]() -> std::optional<RSA::Plan> {
+    if (state.plan) {
+      return std::move(state.plan);
+    }
+    return std::nullopt;
+  });
 
-  return envelope.write()
-      .cond(ctx.hasModificationFor<replication2::agency::LogTarget>(),
-            [&](arangodb::agency::envelope::write_trx&& trx) {
-              return std::move(trx)
-                  .emplace_object(
-                      logTargetPath,
-                      [&](VPackBuilder& builder) {
-                        ctx.getValue<replication2::agency::LogTarget>()
-                            .toVelocyPack(builder);
-                      })
-                  .inc(paths::target()->version()->str());
-            })
-      .cond(ctx.hasModificationFor<agency::Plan>(),
-            [&](arangodb::agency::envelope::write_trx&& trx) {
-              return std::move(trx)
-                  .emplace_object(
-                      statePlanPath,
-                      [&](VPackBuilder& builder) {
-                        ctx.getValue<agency::Plan>().toVelocyPack(builder);
-                      })
-                  .inc(paths::plan()->version()->str());
-            })
-      .cond(ctx.hasModificationFor<agency::Current::Supervision>(),
-            [&](arangodb::agency::envelope::write_trx&& trx) {
-              return std::move(trx)
-                  .emplace_object(currentSupervisionPath,
-                                  [&](VPackBuilder& builder) {
-                                    ctx.getValue<agency::Current::Supervision>()
-                                        .toVelocyPack(builder);
-                                  })
-                  .inc(paths::plan()->version()->str());
-            })
-      .end();
+  auto currentSupervision =
+      std::invoke([&]() -> std::optional<RSA::Current::Supervision> {
+        if (state.current) {
+          return std::move(state.current->supervision);
+        }
+        return RSA::Current::Supervision{};
+      });
+
+  auto actionCtx = replicated_state::ActionContext{
+      std::move(logTarget), std::move(statePlan),
+      std::move(currentSupervision)};
+  std::visit([&](auto& action) { action.execute(actionCtx); }, action);
+  return actionCtx;
 }
+}  // namespace arangodb::replication2::replicated_state

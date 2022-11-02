@@ -30,8 +30,7 @@ namespace aql {
 template<>
 NodeFinder<ExecutionNode::NodeType, WalkerUniqueness::NonUnique>::NodeFinder(
     ExecutionNode::NodeType const& lookingFor,
-    ::arangodb::containers::SmallVector<ExecutionNode*>& out,
-    bool enterSubqueries)
+    containers::SmallVector<ExecutionNode*, 8>& out, bool enterSubqueries)
     : _out(out), _lookingFor(lookingFor), _enterSubqueries(enterSubqueries) {}
 
 /// @brief node finder for multiple types
@@ -39,7 +38,7 @@ template<>
 NodeFinder<std::initializer_list<ExecutionNode::NodeType>,
            WalkerUniqueness::NonUnique>::
     NodeFinder(std::initializer_list<ExecutionNode::NodeType> const& lookingFor,
-               ::arangodb::containers::SmallVector<ExecutionNode*>& out,
+               containers::SmallVector<ExecutionNode*, 8>& out,
                bool enterSubqueries)
     : _out(out), _lookingFor(lookingFor), _enterSubqueries(enterSubqueries) {}
 
@@ -74,7 +73,7 @@ template<>
 NodeFinder<std::initializer_list<ExecutionNode::NodeType>,
            WalkerUniqueness::Unique>::
     NodeFinder(std::initializer_list<ExecutionNode::NodeType> const& lookingFor,
-               ::arangodb::containers::SmallVector<ExecutionNode*>& out,
+               containers::SmallVector<ExecutionNode*, 8>& out,
                bool enterSubqueries)
     : _out(out), _lookingFor(lookingFor), _enterSubqueries(enterSubqueries) {}
 
@@ -94,9 +93,8 @@ bool NodeFinder<std::initializer_list<ExecutionNode::NodeType>,
 }
 
 /// @brief node finder for one node type
-EndNodeFinder::EndNodeFinder(
-    ::arangodb::containers::SmallVector<ExecutionNode*>& out,
-    bool enterSubqueries)
+EndNodeFinder::EndNodeFinder(containers::SmallVector<ExecutionNode*, 8>& out,
+                             bool enterSubqueries)
     : _out(out), _found({false}), _enterSubqueries(enterSubqueries) {}
 
 /// @brief before method for one node type

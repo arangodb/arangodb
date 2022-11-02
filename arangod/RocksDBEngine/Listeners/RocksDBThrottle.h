@@ -38,6 +38,7 @@
 #include <chrono>
 #include <future>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "Basics/Common.h"
@@ -73,35 +74,35 @@ class RocksDBThrottle : public rocksdb::EventListener {
   virtual ~RocksDBThrottle();
 
   void OnFlushBegin(rocksdb::DB* db,
-                    const rocksdb::FlushJobInfo& flush_job_info) override;
+                    rocksdb::FlushJobInfo const& flush_job_info) override;
 
   void OnFlushCompleted(rocksdb::DB* db,
-                        const rocksdb::FlushJobInfo& flush_job_info) override;
+                        rocksdb::FlushJobInfo const& flush_job_info) override;
 
   void OnCompactionCompleted(rocksdb::DB* db,
-                             const rocksdb::CompactionJobInfo& ci) override;
+                             rocksdb::CompactionJobInfo const& ci) override;
 
-  void SetFamilies(std::vector<rocksdb::ColumnFamilyHandle*>& Families) {
-    _families = Families;
+  void setFamilies(std::vector<rocksdb::ColumnFamilyHandle*>& families) {
+    _families = families;
   }
 
   void stopThread();
 
-  uint64_t GetThrottle() const { return _throttleBps; }
+  uint64_t getThrottle() const { return _throttleBps; }
 
- protected:
+ private:
   void startup(rocksdb::DB* db);
 
-  void SetThrottleWriteRate(std::chrono::microseconds Micros, uint64_t Keys,
-                            uint64_t Bytes, bool IsLevel0);
+  void setThrottleWriteRate(std::chrono::microseconds micros, uint64_t keys,
+                            uint64_t bytes, bool isLevel0);
 
-  void ThreadLoop();
+  void threadLoop();
 
-  void SetThrottle();
+  void setThrottle();
 
-  int64_t ComputeBacklog();
+  std::pair<int64_t, int64_t> computeBacklog();
 
-  void RecalculateThrottle();
+  void recalculateThrottle();
 
   struct ThrottleData_t {
     std::chrono::microseconds _micros{};
@@ -143,10 +144,8 @@ class RocksDBThrottle : public rocksdb::EventListener {
   std::atomic<uint64_t> _throttleBps;
   bool _firstThrottle;
 
-  std::unique_ptr<rocksdb::WriteControllerToken> _delayToken;
   std::vector<rocksdb::ColumnFamilyHandle*> _families;
 
- private:
   uint64_t const _numSlots;
   // frequency in milliseconds
   uint64_t const _frequency;

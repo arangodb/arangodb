@@ -179,6 +179,9 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
       _parallelizeTraversals(true),
 #endif
       _allowCollectionsInExpressions(false),
+      _logFailedQueries(false),
+      _maxQueryStringLength(4096),
+      _peakMemoryUsageThreshold(4294967296),  // 4GB
       _queryGlobalMemoryLimit(
           defaultMemoryLimit(PhysicalMemory::getValue(), 0.1, 0.90)),
       _queryMemoryLimit(
@@ -263,7 +266,8 @@ void QueryRegistryFeature::collectOptions(
       ->addOption(
           "--query.max-runtime",
           "runtime threshold for AQL queries (in seconds, 0 = no limit)",
-          new DoubleParameter(&_queryMaxRuntime))
+          new DoubleParameter(&_queryMaxRuntime, /*base*/ 1.0,
+                              /*minValue*/ 0.0))
       .setIntroducedIn(30607)
       .setIntroducedIn(30703);
 
@@ -315,7 +319,8 @@ void QueryRegistryFeature::collectOptions(
                      new DoubleParameter(&_slowStreamingQueryThreshold));
 
   options->addOption("--query.cache-mode",
-                     "mode for the AQL query result cache (on, off, demand)",
+                     "Mode for the AQL query result cache. Can be \"on\", "
+                     "\"off\", or \"demand\".",
                      new StringParameter(&_queryCacheMode));
 
   options->addOption(
@@ -338,9 +343,10 @@ void QueryRegistryFeature::collectOptions(
                      "the query result cache",
                      new BooleanParameter(&_queryCacheIncludeSystem));
 
-  options->addOption("--query.optimizer-max-plans",
-                     "maximum number of query plans to create for a query",
-                     new UInt64Parameter(&_maxQueryPlans));
+  options->addOption(
+      "--query.optimizer-max-plans",
+      "maximum number of query plans to create for a query",
+      new UInt64Parameter(&_maxQueryPlans, /*base*/ 1, /*minValue*/ 1));
 
   options
       ->addOption("--query.max-nodes-per-callstack",
@@ -397,9 +403,52 @@ void QueryRegistryFeature::collectOptions(
                   "allow full collections to be used in AQL expressions",
                   new BooleanParameter(&_allowCollectionsInExpressions),
                   arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800)
       .setDeprecatedIn(30900);
+
+  options
+      ->addOption("--query.max-artifact-log-length",
+                  "maximum length of query strings and bind parameter values "
+                  "in logs before they get truncated",
+                  new SizeTParameter(&_maxQueryStringLength),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30905)
+      .setIntroducedIn(31002)
+      .setIntroducedIn(31100);
+
+  options
+      ->addOption("--query.log-memory-usage-threshold",
+                  "log queries that have a peak memory usage larger than this "
+                  "threshold",
+                  new UInt64Parameter(&_peakMemoryUsageThreshold),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30905)
+      .setIntroducedIn(31002)
+      .setIntroducedIn(31100);
+
+  options
+      ->addOption("--query.log-failed", "log failed AQL queries",
+                  new BooleanParameter(&_logFailedQueries),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30905)
+      .setIntroducedIn(31002)
+      .setIntroducedIn(31100);
 }
 
 void QueryRegistryFeature::validateOptions(
@@ -409,20 +458,6 @@ void QueryRegistryFeature::validateOptions(
     LOG_TOPIC("2af5f", FATAL, Logger::AQL)
         << "invalid value for `--query.global-memory-limit`. expecting 0 or a "
            "value >= `--query.memory-limit`";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_queryMaxRuntime < 0.0) {
-    LOG_TOPIC("46572", FATAL, Logger::AQL)
-        << "invalid value for `--query.max-runtime`. expecting 0 or a positive "
-           "value";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_maxQueryPlans == 0) {
-    LOG_TOPIC("4006f", FATAL, Logger::AQL)
-        << "invalid value for `--query.optimizer-max-plans`. expecting at "
-           "least 1";
     FATAL_ERROR_EXIT();
   }
 

@@ -1,0 +1,14 @@
+name: arangodb_pregel_messages_sent_total
+introducedIn: "3.10.0"
+help: |
+  Number of messages sent by Pregel.
+unit: number
+type: gauge
+category: Pregel
+complexity: simple
+exposedBy:
+  - dbserver
+  - single
+  - coordinator
+description: |
+  Number of messages sent by Pregel.

@@ -39,30 +39,25 @@ class ExecutionPlan;
 
 namespace iresearch {
 
-///////////////////////////////////////////////////////////////////////////////
-/// @struct ExpressionCompilationContext
-///////////////////////////////////////////////////////////////////////////////
+struct QueryContext;
+
 struct ExpressionCompilationContext {
   bool operator==(ExpressionCompilationContext const& rhs) const noexcept {
-    return plan == rhs.plan && ast == rhs.ast && node == rhs.node;
+    return ast == rhs.ast && node == rhs.node;
   }
 
   bool operator!=(ExpressionCompilationContext const& rhs) const noexcept {
     return !(*this == rhs);
   }
 
-  explicit operator bool() const noexcept { return plan && ast && node; }
+  explicit operator bool() const noexcept { return ast && node; }
 
   size_t hash() const noexcept;
 
-  arangodb::aql::ExecutionPlan const* plan{};
-  arangodb::aql::Ast* ast{};
-  std::shared_ptr<arangodb::aql::AstNode> node{};
-};  // ExpressionCompilationContext
+  aql::Ast* ast{};
+  std::shared_ptr<aql::AstNode> node{};
+};
 
-///////////////////////////////////////////////////////////////////////////////
-/// @struct ExpressionExecutionContext
-///////////////////////////////////////////////////////////////////////////////
 struct ExpressionExecutionContext final : irs::attribute {
   static const irs::string_ref type_name() noexcept {
     return "arangodb::iresearch::ExpressionExecutionContext";
@@ -70,8 +65,7 @@ struct ExpressionExecutionContext final : irs::attribute {
 
   ExpressionExecutionContext() = default;
 
-  ExpressionExecutionContext(
-      arangodb::iresearch::ViewExpressionContextBase& ctx) noexcept
+  ExpressionExecutionContext(ViewExpressionContextBase& ctx) noexcept
       : ctx(&ctx) {}
 
   explicit operator bool() const noexcept { return ctx; }
@@ -79,42 +73,28 @@ struct ExpressionExecutionContext final : irs::attribute {
   // FIXME change 'ctx' to be 'arangodb::aql::ExpressionContext'
   // once IResearchView will be able to evaluate epxressions
   // with loop variable in SEARCH expressions
-  arangodb::iresearch::ViewExpressionContextBase* ctx{};
-};  // ExpressionFilterContext
+  ViewExpressionContextBase* ctx{};
+};
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class ByExpression
-/// @brief user-side filter based on arbitrary ArangoDB `Expression`
-///////////////////////////////////////////////////////////////////////////////
+// User-side filter based on arbitrary ArangoDB `Expression`.
 class ByExpression final : public irs::filter {
  public:
   static const irs::string_ref type_name() noexcept {
     return "arangodb::iresearch::ByExpression";
   }
 
-  static ptr make();
-
   ByExpression() noexcept;
 
-  void init(aql::ExecutionPlan const& plan, aql::Ast& ast,
-            arangodb::aql::AstNode& node) noexcept {
-    _ctx.plan = &plan;
-    _ctx.ast = &ast;
-    _ctx.node.reset(&node, [](arangodb::aql::AstNode*) {});
-  }
+  void init(QueryContext const& ctx, aql::AstNode& node) noexcept;
 
-  void init(aql::ExecutionPlan const& plan, aql::Ast& ast,
-            std::shared_ptr<arangodb::aql::AstNode>&& node) noexcept {
-    _ctx.plan = &plan;
-    _ctx.ast = &ast;
-    _ctx.node = std::move(node);
-  }
+  void init(QueryContext const& ctx,
+            std::shared_ptr<aql::AstNode>&& node) noexcept;
 
   using irs::filter::prepare;
 
   virtual irs::filter::prepared::ptr prepare(
-      irs::index_reader const& index, irs::order::prepared const& ord,
-      irs::boost_t boost, irs::attribute_provider const* ctx) const override;
+      irs::index_reader const& index, irs::Order const& ord, irs::score_t boost,
+      irs::attribute_provider const* ctx) const override;
 
   virtual size_t hash() const noexcept override;
 
@@ -127,7 +107,8 @@ class ByExpression final : public irs::filter {
 
  private:
   ExpressionCompilationContext _ctx;
-};  // ByExpression
+  std::string _allColumn;
+};
 
 }  // namespace iresearch
 }  // namespace arangodb

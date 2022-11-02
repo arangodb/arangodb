@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2021-2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,76 +21,42 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "SupervisionAction.h"
 
-#include "Agency/TransactionBuilder.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "velocypack/Builder.h"
-#include "velocypack/velocypack-common.h"
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-common.h>
 
 #include "Agency/AgencyPaths.h"
-
+#include "Agency/TransactionBuilder.h"
+#include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+
+#include <fmt/core.h>
+#include <variant>
 
 using namespace arangodb::replication2::agency;
 namespace paths = arangodb::cluster::paths::aliases;
 
 namespace arangodb::replication2::replicated_log {
 
-auto to_string(Action const& action) -> std::string_view {
-  return std::visit([](auto&& arg) { return arg.name; }, action);
-}
+auto executeAction(Log log, Action& action) -> ActionContext {
+  auto currentSupervision =
+      std::invoke([&]() -> std::optional<LogCurrentSupervision> {
+        if (log.current.has_value()) {
+          return log.current->supervision;
+        } else {
+          return std::nullopt;
+        }
+      });
 
-void toVelocyPack(Action const& action, VPackBuilder& builder) {
-  std::visit([&builder](auto&& arg) { serialize(builder, arg); }, action);
-}
-
-auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
-             std::optional<LogPlanSpecification> const plan,
-             std::optional<LogCurrent> const current,
-             arangodb::agency::envelope envelope)
-    -> arangodb::agency::envelope {
-  auto planPath =
-      paths::plan()->replicatedLogs()->database(dbName)->log(log)->str();
-
-  auto currentPath = paths::current()
-                         ->replicatedLogs()
-                         ->database(dbName)
-                         ->log(log)
-                         ->supervision()
-                         ->str();
-
-  if (std::holds_alternative<EmptyAction>(action)) {
-    return envelope;
+  if (!currentSupervision.has_value()) {
+    currentSupervision.emplace();
   }
 
-  auto ctx = ActionContext{std::move(plan), std::move(current)};
+  auto ctx = ActionContext{std::move(log.plan), std::move(currentSupervision)};
 
-  std::visit([&](auto& action) { action.execute(ctx); }, action);
-
-  if (std::holds_alternative<EmptyAction>(action)) {
-    return envelope;
-  }
-
-  return envelope.write()
-      .cond(ctx.hasPlanModification(),
-            [&](arangodb::agency::envelope::write_trx&& trx) {
-              return std::move(trx)
-                  .emplace_object(planPath,
-                                  [&](VPackBuilder& builder) {
-                                    ctx.getPlan().toVelocyPack(builder);
-                                  })
-                  .inc(paths::plan()->version()->str());
-            })
-      .cond(ctx.hasCurrentModification(),
-            [&](arangodb::agency::envelope::write_trx&& trx) {
-              return std::move(trx)
-                  .emplace_object(
-                      currentPath,
-                      [&](VPackBuilder& builder) {
-                        ctx.getCurrent().supervision->toVelocyPack(builder);
-                      })
-                  .inc(paths::current()->version()->str());
-            })
-      .end();
+  std::visit([&](auto&& action) { action.execute(ctx); }, action);
+  return ctx;
 }
 
 }  // namespace arangodb::replication2::replicated_log

@@ -47,9 +47,8 @@ using namespace arangodb::containers;
 namespace {
 
 // helper functions
-SmallVector<AqlValue> createArgVec(const VPackSlice slice) {
-  SmallVector<AqlValue>::allocator_type::arena_type arena;
-  SmallVector<AqlValue> params{arena};
+containers::SmallVector<AqlValue, 4> createArgVec(const VPackSlice slice) {
+  containers::SmallVector<AqlValue, 4> params;
 
   for (const auto arg : VPackArrayIterator(slice)) {
     if (arg.isObject()) {
@@ -86,16 +85,14 @@ void expectEqSlices(const VPackSlice actualSlice,
     double expected = expectedSlice.getNumber<double>();
     EXPECT_DOUBLE_EQ(expected, actual) << "args: " << args;
   }
-
-  return;
 }
 
-AqlValue evaluateDecayFunction(const SmallVector<AqlValue>& params,
-                               const arangodb::aql::AstNode& node) {
+AqlValue evaluateDecayFunction(std::span<AqlValue const> params,
+                               arangodb::aql::AstNode const& node) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
   fakeit::When(Method(expressionContextMock, registerWarning))
-      .AlwaysDo([](ErrorCode, char const*) {});
+      .AlwaysDo([](ErrorCode, std::string_view) {});
 
   VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;
@@ -128,7 +125,7 @@ void assertDecayFunction(char const* expected, char const* args,
   ASSERT_TRUE(argsSlice.isArray());
 
   // create params vector from args slice
-  SmallVector<AqlValue> params = createArgVec(argsSlice);
+  auto params = createArgVec(argsSlice);
 
   // evaluate
   auto actual_value = evaluateDecayFunction(params, node);
@@ -152,7 +149,7 @@ void assertDecayFunctionFail(char const* args,
   ASSERT_TRUE(argsSlice.isArray());
 
   // create params vector from args slice
-  SmallVector<AqlValue> params = createArgVec(argsSlice);
+  auto params = createArgVec(argsSlice);
 
   ASSERT_TRUE(evaluateDecayFunction(params, node).isNull(false));
 
@@ -165,7 +162,7 @@ void assertDecayFunctionFail(char const* args,
 TEST(GaussDecayFunctionTest, test) {
   // preparing
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
-  arangodb::aql::Function f("DECAY_GAUSS", &Functions::DecayGauss);
+  arangodb::aql::Function f("DECAY_GAUSS", &functions::DecayGauss);
   node.setData(static_cast<void const*>(&f));
 
   // expecting 1
@@ -235,7 +232,7 @@ TEST(GaussDecayFunctionTest, test) {
 TEST(ExpDecayFunctionTest, test) {
   // preparing
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
-  arangodb::aql::Function f("DECAY_EXP", &Functions::DecayExp);
+  arangodb::aql::Function f("DECAY_EXP", &functions::DecayExp);
   node.setData(static_cast<void const*>(&f));
 
   // expecting 1
@@ -301,7 +298,7 @@ TEST(ExpDecayFunctionTest, test) {
 TEST(LinDecayFunctionTest, test) {
   // preparing
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
-  arangodb::aql::Function f("DECAY_LINEAR", &Functions::DecayLinear);
+  arangodb::aql::Function f("DECAY_LINEAR", &functions::DecayLinear);
   node.setData(static_cast<void const*>(&f));
 
   // expecting 1

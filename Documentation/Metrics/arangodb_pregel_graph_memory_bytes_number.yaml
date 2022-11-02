@@ -1,0 +1,14 @@
+name: arangodb_pregel_graph_memory_bytes_number
+introducedIn: "3.10.0"
+help: |
+  Memory allocated by Pregel for graph storage.
+unit: bytes
+type: gauge
+category: Pregel
+complexity: simple
+exposedBy:
+  - dbserver
+  - single
+  - coordinator
+description: |
+  The number of bytes allocated by Pregel.

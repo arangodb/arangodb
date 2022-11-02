@@ -438,6 +438,12 @@ void RefactoredSingleServerEdgeCursor<Step>::prepareIndexExpressions(
   }
 }
 
+template<class StepType>
+bool RefactoredSingleServerEdgeCursor<StepType>::hasDepthSpecificLookup(
+    uint64_t depth) const noexcept {
+  return _depthLookupInfo.find(depth) != _depthLookupInfo.end();
+}
+
 template class arangodb::graph::RefactoredSingleServerEdgeCursor<
     SingleServerProviderStep>;
 

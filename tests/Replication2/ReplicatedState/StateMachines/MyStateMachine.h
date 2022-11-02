@@ -41,6 +41,8 @@ struct MyState {
   using EntryType = MyEntryType;
   using FactoryType = MyFactory;
   using CoreType = MyCoreType;
+  using CoreParameterType = void;
+  using CleanupHandlerType = void;
 };
 
 struct MyEntryType {

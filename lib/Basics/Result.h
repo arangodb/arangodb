@@ -55,6 +55,8 @@ class Result final {
 
   Result(ErrorCode errorNumber, const char* errorMessage);
 
+  Result(result::Error error);
+
   /**
    * @brief Construct as copy
    * @param  other  To copy from
@@ -66,6 +68,10 @@ class Result final {
    * @param  other  The prototype
    */
   Result(Result&& other) noexcept = default;
+
+  // Include Result.tpp when you want to call this function.
+  template<typename... Args>
+  static auto fmt(ErrorCode, Args&&...) -> Result;
 
   /**
    * @brief Assignment operator
@@ -170,11 +176,16 @@ class Result final {
                        int> = 0>
   auto mapError(F&& f) -> Result {
     if (_error != nullptr) {
-      return Result{errorNumber(), std::forward<F>(f)(*_error)};
+      return Result{std::forward<F>(f)(*_error)};
     }
 
     return *this;
   }
+
+  bool operator==(const Result&) const;
+
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, Result& x);
 
  private:
   std::unique_ptr<arangodb::result::Error> _error = nullptr;
@@ -186,5 +197,23 @@ class Result final {
  */
 auto operator<<(std::ostream& out, arangodb::Result const& result)
     -> std::ostream&;
+
+template<typename Inspector>
+auto inspect(Inspector& f, arangodb::Result& x) {
+  if constexpr (Inspector::isLoading) {
+    auto v = arangodb::result::Error{};
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = arangodb::Result{v};
+    }
+    return res;
+  } else {
+    if (x._error == nullptr) {
+      auto v = arangodb::result::Error{};
+      return f.apply(v);
+    }
+    return f.apply(x._error);
+  }
+}
 
 }  // namespace arangodb

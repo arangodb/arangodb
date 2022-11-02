@@ -29,6 +29,8 @@
 #include "Aql/QueryList.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Helpers.h"
@@ -374,8 +376,13 @@ ResultT<std::pair<std::string, bool>> RestQueryHandler::forwardingTarget() {
       uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
       if (sourceServer != ServerState::instance()->getShortId()) {
         auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-        return {
-            std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
+        auto coordinatorId = ci.getCoordinatorByShortID(sourceServer);
+        if (coordinatorId.empty()) {
+          return ResultT<std::pair<std::string, bool>>::error(
+              TRI_ERROR_QUERY_NOT_FOUND,
+              "cannot find target server for query id");
+        }
+        return {std::make_pair(std::move(coordinatorId), false)};
       }
     }
   }

@@ -29,6 +29,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/overload.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -136,8 +138,8 @@ Result TransactionState::addCollection(DataSourceId cid,
     defined(ARANGODB_ENABLE_FAILURE_TESTS)
   TRI_IF_FAILURE(("WaitOnLock::" + cname).c_str()) {
     auto& raceController = basics::DebugRaceController::sharedInstance();
-    if (!raceController.didTrigger()) {
-      raceController.waitForOthers(2, _id, vocbase().server());
+    auto didTrigger = raceController.waitForOthers(2, _id, vocbase().server());
+    if (didTrigger) {
       // Slice out the first char, then we have a number
       uint32_t shardNum = basics::StringUtils::uint32(&cname.back(), 1);
       std::vector<std::any> const data = raceController.data();
@@ -503,9 +505,61 @@ void TransactionState::coordinatorRerollTransactionId() {
 }
 
 /// @brief return a reference to the global transaction statistics
-TransactionStatistics& TransactionState::statistics() noexcept {
+TransactionStatistics& TransactionState::statistics() const noexcept {
   return _vocbase.server()
       .getFeature<metrics::MetricsFeature>()
       .serverStatistics()
       ._transactionsStatistics;
+}
+
+void TransactionState::chooseReplicasNolock(
+    containers::FlatHashSet<ShardID> const& shards) {
+  if (_chosenReplicas == nullptr) {
+    _chosenReplicas =
+        std::make_unique<containers::FlatHashMap<ShardID, ServerID>>(
+            shards.size());
+  }
+  auto& cf = _vocbase.server().getFeature<ClusterFeature>();
+  auto& ci = cf.clusterInfo();
+#ifdef USE_ENTERPRISE
+  ci.getResponsibleServersReadFromFollower(shards, *_chosenReplicas);
+#else
+  *_chosenReplicas = ci.getResponsibleServers(shards);
+#endif
+}
+
+void TransactionState::chooseReplicas(
+    containers::FlatHashSet<ShardID> const& shards) {
+  MUTEX_LOCKER(guard, _replicaMutex);
+  chooseReplicasNolock(shards);
+}
+
+ServerID TransactionState::whichReplica(ShardID const& shard) {
+  MUTEX_LOCKER(guard, _replicaMutex);
+  if (_chosenReplicas != nullptr) {
+    auto it = _chosenReplicas->find(shard);
+    if (it != _chosenReplicas->end()) {
+      return it->second;
+    }
+  }
+  // Not yet decided
+  containers::FlatHashSet<ShardID> shards;
+  shards.emplace(shard);
+  chooseReplicasNolock(shards);
+  auto it = _chosenReplicas->find(shard);
+  TRI_ASSERT(it != _chosenReplicas->end());
+  return it->second;
+}
+
+containers::FlatHashMap<ShardID, ServerID> TransactionState::whichReplicas(
+    containers::FlatHashSet<ShardID> const& shardIds) {
+  MUTEX_LOCKER(guard, _replicaMutex);
+  chooseReplicasNolock(shardIds);
+  containers::FlatHashMap<ShardID, ServerID> result;
+  for (auto const& shard : shardIds) {
+    auto it = _chosenReplicas->find(shard);
+    TRI_ASSERT(it != _chosenReplicas->end());
+    result.try_emplace(shard, it->second);
+  }
+  return result;
 }

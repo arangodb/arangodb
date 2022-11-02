@@ -25,12 +25,11 @@
 
 #include "Basics/Common.h"
 
+#include "Basics/Mutex.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
-#include "Network/NetworkFeature.h"
 #include "Metrics/Fwd.h"
 
 namespace arangodb {
@@ -41,9 +40,14 @@ class DatabaseFeaturePhase;
 namespace metrics {
 class MetricsFeature;
 }
+namespace network {
+class ConnectionPool;
+}
 
 class AgencyCache;
+class AgencyCallback;
 class AgencyCallbackRegistry;
+class ClusterInfo;
 class DatabaseFeature;
 class HeartbeatThread;
 
@@ -131,6 +135,14 @@ class ClusterFeature : public ArangodFeature {
     TRI_ASSERT(_followersTotalRebuildCounter != nullptr);
     return *_followersTotalRebuildCounter;
   }
+  metrics::Counter& potentiallyDirtyDocumentReadsCounter() {
+    TRI_ASSERT(_potentiallyDirtyDocumentReadsCounter != nullptr);
+    return *_potentiallyDirtyDocumentReadsCounter;
+  }
+  metrics::Counter& dirtyReadQueriesCounter() {
+    TRI_ASSERT(_dirtyReadQueriesCounter != nullptr);
+    return *_dirtyReadQueriesCounter;
+  }
 
   /**
    * @brief Add databases to dirty list
@@ -156,9 +168,7 @@ class ClusterFeature : public ArangodFeature {
   bool isDirty(std::string const& database) const;
 
   /// @brief hand out async agency comm connection pool pruning:
-  void pruneAsyncAgencyConnectionPool() {
-    _asyncAgencyCommPool->pruneConnections();
-  }
+  void pruneAsyncAgencyConnectionPool();
 
   /// the following methods may also be called from tests
 
@@ -230,7 +240,9 @@ class ClusterFeature : public ArangodFeature {
   metrics::Counter* _followersRefusedCounter = nullptr;
   metrics::Counter* _followersWrongChecksumCounter = nullptr;
   metrics::Counter* _followersTotalRebuildCounter = nullptr;
-  std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback;
+  metrics::Counter* _potentiallyDirtyDocumentReadsCounter = nullptr;
+  metrics::Counter* _dirtyReadQueriesCounter = nullptr;
+  std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback = nullptr;
 
   /// @brief lock for dirty database list
   mutable arangodb::Mutex _dirtyLock;

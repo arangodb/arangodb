@@ -46,7 +46,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::INDEX:
     case EN::RETURN:
     case EN::TRAVERSAL:
-    case EN::K_SHORTEST_PATHS:
+    case EN::ENUMERATE_PATHS:
     case EN::SHORTEST_PATH:
     case EN::ENUMERATE_IRESEARCH_VIEW:
     case EN::WINDOW: {
@@ -154,6 +154,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
         IndexIteratorOptions opts;
         opts.ascending = !descending;
         opts.lookahead = node->hint().getLookahead();
+        opts.waitForSync = node->hint().waitForSync();
         opts.useCache = node->useCache();
         TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

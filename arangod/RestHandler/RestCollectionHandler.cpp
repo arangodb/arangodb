@@ -29,6 +29,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/MaintenanceStrings.h"
+#include "Cluster/ServerDefaults.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
@@ -43,6 +44,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
+#include "VocBase/Properties/PlanCollection.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -264,7 +266,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
               RevisionId rid = RevisionId::fromSlice(res.slice());
               {
                 VPackObjectBuilder obj(&_builder, true);
-                obj->add("revision", VPackValue(StringUtils::itoa(rid.id())));
+                obj->add("revision", VPackValue(rid.toString()));
 
                 // no need to use async variant
                 collectionRepresentation(*_ctxt, /*showProperties*/ true,
@@ -288,33 +290,13 @@ RestStatus RestCollectionHandler::handleCommandGet() {
                                /*showProperties*/ true, FiguresType::None,
                                CountType::None);
 
-      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-      auto shards = ci.getShardList(std::to_string(coll->planId().id()));
-
+      auto shardsMap = coll->shardIds();
       if (_request->parsedValue("details", false)) {
         // with details
-        VPackObjectBuilder arr(&_builder, "shards", true);
-        for (ShardID const& shard : *shards) {
-          std::vector<ServerID> servers;
-          ci.getShardServers(shard, servers);
-
-          if (servers.empty()) {
-            continue;
-          }
-
-          VPackArrayBuilder arr2(&_builder, shard);
-
-          for (auto const& server : servers) {
-            arr2->add(VPackValue(server));
-          }
-        }
+        coll->shardMapToVelocyPack(_builder);
       } else {
-        // no details
-        VPackArrayBuilder arr(&_builder, "shards", true);
-
-        for (ShardID const& shard : *shards) {
-          arr->add(VPackValue(shard));
-        }
+        // without details
+        coll->shardIDsToVelocyPack(_builder);
       }
     }
     return standardResponse();
@@ -341,16 +323,6 @@ void RestCollectionHandler::handleCommandPost() {
     events::CreateCollection(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     return;
   }
-
-  VPackSlice nameSlice;
-  if (!body.isObject() || !(nameSlice = body.get("name")).isString() ||
-      nameSlice.getStringLength() == 0) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    events::CreateCollection(_vocbase.name(), "",
-                             TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    return;
-  }
-
   auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
   bool waitForSyncReplication = _request->parsedValue(
       "waitForSyncReplication", cluster.createWaitsForSyncReplication());
@@ -358,47 +330,36 @@ void RestCollectionHandler::handleCommandPost() {
   bool enforceReplicationFactor =
       _request->parsedValue("enforceReplicationFactor", true);
 
-  TRI_col_type_e type = TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
-  VPackSlice typeSlice = body.get("type");
-  if (typeSlice.isString()) {
-    if (typeSlice.compareString("edge") == 0 ||
-        typeSlice.compareString("3") == 0) {
-      type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
-    }
-  } else if (typeSlice.isNumber()) {
-    uint32_t t = typeSlice.getNumber<uint32_t>();
-    if (t == TRI_col_type_e::TRI_COL_TYPE_EDGE) {
-      type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
-    }
+  auto planCollection =
+      PlanCollection::fromCreateAPIBody(body, ServerDefaults(_vocbase));
+  if (planCollection.fail()) {
+    // error message generated in inspect
+    generateError(rest::ResponseCode::BAD, planCollection.errorNumber(),
+                  planCollection.errorMessage());
+    events::CreateCollection(_vocbase.name(), "", planCollection.errorNumber());
+    return;
   }
+  std::vector<PlanCollection> collections{std::move(planCollection.get())};
+  auto parameters = planCollection->toCollectionsCreate();
 
-  bool isDC2DCContext = ExecContext::current().isSuperuser();
-
-  // for some "security" a list of allowed parameters (i.e. all
-  // others are disallowed!)
-  VPackBuilder filtered =
-      methods::Collections::filterInput(body, isDC2DCContext);
-  VPackSlice const parameters = filtered.slice();
-
-  bool allowSystem = VelocyPackHelper::getBooleanValue(
-      parameters, StaticStrings::DataSourceSystem, false);
-
-  // now we can create the collection
-  std::string const& name = nameSlice.copyString();
-  _builder.clear();
-  std::shared_ptr<LogicalCollection> coll;
   OperationOptions options(_context);
-
-  Result res = methods::Collections::create(
+  std::shared_ptr<LogicalCollection> coll;
+  auto result = methods::Collections::create(
       _vocbase,  // collection vocbase
-      options,
-      name,                      // colection name
-      type,                      // collection type
-      parameters,                // collection properties
+      options, collections,
       waitForSyncReplication,    // replication wait flag
       enforceReplicationFactor,  // replication factor flag
-      false,                     // new Database?, here always false
-      coll, allowSystem);
+      /*isNewDatabase*/ false    // here always false
+  );
+
+  // backwards compatibility transformation:
+  Result res{TRI_ERROR_NO_ERROR};
+  if (result.fail()) {
+    res = result.result();
+  } else {
+    TRI_ASSERT(result.get().size() == 1);
+    coll = result.get().at(0);
+  }
 
   if (res.ok()) {
     TRI_ASSERT(coll);
@@ -449,19 +410,13 @@ RestStatus RestCollectionHandler::handleCommandPut() {
   TRI_ASSERT(coll);
 
   if (sub == "load") {
-    res = methods::Collections::load(_vocbase, coll.get());
-
-    if (res.ok()) {
-      bool cc = VelocyPackHelper::getBooleanValue(body, "count", true);
-      collectionRepresentation(
-          name, /*showProperties*/ false,
-          /*showFigures*/ FiguresType::None,
-          /*showCount*/ cc ? CountType::Standard : CountType::None);
-      return standardResponse();
-    } else {
-      generateError(res);
-      return RestStatus::DONE;
-    }
+    // "load" is a no-op starting with 3.9
+    bool cc = VelocyPackHelper::getBooleanValue(body, "count", true);
+    collectionRepresentation(
+        name, /*showProperties*/ false,
+        /*showFigures*/ FiguresType::None,
+        /*showCount*/ cc ? CountType::Standard : CountType::None);
+    return standardResponse();
   } else if (sub == "unload") {
     bool flush = _request->parsedValue("flush", false);
 
@@ -471,18 +426,11 @@ RestStatus RestCollectionHandler::handleCommandPut() {
                                                                      false);
     }
 
-    res = methods::Collections::unload(&_vocbase, coll.get());
-
-    if (res.ok()) {
-      collectionRepresentation(name, /*showProperties*/ false,
-                               /*showFigures*/ FiguresType::None,
-                               /*showCount*/ CountType::None);
-      return standardResponse();
-    } else {
-      generateError(res);
-      return RestStatus::DONE;
-    }
-
+    // apart from WAL flushing, unload is a no-op starting with 3.9
+    collectionRepresentation(name, /*showProperties*/ false,
+                             /*showFigures*/ FiguresType::None,
+                             /*showCount*/ CountType::None);
+    return standardResponse();
   } else if (sub == "compact") {
     coll->compact();
 
@@ -597,12 +545,6 @@ RestStatus RestCollectionHandler::handleCommandPut() {
                 // has taken
                 coll->compact();
               }
-              if (ServerState::instance()
-                      ->isCoordinator()) {  // ClusterInfo::loadPlan eventually
-                                            // updates status
-                coll->setStatus(
-                    TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED);
-              }
 
               // no need to use async method, no
               collectionRepresentation(coll,
@@ -617,7 +559,8 @@ RestStatus RestCollectionHandler::handleCommandPut() {
         StaticStrings::WaitForSyncString,    StaticStrings::Schema,
         StaticStrings::ReplicationFactor,
         StaticStrings::MinReplicationFactor,  // deprecated
-        StaticStrings::WriteConcern,         StaticStrings::CacheEnabled};
+        StaticStrings::WriteConcern,         StaticStrings::ComputedValues,
+        StaticStrings::CacheEnabled};
     VPackBuilder props = VPackCollection::keep(body, keep);
 
     OperationOptions options(_context);
@@ -829,7 +772,7 @@ RestCollectionHandler::collectionRepresentationAsync(
           if (showCount != CountType::None) {
             auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
             TRI_ASSERT(trx != nullptr);
-            trx->finish(opRes.result);
+            std::ignore = trx->finish(opRes.result);
           }
           THROW_ARANGO_EXCEPTION(opRes.result);
         }

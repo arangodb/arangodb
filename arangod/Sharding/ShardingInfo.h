@@ -29,9 +29,12 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+
+#include <atomic>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <atomic>
+#include <vector>
 
 namespace arangodb {
 class LogicalCollection;
@@ -56,30 +59,28 @@ class ShardingInfo {
   bool usesSameShardingStrategy(ShardingInfo const* other) const;
   std::string shardingStrategyName() const;
 
-  LogicalCollection* collection() const;
-  void toVelocyPack(arangodb::velocypack::Builder& result,
-                    bool translateCids) const;
+  LogicalCollection* collection() const noexcept;
+  void toVelocyPack(arangodb::velocypack::Builder& result, bool translateCids,
+                    bool includeShardsEntry = true) const;
 
-  std::string const& distributeShardsLike() const;
+  std::string const& distributeShardsLike() const noexcept;
   void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
 
-  std::vector<std::string> const& avoidServers() const;
+  std::vector<std::string> const& avoidServers() const noexcept;
   void avoidServers(std::vector<std::string> const&);
 
-  size_t replicationFactor() const;
+  size_t replicationFactor() const noexcept;
   void replicationFactor(size_t);
 
-  size_t writeConcern() const;
+  size_t writeConcern() const noexcept;
   void writeConcern(size_t);
 
   void setWriteConcernAndReplicationFactor(size_t writeConcern,
                                            size_t replicationFactor);
 
-  std::pair<bool, bool>
-  makeSatellite();  // Return note booleans: (isError, isASatellite)
-  bool isSatellite() const;
+  bool isSatellite() const noexcept;
 
-  size_t numberOfShards() const;
+  size_t numberOfShards() const noexcept;
 
   /// @brief update the number of shards. note that this method
   /// should never be called after a collection was properly initialized
@@ -94,8 +95,8 @@ class ShardingInfo {
       arangodb::velocypack::Slice slice, ArangodServer const& server,
       bool enforceReplicationFactor);
 
-  bool usesDefaultShardKeys() const;
-  std::vector<std::string> const& shardKeys() const;
+  bool usesDefaultShardKeys() const noexcept;
+  std::vector<std::string> const& shardKeys() const noexcept;
 
   std::shared_ptr<ShardMap> shardIds() const;
 
@@ -112,9 +113,19 @@ class ShardingInfo {
                                 bool& usesDefaultShardKeys,
                                 std::string_view key);
 
-  static void sortShardNamesNumerically(std::vector<ShardID>& list);
+  template<typename T>
+  static void sortShardNamesNumerically(T& list);
+
+  static Result extractReplicationFactor(velocypack::Slice info, bool isSmart,
+                                         size_t& replicationFactor);
+
+  static Result extractShardKeys(velocypack::Slice info,
+                                 size_t replicationFactor,
+                                 std::vector<std::string>& shardKeys);
 
  private:
+  void makeSatellite();
+
   // @brief the logical collection we are working for
   LogicalCollection* _collection;
 

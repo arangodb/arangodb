@@ -464,7 +464,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::velocypack::Builder builder;
@@ -508,7 +508,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::velocypack::Builder builder;
@@ -547,7 +547,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::velocypack::Builder builder;
@@ -591,7 +591,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::velocypack::Builder builder;
@@ -639,7 +639,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::velocypack::Builder builder;
@@ -690,7 +690,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::velocypack::Builder builder;
@@ -740,7 +740,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::velocypack::Builder builder;
@@ -791,7 +791,7 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() -> void {
+    auto restore = irs::make_finally([&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
     });
     arangodb::velocypack::Builder builder;
@@ -804,5 +804,59 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
                      builder, json->slice(), true, sysVocbase,
                      arangodb::iresearch::LinkVersion::MIN, &sort, &compression)
                      .ok());
+  }
+
+  // with primary sort and custom primary compression, inBackground, parallelism
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(R"(
+    {
+      "analyzerDefinitions": [ { "name": "testAnalyzer1", "type": "identity" } ],
+      "inBackground": true,
+      "parallelism": 4,
+      "analyzers": ["testAnalyzer1" ],
+      "storedValues":[[], [""], {"fields":["test.t"], "compression":"lz4",
+      "some_unknown":1}, {"fields":["a.a", "b.b"], "compression":"none"}]
+    })");
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult =
+        arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally([&before]() noexcept -> void {
+      StorageEngineMock::recoveryStateResult = before;
+    });
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    arangodb::iresearch::IResearchViewSort sort;
+    sort.emplace_back(
+        {arangodb::basics::AttributeName(std::string("abc"), false)}, true);
+    auto compression = irs::type<irs::compression::none>::id();
+    EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
+                    builder, json->slice(), true, sysVocbase,
+                    arangodb::iresearch::LinkVersion::MIN, &sort, &compression)
+                    .ok());
+    builder.close();
+    EXPECT_EQ(nullptr,
+              analyzers.get(
+                  arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+
+    auto expected_json = arangodb::velocypack::Parser::fromJson(
+        R"({
+      "type":"arangosearch",
+      "inBackground": true,
+      "parallelism": 4,
+      "version":0,
+      "primarySort":[{"field":"abc", "asc": true}],
+      "primarySortCompression":"none",
+      "fields":{},
+      "includeAllFields": false,
+      "trackListPositions": false,
+      "storeValues": "none",
+      "analyzerDefinitions": [
+        { "name": "testAnalyzer1", "type": "identity", "properties":{}, "features":[]}
+      ],
+      "analyzers": ["testAnalyzer1" ],
+      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}]
+    })");
+    EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
 }

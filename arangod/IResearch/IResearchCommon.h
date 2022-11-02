@@ -32,6 +32,25 @@
 namespace arangodb {
 namespace iresearch {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the delimiter used to separate jSON nesting levels when
+/// generating
+///        flat iResearch field names
+////////////////////////////////////////////////////////////////////////////////
+inline constexpr char const NESTING_LEVEL_DELIMITER = '.';
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the prefix used to denote start of jSON list offset when generating
+///        flat iResearch field names
+////////////////////////////////////////////////////////////////////////////////
+inline constexpr char const NESTING_LIST_OFFSET_PREFIX = '[';
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the suffix used to denote end of jSON list offset when generating
+///        flat iResearch field names
+////////////////////////////////////////////////////////////////////////////////
+inline constexpr char const NESTING_LIST_OFFSET_SUFFIX = ']';
+
 [[maybe_unused]] extern LogTopic TOPIC;
 [[maybe_unused]] inline constexpr std::string_view
     IRESEARCH_INVERTED_INDEX_TYPE = "inverted";
@@ -46,7 +65,7 @@ enum class ViewVersion : uint32_t {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief defines the implementation version of the iresearch link interface
+/// @brief defines the implementation version of the iresearch index interface
 ///        e.g. which how data is stored in iresearch
 ////////////////////////////////////////////////////////////////////////////////
 enum class LinkVersion : uint32_t {
@@ -55,14 +74,14 @@ enum class LinkVersion : uint32_t {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @return default link version
+/// @return default index version
 ////////////////////////////////////////////////////////////////////////////////
 constexpr LinkVersion getDefaultVersion(bool isUserRequest) noexcept {
   return isUserRequest ? LinkVersion::MAX : LinkVersion::MIN;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @return format identifier according to a specified link version
+/// @return format identifier according to a specified index version
 ////////////////////////////////////////////////////////////////////////////////
 constexpr std::string_view getFormat(LinkVersion version) noexcept {
   constexpr std::array<std::string_view, 2> IRESEARCH_FORMATS{
@@ -74,7 +93,8 @@ constexpr std::string_view getFormat(LinkVersion version) noexcept {
 }
 
 struct StaticStrings {
-  static constexpr std::string_view DataSourceType = "arangosearch";
+  static constexpr std::string_view ViewArangoSearchType = "arangosearch";
+  static constexpr std::string_view ViewSearchAliasType = "search-alias";
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch View definition denoting the
@@ -93,6 +113,13 @@ struct StaticStrings {
   ///        corresponding IResearch View
   ////////////////////////////////////////////////////////////////////////////////
   static constexpr std::string_view ViewIdField{"view"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief attribute name for storing link/inverted index errors
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view LinkError{"error"};
+  static constexpr std::string_view LinkErrorOutOfSync{"outOfSync"};
+  static constexpr std::string_view LinkErrorFailed{"failed"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the

@@ -25,11 +25,11 @@
 
 #include "Basics/ScopeGuard.h"
 #include "Basics/system-functions.h"
-#include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/LifoQueue.h"
 #include "Graph/Queues/WeightedQueue.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
+#include "Graph/Steps/ClusterProviderStep.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
@@ -70,6 +70,47 @@ void QueueTracer<QueueImpl>::append(typename QueueImpl::Step step) {
   auto sg = arangodb::scopeGuard(
       [&]() noexcept { _stats["append"].addTiming(TRI_microtime() - start); });
   return _impl.append(std::move(step));
+}
+
+template<class QueueImpl>
+void QueueTracer<QueueImpl>::setStartContent(
+    std::vector<typename QueueImpl::Step> startSteps) {
+  double start = TRI_microtime();
+  // this can extend _stats, thus requires mutability, may allocate
+  // dynamic memory and can throw
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["setStartContent"].addTiming(TRI_microtime() - start);
+  });
+  return _impl.setStartContent(std::move(startSteps));
+}
+
+template<class QueueImpl>
+bool QueueTracer<QueueImpl>::firstIsVertexFetched() const {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["firstIsVertexFetched"].addTiming(TRI_microtime() - start);
+  });
+  return _impl.firstIsVertexFetched();
+}
+
+template<class QueueImpl>
+void QueueTracer<QueueImpl>::getStepsWithoutFetchedEdges(
+    std::vector<Step*>& stepsToFetch) {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["getStepsWithoutFetchedEdges"].addTiming(TRI_microtime() - start);
+  });
+  _impl.getStepsWithoutFetchedEdges(stepsToFetch);
+}
+
+template<class QueueImpl>
+std::vector<typename QueueImpl::Step*>
+QueueTracer<QueueImpl>::getStepsWithoutFetchedVertex() {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["getStepsWithoutFetchedVertex"].addTiming(TRI_microtime() - start);
+  });
+  return _impl.getStepsWithoutFetchedVertex();
 }
 
 template<class QueueImpl>
@@ -135,6 +176,13 @@ template class ::arangodb::graph::QueueTracer<
 template class ::arangodb::graph::QueueTracer<
     arangodb::graph::WeightedQueue<SingleServerProviderStep>>;
 
+template class ::arangodb::graph::QueueTracer<
+    arangodb::graph::FifoQueue<ClusterProviderStep>>;
+template class ::arangodb::graph::QueueTracer<
+    arangodb::graph::LifoQueue<ClusterProviderStep>>;
+template class ::arangodb::graph::QueueTracer<
+    arangodb::graph::WeightedQueue<ClusterProviderStep>>;
+
 #ifdef USE_ENTERPRISE
 template class ::arangodb::graph::QueueTracer<
     arangodb::graph::FifoQueue<enterprise::SmartGraphStep>>;
@@ -143,11 +191,3 @@ template class ::arangodb::graph::QueueTracer<
 template class ::arangodb::graph::QueueTracer<
     arangodb::graph::WeightedQueue<enterprise::SmartGraphStep>>;
 #endif
-
-/* ClusterServerProvider Section */
-template class ::arangodb::graph::QueueTracer<
-    arangodb::graph::FifoQueue<arangodb::graph::ClusterProviderStep>>;
-template class ::arangodb::graph::QueueTracer<
-    arangodb::graph::LifoQueue<arangodb::graph::ClusterProviderStep>>;
-template class ::arangodb::graph::QueueTracer<
-    arangodb::graph::WeightedQueue<arangodb::graph::ClusterProviderStep>>;

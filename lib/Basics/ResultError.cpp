@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ResultError.h"
+#include "ResultError.tpp"
 
 #include "Basics/StaticStrings.h"
 #include "Basics/error.h"

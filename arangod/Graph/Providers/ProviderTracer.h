@@ -62,6 +62,9 @@ class ProviderTracer {
 
   auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0)
       -> Step;
+  auto fetchVertices(std::vector<Step*> const& looseEnds)
+      -> futures::Future<std::vector<Step*>>;
+  auto fetchEdges(const std::vector<Step*>& fetchedVertices) -> Result;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;
   auto expand(Step const& from, size_t previous,
@@ -74,6 +77,20 @@ class ProviderTracer {
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
 
+  // [GraphRefactor] TODO: Temporary method - will be needed until we've
+  // finished the full graph refactor.
+  EdgeDocumentToken getEdgeDocumentToken(typename Step::Edge const& edge);
+
+  void addEdgeIDToBuilder(typename Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
+
+  void addEdgeToLookupMap(typename Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
+
+  auto getEdgeId(typename Step::Edge const& edge) -> std::string;
+
+  auto getEdgeIdRef(typename Step::Edge const& edge) -> EdgeType;
+
   void prepareIndexExpressions(aql::Ast* ast);
 
   // Note: ClusterProvider will need to implement destroyEngines
@@ -82,9 +99,12 @@ class ProviderTracer {
   aql::TraversalStats stealStats();
 
   [[nodiscard]] transaction::Methods* trx();
+  [[nodiscard]] TRI_vocbase_t const& vocbase() const;
 
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
+  bool isResponsible(Step const& step) const;
+  [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
  private:
   ProviderImpl _impl;

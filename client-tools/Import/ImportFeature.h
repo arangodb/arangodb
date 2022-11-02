@@ -62,6 +62,7 @@ class ImportFeature final : public ArangoImportFeature,
   std::string _collectionName;
   std::string _fromCollectionPrefix;
   std::string _toCollectionPrefix;
+  bool _overwriteCollectionPrefix;
   bool _createCollection;
   bool _createDatabase;
   std::string _createCollectionType;

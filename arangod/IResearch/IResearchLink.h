@@ -42,6 +42,8 @@
 
 namespace arangodb::iresearch {
 
+class IResearchView;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief common base class for functionality required to link an ArangoDB
 ///        LogicalCollection with an IResearchView
@@ -162,10 +164,12 @@ class IResearchLink : public IResearchDataStore {
   Result insert(transaction::Methods& trx, LocalDocumentId documentId,
                 velocypack::Slice doc);
 
+  std::string const& getDbName() const noexcept;
   std::string const& getViewId() const noexcept;
-  std::string const& getDbName() const;
-  std::string const& getShardName() const noexcept;
   std::string getCollectionName() const;
+  std::string const& getShardName() const noexcept;
+
+  bool hasNested() const noexcept;
 
  protected:
   ////////////////////////////////////////////////////////////////////////////////
@@ -178,6 +182,10 @@ class IResearchLink : public IResearchDataStore {
   void removeMetrics() final;
 
   void invalidateQueryCache(TRI_vocbase_t* vocbase) override;
+
+  irs::comparer const* getComparator() const noexcept override {
+    return &_comparer;
+  }
 
  private:
   template<typename T>
@@ -193,6 +201,8 @@ class IResearchLink : public IResearchDataStore {
   IResearchLinkMeta _meta;
   // the identifier of the desired view (read-only, set via init())
   std::string _viewGuid;
+
+  VPackComparer<IResearchViewSort> _comparer;
 };
 
 }  // namespace arangodb::iresearch

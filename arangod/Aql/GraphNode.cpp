@@ -38,17 +38,15 @@
 #include "Aql/Variable.h"
 #include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterTraverser.h"
 #include "Cluster/ServerState.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/Graph.h"
-#include "Graph/SingleServerTraverser.h"
 #include "Graph/TraverserOptions.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #ifdef USE_ENTERPRISE
-#include "Enterprise/Aql/LocalKShortestPathsNode.h"
+#include "Enterprise/Aql/LocalEnumeratePathsNode.h"
 #include "Enterprise/Aql/LocalShortestPathNode.h"
 #include "Enterprise/Aql/LocalTraversalNode.h"
 #endif
@@ -62,6 +60,86 @@ using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
 namespace {
+
+struct DisjointSmartToSatelliteTester {
+  Result isCollectionAllowed(
+      std::shared_ptr<LogicalCollection> const& collection,
+      TRI_edge_direction_e dir) {
+    // We only need to check Sat -> Smart or Smart -> Sat collection, nothing
+    // else
+    if (collection->isSmartToSatEdgeCollection() ||
+        collection->isSatToSmartEdgeCollection()) {
+      if (dir == TRI_EDGE_ANY) {
+        // ANY is always forbidden
+        return {
+            TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,
+            "Using direction 'ANY' on collection: '" + collection->name() +
+                "' could switch from Smart to Satellite and back. This "
+                "violates the isDisjoint feature and is forbidden."};
+      }
+      // Unify Edge storage, and edge read direction.
+      // The smartToSatDir defines the direction in which we attempt to
+      // walk from Smart to Satellite collections. (OUT: Smart -> Sat, IN: Sat
+      // -> Smart)
+      bool isOut = dir == TRI_EDGE_OUT;
+      auto smartToSatDir = isOut == collection->isSmartToSatEdgeCollection()
+                               ? TRI_EDGE_OUT
+                               : TRI_EDGE_IN;
+      if (_disjointSmartToSatDirection == TRI_EDGE_ANY) {
+        // We have not defined the direction yet, store it, this now defines the
+        // only allowed switch
+        _disjointSmartToSatDirection = smartToSatDir;
+        TRI_ASSERT(_conflictingCollection == nullptr);
+        _conflictingCollection = collection;
+        _conflictingDirection = dir;
+      } else if (_disjointSmartToSatDirection != smartToSatDir) {
+        // We try to switch again! This is disallowed. Let us report.
+        std::stringstream errorMessage;
+        errorMessage << "Using direction ";
+        if (dir == TRI_EDGE_OUT) {
+          errorMessage << "OUTBOUND";
+        } else {
+          errorMessage << "INBOUND";
+        }
+        auto printCollection = [&errorMessage](LogicalCollection const& col,
+                                               bool isOut) {
+          errorMessage << "'" << col.name() << "' switching from ";
+          if (isOut == col.isSmartToSatEdgeCollection()) {
+            // Hits OUTBOUND on SmartToSat and INBOUND on SatToSmart
+            errorMessage << "Smart to Satellite";
+          } else {
+            // Hits INBOUND on SmartToSat and OUTBOUND on SatToSmart
+            errorMessage << "Satellite to Smart";
+          }
+        };
+        errorMessage << " on collection: ";
+        printCollection(*collection, isOut);
+
+        errorMessage << ". Conflicting with: ";
+        if (_conflictingDirection == TRI_EDGE_OUT) {
+          errorMessage << "OUTBOUND";
+        } else {
+          errorMessage << "INBOUND";
+        }
+        errorMessage << " ";
+        bool conflictingIsOut = _conflictingDirection == TRI_EDGE_OUT;
+        TRI_ASSERT(_conflictingCollection != nullptr);
+        printCollection(*_conflictingCollection, conflictingIsOut);
+        errorMessage
+            << ". This violates the isDisjoint feature and is forbidden.";
+        return {
+            TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,
+            errorMessage.str()};
+      }
+    }
+    return TRI_ERROR_NO_ERROR;
+  }
+
+ private:
+  TRI_edge_direction_e _disjointSmartToSatDirection{TRI_EDGE_ANY};
+  std::shared_ptr<LogicalCollection> _conflictingCollection{nullptr};
+  TRI_edge_direction_e _conflictingDirection{TRI_EDGE_ANY};
+};
 
 TRI_edge_direction_e uint64ToDirection(uint64_t dirNum) {
   switch (dirNum) {
@@ -98,6 +176,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
+      _optimizedOutVariables({}),
       _graphObj(nullptr),
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
@@ -106,6 +185,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _optionsBuilt(false),
       _isSmart(false),
       _isDisjoint(false),
+      _enabledClusterOneShardRule(false),
       _options(std::move(options)) {
   // Direction is already the correct Integer.
   // Is not inserted by user but by enum.
@@ -116,7 +196,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(graph != nullptr);
 
-  auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+  DisjointSmartToSatelliteTester disjointTest{};
 
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
     size_t edgeCollectionCount = graph->numMembers();
@@ -125,36 +205,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
     _edgeColls.reserve(edgeCollectionCount);
     _directions.reserve(edgeCollectionCount);
 
-    // First determine whether all edge collections are smart and sharded
-    // like a common collection:
-    if (ServerState::instance()->isRunningInCluster()) {
-      _isSmart = true;
-      _isDisjoint = true;
-      std::string distributeShardsLike;
-      for (size_t i = 0; i < edgeCollectionCount; ++i) {
-        auto col = graph->getMember(i);
-        if (col->type == NODE_TYPE_DIRECTION) {
-          col = col->getMember(1);  // The first member always is the collection
-        }
-        std::string n = col->getString();
-        auto c = ci.getCollection(_vocbase->name(), n);
-        if (c->isSmart() && !c->isDisjoint()) {
-          _isDisjoint = false;
-        }
-        if (!c->isSmart() || c->distributeShardsLike().empty()) {
-          _isSmart = false;
-          _isDisjoint = false;
-          break;
-        }
-        if (distributeShardsLike.empty()) {
-          distributeShardsLike = c->distributeShardsLike();
-        } else if (distributeShardsLike != c->distributeShardsLike()) {
-          _isSmart = false;
-          _isDisjoint = false;
-          break;
-        }
-      }
-    }
+    determineEnterpriseFlags(graph);
 
     std::unordered_map<std::string, TRI_edge_direction_e> seenCollections;
     CollectionNameResolver const& resolver = plan->getAst()->query().resolver();
@@ -201,20 +252,27 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
                                        msg);
       }
+      if (_isDisjoint) {
+        // TODO: Alternative to "THROW" we could run a community based Query
+        // here, instead of a Disjoint one.
+        auto res = disjointTest.isCollectionAllowed(collection, dir);
+        if (res.fail()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+        }
+      }
 
       auto& collections = plan->getAst()->query().collections();
 
       _graphInfo.add(VPackValue(eColName));
       if (ServerState::instance()->isRunningInCluster()) {
-        auto c = ci.getCollection(_vocbase->name(), eColName);
-        if (!c->isSmart()) {
+        if (!collection->isSmart()) {
           addEdgeCollection(collections, eColName, dir);
         } else {
           std::vector<std::string> names;
           if (_isSmart) {
-            names = c->realNames();
+            names = collection->realNames();
           } else {
-            names = c->realNamesForRead();
+            names = collection->realNamesForRead();
           }
           for (auto const& name : names) {
             addEdgeCollection(collections, name, dir);
@@ -244,22 +302,30 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_EMPTY);
     }
 
-    // First determine whether all edge collections are smart and sharded
-    // like a common collection:
+    // Just use the Graph Object information
     if (ServerState::instance()->isRunningInCluster()) {
       _isSmart = _graphObj->isSmart();
       _isDisjoint = _graphObj->isDisjoint();
     }
-
+    auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+    auto& collections = plan->getAst()->query().collections();
     for (const auto& n : eColls) {
       if (_options->shouldExcludeEdgeCollection(n)) {
         // excluded edge collection
         continue;
       }
 
-      auto& collections = plan->getAst()->query().collections();
       if (ServerState::instance()->isRunningInCluster()) {
         auto c = ci.getCollection(_vocbase->name(), n);
+        if (_isDisjoint) {
+          // TODO: Alternative to "THROW" we could run a community based Query
+          // here, instead of a Disjoint one.
+          auto res = disjointTest.isCollectionAllowed(c, _defaultDirection);
+          if (res.fail()) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(),
+                                           res.errorMessage());
+          }
+        }
         if (!c->isSmart()) {
           addEdgeCollection(collections, n, _defaultDirection);
         } else {
@@ -278,7 +344,6 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       }
     }
 
-    auto& collections = plan->getAst()->query().collections();
     auto vColls = _graphObj->vertexCollections();
     length = vColls.size();
     if (length == 0) {
@@ -297,6 +362,7 @@ GraphNode::GraphNode(ExecutionPlan* plan,
       _vocbase(&(plan->getAst()->query().vocbase())),
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
+      _optimizedOutVariables({}),
       _graphObj(nullptr),
       _tmpObjVariable(nullptr),
       _tmpObjVarNode(nullptr),
@@ -308,7 +374,10 @@ GraphNode::GraphNode(ExecutionPlan* plan,
       _isSmart(arangodb::basics::VelocyPackHelper::getBooleanValue(
           base, StaticStrings::IsSmart, false)),
       _isDisjoint(arangodb::basics::VelocyPackHelper::getBooleanValue(
-          base, StaticStrings::IsDisjoint, false)) {
+          base, StaticStrings::IsDisjoint, false)),
+      _enabledClusterOneShardRule(
+          arangodb::basics::VelocyPackHelper::getBooleanValue(
+              base, StaticStrings::ForceOneShardAttributeValue, false)) {
   if (!ServerState::instance()->isDBServer()) {
     // Graph Information. Do we need to reload the graph here?
     std::string graphName;
@@ -418,6 +487,15 @@ GraphNode::GraphNode(ExecutionPlan* plan,
         Variable::varFromVPack(plan->getAst(), base, "edgeOutVariable");
   }
 
+  VPackSlice optimizedOutVariables = base.get("optimizedOutVariables");
+  if (optimizedOutVariables.isArray()) {
+    for (auto const& var : VPackArrayIterator(optimizedOutVariables)) {
+      if (var.isNumber()) {
+        _optimizedOutVariables.emplace(var.getNumber<VariableId>());
+      }
+    }
+  }
+
   // Temporary Filter Objects
   TRI_ASSERT(base.hasKey("tmpObjVariable"));
   _tmpObjVariable =
@@ -462,6 +540,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
+      _optimizedOutVariables({}),
       _graphObj(graph),
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
@@ -470,10 +549,19 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _optionsBuilt(false),
       _isSmart(false),
       _isDisjoint(false),
+      _enabledClusterOneShardRule(false),
       _directions(std::move(directions)),
       _options(std::move(options)) {
   setGraphInfoAndCopyColls(edgeColls, vertexColls);
 }
+
+#ifndef USE_ENTERPRISE
+void GraphNode::determineEnterpriseFlags(AstNode const*) {
+  _isSmart = false;
+  _isDisjoint = false;
+  _enabledClusterOneShardRule = false;
+}
+#endif
 
 void GraphNode::setGraphInfoAndCopyColls(
     std::vector<Collection*> const& edgeColls,
@@ -498,6 +586,7 @@ GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
       _vocbase(other._vocbase),
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
+      _optimizedOutVariables(other._optimizedOutVariables),
       _graphObj(other.graph()),
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
@@ -506,6 +595,7 @@ GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
       _optionsBuilt(false),
       _isSmart(other.isSmart()),
       _isDisjoint(other.isDisjoint()),
+      _enabledClusterOneShardRule(other.isClusterOneShardRuleEnabled()),
       _directions(other._directions),
       _options(std::move(options)),
       _collectionToShard(other._collectionToShard) {
@@ -611,9 +701,19 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
     edgeOutVariable()->toVelocyPack(nodes);
   }
 
+  nodes.add(VPackValue("optimizedOutVariables"));
+  {
+    VPackArrayBuilder guard(&nodes);
+    for (auto const& var : _optimizedOutVariables) {
+      nodes.add(VPackValue(var));
+    }
+  }
+
   // Flags
-  nodes.add("isSmart", VPackValue(_isSmart));
-  nodes.add("isDisjoint", VPackValue(_isDisjoint));
+  nodes.add(StaticStrings::IsSmart, VPackValue(_isSmart));
+  nodes.add(StaticStrings::IsDisjoint, VPackValue(_isDisjoint));
+  nodes.add(StaticStrings::ForceOneShardAttributeValue,
+            VPackValue(_enabledClusterOneShardRule));
 
   // Temporary AST Nodes for conditions
   TRI_ASSERT(_tmpObjVariable != nullptr);
@@ -638,6 +738,10 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 void GraphNode::graphCloneHelper(ExecutionPlan&, GraphNode& clone, bool) const {
   clone._isSmart = _isSmart;
   clone._isDisjoint = _isDisjoint;
+  clone._enabledClusterOneShardRule = _enabledClusterOneShardRule;
+
+  // Optimized Out Variables
+  clone._optimizedOutVariables = _optimizedOutVariables;
 }
 
 CostEstimate GraphNode::estimateCost() const {
@@ -907,7 +1011,14 @@ bool GraphNode::isVertexOutVariableUsedLater() const {
 }
 
 void GraphNode::setVertexOutput(Variable const* outVar) {
+  if (outVar == nullptr) {
+    markUnusedConditionVariable(_vertexOutVariable);
+  }
   _vertexOutVariable = outVar;
+}
+
+void GraphNode::markUnusedConditionVariable(Variable const* var) {
+  _optimizedOutVariables.emplace(var->id);
 }
 
 Variable const* GraphNode::edgeOutVariable() const { return _edgeOutVariable; }
@@ -917,6 +1028,9 @@ bool GraphNode::isEdgeOutVariableUsedLater() const {
 }
 
 void GraphNode::setEdgeOutput(Variable const* outVar) {
+  if (outVar == nullptr) {
+    markUnusedConditionVariable(_edgeOutVariable);
+  }
   _edgeOutVariable = outVar;
 }
 
@@ -937,6 +1051,14 @@ void GraphNode::initializeIndexConditions() const {
       plan()->getAst(), getRegisterPlan()->varInfo, getTemporaryVariable());
 }
 
+void GraphNode::setVertexProjections(Projections projections) {
+  options()->setVertexProjections(std::move(projections));
+}
+
+void GraphNode::setEdgeProjections(Projections projections) {
+  options()->setEdgeProjections(std::move(projections));
+}
+
 bool GraphNode::isEligibleAsSatelliteTraversal() const {
   return graph() != nullptr && graph()->isSatellite();
 }
@@ -949,7 +1071,13 @@ bool GraphNode::isUsedAsSatellite() const { return false; }
 
 bool GraphNode::isLocalGraphNode() const { return false; }
 
+bool GraphNode::isHybridDisjoint() const { return false; }
+
 void GraphNode::waitForSatelliteIfRequired(
     ExecutionEngine const* engine) const {}
+
+void GraphNode::enableClusterOneShardRule(bool enable) { TRI_ASSERT(false); }
+
+bool GraphNode::isClusterOneShardRuleEnabled() const { return false; }
 
 #endif

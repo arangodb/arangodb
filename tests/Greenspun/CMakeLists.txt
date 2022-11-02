@@ -22,5 +22,5 @@ if (NOT MSVC)
       add_dependencies(greenspun_test jemalloc_build)
     endif ()
 
-    target_include_directories(greenspun_test SYSTEM PRIVATE ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src)
+    target_include_directories(greenspun_test SYSTEM PRIVATE ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/third-party/gtest-1.8.1/fused-src)
 endif ()

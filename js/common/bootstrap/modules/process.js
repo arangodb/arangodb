@@ -38,6 +38,6 @@ global.DEFINE_MODULE('process', (function () {
   };
 
   exports.exit = internal.exit;
-
+  exports.platform = require("internal").platform;
   return exports;
 }()));

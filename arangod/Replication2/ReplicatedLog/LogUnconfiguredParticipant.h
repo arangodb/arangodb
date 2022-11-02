@@ -61,6 +61,8 @@ struct LogUnconfiguredParticipant final
   [[nodiscard]] auto getCommitIndex() const noexcept
       -> arangodb::replication2::LogIndex override;
 
+  [[nodiscard]] auto copyInMemoryLog() const -> InMemoryLog override;
+
  private:
   std::shared_ptr<
       arangodb::replication2::replicated_log::ReplicatedLogMetrics> const
@@ -75,7 +77,10 @@ struct LogUnconfiguredParticipant final
         std::unique_ptr<arangodb::replication2::replicated_log::LogCore>,
         arangodb::DeferredAction>;
 
-    [[nodiscard]] auto waitForResign() -> futures::Future<futures::Unit>;
+    [[nodiscard]] auto didResign() const noexcept -> bool;
+
+    [[nodiscard]] auto waitForResign()
+        -> std::pair<futures::Future<futures::Unit>, DeferredAction>;
 
     std::unique_ptr<arangodb::replication2::replicated_log::LogCore> _logCore;
     WaitForBag _waitForResignQueue;

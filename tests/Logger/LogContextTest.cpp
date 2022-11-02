@@ -24,6 +24,8 @@
 #include <stdexcept>
 #include <string_view>
 #include <type_traits>
+#include <functional>
+
 #include "gtest/gtest.h"
 
 #include "Basics/overload.h"

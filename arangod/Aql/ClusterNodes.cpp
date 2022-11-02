@@ -34,7 +34,7 @@
 #include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
 #include "Aql/DistributeExecutor.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/GraphNode.h"
@@ -396,7 +396,7 @@ void DistributeNode::addSatellite(aql::Collection* satellite) {
       case MATERIALIZE:
       case TRAVERSAL:
       case SHORTEST_PATH:
-      case K_SHORTEST_PATHS:
+      case ENUMERATE_PATHS:
       case INDEX:
       case ENUMERATE_COLLECTION: {
         auto const* cNode = castTo<CollectionAccessingNode const*>(node);
@@ -463,7 +463,7 @@ GatherNode::GatherNode(ExecutionPlan* plan,
   }
 
   setParallelism(parallelismFromString(
-      VelocyPackHelper::getStringValue(base, "parellelism", "")));
+      VelocyPackHelper::getStringValue(base, StaticStrings::Parallelism, "")));
 }
 
 GatherNode::GatherNode(ExecutionPlan* plan, ExecutionNodeId id,
@@ -574,10 +574,9 @@ GatherNode::Parallelism GatherNode::evaluateParallelism(
   // single-sharded collections don't require any parallelism. collections with
   // more than one shard are eligible for later parallelization (the Undefined
   // allows this)
-  return (((collection.isSmart() && collection.type() == TRI_COL_TYPE_EDGE) ||
-           (collection.numberOfShards() <= 1 && !collection.isSatellite()))
-              ? Parallelism::Serial
-              : Parallelism::Undefined);
+  return (collection.numberOfShards() == 1 || collection.isSatellite())
+             ? Parallelism::Serial
+             : Parallelism::Undefined;
 }
 
 void GatherNode::replaceVariables(

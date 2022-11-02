@@ -70,6 +70,9 @@ Result::Result(ErrorCode errorNumber, const char* errorMessage)
              0 == strcmp("", errorMessage));
 }
 
+Result::Result(result::Error error)
+    : _error{std::make_unique<Error>(std::move(error))} {}
+
 Result::Result(Result const& other)
     : _error(other._error == nullptr ? nullptr
                                      : std::make_unique<Error>(*other._error)) {
@@ -155,6 +158,17 @@ auto Result::errorMessage() && noexcept -> std::string {
   } else {
     return std::move(*_error).errorMessage();
   }
+}
+
+bool Result::operator==(const Result& other) const {
+  if (ok() && other.ok()) {
+    return true;
+  }
+  if (errorMessage() == other.errorMessage() &&
+      errorNumber() == other.errorNumber()) {
+    return true;
+  }
+  return false;
 }
 
 auto arangodb::operator<<(std::ostream& out, arangodb::Result const& result)

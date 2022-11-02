@@ -1,0 +1,12 @@
+name: arangodb_replication2_replicated_state_leader_waiting_for_recovery_number
+introducedIn: "3.10.0"
+help: |
+  Number of leaders waiting for recovery to be complete.
+unit: number
+type: gauge
+category: Replication
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Number of leaders waiting for recovery to be complete.

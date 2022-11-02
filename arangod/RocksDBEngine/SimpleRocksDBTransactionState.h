@@ -23,13 +23,15 @@
 
 #pragma once
 
+#include "RocksDBEngine/Methods/RocksDBTrxBaseMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 
 namespace arangodb {
 class RocksDBTransactionMethods;
 
-class SimpleRocksDBTransactionState final : public RocksDBTransactionState {
+class SimpleRocksDBTransactionState final : public RocksDBTransactionState,
+                                            public IRocksDBTransactionCallback {
  public:
   SimpleRocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                 transaction::Options const& options);
@@ -52,7 +54,12 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState {
   TRI_voc_tick_t lastOperationTick() const noexcept override;
 
   /// @brief number of commits, including intermediate commits
-  uint64_t numCommits() const override;
+  uint64_t numCommits() const noexcept override;
+
+  /// @brief number of intermediate commits
+  uint64_t numIntermediateCommits() const noexcept override;
+
+  void addIntermediateCommits(uint64_t value) override;
 
   bool hasOperations() const noexcept override;
 
@@ -62,11 +69,22 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState {
 
   rocksdb::SequenceNumber beginSeq() const override;
 
+  /// @brief only called on replication2 follower
+  virtual arangodb::Result triggerIntermediateCommit() override;
+
+  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
+      DataSourceId collectionId) override;
+
  protected:
+  // IRocksDBTransactionCallback methods
+  rocksdb::SequenceNumber prepare() override;
+  void cleanup() override;
+  void commit(rocksdb::SequenceNumber lastWritten) override;
+
   std::unique_ptr<TransactionCollection> createTransactionCollection(
       DataSourceId cid, AccessMode::Type accessType) override;
 
-  Result doCommit() override;
+  futures::Future<Result> doCommit() override;
   Result doAbort() override;
 
  private:

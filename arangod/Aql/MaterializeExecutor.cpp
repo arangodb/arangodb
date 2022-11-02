@@ -66,7 +66,7 @@ arangodb::aql::MaterializerExecutorInfos<T>::MaterializerExecutorInfos(
 
 template<typename T>
 arangodb::aql::MaterializeExecutor<T>::MaterializeExecutor(
-    MaterializeExecutor<T>::Fetcher& fetcher, Infos& infos)
+    MaterializeExecutor<T>::Fetcher& /*fetcher*/, Infos& infos)
     : _trx(infos.query().newTrxContext()),
       _readDocumentContext(infos),
       _infos(infos) {}
@@ -83,6 +83,7 @@ arangodb::aql::MaterializeExecutor<T>::produceRows(
   while (inputRange.hasDataRow() && !output.isFull()) {
     bool written = false;
 
+    // FIXME(gnusi): move outside the loop?
     // some micro-optimization
     auto& callback = _readDocumentContext._callback;
     auto docRegId = _readDocumentContext._infos->inputNonMaterializedDocRegId();
@@ -117,6 +118,7 @@ arangodb::aql::MaterializeExecutor<T>::produceRows(
       }
     }
 
+    // FIXME(gnusi): use rocksdb::DB::MultiGet(...)
     written =
         collection->getPhysical()
             ->read(&_trx,

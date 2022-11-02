@@ -24,9 +24,20 @@
 
 #pragma once
 
-#include "StorageEngine/StorageEngine.h"
+#include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
+#include "StorageEngine/StorageEngine.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
+
+#include <atomic>
+#include <chrono>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <vector>
+#include <typeindex>
 
 namespace arangodb {
 struct IndexTypeFactory;
@@ -42,6 +53,7 @@ namespace iresearch {
 class IResearchAsync;
 class IResearchLink;
 class ResourceMutex;
+class IResearchRocksDBRecoveryHelper;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @enum ThreadGroup
@@ -61,6 +73,24 @@ bool isFilter(aql::Function const& func) noexcept;
 ///          false otherwise
 ////////////////////////////////////////////////////////////////////////////////
 bool isScorer(aql::Function const& func) noexcept;
+inline bool isScorer(aql::AstNode const& node) noexcept {
+  if (aql::NODE_TYPE_FCALL != node.type &&
+      aql::NODE_TYPE_FCALL_USER != node.type) {
+    return false;
+  }
+
+  return isScorer(*static_cast<aql::Function const*>(node.getData()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @returns true if the specified 'func' is an ArangoSearch OFFSET_INFO
+///          function, false otherwise
+////////////////////////////////////////////////////////////////////////////////
+bool isOffsetInfo(aql::Function const& func) noexcept;
+inline bool isOffsetInfo(aql::AstNode const& node) noexcept {
+  return aql::NODE_TYPE_FCALL == node.type &&
+         isOffsetInfo(*static_cast<aql::Function const*>(node.getData()));
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class IResearchFeature
@@ -80,6 +110,12 @@ class IResearchFeature final : public ArangodFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief report progress during recovery phase
+  //////////////////////////////////////////////////////////////////////////////
+  void reportRecoveryProgress(arangodb::IndexId id, std::string_view phase,
+                              size_t current, size_t total);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief schedule an asynchronous task for execution
   /// @param id thread group to handle the execution
   /// @param fn the function to execute
@@ -96,7 +132,16 @@ class IResearchFeature final : public ArangodFeature {
                                      int> = 0>
   IndexTypeFactory& factory();
 
+  bool linkSkippedDuringRecovery(arangodb::IndexId id) const noexcept;
+
+  void trackOutOfSyncLink() noexcept;
+  void untrackOutOfSyncLink() noexcept;
+
+  bool failQueriesOnOutOfSync() const noexcept;
+
  private:
+  void registerRecoveryHelper();
+
   struct State {
     std::mutex mtx;
     std::condition_variable cv;
@@ -106,6 +151,17 @@ class IResearchFeature final : public ArangodFeature {
   std::shared_ptr<State> _startState;
   std::shared_ptr<IResearchAsync> _async;
   std::atomic<bool> _running;
+
+  // whether or not to fail queries on links/indexes that are marked as
+  // out of sync
+  bool _failQueriesOnOutOfSync;
+
+  // names/ids of links/indexes to *NOT* recover. all entries should
+  // be in format "collection-name/index-name" or "collection/index-id".
+  // the pseudo-entry "all" skips recovering data for all links/indexes
+  // found during recovery.
+  std::vector<std::string> _skipRecoveryItems;
+
   uint32_t _consolidationThreads;
   uint32_t _consolidationThreadsIdle;
   uint32_t _commitThreads;
@@ -113,6 +169,18 @@ class IResearchFeature final : public ArangodFeature {
   uint32_t _threads;
   uint32_t _threadsLimit;
   std::map<std::type_index, std::shared_ptr<IndexTypeFactory>> _factories;
+
+  // number of links/indexes currently out of sync
+  metrics::Gauge<uint64_t>& _outOfSyncLinks;
+
+  // helper object, only useful during WAL recovery
+  std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;
+
+  // state used for progress reporting only
+  struct ProgressReportState {
+    arangodb::IndexId lastReportId{0};
+    std::chrono::time_point<std::chrono::system_clock> lastReportTime{};
+  } _progressState;
 };
 
 }  // namespace iresearch

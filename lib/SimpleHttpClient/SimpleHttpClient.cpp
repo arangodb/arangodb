@@ -601,9 +601,7 @@ void SimpleHttpClient::setRequest(
 
   // basic authorization
   using ExclusionType = std::pair<size_t, size_t>;
-  ::arangodb::containers::SmallVector<ExclusionType>::allocator_type::arena_type
-      arena;
-  ::arangodb::containers::SmallVector<ExclusionType> exclusions{arena};
+  containers::SmallVector<ExclusionType, 4> exclusions;
   size_t pos = 0;
   if (!_params._jwt.empty()) {
     _writeBuffer.appendText(std::string_view("Authorization: bearer "));
@@ -641,12 +639,13 @@ void SimpleHttpClient::setRequest(
   }
 
   if (method != rest::RequestType::GET) {
-    _writeBuffer.appendText(std::string_view("Content-Length: "));
-    _writeBuffer.appendInteger(static_cast<uint64_t>(bodyLength));
-    _writeBuffer.appendText(std::string_view("\r\n\r\n"));
-  } else {
-    _writeBuffer.appendText(std::string_view("\r\n"));
+    if (_params._addContentLength) {
+      _writeBuffer.appendText(std::string_view("Content-Length: "));
+      _writeBuffer.appendInteger(static_cast<uint64_t>(bodyLength));
+      _writeBuffer.appendText(std::string_view("\r\n"));
+    }
   }
+  _writeBuffer.appendText(std::string_view("\r\n"));
 
   if (body != nullptr) {
     _writeBuffer.appendText(body, bodyLength);

@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -468,9 +468,9 @@ function dealing_with_wal_access_apiSuite () {
         fromTick = doc.parsedBody["tick"];
 
         // create collection;
-        cid = db._create("UnitTestsReplication", { waitForSync: true, globallyUniqueId: true });
+        cid = db._create("UnitTestsReplication", {waitForSync: true});
         cuid = cid.properties()["globallyUniqueId"];
-
+        
         // create document;
         cmd = "/_api/document?collection=UnitTestsReplication";
         body = { "_key" : "test", "test" : false };
@@ -976,7 +976,7 @@ function dealing_with_the_initial_dumpSuite () {
       let filtered = [ ];
       
       collections.forEach(collection => {
-        if (collection["parameters"]["name"] in [ "UnitTestsReplication", "UnitTestsReplication2" ]) {
+        if ([ "UnitTestsReplication", "UnitTestsReplication2" ].includes(collection["parameters"]["name"])) {
           filtered.push(collection);
         }
         assertTrue(collection["parameters"].hasOwnProperty('globallyUniqueId'));
@@ -1012,9 +1012,7 @@ function dealing_with_the_initial_dumpSuite () {
         let collections = database["collections"];
         filtered = [ ];
         collections.forEach(collection => {
-          if ([ "UnitTestsReplication", "UnitTestsReplication2" ].find( name => {
-            return name === collection["parameters"]["name"];
-          }) !== undefined) {
+          if ([ "UnitTestsReplication", "UnitTestsReplication2" ].includes(collection["parameters"]["name"])) {
             filtered.push(collection);
           }
           assertTrue(collection["parameters"].hasOwnProperty('globallyUniqueId'));
@@ -1101,9 +1099,7 @@ function dealing_with_the_initial_dumpSuite () {
         assertTrue(database.hasOwnProperty('collections'));
         let collections = database['collections'];
         collections.forEach(collection => {
-          if ([ "UnitTestsReplication", "UnitTestsReplication2" ].find( name => {
-            return name === collection["parameters"]["name"];
-          }) !== undefined) {
+          if ([ "UnitTestsReplication", "UnitTestsReplication2" ].includes(collection["parameters"]["name"])) {
             filtered.push(collection);
           }
         });

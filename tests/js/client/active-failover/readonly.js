@@ -180,7 +180,7 @@ function checkData(server) {
 }
 
 function readAgencyValue(path) {
-  let agents = instanceinfo.arangods.filter(arangod => arangod.role === "agent");
+  let agents = instanceinfo.arangods.filter(arangod => arangod.instanceRole === "agent");
   assertTrue(agents.length > 0, "No agents present");
   print("Querying agency... (", path, ")");
   var res = request.post({
@@ -445,7 +445,7 @@ function ActiveFailoverSuite() {
       assertEqual(checkData(currentLead), 10000);
 
       print("Suspending followers, except original leader");
-      suspended = instanceinfo.arangods.filter(arangod => arangod.role !== 'agent' &&
+      suspended = instanceinfo.arangods.filter(arangod => arangod.instanceRole !== 'agent' &&
         arangod.endpoint !== firstLeader);
       suspended.forEach(arangod => {
         print("Suspending: ", arangod.endpoint);

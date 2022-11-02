@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,12 +51,12 @@ class RocksDBEncryptionProvider final : public irs::encryption {
  public:
   static std::shared_ptr<RocksDBEncryptionProvider> make(
       rocksdb::EncryptionProvider& encryption,
-      rocksdb::Options const& options) {
+      rocksdb::DBOptions const& options) {
     return std::make_shared<RocksDBEncryptionProvider>(encryption, options);
   }
 
   explicit RocksDBEncryptionProvider(rocksdb::EncryptionProvider& encryption,
-                                     rocksdb::Options const& options)
+                                     rocksdb::DBOptions const& options)
       : _encryption(&encryption), _options(options) {}
 
   size_t header_length() override { return _encryption->GetPrefixLength(); }

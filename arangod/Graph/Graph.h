@@ -33,7 +33,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ClusterInfo.h"
 #include "Basics/ResultT.h"
-#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationResult.h"
 
@@ -210,6 +209,7 @@ class Graph {
       std::string const& collectionName) const;
 
   virtual bool isSmart() const;
+  virtual bool hasSmartGraphAttribute() const;
   virtual bool isDisjoint() const;
   virtual bool isSatellite() const;
 

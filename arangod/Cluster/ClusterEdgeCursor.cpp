@@ -25,8 +25,8 @@
 
 #include "Basics/Result.h"
 #include "Cluster/ClusterMethods.h"
-#include "Cluster/ClusterTraverser.h"
 #include "Graph/ClusterTraverserCache.h"
+#include "Graph/EdgeDocumentToken.h"
 #include "Graph/TraverserCache.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"

@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 5000 */
-/* global describe, after, afterEach, before, beforeEach, it, db, arango */
+/* global describe, after, afterEach, before, beforeEach, it, db, arango, print */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -132,6 +132,9 @@ describe('UserProperties', function () {
   };
 
   const verifyEmptyConfig = (result) => {
+    if (result.error !== false) {
+      print(result);
+    }
     expect(result.error).to.be.false;
     expect(result).to.have.property('code', 200);
     expect(result).to.have.property('result', null);
@@ -211,7 +214,7 @@ describe('UserProperties', function () {
   });
 
   after(function () {
-        db._useDatabase('_system');
+    db._useDatabase('_system');
     db._dropDatabase(nonRootDB);
   });
 

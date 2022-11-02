@@ -34,7 +34,8 @@ namespace arangodb {
 /// transaction wrapper, uses the current rocksdb transaction
 class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
  public:
-  explicit RocksDBTrxMethods(RocksDBTransactionState*,
+  explicit RocksDBTrxMethods(RocksDBTransactionState const* state,
+                             IRocksDBTransactionCallback& callback,
                              rocksdb::TransactionDB* db);
 
   ~RocksDBTrxMethods();
@@ -49,8 +50,8 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   /// @brief undo the effects of the previous prepareOperation call
   void rollbackOperation(TRI_voc_document_operation_e operationType) override;
 
-  /// @brief performs an intermediate commit if necessary
-  Result checkIntermediateCommit() override;
+  /// @brief checks if an intermediate commit is necessary
+  bool isIntermediateCommitNeeded() override;
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
                       rocksdb::PinnableSlice*, ReadOwnWrites) override;
@@ -75,10 +76,10 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   /// @brief Trigger an intermediate commit.
   /// Handle with care if failing after this commit it will only
   /// be rolled back until this point of time.
-  Result triggerIntermediateCommit();
+  Result triggerIntermediateCommit() override;
 
-  /// @brief check sizes and call internalCommit if too big
-  Result checkIntermediateCommit(uint64_t newSize);
+  /// @brief check if an intermediate commit is necessary by looking at sizes
+  bool checkIntermediateCommit(uint64_t newSize);
 
   void initializeReadWriteBatch();
   void releaseReadWriteBatch() noexcept;

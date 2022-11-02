@@ -21,6 +21,7 @@
 /// @author Michael Hackstein
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
 #include "Basics/Common.h"
@@ -37,15 +38,17 @@
 #include "VocBase/Validators.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
 namespace arangodb {
 
+namespace velocypack {
+class Builder;
+class Slice;
+}  // namespace velocypack
 typedef std::string ServerID;  // ID of a server
 typedef std::string ShardID;   // ID of a shard
 using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
 
+class ComputedValues;
 class FollowerInfo;
 class Index;
 class IndexIterator;
@@ -61,6 +64,22 @@ namespace transaction {
 class Methods;
 }
 
+namespace replication {
+enum class Version;
+}
+namespace replication2 {
+class LogId;
+namespace replicated_state {
+template<typename S>
+struct ReplicatedState;
+namespace document {
+struct DocumentState;
+struct DocumentLeaderState;
+struct DocumentFollowerState;
+}  // namespace document
+}  // namespace replicated_state
+}  // namespace replication2
+
 /// please note that coordinator-based logical collections are frequently
 /// created and discarded, so ctor & dtor need to be as efficient as possible.
 /// additionally, do not put any volatile state into this object in the
@@ -70,8 +89,6 @@ class Methods;
 /// state each time! all state of a LogicalCollection in the coordinator case
 /// needs to be derived from the JSON info in the agency's plan entry for the
 /// collection...
-
-typedef std::shared_ptr<LogicalCollection> LogicalCollectionPtr;
 
 class LogicalCollection : public LogicalDataSource {
   friend struct ::TRI_vocbase_t;
@@ -114,6 +131,10 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief current version for collections
   static constexpr Version currentVersion() { return Version::v37; }
 
+  static replication2::LogId shardIdToStateId(std::string_view shardId);
+  static std::optional<replication2::LogId> tryShardIdToStateId(
+      std::string_view shardId);
+
   // SECTION: Meta Information
   Version version() const { return _version; }
 
@@ -134,6 +155,8 @@ class LogicalCollection : public LogicalDataSource {
     return std::vector<std::string>{name()};
   }
 
+  RevisionId newRevisionId() const;
+
   TRI_vocbase_col_status_e status() const;
   TRI_vocbase_col_status_e getStatusLocked();
 
@@ -149,42 +172,91 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Properties
   RevisionId revision(transaction::Methods*) const;
-  bool waitForSync() const { return _waitForSync; }
+  bool waitForSync() const noexcept { return _waitForSync; }
   void waitForSync(bool value) { _waitForSync = value; }
 #ifdef USE_ENTERPRISE
-  bool isDisjoint() const { return _isDisjoint; }
-  bool isSmart() const { return _isSmart; }
-  bool isSmartChild() const { return _isSmartChild; }
+  bool isDisjoint() const noexcept { return _isDisjoint; }
+  bool isSmart() const noexcept { return _isSmart; }
+  bool isSmartChild() const noexcept { return _isSmartChild; }
+  bool hasSmartJoinAttribute() const noexcept {
+    return !_smartJoinAttribute.empty();
+  }
+  bool hasSmartGraphAttribute() const noexcept {
+    return !_smartGraphAttribute.empty();
+  }
+
+  bool isLocalSmartEdgeCollection() const noexcept;
+  bool isRemoteSmartEdgeCollection() const noexcept;
+  bool isSmartEdgeCollection() const noexcept;
+  bool isSatToSmartEdgeCollection() const noexcept;
+  bool isSmartToSatEdgeCollection() const noexcept;
+
 #else
-  bool isDisjoint() const { return false; }
-  bool isSmart() const { return false; }
-  bool isSmartChild() const { return false; }
+  bool isDisjoint() const noexcept { return false; }
+  bool isSmart() const noexcept { return false; }
+  bool isSmartChild() const noexcept { return false; }
+  bool hasSmartJoinAttribute() const noexcept { return false; }
+  bool hasSmartGraphAttribute() const noexcept { return false; }
+
+  bool isLocalSmartEdgeCollection() const noexcept { return false; }
+  bool isRemoteSmartEdgeCollection() const noexcept { return false; }
+  bool isSmartEdgeCollection() const noexcept { return false; }
+  bool isSatToSmartEdgeCollection() const noexcept { return false; }
+  bool isSmartToSatEdgeCollection() const noexcept { return false; }
 #endif
-  bool usesRevisionsAsDocumentIds() const;
-  /// @brief is this a cluster-wide Plan (ClusterInfo) collection
-  bool isAStub() const { return _isAStub; }
-
-  bool hasSmartJoinAttribute() const { return !smartJoinAttribute().empty(); }
-
-  bool hasClusterWideUniqueRevs() const;
 
   /// @brief return the name of the SmartJoin attribute (empty string
   /// if no SmartJoin attribute is present)
-  std::string const& smartJoinAttribute() const { return _smartJoinAttribute; }
+  std::string const& smartJoinAttribute() const noexcept;
+
+  std::string smartGraphAttribute() const;
+  void setSmartGraphAttribute(std::string const& value);
+
+  bool usesRevisionsAsDocumentIds() const noexcept;
+
+  /// @brief is this a cluster-wide Plan (ClusterInfo) collection
+  bool isAStub() const noexcept { return _isAStub; }
+
+  bool hasClusterWideUniqueRevs() const noexcept;
+
+  [[nodiscard]] bool mustCreateKeyOnCoordinator() const noexcept;
 
   // SECTION: sharding
   ShardingInfo* shardingInfo() const;
 
   // proxy methods that will use the sharding info in the background
-  size_t numberOfShards() const;
-  size_t replicationFactor() const;
-  size_t writeConcern() const;
-  std::string const& distributeShardsLike() const;
-  std::vector<std::string> const& avoidServers() const;
-  bool isSatellite() const;
-  bool usesDefaultShardKeys() const;
-  std::vector<std::string> const& shardKeys() const;
-  TEST_VIRTUAL std::shared_ptr<ShardMap> shardIds() const;
+  size_t numberOfShards() const noexcept;
+  size_t replicationFactor() const noexcept;
+  size_t writeConcern() const noexcept;
+  replication::Version replicationVersion() const noexcept;
+  std::string const& distributeShardsLike() const noexcept;
+  std::vector<std::string> const& avoidServers() const noexcept;
+  bool isSatellite() const noexcept;
+  bool usesDefaultShardKeys() const noexcept;
+  std::vector<std::string> const& shardKeys() const noexcept;
+
+  virtual std::shared_ptr<ShardMap> shardIds() const;
+
+  // @brief will write the full ShardMap into the builder, containing
+  // all ShardIDs including their server distribution (ServerIDs) as an Object.
+  // Example:
+  //  {
+  //    ...
+  //    "s123456": ["PRMR-a41b97a0-e4d3-482b-925a-ff8efc9e0198", ...]
+  //    ...
+  //  }
+  void shardMapToVelocyPack(arangodb::velocypack::Builder& result) const;
+
+  // @brief will iterate over the whole ShardMap and will write only the
+  // ShardIDs into the builder as an Array. The ShardIDs are sorted and returned
+  // alphabetically.
+  // Example:
+  //  [
+  //    ...
+  //    "s123456",
+  //    ...
+  //  ]
+  void shardIDsToVelocyPack(arangodb::velocypack::Builder& result) const;
 
   // mutation options for sharding
   void setShardMap(std::shared_ptr<ShardMap> map) noexcept;
@@ -200,25 +272,19 @@ class LogicalCollection : public LogicalDataSource {
                                 bool& usesDefaultShardKeys,
                                 std::string_view key = std::string_view());
 
-  /// @briefs creates a new document key, the input slice is ignored here
-  /// this method is overriden in derived classes
-  virtual std::string createKey(velocypack::Slice input);
+  auto getDocumentState()
+      -> std::shared_ptr<replication2::replicated_state::ReplicatedState<
+          replication2::replicated_state::document::DocumentState>>;
+  auto getDocumentStateLeader() -> std::shared_ptr<
+      replication2::replicated_state::document::DocumentLeaderState>;
+  auto getDocumentStateFollower() -> std::shared_ptr<
+      replication2::replicated_state::document::DocumentFollowerState>;
 
   PhysicalCollection* getPhysical() const { return _physical.get(); }
 
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
                                                 ReadOwnWrites readOwnWrites);
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx);
-
-  /// @brief fetches current index selectivity estimates
-  /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
-  /// to fetch current values!
-  /// @param tid the optional transaction ID to use
-  IndexEstMap clusterIndexEstimates(bool allowUpdating,
-                                    TransactionId tid = TransactionId::none());
-
-  /// @brief flushes the current index selectivity estimates
-  void flushClusterIndexEstimates();
 
   /// @brief return all indexes of the collection
   std::vector<std::shared_ptr<Index>> getIndexes() const;
@@ -232,12 +298,12 @@ class LogicalCollection : public LogicalDataSource {
   virtual bool skipForAqlWrite(velocypack::Slice document,
                                std::string const& key) const;
 
-  bool allowUserKeys() const;
+  bool allowUserKeys() const noexcept;
 
   // SECTION: Modification Functions
   Result drop() override;
   Result rename(std::string&& name) override;
-  virtual void setStatus(TRI_vocbase_col_status_e);
+  void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialization
   void toVelocyPackIgnore(velocypack::Builder& result,
@@ -256,12 +322,8 @@ class LogicalCollection : public LogicalDataSource {
 
   using LogicalDataSource::properties;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief updates properties of an existing DataSource
-  /// @param definition the properties being updated
-  /// @param partialUpdate modify only the specified properties (false == all)
-  //////////////////////////////////////////////////////////////////////////////
-  virtual Result properties(velocypack::Slice definition, bool partialUpdate);
+  virtual Result properties(velocypack::Slice definition);
 
   /// @brief return the figures for a collection
   virtual futures::Future<OperationResult> figures(
@@ -282,31 +344,16 @@ class LogicalCollection : public LogicalDataSource {
   std::shared_ptr<Index> lookupIndex(IndexId) const;
 
   /// @brief Find index by name
-  std::shared_ptr<Index> lookupIndex(std::string const&) const;
+  std::shared_ptr<Index> lookupIndex(std::string_view) const;
 
   bool dropIndex(IndexId iid);
 
-  // SECTION: Index access (local only)
-
   /// @brief processes a truncate operation
-  Result truncate(transaction::Methods& trx, OperationOptions& options);
+  Result truncate(transaction::Methods& trx, OperationOptions& options,
+                  bool& usedRangeDelete);
 
   /// @brief compact-data operation
   void compact();
-
-  Result insert(transaction::Methods* trx, velocypack::Slice slice,
-                ManagedDocumentResult& result, OperationOptions& options);
-
-  Result update(transaction::Methods*, velocypack::Slice newSlice,
-                ManagedDocumentResult& result, OperationOptions&,
-                ManagedDocumentResult& previousMdr);
-
-  Result replace(transaction::Methods*, velocypack::Slice newSlice,
-                 ManagedDocumentResult& result, OperationOptions&,
-                 ManagedDocumentResult& previousMdr);
-
-  Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                OperationOptions& options, ManagedDocumentResult& previousMdr);
 
   /// @brief Persist the connected physical collection.
   ///        This should be called AFTER the collection is successfully
@@ -323,26 +370,38 @@ class LogicalCollection : public LogicalDataSource {
   void deferDropCollection(
       std::function<bool(LogicalCollection&)> const& callback);
 
+  void computedValuesToVelocyPack(VPackBuilder&) const;
+
+  // return a pointer to the computed values. can be a nullptr
+  std::shared_ptr<ComputedValues> computedValues() const;
+
   void schemaToVelocyPack(VPackBuilder&) const;
-  Result validate(VPackSlice newDoc, VPackOptions const*) const;  // insert
-  Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc,
-                  VPackOptions const*) const;  // update / replace
+
+  // return a pointer to the schema. can be a nullptr if no schema
+  std::shared_ptr<ValidatorBase> schema() const;
+
+  // validate a document on INSERT
+  Result validate(std::shared_ptr<ValidatorBase> const& schema,
+                  VPackSlice newDoc, VPackOptions const*) const;
+  // validate a document on UPDATE/REPLACE
+  Result validate(std::shared_ptr<ValidatorBase> const& schema,
+                  VPackSlice modifiedDoc, VPackSlice oldDoc,
+                  VPackOptions const*) const;
 
   // Get a reference to this KeyGenerator.
-  // Caller is not allowed to free it.
-  inline KeyGenerator* keyGenerator() const { return _keyGenerator.get(); }
+  KeyGenerator& keyGenerator() const noexcept { return *_keyGenerator; }
 
   transaction::CountCache& countCache() { return _countCache; }
 
   std::unique_ptr<FollowerInfo> const& followers() const;
 
   /// @brief returns the value of _syncByRevision
-  bool syncByRevision() const;
+  bool syncByRevision() const noexcept;
 
   /// @brief returns the value of _syncByRevision, but only for "real"
   /// collections with data backing. returns false for all collections with no
   /// data backing.
-  bool useSyncByRevision() const;
+  bool useSyncByRevision() const noexcept;
 
   /// @brief set the internal validator types. This should be handled with care
   /// and be set before the collection is persisted into the Agency.
@@ -350,35 +409,17 @@ class LogicalCollection : public LogicalDataSource {
   // (Technically no issue but will have side-effects on shards)
   void setInternalValidatorTypes(uint64_t type);
 
-  uint64_t getInternalValidatorTypes() const;
+  uint64_t getInternalValidatorTypes() const noexcept;
 
-  bool isLocalSmartEdgeCollection() const noexcept;
-
-  bool isRemoteSmartEdgeCollection() const noexcept;
-
-  bool isSmartEdgeCollection() const noexcept;
-
-  bool isSatToSmartEdgeCollection() const noexcept;
-
-  bool isSmartToSatEdgeCollection() const noexcept;
-
- protected:
-  void addInternalValidator(std::unique_ptr<ValidatorBase>);
-
-  Result appendVPack(velocypack::Builder& build, Serialization ctx,
-                     bool safe) const override;
-
-  Result updateSchema(VPackSlice schema);
-
-  /**
-   * Enterprise only method. See enterprise code for implementation
-   * Community has a dummy stub.
-   */
-  std::string createSmartToSatKey(velocypack::Slice input);
-
-  void decorateWithInternalEEValidators();
+#ifdef USE_ENTERPRISE
+  static void addEnterpriseShardingStrategy(VPackBuilder& builder,
+                                            VPackSlice collectionProperties);
+#endif
 
  private:
+  void initializeSmartAttributesBefore(velocypack::Slice info);
+  void initializeSmartAttributesAfter(velocypack::Slice info);
+
   void prepareIndexes(velocypack::Slice indexesSlice);
 
   void increaseV8Version();
@@ -388,6 +429,16 @@ class LogicalCollection : public LogicalDataSource {
   void decorateWithInternalValidators();
 
  protected:
+  void addInternalValidator(std::unique_ptr<ValidatorBase>);
+
+  Result appendVPack(velocypack::Builder& build, Serialization ctx,
+                     bool safe) const override;
+
+  Result updateSchema(VPackSlice schema);
+  Result updateComputedValues(VPackSlice computedValues);
+
+  void decorateWithInternalEEValidators();
+
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
 
   // SECTION: Meta Information
@@ -421,16 +472,22 @@ class LogicalCollection : public LogicalDataSource {
   bool const _isSmartChild;
 #endif
 
+  bool const _allowUserKeys;
+
   // SECTION: Properties
   std::atomic<bool> _waitForSync;
-
-  bool const _allowUserKeys;
 
   std::atomic<bool> _usesRevisionsAsDocumentIds;
 
   std::atomic<bool> _syncByRevision;
 
+#ifdef USE_ENTERPRISE
+  mutable Mutex
+      _smartGraphAttributeLock;  // lock protecting the smartGraphAttribute
+  std::string _smartGraphAttribute;
+
   std::string _smartJoinAttribute;
+#endif
 
   transaction::CountCache _countCache;
 
@@ -449,8 +506,12 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief sharding information
   std::unique_ptr<ShardingInfo> _sharding;
 
+  // `_computedValues` must be used with atomic accessors only!!
+  // We use acquire/release access (load/store) as we only care about atomicity.
+  std::shared_ptr<ComputedValues> _computedValues;
+
   // `_schema` must be used with atomic accessors only!!
-  // We use relaxed access (load/store) as we only care about atomicity.
+  // We use acquire/release access (load/store)
   std::shared_ptr<ValidatorBase> _schema;
 
   // This is a bitmap entry of InternalValidatorType entries.

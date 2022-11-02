@@ -28,6 +28,7 @@
 #include "Aql/IdExecutor.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/ShadowAqlItemRow.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -142,8 +143,10 @@ auto DistributeClientBlock::popJoinedBlock()
       numRows, registerInfos.numberOfOutputRegisters());
   // We create a block, with correct register information
   // but we do not allow outputs to be written.
-  RegIdSet const noOutputRegisters{};
-  OutputAqlItemRow output{newBlock, noOutputRegisters,
+
+  // created here because it is passed by reference and cannot be a temporary
+  RegIdSet outputRegisters{};
+  OutputAqlItemRow output{newBlock, outputRegisters,
                           registerInfos.registersToKeep(),
                           registerInfos.registersToClear()};
   while (!output.isFull()) {

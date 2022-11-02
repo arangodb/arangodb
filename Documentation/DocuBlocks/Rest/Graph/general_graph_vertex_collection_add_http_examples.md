@@ -16,10 +16,10 @@ The name of the graph.
 A JSON object to set options for creating vertex collections.
 
 @RESTSTRUCT{satellites,post_api_vertex_create_opts,array,optional,string}
-An array of collection names that will be used to create SatelliteCollections
-for a Hybrid (Disjoint) SmartGraph (Enterprise Edition only). Each array element
-must be a string and a valid collection name. The collection type cannot be
-modified later.
+An array of collection names that is used to create SatelliteCollections
+for a (Disjoint) SmartGraph using SatelliteCollections (Enterprise Edition only).
+Each array element must be a string and a valid collection name.
+The collection type cannot be modified later.
 
 @RESTRETURNCODES
 
@@ -71,9 +71,10 @@ A message created for this error.
 
 @RESTRETURNCODE{403}
 Returned if your user has insufficient rights.
-In order to modify a graph you at least need to have the following privileges:<br>
-  1. `Administrate` access on the Database.
-  2. `Read Only` access on every collection used within this graph.
+In order to modify a graph you at least need to have the following privileges:
+
+1. `Administrate` access on the Database.
+2. `Read Only` access on every collection used within this graph.
 
 @RESTREPLYBODY{error,boolean,required,}
 Flag if there was an error (true) or not (false).

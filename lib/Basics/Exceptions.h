@@ -57,6 +57,10 @@
 #define THROW_ARANGO_EXCEPTION_MESSAGE(code, message) \
   throw ::arangodb::basics::Exception(code, message, ADB_HERE)
 
+namespace arangodb::futures {
+template<typename T>
+class Try;
+}
 namespace arangodb::basics {
 
 /// @brief arango exception type
@@ -114,10 +118,16 @@ class Exception : public virtual std::exception {
     return Exception(code, std::move(message), location);
   }
 
+  // Include Exceptions.tpp when you want to call this function.
+  template<typename... Args>
+  static auto fmt(SourceLocation location, ErrorCode code, Args&&... args)
+      -> Exception;
+
  public:
   [[nodiscard]] char const* what() const noexcept override;
   [[nodiscard]] std::string const& message() const noexcept;
   [[nodiscard]] ErrorCode code() const noexcept;
+  [[nodiscard]] SourceLocation location() const noexcept;
 
  private:
   void appendLocation() noexcept;
@@ -195,6 +205,9 @@ template<typename F>
   };
   return catchToResult(wrapped);
 }
+
+[[nodiscard]] auto tryToResult(futures::Try<Result>&& tryResult) noexcept
+    -> Result;
 
 namespace helper {
 // just so we don't have to include logger into this header

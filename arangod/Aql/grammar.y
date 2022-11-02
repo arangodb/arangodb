@@ -29,11 +29,13 @@
 #include "Aql/types.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Graph/ShortestPathType.h"
+#include "Graph/PathType.h"
 #include "Transaction/Context.h"
 #include "VocBase/AccessMode.h"
 
 #include <algorithm>
+#include <cstdint>
+#include <string>
 #include <string_view>
 
 %}
@@ -121,9 +123,10 @@ void validateOptions(Parser* parser, AstNode const* node,
 
 /// @brief check if any of the variables used in the INTO expression were
 /// introduced by the COLLECT itself, in which case it would fail
-void checkIntoVariables(Parser* parser, AstNode const* expression,
-                        int line, int column,
-                        VarSet const& variablesIntroduced) {
+void checkCollectVariables(Parser* parser, char const* context, 
+                           AstNode const* expression,
+                           int line, int column,
+                           VarSet const& variablesIntroduced) {
   if (expression == nullptr) {
     return;
   }
@@ -133,7 +136,7 @@ void checkIntoVariables(Parser* parser, AstNode const* expression,
 
   for (auto const& it : varsInAssignment) {
     if (variablesIntroduced.find(it) != variablesIntroduced.end()) {
-      std::string msg("use of COLLECT variable '" + it->name + "' inside same COLLECT's INTO expression");
+      std::string msg("use of COLLECT variable '" + it->name + "' inside same COLLECT's " + context + " expression");
       parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, msg.c_str(), it->name, line, column);
       return;
     }
@@ -183,8 +186,7 @@ bool validateAggregates(Parser* parser, AstNode const* aggregates,
         char const* error = "aggregate expression must be a function call";
         parser->registerParseError(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION, error, line, column);
         return false;
-      }
-      else {
+      } else {
         auto f = static_cast<arangodb::aql::Function*>(func->getData());
         if (!Aggregator::isValid(f->name)) {
           // aggregate expression must be a call to MIN|MAX|LENGTH...
@@ -339,6 +341,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_SHORTEST_PATH "SHORTEST_PATH keyword"
 %token T_K_SHORTEST_PATHS "K_SHORTEST_PATHS keyword"
 %token T_K_PATHS "K_PATHS keyword"
+%token T_ALL_SHORTEST_PATHS "ALL_SHORTEST_PATHS keyword"
 %token T_DISTINCT "DISTINCT modifier"
 
 %token T_REMOVE "REMOVE command"
@@ -363,6 +366,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_AND "and operator"
 %token T_OR "or operator"
 
+%token T_NOT_IN "not in operator"
 %token T_REGEX_MATCH "~= operator"
 %token T_REGEX_NON_MATCH "~! operator"
 
@@ -402,6 +406,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_ANY "any modifier"
 %token T_ALL "all modifier"
 %token T_NONE "none modifier"
+%token T_AT_LEAST "at least modifier"
 
 /* define operator precedence */
 %left T_COMMA
@@ -412,9 +417,10 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %nonassoc T_INTO
 %left T_OR
 %left T_AND
-%nonassoc T_OUTBOUND T_INBOUND T_ANY T_ALL T_NONE
+%nonassoc T_OUTBOUND T_INBOUND T_ANY T_ALL T_NONE 
+%left T_AT_LEAST
 %left T_EQ T_NE T_LIKE T_REGEX_MATCH T_REGEX_NON_MATCH
-%left T_IN T_NOT 
+%left T_IN T_NOT T_NOT_IN 
 %left T_LT T_GT T_LE T_GE
 %left T_RANGE
 %left T_PLUS T_MINUS
@@ -464,6 +470,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> shortest_path_graph_info;
 %type <node> k_shortest_paths_graph_info;
 %type <node> k_paths_graph_info;
+%type <node> all_shortest_paths_graph_info;
 %type <node> optional_array_elements;
 %type <node> array_elements_list;
 %type <node> array_element;
@@ -476,6 +483,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> object_element;
 %type <strval> object_element_name;
 %type <intval> array_filter_operator;
+%type <intval> array_map_operator;
 %type <node> optional_array_filter;
 %type <node> optional_array_limit;
 %type <node> optional_array_return;
@@ -713,14 +721,23 @@ shortest_path_graph_info:
   ;
 
 k_shortest_paths_graph_info:
-    graph_direction_steps T_K_SHORTEST_PATHS expression T_STRING expression graph_subject options {
-      $$ = ::buildShortestPathInfo(parser, $4.value, $1, $3, $5, $6, $7, yyloc);
+    graph_direction T_K_SHORTEST_PATHS expression T_STRING expression graph_subject options {
+      $$ = ::buildShortestPathInfo(parser, $4.value, parser->ast()->createNodeDirection($1, 1), $3, $5, $6, $7, yyloc);
     }
   ;
 
 k_paths_graph_info:
     graph_direction_steps T_K_PATHS expression T_STRING expression graph_subject options {
       $$ = ::buildShortestPathInfo(parser, $4.value, $1, $3, $5, $6, $7, yyloc);
+    }
+  ;
+
+all_shortest_paths_graph_info:
+    graph_direction T_ALL_SHORTEST_PATHS expression T_STRING expression graph_subject options {
+      auto nodeStart = parser->ast()->createNodeValueInt(0);
+      auto nodeEnd = parser->ast()->createNodeValueInt(INT64_MAX-1);
+      auto nodeRange = parser->ast()->createNodeRange(nodeStart, nodeEnd);
+      $$ = ::buildShortestPathInfo(parser, $4.value, parser->ast()->createNodeDirection($1, nodeRange), $3, $5, $6, $7, yyloc);
     }
   ;
 
@@ -831,7 +848,7 @@ for_statement:
       auto graphInfoNode = static_cast<AstNode*>($4);
       TRI_ASSERT(graphInfoNode != nullptr);
       TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
-      auto node = parser->ast()->createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type::KShortestPaths, variablesNode, graphInfoNode);
+      auto node = parser->ast()->createNodeEnumeratePaths(arangodb::graph::PathType::Type::KShortestPaths, variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
     }
   | T_FOR for_output_variables T_IN k_paths_graph_info {
@@ -843,7 +860,19 @@ for_statement:
       auto graphInfoNode = static_cast<AstNode*>($4);
       TRI_ASSERT(graphInfoNode != nullptr);
       TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
-      auto node = parser->ast()->createNodeKShortestPaths(arangodb::graph::ShortestPathType::Type::KPaths, variablesNode, graphInfoNode);
+      auto node = parser->ast()->createNodeEnumeratePaths(arangodb::graph::PathType::Type::KPaths, variablesNode, graphInfoNode);
+      parser->ast()->addOperation(node);
+    }
+  | T_FOR for_output_variables T_IN all_shortest_paths_graph_info {
+      // All Shortest Paths
+      auto variableNamesNode = static_cast<AstNode*>($2);
+      ::checkOutVariables(parser, variableNamesNode, 1, 1, "ALL_SHORTEST_PATHS only has one return variable", yyloc);
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
+      auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
+      auto graphInfoNode = static_cast<AstNode*>($4);
+      TRI_ASSERT(graphInfoNode != nullptr);
+      TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
+      auto node = parser->ast()->createNodeEnumeratePaths(arangodb::graph::PathType::Type::AllShortestPaths, variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
     }
   ;
@@ -936,7 +965,7 @@ collect_statement:
       }
 
       if ($3 != nullptr && $3->type == NODE_TYPE_ARRAY) {
-        ::checkIntoVariables(parser, $3->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
+        ::checkCollectVariables(parser, "INTO", $3->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       AstNode const* into = ::getIntoVariable(parser, $3);
@@ -960,7 +989,7 @@ collect_statement:
       }
 
       if ($3 != nullptr && $3->type == NODE_TYPE_ARRAY) {
-        ::checkIntoVariables(parser, $3->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
+        ::checkCollectVariables(parser, "INTO", $3->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       // note all group variables
@@ -1011,7 +1040,7 @@ collect_statement:
       }
 
       if ($2 != nullptr && $2->type == NODE_TYPE_ARRAY) {
-        ::checkIntoVariables(parser, $2->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
+        ::checkCollectVariables(parser, "INTO", $2->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       AstNode const* into = ::getIntoVariable(parser, $2);
@@ -1035,7 +1064,11 @@ collect_statement:
       }
 
       if ($2 != nullptr && $2->type == NODE_TYPE_ARRAY) {
-        ::checkIntoVariables(parser, $2->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
+        ::checkCollectVariables(parser, "INTO", $2->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
+      }
+        
+      if ($3 != nullptr && $3->type == NODE_TYPE_ARRAY) {
+        ::checkCollectVariables(parser, "KEEP", $3, yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       AstNode const* into = ::getIntoVariable(parser, $2);
@@ -1411,13 +1444,13 @@ upsert_statement:
 
 quantifier:
     T_ALL {
-      $$ = parser->ast()->createNodeQuantifier(Quantifier::ALL);
+      $$ = parser->ast()->createNodeQuantifier(Quantifier::Type::kAll);
     }
   | T_ANY {
-      $$ = parser->ast()->createNodeQuantifier(Quantifier::ANY);
+      $$ = parser->ast()->createNodeQuantifier(Quantifier::Type::kAny);
     }
   | T_NONE {
-      $$ = parser->ast()->createNodeQuantifier(Quantifier::NONE);
+      $$ = parser->ast()->createNodeQuantifier(Quantifier::Type::kNone);
     }
   ;
 
@@ -1548,8 +1581,8 @@ operator_binary:
   | expression T_IN expression {
       $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, $1, $3);
     }
-  | expression T_NOT T_IN expression {
-      $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, $1, $4);
+  | expression T_NOT_IN expression {
+      $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, $1, $3);
     }
   | expression T_NOT T_LIKE expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
@@ -1611,17 +1644,40 @@ operator_binary:
   | expression quantifier T_IN expression {
       $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN, $1, $4, $2);
     }
-  | expression T_ALL T_NOT T_IN expression {
-      auto quantifier = parser->ast()->createNodeQuantifier(Quantifier::ALL);
-      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $5, quantifier);
+  | expression quantifier T_NOT_IN expression {
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $4, $2);
     }
-  | expression T_ANY T_NOT T_IN expression {
-      auto quantifier = parser->ast()->createNodeQuantifier(Quantifier::ANY);
-      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $5, quantifier);
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_EQ expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ, $1, $7, quantifier);
     }
-  | expression T_NONE T_NOT T_IN expression {
-      auto quantifier = parser->ast()->createNodeQuantifier(Quantifier::NONE);
-      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $5, quantifier);
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_NE expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NE, $1, $7, quantifier);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_LT expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_LT, $1, $7, quantifier);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_GT expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_GT, $1, $7, quantifier);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_LE expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_LE, $1, $7, quantifier);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_GE expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_GE, $1, $7, quantifier);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_IN expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN, $1, $7, quantifier);
+    }
+  | expression T_AT_LEAST T_OPEN expression T_CLOSE T_NOT_IN expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $4);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $7, quantifier);
     }
   ;
 
@@ -1838,10 +1894,19 @@ object_element:
   ;
 
 array_filter_operator:
+    T_QUESTION {
+      $$ = 1;
+    }
+  | array_filter_operator T_QUESTION {
+      $$ = $1 + 1;
+    }
+  ;
+
+array_map_operator:
     T_TIMES {
       $$ = 1;
     }
-  | array_filter_operator T_TIMES {
+  | array_map_operator T_TIMES {
       $$ = $1 + 1;
     }
   ;
@@ -1851,7 +1916,21 @@ optional_array_filter:
       $$ = nullptr;
     }
   | T_FILTER expression {
-      $$ = $2;
+      // FILTER filter-condition
+      $$ = parser->ast()->createNodeArrayFilter(nullptr, $2);
+    }
+  | quantifier T_FILTER expression {
+      // ALL|ANY|NONE|AT LEAST FILTER filter-condition
+      $$ = parser->ast()->createNodeArrayFilter($1, $3);
+    }
+  | T_AT_LEAST T_OPEN expression T_CLOSE T_FILTER expression {
+      AstNode* quantifier = parser->ast()->createNodeQuantifier(Quantifier::Type::kAtLeast, $3);
+      $$ = parser->ast()->createNodeArrayFilter(quantifier, $6);
+    }
+  | expression T_FILTER expression {
+      // 1    FILTER filter-condition
+      // 2..5 FILTER filter-condition
+      $$ = parser->ast()->createNodeArrayFilter($1, $3);
     }
   ;
 
@@ -1968,9 +2047,8 @@ reference:
       if (variable == nullptr) {
         // variable does not exist
         // now try special variables
-        if (ast->scopes()->canUseCurrentVariable() && variableName == "CURRENT") {
-          variable = ast->scopes()->getCurrentVariable();
-        } else if (variableName == Variable::NAME_CURRENT) {
+        if (ast->scopes()->canUseCurrentVariable() && 
+            (variableName == Variable::NAME_CURRENT || variableName == Variable::NAME_CURRENT.substr(1))) {
           variable = ast->scopes()->getCurrentVariable();
         }
       }
@@ -2064,6 +2142,44 @@ reference:
       }
     }
   | reference T_ARRAY_OPEN array_filter_operator {
+      // variable expansion, e.g. variable[?], with optional FILTER clause
+      if ($3 > 1 && $1->type == NODE_TYPE_EXPANSION) {
+        // create a dummy passthru node that reduces and evaluates the expansion first
+        // and the expansion on top of the stack won't be chained with any other expansions
+        $1 = parser->ast()->createNodePassthru($1);
+      }
+
+      // create a temporary iterator variable
+      std::string const nextName = parser->ast()->variables()->nextName() + "_";
+
+      if ($1->type == NODE_TYPE_EXPANSION) {
+        auto iterator = parser->ast()->createNodeIterator(nextName.c_str(), nextName.size(), $1->getMember(1));
+        parser->pushStack(iterator);
+      } else {
+        auto iterator = parser->ast()->createNodeIterator(nextName.c_str(), nextName.size(), $1);
+        parser->pushStack(iterator);
+      }
+
+      auto scopes = parser->ast()->scopes();
+      scopes->stackCurrentVariable(scopes->getVariable(nextName));
+    } optional_array_filter T_ARRAY_CLOSE %prec EXPANSION {
+      auto scopes = parser->ast()->scopes();
+      scopes->unstackCurrentVariable();
+
+      auto iterator = static_cast<AstNode const*>(parser->popStack());
+      auto variableNode = iterator->getMember(0);
+      TRI_ASSERT(variableNode->type == NODE_TYPE_VARIABLE);
+      auto variable = static_cast<Variable const*>(variableNode->getData());
+
+      if ($1->type == NODE_TYPE_EXPANSION) {
+        auto expand = parser->ast()->createNodeBooleanExpansion($3, iterator, parser->ast()->createNodeReference(variable->name), $5);
+        $1->changeMember(1, expand);
+        $$ = $1;
+      } else {
+        $$ = parser->ast()->createNodeBooleanExpansion($3, iterator, parser->ast()->createNodeReference(variable->name), $5);
+      }
+    }
+  | reference T_ARRAY_OPEN array_map_operator {
       // variable expansion, e.g. variable[*], with optional FILTER, LIMIT and RETURN clauses
       if ($3 > 1 && $1->type == NODE_TYPE_EXPANSION) {
         // create a dummy passthru node that reduces and evaluates the expansion first
@@ -2092,6 +2208,16 @@ reference:
       auto variableNode = iterator->getMember(0);
       TRI_ASSERT(variableNode->type == NODE_TYPE_VARIABLE);
       auto variable = static_cast<Variable const*>(variableNode->getData());
+
+      if ($5 != nullptr) {
+        // array filter members are [quantifier, filter]
+        // quantifier is optional.
+        TRI_ASSERT($5->type == NODE_TYPE_ARRAY_FILTER);
+        TRI_ASSERT($5->numMembers() == 2);
+        if ($5->getMember(0) != nullptr && $5->getMember(0)->type != NODE_TYPE_NOP) {
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected quantifier value found for array expansion operation.", yylloc.first_line, yylloc.first_column);
+        }
+      }
 
       if ($1->type == NODE_TYPE_EXPANSION) {
         auto expand = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name), $5, $6, $7);

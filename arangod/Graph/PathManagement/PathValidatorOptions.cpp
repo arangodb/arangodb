@@ -36,17 +36,19 @@ PathValidatorOptions::PathValidatorOptions(
       _tmpVar(tmpVar),
       _expressionCtx(expressionContext),
       _isDisjoint(false),
-      _isSatelliteLeader(false) {}
+      _isSatelliteLeader(false),
+      _enabledClusterOneShardRule(false) {}
 
 PathValidatorOptions::PathValidatorOptions(
     aql::Variable const* tmpVar,
     arangodb::aql::FixedVarExpressionContext& expressionContext,
-    bool isDisjoint, bool isSatelliteLeader)
+    bool isDisjoint, bool isSatelliteLeader, bool enabledClusterOneShardRule)
     : _allowedVertexCollections{},
       _tmpVar(tmpVar),
       _expressionCtx(expressionContext),
       _isDisjoint(isDisjoint),
-      _isSatelliteLeader(isSatelliteLeader) {}
+      _isSatelliteLeader(isSatelliteLeader),
+      _enabledClusterOneShardRule(enabledClusterOneShardRule) {}
 
 void PathValidatorOptions::setAllVerticesExpression(
     std::unique_ptr<aql::Expression> expression) {

@@ -40,6 +40,7 @@
 #include "Logger/Logger.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/Metric.h"
+#include "Metrics/MetricKey.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -82,63 +83,37 @@ IResearchLinkCoordinator::IResearchLinkCoordinator(
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
   _sparse = true;   // always sparse
+  initClusterMetrics();
 }
 
 Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
   bool pathExists = false;
   auto r = IResearchLink::init(definition, pathExists);
   TRI_ASSERT(!pathExists);
-  if (!r.ok()) {
-    return r;
-  }
-  using namespace metrics;
-  auto& metric = IResearchLink::collection()
-                     .vocbase()
-                     .server()
-                     .getFeature<ClusterMetricsFeature>();
-
-  auto batchToCoordinator = [](ClusterMetricsFeature::Metrics& metrics,
-                               std::string_view name, velocypack::Slice labels,
-                               velocypack::Slice value) {
-    ClusterMetricsFeature::MetricKey key{name, labels.stringView()};
-    std::get<uint64_t>(metrics[key]) += value.getNumber<uint64_t>();
-  };
-  auto batchToPrometheus = [](std::string& result, std::string_view globals,
-                              ClusterMetricsFeature::MetricKey const& key,
-                              ClusterMetricsFeature::MetricValue const& value) {
-    Metric::addMark(result, key.first, globals, key.second);
-    result.append(std::to_string(std::get<uint64_t>(value))) += '\n';
-  };
-  metric.add("arangodb_search_num_docs", batchToCoordinator, batchToPrometheus);
-  metric.add("arangodb_search_num_live_docs", batchToCoordinator,
-             batchToPrometheus);
-  metric.add("arangodb_search_num_segments", batchToCoordinator,
-             batchToPrometheus);
-  metric.add("arangodb_search_num_files", batchToCoordinator,
-             batchToPrometheus);
-  metric.add("arangodb_search_index_size", batchToCoordinator,
-             batchToPrometheus);
-  auto gaugeToCoordinator = [](ClusterMetricsFeature::Metrics& metrics,
-                               std::string_view name, velocypack::Slice labels,
-                               velocypack::Slice value) {
-    auto labelsStr = labels.stringView();
-    auto end = labelsStr.find(",shard=\"");
-    if (end == std::string_view::npos) {
-      TRI_ASSERT(false);
-      return;
-    }
-    labelsStr = labelsStr.substr(0, end);
-    metrics::ClusterMetricsFeature::MetricKey key{name, labelsStr};
-    std::get<uint64_t>(metrics[key]) += value.getNumber<uint64_t>();
-  };
-  metric.add("arangodb_search_num_failed_commits", gaugeToCoordinator);
-  metric.add("arangodb_search_num_failed_cleanups", gaugeToCoordinator);
-  metric.add("arangodb_search_num_failed_consolidations", gaugeToCoordinator);
-  metric.add("arangodb_search_commit_time", gaugeToCoordinator);
-  metric.add("arangodb_search_cleanup_time", gaugeToCoordinator);
-  metric.add("arangodb_search_consolidation_time", gaugeToCoordinator);
-
   return r;
+}
+
+IResearchDataStore::Stats IResearchLinkCoordinator::stats() const {
+  auto& cmf = Index::collection()
+                  .vocbase()
+                  .server()
+                  .getFeature<metrics::ClusterMetricsFeature>();
+  auto data = cmf.getData();
+  if (!data) {
+    return {};
+  }
+  auto& metrics = data->metrics;
+  auto labels = absl::StrCat(  // clang-format off
+      "db=\"", getDbName(), "\","
+      "view=\"", getViewId(), "\","
+      "collection=\"", getCollectionName(), "\"");  // clang-format on
+  return {
+      metrics.get<std::uint64_t>("arangodb_search_num_docs", labels),
+      metrics.get<std::uint64_t>("arangodb_search_num_live_docs", labels),
+      metrics.get<std::uint64_t>("arangodb_search_num_segments", labels),
+      metrics.get<std::uint64_t>("arangodb_search_num_files", labels),
+      metrics.get<std::uint64_t>("arangodb_search_index_size", labels),
+  };
 }
 
 void IResearchLinkCoordinator::toVelocyPack(

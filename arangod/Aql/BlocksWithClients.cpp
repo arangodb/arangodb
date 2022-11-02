@@ -25,7 +25,6 @@
 
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlTransaction.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/DistributeExecutor.h"
@@ -47,7 +46,6 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -159,8 +157,19 @@ auto BlocksWithClientsImpl<Executor>::executeForClient(
   if constexpr (std::is_same<MutexExecutor, Executor>::value) {
     _executor.acquireLock();
   }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool old = false;
+  TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, true));
+  TRI_ASSERT(_isBlockInUse);
+#endif
 
   auto guard = scopeGuard([&]() noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    bool old = true;
+    TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, false));
+    TRI_ASSERT(!_isBlockInUse);
+#endif
+
     if constexpr (std::is_same<MutexExecutor, Executor>::value) {
       _executor.releaseLock();
     }

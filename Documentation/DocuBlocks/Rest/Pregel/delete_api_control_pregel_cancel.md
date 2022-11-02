@@ -57,7 +57,7 @@ started with `"store": false` and is in the done state:
   assert(response.code === 200);
 
   logJsonResponse(response);
-~ examples.dropGraph("connectedComponentsGraph");
+  examples.dropGraph("connectedComponentsGraph");
 
 @END_EXAMPLE_ARANGOSH_RUN
 

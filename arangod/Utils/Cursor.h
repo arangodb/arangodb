@@ -138,6 +138,8 @@ class Cursor {
   virtual void setWakeupHandler(std::function<bool()> const& cb) {}
   virtual void resetWakeupHandler() {}
 
+  virtual bool allowDirtyReads() const { return false; }
+
  protected:
   CursorId const _id;
   size_t const _batchSize;

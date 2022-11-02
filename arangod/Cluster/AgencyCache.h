@@ -26,8 +26,6 @@
 #include "Agency/Store.h"
 #include "Basics/Result.h"
 #include "Basics/Thread.h"
-#include "Cluster/AgencyCallbackRegistry.h"
-#include "Cluster/ClusterFeature.h"
 #include "Containers/FlatHashMap.h"
 #include "Futures/Promise.h"
 #include "Metrics/Fwd.h"
@@ -36,6 +34,12 @@
 #include <shared_mutex>
 
 namespace arangodb {
+
+class AgencyCallbackRegistry;
+
+namespace cluster::paths {
+class Path;
+}
 
 class AgencyCache final : public ServerThread<ArangodServer> {
  public:
@@ -81,6 +85,11 @@ class AgencyCache final : public ServerThread<ArangodServer> {
   /// @brief Get velocypack from node downward. AgencyCommHelper::path is
   /// prepended
   consensus::query_t dump() const;
+
+  /// @brief Get velocypack from node downward.
+  consensus::index_t get(
+      arangodb::velocypack::Builder& result,
+      std::shared_ptr<const cluster::paths::Path> const& path) const;
 
   /// @brief Get velocypack from node downward. AgencyCommHelper::path is
   /// prepended

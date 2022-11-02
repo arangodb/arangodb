@@ -199,7 +199,7 @@ For building the ArangoDB starter checkout the
 
 ### Building the Web Interface
 
-To build Web UI, also known as frontend or _Aardvark_, [Node.js](https://nodejs.org/)
+To build web interface, also known as the Web UI, frontend, or _Aardvark_, [Node.js](https://nodejs.org/)
 and [Yarn](https://yarnpkg.com/) need to be installed. You can then use CMake in the
 build directory:
 
@@ -227,7 +227,7 @@ run:
     yarn start
 
 This will deploy a development server (Port: 3000) and automatically start your
-favorite browser and open the web UI.
+favorite browser and open the web interface.
 
 All changes to any source will automatically re-build and reload your browser.
 Enjoy :)
@@ -857,7 +857,7 @@ suite (in this case `testTokens`):
 
 Testing a single test with the framework via arangosh:
 
-    scripts/unittest single_client --test tests/js/client/shell/shell-transaction.js
+    scripts/unittest single_client --test tests/js/client/shell/transaction/shell-transaction.js
 
 Running a test against a server you started (instead of letting the script start its own server):
 

@@ -451,11 +451,21 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
   try {
     // try to NFC-normalize the database name
     name = String(name).normalize("NFC");
-  } catch (err) {}
+  } catch (err) {
+  }
   let body = Object.assign(properties !== undefined ? properties : {}, {
     'name': name,
     'type': ArangoCollection.TYPE_DOCUMENT
   });
+
+  // Convenience transformation.
+  // We have documented that the strings "edge" and "document" are allowed
+  // here, but not in the HTTP Api.
+  if (type === 'edge') {
+    type = ArangoCollection.TYPE_EDGE;
+  } else if (type === 'document') {
+    type = ArangoCollection.TYPE_DOCUMENT;
+  }
 
   if (typeof type === 'object') {
     options = type;
@@ -485,7 +495,9 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
     urlAddon += '?' + urlAddons.join('&');
   }
 
-  if (type !== undefined) {
+  if (!isNaN(type)) {
+    // Only overwrite type with numeric values, otherwise
+    // use default value.
     body.type = type;
   }
 
@@ -511,7 +523,7 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
 ArangoDatabase.prototype._createReplicatedLog = function (spec) {
   let requestResult = this._connection.POST(this._replicatedlogurl(), spec);
   arangosh.checkRequestResult(requestResult);
-  return new ArangoReplicatedLog(this, spec.id);
+  return new ArangoReplicatedLog(this, requestResult.result.id);
 };
 
 // //////////////////////////////////////////////////////////////////////////////

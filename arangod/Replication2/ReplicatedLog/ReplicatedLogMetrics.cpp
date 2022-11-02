@@ -89,30 +89,30 @@ ReplicatedLogMetrics::ReplicatedLogMetrics(MFP metricsFeature)
                        mock>(metricsFeature)),
       replicatedLogInsertsRtt(
           createMetric<arangodb_replication2_replicated_log_inserts_rtt, mock>(
-              metricsFeature)) {
+              metricsFeature)),
+      replicatedLogNumberAcceptedEntries(
+          createMetric<
+              arangodb_replication2_replicated_log_number_accepted_entries_total,
+              mock>(metricsFeature)),
+      replicatedLogNumberCommittedEntries(
+          createMetric<
+              arangodb_replication2_replicated_log_number_committed_entries_total,
+              mock>(metricsFeature)),
+      replicatedLogNumberMetaEntries(
+          createMetric<
+              arangodb_replication2_replicated_log_number_meta_entries_total,
+              mock>(metricsFeature)),
+      replicatedLogNumberCompactedEntries(
+          createMetric<
+              arangodb_replication2_replicated_log_number_compacted_entries_total,
+              mock>(metricsFeature))
+
+{
 #ifndef ARANGODB_USE_GOOGLE_TESTS
   static_assert(!mock);
   static_assert(!std::is_null_pointer_v<MFP>);
 #endif
 }
-
-MeasureTimeGuard::MeasureTimeGuard(
-    std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>>
-        histogram) noexcept
-    : _start(std::chrono::steady_clock::now()),
-      _histogram(std::move(histogram)) {}
-
-void MeasureTimeGuard::fire() {
-  if (_histogram) {
-    auto const endTime = std::chrono::steady_clock::now();
-    auto const duration =
-        std::chrono::duration_cast<std::chrono::microseconds>(endTime - _start);
-    _histogram->count(duration.count());
-    _histogram.reset();
-  }
-}
-
-MeasureTimeGuard::~MeasureTimeGuard() { fire(); }
 
 template arangodb::replication2::replicated_log::ReplicatedLogMetrics::
     ReplicatedLogMetrics(arangodb::metrics::MetricsFeature*);

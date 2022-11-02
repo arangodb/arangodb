@@ -28,6 +28,7 @@
 #include "Metrics/Metric.h"
 #include "Metrics/IBatch.h"
 #include "Metrics/MetricKey.h"
+#include "Metrics/CollectMode.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Statistics/ServerStatistics.h"
@@ -59,10 +60,15 @@ class MetricsFeature final : public ArangodFeature {
     return std::static_pointer_cast<typename MetricBuilder::MetricT>(
         doAdd(builder));
   }
-  Metric* get(MetricKey const& key);
+  Metric* get(MetricKeyView const& key);
   bool remove(Builder const& builder);
 
-  void toPrometheus(std::string& result) const;
+  void toPrometheus(std::string& result, CollectMode mode) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief That used for collect some metrics
+  /// to array for ClusterMetricsFeature
+  //////////////////////////////////////////////////////////////////////////////
   void toVPack(velocypack::Builder& builder) const;
 
   ServerStatistics& serverStatistics() noexcept;
@@ -87,7 +93,7 @@ class MetricsFeature final : public ArangodFeature {
   mutable std::shared_mutex _mutex;
 
   // TODO(MBkkt) abseil btree map? or hashmap<name, hashmap<labels, Metric>>?
-  std::map<MetricKey, std::shared_ptr<Metric>> _registry;
+  std::map<MetricKeyView, std::shared_ptr<Metric>> _registry;
 
   containers::FlatHashMap<std::string_view, std::unique_ptr<IBatch>> _batch;
 

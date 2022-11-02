@@ -87,6 +87,7 @@ struct ILogParticipant {
   [[nodiscard]] virtual auto getTerm() const noexcept -> std::optional<LogTerm>;
   [[nodiscard]] virtual auto getCommitIndex() const noexcept -> LogIndex = 0;
 
+  [[nodiscard]] virtual auto copyInMemoryLog() const -> InMemoryLog = 0;
   [[nodiscard]] virtual auto release(LogIndex doneWithIdx) -> Result = 0;
 };
 
@@ -117,7 +118,6 @@ struct ILogLeader : ILogParticipant {
   [[nodiscard]] virtual auto isLeadershipEstablished() const noexcept
       -> bool = 0;
   [[nodiscard]] virtual auto waitForLeadership() -> WaitForFuture = 0;
-  [[nodiscard]] virtual auto copyInMemoryLog() const -> InMemoryLog = 0;
 };
 
 }  // namespace arangodb::replication2::replicated_log

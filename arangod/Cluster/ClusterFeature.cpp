@@ -29,7 +29,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Basics/MutexLocker.h"
 #include "Cluster/AgencyCache.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Endpoint/Endpoint.h"
@@ -107,7 +109,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                              true);
   options->addObsoleteOption("--cluster.disable-dispatcher-frontend",
                              "The dispatcher feature isn't available anymore; "
-                             "Use ArangoDBStarter for this now!",
+                             "Use ArangoDB Starter for this now!",
                              true);
   options->addObsoleteOption(
       "--cluster.dbserver-config",
@@ -196,7 +198,8 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options
       ->addOption("--cluster.min-replication-factor",
                   "minimum replication factor for new collections",
-                  new UInt32Parameter(&_minReplicationFactor),
+                  new UInt32Parameter(&_minReplicationFactor, /*base*/ 1,
+                                      /*minValue*/ 1),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
@@ -206,20 +209,23 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       ->addOption(
           "--cluster.max-replication-factor",
           "maximum replication factor for new collections (0 = unrestricted)",
-          new UInt32Parameter(&_maxReplicationFactor),
+          // 10 is a hard-coded max value for the replication factor
+          new UInt32Parameter(&_maxReplicationFactor, /*base*/ 1,
+                              /*minValue*/ 0, /*maxValue*/ 10),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30600);
 
   options
-      ->addOption("--cluster.max-number-of-shards",
-                  "maximum number of shards when creating new collections (0 = "
-                  "unrestricted)",
-                  new UInt32Parameter(&_maxNumberOfShards),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator))
+      ->addOption(
+          "--cluster.max-number-of-shards",
+          "maximum number of shards when creating new collections (0 = "
+          "unrestricted)",
+          new UInt32Parameter(&_maxNumberOfShards, /*base*/ 1, /*minValue*/ 1),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30501);
 
   options
@@ -285,7 +291,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
           "cluster.disable-dispatcher-frontend")) {
     LOG_TOPIC("33707", FATAL, arangodb::Logger::CLUSTER)
         << "The dispatcher feature isn't available anymore. Use "
-        << "ArangoDBStarter for this now! See "
+        << "ArangoDB Starter for this now! See "
         << "https://github.com/arangodb-helper/arangodb/ for more "
         << "details.";
     FATAL_ERROR_EXIT();
@@ -293,27 +299,6 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (_forceOneShard) {
     _maxNumberOfShards = 1;
-  } else if (_maxNumberOfShards == 0) {
-    LOG_TOPIC("e83c2", FATAL, arangodb::Logger::CLUSTER)
-        << "Invalid value for `--max-number-of-shards`. The value must be at "
-           "least 1";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_minReplicationFactor == 0) {
-    // min replication factor must not be 0
-    LOG_TOPIC("2fbdd", FATAL, arangodb::Logger::CLUSTER)
-        << "Invalid value for `--cluster.min-replication-factor`. The value "
-           "must be at least 1";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_maxReplicationFactor > 10) {
-    // 10 is a hard-coded limit for the replication factor
-    LOG_TOPIC("886c6", FATAL, arangodb::Logger::CLUSTER)
-        << "Invalid value for `--cluster.max-replication-factor`. The value "
-           "must not exceed 10";
-    FATAL_ERROR_EXIT();
   }
 
   TRI_ASSERT(_minReplicationFactor > 0);
@@ -587,6 +572,10 @@ DECLARE_COUNTER(arangodb_sync_wrong_checksum_total,
 DECLARE_COUNTER(arangodb_sync_rebuilds_total,
                 "Number of times a follower shard needed to be completely "
                 "rebuilt because of too many synchronization failures");
+DECLARE_COUNTER(arangodb_potentially_dirty_document_reads_total,
+                "Number of document reads which could be dirty");
+DECLARE_COUNTER(arangodb_dirty_read_queries_total,
+                "Number of queries which could be doing dirty reads");
 
 // IMPORTANT: Please read the first comment block a couple of lines down, before
 // Adding code to this section.
@@ -663,6 +652,11 @@ void ClusterFeature::start() {
         &_metrics.add(arangodb_sync_wrong_checksum_total{});
     _followersTotalRebuildCounter =
         &_metrics.add(arangodb_sync_rebuilds_total{});
+  } else if (role == ServerState::RoleEnum::ROLE_COORDINATOR) {
+    _potentiallyDirtyDocumentReadsCounter =
+        &_metrics.add(arangodb_potentially_dirty_document_reads_total{});
+    _dirtyReadQueriesCounter =
+        &_metrics.add(arangodb_dirty_read_queries_total{});
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
@@ -825,6 +819,10 @@ void ClusterFeature::startHeartbeatThread(
     // wait until heartbeat is ready
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
+}
+
+void ClusterFeature::pruneAsyncAgencyConnectionPool() {
+  _asyncAgencyCommPool->pruneConnections();
 }
 
 void ClusterFeature::shutdownHeartbeatThread() {

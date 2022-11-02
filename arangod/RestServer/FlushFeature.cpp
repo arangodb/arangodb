@@ -25,20 +25,14 @@
 #include "FlushFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/QueryCache.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/WriteLocker.h"
-#include "Basics/application-exit.h"
 #include "Basics/encoding.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Utils/FlushThread.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -46,49 +40,47 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-std::atomic<bool> FlushFeature::_isRunning(false);
-
 FlushFeature::FlushFeature(Server& server)
-    : ArangodFeature{server, *this}, _flushInterval(1000000), _stopped(false) {
+    : ArangodFeature{server, *this}, _stopped(false) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
-
   startsAfter<StorageEngineFeature>();
 }
 
+FlushFeature::~FlushFeature() = default;
+
 void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption(
-      "--server.flush-interval", "interval (in microseconds) for flushing data",
-      new UInt64Parameter(&_flushInterval),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  options->addObsoleteOption("--server.flush-interval",
+                             "interval (in microseconds) for flushing data",
+                             true);
 }
 
 void FlushFeature::registerFlushSubscription(
-    const std::shared_ptr<FlushSubscription>& subscription) {
+    std::shared_ptr<FlushSubscription> const& subscription) {
   if (!subscription) {
     return;
   }
 
-  std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
+  std::lock_guard lock{_flushSubscriptionsMutex};
 
   if (_stopped) {
     LOG_TOPIC("798c4", ERR, Logger::FLUSH) << "FlushFeature not running";
-
     return;
   }
 
   _flushSubscriptions.emplace_back(subscription);
 }
 
-arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count,
-                                                  TRI_voc_tick_t& minTick) {
-  count = 0;
+std::tuple<size_t, size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
   auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+  auto const initialTick = engine.currentTick();
 
-  minTick = engine.currentTick();
+  size_t stale = 0;
+  size_t active = 0;
+  auto minTick = initialTick;
 
   {
-    std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
+    std::lock_guard lock{_flushSubscriptionsMutex};
 
     // find min tick and remove stale subscriptions
     for (auto itr = _flushSubscriptions.begin();
@@ -98,9 +90,10 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count,
       if (!entry) {
         // remove stale
         itr = _flushSubscriptions.erase(itr);
-        ++count;
+        ++stale;
       } else {
         minTick = std::min(minTick, entry->tick());
+        ++active;
         ++itr;
       }
     }
@@ -109,105 +102,38 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count,
   TRI_ASSERT(minTick <= engine.currentTick());
 
   TRI_IF_FAILURE("FlushCrashBeforeSyncingMinTick") {
-    TRI_TerminateDebugging("crashing before syncing min tick");
-  }
-
-  // WAL tick has to be synced prior to releasing it, if the storage
-  // engine supports it
-  //   engine->waitForSyncTick(minTick);
-
-  TRI_IF_FAILURE("FlushCrashAfterSyncingMinTick") {
-    TRI_TerminateDebugging("crashing after syncing min tick");
+    if (ServerState::instance()->isDBServer() ||
+        ServerState::instance()->isSingleServer()) {
+      TRI_TerminateDebugging("crashing before syncing min tick");
+    }
   }
 
   engine.releaseTick(minTick);
 
   TRI_IF_FAILURE("FlushCrashAfterReleasingMinTick") {
-    TRI_TerminateDebugging("crashing after releasing min tick");
-  }
-
-  return {};
-}
-
-void FlushFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> /*options*/) {
-  if (_flushInterval < 1000) {
-    // do not go below 1000 microseconds
-    _flushInterval = 1000;
-  }
-}
-
-void FlushFeature::prepare() {
-  // At least for now we need FlushThread for ArangoSearch views
-  // on a DB/Single server only, so we avoid starting FlushThread on
-  // a coordinator and on agency nodes.
-  setEnabled(!arangodb::ServerState::instance()->isCoordinator() &&
-             !arangodb::ServerState::instance()->isAgent());
-
-  if (!isEnabled()) {
-    return;
-  }
-}
-
-void FlushFeature::start() {
-  {
-    WRITE_LOCKER(lock, _threadLock);
-    _flushThread.reset(new FlushThread(*this, _flushInterval));
-  }
-  DatabaseFeature& dbFeature = server().getFeature<DatabaseFeature>();
-  dbFeature.registerPostRecoveryCallback([this]() -> Result {
-    READ_LOCKER(lock, _threadLock);
-    if (!this->_flushThread->start()) {
-      LOG_TOPIC("bdc3c", FATAL, Logger::FLUSH) << "unable to start FlushThread";
-      FATAL_ERROR_ABORT();
-    } else {
-      LOG_TOPIC("ed9cd", DEBUG, Logger::FLUSH) << "started FlushThread";
+    if (ServerState::instance()->isDBServer() ||
+        ServerState::instance()->isSingleServer()) {
+      TRI_TerminateDebugging("crashing after releasing min tick");
     }
-
-    this->_isRunning.store(true);
-
-    return {TRI_ERROR_NO_ERROR};
-  });
-}
-
-void FlushFeature::beginShutdown() {
-  // pass on the shutdown signal
-  READ_LOCKER(lock, _threadLock);
-  if (_flushThread != nullptr) {
-    _flushThread->beginShutdown();
   }
+
+  LOG_TOPIC("2b2e2", DEBUG, arangodb::Logger::FLUSH)
+      << "Flush tick released: '" << minTick << "'"
+      << ", stale flush subscription(s) released: " << stale
+      << ", active flush subscription(s) released: " << active
+      << ", initial engine tick: " << initialTick;
+
+  return std::tuple{active, stale, minTick};
 }
 
 void FlushFeature::stop() {
-  LOG_TOPIC("2b0a6", TRACE, arangodb::Logger::FLUSH) << "stopping FlushThread";
-  // wait until thread is fully finished
+  std::lock_guard lock{_flushSubscriptionsMutex};
 
-  FlushThread* thread = nullptr;
-  {
-    READ_LOCKER(lock, _threadLock);
-    thread = _flushThread.get();
-  }
-  if (thread != nullptr) {
-    while (thread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-
-    {
-      WRITE_LOCKER(wlock, _threadLock);
-      _isRunning.store(false);
-      _flushThread.reset();
-    }
-
-    {
-      std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
-
-      // release any remaining flush subscriptions so that they may get
-      // deallocated ASAP subscriptions could survive after
-      // FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
-      _flushSubscriptions.clear();
-      _stopped = true;
-    }
-  }
+  // release any remaining flush subscriptions so that they may get
+  // deallocated ASAP subscriptions could survive after
+  // FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
+  _flushSubscriptions.clear();
+  _stopped = true;
 }
 
 }  // namespace arangodb

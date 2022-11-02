@@ -36,6 +36,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/AgencyCache.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/DBServerAgencySync.h"
@@ -342,7 +343,7 @@ void HeartbeatThread::run() {
   // which fails when it is still in maintenance mode
   auto server = ServerState::instance();
   if (!server->isCoordinator(role)) {
-    while (server->isMaintenance()) {
+    while (server->isStartupOrMaintenance()) {
       if (isStopping()) {
         // startup aborted
         return;

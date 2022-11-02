@@ -44,41 +44,143 @@ class IndexEstimatorTest : public ::testing::Test {
   }
 };
 
-TEST_F(IndexEstimatorTest, test_unique_values) {
+TEST_F(IndexEstimatorTest, test_empty) {
+  RocksDBCuckooIndexEstimatorType est(2048);
+  EXPECT_EQ(est.nrUsed(), 0);
+  // estimate for an empty estimator is 1.0
+  EXPECT_EQ(est.computeEstimate(), 1.0);
+}
+
+TEST_F(IndexEstimatorTest, test_clear) {
   std::vector<uint64_t> toInsert(100);
   uint64_t i = 0;
-  RocksDBCuckooIndexEstimatorType est(2048);
   std::generate(toInsert.begin(), toInsert.end(), [&i] { return i++; });
-  for (auto it : toInsert) {
-    est.insert(it);
-  }
+
+  RocksDBCuckooIndexEstimatorType est(2048);
+  est.insert(toInsert);
+
   EXPECT_EQ(est.nrUsed(), 100);
   EXPECT_EQ(est.computeEstimate(), 1);
 
-  for (size_t k = 0; k < 10; ++k) {
-    est.remove(toInsert[k]);
-  }
-  EXPECT_EQ(est.nrUsed(), 90);
+  est.clear();
+  EXPECT_EQ(est.nrUsed(), 0);
+  EXPECT_EQ(est.computeEstimate(), 1.0);
+
+  // insert again
+  est.insert(toInsert);
+  EXPECT_EQ(est.nrUsed(), 100);
   EXPECT_EQ(est.computeEstimate(), 1);
+
+  // clear again
+  est.clear();
+  EXPECT_EQ(est.nrUsed(), 0);
+  EXPECT_EQ(est.computeEstimate(), 1.0);
+}
+
+TEST_F(IndexEstimatorTest, test_unique_values) {
+  std::vector<uint64_t> toInsert(100);
+  uint64_t i = 0;
+  std::generate(toInsert.begin(), toInsert.end(), [&i] { return i++; });
+
+  // test single operations
+  {
+    RocksDBCuckooIndexEstimatorType est(2048);
+    for (auto it : toInsert) {
+      est.insert(it);
+    }
+    EXPECT_EQ(est.nrUsed(), 100);
+    EXPECT_EQ(est.computeEstimate(), 1);
+
+    for (size_t k = 0; k < 10; ++k) {
+      est.remove(toInsert[k]);
+    }
+    EXPECT_EQ(est.nrUsed(), 90);
+    EXPECT_EQ(est.computeEstimate(), 1);
+
+    for (size_t k = 10; k < 100; ++k) {
+      est.remove(toInsert[k]);
+    }
+    EXPECT_EQ(est.nrUsed(), 0);
+    EXPECT_EQ(est.computeEstimate(), 1.0);
+  }
+
+  // test vector operations
+  {
+    RocksDBCuckooIndexEstimatorType est(2048);
+    est.insert(toInsert);
+    EXPECT_EQ(est.nrUsed(), 100);
+    EXPECT_EQ(est.computeEstimate(), 1);
+
+    std::vector<uint64_t> subset;
+    subset.insert(subset.end(), toInsert.begin(), toInsert.begin() + 10);
+    est.remove(subset);
+    EXPECT_EQ(est.nrUsed(), 90);
+    EXPECT_EQ(est.computeEstimate(), 1);
+
+    subset.clear();
+    subset.insert(subset.end(), toInsert.begin() + 10, toInsert.end());
+
+    est.remove(subset);
+    EXPECT_EQ(est.nrUsed(), 0);
+    EXPECT_EQ(est.computeEstimate(), 1.0);
+  }
 }
 
 TEST_F(IndexEstimatorTest, test_multiple_values) {
   std::vector<uint64_t> toInsert(100);
   uint64_t i = 0;
-  RocksDBCuckooIndexEstimatorType est(2048);
   std::generate(toInsert.begin(), toInsert.end(), [&i] { return (i++) % 10; });
-  for (auto it : toInsert) {
-    est.insert(it);
-  }
-  EXPECT_EQ(est.nrUsed(), 10);
-  EXPECT_EQ(est.nrCuckood(), 0);
-  EXPECT_EQ(est.computeEstimate(), (double)10 / 100);
 
-  for (size_t k = 0; k < 10; ++k) {
-    est.remove(toInsert[k]);
+  // test single operations
+  {
+    RocksDBCuckooIndexEstimatorType est(2048);
+    for (auto it : toInsert) {
+      est.insert(it);
+    }
+    EXPECT_EQ(est.nrUsed(), 10);
+    EXPECT_EQ(est.nrCuckood(), 0);
+    EXPECT_EQ(est.computeEstimate(), (double)10 / 100);
+
+    for (size_t k = 0; k < 10; ++k) {
+      est.remove(toInsert[k]);
+    }
+    EXPECT_EQ(est.nrCuckood(), 0);
+    EXPECT_EQ(est.nrUsed(), 10);
+    EXPECT_EQ(est.computeEstimate(), (double)10 / 90);
+
+    for (size_t k = 10; k < 100; ++k) {
+      est.remove(toInsert[k]);
+    }
+    EXPECT_EQ(est.nrCuckood(), 0);
+    EXPECT_EQ(est.nrUsed(), 0);
+    EXPECT_EQ(est.computeEstimate(), 1.0);
   }
-  EXPECT_EQ(est.nrCuckood(), 0);
-  EXPECT_EQ(est.computeEstimate(), (double)10 / 90);
+
+  // test vector operations
+  {
+    RocksDBCuckooIndexEstimatorType est(2048);
+    est.insert(toInsert);
+
+    EXPECT_EQ(est.nrUsed(), 10);
+    EXPECT_EQ(est.nrCuckood(), 0);
+    EXPECT_EQ(est.computeEstimate(), (double)10 / 100);
+
+    std::vector<uint64_t> subset;
+    subset.insert(subset.end(), toInsert.begin(), toInsert.begin() + 10);
+    est.remove(subset);
+
+    EXPECT_EQ(est.nrCuckood(), 0);
+    EXPECT_EQ(est.nrUsed(), 10);
+    EXPECT_EQ(est.computeEstimate(), (double)10 / 90);
+
+    subset.clear();
+    subset.insert(subset.end(), toInsert.begin() + 10, toInsert.end());
+
+    est.remove(subset);
+    EXPECT_EQ(est.nrUsed(), 0);
+    EXPECT_EQ(est.nrCuckood(), 0);
+    EXPECT_EQ(est.computeEstimate(), 1.0);
+  }
 }
 
 TEST_F(IndexEstimatorTest, test_serialize_deserialize) {

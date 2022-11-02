@@ -51,8 +51,8 @@
 namespace arangodb {
 namespace rocksutils {
 
-void checkIteratorStatus(rocksdb::Iterator const* iterator) {
-  auto s = iterator->status();
+void checkIteratorStatus(rocksdb::Iterator const& iterator) {
+  auto s = iterator.status();
   if (!s.ok()) {
     THROW_ARANGO_EXCEPTION(arangodb::rocksutils::convertStatus(s));
   }

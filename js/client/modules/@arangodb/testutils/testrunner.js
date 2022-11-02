@@ -1,3 +1,4 @@
+
 /* jshint strict: false, sub: true */
 /* global print db arango */
 'use strict';
@@ -29,6 +30,7 @@ const _ = require('lodash');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const im = require('@arangodb/testutils/instance-manager');
 const time = require('internal').time;
 const sleep = require('internal').sleep;
 const userManager = require("@arangodb/users");
@@ -45,20 +47,37 @@ let didSplitBuckets = false;
 // //////////////////////////////////////////////////////////////////////////////
 let usersTests = {
   name: 'users',
-  setUp: function (te) {
-    this.usersCount = userManager.all().length;
+  setUp: function (obj, te) {
+    try {
+      this.usersCount = userManager.all().length;
+    } catch (x) {
+      obj.results[obj.translateResult(te)] = {
+        status: false,
+        message: 'failed to fetch the users on the system before the test: ' + x.message
+      };
+      obj.serverDead = true;
+      return false;
+    }
     return true;
   },
-  runCheck: function (te) {
-    if (userManager.all().length !== this.usersCount) {
-      this.continueTesting = false;
-      this.results[te] = {
+  runCheck: function (obj, te) {
+    try {
+      if (userManager.all().length !== this.usersCount) {
+        obj.results[obj.translateResult(te)] = {
+          status: false,
+          message: 'Cleanup of users missing - found users left over: [ ' +
+            JSON.stringify(userManager.all()) +
+            ' ] - Original test status: ' +
+            JSON.stringify(obj.results[obj.translateResult(te)])
+        };
+        return false;
+      }
+    } catch (x) {
+      obj.results[obj.translateResult(te)] = {
         status: false,
-        message: 'Cleanup of users missing - found users left over: [ ' +
-          JSON.stringify(userManager.all()) +
-          ' ] - Original test status: ' +
-          JSON.stringify(this.results[te])
+        message: 'failed to fetch the users on the system before the test: ' + x.message
       };
+      obj.serverDead = true;
       return false;
     }
     return true;
@@ -76,11 +95,10 @@ let collectionsTest = {
         obj.collectionsBefore.push(collection._name);
       });
     } catch (x) {
-      obj.results[te] = {
+      obj.results[obj.translateResult(te)] = {
         status: false,
         message: 'failed to fetch the previously available collections: ' + x.message
       };
-      obj.continueTesting = false;
       obj.serverDead = true;
       return false;
     }
@@ -93,11 +111,10 @@ let collectionsTest = {
         collectionsAfter.push(collection._name);
       });
     } catch (x) {
-      obj.results[te] = {
+      obj.results[obj.translateResult(te)] = {
         status: false,
-        message: 'failed to fetch the currently available collections: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
+        message: 'failed to fetch the currently available collections: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
       };
-      obj.continueTesting = false;
       return false;
     }
     let delta = tu.diffArray(obj.collectionsBefore, collectionsAfter).filter(function(name) {
@@ -106,9 +123,9 @@ let collectionsTest = {
       return (name[0] !== '_'); // exclude system collections from the comparison
     });
     if (delta.length !== 0) {
-      obj.results[te] = {
+      obj.results[obj.translateResult(te)] = {
         status: false,
-        message: 'Cleanup missing - test left over collection:' + delta + '. Original test status: ' + JSON.stringify(obj.results[te])
+        message: 'Cleanup missing - test left over collection:' + delta + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
       };
       return false;
     }
@@ -127,11 +144,10 @@ let viewsTest = {
         obj.viewsBefore.push(view._name);
       });
     } catch (x) {
-      obj.results[te] = {
+      obj.results[obj.translateResult(te)] = {
         status: false,
         message: 'failed to fetch the previously available views: ' + x.message
       };
-      obj.continueTesting = false;
       obj.serverDead = true;
       return false;
     }
@@ -144,11 +160,10 @@ let viewsTest = {
         viewsAfter.push(view._name);
       });
     } catch (x) {
-      obj.results[te] = {
+      obj.results[obj.translateResult(te)] = {
         status: false,
-        message: 'failed to fetch the currently available views: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
+        message: 'failed to fetch the currently available views: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
       };
-      obj.continueTesting = false;
       return false;
     }
     let delta = tu.diffArray(obj.viewsBefore, viewsAfter).filter(function(name) {
@@ -156,9 +171,9 @@ let viewsTest = {
                 || (name === "log")); // exclude system/agency collections from the comparison
     });
     if (delta.length !== 0) {
-      obj.results[te] = {
+      obj.results[obj.translateResult(te)] = {
         status: false,
-        message: 'Cleanup missing - test left over view:' + delta + '. Original test status: ' + JSON.stringify(obj.results[te])
+        message: 'Cleanup missing - test left over view:' + delta + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
       };
       return false;
     }
@@ -180,20 +195,19 @@ let graphsTest = {
     try {
       graphs = db._collection('_graphs');
     } catch (x) {
-      obj.results[te] = {
+      obj.results[obj.translateResult(te)] = {
         status: false,
-        message: 'failed to fetch the graphs: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
+        message: 'failed to fetch the graphs: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
       };
-      obj.continueTesting = false;
       return false;
     }
     if (graphs && graphs.count() !== obj.graphCount) {
-      obj.results[te] = {
+      obj.results[obj.translateResult(te)] = {
         status: false,
         message: 'Cleanup of graphs missing - found graph definitions: [ ' +
           JSON.stringify(graphs.toArray()) +
           ' ] - Original test status: ' +
-          JSON.stringify(obj.results[te])
+          JSON.stringify(obj.results[obj.translateResult(te)])
       };
       obj.graphCount = graphs.count();
       return false;
@@ -212,16 +226,24 @@ let databasesTest = {
     // TODO: we are currently filtering out the UnitTestDB here because it is 
     // created and not cleaned up by a lot of the `authentication` tests. This
     // should be fixed eventually
-    let databasesAfter = db._databases().filter((name) => name !== 'UnitTestDB');
-    if (databasesAfter.length !== 1 || databasesAfter[0] !== '_system') {
-      obj.results[te] = {
+    try {
+      db._useDatabase('_system');
+      let databasesAfter = db._databases().filter((name) => name !== 'UnitTestDB');
+      if (databasesAfter.length !== 1 || databasesAfter[0] !== '_system') {
+        obj.results[obj.translateResult(te)] = {
+          status: false,
+          message: 'Cleanup missing - test left over databases: ' + JSON.stringify(databasesAfter) + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
+        };
+        return false;
+      }
+      return true;
+    } catch (x) {
+      obj.results[obj.translateResult(te)] = {
         status: false,
-        message: 'Cleanup missing - test left over databases: ' + JSON.stringify(databasesAfter) + '. Original test status: ' + JSON.stringify(obj.results[te])
+        message: 'failed to fetch the databases list: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
       };
-      obj.continueTesting = false;
-      return false;
     }
-    return true;
+    return false;
   }
 };
 
@@ -232,15 +254,14 @@ let failurePointsCheck = {
   name: 'failurepoints',
   setUp: function(obj, te) { return true; },
   runCheck: function(obj, te) {
-    let failurePoints = pu.checkServerFailurePoints(obj.instanceInfo);
+    let failurePoints = pu.checkServerFailurePoints(obj.instanceManager);
     if (failurePoints.length > 0) {
-      obj.continueTesting = false;
-      obj.results[te] = {
+      obj.results[obj.translateResult(te)] = {
         status: false,
         message: 'Cleanup of failure points missing - found failure points engaged: [ ' +
           JSON.stringify(failurePoints) +
           ' ] - Original test status: ' +
-          JSON.stringify(obj.results[te])
+          JSON.stringify(obj.results[obj.translateResult(te)])
       };
       return false;
     }
@@ -270,7 +291,14 @@ class testRunner {
     if (checkUsers) {
       this.cleanupChecks.push(usersTests);
     }
-    this.cleanupChecks.push(databasesTest);
+    if (this.options.agency) {
+      // pure agency tests won't need user checks.
+      if (this.options.cluster || this.options.activefailover) {
+        this.cleanupChecks.push(databasesTest);
+      }
+    } else {
+      this.cleanupChecks.push(databasesTest);
+    }
     this.collectionsBefore = [];
     if (checkCollections) {
       this.cleanupChecks.push(collectionsTest);
@@ -284,7 +312,7 @@ class testRunner {
       this.cleanupChecks.push(graphsTest);
     }
     this.cleanupChecks.push();
-
+    this.instanceManager;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -298,13 +326,18 @@ class testRunner {
   preStop() { return {state: true}; } // before shutting down the SUT
   postStop() { return {state: true}; } // after shutting down the SUT
   alive() { return true; } // after each testrun, check whether the SUT is alaive and well
-  
+  translateResult(testName) { return testName; } // if you want to manipulate test file names...
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief checks whether the SUT is alive and well:
   // //////////////////////////////////////////////////////////////////////////////
   healthCheck() {
-    return pu.arangod.check.instanceAlive(this.instanceInfo, this.options) &&
-      this.alive();
+    if (this.instanceManager.checkInstanceAlive() &&
+        this.alive()) {
+      return true;
+    } else {
+      this.continueTesting = false;
+      return false;
+    }
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -314,14 +347,14 @@ class testRunner {
     if (!this.results.hasOwnProperty('SKIPPED')) {
       print('oops! Skipping remaining tests, server is unavailable for testing.');
       let originalMessage;
-      if (this.results.hasOwnProperty(te) && this.results[te].hasOwnProperty('message')) {
-        originalMessage = this.results[te].message;
+      if (this.results.hasOwnProperty(te) && this.results[this.translateResult(te)].hasOwnProperty('message')) {
+        originalMessage = this.results[this.translateResult(te)].message;
       }
       this.results['SKIPPED'] = {
         status: false,
         message: ""
       };
-      this.results[te] = {
+      this.results[this.translateResult(te)] = {
         status: false,
         message: 'server unavailable for testing. ' + originalMessage
       };
@@ -332,7 +365,7 @@ class testRunner {
       this.results['SKIPPED'].message += te;
     }
 
-    this.instanceInfo.exitStatus = 'server is gone.';
+    this.instanceManager.exitStatus = 'server is gone.';
 
   }
 
@@ -341,10 +374,10 @@ class testRunner {
   // //////////////////////////////////////////////////////////////////////////////
   loadClusterTestStabilityInfo(){
     try {
-      if (this.instanceInfo.hasOwnProperty('clusterHealthMonitorFile')) {
+      if (this.instanceManager.hasOwnProperty('clusterHealthMonitorFile')) {
         let status = true;
         let slow = [];
-        let buf = fs.readBuffer(this.instanceInfo.clusterHealthMonitorFile);
+        let buf = fs.readBuffer(this.instanceManager.clusterHealthMonitorFile);
         let lineStart = 0;
         let maxBuffer = buf.length;
 
@@ -386,6 +419,7 @@ class testRunner {
   ////////////////////////////////////////////////////////////////////////////////
   // Main loop - launch the SUT, iterate over testList, shut down
   run(testList) {
+    this.continueTesting = true;
     this.testList = testList;
     if (this.testList.length === 0) {
       print('Testsuite is empty!');
@@ -403,6 +437,11 @@ class testRunner {
     
     let beforeStart = time();
 
+    this.instanceManager = new im.instanceManager(this.options.protocol,
+                                                  this.options,
+                                                  this.serverOptions,
+                                                  this.friendlyName);
+    this.instanceManager.prepareInstance();
     this.customInstanceInfos['preStart'] = this.preStart();
     if (this.customInstanceInfos.preStart.state === false) {
       return {
@@ -414,12 +453,8 @@ class testRunner {
       };
     }
 
-    this.instanceInfo = pu.startInstance(this.options.protocol,
-                                         this.options,
-                                         this.serverOptions,
-                                         this.friendlyName);
-
-    if (this.instanceInfo === false) {
+    this.instanceManager.launchTcpDump("");
+    if (this.instanceManager.launchInstance() === false) {
       this.customInstanceInfos['startFailed'] = this.startFailed();
       return {
         setup: {
@@ -428,11 +463,11 @@ class testRunner {
         }
       };
     }
-
+    this.instanceManager.reconnect();
     this.customInstanceInfos['postStart'] = this.postStart();
     if (this.customInstanceInfos.postStart.state === false) {
       let shutdownStatus = this.customInstanceInfos.postStart.shutdown;
-      shutdownStatus = shutdownStatus && pu.shutdownInstance(this.instanceInfo, this.options);
+      shutdownStatus = shutdownStatus && this.instanceManager.shutdownInstance();
       return {
         setup: {
           status: false,
@@ -444,12 +479,14 @@ class testRunner {
 
     let testrunStart = time();
     this.results = {
+      failed: 0,
       shutdown: true,
       startupTime: testrunStart - beforeStart
     };
     let serverDead = false;
     let count = 0;
     let forceTerminate = false;
+    let moreReason = "";
     for (let i = 0; i < this.testList.length; i++) {
       let te = this.testList[i];
       let filtered = {};
@@ -461,34 +498,41 @@ class testRunner {
         
         for (let j = 0; j < this.cleanupChecks.length; j++) {
           if (!this.continueTesting || !this.cleanupChecks[j].setUp(this, te)) {
+            this.continueTesting = false;
+            print(RED+'server pretest "' + this.cleanupChecks[j].name + '" failed!'+RESET);
+            moreReason += `server pretest '${this.cleanupChecks[j].name}' failed!`;
+            j = this.cleanupChecks.length;
             continue;
           }
         }
         while (first || this.options.loopEternal) {
           if (!this.continueTesting) {
             this.abortTestOnError(te);
+            i = this.testList.length;
             break;
           }
 
           this.preRun(te);
-          pu.getMemProfSnapshot(this.instanceInfo, this.options, this.memProfCounter++);
+          this.instanceManager.getMemProfSnapshot(this.memProfCounter++);
           
           print('\n' + (new Date()).toISOString() + GREEN + " [============] " + this.info + ': Trying', te, '...', RESET);
           let reply = this.runOneTest(te);
           if (reply.hasOwnProperty('forceTerminate') && reply.forceTerminate) {
-            this.results[te] = reply;
+            moreReason += "test told us that we should forceTerminate.";
+            this.results[this.translateResult(te)] = reply;
             this.continueTesting = false;
             forceTerminate = true;
             continue;
           }
 
           if (reply.hasOwnProperty('status')) {
-            this.results[te] = reply;
+            this.results[this.translateResult(te)] = reply;
             if (!this.options.disableClusterMonitor) {
-              this.results[te]['processStats'] = pu.getDeltaProcessStats(this.instanceInfo);
+              this.results[this.translateResult(te)]['processStats'] = this.instanceManager.getDeltaProcessStats();
             }
 
-            if (this.results[te].status === false) {
+            if (this.results[this.translateResult(te)].status === false) {
+              this.results.failed ++;
               this.options.cleanup = false;
             }
 
@@ -496,7 +540,7 @@ class testRunner {
               break;
             }
           } else {
-            this.results[te] = {
+            this.results[this.translateResult(te)] = {
               status: false,
               message: reply
             };
@@ -507,12 +551,24 @@ class testRunner {
           }
 
           if (this.healthCheck()) {
+            if (!this.results[this.translateResult(te)].hasOwnProperty('processStats')) {
+              this.results[this.translateResult(te)]['processStats'] = {};
+            }
+            this.results[this.translateResult(te)]['processStats']['netstat'] = this.instanceManager.getNetstat();
             this.continueTesting = true;
             for (let j = 0; j < this.cleanupChecks.length; j++) {
-              if (!this.continueTesting || this.cleanupChecks[j].runCheck(this, te)) {
+              if (!this.continueTesting || !this.cleanupChecks[j].runCheck(this, te)) {
+                print(RED+'server posttest "' + this.cleanupChecks[j].name + '" failed!'+RESET);
+                moreReason += `server posttest '${this.cleanupChecks[j].name}' failed!`;
+                this.continueTesting = false;
+                j = this.cleanupChecks.length;
                 continue;
               }
             }
+            
+          } else {
+            this.results[this.translateResult(te)].message = "Instance not healthy! " + JSON.stringify(reply);
+            continue;
           }
           first = false;
 
@@ -549,7 +605,7 @@ class testRunner {
     }
 
     if (this.continueTesting) {
-      pu.getMemProfSnapshot(this.instanceInfo, this.options, this.memProfCounter++);
+      this.instanceManager.getMemProfSnapshot(this.memProfCounter++);
     }
 
     let shutDownStart = time();
@@ -573,7 +629,10 @@ class testRunner {
     if (this.serverOptions['server.jwt-secret'] && !clonedOpts['server.jwt-secret']) {
       clonedOpts['server.jwt-secret'] = this.serverOptions['server.jwt-secret'];
     }
-    this.results.shutdown = this.results.shutdown && pu.shutdownInstance(this.instanceInfo, clonedOpts, forceTerminate);
+    this.results.shutdown = this.results.shutdown && this.instanceManager.shutdownInstance(forceTerminate, moreReason);
+    if (!this.results.shutdown) {
+      this.results.status = false;
+    }
 
     this.loadClusterTestStabilityInfo();
 
@@ -587,6 +646,7 @@ class testRunner {
     if (!this.options.noStartStopLogs) {
       print('done.');
     }
+    this.instanceManager.destructor(this.continueTesting && this.results.failed === 0);
     return this.results;
   }
 }

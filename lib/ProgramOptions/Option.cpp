@@ -35,12 +35,13 @@ using namespace arangodb::options;
 
 // create an option, consisting of single string
 Option::Option(std::string const& value, std::string const& description,
-               Parameter* parameter, std::underlying_type<Flags>::type flags)
+               std::unique_ptr<Parameter> parameter,
+               std::underlying_type<Flags>::type flags)
     : section(),
       name(),
       description(description),
       shorthand(),
-      parameter(parameter),
+      parameter(std::move(parameter)),
       flags(flags) {
   auto parts = splitName(value);
   section = parts.first;
@@ -64,8 +65,8 @@ Option::Option(std::string const& value, std::string const& description,
 #endif
 }
 
-void Option::toVPack(VPackBuilder& builder) const {
-  parameter->toVPack(builder);
+void Option::toVelocyPack(VPackBuilder& builder, bool detailed) const {
+  parameter->toVelocyPack(builder, detailed);
 }
 
 // format a version string

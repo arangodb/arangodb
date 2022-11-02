@@ -23,7 +23,12 @@
 
 #pragma once
 
+#include <string_view>
 #include <type_traits>
+
+#include <velocypack/HashedStringRef.h>
+#include <velocypack/SharedSlice.h>
+#include <velocypack/Slice.h>
 
 #include "Inspection/Status.h"
 
@@ -51,10 +56,23 @@ struct HasInspectOverload<T, Inspector,
           std::true_type, typename std::false_type> {};
 
 template<class T>
-constexpr inline bool IsBuiltinType() {
+constexpr inline bool IsSafeBuiltinType() {
   return std::is_same_v<T, bool> || std::is_integral_v<T> ||
          std::is_floating_point_v<T> ||
-         std::is_same_v<T, std::string>;  // TODO - use is-string-like?
+         std::is_same_v<T, std::string> ||  // TODO - use is-string-like?
+         std::is_same_v<T, arangodb::velocypack::SharedSlice>;
+}
+
+template<class T>
+constexpr inline bool IsUnsafeBuiltinType() {
+  return std::is_same_v<T, std::string_view> ||
+         std::is_same_v<T, arangodb::velocypack::Slice> ||
+         std::is_same_v<T, arangodb::velocypack::HashedStringRef>;
+}
+
+template<class T>
+constexpr inline bool IsBuiltinType() {
+  return IsSafeBuiltinType<T>() || IsUnsafeBuiltinType<T>();
 }
 
 template<class T, class = void>
@@ -91,6 +109,24 @@ struct IsTuple
 template<class T>
 struct IsTuple<T, std::void_t<typename std::tuple_size<T>::type>>
     : std::true_type {};
+
+template<class T>
+struct TupleSize;
+
+template<class T, std::size_t Size>
+struct TupleSize<std::array<T, Size>> {
+  static constexpr std::size_t value = Size;
+};
+
+template<class... Ts>
+struct TupleSize<std::tuple<Ts...>> {
+  static constexpr std::size_t value = sizeof...(Ts);
+};
+
+template<class T1, class T2>
+struct TupleSize<std::pair<T1, T2>> {
+  static constexpr std::size_t value = 2;
+};
 
 template<class T, std::size_t = sizeof(T)>
 std::true_type IsCompleteTypeImpl(T*);

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2021-2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -75,12 +75,24 @@ struct IReplicatedLeaderState : IReplicatedLeaderStateBase {
   virtual auto recoverEntries(std::unique_ptr<EntryIterator>)
       -> futures::Future<Result> = 0;
 
-  auto getStream() const -> std::shared_ptr<Stream> const&;
+  [[nodiscard]] auto getStream() const noexcept
+      -> std::shared_ptr<Stream> const&;
 
   [[nodiscard]] virtual auto resign() && noexcept
       -> std::unique_ptr<CoreType> = 0;
 
-  // TODO make private
+  /**
+   * This hook is called after leader recovery is completed and the internal
+   * state has been updated. The underlying stream is guaranteed to have been
+   * initialized.
+   */
+  virtual void onSnapshotCompleted() noexcept {};
+
+  void setStream(std::shared_ptr<Stream> stream) noexcept {
+    _stream = std::move(stream);
+  }
+
+ private:
   std::shared_ptr<Stream> _stream;
 };
 
@@ -131,7 +143,8 @@ struct IReplicatedFollowerState : IReplicatedFollowerStateBase {
       -> std::unique_ptr<CoreType> = 0;
 
  protected:
-  [[nodiscard]] auto getStream() const -> std::shared_ptr<Stream> const&;
+  [[nodiscard]] auto getStream() const noexcept
+      -> std::shared_ptr<Stream> const&;
 
  private:
   friend struct FollowerStateManager<S>;

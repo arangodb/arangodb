@@ -35,6 +35,14 @@
 
 namespace arangodb::iresearch::kludge {
 
+inline constexpr char kNestedDelimiter = '\2';
+
+#ifdef USE_ENTERPRISE
+bool isNestedField(irs::string_ref name) noexcept;
+#endif
+
+bool needTrackPrevDoc(irs::string_ref name, bool nested) noexcept;
+void mangleNested(std::string& name);
 void mangleType(std::string& name);
 void mangleAnalyzer(std::string& name);
 
@@ -43,7 +51,17 @@ void mangleBool(std::string& name);
 void mangleNumeric(std::string& name);
 void mangleString(std::string& name);
 
-void mangleField(std::string& name, bool isSearchFilter,
+void mangleField(std::string& name, bool isOldMangling,
                  iresearch::FieldMeta::Analyzer const& analyzer);
+
+std::string_view demangleType(std::string_view name) noexcept;
+#ifdef USE_ENTERPRISE
+[[maybe_unused]] std::string_view demangleNested(std::string_view name,
+                                                 std::string& buf);
+[[maybe_unused]] inline std::string_view demangle(std::string_view name,
+                                                  std::string& buf) {
+  return demangleNested(demangleType(name), buf);
+}
+#endif
 
 }  // namespace arangodb::iresearch::kludge

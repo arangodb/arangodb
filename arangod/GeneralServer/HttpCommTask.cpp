@@ -73,7 +73,21 @@ rest::RequestType llhttpToRequestType(llhttp_t* p) {
 }  // namespace
 
 template<SocketType T>
-int HttpCommTask<T>::on_message_began(llhttp_t* p) {
+bool HttpCommTask<T>::transferEncodingContainsChunked(
+    HttpCommTask<T>& commTask, std::string const& encoding) {
+  if (basics::StringUtils::tolower(encoding).find("chunked") !=
+      std::string::npos) {
+    commTask.sendErrorResponse(
+        rest::ResponseCode::NOT_IMPLEMENTED, rest::ContentType::UNSET, 1,
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "Parsing for transfer-encoding of type chunked not implemented.");
+    return true;
+  }
+  return false;
+}
+
+template<SocketType T>
+int HttpCommTask<T>::on_message_began(llhttp_t* p) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_lastHeaderField.clear();
   me->_lastHeaderValue.clear();
@@ -88,12 +102,15 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) {
 
   // acquire a new statistics entry for the request
   me->acquireStatistics(1UL).SET_READ_START(TRI_microtime());
-
   return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
-int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) {
+int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_request->setRequestType(llhttpToRequestType(p));
   if (me->_request->requestType() == RequestType::ILLEGAL) {
@@ -105,6 +122,10 @@ int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) {
 
   me->_url.append(at, len);
   return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
@@ -114,7 +135,8 @@ int HttpCommTask<T>::on_status(llhttp_t* p, const char* at, size_t len) {
 }
 
 template<SocketType T>
-int HttpCommTask<T>::on_header_field(llhttp_t* p, const char* at, size_t len) {
+int HttpCommTask<T>::on_header_field(llhttp_t* p, const char* at,
+                                     size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   if (me->_lastHeaderWasValue) {
     me->_request->setHeaderV2(std::move(me->_lastHeaderField),
@@ -125,10 +147,15 @@ int HttpCommTask<T>::on_header_field(llhttp_t* p, const char* at, size_t len) {
   }
   me->_lastHeaderWasValue = false;
   return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
-int HttpCommTask<T>::on_header_value(llhttp_t* p, const char* at, size_t len) {
+int HttpCommTask<T>::on_header_value(llhttp_t* p, const char* at,
+                                     size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   if (me->_lastHeaderWasValue) {
     me->_lastHeaderValue.append(at, len);
@@ -137,15 +164,29 @@ int HttpCommTask<T>::on_header_value(llhttp_t* p, const char* at, size_t len) {
   }
   me->_lastHeaderWasValue = true;
   return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
-int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
+int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_response.reset();
   if (!me->_lastHeaderField.empty()) {
     me->_request->setHeaderV2(std::move(me->_lastHeaderField),
                               std::move(me->_lastHeaderValue));
+  }
+
+  bool found;
+  std::string const& encoding =
+      me->_request->header(StaticStrings::TransferEncoding, found);
+
+  if (found) {
+    if (transferEncodingContainsChunked(*me, encoding)) {
+      return HPE_USER;
+    }
   }
 
   if ((p->http_major != 1 || p->http_minor != 0) &&
@@ -161,7 +202,6 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
   }
   me->_shouldKeepAlive = llhttp_should_keep_alive(p);
 
-  bool found;
   std::string const& expect =
       me->_request->header(StaticStrings::Expect, found);
   if (found && StringUtils::trim(expect) == "100-continue") {
@@ -185,17 +225,25 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
     return 1;  // 1 is defined by parser
   }
   return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
-int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) {
+int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_request->body().append(at, len);
   return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
-int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
+int HttpCommTask<T>::on_message_complete(llhttp_t* p) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_request->parseUrl(me->_url.data(), me->_url.size());
 
@@ -203,6 +251,10 @@ int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
   me->_messageDone = true;
 
   return HPE_PAUSED;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
@@ -472,7 +524,7 @@ void HttpCommTask<T>::doProcessRequest() {
     }
   }
 
-  // ensure there is a null byte termination. RestHandlers use
+  // ensure there is a null byte termination. Some RestHandlers use
   // C functions like strchr that except a C string as input
   _request->body().push_back('\0');
   _request->body().resetTo(_request->body().size() - 1);
@@ -487,9 +539,25 @@ void HttpCommTask<T>::doProcessRequest() {
     this->_generalServerFeature.countHttp1Request(body.size());
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
+      std::string bodyForLogging;
+      try {
+        velocypack::Slice s = _request->payload(false);
+        if (!s.isNone()) {
+          // "none" can happen if the content-type is neither JSON nor vpack
+          bodyForLogging = StringUtils::escapeUnicode(s.toJson());
+        }
+      } catch (...) {
+        // cannot stringify request body
+      }
+
+      if (bodyForLogging.empty() && !body.empty()) {
+        bodyForLogging = "potential binary data";
+      }
+
       LOG_TOPIC("b9e76", TRACE, Logger::REQUESTS)
           << "\"http-request-body\",\"" << (void*)this << "\",\""
-          << StringUtils::escapeUnicode(std::string(body)) << "\"";
+          << rest::contentTypeToString(_request->contentType()) << "\",\""
+          << _request->contentLength() << "\",\"" << bodyForLogging << "\"";
     }
   }
 
@@ -502,8 +570,10 @@ void HttpCommTask<T>::doProcessRequest() {
     return;
   }
 
+  ServerState::Mode mode = ServerState::mode();
+
   // scrape the auth headers to determine and authenticate the user
-  auto authToken = this->checkAuthHeader(*_request);
+  auto authToken = this->checkAuthHeader(*_request, mode);
 
   // We want to separate superuser token traffic:
   if (_request->authenticated() && _request->user().empty()) {
@@ -511,7 +581,7 @@ void HttpCommTask<T>::doProcessRequest() {
   }
 
   // first check whether we allow the request to continue
-  CommTask::Flow cont = this->prepareExecution(authToken, *_request);
+  CommTask::Flow cont = this->prepareExecution(authToken, *_request, mode);
   if (cont != CommTask::Flow::Continue) {
     return;  // prepareExecution sends the error message
   }
@@ -528,7 +598,7 @@ void HttpCommTask<T>::doProcessRequest() {
   auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
                                              1, nullptr);
   resp->setContentType(_request->contentTypeResponse());
-  this->executeRequest(std::move(_request), std::move(resp));
+  this->executeRequest(std::move(_request), std::move(resp), mode);
 }
 
 #ifdef USE_DTRACE

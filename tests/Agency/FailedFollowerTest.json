@@ -14,7 +14,8 @@ R"=(
             }
           }
         }
-      }
+      },
+      "MaintenanceDBServers": {}
     },
     "Plan": {
       "Collections": {

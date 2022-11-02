@@ -25,6 +25,7 @@
 #include <iostream>
 #include <utility>
 #include <vector>
+#include <functional>
 
 #include "Zkd/ZkdHelper.h"
 

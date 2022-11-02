@@ -29,7 +29,7 @@ const {db} = require('@arangodb');
 
 const {debugCanUseFailAt} = require("internal");
 const {
-  getServersByType,
+  getDBServers,
   debugSetFailAt,
   debugClearFailAt,
   getEndpointById,
@@ -38,9 +38,6 @@ const {
 
 function ReplicationDeadLockSuite() {
   const collectionName = "UnitTestCollection";
-  const getDBServers = () => {
-    return getServersByType('dbserver');
-  };
   const clearAllFailurePoints = () => {
     for (const server of getDBServers()) {
       debugClearFailAt(getEndpointById(server.id));

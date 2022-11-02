@@ -159,7 +159,8 @@ function indexEstimatesSuite() {
       assertEqual("ttl", indexes[1].type);
       assertFalse(indexes[0].hasOwnProperty("estimates"));
       assertTrue(indexes[0].hasOwnProperty("selectivityEstimate"));
-      assertFalse(indexes[1].hasOwnProperty("estimates"));
+      assertTrue(indexes[1].hasOwnProperty("estimates"));
+      assertFalse(indexes[1].estimates);
       assertFalse(indexes[1].hasOwnProperty("selectivityEstimate"));
     },
   };

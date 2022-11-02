@@ -30,7 +30,7 @@
 #include "Basics/ResultT.h"
 #include "Cluster/CallbackGuard.h"
 #include "Logger/LogMacros.h"
-#include "Transaction/SmartContext.h"
+#include "Transaction/ManagedContext.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/TransactionId.h"
@@ -55,8 +55,14 @@ class ManagerFeature;
 class Hints;
 struct Options;
 
+struct IManager {
+  virtual ~IManager() = default;
+  virtual Result abortManagedTrx(TransactionId,
+                                 std::string const& database) = 0;
+};
+
 /// @brief Tracks TransasctionState instances
-class Manager final {
+class Manager final : public IManager {
   static constexpr size_t numBuckets = 16;
   static constexpr double tombstoneTTL = 10.0 * 60.0;              // 10 minutes
   static constexpr size_t maxTransactionSize = 128 * 1024 * 1024;  // 128 MiB
@@ -77,7 +83,6 @@ class Manager final {
     bool expired() const noexcept;
     void updateExpiry() noexcept;
 
-   public:
     /// @brief managed, AQL or tombstone
     MetaType type;
     /// @brief whether or not the transaction has performed any intermediate
@@ -101,7 +106,7 @@ class Manager final {
     std::shared_ptr<TransactionState> state;  /// Transaction, may be nullptr
     arangodb::cluster::CallbackGuard rGuard;
     std::string const user;  /// user owning the transaction
-    std::string const db;    /// database in which the transaction operates
+    std::string db;          /// database in which the transaction operates
     /// cheap usage lock for _state
     mutable basics::ReadWriteSpinLock rwlock;
   };
@@ -139,7 +144,8 @@ class Manager final {
 
   /// @brief create managed transaction, also generate a tranactionId
   ResultT<TransactionId> createManagedTrx(TRI_vocbase_t& vocbase,
-                                          velocypack::Slice trxOpts);
+                                          velocypack::Slice trxOpts,
+                                          bool allowDirtyReads);
 
   /// @brief create managed transaction, also generate a tranactionId
   ResultT<TransactionId> createManagedTrx(
@@ -176,7 +182,7 @@ class Manager final {
                                           std::string const& database) const;
 
   Result commitManagedTrx(TransactionId, std::string const& database);
-  Result abortManagedTrx(TransactionId, std::string const& database);
+  Result abortManagedTrx(TransactionId, std::string const& database) override;
 
   /// @brief collect forgotten transactions
   bool garbageCollect(bool abortAll);

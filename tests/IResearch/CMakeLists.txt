@@ -1,5 +1,4 @@
 set(ARANGODB_IRESEARCH_TESTS_SOURCES
-  ${ARANGODB_TESTS_COMMON_SOURCES}
   ${CMAKE_CURRENT_SOURCE_DIR}/ContainersTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ExpressionFilterTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/GeoAnalyzerTest.cpp
@@ -17,9 +16,12 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFilterFunctionTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFilterGeoTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFilterInTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFilterMinHashMatchTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchFilterNestedTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchIndexTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchInvertedIndexConditionTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchInvertedIndexIteratorTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchInvertedIndexMetaTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchLinkTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchLinkCoordinatorTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchLinkHelperTest.cpp
@@ -57,7 +59,6 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryTokensTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryValueTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryTraversalTest.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchRocksDBRecoveryHelperTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchPrimaryKeyReuseTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchTestCommon.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchViewTest.cpp
@@ -68,15 +69,15 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchViewSortTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchViewSortedTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchViewCountApproximateTest.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/VelocyPackHelperTest.cpp
-)
+  ${CMAKE_CURRENT_SOURCE_DIR}/VelocyPackHelperTest.cpp)
 
 set(ARANGODB_IRESEARCH_TESTS_SOURCES
-    ${ARANGODB_IRESEARCH_TESTS_SOURCES}
-    PARENT_SCOPE)
+  ${ARANGODB_IRESEARCH_TESTS_SOURCES}
+  PARENT_SCOPE)
 
 add_executable(
   arangodbtests-iresearch
+  ${ARANGODB_TESTS_COMMON_SOURCES}
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
   ../main.cpp
 )
@@ -109,7 +110,7 @@ target_include_directories(arangodbtests-iresearch PRIVATE
 target_include_directories(arangodbtests-iresearch SYSTEM PRIVATE
   ${V8_INTERNAL_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
-  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
+  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/third-party/gtest-1.8.1/fused-src
 )
 target_link_libraries(arangodbtests-iresearch v8_interface)
 

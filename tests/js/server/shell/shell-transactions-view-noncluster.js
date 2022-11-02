@@ -219,7 +219,7 @@ function TransactionsIResearchSuite() {
       c.save({ _key: "full", text: "the quick brown fox jumps over the lazy dog", val: 1 });
       c.save({ _key: "half", text: "quick fox over lazy", val: 2 });
       c.save({ _key: "other_half", text: "the brown jumps the dog", val: 3 });
-      c.save({ _key: "quarter", text: "quick over", val: 4 });
+      c.save({ _key: "quarter", text: "quick quick over", val: 4 });
 
       try {
         db._executeTransaction({
@@ -262,7 +262,7 @@ function TransactionsIResearchSuite() {
       c.save({ _key: "full", text: "the quick brown fox jumps over the lazy dog", val: 1 });
       c.save({ _key: "half", text: "quick fox over lazy", val: 2 });
       c.save({ _key: "other_half", text: "the brown jumps the dog", val: 3 });
-      c.save({ _key: "quarter", text: "quick over", val: 4 });
+      c.save({ _key: "quarter", text: "quick quick over", val: 4 });
 
       try {
         db._executeTransaction({

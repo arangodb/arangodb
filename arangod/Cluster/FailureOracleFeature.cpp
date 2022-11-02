@@ -22,13 +22,14 @@
 
 #include "FailureOracleFeature.h"
 
-#include "Agency/TimeString.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/TimeString.h"
 #include "Basics/application-exit.h"
 #include "Basics/system-compiler.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallback.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FailureOracle.h"
 #include "Scheduler/Scheduler.h"

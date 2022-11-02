@@ -31,7 +31,6 @@ var db = require('@arangodb').db;
 var fs = require('fs');
 var internal = require('internal');
 var jsunity = require('jsunity');
-var path;
 
 function runSetup () {
   'use strict';
@@ -46,14 +45,13 @@ function runSetup () {
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
   v.properties(meta);
 
-  path = fs.join(db._path(), 'databases', 'arangosearch-' + v._id);
 
   for (let i = 0; i < 10000; i++) {
     c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
   }
 
   internal.wal.flush(true, true);
-  internal.debugSetFailAt("FlushThreadDisableAll");
+  internal.debugSetFailAt("RocksDBBackgroundThread::run");
   internal.wait(2); // make sure failure point takes effect
 
   v.drop();
@@ -82,9 +80,8 @@ function recoverySuite () {
     testIResearchLinkPopulateDropViewNoFlushThread: function () {
       var v = db._view('UnitTestsRecoveryView');
       assertNull(v);
-
-      // TODO: check that path doesn't exist
-      assertFalse(fs.exists(path));
+      let path = fs.join(fs.join(db._path(), 'databases'), 'database-' + db._id());
+      assertEqual(0, fs.list(path).length);
     }
 
   };

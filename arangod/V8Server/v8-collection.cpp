@@ -458,15 +458,26 @@ static void DocumentVocbaseCol(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
+  TRI_GET_GLOBALS();
 
   // first and only argument should be a document handle or key or an object
-  if (args.Length() != 1) {
+  if (args.Length() < 1 || args.Length() > 2) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "document(<document-id> or <document-key> or <object> or <array>)");
   }
 
   OperationOptions options;
   options.ignoreRevs = false;
+
+  if (args.Length() == 2 && args[1]->IsObject()) {
+    v8::Local<v8::Object> optsObj = v8::Local<v8::Object>::Cast(args[1]);
+    TRI_GET_GLOBAL_STRING(AllowDirtyReadsKey);
+    if (TRI_HasProperty(context, isolate, optsObj, AllowDirtyReadsKey)) {
+      options.allowDirtyReads =
+          TRI_ObjectToBoolean(isolate, optsObj->Get(context, AllowDirtyReadsKey)
+                                           .FromMaybe(v8::Local<v8::Value>()));
+    }
+  }
 
   // Find collection and vocbase
   auto* col = UnwrapCollection(isolate, args.Holder());
@@ -1065,9 +1076,7 @@ static void JS_FiguresVocbaseCol(
   OperationOptions options(ExecContext::current());
   auto opRes = collection->figures(details, options).get();
 
-  trx.finish(TRI_ERROR_NO_ERROR);
-
-  if (opRes.ok()) {
+  if (trx.finish(opRes.result).ok()) {
     TRI_V8_RETURN(TRI_VPackToV8(isolate, opRes.slice()));
   } else {
     TRI_V8_RETURN_NULL();
@@ -1147,12 +1156,7 @@ static void JS_LoadVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto res = methods::Collections::load(vocbase, collection);
-
-  if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
+  // load is a no-op starting with ArangoDB 3.9
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
@@ -2382,11 +2386,7 @@ static void JS_UnloadVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto res = methods::Collections::unload(&(collection->vocbase()), collection);
-
-  if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  // unload is a no-op starting with ArangoDB 3.9
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
