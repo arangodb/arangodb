@@ -167,7 +167,7 @@ class LogAppenderDebugOutput final : public LogAppender {
   LogAppenderDebugOutput() : LogAppender() {}
 
  public:
-  void logMessage(LogMessage const& message) {
+  void logMessage(LogMessage const& message) override {
     // only handle FATAl and ERR log messages
     if (message._level != LogLevel::FATAL && message._level != LogLevel::ERR) {
       return;
@@ -188,7 +188,7 @@ class LogAppenderEventLog final : public LogAppender {
   LogAppenderEventLog() : LogAppender() {}
 
  public:
-  void logMessage(LogMessage const& message) {
+  void logMessage(LogMessage const& message) override {
     // only handle FATAl and ERR log messages
     if (message._level != LogLevel::FATAL && message._level != LogLevel::ERR) {
       return;
@@ -206,7 +206,7 @@ class LogAppenderEventLog final : public LogAppender {
 /// in our metrics
 class LogAppenderMetricsCounter final : public LogAppender {
  public:
-  LogAppenderMetricsCounter(application_features::ApplicationServer& server)
+  LogAppenderMetricsCounter(ArangodServer& server)
       : LogAppender(),
         _warningsCounter(server.getFeature<metrics::MetricsFeature>().add(
             arangodb_logger_warnings_total{})),
@@ -229,9 +229,8 @@ class LogAppenderMetricsCounter final : public LogAppender {
   metrics::Counter& _errorsCounter;
 };
 
-LogBufferFeature::LogBufferFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "LogBuffer"),
+LogBufferFeature::LogBufferFeature(Server& server)
+    : ArangodFeature{server, *this},
       _minInMemoryLogLevel("info"),
       _useInMemoryAppender(true) {
   setOptional(true);
@@ -251,11 +250,12 @@ LogBufferFeature::LogBufferFeature(
 void LogBufferFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options
-      ->addOption(
-          "--log.in-memory",
-          "use in-memory log appender, which can be queried via API and web UI",
-          new BooleanParameter(&_useInMemoryAppender),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption("--log.in-memory",
+                  "use in-memory log appender, which can be queried via the "
+                  "API and web interface",
+                  new BooleanParameter(&_useInMemoryAppender),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800);
 
   std::unordered_set<std::string> const logLevels = {
@@ -266,7 +266,8 @@ void LogBufferFeature::collectOptions(
           "use in-memory log appender only for this log level and higher",
           new DiscreteValuesParameter<StringParameter>(&_minInMemoryLogLevel,
                                                        logLevels),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30709);
 }
 

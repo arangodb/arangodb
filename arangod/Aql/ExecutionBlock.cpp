@@ -38,7 +38,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -130,7 +129,7 @@ void ExecutionBlock::addDependency(ExecutionBlock* ep) {
   _dependencyPos = _dependencies.end();
 }
 
-void ExecutionBlock::collectExecStats(ExecutionStats& stats) const {
+void ExecutionBlock::collectExecStats(ExecutionStats& stats) {
   if (_profileLevel >= ProfileLevel::Blocks) {
     stats.addNode(getPlanNode()->id(), _execNodeStats);
   }

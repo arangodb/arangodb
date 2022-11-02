@@ -1,6 +1,5 @@
 // Default inflections
 module.exports = function (inflect) {
-
   inflect.plural(/$/, 's');
   inflect.plural(/s$/i, 's');
   inflect.plural(/(ax|test)is$/i, '$1es');
@@ -64,5 +63,16 @@ module.exports = function (inflect) {
   inflect.irregular('safe', 'safes');
   inflect.irregular('fife', 'fifes');
 
-  inflect.uncountable(['equipment', 'information', 'rice', 'money', 'species', 'series', 'fish', 'sheep', 'jeans', 'sushi']);
-}
+  inflect.uncountable([
+    'equipment',
+    'information',
+    'rice',
+    'money',
+    'species',
+    'series',
+    'fish',
+    'sheep',
+    'jeans',
+    'sushi',
+  ]);
+};

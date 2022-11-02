@@ -720,9 +720,9 @@ static void generate_do(struct generator * g, struct node * p) {
 static void generate_next(struct generator * g, struct node * p) {
     if (g->options->encoding == ENC_UTF8) {
         if (p->mode == m_forward)
-            w(g, "~{int ret = skip_utf8(z->p, z->c, 0, z->l, 1");
+            w(g, "~{int ret = skip_utf8(z->p, z->c, z->l, 1");
         else
-            w(g, "~{int ret = skip_utf8(z->p, z->c, z->lb, 0, -1");
+            w(g, "~{int ret = skip_b_utf8(z->p, z->c, z->lb, 1");
         writef(g, ");~N"
               "~Mif (ret < 0) ~f~N"
               "~Mz->c = ret;~C"
@@ -785,6 +785,7 @@ static void generate_GO(struct generator * g, struct node * p, int style) {
 
     g->failure_label = new_label(g);
     g->label_used = 0;
+    g->failure_keep_count = 0;
     generate(g, p->left);
 
     if (style == 1) {
@@ -802,8 +803,6 @@ static void generate_GO(struct generator * g, struct node * p, int style) {
     g->failure_label = a0;
     g->failure_keep_count = a1;
 
-/*  writef(g, "~M~l~N"
-          "~M~i~N", p);  */
     generate_next(g, p);
     w(g, "~}");
 }
@@ -889,19 +888,47 @@ static void generate_atmark(struct generator * g, struct node * p) {
 }
 
 static void generate_hop(struct generator * g, struct node * p) {
-    g->S[0] = p->mode == m_forward ? "+" : "-";
-    g->S[1] = p->mode == m_forward ? "0" : "z->lb";
     if (g->options->encoding == ENC_UTF8) {
-        w(g, "~{int ret = skip_utf8(z->p, z->c, ~S1, z->l, ~S0 ");
-        generate_AE(g, p->AE); writef(g, ");~C", p);
+        g->S[0] = p->mode == m_forward ? "" : "_b";
+        g->S[1] = p->mode == m_forward ? "z->l" : "z->lb";
+        w(g, "~{int ret = skip~S0_utf8(z->p, z->c, ~S1, ");
+        generate_AE(g, p->AE);
+        writef(g, ");~C", p);
         writef(g, "~Mif (ret < 0) ~f~N", p);
+        writef(g, "~Mz->c = ret;~N"
+               "~}", p);
     } else {
-        w(g, "~{int ret = z->c ~S0 ");
-        generate_AE(g, p->AE); writef(g, ";~C", p);
-        writef(g, "~Mif (~S1 > ret || ret > z->l) ~f~N", p);
+        // Fixed-width characters.
+        g->S[0] = p->mode == m_forward ? "+" : "-";
+        if (p->AE->type == c_number) {
+            // Constant distance hop.
+            //
+            // No need to check for negative hop as that's converted to false by
+            // the analyser.
+            //
+            // Note that if we signal f then z->c will be reset when this is
+            // handled - we rely on this here and unconditionally update z->c.
+            w(g, "z->c = z->c ~S0 ");
+            generate_AE(g, p->AE);
+            w(g, ";~C");
+            if (p->mode == m_forward) {
+                writef(g, "~Mif (z->c > z->l) ~f~N", p);
+            } else {
+                writef(g, "~Mif (z->c < z->lb) ~f~N", p);
+            }
+        } else {
+            w(g, "~{int ret = z->c ~S0 ");
+            generate_AE(g, p->AE);
+            writef(g, ";~C", p);
+            if (p->mode == m_forward) {
+                writef(g, "~Mif (ret > z->l || ret < z->c) ~f~N", p);
+            } else {
+                writef(g, "~Mif (ret < z->lb || ret > z->c) ~f~N", p);
+            }
+            writef(g, "~Mz->c = ret;~N"
+                      "~}", p);
+        }
     }
-    writef(g, "~Mz->c = ret;~N"
-          "~}", p);
 }
 
 static void generate_delete(struct generator * g, struct node * p) {
@@ -967,11 +994,7 @@ static void generate_assignfrom(struct generator * g, struct node * p) {
           "~}", p);
 }
 
-/* bugs marked <======= fixed 22/7/02. Similar fixes required for Java */
-
 static void generate_slicefrom(struct generator * g, struct node * p) {
-
-/*  w(g, "~Mslice_from_s(z, ");   <============= bug! should be: */
     writef(g, "~{int ret = slice_from_~$(z, ~a);~C", p);
     writef(g, "~Mif (ret < 0) return ret;~N"
           "~}", p);
@@ -1186,9 +1209,9 @@ static void generate_substring(struct generator * g, struct node * p) {
     g->I[0] = x->number;
     g->I[1] = x->literalstring_count;
 
-    /* In forward mode with non-ASCII UTF-8 characters, the first character
+    /* In forward mode with non-ASCII UTF-8 characters, the first byte
      * of the string will often be the same, so instead look at the last
-     * common character position.
+     * common byte position.
      *
      * In backward mode, we can't match if there are fewer characters before
      * the current position than the minimum length.
@@ -1257,7 +1280,7 @@ static void generate_substring(struct generator * g, struct node * p) {
             }
         }
         if (n_cases == 0) {
-            /* We get this for the degenerate case: among { '' }
+            /* We get this for the degenerate case: among ( '' )
              * This doesn't seem to be a useful construct, but it is
              * syntactically valid.
              */

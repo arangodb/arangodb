@@ -44,19 +44,21 @@ Wait until documents have been synced to disk before returning.
 
 @RESTQUERYPARAM{onDuplicate,string,optional}
 Controls what action is carried out in case of a unique key constraint
-violation. Possible values are:<br>
-- *error*: this will not import the current document because of the unique
+violation. Possible values are:
+
+- `error`: this will not import the current document because of the unique
   key constraint violation. This is the default setting.
-- *update*: this will update an existing document in the database with the
+- `update`: this will update an existing document in the database with the
   data specified in the request. Attributes of the existing document that
   are not present in the request will be preserved.
-- *replace*: this will replace an existing document in the database with the
+- `replace`: this will replace an existing document in the database with the
   data specified in the request.
-- *ignore*: this will not update an existing document and simply ignore the
-  error caused by a unique key constraint violation.<br>
-Note that that *update*, *replace* and *ignore* will only work when the
-import document in the request contains the *_key* attribute. *update* and
-*replace* may also fail because of secondary unique key constraint violations.
+- `ignore`: this will not update an existing document and simply ignore the
+  error caused by a unique key constraint violation.
+
+Note that that `update`, `replace` and `ignore` will only work when the
+import document in the request contains the `_key` attribute. `update` and
+`replace` may also fail because of secondary unique key constraint violations.
 
 @RESTQUERYPARAM{complete,boolean,optional}
 If set to `true` or `yes`, it will make the whole import fail if any error

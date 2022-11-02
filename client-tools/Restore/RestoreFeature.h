@@ -32,6 +32,7 @@
 #include <vector>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Restore/arangorestore.h"
 
 #include "Utils/ClientManager.h"
 #include "Utils/ClientTaskQueue.h"
@@ -50,10 +51,11 @@ class SimpleHttpResult;
 
 class ManagedDirectory;
 
-class RestoreFeature final : public application_features::ApplicationFeature {
+class RestoreFeature final : public ArangoRestoreFeature {
  public:
-  RestoreFeature(application_features::ApplicationServer& server,
-                 int& exitCode);
+  static constexpr std::string_view name() noexcept { return "Restore"; }
+
+  RestoreFeature(Server& server, int& exitCode);
 
   // for documentation of virtual methods, see `ApplicationFeature`
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -105,7 +107,8 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     bool importStructure{true};
     bool includeSystemCollections{false};
     bool overwrite{true};
-    bool useEnvelope{true};
+    bool useEnvelope{false};
+    bool enableRevisionTrees{true};
     bool continueRestore{false};
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
     bool failOnUpdateContinueFile{false};
@@ -168,7 +171,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   /// @brief Stores all necessary data to restore a single collection or shard
   struct RestoreJob {
     RestoreJob(RestoreFeature& feature, RestoreProgressTracker& progressTracker,
-               Options const& options, Stats& stats, bool useEnvelope,
+               Options const& options, Stats& stats,
                std::string const& collectionName,
                std::shared_ptr<SharedState> sharedState);
 
@@ -186,7 +189,6 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     RestoreProgressTracker& progressTracker;
     Options const& options;
     Stats& stats;
-    bool useEnvelope;
     std::string const collectionName;
     std::shared_ptr<SharedState> sharedState;
   };
@@ -214,12 +216,13 @@ class RestoreFeature final : public application_features::ApplicationFeature {
 
     ManagedDirectory& directory;
     VPackSlice parameters;
+    bool useEnvelope;
   };
 
   struct RestoreSendJob : public RestoreJob {
     RestoreSendJob(RestoreFeature& feature,
                    RestoreProgressTracker& progressTracker,
-                   Options const& options, Stats& stats, bool useEnvelope,
+                   Options const& options, Stats& stats,
                    std::string const& collectionName,
                    std::shared_ptr<SharedState> sharedState, size_t readOffset,
                    std::unique_ptr<basics::StringBuffer> buffer);
@@ -253,7 +256,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   Options _options;
   Stats _stats;
   Mutex mutable _workerErrorLock;
-  std::queue<Result> _workerErrors;
+  std::vector<Result> _workerErrors;
 
   Mutex _buffersLock;
   std::vector<std::unique_ptr<basics::StringBuffer>> _buffers;

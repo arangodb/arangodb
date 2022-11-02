@@ -29,9 +29,18 @@
 #include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
+
+#include <string_view>
 
 using namespace arangodb::basics;
+
+namespace {
+constexpr std::string_view contentLength("content-length");
+constexpr std::string_view contentEncoding("content-encoding");
+constexpr std::string_view transferEncoding("transfer-encoding");
+constexpr std::string_view chunked("chunked");
+constexpr std::string_view deflate("deflate");
+}  // namespace
 
 namespace arangodb {
 namespace httpclient {
@@ -45,7 +54,6 @@ SimpleHttpResult::SimpleHttpResult()
       _contentLength(0),
       _returnCode(0),
       _foundHeader(false),
-      _isJson(false),
       _hasContentLength(false),
       _chunked(false),
       _deflated(false),
@@ -156,13 +164,11 @@ void SimpleHttpResult::addHeaderField(char const* key, size_t keyLength,
   }
 
   else if (keyString[0] == 'c') {
-    if (keyLength == strlen("content-length") &&
-        keyString == "content-length") {
+    if (keyString == ::contentLength) {
       setContentLength(
           NumberUtils::atoi_zero<size_t>(value, value + valueLength));
-    } else if (keyLength == strlen("content-encoding") &&
-               keyString == "content-encoding") {
-      if (valueLength == strlen("deflate") &&
+    } else if (keyString == ::contentEncoding) {
+      if (valueLength == ::deflate.size() &&
           (value[0] == 'd' || value[0] == 'D') &&
           (value[1] == 'e' || value[1] == 'E') &&
           (value[2] == 'f' || value[2] == 'F') &&
@@ -172,24 +178,12 @@ void SimpleHttpResult::addHeaderField(char const* key, size_t keyLength,
           (value[6] == 'e' || value[6] == 'E')) {
         _deflated = true;
       }
-    } else if (keyLength == strlen("content-type") &&
-               keyString == "content-type") {
-      size_t const length = strlen("application/json");
-
-      if (valueLength >= length &&
-          memcmp(value, "application/json", length) == 0) {
-        // content-type is JSON
-        char const* ptr = value + length;
-        // but only if not followed by anything unexpected
-        _isJson = (*ptr == '\0' || *ptr == ';' || *ptr == ' ' || *ptr == '\r');
-      }
     }
   }
 
   else if (keyString[0] == 't') {
-    if (keyLength == strlen("transfer-encoding") &&
-        keyString == "transfer-encoding") {
-      if (valueLength == strlen("chunked") &&
+    if (keyString == ::transferEncoding) {
+      if (valueLength == ::chunked.size() &&
           (value[0] == 'c' || value[0] == 'C') &&
           (value[1] == 'h' || value[1] == 'H') &&
           (value[2] == 'u' || value[2] == 'U') &&

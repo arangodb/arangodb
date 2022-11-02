@@ -170,7 +170,7 @@ class EngineInfoContainerDBServerServerBased {
   // DBServers
   std::vector<bool> addTraversalEnginesPart(
       arangodb::velocypack::Builder& builder,
-      std::unordered_map<ShardID, ServerID> const& shardMapping,
+      containers::FlatHashMap<ShardID, ServerID> const& shardMapping,
       ServerID const& server) const;
 
   // Parse the response of a DBServer to a setup request
@@ -178,8 +178,6 @@ class EngineInfoContainerDBServerServerBased {
                        ServerID const& server,
                        std::vector<bool> const& didCreateEngine,
                        QueryId& globalQueryId, RebootId& rebootId) const;
-
-  void injectVertexCollections(GraphNode* node);
 
  private:
   std::stack<std::shared_ptr<QuerySnippet>,

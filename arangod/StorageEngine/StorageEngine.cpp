@@ -26,19 +26,19 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 #include <utility>
 
 using namespace arangodb;
 
-StorageEngine::StorageEngine(application_features::ApplicationServer& server,
-                             std::string engineName,
-                             const std::string& featureName,
+StorageEngine::StorageEngine(Server& server, std::string_view engineName,
+                             std::string_view featureName, size_t registration,
                              std::unique_ptr<IndexFactory>&& indexFactory)
-    : application_features::ApplicationFeature(server, featureName),
+    : ArangodFeature{server, registration, featureName},
       _indexFactory(std::move(indexFactory)),
-      _typeName(std::move(engineName)) {
+      _typeName(engineName) {
   // each specific storage engine feature is optional. the storage engine
   // selection feature will make sure that exactly one engine is selected at
   // startup
@@ -94,12 +94,12 @@ void StorageEngine::getCapabilities(velocypack::Builder& builder) const {
   builder.close();  // object
 }
 
-void StorageEngine::getStatistics(velocypack::Builder& builder, bool v2) const {
+void StorageEngine::getStatistics(velocypack::Builder& builder) const {
   builder.openObject();
   builder.close();
 }
 
-void StorageEngine::getStatistics(std::string& result, bool v2) const {}
+void StorageEngine::getStatistics(std::string& result) const {}
 
 void StorageEngine::registerCollection(
     TRI_vocbase_t& vocbase,
@@ -119,7 +119,13 @@ void StorageEngine::registerReplicatedLog(
   vocbase.registerReplicatedLog(id, std::move(log));
 }
 
-std::string const& StorageEngine::typeName() const { return _typeName; }
+void StorageEngine::registerReplicatedState(
+    TRI_vocbase_t& vocbase,
+    arangodb::replication2::replicated_state::PersistedStateInfo const& info) {
+  vocbase.registerReplicatedState(info);
+}
+
+std::string_view StorageEngine::typeName() const { return _typeName; }
 
 void StorageEngine::addOptimizerRules(aql::OptimizerRulesFeature&) {}
 

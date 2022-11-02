@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 400 */
-/*global fail, assertNotEqual, instanceInfo */
+/*global fail, assertNotEqual, instanceManager */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure scenarios
@@ -36,8 +36,8 @@ const request = require('@arangodb/request');
 const expect = require('chai').expect;
 const wait = internal.wait;
 
-let coordinator = instanceInfo.arangods.filter(arangod => {
-  return arangod.role === 'coordinator';
+let coordinator = instanceManager.arangods.filter(arangod => {
+  return arangod.instanceRole === 'coordinator';
 })[0];
 
 const expectedSystemCollections = [

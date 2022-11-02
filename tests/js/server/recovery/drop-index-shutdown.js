@@ -36,8 +36,8 @@ function runSetup () {
   'use strict';
   internal.debugClearFailAt();
   db._drop('UnitTestsRecovery');
-  var c = db._create('UnitTestsRecovery');
-  var idx = c.ensureHashIndex('value1');
+  let c = db._create('UnitTestsRecovery');
+  let idx = c.ensureIndex({ type: "hash", fields: ["value1"] });
   c.dropIndex(idx);
 }
 

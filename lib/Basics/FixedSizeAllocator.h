@@ -53,26 +53,19 @@ class FixedSizeAllocator {
       TRI_ASSERT(reinterpret_cast<uintptr_t>(_data) % 64u == 0);
     }
 
-    ~MemoryBlock() noexcept {
-      // destroy all items
-      for (size_t i = 0; i < _numUsed; ++i) {
-        T* p = _data + i;
-        // call destructor for each item
-        p->~T();
-      }
-    }
+    ~MemoryBlock() noexcept { clear(); }
 
     MemoryBlock* getNextBlock() const noexcept { return _next; }
 
     void setNextBlock(MemoryBlock* next) noexcept { _next = next; }
 
-    /// @brief return memory address for next in-place object construction.
+    // return memory address for next in-place object construction.
     T* nextSlot() noexcept {
       TRI_ASSERT(_numUsed < _numAllocated);
       return _data + _numUsed++;
     }
 
-    /// @brief roll back the effect of nextSlot()
+    // roll back the effect of nextSlot()
     void rollbackSlot() noexcept {
       TRI_ASSERT(_numUsed > 0);
       --_numUsed;
@@ -82,10 +75,21 @@ class FixedSizeAllocator {
 
     size_t numUsed() const noexcept { return _numUsed; }
 
+    void clear() noexcept {
+      // destroy all items
+      for (size_t i = 0; i < _numUsed; ++i) {
+        T* p = _data + i;
+        // call destructor for each item
+        p->~T();
+      }
+      _numUsed = 0;
+      TRI_ASSERT(!full());
+    }
+
    private:
     size_t _numAllocated;
     size_t _numUsed;
-    T* _data;
+    T* const _data;
     MemoryBlock* _next;
   };
 
@@ -113,6 +117,31 @@ class FixedSizeAllocator {
     }
   }
 
+  // calculate the capacity for a block at the given index
+  static constexpr size_t capacityForBlock(size_t blockIndex) {
+    return 64 << std::min<size_t>(6, blockIndex);
+  }
+
+  // clears all blocks but the last one (to avoid later
+  // re-allocations)
+  void clearMost() noexcept {
+    auto* block = _head;
+    while (block != nullptr) {
+      auto* next = block->getNextBlock();
+      if (next == nullptr) {
+        // we are at the last block
+        block->clear();
+        _head = block;
+        break;
+      }
+
+      block->~MemoryBlock();
+      ::operator delete(block);
+      block = next;
+      _head = next;
+    }
+  }
+
   void clear() noexcept {
     auto* block = _head;
     while (block != nullptr) {
@@ -124,7 +153,7 @@ class FixedSizeAllocator {
     _head = nullptr;
   }
 
-  /// @brief return the total number of used elements, in all blocks
+  // return the total number of used elements, in all blocks
   size_t numUsed() const noexcept {
     size_t used = 0;
     auto* block = _head;
@@ -135,11 +164,22 @@ class FixedSizeAllocator {
     return used;
   }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  size_t usedBlocks() const noexcept {
+    size_t used = 0;
+    auto* block = _head;
+    while (block != nullptr) {
+      block = block->getNextBlock();
+      ++used;
+    }
+    return used;
+  }
+#endif
+
  private:
   void allocateBlock() {
     // minimum block size is for 64 items
-    // maximum block size is for 4096 items
-    size_t const numItems = 64 << std::min<size_t>(6, _numBlocks);
+    size_t numItems = capacityForBlock(_numBlocks);
 
     // assumption is that the size of a cache line is at least 64,
     // so we are allocating 64 bytes in addition

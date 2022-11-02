@@ -33,11 +33,7 @@
 #include "Basics/FileResultString.h"
 #include "Basics/Result.h"
 
-namespace arangodb {
-namespace basics {
-class StringBuffer;
-
-namespace FileUtils {
+namespace arangodb::basics::FileUtils {
 
 // removes trailing path separators from path, path will be modified in-place
 std::string removeTrailingSeparator(std::string const& name);
@@ -61,16 +57,13 @@ inline std::string buildFilename(std::string const& path,
 }
 
 // reads file into string or buffer
+void slurp(std::string const& filename, std::string& result);
 std::string slurp(std::string const& filename);
-void slurp(std::string const& filename, StringBuffer& result);
-Result slurp(std::string const& filename, std::string& result);
 
 // creates file and writes string to it
 void spit(std::string const& filename, char const* ptr, size_t len,
           bool sync = false);
 void spit(std::string const& filename, std::string const& content,
-          bool sync = false);
-void spit(std::string const& filename, StringBuffer const& content,
           bool sync = false);
 
 // if a file could be removed returns TRI_ERROR_NO_ERROR.
@@ -148,6 +141,4 @@ std::string dirname(std::string const&);
 // returns the output of a program
 std::string slurpProgram(std::string const& program);
 
-}  // namespace FileUtils
-}  // namespace basics
-}  // namespace arangodb
+}  // namespace arangodb::basics::FileUtils

@@ -54,46 +54,14 @@ const testPaths = {
   'restart': [tu.pathForTesting('client/restart')]
 };
 
-function runTest (options, instanceInfo, file, addArgs) {
-  let endpoint = arango.getEndpoint();
-  if (( options.vst && endpoint !== instanceInfo.vstEndpoint) ||
-      (!options.vst && endpoint !== instanceInfo.endpoint)) {
-    let newEndpoint = (options.vst && instanceInfo.hasOwnProperty('vstEndpoint')) ?
-        instanceInfo.vstEndpoint : 
-        instanceInfo.endpoint;
-    print(`runInLocalArangosh: Reconnecting to ${newEndpoint} from ${endpoint}`);
-    arango.reconnect(newEndpoint, '_system', 'root', '');
+class broadcastInstance extends tu.runLocalInArangoshRunner {
+  constructor(options, testname, ...optionalArgs) {
+    super(options, testname, ...optionalArgs);
+    this.info = "localArangosh";
   }
-  
-  let testCode;
-  // \n's in testCode are required because of content could contain '//' at the very EOF
-  if (file.indexOf('-spec') === -1) {
-    let testCase = JSON.stringify(options.testCase);
-    if (options.testCase === undefined) {
-      testCase = '"undefined"';
-    }
-    testCode = 'const runTest = require("jsunity").runTest;\n ' +
-      'return runTest(' + JSON.stringify(file) + ', true, ' + testCase + ');\n';
-  } else {
-    let mochaGrep = options.testCase ? ', ' + JSON.stringify(options.testCase) : '';
-    testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
-      'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');\n';
-  }
-
-  global.instanceInfo = instanceInfo;
-  global.testOptions = options;
-  let testFunc;
-  eval('testFunc = function () { ' + testCode + " \n}");
-  
-  try {
-    let result = testFunc();
-    return result;
-  } catch (ex) {
-    return {
-      status: false,
-      message: "test has thrown! '" + file + "' - " + ex.message || String(ex),
-      stack: ex.stack
-    };
+  postStart() {
+    global.theInstanceManager = this.instanceManager;
+    return { state: true };
   }
 }
 
@@ -102,10 +70,17 @@ function restart (options) {
   clonedOpts.disableClusterMonitor = true;
   clonedOpts.skipLogAnalysis = true;
   clonedOpts.skipReconnect = true;
+  if (clonedOpts.cluster && clonedOpts.coordinators < 2) {
+    clonedOpts.coordinators = 2;
+  }
   let testCases = tu.scanTestPaths(testPaths.restart, clonedOpts);
-  let rc = tu.performTests(clonedOpts, testCases, 'restart', runTest, {
-    'server.jwt-secret': 'haxxmann',
-  });
+  global.obj = new broadcastInstance(clonedOpts, 'restart', Object.assign(
+    {},
+    tu.testServerAuthInfo, {
+      'server.authentication': false
+    }),
+                                               false, false);
+  let rc = global.obj.run(testCases);
   options.cleanup = options.cleanup && clonedOpts.cleanup;
   return rc;
 }

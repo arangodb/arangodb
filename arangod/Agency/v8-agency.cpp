@@ -35,7 +35,6 @@
 #include "V8/v8-vpack.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -46,8 +45,8 @@ static void JS_StateAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -56,7 +55,7 @@ static void JS_StateAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   Agent* agent = nullptr;
   try {
-    AgencyFeature& feature = v8g->_server.getEnabledFeature<AgencyFeature>();
+    AgencyFeature& feature = v8g->server().getEnabledFeature<AgencyFeature>();
     agent = feature.agent();
     VPackBuilder builder;
     agent->state().toVelocyPack(builder);
@@ -75,8 +74,8 @@ static void JS_EnabledAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -84,7 +83,7 @@ static void JS_EnabledAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_V8_RETURN(
-      v8::Boolean::New(isolate, v8g->_server.isEnabled<AgencyFeature>()));
+      v8::Boolean::New(isolate, v8g->server().isEnabled<AgencyFeature>()));
 
   TRI_V8_TRY_CATCH_END
 }
@@ -93,8 +92,8 @@ static void JS_LeadingAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -103,7 +102,7 @@ static void JS_LeadingAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   Agent* agent = nullptr;
   try {
-    AgencyFeature& feature = v8g->_server.getEnabledFeature<AgencyFeature>();
+    AgencyFeature& feature = v8g->server().getEnabledFeature<AgencyFeature>();
     agent = feature.agent();
 
   } catch (std::exception const& e) {
@@ -127,8 +126,8 @@ static void JS_ReadAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -137,7 +136,7 @@ static void JS_ReadAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   Agent* agent = nullptr;
   try {
-    AgencyFeature& feature = v8g->_server.getEnabledFeature<AgencyFeature>();
+    AgencyFeature& feature = v8g->server().getEnabledFeature<AgencyFeature>();
     agent = feature.agent();
 
   } catch (std::exception const& e) {
@@ -146,10 +145,10 @@ static void JS_ReadAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("couldn't access agency feature: ") + e.what());
   }
 
-  query_t query = std::make_shared<Builder>();
-  TRI_V8ToVPack(isolate, *query, args[0], false);
+  velocypack::Builder query;
+  TRI_V8ToVPack(isolate, query, args[0], false);
 
-  read_ret_t ret = agent->read(query);
+  read_ret_t ret = agent->read(query.slice());
 
   if (ret.accepted) {  // Leading
     TRI_V8_RETURN(TRI_VPackToV8(isolate, ret.result->slice()));
@@ -164,8 +163,8 @@ static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   if (!v8security.isInternalContext(isolate) &&
       !v8security.isAdminScriptContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -174,7 +173,7 @@ static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   Agent* agent = nullptr;
   try {
-    AgencyFeature& feature = v8g->_server.getEnabledFeature<AgencyFeature>();
+    AgencyFeature& feature = v8g->server().getEnabledFeature<AgencyFeature>();
     agent = feature.agent();
 
   } catch (std::exception const& e) {
@@ -183,10 +182,10 @@ static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("couldn't access agency feature: ") + e.what());
   }
 
-  query_t query = std::make_shared<Builder>();
-  TRI_V8ToVPack(isolate, *query, args[0], false);
+  velocypack::Builder query;
+  TRI_V8ToVPack(isolate, query, args[0], false);
 
-  write_ret_t ret = agent->write(query);
+  write_ret_t ret = agent->write(query.slice());
 
   if (ret.accepted) {  // Leading
     Builder body;

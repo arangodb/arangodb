@@ -24,7 +24,9 @@
 
 #include "Mocks/Servers.h"
 
+#include "Agency/AgencyComm.h"
 #include "Auth/UserManager.h"
+#include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 
 namespace arangodb {
@@ -33,7 +35,7 @@ namespace auth_info_test {
 
 class UserManagerClusterTest : public ::testing::Test {
  public:
-  mocks::MockCoordinator _server{};
+  mocks::MockCoordinator _server{"CRDN_0001"};
 
  protected:
   auth::UserManager* userManager() {

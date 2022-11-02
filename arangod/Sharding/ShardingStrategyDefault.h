@@ -29,6 +29,8 @@
 
 #include <velocypack/Slice.h>
 
+#include <span>
+
 namespace arangodb {
 class ShardingInfo;
 
@@ -43,12 +45,12 @@ class ShardingStrategyNone final : public ShardingStrategy {
   static std::string const NAME;
 
   /// @brief does not really matter here
-  bool usesDefaultShardKeys() override { return true; }
+  bool usesDefaultShardKeys() const noexcept override { return true; }
 
   ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice,
                                 bool docComplete, ShardID& shardID,
                                 bool& usesDefaultShardKeys,
-                                std::string_view const& key) override;
+                                std::string_view key) override;
 };
 
 /// @brief a sharding class used to indicate that the selected sharding strategy
@@ -62,14 +64,14 @@ class ShardingStrategyOnlyInEnterprise final : public ShardingStrategy {
   std::string const& name() const override { return _name; }
 
   /// @brief does not really matter here
-  bool usesDefaultShardKeys() override { return true; }
+  bool usesDefaultShardKeys() const noexcept override { return true; }
 
   /// @brief will always throw an exception telling the user the selected
   /// sharding is only available in the Enterprise Edition
   ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice,
                                 bool docComplete, ShardID& shardID,
                                 bool& usesDefaultShardKeys,
-                                std::string_view const& key) override;
+                                std::string_view key) override;
 
  private:
   /// @brief name of the sharding strategy we are replacing
@@ -84,20 +86,21 @@ class ShardingStrategyHashBase : public ShardingStrategy {
   virtual ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice,
                                         bool docComplete, ShardID& shardID,
                                         bool& usesDefaultShardKeys,
-                                        std::string_view const& key) override;
+                                        std::string_view key) override;
 
   /// @brief does not really matter here
-  bool usesDefaultShardKeys() override { return _usesDefaultShardKeys; }
+  bool usesDefaultShardKeys() const noexcept override {
+    return _usesDefaultShardKeys;
+  }
 
   virtual uint64_t hashByAttributes(arangodb::velocypack::Slice slice,
-                                    std::vector<std::string> const& attributes,
+                                    std::span<std::string const> attributes,
                                     bool docComplete, ErrorCode& error,
-                                    std::string_view const& key);
-
- private:
-  void determineShards();
+                                    std::string_view key);
 
  protected:
+  void determineShards();
+
   ShardingInfo* _sharding;
   std::vector<ShardID> _shards;
   bool _usesDefaultShardKeys;
@@ -128,9 +131,9 @@ class ShardingStrategyEnterpriseBase : public ShardingStrategyHashBase {
   /// we leave the differences in place, because making any changes here
   /// will affect the data distribution, which we want to avoid
   uint64_t hashByAttributes(arangodb::velocypack::Slice slice,
-                            std::vector<std::string> const& attributes,
+                            std::span<std::string const> attributes,
                             bool docComplete, ErrorCode& error,
-                            std::string_view const& key) override final;
+                            std::string_view key) override final;
 };
 
 /// @brief old version of the sharding used in the Enterprise Edition
@@ -153,6 +156,8 @@ class ShardingStrategyHash final : public ShardingStrategyHashBase {
   std::string const& name() const override { return NAME; }
 
   static std::string const NAME;
+
+  bool isCompatible(ShardingStrategy const* other) const override;
 };
 
 }  // namespace arangodb

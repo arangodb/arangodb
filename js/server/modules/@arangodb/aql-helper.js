@@ -99,9 +99,7 @@ function getQueryExplanation (query, bindVars) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getModifyQueryResults (query, bindVars, options = {}) {
-  var queryResult = AQL_EXECUTE(query, bindVars, options);
-
-  return queryResult.stats;
+  return  AQL_EXECUTE(query, bindVars, options).stats;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -109,9 +107,7 @@ function getModifyQueryResults (query, bindVars, options = {}) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getModifyQueryResultsRaw (query, bindVars, options = {}) {
-  var queryResult = AQL_EXECUTE(query, bindVars, options);
-
-  return queryResult;
+  return AQL_EXECUTE(query, bindVars, options);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -337,10 +333,15 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
     // ignore these statistics for comparisons
     delete results[i].stats.scannedFull;
     delete results[i].stats.scannedIndex;
+    delete results[i].stats.cursorsCreated;
+    delete results[i].stats.cursorsRearmed;
+    delete results[i].stats.cacheHits;
+    delete results[i].stats.cacheMisses;
     delete results[i].stats.filtered;
     delete results[i].stats.executionTime;
     delete results[i].stats.httpRequests;
     delete results[i].stats.peakMemoryUsage;
+    delete results[i].stats.intermediateCommits;
     delete results[i].stats.fullCount;
 
     if (debug) {
@@ -392,6 +393,24 @@ function removeCost (obj) {
   }
 }
 
+function sanitizeStats (stats) {
+  // remove these members from the stats because they don't matter
+  // for the comparisons
+  delete stats.scannedFull;
+  delete stats.scannedIndex;
+  delete stats.cursorsCreated;
+  delete stats.cursorsRearmed;
+  delete stats.cacheHits;
+  delete stats.cacheMisses;
+  delete stats.filtered;
+  delete stats.executionTime;
+  delete stats.httpRequests;
+  delete stats.fullCount;
+  delete stats.peakMemoryUsage;
+  delete stats.intermediateCommits;
+  return stats;
+}
+
 exports.getParseResults = getParseResults;
 exports.assertParseError = assertParseError;
 exports.getQueryExplanation = getQueryExplanation;
@@ -410,3 +429,4 @@ exports.removeAlwaysOnClusterRules = removeAlwaysOnClusterRules;
 exports.removeClusterNodes = removeClusterNodes;
 exports.removeClusterNodesFromPlan = removeClusterNodesFromPlan;
 exports.removeCost = removeCost;
+exports.sanitizeStats = sanitizeStats;

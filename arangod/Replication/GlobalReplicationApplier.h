@@ -28,6 +28,8 @@
 
 namespace arangodb {
 
+class StorageEngine;
+
 /// @brief server-global replication applier for all databases
 class GlobalReplicationApplier final : public ReplicationApplier {
   friend class GlobalTailingSyncer;
@@ -51,8 +53,7 @@ class GlobalReplicationApplier final : public ReplicationApplier {
   void storeConfiguration(bool doSync) override;
 
   /// @brief load a persisted configuration for the applier
-  static ReplicationApplierConfiguration loadConfiguration(
-      application_features::ApplicationServer&);
+  static ReplicationApplierConfiguration loadConfiguration(ArangodServer&);
 
   std::shared_ptr<InitialSyncer> buildInitialSyncer() const override;
   std::shared_ptr<TailingSyncer> buildTailingSyncer(
@@ -60,6 +61,9 @@ class GlobalReplicationApplier final : public ReplicationApplier {
 
  protected:
   std::string getStateFilename() const override;
+
+ private:
+  StorageEngine& _engine;
 };
 
 }  // namespace arangodb

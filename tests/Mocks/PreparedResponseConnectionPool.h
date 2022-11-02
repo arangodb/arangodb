@@ -26,8 +26,6 @@
 #include "Rest/CommonDefines.h"
 #include "Rest/GeneralResponse.h"
 
-#include <velocypack/velocypack-aliases.h>
-
 #include <vector>
 
 struct GeneralRequestMock;

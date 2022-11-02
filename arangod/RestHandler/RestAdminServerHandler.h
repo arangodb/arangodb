@@ -35,8 +35,8 @@ namespace arangodb {
 
 class RestAdminServerHandler : public RestBaseHandler {
  public:
-  explicit RestAdminServerHandler(application_features::ApplicationServer&,
-                                  GeneralRequest*, GeneralResponse*);
+  explicit RestAdminServerHandler(ArangodServer&, GeneralRequest*,
+                                  GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestAdminServerHandler"; }

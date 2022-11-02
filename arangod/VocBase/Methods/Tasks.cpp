@@ -27,8 +27,8 @@
 
 #include <v8.h>
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/system-functions.h"
@@ -225,8 +225,8 @@ void Task::removeTasksForDatabase(std::string const& name) {
   }
 }
 
-bool Task::tryCompile(application_features::ApplicationServer& server,
-                      v8::Isolate* isolate, std::string const& command) {
+bool Task::tryCompile(ArangodServer& server, v8::Isolate* isolate,
+                      std::string const& command) {
   if (!server.hasFeature<V8DealerFeature>() ||
       !server.isEnabled<V8DealerFeature>() ||
       !server.getFeature<V8DealerFeature>().isEnabled()) {

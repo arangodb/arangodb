@@ -29,8 +29,9 @@
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
+#include "Mocks/MockQuery.h"
 
-#include "./MockGraph.h"
+#include "MockGraph.h"
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
@@ -44,11 +45,11 @@
 #include "Graph/ConstantWeightShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
+#include "Metrics/MetricsFeature.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -63,6 +64,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
 using namespace arangodb::velocypack;
+using namespace arangodb::tests::mocks;
 
 namespace arangodb {
 namespace tests {
@@ -71,83 +73,33 @@ namespace graph {
 struct GraphTestSetup
     : public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME,
                                             arangodb::LogLevel::ERR> {
+  arangodb::ArangodServer server;
   StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
       features;
 
-  GraphTestSetup() : engine(server), server(nullptr, nullptr) {
-    arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
-    arangodb::ClusterEngine::Mocking = true;
-    arangodb::RandomGenerator::initialize(
-        arangodb::RandomGenerator::RandomType::MERSENNE);
-
-    // setup required application features
-    features.emplace_back(
-        server.addFeature<arangodb::metrics::MetricsFeature>(), false);
-    features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(),
-                          false);
-    features.emplace_back(
-        server.addFeature<arangodb::transaction::ManagerFeature>(), false);
-    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
-                          false);
-    features.emplace_back(server.addFeature<arangodb::EngineSelectorFeature>(),
-                          false);
-    server.getFeature<EngineSelectorFeature>().setEngineTesting(&engine);
-    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
-                          false);  // must be first
-    system = std::make_unique<TRI_vocbase_t>(
-        TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server));
-    features.emplace_back(
-        server.addFeature<arangodb::SystemDatabaseFeature>(system.get()),
-        false);  // required for IResearchAnalyzerFeature
-    features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
-    features.emplace_back(
-        server.addFeature<arangodb::aql::OptimizerRulesFeature>(), true);
-    features.emplace_back(
-        server.addFeature<arangodb::aql::AqlFunctionFeature>(),
-        true);  // required for IResearchAnalyzerFeature
-
-    for (auto& f : features) {
-      f.first.prepare();
-    }
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first.start();
-      }
-    }
-
-    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-    arangodb::tests::setDatabasePath(
-        dbPathFeature);  // ensure test data is stored in a unique directory
-  }
-
-  ~GraphTestSetup() {
-    system.reset();  // destroy before reseting the 'ENGINE'
-    arangodb::AqlFeature(server).stop();  // unset singleton instance
-    server.getFeature<EngineSelectorFeature>().setEngineTesting(nullptr);
-
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first.stop();
-      }
-    }
-
-    for (auto& f : features) {
-      f.first.unprepare();
-    }
-  }
+  GraphTestSetup();
+  ~GraphTestSetup();
 };  // Setup
+
+struct MockIndexHelpers {
+  static std::shared_ptr<Index> getEdgeIndexHandle(
+      TRI_vocbase_t& vocbase, std::string const& edgeCollectionName);
+  static IndexAccessor createEdgeIndexAccessor(
+      TRI_vocbase_t& vocbase, std::string const& edgeCollectionName,
+      aql::Variable* tmpVar, aql::Query& query, TRI_edge_direction_e direction);
+
+  static arangodb::aql::AstNode* buildCondition(aql::Query& query,
+                                                aql::Variable const* tmpVar,
+                                                TRI_edge_direction_e direction);
+};
 
 struct MockGraphDatabase {
   TRI_vocbase_t vocbase;
 
-  MockGraphDatabase(application_features::ApplicationServer& server,
-                    std::string name)
+  MockGraphDatabase(ArangodServer& server, std::string name)
       : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                 createInfo(server, name, 1)) {}
 
@@ -270,17 +222,7 @@ struct MockGraphDatabase {
   }
 
   std::shared_ptr<Index> getEdgeIndexHandle(std::string name) {
-    std::shared_ptr<arangodb::LogicalCollection> coll =
-        vocbase.lookupCollection(name);
-    TRI_ASSERT(coll != nullptr);    // no edge collection of this name
-    TRI_ASSERT(coll->type() == 3);  // Is not an edge collection
-    for (auto const& idx : coll->getIndexes()) {
-      if (idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
-        return idx;
-      }
-    }
-    TRI_ASSERT(false);  // Index not found
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    return MockIndexHelpers::getEdgeIndexHandle(vocbase, name);
   }
 
   std::shared_ptr<arangodb::aql::Query> getQuery(
@@ -289,7 +231,7 @@ struct MockGraphDatabase {
 
     auto ctx =
         std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
-    auto query = arangodb::aql::Query::create(ctx, queryString, nullptr);
+    auto query = std::make_shared<MockQuery>(ctx, queryString);
     for (auto const& c : collections) {
       query->collections().add(c, AccessMode::Type::READ,
                                arangodb::aql::Collection::Hint::Collection);
@@ -325,28 +267,22 @@ struct MockGraphDatabase {
     auto spo = std::make_unique<ShortestPathOptions>(*query);
     spo->setVariable(tmpVar);
     spo->addLookupInfo(plan, "e", StaticStrings::FromString,
-                       _fromCondition->clone(ast));
+                       _fromCondition->clone(ast), /*onlyEdgeIndexes*/ false,
+                       TRI_EDGE_OUT);
     spo->addReverseLookupInfo(plan, "e", StaticStrings::ToString,
-                              _toCondition->clone(ast));
-
+                              _toCondition->clone(ast),
+                              /*onlyEdgeIndexes*/ false, TRI_EDGE_IN);
     return spo;
   }
 
   arangodb::aql::AstNode* buildOutboundCondition(
       arangodb::aql::Query* query, arangodb::aql::Variable const* tmpVar) {
-    auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->plan());
-    auto ast = plan->getAst();
-    auto fromCondition =
-        ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
-    AstNode* tmpId1 = plan->getAst()->createNodeReference(tmpVar);
-    AstNode* tmpId2 = plan->getAst()->createNodeValueMutableString("", 0);
+    return MockIndexHelpers::buildCondition(*query, tmpVar, TRI_EDGE_OUT);
+  }
 
-    auto const* access =
-        ast->createNodeAttributeAccess(tmpId1, StaticStrings::FromString);
-    auto const* cond = ast->createNodeBinaryOperator(
-        NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpId2);
-    fromCondition->addMember(cond);
-    return fromCondition;
+  arangodb::aql::AstNode* buildInboundCondition(
+      arangodb::aql::Query* query, arangodb::aql::Variable const* tmpVar) {
+    return MockIndexHelpers::buildCondition(*query, tmpVar, TRI_EDGE_IN);
   }
 
   arangodb::aql::Variable* generateTempVar(arangodb::aql::Query* query) {

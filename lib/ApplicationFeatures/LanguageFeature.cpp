@@ -21,15 +21,12 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stdlib.h>
-
 #include "LanguageFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include <stdlib.h>
+
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
-#include "Basics/Utf8Helper.h"
 #include "Basics/application-exit.h"
 #include "Basics/directories.h"
 #include "Basics/error.h"
@@ -44,9 +41,11 @@
 #include "ProgramOptions/ProgramOptions.h"
 
 namespace {
-void setCollator(std::string const& language, void* icuDataPtr) {
+void setCollator(std::string_view language, void* icuDataPtr,
+                 arangodb::basics::LanguageType type) {
   using arangodb::basics::Utf8Helper;
-  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(language,
+
+  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(language, type,
                                                          icuDataPtr)) {
     LOG_TOPIC("01490", FATAL, arangodb::Logger::FIXME)
         << "error setting collator language to '" << language << "'. "
@@ -81,6 +80,18 @@ void setLocale(icu::Locale& locale) {
   LOG_TOPIC("f6e04", DEBUG, arangodb::Logger::CONFIG)
       << "using default language '" << languageName << "'";
 }
+
+arangodb::basics::LanguageType getLanguageType(std::string_view default_lang,
+                                               std::string_view icu_lang) {
+  if (icu_lang.empty()) {
+    return arangodb::basics::LanguageType::DEFAULT;
+  } else if (default_lang.empty()) {
+    return arangodb::basics::LanguageType::ICU;
+  } else {
+    return arangodb::basics::LanguageType::INVALID;
+  }
+}
+
 }  // namespace
 
 using namespace arangodb::basics;
@@ -88,43 +99,45 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-LanguageFeature::LanguageFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Language"),
-      _locale(),
-      _binaryPath(server.getBinaryPath()),
-      _icuDataPtr(nullptr),
-      _forceLanguageCheck(true) {
-  setOptional(false);
-  startsAfter<application_features::GreetingsFeaturePhase>();
-}
-
-LanguageFeature::~LanguageFeature() {
-  if (_icuDataPtr != nullptr) {
-    TRI_Free(_icuDataPtr);
-  }
-}
+LanguageFeature::~LanguageFeature() = default;
 
 void LanguageFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addOption(
-      "--default-language", "ISO-639 language code",
-      new StringParameter(&_language),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options
+      ->addOption("--default-language",
+                  "An ISO-639 language code. This option can only be set once, "
+                  "when initializing the database.",
+                  new StringParameter(&_defaultLanguage),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
+      .setDeprecatedIn(31000);
+
+  options
+      ->addOption(
+          "--icu-language",
+          "An ICU locale ID to set a language and optionally additional "
+          "properties that affect string comparisons and sorting. This option "
+          "can only be set once, when initializing the database.",
+          new StringParameter(&_icuLanguage),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(30901);
 
   options
       ->addOption(
           "--default-language-check",
-          "check if default language matches stored language",
+          "Check if `--icu-language` / `--default-language` matches the "
+          "stored language.",
           new BooleanParameter(&_forceLanguageCheck),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800);
 }
 
-void* LanguageFeature::prepareIcu(std::string const& binaryPath,
-                                  std::string const& binaryExecutionPath,
-                                  std::string& path,
-                                  std::string const& binaryName) {
+std::string LanguageFeature::prepareIcu(std::string const& binaryPath,
+                                        std::string const& binaryExecutionPath,
+                                        std::string& path,
+                                        std::string const& binaryName) {
   std::string fn("icudtl.dat");
   if (TRI_GETENV("ICU_DATA", path)) {
     path = FileUtils::buildFilename(path, fn);
@@ -181,15 +194,16 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
     }
   }
 
-  void* icuDataPtr = TRI_SlurpFile(path.c_str(), nullptr);
+  std::string icuData = basics::FileUtils::slurp(path);
 
-  if (icuDataPtr == nullptr) {
+  if (icuData.empty()) {
     LOG_TOPIC("d8a98", FATAL, arangodb::Logger::FIXME)
         << "failed to load '" << fn << "' at '" << path << "' - "
         << TRI_last_error();
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
   }
-  return icuDataPtr;
+
+  return icuData;
 }
 
 void LanguageFeature::prepare() {
@@ -197,38 +211,68 @@ void LanguageFeature::prepare() {
   auto context = ArangoGlobalContext::CONTEXT;
   std::string binaryExecutionPath = context->getBinaryPath();
   std::string binaryName = context->binaryName();
-  _icuDataPtr = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p,
-                                            binaryName);
+  if (_icuData.empty()) {
+    _icuData = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p,
+                                           binaryName);
+  }
 
-  ::setCollator(_language, _icuDataPtr);
+  _langType = ::getLanguageType(_defaultLanguage, _icuLanguage);
+
+  if (LanguageType::INVALID == _langType) {
+    LOG_TOPIC("d8a99", FATAL, arangodb::Logger::CONFIG)
+        << "Only one parameter from --default-language and --icu-language "
+           "should be specified";
+    FATAL_ERROR_EXIT();
+  }
+
+  ::setCollator(
+      _langType == LanguageType::ICU ? _icuLanguage : _defaultLanguage,
+      _icuData.data(), _langType);
 }
 
 void LanguageFeature::start() { ::setLocale(_locale); }
 
 icu::Locale& LanguageFeature::getLocale() { return _locale; }
 
-std::string const& LanguageFeature::getDefaultLanguage() const {
-  return _language;
+std::tuple<std::string_view, LanguageType> LanguageFeature::getLanguage()
+    const {
+  if (LanguageType::ICU == _langType) {
+    return {_icuLanguage, _langType};
+  } else {
+    TRI_ASSERT(LanguageType::DEFAULT == _langType);
+    // If it is invalid type just returning _defaultLanguage
+    return {_defaultLanguage, _langType};
+  }
 }
 
 bool LanguageFeature::forceLanguageCheck() const { return _forceLanguageCheck; }
 
 std::string LanguageFeature::getCollatorLanguage() const {
   using arangodb::basics::Utf8Helper;
-  std::string languageName;
-  if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
-    languageName =
-        std::string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" +
-                    Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
-  } else {
-    languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
-  }
-  return languageName;
+  return Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
 }
 
-void LanguageFeature::resetDefaultLanguage(std::string const& language) {
-  _language = language;
-  ::setCollator(_language, _icuDataPtr);
+void LanguageFeature::resetLanguage(std::string_view language,
+                                    arangodb::basics::LanguageType type) {
+  _langType = type;
+  _defaultLanguage.clear();
+  _icuLanguage.clear();
+  switch (_langType) {
+    case LanguageType::DEFAULT:
+      _defaultLanguage = language;
+      break;
+
+    case LanguageType::ICU:
+      _icuLanguage = language;
+      break;
+
+    case LanguageType::INVALID:
+    default:
+      TRI_ASSERT(false);
+      return;
+  }
+
+  ::setCollator(language.data(), _icuData.data(), _langType);
   ::setLocale(_locale);
 }
 

@@ -122,8 +122,6 @@ LogTopic Logger::BACKUP("backup");
 LogTopic Logger::BENCH("bench");
 LogTopic Logger::CACHE("cache", LogLevel::INFO);
 LogTopic Logger::CLUSTER("cluster", LogLevel::INFO);
-LogTopic Logger::CLUSTERCOMM("clustercomm", LogLevel::INFO);
-LogTopic Logger::COLLECTOR("collector");
 LogTopic Logger::COMMUNICATION("communication", LogLevel::INFO);
 LogTopic Logger::CONFIG("config");
 LogTopic Logger::CRASH("crash");
@@ -139,12 +137,11 @@ LogTopic Logger::LICENSE("license", LogLevel::INFO);
 LogTopic Logger::MAINTENANCE("maintenance", LogLevel::INFO);
 LogTopic Logger::MEMORY("memory", LogLevel::INFO);
 LogTopic Logger::MMAP("mmap");
-LogTopic Logger::PERFORMANCE("performance", LogLevel::WARN);
 LogTopic Logger::PREGEL("pregel", LogLevel::INFO);
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
 LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
 LogTopic Logger::REPLICATION2("replication2", LogLevel::INFO);
-LogTopic Logger::REPLICATED_STATE("rep-state", LogLevel::TRACE);
+LogTopic Logger::REPLICATED_STATE("rep-state", LogLevel::DEBUG);
 LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress
 LogTopic Logger::RESTORE("restore", LogLevel::INFO);
 LogTopic Logger::ROCKSDB("rocksdb", LogLevel::WARN);
@@ -165,13 +162,13 @@ LogTopic Logger::VIEWS("views", LogLevel::FATAL);
 LogTopic LdapAuthProvider::LDAP_TOPIC("ldap", LogLevel::INFO);
 
 LogTopic AuditFeature::AUDIT_AUTHENTICATION("audit-authentication",
-                                            LogLevel::DEBUG);
+                                            LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_AUTHORIZATION("audit-authorization",
                                            LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_DATABASE("audit-database", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_COLLECTION("audit-collection", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_VIEW("audit-view", LogLevel::INFO);
-LogTopic AuditFeature::AUDIT_DOCUMENT("audit-document", LogLevel::DEBUG);
+LogTopic AuditFeature::AUDIT_DOCUMENT("audit-document", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_SERVICE("audit-service", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_HOTBACKUP("audit-hotbackup", LogLevel::INFO);
 #endif

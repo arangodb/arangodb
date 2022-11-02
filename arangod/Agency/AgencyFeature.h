@@ -23,17 +23,18 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
-
 namespace consensus {
 class Agent;
 }
 
-class AgencyFeature : public application_features::ApplicationFeature {
+class AgencyFeature : public ArangodFeature {
  public:
-  explicit AgencyFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() { return "Agency"; }
+
+  explicit AgencyFeature(Server& server);
   ~AgencyFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -50,8 +51,8 @@ class AgencyFeature : public application_features::ApplicationFeature {
 
  private:
   bool _activated;
-  uint64_t _size;  // agency size (default: 5)
-  uint64_t _poolSize;
+  uint64_t _size;              // agency size (default: 5)
+  uint64_t _poolSize;          // deprecated, do not use!
   double _minElectionTimeout;  // min election timeout
   double _maxElectionTimeout;  // max election timeout
   bool _supervision;
@@ -65,7 +66,6 @@ class AgencyFeature : public application_features::ApplicationFeature {
   double _supervisionOkThreshold;
   std::string _agencyMyAddress;
   std::vector<std::string> _agencyEndpoints;
-  bool _cmdLineTimings;
   std::string _recoveryId;
 
   std::unique_ptr<consensus::Agent> _agent;

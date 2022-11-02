@@ -47,7 +47,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -66,6 +65,7 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(
                     useTick),
       _vocbase(&vocbase),
       _toTick(0),
+      _lastCancellationCheck(std::chrono::steady_clock::now()),
       _queriedTranslations(false),
       _unregisteredFromLeader(false) {
   _state.vocbases.try_emplace(vocbase.name(), vocbase);
@@ -114,13 +114,13 @@ Result DatabaseTailingSyncer::syncCollectionCatchup(
     if (res.fail()) {
       // if we failed, we can already unregister ourselves on the leader, so
       // that we don't block WAL pruning
-      unregisterFromLeader();
+      unregisterFromLeader(false);
     }
     return res;
   } catch (std::exception const& ex) {
     // when we leave this method, we must unregister ourselves from the leader,
     // otherwise the leader may keep WAL logs around for us for too long
-    unregisterFromLeader();
+    unregisterFromLeader(false);
     return {TRI_ERROR_INTERNAL, ex.what()};
   }
 }
@@ -165,13 +165,13 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
 
     // always unregister our tailer, because syncCollectionFinalize is at
     // the end of the sync progress
-    unregisterFromLeader();
+    unregisterFromLeader(true);
 
     return res;
   } catch (std::exception const& ex) {
     // when we leave this method, we must unregister ourselves from the leader,
     // otherwise the leader may keep WAL logs around for us for too long
-    unregisterFromLeader();
+    unregisterFromLeader(true);
     return {TRI_ERROR_INTERNAL, ex.what()};
   }
 }
@@ -219,16 +219,20 @@ Result DatabaseTailingSyncer::registerOnLeader() {
   return {};
 }
 
-void DatabaseTailingSyncer::unregisterFromLeader() {
+void DatabaseTailingSyncer::unregisterFromLeader(bool hard) {
   if (!_unregisteredFromLeader) {
     try {
       _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
         std::unique_ptr<httpclient::SimpleHttpResult> response;
-        std::string const url = tailingBaseUrl("tail") +
-                                "serverId=" + _state.localServerIdString +
-                                "&syncerId=" + syncerId().toString();
+        std::string url = tailingBaseUrl("tail") +
+                          "serverId=" + _state.localServerIdString +
+                          "&syncerId=" + syncerId().toString();
         LOG_TOPIC("22640", DEBUG, Logger::REPLICATION)
             << "unregistering tailing syncer from leader, url: " << url;
+
+        if (hard) {
+          url += "&withHardLock=true";
+        }
 
         // simply send the request, but don't care about the response. if it
         // fails, there is not much we can do from here.
@@ -307,6 +311,26 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
       return Result(TRI_ERROR_SHUTTING_DOWN);
     }
 
+    if (_checkCancellation) {
+      // execute custom check for abortion only every few seconds, in case
+      // it is expensive
+      constexpr auto checkFrequency = std::chrono::seconds(5);
+
+      auto now = std::chrono::steady_clock::now();
+      TRI_IF_FAILURE("Replication::forceCheckCancellation") {
+        // always force the cancellation check!
+        _lastCancellationCheck = now - checkFrequency;
+      }
+
+      if (now - _lastCancellationCheck >= checkFrequency) {
+        _lastCancellationCheck = now;
+        if (_checkCancellation()) {
+          return Result(
+              TRI_ERROR_REPLICATION_SHARD_SYNC_ATTEMPT_TIMEOUT_EXCEEDED);
+        }
+      }
+    }
+
     std::string url =
         tailingBaseUrl("tail") +
         "collection=" + StringUtils::urlEncode(collectionName) +
@@ -319,6 +343,9 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
       // we must only send the syncerId along if it is != 0, otherwise we will
       // trigger an error on the leader
       url += "&syncerId=" + syncerId().toString();
+    }
+    if (hard) {
+      url += "&withHardLock=true";
     }
 
     // optional upper bound for tailing (used to stop tailing if we have the

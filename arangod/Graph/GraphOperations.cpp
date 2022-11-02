@@ -26,7 +26,6 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 #include <array>
 #include <boost/range/join.hpp>
 #include <utility>
@@ -213,6 +212,18 @@ Result GraphOperations::checkEdgeCollectionAvailability(
 
 Result GraphOperations::checkVertexCollectionAvailability(
     std::string const& vertexCollectionName) {
+  // first check whether the collection is part of the graph
+  bool found = false;
+  if (_graph.vertexCollections().contains(vertexCollectionName) ||
+      _graph.orphanCollections().contains(vertexCollectionName)) {
+    found = true;
+  }
+
+  if (!found) {
+    return Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED);
+  }
+
+  // check if the collection is available
   std::shared_ptr<LogicalCollection> def =
       GraphManager::getCollectionByName(_vocbase, vertexCollectionName);
 
@@ -432,12 +443,18 @@ OperationResult GraphOperations::eraseOrphanCollection(
   }
 
   // check if collection exists in the database
+  bool collectionExists = true;
   Result res = checkVertexCollectionAvailability(collectionName);
   if (res.fail()) {
-    return OperationResult(res, options);
+    if (res.errorNumber() == TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST) {
+      // in this case, we are allowed just to drop it out of the definition
+      collectionExists = false;
+    } else {
+      return OperationResult(res, options);
+    }
   }
 
-  if (!hasRWPermissionsFor(collectionName)) {
+  if (collectionExists && !hasRWPermissionsFor(collectionName)) {
     return OperationResult{TRI_ERROR_FORBIDDEN, options};
   }
 
@@ -470,7 +487,7 @@ OperationResult GraphOperations::eraseOrphanCollection(
     res = trx.finish(result.result);
   }
 
-  if (dropCollection) {
+  if (dropCollection && collectionExists) {
     std::unordered_set<std::string> collectionsToBeRemoved;
     GraphManager gmngr{_vocbase};
     res = gmngr.pushCollectionIfMayBeDropped(collectionName, "",
@@ -781,14 +798,11 @@ OperationResult GraphOperations::validateEdgeVertices(
       trx.document(toCollectionName, bT.slice(), options);
 
   // actual result doesn't matter here
-  if (!resultFrom.ok()) {
-    trx.finish(resultFrom.result);
-    return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, options);
-  } else if (!resultTo.ok()) {
-    trx.finish(resultTo.result);
+  if (resultFrom.ok() && resultTo.ok()) {
+    return OperationResult(TRI_ERROR_NO_ERROR, options);
+  } else {
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, options);
   }
-  return OperationResult(TRI_ERROR_NO_ERROR, options);
 }
 
 std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
@@ -799,7 +813,7 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
   VPackSlice toStringSlice = document.get(StaticStrings::ToString);
   OperationOptions options(ExecContext::current());
 
-  if (fromStringSlice.isNone() || toStringSlice.isNone()) {
+  if (!fromStringSlice.isString() || !toStringSlice.isString()) {
     if (isUpdate) {
       return std::make_pair(OperationResult(TRI_ERROR_NO_ERROR, options),
                             false);
@@ -808,6 +822,7 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
         OperationResult(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE, options),
         false);
   }
+
   std::string fromString = fromStringSlice.copyString();
   std::string toString = toStringSlice.copyString();
 
@@ -862,6 +877,13 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
 OperationResult GraphOperations::createEdge(const std::string& definitionName,
                                             VPackSlice document,
                                             bool waitForSync, bool returnNew) {
+  // check if edgeCollection is available in the graph definition
+  OperationOptions options(ExecContext::current());
+  Result checkEdgeRes = checkEdgeCollectionAvailability(definitionName);
+  if (checkEdgeRes.fail()) {
+    return OperationResult(checkEdgeRes, options);
+  }
+
   auto [res, trx] = validateEdge(definitionName, document, waitForSync, false);
   if (res.fail()) {
     return std::move(res);
@@ -920,6 +942,13 @@ OperationResult GraphOperations::createVertex(const std::string& collectionName,
                                               VPackSlice document,
                                               bool waitForSync,
                                               bool returnNew) {
+  // check if the vertex collection is part of the graph
+  OperationOptions options(ExecContext::current());
+  Result checkVertexRes = checkVertexCollectionAvailability(collectionName);
+  if (checkVertexRes.fail()) {
+    return OperationResult(checkVertexRes, options);
+  }
+
   transaction::Options trxOptions;
 
   std::vector<std::string> writeCollections;

@@ -26,12 +26,11 @@
 
 #include <analysis/analyzers.hpp>
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 TestAnalyzer::TestAnalyzer()
     : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) {}
 
-bool TestAnalyzer::reset(const iresearch::string_ref& data) {
+bool TestAnalyzer::reset(irs::string_ref data) {
   _data = irs::ref_cast<irs::byte_type>(data);
   return true;
 }
@@ -44,8 +43,7 @@ bool TestAnalyzer::next() {
   return true;
 }
 
-bool TestAnalyzer::normalize(const iresearch::string_ref& args,
-                             std::string& definition) {
+bool TestAnalyzer::normalize(irs::string_ref args, std::string& definition) {
   // same validation as for make,
   // as normalize usually called to sanitize data before make
   auto slice = arangodb::iresearch::slice(args);
@@ -71,7 +69,7 @@ bool TestAnalyzer::normalize(const iresearch::string_ref& args,
   return true;
 }
 
-auto TestAnalyzer::make(const iresearch::string_ref& args) -> ptr {
+auto TestAnalyzer::make(irs::string_ref args) -> ptr {
   auto slice = arangodb::iresearch::slice(args);
   if (slice.isNull()) throw std::exception();
   if (slice.isNone()) return nullptr;

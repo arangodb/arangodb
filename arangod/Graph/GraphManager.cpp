@@ -27,7 +27,6 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 #include <array>
 #include <boost/range/join.hpp>
 #include <utility>
@@ -108,7 +107,9 @@ Result GraphManager::createCollection(std::string const& name,
       name,     // collection name
       colType,  // collection type
       options,  // collection properties
-      waitForSync, true, false, coll);
+      /*createWaitsForSyncReplication*/ waitForSync,
+      /*enforceReplicationFactor*/ true,
+      /*isNewDatabase*/ false, coll);
 
   return res;
 }
@@ -310,22 +311,14 @@ bool GraphManager::graphExists(std::string const& graphName) const {
 
   Result res = trx.begin();
 
-  if (!res.ok()) {
-    return false;
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   OperationOptions options;
-  try {
-    OperationResult checkDoc = trx.document(StaticStrings::GraphCollection,
-                                            checkDocument.slice(), options);
-    if (checkDoc.fail()) {
-      trx.finish(checkDoc.result);
-      return false;
-    }
-    trx.finish(checkDoc.result);
-  } catch (...) {
-  }
-  return true;
+  OperationResult checkDoc = trx.document(StaticStrings::GraphCollection,
+                                          checkDocument.slice(), options);
+  return trx.finish(checkDoc.result).ok();
 }
 
 ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(
@@ -446,12 +439,8 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
                                     : trx.insert(StaticStrings::GraphCollection,
                                                  builder.slice(), options);
 
-  if (!result.ok()) {
-    trx.finish(result.result);
-    return result;
-  }
   res = trx.finish(result.result);
-  if (res.fail()) {
+  if (res.fail() && result.ok()) {
     return OperationResult{std::move(res), options};
   }
   return result;
@@ -657,16 +646,19 @@ Result GraphManager::ensureCollections(
   OperationOptions opOptions(ExecContext::current());
 
 #ifdef USE_ENTERPRISE
-  const bool allowEnterpriseCollectionsOnSingleServer =
+  bool const allowEnterpriseCollectionsOnSingleServer =
       ServerState::instance()->isSingleServer() &&
       (graph.isSmart() || graph.isSatellite());
 #else
-  const bool allowEnterpriseCollectionsOnSingleServer = false;
+  bool const allowEnterpriseCollectionsOnSingleServer = false;
 #endif
 
   Result finalResult = methods::Collections::create(
-      ctx()->vocbase(), opOptions, collectionsToCreate.get(), waitForSync, true,
-      false, nullptr, created, false, allowEnterpriseCollectionsOnSingleServer);
+      ctx()->vocbase(), opOptions, collectionsToCreate.get(),
+      /*createWaitsForSyncReplication*/ waitForSync,
+      /*enforceReplicationFactor*/ true,
+      /*isNewDatabase*/ false, nullptr, created, /*allowSystem*/ false,
+      allowEnterpriseCollectionsOnSingleServer);
 #ifdef USE_ENTERPRISE
   if (finalResult.ok()) {
     guard.cancel();
@@ -1139,6 +1131,24 @@ Result GraphManager::checkDropGraphPermissions(
 
 ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(
     std::string const& graphName, VPackSlice input) const {
+  auto isSatellite = [](VPackSlice options) -> bool {
+    if (options.isObject()) {
+      VPackSlice s = options.get(StaticStrings::ReplicationFactor);
+      return ((s.isNumber() && s.getNumber<int>() == 0) ||
+              (s.isString() && s.stringRef() == "satellite"));
+    }
+    return false;
+  };
+  auto numberOfShards = [](VPackSlice options) -> std::pair<bool, int> {
+    if (options.isObject()) {
+      VPackSlice s = options.get(StaticStrings::NumberOfShards);
+      if (s.isNumber()) {
+        return {true, s.getNumber<int>()};
+      }
+    }
+    return {false, 0};
+  };
+
   try {
     TRI_ASSERT(input.isObject());
 
@@ -1147,7 +1157,7 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(
       VPackSlice s = input.get(StaticStrings::IsSmart);
       VPackSlice options = input.get(StaticStrings::GraphOptions);
 
-      bool smartSet = s.isBoolean() && s.getBoolean();
+      bool smartSet = s.isTrue();
       bool sgaSet = false;
       if (options.isObject()) {
         sgaSet =
@@ -1164,6 +1174,11 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(
         }
 
         if (options.isObject()) {
+          if (options.hasKey(StaticStrings::GraphSatellites) &&
+              !options.get(StaticStrings::GraphSatellites).isArray()) {
+            return Result{TRI_ERROR_BAD_PARAMETER,
+                          "Missing array for field 'satellites'"};
+          }
           VPackSlice replicationFactor =
               options.get(StaticStrings::ReplicationFactor);
           if ((replicationFactor.isNumber() &&
@@ -1180,9 +1195,20 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(
         }
       }
 
+      if (options.isObject() && isSatellite(options)) {
+        auto ns = numberOfShards(options);
+        if (ns.first && ns.second != 1) {
+          // the combination of numberOfShards != 1 and replicationFactor ==
+          // 'satellite' is invalid
+          return Result{TRI_ERROR_BAD_PARAMETER,
+                        "invalid combination of 'numberOfShards' and "
+                        "'satellite' replicationFactor"};
+        }
+      }
+
       // validate numberOfShards and replicationFactor
       Result res = ShardingInfo::validateShardsAndReplicationFactor(
-          input.get("options"), _vocbase.server(), true);
+          options, _vocbase.server(), true);
       if (res.fail()) {
         return res;
       }

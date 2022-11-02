@@ -23,17 +23,16 @@
 
 #pragma once
 
-#include "RestHandler/RestVocbaseBaseHandler.h"
+#include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-class RestDebugHandler : public arangodb::RestVocbaseBaseHandler {
+class RestDebugHandler : public arangodb::RestBaseHandler {
  public:
-  RestDebugHandler(application_features::ApplicationServer&, GeneralRequest*,
-                   GeneralResponse*);
+  RestDebugHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestDebugHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLUSTER_ADMIN; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
 };
 }  // namespace arangodb

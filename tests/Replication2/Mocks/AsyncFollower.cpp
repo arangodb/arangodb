@@ -129,5 +129,12 @@ void AsyncFollower::stop() noexcept {
   _asyncWorker.join();
 }
 
+auto AsyncFollower::waitForResign() -> futures::Future<futures::Unit> {
+  return _follower->waitForResign();
+}
+InMemoryLog AsyncFollower::copyInMemoryLog() const {
+  return _follower->copyInMemoryLog();
+}
+
 AsyncFollower::AsyncRequest::AsyncRequest(AppendEntriesRequest request)
     : request(std::move(request)) {}

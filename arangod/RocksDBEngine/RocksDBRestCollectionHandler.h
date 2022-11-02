@@ -29,8 +29,8 @@ namespace arangodb {
 
 class RocksDBRestCollectionHandler : public arangodb::RestCollectionHandler {
  public:
-  RocksDBRestCollectionHandler(application_features::ApplicationServer&,
-                               GeneralRequest*, GeneralResponse*);
+  RocksDBRestCollectionHandler(ArangodServer&, GeneralRequest*,
+                               GeneralResponse*);
 
  protected:
   Result handleExtraCommandPut(std::shared_ptr<LogicalCollection> coll,

@@ -23,23 +23,22 @@
 
 #include "BaseOptions.h"
 
-#include "Aql/AqlTransaction.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
-#include "Aql/ExecutorExpressionContext.h"
 #include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/NonConstExpression.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Query.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Containers/HashSet.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserCacheFactory.h"
 #include "Graph/TraverserOptions.h"
@@ -49,28 +48,46 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-BaseOptions::LookupInfo::LookupInfo()
+using VPackHelper = arangodb::basics::VelocyPackHelper;
+
+BaseOptions::LookupInfo::LookupInfo(TRI_edge_direction_e direction)
     : indexCondition(nullptr),
+      direction(direction),
       conditionNeedUpdate(false),
       conditionMemberToUpdate(0) {
   // NOTE: We need exactly one in this case for the optimizer to update
   idxHandles.resize(1);
+  TRI_ASSERT(direction == TRI_EDGE_IN || direction == TRI_EDGE_OUT);
 }
 
 BaseOptions::LookupInfo::~LookupInfo() = default;
 
 BaseOptions::LookupInfo::LookupInfo(arangodb::aql::QueryContext& query,
-                                    VPackSlice const& info,
-                                    VPackSlice const& shards) {
+                                    VPackSlice info, VPackSlice shards) {
   TRI_ASSERT(shards.isArray());
   idxHandles.reserve(shards.length());
+
+  TRI_edge_direction_e dir = TRI_EDGE_ANY;
+  VPackSlice dirSlice = info.get(StaticStrings::GraphDirection);
+  if (dirSlice.isEqualString(StaticStrings::GraphDirectionInbound)) {
+    dir = TRI_EDGE_IN;
+  } else if (dirSlice.isEqualString(StaticStrings::GraphDirectionOutbound)) {
+    dir = TRI_EDGE_OUT;
+  }
+  if (dir == TRI_EDGE_ANY) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "Missing or invalid direction attribute in graph definition");
+  }
+  // set direction for lookup info
+  direction = dir;
+  TRI_ASSERT(direction == TRI_EDGE_IN || direction == TRI_EDGE_OUT);
 
   conditionNeedUpdate = arangodb::basics::VelocyPackHelper::getBooleanValue(
       info, "condNeedUpdate", false);
@@ -129,16 +146,30 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::QueryContext& query,
 BaseOptions::LookupInfo::LookupInfo(LookupInfo const& other)
     : idxHandles(other.idxHandles),
       indexCondition(other.indexCondition),
+      direction(other.direction),
       conditionNeedUpdate(other.conditionNeedUpdate),
       conditionMemberToUpdate(other.conditionMemberToUpdate) {
   if (other.expression != nullptr) {
     expression = other.expression->clone(nullptr);
   }
   _nonConstContainer = other._nonConstContainer.clone(nullptr);
+
+  TRI_ASSERT(direction == TRI_EDGE_IN || direction == TRI_EDGE_OUT);
 }
 
 void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
-  result.openObject();
+  VPackObjectBuilder objectGuard(&result);
+
+  // direction
+  TRI_ASSERT(direction == TRI_EDGE_IN || direction == TRI_EDGE_OUT);
+  if (direction == TRI_EDGE_IN) {
+    result.add(StaticStrings::GraphDirection,
+               VPackValue(StaticStrings::GraphDirectionInbound));
+  } else {
+    result.add(StaticStrings::GraphDirection,
+               VPackValue(StaticStrings::GraphDirectionOutbound));
+  }
+
   result.add(VPackValue("handle"));
   // We only run toVelocyPack on Coordinator.
   TRI_ASSERT(idxHandles.size() == 1);
@@ -160,7 +191,6 @@ void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
   result.add("condMemberToUpdate", VPackValue(conditionMemberToUpdate));
   result.add(VPackValue("nonConstContainer"));
   _nonConstContainer.toVelocyPack(result);
-  result.close();
 }
 
 double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
@@ -186,7 +216,7 @@ void BaseOptions::LookupInfo::initializeNonConstExpressions(
     std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
     aql::Variable const* indexVariable) {
   _nonConstContainer = aql::utils::extractNonConstPartsOfIndexCondition(
-      ast, varInfo, false, false, indexCondition, indexVariable);
+      ast, varInfo, false, nullptr, indexCondition, indexVariable);
   // We cannot optimize V8 expressions
   TRI_ASSERT(!_nonConstContainer._hasV8Expression);
 }
@@ -244,7 +274,9 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
       _parallelism(1),
       _produceVertices(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _refactor(false) {}
+      _vertexProjections{},
+      _edgeProjections{},
+      _refactor(true) {}
 
 BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
     : _trx(other._query.newTrxContext()),
@@ -255,6 +287,9 @@ BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
       _parallelism(other._parallelism),
       _produceVertices(other._produceVertices),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
+      _maxProjections{other._maxProjections},
+      _vertexProjections{other._vertexProjections},
+      _edgeProjections{other._edgeProjections},
       _refactor(other._refactor) {
   if (!allowAlreadyBuiltCopy) {
     TRI_ASSERT(other._baseLookupInfos.empty());
@@ -292,19 +327,7 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info,
     itCollections.next();
   }
 
-  // parallelism is optional
-  read = info.get("parallelism");
-  if (read.isInteger()) {
-    _parallelism = read.getNumber<size_t>();
-  }
-  _refactor = basics::VelocyPackHelper::getBooleanValue(
-      info, StaticStrings::GraphRefactorFlag, false);
-
-  TRI_ASSERT(_produceVertices);
-  read = info.get("produceVertices");
-  if (read.isBool() && !read.getBool()) {
-    _produceVertices = false;
-  }
+  parseShardIndependentFlags(info);
 }
 
 BaseOptions::~BaseOptions() = default;
@@ -341,9 +364,10 @@ void BaseOptions::setVariable(aql::Variable const* variable) {
 void BaseOptions::addLookupInfo(aql::ExecutionPlan* plan,
                                 std::string const& collectionName,
                                 std::string const& attributeName,
-                                aql::AstNode* condition, bool onlyEdgeIndexes) {
+                                aql::AstNode* condition, bool onlyEdgeIndexes,
+                                TRI_edge_direction_e direction) {
   injectLookupInfoInList(_baseLookupInfos, plan, collectionName, attributeName,
-                         condition, onlyEdgeIndexes);
+                         condition, onlyEdgeIndexes, direction);
 }
 
 void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
@@ -351,17 +375,28 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
                                          std::string const& collectionName,
                                          std::string const& attributeName,
                                          aql::AstNode* condition,
-                                         bool onlyEdgeIndexes) {
-  LookupInfo info;
+                                         bool onlyEdgeIndexes,
+                                         TRI_edge_direction_e direction) {
+  TRI_ASSERT(
+      (direction == TRI_EDGE_IN && attributeName == StaticStrings::ToString) ||
+      (direction == TRI_EDGE_OUT &&
+       attributeName == StaticStrings::FromString));
+
+  LookupInfo info(direction);
   info.indexCondition = condition->clone(plan->getAst());
   auto coll = _query.collections().get(collectionName);
   if (!coll) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
+  // arbitrary value for "number of edges in collection" used here. the
+  // actual value does not matter much. 1000 has historically worked fine.
+  constexpr size_t itemsInCollection = 1000;
+
+  auto& trx = plan->getAst()->query().trxForOptimization();
   bool res = aql::utils::getBestIndexHandleForFilterCondition(
-      *coll, info.indexCondition, _tmpVar, 1000, aql::IndexHint(),
-      info.idxHandles[0], onlyEdgeIndexes);
+      trx, *coll, info.indexCondition, _tmpVar, itemsInCollection,
+      aql::IndexHint(), info.idxHandles[0], onlyEdgeIndexes);
   // Right now we have an enforced edge index which should always fit.
   if (!res) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -422,12 +457,12 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
   list.emplace_back(std::move(info));
 }
 
-void BaseOptions::clearVariableValues() {
+void BaseOptions::clearVariableValues() noexcept {
   _expressionCtx.clearVariableValues();
 }
 
 void BaseOptions::setVariableValue(aql::Variable const* var,
-                                   aql::AqlValue const value) {
+                                   aql::AqlValue value) {
   _expressionCtx.setVariableValue(var, value);
 }
 
@@ -461,8 +496,7 @@ void BaseOptions::injectEngineInfo(VPackBuilder& result) const {
   result.add(VPackValue("tmpVar"));
   TRI_ASSERT(_tmpVar != nullptr);
   _tmpVar->toVelocyPack(result);
-
-  result.add(StaticStrings::GraphRefactorFlag, VPackValue(_refactor));
+  toVelocyPackBase(result);
 }
 
 arangodb::aql::Expression* BaseOptions::getEdgeExpression(
@@ -480,17 +514,17 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
   }
 
   TRI_ASSERT(value.isObject() || value.isNull());
-  expression->setVariable(_tmpVar, value);
+  _expressionCtx.setVariableValue(_tmpVar,
+                                  AqlValue(AqlValueHintSliceNoCopy(value)));
+  ScopeGuard defer(
+      [&]() noexcept { _expressionCtx.clearVariableValue(_tmpVar); });
   bool mustDestroy = false;
   aql::AqlValue res = expression->execute(&_expressionCtx, mustDestroy);
+  aql::AqlValueGuard guard{res, mustDestroy};
   TRI_ASSERT(res.isBoolean());
   bool result = res.toBoolean();
-  expression->clearVariable(_tmpVar);
-  if (mustDestroy) {
-    res.destroy();
-  }
   if (!result) {
-    cache()->increaseFilterCounter();
+    cache()->incrFiltered();
   }
   return result;
 }
@@ -572,4 +606,66 @@ void BaseOptions::isQueryKilledCallback() const {
   if (query().killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
+}
+
+void BaseOptions::setVertexProjections(Projections projections) {
+  _vertexProjections = std::move(projections);
+}
+
+void BaseOptions::setEdgeProjections(Projections projections) {
+  _edgeProjections = std::move(projections);
+}
+
+void BaseOptions::setMaxProjections(size_t projections) noexcept {
+  _maxProjections = projections;
+}
+
+size_t BaseOptions::getMaxProjections() const noexcept {
+  return _maxProjections;
+}
+
+Projections const& BaseOptions::getVertexProjections() const {
+  return _vertexProjections;
+}
+
+Projections const& BaseOptions::getEdgeProjections() const {
+  return _edgeProjections;
+}
+
+void BaseOptions::toVelocyPackBase(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add("parallelism", VPackValue(_parallelism));
+  builder.add(StaticStrings::GraphRefactorFlag, VPackValue(refactor()));
+  builder.add("produceVertices", VPackValue(_produceVertices));
+  builder.add(StaticStrings::MaxProjections, VPackValue(getMaxProjections()));
+
+  if (!_vertexProjections.empty()) {
+    _vertexProjections.toVelocyPack(builder, "vertexProjections");
+  }
+
+  if (!_edgeProjections.empty()) {
+    _edgeProjections.toVelocyPack(builder, "edgeProjections");
+  }
+}
+
+void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
+  // parallelism is optional
+  _parallelism = VPackHelper::getNumericValue<size_t>(info, "parallelism", 1);
+
+  TRI_ASSERT(_produceVertices);
+  _produceVertices =
+      VPackHelper::getBooleanValue(info, "produceVertices", true);
+
+  // TODO: For some reason _produceEdges has not been deserialized (skipped
+  // in refactoring to avoid side-effects)
+
+  // read back projections
+  setMaxProjections(VPackHelper::getNumericValue<size_t>(
+      info, StaticStrings::MaxProjections,
+      DocumentProducingNode::kMaxProjections));
+  _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections");
+  _edgeProjections = Projections::fromVelocyPack(info, "edgeProjections");
+
+  _refactor = basics::VelocyPackHelper::getBooleanValue(
+      info, StaticStrings::GraphRefactorFlag, false);
 }

@@ -35,8 +35,7 @@ using namespace arangodb;
 using namespace arangodb::rest;
 
 RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response,
+    ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
     arangodb::AgencyCallbackRegistry* agencyCallbackRegistry)
     : RestVocbaseBaseHandler(server, request, response),
       _agencyCallbackRegistry(agencyCallbackRegistry) {}

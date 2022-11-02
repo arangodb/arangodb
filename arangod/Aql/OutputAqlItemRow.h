@@ -183,7 +183,7 @@ class OutputAqlItemRow {
    *        NOTE that we later want to replace this with some "atMost" value
    *        passed from ExecutionBlockImpl.
    */
-  [[nodiscard]] size_t numRowsLeft() const {
+  [[nodiscard]] size_t numRowsLeft() const noexcept {
     if (_block == nullptr) {
       return 0;
     }
@@ -192,25 +192,27 @@ class OutputAqlItemRow {
 
   // Use this function with caution! We need it only for the
   // ConstrainedSortExecutor
-  void setBaseIndex(std::size_t index);
+  void setBaseIndex(std::size_t index) noexcept;
   // Use this function with caution! We need it for the SortedCollectExecutor,
   // CountCollectExecutor, and the ConstrainedSortExecutor.
-  void setAllowSourceRowUninitialized() { _allowSourceRowUninitialized = true; }
+  void setAllowSourceRowUninitialized() noexcept {
+    _allowSourceRowUninitialized = true;
+  }
 
   // This function can be used to restore the row's invariant.
   // After setting this value numRowsWritten() rather returns
   // the number of written rows contained in the block than
   // the number of written rows, that could potentially be more.
-  void setMaxBaseIndex(std::size_t index);
+  void setMaxBaseIndex(std::size_t index) noexcept;
 
   void toVelocyPack(velocypack::Options const* options,
                     velocypack::Builder& builder);
 
-  AqlCall::Limit softLimit() const;
+  AqlCall::Limit softLimit() const noexcept;
 
-  AqlCall::Limit hardLimit() const;
+  AqlCall::Limit hardLimit() const noexcept;
 
-  AqlCall const& getClientCall() const;
+  AqlCall const& getClientCall() const noexcept;
 
   AqlCall& getModifiableClientCall();
 
@@ -219,19 +221,19 @@ class OutputAqlItemRow {
   void setCall(AqlCall call);
 
  private:
-  [[nodiscard]] RegIdSet const& outputRegisters() const {
+  [[nodiscard]] RegIdSet const& outputRegisters() const noexcept {
     return _outputRegisters;
   }
 
-  [[nodiscard]] RegIdFlatSetStack const& registersToKeep() const {
+  [[nodiscard]] RegIdFlatSetStack const& registersToKeep() const noexcept {
     return _registersToKeep;
   }
 
-  [[nodiscard]] RegIdFlatSet const& registersToClear() const {
+  [[nodiscard]] RegIdFlatSet const& registersToClear() const noexcept {
     return _registersToClear;
   }
 
-  [[nodiscard]] bool isOutputRegister(RegisterId registerId) const {
+  [[nodiscard]] bool isOutputRegister(RegisterId registerId) const noexcept {
     return outputRegisters().find(registerId) != outputRegisters().end();
   }
 
@@ -239,23 +241,23 @@ class OutputAqlItemRow {
     return numRowsWritten();
   }
 
-  [[nodiscard]] size_t numRegistersToWrite() const {
+  [[nodiscard]] size_t numRegistersToWrite() const noexcept {
     return outputRegisters().size();
   }
 
-  [[nodiscard]] bool allValuesWritten() const {
+  [[nodiscard]] bool allValuesWritten() const noexcept {
     // If we have a shadowRow in the output, it counts as written
     // if not it only counts is written, if we have all registers filled.
     return block().isShadowRow(_baseIndex) ||
            _numValuesWritten == numRegistersToWrite();
   }
 
-  [[nodiscard]] inline AqlItemBlock const& block() const {
+  [[nodiscard]] inline AqlItemBlock const& block() const noexcept {
     TRI_ASSERT(_block != nullptr);
     return *_block;
   }
 
-  inline AqlItemBlock& block() {
+  inline AqlItemBlock& block() noexcept {
     TRI_ASSERT(_block != nullptr);
     return *_block;
   }

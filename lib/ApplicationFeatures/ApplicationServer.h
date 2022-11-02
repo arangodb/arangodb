@@ -24,13 +24,19 @@
 #pragma once
 
 #include <atomic>
+#include <cstddef>
 #include <functional>
 #include <memory>
+#include <mutex>
+#include <span>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <typeindex>
 #include <unordered_map>
+#include <utility>
 #include <vector>
+#include <boost/type_index/ctti_type_index.hpp>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
@@ -39,6 +45,10 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+
+template<typename T>
+struct TypeTag;
+
 namespace options {
 class ProgramOptions;
 }
@@ -100,8 +110,6 @@ namespace application_features {
 // This destroys the features.
 
 class ApplicationServer {
-  using FeatureMap =
-      std::unordered_map<std::type_index, std::unique_ptr<ApplicationFeature>>;
   ApplicationServer(ApplicationServer const&) = delete;
   ApplicationServer& operator=(ApplicationServer const&) = delete;
 
@@ -124,43 +132,26 @@ class ApplicationServer {
   class ProgressHandler {
    public:
     std::function<void(State)> _state;
-    std::function<void(State, std::string const& featureName)> _feature;
+    std::function<void(State, std::string_view featureName)> _feature;
   };
 
   static std::atomic<bool> CTRL_C;
 
  public:
   ApplicationServer(std::shared_ptr<options::ProgramOptions>,
-                    char const* binaryPath);
+                    char const* binaryPath,
+                    std::span<std::unique_ptr<ApplicationFeature>> features);
 
-  TEST_VIRTUAL ~ApplicationServer() = default;
+  virtual ~ApplicationServer() = default;
 
   std::string helpSection() const { return _helpSection; }
   bool helpShown() const { return !_helpSection.empty(); }
 
   /// @brief stringify the internal state
-  char const* stringifyState() const;
+  std::string_view stringifyState() const;
 
-  // return whether or not a feature is enabled
-  // will throw when called for a non-existing feature
-  template<typename T>
-  bool isEnabled() const {
-    return getFeature<T>().isEnabled();
-  }
-
-  // return whether or not a feature is optional
-  // will throw when called for a non-existing feature
-  template<typename T>
-  bool isOptional() const {
-    return getFeature<T>().isOptional();
-  }
-
-  // return whether or not a feature is required
-  // will throw when called for a non-existing feature
-  template<typename T>
-  bool isRequired() const {
-    return getFeature<T>().isRequired();
-  }
+  /// @brief stringify the given state
+  static std::string_view stringifyState(State state);
 
   /// @brief whether or not the server has made it as least as far as the
   /// IN_START state
@@ -198,11 +189,20 @@ class ApplicationServer {
   std::shared_ptr<options::ProgramOptions> options() const { return _options; }
 
   // return the server state
-  TEST_VIRTUAL State state() const { return _state; }
+  TEST_VIRTUAL State state() const {
+    return _state.load(std::memory_order_acquire);
+  }
+
+  // return the current progress, as string values (phase, feature name)
+  std::pair<std::string, std::string> progressInfo() const;
 
   void addReporter(ProgressHandler reporter) {
-    _progressReports.emplace_back(reporter);
+    _progressReports.emplace_back(std::move(reporter));
   }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void setBinaryPath(char const* path) { _binaryPath = path; }
+#endif
 
   char const* getBinaryPath() const { return _binaryPath; }
 
@@ -212,14 +212,13 @@ class ApplicationServer {
 
   void registerFailCallback(
       std::function<void(std::string const&)> const& callback) {
-    fail = callback;
+    _fail = callback;
   }
 
   // setup and validate all feature dependencies, determine feature order
   void setupDependencies(bool failOnMissing);
 
-  std::vector<std::reference_wrapper<ApplicationFeature>> const&
-  getOrderedFeatures() {
+  std::span<std::reference_wrapper<ApplicationFeature>> getOrderedFeatures() {
     return _orderedFeatures;
   }
 
@@ -227,116 +226,31 @@ class ApplicationServer {
   void setStateUnsafe(State ss) { _state = ss; }
 #endif
 
-  // adds a feature to the application server. the application server
-  // will take ownership of the feature object and destroy it in its
-  // destructor
-  template<
-      typename Type, typename As = Type, typename... Args,
-      typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value,
-                              int>::type = 0,
-      typename std::enable_if<std::is_base_of<ApplicationFeature, As>::value,
-                              int>::type = 0,
-      typename std::enable_if<std::is_base_of<As, Type>::value, int>::type = 0>
-  As& addFeature(Args&&... args) {
-    TRI_ASSERT(!hasFeature<As>());
-    std::pair<FeatureMap::iterator, bool> result = _features.try_emplace(
-        std::type_index(typeid(As)),
-        std::make_unique<Type>(*this, std::forward<Args>(args)...));
-    TRI_ASSERT(result.second);
-    result.first->second->setRegistration(std::type_index(typeid(As)));
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto obj = dynamic_cast<As*>(result.first->second.get());
-    TRI_ASSERT(obj != nullptr);
-    return *obj;
-#else
-    return *static_cast<As*>(result.first->second.get());
-#endif
-  }
+  void disableFeatures(std::span<const size_t>);
+  void forceDisableFeatures(std::span<const size_t>);
+
+ private:
+  friend class ApplicationFeature;
+
+  // set the current progress (string versions)
+  void progressInfo(std::string_view phase, std::string_view feature);
 
   // checks for the existence of a feature by type. will not throw when used
   // for a non-existing feature
-  bool hasFeature(std::type_index type) const noexcept {
-    return (_features.find(type) != _features.end());
+  bool hasFeature(size_t type) const noexcept {
+    return type < _features.size() && nullptr != _features[type];
   }
 
-  // checks for the existence of a feature. will not throw when used for
-  // a non-existing feature
-  template<typename Type,
-           typename std::enable_if<
-               std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0>
-  bool hasFeature() const noexcept {
-    return hasFeature(std::type_index(typeid(Type)));
-  }
-
-  // returns a reference to a feature given the type. will throw when used for
-  // a non-existing feature
-  template<
-      typename AsType,
-      typename std::enable_if<
-          std::is_base_of<ApplicationFeature, AsType>::value, int>::type = 0>
-  AsType& getFeature(std::type_index type) const {
-    auto it = _features.find(type);
-    if (it == _features.end()) {
-      throwFeatureNotFoundException(type.name());
+  ApplicationFeature& getFeature(size_t type) const {
+    if (ADB_LIKELY(hasFeature(type))) {
+      return *_features[type];
     }
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto obj = dynamic_cast<AsType*>(it->second.get());
-    TRI_ASSERT(obj != nullptr);
-    return *obj;
-#else
-    return *static_cast<AsType*>(it->second.get());
-#endif
+
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "unknown feature '" + std::to_string(type) + "'");
   }
 
-  // returns a const reference to a feature. will throw when used for
-  // a non-existing feature
-  template<typename Type, typename AsType = Type,
-           typename std::enable_if<
-               std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0,
-           typename std::enable_if<std::is_base_of<Type, AsType>::value ||
-                                       std::is_base_of<AsType, Type>::value,
-                                   int>::type = 0>
-  AsType& getFeature() const {
-    auto it = _features.find(std::type_index(typeid(Type)));
-    if (it == _features.end()) {
-      throwFeatureNotFoundException(typeid(Type).name());
-    }
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto obj = dynamic_cast<AsType*>(it->second.get());
-    TRI_ASSERT(obj != nullptr);
-    return *obj;
-#else
-    return *static_cast<AsType*>(it->second.get());
-#endif
-  }
-
-  // returns the feature with the given name if known and enabled
-  // throws otherwise
-  template<typename Type, typename AsType = Type,
-           typename std::enable_if<
-               std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0,
-           typename std::enable_if<std::is_base_of<Type, AsType>::value ||
-                                       std::is_base_of<AsType, Type>::value,
-                                   int>::type = 0>
-  AsType& getEnabledFeature() const {
-    AsType& feature = getFeature<Type, AsType>();
-    if (!feature.isEnabled()) {
-      throwFeatureNotEnabledException(typeid(Type).name());
-    }
-    return feature;
-  }
-
-  void disableFeatures(std::vector<std::type_index> const&);
-  void forceDisableFeatures(std::vector<std::type_index> const&);
-
- private:
-  // throws an exception that a requested feature was not found
-  [[noreturn]] static void throwFeatureNotFoundException(char const*);
-
-  // throws an exception that a requested feature is not enabled
-  [[noreturn]] static void throwFeatureNotEnabledException(char const*);
-
-  void disableFeatures(std::vector<std::type_index> const& types, bool force);
+  void disableFeatures(std::span<const size_t> types, bool force);
 
   // walks over all features and runs a callback function for them
   void apply(std::function<void(ApplicationFeature&)>, bool enabledOnly);
@@ -374,12 +288,8 @@ class ApplicationServer {
   // beginShutdown is called
   void wait();
 
-  void raisePrivilegesTemporarily();
-  void dropPrivilegesTemporarily();
-  void dropPrivilegesPermanently();
-
   void reportServerProgress(State);
-  void reportFeatureProgress(State, std::string const&);
+  void reportFeatureProgress(State, std::string_view);
 
  private:
   // the current state
@@ -388,8 +298,8 @@ class ApplicationServer {
   // the shared program options
   std::shared_ptr<options::ProgramOptions> _options;
 
-  // map of feature names to features
-  FeatureMap _features;
+  // application features
+  std::span<std::unique_ptr<ApplicationFeature>> _features;
 
   // features order for prepare/start
   std::vector<std::reference_wrapper<ApplicationFeature>> _orderedFeatures;
@@ -397,21 +307,16 @@ class ApplicationServer {
   // will be signaled when the application server is asked to shut down
   basics::ConditionVariable _shutdownCondition;
 
-  /// @brief the condition variable protects access to this flag
-  /// the flag is set to true when beginShutdown finishes
-  bool _abortWaiting = false;
-
-  // whether or not privileges have been dropped permanently
-  bool _privilegesDropped = false;
-
-  // whether or not to dump dependencies
-  bool _dumpDependencies = false;
-
-  // whether or not to dump configuration options
-  bool _dumpOptions = false;
-
   // reporter for progress
   std::vector<ProgressHandler> _progressReports;
+
+  // mutex for protecting _progressPhase and _progressFeature
+  mutable std::mutex _progressMutex;
+
+  // stringified progress value (phase)
+  std::string _progressPhase;
+  // stringified progress value (feature name)
+  std::string _progressFeature;
 
   // callbacks that are called after start
   std::vector<std::function<void()>> _startupCallbacks;
@@ -419,11 +324,179 @@ class ApplicationServer {
   // help section displayed
   std::string _helpSection;
 
+  // fail callback
+  std::function<void(std::string const&)> _fail;
+
   // the install directory of this program:
   char const* _binaryPath;
 
-  // fail callback
-  std::function<void(std::string const&)> fail;
+  /// @brief the condition variable protects access to this flag
+  /// the flag is set to true when beginShutdown finishes
+  bool _abortWaiting = false;
+
+  // whether or not to dump dependencies
+  bool _dumpDependencies = false;
+
+  // whether or not to dump configuration options
+  bool _dumpOptions = false;
+};
+
+// ApplicationServerT is intended to provide statically checked access to
+// application features. Whenever you need to create an application server
+// consider the following usage pattern:
+//
+// Declare a list of all features in header file:
+//
+// namespace arangodb {
+// class Feature1;
+// class Feature2;
+// using namespace arangodb::application_features;
+// using ServerFeatures = basics::TypeList<Feature1, Feature2>;
+// using Server = ApplicationServerT<ServerFeatures>;
+// using ServerFeature = ApplicationFeatureT<ServerFeatures>;
+// }
+//
+// Note that the order of features in basics::TypeList<Feature1, Feature2> is
+// significant and defines creation order, i.e. Feature1 is constructed before
+// Feature2.
+//
+// To instantiate server and its features consider the following snippet:
+//
+// Server server;
+// server.addFeatures(Visitor{
+//   []<typename T>(Server& server, TypeTag<T>) {
+//     return std::make_unique<T>(server);
+//   },
+//   [](Server& server, TypeTag<Feature2>) {
+//     // Feature constructor requires extra argument
+//     return std::make_unique<Feature2>(server, "arg");
+//   }});
+
+template<typename Features>
+class ApplicationServerT : public ApplicationServer {
+ public:
+  // Returns feature identifier.
+  template<typename T>
+  static constexpr size_t id() noexcept {
+    return Features::template id<T>();
+  }
+
+  // Returns true if a feature denoted by `T` is registered with the server.
+  template<typename T>
+  static constexpr bool contains() noexcept {
+    return Features::template contains<T>();
+  }
+
+  // Returns true if a feature denoted by `Feature` is created before other
+  // feautures denoted by `OtherFeatures`.
+  template<typename Feature, typename... OtherFeatures>
+  static constexpr bool isCreatedAfter() noexcept {
+    return (std::greater{}(id<Feature>(), id<OtherFeatures>()) && ...);
+  }
+
+  ApplicationServerT(std::shared_ptr<arangodb::options::ProgramOptions> opts,
+                     char const* binaryPath)
+      : ApplicationServer{opts, binaryPath, _features} {}
+
+  // Adds all registered features to the application server.
+  template<typename Initializer>
+  void addFeatures(Initializer&& initializer) {
+    Features::visit([&]<typename T>(TypeTag<T>) {
+      static_assert(std::is_base_of_v<ApplicationFeature, T>);
+      constexpr auto featureId = Features::template id<T>();
+
+      TRI_ASSERT(!hasFeature<T>());
+      _features[featureId] =
+          std::forward<Initializer>(initializer)(*this, TypeTag<T>{});
+      TRI_ASSERT(hasFeature<T>());
+    });
+  }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // Adds a feature to the application server. the application server
+  // will take ownership of the feature object and destroy it in its
+  // destructor.
+  template<typename Type, typename Impl = Type, typename... Args>
+  Impl& addFeature(Args&&... args) {
+    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
+    static_assert(std::is_base_of_v<ApplicationFeature, Impl>);
+    static_assert(std::is_base_of_v<Type, Impl>);
+    constexpr auto featureId = Features::template id<Type>();
+
+    TRI_ASSERT(!hasFeature<Type>());
+    auto& slot = _features[featureId];
+    slot = std::make_unique<Impl>(*this, std::forward<Args>(args)...);
+
+    return static_cast<Impl&>(*slot);
+  }
+#endif
+
+  // Return whether or not a feature is enabled
+  // will throw when called for a non-existing feature.
+  template<typename T>
+  bool isEnabled() const {
+    return getFeature<T>().isEnabled();
+  }
+
+  // Return whether or not a feature is optional
+  // will throw when called for a non-existing feature.
+  template<typename T>
+  bool isOptional() const {
+    return getFeature<T>().isOptional();
+  }
+
+  // Return whether or not a feature is required
+  // will throw when called for a non-existing feature.
+  template<typename T>
+  bool isRequired() const {
+    return getFeature<T>().isRequired();
+  }
+
+  // Checks for the existence of a feature. will not throw when used for
+  // a non-existing feature.
+  template<typename Type>
+  bool hasFeature() const noexcept {
+    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
+
+    constexpr auto featureId = Features::template id<Type>();
+    return nullptr != _features[featureId];
+  }
+
+  // Returns a const reference to a feature. will throw when used for
+  // a non-existing feature.
+  template<typename Type, typename Impl = Type>
+  Impl& getFeature() const {
+    static_assert(std::is_base_of_v<ApplicationFeature, Type>);
+    static_assert(std::is_base_of_v<Type, Impl> ||
+                  std::is_base_of_v<Impl, Type>);
+    constexpr auto featureId = Features::template id<Type>();
+
+    TRI_ASSERT(hasFeature<Type>());
+    auto& feature = *_features[featureId];
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto obj = dynamic_cast<Impl*>(&feature);
+    TRI_ASSERT(obj != nullptr);
+    return *obj;
+#else
+    return static_cast<Impl&>(feature);
+#endif
+  }
+
+  // Returns the feature with the given name if known and enabled
+  // throws otherwise.
+  template<typename Type, typename Impl = Type>
+  Impl& getEnabledFeature() const {
+    auto& feature = getFeature<Type, Impl>();
+    if (!feature.isEnabled()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "feature '" + std::string{feature.name()} + "' is not enabled");
+    }
+    return feature;
+  }
+
+ private:
+  std::array<std::unique_ptr<ApplicationFeature>, Features::size()> _features;
 };
 
 }  // namespace application_features

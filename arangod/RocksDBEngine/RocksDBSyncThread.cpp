@@ -21,6 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "RocksDBSyncThread.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/RocksDBUtils.h"

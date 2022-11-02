@@ -26,35 +26,35 @@
 
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/GraphNode.h"
-#include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"
 #include "Aql/TraversalExecutor.h"
+#include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/Variable.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tryEmplaceHelper.h"
-#include "Cluster/ClusterTraverser.h"
 #include "Graph/Graph.h"
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Cluster/SmartGraphTraverser.h"
-#endif
 #include "Graph/BaseOptions.h"
-#include "Graph/SingleServerTraverser.h"
+#include "Graph/Providers/BaseProviderOptions.h"
+#include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/TraverserOptions.h"
+#include "Graph/Types/UniquenessLevel.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
+#include <Graph/algorithm-aliases.h>
 #include <memory>
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -167,14 +167,14 @@ TraversalNode::TraversalNode(
     ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
     std::vector<Collection*> const& edgeColls,
     std::vector<Collection*> const& vertexColls, Variable const* inVariable,
-    std::string const& vertexId, TRI_edge_direction_e defaultDirection,
+    std::string vertexId, TRI_edge_direction_e defaultDirection,
     std::vector<TRI_edge_direction_e> const& directions,
     std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph)
     : GraphNode(plan, id, vocbase, edgeColls, vertexColls, defaultDirection,
                 directions, std::move(options), graph),
       _pathOutVariable(nullptr),
       _inVariable(inVariable),
-      _vertexId(vertexId),
+      _vertexId(std::move(vertexId)),
       _fromCondition(nullptr),
       _toCondition(nullptr) {}
 
@@ -321,30 +321,20 @@ Variable const* TraversalNode::pathOutVariable() const {
 
 /// @brief set the path out variable
 void TraversalNode::setPathOutput(Variable const* outVar) {
+  if (outVar == nullptr) {
+    markUnusedConditionVariable(_pathOutVariable);
+  }
   _pathOutVariable = outVar;
 }
 
 /// @brief return the in variable
 Variable const* TraversalNode::inVariable() const { return _inVariable; }
 
-std::string const TraversalNode::getStartVertex() const { return _vertexId; }
+std::string TraversalNode::getStartVertex() const { return _vertexId; }
 
 void TraversalNode::setInVariable(Variable const* inVariable) {
   _inVariable = inVariable;
   _vertexId = "";
-}
-
-int TraversalNode::checkIsOutVariable(size_t variableId) const {
-  if (_vertexOutVariable != nullptr && _vertexOutVariable->id == variableId) {
-    return 0;
-  }
-  if (_edgeOutVariable != nullptr && _edgeOutVariable->id == variableId) {
-    return 1;
-  }
-  if (_pathOutVariable != nullptr && _pathOutVariable->id == variableId) {
-    return 2;
-  }
-  return -1;
 }
 
 void TraversalNode::replaceVariables(
@@ -378,16 +368,18 @@ void TraversalNode::replaceVariables(
 /// @brief getVariablesUsedHere
 void TraversalNode::getVariablesUsedHere(VarSet& result) const {
   for (auto const& condVar : _conditionVariables) {
-    if (condVar != getTemporaryVariable()) {
+    if (condVar != pathOutVariable() && condVar != getTemporaryVariable()) {
       result.emplace(condVar);
     }
   }
+
   for (auto const& pruneVar : _pruneVariables) {
     if (pruneVar != vertexOutVariable() && pruneVar != edgeOutVariable() &&
         pruneVar != pathOutVariable()) {
       result.emplace(pruneVar);
     }
   }
+
   if (usesInVariable()) {
     result.emplace(_inVariable);
   }
@@ -415,23 +407,6 @@ bool TraversalNode::isInRange(uint64_t depth, bool isEdge) const {
     return (depth < opts->maxDepth);
   }
   return (depth <= opts->maxDepth);
-}
-
-/// @brief check if all directions are equal
-bool TraversalNode::allDirectionsEqual() const {
-  if (_directions.empty()) {
-    // no directions!
-    return false;
-  }
-  size_t const n = _directions.size();
-  TRI_edge_direction_e const expected = _directions[0];
-
-  for (size_t i = 1; i < n; ++i) {
-    if (_directions[i] != expected) {
-      return false;
-    }
-  }
-  return true;
 }
 
 void TraversalNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
@@ -544,10 +519,273 @@ void TraversalNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   }
 }
 
+std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
+    TraversalEdgeConditionBuilder& conditionBuilder) const {
+  std::vector<IndexAccessor> indexAccessors{};
+  auto ast = _plan->getAst();
+  size_t numEdgeColls = _edgeColls.size();
+  bool onlyEdgeIndexes = false;
+
+  auto calculateMemberToUpdate = [&](std::string const& memberString,
+                                     std::optional<size_t>& memberToUpdate,
+                                     aql::AstNode* indexCondition) {
+    std::pair<aql::Variable const*, std::vector<basics::AttributeName>> pathCmp;
+    for (size_t x = 0; x < indexCondition->numMembers(); ++x) {
+      // We search through the nary-and and look for EQ - _from/_to
+      auto eq = indexCondition->getMemberUnchecked(x);
+      if (eq->type !=
+          arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_EQ) {
+        // No equality. Skip
+        continue;
+      }
+      TRI_ASSERT(eq->numMembers() == 2);
+      // It is sufficient to only check member one.
+      // We build the condition this way.
+      auto mem = eq->getMemberUnchecked(0);
+      if (mem->isAttributeAccessForVariable(pathCmp, true)) {
+        if (pathCmp.first != _tmpObjVariable) {
+          continue;
+        }
+        if (pathCmp.second.size() == 1 &&
+            pathCmp.second[0].name == memberString) {
+          memberToUpdate = x;
+          break;
+        }
+        continue;
+      }
+    }
+  };
+
+  auto generateExpression =
+      [&](aql::AstNode* remainderCondition,
+          aql::AstNode* indexCondition) -> std::unique_ptr<aql::Expression> {
+    containers::HashSet<size_t> toRemove;
+    aql::Condition::collectOverlappingMembers(
+        _plan, options()->tmpVar(), remainderCondition, indexCondition,
+        toRemove, nullptr, false);
+    size_t n = remainderCondition->numMembers();
+
+    if (n != toRemove.size()) {
+      // Slow path need to explicitly remove nodes.
+      for (; n > 0; --n) {
+        // Now n is one more than the idx we actually check
+        if (toRemove.find(n - 1) != toRemove.end()) {
+          // This index has to be removed.
+          remainderCondition->removeMemberUnchecked(n - 1);
+        }
+      }
+      return std::make_unique<aql::Expression>(_plan->getAst(),
+                                               remainderCondition);
+    }
+    return nullptr;
+  };
+
+  for (size_t i = 0; i < numEdgeColls; ++i) {
+    auto dir = _directions[i];
+    TRI_ASSERT(dir == TRI_EDGE_IN || dir == TRI_EDGE_OUT);
+
+    aql::AstNode* condition = (dir == TRI_EDGE_IN)
+                                  ? conditionBuilder.getInboundCondition()
+                                  : conditionBuilder.getOutboundCondition();
+    aql::AstNode* indexCondition = condition->clone(ast);
+    std::shared_ptr<Index> indexToUse;
+
+    // arbitrary value for "number of edges in collection" used here. the
+    // actual value does not matter much. 1000 has historically worked fine.
+    constexpr size_t itemsInCollection = 1000;
+
+    auto& trx = plan()->getAst()->query().trxForOptimization();
+    bool res = aql::utils::getBestIndexHandleForFilterCondition(
+        trx, *_edgeColls[i], indexCondition, options()->tmpVar(),
+        itemsInCollection, aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+    if (!res) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "expected edge index not found");
+    }
+
+    std::optional<size_t> memberToUpdate{std::nullopt};
+    calculateMemberToUpdate(dir == TRI_EDGE_IN ? StaticStrings::ToString
+                                               : StaticStrings::FromString,
+                            memberToUpdate, indexCondition);
+
+    aql::AstNode* remainderCondition = condition->clone(ast);
+    std::unique_ptr<aql::Expression> expression =
+        generateExpression(remainderCondition, indexCondition);
+
+    auto container = aql::utils::extractNonConstPartsOfIndexCondition(
+        ast, getRegisterPlan()->varInfo, false, nullptr, indexCondition,
+        options()->tmpVar());
+    indexAccessors.emplace_back(std::move(indexToUse), indexCondition,
+                                memberToUpdate, std::move(expression),
+                                std::move(container), i, dir);
+  }
+
+  return indexAccessors;
+}
+
+std::vector<arangodb::graph::IndexAccessor> TraversalNode::buildUsedIndexes()
+    const {
+  TraversalEdgeConditionBuilder globalEdgeConditionBuilder(this);
+
+  for (auto& it : _globalEdgeConditions) {
+    globalEdgeConditionBuilder.addConditionPart(it);
+  }
+
+  return buildIndexAccessor(globalEdgeConditionBuilder);
+}
+
+std::unordered_map<uint64_t, std::vector<IndexAccessor>>
+TraversalNode::buildUsedDepthBasedIndexes() const {
+  std::unordered_map<uint64_t, std::vector<IndexAccessor>> result{};
+  for (auto const& [depth, builder] : _edgeConditions) {
+    TRI_ASSERT(builder != nullptr);
+    result.emplace(depth, buildIndexAccessor(*builder));
+  }
+
+  return result;
+}
+
+std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
+    ExecutionEngine& engine,
+    std::vector<std::pair<Variable const*, RegisterId>>&&
+        filterConditionVariables,
+    std::function<void(std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&
+        checkPruneAvailability,
+    std::function<void(std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&
+        checkPostFilterAvailability,
+    std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId,
+                       TraversalExecutorInfosHelper::OutputNameHash> const&
+        outputRegisterMapping,
+    RegisterId inputRegister, RegisterInfos registerInfos,
+    std::unordered_map<ServerID, aql::EngineId> const* engines,
+    bool isSmart) const {
+  TraverserOptions* opts = this->options();
+
+  arangodb::graph::OneSidedEnumeratorOptions options{opts->minDepth,
+                                                     opts->maxDepth};
+  /*
+   * PathValidator Disjoint Helper (TODO [GraphRefactor]: Copy from createBlock)
+   * Clean this up as soon we clean up the whole TraversalNode as well.
+   */
+  auto generateDisjointPathValidatorOptions = [&]() -> std::pair<bool, bool> {
+    bool isSatLeader = false;
+    if (isDisjoint()) {
+      isSatLeader = opts->isSatelliteLeader();
+    }
+    return {isDisjoint(), isSatLeader};
+  };
+  auto isDisjointIsSat = generateDisjointPathValidatorOptions();
+
+  PathValidatorOptions validatorOptions{
+      opts->tmpVar(), opts->getExpressionCtx(), isDisjointIsSat.first,
+      isDisjointIsSat.second, isClusterOneShardRuleEnabled()};
+
+  // Prune Section
+  if (pruneExpression() != nullptr) {
+    std::shared_ptr<aql::PruneExpressionEvaluator> pruneEvaluator;
+    checkPruneAvailability(pruneEvaluator);
+    validatorOptions.setPruneEvaluator(std::move(pruneEvaluator));
+  }
+
+  // Post-filter section
+  if (postFilterExpression() != nullptr) {
+    std::shared_ptr<aql::PruneExpressionEvaluator> postFilterEvaluator;
+    checkPostFilterAvailability(postFilterEvaluator);
+    validatorOptions.setPostFilterEvaluator(std::move(postFilterEvaluator));
+  }
+
+  // Vertex Expressions Section
+  // I. Set the list of allowed collections
+  validatorOptions.addAllowedVertexCollections(opts->vertexCollections);
+
+  // II. Global prune expression
+  if (opts->_baseVertexExpression != nullptr) {
+    auto baseVertexExpression =
+        opts->_baseVertexExpression->clone(_plan->getAst());
+    validatorOptions.setAllVerticesExpression(std::move(baseVertexExpression));
+  }
+
+  // III. Depth-based prune expressions
+  for (auto const& vertexExpressionPerDepth : opts->_vertexExpressions) {
+    auto depth = vertexExpressionPerDepth.first;
+    auto expression = vertexExpressionPerDepth.second->clone(_plan->getAst());
+    validatorOptions.setVertexExpression(depth, std::move(expression));
+  }
+
+  if (ServerState::instance()->isCoordinator()) {
+    auto clusterBaseProviderOptions =
+        getClusterBaseProviderOptions(opts, filterConditionVariables);
+
+    auto executorInfos = TraversalExecutorInfos(  // todo add a parameter:
+                                                  // SingleServer, Cluster...
+        outputRegisterMapping, getStartVertex(), inputRegister,
+        plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges, opts->mode,
+        opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
+        std::move(validatorOptions), std::move(options),
+        std::move(clusterBaseProviderOptions), isSmart);
+
+    return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
+  } else {
+    TRI_ASSERT(!isSmart);
+    auto singleServerBaseProviderOptions =
+        getSingleServerBaseProviderOptions(opts, filterConditionVariables);
+    auto executorInfos = TraversalExecutorInfos(  // todo add a parameter:
+                                                  // SingleServer, Cluster...
+        outputRegisterMapping, getStartVertex(), inputRegister,
+        plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges, opts->mode,
+        opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
+        std::move(validatorOptions), std::move(options),
+        std::move(singleServerBaseProviderOptions), isSmart);
+
+    return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
+  }
+}
+
+ClusterBaseProviderOptions TraversalNode::getClusterBaseProviderOptions(
+    TraverserOptions* opts,
+    std::vector<std::pair<Variable const*, RegisterId>> const&
+        filterConditionVariables) const {
+  auto traverserCache = std::make_shared<RefactoredClusterTraverserCache>(
+      opts->query().resourceMonitor());
+  std::unordered_set<uint64_t> availableDepthsSpecificConditions;
+  availableDepthsSpecificConditions.reserve(opts->_depthLookupInfo.size());
+  for (auto const& [depth, _] : opts->_depthLookupInfo) {
+    availableDepthsSpecificConditions.emplace(depth);
+  }
+  return {traverserCache,
+          engines(),
+          false,
+          opts->produceVertices(),
+          &opts->getExpressionCtx(),
+          filterConditionVariables,
+          std::move(availableDepthsSpecificConditions)};
+}
+
+SingleServerBaseProviderOptions
+TraversalNode::getSingleServerBaseProviderOptions(
+    TraverserOptions* opts,
+    std::vector<std::pair<Variable const*, RegisterId>> const&
+        filterConditionVariables) const {
+  std::pair<std::vector<IndexAccessor>,
+            std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
+      usedIndexes{};
+  usedIndexes.first = buildUsedIndexes();
+  usedIndexes.second = buildUsedDepthBasedIndexes();
+  return {opts->tmpVar(),
+          std::move(usedIndexes),
+          opts->getExpressionCtx(),
+          filterConditionVariables,
+          opts->collectionToShard(),
+          opts->getVertexProjections(),
+          opts->getEdgeProjections()};
+}
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   auto inputRegisters = RegIdSet{};
@@ -561,8 +799,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     TRI_ASSERT(getStartVertex().empty());
   }
   auto outputRegisters = RegIdSet{};
-  std::unordered_map<TraversalExecutorInfos::OutputName, RegisterId,
-                     TraversalExecutorInfos::OutputNameHash>
+  std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId,
+                     TraversalExecutorInfosHelper::OutputNameHash>
       outputRegisterMapping;
 
   if (isVertexOutVariableUsedLater()) {
@@ -571,57 +809,94 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     TRI_ASSERT(it->second.registerId.isValid());
     outputRegisters.emplace(it->second.registerId);
     outputRegisterMapping.try_emplace(
-        TraversalExecutorInfos::OutputName::VERTEX, it->second.registerId);
+        TraversalExecutorInfosHelper::OutputName::VERTEX,
+        it->second.registerId);
   }
   if (isEdgeOutVariableUsedLater()) {
     auto it = varInfo.find(edgeOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId.isValid());
     outputRegisters.emplace(it->second.registerId);
-    outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::EDGE,
-                                      it->second.registerId);
+    outputRegisterMapping.try_emplace(
+        TraversalExecutorInfosHelper::OutputName::EDGE, it->second.registerId);
   }
   if (isPathOutVariableUsedLater()) {
     auto it = varInfo.find(pathOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId.isValid());
     outputRegisters.emplace(it->second.registerId);
-    outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::PATH,
-                                      it->second.registerId);
+    outputRegisterMapping.try_emplace(
+        TraversalExecutorInfosHelper::OutputName::PATH, it->second.registerId);
   }
   TraverserOptions* opts = this->options();
-  std::unique_ptr<Traverser> traverser;
 
-  if (pruneExpression() != nullptr) {
-    std::vector<Variable const*> pruneVars;
-    getPruneVariables(pruneVars);
-    std::vector<RegisterId> pruneRegs;
-    // Create List for _pruneVars
-    pruneRegs.reserve(pruneVars.size());
-    size_t vertexRegIdx = std::numeric_limits<std::size_t>::max();
-    size_t edgeRegIdx = std::numeric_limits<std::size_t>::max();
-    size_t pathRegIdx = std::numeric_limits<std::size_t>::max();
-    for (auto const v : pruneVars) {
-      if (v == vertexOutVariable()) {
-        vertexRegIdx = pruneRegs.size();
-        pruneRegs.emplace_back(RegisterPlan::MaxRegisterId);
-      } else if (v == edgeOutVariable()) {
-        edgeRegIdx = pruneRegs.size();
-        pruneRegs.emplace_back(RegisterPlan::MaxRegisterId);
-      } else if (v == pathOutVariable()) {
-        pathRegIdx = pruneRegs.size();
-        pruneRegs.emplace_back(RegisterPlan::MaxRegisterId);
-      } else {
-        auto it = varInfo.find(v->id);
-        TRI_ASSERT(it != varInfo.end());
-        pruneRegs.emplace_back(it->second.registerId);
-      }
-    }
+  /*
+   * PRUNE SECTION
+   */
+  auto checkPruneAvailability =
+      [&](std::shared_ptr<aql::PruneExpressionEvaluator>& evaluator) {
+        std::vector<Variable const*> pruneVars;
+        getPruneVariables(pruneVars);
+        std::vector<RegisterId> pruneRegs;
+        // Create List for _pruneVars
+        pruneRegs.reserve(pruneVars.size());
+        size_t vertexRegIdx = std::numeric_limits<std::size_t>::max();
+        size_t edgeRegIdx = std::numeric_limits<std::size_t>::max();
+        size_t pathRegIdx = std::numeric_limits<std::size_t>::max();
+        for (auto const v : pruneVars) {
+          if (v == vertexOutVariable()) {
+            vertexRegIdx = pruneRegs.size();
+            pruneRegs.emplace_back(RegisterPlan::MaxRegisterId);
+          } else if (v == edgeOutVariable()) {
+            edgeRegIdx = pruneRegs.size();
+            pruneRegs.emplace_back(RegisterPlan::MaxRegisterId);
+          } else if (v == pathOutVariable()) {
+            pathRegIdx = pruneRegs.size();
+            pruneRegs.emplace_back(RegisterPlan::MaxRegisterId);
+          } else {
+            auto it = varInfo.find(v->id);
+            TRI_ASSERT(it != varInfo.end());
+            pruneRegs.emplace_back(it->second.registerId);
+          }
+        }
 
-    opts->activatePrune(std::move(pruneVars), std::move(pruneRegs),
-                        vertexRegIdx, edgeRegIdx, pathRegIdx,
-                        pruneExpression());
-  }
+        auto expr = opts->createPruneEvaluator(
+            std::move(pruneVars), std::move(pruneRegs), vertexRegIdx,
+            edgeRegIdx, pathRegIdx, pruneExpression());
+        evaluator = std::move(expr);
+      };
+
+  auto checkPostFilterAvailability =
+      [&](std::shared_ptr<aql::PruneExpressionEvaluator>& evaluator) {
+        std::vector<Variable const*> postFilterVars;
+        getPostFilterVariables(postFilterVars);
+        std::vector<RegisterId> postFilterRegs;
+        // Create List for _pruneVars
+        postFilterRegs.reserve(postFilterVars.size());
+        size_t vertexRegIdx = std::numeric_limits<std::size_t>::max();
+        size_t edgeRegIdx = std::numeric_limits<std::size_t>::max();
+        for (auto const v : postFilterVars) {
+          if (v == vertexOutVariable()) {
+            vertexRegIdx = postFilterRegs.size();
+            postFilterRegs.emplace_back(RegisterPlan::MaxRegisterId);
+          } else if (v == edgeOutVariable()) {
+            edgeRegIdx = postFilterRegs.size();
+            postFilterRegs.emplace_back(RegisterPlan::MaxRegisterId);
+          } else if (v == pathOutVariable()) {
+            TRI_ASSERT(false);
+          } else {
+            auto it = varInfo.find(v->id);
+            TRI_ASSERT(it != varInfo.end());
+            postFilterRegs.emplace_back(it->second.registerId);
+          }
+        }
+
+        auto expr = opts->createPostFilterEvaluator(
+            std::move(postFilterVars), std::move(postFilterRegs), vertexRegIdx,
+            edgeRegIdx, postFilterExpression());
+        evaluator = std::move(expr);
+      };
+
   if (postFilterExpression() != nullptr) {
     std::vector<Variable const*> postFilterVars;
     getPostFilterVariables(postFilterVars);
@@ -655,30 +930,10 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
                              edgeRegIdx, postFilterExpression());
   }
 
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-#ifdef USE_ENTERPRISE
-    waitForSatelliteIfRequired(&engine);
-    if (isSmart() && !isDisjoint()) {
-      traverser = std::make_unique<arangodb::traverser::SmartGraphTraverser>(
-          opts, engines());
-    } else {
-#endif
-      traverser = std::make_unique<arangodb::traverser::ClusterTraverser>(
-          opts, engines(), engine.getQuery().vocbase().name());
-#ifdef USE_ENTERPRISE
-    }
-#endif
-  } else {
-    if (isDisjoint()) {
-      opts->setDisjoint();
-    }
-    traverser =
-        std::make_unique<arangodb::traverser::SingleServerTraverser>(opts);
-  }
-
   // Optimized condition
   std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables;
   filterConditionVariables.reserve(_conditionVariables.size());
+
   for (auto const& it : _conditionVariables) {
     if (it != _tmpObjVariable) {
       auto idIt = varInfo.find(it->id);
@@ -692,16 +947,50 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   auto registerInfos = createRegisterInfos(std::move(inputRegisters),
                                            std::move(outputRegisters));
 
-  TRI_ASSERT(traverser != nullptr);
-  auto executorInfos = TraversalExecutorInfos(
-      std::move(traverser), outputRegisterMapping, getStartVertex(),
-      inputRegister, std::move(filterConditionVariables), plan()->getAst());
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+#ifdef USE_ENTERPRISE
+    /*
+     * SmartGraph Traverser
+     */
+    waitForSatelliteIfRequired(&engine);
+    if (isSmart() && !isDisjoint()) {
+      // Note: Using refactored smart graph cluster engine.
+      return createBlock(engine, std::move(filterConditionVariables),
+                         checkPruneAvailability, checkPostFilterAvailability,
+                         outputRegisterMapping, inputRegister, registerInfos,
+                         engines(), true /*isSmart*/);
+
+    } else {
+#endif
+      /*
+       * Default Cluster Traverser
+       */
+      // Note: Using refactored cluster engine.
+      return createBlock(engine, std::move(filterConditionVariables),
+                         checkPruneAvailability, checkPostFilterAvailability,
+                         outputRegisterMapping, inputRegister, registerInfos,
+                         engines());
+
+#ifdef USE_ENTERPRISE
+    }
+#endif
+  }
+
+  if (isDisjoint()) {
+    // TODO [GraphRefactor]: maybe remove
+    opts->setDisjoint();
+  }
+  /*
+   * Default SingleServer Traverser
+   */
 
   // We need to prepare the variable accesses before we ask the index nodes.
   initializeIndexConditions();
 
-  return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
-      &engine, this, std::move(registerInfos), std::move(executorInfos));
+  return createBlock(engine, std::move(filterConditionVariables),
+                     checkPruneAvailability, checkPostFilterAvailability,
+                     outputRegisterMapping, inputRegister, registerInfos,
+                     nullptr);
 }
 
 /// @brief clone ExecutionNode recursively
@@ -812,6 +1101,10 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
                                     it.second->clone(_plan->getAst()));
   }
 
+  if (_condition) {
+    c.setCondition(_condition->clone());
+  }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   c.checkConditionsDefined();
 #endif
@@ -840,12 +1133,14 @@ void TraversalNode::prepareOptions() {
       case TRI_EDGE_IN:
         _options->addLookupInfo(
             _plan, _edgeColls[i]->name(), StaticStrings::ToString,
-            globalEdgeConditionBuilder.getInboundCondition()->clone(ast));
+            globalEdgeConditionBuilder.getInboundCondition()->clone(ast),
+            /*onlyEdgeIndexes*/ false, dir);
         break;
       case TRI_EDGE_OUT:
         _options->addLookupInfo(
             _plan, _edgeColls[i]->name(), StaticStrings::FromString,
-            globalEdgeConditionBuilder.getOutboundCondition()->clone(ast));
+            globalEdgeConditionBuilder.getOutboundCondition()->clone(ast),
+            /*onlyEdgeIndexes*/ false, dir);
         break;
       case TRI_EDGE_ANY:
         TRI_ASSERT(false);
@@ -856,7 +1151,7 @@ void TraversalNode::prepareOptions() {
   TraverserOptions* opts = this->TraversalNode::options();
   TRI_ASSERT(opts != nullptr);
   /*
-   * HACK: DO NOT use other indexes for smart BFS. Otherwise this will produce
+   * HACK: DO NOT use other indexes for smart BFS. Otherwise, this will produce
    * wrong results.
    */
   bool onlyEdgeIndexes = this->isSmart() && opts->isUseBreadthFirst();
@@ -879,13 +1174,13 @@ void TraversalNode::prepareOptions() {
           opts->addDepthLookupInfo(_plan, _edgeColls[i]->name(),
                                    StaticStrings::ToString,
                                    builder->getInboundCondition()->clone(ast),
-                                   depth, onlyEdgeIndexes);
+                                   depth, onlyEdgeIndexes, dir);
           break;
         case TRI_EDGE_OUT:
           opts->addDepthLookupInfo(_plan, _edgeColls[i]->name(),
                                    StaticStrings::FromString,
                                    builder->getOutboundCondition()->clone(ast),
-                                   depth, onlyEdgeIndexes);
+                                   depth, onlyEdgeIndexes, dir);
           break;
         case TRI_EDGE_ANY:
           TRI_ASSERT(false);
@@ -933,7 +1228,8 @@ void TraversalNode::setCondition(
          oneVar->id != _vertexOutVariable->id) &&
         (_edgeOutVariable == nullptr || oneVar->id != _edgeOutVariable->id) &&
         (_pathOutVariable == nullptr || oneVar->id != _pathOutVariable->id) &&
-        (_inVariable == nullptr || oneVar->id != _inVariable->id)) {
+        (_inVariable == nullptr || oneVar->id != _inVariable->id) &&
+        (!_optimizedOutVariables.contains(oneVar->id))) {
       _conditionVariables.emplace(oneVar);
     }
   }
@@ -985,6 +1281,10 @@ void TraversalNode::registerGlobalCondition(bool isConditionOnEdge,
 void TraversalNode::registerPostFilterCondition(AstNode const* condition) {
   // We cannot modify the postFilterExpression after it was build
   TRI_ASSERT(_postFilterExpression == nullptr);
+  TRI_ASSERT(condition != nullptr);
+  TRI_ASSERT(!condition->willUseV8());
+  TRI_ASSERT(!ServerState::instance()->isRunningInCluster() ||
+             condition->canRunOnDBServer(vocbase()->isOneShard()));
   _postFilterConditions.emplace_back(condition);
   Ast::getReferencedVariables(condition, _postFilterVariables);
 }

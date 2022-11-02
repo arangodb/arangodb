@@ -56,39 +56,27 @@ function ahuacatlMiscFunctionsTestSuite () {
 
     testParseIdentifier : function () {
       var actual;
-      var buildQuery = function (nr, input) {
-        switch (nr) {
-          case 0:
-            return `RETURN PARSE_IDENTIFIER(${input})`;
-          case 1:
-            return `RETURN NOOPT(PARSE_IDENTIFIER(${input}))`;
-          default:
-            assertTrue(false, "Undefined state");
-        }
-      };
 
-      for (var i = 0; i < 2; ++i) {
-        actual = getQueryResults(buildQuery(i, "'foo/bar'"));
-        assertEqual([ { collection: 'foo', key: 'bar' } ], actual);
+      actual = getQueryResults("RETURN PARSE_IDENTIFIER('foo/bar')");
+      assertEqual([ { collection: 'foo', key: 'bar' } ], actual);
 
-        actual = getQueryResults(buildQuery(i, "'this-is-a-collection-name/and-this-is-an-id'"));
-        assertEqual([ { collection: 'this-is-a-collection-name', key: 'and-this-is-an-id' } ], actual);
+      actual = getQueryResults("RETURN PARSE_IDENTIFIER('this-is-a-collection-name/and-this-is-an-id')");
+      assertEqual([ { collection: 'this-is-a-collection-name', key: 'and-this-is-an-id' } ], actual);
 
-        actual = getQueryResults(buildQuery(i, "'MY_COLLECTION/MY_DOC'"));
-        assertEqual([ { collection: 'MY_COLLECTION', key: 'MY_DOC' } ], actual);
+      actual = getQueryResults("RETURN PARSE_IDENTIFIER('MY_COLLECTION/MY_DOC')");
+      assertEqual([ { collection: 'MY_COLLECTION', key: 'MY_DOC' } ], actual);
 
-        actual = getQueryResults(buildQuery(i, "'_users/AbC'"));
-        assertEqual([ { collection: '_users', key: 'AbC' } ], actual);
+      actual = getQueryResults("RETURN PARSE_IDENTIFIER('_users/AbC')");
+      assertEqual([ { collection: '_users', key: 'AbC' } ], actual);
 
-        actual = getQueryResults(buildQuery(i, "{ _id: 'foo/bar', value: 'baz' }"));
-        assertEqual([ { collection: 'foo', key: 'bar' } ], actual);
+      actual = getQueryResults("RETURN PARSE_IDENTIFIER({ _id: 'foo/bar', value: 'baz' })");
+      assertEqual([ { collection: 'foo', key: 'bar' } ], actual);
 
-        actual = getQueryResults(buildQuery(i, "{ ignore: true, _id: '_system/VALUE', value: 'baz' }"));
-        assertEqual([ { collection: '_system', key: 'VALUE' } ], actual);
+      actual = getQueryResults("RETURN PARSE_IDENTIFIER({ ignore: true, _id: '_system/VALUE', value: 'baz' })");
+      assertEqual([ { collection: '_system', key: 'VALUE' } ], actual);
 
-        actual = getQueryResults(buildQuery(i ,"{ value: 123, _id: 'Some-Odd-Collection/THIS_IS_THE_KEY' }"));
-        assertEqual([ { collection: 'Some-Odd-Collection', key: 'THIS_IS_THE_KEY' } ], actual);
-      }
+      actual = getQueryResults("RETURN PARSE_IDENTIFIER({ value: 123, _id: 'Some-Odd-Collection/THIS_IS_THE_KEY' })");
+      assertEqual([ { collection: 'Some-Odd-Collection', key: 'THIS_IS_THE_KEY' } ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,34 +92,26 @@ function ahuacatlMiscFunctionsTestSuite () {
       cx.save({ "_key" : "so-this-is-it", "title" : "nada", "value" : 123 });
 
       var expected, actual;
-      var buildQuery = function (nr, input) {
-        switch (nr) {
-          case 0:
-            return `RETURN PARSE_IDENTIFIER(${input})`;
-          case 1:
-            return `RETURN NOOPT(PARSE_IDENTIFIER(${input}))`;
-          default:
-            assertTrue(false, "Undefined state");
-        }
-      };
 
-      for (var i = 0; i < 2; ++i) {
-        expected = [ { collection: cn, key: "foobar" } ];
-        actual = getQueryResults(buildQuery(i, "DOCUMENT(CONCAT(@cn, '/', @key))"), { cn: cn, key: "foobar" });
-        assertEqual(expected, actual);
+      expected = [ { collection: cn, key: "foobar" } ];
+      actual = getQueryResults("RETURN PARSE_IDENTIFIER(DOCUMENT(CONCAT(@cn, '/', @key)))", { cn: cn, key: "foobar" });
+      assertEqual(expected, actual);
 
-        expected = [ { collection: cn, key: "foobar" } ];
-        actual = getQueryResults(buildQuery(i, "DOCUMENT(CONCAT(@cn, '/', 'foobar'))"), { cn: cn });
-        assertEqual(expected, actual);
+      expected = [ { collection: cn, key: "foobar" } ];
+      actual = getQueryResults("RETURN PARSE_IDENTIFIER(DOCUMENT(CONCAT(@cn, '/', @key)))", { cn: cn, key: "foobar" });
+      assertEqual(expected, actual);
 
-        expected = [ { collection: cn, key: "foobar" } ];
-        actual = getQueryResults(buildQuery(i, "DOCUMENT([ @key ])[0]"), { key: "UnitTestsAhuacatlFunctions/foobar" });
-        assertEqual(expected, actual);
+      expected = [ { collection: cn, key: "foobar" } ];
+      actual = getQueryResults("RETURN PARSE_IDENTIFIER(DOCUMENT(CONCAT(@cn, '/', 'foobar')))", { cn: cn });
+      assertEqual(expected, actual);
 
-        expected = [ { collection: cn, key: "so-this-is-it" } ];
-        actual = getQueryResults(buildQuery(i, "DOCUMENT([ 'UnitTestsAhuacatlFunctions/so-this-is-it' ])[0]"));
-        assertEqual(expected, actual);
-      }
+      expected = [ { collection: cn, key: "foobar" } ];
+      actual = getQueryResults("RETURN PARSE_IDENTIFIER(DOCUMENT([ @key ])[0])", { key: "UnitTestsAhuacatlFunctions/foobar" });
+      assertEqual(expected, actual);
+
+      expected = [ { collection: cn, key: "so-this-is-it" } ];
+      actual = getQueryResults("RETURN PARSE_IDENTIFIER(DOCUMENT([ 'UnitTestsAhuacatlFunctions/so-this-is-it' ])[0])");
+      assertEqual(expected, actual);
 
       internal.db._drop(cn);
     },
@@ -140,77 +120,50 @@ function ahuacatlMiscFunctionsTestSuite () {
 /// @brief test parse identifier function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testParseIdentifierInvalid : function () {
-      var buildQuery = function (nr, input) {
-        switch (nr) {
-          case 0:
-            return `RETURN PARSE_IDENTIFIER(${input})`;
-          case 1:
-            return `RETURN NOOPT(PARSE_IDENTIFIER(${input}))`;
-          default:
-            assertTrue(false, "Undefined state");
-        }
-      };
-
-      for (var i = 0; i < 2; ++i) {
-        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, ""));
-        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "'foo', 'bar'"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "null"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "false"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "3"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "\"foo\""));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "'foo bar'"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "'foo/bar/baz'"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ ]"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "{ }"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "{ foo: 'bar' }"));
-      }
-    },
+testParseIdentifierInvalid : function () {
+  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN PARSE_IDENTIFIER()"); 
+  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN PARSE_IDENTIFIER('foo', 'bar')");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER(null)"); 
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER(false)"); 
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER(3)"); 
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER(\"foo\")"); 
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER('foo bar')"); 
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER('foo/bar/baz')"); 
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER([ ])"); 
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER({ })"); 
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER({ foo: 'bar' })"); 
+},
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test is_same_collection function
 ////////////////////////////////////////////////////////////////////////////////
 
     testIsSameCollection : function () {
-      var buildQuery = function (nr, collection, doc) {
-        var q = "IS_SAME_COLLECTION(" + JSON.stringify(collection) + ", " + JSON.stringify(doc) + ")";
-        switch (nr) {
-          case 0:
-            return "RETURN " + q;
-         case 1:
-            return "RETURN NOOPT(" + q + ")";
-          default:
-            assertTrue(false, "Undefined state");
-        }
-      };
+      assertEqual([ true ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', 'foo/bar')"));
+      assertEqual([ true ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', 'foo/bark')"));
+      assertEqual([ false ], getQueryResults("RETURN IS_SAME_COLLECTION('FOO', 'foo/bark')"));
+      assertEqual([ false ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', 'food/barz')"));
+      assertEqual([ false ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', 'fooe/barz')"));
+      assertEqual([ false ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', ' foo/barz')"));
 
-     for (var i = 0; i < 2; ++i) {
-        assertEqual([ true ], getQueryResults(buildQuery(i, "foo", "foo/bar")));
-        assertEqual([ true ], getQueryResults(buildQuery(i, "foo", "foo/bark")));
-        assertEqual([ false ], getQueryResults(buildQuery(i, "FOO", "foo/bark")));
-        assertEqual([ false ], getQueryResults(buildQuery(i, "foo", "food/barz")));
-        assertEqual([ false ], getQueryResults(buildQuery(i, "foo", "fooe/barz")));
-        assertEqual([ false ], getQueryResults(buildQuery(i, "foo", " foo/barz")));
+      assertEqual([ true ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', { _id: 'foo/bark' })"));
+      assertEqual([ true ], getQueryResults("RETURN IS_SAME_COLLECTION('foobar', { _id: 'foobar/bark' })"));
+      assertEqual([ false ], getQueryResults("RETURN IS_SAME_COLLECTION('FOOBAR', { _id: 'foobar/bark' })"));
+      assertEqual([ false ], getQueryResults("RETURN IS_SAME_COLLECTION('foobar2', { _id: 'foobar/bark' })"));
+      assertEqual([ false ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', { _id: 'food/bark' })"));
+      assertEqual([ false ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', { _id: 'f/bark' })"));
+      assertEqual([ false ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', { _id: 'f/bark' })"));
+      assertEqual([ false ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', { _id: 'foobar/bark' })"));
+      assertEqual([ null ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', { id: 'foobar/bark' })"));
+      assertEqual([ null ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', { _key: 'foo/bark' })"));
+      assertEqual([ null ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', { _key: 'foobar/bark' })"));
 
-        assertEqual([ true ], getQueryResults(buildQuery(i, "foo", { _id: "foo/bark" })));
-        assertEqual([ true ], getQueryResults(buildQuery(i, "foobar", { _id: "foobar/bark" })));
-        assertEqual([ false ], getQueryResults(buildQuery(i, "FOOBAR", { _id: "foobar/bark" })));
-        assertEqual([ false ], getQueryResults(buildQuery(i, "foobar2", { _id: "foobar/bark" })));
-        assertEqual([ false ], getQueryResults(buildQuery(i, "foo", { _id: "food/bark" })));
-        assertEqual([ false ], getQueryResults(buildQuery(i, "foo", { _id: "f/bark" })));
-        assertEqual([ false ], getQueryResults(buildQuery(i, "foo", { _id: "f/bark" })));
-        assertEqual([ false ], getQueryResults(buildQuery(i, "foo", { _id: "foobar/bark" })));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "foo", { id: "foobar/bark" })));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "foo", { _key: "foo/bark" })));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "foo", { _key: "foobar/bark" })));
-
-        assertEqual([ null ], getQueryResults(buildQuery(i, "foo", null)));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "foo", true)));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "foo", false)));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "foo", 3.5)));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "foo", [ ])));
-        assertEqual([ null ], getQueryResults(buildQuery(i, "foo", [ "foo/bar" ])));
-      }
+      assertEqual([ null ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', null)"));
+      assertEqual([ null ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', true)"));
+      assertEqual([ null ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', false)"));
+      assertEqual([ null ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', 3.5)"));
+      assertEqual([ null ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', [ ])"));
+      assertEqual([ null ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', [ 'foo/bar' ])"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -226,30 +179,18 @@ function ahuacatlMiscFunctionsTestSuite () {
       cx.save({ "_key" : "so-this-is-it", "title" : "nada", "value" : 123 });
 
       var actual;
-      var buildQuery = function (nr, input) {
-        switch (nr) {
-          case 0:
-            return `RETURN IS_SAME_COLLECTION(${cn}, ${input})`;
-          case 1:
-            return `RETURN NOOPT(IS_SAME_COLLECTION(${cn}, ${input}))`;
-          default:
-            assertTrue(false, "Undefined state");
-        }
-      };
 
-      for (var i = 0; i < 2; ++i) {
-        actual = getQueryResults(buildQuery(i, "DOCUMENT(CONCAT(@cn, '/', @key))"), { cn: cn, key: "foobar" });
-        assertTrue(actual[0]);
+      actual = getQueryResults(`RETURN IS_SAME_COLLECTION(${cn}, DOCUMENT(CONCAT(@cn, '/', @key)))`, { cn: cn, key: "foobar" });
+      assertTrue(actual[0]);
 
-        actual = getQueryResults(buildQuery(i, "DOCUMENT(CONCAT(@cn, '/', 'foobar'))"), { cn: cn });
-        assertTrue(actual[0]);
+      actual = getQueryResults(`RETURN IS_SAME_COLLECTION(${cn}, DOCUMENT(CONCAT(@cn, '/', 'foobar')))`, { cn: cn });
+      assertTrue(actual[0]);
 
-        actual = getQueryResults(buildQuery(i, "DOCUMENT([ @key ])[0]"), { key: "UnitTestsAhuacatlFunctions/foobar" });
-        assertTrue(actual[0]);
+      actual = getQueryResults(`RETURN IS_SAME_COLLECTION(${cn}, DOCUMENT([ @key ])[0])`, { key: "UnitTestsAhuacatlFunctions/foobar" });
+      assertTrue(actual[0]);
 
-        actual = getQueryResults(buildQuery(i, "DOCUMENT([ 'UnitTestsAhuacatlFunctions/so-this-is-it' ])[0]"));
-        assertTrue(actual[0]);
-      }
+      actual = getQueryResults(`RETURN IS_SAME_COLLECTION(${cn}, DOCUMENT([ 'UnitTestsAhuacatlFunctions/so-this-is-it' ])[0])`);
+      assertTrue(actual[0]);
 
       internal.db._drop(cn);
     },
@@ -319,64 +260,50 @@ function ahuacatlMiscFunctionsTestSuite () {
 
       var expected, actual;
 
-      var buildQuery = function (nr, input) {
-        switch (nr) {
-          case 0:
-            return `RETURN DOCUMENT(${input})`;
-          case 1:
-            return `RETURN NOOPT(DOCUMENT(${input}))`;
-          default:
-            assertTrue(false, "Undefined state");
-        }
-      };
+      // test with two parameters
+      expected = [ { title: "123", value : 456 } ];
+      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d1._id + "\")");
+      assertEqual(expected, actual);
 
-      for (var i = 0; i < 2; ++i) {
-        // test with two parameters
-        expected = [ { title: "123", value : 456 } ];
-        actual = getQueryResults(buildQuery(i, cn + ", \"" + d1._id + "\""));
-        assertEqual(expected, actual);
+      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d1._key + "\")");
+      assertEqual(expected, actual);
 
-        actual = getQueryResults(buildQuery(i, cn + ", \"" + d1._key + "\""));
-        assertEqual(expected, actual);
+      expected = [ { title: "nada", value : 123 } ];
+      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d2._id + "\")");
+      assertEqual(expected, actual);
 
-        expected = [ { title: "nada", value : 123 } ];
-        actual = getQueryResults(buildQuery(i, cn + ", \"" + d2._id + "\""));
-        assertEqual(expected, actual);
+      actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d2._key + "\")");
+      assertEqual(expected, actual);
 
-        actual = getQueryResults(buildQuery(i, cn + ", \"" + d2._key + "\""));
-        assertEqual(expected, actual);
+      // test with one parameter
+      expected = [ { title: "nada", value : 123 } ];
+      actual = getQueryResults("RETURN DOCUMENT(\"" + d2._id + "\")");
+      assertEqual(expected, actual);
 
-        // test with one parameter
-        expected = [ { title: "nada", value : 123 } ];
-        actual = getQueryResults(buildQuery(i, "\"" + d2._id + "\""));
-        assertEqual(expected, actual);
+      // test with function result parameter
+      actual = getQueryResults("RETURN DOCUMENT(CONCAT(\"foo\", \"bar\"))");
+      assertEqual([ null ], actual);
+      actual = getQueryResults("RETURN DOCUMENT(CONCAT(\"" + cn + "\", \"bart\"))");
+      assertEqual([ null ], actual);
 
-        // test with function result parameter
-        actual = getQueryResults(buildQuery(i, "CONCAT(\"foo\", \"bar\")"));
-        assertEqual([ null ], actual);
-        actual = getQueryResults(buildQuery(i, "CONCAT(\"" + cn + "\", \"bart\")"));
-        assertEqual([ null ], actual);
+      cx.save({ _key: "foo", value: "bar" });
+      expected = [ { value: "bar" } ];
+      actual = getQueryResults("RETURN DOCUMENT(CONCAT(\"" + cn + "\", \"foo\"))");
+      assertEqual([ null ], actual);
+      actual = getQueryResults("RETURN DOCUMENT(CONCAT(@c, \"/\", @k))", { c: cn, k: "foo" });
+      assertEqual(expected, actual);
+      actual = getQueryResults("RETURN DOCUMENT(CONCAT(\"" + cn + "\", \"/\", @k))", { k: "foo" });
+      assertEqual(expected, actual);
 
-        cx.save({ _key: "foo", value: "bar" });
-        expected = [ { value: "bar" } ];
-        actual = getQueryResults(buildQuery(i, "CONCAT(\"" + cn + "\", \"foo\")"));
-        assertEqual([ null ], actual);
-        actual = getQueryResults(buildQuery(i, "CONCAT(@c, \"/\", @k)"), { c: cn, k: "foo" });
-        assertEqual(expected, actual);
-        actual = getQueryResults(buildQuery(i, "CONCAT(\"" + cn + "\", \"/\", @k)"), { k: "foo" });
-        assertEqual(expected, actual);
+      // test with bind parameter
+      expected = [ { title: "nada", value : 123 } ];
+      actual = getQueryResults("RETURN DOCUMENT(@id)", { id: d2._id });
+      assertEqual(expected, actual);
 
-        // test with bind parameter
-        expected = [ { title: "nada", value : 123 } ];
-        actual = getQueryResults(buildQuery(i, "@id"), { id: d2._id });
-        assertEqual(expected, actual);
-
-        // test dynamic parameter
-        expected = [ { title: "nada", value : 123 }, { title: "123", value: 456 }, { value: "bar" } ];
-        actual = getQueryResults("FOR d IN @@cn SORT d.value " + buildQuery(i, "d._id"), { "@cn" : cn });
-        assertEqual(expected, actual);
-        cx.remove("foo");
-      }
+      // test dynamic parameter
+      expected = [ { title: "nada", value : 123 }, { title: "123", value: 456 }, { value: "bar" } ];
+      actual = getQueryResults("FOR d IN @@cn SORT d.value RETURN DOCUMENT(d._id)", { "@cn" : cn });
+      assertEqual(expected, actual);
 
       internal.db._drop(cn);
     },
@@ -566,8 +493,8 @@ function ahuacatlMiscFunctionsTestSuite () {
       }
 
        // there is no current user in the non-request context
-       assertEqual([ expected ], getQueryResults("RETURN NOOPT(CURRENT_USER())"));
-       assertEqual([ expected ], getQueryResults("RETURN NOOPT(V8(CURRENT_USER()))"));
+       var actual = getQueryResults("RETURN CURRENT_USER()");
+       assertEqual([ expected ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -576,9 +503,6 @@ function ahuacatlMiscFunctionsTestSuite () {
 
     testCurrentDatabase : function () {
       var actual = getQueryResults("RETURN CURRENT_DATABASE()");
-      assertEqual([ "_system" ], actual);
-
-      actual = getQueryResults("RETURN NOOPT(CURRENT_DATABASE())");
       assertEqual([ "_system" ], actual);
     },
 
@@ -1099,7 +1023,7 @@ function ahuacatlCollectionCountTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCollections : function () {
-      assertEqual(db._collections().map((col) => {return {name:col.name(),_id:col._id};}), getQueryResults('RETURN NOOPT(COLLECTIONS())')[0]);
+      assertEqual(db._collections().map((col) => {return {name:col.name(),_id:col._id};}), getQueryResults('RETURN COLLECTIONS()')[0]);
     }
   };
 }

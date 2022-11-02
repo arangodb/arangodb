@@ -89,6 +89,8 @@ function optimizerRuleTestSuite () {
         "FOR doc IN " + cn + " FOR s IN OUTBOUND SHORTEST_PATH doc._id TO '" + cn + "/2' " + en + " RETURN s",
         "FOR s IN OUTBOUND K_SHORTEST_PATHS '" + cn + "/1' TO '" + cn + "/2' " + en + " RETURN s",
         "FOR doc IN " + cn + " FOR s IN OUTBOUND K_SHORTEST_PATHS doc._id TO '" + cn + "/2' " + en + " RETURN s",
+        "FOR s IN OUTBOUND ALL_SHORTEST_PATHS '" + cn + "/1' TO '" + cn + "/2' " + en + " RETURN s",
+        "FOR doc IN " + cn + " FOR s IN OUTBOUND ALL_SHORTEST_PATHS doc._id TO '" + cn + "/2' " + en + " RETURN s",
       ];
 
       queries.forEach(function(query) {
@@ -124,7 +126,10 @@ function optimizerRuleTestSuite () {
       }
 
       queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query,);
+        // the one rule is singled out here because it leads to a different execution
+        // plan with more hops...
+        const opts = { optimizer: { rules: ["-move-filters-into-enumerate"] } };
+        let result = AQL_EXPLAIN(query, null, opts);
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },

@@ -36,8 +36,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SharedQueryState::SharedQueryState(
-    application_features::ApplicationServer& server)
+SharedQueryState::SharedQueryState(ArangodServer& server)
     : _server(server),
       _wakeupCb(nullptr),
       _numWakeups(0),

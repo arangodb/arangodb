@@ -27,24 +27,22 @@
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 namespace arangodb {
 class CollectionNameResolver;
-
-namespace basics {
-class StringBuffer;
-}
+class LogicalCollection;
+struct OperationOptions;
 
 namespace velocypack {
 class Builder;
-}
+class Slice;
+}  // namespace velocypack
 
 namespace transaction {
+struct BatchOptions;
 class Context;
 class Methods;
 
@@ -52,11 +50,13 @@ namespace helpers {
 /// @brief extract the _key attribute from a slice
 std::string_view extractKeyPart(VPackSlice);
 
-/// @brief extract the _key attribute from a string_view
+/** @brief Given a string, returns the substring after the first '/' or
+ *          the whole string if it contains no '/'.
+ */
 std::string_view extractKeyPart(std::string_view);
 
-std::string extractIdString(CollectionNameResolver const*, VPackSlice,
-                            VPackSlice const&);
+std::string extractIdString(CollectionNameResolver const* resolver,
+                            VPackSlice slice, VPackSlice base);
 
 /// @brief quick access to the _key attribute in a database document
 /// the document must have at least two attributes, and _key is supposed to
@@ -101,27 +101,39 @@ OperationResult buildCountResult(
 
 /// @brief creates an id string from a custom _id value and the _key string
 std::string makeIdFromCustom(CollectionNameResolver const* resolver,
-                             VPackSlice const& idPart,
-                             VPackSlice const& keyPart);
+                             VPackSlice idPart, VPackSlice keyPart);
 
 std::string makeIdFromParts(CollectionNameResolver const* resolver,
-                            DataSourceId const& cid, VPackSlice const& keyPart);
-};  // namespace helpers
+                            DataSourceId const& cid, VPackSlice keyPart);
 
-/// @brief basics::StringBuffer leaser
-/// @deprecated rather use StringLeaser for a shared std::string
-class StringBufferLeaser {
- public:
-  explicit StringBufferLeaser(Methods*);
-  ~StringBufferLeaser();
-  arangodb::basics::StringBuffer* stringBuffer() const { return _stringBuffer; }
-  arangodb::basics::StringBuffer* operator->() const { return _stringBuffer; }
-  arangodb::basics::StringBuffer* get() const { return _stringBuffer; }
+/// @brief new object for insert, value must have _key set correctly.
+Result newObjectForInsert(Methods& trx, LogicalCollection& collection,
+                          velocypack::Slice value, RevisionId& revisionId,
+                          velocypack::Builder& builder,
+                          OperationOptions const& options,
+                          transaction::BatchOptions& batchOptions);
 
- private:
-  transaction::Context* _transactionContext;
-  arangodb::basics::StringBuffer* _stringBuffer;
-};
+/// @brief merge two objects for update
+Result mergeObjectsForUpdate(Methods& trx, LogicalCollection& collection,
+                             velocypack::Slice oldValue,
+                             velocypack::Slice newValue, bool isNoOpUpdate,
+                             RevisionId previousRevisionId,
+                             RevisionId& revisionId,
+                             velocypack::Builder& builder,
+                             OperationOptions const& options,
+                             transaction::BatchOptions& batchOptions);
+
+/// @brief new object for replace
+Result newObjectForReplace(Methods& trx, LogicalCollection& collection,
+                           velocypack::Slice oldValue,
+                           velocypack::Slice newValue, RevisionId& revisionId,
+                           velocypack::Builder& builder,
+                           OperationOptions const& options,
+                           transaction::BatchOptions& batchOptions);
+
+bool isValidEdgeAttribute(velocypack::Slice slice, bool allowExtendedNames);
+
+}  // namespace helpers
 
 /// @brief std::string leaser
 class StringLeaser {
@@ -131,6 +143,8 @@ class StringLeaser {
   ~StringLeaser();
   std::string* string() const { return _string; }
   std::string* operator->() const { return _string; }
+  std::string& operator*() { return *_string; }
+  std::string const& operator*() const { return *_string; }
   std::string* get() const { return _string; }
 
  private:
@@ -140,12 +154,24 @@ class StringLeaser {
 
 class BuilderLeaser {
  public:
-  explicit BuilderLeaser(transaction::Methods*);
   explicit BuilderLeaser(transaction::Context*);
+  explicit BuilderLeaser(transaction::Methods*);
   ~BuilderLeaser();
-  inline arangodb::velocypack::Builder* builder() const { return _builder; }
-  inline arangodb::velocypack::Builder* operator->() const { return _builder; }
-  inline arangodb::velocypack::Builder* get() const { return _builder; }
+  inline arangodb::velocypack::Builder* builder() const noexcept {
+    return _builder;
+  }
+  inline arangodb::velocypack::Builder* operator->() const noexcept {
+    return _builder;
+  }
+  inline arangodb::velocypack::Builder& operator*() noexcept {
+    return *_builder;
+  }
+  inline arangodb::velocypack::Builder& operator*() const noexcept {
+    return *_builder;
+  }
+  inline arangodb::velocypack::Builder* get() const noexcept {
+    return _builder;
+  }
   inline arangodb::velocypack::Builder* steal() {
     arangodb::velocypack::Builder* res = _builder;
     _builder = nullptr;

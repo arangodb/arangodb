@@ -35,8 +35,6 @@
 #include "Basics/system-functions.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "FeaturePhases/ServerFeaturePhase.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -50,7 +48,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
 #include <thread>
@@ -156,11 +153,12 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
   }
 }
 
-class TtlThread final : public Thread {
+class TtlThread final : public ServerThread<ArangodServer> {
  public:
-  explicit TtlThread(application_features::ApplicationServer& server,
-                     TtlFeature& ttlFeature)
-      : Thread(server, "TTL"), _ttlFeature(ttlFeature), _working(false) {}
+  explicit TtlThread(ArangodServer& server, TtlFeature& ttlFeature)
+      : ServerThread<ArangodServer>(server, "TTL"),
+        _ttlFeature(ttlFeature),
+        _working(false) {}
 
   ~TtlThread() { shutdown(); }
 
@@ -265,7 +263,7 @@ class TtlThread final : public Thread {
     uint64_t limitLeft = properties.maxTotalRemoves;
 
     // iterate over all databases
-    auto& db = _server.getFeature<DatabaseFeature>();
+    auto& db = server().getFeature<DatabaseFeature>();
     for (auto const& name : db.getDatabaseNames()) {
       if (!isActive()) {
         // feature deactivated (for example, due to running on current follower
@@ -428,8 +426,8 @@ class TtlThread final : public Thread {
 
 }  // namespace arangodb
 
-TtlFeature::TtlFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Ttl"), _allowRunning(true), _active(true) {
+TtlFeature::TtlFeature(Server& server)
+    : ArangodFeature{server, *this}, _allowRunning(true), _active(true) {
   startsAfter<application_features::DatabaseFeaturePhase>();
   startsAfter<application_features::ServerFeaturePhase>();
 }
@@ -448,11 +446,14 @@ void TtlFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "ttl.max-total-removes",
       "maximum number of documents to remove per invocation of the TTL thread",
-      new UInt64Parameter(&_properties.maxTotalRemoves));
+      new UInt64Parameter(&_properties.maxTotalRemoves, /*base*/ 1,
+                          /*minValue*/ 1));
 
-  options->addOption("ttl.max-collection-removes",
-                     "maximum number of documents to remove per collection",
-                     new UInt64Parameter(&_properties.maxCollectionRemoves));
+  options->addOption(
+      "ttl.max-collection-removes",
+      "maximum number of documents to remove per collection",
+      new UInt64Parameter(&_properties.maxCollectionRemoves, /*base*/ 1,
+                          /*minValue*/ 1));
 
   // the following option was obsoleted in 3.8
   options->addObsoleteOption(
@@ -461,19 +462,16 @@ void TtlFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void TtlFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_properties.maxTotalRemoves == 0) {
-    LOG_TOPIC("1e299", FATAL, arangodb::Logger::STARTUP)
-        << "invalid value for '--ttl.max-total-removes'.";
-    FATAL_ERROR_EXIT();
-  }
-
   if (_properties.maxCollectionRemoves == 0) {
     LOG_TOPIC("2ab82", FATAL, arangodb::Logger::STARTUP)
         << "invalid value for '--ttl.max-collection-removes'.";
     FATAL_ERROR_EXIT();
   }
 
-  if (_properties.frequency < TtlProperties::minFrequency) {
+  MUTEX_LOCKER(locker, _propertiesMutex);
+
+  if (_properties.frequency > 0 &&
+      _properties.frequency < TtlProperties::minFrequency) {
     LOG_TOPIC("ea696", FATAL, arangodb::Logger::STARTUP)
         << "too low value for '--ttl.frequency'.";
     FATAL_ERROR_EXIT();
@@ -498,9 +496,13 @@ void TtlFeature::start() {
     return;
   }
 
-  // a frequency of 0 means the thread is not started at all
-  if (_properties.frequency == 0) {
-    return;
+  {
+    MUTEX_LOCKER(locker, _propertiesMutex);
+
+    // a frequency of 0 means the thread is not started at all
+    if (_properties.frequency == 0) {
+      return;
+    }
   }
 
   MUTEX_LOCKER(locker, _threadMutex);
@@ -510,7 +512,7 @@ void TtlFeature::start() {
     return;
   }
 
-  _thread.reset(new TtlThread(server(), *this));
+  _thread = std::make_unique<TtlThread>(server(), *this);
 
   if (!_thread->start()) {
     LOG_TOPIC("33c33", FATAL, Logger::TTL)

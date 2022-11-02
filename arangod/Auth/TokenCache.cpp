@@ -41,7 +41,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -91,12 +90,19 @@ std::string auth::TokenCache::jwtSecret() const {
 // should only lock if required, otherwise we will serialize all
 // requests whether we need to or not
 auth::TokenCache::Entry auth::TokenCache::checkAuthentication(
-    AuthenticationMethod authType, std::string const& secret) {
+    AuthenticationMethod authType, ServerState::Mode mode,
+    std::string const& secret) {
   switch (authType) {
     case AuthenticationMethod::BASIC:
+      if (mode == ServerState::Mode::STARTUP) {
+        // during the startup phase, we have no access to the underlying
+        // database data, so we cannot validate the credentials.
+        return auth::TokenCache::Entry::Unauthenticated();
+      }
       return checkAuthenticationBasic(secret);
 
     case AuthenticationMethod::JWT:
+      // JWTs work fine even during the startup phase
       return checkAuthenticationJWT(secret);
 
     default:

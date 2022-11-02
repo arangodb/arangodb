@@ -39,35 +39,33 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
-#include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
+#include "Replication2/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Utilities/NameValidator.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
-#include "Utilities/NameValidator.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -76,7 +74,7 @@ using namespace arangodb::options;
 
 namespace {
 arangodb::CreateDatabaseInfo createExpressionVocbaseInfo(
-    arangodb::application_features::ApplicationServer& server) {
+    arangodb::ArangodServer& server) {
   arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
   auto rv = info.load(
       "Z",
@@ -108,8 +106,8 @@ TRI_vocbase_t* DatabaseFeature::CURRENT_VOCBASE = nullptr;
 /// @brief database manager thread main loop
 /// the purpose of this thread is to physically remove directories of databases
 /// that have been dropped
-DatabaseManagerThread::DatabaseManagerThread(ApplicationServer& server)
-    : Thread(server, "DatabaseManager") {}
+DatabaseManagerThread::DatabaseManagerThread(Server& server)
+    : ServerThread<ArangodServer>(server, "DatabaseManager") {}
 
 DatabaseManagerThread::~DatabaseManagerThread() { shutdown(); }
 
@@ -295,16 +293,164 @@ void DatabaseManagerThread::run() {
   }
 }
 
-DatabaseFeature::DatabaseFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Database"),
+struct HeartbeatTimescale {
+  static arangodb::metrics::LogScale<double> scale() {
+    return {10.f, 0.f, 1000000.f, 8};
+  }
+};
+
+DECLARE_HISTOGRAM(arangodb_ioheartbeat_duration, HeartbeatTimescale,
+                  "Time to execute the io heartbeat once [us]");
+DECLARE_COUNTER(arangodb_ioheartbeat_failures_total,
+                "Total number of failures in IO heartbeat");
+DECLARE_COUNTER(arangodb_ioheartbeat_delays_total,
+                "Total number of delays in IO heartbeat");
+
+/// IO check thread main loop
+/// The purpose of this thread is to try to perform a simple IO write
+/// operation on the database volume regularly. We need visibility in
+/// production if IO is slow or not possible at all.
+IOHeartbeatThread::IOHeartbeatThread(Server& server,
+                                     metrics::MetricsFeature& metricsFeature)
+    : ServerThread<ArangodServer>(server, "IOHeartbeat"),
+      _exeTimeHistogram(metricsFeature.add(arangodb_ioheartbeat_duration{})),
+      _failures(metricsFeature.add(arangodb_ioheartbeat_failures_total{})),
+      _delays(metricsFeature.add(arangodb_ioheartbeat_delays_total{})) {}
+
+IOHeartbeatThread::~IOHeartbeatThread() { shutdown(); }
+
+void IOHeartbeatThread::run() {
+  auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
+  std::string testFilePath = FileUtils::buildFilename(
+      databasePathFeature.directory(), "TestFileIOHeartbeat");
+  std::string testFileContent = "This is just an I/O test.\n";
+
+  LOG_TOPIC("66665", DEBUG, Logger::ENGINES) << "IOHeartbeatThread: running...";
+
+  while (true) {
+    try {  // protect thread against any exceptions
+      if (isStopping()) {
+        // done
+        break;
+      }
+
+      LOG_TOPIC("66659", DEBUG, Logger::ENGINES)
+          << "IOHeartbeat: testing to write/read/remove " << testFilePath;
+      // We simply write a file and sync it to disk in the database
+      // directory and then read it and then delete it again:
+      auto start1 = std::chrono::steady_clock::now();
+      bool trouble = false;
+      try {
+        FileUtils::spit(testFilePath, testFileContent, true);
+      } catch (std::exception const& exc) {
+        ++_failures;
+        LOG_TOPIC("66663", INFO, Logger::ENGINES)
+            << "IOHeartbeat: exception when writing test file: " << exc.what();
+        trouble = true;
+      }
+      auto finish = std::chrono::steady_clock::now();
+      std::chrono::duration<double> dur = finish - start1;
+      bool delayed = dur > std::chrono::seconds(1);
+      if (trouble || delayed) {
+        if (delayed) {
+          ++_delays;
+        }
+        LOG_TOPIC("66662", INFO, Logger::ENGINES)
+            << "IOHeartbeat: trying to write test file took "
+            << std::chrono::duration_cast<std::chrono::microseconds>(dur)
+                   .count()
+            << " microseconds.";
+      }
+
+      // Read the file if we can reasonably assume it is there:
+      if (!trouble) {
+        auto start = std::chrono::steady_clock::now();
+        try {
+          std::string content = FileUtils::slurp(testFilePath);
+          if (content != testFileContent) {
+            LOG_TOPIC("66660", INFO, Logger::ENGINES)
+                << "IOHeartbeat: read content of test file was not as "
+                   "expected, found:'"
+                << content << "', expected: '" << testFileContent << "'";
+            trouble = true;
+            ++_failures;
+          }
+        } catch (std::exception const& exc) {
+          ++_failures;
+          LOG_TOPIC("66661", INFO, Logger::ENGINES)
+              << "IOHeartbeat: exception when reading test file: "
+              << exc.what();
+          trouble = true;
+        }
+        auto finish = std::chrono::steady_clock::now();
+        std::chrono::duration<double> dur = finish - start;
+        bool delayed = dur > std::chrono::seconds(1);
+        if (trouble || delayed) {
+          if (delayed) {
+            ++_delays;
+          }
+          LOG_TOPIC("66669", INFO, Logger::ENGINES)
+              << "IOHeartbeat: trying to read test file took "
+              << std::chrono::duration_cast<std::chrono::microseconds>(dur)
+                     .count()
+              << " microseconds.";
+        }
+
+        // And remove it again:
+        start = std::chrono::steady_clock::now();
+        ErrorCode err = FileUtils::remove(testFilePath);
+        if (err != TRI_ERROR_NO_ERROR) {
+          ++_failures;
+          LOG_TOPIC("66670", INFO, Logger::ENGINES)
+              << "IOHeartbeat: error when removing test file: " << err;
+          trouble = true;
+        }
+        finish = std::chrono::steady_clock::now();
+        dur = finish - start;
+        delayed = dur > std::chrono::seconds(1);
+        if (trouble || delayed) {
+          if (delayed) {
+            ++_delays;
+          }
+          LOG_TOPIC("66671", INFO, Logger::ENGINES)
+              << "IOHeartbeat: trying to remove test file took "
+              << std::chrono::duration_cast<std::chrono::microseconds>(dur)
+                     .count()
+              << " microseconds.";
+        }
+      }
+
+      // Total duration and update histogram:
+      dur = finish - start1;
+      _exeTimeHistogram.count(static_cast<double>(
+          std::chrono::duration_cast<std::chrono::microseconds>(dur).count()));
+
+      std::unique_lock<std::mutex> guard(_mutex);
+      if (trouble) {
+        // In case of trouble, we retry more quickly, since we want to
+        // have a record when the trouble has actually stopped!
+        _cv.wait_for(guard, checkIntervalTrouble);
+      } else {
+        _cv.wait_for(guard, checkIntervalNormal);
+      }
+    } catch (...) {
+    }
+    // next iteration
+  }
+  LOG_TOPIC("66664", DEBUG, Logger::ENGINES) << "IOHeartbeatThread: stopped.";
+}
+
+DatabaseFeature::DatabaseFeature(Server& server)
+    : ArangodFeature{server, *this},
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
       _isInitiallyEmpty(false),
       _checkVersion(false),
       _upgrade(false),
+      _defaultReplicationVersion(replication::Version::ONE),
       _extendedNamesForDatabases(false),
+      _performIOHeartbeat(true),
       _databasesLists(new DatabasesLists()),
       _started(false) {
   setOptional(false);
@@ -326,12 +472,23 @@ DatabaseFeature::~DatabaseFeature() {
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "database options");
 
+  options
+      ->addOption("--database.default-replication-version",
+                  "default replication version, can be overwritten "
+                  "when creating a new database, possible values: 1, 2",
+                  new replication::ReplicationVersionParameter(
+                      &_defaultReplicationVersion),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::Experimental))
+      .setIntroducedIn(31100);
+
   options->addOption(
       "--database.wait-for-sync",
       "default wait-for-sync behavior, can be overwritten "
       "when creating a collection",
       new BooleanParameter(&_defaultWaitForSync),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--database.force-sync-properties",
@@ -339,27 +496,36 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "will use waitForSync value of collection when "
       "turned off",
       new BooleanParameter(&_forceSyncProperties),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--database.ignore-datafile-errors",
       "load collections even if datafiles may contain errors",
       new BooleanParameter(&_ignoreDatafileErrors),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
       ->addOption("--database.extended-names-databases",
-                  "allow extended characters in database names",
+                  "Allow most UTF-8 characters in database names. Once in use, "
+                  "this option cannot be turned off again.",
                   new BooleanParameter(&_extendedNamesForDatabases),
                   arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Hidden,
+                      arangodb::options::Flags::Uncommon,
                       arangodb::options::Flags::Experimental))
       .setIntroducedIn(30900);
+
+  options
+      ->addOption("--database.io-heartbeat",
+                  "perform IO heartbeat to test underlying volume",
+                  new BooleanParameter(&_performIOHeartbeat),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(30807);
 
   // the following option was obsoleted in 3.9
   options->addObsoleteOption(
       "--database.old-system-collections",
-      "create and use deprecated system collection (_modules, _fishbowl)",
+      "Create and use deprecated system collection (_modules, _fishbowl).",
       false);
 
   // the following option was obsoleted in 3.8
@@ -404,8 +570,7 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 }
 
-void DatabaseFeature::initCalculationVocbase(
-    application_features::ApplicationServer& server) {
+void DatabaseFeature::initCalculationVocbase(ArangodServer& server) {
   calculationVocbase = std::make_unique<TRI_vocbase_t>(
       TRI_VOCBASE_TYPE_NORMAL, createExpressionVocbaseInfo(server));
 }
@@ -413,7 +578,8 @@ void DatabaseFeature::initCalculationVocbase(
 void DatabaseFeature::start() {
   if (_extendedNamesForDatabases) {
     LOG_TOPIC("2c0c6", WARN, arangodb::Logger::FIXME)
-        << "Extended names for databases are an experimental feature which can "
+        << "Extended names for databases are an experimental feature which "
+           "can "
         << "cause incompatibility issues with not-yet-prepared drivers and "
            "applications - do not use in production!";
   }
@@ -450,6 +616,20 @@ void DatabaseFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
+  // start IOHeartbeat thread:
+  if ((ServerState::instance()->isDBServer() ||
+       ServerState::instance()->isSingleServer() ||
+       ServerState::instance()->isAgent()) &&
+      _performIOHeartbeat) {
+    _ioHeartbeatThread = std::make_unique<IOHeartbeatThread>(
+        server(), server().getFeature<metrics::MetricsFeature>());
+    if (!_ioHeartbeatThread->start()) {
+      LOG_TOPIC("7eb07", FATAL, arangodb::Logger::FIXME)
+          << "could not start IO check thread";
+      FATAL_ERROR_EXIT();
+    }
+  }
+
   // activate deadlock detection in case we're not running in cluster mode
   if (!arangodb::ServerState::instance()->isRunningInCluster()) {
     enableDeadlockDetection();
@@ -462,6 +642,11 @@ void DatabaseFeature::start() {
 // this speeds up the actual shutdown because no waiting is necessary
 // until the cursors happen to free their underlying transactions
 void DatabaseFeature::beginShutdown() {
+  if (_ioHeartbeatThread) {
+    _ioHeartbeatThread->beginShutdown();  // will set thread state to STOPPING
+    _ioHeartbeatThread->wakeup();         // will shorten the wait
+  }
+
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
@@ -508,13 +693,11 @@ void DatabaseFeature::stop() {
   }
 #endif
 
-  for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
-
+  auto stopVocbase = [](TRI_vocbase_t* vocbase) {
     // iterate over all databases
     TRI_ASSERT(vocbase != nullptr);
     if (vocbase->type() != TRI_VOCBASE_TYPE_NORMAL) {
-      continue;
+      return;
     }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -545,6 +728,13 @@ void DatabaseFeature::stop() {
         << "shutting down database " << currentVocbase->name() << ": "
         << (void*)currentVocbase << " successful";
 #endif
+  };
+
+  for (auto& [name, vocbase] : theLists->_databases) {
+    stopVocbase(vocbase);
+  }
+  for (auto& vocbase : theLists->_droppedDatabases) {
+    stopVocbase(vocbase);
   }
 
   // flush again so we are sure no query is left in the cache here
@@ -552,6 +742,15 @@ void DatabaseFeature::stop() {
 }
 
 void DatabaseFeature::unprepare() {
+  // delete the IO checker thread
+  if (_ioHeartbeatThread != nullptr) {
+    _ioHeartbeatThread->beginShutdown();
+
+    while (_ioHeartbeatThread->isRunning()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+  }
+
   // delete the database manager thread
   if (_databaseManager != nullptr) {
     _databaseManager->beginShutdown();
@@ -567,18 +766,18 @@ void DatabaseFeature::unprepare() {
     // we're in the shutdown... simply ignore any errors produced here
   }
 
+  _ioHeartbeatThread.reset();
   _databaseManager.reset();
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  // This is to avoid heap use after free errors in the iresearch tests, because
-  // the destruction a callback uses a database.
-  // I don't know if this is safe to do, thus I enclosed it in
-  // ARANGODB_USE_GOOGLE_TESTS to prevent accidentally breaking anything.
-  // However,
-  // TODO Find out if this is okay and may be merged (maybe without the #ifdef),
-  // or if this has to be done differently in the tests instead. The errors may
-  // also go away when some new PR is merged, so maybe this can just be removed
-  // in the future.
+  // This is to avoid heap use after free errors in the iresearch tests,
+  // because the destruction a callback uses a database. I don't know if this
+  // is safe to do, thus I enclosed it in ARANGODB_USE_GOOGLE_TESTS to prevent
+  // accidentally breaking anything. However,
+  // TODO Find out if this is okay and may be merged (maybe without the
+  // #ifdef), or if this has to be done differently in the tests instead. The
+  // errors may also go away when some new PR is merged, so maybe this can
+  // just be removed in the future.
   _pendingRecoveryCallbacks.clear();
 #endif
 
@@ -827,8 +1026,8 @@ ErrorCode DatabaseFeature::dropDatabase(std::string const& name,
       id = vocbase->id();
       // mark as deleted
 
-      // call LogicalDataSource::drop() to allow instances to clean up internal
-      // state (e.g. for LogicalView implementations)
+      // call LogicalDataSource::drop() to allow instances to clean up
+      // internal state (e.g. for LogicalView implementations)
       TRI_vocbase_t::dataSourceVisitor visitor =
           [&res, &vocbase](arangodb::LogicalDataSource& dataSource) -> bool {
         // skip LogicalCollection since their internal state is always in the
@@ -1216,7 +1415,8 @@ void DatabaseFeature::closeOpenDatabases() {
     delete vocbase;
   }
 
-  delete oldList;  // Note that this does not delete the TRI_vocbase_t pointers!
+  delete oldList;  // Note that this does not delete the TRI_vocbase_t
+                   // pointers!
 }
 
 /// @brief create base app directory
@@ -1451,7 +1651,8 @@ void DatabaseFeature::closeDroppedDatabases() {
     }
   }
 
-  delete oldList;  // Note that this does not delete the TRI_vocbase_t pointers!
+  delete oldList;  // Note that this does not delete the TRI_vocbase_t
+                   // pointers!
 }
 
 void DatabaseFeature::verifyAppPaths() {

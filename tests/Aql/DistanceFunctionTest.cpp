@@ -39,7 +39,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -85,16 +84,14 @@ void expectEqSlices(const VPackSlice actualSlice,
     double rhs = expectedSlice.getNumber<decltype(rhs)>();
     ASSERT_DOUBLE_EQ(lhs, rhs);
   }
-
-  return;
 }
 
-AqlValue evaluateDistanceFunction(const SmallVector<AqlValue>& params,
-                                  const arangodb::aql::AstNode& node) {
+AqlValue evaluateDistanceFunction(std::span<AqlValue const> params,
+                                  arangodb::aql::AstNode const& node) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
   fakeit::When(Method(expressionContextMock, registerWarning))
-      .AlwaysDo([](ErrorCode, char const*) {});
+      .AlwaysDo([](ErrorCode, std::string_view) {});
 
   VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;
@@ -115,7 +112,7 @@ AqlValue evaluateDistanceFunction(const SmallVector<AqlValue>& params,
 }
 
 void assertDistanceFunction(char const* expected, char const* x, char const* y,
-                            const arangodb::aql::AstNode& node) {
+                            arangodb::aql::AstNode const& node) {
   // get slice for expected value
   auto const expectedJson = VPackParser::fromJson(expected);
   auto const expectedSlice = expectedJson->slice();
@@ -135,10 +132,9 @@ void assertDistanceFunction(char const* expected, char const* x, char const* y,
   // create params vector from y slice
   AqlValue arrayY = createArray(sliceY);
 
-  SmallVector<AqlValue>::allocator_type::arena_type arena;
-  SmallVector<AqlValue> params{2, arena};
-  params[0] = arrayX;
-  params[1] = arrayY;
+  containers::SmallVector<AqlValue, 4> params;
+  params.push_back(arrayX);
+  params.push_back(arrayY);
 
   // evaluate
   auto actual_value = evaluateDistanceFunction(params, node);
@@ -170,10 +166,9 @@ void assertDistanceFunctionFail(char const* x, char const* y,
   // create params vector from y slice
   AqlValue arrayY = createArray(sliceY);
 
-  SmallVector<AqlValue>::allocator_type::arena_type arena;
-  SmallVector<AqlValue> params{2, arena};
-  params[0] = arrayX;
-  params[1] = arrayY;
+  containers::SmallVector<AqlValue, 4> params;
+  params.push_back(arrayX);
+  params.push_back(arrayY);
 
   ASSERT_TRUE(evaluateDistanceFunction(params, node).isNull(false));
 
@@ -186,7 +181,7 @@ void assertDistanceFunctionFail(char const* x, char const* y,
 TEST(DistanceFuncton, CosineSimilarityTest) {
   // preparing
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
-  arangodb::aql::Function f("COSINE_SIMILARITY", &Functions::CosineSimilarity);
+  arangodb::aql::Function f("COSINE_SIMILARITY", &functions::CosineSimilarity);
   node.setData(static_cast<void const*>(&f));
 
   // correct result
@@ -197,6 +192,8 @@ TEST(DistanceFuncton, CosineSimilarityTest) {
                          "[0.89, 0.19, 1000, 1]", node);
   assertDistanceFunction("0.7817515661170301", "[3456, 191, -90, 500, 0.32]",
                          "[713, 201, 508, -0.5, 0.75]", node);
+  assertDistanceFunction("1.0", "[0,1,3,4]", "[0,1,3,4]", node);
+  assertDistanceFunction("-1.0", "[0,-1,-3,-4]", "[0,1,3,4]", node);
   assertDistanceFunction("-1", "[2]", "[-1]", node);
   assertDistanceFunction("1", "[1]", "[1]", node);
   assertDistanceFunction("-1", "[-1,0]", "[1,0]", node);
@@ -254,7 +251,7 @@ TEST(DistanceFuncton, CosineSimilarityTest) {
 TEST(DistanceFuncton, L1DistanceTest) {
   // preparing
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
-  arangodb::aql::Function f("L1_DISTANCE", &Functions::L1Distance);
+  arangodb::aql::Function f("L1_DISTANCE", &functions::L1Distance);
   node.setData(static_cast<void const*>(&f));
 
   // correct result
@@ -279,7 +276,7 @@ TEST(DistanceFuncton, L1DistanceTest) {
 TEST(DistanceFuncton, L2DistanceTest) {
   // preparing
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
-  arangodb::aql::Function f("L2_DISTANCE", &Functions::L2Distance);
+  arangodb::aql::Function f("L2_DISTANCE", &functions::L2Distance);
   node.setData(static_cast<void const*>(&f));
 
   // correct result

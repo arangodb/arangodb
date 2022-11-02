@@ -30,6 +30,7 @@
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 #include "IResearch/IResearchFilterOptimization.h"
+#include "IResearch/IResearchFilterContext.h"
 
 #include <string>
 #include <vector>
@@ -39,7 +40,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a TRI_vocbase_t that will call shutdown() on deallocation
@@ -57,6 +57,7 @@ class Isolate;  // forward declaration
 
 namespace arangodb {
 
+class IndexId;
 class DatabasePathFeature;  // forward declaration
 
 namespace application_features {
@@ -95,7 +96,7 @@ v8::Isolate* v8Isolate();
 
 bool assertRules(
     TRI_vocbase_t& vocbase, std::string const& queryString,
-    std::vector<int> expectedRulesIds,
+    std::vector<int> const& expectedRulesIds,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& optionsString = "{}");
 
@@ -109,6 +110,10 @@ arangodb::aql::QueryResult executeQuery(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& optionsString = "{}");
 
+void checkQuery(TRI_vocbase_t& vocbase,
+                std::span<const velocypack::Slice> expected,
+                std::string const& query);
+
 std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
     TRI_vocbase_t& vocbase, std::string const& queryString,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
@@ -119,8 +124,7 @@ std::shared_ptr<arangodb::aql::Query> prepareQuery(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& optionsString = "{}");
 
-uint64_t getCurrentPlanVersion(
-    arangodb::application_features::ApplicationServer&);
+uint64_t getCurrentPlanVersion(arangodb::ArangodServer&);
 
 void setDatabasePath(arangodb::DatabasePathFeature& feature);
 
@@ -136,6 +140,11 @@ void expectEqualSlices_(const velocypack::Slice& lhs,
 }  // namespace tests
 }  // namespace arangodb
 
+namespace iresearch {
+std::string to_string(irs::filter const& f);
+}
+
+std::string mangleNested(std::string name);
 std::string mangleType(std::string name);
 std::string mangleAnalyzer(std::string name);
 std::string mangleBool(std::string name);
@@ -143,6 +152,7 @@ std::string mangleNull(std::string name);
 std::string mangleNumeric(std::string name);
 std::string mangleString(std::string name, std::string_view suffix);
 std::string mangleStringIdentity(std::string name);
+std::string mangleInvertedIndexStringIdentity(std::string name);
 
 inline arangodb::aql::AstNode* defaultExpressionExtractor(
     arangodb::aql::AstNode* root) {
@@ -156,7 +166,7 @@ inline arangodb::aql::AstNode* wrappedExpressionExtractor(
 
 void assertExpressionFilter(
     TRI_vocbase_t& vocbase, std::string const& queryString,
-    irs::boost_t boost = irs::no_boost(),
+    irs::score_t boost = irs::kNoBoost,
     std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const&
         expressionExtractor = &defaultExpressionExtractor,
     std::string const& refName = "d");
@@ -176,7 +186,8 @@ void assertFilter(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d",
     arangodb::iresearch::FilterOptimization filterOptimization =
-        arangodb::iresearch::FilterOptimization::NONE);
+        arangodb::iresearch::FilterOptimization::NONE,
+    bool searchQuery = true, bool oldMangling = true, bool hasNested = false);
 
 void assertFilterSuccess(
     TRI_vocbase_t& vocbase, std::string const& queryString,
@@ -185,7 +196,8 @@ void assertFilterSuccess(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d",
     arangodb::iresearch::FilterOptimization filterOptimization =
-        arangodb::iresearch::FilterOptimization::NONE);
+        arangodb::iresearch::FilterOptimization::NONE,
+    bool searchQuery = true, bool oldMangling = true, bool hasNested = false);
 
 void assertFilterFail(
     TRI_vocbase_t& vocbase, std::string const& queryString,
@@ -220,16 +232,21 @@ inline VPackBuilder dbArgsBuilder(std::string const& name = "_system") {
   return builder;
 }
 
-arangodb::CreateDatabaseInfo createInfo(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& name, uint64_t id);
+VPackBuilder getInvertedIndexPropertiesSlice(
+    arangodb::IndexId iid, std::vector<std::string> const& fields,
+    std::vector<std::vector<std::string>> const* storedFields = nullptr,
+    std::vector<std::pair<std::string, bool>> const* sortedFields = nullptr,
+    std::string_view name = "");
+
+arangodb::CreateDatabaseInfo createInfo(arangodb::ArangodServer& server,
+                                        std::string const& name, uint64_t id);
 arangodb::CreateDatabaseInfo systemDBInfo(
-    arangodb::application_features::ApplicationServer& server,
+    arangodb::ArangodServer& server,
     std::string const& name = arangodb::StaticStrings::SystemDatabase,
     uint64_t id = 1);
-arangodb::CreateDatabaseInfo testDBInfo(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& name = "testVocbase", uint64_t id = 2);
+arangodb::CreateDatabaseInfo testDBInfo(arangodb::ArangodServer& server,
+                                        std::string const& name = "testVocbase",
+                                        uint64_t id = 2);
 arangodb::CreateDatabaseInfo unknownDBInfo(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& name = "unknownVocbase", uint64_t id = 3);
+    arangodb::ArangodServer& server, std::string const& name = "unknownVocbase",
+    uint64_t id = 3);

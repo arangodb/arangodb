@@ -23,7 +23,6 @@
 
 #include <Graph/TraverserOptions.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ExecutionPlan.h"
 
@@ -39,7 +38,7 @@
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IndexHint.h"
-#include "Aql/KShortestPathsNode.h"
+#include "Aql/EnumeratePathsNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -58,7 +57,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Containers/SmallVector.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/ShortestPathType.h"
+#include "Graph/PathType.h"
 #include "Graph/TraverserOptions.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -184,6 +183,23 @@ void parseGraphCollectionRestriction(std::vector<std::string>& collections,
   }
 }
 
+ResultT<size_t> parseMaxProjections(AstNode const* value) {
+  int64_t maxProjections = -1;
+
+  if (value->isNumericValue()) {
+    if (value->isIntValue()) {
+      maxProjections = value->getIntValue();
+    } else if (value->isDoubleValue()) {
+      maxProjections = static_cast<int64_t>(value->getDoubleValue());
+    }
+  }
+  if (maxProjections >= 0) {
+    // got a valid value
+    return static_cast<size_t>(maxProjections);
+  }
+  return Result{TRI_ERROR_BAD_PARAMETER};
+}
+
 std::unique_ptr<graph::BaseOptions> createTraversalOptions(
     Ast* ast, AstNode const* direction, AstNode const* optionsNode) {
   TRI_ASSERT(direction != nullptr);
@@ -278,7 +294,16 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
           }
         } else if (name == StaticStrings::GraphRefactorFlag &&
                    value->isBoolValue()) {
-          options->setRefactor(value);
+          options->setRefactor(value->getBoolValue());
+        } else if (name == arangodb::StaticStrings::MaxProjections) {
+          auto maxProjections = parseMaxProjections(value);
+          if (maxProjections.fail()) {
+            // will raise a warning, which can optionally abort the query
+            ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
+                                                  name.data(), name.size());
+          } else {
+            options->setMaxProjections(maxProjections.get());
+          }
         } else {
           ExecutionPlan::invalidOptionAttribute(
               ast->query(), "unknown", "TRAVERSAL", name.data(), name.size());
@@ -301,7 +326,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
 
 std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
     Ast* ast, AstNode const* direction, AstNode const* optionsNode,
-    bool defaultToRefactor = false) {
+    arangodb::graph::PathType::Type type, bool defaultToRefactor = false) {
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
@@ -335,9 +360,10 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
         } else if (name == StaticStrings::GraphRefactorFlag) {
           options->setRefactor(value->getBoolValue());
         } else {
-          ExecutionPlan::invalidOptionAttribute(ast->query(), "unknown",
-                                                "SHORTEST_PATH", name.data(),
-                                                name.size());
+          ExecutionPlan::invalidOptionAttribute(
+              ast->query(), "unknown",
+              arangodb::graph::PathType::toString(type), name.data(),
+              name.size());
         }
       }
     }
@@ -346,8 +372,12 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
   return options;
 }
 
-// extract "maxProjections" from FOR options
-size_t extractMaxProjections(QueryContext& query, AstNode const* node) {
+// extract "maxProjections" and "useCache" from FOR options
+void setForOptions(QueryContext& query, AstNode const* node,
+                   DocumentProducingNode* dn) {
+  // default value
+  dn->setMaxProjections(DocumentProducingNode::kMaxProjections);
+
   if (node != nullptr && node->type == AstNodeType::NODE_TYPE_OBJECT) {
     for (size_t i = 0; i < node->numMembers(); i++) {
       AstNode const* child = node->getMember(i);
@@ -355,32 +385,29 @@ size_t extractMaxProjections(QueryContext& query, AstNode const* node) {
       if (child->type == AstNodeType::NODE_TYPE_OBJECT_ELEMENT) {
         TRI_ASSERT(child->numMembers() > 0);
         std::string_view name(child->getStringView());
-        if (name == arangodb::StaticStrings::IndexHintMaxProjections) {
+        if (name == arangodb::StaticStrings::MaxProjections) {
+          auto maxProjections = parseMaxProjections(child->getMember(0));
+          if (maxProjections.fail()) {
+            // will raise a warning, which can optionally abort the query
+            ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
+                                                  name.data(), name.size());
+          } else {
+            dn->setMaxProjections(maxProjections.get());
+          }
+        } else if (name == arangodb::StaticStrings::UseCache) {
           AstNode const* value = child->getMember(0);
-          int64_t maxProjections = -1;
 
-          if (value->isNumericValue()) {
-            if (value->isIntValue()) {
-              maxProjections = value->getIntValue();
-            } else if (value->isDoubleValue()) {
-              maxProjections = static_cast<int64_t>(value->getDoubleValue());
-            }
+          if (value->isBoolValue()) {
+            dn->setUseCache(value->getBoolValue());
+          } else {
+            // will raise a warning, which can optionally abort the query
+            ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
+                                                  name.data(), name.size());
           }
-          if (maxProjections >= 0) {
-            // got a valid value
-            return static_cast<size_t>(maxProjections);
-          }
-          // will raise a warning, which can optionally abort the query
-          ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
-                                                name.data(), name.size());
-          break;
         }
       }
     }
   }
-
-  // default value
-  return DocumentProducingNode::kMaxProjections;
 }
 
 std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast,
@@ -555,31 +582,40 @@ ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
 /// @brief clone an existing execution plan
 ExecutionPlan* ExecutionPlan::clone() { return clone(_ast); }
 
+// build flags for plan serialization
+unsigned ExecutionPlan::buildSerializationFlags(
+    bool verbose, bool includeInternals, bool explainRegisters) noexcept {
+  unsigned flags = ExecutionNode::SERIALIZE_ESTIMATES;
+  if (verbose) {
+    flags |=
+        ExecutionNode::SERIALIZE_PARENTS | ExecutionNode::SERIALIZE_FUNCTIONS;
+
+    if (includeInternals) {
+      flags |= ExecutionNode::SERIALIZE_DETAILS;
+    }
+  }
+
+  if (explainRegisters) {
+    flags |= ExecutionNode::SERIALIZE_REGISTER_INFORMATION;
+  }
+
+  return flags;
+}
+
 /// @brief export to VelocyPack
 std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(
-    Ast* ast, bool verbose, ExplainRegisterPlan explainRegisterPlan) const {
+    Ast* ast, unsigned flags) const {
   VPackOptions options;
   options.checkAttributeUniqueness = false;
   options.buildUnindexedArrays = true;
   auto builder = std::make_shared<VPackBuilder>(&options);
-
-  toVelocyPack(*builder, ast, verbose, explainRegisterPlan);
+  toVelocyPack(*builder, ast, flags);
   return builder;
 }
 
 /// @brief export to VelocyPack
-void ExecutionPlan::toVelocyPack(
-    VPackBuilder& builder, Ast* ast, bool verbose,
-    ExplainRegisterPlan explainRegisterPlan) const {
-  unsigned flags = ExecutionNode::SERIALIZE_ESTIMATES;
-  if (verbose) {
-    flags |= ExecutionNode::SERIALIZE_PARENTS |
-             ExecutionNode::SERIALIZE_DETAILS |
-             ExecutionNode::SERIALIZE_FUNCTIONS;
-  }
-  if (explainRegisterPlan == ExplainRegisterPlan::Yes) {
-    flags |= ExecutionNode::SERIALIZE_REGISTER_INFORMATION;
-  }
+void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
+                                 unsigned flags) const {
   builder.openObject();
   builder.add(VPackValue("nodes"));
 
@@ -1132,10 +1168,10 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
       ExecutionNode::castTo<EnumerateCollectionNode*>(en)->setCanReadOwnWrites(
           ReadOwnWrites::yes);
     }
-    size_t maxProjections = ::extractMaxProjections(_ast->query(), options);
+
     auto* dn = dynamic_cast<DocumentProducingNode*>(en);
     TRI_ASSERT(dn != nullptr);
-    dn->setMaxProjections(maxProjections);
+    ::setForOptions(_ast->query(), options, dn);
 
   } else if (expression->type == NODE_TYPE_VIEW) {
     // second operand is a view
@@ -1296,6 +1332,15 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
   std::unique_ptr<Expression> pruneExpression =
       createPruneExpression(this, _ast, node->getMember(3));
 
+  if (pruneExpression != nullptr && !pruneExpression->canBeUsedInPrune(
+                                        _ast->query().vocbase().isOneShard())) {
+    // PRUNE is designed to be executed inside a DBServer. Therefore, we need a
+    // check here and abort in cases which are just not allowed, e.g. execution
+    // of user defined JavaScript method or V8 based methods.
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "Invalid PRUNE expression");
+  }
+
   auto options =
       createTraversalOptions(getAst(), direction, node->getMember(4));
 
@@ -1379,7 +1424,8 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   AstNode const* graph = node->getMember(3);
 
   auto options =
-      createShortestPathOptions(getAst(), direction, node->getMember(4));
+      createShortestPathOptions(getAst(), direction, node->getMember(4),
+                                arangodb::graph::PathType::Type::ShortestPath);
 
   // First create the node
   auto spNode =
@@ -1406,16 +1452,17 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-/// @brief create an execution plan element from an AST for K_SHORTEST_PATH node
-ExecutionNode* ExecutionPlan::fromNodeKShortestPaths(ExecutionNode* previous,
+/// @brief create an execution plan element from an AST for ENUMERATE_PATHS node
+ExecutionNode* ExecutionPlan::fromNodeEnumeratePaths(ExecutionNode* previous,
                                                      AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_K_SHORTEST_PATHS);
+  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_ENUMERATE_PATHS);
   TRI_ASSERT(node->numMembers() == 7);
 
-  auto const type = static_cast<arangodb::graph::ShortestPathType::Type>(
+  auto const type = static_cast<arangodb::graph::PathType::Type>(
       node->getMember(0)->getIntValue());
-  TRI_ASSERT(type == arangodb::graph::ShortestPathType::Type::KShortestPaths ||
-             type == arangodb::graph::ShortestPathType::Type::KPaths);
+  TRI_ASSERT(type == arangodb::graph::PathType::Type::KShortestPaths ||
+             type == arangodb::graph::PathType::Type::KPaths ||
+             type == arangodb::graph::PathType::Type::AllShortestPaths);
 
   // the first 5 members are used by shortest_path internally.
   // The members 6 is the out variable
@@ -1427,14 +1474,13 @@ ExecutionNode* ExecutionPlan::fromNodeKShortestPaths(ExecutionNode* previous,
 
   // Refactored variant shall be default on SingleServer and Cluster on KPaths
   // After the whole refactoring is done, this can be removed.
-  bool defaultToRefactor =
-      type == arangodb::graph::ShortestPathType::Type::KPaths;
+  bool defaultToRefactor = type == arangodb::graph::PathType::Type::KPaths;
 
   auto options = createShortestPathOptions(
-      getAst(), direction, node->getMember(5), defaultToRefactor);
+      getAst(), direction, node->getMember(5), type, defaultToRefactor);
 
   // First create the node
-  auto spNode = new KShortestPathsNode(
+  auto spNode = new EnumeratePathsNode(
       this, nextId(), &(_ast->query().vocbase()), type, direction, start,
       target, graph, std::move(options));
 
@@ -2228,8 +2274,8 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
         break;
       }
 
-      case NODE_TYPE_K_SHORTEST_PATHS: {
-        en = fromNodeKShortestPaths(en, member);
+      case NODE_TYPE_ENUMERATE_PATHS: {
+        en = fromNodeEnumeratePaths(en, member);
         break;
       }
       case NODE_TYPE_FILTER: {
@@ -2317,7 +2363,7 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
 template<WalkerUniqueness U>
 /// @brief find nodes of certain types
 void ExecutionPlan::findNodesOfType(
-    ::arangodb::containers::SmallVector<ExecutionNode*>& result,
+    containers::SmallVector<ExecutionNode*, 8>& result,
     std::initializer_list<ExecutionNode::NodeType> const& types,
     bool enterSubqueries) {
   // check if any of the node types is actually present in the plan
@@ -2334,14 +2380,14 @@ void ExecutionPlan::findNodesOfType(
 
 /// @brief find nodes of a certain type
 void ExecutionPlan::findNodesOfType(
-    ::arangodb::containers::SmallVector<ExecutionNode*>& result,
+    containers::SmallVector<ExecutionNode*, 8>& result,
     ExecutionNode::NodeType type, bool enterSubqueries) {
   findNodesOfType<WalkerUniqueness::NonUnique>(result, {type}, enterSubqueries);
 }
 
 /// @brief find nodes of certain types
 void ExecutionPlan::findNodesOfType(
-    ::arangodb::containers::SmallVector<ExecutionNode*>& result,
+    containers::SmallVector<ExecutionNode*, 8>& result,
     std::initializer_list<ExecutionNode::NodeType> const& types,
     bool enterSubqueries) {
   findNodesOfType<WalkerUniqueness::NonUnique>(result, types, enterSubqueries);
@@ -2349,7 +2395,7 @@ void ExecutionPlan::findNodesOfType(
 
 /// @brief find nodes of certain types
 void ExecutionPlan::findUniqueNodesOfType(
-    ::arangodb::containers::SmallVector<ExecutionNode*>& result,
+    containers::SmallVector<ExecutionNode*, 8>& result,
     std::initializer_list<ExecutionNode::NodeType> const& types,
     bool enterSubqueries) {
   findNodesOfType<WalkerUniqueness::Unique>(result, types, enterSubqueries);
@@ -2357,7 +2403,7 @@ void ExecutionPlan::findUniqueNodesOfType(
 
 /// @brief find all end nodes in a plan
 void ExecutionPlan::findEndNodes(
-    ::arangodb::containers::SmallVector<ExecutionNode*>& result,
+    containers::SmallVector<ExecutionNode*, 8>& result,
     bool enterSubqueries) const {
   EndNodeFinder finder(result, enterSubqueries);
   root()->walk(finder);
@@ -2623,36 +2669,53 @@ bool ExecutionPlan::fullCount() const noexcept {
 void ExecutionPlan::findCollectionAccessVariables() {
   _ast->variables()->visit([this](Variable* variable) {
     ExecutionNode* node = this->getVarSetBy(variable->id);
-    if (node != nullptr) {
-      if (node->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
-          node->getType() == ExecutionNode::INDEX ||
-          node->getType() == ExecutionNode::INSERT ||
-          node->getType() == ExecutionNode::UPDATE ||
-          node->getType() == ExecutionNode::REPLACE ||
-          node->getType() == ExecutionNode::REMOVE) {
-        // TODO: maybe add more node types here, e.g. arangosearch nodes
-        // also check if it makes sense to do this if the node uses
-        // projections
-        variable->isDataFromCollection = true;
+    if (node == nullptr) {
+      return;
+    }
+    if (node->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
+        node->getType() == ExecutionNode::INDEX) {
+      // we only produce full documents if there are no projections
+      variable->isFullDocumentFromCollection =
+          ExecutionNode::castTo<DocumentProducingNode const*>(node)
+              ->projections()
+              .empty();
+    } else if (node->getType() == ExecutionNode::INSERT ||
+               node->getType() == ExecutionNode::UPDATE ||
+               node->getType() == ExecutionNode::REPLACE ||
+               node->getType() == ExecutionNode::REMOVE) {
+      // these nodes always return full documents
+      variable->isFullDocumentFromCollection = true;
+    } else if (node->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
+      // views always return full documents
+      variable->isFullDocumentFromCollection = true;
+    } else if (node->getType() == ExecutionNode::MATERIALIZE) {
+      // materialize nodes always return full documents
+      variable->isFullDocumentFromCollection = true;
+    } else if (node->getType() == ExecutionNode::TRAVERSAL) {
+      TraversalNode const* tn =
+          ExecutionNode::castTo<TraversalNode const*>(node);
+      if (variable == tn->vertexOutVariable() ||
+          variable == tn->edgeOutVariable()) {
+        // traversal vertices and edges are always returned as full documents
+        variable->isFullDocumentFromCollection = true;
       }
     }
+    // TODO: maybe add more node types here?
   });
 }
 
 void ExecutionPlan::prepareTraversalOptions() {
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  containers::SmallVector<ExecutionNode*, 8> nodes;
   findNodesOfType(nodes,
                   {arangodb::aql::ExecutionNode::TRAVERSAL,
                    arangodb::aql::ExecutionNode::SHORTEST_PATH,
-                   arangodb::aql::ExecutionNode::K_SHORTEST_PATHS},
+                   arangodb::aql::ExecutionNode::ENUMERATE_PATHS},
                   true);
   for (auto& node : nodes) {
     switch (node->getType()) {
       case ExecutionNode::TRAVERSAL:
       case ExecutionNode::SHORTEST_PATH:
-      case ExecutionNode::K_SHORTEST_PATHS: {
+      case ExecutionNode::ENUMERATE_PATHS: {
         auto* graphNode = ExecutionNode::castTo<GraphNode*>(node);
         graphNode->prepareOptions();
       } break;
@@ -2784,7 +2847,7 @@ struct Shower final
     switch (node.getType()) {
       case ExecutionNode::TRAVERSAL:
       case ExecutionNode::SHORTEST_PATH:
-      case ExecutionNode::K_SHORTEST_PATHS: {
+      case ExecutionNode::ENUMERATE_PATHS: {
         auto const& graphNode = *ExecutionNode::castTo<GraphNode const*>(&node);
         auto type = std::string{node.getTypeString()};
         if (graphNode.isUsedAsSatellite()) {
@@ -2819,7 +2882,7 @@ struct Shower final
 /// @brief show an overview over the plan
 void ExecutionPlan::show() const {
   Shower shower;
-  _root->walk(shower);
+  _root->flatWalk(shower, false);
 }
 
 #endif

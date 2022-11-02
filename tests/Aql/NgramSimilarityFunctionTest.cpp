@@ -39,7 +39,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 #include <set>
 
 using namespace arangodb;
@@ -57,7 +56,7 @@ class NgramSimilarityFunctionTest : public ::testing::Test {
     fakeit::Mock<ExpressionContext> expressionContextMock;
     ExpressionContext& expressionContext = expressionContextMock.get();
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .AlwaysDo([warnings](ErrorCode c, char const*) {
+        .AlwaysDo([warnings](ErrorCode c, std::string_view) {
           if (warnings) {
             warnings->insert(static_cast<int>(c));
           }
@@ -67,8 +66,7 @@ class NgramSimilarityFunctionTest : public ::testing::Test {
     auto trx = server.createFakeTransaction();
     fakeit::When(Method(expressionContextMock, trx))
         .AlwaysDo([&]() -> transaction::Methods& { return *trx; });
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> params{arena};
+    containers::SmallVector<AqlValue, 3> params;
     if (attribute) {
       params.emplace_back(*attribute);
     }
@@ -79,11 +77,11 @@ class NgramSimilarityFunctionTest : public ::testing::Test {
       params.emplace_back(*ngram_size);
     }
 
-    arangodb::aql::Function f("NGRAM_SIMILARITY", &Functions::NgramSimilarity);
+    arangodb::aql::Function f("NGRAM_SIMILARITY", &functions::NgramSimilarity);
     arangodb::aql::AstNode node(NODE_TYPE_FCALL);
     node.setData(static_cast<void const*>(&f));
 
-    return Functions::NgramSimilarity(&expressionContext, node, params);
+    return functions::NgramSimilarity(&expressionContext, node, params);
   }
 
   void assertNgramSimilarityFail(size_t line,

@@ -25,7 +25,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "VocBase/voc-types.h"
@@ -44,14 +43,14 @@ namespace methods {
 struct Databases {
   static std::string normalizeName(std::string const& name);
 
-  static std::vector<std::string> list(
-      application_features::ApplicationServer& server,
-      std::string const& user = "");
+  static std::vector<std::string> list(ArangodServer& server,
+                                       std::string const& user = "");
   static arangodb::Result info(TRI_vocbase_t* vocbase, VPackBuilder& result);
-  static arangodb::Result create(
-      application_features::ApplicationServer& server,
-      ExecContext const& context, std::string const& dbName,
-      VPackSlice const& users, VPackSlice const& options);
+  static arangodb::Result create(ArangodServer& server,
+                                 ExecContext const& context,
+                                 std::string const& dbName,
+                                 VPackSlice const& users,
+                                 VPackSlice const& options);
   static arangodb::Result drop(ExecContext const& context,
                                TRI_vocbase_t* systemVocbase,
                                std::string const& dbName);

@@ -33,8 +33,8 @@ class QueryRegistry;
 
 class RestSimpleHandler : public RestCursorHandler {
  public:
-  RestSimpleHandler(application_features::ApplicationServer&, GeneralRequest*,
-                    GeneralResponse*, aql::QueryRegistry*);
+  RestSimpleHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
+                    aql::QueryRegistry*);
 
  public:
   RestStatus execute() override final;

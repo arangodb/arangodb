@@ -25,10 +25,15 @@
 #pragma once
 
 #include "Auth/TokenCache.h"
+#include "Cluster/ServerState.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 
+#include <velocypack/Buffer.h>
+
+#include <chrono>
+#include <cstdint>
 #include <mutex>
 
 namespace arangodb {
@@ -96,20 +101,21 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   virtual void sendResponse(std::unique_ptr<GeneralResponse>,
                             RequestStatistics::Item) = 0;
 
- protected:
   enum class Flow : bool { Continue = true, Abort = false };
   static constexpr size_t MaximalBodySize = 1024 * 1024 * 1024;  // 1024 MB
 
   /// Must be called before calling executeRequest, will add an error
   /// response if execution is supposed to be aborted
-  Flow prepareExecution(auth::TokenCache::Entry const&, GeneralRequest&);
+  Flow prepareExecution(auth::TokenCache::Entry const&, GeneralRequest&,
+                        ServerState::Mode mode);
 
   /// Must be called from sendResponse, before response is rendered
   void finishExecution(GeneralResponse&, std::string const& cors) const;
 
   /// Push this request into the execution pipeline
-  void executeRequest(std::unique_ptr<GeneralRequest>,
-                      std::unique_ptr<GeneralResponse>);
+  void executeRequest(std::unique_ptr<GeneralRequest> request,
+                      std::unique_ptr<GeneralResponse> response,
+                      ServerState::Mode mode);
 
   RequestStatistics::Item const& acquireStatistics(uint64_t);
   RequestStatistics::Item const& statistics(uint64_t);
@@ -137,13 +143,15 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
                           std::string const& origin);
 
   /// check authentication headers
-  auth::TokenCache::Entry checkAuthHeader(GeneralRequest& request);
+  auth::TokenCache::Entry checkAuthHeader(GeneralRequest& request,
+                                          ServerState::Mode mode);
 
   /// decompress content
   bool handleContentEncoding(GeneralRequest&);
 
  private:
-  bool handleRequestSync(std::shared_ptr<RestHandler>);
+  void handleRequestStartup(std::shared_ptr<RestHandler>);
+  void handleRequestSync(std::shared_ptr<RestHandler>);
   bool handleRequestAsync(std::shared_ptr<RestHandler>,
                           uint64_t* jobId = nullptr);
 

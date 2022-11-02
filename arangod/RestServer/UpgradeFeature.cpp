@@ -24,31 +24,23 @@
 #include "UpgradeFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeature.h"
-#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
-#include "FeaturePhases/AqlFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Pregel/PregelFeature.h"
 #include "Replication/ReplicationFeature.h"
-#include "RestServer/BootstrapFeature.h"
-#include "RestServer/DaemonFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/RestartAction.h"
-#include "RestServer/SupervisorFeature.h"
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
 
@@ -58,10 +50,9 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-UpgradeFeature::UpgradeFeature(
-    application_features::ApplicationServer& server, int* result,
-    std::vector<std::type_index> const& nonServerFeatures)
-    : ApplicationFeature(server, "Upgrade"),
+UpgradeFeature::UpgradeFeature(Server& server, int* result,
+                               std::span<const size_t> nonServerFeatures)
+    : ArangodFeature{server, *this},
       _upgrade(false),
       _upgradeCheck(true),
       _result(result),
@@ -84,7 +75,7 @@ void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--database.upgrade-check", "skip a database upgrade",
       new BooleanParameter(&_upgradeCheck),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 #ifndef _WIN32
@@ -134,18 +125,23 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // if we run the upgrade, we need to disable a few features that may get
   // in the way...
   if (ServerState::instance()->isCoordinator()) {
-    std::vector<std::type_index> otherFeaturesToDisable = {
-        std::type_index(typeid(DaemonFeature)),
-        std::type_index(typeid(GreetingsFeature)),
-        std::type_index(typeid(pregel::PregelFeature)),
-        std::type_index(typeid(SupervisorFeature))};
-    server().forceDisableFeatures(otherFeaturesToDisable);
+    auto disableDaemonAndSupervisor = [&]() {
+      if constexpr (Server::contains<DaemonFeature>()) {
+        server().forceDisableFeatures(std::array{Server::id<DaemonFeature>()});
+      }
+      if constexpr (Server::contains<SupervisorFeature>()) {
+        server().forceDisableFeatures(
+            std::array{Server::id<SupervisorFeature>()});
+      }
+    };
+
+    server().forceDisableFeatures(std::array{
+        Server::id<GreetingsFeature>(), Server::id<pregel::PregelFeature>()});
+    disableDaemonAndSupervisor();
   } else {
     server().forceDisableFeatures(_nonServerFeatures);
-    std::vector<std::type_index> otherFeaturesToDisable = {
-        std::type_index(typeid(BootstrapFeature)),
-        std::type_index(typeid(HttpEndpointProvider))};
-    server().forceDisableFeatures(otherFeaturesToDisable);
+    server().forceDisableFeatures(std::array{
+        Server::id<BootstrapFeature>(), Server::id<HttpEndpointProvider>()});
   }
 
   ReplicationFeature& replicationFeature =

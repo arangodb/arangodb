@@ -39,6 +39,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
 #include "GeneralServer/RequestLane.h"
+#include "RestServer/arangod.h"
 #include "Logger/LogContext.h"
 
 namespace arangodb {
@@ -55,7 +56,7 @@ class SchedulerCronThread;
 
 class Scheduler {
  public:
-  explicit Scheduler(application_features::ApplicationServer&);
+  explicit Scheduler(ArangodServer&);
   virtual ~Scheduler();
 
   // ---------------------------------------------------------------------------
@@ -141,7 +142,7 @@ class Scheduler {
   };
 
  protected:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
 
   struct WorkItemBase {
     virtual ~WorkItemBase() = default;

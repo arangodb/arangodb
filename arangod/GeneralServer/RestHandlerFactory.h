@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "Basics/Common.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace application_features {
@@ -46,16 +47,16 @@ class RestHandlerFactory {
 
  public:
   // handler creator
-  typedef std::shared_ptr<RestHandler> (*create_fptr)(
-      application_features::ApplicationServer&, GeneralRequest*,
-      GeneralResponse*, void* data);
+  typedef std::shared_ptr<RestHandler> (*create_fptr)(ArangodServer&,
+                                                      GeneralRequest*,
+                                                      GeneralResponse*,
+                                                      void* data);
 
-  // cppcheck-suppress *
-  RestHandlerFactory() = default;
+  RestHandlerFactory();
 
   // creates a new handler
   std::shared_ptr<RestHandler> createHandler(
-      application_features::ApplicationServer&, std::unique_ptr<GeneralRequest>,
+      ArangodServer&, std::unique_ptr<GeneralRequest>,
       std::unique_ptr<GeneralResponse>) const;
 
   // adds a path and constructor to the factory
@@ -65,12 +66,18 @@ class RestHandlerFactory {
   void addPrefixHandler(std::string const& path, create_fptr,
                         void* data = nullptr);
 
+  // make the factory read-only (i.e. no new handlers can be added)
+  void seal();
+
  private:
   // list of constructors
   std::unordered_map<std::string, std::pair<create_fptr, void*>> _constructors;
 
   // list of prefix handlers
   std::vector<std::string> _prefixes;
+
+  // whether or not handlers can be added (sealed = false)
+  bool _sealed;
 };
 }  // namespace rest
 }  // namespace arangodb

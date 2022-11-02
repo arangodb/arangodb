@@ -126,7 +126,7 @@ describe('Rule optimize-traversals', () => {
       [ `FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN [p]`, true, [ true, false, true ] ],
       [ `FOR v, e IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN [v, e]`, false, [ true, true, false ] ],
       [ `FOR v, e IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN [v]`, true, [ true, false, false ] ],
-      [ `FOR v IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN [v]`, false, [ true, false, false ] ]
+      [ `FOR v IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}' RETURN [v]`, true, [ true, false, false ] ]
     ];
 
     queries.forEach((query) => {
@@ -165,9 +165,6 @@ describe('Rule optimize-traversals', () => {
       FILTER p.edges[p.edges.length - 1].theFalse == false
       RETURN {v:v,e:e,p:p}`,
       `FOR v, e, p IN 2 OUTBOUND 'circles/A' GRAPH '${graphName}'
-      FILTER CONCAT(p.edges[0]._key, '') == " + edgeKey + " SORT v._key
-      RETURN {v:v,e:e,p:p}`,
-      `FOR v, e, p IN 2 OUTBOUND 'circles/A' GRAPH '${graphName}'
       FILTER NOOPT(CONCAT(p.edges[0]._key, '')) == " + edgeKey + " SORT v._key
       RETURN {v:v,e:e,p:p}`,
       `FOR snippet IN ['a', 'b']
@@ -203,7 +200,10 @@ describe('Rule optimize-traversals', () => {
       LET test = CONCAT(snippet, 'ar')
       FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '${graphName}'
       FILTER p.edges[1].label == test 
-      RETURN {v,e,p}`
+      RETURN {v,e,p}`,
+      `FOR v, e, p IN 2 OUTBOUND 'circles/A' GRAPH '${graphName}'
+      FILTER CONCAT(p.edges[0]._key, '') == " + edgeKey + " SORT v._key
+      RETURN {v:v,e:e,p:p}`
     ];
     queries.forEach(function (query) {
       const result = AQL_EXPLAIN(query, { }, paramEnabled);

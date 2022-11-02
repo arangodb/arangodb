@@ -22,6 +22,7 @@
 /// @author Max Neunhoeffer
 /// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "gtest/gtest.h"
 
 #include "Agency/Store.h"
@@ -30,7 +31,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Compare.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <random>
 
@@ -40,7 +40,7 @@ namespace store_test_api {
 
 class StoreTestAPI : public ::testing::Test {
  public:
-  StoreTestAPI() : _server(), _store(_server.server(), nullptr) {}
+  StoreTestAPI() : _server("CRDN_0001"), _store(_server.server(), nullptr) {}
 
  protected:
   arangodb::tests::mocks::MockCoordinator _server;
@@ -48,11 +48,11 @@ class StoreTestAPI : public ::testing::Test {
 
   std::shared_ptr<VPackBuilder> read(std::string const& json) {
     try {
-      consensus::query_t q{VPackParser::fromJson(json)};
+      auto q{VPackParser::fromJson(json)};
       auto result = std::make_shared<VPackBuilder>();
       _store.readMultiple(q->slice(), *result);
       return result;
-    } catch (std::exception& ex) {
+    } catch (std::exception const& ex) {
       throw std::runtime_error(std::string(ex.what()) +
                                " while trying to read " + json);
     }
@@ -62,7 +62,7 @@ class StoreTestAPI : public ::testing::Test {
     try {
       auto q = VPackParser::fromJson(json);
       return _store.applyTransactions(q->slice());
-    } catch (std::exception& err) {
+    } catch (std::exception const& err) {
       throw std::runtime_error(std::string(err.what()) + " while parsing " +
                                json);
     }
@@ -101,7 +101,7 @@ class StoreTestAPI : public ::testing::Test {
     try {
       auto q = VPackParser::fromJson(json);
       return _store.applyTransactions(q->slice());
-    } catch (std::exception& ex) {
+    } catch (std::exception const& ex) {
       throw std::runtime_error(std::string(ex.what()) +
                                ", transact failed processing " + json);
     }
@@ -117,7 +117,7 @@ class StoreTestAPI : public ::testing::Test {
       if (!applied_all) {
         throw std::runtime_error("This didn't work: " + json);
       }
-    } catch (std::exception& ex) {
+    } catch (std::exception const& ex) {
       throw std::runtime_error(std::string(ex.what()) + " processing " + json);
     }
   }

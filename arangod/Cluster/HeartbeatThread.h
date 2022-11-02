@@ -55,11 +55,10 @@ struct AgencyVersions {
 class AgencyCallbackRegistry;
 class HeartbeatBackgroundJobThread;
 
-class HeartbeatThread : public Thread,
+class HeartbeatThread : public ServerThread<ArangodServer>,
                         public std::enable_shared_from_this<HeartbeatThread> {
  public:
-  HeartbeatThread(application_features::ApplicationServer&,
-                  AgencyCallbackRegistry*, std::chrono::microseconds,
+  HeartbeatThread(Server&, AgencyCallbackRegistry*, std::chrono::microseconds,
                   uint64_t maxFailsBeforeWarning);
   ~HeartbeatThread();
 
@@ -175,6 +174,13 @@ class HeartbeatThread : public Thread,
   //////////////////////////////////////////////////////////////////////////////
 
   void updateDBServers();
+
+  // handle changes of user version (Sync/UserVersion)
+  void handleUserVersionChange(arangodb::velocypack::Slice userVersion);
+
+  // handle changes of foxx queue version (Sync/FoxxQueueVersion)
+  void handleFoxxQueueVersionChange(
+      arangodb::velocypack::Slice foxxQueueVersion);
 
  public:
   //////////////////////////////////////////////////////////////////////////////

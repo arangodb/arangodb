@@ -27,11 +27,11 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryList.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterUpgradeFeature.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/ServerFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/LogMacros.h"
@@ -43,12 +43,13 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Upgrade.h"
+#include "VocBase/vocbase.h"
+
+#include <velocypack/Iterator.h>
 
 namespace {
-static std::string const FEATURE_NAME("Bootstrap");
 static std::string const bootstrapKey = "Bootstrap";
 static std::string const healthKey = "Supervision/Health";
 }  // namespace
@@ -62,11 +63,8 @@ class Query;
 using namespace arangodb;
 using namespace arangodb::options;
 
-BootstrapFeature::BootstrapFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, ::FEATURE_NAME),
-      _isReady(false),
-      _bark(false) {
+BootstrapFeature::BootstrapFeature(Server& server)
+    : ArangodFeature{server, *this}, _isReady(false), _bark(false) {
   startsAfter<application_features::ServerFeaturePhase>();
 
   startsAfter<SystemDatabaseFeature>();
@@ -84,10 +82,6 @@ BootstrapFeature::BootstrapFeature(
   */
 }
 
-/*static*/ std::string const& BootstrapFeature::name() noexcept {
-  return FEATURE_NAME;
-}
-
 bool BootstrapFeature::isReady() const {
   TRI_IF_FAILURE("BootstrapFeature_not_ready") { return false; }
   return _isReady;
@@ -96,7 +90,7 @@ bool BootstrapFeature::isReady() const {
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "hund", "make ArangoDB bark on startup", new BooleanParameter(&_bark),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 // Local Helper functions

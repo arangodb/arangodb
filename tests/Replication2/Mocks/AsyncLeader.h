@@ -46,6 +46,7 @@ struct AsyncLeader : replicated_log::ILogLeader,
                                  DeferredAction> override;
   auto waitFor(LogIndex index) -> WaitForFuture override;
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
+  auto waitForResign() -> futures::Future<futures::Unit> override;
   [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
   auto release(LogIndex doneWithIdx) -> Result override;
   auto insert(LogPayload payload, bool waitForSync) -> LogIndex override;

@@ -26,11 +26,9 @@
 #include <atomic>
 #include <cstdint>
 
-#include "Basics/ReadWriteSpinLock.h"
 #include "Cache/Transaction.h"
 
-namespace arangodb {
-namespace cache {
+namespace arangodb::cache {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Manage global cache transactions.
@@ -66,7 +64,7 @@ class TransactionManager {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return the current window identifier.
   //////////////////////////////////////////////////////////////////////////////
-  std::uint64_t term();
+  std::uint64_t term() const noexcept;
 
  private:
   /// In a previous version of the code, we maintained four separate uint64
@@ -94,5 +92,4 @@ class TransactionManager {
   std::atomic<State> _state;
 };
 
-};  // end namespace cache
-};  // end namespace arangodb
+};  // end namespace arangodb::cache

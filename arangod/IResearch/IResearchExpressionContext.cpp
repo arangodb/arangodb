@@ -42,25 +42,23 @@ using namespace arangodb::aql;
 // -----------------------------------------------------------------------------
 
 void ViewExpressionContextBase::registerWarning(ErrorCode errorCode,
-                                                char const* msg) {
+                                                std::string_view msg) {
   _query->warnings().registerWarning(errorCode, msg);
 }
 
 void ViewExpressionContextBase::registerError(ErrorCode errorCode,
-                                              char const* msg) {
+                                              std::string_view msg) {
   _query->warnings().registerError(errorCode, msg);
 }
 
 icu::RegexMatcher* ViewExpressionContextBase::buildRegexMatcher(
-    char const* ptr, size_t length, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache->buildRegexMatcher(ptr, length,
-                                                       caseInsensitive);
+    std::string_view expr, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache->buildRegexMatcher(expr, caseInsensitive);
 }
 
 icu::RegexMatcher* ViewExpressionContextBase::buildLikeMatcher(
-    char const* ptr, size_t length, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache->buildLikeMatcher(ptr, length,
-                                                      caseInsensitive);
+    std::string_view expr, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache->buildLikeMatcher(expr, caseInsensitive);
 }
 
 icu::RegexMatcher* ViewExpressionContextBase::buildSplitMatcher(
@@ -71,7 +69,7 @@ icu::RegexMatcher* ViewExpressionContextBase::buildSplitMatcher(
 }
 
 arangodb::ValidatorBase* ViewExpressionContextBase::buildValidator(
-    arangodb::velocypack::Slice const& params) {
+    arangodb::velocypack::Slice params) {
   return _aqlFunctionsInternalCache->buildValidator(params);
 }
 
@@ -82,6 +80,16 @@ TRI_vocbase_t& ViewExpressionContextBase::vocbase() const {
 transaction::Methods& ViewExpressionContextBase::trx() const { return *_trx; }
 
 bool ViewExpressionContextBase::killed() const { return _query->killed(); }
+
+void ViewExpressionContext::setVariable(arangodb::aql::Variable const* variable,
+                                        arangodb::velocypack::Slice value) {
+  _variables.emplace(variable, value);
+}
+
+void ViewExpressionContext::clearVariable(
+    arangodb::aql::Variable const* variable) noexcept {
+  _variables.erase(variable);
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                              ViewExpressionContext implementation
@@ -116,6 +124,17 @@ AqlValue ViewExpressionContext::getVariableValue(Variable const* var,
         "Unable to evaluate loop variable '%s' as a part of ArangoSearch "
         "noncompliant expression",
         var->name.c_str());
+  }
+
+  if (!_variables.empty()) {
+    TRI_ASSERT(_variables.empty());
+    auto it = _variables.find(var);
+
+    if (it != _variables.end()) {
+      // copy the slice we found
+      mustDestroy = true;
+      return AqlValue((*it).second);
+    }
   }
 
   mustDestroy = false;

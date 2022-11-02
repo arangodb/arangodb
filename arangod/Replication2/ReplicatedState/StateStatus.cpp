@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/voc-errors.h"
+#include "Basics/TimeString.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -37,77 +38,37 @@ using namespace arangodb::replication2::replicated_state;
 namespace {
 inline constexpr std::string_view StringWaitingForLeadershipEstablished =
     "WaitingForLeadershipEstablished";
-inline constexpr std::string_view StringIngestingExistingLog =
-    "IngestingExistingLog";
 inline constexpr std::string_view StringRecoveryInProgress =
     "RecoveryInProgress";
 inline constexpr std::string_view StringServiceAvailable = "ServiceAvailable";
+inline constexpr std::string_view StringServiceStarting = "ServiceStarting";
 
 inline constexpr std::string_view StringWaitForLeaderConfirmation =
     "WaitForLeaderConfirmation";
 inline constexpr std::string_view StringTransferSnapshot = "TransferSnapshot";
-inline constexpr std::string_view StringNothingToApply = "NothingToApply";
 inline constexpr std::string_view StringApplyRecentEntries =
     "ApplyRecentEntries";
 inline constexpr std::string_view StringUninitializedState =
     "UninitializedState";
+inline constexpr std::string_view StringSnapshotTransferFailed =
+    "SnapshotTransferFailed";
+inline constexpr std::string_view StringWaitForNewEntries = "WaitForNewEntries";
 
-inline constexpr auto StringRole = velocypack::StringRef{"role"};
-inline constexpr auto StringDetail = velocypack::StringRef{"detail"};
-inline constexpr auto StringState = velocypack::StringRef{"state"};
-inline constexpr auto StringLog = velocypack::StringRef{"log"};
-inline constexpr auto StringGeneration = velocypack::StringRef{"generation"};
-
-auto followerStateFromString(std::string_view str) -> FollowerInternalState {
-  if (str == StringUninitializedState) {
-    return FollowerInternalState::kUninitializedState;
-  } else if (str == StringWaitForLeaderConfirmation) {
-    return FollowerInternalState::kWaitForLeaderConfirmation;
-  } else if (str == StringTransferSnapshot) {
-    return FollowerInternalState::kTransferSnapshot;
-  } else if (str == StringNothingToApply) {
-    return FollowerInternalState::kNothingToApply;
-  } else if (str == StringApplyRecentEntries) {
-    return FollowerInternalState::kApplyRecentEntries;
-  } else {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
-                                  "unknown follower internal state %*s",
-                                  str.size(), str.data());
-  }
-}
-
-auto leaderStateFromString(std::string_view str) -> LeaderInternalState {
-  if (str == StringUninitializedState) {
-    return LeaderInternalState::kUninitializedState;
-  } else if (str == StringIngestingExistingLog) {
-    return LeaderInternalState::kIngestingExistingLog;
-  } else if (str == StringRecoveryInProgress) {
-    return LeaderInternalState::kRecoveryInProgress;
-  } else if (str == StringServiceAvailable) {
-    return LeaderInternalState::kServiceAvailable;
-  } else if (str == StringWaitingForLeadershipEstablished) {
-    return LeaderInternalState::kWaitingForLeadershipEstablished;
-  } else {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
-                                  "unknown leader internal state %*s",
-                                  str.size(), str.data());
-  }
-}
 }  // namespace
 
 auto replicated_state::to_string(LeaderInternalState state) noexcept
     -> std::string_view {
   switch (state) {
-    case LeaderInternalState::kWaitingForLeadershipEstablished:
-      return StringWaitingForLeadershipEstablished;
-    case LeaderInternalState::kIngestingExistingLog:
-      return StringIngestingExistingLog;
-    case LeaderInternalState::kRecoveryInProgress:
-      return StringRecoveryInProgress;
-    case LeaderInternalState::kServiceAvailable:
-      return StringServiceAvailable;
     case LeaderInternalState::kUninitializedState:
       return StringUninitializedState;
+    case LeaderInternalState::kWaitingForLeadershipEstablished:
+      return StringWaitingForLeadershipEstablished;
+    case LeaderInternalState::kRecoveryInProgress:
+      return StringRecoveryInProgress;
+    case LeaderInternalState::kServiceStarting:
+      return StringServiceStarting;
+    case LeaderInternalState::kServiceAvailable:
+      return StringServiceAvailable;
   }
   TRI_ASSERT(false) << "invalid state value " << int(state);
   return "(unknown-internal-leader-state)";
@@ -120,109 +81,95 @@ auto replicated_state::to_string(FollowerInternalState state) noexcept
       return StringWaitForLeaderConfirmation;
     case FollowerInternalState::kTransferSnapshot:
       return StringTransferSnapshot;
-    case FollowerInternalState::kNothingToApply:
-      return StringNothingToApply;
     case FollowerInternalState::kApplyRecentEntries:
       return StringApplyRecentEntries;
     case FollowerInternalState::kUninitializedState:
       return StringUninitializedState;
+    case FollowerInternalState::kSnapshotTransferFailed:
+      return StringSnapshotTransferFailed;
+    case FollowerInternalState::kWaitForNewEntries:
+      return StringWaitForNewEntries;
   }
   TRI_ASSERT(false) << "invalid state value " << int(state);
   return "(unknown-internal-follower-state)";
 }
 
 void StateStatus::toVelocyPack(velocypack::Builder& builder) const {
-  std::visit([&](auto const& s) { s.toVelocyPack(builder); }, variant);
+  std::visit([&](auto const& s) { velocypack::serialize(builder, s); },
+             variant);
 }
 
 auto StateStatus::fromVelocyPack(velocypack::Slice slice) -> StateStatus {
-  auto role = slice.get(StringRole).stringView();
+  auto role = slice.get(static_strings::StringRole).stringView();
   if (role == StaticStrings::Leader) {
-    return StateStatus{LeaderStatus::fromVelocyPack(slice)};
+    return StateStatus{velocypack::deserialize<LeaderStatus>(slice)};
   } else if (role == StaticStrings::Follower) {
-    return StateStatus{FollowerStatus::fromVelocyPack(slice)};
+    return StateStatus{velocypack::deserialize<FollowerStatus>(slice)};
+  } else if (role == static_strings::StringUnconfigured) {
+    return StateStatus{velocypack::deserialize<UnconfiguredStatus>(slice)};
   } else {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER, "unknown role %*s",
                                   role.size(), role.data());
   }
 }
 
-void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
-  velocypack::ObjectBuilder ob(&builder);
-  builder.add(StringRole, velocypack::Value(StaticStrings::Follower));
-  builder.add(StringGeneration, velocypack::Value(generation));
-  builder.add(velocypack::Value(StringState));
-  state.toVelocyPack(builder);
-  builder.add(velocypack::Value(StringLog));
-  log.toVelocyPack(builder);
+auto arangodb::replication2::replicated_state::operator<<(
+    std::ostream& out, StateStatus const& stateStatus) -> std::ostream& {
+  VPackBuilder builder;
+  stateStatus.toVelocyPack(builder);
+  return out << builder.slice().toJson();
 }
 
-void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
-  velocypack::ObjectBuilder ob(&builder);
-  builder.add(StringRole, velocypack::Value(StaticStrings::Leader));
-  builder.add(StringGeneration, velocypack::Value(generation));
-  builder.add(velocypack::Value(StringState));
-  state.toVelocyPack(builder);
-  builder.add(velocypack::Value(StringLog));
-  log.toVelocyPack(builder);
+auto FollowerInternalStateStringTransformer::toSerialized(
+    FollowerInternalState source, std::string& target) const
+    -> inspection::Status {
+  target = to_string(source);
+  return {};
 }
 
-auto FollowerStatus::fromVelocyPack(velocypack::Slice s) -> FollowerStatus {
-  TRI_ASSERT(s.get(StringRole).stringView() == StaticStrings::Follower);
-  auto state = State::fromVelocyPack(s.get(StringState));
-  auto log = replicated_log::FollowerStatus::fromVelocyPack(s.get(StringLog));
-  auto generation = s.get(StringGeneration).extract<StateGeneration>();
-  return FollowerStatus{.generation = generation,
-                        .state = std::move(state),
-                        .log = std::move(log)};
-}
-
-auto LeaderStatus::fromVelocyPack(velocypack::Slice s) -> LeaderStatus {
-  TRI_ASSERT(s.get(StringRole).stringView() == StaticStrings::Leader);
-  auto state = State::fromVelocyPack(s.get(StringState));
-  auto log = replicated_log::LeaderStatus::fromVelocyPack(s.get(StringLog));
-  auto generation = s.get(StringGeneration).extract<StateGeneration>();
-  return LeaderStatus{.generation = generation,
-                      .state = std::move(state),
-                      .log = std::move(log)};
-}
-
-void FollowerStatus::State::toVelocyPack(velocypack::Builder& builder) const {
-  velocypack::ObjectBuilder ob(&builder);
-  // TODO add lastChange timepoint
-  builder.add(StringState, velocypack::Value(to_string(state)));
-  if (detail) {
-    builder.add(StringDetail, velocypack::Value(*detail));
+auto FollowerInternalStateStringTransformer::fromSerialized(
+    std::string const& source, FollowerInternalState& target) const
+    -> inspection::Status {
+  if (source == StringUninitializedState) {
+    target = FollowerInternalState::kUninitializedState;
+  } else if (source == StringWaitForLeaderConfirmation) {
+    target = FollowerInternalState::kWaitForLeaderConfirmation;
+  } else if (source == StringTransferSnapshot) {
+    target = FollowerInternalState::kTransferSnapshot;
+  } else if (source == StringApplyRecentEntries) {
+    target = FollowerInternalState::kApplyRecentEntries;
+  } else if (source == StringSnapshotTransferFailed) {
+    target = FollowerInternalState::kSnapshotTransferFailed;
+  } else if (source == StringWaitForNewEntries) {
+    target = FollowerInternalState::kWaitForNewEntries;
+  } else {
+    return inspection::Status{"unknown follower internal state " + source};
   }
+  return {};
 }
 
-auto FollowerStatus::State::fromVelocyPack(velocypack::Slice s)
-    -> FollowerStatus::State {
-  // TODO read lastChange timepoint
-  auto state = followerStateFromString(s.get(StringState).stringView());
-  auto detail = std::optional<std::string>{};
-  if (auto detailSlice = s.get(StringDetail); !detailSlice.isNone()) {
-    detail = detailSlice.copyString();
-  }
-  return State{.state = state, .detail = std::move(detail)};
+auto LeaderInternalStateStringTransformer::toSerialized(
+    LeaderInternalState source, std::string& target) const
+    -> inspection::Status {
+  target = to_string(source);
+  return {};
 }
 
-void LeaderStatus::State::toVelocyPack(velocypack::Builder& builder) const {
-  velocypack::ObjectBuilder ob(&builder);
-  // TODO add lastChange timepoint
-  builder.add(StringState, velocypack::Value(to_string(state)));
-  if (detail) {
-    builder.add(StringDetail, velocypack::Value(*detail));
+auto LeaderInternalStateStringTransformer::fromSerialized(
+    std::string const& source, LeaderInternalState& target) const
+    -> inspection::Status {
+  if (source == StringUninitializedState) {
+    target = LeaderInternalState::kUninitializedState;
+  } else if (source == StringWaitingForLeadershipEstablished) {
+    target = LeaderInternalState::kWaitingForLeadershipEstablished;
+  } else if (source == StringRecoveryInProgress) {
+    target = LeaderInternalState::kRecoveryInProgress;
+  } else if (source == StringServiceStarting) {
+    target = LeaderInternalState::kServiceStarting;
+  } else if (source == StringServiceAvailable) {
+    target = LeaderInternalState::kServiceAvailable;
+  } else {
+    return inspection::Status{"unknown leader internal state " + source};
   }
-}
-
-auto LeaderStatus::State::fromVelocyPack(velocypack::Slice s)
-    -> LeaderStatus::State {
-  // TODO read lastChange timepoint
-  auto state = leaderStateFromString(s.get(StringState).stringView());
-  auto detail = std::optional<std::string>{};
-  if (auto detailSlice = s.get(StringDetail); !detailSlice.isNone()) {
-    detail = detailSlice.copyString();
-  }
-  return State{.state = state, .detail = std::move(detail)};
+  return {};
 }

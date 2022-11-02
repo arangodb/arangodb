@@ -21,11 +21,15 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "arangosh.h"
+
 #include "V8ShellFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -73,9 +77,8 @@ static std::string const DEFAULT_CLIENT_MODULE = "client.js";
 
 namespace arangodb {
 
-V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
-                               std::string const& name)
-    : ApplicationFeature(server, "V8Shell"),
+V8ShellFeature::V8ShellFeature(Server& server, std::string const& name)
+    : ArangoshFeature(server, *this),
       _startupDirectory("js"),
       _clientModule(DEFAULT_CLIENT_MODULE),
       _currentModuleDirectory(true),
@@ -84,7 +87,6 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
       _gcInterval(50),
       _name(name),
       _isolate(nullptr) {
-  requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 
@@ -101,12 +103,12 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.startup-directory",
       "startup paths containing the JavaScript files",
       new StringParameter(&_startupDirectory),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--javascript.client-module", "client module to use at startup",
       new StringParameter(&_clientModule),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--javascript.copy-directory",
@@ -118,14 +120,14 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.module-directory",
       "additional paths containing JavaScript modules",
       new VectorParameter<StringParameter>(&_moduleDirectories),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption("--javascript.current-module-directory",
                      "add current directory to module path",
                      new BooleanParameter(&_currentModuleDirectory));
 
   options->addOption("--javascript.copy-installation",
-                     "copy contents of 'javascript.startup-directory'",
+                     "Copy contents of `--javascript.startup-directory`.",
                      new BooleanParameter(&_copyInstallation));
 
   options->addOption(
@@ -168,7 +170,7 @@ void V8ShellFeature::start() {
 
   auto* isolate = _isolate;
   TRI_GET_GLOBALS();
-  v8g = TRI_CreateV8Globals(server(), isolate, 0);
+  v8g = CreateV8Globals(server(), isolate, 0);
   v8g->_securityContext =
       arangodb::JavaScriptSecurityContext::createAdminScriptContext();
 
@@ -1127,8 +1129,8 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
     code = TRI_ObjectToInt64(isolate, args[0]);
   }
 
-  TRI_GET_GLOBALS();
-  ShellFeature& shell = v8g->_server.getFeature<ShellFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangoshServer);
+  ShellFeature& shell = v8g->server().getFeature<ShellFeature>();
 
   shell.setExitCode(static_cast<int>(code));
 

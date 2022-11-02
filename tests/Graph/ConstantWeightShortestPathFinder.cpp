@@ -23,8 +23,6 @@
 
 #include "gtest/gtest.h"
 
-#include "fakeit.hpp"
-
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
@@ -48,7 +46,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 // test setup
 #include "../Mocks/Servers.h"

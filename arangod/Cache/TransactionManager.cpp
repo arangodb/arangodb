@@ -23,6 +23,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <memory>
 
 #include "Cache/TransactionManager.h"
 
@@ -35,7 +36,7 @@ namespace arangodb::cache {
 TransactionManager::TransactionManager() : _state({{0, 0, 0}, 0}) {}
 
 Transaction* TransactionManager::begin(bool readOnly) {
-  Transaction* tx = new Transaction(readOnly);
+  auto tx = std::make_unique<Transaction>(readOnly);
 
   State newState;
   if (readOnly) {
@@ -67,7 +68,7 @@ Transaction* TransactionManager::begin(bool readOnly) {
         state, newState, std::memory_order_acq_rel, std::memory_order_relaxed));
   }
   tx->term = newState.term;
-  return tx;
+  return tx.release();
 }
 
 void TransactionManager::end(Transaction* tx) noexcept {
@@ -97,7 +98,7 @@ void TransactionManager::end(Transaction* tx) noexcept {
   delete tx;
 }
 
-uint64_t TransactionManager::term() {
+uint64_t TransactionManager::term() const noexcept {
   return _state.load(std::memory_order_acquire).term;
 }
 

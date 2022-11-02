@@ -38,7 +38,6 @@ function shellServer (options) {
   // - runThere (use javascript shell exec to run the test *in* the server
   // - runInLocalArangosh (run in the very same arangosh as testing.js)
   // - runInArangosh (spawn a new arangosh, collect results via result file, more frequent process spawning)
-  // - runInRSpec (launch tests via ruby rspec)
   // - runInDriverTest implemented inside the testsuite - see testsuites/driver.js as example
   let rc = tu.performTests(opts, testCases, 'shell_client, tu.runThere, /* startStopHandlers*/ );
   // startStopHandlers can be implemented to add additional code during the startup / shutdown of the SUT:

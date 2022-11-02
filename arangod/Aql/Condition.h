@@ -178,7 +178,7 @@ class Condition {
 
   /// @brief removes condition parts from another
   AstNode* removeTraversalCondition(ExecutionPlan const*, Variable const*,
-                                    AstNode*);
+                                    AstNode*, bool isPathCondition);
 
   /// @brief remove (now) invalid variables from the condition
   bool removeInvalidVariables(VarSet const&);
@@ -188,7 +188,8 @@ class Condition {
   /// filtering(first) and sorting(second)
   std::pair<bool, bool> findIndexes(
       EnumerateCollectionNode const*,
-      std::vector<transaction::Methods::IndexHandle>&, SortCondition const*);
+      std::vector<transaction::Methods::IndexHandle>&, SortCondition const*,
+      bool&);
 
   /// @brief get the attributes for a sub-condition that are const
   /// (i.e. compared with equality)
@@ -200,6 +201,12 @@ class Condition {
   getNonNullAttributes(Variable const*) const;
 
  private:
+  /// @brief internal worker function for removeIndexCondition and
+  /// removeTraversalCondition
+  AstNode* removeCondition(ExecutionPlan const* plan, Variable const* variable,
+                           AstNode const* condition, Index const* index,
+                           bool isFromTraverser);
+
   /// @brief optimize the condition expression tree
   void optimize(ExecutionPlan*, bool multivalued);
 

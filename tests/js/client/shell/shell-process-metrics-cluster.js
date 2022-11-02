@@ -26,9 +26,10 @@
 let jsunity = require('jsunity');
 let internal = require('internal');
 const request = require('@arangodb/request');
+const getMetric = require('@arangodb/test-helper').getMetric;
 
 function getEndpointsByType(type) {
-  const isType = (d) => (d.role.toLowerCase() === type);
+  const isType = (d) => (d.instanceRole === type);
   const toEndpoint = (d) => (d.endpoint);
   const endpointToURL = (endpoint) => {
     if (endpoint.substr(0, 6) === 'ssl://') {
@@ -41,22 +42,10 @@ function getEndpointsByType(type) {
     return 'http' + endpoint.substr(pos);
   };
 
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(isType)
+  const instanceManager = JSON.parse(internal.env.INSTANCEINFO);
+  return instanceManager.arangods.filter(isType)
                               .map(toEndpoint)
                               .map(endpointToURL);
-}
-
-function getMetric(endpoint, name) {
-  let res = request.get({
-    url: endpoint + '/_admin/metrics/v2',
-  });
-  let re = new RegExp("^" + name);
-  let matches = res.body.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
-  if (!matches.length) {
-    throw "Metric " + name + " not found";
-  }
-  return Number(matches[0].replace(/^.*? (\d+(\.\d+)?)$/, '$1'));
 }
 
 function processMetricsSuite() {

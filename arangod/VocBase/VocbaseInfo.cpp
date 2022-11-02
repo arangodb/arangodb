@@ -39,8 +39,8 @@
 
 namespace arangodb {
 
-CreateDatabaseInfo::CreateDatabaseInfo(
-    application_features::ApplicationServer& server, ExecContext const& context)
+CreateDatabaseInfo::CreateDatabaseInfo(ArangodServer& server,
+                                       ExecContext const& context)
     : _server(server), _context(context) {}
 
 ShardingPrototype CreateDatabaseInfo::shardingPrototype() const {
@@ -163,9 +163,7 @@ void CreateDatabaseInfo::UsersToVelocyPack(VPackBuilder& builder) const {
   }
 }
 
-application_features::ApplicationServer& CreateDatabaseInfo::server() const {
-  return _server;
-}
+ArangodServer& CreateDatabaseInfo::server() const { return _server; }
 
 Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
   if (users.isNone() || users.isNull()) {
@@ -308,9 +306,7 @@ Result CreateDatabaseInfo::checkOptions() {
   return res;
 }
 
-VocbaseOptions getVocbaseOptions(
-    application_features::ApplicationServer& server,
-    VPackSlice const& options) {
+VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options) {
   TRI_ASSERT(options.isObject());
   // Invalid options will be silently ignored. Default values will be used
   // instead.
@@ -322,7 +318,9 @@ VocbaseOptions getVocbaseOptions(
   vocbaseOptions.replicationFactor = 1;
   vocbaseOptions.writeConcern = 1;
   vocbaseOptions.sharding = "";
-  vocbaseOptions.replicationVersion = replication::Version::ONE;
+
+  vocbaseOptions.replicationVersion =
+      server.getFeature<DatabaseFeature>().defaultReplicationVersion();
 
   //  sanitize input for vocbase creation
   //  sharding -- must be "", "flexible" or "single"

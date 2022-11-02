@@ -42,13 +42,13 @@ class TestAnalyzer : public irs::analysis::analyzer {
 
   irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override;
 
-  static ptr make(irs::string_ref const& args);
+  static ptr make(irs::string_ref args);
 
-  static bool normalize(irs::string_ref const& args, std::string& definition);
+  static bool normalize(irs::string_ref args, std::string& definition);
 
   bool next() override;
 
-  bool reset(irs::string_ref const& data) override;
+  bool reset(irs::string_ref data) override;
 
  private:
   irs::bytes_ref _data;

@@ -22,12 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RequestStatistics.h"
+
+#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
 #include <iomanip>
+#include <thread>
+#include <vector>
 
 #include <boost/lockfree/queue.hpp>
 
@@ -37,31 +41,77 @@ using namespace arangodb;
 // --SECTION--                                                  global variables
 // -----------------------------------------------------------------------------
 
-static size_t const QUEUE_SIZE = 64 * 1024 - 2;  // current (1.62) boost maximum
+namespace {
+// initial amount of empty statistics items to be created in statisticsItems
+constexpr size_t kInitialQueueSize = 64;
 
-static std::unique_ptr<RequestStatistics[]> _statisticsBuffer;
+// protects statisticsItems
+Mutex statisticsMutex;
 
-static boost::lockfree::queue<RequestStatistics*,
-                              boost::lockfree::capacity<QUEUE_SIZE>>
-    _freeList;
+// a container of RequestStatistics objects. the vector is populated initially
+// with kInitialQueueSize items. It can grow at runtime. The addresses of
+// objects in the vector can be stored in freeList, so the objects must not be
+// destroyed if they are still in the free list. access to statisticsItems must
+// be protected by statisticsMutex
+std::vector<std::unique_ptr<RequestStatistics>> statisticsItems;
 
-static boost::lockfree::queue<RequestStatistics*,
-                              boost::lockfree::capacity<QUEUE_SIZE>>
-    _finishedList;
+// a free list of RequestStatistics objects, not owning them. the free list
+// is initially populated with kInitialQueueSize objects.
+boost::lockfree::queue<RequestStatistics*> freeList;
+
+// a list of finished (to-be-process) RequestStatistics objects, not owning
+// them. this list will be initially empty
+boost::lockfree::queue<RequestStatistics*> finishedList;
+
+bool enqueueItem(boost::lockfree::queue<RequestStatistics*>& queue,
+                 RequestStatistics* item) noexcept {
+  int tries = 0;
+
+  try {
+    do {
+      bool ok = queue.push(item);
+      if (ok) {
+        return true;
+      }
+      std::this_thread::yield();
+    } while (++tries < 1000);
+  } catch (...) {
+  }
+
+  // if for whatever reason the push operation fails, we will
+  // have a RequestStatistics object in statisticsItems
+  // that is not in the queue anymore. this item will be
+  // allocated at program end normally, but it becomes useless
+  // until then. this should be a very rare case though.
+  // a RequestStatisticsItem is around 100 bytes big.
+
+  return false;
+}
+
+}  // namespace
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
 // -----------------------------------------------------------------------------
 
 void RequestStatistics::initialize() {
-  _statisticsBuffer.reset(new RequestStatistics[QUEUE_SIZE]());
+  MUTEX_LOCKER(guard, ::statisticsMutex);
 
-  for (size_t i = 0; i < QUEUE_SIZE; ++i) {
-    RequestStatistics* entry = &_statisticsBuffer[i];
-    TRI_ASSERT(entry->_released);
-    TRI_ASSERT(!entry->_inQueue);
-    bool ok = _freeList.push(entry);
-    TRI_ASSERT(ok);
+  ::freeList.reserve(kInitialQueueSize * 2);
+  ::finishedList.reserve(kInitialQueueSize * 2);
+
+  ::statisticsItems.reserve(kInitialQueueSize);
+  for (size_t i = 0; i < kInitialQueueSize; ++i) {
+    // create a new RequestStatistics object on the heap
+    ::statisticsItems.emplace_back(std::make_unique<RequestStatistics>());
+    RequestStatistics* item = ::statisticsItems.back().get();
+    // add its address to the freelist
+    bool ok = ::enqueueItem(::freeList, item);
+    if (!ok) {
+      // for some reason we couldn't push the item to the queue. so there
+      // is no further use for it.
+      ::statisticsItems.pop_back();
+    }
   }
 }
 
@@ -69,11 +119,8 @@ size_t RequestStatistics::processAll() {
   RequestStatistics* statistics = nullptr;
   size_t count = 0;
 
-  while (_finishedList.pop(statistics)) {
+  while (::finishedList.pop(statistics)) {
     if (statistics != nullptr) {
-      TRI_ASSERT(!statistics->_released);
-      TRI_ASSERT(statistics->_inQueue);
-      statistics->_inQueue = false;
       process(statistics);
       ++count;
     }
@@ -82,20 +129,32 @@ size_t RequestStatistics::processAll() {
   return count;
 }
 
-RequestStatistics::Item RequestStatistics::acquire() {
+RequestStatistics::Item RequestStatistics::acquire() noexcept {
   RequestStatistics* statistics = nullptr;
 
-  if (_freeList.pop(statistics)) {
-    TRI_ASSERT(statistics->_released);
-    TRI_ASSERT(!statistics->_inQueue);
-    statistics->_released = false;
-  } else {
+  // try the happy path first
+  if (::freeList.pop(statistics)) {
+    return Item{statistics};
+  }
+
+  // didn't have any items on the free list. now try the
+  // expensive path
+  try {
+    auto cs = std::make_unique<RequestStatistics>();
+    // store pointer for just-created item
+    statistics = cs.get();
+
+    MUTEX_LOCKER(guard, ::statisticsMutex);
+    ::statisticsItems.emplace_back(std::move(cs));
+  } catch (...) {
     statistics = nullptr;
-    LOG_TOPIC("62d99", TRACE, arangodb::Logger::FIXME)
-        << "no free element on statistics queue";
   }
 
   return Item{statistics};
+}
+
+void RequestStatistics::release() noexcept {
+  ::enqueueItem(::finishedList, this);
 }
 
 // -----------------------------------------------------------------------------
@@ -161,32 +220,7 @@ void RequestStatistics::process(RequestStatistics* statistics) {
   statistics->reset();
 
   // put statistics item back onto the freelist
-  int tries = 0;
-
-  while (++tries < 1000) {
-    if (_freeList.push(statistics)) {
-      break;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  }
-
-  if (tries > 1) {
-    LOG_TOPIC("fb453", WARN, Logger::MEMORY)
-        << "_freeList.push failed " << tries - 1 << " times.";
-  }
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-void RequestStatistics::release() {
-  TRI_ASSERT(!_released);
-  TRI_ASSERT(!_inQueue);
-
-  _inQueue = true;
-  bool ok = _finishedList.push(this);
-  TRI_ASSERT(ok);
+  ::enqueueItem(::freeList, statistics);
 }
 
 void RequestStatistics::getSnapshot(Snapshot& snapshot,

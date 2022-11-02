@@ -35,6 +35,8 @@
 #include "AqlHelper.h"
 #include "VelocyPackHelper.h"
 
+#include <velocypack/Slice.h>
+
 /* * * * * * * *
  * * SYNOPSIS  *
  * * * * * * * *
@@ -124,7 +126,8 @@ SharedAqlItemBlockPtr buildBlock(
                 [](int i) { return AqlValue{AqlValueHintInt{i}}; },
                 [](const char* json) {
                   VPackBufferPtr tmpVpack = vpackFromJsonString(json);
-                  return AqlValue{AqlValueHintCopy{tmpVpack->data()}};
+                  return AqlValue{
+                      AqlValueHintSliceCopy{VPackSlice(tmpVpack->data())}};
                 },
             },
             entry);

@@ -29,13 +29,13 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Mocks/PreparedResponseConnectionPool.h"
+#include "Mocks/MockQuery.h"
 
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/TraverserOptions.h"
 
-#include <velocypack/velocypack-aliases.h>
 #include <unordered_set>
 
 using namespace arangodb;
@@ -53,7 +53,7 @@ static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 using TypesToTest =
     ::testing::Types<MockGraphProvider,
                      SingleServerProvider<SingleServerProviderStep>,
-                     ClusterProvider>;
+                     ClusterProvider<ClusterProviderStep>>;
 
 template<class ProviderType>
 class GraphProviderTest : public ::testing::Test {
@@ -76,6 +76,8 @@ class GraphProviderTest : public ::testing::Test {
   std::unique_ptr<arangodb::aql::FixedVarExpressionContext> _expressionContext;
 
   std::unordered_map<std::string, std::vector<std::string>> _emptyShardMap{};
+  aql::Projections _vertexProjections{};
+  aql::Projections _edgeProjections{};
 
   GraphProviderTest() {}
   ~GraphProviderTest() {}
@@ -119,27 +121,32 @@ class GraphProviderTest : public ::testing::Test {
 
       std::vector<IndexAccessor> usedIndexes{};
       usedIndexes.emplace_back(IndexAccessor{edgeIndexHandle, indexCondition, 0,
-                                             nullptr, std::nullopt, 0});
+                                             nullptr, std::nullopt, 0,
+                                             TRI_EDGE_OUT});
 
       _expressionContext =
           std::make_unique<arangodb::aql::FixedVarExpressionContext>(
               *_trx.get(), *query, _functionsCache);
+      std::vector<Variable const*> vars;
+      std::vector<RegisterId const*> regs;
 
-      BaseProviderOptions opts(
+      SingleServerBaseProviderOptions opts(
           tmpVar,
           std::make_pair(
               std::move(usedIndexes),
               std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
-          *_expressionContext.get(), _emptyShardMap);
+          *_expressionContext.get(), {}, _emptyShardMap, _vertexProjections,
+          _edgeProjections);
       return SingleServerProvider<SingleServerProviderStep>(
           *query.get(), std::move(opts), resourceMonitor);
     }
-    if constexpr (std::is_same_v<ProviderType, ClusterProvider>) {
+    if constexpr (std::is_same_v<ProviderType,
+                                 ClusterProvider<ClusterProviderStep>>) {
       // Prepare the DBServerResponses
       std::vector<arangodb::tests::PreparedRequestResponse> preparedResponses;
       uint64_t engineId = 0;
       {
-        arangodb::tests::mocks::MockDBServer server{true, true};
+        arangodb::tests::mocks::MockDBServer server{"PRMR_0001", true, true};
         graph.prepareServer(server);
 
         auto queryString =
@@ -147,8 +154,7 @@ class GraphProviderTest : public ::testing::Test {
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
             server.getSystemDatabase());
-        auto fakeQuery =
-            arangodb::aql::Query::create(ctx, queryString, nullptr);
+        auto fakeQuery = std::make_shared<MockQuery>(ctx, queryString);
         try {
           fakeQuery->collections().add("s9880", AccessMode::Type::READ,
                                        arangodb::aql::Collection::Hint::Shard);
@@ -171,7 +177,8 @@ class GraphProviderTest : public ::testing::Test {
             ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
         fromCondition->addMember(cond);
         opts.addLookupInfo(fakeQuery->plan(), "s9880",
-                           StaticStrings::FromString, fromCondition);
+                           StaticStrings::FromString, fromCondition,
+                           /*onlyEdgeIndexes*/ false, TRI_EDGE_OUT);
 
         auto const* revAccess =
             ast->createNodeAttributeAccess(tmpVarRef, StaticStrings::ToString);
@@ -181,7 +188,8 @@ class GraphProviderTest : public ::testing::Test {
             ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
         toCondition->addMember(revCond);
         opts.addReverseLookupInfo(fakeQuery->plan(), "s9880",
-                                  StaticStrings::FromString, toCondition);
+                                  StaticStrings::ToString, toCondition,
+                                  /*onlyEdgeIndexes*/ false, TRI_EDGE_IN);
 
         std::tie(preparedResponses, engineId) =
             graph.simulateApi(server, expectedVerticesEdgesBundleToFetch, opts);
@@ -195,7 +203,8 @@ class GraphProviderTest : public ::testing::Test {
 #endif
       }
 
-      server = std::make_unique<mocks::MockCoordinator>(true, false);
+      server =
+          std::make_unique<mocks::MockCoordinator>("CRDN_0001", true, false);
       mocks::MockCoordinator* srv =
           static_cast<mocks::MockCoordinator*>(server.get());
       graph.prepareServer(*srv);
@@ -228,9 +237,10 @@ class GraphProviderTest : public ::testing::Test {
       auto clusterCache =
           std::make_shared<RefactoredClusterTraverserCache>(resourceMonitor);
 
-      ClusterBaseProviderOptions opts(clusterCache, clusterEngines.get(),
-                                      false);
-      return ClusterProvider(*query.get(), std::move(opts), resourceMonitor);
+      ClusterBaseProviderOptions opts(clusterCache, clusterEngines.get(), false,
+                                      true);
+      return ClusterProvider<ClusterProviderStep>(*query.get(), std::move(opts),
+                                                  resourceMonitor);
     }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -243,6 +253,9 @@ TYPED_TEST(GraphProviderTest, no_results_if_graph_is_empty) {
 
   std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
       expectedVerticesEdgesBundleToFetch = {{0, {}}};
+  // IMPORTANT Note: As soon as we're going to include vertices here with a
+  // depth > 1, we have to adjust the API of MockGraph::simulateApi. As
+  // This value is currently fixed into the prepared responses payload.
   TypeParam testee =
       this->makeProvider(empty, expectedVerticesEdgesBundleToFetch);
   std::string startString = "v/0";
@@ -270,7 +283,7 @@ TYPED_TEST(GraphProviderTest, no_results_if_graph_is_empty) {
                                               SingleServerProviderStep>> ||
                 std::is_same_v<TypeParam, MockGraphProvider>) {
     EXPECT_EQ(stats.getHttpRequests(), 0);
-  } else if (std::is_same_v<TypeParam, ClusterProvider>) {
+  } else if (std::is_same_v<TypeParam, ClusterProvider<ClusterProviderStep>>) {
     EXPECT_EQ(stats.getHttpRequests(), 2);
   }
 
@@ -284,6 +297,9 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
 
   std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
       expectedVerticesEdgesBundleToFetch = {{0, {}}};
+  // IMPORTANT Note: As soon as we're going to include vertices here with a
+  // depth > 1, we have to adjust the API of MockGraph::simulateApi. As
+  // This value is currently fixed into the prepared responses payload.
 
   auto testee = this->makeProvider(g, expectedVerticesEdgesBundleToFetch);
   std::string startString = "v/0";
@@ -315,11 +331,20 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
                                                 SingleServerProviderStep>> ||
                   std::is_same_v<TypeParam, MockGraphProvider>) {
       EXPECT_EQ(stats.getHttpRequests(), 0);
-    } else if (std::is_same_v<TypeParam, ClusterProvider>) {
+    } else if (std::is_same_v<TypeParam,
+                              ClusterProvider<ClusterProviderStep>>) {
       EXPECT_EQ(stats.getHttpRequests(), 2);
     }
-    // We have 1 edge, this shall be counted
-    EXPECT_EQ(stats.getScannedIndex(), 1);
+
+    if constexpr (std::is_same_v<TypeParam, SingleServerProvider<
+                                                SingleServerProviderStep>> ||
+                  std::is_same_v<TypeParam, MockGraphProvider>) {
+      // We have 1 edge, this shall be counted
+      EXPECT_EQ(stats.getScannedIndex(), 1);
+    } else if (std::is_same_v<TypeParam,
+                              ClusterProvider<ClusterProviderStep>>) {
+      EXPECT_EQ(stats.getScannedIndex(), 2);  // we count edge + start vertex
+    }
   }
   {
     // Make sure stats are reset after we stole them
@@ -340,6 +365,10 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
 
   std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
       expectedVerticesEdgesBundleToFetch = {{0, {}}};
+  // IMPORTANT Note: As soon as we're going to include vertices here with a
+  // depth > 1, we have to adjust the API of MockGraph::simulateApi. As
+  // This value is currently fixed into the prepared responses payload.
+
   auto testee = this->makeProvider(g, expectedVerticesEdgesBundleToFetch);
   std::string startString = g.vertexToId(0);
   VPackHashedStringRef startH{startString.c_str(),
@@ -378,11 +407,19 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
                                                 SingleServerProviderStep>> ||
                   std::is_same_v<TypeParam, MockGraphProvider>) {
       EXPECT_EQ(stats.getHttpRequests(), 0);
-    } else if (std::is_same_v<TypeParam, ClusterProvider>) {
+    } else if (std::is_same_v<TypeParam,
+                              ClusterProvider<ClusterProviderStep>>) {
       EXPECT_EQ(stats.getHttpRequests(), 2);
     }
-    // We have 3 edges, this shall be counted
-    EXPECT_EQ(stats.getScannedIndex(), 3);
+    if constexpr (std::is_same_v<TypeParam, SingleServerProvider<
+                                                SingleServerProviderStep>> ||
+                  std::is_same_v<TypeParam, MockGraphProvider>) {
+      // We have 3 edges, this shall be counted
+      EXPECT_EQ(stats.getScannedIndex(), 3);
+    } else if (std::is_same_v<TypeParam,
+                              ClusterProvider<ClusterProviderStep>>) {
+      EXPECT_EQ(stats.getScannedIndex(), 4);  // we count edge + start vertex
+    }
   }
 }
 
@@ -390,6 +427,9 @@ TYPED_TEST(GraphProviderTest, destroy_engines) {
   MockGraph empty{};
   std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
       expectedVerticesEdgesBundleToFetch = {};
+  // IMPORTANT Note: As soon as we're going to include vertices here with a
+  // depth > 1, we have to adjust the API of MockGraph::simulateApi. As
+  // This value is currently fixed into the prepared responses payload.
   TypeParam testee =
       this->makeProvider(empty, expectedVerticesEdgesBundleToFetch);
 
@@ -402,7 +442,7 @@ TYPED_TEST(GraphProviderTest, destroy_engines) {
                                               SingleServerProviderStep>> ||
                 std::is_same_v<TypeParam, MockGraphProvider>) {
     EXPECT_EQ(statsAfterSteal.getHttpRequests(), 0);
-  } else if (std::is_same_v<TypeParam, ClusterProvider>) {
+  } else if (std::is_same_v<TypeParam, ClusterProvider<ClusterProviderStep>>) {
     EXPECT_EQ(statsAfterSteal.getHttpRequests(),
               this->clusterEngines.get()->size());
   }

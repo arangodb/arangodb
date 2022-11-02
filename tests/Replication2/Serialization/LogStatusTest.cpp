@@ -41,6 +41,7 @@ TEST(LogStatusTest, log_statistics) {
   statistics.spearHead = TermIndexPair{LogTerm{2}, LogIndex{1}};
   statistics.commitIndex = LogIndex{1};
   statistics.firstIndex = LogIndex{1};
+  statistics.releaseIndex = LogIndex{0};
   VPackBuilder builder;
   statistics.toVelocyPack(builder);
   auto slice = builder.slice();
@@ -50,6 +51,7 @@ TEST(LogStatusTest, log_statistics) {
   auto jsonBuffer = R"({
     "commitIndex": 1,
     "firstIndex": 1,
+    "releaseIndex": 0,
     "spearhead": {
       "term": 2,
       "index": 1
@@ -76,7 +78,12 @@ TEST(LogStatusTest, commit_fail_reason) {
       << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
 
   builder.clear();
-  reason = CommitFailReason::withQuorumSizeNotReached("PRMR-1234");
+  reason = CommitFailReason::withQuorumSizeNotReached(
+      {{"PRMR-1234",
+        {.isFailed = true,
+         .isAllowedInQuorum = true,
+         .lastAcknowledged = TermIndexPair(LogTerm(1), LogIndex(2))}}},
+      TermIndexPair(LogTerm(3), LogIndex(4)));
   reason.toVelocyPack(builder);
   slice = builder.slice();
   fromVPack = CommitFailReason::fromVelocyPack(slice);
@@ -127,8 +134,9 @@ TEST(LogStatusTest, append_entries_error_reason) {
 TEST(LogStatusTest, follower_statistics_exceptions) {
   // Missing commitIndex
   EXPECT_ANY_THROW({
-    FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
+    velocypack::deserialize<FollowerStatistics>(velocypack::Slice(R"({
       "missing_commitIndex": 4,
+      "releaseIndex": 0,
       "spearhead": {
         "term": 2,
         "index": 4
@@ -143,8 +151,9 @@ TEST(LogStatusTest, follower_statistics_exceptions) {
 
   // Wrong type for commitIndex
   EXPECT_ANY_THROW({
-    FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
+    velocypack::deserialize<FollowerStatistics>(velocypack::Slice(R"({
       "commitIndex": "4",
+      "releaseIndex": 0,
       "spearhead": {
         "term": 2,
         "index": 4
@@ -164,17 +173,21 @@ TEST(LogStatusTest, leader_status) {
   statistics.spearHead = TermIndexPair{LogTerm{2}, LogIndex{1}};
   statistics.commitIndex = LogIndex{1};
   statistics.firstIndex = LogIndex{1};
+  statistics.releaseIndex = LogIndex{0};
   leaderStatus.local = statistics;
   leaderStatus.term = LogTerm{2};
-  leaderStatus.largestCommonIndex = LogIndex{1};
+  leaderStatus.lowestIndexToKeep = LogIndex{1};
   leaderStatus.activeParticipantsConfig.generation = 14;
-  leaderStatus.committedParticipantsConfig = ParticipantsConfig{};
+  leaderStatus.committedParticipantsConfig = agency::ParticipantsConfig{};
   leaderStatus.committedParticipantsConfig->generation = 18;
   std::unordered_map<ParticipantId, FollowerStatistics> follower(
       {{"PRMR-45c56239-6a83-4ab0-961e-9adea5078286",
-        FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
+        velocypack::deserialize<FollowerStatistics>(velocypack::Slice(R"({
         "commitIndex": 4,
+        "releaseIndex": 0,
+        "firstIndex": 1,
         "spearhead": {"term": 2, "index": 4},
+        "nextPrevLogIndex": {"term": 2, "index": 4},
         "lastErrorReason": {"error": "None"},
         "lastRequestLatencyMS": 0.012983,
         "state": {
@@ -182,9 +195,12 @@ TEST(LogStatusTest, leader_status) {
         }
         })"_vpack->data()))},
        {"PRMR-13608015-4a2c-46aa-985f-73b6b8a73568",
-        FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
+        velocypack::deserialize<FollowerStatistics>(velocypack::Slice(R"({
           "commitIndex": 3,
+          "releaseIndex": 0,
+          "firstIndex": 1,
           "spearhead": {"term": 2, "index": 3},
+          "nextPrevLogIndex": {"term": 2, "index": 3},
           "lastErrorReason": {"error": "CommunicationError", "details": "foo"},
           "lastRequestLatencyMS": 11159.799272,
           "state": {
@@ -196,9 +212,9 @@ TEST(LogStatusTest, leader_status) {
   leaderStatus.lastCommitStatus = CommitFailReason::withNothingToCommit();
   leaderStatus.commitLagMS = 0.014453ms;
   VPackBuilder builder;
-  leaderStatus.toVelocyPack(builder);
+  velocypack::serialize(builder, leaderStatus);
   auto slice = builder.slice();
-  auto fromVPack = LeaderStatus::fromVelocyPack(slice);
+  auto fromVPack = velocypack::deserialize<LeaderStatus>(slice);
   EXPECT_EQ(leaderStatus, fromVPack);
 }
 
@@ -207,10 +223,11 @@ TEST(LogStatusTest, follower_status) {
     "role": "follower",
     "leader": "PRMR-d2a1b29e-ff75-412e-8b97-f3bfbf464fab",
     "term": 2,
-    "largestCommonIndex": 3,
+    "lowestIndexToKeep": 3,
     "local": {
       "commitIndex": 4,
       "firstIndex": 1,
+      "releaseIndex": 0,
       "spearhead": {
         "term": 2,
         "index": 4
@@ -218,11 +235,11 @@ TEST(LogStatusTest, follower_status) {
     }
   })"_vpack;
   auto followerSlice = velocypack::Slice(jsonBuffer->data());
-  auto followerStatus = FollowerStatus::fromVelocyPack(followerSlice);
+  auto followerStatus = velocypack::deserialize<FollowerStatus>(followerSlice);
   EXPECT_TRUE(followerStatus.leader.has_value());
 
   VPackBuilder builder;
-  followerStatus.toVelocyPack(builder);
+  velocypack::serialize(builder, followerStatus);
   auto builderSlice = builder.slice();
   EXPECT_TRUE(VelocyPackHelper::equal(followerSlice, builderSlice, true))
       << "expected " << followerSlice.toJson() << " found "
@@ -230,15 +247,16 @@ TEST(LogStatusTest, follower_status) {
 
   builder.clear();
   followerStatus.leader = std::nullopt;
-  followerStatus.toVelocyPack(builder);
+  velocypack::serialize(builder, followerStatus);
   builderSlice = builder.slice();
   jsonBuffer = R"({
     "role": "follower",
     "term": 2,
-    "largestCommonIndex": 3,
+    "lowestIndexToKeep": 3,
     "local": {
       "commitIndex": 4,
       "firstIndex": 1,
+      "releaseIndex": 0,
       "spearhead": {
         "term": 2,
         "index": 4
@@ -246,63 +264,10 @@ TEST(LogStatusTest, follower_status) {
     }
   })"_vpack;
   followerSlice = velocypack::Slice(jsonBuffer->data());
-  auto followerStatusNoLeader = FollowerStatus::fromVelocyPack(followerSlice);
+  auto followerStatusNoLeader =
+      velocypack::deserialize<FollowerStatus>(followerSlice);
   EXPECT_FALSE(followerStatusNoLeader.leader.has_value());
   EXPECT_TRUE(VelocyPackHelper::equal(followerSlice, builderSlice, true))
       << "expected " << followerSlice.toJson() << " found "
       << builderSlice.toJson();
-}
-
-TEST(LogStatusTest, global_status) {
-  auto election = agency::LogCurrentSupervisionElection{};
-  election.term = LogTerm{1};
-  election.participantsRequired = 2;
-  election.participantsAvailable = 0;
-
-  auto supervision = agency::LogCurrentSupervision{};
-  supervision.election = std::move(election);
-
-  auto participants = std::unordered_map<ParticipantId, LogStatus>{
-      {"LeaderId", LogStatus{UnconfiguredStatus{}}}};
-  auto status = GlobalStatus{
-      supervision, {{"LeaderId", LogStatus{UnconfiguredStatus{}}}}, "LeaderId"};
-
-  VPackBuilder builder;
-  status.toVelocyPack(builder);
-  auto slice = builder.slice();
-
-  auto jsonBuffer = R"({
-    "supervision": {
-      "election": {
-        "term": 1,
-        "participantsRequired": 2,
-        "participantsAvailable": 0,
-        "details": {}
-      }
-    },
-    "participants": {
-      "LeaderId": {
-        "role": "unconfigured"
-      }
-    },
-    "leaderId": "LeaderId"
-  })"_vpack;
-  auto statusSlice = velocypack::Slice(jsonBuffer->data());
-  EXPECT_TRUE(VelocyPackHelper::equal(slice, statusSlice, true))
-      << "expected " << slice.toJson() << " found " << statusSlice.toJson();
-
-  builder.clear();
-  status.participants.clear();
-  status.leaderId = std::nullopt;
-  status.toVelocyPack(builder);
-  status = GlobalStatus::fromVelocyPack(builder.slice());
-  EXPECT_EQ(status.participants.size(), 0);
-  EXPECT_EQ(status.leaderId, std::nullopt);
-
-  builder.clear();
-  status = GlobalStatus::fromVelocyPack(statusSlice);
-  EXPECT_EQ(status.leaderId, "LeaderId");
-  EXPECT_EQ(status.participants.size(), 1);
-  EXPECT_NE(status.participants.find(*status.leaderId),
-            status.participants.end());
 }

@@ -41,7 +41,7 @@ describe('HTTP headers in Foxx services', function () {
         expect(result.code).to.equal(200);
         expect(result.headers['access-control-expose-headers']).to.equal('etag, content-encoding, content-length, location, server, x-arango-errors, x-arango-async-id');
         expect(result.headers).not.to.have.property('access-control-allow-headers');
-        expect(result.headers['access-control-allow-credentials']).to.equal('true');
+        expect(result.headers['access-control-allow-credentials']).to.equal('false');
         expect(result.headers['access-control-allow-origin']).to.equal(origin);
         expect(result.headers['access-control-allow-methods']).to.equal('DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT');
       });
@@ -63,7 +63,7 @@ describe('HTTP headers in Foxx services', function () {
                 join(', '));
       if (!isVst) {
         // VST doesn't handle the `origin` header.
-        expect(result.headers['access-control-allow-credentials']).to.equal('true');
+        expect(result.headers['access-control-allow-credentials']).to.equal('false');
       }
     });
 
@@ -85,7 +85,7 @@ describe('HTTP headers in Foxx services', function () {
         if (!isVst) {
           // VST doesn't handle the `origin` header.
           expect(result.headers['access-control-allow-headers']).to.equal("foo, bar");
-          expect(result.headers['access-control-allow-credentials']).to.equal('true');
+          expect(result.headers['access-control-allow-credentials']).to.equal('false');
           expect(result.headers['access-control-allow-origin']).to.equal(origin);
         }
       });
@@ -104,7 +104,7 @@ describe('HTTP headers in Foxx services', function () {
                 join(', '));
       if (!isVst) {
         // VST doesn't handle the `origin` header.
-        expect(result.headers['access-control-allow-credentials']).to.equal('true');
+        expect(result.headers['access-control-allow-credentials']).to.equal('false');
       }
     });
   });

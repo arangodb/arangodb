@@ -76,7 +76,7 @@ void DistinctCollectExecutor::initializeCursor() { destroyValues(); }
 [[nodiscard]] auto DistinctCollectExecutor::expectedNumberOfRowsNew(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
-  if (input.finalState() == ExecutorState::DONE) {
+  if (input.finalState() == MainQueryState::DONE) {
     // Worst case assumption:
     // For every input row we have a new group.
     // We will never produce more then asked for

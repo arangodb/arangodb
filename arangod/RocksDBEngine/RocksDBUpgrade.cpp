@@ -48,13 +48,12 @@
 #include <rocksdb/write_batch.h>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
-void arangodb::rocksdbStartupVersionCheck(
-    application_features::ApplicationServer& server, rocksdb::TransactionDB* db,
-    bool dbExisted) {
+void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
+                                          rocksdb::TransactionDB* db,
+                                          bool dbExisted) {
   static_assert(
       std::is_same<char, std::underlying_type<RocksDBEndianness>::type>::value,
       "RocksDBEndianness has wrong type");

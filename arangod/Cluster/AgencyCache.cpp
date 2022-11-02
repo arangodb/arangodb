@@ -27,9 +27,13 @@
 #include "Agency/Node.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/application-exit.h"
+#include "Cluster/AgencyCallback.h"
+#include "Cluster/AgencyCallbackRegistry.h"
+#include "Cluster/ClusterFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
+#include "Network/NetworkFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -39,17 +43,17 @@ using namespace arangodb::consensus;
 DECLARE_GAUGE(arangodb_agency_cache_callback_number, uint64_t,
               "Current number of entries in agency cache callbacks table");
 
-AgencyCache::AgencyCache(application_features::ApplicationServer& server,
+AgencyCache::AgencyCache(ArangodServer& server,
                          AgencyCallbackRegistry& callbackRegistry,
                          ErrorCode shutdownCode)
-    : Thread(server, "AgencyCache"),
+    : ServerThread(server, "AgencyCache"),
       _commitIndex(0),
       _readDB(server, nullptr, "readDB"),
       _shutdownCode(shutdownCode),
       _initialized(false),
       _callbackRegistry(callbackRegistry),
       _lastSnapshot(0),
-      _callbacksCount(_server.getFeature<metrics::MetricsFeature>().add(
+      _callbacksCount(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_agency_cache_callback_number{})) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   TRI_ASSERT(_shutdownCode == TRI_ERROR_NO_ERROR ||
@@ -75,6 +79,17 @@ bool AgencyCache::start() {
   LOG_TOPIC("9a90f", DEBUG, Logger::AGENCY) << "Starting agency cache worker";
   Thread::start();
   return true;
+}
+
+consensus::index_t AgencyCache::get(
+    arangodb::velocypack::Builder& result,
+    std::shared_ptr<const cluster::paths::Path> const& path) const {
+  result.clear();
+  std::shared_lock g(_storeLock);
+  if (_commitIndex > 0) {
+    _readDB.get(path->str(), result, false);
+  }
+  return _commitIndex;
 }
 
 // Fill existing Builder from readDB, mainly /Plan /Current
@@ -234,6 +249,12 @@ void AgencyCache::handleCallbacksNoLock(
           auto tmp = r.substr(strlen(PLAN_REPLICATED_LOGS));
           planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
         } else if (rs > strlen(
+                            PLAN_REPLICATED_STATES) &&  // Plan/ReplicatedStates
+                   r.compare(0, strlen(PLAN_REPLICATED_STATES),
+                             PLAN_REPLICATED_STATES) == 0) {
+          auto tmp = r.substr(strlen(PLAN_REPLICATED_STATES));
+          planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
+        } else if (rs > strlen(
                             PLAN_COLLECTION_GROUPS) &&  // Plan/CollectionGroups
                    r.compare(0, strlen(PLAN_COLLECTION_GROUPS),
                              PLAN_COLLECTION_GROUPS) == 0) {
@@ -279,6 +300,13 @@ void AgencyCache::handleCallbacksNoLock(
             r.compare(0, strlen(CURRENT_REPLICATED_LOGS),
                       CURRENT_REPLICATED_LOGS) == 0) {
           auto tmp = r.substr(strlen(CURRENT_REPLICATED_LOGS));
+          currentChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
+        } else if (
+            rs > strlen(
+                     CURRENT_REPLICATED_STATES) &&  // Current/ReplicatedStates
+            r.compare(0, strlen(CURRENT_REPLICATED_STATES),
+                      CURRENT_REPLICATED_STATES) == 0) {
+          auto tmp = r.substr(strlen(CURRENT_REPLICATED_STATES));
           currentChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
         } else {
           currentChanges.emplace();  // "" to indicate non database
@@ -652,7 +680,7 @@ void AgencyCache::invokeCallbackNoLock(uint64_t id,
   if (cb != nullptr) {
     try {
       cb->refetchAndUpdate(true, false);
-      LOG_TOPIC("76aa8", DEBUG, Logger::CLUSTER)
+      LOG_TOPIC("76aa8", TRACE, Logger::CLUSTER)
           << "Agency callback " << id << " has been triggered. refetching "
           << key;
     } catch (arangodb::basics::Exception const& e) {
@@ -691,20 +719,23 @@ void AgencyCache::clearChanged(std::string const& what,
 
 AgencyCache::change_set_t AgencyCache::changedSince(
     std::string const& what, consensus::index_t const& last) const {
-  static std::vector<std::string> const planGoodies(
-      {AgencyCommHelper::path(PLAN_ANALYZERS) + "/",
-       AgencyCommHelper::path(PLAN_COLLECTIONS) + "/",
-       AgencyCommHelper::path(PLAN_DATABASES) + "/",
-       AgencyCommHelper::path(PLAN_VIEWS) + "/",
-       AgencyCommHelper::path(PLAN_COLLECTION_GROUPS) + "/",
-       AgencyCommHelper::path(PLAN_REPLICATED_LOGS) + "/"});
+  static std::vector<std::string> const planGoodies({
+      AgencyCommHelper::path(PLAN_ANALYZERS) + "/",
+      AgencyCommHelper::path(PLAN_COLLECTIONS) + "/",
+      AgencyCommHelper::path(PLAN_DATABASES) + "/",
+      AgencyCommHelper::path(PLAN_VIEWS) + "/",
+      AgencyCommHelper::path(PLAN_COLLECTION_GROUPS) + "/",
+      AgencyCommHelper::path(PLAN_REPLICATED_LOGS) + "/",
+      AgencyCommHelper::path(PLAN_REPLICATED_STATES) + "/",
+  });
   static std::vector<std::string> const currentGoodies(
       {AgencyCommHelper::path(CURRENT_COLLECTIONS) + "/",
        AgencyCommHelper::path(CURRENT_REPLICATED_LOGS) + "/",
+       AgencyCommHelper::path(CURRENT_REPLICATED_STATES) + "/",
        AgencyCommHelper::path(CURRENT_DATABASES) + "/"});
 
   bool get_rest = false;
-  std::unordered_map<std::string, query_t> db_res;
+  databases_t db_res;
   query_t rest_res = nullptr;
 
   std::vector<std::string> const& goodies =
@@ -788,7 +819,8 @@ AgencyCache::change_set_t AgencyCache::changedSince(
 
   if (get_rest) {  // All the rest, i.e. All keys excluding the usual suspects
     static std::vector<std::string> const exc{
-        "Analyzers", "Collections", "Databases", "Views", "ReplicatedLogs"};
+        "Analyzers", "Collections",    "Databases",
+        "Views",     "ReplicatedLogs", "ReplicatedStates"};
     auto keys = _readDB.nodePtr(AgencyCommHelper::path(what))->keys();
     keys.erase(std::remove_if(std::begin(keys), std::end(keys),
                               [&](auto const& x) {
@@ -813,13 +845,14 @@ AgencyCache::change_set_t AgencyCache::changedSince(
                       std::move(rest_res));
 }
 
-namespace std {
-ostream& operator<<(ostream& o, AgencyCache::change_set_t const& c) {
+std::ostream& arangodb::operator<<(std::ostream& o,
+                                   AgencyCache::change_set_t const& c) {
   o << c.ind;
   return o;
 }
 
-ostream& operator<<(ostream& o, AgencyCache::databases_t const& dbs) {
+std::ostream& arangodb::operator<<(std::ostream& o,
+                                   AgencyCache::databases_t const& dbs) {
   o << "{";
   bool first = true;
   for (auto const& db : dbs) {
@@ -833,4 +866,3 @@ ostream& operator<<(ostream& o, AgencyCache::databases_t const& dbs) {
   o << "}";
   return o;
 }
-}  // namespace std

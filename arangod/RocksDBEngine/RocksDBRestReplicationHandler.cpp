@@ -24,7 +24,9 @@
 
 #include "RocksDBRestReplicationHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
@@ -51,7 +53,6 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -59,8 +60,7 @@ using namespace arangodb::rest;
 using namespace arangodb::rocksutils;
 
 RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+    ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
     : RestReplicationHandler(server, request, response),
       _manager(server.getFeature<EngineSelectorFeature>()
                    .engine<RocksDBEngine>()
@@ -194,40 +194,32 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // delete an existing blocker
     auto id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
 
-    bool found = _manager->remove(id);
-    if (found) {
-      resetResponse(rest::ResponseCode::NO_CONTENT);
-    } else {
-      auto res = TRI_ERROR_CURSOR_NOT_FOUND;
-      generateError(GeneralResponse::responseCode(res), res);
+    auto res = _manager->remove(id);
+    if (res.fail()) {
+      generateError(std::move(res).result());
+      return;
     }
+
+    resetResponse(rest::ResponseCode::NO_CONTENT);
+
+    // extend client ttl by only a few seconds.
+    // 15 seconds is enough time for the WAL tailing to kick in in case of
+    // success, and in case of failure it is not too much additional time in
+    // which WAL files are kept around
+    static constexpr double extendPeriod = 15.0;
+
+    SyncerId const syncerId = std::get<SyncerId>(res.get());
+    arangodb::ServerId const clientId = std::get<arangodb::ServerId>(res.get());
+    std::string const& clientInfo = std::get<std::string>(res.get());
+
+    _vocbase.replicationClients().extend(syncerId, clientId, clientInfo,
+                                         extendPeriod);
     return;
   }
 
   // we get here if anything above is invalid
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-}
-
-// handled by the batch for rocksdb
-// TODO: remove after release of 3.8
-void RocksDBRestReplicationHandler::handleCommandBarrier() {
-  auto const type = _request->requestType();
-  if (type == rest::RequestType::POST) {
-    VPackBuilder b;
-    b.add(VPackValue(VPackValueType::Object));
-    // always return a non-0 barrier id
-    // it will be ignored by the client anyway for the RocksDB engine
-    std::string const idString = std::to_string(TRI_NewTickServer());
-    b.add("id", VPackValue(idString));
-    b.close();
-    generateResult(rest::ResponseCode::OK, b.slice());
-  } else if (type == rest::RequestType::PUT ||
-             type == rest::RequestType::DELETE_REQ) {
-    resetResponse(rest::ResponseCode::NO_CONTENT);
-  } else if (type == rest::RequestType::GET) {
-    generateResult(rest::ResponseCode::OK, VPackSlice::emptyArraySlice());
-  }
 }
 
 void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
@@ -355,9 +347,9 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
       }
 
       basics::StringBuffer& buffer = httpResponse->body();
-      arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
+      basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
       // note: we need the CustomTypeHandler here
-      VPackDumper dumper(&adapter, trxContext->getVPackOptions());
+      velocypack::Dumper dumper(&adapter, trxContext->getVPackOptions());
       for (auto marker : arangodb::velocypack::ArrayIterator(data)) {
         dumper.dump(marker);
         httpResponse->body().appendChar('\n');
@@ -896,13 +888,22 @@ void RocksDBRestReplicationHandler::handleCommandRevisionTree() {
   // smaller and thus improve efficiency)
   bool onlyPopulated = _request->parsedValue("onlyPopulated", false);
 
-  auto tree = ctx.collection->getPhysical()->revisionTree(ctx.batchId);
+  std::string collectionGuid = _request->value("collection");
+
+  std::unique_ptr<containers::RevisionTree> tree;
 
   {
     RocksDBReplicationContext* c = _manager->find(ctx.batchId);
     RocksDBReplicationContextGuard guard(_manager, c);
-    if (c != nullptr) {
-      c->removeBlocker(_request->databaseName(), _request->value("collection"));
+    if (c != nullptr) {  // we have the RocksDBReplicationContext!
+      // See if we can get the revision tree from the context:
+      tree = c->getPrefetchedRevisionTree(collectionGuid);
+      // This might return a nullptr!
+
+      if (tree == nullptr) {  // Still not there, try to get it directly:
+        tree = ctx.collection->getPhysical()->revisionTree(c->snapshotTick());
+      }
+      c->removeBlocker(_request->databaseName(), collectionGuid);
     }
   }
 

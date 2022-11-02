@@ -26,11 +26,14 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
+#include "Cluster/FailureOracleFeature.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
+#include "Inspection/VPack.h"
 #include "Network/NetworkFeature.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
@@ -72,7 +75,7 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
         StringUtils::decodeBase64(_description.get(REPLICATED_LOG_SPEC));
     auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(buffer.c_str()));
     if (!slice.isNone()) {
-      return agency::LogPlanSpecification(agency::from_velocypack, slice);
+      return velocypack::deserialize<agency::LogPlanSpecification>(slice);
     }
 
     return std::nullopt;
@@ -89,9 +92,12 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   auto& df = _feature.server().getFeature<DatabaseFeature>();
   DatabaseGuard guard(df, database);
   auto ctx = LogActionContextMaintenance{guard.database(), pool};
+  auto failureOracle = _feature.server()
+                           .getFeature<cluster::FailureOracleFeature>()
+                           .getFailureOracle();
   auto result = replication2::algorithms::updateReplicatedLog(
       ctx, serverId, rebootId, logId,
-      spec.has_value() ? &spec.value() : nullptr);
+      spec.has_value() ? &spec.value() : nullptr, std::move(failureOracle));
   std::move(result).thenFinal([desc = _description, logId, &feature = _feature](
                                   futures::Try<Result>&& tryResult) noexcept {
     try {
@@ -120,4 +126,6 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
 arangodb::maintenance::UpdateReplicatedLogAction::UpdateReplicatedLogAction(
     arangodb::MaintenanceFeature& mf,
     arangodb::maintenance::ActionDescription const& desc)
-    : ActionBase(mf, desc) {}
+    : ActionBase(mf, desc) {
+  _labels.emplace(FAST_TRACK);
+}

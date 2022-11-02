@@ -25,7 +25,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "BenchFeature.h"
 
@@ -74,9 +73,8 @@ using namespace arangodb::rest;
 
 #include "Benchmark/test-cases.h"
 
-BenchFeature::BenchFeature(application_features::ApplicationServer& server,
-                           int* result)
-    : ApplicationFeature(server, "Bench"),
+BenchFeature::BenchFeature(Server& server, int* result)
+    : ArangoBenchFeature{server, *this},
       _threadCount(NumberOfCores::getValue()),
       _operations(1000),
       _realOperations(0),
@@ -102,7 +100,6 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server,
       _histogramNumIntervals(1000),
       _histogramIntervalSize(0.0),
       _percentiles({50.0, 80.0, 85.0, 90.0, 95.0, 99.0, 99.99}) {
-  requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 
@@ -184,6 +181,13 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "server connection",
                      new BooleanParameter(&_createDatabase));
 
+  options
+      ->addOption("--create-collection",
+                  "Whether we should create the collection specified via "
+                  "the `--collection` parameter",
+                  new BooleanParameter(&_createCollection))
+      .setIntroducedIn(31000);
+
   options->addOption("--duration",
                      "test for duration seconds instead of a fixed test count",
                      new UInt64Parameter(&_duration));
@@ -222,7 +226,7 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--custom-query",
-                  "the query to be used in the 'custom-query' testcase",
+                  "The query to be used in the \"custom-query\" testcase.",
                   new StringParameter(&_customQuery))
       .setIntroducedIn(30800);
 
@@ -236,9 +240,10 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       .setIntroducedIn(30800);
 
   options
-      ->addOption("--custom-query-bindvars",
-                  "bind parameters to be used in the 'custom-query' testcase.",
-                  new StringParameter(&_customQueryBindVars))
+      ->addOption(
+          "--custom-query-bindvars",
+          "The bind parameters to be used in the `custom-query` testcase.",
+          new StringParameter(&_customQueryBindVars))
       .setIntroducedIn(31000);
 
   options->addOption("--quiet", "suppress status messages",

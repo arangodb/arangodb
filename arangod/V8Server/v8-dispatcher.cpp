@@ -25,13 +25,11 @@
 #include "v8-dispatcher.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -43,6 +41,7 @@
 #include "Utils/DatabaseGuard.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -89,9 +88,9 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
-  V8DealerFeature& v8Dealer = v8g->_server.getFeature<V8DealerFeature>();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  V8DealerFeature& v8Dealer = v8g->server().getFeature<V8DealerFeature>();
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
 
   bool allowTasks = v8Dealer.allowJavaScriptTasks() ||
                     (v8security.isInternalContext(isolate) ||
@@ -103,7 +102,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (SchedulerFeature::SCHEDULER == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no scheduler found");
-  } else if (v8g->_server.isStopping()) {
+  } else if (v8g->server().isStopping()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 
@@ -214,7 +213,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
                      .FromMaybe(v8::Local<v8::Value>()));
   }
 
-  if (!Task::tryCompile(v8g->_server, isolate, command)) {
+  if (!Task::tryCompile(v8g->server(), isolate, command)) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot compile command");
   }
 

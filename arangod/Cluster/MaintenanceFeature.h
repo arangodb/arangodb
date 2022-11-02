@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
@@ -34,6 +33,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/arangod.h"
 
 #include "Metrics/Fwd.h"
 
@@ -64,9 +64,11 @@ struct SharedPtrComparer {
   }
 };
 
-class MaintenanceFeature : public application_features::ApplicationFeature {
+class MaintenanceFeature : public ArangodFeature {
  public:
-  explicit MaintenanceFeature(application_features::ApplicationServer&);
+  static constexpr std::string_view name() noexcept { return "Maintenance"; }
+
+  explicit MaintenanceFeature(Server& server);
 
   virtual ~MaintenanceFeature();
 
@@ -119,6 +121,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   // stop the feature
   virtual void stop() override;
 
+  void initializeMetrics();
   //
   // api features
   //
@@ -367,6 +370,10 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   size_t replicationErrors(std::string const& database,
                            std::string const& shard) const;
 
+  /// @brief increase the metric that counts timed-out shard synchronization
+  /// attempts
+  void countTimedOutSyncAttempt();
+
   /**
    * @brief copy all error maps (shards, indexes and databases) for Maintenance
    *
@@ -396,12 +403,12 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
    * @brief mark and list dirty databases
    */
   void addDirty(std::string const& database);
-  void addDirty(std::unordered_set<std::string> const& databases,
+  void addDirty(containers::FlatHashSet<std::string> const& databases,
                 bool callNotify);
-  std::unordered_set<std::string> dirty(std::unordered_set<std::string> const& =
-                                            std::unordered_set<std::string>());
+  containers::FlatHashSet<std::string> dirty(
+      containers::FlatHashSet<std::string> const& = {});
   /// @brief get n random db names
-  std::unordered_set<std::string> pickRandomDirty(size_t n);
+  containers::FlatHashSet<std::string> pickRandomDirty(size_t n);
 
   /// @brief maximum number of replication error occurrences that are kept per
   /// shard.
@@ -412,9 +419,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// lazily and will not be considered when counting the number of errors.
   static constexpr auto maxReplicationErrorsPerShardAge =
       std::chrono::hours(24);
-
- protected:
-  void initializeMetrics();
 
  private:
   /// @brief Search for first action matching hash and predicate
@@ -585,10 +589,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   metrics::Histogram<metrics::LogScale<uint64_t>>*
       _agency_sync_total_runtime_msec = nullptr;
 
-  metrics::Counter* _phase1_accum_runtime_msec = nullptr;
-  metrics::Counter* _phase2_accum_runtime_msec = nullptr;
-  metrics::Counter* _agency_sync_total_accum_runtime_msec = nullptr;
-
   metrics::Counter* _action_duplicated_counter = nullptr;
   metrics::Counter* _action_registered_counter = nullptr;
   metrics::Counter* _action_done_counter = nullptr;
@@ -596,18 +596,14 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   struct ActionMetrics {
     metrics::Histogram<metrics::LogScale<uint64_t>>& _runtime_histogram;
     metrics::Histogram<metrics::LogScale<uint64_t>>& _queue_time_histogram;
-    metrics::Counter& _accum_runtime;
-    metrics::Counter& _accum_queue_time;
     metrics::Counter& _failure_counter;
 
     ActionMetrics(metrics::Histogram<metrics::LogScale<uint64_t>>& a,
                   metrics::Histogram<metrics::LogScale<uint64_t>>& b,
-                  metrics::Counter& c, metrics::Counter& d, metrics::Counter& e)
+                  metrics::Counter& c)
         : _runtime_histogram(a),
           _queue_time_histogram(b),
-          _accum_runtime(c),
-          _accum_queue_time(d),
-          _failure_counter(e) {}
+          _failure_counter(c) {}
   };
 
   std::unordered_map<std::string, ActionMetrics> _maintenance_job_metrics_map;
@@ -618,6 +614,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   metrics::Gauge<uint64_t>* _shards_total_count = nullptr;
   metrics::Gauge<uint64_t>* _shards_leader_count = nullptr;
   metrics::Gauge<uint64_t>* _shards_not_replicated_count = nullptr;
+  metrics::Counter* _sync_timeouts_total = nullptr;
 };
 
 }  // namespace arangodb

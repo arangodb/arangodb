@@ -23,22 +23,22 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Auth/TokenCache.h"
 #include "Auth/UserManager.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class AuthenticationFeature final
-    : public application_features::ApplicationFeature {
+class AuthenticationFeature final : public ArangodFeature {
  private:
   const size_t _maxSecretLength = 64;
 
  public:
-  explicit AuthenticationFeature(
-      application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Authentication"; }
 
   static inline AuthenticationFeature* instance() { return INSTANCE; }
+
+  explicit AuthenticationFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

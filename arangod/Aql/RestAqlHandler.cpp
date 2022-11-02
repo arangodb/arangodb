@@ -26,8 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlExecuteResult.h"
-#include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/BlocksWithClients.h"
 #include "Aql/ClusterQuery.h"
 #include "Aql/ExecutionBlock.h"
@@ -38,7 +36,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/tri-strings.h"
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -49,10 +46,8 @@
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Transaction/Context.h"
-#include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -65,8 +60,7 @@ constexpr std::string_view writeKey("write");
 constexpr std::string_view exclusiveKey("exclusive");
 }  // namespace
 
-RestAqlHandler::RestAqlHandler(application_features::ApplicationServer& server,
-                               GeneralRequest* request,
+RestAqlHandler::RestAqlHandler(ArangodServer& server, GeneralRequest* request,
                                GeneralResponse* response, QueryRegistry* qr)
     : RestVocbaseBaseHandler(server, request, response),
       _queryRegistry(qr),
@@ -345,7 +339,7 @@ void RestAqlHandler::setupClusterQuery() {
     auto& clusterFeature = _server.getFeature<ClusterFeature>();
     auto& clusterInfo = clusterFeature.clusterInfo();
     rGuard = clusterInfo.rebootTracker().callMeOnChange(
-        cluster::RebootTracker::PeerState(coordinatorId, rebootId),
+        {coordinatorId, rebootId},
         [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(),
          queryId = q->id()]() {
           queryRegistry->destroyQuery(vocbaseName, queryId,
@@ -529,6 +523,7 @@ void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
     LOG_TOPIC("c4db4", INFO, Logger::FIXME)
         << "Ignoring unknown exception during rest handler shutdown.";
   }
+  RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }
 
 // dig out the query from ID, handle errors
@@ -792,8 +787,31 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
 
 RequestLane RestAqlHandler::lane() const {
   if (ServerState::instance()->isCoordinator()) {
+    // continuation requests on coordinators will get medium priority,
+    // so that they don't block query parts elsewhere
+    static_assert(
+        PriorityRequestLane(RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR) ==
+            RequestPriority::MED,
+        "invalid request lane priority");
     return RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR;
-  } else {
-    return RequestLane::CLUSTER_AQL;
   }
+
+  if (ServerState::instance()->isDBServer()) {
+    std::vector<std::string> const& suffixes = _request->suffixes();
+
+    if (suffixes.size() == 2 && suffixes[0] == "finish") {
+      // AQL shutdown requests should have medium priority, so it can release
+      // locks etc. and unblock other pending requests
+      static_assert(PriorityRequestLane(RequestLane::CLUSTER_AQL_SHUTDOWN) ==
+                        RequestPriority::MED,
+                    "invalid request lane priority");
+      return RequestLane::CLUSTER_AQL_SHUTDOWN;
+    }
+  }
+
+  // everything else will run with low priority
+  static_assert(
+      PriorityRequestLane(RequestLane::CLUSTER_AQL) == RequestPriority::LOW,
+      "invalid request lane priority");
+  return RequestLane::CLUSTER_AQL;
 }

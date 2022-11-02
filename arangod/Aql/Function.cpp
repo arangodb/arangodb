@@ -56,6 +56,8 @@ Function::Function(std::string const& name, char const* arguments,
       << ", canRunOnDBServerOneShard: "
       << hasFlag(Flags::CanRunOnDBServerOneShard)
       << ", canReadDocuments: " << hasFlag(Flags::CanReadDocuments)
+      << ", canUseInAnalyzer: " << hasFlag(Flags::CanUseInAnalyzer)
+      << ", internal: " << hasFlag(Flags::Internal)
       << ", hasCxxImplementation: " << hasCxxImplementation()
       << ", hasConversions: " << !conversions.empty();
 
@@ -64,6 +66,10 @@ Function::Function(std::string const& name, char const* arguments,
   // in the future.
   TRI_ASSERT(!hasFlag(Flags::CanRunOnDBServerCluster) ||
              hasFlag(Flags::CanRunOnDBServerOneShard));
+
+  // functions that read documents are not usable in analyzers.
+  TRI_ASSERT(!hasFlag(Flags::CanReadDocuments) ||
+             !hasFlag(Flags::CanUseInAnalyzer));
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -184,10 +190,6 @@ bool Function::hasCxxImplementation() const noexcept {
   return implementation != nullptr;
 }
 
-std::underlying_type<Function::Flags>::type Function::makeFlags() noexcept {
-  return static_cast<std::underlying_type<Flags>::type>(Flags::None);
-}
-
 bool Function::hasFlag(Function::Flags flag) const noexcept {
   return (flags & static_cast<std::underlying_type<Flags>::type>(flag)) != 0;
 }
@@ -223,12 +225,16 @@ void Function::toVelocyPack(arangodb::velocypack::Builder& builder) const {
               velocypack::Value(hasFlag(Flags::CanRunOnDBServerCluster)));
   builder.add("canRunOnDBServerOneShard",
               velocypack::Value(hasFlag(Flags::CanRunOnDBServerOneShard)));
+  builder.add("canReadDocuments",
+              velocypack::Value(hasFlag(Flags::CanReadDocuments)));
+  builder.add("canUseInAnalyzer",
+              velocypack::Value(hasFlag(Flags::CanUseInAnalyzer)));
 
   // deprecated: only here for compatibility
   builder.add("canRunOnDBServer",
               velocypack::Value(hasFlag(Flags::CanRunOnDBServerCluster)));
 
   builder.add("stub",
-              velocypack::Value(implementation == &Functions::NotImplemented));
+              velocypack::Value(implementation == &functions::NotImplemented));
   builder.close();
 }

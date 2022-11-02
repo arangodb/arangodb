@@ -24,8 +24,10 @@
 #pragma once
 
 #include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/DocumentProducingNode.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/NonConstExpressionContainer.h"
+#include "Aql/Projections.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -53,7 +55,6 @@ class Slice;
 namespace graph {
 
 class EdgeCursor;
-class SingleServerEdgeCursor;
 class TraverserCache;
 
 /**
@@ -68,7 +69,7 @@ class TraverserCache;
  *        There are specialized classes for
  *          - Traversals
  *          - Shortest_Path
- *          - K_Shortest_Path
+ *          - K_Shortest_Paths
  *          - K_Paths
  */
 struct BaseOptions {
@@ -79,6 +80,7 @@ struct BaseOptions {
     std::vector<transaction::Methods::IndexHandle> idxHandles;
     std::unique_ptr<aql::Expression> expression;
     aql::AstNode* indexCondition;
+    TRI_edge_direction_e direction;
     // Flag if we have to update _from / _to in the index search condition
     bool conditionNeedUpdate;
     // Position of _from / _to in the index search condition
@@ -86,14 +88,14 @@ struct BaseOptions {
 
     aql::NonConstExpressionContainer _nonConstContainer;
 
-    LookupInfo();
+    explicit LookupInfo(TRI_edge_direction_e direction);
     ~LookupInfo();
 
     LookupInfo(LookupInfo const&);
     LookupInfo& operator=(LookupInfo const&) = delete;
 
-    LookupInfo(arangodb::aql::QueryContext&, arangodb::velocypack::Slice const&,
-               arangodb::velocypack::Slice const&);
+    LookupInfo(arangodb::aql::QueryContext&, arangodb::velocypack::Slice info,
+               arangodb::velocypack::Slice shards);
 
     void initializeNonConstExpressions(
         aql::Ast* ast,
@@ -138,11 +140,11 @@ struct BaseOptions {
   void addLookupInfo(aql::ExecutionPlan* plan,
                      std::string const& collectionName,
                      std::string const& attributeName, aql::AstNode* condition,
-                     bool onlyEdgeIndexes = false);
+                     bool onlyEdgeIndexes, TRI_edge_direction_e direction);
 
-  void clearVariableValues();
+  void clearVariableValues() noexcept;
 
-  void setVariableValue(aql::Variable const*, aql::AqlValue const);
+  void setVariableValue(aql::Variable const*, aql::AqlValue);
 
   void serializeVariables(arangodb::velocypack::Builder&) const;
 
@@ -205,6 +207,18 @@ struct BaseOptions {
 
   void isQueryKilledCallback() const;
 
+  void setVertexProjections(aql::Projections projections);
+
+  void setEdgeProjections(aql::Projections projections);
+
+  void setMaxProjections(size_t projections) noexcept;
+
+  size_t getMaxProjections() const noexcept;
+
+  aql::Projections const& getVertexProjections() const;
+
+  aql::Projections const& getEdgeProjections() const;
+
   void setRefactor(bool r) noexcept { _refactor = r; }
 
   bool refactor() const { return _refactor; }
@@ -240,10 +254,14 @@ struct BaseOptions {
                               aql::ExecutionPlan* plan,
                               std::string const& collectionName,
                               std::string const& attributeName,
-                              aql::AstNode* condition,
-                              bool onlyEdgeIndexes = false);
+                              aql::AstNode* condition, bool onlyEdgeIndexes,
+                              TRI_edge_direction_e direction);
 
   void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
+
+  void toVelocyPackBase(VPackBuilder& builder) const;
+
+  void parseShardIndependentFlags(arangodb::velocypack::Slice info);
 
  protected:
   mutable arangodb::transaction::Methods _trx;
@@ -252,7 +270,7 @@ struct BaseOptions {
   // This entry is required by API, but not actively used here
   arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
 
-  /// This context holds vaues for Variables/References in AqlNodes
+  /// This context holds values for Variables/References in AqlNodes
   /// it is read from whenever we need to do a calculation in this class.
   /// e.g. edge.weight > a
   /// Here "a" is read from the expression context.
@@ -302,6 +320,14 @@ struct BaseOptions {
 
   /// @brief whether or not we are running on a coordinator
   bool const _isCoordinator;
+
+  size_t _maxProjections{aql::DocumentProducingNode::kMaxProjections};
+
+  /// @brief Projections used on vertex data
+  aql::Projections _vertexProjections;
+
+  /// @brief Projections used on edge data
+  aql::Projections _edgeProjections;
 
   /// @brief whether or not we are running the refactored version
   /// TODO: This must be removed prior release - (is currently needed for the

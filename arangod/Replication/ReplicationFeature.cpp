@@ -23,11 +23,11 @@
 
 #include "ReplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -36,15 +36,9 @@
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "Rest/GeneralResponse.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/MetricsFeature.h"
-#include "RestServer/ServerIdFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
-#include "StorageEngine/StorageEngineFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
@@ -86,8 +80,8 @@ DECLARE_COUNTER(arangodb_replication_cluster_inventory_requests_total,
 
 namespace arangodb {
 
-ReplicationFeature::ReplicationFeature(ApplicationServer& server)
-    : ApplicationFeature(server, "Replication"),
+ReplicationFeature::ReplicationFeature(Server& server)
+    : ArangodFeature{server, *this},
       _connectTimeout(10.0),
       _requestTimeout(600.0),
       _forceConnectTimeout(false),
@@ -95,12 +89,19 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
       _replicationApplierAutoStart(true),
       _enableActiveFailover(false),
       _syncByRevision(true),
-      _connectionCache{server, httpclient::ConnectionCache::Options{5}},
+      _connectionCache{
+          server.getFeature<application_features::CommunicationFeaturePhase>(),
+          httpclient::ConnectionCache::Options{5}},
       _parallelTailingInvocations(0),
       _maxParallelTailingInvocations(0),
       _quickKeysLimit(1000000),
       _inventoryRequests(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_replication_cluster_inventory_requests_total{})) {
+  static_assert(
+      Server::isCreatedAfter<ReplicationFeature,
+                             application_features::CommunicationFeaturePhase,
+                             metrics::MetricsFeature>());
+
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 
@@ -122,7 +123,7 @@ void ReplicationFeature::collectOptions(
       "switch to enable or disable the automatic start "
       "of replication appliers",
       new BooleanParameter(&_replicationApplierAutoStart),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOldOption("server.disable-replication-applier",
                         "replication.auto-start");
@@ -132,7 +133,7 @@ void ReplicationFeature::collectOptions(
       "--replication.automatic-failover",
       "Please use `--replication.active-failover` instead",
       new BooleanParameter(&_enableActiveFailover),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
   options->addOption("--replication.active-failover",
                      "Enable active-failover during asynchronous replication",
                      new BooleanParameter(&_enableActiveFailover));
@@ -143,7 +144,8 @@ void ReplicationFeature::collectOptions(
           "Maximum number of concurrently allowed WAL tailing invocations (0 = "
           "unlimited)",
           new UInt64Parameter(&_maxParallelTailingInvocations),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30500);
 
   options
@@ -166,7 +168,8 @@ void ReplicationFeature::collectOptions(
           "Limit at which 'quick' calls to the replication keys API return "
           "only the document count for second run",
           new UInt64Parameter(&_quickKeysLimit),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30709);
 
   options

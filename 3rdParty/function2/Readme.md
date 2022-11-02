@@ -1,22 +1,24 @@
 
 # fu2::function an improved drop-in replacement to std::function
 
-![](https://img.shields.io/badge/Version-3.0.0-0091EA.svg) ![](https://img.shields.io/badge/License-Boost-blue.svg) [![Build Status](https://travis-ci.org/Naios/function2.svg?branch=master)](https://travis-ci.org/Naios/function2) [![Build status](https://ci.appveyor.com/api/projects/status/1tl0vqpg8ndccats/branch/master?svg=true)](https://ci.appveyor.com/project/Naios/function2/branch/master)
+![](https://img.shields.io/badge/Version-4.0.0-0091EA.svg) ![](https://img.shields.io/badge/License-Boost-blue.svg) [![Build Status](https://travis-ci.org/Naios/function2.svg?branch=master)](https://travis-ci.org/Naios/function2) [![Build status](https://ci.appveyor.com/api/projects/status/1tl0vqpg8ndccats/branch/master?svg=true)](https://ci.appveyor.com/project/Naios/function2/branch/master)
 
-Provides two improved implementations of `std::function`:
+Provides improved implementations of `std::function`:
 
 - **copyable** `fu2::function`
 - **move-only** `fu2::unique_function` (capable of holding move only types)
+- **non-owning** `fu2::function_view` (capable of referencing callables in a non owning way)
 
 that provide many benefits and improvements over `std::function`:
 
-- [x] **const**, **volatile** and **reference** correct (qualifiers are part of the `operator()` signature).
-- [x] **convertible** to and from `std::function` as well as other callable types.
+- [x] **const**, **volatile**, **reference** and **noexcept** correct (qualifiers are part of the `operator()` signature)
+- [x] **convertible** to and from `std::function` as well as other callable types
 - [x] **adaptable** through `fu2::function_base` (internal capacity, copyable and exception guarantees)
 - [x] **overloadable** with an arbitrary count of signatures (`fu2::function<bool(int), bool(float)>`)
-- [x] **full allocator support** in contrast of `std::function` which doesn't provide support anymore
-- [x] **covered** by unit tests and continuous integration (*GCC*, *Clang* and *MSVC*).
-- [x] **header only**, just copy and include `function.hpp` in your project, **permissive licensed** under **boost**.
+- [x] **full allocator support** in contrast to `std::function`, which doesn't provide support anymore
+- [x] **covered** by many unit tests and continuous integration services (*GCC*, *Clang* and *MSVC*)
+- [x] **header only**, just copy and include `function.hpp` in your project
+- [x] **permissively licensed** under the **boost** license
 
 
 ## Table of Contents
@@ -80,8 +82,10 @@ fu2::function<void(int, float) const>
     - Can only be assigned from volatile qualified functors.
   - **const volatile** provides `ReturnType operator() (Args...) const volatile`
     - Same as const and volatile together.
-  - Also there is support for **r-value functions** `ReturnType operator() (Args...) &&`
-    - one-shot functions which are invalidated after the first call.
+  - **r-value (one-shot) functions** `ReturnType operator() (Args...) &&`
+    - one-shot functions which are invalidated after the first call (can be mixed with `const`, `volatile` and `noexcept`). Can only wrap callable objects which call operator is also qualified as `&&` (r-value callable). Normal (*C*) functions are considered to be r-value callable by default.
+  - **noexcept functions** `ReturnType operator() (Args...) noexcept`
+    - such functions are guaranteed not to throw an exception (can be mixed with `const`, `volatile` and `&&`). Can only wrap functions or callable objects which call operator is also qualified as `noexcept`. Requires enabled C++17  compilation to work (support is detected automatically). Empty function calls to such a wrapped function will lead to a call to `std::abort` regardless the wrapper is configured to support exceptions or not (see [adapt function2](#adapt-function2)).
 * **Multiple overloads**: The library is capable of providing multiple overloads:
   ```cpp
   fu2::function<int(std::vector<int> const&),
@@ -149,6 +153,10 @@ fu2::function_view<bool() const> view(callable);
   - `lvalue = lvalue`
   - `lvalue = rvalue`
   - `rvalue = rvalue`
+- The functions are `noexcept` correct when:
+  - `callable = callable`
+  - `callable = noexcept callable `
+  - `noexcept callable = noexcept callable`
 
 | Convertibility from \ to | fu2::function | fu2::unique_function | std::function |
 | ------------------------ | ------------- | -------------------- | ------------- |
@@ -174,24 +182,32 @@ fun = un_fun;
 
 function2 is adaptable through `fu2::function_base` which allows you to set:
 
-- **Signature:** defines the signature of the function.
+- **IsOwning**: defines whether the function owns its contained object
 - **Copyable:** defines if the function is copyable or not.
-- **Capacity:** defines the internal capacity used for [sfo optimization](#small-functor-optimization).
-- **Throwing** defines if empty function calls throw an `fu2::bad_function_call` exception, otherwise `std::abort` is called.
+- **Capacity:** defines the internal capacity used for [sfo optimization](#small-functor-optimization):
+```cpp
+struct my_capacity {
+  static constexpr std::size_t capacity = sizeof(my_type);
+  static constexpr std::size_t alignment = alignof(my_type);
+};
+```
+- **IsThrowing** defines if empty function calls throw an `fu2::bad_function_call` exception, otherwise `std::abort` is called.
+- **HasStrongExceptGuarantee** defines whether the strong exception guarantees shall be met.
+- **Signatures:** defines the signatures of the function.
 
-The following code defines a function with a variadic signature which is copyable and sfo optimization is disabled:
+The following code defines an owning  function with a variadic signature which is copyable and sfo optimization is disabled:
 
 ```c++
 template<typename Signature>
-using my_function = fu2::function_base<Signature, 0UL, true>;
+using my_function = fu2::function_base<true, true, fu2::capacity_none, true, false, Signature>;
 ```
 
-The following code defines a non copyable function which just takes 1 argument, and has a huge capacity for internal sfo optimization.
-Also it must be called as r-value.
+The following code defines a non copyable function which just takes 1 argument, and has a huge capacity for internal sfo optimization. Also it must be called as r-value.
 
 ```c++
 template<typename Arg>
-using my_consumer = fu2::function_base<void(Arg)&&, 100UL, false>;
+using my_consumer = fu2::function_base<true, false, fu2::capacity_fixed<100U>,
+                                       true, false, void(Arg)&&>;
 
 // Example
 my_consumer<int, float> consumer = [](int, float) { }

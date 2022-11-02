@@ -68,6 +68,91 @@
 #
 # As explained in the zic man page, the zone columns are:
 # Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
+# and the rule columns are:
+# Rule	NAME	FROM	TO	-	IN	ON	AT	SAVE	LETTER/S
+
+
+# Ghana
+
+# From P Chan (2020-11-20):
+# Interpretation Amendment Ordinance, 1915 (No.24 of 1915) [1915-11-02]
+# Ordinances of the Gold Coast, Ashanti, Northern Territories 1915, p 69-71
+# https://books.google.com/books?id=ErA-AQAAIAAJ&pg=PA70
+# This Ordinance added "'Time' shall mean Greenwich Mean Time" to the
+# Interpretation Ordinance, 1876.
+#
+# Determination of the Time Ordinance, 1919 (No. 18 of 1919) [1919-11-24]
+# Ordinances of the Gold Coast, Ashanti, Northern Territories 1919, p 75-76
+# https://books.google.com/books?id=MbA-AQAAIAAJ&pg=PA75
+# This Ordinance removed the previous definition of time and introduced DST.
+#
+# Time Determination Ordinance (Cap. 214)
+# The Laws of the Gold Coast (including Togoland Under British Mandate)
+# Vol. II (1937), p 2328
+# https://books.google.com/books?id=Z7M-AQAAIAAJ&pg=PA2328
+# Revised edition of the 1919 Ordinance.
+#
+# Time Determination (Amendment) Ordinance, 1940 (No. 9 of 1940) [1940-04-06]
+# Annual Volume of the Laws of the Gold Coast:
+# Containing All Legislation Enacted During Year 1940, p 22
+# https://books.google.com/books?id=1ao-AQAAIAAJ&pg=PA22
+# This Ordinance changed the forward transition from September to May.
+#
+# Defence (Time Determination Ordinance Amendment) Regulations, 1942
+# (Regulations No. 6 of 1942) [1942-01-31, commenced on 1942-02-08]
+# Annual Volume of the Laws of the Gold Coast:
+# Containing All Legislation Enacted During Year 1942, p 48
+# https://books.google.com/books?id=Das-AQAAIAAJ&pg=PA48
+# These regulations advanced the [standard] time by thirty minutes.
+#
+# Defence (Time Determination Ordinance Amendment (No.2)) Regulations,
+# 1942 (Regulations No. 28 of 1942) [1942-04-25]
+# Annual Volume of the Laws of the Gold Coast:
+# Containing All Legislation Enacted During Year 1942, p 87
+# https://books.google.com/books?id=Das-AQAAIAAJ&pg=PA87
+# These regulations abolished DST and changed the time to GMT+0:30.
+#
+# Defence (Revocation) (No.4) Regulations, 1945 (Regulations No. 45 of
+# 1945) [1945-10-24, commenced on 1946-01-06]
+# Annual Volume of the Laws of the Gold Coast:
+# Containing All Legislation Enacted During Year 1945, p 256
+# https://books.google.com/books?id=9as-AQAAIAAJ&pg=PA256
+# These regulations revoked the previous two sets of Regulations.
+#
+# Time Determination (Amendment) Ordinance, 1945 (No. 18 of 1945) [1946-01-06]
+# Annual Volume of the Laws of the Gold Coast:
+# Containing All Legislation Enacted During Year 1945, p 69
+# https://books.google.com/books?id=9as-AQAAIAAJ&pg=PA69
+# This Ordinance abolished DST.
+#
+# Time Determination (Amendment) Ordinance, 1950 (No. 26 of 1950) [1950-07-22]
+# Annual Volume of the Laws of the Gold Coast:
+# Containing All Legislation Enacted During Year 1950, p 35
+# https://books.google.com/books?id=e60-AQAAIAAJ&pg=PA35
+# This Ordinance restored DST but with thirty minutes offset.
+#
+# Time Determination Ordinance (Cap. 264)
+# The Laws of the Gold Coast, Vol. V (1954), p 380
+# https://books.google.com/books?id=Mqc-AQAAIAAJ&pg=PA380
+# Revised edition of the Time Determination Ordinance.
+#
+# Time Determination (Amendment) Ordinance, 1956 (No. 21 of 1956) [1956-08-29]
+# Annual Volume of the Ordinances of the Gold Coast Enacted During the
+# Year 1956, p 83
+# https://books.google.com/books?id=VLE-AQAAIAAJ&pg=PA83
+# This Ordinance abolished DST.
+
+Rule	Ghana	1919	only	-	Nov	24	0:00	0:20	+0020
+Rule	Ghana	1920	1942	-	Jan	 1	2:00	0	GMT
+Rule	Ghana	1920	1939	-	Sep	 1	2:00	0:20	+0020
+Rule	Ghana	1940	1941	-	May	 1	2:00	0:20	+0020
+Rule	Ghana	1950	1955	-	Sep	 1	2:00	0:30	+0030
+Rule	Ghana	1951	1956	-	Jan	 1	2:00	0	GMT
+
+Zone	Africa/Accra	-0:00:52 -	LMT	1915 Nov  2
+			 0:00	Ghana	%s	1942 Feb  8
+			 0:30	-	+0030	1946 Jan  6
+			 0:00	Ghana	%s
 
 # Ethiopia
 # From Paul Eggert (2014-07-31):
@@ -101,14 +186,36 @@ Zone	Africa/Bamako	-0:32:00 -	LMT	1912
 Zone	Africa/Bangui	1:14:20	-	LMT	1912
 			1:00	-	WAT
 
-# Gambia
+# The Gambia
+# From P Chan (2020-12-09):
+# Standard time of GMT-1 was adopted on 1933-04-01.  On 1942-02-01, GMT was
+# adopted as a war time measure.  This was made permanent in 1946.
+#
+# Interpretation Ordinance, 1914 (No. 12 of 1914) [1914-09-29]
+# Interpretation Ordinance, 1933 (No. 10 of 1933) [1933-03-31]
+# Notice No. 5 of 1942, Colony of the Gambia Government Gazette, Vol. LIX,
+# No.2, 1942-01-15, p 2
+# Interpretation (Amendment) Ordinance, 1946 (No. 3 of 1946) [1946-07-15]
 Zone	Africa/Banjul	-1:06:36 -	LMT	1912
-			-1:06:36 -	BMT	1935 # Banjul Mean Time
-			-1:00	-	-01	1964
+			-1:06:36 -	BMT	1933 Apr  1 # Banjul Mean Time
+			-1:00	-	-01	1942 Feb  1  0:00
 			 0:00	-	GMT
 
 # Malawi
-Zone	Africa/Blantyre	2:20:00 -	LMT	1903 Mar
+# From P Chan (2020-12-09):
+# In 1911, Zomba mean time was adopted as the legal time of Nyasaland.  In
+# 1914, Zomba mean time switched from GMT+2:21:10 to GMT+2:21. On 1925-07-01,
+# GMT+2 was adopted.
+#
+# Interpretation and General Clauses Ordinance, 1911 (No. 12 of 1911)
+# [1911-07-24]
+# Notice No. 124 of 1914, 1914-06-30, The Nyasaland Government Gazette, Vol.
+# XXI, No. 8, 1914-06-30, p 122
+# Interpretation and General Clauses (Amendment) Ordinance, 1925 (No. 3 of
+# 1925) [1925-04-02]
+Zone	Africa/Blantyre	2:20:00 -	LMT	1911 Jul 24
+			2:21:10	-	ZMT	1914 Jun 30 # Zomba Mean Time
+			2:21	-	ZMT	1925 Jul  1
 			2:00	-	CAT
 
 # Republic of the Congo
@@ -145,19 +252,49 @@ Zone	Africa/Djibouti	2:52:36 -	LMT	1911 Jul
 Zone	Africa/Douala	0:38:48	-	LMT	1912
 			1:00	-	WAT
 # Sierra Leone
-# From Paul Eggert (2014-08-12):
-# The following table is from Shanks & Pottenger, but it can't be right.
-# Whitman gives Mar 31 - Aug 31 for 1931 on.
-# The International Hydrographic Bulletin, 1932-33, p 63 says that
-# Sierra Leone would advance its clocks by 20 minutes on 1933-10-01.
-# Rule	NAME	FROM	TO	-	IN	ON	AT	SAVE	LETTER/S
-Rule	SL	1935	1942	-	Jun	 1	0:00	0:40	-0020
-Rule	SL	1935	1942	-	Oct	 1	0:00	0	-01
-Rule	SL	1957	1962	-	Jun	 1	0:00	1:00	+01
-Rule	SL	1957	1962	-	Sep	 1	0:00	0	GMT
+# From P Chan (2020-12-09):
+# Standard time of GMT-1 was adopted on 1913-07-01.  Twenty minutes of DST was
+# introduce[d] in 1932 and was suspended in 1939.  In 1941, GMT was adopted by
+# Defence Regulations.  This was made permanent in 1946.
+#
+# Government Notice No. 121 of 1913, 1913-06-06, Sierra Leone Royal Gazette,
+# Vol. XLIV, No. 1384, 1913-06-14, p 347
+# Alteration of Time Ordinance, 1932 (No. 34 of 1932) [1932-12-01]
+# Alteration of Time (Amendment) Ordinance, 1938 (No. 25 of 1938) [1938-11-24]
+# Defence Regulations (No. 9), 1939 (Regulations No. 9 of 1939), 1939-09-05
+# Defence Regulations (No. 11), 1939 (Regulations No. 11 of 1939), 1939-09-27
+# Defence (Amendment) (No. 17) Regulations, 1941 (Public Notice No. 157 of
+# 1941), 1914-12-04
+# Alteration of Time (Amendment) Ordinance, 1946 (No. 2 of 1946) [1946-02-07]
+
+# From Tim Parenti (2021-03-02), per P Chan (2021-02-25):
+# For Sierra Leone in 1957-1962, the standard time was defined in the
+# Alteration of Time Ordinance, 1932 (as amended in 1946, renamed to Local Time
+# Ordinance in 1960 and Local Time Act in 1961). It was unamended throughout
+# that period.  See references to "Time" in the Alphabetical Index of the
+# Legislation in force on the 31st day of December,
+#   1957: https://books.google.com/books?id=lvQ-AQAAIAAJ&pg=RA2-PA49
+#   1958: https://books.google.com/books?id=4fQ-AQAAIAAJ&pg=RA2-PA50
+#   1959: https://books.google.com/books?id=p_U-AQAAIAAJ&pg=RA2-PA55
+#   1960: https://books.google.com/books?id=JPY-AQAAIAAJ&pg=RA3-PA37
+#   1961: https://books.google.com/books?id=7vY-AQAAIAAJ&pg=RA3-PA41
+#   1962: https://books.google.com/books?id=W_c-AQAAIAAJ&pg=RA3-PA44
+#   1963: https://books.google.com/books?id=9vk-AQAAIAAJ&pg=RA1-PA47
+#
+# Although Shanks & Pottenger had DST from Jun 1 00:00 to Sep 1 00:00 in this
+# period, many contemporaneous almanacs agree that it wasn't used:
+# https://mm.icann.org/pipermail/tz/2021-February/029866.html
+# Go with the above.
+
+Rule	SL	1932	only	-	Dec	 1	 0:00	0:20	-0040
+Rule	SL	1933	1938	-	Mar	31	24:00	0	-01
+Rule	SL	1933	1939	-	Aug	31	24:00	0:20	-0040
+Rule	SL	1939	only	-	May	31	24:00	0	-01
+
 Zone	Africa/Freetown	-0:53:00 -	LMT	1882
-			-0:53:00 -	FMT	1913 Jun # Freetown Mean Time
-			-1:00	SL	%s	1957
+			-0:53:00 -	FMT	1913 Jul  1 # Freetown MT
+			-1:00	SL	%s	1939 Sep  5
+			-1:00	-	-01	1941 Dec  6 24:00
 			 0:00	SL	GMT/+01
 
 # Botswana
@@ -209,7 +346,15 @@ Zone	Africa/Luanda	0:52:56	-	LMT	1892
 			1:00	-	WAT
 
 # Democratic Republic of the Congo (east)
-Zone Africa/Lubumbashi	1:49:52 -	LMT	1897 Nov 9
+#
+# From Alois Treindl (2022-02-28):
+# My main source for its time zone history is
+# Henri le Corre, Régimes horaires pour l'Europe et l'Afrique.
+# Shanks follows le Corre.  As does Françoise Schneider-Gauquelin in her book
+# Problèmes de l'heure résolus pour le monde entier.
+#
+Zone Africa/Lubumbashi	1:49:52 -	LMT	1897 Nov  9
+			1:00	-	WAT	1920 Apr 25
 			2:00	-	CAT
 
 # Zambia
@@ -298,6 +443,85 @@ Zone	America/Aruba	-4:40:24 -	LMT	1912 Feb 12 # Oranjestad
 			-4:30	-	-0430	1965
 			-4:00	-	AST
 
+# Atikokan, Ontario
+
+# From Paul Eggert (1997-10-17):
+# Mark Brader writes that an article in the 1997-10-14 Toronto Star
+# says that Atikokan, Ontario currently does not observe DST,
+# but will vote on 11-10 whether to use EST/EDT.
+# He also writes that the Ontario Time Act (1990, Chapter T.9)
+# http://www.gov.on.ca/MBS/english/publications/statregs/conttext.html
+# says that Ontario east of 90W uses EST/EDT, and west of 90W uses CST/CDT.
+# Officially Atikokan is therefore on CST/CDT, and most likely this report
+# concerns a non-official time observed as a matter of local practice.
+#
+# From Paul Eggert (2000-10-02):
+# Matthews and Vincent (1998) write that Atikokan, Pickle Lake, and
+# New Osnaburgh observe CST all year, that Big Trout Lake observes
+# CST/CDT, and that Upsala and Shebandowan observe EST/EDT, all in
+# violation of the official Ontario rules.
+#
+# From Paul Eggert (2006-07-09):
+# Chris Walton (2006-07-06) mentioned an article by Stephanie MacLellan in the
+# 2005-07-21 Chronicle-Journal, which said:
+#
+#	The clocks in Atikokan stay set on standard time year-round.
+#	This means they spend about half the time on central time and
+#	the other half on eastern time.
+#
+#	For the most part, the system works, Mayor Dennis Brown said.
+#
+#	"The majority of businesses in Atikokan deal more with Eastern
+#	Canada, but there are some that deal with Western Canada," he
+#	said.  "I don't see any changes happening here."
+#
+# Walton also writes "Supposedly Pickle Lake and Mishkeegogamang
+# [New Osnaburgh] follow the same practice."
+
+# From Garry McKinnon (2006-07-14) via Chris Walton:
+# I chatted with a member of my board who has an outstanding memory
+# and a long history in Atikokan (and in the telecom industry) and he
+# can say for certain that Atikokan has been practicing the current
+# time keeping since 1952, at least.
+
+# From Paul Eggert (2006-07-17):
+# Shanks & Pottenger say that Atikokan has agreed with Rainy River
+# ever since standard time was introduced, but the information from
+# McKinnon sounds more authoritative.  For now, assume that Atikokan
+# switched to EST immediately after WWII era daylight saving time
+# ended.  This matches the old (less-populous) America/Coral_Harbour
+# entry since our cutoff date of 1970, so we can move
+# America/Coral_Harbour to the 'backward' file.
+
+Zone America/Atikokan	-6:06:28 -	LMT	1895
+			-6:00	Canada	C%sT	1940 Sep 29
+			-6:00	1:00	CDT	1942 Feb  9  2:00s
+			-6:00	Canada	C%sT	1945 Sep 30  2:00
+			-5:00	-	EST
+
+# Quebec east of Natashquan
+
+# From Paul Eggert (2021-05-09):
+# H. David Matthews and Mary Vincent's map
+# "It's about TIME", _Canadian Geographic_ (September-October 1998)
+# http://www.canadiangeographic.ca/Magazine/SO98/alacarte.asp
+# says that Quebec east of the -63 meridian is supposed to observe
+# AST, but residents as far east as Natashquan use EST/EDT, and
+# residents east of Natashquan use AST.
+# The Quebec department of justice writes in
+# "The situation in Minganie and Basse-Côte-Nord"
+# https://www.justice.gouv.qc.ca/en/department/ministre/functions-and-responsabilities/legal-time-in-quebec/the-situation-in-minganie-and-basse-cote-nord/
+# that the coastal strip from just east of Natashquan to Blanc-Sablon
+# observes Atlantic standard time all year round.
+# This common practice was codified into law as of 2007; see Legal Time Act,
+# CQLR c T-5.1 <http://legisquebec.gouv.qc.ca/en/ShowDoc/cs/T-5.1>.
+# For lack of better info, guess this practice began around 1970, contra to
+# Shanks & Pottenger who have this region observing AST/ADT.
+
+Zone America/Blanc-Sablon -3:48:28 -	LMT	1884
+			-4:00	Canada	A%sT	1970
+			-4:00	-	AST
+
 # Cayman Is
 Zone	America/Cayman	-5:25:32 -	LMT	1890     # Georgetown
 			-5:07:10 -	KMT	1912 Feb # Kingston Mean Time
@@ -317,6 +541,85 @@ Zone	America/Cayman	-5:25:32 -	LMT	1890     # Georgetown
 Zone America/Coral_Harbour -5:32:40 -	LMT	1884
 			-5:00	NT_YK	E%sT	1946
 			-5:00	-	EST
+
+# From Chris Walton (2011-12-01):
+# There are two areas within the Canadian province of British Columbia
+# that do not currently observe daylight saving:
+# a) The Creston Valley (includes the town of Creston and surrounding area)
+# b) The eastern half of the Peace River Regional District
+# (includes the cities of Dawson Creek and Fort St. John)
+
+# Earlier this year I stumbled across a detailed article about the time
+# keeping history of Creston; it was written by Tammy Hardwick who is the
+# manager of the Creston & District Museum. The article was written in May 2009.
+# http://www.ilovecreston.com/?p=articles&t=spec&ar=260
+# According to the article, Creston has not changed its clocks since June 1918.
+# i.e. Creston has been stuck on UT-7 for 93 years.
+# Dawson Creek, on the other hand, changed its clocks as recently as April 1972.
+
+# Unfortunately the exact date for the time change in June 1918 remains
+# unknown and will be difficult to ascertain.  I e-mailed Tammy a few months
+# ago to ask if Sunday June 2 was a reasonable guess.  She said it was just
+# as plausible as any other date (in June).  She also said that after writing
+# the article she had discovered another time change in 1916; this is the
+# subject of another article which she wrote in October 2010.
+# http://www.creston.museum.bc.ca/index.php?module=comments&uop=view_comment&cm+id=56
+
+# Here is a summary of the three clock change events in Creston's history:
+# 1. 1884 or 1885: adoption of Mountain Standard Time (GMT-7)
+# Exact date unknown
+# 2. Oct 1916: switch to Pacific Standard Time (GMT-8)
+# Exact date in October unknown; Sunday October 1 is a reasonable guess.
+# 3. June 1918: switch to Pacific Daylight Time (GMT-7)
+# Exact date in June unknown; Sunday June 2 is a reasonable guess.
+# note 1:
+# On Oct 27/1918 when daylight saving ended in the rest of Canada,
+# Creston did not change its clocks.
+# note 2:
+# During WWII when the Federal Government legislated a mandatory clock change,
+# Creston did not oblige.
+# note 3:
+# There is no guarantee that Creston will remain on Mountain Standard Time
+# (UTC-7) forever.
+# The subject was debated at least once this year by the town Council.
+# http://www.bclocalnews.com/kootenay_rockies/crestonvalleyadvance/news/116760809.html
+
+# During a period WWII, summer time (Daylight saying) was mandatory in Canada.
+# In Creston, that was handled by shifting the area to PST (-8:00) then applying
+# summer time to cause the offset to be -7:00, the same as it had been before
+# the change.  It can be argued that the timezone abbreviation during this
+# period should be PDT rather than MST, but that doesn't seem important enough
+# (to anyone) to further complicate the rules.
+
+# The transition dates (and times) are guesses.
+
+Zone America/Creston	-7:46:04 -	LMT	1884
+			-7:00	-	MST	1916 Oct 1
+			-8:00	-	PST	1918 Jun 2
+			-7:00	-	MST
+
+# Curaçao
+# Milne gives 4:35:46.9 for Curaçao mean time; round to nearest.
+#
+# From Paul Eggert (2006-03-22):
+# Shanks & Pottenger say that The Bottom and Philipsburg have been at
+# -4:00 since standard time was introduced on 1912-03-02; and that
+# Kralendijk and Rincon used Kralendijk Mean Time (-4:33:08) from
+# 1912-02-02 to 1965-01-01.  The former is dubious, since S&P also say
+# Saba Island has been like Curaçao.
+# This all predates our 1970 cutoff, though.
+#
+# By July 2007 Curaçao and St Maarten are planned to become
+# associated states within the Netherlands, much like Aruba;
+# Bonaire, Saba and St Eustatius would become directly part of the
+# Netherlands as Kingdom Islands.  This won't affect their time zones
+# though, as far as we know.
+#
+Zone	America/Curacao	-4:35:47 -	LMT	1912 Feb 12 # Willemstad
+			-4:30	-	-0430	1965
+			-4:00	-	AST
+Link	America/Curacao	America/Kralendijk
+Link	America/Curacao	America/Lower_Princes
 
 # Dominica
 Zone America/Dominica	-4:05:36 -	LMT	1911 Jul  1  0:01 # Roseau
@@ -340,6 +643,7 @@ Zone	America/Grenada	-4:07:00 -	LMT	1911 Jul # St George's
 Zone America/Guadeloupe	-4:06:08 -	LMT	1911 Jun  8 # Pointe-à-Pitre
 			-4:00	 -	AST
 
+
 # Canada
 #
 # From Paul Eggert (2015-03-24):
@@ -351,7 +655,6 @@ Zone America/Guadeloupe	-4:06:08 -	LMT	1911 Jun  8 # Pointe-à-Pitre
 # Pottenger data.  The post-1970 entries have been corrected, but the
 # pre-1970 entries are unchecked and probably have errors.
 #
-# Rule	NAME	FROM	TO	-	IN	ON	AT	SAVE	LETTER/S
 Rule	Mont	1917	only	-	Mar	25	2:00	1:00	D
 Rule	Mont	1917	only	-	Apr	24	0:00	0	S
 Rule	Mont	1919	only	-	Mar	31	2:30	1:00	D
@@ -387,6 +690,48 @@ Zone America/Montreal	-4:54:16 -	LMT	1884
 Zone America/Montserrat	-4:08:52 -	LMT	1911 Jul  1  0:01 # Cork Hill
 			-4:00	-	AST
 
+# The Bahamas
+#
+# For 1899 Milne gives -5:09:29.5; round that.
+#
+# From P Chan (2020-11-27, corrected on 2020-12-02):
+# There were two periods of DST observed in 1942-1945: 1942-05-01
+# midnight to 1944-12-31 midnight and 1945-02-01 to 1945-10-17 midnight.
+# "midnight" should mean 24:00 from the context.
+#
+# War Time Order 1942 [1942-05-01] and War Time (No. 2) Order 1942  [1942-09-29]
+# Appendix to the Statutes of 7 George VI. and the Year 1942. p 34, 43
+# https://books.google.com/books?id=5rlNAQAAIAAJ&pg=RA3-PA34
+# https://books.google.com/books?id=5rlNAQAAIAAJ&pg=RA3-PA43
+#
+# War Time Order 1943 [1943-03-31] and War Time Order 1944 [1943-12-29]
+# Appendix to the Statutes of 8 George VI. and the Year 1943. p 9-10, 28-29
+# https://books.google.com/books?id=5rlNAQAAIAAJ&pg=RA4-PA9
+# https://books.google.com/books?id=5rlNAQAAIAAJ&pg=RA4-PA28
+#
+# War Time Order 1945 [1945-01-31] and the Order which revoke War Time Order
+# 1945 [1945-10-16] Appendix to the Statutes of 9 George VI. and the Year
+# 1945. p 160, 247-248
+# https://books.google.com/books?id=5rlNAQAAIAAJ&pg=RA6-PA160
+# https://books.google.com/books?id=5rlNAQAAIAAJ&pg=RA6-PA247
+#
+# From Sue Williams (2006-12-07):
+# The Bahamas announced about a month ago that they plan to change their DST
+# rules to sync with the U.S. starting in 2007....
+# http://www.jonesbahamas.com/?c=45&a=10412
+
+Rule	Bahamas	1942	only	-	May	 1	24:00	1:00	W
+Rule	Bahamas	1944	only	-	Dec	31	24:00	0	S
+Rule	Bahamas	1945	only	-	Feb	 1	0:00	1:00	W
+Rule	Bahamas	1945	only	-	Aug	14	23:00u	1:00	P # Peace
+Rule	Bahamas	1945	only	-	Oct	17	24:00	0	S
+Rule	Bahamas	1964	1975	-	Oct	lastSun	2:00	0	S
+Rule	Bahamas	1964	1975	-	Apr	lastSun	2:00	1:00	D
+
+Zone	America/Nassau	-5:09:30 -	LMT	1912 Mar 2
+			-5:00	Bahamas	E%sT	1976
+			-5:00	US	E%sT
+
 # United States
 #
 # From Paul Eggert (2018-03-18):
@@ -411,6 +756,12 @@ Zone America/Montserrat	-4:08:52 -	LMT	1911 Jul  1  0:01 # Cork Hill
 # https://cdnc.ucr.edu/cgi-bin/cdnc?a=d&d=DS19470110
 # front page reports on end.
 
+# Trinidad and Tobago
+Zone America/Port_of_Spain -4:06:04 -	LMT	1912 Mar 2
+			-4:00	-	AST
+Link America/Port_of_Spain America/Marigot
+Link America/Port_of_Spain America/St_Barthelemy
+
 # Argentina
 # This entry was intended for the following areas, but has been superseded by
 # more detailed zones.
@@ -434,9 +785,10 @@ Zone America/St_Lucia	-4:04:00 -	LMT	1890 # Castries
 			-4:04:00 -	CMT	1912 # Castries Mean Time
 			-4:00	-	AST
 
-# Virgin Is
+# US Virgin Is
 Zone America/St_Thomas	-4:19:44 -	LMT	1911 Jul # Charlotte Amalie
 			-4:00	-	AST
+Link America/St_Thomas America/Virgin
 
 # St Vincent and the Grenadines
 Zone America/St_Vincent	-4:04:56 -	LMT	1890 # Kingstown
@@ -447,10 +799,35 @@ Zone America/St_Vincent	-4:04:56 -	LMT	1890 # Kingstown
 Zone America/Tortola	-4:18:28 -	LMT	1911 Jul # Road Town
 			-4:00	-	AST
 
+# Dumont d'Urville, Île des Pétrels, -6640+14001, since 1956-11
+# <https://en.wikipedia.org/wiki/Dumont_d'Urville_Station> (2005-12-05)
+#
+# Another base at Port-Martin, 50km east, began operation in 1947.
+# It was destroyed by fire on 1952-01-14.
+#
+Zone Antarctica/DumontDUrville 0 -	-00	1947
+			10:00	-	+10	1952 Jan 14
+			0	-	-00	1956 Nov
+			10:00	-	+10
+
 # McMurdo, Ross Island, since 1955-12
 Zone Antarctica/McMurdo	0	-	-00	1956
 			12:00	NZ	NZ%sT
 Link Antarctica/McMurdo Antarctica/South_Pole
+
+# Syowa, Antarctica
+#
+# From Hideyuki Suzuki (1999-02-06):
+# In all Japanese stations, +0300 is used as the standard time.
+#
+# Syowa station, which is the first antarctic station of Japan,
+# was established on 1957-01-29.  Since Syowa station is still the main
+# station of Japan, it's appropriate for the principal location.
+# See:
+# NIPR Antarctic Research Activities (1999-08-17)
+# http://www.nipr.ac.jp/english/ara01.html
+Zone Antarctica/Syowa	0	-	-00	1957 Jan 29
+			3:00	-	+03
 
 # Yemen
 # Milne says 2:59:54 was the meridian of the saluting battery at Aden,
@@ -711,6 +1088,8 @@ Zone	Europe/Skopje	1:25:44	-	LMT	1884
 			1:00	-	CET	1982 Nov 27
 			1:00	EU	CE%sT
 
+
+
 # Moldova / Transnistria
 Zone	Europe/Tiraspol	1:58:32	-	LMT	1880
 			1:55	-	CMT	1918 Feb 15 # Chisinau MT
@@ -749,10 +1128,22 @@ Zone	Indian/Comoro	2:53:04 -	LMT	1911 Jul # Moroni, Gran Comoro
 Zone	Indian/Mayotte	3:00:56 -	LMT	1911 Jul # Mamoutzou
 			3:00	-	EAT
 
-# US minor outlying islands
+# Phoenix Islands, Kiribati
+# From Paul Eggert (2021-05-27):
+# Enderbury was inhabited 1860/1880s to mine guano, and 1938-03-06/1942-02-09
+# for aviation (ostensibly commercial, but military uses foreseen).
+# The 19th-century dates are approximate.  See Pacific/Kanton for
+# the currently-inhabited representative for this timezone.
+Zone Pacific/Enderbury	0	-	-00	1860
+			-11:24:20 -	LMT	1885
+			0	-	-00	1938 Mar  6
+			-12:00	-	-12	1942 Feb  9
+			0	-	-00
+
+# Johnston
 Zone Pacific/Johnston	-10:00	-	HST
 
-# US minor outlying islands
+# Midway
 #
 # From Mark Brader (2005-01-23):
 # [Fallacies and Fantasies of Air Transport History, by R.E.G. Davies,
@@ -775,3 +1166,7 @@ Zone Pacific/Saipan	-14:17:00 -	LMT	1844 Dec 31
 			 9:00	-	+09	1969 Oct
 			10:00	-	+10	2000 Dec 23
 			10:00	-	ChST	# Chamorro Standard Time
+
+# Local Variables:
+# coding: utf-8
+# End:

@@ -28,7 +28,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/debugging.h"
 #include "Basics/messages.h"
-#include "FeaturePhases/AgencyFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -50,8 +49,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Console"),
+ConsoleFeature::ConsoleFeature(Server& server)
+    : ArangodFeature{server, *this},
       _operationMode(OperationMode::MODE_SERVER) {
   startsAfter<AgencyFeaturePhase>();
 }

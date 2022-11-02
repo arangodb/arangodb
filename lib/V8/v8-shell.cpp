@@ -40,7 +40,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <fstream>
 #include <sys/types.h>
@@ -153,7 +152,7 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *filename,
                                         FSAccessType::READ)) {
@@ -281,7 +280,7 @@ static void JS_ProcessJsonFile(
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
   if (!v8security.isAllowedToAccessPath(isolate, *filename,
                                         FSAccessType::READ)) {
@@ -349,9 +348,29 @@ static void JS_ProcessJsonFile(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stores the V8 shell functions inside the global variable
+/// @brief check whether stdout is an interactive shell
+///
+/// @FUN{isATTy()}
+///
+/// return true if its an interactive shell
+///
 ////////////////////////////////////////////////////////////////////////////////
 
+static void JS_IsATTY(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("isATTY()");
+  }
+
+  TRI_V8_RETURN_BOOL(isatty(STDOUT_FILENO) != 0);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stores the V8 shell functions inside the global variable
+////////////////////////////////////////////////////////////////////////////////
 void TRI_InitV8Shell(v8::Isolate* isolate) {
   v8::HandleScope scope(isolate);
 
@@ -365,6 +384,8 @@ void TRI_InitV8Shell(v8::Isolate* isolate) {
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_PROCESS_JSON_FILE"),
       JS_ProcessJsonFile);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_IS_A_TTY"), JS_IsATTY);
 
   bool isTty = (isatty(STDOUT_FILENO) != 0);
   // on Linux, isatty() == 0 may also indicate an error. we can ignore this

@@ -23,18 +23,20 @@
 
 #pragma once
 
+#include <atomic>
+#include <cstdint>
 #include <mutex>
+#include <string>
+#include <string_view>
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
-#include "Cluster/ClusterTypes.h"
 #include "Basics/ResultT.h"
+#include "Cluster/ClusterTypes.h"
+#include "RestServer/arangod.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 class AgencyComm;
 class Result;
 
@@ -66,17 +68,18 @@ class ServerState {
 
   enum class Mode : uint8_t {
     DEFAULT = 0,
-    /// reject all requests
-    MAINTENANCE = 1,
+    STARTUP = 1,
+    /// reject almost all requests
+    MAINTENANCE = 2,
     /// status unclear, client must try again
-    TRYAGAIN = 2,
+    TRYAGAIN = 3,
     /// redirect to lead server if possible
-    REDIRECT = 3,
+    REDIRECT = 4,
     INVALID = 255,  // this mode is used to indicate shutdown
   };
 
  public:
-  explicit ServerState(application_features::ApplicationServer&);
+  explicit ServerState(ArangodServer&);
 
   ~ServerState();
 
@@ -96,19 +99,19 @@ class ServerState {
   static std::string roleToAgencyKey(RoleEnum role);
 
   /// @brief convert a string to a role
-  static RoleEnum stringToRole(std::string const&);
+  static RoleEnum stringToRole(std::string_view);
 
   /// @brief get the string representation of a state
   static std::string stateToString(StateEnum);
 
   /// @brief convert a string representation to a state
-  static StateEnum stringToState(std::string const&);
+  static StateEnum stringToState(std::string_view);
 
   /// @brief get the string representation of a mode
   static std::string modeToString(Mode);
 
   /// @brief convert a string representation to a mode
-  static Mode stringToMode(std::string const&);
+  static Mode stringToMode(std::string_view);
 
   /// @brief atomically load current server mode
   static Mode mode();
@@ -118,7 +121,7 @@ class ServerState {
   static Mode setServerMode(Mode mode);
 
   /// @brief checks maintenance mode
-  static bool isMaintenance() { return mode() == Mode::MAINTENANCE; }
+  static bool isStartupOrMaintenance();
 
   /// @brief should not allow DDL operations / transactions
   static bool readOnly();
@@ -131,6 +134,8 @@ class ServerState {
 
   /// @brief set server read-only
   static bool setReadOnly(ReadOnlyMode);
+
+  static void reset();
 
  public:
   /// @brief sets the initialized flag
@@ -327,7 +332,7 @@ class ServerState {
   bool isUuid(std::string const& value) const;
 
  private:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
 
   /// @brief server role
   std::atomic<RoleEnum> _role;

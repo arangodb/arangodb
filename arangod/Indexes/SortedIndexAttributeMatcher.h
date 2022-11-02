@@ -24,6 +24,8 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/HashSet.h"
 #include "Indexes/Index.h"
 
@@ -82,9 +84,10 @@ arangodb::aql::AstNode* specializeCondition(
 void matchAttributes(
     arangodb::Index const* index, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
-    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
-        found,
-    size_t& values, std::unordered_set<std::string>& nonNullAttributes,
+    arangodb::containers::FlatHashMap<
+        size_t, std::vector<arangodb::aql::AstNode const*>>& found,
+    size_t& values,
+    arangodb::containers::FlatHashSet<std::string>& nonNullAttributes,
     bool isExecution);
 
 /// @brief whether or not the access fits
@@ -92,9 +95,10 @@ bool accessFitsIndex(
     arangodb::Index const* idx, arangodb::aql::AstNode const* access,
     arangodb::aql::AstNode const* other, arangodb::aql::AstNode const* op,
     arangodb::aql::Variable const* reference,
-    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
-        found,
-    std::unordered_set<std::string>& nonNullAttributes, bool isExecution);
+    arangodb::containers::FlatHashMap<
+        size_t, std::vector<arangodb::aql::AstNode const*>>& found,
+    arangodb::containers::FlatHashSet<std::string>& nonNullAttributes,
+    bool isExecution);
 
 bool isDuplicateOperator(
     arangodb::aql::AstNodeType type,

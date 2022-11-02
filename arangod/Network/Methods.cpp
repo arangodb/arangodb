@@ -23,14 +23,14 @@
 
 #include "Methods.h"
 
-#include "Agency/AgencyFeature.h"
-#include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Agency/AgencyFeature.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Utf8Helper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
@@ -39,6 +39,8 @@
 #include "Network/Utils.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "RestServer/arangod.h"
+#include "VocBase/ticks.h"
 
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
@@ -210,7 +212,7 @@ static std::unique_ptr<fuerte::Response> buildResponse(
   fuerte::ResponseHeader responseHeader;
   responseHeader.responseCode = statusCode;
   responseHeader.contentType(ContentType::VPack);
-  auto resp = std::make_unique<fuerte::Response>(responseHeader);
+  auto resp = std::make_unique<fuerte::Response>(std::move(responseHeader));
   resp->setPayload(std::move(buffer), 0);
   return resp;
 }
@@ -297,7 +299,11 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     }
 
     arangodb::network::EndpointSpec spec;
-    auto res = resolveDestination(*pool->config().clusterInfo, dest, spec);
+    auto res =
+        options.overrideDestination.empty()
+            ? resolveDestination(*pool->config().clusterInfo, dest, spec)
+            : resolveDestination(*pool->config().clusterInfo,
+                                 "server:" + options.overrideDestination, spec);
     if (res != TRI_ERROR_NO_ERROR) {
       // We fake a successful request with statusCode 503 and a backend not
       // available error here:
@@ -397,8 +403,12 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     }
 
     arangodb::network::EndpointSpec spec;
-    auto res =
-        resolveDestination(*_pool->config().clusterInfo, _destination, spec);
+    auto res = _options.overrideDestination.empty()
+                   ? resolveDestination(*_pool->config().clusterInfo,
+                                        _destination, spec)
+                   : resolveDestination(
+                         *_pool->config().clusterInfo,
+                         "server:" + _options.overrideDestination, spec);
     if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
       // We fake a successful request with statusCode 503 and a backend not
       // available error here:
@@ -476,18 +486,15 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         // if that server is failed, if so, we should no longer retry,
         // regardless of the timeout:
         bool found = false;
-        if (_destination.size() > 7 &&
-            _destination.compare(0, 7, "server:") == 0) {
+        if (_destination.size() > 7 && _destination.starts_with("server:")) {
           auto failedServers = _pool->config().clusterInfo->getFailedServers();
-          for (auto const& f : failedServers) {
-            if (_destination.compare(7, _destination.size() - 7, f) == 0) {
-              found = true;
-              LOG_TOPIC("feade", DEBUG, Logger::COMMUNICATION)
-                  << "Found destination " << _destination
-                  << " to be in failed servers list, will no longer retry, "
-                     "aborting operation";
-              break;
-            }
+          auto serverId = std::string_view{_destination}.substr(7);
+          if (failedServers.contains(serverId)) {
+            found = true;
+            LOG_TOPIC("feade", DEBUG, Logger::COMMUNICATION)
+                << "Found destination " << _destination
+                << " to be in failed servers list, will no longer retry, "
+                   "aborting operation";
           }
         }
 

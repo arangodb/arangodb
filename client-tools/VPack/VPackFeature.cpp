@@ -36,7 +36,6 @@
 #include <velocypack/Sink.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Validator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
 #include <unordered_set>
@@ -116,14 +115,12 @@ struct CustomTypeHandler : public VPackCustomTypeHandler {
 
 }  // namespace
 
-VPackFeature::VPackFeature(application_features::ApplicationServer& server,
-                           int* result)
-    : ApplicationFeature(server, "VPack"),
+VPackFeature::VPackFeature(Server& server, int* result)
+    : ArangoVPackFeature{server, *this},
       _result(result),
       _inputType("vpack"),
       _outputType("json-pretty"),
       _failOnNonJson(true) {
-  requiresElevatedPrivileges(false);
   setOptional(false);
 }
 

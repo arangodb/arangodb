@@ -4,8 +4,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, limit optimizations
 ///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -28,43 +26,37 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-var helper = require("@arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults;
-var db = internal.db;
+const jsunity = require("jsunity");
+const internal = require("internal");
+const helper = require("@arangodb/aql-helper");
+const getQueryResults = helper.getQueryResults;
+const db = internal.db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlQueryOptimizerLimitTestSuite () {
-  var collection = null;
-  var docCount = 100;
-  var cn = "UnitTestsAhuacatlOptimizerLimit";
+  const cn = "UnitTestsAhuacatlOptimizerLimit";
+  let collection = null;
+  let docCount = 100;
   
-  var explain = function (query, params) {
+  let explain = function (query, params) {
     return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-indexes", "+use-index-for-sort" ] } })).map(function(node) { return node.type; });
   };
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUp : function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
 
-      for (var i = 0; i < docCount; ++i) {
-        collection.save({ _key: "test" + i, value : i });
+      let docs = [];
+      for (let i = 0; i < docCount; ++i) {
+        docs.push({ _key: "test" + i, value : i });
       }
+      collection.insert(docs);
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       internal.db._drop(cn);
@@ -75,9 +67,8 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitNonCollectionNoRestriction : function () {
-      var i;
-      var list = [ ];
-      for (i = 0; i < 100; ++i) {
+      let list = [ ];
+      for (let i = 0; i < 100; ++i) {
         list.push(i);
       }
 
@@ -98,7 +89,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
         { offset: 100, limit: 2, expectedLength: 0 }
       ];
 
-      for (i = 0; i < tests.length; ++i) {
+      for (let i = 0; i < tests.length; ++i) {
         var test = tests[i];
 
         var query = "FOR c IN " + JSON.stringify(list) + " LIMIT " + test.offset + ", " + test.limit + " RETURN c";
@@ -132,7 +123,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
         { offset: 100, limit: 2, expectedLength: 0 }
       ];
 
-      for (var i = 0; i < tests.length; ++i) {
+      for (let i = 0; i < tests.length; ++i) {
         var test = tests[i];
 
         var query = "FOR c IN " + cn + " LIMIT " + test.offset + ", " + test.limit + " RETURN c";
@@ -149,9 +140,8 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitNonCollectionNoRestrictionEmpty : function () {
-      var i;
-      var list = [ ];
-      for (i = 0; i < 100; ++i) {
+      let list = [ ];
+      for (let i = 0; i < 100; ++i) {
         list.push(i);
       }
 
@@ -165,7 +155,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
         { offset: 100, limit: 0 }
       ];
 
-      for (i = 0; i < tests.length; ++i) {
+      for (let i = 0; i < tests.length; ++i) {
         var test = tests[i];
 
         var query = "FOR c IN " + JSON.stringify(list) + " LIMIT " + test.offset + ", " + test.limit + " RETURN c";
@@ -192,7 +182,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
         { offset: 100, limit: 0 }
       ];
 
-      for (var i = 0; i < tests.length; ++i) {
+      for (let i = 0; i < tests.length; ++i) {
         var test = tests[i];
 
         var query = "FOR c IN " + cn + " LIMIT " + test.offset + ", " + test.limit + " RETURN c";
@@ -209,8 +199,8 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitNonCollectionDoubleLimitEmpty : function () {
-      var list = [ ];
-      for (var i = 0; i < 100; ++i) {
+      let list = [ ];
+      for (let i = 0; i < 100; ++i) {
         list.push(i);
       }
 
@@ -240,9 +230,8 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitNonCollectionLimitLimit : function () {
-      var i;
-      var list = [ ];
-      for (i = 0; i < 100; ++i) {
+      let list = [ ];
+      for (let i = 0; i < 100; ++i) {
         list.push(i);
       }
 
@@ -258,7 +247,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
         { offset: 50, limit: 50, offset2: 50, limit2: 50, expectedLength: 0 }
       ];
 
-      for (i = 0; i < tests.length; ++i) {
+      for (let i = 0; i < tests.length; ++i) {
         var test = tests[i];
 
         var query = "FOR c IN " + JSON.stringify(list) + " LIMIT " + test.offset + ", " + test.limit + " LIMIT " + test.offset2 + ", " + test.limit2 + " RETURN c";
@@ -287,7 +276,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
         { offset: 50, limit: 50, offset2: 50, limit2: 50, expectedLength: 0 }
       ];
 
-      for (var i = 0; i < tests.length; ++i) {
+      for (let i = 0; i < tests.length; ++i) {
         var test = tests[i];
 
         var query = "FOR c IN " + cn + " SORT c.value LIMIT " + test.offset + ", " + test.limit + " LIMIT " + test.offset2 + ", " + test.limit2 + " RETURN c";
@@ -303,9 +292,8 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitNonCollectionFilter : function () {
-      var i;
-      var list = [ ];
-      for (i = 0; i < 100; ++i) {
+      let list = [ ];
+      for (let i = 0; i < 100; ++i) {
         list.push(i);
       }
 
@@ -337,7 +325,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
         { offset: 50, limit: 5, value: 50, expectedLength: 0 }
       ];
 
-      for (i = 0; i < tests.length; ++i) {
+      for (let i = 0; i < tests.length; ++i) {
         var test = tests[i];
 
         var query = "FOR c IN " + JSON.stringify(list) + " FILTER c >= " + test.value + " LIMIT " + test.offset + ", " + test.limit + " RETURN c";
@@ -383,7 +371,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
         { offset: 50, limit: 5, value: 50, expectedLength: 0 }
       ];
 
-      for (var i = 0; i < tests.length; ++i) {
+      for (let i = 0; i < tests.length; ++i) {
         var test = tests[i];
 
         var query = "FOR c IN " + cn + " FILTER c.value >= " + test.value + " LIMIT " + test.offset + ", " + test.limit + " RETURN c";
@@ -429,7 +417,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
         { offset: 50, limit: 5, value: 50, expectedLength: 0 }
       ];
 
-      for (var i = 0; i < tests.length; ++i) {
+      for (let i = 0; i < tests.length; ++i) {
         var test = tests[i];
 
         var query = "FOR c IN " + cn + " FILTER c.value >= " + test.value + " FILTER c.value <= 9999 LIMIT " + test.offset + ", " + test.limit + " RETURN c";
@@ -445,8 +433,8 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 /// @brief check limit optimization with index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLimitFullCollectionHashIndex1 : function () {
-      collection.ensureHashIndex("value");
+    testLimitFullCollectionPersistentIndex1 : function () {
+      collection.ensureIndex({ type: "persistent", fields: ["value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value == 23 || c.value == 24 LIMIT 0, 10 SORT c.value RETURN c";
 
@@ -462,8 +450,8 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 /// @brief check limit optimization with index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLimitFullCollectionHashIndex2 : function () {
-      collection.ensureHashIndex("value");
+    testLimitFullCollectionPersistentIndex2 : function () {
+      collection.ensureIndex({ type: "persistent", fields: ["value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 20 && c.value < 30 LIMIT 0, 10 SORT c.value RETURN c";
 
@@ -480,14 +468,14 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 /// @brief check limit optimization with index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLimitFullCollectionHashIndex3 : function () {
-      collection.ensureHashIndex("value");
+    testLimitFullCollectionPersistentIndex3 : function () {
+      collection.ensureIndex({ type: "persistent", fields: ["value"] });
 
       var query = "FOR c IN " + cn + " SORT c.value DESC LIMIT 10, 10 RETURN c";
 
       var actual = getQueryResults(query);
       assertEqual(10, actual.length);
-      for (var i = 0; i < 10; ++i) {
+      for (let i = 0; i < 10; ++i) {
         assertEqual(docCount - 11 - i, actual[i].value);
       }
 
@@ -495,11 +483,36 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check limit optimization with index large index
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitFullCollectionPersistentIndex4 : function () {
+      collection.ensureIndex({ type: "persistent", fields: ["value"] });
+
+      let docs = [];
+      for (let i = docCount; i < 1030; ++i) {
+        docs.push({value: i});
+      }
+      collection.insert(docs);
+
+      var query = "FOR c IN " + cn + " SORT c.value ASC LIMIT 1005, 10 RETURN c";
+
+      var actual = getQueryResults(query);
+      assertEqual(10, actual.length);
+      for (let j = 0; j < 10; ++j) {
+        assertEqual(1005 + j, actual[j].value);
+      }
+
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "LimitNode", "ReturnNode" ], explain(query));
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief check limit optimization with index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLimitFilterFilterCollectionHashIndex : function () {
-      collection.ensureHashIndex("value");
+    testLimitFilterFilterCollectionPersistentIndex : function () {
+      collection.ensureIndex({ type: "persistent", fields: ["value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 20 && c.value < 30 FILTER c.value <= 9999 LIMIT 0, 10 SORT c.value RETURN c";
 
@@ -511,98 +524,6 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
 
       assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "FilterNode",
                     "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimization with index
-////////////////////////////////////////////////////////////////////////////////
-
-    testLimitFullCollectionSkiplistIndex1 : function () {
-      collection.ensureSkiplist("value");
-
-      var query = "FOR c IN " + cn + " FILTER c.value == 23 || c.value == 24 LIMIT 0, 10 SORT c.value RETURN c";
-
-      var actual = getQueryResults(query);
-      assertEqual(2, actual.length);
-      assertEqual(23, actual[0].value);
-      assertEqual(24, actual[1].value);
-
-      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimization with index
-////////////////////////////////////////////////////////////////////////////////
-
-    testLimitFullCollectionSkiplistIndex2 : function () {
-      collection.ensureSkiplist("value");
-
-      var query = "FOR c IN " + cn + " FILTER c.value >= 20 && c.value < 30 LIMIT 0, 10 SORT c.value RETURN c";
-
-      var actual = getQueryResults(query);
-      assertEqual(10, actual.length);
-      assertEqual(20, actual[0].value);
-      assertEqual(21, actual[1].value);
-      assertEqual(29, actual[9].value);
-      
-      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimization with index
-////////////////////////////////////////////////////////////////////////////////
-
-    testLimitFullCollectionSkiplist3 : function () {
-      collection.ensureSkiplist("value");
-
-      var query = "FOR c IN " + cn + " SORT c.value DESC LIMIT 10, 10 RETURN c";
-
-      var actual = getQueryResults(query);
-      assertEqual(10, actual.length);
-      for (var i = 0; i < 10; ++i) {
-        assertEqual(docCount - 11 - i, actual[i].value);
-      }
-
-      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "LimitNode", "ReturnNode" ], explain(query));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimization with index large skip
-////////////////////////////////////////////////////////////////////////////////
-
-    testLimitFullCollectionSkiplist4 : function () {
-      collection.ensureSkiplist("value");
-
-      for (var i = docCount; i < 1030; ++i) {
-        internal.db[cn].save({value: i});
-      }
-      var query = "FOR c IN " + cn + " SORT c.value ASC LIMIT 1005, 10 RETURN c";
-
-      var actual = getQueryResults(query);
-      assertEqual(10, actual.length);
-      for (var j = 0; j < 10; ++j) {
-        assertEqual(1005 + j, actual[j].value);
-      }
-
-      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "LimitNode", "ReturnNode" ], explain(query));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimization with index
-////////////////////////////////////////////////////////////////////////////////
-
-    testLimitFilterFilterSkiplistIndex : function () {
-      collection.ensureSkiplist("value");
-
-      var query = "FOR c IN " + cn + " FILTER c.value >= 20 && c.value < 30 FILTER c.value <= 9999 LIMIT 0, 10 SORT c.value RETURN c";
-
-      var actual = getQueryResults(query);
-      assertEqual(10, actual.length);
-      assertEqual(20, actual[0].value);
-      assertEqual(21, actual[1].value);
-      assertEqual(29, actual[9].value);
-
-      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -778,11 +699,6 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(ahuacatlQueryOptimizerLimitTestSuite);
 
 return jsunity.done();
-

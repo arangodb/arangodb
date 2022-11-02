@@ -24,7 +24,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
 #include <cmath>
 
 #include "Greenspun/Extractor.h"

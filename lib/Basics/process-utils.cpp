@@ -34,6 +34,7 @@
 #include <type_traits>
 
 #include "process-utils.h"
+#include "signals.h"
 #include "Basics/system-functions.h"
 
 #if defined(TRI_HAVE_MACOS_MEM_STATS)
@@ -251,9 +252,9 @@ static bool CreatePipes(int* pipe_server_to_child, int* pipe_child_to_server) {
 /// @brief starts external process
 ////////////////////////////////////////////////////////////////////////////////
 
-static void StartExternalProcess(
-    ExternalProcess* external, bool usePipes,
-    std::vector<std::string> const& additionalEnv) {
+static void StartExternalProcess(ExternalProcess* external, bool usePipes,
+                                 std::vector<std::string> const& additionalEnv,
+                                 std::string const& fileForStdErr) {
   int pipe_server_to_child[2];
   int pipe_child_to_server[2];
 
@@ -287,17 +288,31 @@ static void StartExternalProcess(
     } else {
       {  // "close" stdin, but avoid fd 0 being reused!
         int fd = open("/dev/null", O_RDONLY);
-        dup2(fd, 0);
-        close(fd);
+        if (fd >= 0) {
+          dup2(fd, 0);
+          close(fd);
+        }
       }
       fcntl(1, F_SETFD, 0);
       fcntl(2, F_SETFD, 0);
+    }
+    if (!fileForStdErr.empty()) {
+      // Redirect stderr:
+      int fd = open(fileForStdErr.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
+      if (fd >= 0) {
+        dup2(fd, 2);  // note that 2 was open before, so fd is not equal to 2,
+                      // and the previous 2 is now silently being closed!
+                      // Furthermore, if this fails, we stay on the other one.
+        close(fd);    // need to get rid of the second file descriptor.
+      }
     }
 
     // add environment variables
     for (auto const& it : additionalEnv) {
       putenv(TRI_DuplicateString(it.c_str(), it.size()));
     }
+
+    arangodb::signals::unmaskAllSignals();
 
     // execute worker
     execvp(external->_executable.c_str(), external->_arguments);
@@ -375,7 +390,8 @@ static bool createPipes(HANDLE* hChildStdinRd, HANDLE* hChildStdinWr,
     }                                             \
   } while (false);
 
-static ErrorCode appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
+[[maybe_unused]] static ErrorCode appendQuotedArg(TRI_string_buffer_t* buf,
+                                                  char const* p) {
   auto err = TRI_ERROR_NO_ERROR;
 
   appendChar(buf, '"');
@@ -485,7 +501,7 @@ static std::wstring makeWindowsArgs(ExternalProcess* external) {
   err = wAppendQuotedArg(
       res, reinterpret_cast<wchar_t const*>(uwargs.getTerminatedBuffer()));
   if (err != TRI_ERROR_NO_ERROR) {
-    return nullptr;
+    return L"";
   }
   for (i = 1; i < external->_numberArguments; i++) {
     res += L' ';
@@ -493,7 +509,7 @@ static std::wstring makeWindowsArgs(ExternalProcess* external) {
     err = wAppendQuotedArg(
         res, reinterpret_cast<wchar_t const*>(uwargs.getTerminatedBuffer()));
     if (err != TRI_ERROR_NO_ERROR) {
-      return nullptr;
+      return L"";
     }
   }
   return res;
@@ -553,7 +569,8 @@ static bool startProcess(ExternalProcess* external, HANDLE rd, HANDLE wr) {
 
 static void StartExternalProcess(
     ExternalProcess* external, bool usePipes,
-    std::vector<std::string> const& additionalEnv) {
+    std::vector<std::string> const& additionalEnv,
+    std::string const& /* fileForStdErr ignored for now on Windows */) {
   HANDLE hChildStdinRd = NULL, hChildStdinWr = NULL;
   HANDLE hChildStdoutRd = NULL, hChildStdoutWr = NULL;
   bool fSuccess;
@@ -709,7 +726,7 @@ static uint64_t _TimeAmount(FILETIME* ft) {
   return ts;
 }
 
-static time_t _FileTime_to_POSIX(FILETIME* ft) {
+[[maybe_unused]] static time_t _FileTime_to_POSIX(FILETIME* ft) {
   LONGLONG ts, help;
   ts = ft->dwLowDateTime;
   help = ft->dwHighDateTime;
@@ -836,7 +853,7 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
   if (fd >= 0) {
     memset(&str, 0, sizeof(str));
 
-    ssize_t n = TRI_READ(fd, str, static_cast<TRI_read_t>(sizeof(str)));
+    auto n = TRI_READ(fd, str, static_cast<TRI_read_t>(sizeof(str)));
     close(fd);
 
     if (n == 0) {
@@ -909,7 +926,8 @@ void TRI_SetProcessTitle(char const* title) {
 void TRI_CreateExternalProcess(char const* executable,
                                std::vector<std::string> const& arguments,
                                std::vector<std::string> const& additionalEnv,
-                               bool usePipes, ExternalId* pid) {
+                               bool usePipes, ExternalId* pid,
+                               std::string const& fileForStdErr) {
   size_t const n = arguments.size();
   // create the external structure
   auto external = std::make_unique<ExternalProcess>();
@@ -947,7 +965,7 @@ void TRI_CreateExternalProcess(char const* executable,
   external->_arguments[n + 1] = nullptr;
   external->_status = TRI_EXT_NOT_STARTED;
 
-  StartExternalProcess(external.get(), usePipes, additionalEnv);
+  StartExternalProcess(external.get(), usePipes, additionalEnv, fileForStdErr);
 
   if (external->_status != TRI_EXT_RUNNING) {
     pid->_pid = TRI_INVALID_PROCESS_ID;

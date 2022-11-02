@@ -5,6 +5,10 @@ set(boost_version "1.78.0")
 set(BOOST_VERSION ${boost_version} PARENT_SCOPE)
 set(boost_src "${CMAKE_CURRENT_SOURCE_DIR}/${boost_version}")
 
+if (MSVC)
+  add_definitions(-DBOOST_THREAD_BUILD_LIB)
+endif()
+
 add_c_flags_if_supported(CMAKE_C_FLAGS -Wno-suggest-override)
 add_cxx_flags_if_supported(CMAKE_CXX_FLAGS -Wno-suggest-override)
 

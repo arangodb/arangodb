@@ -21,6 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ClusterIndexFactory.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -29,6 +30,8 @@
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterIndex.h"
 #include "Indexes/Index.h"
+#include "IResearch/IResearchInvertedIndex.h"
+#include "IResearch/IResearchViewMeta.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -40,17 +43,16 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 
 using namespace arangodb;
+using namespace arangodb::iresearch;
 
 struct DefaultIndexFactory : public IndexTypeFactory {
   std::string const _type;
 
-  explicit DefaultIndexFactory(application_features::ApplicationServer& server,
-                               std::string const& type)
+  explicit DefaultIndexFactory(ArangodServer& server, std::string const& type)
       : IndexTypeFactory(server), _type(type) {}
 
   bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
@@ -97,8 +99,7 @@ struct DefaultIndexFactory : public IndexTypeFactory {
 };
 
 struct EdgeIndexFactory : public DefaultIndexFactory {
-  explicit EdgeIndexFactory(application_features::ApplicationServer& server,
-                            std::string const& type)
+  explicit EdgeIndexFactory(ArangodServer& server, std::string const& type)
       : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
@@ -120,8 +121,7 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
 };
 
 struct PrimaryIndexFactory : public DefaultIndexFactory {
-  explicit PrimaryIndexFactory(application_features::ApplicationServer& server,
-                               std::string const& type)
+  explicit PrimaryIndexFactory(ArangodServer& server, std::string const& type)
       : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<Index> instantiate(LogicalCollection& collection,
@@ -144,12 +144,44 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
   }
 };
 
+struct IResearchInvertedIndexClusterFactory : public DefaultIndexFactory {
+  explicit IResearchInvertedIndexClusterFactory(ArangodServer& server)
+      : DefaultIndexFactory(server, IRESEARCH_INVERTED_INDEX_TYPE.data()) {}
+
+  std::shared_ptr<Index> instantiate(LogicalCollection& collection,
+                                     velocypack::Slice definition, IndexId id,
+                                     bool isClusterConstructor) const override {
+    auto nameSlice = definition.get(arangodb::StaticStrings::IndexName);
+    std::string indexName;
+    if (!nameSlice.isNone()) {
+      if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
+        LOG_TOPIC("91ebe", ERR, TOPIC)
+            << "failed to initialize index from definition, error in attribute "
+               "'" +
+                   arangodb::StaticStrings::IndexName +
+                   "': " + definition.toString();
+        return nullptr;
+      }
+      indexName = nameSlice.copyString();
+    }
+    auto objectId = basics::VelocyPackHelper::stringUInt64(
+        definition, arangodb::StaticStrings::ObjectId);
+    auto index = std::make_shared<IResearchInvertedClusterIndex>(
+        id, objectId, collection, indexName);
+    bool pathExists = false;
+    if (index->init(definition, pathExists).fail()) {
+      return nullptr;
+    }
+    index->initFields();
+    return index;
+  }
+};
 }  // namespace
 
 namespace arangodb {
 
-void ClusterIndexFactory::linkIndexFactories(
-    application_features::ApplicationServer& server, IndexFactory& factory) {
+void ClusterIndexFactory::linkIndexFactories(ArangodServer& server,
+                                             IndexFactory& factory) {
   static const EdgeIndexFactory edgeIndexFactory(server, "edge");
   static const DefaultIndexFactory fulltextIndexFactory(server, "fulltext");
   static const DefaultIndexFactory geoIndexFactory(server, "geo");
@@ -161,6 +193,8 @@ void ClusterIndexFactory::linkIndexFactories(
   static const DefaultIndexFactory skiplistIndexFactory(server, "skiplist");
   static const DefaultIndexFactory ttlIndexFactory(server, "ttl");
   static const DefaultIndexFactory zkdIndexFactory(server, "zkd");
+  static const IResearchInvertedIndexClusterFactory invertedIndexFactory(
+      server);
 
   factory.emplace(edgeIndexFactory._type, edgeIndexFactory);
   factory.emplace(fulltextIndexFactory._type, fulltextIndexFactory);
@@ -173,10 +207,10 @@ void ClusterIndexFactory::linkIndexFactories(
   factory.emplace(skiplistIndexFactory._type, skiplistIndexFactory);
   factory.emplace(ttlIndexFactory._type, ttlIndexFactory);
   factory.emplace(zkdIndexFactory._type, zkdIndexFactory);
+  factory.emplace(invertedIndexFactory._type, invertedIndexFactory);
 }
 
-ClusterIndexFactory::ClusterIndexFactory(
-    application_features::ApplicationServer& server)
+ClusterIndexFactory::ClusterIndexFactory(ArangodServer& server)
     : IndexFactory(server) {
   linkIndexFactories(server, *this);
 }
@@ -296,7 +330,8 @@ void ClusterIndexFactory::prepareIndexes(
   TRI_ASSERT(indexesSlice.isArray());
 
   for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
-    if (!validateFieldsDefinition(v, 0, SIZE_MAX).ok()) {
+    if (!validateFieldsDefinition(v, StaticStrings::IndexFields, 0, SIZE_MAX)
+             .ok()) {
       // We have an error here. Do not add.
       continue;
     }

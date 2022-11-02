@@ -1,0 +1,16 @@
+name: arangodb_potentially_dirty_document_reads_total
+introducedIn: "3.10.0"
+help: |
+  Number of document reads which have been executed with dirty reads.
+unit: number
+type: counter
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+description: |
+  This counter exposes the number of document reads (single or batch to
+  shards in the cluster) which have been executed with "dirty reads".
+  A dirty read is one which may also use follower shards and not only
+  leader shards. Note that it is the transaction in the context of which
+  the read runs which determines, if dirty reads are allowed.

@@ -46,10 +46,10 @@ bool attributesMatch(arangodb::transaction::Methods::IndexHandle const& index,
   for (auto& nodeAttr : node.attrs) {
     nodeAttr.afData.field = nullptr;
     size_t indexFieldNum = 0;
-    for (auto const& field : index->fields()) {
+    for (auto const& field : index->coveredFields()) {
       TRI_ASSERT(nodeAttr.afData.postfix.empty());
-      if (latematerialized::isPrefix(field, nodeAttr.attr, false,
-                                     nodeAttr.afData.postfix)) {
+      if (latematerialized::isPrefix<false>(field, nodeAttr.attr, false,
+                                            nodeAttr.afData.postfix)) {
         nodeAttr.afData.fieldNumber = indexFieldNum;
         nodeAttr.afData.field = &field;
         break;
@@ -108,9 +108,7 @@ void arangodb::aql::lateDocumentMaterializationRule(
     return;
   }
 
-  arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type
-      a;
-  arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, ExecutionNode::LIMIT, true);
   for (auto* limitNode : nodes) {
     auto* loop = const_cast<ExecutionNode*>(limitNode->getLoop());
@@ -127,8 +125,9 @@ void arangodb::aql::lateDocumentMaterializationRule(
         continue;  // several indexes are not supported
       }
       auto& index = indexes.front();
-      if (!index->hasCoveringIterator()) {
-        continue;  // index must be covering
+      if (index->coveredFields().empty()) {
+        // index does not cover any fields
+        continue;
       }
       auto const* var = indexNode->outVariable();
       std::vector<latematerialized::NodeExpressionWithAttrs> nodesToChange;
@@ -208,10 +207,7 @@ void arangodb::aql::lateDocumentMaterializationRule(
                   *ExecutionNode::castTo<SubqueryNode*>(current);
               auto* subquery = subqueryNode.getSubquery();
               TRI_ASSERT(subquery);
-              arangodb::containers::SmallVector<
-                  ExecutionNode*>::allocator_type::arena_type sa;
-              arangodb::containers::SmallVector<ExecutionNode*>
-                  subqueryCalcNodes{sa};
+              containers::SmallVector<ExecutionNode*, 8> subqueryCalcNodes;
               // find calculation nodes in the plan of a subquery
               CalculationNodeVarFinder finder(var, subqueryCalcNodes);
               valid = !subquery->walk(finder);

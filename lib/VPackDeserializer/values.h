@@ -140,12 +140,12 @@ struct vpack_builder_deserializer {
 }  // namespace deserializer::values
 
 template<typename T, int V>
-std::string to_string(deserializer::values::numeric_value<T, V> const &) {
+std::string to_string(deserializer::values::numeric_value<T, V> const&) {
   return std::to_string(V);
 }
 
 template<const char V[]>
-std::string to_string(deserializer::values::string_value<V> const &) {
+std::string to_string(deserializer::values::string_value<V> const&) {
   return V;
 }
 
@@ -158,7 +158,7 @@ struct deserialize_plan_executor<values::value_deserializer<T>, H> {
 
   template<typename C>
   static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
-                     typename H::state_type hints, C &&) -> result_type {
+                     typename H::state_type hints, C&&) -> result_type {
     return value_reader<T>::read(s).map(
         [](T t) { return std::make_tuple(std::move(t)); });
   }
@@ -172,7 +172,7 @@ struct deserialize_plan_executor<values::slice_deserializer, H> {
 
   template<typename C>
   static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
-                     typename H::state_type, C &&) -> result_type {
+                     typename H::state_type, C&&) -> result_type {
     return result_type{s};
   }
 };
@@ -185,7 +185,7 @@ struct deserialize_plan_executor<values::vpack_builder_deserializer, H> {
 
   template<typename C>
   static auto unpack(::arangodb::velocypack::deserializer::slice_type s,
-                     typename H::state_type, C &&) -> result_type {
+                     typename H::state_type, C&&) -> result_type {
     builder_type builder;
     builder.add(s);
     return result_type{std::move(builder)};

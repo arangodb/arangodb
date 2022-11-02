@@ -24,10 +24,14 @@
 
 #pragma once
 
-#include <rocksdb/types.h>
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
+#include "Basics/Result.h"
+#include "RestServer/arangod.h"
 #include "StorageEngine/StorageEngine.h"
+
+#include <rocksdb/types.h>
+
+#include <atomic>
 
 namespace rocksdb {
 
@@ -36,33 +40,25 @@ class TransactionDB;
 
 namespace arangodb {
 
-class RocksDBRecoveryManager final
-    : public application_features::ApplicationFeature {
+class RocksDBRecoveryManager final : public ArangodFeature {
  public:
-  explicit RocksDBRecoveryManager(
-      application_features::ApplicationServer& server);
+  static constexpr std::string_view name() { return "RocksDBRecoveryManager"; }
 
-  static std::string featureName() { return "RocksDBRecoveryManager"; }
+  explicit RocksDBRecoveryManager(Server& server);
 
   void start() override;
 
   void runRecovery();
 
-  RecoveryState recoveryState() const noexcept {
-    return _recoveryState.load(std::memory_order_acquire);
-  }
+  RecoveryState recoveryState() const noexcept;
 
-  /// @brief current recovery tick
-  rocksdb::SequenceNumber recoveryTick() const noexcept { return _tick; }
+  // current recovery sequence number
+  rocksdb::SequenceNumber recoverySequenceNumber() const noexcept;
 
  private:
   Result parseRocksWAL();
 
- protected:
-  /// @brief rocksdb instance
-  rocksdb::TransactionDB* _db;
-
-  rocksdb::SequenceNumber _tick;
+  std::atomic<rocksdb::SequenceNumber> _currentSequenceNumber;
   std::atomic<RecoveryState> _recoveryState;
 };
 

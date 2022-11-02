@@ -31,8 +31,7 @@
 namespace arangodb {
 class RestActionHandler : public RestVocbaseBaseHandler {
  public:
-  RestActionHandler(application_features::ApplicationServer&, GeneralRequest*,
-                    GeneralResponse*);
+  RestActionHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestActionHandler"; }

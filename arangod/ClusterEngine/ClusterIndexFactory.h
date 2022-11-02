@@ -29,17 +29,15 @@ namespace arangodb {
 
 class ClusterIndexFactory final : public IndexFactory {
  public:
-  static void linkIndexFactories(
-      application_features::ApplicationServer& server, IndexFactory& factory);
-  explicit ClusterIndexFactory(application_features::ApplicationServer&);
+  static void linkIndexFactories(ArangodServer& server, IndexFactory& factory);
+  explicit ClusterIndexFactory(ArangodServer&);
   ~ClusterIndexFactory() = default;
 
-  Result enhanceIndexDefinition(           // normalize definition
-      velocypack::Slice const definition,  // source definition
-      velocypack::Builder& normalized,     // normalized definition (out-param)
-      bool isCreation,                     // definition for index creation
-      TRI_vocbase_t const& vocbase         // index vocbase
-  ) const override;
+  // normalize definition
+  Result enhanceIndexDefinition(velocypack::Slice const definition,
+                                velocypack::Builder& normalized,
+                                bool isCreation,
+                                TRI_vocbase_t const& vocbase) const override;
 
   /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
   /// "hash") used to display storage engine capabilities

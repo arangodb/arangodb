@@ -91,7 +91,8 @@ class Mutex {
   SRWLOCK _mutex;
 #endif
 
-#ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
+#if defined(ARANGODB_ENABLE_DEADLOCK_DETECTION) && \
+    defined(TRI_HAVE_POSIX_THREADS)
   TRI_tid_t _holder;
 #endif
 };

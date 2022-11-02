@@ -27,54 +27,18 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/debugging.h"
 
-#ifdef ARANGODB_SHOW_LOCK_TIME
-#include "Basics/system-functions.h"
-#include "Logger/LogMacros.h"
-#endif
-
 using namespace arangodb::basics;
-
-/// @brief locks the condition variable
-///
-/// The constructors locks the condition variable, the destructors unlocks
-/// the condition variable
-#ifdef ARANGODB_SHOW_LOCK_TIME
-
-ConditionLocker::ConditionLocker(ConditionVariable* conditionVariable,
-                                 char const* file, int line, bool showLockTime)
-    : _conditionVariable(conditionVariable),
-      _isLocked(true),
-      _file(file),
-      _line(line),
-      _showLockTime(showLockTime),
-      _time(0.0) {
-  double t = TRI_microtime();
-  _conditionVariable->lock();
-  _time = TRI_microtime() - t;
-}
-
-#else
 
 ConditionLocker::ConditionLocker(ConditionVariable* conditionVariable) noexcept
     : _conditionVariable(conditionVariable), _isLocked(true) {
   _conditionVariable->lock();
 }
 
-#endif
-
 /// @brief unlocks the condition variable
 ConditionLocker::~ConditionLocker() {
   if (_isLocked) {
     unlock();
   }
-
-#ifdef ARANGODB_SHOW_LOCK_TIME
-  if (_showLockTime && _time > TRI_SHOW_LOCK_THRESHOLD) {
-    LOG_TOPIC("89086", INFO, arangodb::Logger::PERFORMANCE)
-        << "ConditionLocker for condition [" << _conditionVariable << "]"
-        << _file << ":" << _line << " took " << _time << " s";
-  }
-#endif
 }
 
 /// @brief waits for an event to occur

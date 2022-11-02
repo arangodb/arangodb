@@ -22,17 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBV8Functions.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
+#include "RestServer/FlushFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
+#include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
@@ -81,8 +84,8 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  TRI_GET_GLOBALS();
-  v8g->_server.getFeature<EngineSelectorFeature>().engine().flushWal(
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  v8g->server().getFeature<EngineSelectorFeature>().engine().flushWal(
       waitForSync, waitForCollector);
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -200,14 +203,42 @@ static void JS_WaitForEstimatorSync(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
-  v8g->_server.getFeature<EngineSelectorFeature>()
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+
+  // release all unused ticks from flush feature
+  v8g->server().getFeature<FlushFeature>().releaseUnusedTicks();
+
+  // force-flush
+  RocksDBEngine& engine =
+      v8g->server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  engine.settingsManager()->sync(/*force*/ true);
+
+  v8g->server()
+      .getFeature<EngineSelectorFeature>()
       .engine()
       .waitForEstimatorSync(std::chrono::seconds(10));
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+static void JS_WalRecoveryStartSequence(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  v8::Handle<v8::Value> result =
+      TRI_V8UInt64String(isolate, v8g->server()
+                                      .getFeature<EngineSelectorFeature>()
+                                      .engine<RocksDBEngine>()
+                                      .recoveryStartSequence());
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+#endif
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 static void JS_CollectionRevisionTreeCorrupt(
@@ -267,7 +298,7 @@ static void JS_CollectionRevisionTreeVerification(
     try {
       auto* physical = toRocksDBCollection(*collection);
       auto batchId = ctx->id();
-      storedTree = physical->revisionTree(batchId);
+      storedTree = physical->revisionTree(ctx->snapshotTick());
       computedTree = physical->computeRevisionTree(batchId);
       ctx->setDeleted();
     } catch (...) {
@@ -376,7 +407,7 @@ static void JS_CollectionRevisionTreePendingUpdates(
 }
 #endif
 
-void RocksDBV8Functions::registerResources() {
+void RocksDBV8Functions::registerResources(RocksDBEngine& engine) {
   ISOLATE;
   v8::HandleScope scope(isolate);
 
@@ -431,4 +462,12 @@ void RocksDBV8Functions::registerResources() {
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "WAIT_FOR_ESTIMATOR_SYNC"),
       JS_WaitForEstimatorSync, true);
+
+  // only used for testing - not publicly documented!
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "WAL_RECOVERY_START_SEQUENCE"),
+      JS_WalRecoveryStartSequence, true);
+
+#endif
 }

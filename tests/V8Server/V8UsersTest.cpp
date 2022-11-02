@@ -33,6 +33,9 @@
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 
+#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -53,6 +56,7 @@
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
+#include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
 
 // The following v8 headers must be included late, or MSVC fails to compile
@@ -85,12 +89,17 @@ struct TestView : public arangodb::LogicalView {
   arangodb::Result _appendVelocyPackResult;
   arangodb::velocypack::Builder _properties;
 
+  static constexpr auto typeInfo() noexcept {
+    return std::pair{static_cast<arangodb::ViewType>(42),
+                     std::string_view{"testViewType"}};
+  }
+
   TestView(TRI_vocbase_t& vocbase,
            arangodb::velocypack::Slice const& definition)
-      : arangodb::LogicalView(vocbase, definition) {}
-  virtual arangodb::Result appendVelocyPackImpl(
-      arangodb::velocypack::Builder& builder, Serialization) const override {
-    builder.add("properties", _properties.slice());
+      : arangodb::LogicalView(*this, vocbase, definition) {}
+  arangodb::Result appendVPackImpl(arangodb::velocypack::Builder& build,
+                                   Serialization, bool) const override {
+    build.add("properties", _properties.slice());
     return _appendVelocyPackResult;
   }
   virtual arangodb::Result dropImpl() override { return arangodb::Result(); }
@@ -117,14 +126,15 @@ struct ViewFactory : public arangodb::ViewFactory {
                                   arangodb::velocypack::Slice definition,
                                   bool isUserRequest) const override {
     EXPECT_TRUE(isUserRequest);
-    view = vocbase.createView(definition);
+    view = vocbase.createView(definition, isUserRequest);
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result instantiate(
-      arangodb::LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-      arangodb::velocypack::Slice definition) const override {
+  virtual arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
+                                       TRI_vocbase_t& vocbase,
+                                       arangodb::velocypack::Slice definition,
+                                       bool /*isUserRequest*/) const override {
     view = std::make_shared<TestView>(vocbase, definition);
 
     return arangodb::Result();
@@ -132,10 +142,6 @@ struct ViewFactory : public arangodb::ViewFactory {
 };
 
 }  // namespace
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
 
 class V8UsersTest
     : public ::testing::Test,
@@ -152,15 +158,9 @@ class V8UsersTest
     arangodb::tests::v8Init();  // on-time initialize V8
 
     auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
-    viewTypesFeature.emplace(arangodb::LogicalDataSource::Type::emplace(
-                                 std::string_view("testViewType")),
-                             viewFactory);
+    viewTypesFeature.emplace(TestView::typeInfo().second, viewFactory);
   }
 };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
 
 TEST_F(V8UsersTest, test_collection_auth) {
   auto usersJson = arangodb::velocypack::Parser::fromJson(
@@ -178,28 +178,25 @@ TEST_F(V8UsersTest, test_collection_auth) {
       v8::Isolate::New(isolateParams),
       [](v8::Isolate* p) -> void { p->Dispose(); });
   ASSERT_NE(nullptr, isolate);
-  v8::Isolate::Scope isolateScope(
-      isolate.get());  // otherwise v8::Isolate::Logger() will fail (called from
-                       // v8::Exception::Error)
-  v8::internal::Isolate::Current()
-      ->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger() will
-                                         // fail (called from
-                                         // v8::Exception::Error)
-  v8::HandleScope handleScope(
-      isolate.get());  // required for v8::Context::New(...),
-                       // v8::ObjectTemplate::New(...) and
-                       // TRI_AddMethodVocbase(...)
+
+  // otherwise v8::Isolate::Logger() will fail (called from
+  // v8::Exception::Error)
+  v8::Isolate::Scope isolateScope(isolate.get());
+  // otherwise v8::Isolate::Logger() will fail (called from
+  // v8::Exception::Error)
+  v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
+  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
+  // TRI_AddMethodVocbase(...)
+  v8::HandleScope handleScope(isolate.get());
   auto context = v8::Context::New(isolate.get());
-  v8::Context::Scope contextScope(
-      context);  // required for TRI_AddMethodVocbase(...)
-  std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(
-      server.server(), isolate.get(),
-      0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
-  v8g->ArangoErrorTempl.Reset(
-      isolate.get(),
-      v8::ObjectTemplate::New(
-          isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will
-                            // fail
+  // required for TRI_AddMethodVocbase(...)
+  v8::Context::Scope contextScope(context);
+  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+  std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
+      CreateV8Globals(server.server(), isolate.get(), 0));
+  // otherwise v8:-utils::CreateErrorObject(...) will fail
+  v8g->ArangoErrorTempl.Reset(isolate.get(),
+                              v8::ObjectTemplate::New(isolate.get()));
   v8g->_vocbase = vocbase;
   TRI_InitV8Users(context, vocbase, v8g.get(), isolate.get());
   auto arangoUsers =
@@ -469,7 +466,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
         });
     ASSERT_NE(nullptr, userPtr);
     auto logicalView = std::shared_ptr<arangodb::LogicalView>(
-        vocbase->createView(viewJson->slice()).get(),
+        vocbase->createView(viewJson->slice(), false).get(),
         [vocbase](arangodb::LogicalView* ptr) -> void {
           vocbase->dropView(ptr->id(), false);
         });
@@ -527,7 +524,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
                                      // User::collectionAuthLevel(...) returns
                                      // database auth::Level
     auto logicalView = std::shared_ptr<arangodb::LogicalView>(
-        vocbase->createView(viewJson->slice()).get(),
+        vocbase->createView(viewJson->slice(), false).get(),
         [vocbase](arangodb::LogicalView* ptr) -> void {
           vocbase->dropView(ptr->id(), false);
         });

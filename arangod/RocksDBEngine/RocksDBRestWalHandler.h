@@ -30,8 +30,7 @@ namespace arangodb {
 
 class RocksDBRestWalHandler : public RestBaseHandler {
  public:
-  RocksDBRestWalHandler(application_features::ApplicationServer&,
-                        GeneralRequest*, GeneralResponse*);
+  RocksDBRestWalHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   RequestLane lane() const override final {

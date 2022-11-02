@@ -24,15 +24,19 @@
 
 #pragma once
 
-#include "IResearchFilterOptimization.h"
+#include "IResearch/IResearchFilterOptimization.h"
+#include "IResearch/IResearchLinkMeta.h"
+#include "IResearch/IResearchInvertedIndexMeta.h"
 
 #include "VocBase/voc-types.h"
 
 #include "search/filter.hpp"
 
+#include <function2.hpp>
+
 namespace iresearch {
 
-class boolean_filter;  // forward declaration
+class boolean_filter;
 
 }  // namespace iresearch
 
@@ -41,23 +45,23 @@ class Result;
 
 namespace aql {
 
-struct AstNode;  // forward declaration
+struct AstNode;
+class ExpressionContext;
 
 }  // namespace aql
 
 namespace iresearch {
 
 struct QueryContext;
+struct FilterContext;
 
 struct FilterFactory {
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief determine if the 'node' can be converted into an iresearch filter
-  ///        if 'filter' != nullptr then also append the iresearch filter there
-  ////////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result filter(irs::boolean_filter* filter,
-                                 QueryContext const& ctx,
-                                 arangodb::aql::AstNode const& node);
-};  // FilterFactory
+  // Determine if the 'node' can be converted into an iresearch filter
+  // if 'filter' != nullptr then also append the iresearch filter there
+  static Result filter(irs::boolean_filter* filter,
+                       FilterContext const& filterCtx,
+                       aql::AstNode const& node);
+};
 
 struct FilterConstants {
   // Defaults

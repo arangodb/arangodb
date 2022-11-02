@@ -24,7 +24,6 @@
 #include <fuerte/helper.h>
 #include <fuerte/message.h>
 #include <velocypack/Validator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <sstream>
 

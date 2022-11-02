@@ -23,7 +23,7 @@
 
 #include "ShardingFeature.h"
 
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -36,16 +36,13 @@
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
 #endif
 
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 
 namespace arangodb {
 
-ShardingFeature::ShardingFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Sharding") {
+ShardingFeature::ShardingFeature(Server& server)
+    : ArangodFeature{server, *this} {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 }
@@ -80,6 +77,12 @@ void ShardingFeature::prepare() {
       ShardingStrategyEnterpriseHashSmartEdge::NAME,
       [](ShardingInfo* sharding) {
         return std::make_unique<ShardingStrategyEnterpriseHashSmartEdge>(
+            sharding);
+      });
+  registerFactory(
+      ShardingStrategyEnterpriseHexSmartVertex::NAME,
+      [](ShardingInfo* sharding) {
+        return std::make_unique<ShardingStrategyEnterpriseHexSmartVertex>(
             sharding);
       });
 #else
@@ -143,20 +146,6 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::fromVelocyPack(
   return create(name, sharding);
 }
 
-std::unique_ptr<ShardingStrategy> ShardingFeature::create(
-    std::string const& name, ShardingInfo* sharding) {
-  auto it = _factories.find(name);
-
-  if (it == _factories.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("unknown sharding type '") + name + "'");
-  }
-
-  // now create a sharding strategy instance
-  return (*it).second(sharding);
-}
-
 std::string ShardingFeature::getDefaultShardingStrategy(
     ShardingInfo const* sharding) const {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
@@ -179,6 +168,20 @@ std::string ShardingFeature::getDefaultShardingStrategy(
 #endif
 }
 
+std::unique_ptr<ShardingStrategy> ShardingFeature::create(
+    std::string const& name, ShardingInfo* sharding) {
+  auto it = _factories.find(name);
+
+  if (it == _factories.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("unknown sharding type '") + name + "'");
+  }
+
+  // now create a sharding strategy instance
+  return (*it).second(sharding);
+}
+
 std::string ShardingFeature::getDefaultShardingStrategyForNewCollection(
     VPackSlice const& properties) const {
   // from 3.4 onwards, the default sharding strategy for new collections is
@@ -188,13 +191,31 @@ std::string ShardingFeature::getDefaultShardingStrategyForNewCollection(
       properties, StaticStrings::IsSmart, false);
   bool isEdge =
       TRI_COL_TYPE_EDGE == VelocyPackHelper::getNumericValue<uint32_t>(
-                               properties, "type", TRI_COL_TYPE_UNKNOWN);
-  if (isSmart && isEdge) {
-    // smart edge collection
-    return ShardingStrategyEnterpriseHashSmartEdge::NAME;
+                               properties, "type", TRI_COL_TYPE_DOCUMENT);
+  if (isSmart) {
+    if (isEdge) {
+      // Smart Edge Collection
+      return ShardingStrategyEnterpriseHashSmartEdge::NAME;
+    } else {
+      // Smart Vertex Collection
+      // We need to differentiate between SmartGraphs and EnterpriseGraphs here.
+      VPackSlice sga = properties.get(StaticStrings::GraphSmartGraphAttribute);
+      if (sga.isNone()) {
+        // Means we're in the EnterpriseGraph Case.
+        // In case we do have a SmartVertex collection without a
+        // SmartGraphAttribute given, we use a different sharding strategy.
+        // In case it is given, we fall back to the default ShardingStrategyHash
+        // strategy.
+        return ShardingStrategyEnterpriseHexSmartVertex::NAME;
+      } else {
+        // Means we're in the SmartGraph case.
+        return ShardingStrategyHash::NAME;
+      }
+    }
   }
 #endif
 
+  // Info: Satellite collections will use this ShardingStrategy as well.
   return ShardingStrategyHash::NAME;
 }
 

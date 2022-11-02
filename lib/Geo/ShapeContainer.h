@@ -58,7 +58,8 @@ class ShapeContainer final {
     EMPTY = 0,
     S2_POINT,
     S2_POLYLINE,
-    S2_LATLNGRECT,
+    S2_LATLNGRECT,  // only used in legacy code but kept for backwards
+                    // compatibility of the enum numerical values
     S2_POLYGON,
     S2_MULTIPOINT,
     S2_MULTIPOLYLINE

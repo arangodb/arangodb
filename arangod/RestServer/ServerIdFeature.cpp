@@ -29,7 +29,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -37,8 +36,6 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/InitDatabaseFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
 
 using namespace arangodb::options;
 
@@ -46,9 +43,8 @@ namespace arangodb {
 
 ServerId ServerIdFeature::SERVERID{0};
 
-ServerIdFeature::ServerIdFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "ServerId") {
+ServerIdFeature::ServerIdFeature(Server& server)
+    : ArangodFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
@@ -56,6 +52,8 @@ ServerIdFeature::ServerIdFeature(
   startsAfter<InitDatabaseFeature>();
   startsAfter<SystemDatabaseFeature>();
 }
+
+ServerIdFeature::~ServerIdFeature() { SERVERID = ServerId::none(); }
 
 void ServerIdFeature::start() {
   auto& databasePath = server().getFeature<DatabasePathFeature>();

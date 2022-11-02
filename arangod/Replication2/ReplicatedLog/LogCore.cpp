@@ -97,3 +97,7 @@ auto LogCore::removeFront(LogIndex stop) -> futures::Future<Result> {
         return std::move(res);
       });
 }
+
+auto LogCore::gid() const noexcept -> GlobalLogIdentifier const& {
+  return _persistedLog->gid();
+}

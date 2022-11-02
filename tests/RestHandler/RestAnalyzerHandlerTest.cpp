@@ -75,17 +75,17 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
 
     return nullptr;
   }
-  static ptr make(irs::string_ref const&) {
+  static ptr make(irs::string_ref) {
     PTR_NAMED(EmptyAnalyzer, ptr);
     return ptr;
   }
-  static bool normalize(irs::string_ref const&, std::string& out) {
+  static bool normalize(irs::string_ref, std::string& out) {
     out.resize(VPackSlice::emptyObjectSlice().byteSize());
     std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
     return true;
   }
   virtual bool next() override { return false; }
-  virtual bool reset(irs::string_ref const& data) override { return true; }
+  virtual bool reset(irs::string_ref data) override { return true; }
 
  private:
   irs::frequency _attr;

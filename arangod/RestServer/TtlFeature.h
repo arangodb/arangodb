@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Mutex.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -65,9 +65,11 @@ struct TtlProperties {
   Result fromVelocyPack(arangodb::velocypack::Slice const& properties);
 };
 
-class TtlFeature final : public application_features::ApplicationFeature {
+class TtlFeature final : public ArangodFeature {
  public:
-  explicit TtlFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Ttl"; }
+
+  explicit TtlFeature(Server& server);
   ~TtlFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

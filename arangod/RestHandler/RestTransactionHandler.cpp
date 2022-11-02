@@ -43,15 +43,14 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestTransactionHandler::RestTransactionHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestTransactionHandler::RestTransactionHandler(ArangodServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _v8Context(nullptr),
       _lock() {}
@@ -186,8 +185,22 @@ void RestTransactionHandler::executeBegin() {
       return;
     }
 
+    // Check if dirty reads are allowed:
+    bool found = false;
+    bool allowDirtyReads = false;
+    std::string const& val =
+        _request->header(StaticStrings::AllowDirtyReads, found);
+    if (found && StringUtils::boolean(val)) {
+      // This will be used in `createTransaction` below, if that creates
+      // a new transaction. Otherwise, we use the default given by the
+      // existing transaction.
+      allowDirtyReads = true;
+      setOutgoingDirtyReadsHeader(true);
+    }
+
     // start
-    ResultT<TransactionId> res = mgr->createManagedTrx(_vocbase, slice);
+    ResultT<TransactionId> res =
+        mgr->createManagedTrx(_vocbase, slice, allowDirtyReads);
     if (res.fail()) {
       generateError(res.result());
     } else {
@@ -390,6 +403,15 @@ RestTransactionHandler::forwardingTarget() {
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
+    // do not forward if we don't have a transaction suffix. the
+    // number of suffixes validation will still be performed for PUT
+    // and DELETE requests later, so not returning an error from here
+    // is ok.
+    return {std::make_pair(StaticStrings::Empty, false)};
+  }
+
+  if (type == rest::RequestType::DELETE_REQ && suffixes[0] == "write") {
+    // no request forwarding for stopping write transactions
     return {std::make_pair(StaticStrings::Empty, false)};
   }
 
@@ -397,8 +419,18 @@ RestTransactionHandler::forwardingTarget() {
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
   if (sourceServer == ServerState::instance()->getShortId()) {
+    // we need to handle the request ourselves, because we own the
+    // id used in the request.
     return {std::make_pair(StaticStrings::Empty, false)};
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-  return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
+  auto coordinatorId = ci.getCoordinatorByShortID(sourceServer);
+
+  if (coordinatorId.empty()) {
+    return ResultT<std::pair<std::string, bool>>::error(
+        TRI_ERROR_TRANSACTION_NOT_FOUND,
+        "cannot find target server for transaction id");
+  }
+
+  return {std::make_pair(std::move(coordinatorId), false)};
 }

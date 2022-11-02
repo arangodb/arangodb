@@ -49,6 +49,7 @@
 #include "VocBase/vocbase.h"
 
 #include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedState/StateStatus.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -56,7 +57,7 @@ using namespace arangodb::basics;
 using namespace arangodb::methods;
 using namespace arangodb::rest;
 
-DBServerAgencySync::DBServerAgencySync(ApplicationServer& server,
+DBServerAgencySync::DBServerAgencySync(ArangodServer& server,
                                        HeartbeatThread* heartbeat)
     : _server(server), _heartbeat(heartbeat) {}
 
@@ -70,8 +71,9 @@ void DBServerAgencySync::work() {
 }
 
 Result DBServerAgencySync::getLocalCollections(
-    std::unordered_set<std::string> const& dirty,
-    AgencyCache::databases_t& databases, LocalLogsMap& replLogs) {
+    containers::FlatHashSet<std::string> const& dirty,
+    AgencyCache::databases_t& databases, LocalLogsMap& replLogs,
+    LocalStatesMap& replStates) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
   using namespace arangodb::basics;
@@ -106,6 +108,17 @@ Result DBServerAgencySync::getLocalCollections(
       if (!created) {
         LOG_TOPIC("5d5c9", WARN, Logger::MAINTENANCE)
             << "Failed to emplace new entry in local replicated logs cache";
+        return Result(
+            TRI_ERROR_INTERNAL,
+            "Failed to emplace new entry in local replicated logs cache");
+      }
+    }
+    {
+      auto [it, created] =
+          replStates.try_emplace(dbname, vocbase.getReplicatedStateStatus());
+      if (!created) {
+        LOG_TOPIC("5d5c8", WARN, Logger::MAINTENANCE)
+            << "Failed to emplace new entry in local replicated state cache";
         return Result(
             TRI_ERROR_INTERNAL,
             "Failed to emplace new entry in local replicated logs cache");
@@ -172,7 +185,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   AgencyComm comm(_server);
 
-  LOG_TOPIC("62fd8", DEBUG, Logger::MAINTENANCE)
+  LOG_TOPIC("62fd8", TRACE, Logger::MAINTENANCE)
       << "DBServerAgencySync::execute starting";
   DBServerAgencySyncResult result;
   if (!_server.hasFeature<MaintenanceFeature>()) {
@@ -210,9 +223,10 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   for (auto it = moreDirt.begin(); it != moreDirt.end();) {
     if (dirty.find(*it) == dirty.end()) {
       dirty.insert(*it);
-      it++;
+      ++it;
     } else {
-      it = moreDirt.erase(it);
+      auto erase_it = it++;
+      moreDirt.erase(erase_it);
     }
   }
 
@@ -235,9 +249,10 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   AgencyCache::databases_t local;
   LocalLogsMap localLogs;
+  LocalStatesMap localStates;
   LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE)
       << "Before getLocalCollections for phaseOne";
-  Result glc = getLocalCollections(dirty, local, localLogs);
+  Result glc = getLocalCollections(dirty, local, localLogs, localStates);
 
   LOG_TOPIC("54262", TRACE, Logger::MAINTENANCE)
       << "After getLocalCollections for phaseOne";
@@ -257,16 +272,19 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     VPackObjectBuilder o(&rb);
 
+    AgencyCache::databases_t current =
+        clusterInfo.getCurrent(currentIndex, dirty);
+
     auto startTimePhaseOne = std::chrono::steady_clock::now();
-    LOG_TOPIC("19aaf", DEBUG, Logger::MAINTENANCE)
+    LOG_TOPIC("19aaf", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne";
 
-    tmp = arangodb::maintenance::phaseOne(plan, planIndex, dirty, moreDirt,
-                                          local, serverId, mfeature, rb,
-                                          currentShardLocks, localLogs);
+    tmp = arangodb::maintenance::phaseOne(
+        plan, planIndex, current, currentIndex, dirty, moreDirt, local,
+        serverId, mfeature, rb, currentShardLocks, localLogs, localStates);
 
     auto endTimePhaseOne = std::chrono::steady_clock::now();
-    LOG_TOPIC("93f83", DEBUG, Logger::MAINTENANCE)
+    LOG_TOPIC("93f83", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne done";
 
     if (endTimePhaseOne - startTimePhaseOne > std::chrono::milliseconds(200)) {
@@ -278,9 +296,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
              "0.1s...";
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
-
-    AgencyCache::databases_t current =
-        clusterInfo.getCurrent(currentIndex, dirty);
 
     LOG_TOPIC("675fd", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - current state: " << current;
@@ -298,7 +313,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     local.clear();
     localLogs.clear();
-    glc = getLocalCollections(dirty, local, localLogs);
+    localStates.clear();
+    glc = getLocalCollections(dirty, local, localLogs, localStates);
     // We intentionally refetch local collections here, such that phase 2
     // can already see potential changes introduced by phase 1. The two
     // phases are sufficiently independent that this is OK.
@@ -311,19 +327,14 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       return result;
     }
 
-    LOG_TOPIC("652ff", DEBUG, Logger::MAINTENANCE)
+    LOG_TOPIC("652ff", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo";
 
-    std::unordered_set<std::string> failedServers;
-    auto failedServersList = clusterInfo.getFailedServers();
-    for (auto const& fs : failedServersList) {
-      failedServers.emplace(fs);
-    }
     tmp = arangodb::maintenance::phaseTwo(
         plan, current, currentIndex, dirty, local, serverId, mfeature, rb,
-        currentShardLocks, localLogs, failedServers);
+        currentShardLocks, localLogs, localStates);
 
-    LOG_TOPIC("dfc54", DEBUG, Logger::MAINTENANCE)
+    LOG_TOPIC("dfc54", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";
 
   } catch (std::exception const& e) {
@@ -337,11 +348,11 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       std::vector<std::string> path = {maintenance::PHASE_TWO, "agency"};
       auto agency = report.get(path);
       if (agency.isObject()) {
-        LOG_TOPIC("9c099", DEBUG, Logger::MAINTENANCE)
-            << "DBServerAgencySync reporting to Current: " << agency.toJson();
-
         // Report to current
         if (!agency.isEmptyObject()) {
+          LOG_TOPIC("9c099", DEBUG, Logger::MAINTENANCE)
+              << "DBServerAgencySync reporting to Current: " << agency.toJson();
+
           std::vector<AgencyOperation> operations;
           std::vector<AgencyPrecondition> preconditions;
           for (auto const& ao : VPackObjectIterator(agency)) {
@@ -378,6 +389,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
                 << ". This can be ignored, since it will be retried "
                    "automatically.";
           }
+        } else {
+          LOG_TOPIC("a07e6", TRACE, Logger::MAINTENANCE)
+              << "DBServerAgencySync: Nothing to report to Current.";
         }
       }
 
@@ -435,8 +449,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
           .count();
   TRI_ASSERT(mfeature._agency_sync_total_runtime_msec != nullptr);
   mfeature._agency_sync_total_runtime_msec->count(total_ms);
-  TRI_ASSERT(mfeature._agency_sync_total_accum_runtime_msec != nullptr);
-  mfeature._agency_sync_total_accum_runtime_msec->count(total_ms);
   auto took = duration<double>(end - start).count();
   if (took > 30.0) {
     LOG_TOPIC("83cb8", WARN, Logger::MAINTENANCE)

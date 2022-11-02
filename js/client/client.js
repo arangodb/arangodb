@@ -212,3 +212,11 @@ delete global.IS_EXECUTE_STRING;
 delete global.IS_CHECK_SCRIPT;
 delete global.IS_UNIT_TESTS;
 delete global.IS_JS_LINT;
+
+{
+  const $_MODULE_ROOT = Symbol.for('@arangodb/module.root');
+  const Module = require("module");
+  const module = new Module(".");
+  module[$_MODULE_ROOT] = global.process.cwd();
+  global.require = module.require.bind(module);
+}

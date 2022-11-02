@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Backup/arangobackup.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Basics/Mutex.h"
@@ -33,9 +34,11 @@ namespace httpclient {
 class SimpleHttpResult;
 }
 
-class BackupFeature : public application_features::ApplicationFeature {
+class BackupFeature : public ArangoBackupFeature {
  public:
-  BackupFeature(application_features::ApplicationServer& server, int& exitCode);
+  static constexpr std::string_view name() noexcept { return "Backup"; }
+
+  BackupFeature(Server& server, int& exitCode);
 
   // for documentation of virtual methods, see `ApplicationFeature`
   virtual void collectOptions(

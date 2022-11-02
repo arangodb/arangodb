@@ -25,7 +25,6 @@
 #include <string_view>
 
 #include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
 #include "Dicts.h"
 
 #include "Greenspun/Extractor.h"

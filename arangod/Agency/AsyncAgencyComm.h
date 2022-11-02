@@ -31,7 +31,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Agency/AgencyComm.h"
 
@@ -139,14 +138,14 @@ class AsyncAgencyCommManager final {
  public:
   static std::unique_ptr<AsyncAgencyCommManager> INSTANCE;
 
-  static void initialize(application_features::ApplicationServer& server) {
+  static void initialize(ArangodServer& server) {
     INSTANCE = std::make_unique<AsyncAgencyCommManager>(server);
   }
 
   static bool isEnabled() { return INSTANCE != nullptr; }
   static AsyncAgencyCommManager& getInstance();
 
-  explicit AsyncAgencyCommManager(application_features::ApplicationServer&);
+  explicit AsyncAgencyCommManager(ArangodServer&);
 
   void addEndpoint(std::string const& endpoint);
   void updateEndpoints(std::vector<std::string> const& endpoints);
@@ -168,7 +167,7 @@ class AsyncAgencyCommManager final {
   network::ConnectionPool* pool() const { return _pool; }
   void pool(network::ConnectionPool* pool) { _pool = pool; }
 
-  application_features::ApplicationServer& server();
+  ArangodServer& server();
 
   uint64_t nextRequestId() {
     return _nextRequestId.fetch_add(1, std::memory_order_relaxed);
@@ -180,7 +179,7 @@ class AsyncAgencyCommManager final {
  private:
   std::atomic<bool> _isStopping = false;
   std::atomic<bool> _skipScheduler = true;
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
   mutable std::mutex _lock;
   std::deque<std::string> _endpoints;
   network::ConnectionPool* _pool = nullptr;
@@ -193,9 +192,12 @@ class AsyncAgencyComm final {
   using FutureResult = arangodb::futures::Future<AsyncAgencyCommResult>;
   using FutureReadResult = arangodb::futures::Future<AgencyReadResult>;
 
-  [[nodiscard]] FutureResult getValues(std::string const& path) const;
+  [[nodiscard]] FutureResult getValues(
+      std::string const& path,
+      std::optional<network::Timeout> timeout = {}) const;
   [[nodiscard]] FutureReadResult getValues(
-      std::shared_ptr<arangodb::cluster::paths::Path const> const& path) const;
+      std::shared_ptr<arangodb::cluster::paths::Path const> const& path,
+      std::optional<network::Timeout> timeout = {}) const;
   [[nodiscard]] FutureResult poll(network::Timeout timeout,
                                   uint64_t index) const;
 

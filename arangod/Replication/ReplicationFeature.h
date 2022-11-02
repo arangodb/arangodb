@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
 #include "Metrics/Counter.h"
+#include "RestServer/arangod.h"
 #include "SimpleHttpClient/ConnectionCache.h"
 
 struct TRI_vocbase_t;
@@ -38,10 +38,11 @@ class ApplicationServer;
 class GeneralResponse;
 class GlobalReplicationApplier;
 
-class ReplicationFeature final
-    : public application_features::ApplicationFeature {
+class ReplicationFeature final : public ArangodFeature {
  public:
-  explicit ReplicationFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Replication"; }
+
+  explicit ReplicationFeature(Server& server);
   ~ReplicationFeature();
 
   void collectOptions(

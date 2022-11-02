@@ -23,21 +23,21 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 #include "Aql/QueryRegistry.h"
 #include "Metrics/Fwd.h"
 
 namespace arangodb {
 
-class QueryRegistryFeature final
-    : public application_features::ApplicationFeature {
+class QueryRegistryFeature final : public ArangodFeature {
  public:
+  static constexpr std::string_view name() noexcept { return "QueryRegistry"; }
+
   static aql::QueryRegistry* registry() {
     return QUERY_REGISTRY.load(std::memory_order_acquire);
   }
 
-  explicit QueryRegistryFeature(
-      application_features::ApplicationServer& server);
+  explicit QueryRegistryFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -56,30 +56,39 @@ class QueryRegistryFeature final
   // tracks a slow query, using execution time
   void trackSlowQuery(double time);
 
-  bool trackingEnabled() const { return _trackingEnabled; }
-  bool trackSlowQueries() const { return _trackSlowQueries; }
-  bool trackQueryString() const { return _trackQueryString; }
-  bool trackBindVars() const { return _trackBindVars; }
-  bool trackDataSources() const { return _trackDataSources; }
-  double slowQueryThreshold() const { return _slowQueryThreshold; }
-  double slowStreamingQueryThreshold() const {
+  bool trackingEnabled() const noexcept { return _trackingEnabled; }
+  bool trackSlowQueries() const noexcept { return _trackSlowQueries; }
+  bool trackQueryString() const noexcept { return _trackQueryString; }
+  bool trackBindVars() const noexcept { return _trackBindVars; }
+  bool trackDataSources() const noexcept { return _trackDataSources; }
+  double slowQueryThreshold() const noexcept { return _slowQueryThreshold; }
+  double slowStreamingQueryThreshold() const noexcept {
     return _slowStreamingQueryThreshold;
   }
-  bool failOnWarning() const { return _failOnWarning; }
-  bool requireWith() const { return _requireWith; }
+  size_t maxQueryStringLength() const noexcept { return _maxQueryStringLength; }
+  uint64_t peakMemoryUsageThreshold() const noexcept {
+    return _peakMemoryUsageThreshold;
+  }
+  bool failOnWarning() const noexcept { return _failOnWarning; }
+  bool requireWith() const noexcept { return _requireWith; }
 #ifdef USE_ENTERPRISE
-  bool smartJoins() const { return _smartJoins; }
-  bool parallelizeTraversals() const { return _parallelizeTraversals; }
+  bool smartJoins() const noexcept { return _smartJoins; }
+  bool parallelizeTraversals() const noexcept { return _parallelizeTraversals; }
 #endif
-  bool allowCollectionsInExpressions() const {
+  bool allowCollectionsInExpressions() const noexcept {
     return _allowCollectionsInExpressions;
   }
-  uint64_t queryGlobalMemoryLimit() const { return _queryGlobalMemoryLimit; }
-  uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
-  double queryMaxRuntime() const { return _queryMaxRuntime; }
-  uint64_t maxQueryPlans() const { return _maxQueryPlans; }
-  aql::QueryRegistry* queryRegistry() const { return _queryRegistry.get(); }
-  uint64_t maxParallelism() const { return _maxParallelism; }
+  bool logFailedQueries() const noexcept { return _logFailedQueries; }
+  uint64_t queryGlobalMemoryLimit() const noexcept {
+    return _queryGlobalMemoryLimit;
+  }
+  uint64_t queryMemoryLimit() const noexcept { return _queryMemoryLimit; }
+  double queryMaxRuntime() const noexcept { return _queryMaxRuntime; }
+  uint64_t maxQueryPlans() const noexcept { return _maxQueryPlans; }
+  aql::QueryRegistry* queryRegistry() const noexcept {
+    return _queryRegistry.get();
+  }
+  uint64_t maxParallelism() const noexcept { return _maxParallelism; }
 
  private:
   bool _trackingEnabled;
@@ -96,6 +105,9 @@ class QueryRegistryFeature final
   bool _parallelizeTraversals;
 #endif
   bool _allowCollectionsInExpressions;
+  bool _logFailedQueries;
+  size_t _maxQueryStringLength;
+  uint64_t _peakMemoryUsageThreshold;
   uint64_t _queryGlobalMemoryLimit;
   uint64_t _queryMemoryLimit;
   double _queryMaxRuntime;
@@ -119,7 +131,6 @@ class QueryRegistryFeature final
   metrics::Histogram<metrics::LogScale<double>>& _slowQueryTimes;
   metrics::Counter& _totalQueryExecutionTime;
   metrics::Counter& _queriesCounter;
-  metrics::Counter& _slowQueriesCounter;
   metrics::Gauge<uint64_t>& _runningQueries;
   metrics::Gauge<uint64_t>& _globalQueryMemoryUsage;
   metrics::Gauge<uint64_t>& _globalQueryMemoryLimit;

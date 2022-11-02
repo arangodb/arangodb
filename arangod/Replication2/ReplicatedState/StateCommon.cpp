@@ -24,11 +24,21 @@
 #include "StateCommon.h"
 
 #include <velocypack/Value.h>
+#include <velocypack/Builder.h>
 
 #include "Basics/debugging.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/TimeString.h"
 
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
+
+namespace {
+auto const String_InProgress = std::string_view{"InProgress"};
+auto const String_Completed = std::string_view{"Completed"};
+auto const String_Failed = std::string_view{"Failed"};
+auto const String_Uninitialized = std::string_view{"Uninitialized"};
+}  // namespace
 
 StateGeneration::operator arangodb::velocypack::Value() const noexcept {
   return arangodb::velocypack::Value(value);
@@ -51,30 +61,81 @@ auto replicated_state::operator<<(std::ostream& os, StateGeneration g)
   return os << g.value;
 }
 
+auto StateGeneration::operator++() noexcept -> StateGeneration& {
+  ++value;
+  return *this;
+}
+
+auto StateGeneration::operator++(int) noexcept -> StateGeneration {
+  return StateGeneration{value++};
+}
+
 auto replicated_state::operator<<(std::ostream& os, SnapshotStatus const& ss)
     -> std::ostream& {
-  return os << "[" << to_string(ss.status) << "@" << ss.generation << "]";
+  return os << to_string(ss);
 }
 
-void SnapshotStatus::updateStatus(Status s, std::optional<Result> newError) {
-  TRI_ASSERT((s == kFailed) == (error.has_value()));
-  status = s;
-  error = std::move(newError);
-  lastChange = clock::now();
+void SnapshotInfo::updateStatus(SnapshotStatus s) noexcept {
+  if (status != s) {
+    status = s;
+    timestamp = clock::now();
+  }
 }
 
-auto replicated_state::to_string(SnapshotStatus::Status s) noexcept
+auto replicated_state::to_string(SnapshotStatus s) noexcept
     -> std::string_view {
   switch (s) {
     case SnapshotStatus::kUninitialized:
-      return "Uninitialized";
-    case SnapshotStatus::kInitiated:
-      return "Initiated";
+      return String_Uninitialized;
+    case SnapshotStatus::kInProgress:
+      return String_InProgress;
     case SnapshotStatus::kCompleted:
-      return "Completed";
+      return String_Completed;
     case SnapshotStatus::kFailed:
-      return "Failed";
+      return String_Failed;
     default:
       return "(unknown snapshot status)";
   }
+}
+
+auto replicated_state::snapshotStatusFromString(
+    std::string_view string) noexcept -> SnapshotStatus {
+  if (string == String_InProgress) {
+    return SnapshotStatus::kInProgress;
+  } else if (string == String_Completed) {
+    return SnapshotStatus::kCompleted;
+  } else if (string == String_Failed) {
+    return SnapshotStatus::kFailed;
+  } else {
+    return SnapshotStatus::kUninitialized;
+  }
+}
+
+auto replicated_state::to_string(StateGeneration g) -> std::string {
+  return std::to_string(g.value);
+}
+
+auto SnapshotStatusStringTransformer::toSerialized(SnapshotStatus source,
+                                                   std::string& target) const
+    -> inspection::Status {
+  target = to_string(source);
+  return {};
+}
+
+auto SnapshotStatusStringTransformer::fromSerialized(
+    std::string const& source, SnapshotStatus& target) const
+    -> inspection::Status {
+  if (source == String_InProgress) {
+    target = SnapshotStatus::kInProgress;
+  } else if (source == String_Completed) {
+    target = SnapshotStatus::kCompleted;
+  } else if (source == String_Failed) {
+    target = SnapshotStatus::kFailed;
+  } else if (source == String_Uninitialized) {
+    target = SnapshotStatus::kUninitialized;
+  } else {
+    return inspection::Status{"Invalid status code name " +
+                              std::string{source}};
+  }
+  return {};
 }

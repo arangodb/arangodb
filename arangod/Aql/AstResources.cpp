@@ -34,7 +34,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
-/// @brief empty string singleton
+// empty string singleton
 char const* emptyString = "";
 }  // namespace
 
@@ -44,15 +44,39 @@ AstResources::AstResources(arangodb::ResourceMonitor& resourceMonitor)
       _shortStringStorage(_resourceMonitor, 1024) {}
 
 AstResources::~AstResources() {
-  // free strings
+  clear();
+  size_t memoryUsage = _strings.capacity() * memoryUsageForStringBlock();
+  _resourceMonitor.decreaseMemoryUsage(memoryUsage);
+}
+
+// frees all data
+void AstResources::clear() noexcept {
+  size_t memoryUsage = (_nodes.numUsed() * sizeof(AstNode)) + _stringsLength;
+  _nodes.clear();
+  clearStrings();
+  _resourceMonitor.decreaseMemoryUsage(memoryUsage);
+
+  _shortStringStorage.clear();
+}
+
+// frees most data (keeps a bit of memory around to avoid later re-allocations)
+void AstResources::clearMost() noexcept {
+  size_t memoryUsage = (_nodes.numUsed() * sizeof(AstNode)) + _stringsLength;
+  _nodes.clearMost();
+  clearStrings();
+  _resourceMonitor.decreaseMemoryUsage(memoryUsage);
+
+  _shortStringStorage.clearMost();
+}
+
+// clears dynamic string data. resets _strings and _stringsLength,
+// but does not update _resourceMonitor!
+void AstResources::clearStrings() noexcept {
   for (auto& it : _strings) {
     TRI_FreeString(it);
   }
-
-  size_t memoryUsage = (_nodes.numUsed() * sizeof(AstNode)) +
-                       (_strings.capacity() * memoryUsageForStringBlock()) +
-                       _stringsLength;
-  _resourceMonitor.decreaseMemoryUsage(memoryUsage);
+  _strings.clear();
+  _stringsLength = 0;
 }
 
 template<typename T>
@@ -65,12 +89,13 @@ size_t AstResources::newCapacity(T const& container,
 
   size_t capacity = container.size() + 1;
   if (capacity > container.capacity()) {
-    capacity *= 2;
+    capacity = container.size() * 2;
   }
+  TRI_ASSERT(container.size() + 1 <= capacity);
   return capacity;
 }
 
-/// @brief create and register an AstNode
+// create and register an AstNode
 AstNode* AstResources::registerNode(AstNodeType type) {
   // may throw
   ResourceUsageScope scope(_resourceMonitor, sizeof(AstNode));
@@ -82,7 +107,7 @@ AstNode* AstResources::registerNode(AstNodeType type) {
   return node;
 }
 
-/// @brief create and register an AstNode
+// create and register an AstNode
 AstNode* AstResources::registerNode(Ast* ast,
                                     arangodb::velocypack::Slice slice) {
   // may throw
@@ -95,7 +120,7 @@ AstNode* AstResources::registerNode(Ast* ast,
   return node;
 }
 
-/// @brief register a string
+// register a string
 /// the string is freed when the query is destroyed
 char* AstResources::registerString(char const* p, size_t length) {
   if (p == nullptr) {
@@ -115,7 +140,7 @@ char* AstResources::registerString(char const* p, size_t length) {
   return registerLongString(copy, length);
 }
 
-/// @brief register a potentially UTF-8-escaped string
+// register a potentially UTF-8-escaped string
 /// the string is freed when the query is destroyed
 char* AstResources::registerEscapedString(char const* p, size_t length,
                                           size_t& outLength) {
@@ -137,7 +162,7 @@ char* AstResources::registerEscapedString(char const* p, size_t length,
   return registerLongString(copy, outLength);
 }
 
-/// @brief registers a long string and takes over the ownership for it
+// registers a long string and takes over the ownership for it
 char* AstResources::registerLongString(char* copy, size_t length) {
   if (copy == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -149,7 +174,7 @@ char* AstResources::registerLongString(char* copy, size_t length) {
     TRI_FreeString(copy);
   });
 
-  size_t capacity = newCapacity(_strings, 8);
+  size_t capacity = newCapacity(_strings, kMinCapacityForLongStrings);
 
   // reserve space
   if (capacity > _strings.capacity()) {
@@ -177,8 +202,4 @@ char* AstResources::registerLongString(char* copy, size_t length) {
   guard.cancel();
 
   return copy;
-}
-
-constexpr size_t AstResources::memoryUsageForStringBlock() const noexcept {
-  return sizeof(char*);
 }

@@ -30,6 +30,9 @@
 #include "Cluster/ClusterInfo.h"
 
 namespace arangodb {
+
+class AgencyCallback;
+
 namespace pregel {
 
 template<typename V, typename E>
@@ -61,7 +64,8 @@ class RecoveryManager {
   void stopMonitoring(Conductor*);
   ErrorCode filterGoodServers(std::vector<ServerID> const& servers,
                               std::vector<ServerID>& goodServers);
-  void updatedFailedServers(std::vector<ServerID> const& failedServers);
+  void updatedFailedServers(
+      containers::FlatHashSet<ServerID> const& failedServers);
   // bool allServersAvailable(std::vector<ServerID> const& dbServers);
 };
 

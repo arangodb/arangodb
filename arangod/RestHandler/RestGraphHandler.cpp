@@ -37,9 +37,9 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-RestGraphHandler::RestGraphHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestGraphHandler::RestGraphHandler(ArangodServer& server,
+                                   GeneralRequest* request,
+                                   GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _graphManager(_vocbase) {}
 
@@ -1093,8 +1093,7 @@ std::optional<RevisionId> RestGraphHandler::handleRevision() const {
     bool found = false;
     std::string const& revString = _request->value("rev", found);
     if (found) {
-      revision =
-          RevisionId::fromString(revString.data(), revString.size(), false);
+      revision = RevisionId::fromString(revString);
     }
   }
   return revision.isSet() ? std::optional{revision} : std::nullopt;

@@ -31,6 +31,9 @@
 namespace arangodb::replication2 {
 namespace test {
 
+struct MyCoreType;
+struct TestCoreType {};
+
 /**
  * Empty follower. Always immediately responds with success.
  * @tparam S state description
@@ -39,6 +42,13 @@ template<typename S>
 struct EmptyFollowerType : replicated_state::IReplicatedFollowerState<S> {
   using EntryIterator =
       typename replicated_state::IReplicatedFollowerState<S>::EntryIterator;
+
+  using CoreType =
+      typename replicated_state::IReplicatedFollowerState<S>::CoreType;
+  explicit EmptyFollowerType(std::unique_ptr<CoreType> core)
+      : _core(std::move(core)) {}
+
+  [[nodiscard]] auto resign() && noexcept -> std::unique_ptr<CoreType> override;
 
  protected:
   auto applyEntries(std::unique_ptr<EntryIterator>) noexcept
@@ -49,7 +59,14 @@ struct EmptyFollowerType : replicated_state::IReplicatedFollowerState<S> {
       -> futures::Future<Result> override {
     return futures::Future<Result>{std::in_place};
   }
+
+  std::unique_ptr<CoreType> _core;
 };
+
+template<typename S>
+auto EmptyFollowerType<S>::resign() && noexcept -> std::unique_ptr<CoreType> {
+  return std::move(_core);
+}
 
 /**
  * Empty leader. Always immediately responds with success.
@@ -60,12 +77,28 @@ struct EmptyLeaderType : replicated_state::IReplicatedLeaderState<S> {
   using EntryIterator =
       typename replicated_state::IReplicatedLeaderState<S>::EntryIterator;
 
+  explicit EmptyLeaderType(std::unique_ptr<test::TestCoreType> core)
+      : _core(std::move(core)) {}
+
+  [[nodiscard]] auto resign() && noexcept
+      -> std::unique_ptr<test::TestCoreType> override;
+
+  ~EmptyLeaderType() { TRI_ASSERT(_core == nullptr); }
+
  protected:
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
       -> futures::Future<Result> override {
     return futures::Future<Result>(std::in_place);
   }
+
+  std::unique_ptr<test::TestCoreType> _core;
 };
+
+template<typename S>
+auto EmptyLeaderType<S>::resign() && noexcept
+    -> std::unique_ptr<test::TestCoreType> {
+  return std::move(_core);
+}
 
 template<typename Input, typename Result>
 struct AsyncOperationMarker {
@@ -82,6 +115,14 @@ struct AsyncOperationMarker {
     promise->setValue(std::move(res));
   }
 
+  auto resolveWithAndReset(Result res) {
+    TRI_ASSERT(triggered);
+    TRI_ASSERT(!promise->isFulfilled());
+    auto p = std::move(promise);
+    reset();
+    std::move(p)->setValue(std::move(res));
+  }
+
   auto inspectValue() const -> Input const& { return *in; }
 
   [[nodiscard]] auto wasTriggered() const noexcept -> bool { return triggered; }
@@ -90,6 +131,7 @@ struct AsyncOperationMarker {
     TRI_ASSERT(triggered);
     TRI_ASSERT(promise->isFulfilled());
     triggered = false;
+    in.reset();
     promise.reset();
   }
 
@@ -103,6 +145,11 @@ template<typename S>
 struct FakeLeaderType : replicated_state::IReplicatedLeaderState<S> {
   using EntryIterator =
       typename replicated_state::IReplicatedLeaderState<S>::EntryIterator;
+  using CoreType =
+      typename replicated_state::IReplicatedLeaderState<S>::CoreType;
+
+  explicit FakeLeaderType(std::unique_ptr<CoreType> core)
+      : _core(std::move(core)) {}
 
   [[nodiscard]] auto hasReceivedRecovery() const noexcept -> bool {
     return recovery.wasTriggered();
@@ -116,11 +163,18 @@ struct FakeLeaderType : replicated_state::IReplicatedLeaderState<S> {
 
   AsyncOperationMarker<std::unique_ptr<EntryIterator>, Result> recovery;
 
+  [[nodiscard]] auto resign() && noexcept
+      -> std::unique_ptr<CoreType> override {
+    return std::move(_core);
+  }
+
  protected:
   auto recoverEntries(std::unique_ptr<EntryIterator> iter)
       -> futures::Future<Result> override {
     return recovery.trigger(std::move(iter));
   }
+
+  std::unique_ptr<CoreType> _core;
 };
 
 template<typename S>
@@ -128,8 +182,16 @@ struct FakeFollowerType : replicated_state::IReplicatedFollowerState<S> {
   using EntryIterator =
       typename replicated_state::IReplicatedFollowerState<S>::EntryIterator;
 
+  explicit FakeFollowerType(std::unique_ptr<test::TestCoreType> core)
+      : _core(std::move(core)) {}
+
+  [[nodiscard]] auto resign() && noexcept
+      -> std::unique_ptr<test::TestCoreType> override;
+
   AsyncOperationMarker<std::unique_ptr<EntryIterator>, Result> apply;
   AsyncOperationMarker<std::pair<ParticipantId, LogIndex>, Result> acquire;
+
+  using replicated_state::IReplicatedFollowerState<S>::getStream;
 
  protected:
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
@@ -141,7 +203,15 @@ struct FakeFollowerType : replicated_state::IReplicatedFollowerState<S> {
       -> futures::Future<Result> override {
     return acquire.trigger(std::make_pair(leader, localCommitIndex));
   }
+
+  std::unique_ptr<test::TestCoreType> _core;
 };
+
+template<typename S>
+auto FakeFollowerType<S>::resign() && noexcept
+    -> std::unique_ptr<test::TestCoreType> {
+  return std::move(_core);
+}
 
 /**
  * DefaultFactory simply makes the LeaderType or FollowerType shared.
@@ -171,15 +241,24 @@ struct DefaultFactory {
  */
 template<typename LeaderType, typename FollowerType>
 struct RecordingFactory {
-  auto constructLeader() -> std::shared_ptr<LeaderType> {
-    auto ptr = std::make_shared<LeaderType>();
+  static_assert(std::is_same_v<typename LeaderType::CoreType,
+                               typename FollowerType::CoreType>);
+  using CoreType = typename LeaderType::CoreType;
+  auto constructLeader(std::unique_ptr<CoreType> core)
+      -> std::shared_ptr<LeaderType> {
+    auto ptr = std::make_shared<LeaderType>(std::move(core));
     leaders.push_back(ptr);
     return ptr;
   }
-  auto constructFollower() -> std::shared_ptr<FollowerType> {
-    auto ptr = std::make_shared<FollowerType>();
+  auto constructFollower(std::unique_ptr<CoreType> core)
+      -> std::shared_ptr<FollowerType> {
+    auto ptr = std::make_shared<FollowerType>(std::move(core));
     followers.push_back(ptr);
     return ptr;
+  }
+
+  auto constructCore(GlobalLogIdentifier const&) -> std::unique_ptr<CoreType> {
+    return std::make_unique<CoreType>();
   }
 
   auto getLatestLeader() -> std::shared_ptr<LeaderType> {

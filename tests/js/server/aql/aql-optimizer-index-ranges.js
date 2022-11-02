@@ -43,9 +43,11 @@ function optimizerIndexesRangesTestSuite () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
-      for (var i = 0; i < 2000; ++i) {
-        c.save({ _key: "test" + i, value1: (i % 100), value2: i });
+      let docs = [];
+      for (let i = 0; i < 2000; ++i) {
+        docs.push({ _key: "test" + i, value1: (i % 100), value2: i });
       }
+      c.insert(docs);
     },
 
     tearDown : function () {
@@ -57,7 +59,7 @@ function optimizerIndexesRangesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRangesSingle : function () {
-      c.ensureSkiplist("value1");
+      c.ensureIndex({ type: "skiplist", fields: ["value1"] });
       var queries = [
         [ "FOR i IN " + c.name() + " FILTER i.value1 < 3 || i.value1 == 5 || i.value1 == 9 || i.value1 > 98 RETURN i.value1", [ 0, 1, 2, 5, 9, 99 ] ],
         [ "FOR i IN " + c.name() + " FILTER ((i.value1 < 2 || i.value1 == 3) || (i.value1 == 96 || i.value1 > 97)) RETURN i.value1", [ 0, 1, 3, 96, 98, 99 ] ],
@@ -106,8 +108,8 @@ function optimizerIndexesRangesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRangesWithRational : function () {
-      c.ensureSkiplist("value1");
-      for (var i = 0; i < 20; ++i) {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"] });
+      for (let i = 0; i < 20; ++i) {
         c.save({ value1: 3.5 });
         c.save({ value1: 12.5 });
         c.save({ value1: 10.1 });
@@ -155,7 +157,7 @@ function optimizerIndexesRangesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleFilters : function () {
-      c.ensureSkiplist("value1");
+      c.ensureIndex({ type: "skiplist", fields: ["value1"] });
       var queries = [
         [ "FOR i IN " + c.name() + " FILTER i.value1 < 3 FILTER i.value1 < 10 RETURN i.value1", [ 0, 1, 2 ] ],
         [ "FOR i IN " + c.name() + " FILTER i.value1 < 10 FILTER i.value1 IN [ 7, 3, 1 ] RETURN i.value1", [ 1, 3, 7 ] ],

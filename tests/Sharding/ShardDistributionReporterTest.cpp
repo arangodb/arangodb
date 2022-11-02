@@ -31,7 +31,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
@@ -39,6 +38,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionInfoCurrent.h"
 #include "Futures/Utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Metrics/MetricsFeature.h"
@@ -127,7 +127,7 @@ class ShardDistributionReporterTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER,
                                             arangodb::LogLevel::FATAL> {
  protected:
-  arangodb::application_features::ApplicationServer server;
+  arangodb::ArangodServer server;
   StorageEngineMock engine;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
@@ -162,7 +162,7 @@ class ShardDistributionReporterTest
   std::unique_ptr<arangodb::LogicalCollection> col;
 
   // Fake the aliases
-  std::unordered_map<ServerID, std::string> aliases;
+  containers::FlatHashMap<ServerID, std::string> aliases;
 
   // Fake the shard map
   std::shared_ptr<ShardMap> shards;
@@ -220,13 +220,13 @@ class ShardDistributionReporterTest
 
     // Now we fake the calls
     fakeit::When(Method(infoMock, getCollections))
-        .AlwaysDo([&](DatabaseID const& dbId) {
+        .AlwaysDo([&](std::string_view dbId) {
           EXPECT_TRUE(dbId == dbname);
           return allCollections;
         });
     // Now we fake the single collection call
     fakeit::When(Method(infoMock, getCollection))
-        .AlwaysDo([&](DatabaseID const& dbId, CollectionID const& colId) {
+        .AlwaysDo([&](std::string_view dbId, std::string_view colId) {
           EXPECT_TRUE(dbId == dbname);
           // EXPECT_TRUE(colId == colName);
           EXPECT_TRUE(allCollections.size() > 0);
@@ -243,7 +243,7 @@ class ShardDistributionReporterTest
     fakeit::When(Method(infoMock, getServerAliases)).AlwaysReturn(aliases);
     fakeit::When(
         Method(infoMock, getCollectionCurrent).Using(dbname, cidString))
-        .AlwaysDo([&](DatabaseID const& dbId, CollectionID const& cId) {
+        .AlwaysDo([&](std::string_view dbId, std::string_view cId) {
           EXPECT_TRUE(dbId == dbname);
           EXPECT_TRUE(cId == cidString);
           return cic;
@@ -292,7 +292,7 @@ TEST_F(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
   fakeit::When(Method(infoCurrentMock, servers))
-      .AlwaysDo([&](ShardID const& sid) {
+      .AlwaysDo([&](std::string_view sid) {
         EXPECT_TRUE(((sid == s1) || (sid == s2) || (sid == s3)));
         return currentShards[sid];
       });
@@ -838,7 +838,7 @@ TEST_F(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
   fakeit::When(Method(infoCurrentMock, servers))
-      .AlwaysDo([&](ShardID const& sid) {
+      .AlwaysDo([&](std::string_view sid) {
         EXPECT_TRUE(sid == s1);
         return currentShards[sid];
       });
@@ -939,7 +939,7 @@ TEST_F(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
   fakeit::When(Method(infoCurrentMock, servers))
-      .AlwaysDo([&](ShardID const& sid) {
+      .AlwaysDo([&](std::string_view sid) {
         EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
         return currentShards[sid];
       });
@@ -990,7 +990,7 @@ TEST_F(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
   fakeit::When(Method(infoCurrentMock, servers))
-      .AlwaysDo([&](ShardID const& sid) {
+      .AlwaysDo([&](std::string_view sid) {
         EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
         return currentShards[sid];
       });
@@ -1046,7 +1046,7 @@ TEST_F(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
   fakeit::When(Method(infoCurrentMock, servers))
-      .AlwaysDo([&](ShardID const& sid) {
+      .AlwaysDo([&](std::string_view sid) {
         EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
         return currentShards[sid];
       });
@@ -1101,7 +1101,7 @@ TEST_F(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
   fakeit::When(Method(infoCurrentMock, servers))
-      .AlwaysDo([&](ShardID const& sid) {
+      .AlwaysDo([&](std::string_view sid) {
         EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
         return currentShards[sid];
       });
@@ -1152,7 +1152,7 @@ TEST_F(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
   fakeit::When(Method(infoCurrentMock, servers))
-      .AlwaysDo([&](ShardID const& sid) {
+      .AlwaysDo([&](std::string_view sid) {
         EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
         return currentShards[sid];
       });
@@ -1210,7 +1210,7 @@ TEST_F(
       std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
 
   fakeit::When(Method(infoCurrentMock, servers))
-      .AlwaysDo([&](ShardID const& sid) {
+      .AlwaysDo([&](std::string_view sid) {
         EXPECT_TRUE(currentShards.find(sid) != currentShards.end());
         return currentShards[sid];
       });

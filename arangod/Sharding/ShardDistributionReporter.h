@@ -24,9 +24,13 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Containers/FlatHashMap.h"
 #include "Network/Methods.h"
 
 #include <queue>
+#include <string_view>
+#include <string>
+#include <vector>
 
 namespace arangodb {
 
@@ -48,8 +52,7 @@ class ShardDistributionReporter {
 
   /// @brief helper function to create an instance of the
   /// ShardDistributionReporter
-  static std::shared_ptr<ShardDistributionReporter> instance(
-      application_features::ApplicationServer&);
+  static std::shared_ptr<ShardDistributionReporter> instance(ArangodServer&);
 
   /// @brief fetch distribution for a single collections in db
   void getCollectionDistributionForDatabase(
@@ -69,13 +72,14 @@ class ShardDistributionReporter {
 
   bool testAllShardsInSync(
       std::string const& dbName, LogicalCollection const* col,
-      std::unordered_map<std::string, std::vector<std::string>> const*
+      containers::FlatHashMap<std::string, std::vector<std::string>> const*
           allShards);
 
   void helperDistributionForDatabase(
       std::string const& dbName, arangodb::velocypack::Builder& result,
       std::queue<std::shared_ptr<LogicalCollection>>& todoSyncStateCheck,
-      double endtime, std::unordered_map<std::string, std::string>& aliases,
+      double endtime,
+      containers::FlatHashMap<std::string, std::string>& aliases,
       bool progress);
 
  private:

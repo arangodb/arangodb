@@ -36,16 +36,15 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @return a collection exists in database or a wildcard was specified
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::Result existsCollection(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& database, std::string const& collection) {
+arangodb::Result existsCollection(arangodb::ArangodServer& server,
+                                  std::string const& database,
+                                  std::string const& collection) {
   if (!server.hasFeature<arangodb::DatabaseFeature>()) {
     return arangodb::Result(TRI_ERROR_INTERNAL,
                             "failure to find feature 'Database'");
@@ -79,9 +78,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestUsersHandler::RestUsersHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestUsersHandler::RestUsersHandler(ArangodServer& server,
+                                   GeneralRequest* request,
+                                   GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestUsersHandler::execute() {
@@ -286,6 +285,8 @@ static Result StoreUser(auth::UserManager* um, int mode,
   if (mode == 0 || mode == 1) {
     r = um->storeUser(mode == 1, user, passwd, active, extra);
   } else if (mode == 2) {
+    VPackBuilder doc = um->serializeUser(user);
+    VPackSlice u = doc.slice();
     r = um->updateUser(user, [&](auth::User& entry) {
       if (json.isObject()) {
         if (json.get("passwd").isString()) {
@@ -295,7 +296,14 @@ static Result StoreUser(auth::UserManager* um, int mode,
           entry.setActive(active);
         }
       }
-      if (extra.isObject() && !extra.isEmptyObject()) {
+
+      VPackSlice oldExtra = u.get("extra");
+      if (extra.isObject() && oldExtra.isObject()) {
+        // Both `extra` and `oldExtra` are objects, so perform a deep merge.
+        entry.setUserData(VPackCollection::merge(oldExtra, extra, true, false));
+      } else if (!extra.isNone()) {
+        // `extra` or `oldExtra` is not an object, so a deep merge is not
+        // possible. Just overwrite the old value.
         entry.setUserData(VPackBuilder(extra));
       }
       return TRI_ERROR_NO_ERROR;
@@ -446,10 +454,10 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
         // to a remove of the config option.
         res = um->updateUser(name, [&](auth::User& u) {
           VPackSlice newVal = body;
-          VPackSlice oldConf = u.userData();
+          VPackSlice oldConf = u.configData();
           if (!newVal.isObject() || !newVal.hasKey("value")) {
             if (oldConf.isObject() && oldConf.hasKey(key)) {
-              u.setUserData(VPackCollection::remove(
+              u.setConfigData(VPackCollection::remove(
                   oldConf, std::unordered_set<std::string>{key}));
             }       // Nothing to do. We do not have a config yet.
           } else {  // We need to merge the new key into the config
@@ -458,9 +466,10 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
 
             if (oldConf.isObject() &&
                 !oldConf.isEmptyObject()) {  // merge value in
-              u.setUserData(VPackCollection::merge(oldConf, b.slice(), false));
+              u.setConfigData(
+                  VPackCollection::merge(oldConf, b.slice(), false));
             } else {
-              u.setUserData(std::move(b));
+              u.setConfigData(std::move(b));
             }
           }
 

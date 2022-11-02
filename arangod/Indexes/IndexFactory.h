@@ -43,7 +43,7 @@ class Slice;
 /// @brief factory for comparing/instantiating/normalizing a definition for a
 ///        specific Index type
 struct IndexTypeFactory {
-  explicit IndexTypeFactory(application_features::ApplicationServer& server);
+  explicit IndexTypeFactory(ArangodServer& server);
   virtual ~IndexTypeFactory() = default;  // define to silence warning
 
   /// @brief determine if the two Index definitions will result in the same
@@ -71,18 +71,18 @@ struct IndexTypeFactory {
   }
 
  protected:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
 };
 
 class IndexFactory {
  public:
-  IndexFactory(application_features::ApplicationServer&);
+  IndexFactory(ArangodServer&);
   virtual ~IndexFactory() = default;
 
   /// @brief returns if 'factory' for 'type' was added successfully
   Result emplace(std::string const& type, IndexTypeFactory const& factory);
 
-  virtual Result enhanceIndexDefinition(velocypack::Slice const definition,
+  virtual Result enhanceIndexDefinition(velocypack::Slice definition,
                                         velocypack::Builder& normalized,
                                         bool isCreation,
                                         TRI_vocbase_t const& vocbase) const;
@@ -116,31 +116,62 @@ class IndexFactory {
       std::vector<std::shared_ptr<Index>>& indexes) const = 0;
 
   static Result validateFieldsDefinition(velocypack::Slice definition,
+                                         std::string const& attributeName,
                                          size_t minFields, size_t maxFields,
                                          bool allowSubAttributes = true);
 
-  /// @brief process the fields list, deduplicate it, and add it to the json
+  /// @brief process the "fields" list, deduplicate it, and add it to the json
   static Result processIndexFields(velocypack::Slice definition,
                                    velocypack::Builder& builder,
                                    size_t minFields, size_t maxFields,
                                    bool create, bool allowExpansion,
-                                   bool allowSubAttributes = true);
+                                   bool allowSubAttributes);
 
-  /// @brief process the unique flag and add it to the json
+  /// @brief process the "storedValues" list, deduplicate it, and add it to the
+  /// json
+  static Result processIndexStoredValues(velocypack::Slice definition,
+                                         velocypack::Builder& builder,
+                                         size_t minFields, size_t maxFields,
+                                         bool create, bool allowSubAttributes);
+
+  /// @brief process the "cacheEnabled" flag and add it to the json
+  static void processIndexCacheEnabled(velocypack::Slice definition,
+                                       velocypack::Builder& builder);
+
+  /// @brief process the "inBackground" flag and add it to the json
+  static void processIndexInBackground(velocypack::Slice definition,
+                                       velocypack::Builder& builder);
+
+  /// @brief Default number of threads to use for index creation
+  static constexpr size_t kDefaultParallelism = 2;
+
+  // FIXME(gnusi): determine at runtime
+  /// @brief Max possible number of threads for index creation.
+  static constexpr size_t kMaxParallelism = 16;
+
+  /// @brief process the "parallelism" value and add it to the json
+  static void processIndexParallelism(velocypack::Slice definition,
+                                      velocypack::Builder& builder);
+
+  /// @brief process the "unique" flag and add it to the json
   static void processIndexUniqueFlag(velocypack::Slice definition,
                                      velocypack::Builder& builder);
 
-  /// @brief process the sparse flag and add it to the json
+  /// @brief process the "sparse" flag and add it to the json
   static void processIndexSparseFlag(velocypack::Slice definition,
                                      velocypack::Builder& builder, bool create);
 
-  /// @brief process the deduplicate flag and add it to the json
+  /// @brief process the "deduplicate" flag and add it to the json
   static void processIndexDeduplicateFlag(velocypack::Slice definition,
                                           velocypack::Builder& builder);
 
-  /// @brief process the geojson flag and add it to the json
+  /// @brief process the "geojson" flag and add it to the json
   static void processIndexGeoJsonFlag(velocypack::Slice definition,
                                       velocypack::Builder& builder);
+
+  /// @brief process the "legacyPolygons" flag and add it to the json
+  static void processIndexLegacyPolygonsFlag(velocypack::Slice definition,
+                                             velocypack::Builder& builder);
 
   /// @brief enhances the json of a hash, skiplist or persistent index
   static Result enhanceJsonIndexGeneric(velocypack::Slice definition,
@@ -174,7 +205,7 @@ class IndexFactory {
                                bool isClusterConstructor);
 
  protected:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
   std::unordered_map<std::string, IndexTypeFactory const*> _factories;
   std::unique_ptr<IndexTypeFactory> _invalid;
 };

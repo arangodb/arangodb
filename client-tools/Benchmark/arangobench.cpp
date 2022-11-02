@@ -21,6 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "arangobench.h"
+
 #include "Basics/Common.h"
 #include "Basics/signals.h"
 #include "Basics/directories.h"
@@ -28,11 +30,11 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/FileSystemFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
@@ -65,26 +67,38 @@ int main(int argc, char* argv[]) {
         new options::ProgramOptions(
             argv[0], "Usage: arangobench [<options>]",
             "For more information use:", BIN_DIRECTORY));
-    ApplicationServer server(options, BIN_DIRECTORY);
     int ret = EXIT_SUCCESS;
+    ArangoBenchServer server(options, BIN_DIRECTORY);
 
-    server.addFeature<CommunicationFeaturePhase>();
-    server.addFeature<BasicFeaturePhaseClient>();
-    server.addFeature<GreetingsFeaturePhase>(true);
-
-    server.addFeature<BenchFeature>(&ret);
-    server.addFeature<ClientFeature, HttpEndpointProvider>(
-        false,
-        std::numeric_limits<size_t>::max());  // provide max number of endpoints
-    server.addFeature<ConfigFeature>("arangobench");
-    server.addFeature<LoggerFeature>(false);
-    server.addFeature<RandomFeature>();
-    server.addFeature<ShellColorsFeature>();
-    server.addFeature<ShutdownFeature>(
-        std::vector<std::type_index>{std::type_index(typeid(BenchFeature))});
-    server.addFeature<SslFeature>();
-    server.addFeature<TempFeature>("arangobench");
-    server.addFeature<VersionFeature>();
+    server.addFeatures(Visitor{
+        []<typename T>(auto& server, TypeTag<T>) {
+          return std::make_unique<T>(server);
+        },
+        [](ArangoBenchServer& server, TypeTag<GreetingsFeaturePhase>) {
+          return std::make_unique<GreetingsFeaturePhase>(server,
+                                                         std::true_type{});
+        },
+        [&](ArangoBenchServer& server, TypeTag<ConfigFeature>) {
+          return std::make_unique<ConfigFeature>(server, context.binaryName());
+        },
+        [](ArangoBenchServer& server, TypeTag<HttpEndpointProvider>) {
+          // provide max number of endpoints
+          return std::make_unique<ClientFeature>(
+              server, false, std::numeric_limits<size_t>::max());
+        },
+        [](ArangoBenchServer& server, TypeTag<LoggerFeature>) {
+          return std::make_unique<LoggerFeature>(server, false);
+        },
+        [&](ArangoBenchServer& server, TypeTag<BenchFeature>) {
+          return std::make_unique<BenchFeature>(server, &ret);
+        },
+        [](ArangoBenchServer& server, TypeTag<ShutdownFeature>) {
+          return std::make_unique<ShutdownFeature>(
+              server, std::array{ArangoBenchServer::id<BenchFeature>()});
+        },
+        [&](ArangoBenchServer& server, TypeTag<TempFeature>) {
+          return std::make_unique<TempFeature>(server, context.binaryName());
+        }});
 
     try {
       server.run(argc, argv);

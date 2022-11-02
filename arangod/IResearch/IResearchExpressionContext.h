@@ -29,15 +29,19 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/RegisterPlan.h"
 #include "Basics/Exceptions.h"
+#include "Containers/FlatHashMap.h"
+
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 
 namespace aql {
+class AqlFunctionsInternalCache;
 class AqlItemBlock;
 struct AstNode;
 class ExecutionEngine;
 class QueryContext;
-class AqlFunctionsInternalCache;
+struct Variable;
 }  // namespace aql
 
 namespace iresearch {
@@ -59,19 +63,20 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
         _query(query),
         _aqlFunctionsInternalCache(cache) {}
 
-  void registerWarning(ErrorCode errorCode, char const* msg) override final;
-  void registerError(ErrorCode errorCode, char const* msg) override final;
+  void registerWarning(ErrorCode errorCode,
+                       std::string_view msg) override final;
+  void registerError(ErrorCode errorCode, std::string_view msg) override final;
 
-  icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
+  icu::RegexMatcher* buildRegexMatcher(std::string_view expr,
                                        bool caseInsensitive) override final;
-  icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
+  icu::RegexMatcher* buildLikeMatcher(std::string_view expr,
                                       bool caseInsensitive) override final;
   icu::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
                                        velocypack::Options const* opts,
                                        bool& isEmptyExpression) override final;
 
   arangodb::ValidatorBase* buildValidator(
-      arangodb::velocypack::Slice const&) override final;
+      arangodb::velocypack::Slice) override final;
 
   TRI_vocbase_t& vocbase() const override final;
   /// may be inaccessible on some platforms
@@ -102,14 +107,18 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
         _varInfoMap(varInfoMap),
         _nodeDepth(nodeDepth) {}
 
-  virtual bool isDataFromCollection(
-      aql::Variable const* variable) const override {
-    return variable->isDataFromCollection;
-  }
+  // register a temporary variable in the ExpressionContext. the
+  // slice used here is not owned by the QueryExpressionContext!
+  // the caller has to make sure the data behind the slice remains
+  // valid until clearVariable() is called or the context is discarded.
+  void setVariable(arangodb::aql::Variable const* variable,
+                   arangodb::velocypack::Slice value) override;
 
-  virtual aql::AqlValue getVariableValue(aql::Variable const* variable,
-                                         bool doCopy,
-                                         bool& mustDestroy) const override;
+  // unregister a temporary variable from the ExpressionContext.
+  void clearVariable(arangodb::aql::Variable const* variable) noexcept override;
+
+  aql::AqlValue getVariableValue(aql::Variable const* variable, bool doCopy,
+                                 bool& mustDestroy) const override;
 
   inline aql::Variable const& outVariable() const noexcept { return _outVar; }
   inline VarInfoMap const& varInfoMap() const noexcept { return _varInfoMap; }
@@ -119,6 +128,13 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
   aql::Variable const& _outVar;
   VarInfoMap const& _varInfoMap;
   int const _nodeDepth;
+
+  // variables only temporarily valid during execution
+  // variables only temporarily valid during execution. Slices stored
+  // here are not owned by the QueryExpressionContext!
+  containers::FlatHashMap<arangodb::aql::Variable const*,
+                          arangodb::velocypack::Slice>
+      _variables;
 };  // ViewExpressionContext
 
 }  // namespace iresearch

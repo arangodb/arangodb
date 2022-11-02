@@ -38,11 +38,11 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 
@@ -52,12 +52,12 @@ namespace {
 arangodb::Result existsCollection(v8::Isolate* isolate,
                                   std::string const& database,
                                   std::string const& collection) {
-  TRI_GET_GLOBALS();
-  if (!v8g->_server.hasFeature<arangodb::DatabaseFeature>()) {
+  TRI_GET_SERVER_GLOBALS(arangodb::ArangodServer);
+  if (!v8g->server().hasFeature<arangodb::DatabaseFeature>()) {
     return arangodb::Result(TRI_ERROR_INTERNAL,
                             "failure to find feature 'Database'");
   }
-  auto& databaseFeature = v8g->_server.getFeature<arangodb::DatabaseFeature>();
+  auto& databaseFeature = v8g->server().getFeature<arangodb::DatabaseFeature>();
 
   static const std::string wildcard("*");
 
@@ -542,8 +542,8 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // return the current database permissions
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-    TRI_GET_GLOBALS();
-    v8g->_server.getFeature<DatabaseFeature>().enumerateDatabases(
+    TRI_GET_SERVER_GLOBALS(ArangodServer);
+    v8g->server().getFeature<DatabaseFeature>().enumerateDatabases(
         [&](TRI_vocbase_t& vocbase) -> void {
           auto lvl = um->databaseAuthLevel(username, vocbase.name());
 

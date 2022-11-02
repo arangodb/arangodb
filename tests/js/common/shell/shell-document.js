@@ -382,7 +382,7 @@ function CollectionDocumentSuite () {
     testSaveDocumentDuplicateSecondary : function () {
       var d1, d2, doc;
 
-      collection.ensureUniqueConstraint("value1");
+      collection.ensureIndex({ type: "hash", fields: ["value1"], unique: true });
 
       try {
         d1 = collection.save({ _key: "test1", value1: 1, value2: 1 });
@@ -446,7 +446,7 @@ function CollectionDocumentSuite () {
     testSaveDocumentDuplicateSecondaryUnloadReload : function () {
       var d1, d2, doc;
 
-      collection.ensureUniqueConstraint("value1");
+      collection.ensureIndex({ type: "hash", fields: ["value1"], unique: true });
 
       try {
         d1 = collection.save({ _key: "test1", value1: 1, value2: 1 });

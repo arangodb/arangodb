@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,231 +23,536 @@
 
 #include "Supervision.h"
 
-#include "Basics/Exceptions.h"
-#include "Basics/StringUtils.h"
-#include "Basics/application-exit.h"
-#include "Logger/LogMacros.h"
-#include "Random/RandomGenerator.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Value.h"
-
-#include <cstdint>
-#include <limits>
+#include "Inspection/VPack.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "Replication2/ReplicatedState/SupervisionAction.h"
 #include <memory>
+#include "Agency/AgencyPaths.h"
+
+#include "Logger/LogMacros.h"
+
+using namespace arangodb;
+using namespace arangodb::replication2::agency;
+
+/*
+ * This is the flow graph of the replicated state supervision. Operations that
+ * are on the same level are allowed to be executed in parallel. The first entry
+ * in a chain that produces an action terminates the rest of the chain. Actions
+ * of a lower level are only executed if their parent is ok.
+ *
+ * 1. ReplicatedLog/Target and ReplicatedState/Plan exists
+ *  -> AddReplicatedLogAction
+ *    1.1. Forward config and target leader to the replicated log
+ *      -> UpdateLeaderAction
+ *      -> UpdateConfigAction
+ *    1.2. Check Participant Snapshot completion
+ *      -> UpdateTargetParticipantFlagsAction
+ *    1.3. Check if a participant is in State/Target but not in State/Plan
+ *      -> AddParticipantAction
+ *        1.3.1. Check if the participant is State/Plan but not in Log/Target
+ *          -> AddLogParticipantAction
+ *    1.4. Check if participants can be removed from Log/Target
+ *    1.5. Check if participants can be dropped from State/Plan
+ * 2. check if the log has converged
+ *  -> ConvergedAction
+ *
+ *
+ * The supervision has to make sure that the following invariants are always
+ * satisfied:
+ * 1. the number of OK servers is always bigger or equal to the number of
+ *    servers in target.
+ * 2. If a server is listed in Log/Target, it is also listed in State/Plan.
+ */
+
+namespace RLA = arangodb::replication2::agency;
+namespace RSA = arangodb::replication2::replicated_state::agency;
+namespace paths = arangodb::cluster::paths::aliases;
 
 namespace arangodb::replication2::replicated_state {
 
-auto to_string(LeaderElectionCampaign::Reason reason) -> std::string_view {
-  switch (reason) {
-    case LeaderElectionCampaign::Reason::OK: {
-      return "OK";
-    } break;
-    case LeaderElectionCampaign::Reason::ServerIll: {
-      return "ServerIll";
-    } break;
-    case LeaderElectionCampaign::Reason::TermNotConfirmed: {
-      return "TermNotConfirmed";
-    } break;
+auto isParticipantSnapshotCompleted(ParticipantId const& participant,
+                                    StateGeneration expectedGeneration,
+                                    RSA::Current const& current,
+                                    RSA::Plan const& plan) -> bool {
+  ADB_PROD_ASSERT(plan.participants.contains(participant))
+      << "plan did not contain participant " << participant;
+  ADB_PROD_ASSERT(plan.participants.at(participant).generation ==
+                  expectedGeneration)
+      << "expected = " << expectedGeneration
+      << " planned = " << plan.participants.at(participant).generation;
+  if (expectedGeneration == StateGeneration{1}) {
+    return true;
   }
-  return "this-value-is-here-to-shut-up-the-compiler-if-this-is-reached-that-"
-         "is-a-bug";
+  if (auto iter = current.participants.find(participant);
+      iter != current.participants.end()) {
+    auto const& state = iter->second;
+    return state.generation == expectedGeneration &&
+           state.snapshot.status == SnapshotStatus::kCompleted;
+  }
+
+  return false;
 }
 
-auto operator<<(std::ostream& os, LeaderElectionCampaign::Reason reason)
-    -> std::ostream& {
-  return os << to_string(reason);
+auto isParticipantSnapshotCompleted(ParticipantId const& participant,
+                                    RSA::Current const& current,
+                                    RSA::Plan const& plan) -> bool {
+  if (auto iter = plan.participants.find(participant);
+      iter != plan.participants.end()) {
+    auto expectedGeneration = iter->second.generation;
+    return isParticipantSnapshotCompleted(participant, expectedGeneration,
+                                          current, plan);
+  }
+
+  return false;
 }
 
-void LeaderElectionCampaign::toVelocyPack(VPackBuilder& builder) const {
-  auto ob = VPackObjectBuilder(&builder);
-  builder.add("numberOKParticipants", VPackValue(numberOKParticipants));
+/**
+ * A server is considered OK if
+ * - its snapshot is complete
+ * - and is allowedAsLeader && allowedInQuorum in Log/Target and Log/Plan
+ * @param participant
+ * @param log
+ * @param state
+ * @return
+ */
+auto isParticipantOk(ParticipantId const& participant, RLA::Log const& log,
+                     RSA::State const& state) {
+  ADB_PROD_ASSERT(state.current.has_value());
+  ADB_PROD_ASSERT(state.plan.has_value());
+  ADB_PROD_ASSERT(log.plan.has_value());
 
-  builder.add(VPackValue("bestTermIndex"));
-  bestTermIndex.toVelocyPack(builder);
+  // check if the participant has an up-to-date snapshot
+  auto snapshotOk =
+      isParticipantSnapshotCompleted(participant, *state.current, *state.plan);
+  if (!snapshotOk) {
+    return false;
+  }
 
-  {
-    auto rb = VPackObjectBuilder(&builder, "reasons");
-    for (auto const& [participant, reason] : reasons) {
-      builder.add(VPackValue(participant));
-      builder.add(VPackValue(to_string(reason)));
+  auto const flagsAreCorrect = [&](ParticipantsFlagsMap const& flagsMap) {
+    if (auto iter = flagsMap.find(participant); iter != flagsMap.end()) {
+      auto const& flags = iter->second;
+      return flags.allowedAsLeader and flags.allowedInQuorum;
     }
-  }
+    return false;
+  };
 
-  {
-    auto eb = VPackArrayBuilder(&builder, "electibleLeaderSet");
-    for (auto const& participant : electibleLeaderSet) {
-      builder.add(VPackValue(participant));
+  // check if the flags for that participant are set correctly
+  auto const& config = log.plan->participantsConfig.participants;
+  return flagsAreCorrect(config) and flagsAreCorrect(log.target.participants);
+}
+
+/**
+ * Counts the number of OK participants.
+ * @param log
+ * @param state
+ * @return
+ */
+auto countOkServers(RLA::Log const& log, RSA::State const& state)
+    -> std::size_t {
+  return std::count_if(
+      state.plan->participants.begin(), state.plan->participants.end(),
+      [&](auto const& p) { return isParticipantOk(p.first, log, state); });
+}
+
+auto checkStateAdded(SupervisionContext& ctx, RSA::State const& state) {
+  auto id = state.target.id;
+
+  if (!state.plan) {
+    auto statePlan =
+        RSA::Plan{.id = state.target.id,
+                  // use generation 2 here, because the initial
+                  // participants are written with generation 1 and
+                  // AddParticipant uses the value written here for new
+                  // participants and *then* increments the generation
+                  .generation = StateGeneration{2},
+                  .properties = state.target.properties,
+                  .owner = "target",
+                  .participants = {}};
+
+    auto logTarget =
+        replication2::agency::LogTarget(id, {}, state.target.config);
+    logTarget.owner = "replicated-state";
+    logTarget.leader = state.target.leader;
+    logTarget.version = 1;
+
+    for (auto const& [participantId, _] : state.target.participants) {
+      logTarget.participants.emplace(participantId, ParticipantFlags{});
+      statePlan.participants.emplace(
+          participantId,
+          agency::Plan::Participant{.generation = StateGeneration{1}});
     }
+
+    ctx.createAction<AddStateToPlanAction>(std::move(logTarget),
+                                           std::move(statePlan));
   }
 }
 
-auto to_string(LeaderElectionCampaign const& campaign) -> std::string {
-  auto bb = VPackBuilder{};
-  campaign.toVelocyPack(bb);
-  return bb.toString();
-}
+auto checkLeaderSet(SupervisionContext& ctx, RLA::Log const& log,
+                    RSA::State const& state) {
+  auto const& targetLeader = state.target.leader;
+  auto const& planLeader = log.target.leader;
 
-auto operator<<(std::ostream& os, Action::ActionType const& action)
-    -> std::ostream&;
-
-auto to_string(Action::ActionType action) -> std::string_view {
-  switch (action) {
-    case Action::ActionType::FailedLeaderElectionAction: {
-      return "FailedLeaderElection";
-    } break;
-    case Action::ActionType::SuccessfulLeaderElectionAction: {
-      return "SuccessfulLeaderElection";
-    } break;
-    case Action::ActionType::UpdateTermAction: {
-      return "UpdateTermAction";
-    } break;
-    case Action::ActionType::ImpossibleCampaignAction: {
-      return "ImpossibleCampaignAction";
-    } break;
-  }
-  return "this-value-is-here-to-shut-up-the-compiler-if-this-is-reached-that-"
-         "is-a-bug";
-}
-
-auto operator<<(std::ostream& os, Action::ActionType const& action)
-    -> std::ostream& {
-  return os << to_string(action);
-}
-
-auto computeReason(LogCurrentLocalState const& status, bool healthy,
-                   LogTerm term) -> LeaderElectionCampaign::Reason {
-  if (!healthy) {
-    return LeaderElectionCampaign::Reason::ServerIll;
-  } else if (term != status.term) {
-    return LeaderElectionCampaign::Reason::TermNotConfirmed;
-  } else {
-    return LeaderElectionCampaign::Reason::OK;
+  if (targetLeader != planLeader) {
+    ctx.createAction<SetLeaderAction>(targetLeader);
   }
 }
 
-auto runElectionCampaign(LogCurrentLocalStates const& states,
-                         ParticipantsHealth const& health, LogTerm term)
-    -> LeaderElectionCampaign {
-  auto campaign = LeaderElectionCampaign{};
+auto checkConfigSet(SupervisionContext& ctx, RLA::Log const& log,
+                    RSA::State const& state) {
+  auto const& stateConfig = state.target.config;
+  auto const& logConfig = log.target.config;
 
-  for (auto const& [participant, status] : states) {
-    auto reason = computeReason(status, health.isHealthy(participant), term);
-    campaign.reasons.emplace(participant, reason);
+  if (stateConfig != logConfig) {
+    ctx.createAction<SetLogConfigAction>(stateConfig);
+  }
+}
 
-    if (reason == LeaderElectionCampaign::Reason::OK) {
-      campaign.numberOKParticipants += 1;
+auto checkParticipantAdded(SupervisionContext& ctx, RLA::Log const& log,
+                           RSA::State const& state) {
+  ADB_PROD_ASSERT(state.plan.has_value());
 
-      if (status.spearhead >= campaign.bestTermIndex) {
-        if (status.spearhead != campaign.bestTermIndex) {
-          campaign.electibleLeaderSet.clear();
-        }
-        campaign.electibleLeaderSet.push_back(participant);
-        campaign.bestTermIndex = status.spearhead;
+  auto const& targetParticipants = state.target.participants;
+  auto const& planParticipants = state.plan->participants;
+
+  for (auto const& [participant, flags] : targetParticipants) {
+    // participant might be new to target or readded
+    // i.e. it is still in State/Plan but not in Log/Target
+    if (!planParticipants.contains(participant) ||
+        !log.target.participants.contains(participant)) {
+      if (ctx.numberServersInTarget + 1 >= ctx.numberServersOk) {
+        ctx.createAction<AddParticipantAction>(participant);
+      } else {
+        ctx.reportStatus(RSA::StatusCode::kInsufficientSnapshotCoverage,
+                         participant);
       }
     }
   }
-  return campaign;
 }
 
-auto checkLeaderHealth(Log const& log, ParticipantsHealth const& health)
-    -> std::unique_ptr<Action> {
-  if (health.isHealthy(log.plan.currentTerm->leader->serverId) &&
-      health.validRebootId(log.plan.currentTerm->leader->serverId,
-                           log.plan.currentTerm->leader->rebootId)) {
-    // Current leader is all healthy so nothing to do.
-    return nullptr;
-  } else {
-    // Leader is not healthy; start a new term
-    auto newTerm = *log.plan.currentTerm;
+void checkTargetParticipantRemoved(SupervisionContext& ctx, RLA::Log const& log,
+                                   RSA::State const& state) {
+  ADB_PROD_ASSERT(state.plan.has_value());
 
-    newTerm.leader.reset();
-    newTerm.term = LogTerm{log.plan.currentTerm->term.value + 1};
+  auto const& stateTargetParticipants = state.target.participants;
+  auto const& logTargetParticipants = log.target.participants;
 
-    return std::make_unique<UpdateTermAction>(newTerm);
-  }
-}
+  for (auto const& [participant, flags] : logTargetParticipants) {
+    if (!stateTargetParticipants.contains(participant)) {
+      // check if it is ok for that participant to be dropped
+      bool isOk = isParticipantOk(participant, log, state);
+      auto newNumberOfOkServer = ctx.numberServersOk - (isOk ? 1 : 0);
 
-auto tryLeadershipElection(Log const& log, ParticipantsHealth const& health)
-    -> std::unique_ptr<Action> {
-  // Check whether there are enough participants to reach a quorum
-  if (log.plan.participantsConfig.participants.size() + 1 <=
-      log.plan.currentTerm->config.writeConcern) {
-    return std::make_unique<ImpossibleCampaignAction>(
-        /* TODO: should we have an error message? */);
-  }
-
-  TRI_ASSERT(log.plan.participantsConfig.participants.size() + 1 >
-             log.plan.currentTerm->config.writeConcern);
-
-  auto const requiredNumberOfOKParticipants =
-      log.plan.participantsConfig.participants.size() + 1 -
-      log.plan.currentTerm->config.writeConcern;
-
-  // Find the participants that are healthy and that have the best LogTerm
-  auto const campaign = runElectionCampaign(log.current.localState, health,
-                                            log.plan.currentTerm->term);
-
-  auto const numElectible = campaign.electibleLeaderSet.size();
-
-  // Something went really wrong: we have enough ok participants, but none
-  // of them is electible, or too many of them are (we only support
-  // uint16_t::max participants at the moment)
-  //
-  // TODO: should this really be throwing or just erroring?
-  if (ADB_UNLIKELY(numElectible == 0 ||
-                   numElectible > std::numeric_limits<uint16_t>::max())) {
-    abortOrThrow(TRI_ERROR_NUMERIC_OVERFLOW,
-                 basics::StringUtils::concatT(
-                     "Number of participants electible for leadership out "
-                     "of range, should be between ",
-                     1, " and ", std::numeric_limits<uint16_t>::max(),
-                     ", but is ", numElectible),
-                 ADB_HERE);
-  }
-
-  if (campaign.numberOKParticipants >= requiredNumberOfOKParticipants) {
-    // We randomly elect on of the electible leaders
-    auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
-    auto const& newLeader =
-        campaign.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
-    auto const& newLeaderRebootId = health._health.at(newLeader).rebootId;
-
-    auto action = std::make_unique<SuccessfulLeaderElectionAction>();
-
-    action->_campaign = campaign;
-    action->_newTerm = LogPlanTermSpecification(
-        LogTerm{log.plan.currentTerm->term.value + 1},
-        log.plan.currentTerm->config,
-        LogPlanTermSpecification::Leader{.serverId = newLeader,
-                                         .rebootId = newLeaderRebootId});
-    action->_newLeader = newLeader;
-
-    return action;
-  } else {
-    // Not enough participants were available to form a quorum, so
-    // we can't elect a leader
-    auto action = std::make_unique<FailedLeaderElectionAction>();
-    action->_campaign = campaign;
-    return action;
+      if (newNumberOfOkServer >= ctx.numberServersInTarget) {
+        ctx.createAction<RemoveParticipantFromLogTargetAction>(participant);
+      } else {
+        ctx.reportStatus(RSA::StatusCode::kInsufficientSnapshotCoverage,
+                         participant);
+      }
+    }
   }
 }
 
-auto replicatedLogAction(Log const& log, ParticipantsHealth const& health)
-    -> std::unique_ptr<Action> {
-  if (log.plan.currentTerm->leader) {
-    // We have a leader; we check that the leader is
-    // healthy; if it is, there is nothing to do,
-    // if it isn't we
-    return checkLeaderHealth(log, health);
-  } else {
-    // New leader required; we try running an election
-    // TODO: Why are we duplicating this in replicated state
-    return tryLeadershipElection(log, health);
+auto checkLogParticipantRemoved(SupervisionContext& ctx, RLA::Log const& log,
+                                RSA::State const& state) {
+  ADB_PROD_ASSERT(state.plan.has_value());
+
+  auto const& stateTargetParticipants = state.target.participants;
+  auto const& logTargetParticipants = log.target.participants;
+  auto const& logPlanParticipants = log.plan->participantsConfig.participants;
+  auto participantGone = [&](auto const& participant) {
+    // Check both target and plan, so we don't drop too early (i.e. when the
+    // target is already there, but the log plan hasn't been written yet).
+    // Apart from that, as soon as the plan for the log is gone, we can safely
+    // drop the state.
+    return !stateTargetParticipants.contains(participant) &&
+           !logTargetParticipants.contains(participant) &&
+           !logPlanParticipants.contains(participant);
+  };
+
+  auto const& planParticipants = state.plan->participants;
+  for (auto const& [participant, flags] : planParticipants) {
+    auto const inTarget = logTargetParticipants.contains(participant);
+    if (!inTarget && participantGone(participant)) {
+      ctx.createAction<RemoveParticipantFromStatePlanAction>(participant);
+    } else if (!inTarget) {
+      ctx.reportStatus(RSA::StatusCode::kLogParticipantNotYetGone, participant);
+    }
+  }
+}
+
+/* Check whether there is a participant that is excluded but reported snapshot
+ * complete */
+auto checkSnapshotComplete(SupervisionContext& ctx, RLA::Log const& log,
+                           RSA::State const& state) {
+  if (state.current and log.plan) {
+    for (auto const& [participant, flags] : log.target.participants) {
+      if (!flags.allowedAsLeader || !flags.allowedInQuorum) {
+        ADB_PROD_ASSERT(state.plan->participants.contains(participant))
+            << "if a participant is in Log/Target is has to be in State/Plan";
+        auto const& plannedGeneration =
+            state.plan->participants.at(participant).generation;
+
+        if (auto const& status = state.current->participants.find(participant);
+            status != std::end(state.current->participants)) {
+          auto const& participantStatus = status->second;
+
+          if (participantStatus.snapshot.status ==
+                  SnapshotStatus::kCompleted and
+              participantStatus.generation == plannedGeneration) {
+            auto newFlags = flags;
+            newFlags.allowedInQuorum = true;
+            newFlags.allowedAsLeader = true;
+            ctx.createAction<UpdateParticipantFlagsAction>(participant,
+                                                           newFlags);
+            continue;
+          }
+        }
+        // otherwise, report error
+        ctx.reportStatus(RSA::StatusCode::kServerSnapshotMissing, participant);
+      } else {
+        ADB_PROD_ASSERT(isParticipantSnapshotCompleted(
+            participant, *state.current, *state.plan))
+            << "If a participant is allowed as leader and in a quorum, its "
+               "snapshot must be available";
+      }
+    }
+  }
+}
+
+auto hasConverged(RSA::State const& state, RLA::Log const& log) -> bool {
+  if (!state.plan) {
+    return false;
+  }
+  if (!state.current) {
+    return false;
   }
 
-  // This is only here to make the compiler happy; we should never end up here;
-  TRI_ASSERT(false);
-  return nullptr;
+  if (state.target.leader != log.target.leader) {
+    return false;
+  }
+
+  if (!log.current || !log.current->supervision ||
+      log.current->supervision->targetVersion != log.target.version) {
+    return false;
+  }
+
+  for (auto const& [pid, flags] : state.target.participants) {
+    if (!state.plan->participants.contains(pid)) {
+      return false;
+    }
+
+    if (auto c = state.current->participants.find(pid);
+        c == state.current->participants.end()) {
+      return false;
+    } else if (c->second.generation !=
+               state.plan->participants.at(pid).generation) {
+      return false;
+    } else if (c->second.snapshot.status != SnapshotStatus::kCompleted) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+auto checkConverged(SupervisionContext& ctx, RLA::Log const& log,
+                    RSA::State const& state) {
+  if (!state.target.version.has_value()) {
+    return;
+  }
+
+  if (!state.current or !state.current->supervision) {
+    return ctx.createAction<CurrentConvergedAction>(std::uint64_t{0});
+  }
+
+  // check that we are actually waiting for this version
+  if (state.current->supervision->version == state.target.version) {
+    return;
+  }
+
+  // now check if we actually have converged
+  if (hasConverged(state, log)) {
+    ctx.createAction<CurrentConvergedAction>(*state.target.version);
+  }
+}
+
+auto isEmptyAction(Action const& action) {
+  return std::holds_alternative<EmptyAction>(action);
+}
+
+auto checkReplicatedStateParticipants(SupervisionContext& ctx,
+                                      RLA::Log const& log,
+                                      RSA::State const& state) {
+  if (!state.current.has_value()) {
+    return ctx.reportStatus(RSA::StatusCode::kLogCurrentNotAvailable,
+                            "State/Current not yet populated");
+  }
+  if (!log.plan.has_value()) {
+    return ctx.reportStatus(RSA::StatusCode::kLogPlanNotAvailable,
+                            "Log/Plan not yet populated");
+  }
+
+  auto const serversInTarget = state.target.participants.size();
+  auto const serversOk = countOkServers(log, state);
+  ctx.numberServersInTarget = serversInTarget;
+  ctx.numberServersOk = serversOk;
+
+  checkParticipantAdded(ctx, log, state);
+  checkTargetParticipantRemoved(ctx, log, state);
+  checkLogParticipantRemoved(ctx, log, state);
+  checkSnapshotComplete(ctx, log, state);
+}
+
+auto checkForwardSettings(SupervisionContext& ctx, RLA::Log const& log,
+                          RSA::State const& state) {
+  checkLeaderSet(ctx, log, state);
+  checkConfigSet(ctx, log, state);
+}
+
+void checkReplicatedState(SupervisionContext& ctx,
+                          std::optional<RLA::Log> const& log,
+                          RSA::State const& state) {
+  // First check if the replicated log is already there, if not create it.
+  // Everything else requires the replicated log to exist.
+  checkStateAdded(ctx, state);
+
+  // It will need to be observable in future that we are doing nothing because
+  // we're waiting for the log to appear.
+  if (!log.has_value()) {
+    // if state/plan is visible, log/target should be visible as well
+    ADB_PROD_ASSERT(state.plan == std::nullopt);
+    ctx.reportStatus(RSA::StatusCode::kLogNotCreated,
+                     "replicated log has not yet been created");
+    return;
+  }
+
+  ADB_PROD_ASSERT(state.plan.has_value());
+  checkReplicatedStateParticipants(ctx, *log, state);
+  checkForwardSettings(ctx, *log, state);
+  checkConverged(ctx, *log, state);
+}
+
+// TODO: sctx is unused
+auto buildAgencyTransaction(DatabaseID const& database, LogId id,
+                            SupervisionContext& sctx, ActionContext& actx,
+                            arangodb::agency::envelope envelope)
+    -> arangodb::agency::envelope {
+  auto logTargetPath =
+      paths::target()->replicatedLogs()->database(database)->log(id)->str();
+  auto statePlanPath =
+      paths::plan()->replicatedStates()->database(database)->state(id)->str();
+  auto currentSupervisionPath = paths::current()
+                                    ->replicatedStates()
+                                    ->database(database)
+                                    ->state(id)
+                                    ->supervision()
+                                    ->str();
+
+  return envelope.write()
+      .cond(actx.hasModificationFor<replication2::agency::LogTarget>(),
+            [&](arangodb::agency::envelope::write_trx&& trx) {
+              return std::move(trx)
+                  .emplace_object(
+                      logTargetPath,
+                      [&](VPackBuilder& builder) {
+                        velocypack::serialize(
+                            builder,
+                            actx.getValue<replication2::agency::LogTarget>());
+                      })
+                  .inc(paths::target()->version()->str());
+            })
+      .cond(actx.hasModificationFor<agency::Plan>(),
+            [&](arangodb::agency::envelope::write_trx&& trx) {
+              return std::move(trx)
+                  .inc(paths::plan()->version()->str())
+                  .emplace_object(statePlanPath, [&](VPackBuilder& builder) {
+                    velocypack::serialize(builder,
+                                          actx.getValue<agency::Plan>());
+                  });
+            })
+      .cond(actx.hasModificationFor<agency::Current::Supervision>(),
+            [&](arangodb::agency::envelope::write_trx&& trx) {
+              return std::move(trx)
+                  .emplace_object(
+                      currentSupervisionPath,
+                      [&](VPackBuilder& builder) {
+                        velocypack::serialize(
+                            builder,
+                            actx.getValue<agency::Current::Supervision>());
+                      })
+                  .inc(paths::plan()->version()->str());
+            })
+      .end();
+}
+
+auto executeCheckReplicatedState(DatabaseID const& database, RSA::State state,
+                                 std::optional<RLA::Log> log,
+                                 arangodb::agency::envelope env) noexcept
+    -> arangodb::agency::envelope {
+  auto const now = std::chrono::system_clock::now();
+  auto const id = state.target.id;
+  auto const hasStatusReport = state.current && state.current->supervision &&
+                               state.current->supervision->statusReport;
+
+  // prepare the context
+  SupervisionContext ctx;
+  // check if error reporting is enabled
+  if (state.current && state.current->supervision &&
+      state.current->supervision->lastTimeModified.has_value()) {
+    auto const lastMod = *state.current->supervision->lastTimeModified;
+    if ((now - lastMod) > std::chrono::seconds{15}) {
+      ctx.enableErrorReporting();
+    }
+  }
+
+  // now run checkReplicatedState
+  checkReplicatedState(ctx, log, state);
+
+  // now check if there is status update
+  if (std::holds_alternative<EmptyAction>(ctx.getAction())) {
+    // there is only a status update
+    if (ctx.isErrorReportingEnabled()) {
+      // now compare the new status with the old status
+      if (state.current && state.current->supervision) {
+        if (state.current->supervision->statusReport == ctx.getReport()) {
+          // report did not change, do not create a transaction
+          return env;
+        }
+      }
+    }
+  }
+
+  // and now compose the agency transaction
+  auto actionCtx =
+      executeAction(std::move(state), std::move(log), ctx.getAction());
+
+  // update status report
+  if (ctx.isErrorReportingEnabled()) {
+    if (ctx.getReport().empty()) {
+      if (hasStatusReport) {
+        actionCtx.modify<RSA::Current::Supervision>(
+            [&](auto& supervision) { supervision.statusReport.reset(); });
+      }
+    } else {
+      actionCtx.modify<RSA::Current::Supervision>([&](auto& supervision) {
+        supervision.statusReport = std::move(ctx.getReport());
+      });
+    }
+  } else if (std::holds_alternative<CurrentConvergedAction>(ctx.getAction())) {
+    actionCtx.modify<RSA::Current::Supervision>(
+        [&](auto& supervision) { supervision.statusReport.reset(); });
+  }
+
+  // update last time modified
+  if (!std::holds_alternative<EmptyAction>(ctx.getAction())) {
+    actionCtx.modify<RSA::Current::Supervision>(
+        [&](auto& supervision) { supervision.lastTimeModified = now; });
+  }
+
+  if (!actionCtx.hasModification()) {
+    return env;
+  }
+  return buildAgencyTransaction(database, id, ctx, actionCtx, std::move(env));
 }
 
 }  // namespace arangodb::replication2::replicated_state

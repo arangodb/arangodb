@@ -56,15 +56,20 @@
 namespace {
 
 struct TestView : public arangodb::LogicalView {
+  static constexpr auto typeInfo() noexcept {
+    return std::pair{static_cast<arangodb::ViewType>(42),
+                     std::string_view{"testViewType"}};
+  }
+
   arangodb::Result _appendVelocyPackResult;
   arangodb::velocypack::Builder _properties;
 
   TestView(TRI_vocbase_t& vocbase,
            arangodb::velocypack::Slice const& definition)
-      : arangodb::LogicalView(vocbase, definition) {}
-  virtual arangodb::Result appendVelocyPackImpl(
-      arangodb::velocypack::Builder& builder, Serialization) const override {
-    builder.add("properties", _properties.slice());
+      : arangodb::LogicalView(*this, vocbase, definition) {}
+  arangodb::Result appendVPackImpl(arangodb::velocypack::Builder& build,
+                                   Serialization, bool) const override {
+    build.add("properties", _properties.slice());
     return _appendVelocyPackResult;
   }
   virtual arangodb::Result dropImpl() override { return arangodb::Result(); }
@@ -90,14 +95,15 @@ struct ViewFactory : public arangodb::ViewFactory {
                                   arangodb::velocypack::Slice definition,
                                   bool isUserRequest) const override {
     EXPECT_TRUE(isUserRequest);
-    view = vocbase.createView(definition);
+    view = vocbase.createView(definition, isUserRequest);
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result instantiate(
-      arangodb::LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-      arangodb::velocypack::Slice definition) const override {
+  virtual arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
+                                       TRI_vocbase_t& vocbase,
+                                       arangodb::velocypack::Slice definition,
+                                       bool /*isUserRequest*/) const override {
     view = std::make_shared<TestView>(vocbase, definition);
 
     return arangodb::Result();
@@ -105,10 +111,6 @@ struct ViewFactory : public arangodb::ViewFactory {
 };
 
 }  // namespace
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
 
 class RestUsersHandlerTest
     : public ::testing::Test,
@@ -123,15 +125,9 @@ class RestUsersHandlerTest
       : server(),
         system(server.getFeature<arangodb::SystemDatabaseFeature>().use()) {
     auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
-    viewTypesFeature.emplace(arangodb::LogicalDataSource::Type::emplace(
-                                 std::string_view("testViewType")),
-                             viewFactory);
+    viewTypesFeature.emplace(TestView::typeInfo().second, viewFactory);
   }
 };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
 
 TEST_F(RestUsersHandlerTest, test_collection_auth) {
   auto usersJson = arangodb::velocypack::Parser::fromJson(
@@ -447,7 +443,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
         });
     ASSERT_NE(nullptr, userPtr);
     auto logicalView = std::shared_ptr<arangodb::LogicalView>(
-        vocbase->createView(viewJson->slice()).get(),
+        vocbase->createView(viewJson->slice(), false).get(),
         [vocbase](arangodb::LogicalView* ptr) -> void {
           vocbase->dropView(ptr->id(), false);
         });
@@ -509,7 +505,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
                                      // User::collectionAuthLevel(...) returns
                                      // database auth::Level
     auto logicalView = std::shared_ptr<arangodb::LogicalView>(
-        vocbase->createView(viewJson->slice()).get(),
+        vocbase->createView(viewJson->slice(), false).get(),
         [vocbase](arangodb::LogicalView* ptr) -> void {
           vocbase->dropView(ptr->id(), false);
         });

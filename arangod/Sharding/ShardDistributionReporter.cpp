@@ -24,19 +24,21 @@
 #include <queue>
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionInfoCurrent.h"
+#include "Containers/SmallVector.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
-#include "ShardDistributionReporter.h"
+#include "Sharding/ShardDistributionReporter.h"
+#include "Sharding/ShardingInfo.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -96,8 +98,8 @@ static inline bool TestIsShardInSync(std::vector<ServerID> plannedServers,
 //////////////////////////////////////////////////////////////////////////////
 
 static void ReportShardNoProgress(
-    std::string const& shardId, std::vector<ServerID> const& respServers,
-    std::unordered_map<ServerID, std::string> const& aliases,
+    std::string_view shardId, std::vector<ServerID> const& respServers,
+    containers::FlatHashMap<ServerID, std::string> const& aliases,
     VPackBuilder& result) {
   TRI_ASSERT(result.isOpenObject());
   result.add(VPackValue(shardId));
@@ -135,9 +137,9 @@ static void ReportShardNoProgress(
 
 static void ReportShardProgress(
     std::string const& shardId, std::vector<ServerID> const& respServers,
-    std::unordered_map<ServerID, std::string> const& aliases, uint64_t total,
-    uint64_t current, double followerPercent, uint32_t followersSyncing,
-    VPackBuilder& result) {
+    containers::FlatHashMap<ServerID, std::string> const& aliases,
+    uint64_t total, uint64_t current, double followerPercent,
+    uint32_t followersSyncing, VPackBuilder& result) {
   TRI_ASSERT(result.isOpenObject());
   result.add(VPackValue(shardId));
   result.openObject();
@@ -193,12 +195,24 @@ static void ReportShardProgress(
 //////////////////////////////////////////////////////////////////////////////
 
 static void ReportPartialNoProgress(
-    ShardMap const* shardIds,
-    std::unordered_map<ServerID, std::string> const& aliases,
+    ShardMap const& shardIds,
+    containers::FlatHashMap<ServerID, std::string> const& aliases,
     VPackBuilder& result) {
+  // create a sorted list of shards, so that the callers will get the
+  // shard list in a deterministic order (this is very useful for the UI).
+  containers::SmallVector<std::string_view, 8> sortedShards;
+  sortedShards.reserve(shardIds.size());
+
+  for (auto const& s : shardIds) {
+    sortedShards.emplace_back(s.first);
+  }
+  // sorts sortedShards in place in a deterministic order
+  ShardingInfo::sortShardNamesNumerically(sortedShards);
+
   TRI_ASSERT(result.isOpenObject());
-  for (auto const& s : *shardIds) {
-    ReportShardNoProgress(s.first, s.second, aliases, result);
+
+  for (auto const& s : sortedShards) {
+    ReportShardNoProgress(s, shardIds.at(s), aliases, result);
   }
 }
 
@@ -208,7 +222,7 @@ static void ReportPartialNoProgress(
 
 static void ReportInSync(
     LogicalCollection const* col, ShardMap const* shardIds,
-    std::unordered_map<ServerID, std::string> const& aliases,
+    containers::FlatHashMap<ServerID, std::string> const& aliases,
     VPackBuilder& result) {
   TRI_ASSERT(result.isOpenObject());
 
@@ -220,7 +234,7 @@ static void ReportInSync(
     // Add Plan
     result.add(VPackValue("Plan"));
     result.openObject();
-    ReportPartialNoProgress(shardIds, aliases, result);
+    ReportPartialNoProgress(*shardIds, aliases, result);
     result.close();
   }
 
@@ -228,7 +242,7 @@ static void ReportInSync(
     // Add Current
     result.add(VPackValue("Current"));
     result.openObject();
-    ReportPartialNoProgress(shardIds, aliases, result);
+    ReportPartialNoProgress(*shardIds, aliases, result);
     result.close();
   }
   result.close();
@@ -241,8 +255,8 @@ static void ReportInSync(
 
 static void ReportOffSync(
     LogicalCollection const* col, ShardMap const* shardIds,
-    std::unordered_map<ShardID, SyncCountInfo>& counters,
-    std::unordered_map<ServerID, std::string> const& aliases,
+    containers::FlatHashMap<ShardID, SyncCountInfo>& counters,
+    containers::FlatHashMap<ServerID, std::string> const& aliases,
     VPackBuilder& result, bool progress) {
   TRI_ASSERT(result.isOpenObject());
 
@@ -297,7 +311,7 @@ ShardDistributionReporter::ShardDistributionReporter(ClusterInfo* ci,
 ShardDistributionReporter::~ShardDistributionReporter() = default;
 
 std::shared_ptr<ShardDistributionReporter> ShardDistributionReporter::instance(
-    application_features::ApplicationServer& server) {
+    ArangodServer& server) {
   auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
   auto& nf = server.getFeature<NetworkFeature>();
   auto* pool = nf.pool();
@@ -315,10 +329,10 @@ std::shared_ptr<ShardDistributionReporter> ShardDistributionReporter::instance(
 void ShardDistributionReporter::helperDistributionForDatabase(
     std::string const& dbName, VPackBuilder& result,
     std::queue<std::shared_ptr<LogicalCollection>>& todoSyncStateCheck,
-    double endtime, std::unordered_map<std::string, std::string>& aliases,
+    double endtime, containers::FlatHashMap<std::string, std::string>& aliases,
     bool progress) {
   if (!todoSyncStateCheck.empty()) {
-    std::unordered_map<ShardID, SyncCountInfo> counters;
+    containers::FlatHashMap<ShardID, SyncCountInfo> counters;
     std::vector<ServerID> serversToAsk;
     while (!todoSyncStateCheck.empty()) {
       counters.clear();

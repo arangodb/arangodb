@@ -117,9 +117,6 @@
     this.exports = {};
     this.require = createRequire(this);
     this.parent = parent;
-    if (parent && parent.children) {
-      parent.children.push(this);
-    }
 
     Object.defineProperty(this, $_MODULE_CONTEXT, {
       value: {
@@ -135,6 +132,7 @@
     });
 
     if (parent) {
+      parent.children.push(this);
       this.context = parent.context;
       this.require.cache = parent.require.cache;
       this.require.aliases = parent.require.aliases;

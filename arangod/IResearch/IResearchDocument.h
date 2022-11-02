@@ -26,8 +26,16 @@
 
 #include "VocBase/voc-types.h"
 
+#include "IResearchCommon.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchDocumentEE.h"
+#endif
+
+#include "Containers/FlatHashMap.h"
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchLinkMeta.h"
+#include "IResearchInvertedIndexMeta.h"
 #include "IResearchVPackTermAttribute.h"
 #include "VelocyPackHelper.h"
 
@@ -54,43 +62,16 @@ class analyzer;
 namespace arangodb {
 namespace aql {
 
-struct AstNode;       // forward declaration
-class SortCondition;  // forward declaration
+struct AstNode;
+class SortCondition;
 
 }  // namespace aql
-}  // namespace arangodb
-
-namespace arangodb {
 namespace transaction {
 
 class Methods;  // forward declaration
 
 }  // namespace transaction
-}  // namespace arangodb
-
-namespace arangodb {
 namespace iresearch {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the delimiter used to separate jSON nesting levels when
-/// generating
-///        flat iResearch field names
-////////////////////////////////////////////////////////////////////////////////
-constexpr char const NESTING_LEVEL_DELIMITER = '.';
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the prefix used to denote start of jSON list offset when generating
-///        flat iResearch field names
-////////////////////////////////////////////////////////////////////////////////
-constexpr char const NESTING_LIST_OFFSET_PREFIX = '[';
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the suffix used to denote end of jSON list offset when generating
-///        flat iResearch field names
-////////////////////////////////////////////////////////////////////////////////
-constexpr char const NESTING_LIST_OFFSET_SUFFIX = ']';
-
-struct IResearchViewMeta;  // forward declaration
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief indexed/stored document field adapter for IResearch
@@ -126,16 +107,19 @@ struct Field {
   ValueStorage _storeValues;
   irs::features_t _fieldFeatures;
   irs::IndexFeatures _indexFeatures;
-};  // Field
+#ifdef USE_ENTERPRISE
+  bool _root{false};
+#endif
+};
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief allows to iterate over the provided VPack accoring the specified
+/// @brief allows to iterate over the provided VPack according the specified
 ///        IResearchLinkMeta
 ////////////////////////////////////////////////////////////////////////////////
+template<typename IndexMetaStruct>
 class FieldIterator {
  public:
-  explicit FieldIterator(arangodb::transaction::Methods& trx,
-                         irs::string_ref collection, IndexId linkId);
+  FieldIterator(std::string_view collection, IndexId indexId);
 
   Field const& operator*() const noexcept { return _value; }
 
@@ -150,26 +134,63 @@ class FieldIterator {
 
   bool valid() const noexcept { return !_stack.empty(); }
 
-  void reset(velocypack::Slice slice, FieldMeta const& linkMeta);
+  void reset(velocypack::Slice slice, IndexMetaStruct const& linkMeta);
+
+  bool disableFlush() const noexcept { return _disableFlush; }
+
+#ifdef USE_ENTERPRISE
+  bool onRootLevel() const noexcept;
+
+  bool hasNested() const noexcept;
+
+  bool needDoc() const noexcept { return _needDoc; }
+
+  void setDisableFlush() noexcept { _disableFlush = true; }
+#endif
 
  private:
   using AnalyzerIterator = FieldMeta::Analyzer const*;
 
-  using Filter = bool (*)(std::string& buffer, FieldMeta const*& rootMeta,
+  using Filter = bool (*)(std::string& buffer, IndexMetaStruct const*& rootMeta,
                           IteratorValue const& value);
 
   using PrimitiveTypeResetter = void (*)(irs::token_stream* stream,
                                          VPackSlice slice);
 
+  enum class LevelType {
+    // emits regular fields
+    kNormal = 0,
+    // emits nested parents
+    kNestedRoot,
+    // enumerates "arrays" of nested documents
+    kNestedFields,
+    // enumerates nested documents in the array
+    kNestedObjects,
+  };
+
   struct Level {
-    Level(velocypack::Slice slice, size_t nameLength, FieldMeta const& meta,
-          Filter filter)
-        : it(slice), nameLength(nameLength), meta(&meta), filter(filter) {}
+    Level(velocypack::Slice slice, size_t nameLength,
+          IndexMetaStruct const& meta, Filter levelFilter, LevelType levelType,
+          std::optional<arangodb::iresearch::MissingFieldsContainer>&&
+              missingTracker)
+        : it(slice),
+          nameLength(nameLength),
+          meta(&meta),
+          filter(levelFilter),
+          type(levelType),
+          missingFields(missingTracker) {}
 
     Iterator it;
-    size_t nameLength;      // length of the name at the current level
-    FieldMeta const* meta;  // metadata
+    size_t nameLength;            // length of the name at the current level
+    IndexMetaStruct const* meta;  // metadata
     Filter filter;
+    LevelType type;
+    // TODO(Dronplane): Try to avoid copy.
+    // But it will need to decide how to conveyr "erase" on upper levels.
+    std::optional<MissingFieldsContainer> missingFields;
+#ifdef USE_ENTERPRISE
+    bool nestingProcessed{false};
+#endif
   };  // Level
 
   Level& top() noexcept {
@@ -177,13 +198,26 @@ class FieldIterator {
     return _stack.back();
   }
 
+#ifdef USE_ENTERPRISE
+  using MetaTraits = IndexMetaTraits<IndexMetaStruct>;
+  void setRoot();
+
+  enum class NestedNullsResult { kNone, kContinue, kReturn };
+  auto processNestedNulls();
+#endif
+
+  void popLevel();
+  bool pushLevel(VPackSlice value, IndexMetaStruct const& meta, Filter filter);
+  void fieldSeen(std::string& name);
+
   // disallow copy and assign
   FieldIterator(FieldIterator const&) = delete;
   FieldIterator& operator=(FieldIterator const&) = delete;
 
   void next();
   bool setValue(VPackSlice const value,
-                FieldMeta::Analyzer const& valueAnalyzer);
+                FieldMeta::Analyzer const& valueAnalyzer,
+                IndexMetaStruct const& context);
   void setNullValue(VPackSlice const value);
   void setNumericValue(VPackSlice const value);
   void setBoolValue(VPackSlice const value);
@@ -194,21 +228,30 @@ class FieldIterator {
   AnalyzerIterator _end{};
   std::vector<Level> _stack;
   size_t _prefixLength{};
-  std::string _nameBuffer;  // buffer for field name
-  std::string
-      _valueBuffer;  // need temporary buffer for custom types in VelocyPack
-  VPackBuffer<uint8_t> _buffer;  // buffer for stored values
-  arangodb::transaction::Methods* _trx;
-  irs::string_ref _collection;
+  // buffer for field name
+  std::string _nameBuffer;
+  // need temporary buffer for custom types in VelocyPack
+  std::string _valueBuffer;
+  // buffer for stored values
+  VPackBuffer<uint8_t> _buffer;
+  std::string_view _collection;
   Field _value;  // iterator's value
-  IndexId _linkId;
+  IndexId _indexId;
 
   // Support for outputting primitive type from analyzer
   AnalyzerPool::CacheType::ptr _currentTypedAnalyzer;
   VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};
   PrimitiveTypeResetter _primitiveTypeResetter{nullptr};
 
-  bool _isDBServer;
+  bool _disableFlush{false};
+#ifdef USE_ENTERPRISE
+  bool _needDoc{false};
+  bool _hasNested{false};
+#endif
+  MissingFieldsMap _missingFieldsMap;
+#ifdef USE_ENTERPRISE
+  std::vector<std::string> _nestingBuffers;
+#endif
 };  // FieldIterator
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,26 +275,36 @@ struct DocumentPrimaryKey {
   static bool read(LocalDocumentId& value, irs::bytes_ref const& in) noexcept;
 
   DocumentPrimaryKey() = delete;
-};  // DocumentPrimaryKey
+};
 
-struct StoredValue {
-  StoredValue(transaction::Methods const& t, irs::string_ref cn,
-              VPackSlice const doc, IndexId lid);
+struct Value {
+  Value(std::string_view c, IndexId i, velocypack::Slice d);
 
-  bool write(irs::data_output& out) const;
-
-  irs::string_ref const& name() const noexcept { return fieldName; }
+ protected:
+  bool writeSlice(irs::data_output& out, VPackSlice slice) const;
 
   mutable VPackBuffer<uint8_t> buffer;
-  transaction::Methods const& trx;
+  std::string_view collection;
+  IndexId indexId;
   velocypack::Slice const document;
+};
+
+struct SortedValue : Value {
+  using Value::Value;
+  bool write(irs::data_output& out) const { return writeSlice(out, slice); }
+
+  velocypack::Slice slice;
+};
+
+struct StoredValue : Value {
+  using Value::Value;
+  bool write(irs::data_output& out) const;
+  irs::string_ref const& name() const noexcept { return fieldName; }
+
   irs::string_ref fieldName;
-  irs::string_ref collection;
   std::vector<std::pair<std::string, std::vector<basics::AttributeName>>> const*
       fields;
-  IndexId linkId;
-  bool isDBServer;
-};  // StoredValue
+};
 
 }  // namespace iresearch
 }  // namespace arangodb

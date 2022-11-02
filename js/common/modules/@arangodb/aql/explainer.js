@@ -114,6 +114,14 @@ function attributeUncolored(v) {
   return '`' + v + '`';
 }
 
+function indexFieldToName(v) {
+  'use strict';
+  if (typeof v === 'object') {
+    return v.name;
+  }
+  return v;
+}
+
 function keyword(v) {
   'use strict';
   return colors.COLOR_CYAN + v + colors.COLOR_RESET;
@@ -158,6 +166,11 @@ function view(v) {
 function attribute(v) {
   'use strict';
   return '`' + colors.COLOR_YELLOW + v + colors.COLOR_RESET + '`';
+}
+
+function attributePath(v) {
+  'use strict';
+  return v.split('.').map(attribute).join('.');
 }
 
 function header(v) {
@@ -244,6 +257,9 @@ function printRules(rules, stats) {
     }
     return { name: key, time: stats.rules[key] };
   });
+  // filter out everything that was reasonably fast
+  times = times.filter((item) => item.time >= 0.0002);
+
   times.sort(function(l, r) {
     // highest cost first
     return r.time - l.time;
@@ -251,13 +267,16 @@ function printRules(rules, stats) {
   // top few only
   times = times.slice(0, 5);
 
-  stringBuilder.appendLine(section('Optimization rules with highest execution times:'));
-  stringBuilder.appendLine(' ' + header('RuleName') + '   ' + pad(maxNameLength - 'RuleName'.length) + header('Duration [s]'));
-  times.forEach(function(rule) {
-    stringBuilder.appendLine(' ' + keyword(rule.name) + '   ' + pad(12 + maxNameLength - rule.name.length - rule.time.toFixed(5).length) + value(rule.time.toFixed(5)));
-  });
+  if (times.length > 0) {
+    stringBuilder.appendLine(section('Optimization rules with highest execution times:'));
+    stringBuilder.appendLine(' ' + header('RuleName') + '   ' + pad(maxNameLength - 'RuleName'.length) + header('Duration [s]'));
+    times.forEach(function(rule) {
+      stringBuilder.appendLine(' ' + keyword(rule.name) + '   ' + pad(12 + maxNameLength - rule.name.length - rule.time.toFixed(5).length) + value(rule.time.toFixed(5)));
+    });
   
-  stringBuilder.appendLine();
+    stringBuilder.appendLine();
+  }
+
   stringBuilder.appendLine(value(stats.rulesExecuted) + annotation(' rule(s) executed, ') + value(stats.plansCreated) + annotation(' plan(s) created'));
   stringBuilder.appendLine();
 }
@@ -290,18 +309,21 @@ function printStats(stats) {
   var maxWILen = String('Writes Ign').length;
   var maxSFLen = String('Scan Full').length;
   var maxSILen = String('Scan Index').length;
+  var maxCHMLen = String('Cache Hits/Misses').length;
   var maxFLen = String('Filtered').length;
   var maxMem = String('Peak Mem [b]').length;
   var maxETen = String('Exec Time [s]').length;
   stats.executionTime = stats.executionTime.toFixed(5);
   stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
-    header('Scan Index') + '   ' + header('Filtered') + '   ' + header('Peak Mem [b]') + '   ' + header('Exec Time [s]'));
+    header('Scan Index') + '   ' + header('Cache Hits/Misses') + '   ' + header('Filtered') + '   ' + 
+    header('Peak Mem [b]') + '   ' + header('Exec Time [s]'));
 
   stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' +
     pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + '   ' +
     pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + '   ' +
     pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + '   ' +
-    pad(1 + maxFLen - String(stats.filtered).length) + value(stats.filtered) + '   ' +
+    pad(1 + maxCHMLen - (String(stats.cacheHits || 0) + ' / ' + String(stats.cacheMisses || 0)).length) + value(stats.cacheHits || 0) + ' / ' + value(stats.cacheMisses || 0) + '   ' +
+    pad(1 + maxFLen - String(stats.filtered || 0).length) + value(stats.filtered || 0) + '   ' +
     pad(1 + maxMem - String(stats.peakMemoryUsage).length) + value(stats.peakMemoryUsage) + '   ' +
     pad(1 + maxETen - String(stats.executionTime).length) + value(stats.executionTime));
   stringBuilder.appendLine();
@@ -344,10 +366,12 @@ function printIndexes(indexes) {
     var maxCollectionLen = String('Collection').length;
     var maxUniqueLen = String('Unique').length;
     var maxSparseLen = String('Sparse').length;
+    var maxCacheLen = String('Cache').length;
     var maxNameLen = String('Name').length;
     var maxTypeLen = String('Type').length;
     var maxSelectivityLen = String('Selectivity').length;
     var maxFieldsLen = String('Fields').length;
+    var maxStoredValuesLen = String('Stored values').length;
     indexes.forEach(function (index) {
       var l = String(index.node).length;
       if (l > maxIdLen) {
@@ -361,9 +385,13 @@ function printIndexes(indexes) {
       if (l > maxTypeLen) {
         maxTypeLen = l;
       }
-      l = index.fields.map(attributeUncolored).join(', ').length + '[  ]'.length;
+      l = index.fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
       if (l > maxFieldsLen) {
         maxFieldsLen = l;
+      }
+      l = (index.storedValues || []).map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
+      if (l > maxStoredValuesLen) {
+        maxStoredValuesLen = l;
       }
       l = index.collection.length;
       if (l > maxCollectionLen) {
@@ -376,8 +404,10 @@ function printIndexes(indexes) {
       header('Collection') + pad(1 + maxCollectionLen - 'Collection'.length) + '   ' +
       header('Unique') + pad(1 + maxUniqueLen - 'Unique'.length) + '   ' +
       header('Sparse') + pad(1 + maxSparseLen - 'Sparse'.length) + '   ' +
+      header('Cache') + pad(1 + maxCacheLen - 'Cache'.length) + '   ' +
       header('Selectivity') + '   ' +
       header('Fields') + pad(1 + maxFieldsLen - 'Fields'.length) + '   ' +
+      header('Stored values') + pad(1 + maxStoredValuesLen - 'Stored values'.length) + '   ' +
       header('Ranges');
 
     stringBuilder.appendLine(line);
@@ -385,8 +415,11 @@ function printIndexes(indexes) {
     for (var i = 0; i < indexes.length; ++i) {
       var uniqueness = (indexes[i].unique ? 'true' : 'false');
       var sparsity = (indexes[i].hasOwnProperty('sparse') ? (indexes[i].sparse ? 'true' : 'false') : 'n/a');
-      var fields = '[ ' + indexes[i].fields.map(attribute).join(', ') + ' ]';
-      var fieldsLen = indexes[i].fields.map(attributeUncolored).join(', ').length + '[  ]'.length;
+      var cache = (indexes[i].hasOwnProperty('cacheEnabled') && indexes[i].cacheEnabled ? 'true' : 'false');
+      var fields = '[ ' + indexes[i].fields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
+      var fieldsLen = indexes[i].fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
+      var storedValues = '[ ' + (indexes[i].storedValues || []).map(indexFieldToName).map(attribute).join(', ') + ' ]';
+      var storedValuesLen = (indexes[i].storedValues || []).map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
       var ranges;
       if (indexes[i].hasOwnProperty('condition')) {
         ranges = indexes[i].condition;
@@ -411,8 +444,10 @@ function printIndexes(indexes) {
         collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + '   ' +
         value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + '   ' +
         value(sparsity) + pad(1 + maxSparseLen - sparsity.length) + '   ' +
+        value(cache) + pad(1 + maxCacheLen - cache.length) + '   ' +
         pad(1 + maxSelectivityLen - estimate.length) + value(estimate) + '   ' +
         fields + pad(1 + maxFieldsLen - fieldsLen) + '   ' +
+        storedValues + pad(1 + maxStoredValuesLen - storedValuesLen) + '   ' +
         ranges;
 
       stringBuilder.appendLine(line);
@@ -597,10 +632,10 @@ function printTraversalDetails(traversals) {
     }
     // else do not add a cell in 4
     if (node.hasOwnProperty('ConditionStr')) {
-      outTable.addCell(5, 'FILTER ' + node.ConditionStr);
+      outTable.addCell(5, keyword('FILTER ') + node.ConditionStr);
     }
     if (node.hasOwnProperty('PruneConditionStr')) {
-      outTable.addCell(5, 'PRUNE ' + node.PruneConditionStr);
+      outTable.addCell(5, keyword('PRUNE ') + node.PruneConditionStr);
     }
   });
   outTable.print(stringBuilder);
@@ -744,6 +779,7 @@ function processQuery(query, explain, planIndex) {
     maxEstimateLen = String('Est.').length,
     maxCallsLen = String('Calls').length,
     maxItemsLen = String('Items').length,
+    maxFilteredLen = String('Filtered').length,
     maxRuntimeLen = String('Runtime [s]').length,
     stats = explain.stats;
 
@@ -802,6 +838,7 @@ function processQuery(query, explain, planIndex) {
       if (nodes.hasOwnProperty(n.id)) {
         nodes[n.id].calls = (n.calls === undefined ? "n/a" : n.calls);
         nodes[n.id].items = (n.items === undefined ? "n/a" : n.items);
+        nodes[n.id].filtered = (n.filtered === undefined ? "n/a" : n.filtered);
         nodes[n.id].runtime = (n.runtime === undefined ? "n/a" : n.runtime);
 
         if (String(nodes[n.id].calls).length > maxCallsLen) {
@@ -809,6 +846,9 @@ function processQuery(query, explain, planIndex) {
         }
         if (String(nodes[n.id].items).length > maxItemsLen) {
           maxItemsLen = String(nodes[n.id].items).length;
+        }
+        if (String(nodes[n.id].filtered).length > maxFilteredLen) {
+          maxFilteredLen = String(nodes[n.id].filtered).length;
         }
         let l;
         if (typeof nodes[n.id].runtime === 'number') {
@@ -866,7 +906,6 @@ function processQuery(query, explain, planIndex) {
   };
 
   var lateVariableCallback = function () {
-    require("internal").print("Called");
     return (node) => variableName(node);
   };
 
@@ -894,9 +933,13 @@ function processQuery(query, explain, planIndex) {
       case 'reference':
         if (references.hasOwnProperty(node.name)) {
           var ref = references[node.name];
+          var c = '*';
+          if (ref.length > 5 && ref[5]) {
+            c = '?';
+          }
           delete references[node.name];
           if (Array.isArray(ref)) {
-            var out = buildExpression(ref[1]) + '[' + (new Array(ref[0] + 1).join('*'));
+            var out = buildExpression(ref[1]) + '[' + (new Array(ref[0] + 1).join(c));
             if (ref[2].type !== 'no-op') {
               out += ' ' + keyword('FILTER') + ' ' + buildExpression(ref[2]);
             }
@@ -909,7 +952,7 @@ function processQuery(query, explain, planIndex) {
             out += ']';
             return out;
           }
-          return buildExpression(ref) + '[*]';
+          return buildExpression(ref) + '[' + c + ']';
         }
         return variableName(node);
       case 'collection':
@@ -952,16 +995,22 @@ function processQuery(query, explain, planIndex) {
         return buildExpression(node.subNodes[0]) + '[' + buildExpression(node.subNodes[1]) + ']';
       case 'range':
         return buildExpression(node.subNodes[0]) + ' .. ' + buildExpression(node.subNodes[1]) + '   ' + annotation('/* range */');
+      case 'no-op':
+        return '';
+      case 'quantifier':
+        return node.quantifier.toUpperCase();
       case 'expand':
       case 'expansion':
         if (node.subNodes.length > 2) {
           // [FILTER ...]
-          references[node.subNodes[0].subNodes[0].name] = [node.levels, node.subNodes[0].subNodes[1], node.subNodes[2], node.subNodes[3], node.subNodes[4]];
+          references[node.subNodes[0].subNodes[0].name] = [node.levels, node.subNodes[0].subNodes[1], node.subNodes[2], node.subNodes[3], node.subNodes[4], node.booleanize || false];
         } else {
           // [*]
           references[node.subNodes[0].subNodes[0].name] = node.subNodes[0].subNodes[1];
         }
         return buildExpression(node.subNodes[1]);
+      case 'array filter':
+        return buildExpression(node.subNodes[0]) + " " + buildExpression(node.subNodes[1]);
       case 'user function call':
         return func(node.name) + '(' + ((node.subNodes && node.subNodes[0].subNodes) || []).map(buildExpression).join(', ') + ')' + '   ' + annotation('/* user-defined function */');
       case 'function call':
@@ -1101,15 +1150,15 @@ function processQuery(query, explain, planIndex) {
     return results[0];
   };
 
-  var projection = function (node) {
-    if (node.projections && node.projections.length > 0) {
-      let p = node.projections.map(function(p) {
+  const projections = function (value, attributeName, label) {
+    if (value && value.hasOwnProperty(attributeName) && value[attributeName].length > 0) {
+      let p = value[attributeName].map(function(p) {
         if (Array.isArray(p)) {
           return p.join('`.`', p);
         }
         return p;
       });
-      return ', projections: `' + p.join('`, `') + '`';
+      return ' (' + label + ': `' + p.join('`, `') + '`)';
     }
     return '';
   };
@@ -1124,16 +1173,29 @@ function processQuery(query, explain, planIndex) {
   };
 
   var iterateIndexes = function (idx, i, node, types, variable) {
-    var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan' + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? (node.indexCoversProjections ? ', index only' : '') : ', scan only');
+    let what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan';
+    if (node.producesResult || !node.hasOwnProperty('producesResult')) {
+      if (node.indexCoversProjections) {
+        what += ', index only';
+      } else {
+        what += ', index scan + document lookup';
+      }
+    } else {
+      what += ', scan only';
+    }
     if (node.readOwnWrites) {
       what += "; read own writes";
     }
+
     if (types.length === 0 || what !== types[types.length - 1]) {
       types.push(what);
     }
     idx.collection = node.collection;
     idx.node = node.id;
-    if (node.hasOwnProperty('condition') && node.condition.type && node.condition.type === 'n-ary or') {
+    if (node.hasOwnProperty('condition') && node.hasOwnProperty('allCoveredByOneIndex') &&
+        node.allCoveredByOneIndex) {
+       idx.condition = buildExpression(node.condition);
+    } else if (node.hasOwnProperty('condition') && node.condition.type && node.condition.type === 'n-ary or') {
       idx.condition = buildExpression(node.condition.subNodes[i]);
     } else {
       if (variable !== false && variable !== undefined) {
@@ -1204,7 +1266,7 @@ function processQuery(query, explain, planIndex) {
         if (node.filter) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
         }
-        const enumAnnotation = annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + (node.count ? ', with count optimization' : '') + `${restriction(node)} ${node.readOwnWrites ? '; read own writes' : ''} */`);
+        const enumAnnotation = annotation('/* full collection scan' + (node.random ? ', random order' : '') + projections(node, 'projections', 'projections') + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + (node.count ? ', with count optimization' : '') + `${restriction(node)} ${node.readOwnWrites ? '; read own writes' : ''} */`);
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + enumAnnotation + filter;
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
@@ -1222,7 +1284,7 @@ function processQuery(query, explain, planIndex) {
           }
 
           sortCondition = keyword(' SORT ') + node.primarySort.slice(0, primarySortBuckets).map(function (element) {
-            return variableName(node.outVariable) + '.' + attribute(element.field) + ' ' + keyword(element.asc ? 'ASC' : 'DESC');
+            return variableName(node.outVariable) + '.' + attributePath(element.field) + ' ' + keyword(element.asc ? 'ASC' : 'DESC');
           }).join(', ');
         }
 
@@ -1231,6 +1293,25 @@ function processQuery(query, explain, planIndex) {
           scorers = node.scorers.map(function (scorer) {
             return keyword(' LET ') + variableName(scorer) + ' = ' + buildExpression(scorer.node);
           }).join('');
+        }
+        
+        var scorersSort = '';
+        if (node.hasOwnProperty('scorersSort') && node.scorersSort.length > 0) {
+          node.scorersSort.forEach(function(sort) {
+              if (scorersSort.length > 0 ) {
+                scorersSort += ', ';
+              }
+              scorersSort += variableName(node.scorers[sort.index]);
+              if (sort.asc) {
+                scorersSort += keyword(' ASC');
+              } else {
+                scorersSort += keyword(' DESC');
+              }
+          
+          });
+           scorersSort = keyword(' SORT ') + scorersSort;
+           scorersSort += keyword(' LIMIT ') + value('0, ' + JSON.stringify(node.scorersSortLimit));
+           
         }
         let viewAnnotation = '/* view query';
         if (node.hasOwnProperty('outNmDocId') && node.hasOwnProperty('outNmColPtr')) {
@@ -1247,17 +1328,17 @@ function processQuery(query, explain, planIndex) {
         if (node.hasOwnProperty('viewValuesVars') && node.viewValuesVars.length > 0) {
           viewVariables = node.viewValuesVars.map(function (viewValuesColumn) {
             if (viewValuesColumn.hasOwnProperty('field')) {
-              return keyword(' LET ') + variableName(viewValuesColumn) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesColumn.field);
+              return keyword(' LET ') + variableName(viewValuesColumn) + ' = ' + variableName(node.outVariable) + '.' + attributePath(viewValuesColumn.field);
             } else {
               return viewValuesColumn.viewStoredValuesVars.map(function (viewValuesVar) {
-                return keyword(' LET ') + variableName(viewValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesVar.field);
+                return keyword(' LET ') + variableName(viewValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attributePath(viewValuesVar.field);
               }).join('');
             }
           }).join('');
         }
         return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') +
                view(node.view) + condition + sortCondition + scorers + viewVariables +
-               '   ' + annotation(viewAnnotation);
+               scorersSort + '   ' + annotation(viewAnnotation);
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
         if (node.filter) {
@@ -1278,7 +1359,7 @@ function processQuery(query, explain, planIndex) {
         }
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
         return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}` + indexVariables +
-          `   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter +
+          `   ${annotation(`/* ${types.join(', ')}${projections(node, 'filterProjections', 'filter projections')}${projections(node, 'projections', 'projections')}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter +
           '   ' + annotation(indexAnnotation);
 
       case 'TraversalNode':
@@ -1296,21 +1377,29 @@ function processQuery(query, explain, planIndex) {
           if (node.options.hasOwnProperty('produceVertices') && !node.options.produceVertices) {
             parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex optimized away */'));
           } else {
-            parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex */'));
+            parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex' + projections(node.options, 'vertexProjections', 'projections') + ' */'));
           }
         } else {
           parts.push(annotation('/* vertex optimized away */'));
         }
         if (node.hasOwnProperty('edgeOutVariable')) {
-          parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge */'));
+          parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge' + projections(node.options, 'edgeProjections', 'projections') + ' */'));
         }
         if (node.hasOwnProperty('pathOutVariable')) {
           let pathParts = [];
           if (node.options.producePathsVertices) {
-            pathParts.push("vertices");
+            if (node.hasOwnProperty('vertexOutVariable')) {
+              pathParts.push("vertices");
+            } else {
+              pathParts.push("vertices" + projections(node.options, 'vertexProjections', 'projections'));
+            }
           }
           if (node.options.producePathsEdges) {
-            pathParts.push("edges");
+            if (node.hasOwnProperty('edgeOutVariable')) {
+              pathParts.push("edges");
+            } else {
+              pathParts.push("edges" + projections(node.options, 'edgeProjections', 'projections'));
+            }
           }
           if (node.options.producePathsWeights) {
             pathParts.push("weights");
@@ -1553,7 +1642,7 @@ function processQuery(query, explain, planIndex) {
 
         return rc;
       }
-      case 'KShortestPathsNode': {
+      case 'EnumeratePathsNode': {
         if (node.hasOwnProperty('pathOutVariable')) {
           parts.push(variableName(node.pathOutVariable) + '  ' + annotation('/* path */'));
         }
@@ -1789,7 +1878,7 @@ function processQuery(query, explain, planIndex) {
             collectionVariables[node.outVariable.id] = node.collection;
             let indexRef = `${variable(JSON.stringify(node.key))}`;
             node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
-            return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${variable('_key')} == ${indexRef} ${annotation(`/* primary index scan */`)}`;
+            return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${variableName(node.outVariable)}.${attribute('_key')} == ${indexRef} ${annotation(`/* primary index scan */`)}`;
             // `
           }
           case 'InsertNode': {
@@ -1812,9 +1901,9 @@ function processQuery(query, explain, planIndex) {
             let keyCondition = "";
             let filterCondition;
             if (node.hasOwnProperty('key')) {
-              keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
+              keyCondition = `{ ${value('_key')} : ${variable(JSON.stringify(node.key))} } `;
               indexRef = `${variable(JSON.stringify(node.key))} `;
-              filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
+              filterCondition = `${variable('doc')}.${attribute('_key')} == ${variable(JSON.stringify(node.key))}`;
             } else if (node.hasOwnProperty('inVariable')) {
               keyCondition = `${variableName(node.inVariable)} `;
               indexRef = `${variableName(node.inVariable)}`;
@@ -1843,9 +1932,9 @@ function processQuery(query, explain, planIndex) {
             let keyCondition = "";
             let filterCondition;
             if (node.hasOwnProperty('key')) {
-              keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
+              keyCondition = `{ ${value('_key')} : ${variable(JSON.stringify(node.key))} } `;
               indexRef = `${variable(JSON.stringify(node.key))}`;
-              filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
+              filterCondition = `${variable('doc')}.${attribute('_key')} == ${variable(JSON.stringify(node.key))}`;
             } else if (node.hasOwnProperty('inVariable')) {
               keyCondition = `${variableName(node.inVariable)} `;
               indexRef = `${variableName(node.inVariable)}`;
@@ -1872,9 +1961,9 @@ function processQuery(query, explain, planIndex) {
             let keyCondition;
             let filterCondition;
             if (node.hasOwnProperty('key')) {
-              keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
+              keyCondition = `{ ${value('_key')} : ${variable(JSON.stringify(node.key))} } `;
               indexRef = `${variable(JSON.stringify(node.key))}`;
-              filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
+              filterCondition = `${variable('doc')}.${attribute('_key')} == ${variable(JSON.stringify(node.key))}`;
             } else if (node.hasOwnProperty('inVariable')) {
               keyCondition = `${variableName(node.inVariable)} `;
               indexRef = `${variableName(node.inVariable)}`;
@@ -1921,6 +2010,9 @@ function processQuery(query, explain, planIndex) {
 
       case 'MaterializeNode':
         return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
+      case 'OffsetMaterializeNode':
+        return keyword('LET ') + variableName(node.outVariable) + ' = ' +
+               func('OFFSET_INFO') + '(' + variableName(node.viewVariable) + ', ' + buildExpression(node.options) + ')';
       case 'MutexNode':
         return keyword('MUTEX') + '   ' + annotation('/* end async execution */');
       case 'AsyncNode':
@@ -1934,7 +2026,12 @@ function processQuery(query, explain, planIndex) {
         if (node.hasOwnProperty('aggregates') && node.aggregates.length > 0) {
           window += keyword('AGGREGATE') + ' ' +
             node.aggregates.map(function (node) {
-              return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + variableName(node.inVariable) + ')';
+              let aggregateString = variableName(node.outVariable) + ' = ' + func(node.type) + '(';
+              if (node.inVariable !== undefined) {
+                aggregateString += variableName(node.inVariable);
+              }
+              aggregateString += ')';
+              return aggregateString;
             }).join(', ');
         }
         return window;
@@ -1971,7 +2068,6 @@ function processQuery(query, explain, planIndex) {
     if (['EnumerateCollectionNode',
       'EnumerateListNode',
       'EnumerateViewNode',
-      'IndexRangeNode',
       'IndexNode',
       'TraversalNode',
       'SubqueryStartNode',
@@ -2030,6 +2126,9 @@ function processQuery(query, explain, planIndex) {
       if (node.items === undefined) {
         node.items = 'n/a';
       }
+      if (node.filtered === undefined) {
+        node.filtered = 'n/a';
+      }
       let runtime = node.runtime;
       if (runtime === undefined) {
         runtime = 'n/a';
@@ -2039,6 +2138,7 @@ function processQuery(query, explain, planIndex) {
 
       line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
         pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
+        pad(1 + maxFilteredLen - String(node.filtered).length) + value(node.filtered) + '   ' +
         pad(1 + maxRuntimeLen - runtime.length) + value(runtime) + '   ' +
         indent(level, node.type === 'SingletonNode') + label(node) + callstackSplit(node);
     } else {
@@ -2070,6 +2170,7 @@ function processQuery(query, explain, planIndex) {
   if (profileMode) {
     line += pad(1 + maxCallsLen - String('Calls').length) + header('Calls') + '   ' +
       pad(1 + maxItemsLen - String('Items').length) + header('Items') + '   ' +
+      pad(1 + maxFilteredLen - String('Filtered').length) + header('Filtered') + '   ' +
       pad(1 + maxRuntimeLen - String('Runtime [s]').length) + header('Runtime [s]') + '   ' +
       header('Comment');
   } else {
@@ -2103,27 +2204,29 @@ function processQuery(query, explain, planIndex) {
 
   printRules(plan.rules, explain.stats);
   printModificationFlags(modificationFlags);
-  printWarnings(explain.warnings);
   if (profileMode) {
     printStats(explain.stats);
     printProfile(explain.profile);
   }
+  printWarnings(explain.warnings);
 }
 
 /* the exposed explain function */
 function explain(data, options, shouldPrint) {
   'use strict';
+  // we need to clone here because options are modified later
   if (typeof data === 'string') {
-    data = { query: data, options: options };
+    data = { query: data, options: _.clone(options) };
   }
   if (!(data instanceof Object)) {
     throw 'ArangoStatement needs initial data';
   }
 
   if (options === undefined) {
-    options = data.options;
+    options = _.clone(data.options);
   }
   options = options || {};
+  options.explainInternals = false;
   options.verbosePlans = true;
   setColors(options.colors === undefined ? true : options.colors);
 
@@ -2885,6 +2988,7 @@ function explainRegisters(data, options, shouldPrint) {
   }
   options = options || {};
   options.verbosePlans = true;
+  options.explainInternals = true;
   options.explainRegisters = true;
   setColors(options.colors === undefined ? true : options.colors);
 

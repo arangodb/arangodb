@@ -42,9 +42,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminServerHandler::RestAdminServerHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestAdminServerHandler::RestAdminServerHandler(ArangodServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAdminServerHandler::execute() {
@@ -164,6 +164,7 @@ void RestAdminServerHandler::handleAvailability() {
       }
       break;
     }
+    case ServerState::Mode::STARTUP:
     case ServerState::Mode::MAINTENANCE:
     case ServerState::Mode::REDIRECT:
     case ServerState::Mode::TRYAGAIN:

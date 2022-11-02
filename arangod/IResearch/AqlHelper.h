@@ -29,6 +29,7 @@
 #include "Aql/SortCondition.h"
 #include "VelocyPackHelper.h"
 #include "IResearch/IResearchFilterOptimization.h"
+#include "IResearch/IResearchInvertedIndexMeta.h"
 
 #include "search/sort.hpp"
 #include "utils/noncopyable.hpp"
@@ -59,6 +60,9 @@ class Methods;  // forward declaration
 }  // namespace transaction
 
 namespace iresearch {
+
+struct IResearchInvertedIndexMeta;
+struct QueryContext;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @returns true if both nodes are equal, false otherwise
@@ -232,21 +236,7 @@ struct AqlValueTraits {
         return SCOPED_VALUE_TYPE_INVALID;
     }
   }
-};  // AqlValueTraits
-
-////////////////////////////////////////////////////////////////////////////////
-/// @struct QueryContext
-////////////////////////////////////////////////////////////////////////////////
-struct QueryContext {
-  transaction::Methods* trx;
-  aql::ExecutionPlan const* plan;
-  aql::Ast* ast;
-  aql::ExpressionContext* ctx;
-  irs::index_reader const* index;
-  aql::Variable const* ref;
-  /// @brief allow optimize away/modify some conditions during filter building
-  FilterOptimization filterOptimization{FilterOptimization::MAX};
-};  // QueryContext
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class ScopedAqlValue
@@ -256,7 +246,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
  public:
   static aql::AstNode const INVALID_NODE;
 
-  static irs::string_ref const& typeString(ScopedValueType type) noexcept;
+  static irs::string_ref typeString(ScopedValueType type) noexcept;
 
   explicit ScopedAqlValue(aql::AstNode const& node = INVALID_NODE) noexcept {
     reset(node);
@@ -286,6 +276,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
   bool isArray() const noexcept { return _type == SCOPED_VALUE_TYPE_ARRAY; }
   bool isDouble() const noexcept { return _type == SCOPED_VALUE_TYPE_DOUBLE; }
   bool isString() const noexcept { return _type == SCOPED_VALUE_TYPE_STRING; }
+  bool isRange() const noexcept { return _type == SCOPED_VALUE_TYPE_RANGE; }
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief executes expression specified in the given `node`
   /// @returns true if expression has been executed, false otherwise
@@ -421,11 +412,30 @@ bool visitAttributeAccess(aql::AstNode const*& head, aql::AstNode const* node,
         auto* root = itr->getMemberUnchecked(1);
         auto* var = itr->getMemberUnchecked(0);
 
-        return ref && aql::NODE_TYPE_ITERATOR == itr->type &&
-               aql::NODE_TYPE_REFERENCE == ref->type && var &&
-               aql::NODE_TYPE_VARIABLE == var->type &&
-               visitAttributeAccess(head, root, visitor)  // 1st visit root
-               && visitor.expansion(*node);  // 2nd visit current node
+        if (!ref) {
+          return false;  // malformed node
+        }
+
+        if (aql::NODE_TYPE_REFERENCE == ref->type) {
+          // b.a[*]
+          return aql::NODE_TYPE_ITERATOR == itr->type &&
+                 aql::NODE_TYPE_REFERENCE == ref->type && var &&
+                 aql::NODE_TYPE_VARIABLE == var->type &&
+                 visitAttributeAccess(head, root, visitor)  // 1st visit root
+                 && visitor.expansion(*node);  // 2nd visit current node
+        } else if (aql::NODE_TYPE_ATTRIBUTE_ACCESS == ref->type) {
+          // tail after the expansion b.a[*].c
+          aql::AstNode const* tailHead{nullptr};
+          return aql::NODE_TYPE_ITERATOR == itr->type && var &&
+                 aql::NODE_TYPE_VARIABLE == var->type &&
+                 visitAttributeAccess(head, root, visitor) &&  // 1st visit root
+                 visitor.expansion(*node) &&  // 2nd visit current node
+                 visitAttributeAccess(tailHead, ref,
+                                      visitor);  // 3rd visit the tail
+        } else {                                 // unexpected expansion form
+          TRI_ASSERT(false);
+          return false;
+        }
       }
     }
     case aql::NODE_TYPE_REFERENCE: {
@@ -502,7 +512,7 @@ bool normalizeGeoDistanceCmpNode(aql::AstNode const& in,
 ///          false otherwise
 ////////////////////////////////////////////////////////////////////////////////
 bool normalizeCmpNode(aql::AstNode const& in, aql::Variable const& ref,
-                      NormalizedCmpNode& out);
+                      bool allowExpansion, NormalizedCmpNode& out);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks 2 nodes of type NODE_TYPE_ATTRIBUTE_ACCESS for equality
@@ -515,8 +525,46 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
 /// @brief generates field name from the specified 'node'
 /// @returns true on success, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
-bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
-                             QueryContext const& ctx);
+bool nameFromAttributeAccess(
+    std::string& name, aql::AstNode const& node, QueryContext const& ctx,
+    bool filter, std::span<InvertedIndexField const>* subFields = nullptr);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief visit name produced by nameFromAttributeAccess
+/// @returns true on success, false otherwise
+////////////////////////////////////////////////////////////////////////////////
+template<typename Visitor>
+bool visitName(std::string_view name, Visitor&& visitor) {
+  if (name.empty()) {
+    return true;
+  }
+
+  auto begin = std::begin(name);
+  auto prev = begin;
+
+  for (auto end = std::end(name); begin != end; ++begin) {
+    if (*begin == NESTING_LEVEL_DELIMITER ||
+        *begin == NESTING_LIST_OFFSET_PREFIX) {
+      if (prev != begin) {
+        std::forward<Visitor>(visitor)(std::string_view{prev, begin});
+      }
+      prev = begin + 1;
+    } else if (*begin == NESTING_LIST_OFFSET_SUFFIX) {
+      size_t idx;
+      if (!absl::SimpleAtoi({prev, begin}, &idx)) {
+        return false;
+      }
+      std::forward<Visitor>(visitor)(idx);
+      prev = begin + 1;
+    }
+  }
+
+  if (prev != begin) {
+    std::forward<Visitor>(visitor)(std::string_view{prev, begin});
+  }
+
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether the specified node is correct attribute access node,
@@ -524,7 +572,12 @@ bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
 /// @returns the specified node on success, nullptr otherwise
 ////////////////////////////////////////////////////////////////////////////////
 aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
-                                         aql::Variable const& ref) noexcept;
+                                         aql::Variable const& ref,
+                                         bool allowExpansion) noexcept;
+
+// checks a specified args to be deterministic
+// and retuns reference to a loop variable
+aql::Variable const* getSearchFuncRef(aql::AstNode const* args) noexcept;
 
 }  // namespace iresearch
 }  // namespace arangodb

@@ -10,9 +10,7 @@ matrix:
       script:
         - make   # test library build
         - make clean
-        - make -C tests test-lz4 MOREFLAGS='-Werror -Wconversion -Wno-sign-conversion' | tee # test scenario where `stdout` is not the console
-        - make clean
-        - CFLAGS=-m32 make -C tests test-lz4-contentSize
+        - make test MOREFLAGS='-Werror -Wconversion -Wno-sign-conversion' | tee # test scenario where `stdout` is not the console
 
     # Container-based 12.04 LTS Server Edition 64 bit (doesn't support 32-bit includes)
     - name: (Precise) benchmark test
@@ -33,9 +31,15 @@ matrix:
       script:
         - CC=clang MOREFLAGS=-fsanitize=address make -C tests test-frametest test-fuzzer
 
-    - name: Custom LZ4_DISTANCE_MAX
+    - name: Custom LZ4_DISTANCE_MAX ; lz4-wlib (CLI linked to dynamic library); LZ4_USER_MEMORY_FUNCTIONS
       script:
         - MOREFLAGS=-DLZ4_DISTANCE_MAX=8000 make check
+        - make clean
+        - make -C programs lz4-wlib
+        - make clean
+        - make -C tests fullbench-wmalloc  # test LZ4_USER_MEMORY_FUNCTIONS
+        - make clean
+        - CC="c++ -Wno-deprecated" make -C tests fullbench-wmalloc  # stricter function signature check
 
     - name: (Precise) g++ and clang CMake test
       dist: precise
@@ -47,18 +51,15 @@ matrix:
         - make clean travis-install
         - make clean clangtest
 
-
-    # 14.04 LTS Server Edition 64 bit
-    - name: (Trusty) i386 gcc test
-      dist: trusty
+    - name: x32 compatibility test
       addons:
         apt:
           packages:
-            - libc6-dev-i386
             - gcc-multilib
       script:
         - make -C tests test MOREFLAGS=-mx32
 
+    # 14.04 LTS Server Edition 64 bit
     # presume clang >= v3.9.0
     - name: (Trusty) USan test
       dist: trusty
@@ -121,6 +122,21 @@ matrix:
       script:
         - make platformTest CC=arm-linux-gnueabi-gcc QEMU_SYS=qemu-arm-static
         - make platformTest CC=aarch64-linux-gnu-gcc QEMU_SYS=qemu-aarch64-static
+
+    - name: aarch64 real-hw tests
+      arch: arm64
+      script:
+        - make test
+
+    - name: PPC64LE real-hw tests
+      arch: ppc64le
+      script:
+        - make test
+
+    - name: IBM s390x real-hw tests
+      arch: s390x
+      script:
+        - make test
 
     - name: (Xenial) gcc-5 compilation
       dist: xenial

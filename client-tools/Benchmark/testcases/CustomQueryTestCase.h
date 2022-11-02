@@ -27,7 +27,7 @@
 
 #include "Basics/ScopeGuard.h"
 #include "Basics/files.h"
-#include "Basics/StringBuffer.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
 #include <string>

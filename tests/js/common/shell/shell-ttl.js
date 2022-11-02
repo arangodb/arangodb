@@ -279,6 +279,30 @@ function TtlSuite () {
       }
     },
     
+    testCreateIndexAttributes : function () {
+      let c = db._create(cn, { numberOfShards: 2 });
+      let idx = c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 10 });
+      assertTrue(idx.isNewlyCreated);
+      assertEqual("ttl", idx.type);
+      assertEqual(["dateCreated"], idx.fields);
+      assertEqual(10, idx.expireAfter);
+      assertFalse(idx.estimates);
+
+      // fetch index data yet again via API
+      idx = c.indexes()[1];
+      assertEqual("ttl", idx.type);
+      assertEqual(["dateCreated"], idx.fields);
+      assertEqual(10, idx.expireAfter);
+      assertFalse(idx.estimates);
+    },
+    
+    testCreateIndexWithEstimates : function () {
+      let c = db._create(cn, { numberOfShards: 2 });
+      let idx = c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 10, estimates: true });
+      assertTrue(idx.isNewlyCreated);
+      assertFalse(idx.estimates);
+    },
+    
     testCreateIndexWithInvalidExpireAfter : function () {
       const values = [ 
         null,

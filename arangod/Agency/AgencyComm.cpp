@@ -30,7 +30,6 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -44,6 +43,7 @@
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralRequest.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
 #include "RestServer/ServerFeature.h"
@@ -56,7 +56,6 @@
 #include <thread>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -648,7 +647,7 @@ network::Timeout AgencyCommHelper::defaultTimeout() {
 
 std::string const AgencyComm::AGENCY_URL_PREFIX = "/_api/agency";
 
-AgencyComm::AgencyComm(application_features::ApplicationServer& server)
+AgencyComm::AgencyComm(ArangodServer& server)
     : _server(server),
       _agency_comm_request_time_ms(
           _server.getFeature<arangodb::ClusterFeature>()
@@ -1068,9 +1067,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
   return result;
 }
 
-application_features::ApplicationServer& AgencyComm::server() {
-  return _server;
-}
+ArangodServer& AgencyComm::server() { return _server; }
 
 bool AgencyComm::ensureStructureInitialized() {
   LOG_TOPIC("748e2", TRACE, Logger::AGENCYCOMM)
@@ -1347,6 +1344,10 @@ bool AgencyComm::tryInitializeStructure() {
           VPackObjectBuilder d2(&builder);
           builder.add("name", VPackValue("_system"));
           builder.add("id", VPackValue("1"));
+          builder.add("replicationVersion",
+                      arangodb::replication::versionToString(
+                          _server.getFeature<DatabaseFeature>()
+                              .defaultReplicationVersion()));
         }
       }
       builder.add("Lock", VPackValue("UNLOCKED"));
@@ -1452,7 +1453,6 @@ bool AgencyComm::shouldInitializeStructure() {
     auto result = getValues("Plan", 10.0);
 
     if (!result.successful()) {  // Not 200 - 299
-
       if (result.httpCode() == ResponseCode::UNAUTHORIZED) {
         // unauthorized
         LOG_TOPIC("32781", FATAL, Logger::STARTUP)

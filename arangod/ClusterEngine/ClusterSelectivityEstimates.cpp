@@ -30,33 +30,24 @@
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
 
-using namespace arangodb;
+namespace arangodb {
 
 ClusterSelectivityEstimates::ClusterSelectivityEstimates(
     LogicalCollection& collection)
-    : _collection(collection), _updating(false) {}
+    : _collection(collection) {}
 
 void ClusterSelectivityEstimates::flush() {
-  // wait until we ourselves are able to set the _updating flag
-  while (_updating.load(std::memory_order_relaxed) ||
-         _updating.exchange(true, std::memory_order_acquire)) {
-    std::this_thread::yield();
-  }
-
-  auto guard = scopeGuard(
-      [this]() noexcept { _updating.store(false, std::memory_order_release); });
-
+  std::lock_guard guard{_update};
   std::atomic_store(&_data, std::shared_ptr<InternalData>());
 }
 
-IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdating,
+IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdate,
                                              TransactionId tid) {
   auto data =
       std::atomic_load<ClusterSelectivityEstimates::InternalData>(&_data);
-
-  if (allowUpdating) {
+  std::unique_lock guard{_update, std::defer_lock};
+  if (allowUpdate) {
     double const now = TRI_microtime();
-
     bool useExpired = false;
     int tries = 0;
     do {
@@ -69,51 +60,38 @@ IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdating,
           return estimates;
         }
       }
-
-      // only one thread is allowed to fetch the estimates from the DB servers
-      // at any given time
-      if (_updating.load(std::memory_order_relaxed) ||
-          _updating.exchange(true, std::memory_order_acquire)) {
+      if (!guard.try_lock()) {
+        // only one thread is allowed to fetch the estimates from the DB servers
+        // at any given time
         useExpired = true;
       } else {
-        auto guard = scopeGuard([this]() noexcept {
-          _updating.store(false, std::memory_order_release);
-        });
-
-        // must fetch estimates from coordinator
-        IndexEstMap estimates;
-        Result res = selectivityEstimatesOnCoordinator(
-            _collection.vocbase().server().getFeature<ClusterFeature>(),
-            _collection.vocbase().name(), _collection.name(), estimates, tid);
-
-        if (res.ok()) {
-          // store the updated estimates and return them
+        IndexEstMap estimates;  // must fetch estimates from coordinator
+        if (selectivityEstimatesOnCoordinator(
+                _collection.vocbase().server().getFeature<ClusterFeature>(),
+                _collection.vocbase().name(), _collection.name(), estimates,
+                tid)
+                .ok()) {  // store the updated estimates and return them
           set(estimates);
           return estimates;
         }
+        guard.unlock();
       }
-
-      data =
-          std::atomic_load<ClusterSelectivityEstimates::InternalData>(&_data);
-    } while (++tries <= 3);
+      data = std::atomic_load<InternalData>(&_data);
+    } while (++tries <= 3);  // give up!
   }
 
-  // give up!
   if (data) {
-    // we have got some estimates before
-    return data->estimates;
+    return data->estimates;  // we have got some estimates before
   }
-  // return an empty map!
-  return IndexEstMap();
+  return {};  // return an empty map!
 }
 
-void ClusterSelectivityEstimates::set(IndexEstMap const& estimates) {
+void ClusterSelectivityEstimates::set(IndexEstMap estimates) {
   // push new selectivity values into indexes' cache
   auto indexes = _collection.getIndexes();
 
-  for (std::shared_ptr<Index>& idx : indexes) {
+  for (auto& idx : indexes) {
     auto it = estimates.find(std::to_string(idx->id().id()));
-
     if (it != estimates.end()) {
       idx->updateClusterSelectivityEstimate(it->second);
     }
@@ -126,7 +104,8 @@ void ClusterSelectivityEstimates::set(IndexEstMap const& estimates) {
   }
 
   // finally update the cache
-  std::atomic_store(&_data,
-                    std::make_shared<ClusterSelectivityEstimates::InternalData>(
-                        estimates, TRI_microtime() + ttl));
+  std::atomic_store(&_data, std::make_shared<InternalData>(
+                                std::move(estimates), TRI_microtime() + ttl));
 }
+
+}  // namespace arangodb

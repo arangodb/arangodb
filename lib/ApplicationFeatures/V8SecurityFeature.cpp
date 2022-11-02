@@ -34,8 +34,6 @@
 #include "ApplicationFeatures/V8SecurityFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
@@ -167,17 +165,6 @@ checkAllowDenyResult checkAllowAndDenyList(std::string const& value,
 }
 }  // namespace
 
-V8SecurityFeature::V8SecurityFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "V8Security"),
-      _hardenInternalModule(false),
-      _allowProcessControl(false),
-      _allowPortTesting(false) {
-  setOptional(false);
-  startsAfter<TempFeature>();
-  startsAfter<V8PlatformFeature>();
-}
-
 void V8SecurityFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("javascript", "JavaScript engine and execution");
@@ -189,7 +176,7 @@ void V8SecurityFeature::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30500);
 
   options
@@ -201,7 +188,7 @@ void V8SecurityFeature::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30500);
 
   options
@@ -313,7 +300,7 @@ void V8SecurityFeature::collectOptions(
 }
 
 void V8SecurityFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
+    std::shared_ptr<ProgramOptions> /*options*/) {
   // check if the regular expressions compile properly
 
   // startup options
@@ -427,11 +414,12 @@ bool V8SecurityFeature::isAllowedToControlProcesses(
   return _allowProcessControl && v8g->_securityContext.canControlProcesses();
 }
 
-bool V8SecurityFeature::isAllowedToTestPorts(v8::Isolate* isolate) const {
+bool V8SecurityFeature::isAllowedToTestPorts(v8::Isolate* /*isolate*/) const {
   return _allowPortTesting;
 }
 
-bool V8SecurityFeature::isInternalModuleHardened(v8::Isolate* isolate) const {
+bool V8SecurityFeature::isInternalModuleHardened(
+    v8::Isolate* /*isolate*/) const {
   return _hardenInternalModule;
 }
 
@@ -456,7 +444,7 @@ bool V8SecurityFeature::isAdminScriptContext(v8::Isolate* isolate) const {
 }
 
 bool V8SecurityFeature::shouldExposeStartupOption(
-    v8::Isolate* isolate, std::string const& name) const {
+    v8::Isolate* /*isolate*/, std::string const& name) const {
   return checkAllowAndDenyList(name, !_startupOptionsAllowList.empty(),
                                _startupOptionsAllowListRegex,
                                !_startupOptionsDenyList.empty(),
@@ -465,7 +453,7 @@ bool V8SecurityFeature::shouldExposeStartupOption(
 }
 
 bool V8SecurityFeature::shouldExposeEnvironmentVariable(
-    v8::Isolate* isolate, std::string const& name) const {
+    v8::Isolate* /*isolate*/, std::string const& name) const {
   return checkAllowAndDenyList(name, !_environmentVariablesAllowList.empty(),
                                _environmentVariablesAllowListRegex,
                                !_environmentVariablesDenyList.empty(),

@@ -329,6 +329,8 @@ struct LogDemultiplexerImplementation
                   << "demultiplexer received follower-resigned exception";
               that->resolveLeaderChange(std::current_exception());
             } catch (basics::Exception const& e) {
+              TRI_ASSERT(e.code() !=
+                         TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
               LOG_TOPIC("2e28d", FATAL, Logger::REPLICATION2)
                   << "demultiplexer received unexpected exception: "
                   << e.what();
@@ -376,12 +378,12 @@ struct LogMultiplexerImplementation
 
   template<typename StreamDescriptor,
            typename T = stream_descriptor_type_t<StreamDescriptor>>
-  auto insertInternal(T const& t) -> LogIndex {
+  auto insertInternalDeferred(T const& t)
+      -> std::pair<LogIndex, DeferredAction> {
     auto serialized = std::invoke([&] {
-      velocypack::UInt8Buffer buffer;
-      velocypack::Builder builder(buffer);
+      velocypack::Builder builder;
       MultiplexedValues::toVelocyPack<StreamDescriptor>(t, builder);
-      return buffer;
+      return LogPayload::createFromSlice(builder.slice());
     });
 
     // we have to lock before we insert, otherwise we could mess up the order
@@ -391,7 +393,7 @@ struct LogMultiplexerImplementation
           // First write to replicated log - note that insert could trigger a
           // waitFor to be resolved. Therefore, we should hold the lock.
           auto insertIndex = _interface->insert(
-              LogPayload(std::move(serialized)), false,
+              serialized, false,
               replicated_log::LogLeader::doNotTriggerAsyncReplication);
           TRI_ASSERT(insertIndex > self._lastIndex);
           self._lastIndex = insertIndex;
@@ -402,15 +404,30 @@ struct LogMultiplexerImplementation
           block.appendEntry(insertIndex, t);
           return std::make_pair(insertIndex, self.checkWaitFor());
         });
-    // TODO - HACK: because LogLeader::insert can resolve waitFor promises
-    //    we have a possible deadlock with triggerWaitForIndex callback.
-    //    This is circumvented by first inserting the entry but not triggering
-    //    replication immediately. We trigger it here instead.
-    _interface->triggerAsyncReplication();
 
     if (waitForIndex.has_value()) {
       triggerWaitForIndex(*waitForIndex);
     }
+
+    // TODO - HACK: because LogLeader::insert can
+    // resolve waitFor promises
+    // we have a possible deadlock with
+    // triggerWaitForIndex callback. This is
+    // circumvented by first inserting the entry but
+    // not triggering replication immediately. We
+    // trigger it here instead.
+    // Note that the MSVC STL has a #define interface... macro.
+    return std::make_pair(index,
+                          DeferredAction([interface_ = _interface]() noexcept {
+                            interface_->triggerAsyncReplication();
+                          }));
+  }
+
+  template<typename StreamDescriptor,
+           typename T = stream_descriptor_type_t<StreamDescriptor>>
+  auto insertInternal(T const& t) -> LogIndex {
+    auto [index, da] = insertInternalDeferred<StreamDescriptor>(t);
+    da.fire();
     return index;
   }
 

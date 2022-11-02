@@ -24,12 +24,19 @@
 #include "ServerDefaults.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 
-ServerDefaults::ServerDefaults(
-    application_features::ApplicationServer& server) {
+ServerDefaults::ServerDefaults(ArangodServer& server) {
   auto const& cl = server.getFeature<ClusterFeature>();
   writeConcern = cl.writeConcern();
   replicationFactor = cl.defaultReplicationFactor();
+}
+
+ServerDefaults::ServerDefaults(TRI_vocbase_t const& vocbase) {
+  auto const& cl = vocbase.server().getFeature<ClusterFeature>();
+  writeConcern = vocbase.writeConcern();
+  replicationFactor =
+      std::max(vocbase.replicationFactor(), cl.systemReplicationFactor());
 }

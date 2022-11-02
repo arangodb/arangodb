@@ -26,6 +26,8 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/CrashHandler.h"
 #include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
+#include "Basics/Thread.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -34,13 +36,6 @@
 using namespace arangodb::options;
 
 namespace arangodb {
-
-TempFeature::TempFeature(application_features::ApplicationServer& server,
-                         std::string const& appname)
-    : ApplicationFeature(server, "Temp"), _path(), _appname(appname) {
-  setOptional(false);
-  startsAfter<application_features::GreetingsFeaturePhase>();
-}
 
 void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("temp-path", "temp.path");
@@ -51,8 +46,12 @@ void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new StringParameter(&_path));
 }
 
-void TempFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void TempFeature::validateOptions(std::shared_ptr<ProgramOptions> /*options*/) {
   if (!_path.empty()) {
+    // replace $PID in basepath with current process id
+    _path = basics::StringUtils::replace(
+        _path, "$PID", std::to_string(Thread::currentProcessId()));
+
     basics::FileUtils::makePathAbsolute(_path);
   }
 }

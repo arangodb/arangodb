@@ -23,7 +23,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StaticStrings.h"
 #include "Basics/conversions.h"
@@ -71,7 +70,8 @@ static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> arg,
 
   // collection name / document key
   [[maybe_unused]] size_t split = 0;
-  if (KeyGenerator::validateId(*str, str.length(), extendedNames, split)) {
+  if (KeyGeneratorHelper::validateId(*str, str.length(), extendedNames,
+                                     split)) {
     collectionName = std::string(*str, split);
     auto const length = str.length() - split - 1;
     auto buffer = new char[length + 1];
@@ -82,7 +82,7 @@ static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> arg,
   }
 
   // document key only
-  if (KeyGenerator::validateKey(*str, str.length())) {
+  if (KeyGeneratorHelper::validateKey(*str, str.length())) {
     auto const length = str.length();
     auto buffer = new char[length + 1];
     memcpy(buffer, *str, length);
@@ -174,8 +174,8 @@ bool ExtractDocumentHandle(v8::Isolate* isolate,
       return true;
     }
     v8::String::Utf8Value str(isolate, revObj);
-    bool isOld;
-    RevisionId rid = RevisionId::fromString(*str, str.length(), isOld, false);
+    RevisionId rid =
+        RevisionId::fromString({*str, static_cast<size_t>(str.length())});
 
     if (rid.empty()) {
       return false;

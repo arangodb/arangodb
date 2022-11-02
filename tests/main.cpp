@@ -45,8 +45,7 @@
 template<class Function>
 class TestThread : public arangodb::Thread {
  public:
-  TestThread(arangodb::application_features::ApplicationServer& server,
-             Function&& f, int i, char* c[])
+  TestThread(arangodb::ArangodServer& server, Function&& f, int i, char* c[])
       : arangodb::Thread(server, "gtest"), _f(f), _i(i), _c(c), _done(false) {
     run();
     CONDITION_LOCKER(guard, _wait);
@@ -81,6 +80,10 @@ char const* ARGV0 = "";
 
 int main(int argc, char* argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
+  // our gtest version is old and doesn't have the GTEST_FLAG_SET macro yet,
+  // thus this funny workaround for now.
+  // GTEST_FLAG_SET(death_test_style, "threadsafe");
+  (void)(::testing::GTEST_FLAG(death_test_style) = "threadsafe");
 
   TRI_GET_ARGV(argc, argv);
   int subargc = 0;
@@ -115,7 +118,7 @@ int main(int argc, char* argv[]) {
 
   ARGV0 = subargv[0];
 
-  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+  arangodb::ArangodServer server(nullptr, nullptr);
   arangodb::ServerState state(server);
   state.setRole(arangodb::ServerState::ROLE_SINGLE);
   arangodb::ShellColorsFeature sc(server);

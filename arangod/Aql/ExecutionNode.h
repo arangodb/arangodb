@@ -56,9 +56,7 @@
 
 #include <memory>
 #include <vector>
-#include <set>
 #include <unordered_map>
-#include <unordered_set>
 
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/CostEstimate.h"
@@ -156,7 +154,7 @@ class ExecutionNode {
     TRAVERSAL = 22,
     INDEX = 23,
     SHORTEST_PATH = 24,
-    K_SHORTEST_PATHS = 25,
+    ENUMERATE_PATHS = 25,
     REMOTESINGLE = 26,
     ENUMERATE_IRESEARCH_VIEW = 27,
     DISTRIBUTE_CONSUMER = 28,
@@ -166,6 +164,7 @@ class ExecutionNode {
     ASYNC = 32,
     MUTEX = 33,
     WINDOW = 34,
+    OFFSET_INFO_MATERIALIZE = 35,
 
     MAX_NODE_TYPE_VALUE
   };
@@ -183,7 +182,6 @@ class ExecutionNode {
 
  public:
   /// @brief constructor using an id
-  ExecutionNode(ExecutionPlan* plan, size_t id) { TRI_ASSERT(false); }
   ExecutionNode(ExecutionPlan* plan, ExecutionNodeId id);
 
   /// @brief constructor using a VPackSlice
@@ -192,7 +190,6 @@ class ExecutionNode {
   /// @brief destructor, free dependencies
   virtual ~ExecutionNode() = default;
 
- public:
   /// @brief factory from JSON
   static ExecutionNode* fromVPackFactory(
       ExecutionPlan* plan, arangodb::velocypack::Slice const& slice);
@@ -363,6 +360,8 @@ class ExecutionNode {
 
   bool walkSubqueriesFirst(WalkerWorkerBase<ExecutionNode>& worker);
 
+  bool flatWalk(WalkerWorkerBase<ExecutionNode>& worker, bool onlyFlattenAsync);
+
   /// serialize parents of each node (used in the explainer)
   static constexpr unsigned SERIALIZE_PARENTS = 1;
   /// include estimate cost  (used in the explainer)
@@ -466,7 +465,7 @@ class ExecutionNode {
   RegIdSet const& getRegsToClear() const;
 
   /// @brief check if a variable will be used later
-  bool isVarUsedLater(Variable const* variable) const;
+  bool isVarUsedLater(Variable const* variable) const noexcept;
 
   /// @brief whether or not the node is in an inner loop
   bool isInInnerLoop() const;
@@ -591,8 +590,11 @@ class ExecutionNode {
   /// @brief used as "type traits" for ExecutionNodes and derived classes
   static constexpr bool IsExecutionNode = true;
 
+  enum FlattenType { NONE, INLINE_ASYNC, INLINE_ALL };
+
  private:
-  bool doWalk(WalkerWorkerBase<ExecutionNode>& worker, bool subQueryFirst);
+  bool doWalk(WalkerWorkerBase<ExecutionNode>& worker, bool subQueryFirst,
+              FlattenType flattenType);
 };
 
 /// @brief class SingletonNode
@@ -660,9 +662,17 @@ class EnumerateCollectionNode : public ExecutionNode,
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
+  /// @brief replaces variables in the internals of the execution node
+  /// replacements are { old variable id => new variable }
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
+                            replacements) override;
+
   /// @brief the cost of an enumerate collection node is a multiple of the cost
   /// of its unique dependency
   CostEstimate estimateCost() const override final;
+
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
@@ -1150,8 +1160,10 @@ class MaterializeNode : public ExecutionNode {
   std::vector<Variable const*> getVariablesSetHere() const override final;
 
   /// @brief return out variable
-  arangodb::aql::Variable const& outVariable() const noexcept {
-    return *_outVariable;
+  aql::Variable const& outVariable() const noexcept { return *_outVariable; }
+
+  aql::Variable const& docIdVariable() const noexcept {
+    return *_inNonMaterializedDocId;
   }
 
  protected:

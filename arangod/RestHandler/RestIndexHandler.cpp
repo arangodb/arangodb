@@ -41,24 +41,14 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
-namespace {
-bool startsWith(std::string const& str, std::string const& prefix) {
-  if (str.size() < prefix.size()) {
-    return false;
-  }
-  return str.substr(0, prefix.size()) == prefix;
-}
-}  // namespace
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestIndexHandler::RestIndexHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestIndexHandler::RestIndexHandler(ArangodServer& server,
+                                   GeneralRequest* request,
+                                   GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestIndexHandler::~RestIndexHandler() {
@@ -119,13 +109,7 @@ RestStatus RestIndexHandler::continueExecute() {
 void RestIndexHandler::shutdownExecute(bool isFinalized) noexcept {
   auto sg = arangodb::scopeGuard(
       [&]() noexcept { RestVocbaseBaseHandler::shutdownExecute(isFinalized); });
-
-  // request not done yet
-  if (!isFinalized) {
-    return;
-  }
-
-  if (_request->requestType() == rest::RequestType::POST) {
+  if (isFinalized && _request->requestType() == rest::RequestType::POST) {
     std::unique_lock<std::mutex> locker(_mutex);
     shutdownBackgroundThread();
   }
@@ -440,7 +424,7 @@ RestStatus RestIndexHandler::dropIndex() {
 
   std::string const& iid = suffixes[1];
   VPackBuilder idBuilder;
-  if (::startsWith(iid, cName + TRI_INDEX_HANDLE_SEPARATOR_CHR)) {
+  if (iid.starts_with(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR)) {
     idBuilder.add(VPackValue(iid));
   } else {
     idBuilder.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));

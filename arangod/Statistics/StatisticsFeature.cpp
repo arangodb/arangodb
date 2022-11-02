@@ -24,7 +24,6 @@
 #include "StatisticsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CpuUsageFeature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Basics/NumberOfCores.h"
@@ -34,13 +33,16 @@
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/AqlFeaturePhase.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Network/NetworkFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/CpuUsageFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Metrics/Builder.h"
 #include "Metrics/CounterBuilder.h"
@@ -100,14 +102,6 @@ std::string const statsSamplesQuery =
     "s.http.requestsOptionsPerSecond, patchesPerSecond: "
     "s.http.requestsPatchPerSecond } }";
 
-std::string_view metricType(std::string_view type, bool v2) {
-  auto pos = type.find('/');
-  if (pos == std::string::npos) {
-    return type;
-  }
-  return v2 ? std::string_view(type.data() + pos + 1, type.size() - pos - 1)
-            : std::string_view(type.data(), pos);
-}
 }  // namespace
 
 namespace arangodb {
@@ -261,12 +255,12 @@ auto const statStrings = std::map<std::string_view,
      {"arangodb_client_connection_statistics_bytes_sent", "histogram",
       "Bytes sent for a request"}},
     {"minorPageFaults",
-     {"arangodb_process_statistics_minor_page_faults", "gauge/counter",
+     {"arangodb_process_statistics_minor_page_faults_total", "counter",
       "The number of minor faults the process has made which have not required "
       "loading a memory page from disk. This figure is not reported on "
       "Windows"}},
     {"majorPageFaults",
-     {"arangodb_process_statistics_major_page_faults", "gauge/counter",
+     {"arangodb_process_statistics_major_page_faults_total", "counter",
       "On Windows, this figure contains the total number of page faults. On "
       "other system, this figure contains the number of major faults the "
       "process has made which have required loading a memory page from disk"}},
@@ -349,43 +343,43 @@ auto const statStrings = std::map<std::string_view,
      {"arangodb_client_connection_statistics_io_time_sum", "gauge",
       "IO time needed to answer a request"}},
     {"httpReqsTotal",
-     {"arangodb_http_request_statistics_total_requests", "gauge/counter",
+     {"arangodb_http_request_statistics_total_requests_total", "counter",
       "Total number of HTTP requests"}},
     {"httpReqsSuperuser",
-     {"arangodb_http_request_statistics_superuser_requests", "gauge/counter",
+     {"arangodb_http_request_statistics_superuser_requests_total", "counter",
       "Total number of HTTP requests executed by superuser/JWT"}},
     {"httpReqsUser",
-     {"arangodb_http_request_statistics_user_requests", "gauge/counter",
+     {"arangodb_http_request_statistics_user_requests_total", "counter",
       "Total number of HTTP requests executed by clients"}},
     {"httpReqsAsync",
-     {"arangodb_http_request_statistics_async_requests", "gauge/counter",
+     {"arangodb_http_request_statistics_async_requests_total", "counter",
       "Number of asynchronously executed HTTP requests"}},
     {"httpReqsDelete",
-     {"arangodb_http_request_statistics_http_delete_requests", "gauge/counter",
+     {"arangodb_http_request_statistics_http_delete_requests_total", "counter",
       "Number of HTTP DELETE requests"}},
     {"httpReqsGet",
-     {"arangodb_http_request_statistics_http_get_requests", "gauge/counter",
+     {"arangodb_http_request_statistics_http_get_requests_total", "counter",
       "Number of HTTP GET requests"}},
     {"httpReqsHead",
-     {"arangodb_http_request_statistics_http_head_requests", "gauge/counter",
+     {"arangodb_http_request_statistics_http_head_requests_total", "counter",
       "Number of HTTP HEAD requests"}},
     {"httpReqsOptions",
-     {"arangodb_http_request_statistics_http_options_requests", "gauge/counter",
+     {"arangodb_http_request_statistics_http_options_requests_total", "counter",
       "Number of HTTP OPTIONS requests"}},
     {"httpReqsPatch",
-     {"arangodb_http_request_statistics_http_patch_requests", "gauge/counter",
+     {"arangodb_http_request_statistics_http_patch_requests_total", "counter",
       "Number of HTTP PATCH requests"}},
     {"httpReqsPost",
-     {"arangodb_http_request_statistics_http_post_requests", "gauge/counter",
+     {"arangodb_http_request_statistics_http_post_requests_total", "counter",
       "Number of HTTP POST requests"}},
     {"httpReqsPut",
-     {"arangodb_http_request_statistics_http_put_requests", "gauge/counter",
+     {"arangodb_http_request_statistics_http_put_requests_total", "counter",
       "Number of HTTP PUT requests"}},
     {"httpReqsOther",
-     {"arangodb_http_request_statistics_other_http_requests", "gauge/counter",
+     {"arangodb_http_request_statistics_other_http_requests_total", "counter",
       "Number of other HTTP requests"}},
     {"uptime",
-     {"arangodb_server_statistics_server_uptime", "gauge/counter",
+     {"arangodb_server_statistics_server_uptime_total", "counter",
       "Number of seconds elapsed since server start"}},
     {"physicalSize",
      {"arangodb_server_statistics_physical_memory", "gauge",
@@ -540,43 +534,44 @@ RequestFigures UserRequestFigures;
 // --SECTION--                                                  StatisticsThread
 // -----------------------------------------------------------------------------
 
-class StatisticsThread final : public Thread {
+class StatisticsThread final : public ServerThread<ArangodServer> {
  public:
-  explicit StatisticsThread(ApplicationServer& server)
-      : Thread(server, "Statistics") {}
+  explicit StatisticsThread(Server& server)
+      : ServerThread<ArangodServer>(server, "Statistics") {}
   ~StatisticsThread() { shutdown(); }
 
  public:
   void run() override {
-    auto& databaseFeature = server().getFeature<arangodb::DatabaseFeature>();
-    if (databaseFeature.upgrade()) {
-      // don't start the thread when we are running an upgrade
-      return;
-    }
+    constexpr uint64_t const kMinIdleSleepTime = 100;
+    constexpr uint64_t const kMaxIdleSleepTime = 250;
 
-    uint64_t const MAX_SLEEP_TIME = 250;
-
-    uint64_t sleepTime = 100;
+    uint64_t sleepTime = kMinIdleSleepTime;
     int nothingHappened = 0;
 
     while (!isStopping()) {
-      size_t count = RequestStatistics::processAll();
+      size_t count = 0;
+      try {
+        count = RequestStatistics::processAll();
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("82524", WARN, Logger::STATISTICS)
+            << "caught exception during request statistics processing: "
+            << ex.what();
+      }
 
       if (count == 0) {
+        // nothing needed to be processed
         if (++nothingHappened == 10 * 30) {
           // increase sleep time every 30 seconds
           nothingHappened = 0;
-          sleepTime += 50;
-
-          if (sleepTime > MAX_SLEEP_TIME) {
-            sleepTime = MAX_SLEEP_TIME;
-          }
+          sleepTime = std::min(sleepTime + 50, kMaxIdleSleepTime);
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
 
       } else {
+        // something needed to be processed
         nothingHappened = 0;
+        sleepTime = kMinIdleSleepTime;
 
         if (count < 10) {
           std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -592,9 +587,8 @@ class StatisticsThread final : public Thread {
 // --SECTION--                                                 StatisticsFeature
 // -----------------------------------------------------------------------------
 
-StatisticsFeature::StatisticsFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Statistics"),
+StatisticsFeature::StatisticsFeature(Server& server)
+    : ArangodFeature{server, *this},
       _statistics(true),
       _statisticsHistory(true),
       _statisticsHistoryTouched(false),
@@ -602,6 +596,7 @@ StatisticsFeature::StatisticsFeature(
       _descriptions(server) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
+  startsAfter<NetworkFeature>();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool foundError = false;
@@ -611,25 +606,21 @@ StatisticsFeature::StatisticsFeature(
       if (it.second != nullptr) {
         auto const& builder = *it.second;
         auto const& stat = statIt->second;
-        std::string statName(stat[0]);
-        auto const& statType = metricType(stat[1], true);
-        if (statType == "counter") {
-          statName += "_total";
-        }
-        [[maybe_unused]] auto const& statHelp = stat[2];
-        if (builder.name() != statName) {
+        auto const name = stat[0];
+        auto const type = stat[1];
+        if (builder.name() != name) {
           foundError = true;
           LOG_TOPIC("f66dd", ERR, Logger::STATISTICS)
               << "Statistic '" << it.first << "' has mismatching names: '"
-              << builder.name() << "' in statBuilder but '" << statName
+              << builder.name() << "' in statBuilder but '" << name
               << "' in statStrings";
         }
-        if (builder.type() != statType) {
+        if (builder.type() != type) {
           foundError = true;
           LOG_TOPIC("9fe22", ERR, Logger::STATISTICS)
               << "Statistic '" << it.first
               << "' has mismatching types (for API v2): '" << builder.type()
-              << "' in statBuilder but '" << statType << "' in statStrings";
+              << "' in statBuilder but '" << type << "' in statStrings";
         }
       }
     } else {
@@ -653,8 +644,6 @@ StatisticsFeature::StatisticsFeature(
   }
 #endif
 }
-
-StatisticsFeature::~StatisticsFeature() = default;
 
 void StatisticsFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
@@ -719,12 +708,16 @@ void StatisticsFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  _statisticsThread = std::make_unique<StatisticsThread>(server());
+  // don't start the thread when we are running an upgrade
+  auto& databaseFeature = server().getFeature<arangodb::DatabaseFeature>();
+  if (!databaseFeature.upgrade()) {
+    _statisticsThread = std::make_unique<StatisticsThread>(server());
 
-  if (!_statisticsThread->start()) {
-    LOG_TOPIC("46b0c", FATAL, arangodb::Logger::STATISTICS)
-        << "could not start statistics thread";
-    FATAL_ERROR_EXIT();
+    if (!_statisticsThread->start()) {
+      LOG_TOPIC("46b0c", FATAL, arangodb::Logger::STATISTICS)
+          << "could not start statistics thread";
+      FATAL_ERROR_EXIT();
+    }
   }
 
   // force history disable on Agents
@@ -792,55 +785,43 @@ VPackBuilder StatisticsFeature::fillDistribution(
 
 void StatisticsFeature::appendHistogram(
     std::string& result, statistics::Distribution const& dist,
-    std::string const& label, std::initializer_list<std::string> const& les,
-    bool v2) {
-  using StringUtils::concatT;
-
+    std::string const& label, std::initializer_list<std::string> const& les) {
   VPackBuilder tmp = fillDistribution(dist);
   VPackSlice slc = tmp.slice();
   VPackSlice counts = slc.get("counts");
 
   auto const& stat = statStrings.at(label);
-  auto const& name = stat.at(0);
+  auto const name = stat[0];
+  auto const type = stat[1];
+  auto const help = stat[2];
 
-  result += concatT("\n# HELP ", name, " ", stat[2], "\n# TYPE ", name, " ",
-                    stat[1], "\n");
-
+  (result.append("# HELP ").append(name) += ' ').append(help) += '\n';
+  (result.append("# TYPE ").append(name) += ' ').append(type) += '\n';
   TRI_ASSERT(les.size() == counts.length());
   size_t i = 0;
   uint64_t sum = 0;
   for (auto const& le : les) {
-    uint64_t v = counts.at(i++).getNumber<uint64_t>();
-    sum += v;
-    v = v2 ? sum : v;
-    result += concatT(name, "_bucket{le=\"", le, "\"}", " ", v, "\n");
+    sum += counts.at(i++).getNumber<uint64_t>();
+    result.append(name).append("_bucket{le=\"").append(le).append("\"}");
+    result.append(std::to_string(sum)) += '\n';
   }
-  result += concatT(name, "_count ", sum, "\n");
-  if (v2) {
-    double v = slc.get("sum").getNumber<double>();
-    result += concatT(name, "_sum ", v, "\n");
-  }
+  result.append(name).append("_count{}").append(std::to_string(sum)) += '\n';
+  result.append(name).append("_sum{}").append(std::to_string(sum)) += '\n';
 }
 
 void StatisticsFeature::appendMetric(std::string& result,
                                      std::string const& val,
-                                     std::string const& label, bool v2) {
-  using StringUtils::concatT;
+                                     std::string const& label) {
   auto const& stat = statStrings.at(label);
-  auto name = std::string{stat.at(0)};
-  std::string_view type = metricType(stat[1], v2);
-  if (type == "counter") {  // Note that this only happens for v2==true
-    TRI_ASSERT(v2);
-    name += "_total";
-  }
-
-  result += concatT("\n# HELP ", name, " ", stat[2], "\n# TYPE ", name, " ");
-  result.append(type.data(), type.size());
-  result += concatT("\n", name, " ", val, "\n");
+  auto const name = stat[0];
+  auto const type = stat[1];
+  auto const help = stat[2];
+  (result.append("# HELP ").append(name) += ' ').append(help) += '\n';
+  (result.append("# TYPE ").append(name) += ' ').append(type) += '\n';
+  result.append(name).append("{}").append(val) += '\n';
 }
 
-void StatisticsFeature::toPrometheus(std::string& result, double const& now,
-                                     bool v2) {
+void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
   ProcessInfo info = TRI_ProcessInfoSelf();
   uint64_t rss = static_cast<uint64_t>(info._residentSize);
   double rssp = 0;
@@ -854,41 +835,38 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now,
       server().getFeature<metrics::MetricsFeature>().serverStatistics();
 
   // processStatistics()
-  appendMetric(result, std::to_string(info._minorPageFaults), "minorPageFaults",
-               v2);
-  appendMetric(result, std::to_string(info._majorPageFaults), "majorPageFaults",
-               v2);
+  appendMetric(result, std::to_string(info._minorPageFaults),
+               "minorPageFaults");
+  appendMetric(result, std::to_string(info._majorPageFaults),
+               "majorPageFaults");
   if (info._scClkTck != 0) {  // prevent division by zero
     appendMetric(result,
                  std::to_string(static_cast<double>(info._userTime) /
                                 static_cast<double>(info._scClkTck)),
-                 "userTime", v2);
+                 "userTime");
     appendMetric(result,
                  std::to_string(static_cast<double>(info._systemTime) /
                                 static_cast<double>(info._scClkTck)),
-                 "systemTime", v2);
+                 "systemTime");
   }
-  appendMetric(result, std::to_string(info._numberThreads), "numberOfThreads",
-               v2);
-  appendMetric(result, std::to_string(rss), "residentSize", v2);
-  appendMetric(result, std::to_string(rssp), "residentSizePercent", v2);
-  appendMetric(result, std::to_string(info._virtualSize), "virtualSize", v2);
+  appendMetric(result, std::to_string(info._numberThreads), "numberOfThreads");
+  appendMetric(result, std::to_string(rss), "residentSize");
+  appendMetric(result, std::to_string(rssp), "residentSizePercent");
+  appendMetric(result, std::to_string(info._virtualSize), "virtualSize");
   appendMetric(result, std::to_string(PhysicalMemory::getValue()),
-               "physicalSize", v2);
-  appendMetric(result, std::to_string(serverInfo.uptime()), "uptime", v2);
-  appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores", v2);
+               "physicalSize");
+  appendMetric(result, std::to_string(serverInfo.uptime()), "uptime");
+  appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores");
 
   CpuUsageFeature& cpuUsage = server().getFeature<CpuUsageFeature>();
   if (cpuUsage.isEnabled()) {
     auto snapshot = cpuUsage.snapshot();
-    appendMetric(result, std::to_string(snapshot.userPercent()), "userPercent",
-                 v2);
+    appendMetric(result, std::to_string(snapshot.userPercent()), "userPercent");
     appendMetric(result, std::to_string(snapshot.systemPercent()),
-                 "systemPercent", v2);
-    appendMetric(result, std::to_string(snapshot.idlePercent()), "idlePercent",
-                 v2);
+                 "systemPercent");
+    appendMetric(result, std::to_string(snapshot.idlePercent()), "idlePercent");
     appendMetric(result, std::to_string(snapshot.iowaitPercent()),
-                 "iowaitPercent", v2);
+                 "iowaitPercent");
   }
 
   if (isEnabled()) {
@@ -901,82 +879,78 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now,
 
     // _clientStatistics()
     appendMetric(result, std::to_string(connectionStats.httpConnections.get()),
-                 "clientHttpConnections", v2);
+                 "clientHttpConnections");
     appendHistogram(result, connectionStats.connectionTime, "connectionTime",
-                    {"0.01", "1.0", "60.0", "+Inf"}, v2);
+                    {"0.01", "1.0", "60.0", "+Inf"});
     appendHistogram(result, requestStats.totalTime, "totalTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                     "30.0", "+Inf"},
-                    v2);
+                     "30.0", "+Inf"});
     appendHistogram(result, requestStats.requestTime, "requestTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                     "30.0", "+Inf"},
-                    v2);
+                     "30.0", "+Inf"});
     appendHistogram(result, requestStats.queueTime, "queueTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                     "30.0", "+Inf"},
-                    v2);
+                     "30.0", "+Inf"});
     appendHistogram(result, requestStats.ioTime, "ioTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                     "30.0", "+Inf"},
-                    v2);
+                     "30.0", "+Inf"});
     appendHistogram(result, requestStats.bytesSent, "bytesSent",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, v2);
+                    {"250", "1000", "2000", "5000", "10000", "+Inf"});
     appendHistogram(result, requestStats.bytesReceived, "bytesReceived",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, v2);
+                    {"250", "1000", "2000", "5000", "10000", "+Inf"});
 
     // _httpStatistics()
     using rest::RequestType;
     appendMetric(result, std::to_string(connectionStats.asyncRequests.get()),
-                 "httpReqsAsync", v2);
+                 "httpReqsAsync");
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::DELETE_REQ].get()),
-        "httpReqsDelete", v2);
+        "httpReqsDelete");
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::GET].get()),
-        "httpReqsGet", v2);
+        "httpReqsGet");
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::HEAD].get()),
-        "httpReqsHead", v2);
+        "httpReqsHead");
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::OPTIONS].get()),
-        "httpReqsOptions", v2);
+        "httpReqsOptions");
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::PATCH].get()),
-        "httpReqsPatch", v2);
+        "httpReqsPatch");
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::POST].get()),
-        "httpReqsPost", v2);
+        "httpReqsPost");
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::PUT].get()),
-        "httpReqsPut", v2);
+        "httpReqsPut");
     appendMetric(
         result,
         std::to_string(
             connectionStats.methodRequests[(int)RequestType::ILLEGAL].get()),
-        "httpReqsOther", v2);
+        "httpReqsOther");
     appendMetric(result, std::to_string(connectionStats.totalRequests.get()),
-                 "httpReqsTotal", v2);
+                 "httpReqsTotal");
     appendMetric(result,
                  std::to_string(connectionStats.totalRequestsSuperuser.get()),
-                 "httpReqsSuperuser", v2);
+                 "httpReqsSuperuser");
     appendMetric(result,
                  std::to_string(connectionStats.totalRequestsUser.get()),
-                 "httpReqsUser", v2);
+                 "httpReqsUser");
   }
 
   V8DealerFeature::Statistics v8Counters{};
@@ -987,13 +961,12 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now,
     }
   }
   appendMetric(result, std::to_string(v8Counters.available),
-               "v8ContextAvailable", v2);
-  appendMetric(result, std::to_string(v8Counters.busy), "v8ContextBusy", v2);
-  appendMetric(result, std::to_string(v8Counters.dirty), "v8ContextDirty", v2);
-  appendMetric(result, std::to_string(v8Counters.free), "v8ContextFree", v2);
-  appendMetric(result, std::to_string(v8Counters.min), "v8ContextMin", v2);
-  appendMetric(result, std::to_string(v8Counters.max), "v8ContextMax", v2);
-  result += "\n";
+               "v8ContextAvailable");
+  appendMetric(result, std::to_string(v8Counters.busy), "v8ContextBusy");
+  appendMetric(result, std::to_string(v8Counters.dirty), "v8ContextDirty");
+  appendMetric(result, std::to_string(v8Counters.free), "v8ContextFree");
+  appendMetric(result, std::to_string(v8Counters.min), "v8ContextMin");
+  appendMetric(result, std::to_string(v8Counters.max), "v8ContextMax");
 }
 
 Result StatisticsFeature::getClusterSystemStatistics(

@@ -34,17 +34,16 @@
 
 #include "IResearch/IResearchRocksDBRecoveryHelper.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
-#include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
-#include "Basics/voc-errors.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
+#include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "IResearch/IResearchRocksDBLink.h"
-#include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -61,6 +60,7 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+#include "Basics/DownCast.h"
 
 namespace arangodb::transaction {
 class Context;
@@ -77,167 +77,34 @@ std::shared_ptr<arangodb::LogicalCollection> lookupCollection(
   return vocbase ? vocbase->lookupCollection(pair.second) : nullptr;
 }
 
-std::vector<std::shared_ptr<arangodb::Index>> lookupLinks(
-    arangodb::LogicalCollection& coll) {
-  auto indexes = coll.getIndexes();
-
-  // filter out non iresearch links
-  const auto it = std::remove_if(
-      indexes.begin(), indexes.end(),
-      [](std::shared_ptr<arangodb::Index> const& idx) {
-        return idx->type() !=
-               arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK;
-      });
-  indexes.erase(it, indexes.end());
-
-  return indexes;
-}
-
-std::shared_ptr<arangodb::iresearch::IResearchLink> lookupLink(
-    TRI_vocbase_t& vocbase, arangodb::DataSourceId cid, arangodb::IndexId iid) {
-  auto col = vocbase.lookupCollection(cid);
-
-  if (!col) {
-    // invalid cid
-    return nullptr;
-  }
-
-  return arangodb::iresearch::IResearchLinkHelper::find(*col, iid);
-}
-
-void ensureLink(
-    arangodb::DatabaseFeature& db,
-    std::set<arangodb::iresearch::IResearchRocksDBRecoveryHelper::IndexId>&
-        recoveredIndexes,
-    TRI_voc_tick_t dbId, arangodb::DataSourceId cid,
-    arangodb::velocypack::Slice indexSlice) {
-  if (!indexSlice.isObject()) {
-    LOG_TOPIC("67422", WARN, arangodb::Logger::ENGINES)
-        << "Cannot recover index for the collection '" << cid.id()
-        << "' in the database '" << dbId << "' : invalid marker";
-    return;
-  }
-
-  // ensure null terminated string
-  auto const indexTypeSlice =
-      indexSlice.get(arangodb::StaticStrings::IndexType);
-  auto const indexTypeStr = indexTypeSlice.copyString();
-  auto const indexType = arangodb::Index::type(indexTypeStr);
-
-  if (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK != indexType) {
-    // skip non iresearch link indexes
-    return;
-  }
-
-  arangodb::IndexId iid;
-  auto const idSlice = indexSlice.get("id");
-
-  if (idSlice.isString()) {
-    iid = arangodb::IndexId{static_cast<arangodb::IndexId::BaseType>(
-        std::stoull(idSlice.copyString()))};
-  } else if (idSlice.isNumber()) {
-    iid = arangodb::IndexId{idSlice.getNumber<arangodb::IndexId::BaseType>()};
-  } else {
-    LOG_TOPIC("96bc8", ERR, arangodb::iresearch::TOPIC)
-        << "Cannot recover index for the collection '" << cid.id()
-        << "' in the database '" << dbId
-        << "' : invalid value for attribute 'id', expected 'String' or "
-           "'Number', got '"
-        << idSlice.typeName() << "'";
-    return;
-  }
-
-  TRI_vocbase_t* vocbase = db.useDatabase(dbId);
-
-  if (!vocbase) {
-    // if the underlying database is gone, we can go on
-    LOG_TOPIC("3c21a", TRACE, arangodb::iresearch::TOPIC)
-        << "Cannot create index for the collection '" << cid.id()
-        << "' in the database '" << dbId
-        << "' : " << TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-    return;
-  }
-
-  auto col = vocbase->lookupCollection(cid);
-
-  if (!col) {
-    // if the underlying collection gone, we can go on
-    LOG_TOPIC("43f99", TRACE, arangodb::iresearch::TOPIC)
-        << "Cannot create index for the collection '" << cid.id()
-        << "' in the database '" << dbId
-        << "' : " << TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    return;
-  }
-
-  if (!recoveredIndexes.emplace(dbId, cid, iid).second) {
-    // already there
-    LOG_TOPIC("3dcb4", TRACE, arangodb::iresearch::TOPIC)
-        << "Index of type 'IResearchLink' with id `" << iid.id()
-        << "' in the collection '" << cid.id() << "' in the database '" << dbId
-        << "' already exists: skipping create marker";
-    return;
-  }
-
-  auto link = lookupLink(*vocbase, cid, iid);
-
-  if (!link) {
-    LOG_TOPIC("e9142", TRACE, arangodb::iresearch::TOPIC)
-        << "Collection '" << cid.id() << "' in the database '" << dbId
-        << "' does not contain index of type 'IResearchLink' with id '"
-        << iid.id() << "': skip create marker";
-    return;
-  }
-
-  LOG_TOPIC("29bea", TRACE, arangodb::iresearch::TOPIC)
-      << "found create index marker, databaseId: '" << dbId
-      << "', collectionId: '" << cid.id() << "', link '" << iid.id() << "'";
-
-  arangodb::velocypack::Builder json;
-
-  json.openObject();
-
-  if (!link->properties(json, true)
-           .ok()) {  // link definition used for recreation and persistence
-    LOG_TOPIC("15f11", ERR, arangodb::iresearch::TOPIC)
-        << "Failed to generate jSON definition for link '" << iid.id()
-        << "' to the collection '" << cid.id() << "' in the database '" << dbId;
-    return;
-  }
-  // we need to keep objectId
-  if (indexSlice.hasKey(arangodb::StaticStrings::ObjectId)) {
-    json.add(arangodb::StaticStrings::ObjectId,
-             indexSlice.get(arangodb::StaticStrings::ObjectId));
-  } else {
-    LOG_TOPIC("ed031", WARN, arangodb::iresearch::TOPIC)
-        << "Missing objectId in jSON definition for link '" << iid.id()
-        << "' to the collection '" << cid.id() << "' in the database '" << dbId
-        << "'. ObjectId will be regenerated";
-  }
-
-  json.close();
-
-  bool created;
-
-  // re-insert link
-  if (!col->dropIndex(link->id())                  // index drop failure
-      || !col->createIndex(json.slice(), created)  // index creation failure
-      || !created) {                               // index not created
-    LOG_TOPIC("44a02", ERR, arangodb::iresearch::TOPIC)
-        << "Failed to recreate an arangosearch link '" << iid.id()
-        << "' to the collection '" << cid.id() << "' in the database '" << dbId;
-
-    return;
-  }
-}
-
 }  // namespace
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
 IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(
-    application_features::ApplicationServer& server)
-    : _server(server) {}
+    ArangodServer& server, std::span<std::string const> skipRecoveryItems)
+    : _server(server), _skipAllItems(false) {
+  for (auto const& item : skipRecoveryItems) {
+    if (item == "all") {
+      _skipAllItems = true;
+      _skipRecoveryItems.clear();
+      break;
+    }
+
+    auto parts = basics::StringUtils::split(item, '/');
+    TRI_ASSERT(parts.size() == 2);
+    // look for collection part
+    auto it = _skipRecoveryItems.find(parts[0]);
+    if (it == _skipRecoveryItems.end()) {
+      // collection not found, insert new set into map with the index id/name
+      _skipRecoveryItems.emplace(
+          parts[0], containers::FlatHashSet<std::string>{parts[1]});
+    } else {
+      // collection found. append index/name to existing set
+      it->second.emplace(parts[1]);
+    }
+  }
+}
 
 void IResearchRocksDBRecoveryHelper::prepare() {
   _dbFeature = &_server.getFeature<DatabaseFeature>();
@@ -263,9 +130,22 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
     return;
   }
 
-  auto const links = lookupLinks(*coll);
+  LinkContainer links;
+  auto mustReplay = lookupLinks(links, *coll);
 
   if (links.empty()) {
+    // no links found. nothing to do
+    TRI_ASSERT(!mustReplay);
+    return;
+  }
+
+  if (!mustReplay) {
+    // links found, but the recovery for all of them will be skipped.
+    // so we need to mark all the links as out-of-sync
+    for (auto const& link : links) {
+      TRI_ASSERT(link.second);
+      _skippedIndexes.emplace(link.first->id());
+    }
     return;
   }
 
@@ -274,10 +154,10 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
 
   transaction::StandaloneContext ctx(coll->vocbase());
 
-  SingleCollectionTransaction trx(std::shared_ptr<transaction::Context>(
-                                      std::shared_ptr<transaction::Context>(),
-                                      &ctx),  // aliasing ctor
-                                  *coll, arangodb::AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(
+      std::shared_ptr<transaction::Context>(
+          std::shared_ptr<transaction::Context>(), &ctx),
+      *coll, AccessMode::Type::WRITE);
 
   Result res = trx.begin();
 
@@ -285,22 +165,21 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  for (std::shared_ptr<arangodb::Index> const& link : links) {
-    IndexId indexId(coll->vocbase().id(), coll->id(), link->id());
-
-    // optimization: avoid insertion of recovered documents twice,
-    //               first insertion done during index creation
-    if (!link || _recoveredIndexes.find(indexId) != _recoveredIndexes.end()) {
-      continue;  // index was already populated when it was created
+  for (auto const& link : links) {
+    if (link.second) {
+      // link excluded from recovery
+      _skippedIndexes.emplace(link.first->id());
+    } else {
+      // link participates in recovery
+      if (link.first->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+        basics::downCast<IResearchRocksDBInvertedIndex>(*(link.first))
+            .insert(trx, nullptr, docId, doc, {}, false);
+      } else {
+        TRI_ASSERT(link.first->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK);
+        basics::downCast<IResearchRocksDBLink>(*(link.first))
+            .insert(trx, nullptr, docId, doc, {}, false);
+      }
     }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    IResearchLink& impl = dynamic_cast<IResearchRocksDBLink&>(*link);
-#else
-    IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*link);
-#endif
-
-    impl.insert(trx, docId, doc);
   }
 
   res = trx.commit();
@@ -325,9 +204,22 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
     return;
   }
 
-  auto const links = lookupLinks(*coll);
+  LinkContainer links;
+  auto mustReplay = lookupLinks(links, *coll);
 
   if (links.empty()) {
+    // no links found. nothing to do
+    TRI_ASSERT(!mustReplay);
+    return;
+  }
+
+  if (!mustReplay) {
+    // links found, but the recovery for all of them will be skipped.
+    // so we need to mark all the links as out of sync
+    for (auto const& link : links) {
+      TRI_ASSERT(link.second);
+      _skippedIndexes.emplace(link.first->id());
+    }
     return;
   }
 
@@ -335,10 +227,10 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
 
   transaction::StandaloneContext ctx(coll->vocbase());
 
-  SingleCollectionTransaction trx(std::shared_ptr<transaction::Context>(
-                                      std::shared_ptr<transaction::Context>(),
-                                      &ctx),  // aliasing ctor
-                                  *coll, arangodb::AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(
+      std::shared_ptr<transaction::Context>(
+          std::shared_ptr<transaction::Context>(), &ctx),
+      *coll, AccessMode::Type::WRITE);
 
   Result res = trx.begin();
 
@@ -346,14 +238,23 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  for (std::shared_ptr<arangodb::Index> const& link : links) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    IResearchLink& impl = dynamic_cast<IResearchRocksDBLink&>(*link);
-#else
-    IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*link);
-#endif
-
-    impl.remove(trx, docId, arangodb::velocypack::Slice::emptyObjectSlice());
+  for (auto const& link : links) {
+    if (link.second) {
+      // link excluded from recovery
+      _skippedIndexes.emplace(link.first->id());
+    } else {
+      // link participates in recovery
+      if (link.first->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+        IResearchRocksDBInvertedIndex& impl =
+            basics::downCast<IResearchRocksDBInvertedIndex>(*(link.first));
+        impl.remove(trx, nullptr, docId, VPackSlice::emptyObjectSlice());
+      } else {
+        TRI_ASSERT(link.first->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK);
+        IResearchLink& impl =
+            basics::downCast<IResearchRocksDBLink>(*(link.first));
+        impl.remove(trx, docId, false);
+      }
+    }
   }
 
   res = trx.commit();
@@ -369,27 +270,36 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob,
 
   switch (type) {
     case RocksDBLogType::IndexCreate: {
-      TRI_ASSERT(_dbFeature);
-      TRI_ASSERT(_engine);
-      TRI_voc_tick_t const dbId = RocksDBLogValue::databaseId(blob);
-      DataSourceId const collectionId = RocksDBLogValue::collectionId(blob);
-      auto const indexSlice = RocksDBLogValue::indexSlice(blob);
-      ensureLink(*_dbFeature, _recoveredIndexes, dbId, collectionId,
-                 indexSlice);
-    } break;
+      // Intentional NOOP. Index is committed upon creation.
+      // So if this marker was written  - index was persisted already.
+      break;
+    }
     case RocksDBLogType::CollectionTruncate: {
       TRI_ASSERT(_dbFeature);
       TRI_ASSERT(_engine);
       uint64_t objectId = RocksDBLogValue::objectId(blob);
       auto coll = lookupCollection(*_dbFeature, *_engine, objectId);
 
-      if (coll != nullptr) {
-        auto const links = lookupLinks(*coll);
-        for (auto link : links) {
-          link->afterTruncate(tick, nullptr);
-        }
+      if (coll == nullptr) {
+        return;
       }
 
+      LinkContainer links;
+      auto mustReplay = lookupLinks(links, *coll);
+
+      if (links.empty()) {
+        // no links found. nothing to do
+        TRI_ASSERT(!mustReplay);
+        return;
+      }
+
+      for (auto const& link : links) {
+        if (link.second) {
+          _skippedIndexes.emplace(link.first->id());
+        } else {
+          link.first->afterTruncate(tick, nullptr);
+        }
+      }
       break;
     }
     default:
@@ -397,9 +307,39 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob,
   }
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
+bool IResearchRocksDBRecoveryHelper::lookupLinks(
+    LinkContainer& result, LogicalCollection& coll) const {
+  TRI_ASSERT(result.empty());
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+  bool mustReplay = false;
+
+  auto indexes = coll.getIndexes();
+
+  // filter out non iresearch links
+  const auto it = std::remove_if(
+      indexes.begin(), indexes.end(), [](std::shared_ptr<Index> const& idx) {
+        return idx->type() != Index::TRI_IDX_TYPE_IRESEARCH_LINK &&
+               idx->type() != Index::TRI_IDX_TYPE_INVERTED_INDEX;
+      });
+  indexes.erase(it, indexes.end());
+
+  result.reserve(indexes.size());
+  for (auto& index : indexes) {
+    bool mustFail = _skipAllItems;
+    if (!mustFail && !_skipRecoveryItems.empty()) {
+      if (auto it = _skipRecoveryItems.find(coll.name());
+          it != _skipRecoveryItems.end()) {
+        mustFail = it->second.contains(index->name()) ||
+                   it->second.contains(std::to_string(index->id().id()));
+      }
+    }
+    result.emplace_back(std::make_pair(std::move(index), mustFail));
+    if (!mustFail) {
+      mustReplay = true;
+    }
+  }
+
+  return mustReplay;
+}
+
+}  // namespace arangodb::iresearch

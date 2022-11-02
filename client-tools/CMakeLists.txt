@@ -7,8 +7,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 ################################################################################
 
 set(LIB_ARANGO_SHELL_SOURCES
-  FeaturePhases/BasicFeaturePhaseClient.cpp
-  FeaturePhases/V8ShellFeaturePhase.cpp
   Shell/ClientFeature.cpp
   Shell/ShellConsoleFeature.cpp
   Utils/ClientManager.cpp
@@ -82,14 +80,6 @@ if (USE_JEMALLOC)
   add_dependencies(arangobench jemalloc_build)
 endif ()
 
-if (USE_FAIL_ON_WARNINGS)
- if (MSVC)
-   target_compile_options(arangobench PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
- else ()
-   target_compile_options(arangobench PRIVATE -Werror -Wno-error=deprecated-declarations)
- endif ()
-endif ()
-
 ################################################################################
 ## arangobackup
 ################################################################################
@@ -144,14 +134,6 @@ if (USE_ENTERPRISE)
     add_dependencies(arangobackup jemalloc_build)
   endif ()
 
-  if (USE_FAIL_ON_WARNINGS)
-   if (MSVC)
-     target_compile_options(arangobackup PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-   else ()
-     target_compile_options(arangobackup PRIVATE -Werror -Wno-error=deprecated-declarations)
-   endif ()
-  endif ()
-
 endif () # USE_ENTERPRISE
 
 ################################################################################
@@ -175,7 +157,6 @@ add_executable(${BIN_ARANGODUMP}
   ../cmake/activeCodePage.manifest
   Dump/DumpFeature.cpp
   Dump/arangodump.cpp
-  ${ADDITIONAL_BIN_ARANGODUMP_SOURCES}
 )
 target_include_directories(${BIN_ARANGODUMP} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
@@ -186,7 +167,6 @@ target_link_libraries(${BIN_ARANGODUMP}
   boost_system
   boost_boost
   arango_shell
-  fuerte
 )
 
 install(
@@ -203,14 +183,6 @@ endif ()
 
 if (USE_JEMALLOC)
   add_dependencies(arangodump jemalloc_build)
-endif ()
-
-if (USE_FAIL_ON_WARNINGS)
- if (MSVC)
-   target_compile_options(arangodump PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
- else ()
-   target_compile_options(arangodump PRIVATE -Werror -Wno-error=deprecated-declarations)
- endif ()
 endif ()
 
 ################################################################################
@@ -262,14 +234,6 @@ if (USE_JEMALLOC)
   add_dependencies(arangoexport jemalloc_build)
 endif ()
 
-if (USE_FAIL_ON_WARNINGS)
- if (MSVC)
-   target_compile_options(arangoexport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
- else ()
-   target_compile_options(arangoexport PRIVATE -Werror -Wno-error=deprecated-declarations)
- endif ()
-endif ()
-
 ################################################################################
 ## arangoimport
 ################################################################################
@@ -312,8 +276,6 @@ install(
 
 install_config(arangoimport)
 
-add_dependencies(arangoimport fuerte)
-
 if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangoimport zlibstatic v8_build) # v8_build includes ICU
                                                      # build
@@ -329,14 +291,6 @@ install_command_alias(arangoimport
   ${CMAKE_INSTALL_BINDIR}
   arangoimp
 )
-
-if (USE_FAIL_ON_WARNINGS)
- if (MSVC)
-   target_compile_options(arangoimport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
- else ()
-   target_compile_options(arangoimport PRIVATE -Werror -Wno-error=deprecated-declarations)
- endif ()
-endif ()
 
 ################################################################################
 ## arangorestore
@@ -377,7 +331,6 @@ target_link_libraries(${BIN_ARANGORESTORE}
   boost_system
   boost_boost
   arango_shell
-  fuerte
 )
 
 install(
@@ -396,14 +349,6 @@ if (USE_JEMALLOC)
   add_dependencies(arangorestore jemalloc_build)
 endif ()
 
-if (USE_FAIL_ON_WARNINGS)
- if (MSVC)
-   target_compile_options(arangorestore PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
- else ()
-   target_compile_options(arangorestore PRIVATE -Werror -Wno-error=deprecated-declarations)
- endif ()
-endif ()
-
 ################################################################################
 ## arangosh
 ################################################################################
@@ -420,6 +365,10 @@ if (MSVC AND NOT(SKIP_PACKAGING))
   )
 endif ()
 
+set(FUZZER "")
+if (USE_FAILURE_TESTS)
+    set(FUZZER "Shell/RequestFuzzer.cpp")
+endif()
 add_executable(${BIN_ARANGOSH}
   ${ProductVersionFiles_arangosh}
   ../cmake/activeCodePage.manifest
@@ -430,7 +379,9 @@ add_executable(${BIN_ARANGOSH}
   Shell/V8ClientConnection.cpp
   Shell/V8ShellFeature.cpp
   Shell/arangosh.cpp
+  ${FUZZER}
 )
+
 target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
 target_link_libraries(${BIN_ARANGOSH}
@@ -460,14 +411,6 @@ endif ()
 
 if (USE_JEMALLOC)
   add_dependencies(arangosh jemalloc_build)
-endif ()
-
-if (USE_FAIL_ON_WARNINGS)
- if (MSVC)
-   target_compile_options(arangosh PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
- else ()
-   target_compile_options(arangosh PRIVATE -Werror -Wno-error=deprecated-declarations)
- endif ()
 endif ()
 
 ################################################################################
@@ -518,13 +461,34 @@ if (USE_JEMALLOC)
   add_dependencies(arangovpack jemalloc_build)
 endif ()
 
-if (USE_FAIL_ON_WARNINGS)
- if (MSVC)
-   target_compile_options(arangovpack PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
- else ()
-   target_compile_options(arangovpack PRIVATE -Werror -Wno-error=deprecated-declarations)
- endif ()
-endif ()
+################################################################################
+## common target compile options
+################################################################################
+SET(TARGETS
+  arangobench
+  arangodump
+  arangoexport
+  arangoimport
+  arangorestore
+  arangosh
+  arangovpack)
+if (USE_ENTERPRISE)
+  LIST(APPEND TARGETS arangobackup)
+endif()
+
+foreach (TARGET IN LISTS TARGETS)
+  if (USE_FAIL_ON_WARNINGS)
+    if (MSVC)
+      target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+      if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
+        # There's a warning about /MP being unused if compiling only a single file
+        target_compile_options(${TARGET} PRIVATE -Wno-unused-command-line-argument)
+      endif()
+    else ()
+      target_compile_options(${TARGET} PRIVATE -Werror -Wno-error=deprecated-declarations)
+    endif ()
+  endif ()
+endforeach ()
 
 ################################################################################
 ## foxx-manager

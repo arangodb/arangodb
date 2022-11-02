@@ -30,23 +30,16 @@
 namespace arangodb {
 namespace iresearch {
 
-class IResearchAnalyzerFeature;  // forward declaration
+class IResearchAnalyzerFeature;
 
 class RestAnalyzerHandler : public RestVocbaseBaseHandler {
  public:
-  // @note RestHandlerFactory::createHandler(...) passes raw pointers for
-  //       request/response to RestHandlerCreator::createNoData(...)
-  RestAnalyzerHandler(  // constructor
-      application_features::ApplicationServer& server,
-      arangodb::GeneralRequest* request,   // request
-      arangodb::GeneralResponse* response  // response
-  );
+  RestAnalyzerHandler(ArangodServer& server, GeneralRequest* request,
+                      GeneralResponse* response);
 
-  virtual arangodb::RestStatus execute() override;
+  virtual RestStatus execute() override;
 
-  virtual arangodb::RequestLane lane() const override {
-    return arangodb::RequestLane::CLIENT_SLOW;
-  }
+  virtual RequestLane lane() const override { return RequestLane::CLIENT_SLOW; }
 
   virtual char const* name() const override { return "RestAnalyzerHandler"; }
 

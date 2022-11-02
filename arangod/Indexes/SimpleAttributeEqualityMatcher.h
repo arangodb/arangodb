@@ -25,6 +25,8 @@
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
 
 namespace arangodb {
@@ -77,12 +79,11 @@ class SimpleAttributeEqualityMatcher {
       size_t itemsInIndex, size_t values, size_t coveredAttributes) const;
 
   /// @brief whether or not the access fits
-  bool accessFitsIndex(arangodb::Index const*, arangodb::aql::AstNode const*,
-                       arangodb::aql::AstNode const*,
-                       arangodb::aql::AstNode const*,
-                       arangodb::aql::Variable const*,
-                       std::unordered_set<std::string>& nonNullAttributes,
-                       bool);
+  bool accessFitsIndex(
+      arangodb::Index const*, arangodb::aql::AstNode const*,
+      arangodb::aql::AstNode const*, arangodb::aql::AstNode const*,
+      arangodb::aql::Variable const*,
+      arangodb::containers::FlatHashSet<std::string>& nonNullAttributes, bool);
 
  private:
   /// @brief array of attributes used for comparisons
@@ -90,7 +91,8 @@ class SimpleAttributeEqualityMatcher {
 
   /// @brief an internal map to mark which condition parts were useful and
   /// covered by the index. Also contains the matching Node
-  std::unordered_map<size_t, arangodb::aql::AstNode const*> _found;
+  arangodb::containers::FlatHashMap<size_t, arangodb::aql::AstNode const*>
+      _found;
 
   static constexpr size_t defaultEstimatedNumberOfArrayMembers = 10;
 };

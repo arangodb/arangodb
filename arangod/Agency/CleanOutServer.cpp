@@ -24,11 +24,16 @@
 #include "CleanOutServer.h"
 
 #include "Agency/AgentInterface.h"
+#include "Agency/Helpers.h"
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
 #include "Agency/MoveShard.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/TimeString.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
+#include "VocBase/LogicalCollection.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 
 using namespace arangodb::consensus;
 
@@ -370,11 +375,15 @@ bool CleanOutServer::start(bool& aborts) {
 bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
   std::vector<std::string> servers = availableServers(_snapshot);
 
+  Node::Children const& databaseProperties =
+      _snapshot.hasAsChildren(planDBPrefix).value().get();
   Node::Children const& databases =
-      _snapshot.hasAsChildren("/Plan/Collections").value().get();
+      _snapshot.hasAsChildren(planColPrefix).value().get();
   size_t sub = 0;
 
   for (auto const& database : databases) {
+    const bool isRepl2 = isReplicationTwoDB(databaseProperties, database.first);
+
     // Find shardsLike dependencies
     for (auto const& collptr : database.second->children()) {
       auto const& collection = *(collptr.second);
@@ -387,13 +396,22 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
            collection.hasAsChildren("shards").value().get()) {
         // Only shards, which are affected
         int found = -1;
-        int count = 0;
-        for (VPackSlice dbserver : VPackArrayIterator(shard.second->slice())) {
-          if (dbserver.copyString() == _server) {
-            found = count;
-            break;
+        if (!isRepl2) {
+          int count = 0;
+          for (VPackSlice dbserver :
+               VPackArrayIterator(shard.second->slice())) {
+            if (dbserver.copyString() == _server) {
+              found = count;
+              break;
+            }
+            count++;
           }
-          count++;
+        } else {
+          auto stateId = LogicalCollection::shardIdToStateId(shard.first);
+          if (isServerLeaderForState(_snapshot, database.first, stateId,
+                                     _server)) {
+            found = 0;
+          }
         }
         if (found == -1) {
           continue;
@@ -407,10 +425,16 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
 
         if (isSatellite) {
           if (isLeader) {
-            std::string toServer =
-                Job::findNonblockedCommonHealthyInSyncFollower(
-                    _snapshot, database.first, collptr.first, shard.first,
-                    _server);
+            std::string toServer;
+            if (isRepl2) {
+              auto stateId = LogicalCollection::shardIdToStateId(shard.first);
+              toServer = Job::findOtherHealthyParticipant(
+                  _snapshot, database.first, stateId, _server);
+            } else {
+              toServer = Job::findNonblockedCommonHealthyInSyncFollower(
+                  _snapshot, database.first, collptr.first, shard.first,
+                  _server);
+            }
 
             MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                       _jobId, database.first, collptr.first, shard.first,

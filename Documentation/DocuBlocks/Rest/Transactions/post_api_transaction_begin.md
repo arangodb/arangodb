@@ -4,6 +4,15 @@
 
 @RESTHEADER{POST /_api/transaction/begin, Begin transaction, executeBegin}
 
+@RESTHEADERPARAMETERS
+
+@RESTHEADERPARAM{x-arango-allow-dirty-read,boolean,optional}
+Set this header to `true` to allow the Coordinator to ask any shard replica for
+the data, not only the shard leader. This may result in "dirty reads".
+
+This header decides about dirty reads for the entire transaction. Individual
+read operations, that are performed as part of the transaction, cannot override it.
+
 @RESTBODYPARAM{collections,string,required,string}
 *collections* must be a JSON object that can have one or all sub-attributes
 *read*, *write* or *exclusive*, each being an array of collection names or a
@@ -21,7 +30,8 @@ Allow reading from undeclared collections.
 
 @RESTBODYPARAM{lockTimeout,integer,optional,int64}
 an optional numeric value that can be used to set a
-timeout for waiting on collection locks. If not specified, a default
+timeout in seconds for waiting on collection locks. This option is only
+meaningful when using exclusive locks. If not specified, a default
 value will be used. Setting *lockTimeout* to *0* will make ArangoDB
 not time out waiting for a lock.
 

@@ -25,7 +25,7 @@
 namespace arangodb::metrics {
 
 template<typename T>
-class Batch;
+class Guard;
 
 class Counter;
 

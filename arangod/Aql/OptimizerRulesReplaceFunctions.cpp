@@ -37,7 +37,6 @@
 #include "Aql/Variable.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Containers/SmallVector.h"
@@ -557,6 +556,8 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode,
       new IndexNode(plan, plan->nextId(), aqlCollection, indexOutVariable,
                     std::vector<transaction::Methods::IndexHandle>{
                         transaction::Methods::IndexHandle{index}},
+                    false,  // here we are not using inverted index so for sure
+                            // no "whole" coverage
                     std::move(condition), IndexIteratorOptions()));
 
   //// wrap plan part into subquery
@@ -572,9 +573,7 @@ void arangodb::aql::replaceNearWithinFulltextRule(
     OptimizerRule const& rule) {
   bool modified = false;
 
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, ExecutionNode::CALCULATION, true);
 
   for (auto const& node : nodes) {

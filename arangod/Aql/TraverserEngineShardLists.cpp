@@ -32,7 +32,7 @@ using namespace arangodb::aql;
 
 TraverserEngineShardLists::TraverserEngineShardLists(
     GraphNode const* node, ServerID const& server,
-    std::unordered_map<ShardID, ServerID> const& shardMapping,
+    containers::FlatHashMap<ShardID, ServerID> const& shardMapping,
     QueryContext& query)
     : _node(node), _hasShard(false) {
   auto const& edges = _node->edgeColls();
@@ -76,7 +76,7 @@ TraverserEngineShardLists::TraverserEngineShardLists(
 }
 
 std::vector<ShardID> TraverserEngineShardLists::getAllLocalShards(
-    std::unordered_map<ShardID, ServerID> const& shardMapping,
+    containers::FlatHashMap<ShardID, ServerID> const& shardMapping,
     ServerID const& server, std::shared_ptr<std::vector<std::string>> shardIds,
     bool allowReadFromFollower) {
   std::vector<ShardID> localShards;

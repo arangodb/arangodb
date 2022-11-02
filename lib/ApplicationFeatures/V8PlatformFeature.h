@@ -48,13 +48,12 @@ class ProgramOptions;
 
 class V8PlatformFeature final
     : public application_features::ApplicationFeature {
- private:
+ public:
   struct IsolateData {
     bool _outOfMemory = false;
     size_t _heapSizeAtStart = 0;
   };
 
- public:
   static IsolateData* getIsolateData(v8::Isolate* isolate) {
     return reinterpret_cast<IsolateData*>(isolate->GetData(V8_INFO));
   }
@@ -71,10 +70,16 @@ class V8PlatformFeature final
     getIsolateData(isolate)->_outOfMemory = false;
   }
 
-  static const uint32_t V8_INFO = 0;
-  static const uint32_t V8_DATA_SLOT = 1;
+  static constexpr uint32_t V8_INFO = 0;
+  static constexpr uint32_t V8_DATA_SLOT = 1;
 
-  explicit V8PlatformFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "V8Platform"; }
+
+  template<typename Server>
+  explicit V8PlatformFeature(Server& server)
+      : ApplicationFeature{server, *this} {
+    setOptional(true);
+  }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

@@ -44,7 +44,6 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Sink.h>
-#include <velocypack/velocypack-aliases.h>
 #include <iostream>
 #include <regex>
 #include <sys/types.h>
@@ -66,11 +65,10 @@ constexpr double ttlValue = 1200.;
 
 namespace arangodb {
 
-ExportFeature::ExportFeature(application_features::ApplicationServer& server,
-                             int* result)
-    : ApplicationFeature(server, "Export"),
+ExportFeature::ExportFeature(Server& server, int* result)
+    : ArangoExportFeature{server, *this},
       _xgmmlLabelAttribute("label"),
-      _typeExport("json"),
+      _typeExport("jsonl"),
       _customQueryMaxRuntime(0.0),
       _useMaxRuntime(false),
       _escapeCsvFormulae(true),
@@ -85,7 +83,6 @@ ExportFeature::ExportFeature(application_features::ApplicationServer& server,
       _currentCollection(),
       _currentGraph(),
       _result(result) {
-  requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 
@@ -110,10 +107,16 @@ void ExportFeature::collectOptions(
           "runtime threshold for AQL queries (in seconds, 0 = no limit)",
           new DoubleParameter(&_customQueryMaxRuntime))
       .setIntroducedIn(30800);
+  options
+      ->addOption("--custom-query-file",
+                  "path to a file with the custom query to be used",
+                  new StringParameter(&_customQueryFile))
+      .setIntroducedIn(31000);
 
   options
       ->addOption("--custom-query-bindvars",
-                  "bind parameters to be used in the 'custom-query' testcase.",
+                  "The bind parameters to be used with the `--custom-query` or "
+                  "`--custom-query-file` option.",
                   new StringParameter(&_customQueryBindVars))
       .setIntroducedIn(31000);
 
@@ -124,7 +127,7 @@ void ExportFeature::collectOptions(
                      new BooleanParameter(&_xgmmlLabelOnly));
 
   options->addOption("--xgmml-label-attribute",
-                     "specify document attribute that will be the xgmml label",
+                     "Specify document attribute that will be the XGMML label.",
                      new StringParameter(&_xgmmlLabelAttribute));
 
   options->addOption("--output-directory", "output directory",
@@ -191,6 +194,23 @@ void ExportFeature::validateOptions(
   }
   TRI_NormalizePath(_outputDirectory);
 
+  if (!_customQueryFile.empty()) {
+    if (!_customQuery.empty()) {
+      LOG_TOPIC("2b57e", FATAL, Logger::CONFIG)
+          << "expecting either `--custom-query` or `--custom-query-file'";
+      FATAL_ERROR_EXIT();
+    }
+
+    try {
+      basics::FileUtils::slurp(_customQueryFile, _customQuery);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("45275", FATAL, Logger::CONFIG)
+          << "unable to read custom query from file '" << _customQueryFile
+          << "': " << ex.what();
+      FATAL_ERROR_EXIT();
+    }
+  }
+
   if (_graphName.empty() && _collections.empty() && _customQuery.empty()) {
     LOG_TOPIC("488d8", FATAL, Logger::CONFIG)
         << "expecting at least one collection, a graph name or an AQL query";
@@ -244,7 +264,14 @@ void ExportFeature::validateOptions(
 }
 
 void ExportFeature::prepare() {
-  _directory = std::make_unique<ManagedDirectory>(server(), _outputDirectory,
+  EncryptionFeature* encryption{};
+  if constexpr (Server::contains<EncryptionFeature>()) {
+    if (server().hasFeature<EncryptionFeature>()) {
+      encryption = &server().getFeature<EncryptionFeature>();
+    }
+  }
+
+  _directory = std::make_unique<ManagedDirectory>(encryption, _outputDirectory,
                                                   !_overwrite, true, _useGzip);
   if (_directory->status().fail()) {
     switch (static_cast<int>(_directory->status().errorNumber())) {
@@ -311,10 +338,12 @@ void ExportFeature::start() {
             << std::endl;
 
   uint64_t exportedSize = 0;
+  std::string progressDetails;
 
   if (_typeExport == "json" || _typeExport == "jsonl" || _typeExport == "xml" ||
       _typeExport == "csv") {
     if (_collections.size()) {
+      progressDetails = std::to_string(_collections.size()) + " collection(s)";
       collectionExport(httpClient.get());
 
       for (auto const& collection : _collections) {
@@ -330,6 +359,7 @@ void ExportFeature::start() {
         }
       }
     } else if (!_customQuery.empty()) {
+      progressDetails = "1 query";
       queryExport(httpClient.get());
 
       std::string filePath =
@@ -340,6 +370,7 @@ void ExportFeature::start() {
       exportedSize += TRI_SizeFile(filePath.c_str());
     }
   } else if (_typeExport == "xgmml" && _graphName.size()) {
+    progressDetails = "1 graph";
     graphExport(httpClient.get());
     std::string filePath = _outputDirectory + TRI_DIR_SEPARATOR_STR +
                            _graphName + "." + _typeExport;
@@ -355,7 +386,7 @@ void ExportFeature::start() {
 
   using arangodb::basics::StringUtils::formatSize;
 
-  std::cout << "Processed " << _collections.size() << " collection(s), wrote "
+  std::cout << "Processed " << progressDetails << ", wrote "
             << formatSize(exportedSize) << ", " << _httpRequestsDone
             << " HTTP request(s)" << std::endl;
 

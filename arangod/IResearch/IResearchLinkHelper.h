@@ -29,6 +29,7 @@
 
 #include "Basics/Result.h"
 #include "IResearch/IResearchCommon.h"
+#include "RestServer/arangod.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
@@ -38,8 +39,8 @@ namespace application_features {
 class ApplicationServer;
 }
 
-class LogicalCollection;  // forward declaration
-class LogicalView;        // forward declaration
+class LogicalCollection;
+class LogicalView;
 
 namespace velocypack {
 
@@ -67,9 +68,8 @@ struct IResearchLinkHelper {
   /// @brief compare two link definitions for equivalience if used to create a
   ///        link instance
   //////////////////////////////////////////////////////////////////////////////
-  static bool equal(application_features::ApplicationServer& server,
-                    velocypack::Slice lhs, velocypack::Slice rhs,
-                    irs::string_ref dbname);
+  static bool equal(ArangodServer& server, velocypack::Slice lhs,
+                    velocypack::Slice rhs, irs::string_ref dbname);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finds link between specified collection and view with the given id
@@ -98,11 +98,6 @@ struct IResearchLinkHelper {
       IResearchViewStoredValues const* storedValues = nullptr,
       velocypack::Slice idSlice = velocypack::Slice(),
       irs::string_ref collectionName = irs::string_ref::NIL);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief IResearch Link index type string value
-  ////////////////////////////////////////////////////////////////////////////////
-  static std::string const& type() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate the link specifications for:

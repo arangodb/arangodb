@@ -28,8 +28,9 @@
 #include <functional>
 #include <memory>
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionVariable.h"
+#include "RestServer/arangod.h"
+#include "Agency/AgencyCommon.h"
 
 namespace arangodb {
 class AgencyComm;
@@ -98,9 +99,13 @@ class AgencyCallback {
   //////////////////////////////////////////////////////////////////////////////
 
  public:
-  AgencyCallback(application_features::ApplicationServer& server,
-                 std::string const&,
+  using CallbackType =
+      std::function<bool(velocypack::Slice, consensus::index_t)>;
+
+  AgencyCallback(ArangodServer& server, std::string const&,
                  std::function<bool(velocypack::Slice const&)> const&,
+                 bool needsValue, bool needsInitialValue = true);
+  AgencyCallback(ArangodServer& server, std::string key, CallbackType,
                  bool needsValue, bool needsInitialValue = true);
 
   std::string const key;
@@ -132,23 +137,27 @@ class AgencyCallback {
   void local(bool b);
   bool local() const;
 
+  bool needsInitialValue() const noexcept { return _needsInitialValue; }
+
  private:
   // execute callback with current value data:
-  bool execute(velocypack::Slice data);
+  bool execute(velocypack::Slice data, consensus::index_t raftIndex);
 
   // execute callback without any data:
   bool executeEmpty();
 
   // Compare last value and newly read one and call execute if the are
   // different:
-  void checkValue(std::shared_ptr<velocypack::Builder>, bool forceCheck);
+  void checkValue(std::shared_ptr<velocypack::Builder>,
+                  consensus::index_t raftIndex, bool forceCheck);
 
  private:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
   std::unique_ptr<AgencyComm> _agency;
-  std::function<bool(velocypack::Slice const&)> const _cb;
+  CallbackType const _cb;
   std::shared_ptr<velocypack::Builder> _lastData;
   bool const _needsValue;
+  bool const _needsInitialValue;
   /// @brief this flag is set if there was an attempt to signal the callback's
   /// condition variable - this is necessary to catch all signals that happen
   /// before the caller is going into the wait state, i.e. to prevent this
@@ -157,10 +166,14 @@ class AgencyCallback {
   ///  2b) execute callback signaling
   ///  3) caller going into condition.wait() (and not woken up)
   /// this variable is protected by the condition variable!
-  bool _wasSignaled;
+  bool _wasSignaled{false};
 
   /// Determined when registered in registry. Default: true
-  bool _local;
+  bool _local{true};
+
+  /// This index keeps track of which raft index was seen last. It ensures a
+  /// monotonic view on the observed value.
+  consensus::index_t _lastSeenIndex{0};
 };
 
 }  // namespace arangodb

@@ -25,7 +25,6 @@
 
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlTransaction.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/DistributeExecutor.h"
@@ -40,7 +39,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
@@ -48,7 +46,6 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -57,13 +54,11 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
-using StringBuffer = arangodb::basics::StringBuffer;
 
 ClientsExecutorInfos::ClientsExecutorInfos(std::vector<std::string> clientIds)
     : _clientIds(std::move(clientIds)) {
@@ -162,8 +157,19 @@ auto BlocksWithClientsImpl<Executor>::executeForClient(
   if constexpr (std::is_same<MutexExecutor, Executor>::value) {
     _executor.acquireLock();
   }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool old = false;
+  TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, true));
+  TRI_ASSERT(_isBlockInUse);
+#endif
 
   auto guard = scopeGuard([&]() noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    bool old = true;
+    TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, false));
+    TRI_ASSERT(!_isBlockInUse);
+#endif
+
     if constexpr (std::is_same<MutexExecutor, Executor>::value) {
       _executor.releaseLock();
     }

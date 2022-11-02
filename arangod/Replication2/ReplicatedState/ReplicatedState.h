@@ -23,15 +23,24 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedState/ReplicatedStateCore.h"
+#include <map>
+
+#include "Replication2/ReplicatedState/ReplicatedStateToken.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include "Replication2/Streams/Streams.h"
 
+#include "Basics/Guarded.h"
+#include "Replication2/DeferredExecution.h"
+#include "Replication2/LoggerContext.h"
+
 namespace arangodb::futures {
 template<typename T>
 class Future;
-}
+template<typename T>
+class Promise;
+struct Unit;
+}  // namespace arangodb::futures
 namespace arangodb {
 class Result;
 }
@@ -40,12 +49,17 @@ namespace replicated_log {
 struct ReplicatedLog;
 struct ILogFollower;
 struct ILogLeader;
+struct ILogParticipant;
+struct LogUnconfiguredParticipant;
 }  // namespace replicated_log
 
 namespace replicated_state {
-
+struct StatePersistorInterface;
+struct ReplicatedStateMetrics;
 struct IReplicatedLeaderStateBase;
 struct IReplicatedFollowerStateBase;
+
+struct IStateManagerBase {};
 
 /**
  * Common base class for all ReplicatedStates, hiding the type information.
@@ -53,20 +67,28 @@ struct IReplicatedFollowerStateBase;
 struct ReplicatedStateBase {
   virtual ~ReplicatedStateBase() = default;
 
-  virtual void flush(std::unique_ptr<ReplicatedStateCore>) = 0;
-  virtual auto getStatus() -> StateStatus = 0;
-  auto getLeader() -> std::shared_ptr<IReplicatedLeaderStateBase> {
+  virtual void flush(StateGeneration plannedGeneration) = 0;
+  virtual void start(
+      std::unique_ptr<ReplicatedStateToken> token,
+      std::optional<velocypack::SharedSlice> const& coreParameter) = 0;
+  virtual void drop() && = 0;
+  [[nodiscard]] virtual auto
+  resign() && -> std::unique_ptr<ReplicatedStateToken> = 0;
+  virtual void rebuildMe(IStateManagerBase const* caller) noexcept = 0;
+  [[nodiscard]] virtual auto getStatus() -> std::optional<StateStatus> = 0;
+  [[nodiscard]] auto getLeader()
+      -> std::shared_ptr<IReplicatedLeaderStateBase> {
     return getLeaderBase();
   }
-  auto getFollower() -> std::shared_ptr<IReplicatedFollowerStateBase> {
+  [[nodiscard]] auto getFollower()
+      -> std::shared_ptr<IReplicatedFollowerStateBase> {
     return getFollowerBase();
   }
-  virtual auto getSnapshotStatus() const -> SnapshotStatus = 0;
 
  private:
-  virtual auto getLeaderBase()
+  [[nodiscard]] virtual auto getLeaderBase()
       -> std::shared_ptr<IReplicatedLeaderStateBase> = 0;
-  virtual auto getFollowerBase()
+  [[nodiscard]] virtual auto getFollowerBase()
       -> std::shared_ptr<IReplicatedFollowerStateBase> = 0;
 };
 
@@ -78,38 +100,59 @@ struct ReplicatedState final
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using FollowerType = typename ReplicatedStateTraits<S>::FollowerType;
   using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
+  using CoreType = typename ReplicatedStateTraits<S>::CoreType;
 
   explicit ReplicatedState(std::shared_ptr<replicated_log::ReplicatedLog> log,
-                           std::shared_ptr<Factory> factory);
+                           std::shared_ptr<Factory> factory,
+                           LoggerContext loggerContext,
+                           std::shared_ptr<ReplicatedStateMetrics>,
+                           std::shared_ptr<StatePersistorInterface>);
+  ~ReplicatedState() override;
 
   /**
    * Forces to rebuild the state machine depending on the replicated log state.
    */
-  void flush(std::unique_ptr<ReplicatedStateCore> =
-                 std::make_unique<ReplicatedStateCore>()) override;
-
+  void flush(StateGeneration planGeneration) override;
+  void start(
+      std::unique_ptr<ReplicatedStateToken> token,
+      std::optional<velocypack::SharedSlice> const& coreParameter) override;
+  void drop() && override;
+  [[nodiscard]] auto
+  resign() && -> std::unique_ptr<ReplicatedStateToken> override;
   /**
    * Returns the follower state machine. Returns nullptr if no follower state
    * machine is present. (i.e. this server is not a follower)
    */
-  auto getFollower() const -> std::shared_ptr<FollowerType>;
+  [[nodiscard]] auto getFollower() const -> std::shared_ptr<FollowerType>;
   /**
    * Returns the leader state machine. Returns nullptr if no leader state
    * machine is present. (i.e. this server is not a leader)
    */
-  auto getLeader() const -> std::shared_ptr<LeaderType>;
+  [[nodiscard]] auto getLeader() const -> std::shared_ptr<LeaderType>;
 
-  auto getStatus() -> StateStatus final;
+  [[nodiscard]] auto getStatus() -> std::optional<StateStatus> final;
 
-  auto getSnapshotStatus() const -> SnapshotStatus override;
+  /**
+   * Rebuilds the managers. Called by the manager when its participant is gone.
+   */
+  void rebuildMe(IStateManagerBase const* caller) noexcept override;
 
-  struct StateManagerBase {
-    virtual ~StateManagerBase() = default;
-    virtual auto getStatus() const -> StateStatus = 0;
-    virtual auto getSnapshotStatus() const -> SnapshotStatus = 0;
+  struct IStateManager : IStateManagerBase {
+    virtual ~IStateManager() = default;
+    virtual void run() = 0;
+
+    using WaitForAppliedPromise = futures::Promise<futures::Unit>;
+    using WaitForAppliedQueue = std::multimap<LogIndex, WaitForAppliedPromise>;
+
+    [[nodiscard]] virtual auto getStatus() const -> StateStatus = 0;
+    [[nodiscard]] virtual auto resign() && noexcept
+        -> std::tuple<std::unique_ptr<CoreType>,
+                      std::unique_ptr<ReplicatedStateToken>,
+                      DeferredAction> = 0;
   };
 
  private:
+  auto buildCore(std::optional<velocypack::SharedSlice> const& coreParameter);
   auto getLeaderBase() -> std::shared_ptr<IReplicatedLeaderStateBase> final {
     return getLeader();
   }
@@ -118,15 +161,43 @@ struct ReplicatedState final
     return getFollower();
   }
 
-  void runLeader(std::shared_ptr<replicated_log::ILogLeader> logLeader,
-                 std::unique_ptr<ReplicatedStateCore>);
-  void runFollower(std::shared_ptr<replicated_log::ILogFollower> logFollower,
-                   std::unique_ptr<ReplicatedStateCore>);
-
+  std::shared_ptr<StatePersistorInterface> const persistor{nullptr};
   std::shared_ptr<Factory> const factory;
-  std::shared_ptr<StateManagerBase> currentManager;
-  StateGeneration generation{0};
   std::shared_ptr<replicated_log::ReplicatedLog> const log{};
+
+  struct GuardedData {
+    auto rebuildMe(IStateManagerBase const* caller) noexcept -> DeferredAction;
+
+    auto runLeader(std::shared_ptr<replicated_log::ILogLeader> logLeader,
+                   std::unique_ptr<CoreType>,
+                   std::unique_ptr<ReplicatedStateToken> token) noexcept
+        -> DeferredAction;
+    auto runFollower(std::shared_ptr<replicated_log::ILogFollower> logFollower,
+                     std::unique_ptr<CoreType>,
+                     std::unique_ptr<ReplicatedStateToken> token) noexcept
+        -> DeferredAction;
+    auto runUnconfigured(
+        std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
+            unconfiguredParticipant,
+        std::unique_ptr<CoreType> core,
+        std::unique_ptr<ReplicatedStateToken> token) noexcept -> DeferredAction;
+
+    auto rebuild(std::unique_ptr<CoreType> core,
+                 std::unique_ptr<ReplicatedStateToken> token) noexcept
+        -> DeferredAction;
+
+    auto flush(StateGeneration planGeneration) -> DeferredAction;
+
+    explicit GuardedData(ReplicatedState& self) : _self(self) {}
+
+    ReplicatedState& _self;
+    std::shared_ptr<IStateManager> currentManager = nullptr;
+    std::unique_ptr<CoreType> oldCore = nullptr;
+  };
+  Guarded<GuardedData> guardedData;
+  LoggerContext const loggerContext;
+  DatabaseID const database;
+  std::shared_ptr<ReplicatedStateMetrics> const metrics;
 };
 
 template<typename S>

@@ -28,11 +28,16 @@
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Section.h"
 
-namespace arangodb {
-namespace velocypack {
+#include <cstdlib>
+#include <memory>
+#include <string>
+#include <vector>
+
+namespace aragndob::velocypack {
 class Builder;
 }
-namespace options {
+
+namespace arangodb::options {
 
 // program options data structure
 // typically an application will have a single instance of this
@@ -41,8 +46,7 @@ class ProgramOptions {
   // struct containing the option processing result
   class ProcessingResult {
    public:
-    ProcessingResult()
-        : _positionals(), _touched(), _frozen(), _failed(false) {}
+    ProcessingResult() : _positionals(), _touched(), _frozen(), _exitCode(0) {}
     ~ProcessingResult() = default;
 
     // mark an option as being touched during options processing
@@ -64,10 +68,17 @@ class ProgramOptions {
     }
 
     // mark options processing as failed
-    void failed(bool value) { _failed = value; }
+    void fail(int exitCode) noexcept { _exitCode = exitCode; }
 
-    // whether or not options processing has failed
-    bool failed() const { return _failed; }
+    // return the registered exit code
+    int exitCode() const noexcept { return _exitCode; }
+
+    int exitCodeOrFailure() const noexcept {
+      if (_exitCode != 0) {
+        return _exitCode;
+      }
+      return EXIT_FAILURE;
+    }
 
     // values of all positional arguments found
     std::vector<std::string> _positionals;
@@ -80,8 +91,8 @@ class ProgramOptions {
     // this does not include options that are touched in the current pass
     std::unordered_set<std::string> _frozen;
 
-    // whether or not options processing failed
-    bool _failed;
+    // registered exit code (== 0 means ok, != 0 means error)
+    int _exitCode;
   };
 
   // function type for determining the similarity between two strings
@@ -122,14 +133,16 @@ class ProgramOptions {
   // set context for error reporting
   void setContext(std::string const& value) { _context = value; }
 
-  // sets a single old option and its replacement name
+  // sets a single old option and its replacement name.
+  // to be used when an option is renamed to still support the original name
   void addOldOption(std::string const& old, std::string const& replacement);
 
   // adds a section to the options
-  auto addSection(Section const& section) {
+  auto addSection(Section&& section) {
     checkIfSealed();
 
-    auto [it, emplaced] = _sections.try_emplace(section.name, section);
+    auto [it, emplaced] =
+        _sections.try_emplace(section.name, std::move(section));
     if (!emplaced) {
       // section already present. check if we need to update it
       Section& sec = it->second;
@@ -157,21 +170,33 @@ class ProgramOptions {
         EnterpriseSection(name, description, link, "", hidden, obsolete));
   }
 
-  // adds an option to the program options
+  // adds an option to the program options.
+  Option& addOption(
+      std::string const& name, std::string const& description,
+      std::unique_ptr<Parameter> parameter,
+      std::underlying_type<Flags>::type flags = makeFlags(Flags::Default)) {
+    addOption(Option(name, description, std::move(parameter), flags));
+    return getOption(name);
+  }
+
+  // adds an option to the program options. old API!
   Option& addOption(
       std::string const& name, std::string const& description,
       Parameter* parameter,
       std::underlying_type<Flags>::type flags = makeFlags(Flags::Default)) {
-    addOption(Option(name, description, parameter, flags));
+    addOption(name, description, std::unique_ptr<Parameter>(parameter), flags);
     return getOption(name);
   }
 
-  // adds an obsolete and hidden option to the program options
+  // adds a deprecated option that has no effect to the program options to not
+  // throw an unrecognized startup option error after upgrades until fully
+  // removed. not listed by --help (uncommon option)
   Option& addObsoleteOption(std::string const& name,
                             std::string const& description,
                             bool requiresValue) {
-    addOption(Option(name, description, new ObsoleteParameter(requiresValue),
-                     makeFlags(Flags::Hidden, Flags::Obsolete)));
+    addOption(Option(name, description,
+                     std::make_unique<ObsoleteParameter>(requiresValue),
+                     makeFlags(Flags::Uncommon, Flags::Obsolete)));
     return getOption(name);
   }
 
@@ -194,7 +219,7 @@ class ProgramOptions {
   // filters applied to filter out specific options.
   // the filter function is expected to return true
   // for any options that should become part of the result
-  arangodb::velocypack::Builder toVPack(
+  arangodb::velocypack::Builder toVelocyPack(
       bool onlyTouched, bool detailed,
       std::function<bool(std::string const&)> const& filter) const;
 
@@ -246,12 +271,12 @@ class ProgramOptions {
   std::string getDescription(std::string const& name);
 
   // handle an unknown option
-  bool unknownOption(std::string const& name);
+  void unknownOption(std::string const& name);
 
   // report an error (callback from parser)
-  bool fail(std::string const& message);
+  void fail(int exitCode, std::string const& message);
 
-  void failNotice(std::string const& message);
+  void failNotice(int exitCode, std::string const& message);
 
   // add a positional argument (callback from parser)
   void addPositional(std::string const& value);
@@ -261,7 +286,7 @@ class ProgramOptions {
 
  private:
   // adds an option to the list of options
-  void addOption(Option const& option);
+  void addOption(Option&& option);
 
   // modernize an option name
   std::string const& modernize(std::string const& name);
@@ -276,7 +301,6 @@ class ProgramOptions {
   std::vector<std::string> similar(std::string const& value, int cutOff,
                                    size_t maxResults);
 
- private:
   // name of binary (i.e. argv[0])
   std::string _progname;
   // usage hint, e.g. "usage: #progname# [<options>] ..."
@@ -310,5 +334,5 @@ class ProgramOptions {
   // directory of this binary
   char const* _binaryPath;
 };
-}  // namespace options
-}  // namespace arangodb
+
+}  // namespace arangodb::options

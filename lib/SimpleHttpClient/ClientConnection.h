@@ -45,18 +45,10 @@ class ClientConnection final : public GeneralClientConnection {
   ClientConnection& operator=(ClientConnection const&);
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates a new client connection
-  //////////////////////////////////////////////////////////////////////////////
-
-  ClientConnection(application_features::ApplicationServer& server,
+  ClientConnection(application_features::CommunicationFeaturePhase& comm,
                    Endpoint* endpoint, double, double, size_t);
-  ClientConnection(application_features::ApplicationServer& server,
+  ClientConnection(application_features::CommunicationFeaturePhase& comm,
                    std::unique_ptr<Endpoint>& endpoint, double, double, size_t);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief destroys a client connection
-  //////////////////////////////////////////////////////////////////////////////
 
   ~ClientConnection();
 

@@ -61,6 +61,8 @@ std::string const StaticStrings::SilentString("silent");
 std::string const StaticStrings::WaitForSyncString("waitForSync");
 std::string const StaticStrings::SkipDocumentValidation(
     "skipDocumentValidation");
+std::string const StaticStrings::OverwriteCollectionPrefix(
+    "overwriteCollectionPrefix");
 std::string const StaticStrings::IsSynchronousReplicationString(
     "isSynchronousReplication");
 std::string const StaticStrings::Group("group");
@@ -69,6 +71,7 @@ std::string const StaticStrings::Prefix("prefix");
 std::string const StaticStrings::Overwrite("overwrite");
 std::string const StaticStrings::OverwriteMode("overwriteMode");
 std::string const StaticStrings::Compact("compact");
+std::string const StaticStrings::DontWaitForCommit("dontWaitForCommit");
 
 // replication headers
 std::string const StaticStrings::ReplicationHeaderCheckMore(
@@ -128,6 +131,7 @@ std::string const StaticStrings::DataSourceType("type");
 std::string const StaticStrings::DataSourceParameters("parameters");
 
 // Index definition fields
+std::string const StaticStrings::IndexDeduplicate("deduplicate");
 std::string const StaticStrings::IndexExpireAfter("expireAfter");
 std::string const StaticStrings::IndexFields("fields");
 std::string const StaticStrings::IndexId("id");
@@ -135,9 +139,11 @@ std::string const StaticStrings::IndexInBackground("inBackground");
 std::string const StaticStrings::IndexIsBuilding("isBuilding");
 std::string const StaticStrings::IndexName("name");
 std::string const StaticStrings::IndexSparse("sparse");
+std::string const StaticStrings::IndexStoredValues("storedValues");
 std::string const StaticStrings::IndexType("type");
 std::string const StaticStrings::IndexUnique("unique");
 std::string const StaticStrings::IndexEstimates("estimates");
+std::string const StaticStrings::IndexLegacyPolygons("legacyPolygons");
 
 // static index names
 std::string const StaticStrings::IndexNameEdge("edge");
@@ -149,9 +155,18 @@ std::string const StaticStrings::IndexNameTime("time");
 
 // index hint strings
 std::string const StaticStrings::IndexHintDisableIndex("disableIndex");
-std::string const StaticStrings::IndexHintMaxProjections("maxProjections");
 std::string const StaticStrings::IndexHintOption("indexHint");
 std::string const StaticStrings::IndexHintOptionForce("forceIndexHint");
+
+// query options
+std::string const StaticStrings::Filter("filter");
+std::string const StaticStrings::MaxProjections("maxProjections");
+std::string const StaticStrings::ProducesResult("producesResult");
+std::string const StaticStrings::ReadOwnWrites("readOwnWrites");
+std::string const StaticStrings::UseCache("useCache");
+std::string const StaticStrings::Parallelism("parallelism");
+std::string const StaticStrings::ForceOneShardAttributeValue(
+    "forceOneShardAttributeValue");
 
 // HTTP headers
 std::string const StaticStrings::Accept("accept");
@@ -239,11 +254,14 @@ std::string const StaticStrings::Body("body");
 std::string const StaticStrings::ParsedBody("parsedBody");
 
 // collection attributes
+std::string const StaticStrings::AllowUserKeys("allowUserKeys");
 std::string const StaticStrings::CacheEnabled("cacheEnabled");
+std::string const StaticStrings::ComputedValues("computedValues");
 std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
 std::string const StaticStrings::Indexes("indexes");
 std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::IsSmartChild("isSmartChild");
+std::string const StaticStrings::KeyOptions("keyOptions");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
 std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
 std::string const StaticStrings::ObjectId("objectId");
@@ -265,6 +283,8 @@ std::string const StaticStrings::ShardingSingle("single");
 std::string const StaticStrings::ReplicationVersion("replicationVersion");
 std::string const StaticStrings::ReplicatedLogs("replicatedLogs");
 std::string_view const StaticStrings::SoftWriteConcern("softWriteConcern");
+std::string_view const StaticStrings::EffectiveWriteConcern(
+    "effectiveWriteConcern");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
@@ -292,6 +312,11 @@ std::string const StaticStrings::ShadowCollections("shadowCollections");
 std::string const StaticStrings::FullLocalPrefix("_local_");
 std::string const StaticStrings::FullFromPrefix("_from_");
 std::string const StaticStrings::FullToPrefix("_to_");
+
+// Graph directions
+std::string const StaticStrings::GraphDirection("direction");
+std::string const StaticStrings::GraphDirectionInbound("inbound");
+std::string const StaticStrings::GraphDirectionOutbound("outbound");
 
 // Pregel Section Start
 
@@ -349,6 +374,7 @@ std::string const StaticStrings::RevisionTreeRangeMin("rangeMin");
 std::string const StaticStrings::RevisionTreeInitialRangeMin("initialRangeMin");
 std::string const StaticStrings::RevisionTreeRanges("ranges");
 std::string const StaticStrings::RevisionTreeResume("resume");
+std::string const StaticStrings::RevisionTreeResumeHLC("resumeHLC");
 std::string const StaticStrings::RevisionTreeVersion("version");
 std::string const StaticStrings::FollowingTermId("followingTermId");
 
@@ -366,6 +392,10 @@ std::string const StaticStrings::Spearhead("spearhead");
 std::string const StaticStrings::TargetConfig("targetConfig");
 std::string const StaticStrings::Term("term");
 std::string const StaticStrings::CommitIndex("commitIndex");
+std::string const StaticStrings::FirstIndex("firstIndex");
+std::string const StaticStrings::ReleaseIndex("releaseIndex");
+std::string const StaticStrings::LowestIndexToKeep("lowestIndexToKeep");
+std::string const StaticStrings::Outcome("outcome");
 
 // Generic attribute names
 std::string const StaticStrings::AttrCoordinator("coordinator");
@@ -428,6 +458,11 @@ std::string const StaticStrings::ValidationParameterRule("rule");
 std::string const StaticStrings::ValidationParameterType("type");
 
 std::string_view const StaticStrings::ApiLogInternal("/_api/log-internal");
+std::string_view const StaticStrings::ApiLogExternal("/_api/log");
+std::string_view const StaticStrings::ApiReplicatedStateExternal(
+    "/_api/replicated-state");
+std::string_view const StaticStrings::ApiDocumentStateExternal(
+    "/_api/document-state");
 
 // TODO REMOVE ME AFTER REFACTOR IS DONE
 std::string const StaticStrings::GraphRefactorFlag("refactor");

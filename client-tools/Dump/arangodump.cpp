@@ -21,6 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "arangodump.h"
+
 #include "Basics/Common.h"
 #include "Basics/signals.h"
 #include "Basics/directories.h"
@@ -28,6 +30,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/FileSystemFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
@@ -54,6 +57,8 @@ using namespace arangodb::application_features;
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
+    int ret = EXIT_SUCCESS;
+
     ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
     arangodb::signals::maskAllSignalsClient();
     context.installHup();
@@ -67,28 +72,34 @@ int main(int argc, char* argv[]) {
         new options::ProgramOptions(
             argv[0], "Usage: arangodump [<options>]",
             "For more information use:", BIN_DIRECTORY));
-    ApplicationServer server(options, BIN_DIRECTORY);
-    int ret = EXIT_SUCCESS;
 
-    server.addFeature<CommunicationFeaturePhase>();
-    server.addFeature<BasicFeaturePhaseClient>();
-    server.addFeature<GreetingsFeaturePhase>(true);
+    ArangoDumpServer server(options, BIN_DIRECTORY);
 
-    server.addFeature<ClientFeature, HttpEndpointProvider>(
-        true, std::numeric_limits<size_t>::max());
-    server.addFeature<ConfigFeature>("arangodump");
-    server.addFeature<DumpFeature>(ret);
-    server.addFeature<LoggerFeature>(false);
-    server.addFeature<RandomFeature>();
-    server.addFeature<ShellColorsFeature>();
-    server.addFeature<ShutdownFeature>(
-        std::vector<std::type_index>{std::type_index(typeid(DumpFeature))});
-    server.addFeature<SslFeature>();
-    server.addFeature<VersionFeature>();
-
-#ifdef USE_ENTERPRISE
-    server.addFeature<EncryptionFeature>();
-#endif
+    server.addFeatures(Visitor{
+        []<typename T>(auto& server, TypeTag<T>) {
+          return std::make_unique<T>(server);
+        },
+        [](ArangoDumpServer& server, TypeTag<GreetingsFeaturePhase>) {
+          return std::make_unique<GreetingsFeaturePhase>(server,
+                                                         std::true_type{});
+        },
+        [&context](ArangoDumpServer& server, TypeTag<ConfigFeature>) {
+          return std::make_unique<ConfigFeature>(server, context.binaryName());
+        },
+        [](ArangoDumpServer& server, TypeTag<LoggerFeature>) {
+          return std::make_unique<LoggerFeature>(server, false);
+        },
+        [](ArangoDumpServer& server, TypeTag<HttpEndpointProvider>) {
+          return std::make_unique<ClientFeature>(
+              server, true, std::numeric_limits<size_t>::max());
+        },
+        [&ret](ArangoDumpServer& server, TypeTag<DumpFeature>) {
+          return std::make_unique<DumpFeature>(server, ret);
+        },
+        [](ArangoDumpServer& server, TypeTag<ShutdownFeature>) {
+          return std::make_unique<ShutdownFeature>(
+              server, std::array{ArangoDumpServer::id<DumpFeature>()});
+        }});
 
     try {
       server.run(argc, argv);

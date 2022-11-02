@@ -1,0 +1,8 @@
+*.o
+*.suo
+*.user
+*.GhostDoc.xml
+bin/
+obj/
+TestResults/
+TestResult.xml

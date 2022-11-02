@@ -48,7 +48,7 @@ class ClusterEdgeCursor : public graph::EdgeCursor {
   void readAll(EdgeCursor::Callback const& callback) override;
 
   /// @brief number of HTTP requests performed.
-  size_t httpRequests() const override { return _httpRequests; }
+  std::uint64_t httpRequests() const override { return _httpRequests; }
 
  protected:
   std::vector<arangodb::velocypack::Slice> _edgeList;
@@ -56,7 +56,7 @@ class ClusterEdgeCursor : public graph::EdgeCursor {
   size_t _position;
   arangodb::graph::BaseOptions const* _opts;
   arangodb::graph::ClusterTraverserCache* _cache;
-  size_t _httpRequests;
+  std::uint64_t _httpRequests;
 };
 
 class ClusterTraverserEdgeCursor final : public ClusterEdgeCursor {

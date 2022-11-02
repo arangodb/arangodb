@@ -24,13 +24,15 @@
 #include "LogFollower.h"
 
 #include "Logger/LogContextKeys.h"
+#include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
+#include "Replication2/MetricsHelper.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "Replication2/Exceptions/ParticipantResignedException.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/Result.h>
@@ -99,6 +101,14 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
         {AppendEntriesErrorReason::ErrorType::kMessageOutdated});
   }
 
+  if (_appendEntriesInFlight) {
+    LOG_CTX("92282", DEBUG, _loggerContext)
+        << "reject append entries - previous append entry still in flight";
+    return AppendEntriesResult::withRejection(
+        _currentTerm, req.messageId,
+        {AppendEntriesErrorReason::ErrorType::kPrevAppendEntriesInFlight});
+  }
+
   if (req.leaderId != _leaderId) {
     LOG_CTX("a2009", DEBUG, _loggerContext)
         << "reject append entries - wrong leader, given = " << req.leaderId
@@ -140,18 +150,33 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   MeasureTimeGuard measureTimeGuard{
       _logMetrics->replicatedLogFollowerAppendEntriesRtUs};
 
-  auto self = _guardedFollowerData.getLockedGuard();
+  auto dataGuard = _guardedFollowerData.getLockedGuard();
 
   {
     // Preflight checks - does the leader, log and other stuff match?
     // This code block should not modify the local state, only check values.
-    if (auto result = appendEntriesPreFlightChecks(self.get(), req);
+    if (auto result = appendEntriesPreFlightChecks(dataGuard.get(), req);
         result.has_value()) {
       return *result;
     }
 
-    self->_lastRecvMessageId = req.messageId;
+    dataGuard->_lastRecvMessageId = req.messageId;
   }
+
+  // In case of an exception, this scope guard sets the in flight flag to false.
+  // _appendEntriesInFlight is an atomic variable, hence we are allowed to set
+  // it without acquiring the mutex.
+  //
+  // _appendEntriesInFlight is set true, only if the _guardedFollowerData mutex
+  // is locked. It is set to false precisely once by the scope guard below.
+  // Setting it to false does not require the mutex.
+  _appendEntriesInFlight = true;
+  auto inFlightScopeGuard =
+      ScopeGuard([&flag = _appendEntriesInFlight,
+                  &cv = _appendEntriesInFlightCondVar]() noexcept {
+        flag = false;
+        cv.notify_one();
+      });
 
   {
     // Transactional Code Block
@@ -161,10 +186,11 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     // it fails, we forget the new state. Otherwise we replace the old in memory
     // state with the new value.
 
-    if (self->_inMemoryLog.getLastIndex() != req.prevLogEntry.index) {
-      auto newInMemoryLog = self->_inMemoryLog.takeSnapshotUpToAndIncluding(
-          req.prevLogEntry.index);
-      auto res = self->_logCore->removeBack(req.prevLogEntry.index + 1);
+    if (dataGuard->_inMemoryLog.getLastIndex() != req.prevLogEntry.index) {
+      auto newInMemoryLog =
+          dataGuard->_inMemoryLog.takeSnapshotUpToAndIncluding(
+              req.prevLogEntry.index);
+      auto res = dataGuard->_logCore->removeBack(req.prevLogEntry.index + 1);
       if (!res.ok()) {
         LOG_CTX("f17b8", ERR, _loggerContext)
             << "failed to remove log entries after " << req.prevLogEntry.index;
@@ -175,7 +201,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       // commit the deletion in memory
       static_assert(
           std::is_nothrow_move_assignable_v<decltype(newInMemoryLog)>);
-      self->_inMemoryLog = std::move(newInMemoryLog);
+      dataGuard->_inMemoryLog = std::move(newInMemoryLog);
     }
   }
 
@@ -183,11 +209,13 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   // index and lci and return early.
   auto toBeResolved = std::make_unique<WaitForQueue>();
   if (req.entries.empty()) {
-    auto action = self->checkCommitIndex(
-        req.leaderCommit, req.largestCommonIndex, std::move(toBeResolved));
-    auto result = AppendEntriesResult::withOk(self->_follower._currentTerm,
+    auto action = dataGuard->checkCommitIndex(
+        req.leaderCommit, req.lowestIndexToKeep, std::move(toBeResolved));
+    auto result = AppendEntriesResult::withOk(dataGuard->_follower._currentTerm,
                                               req.messageId);
-    self.unlock();  // unlock here, action will be executed via destructor
+    dataGuard.unlock();  // unlock here, action must be executed after
+    inFlightScopeGuard.fire();
+    action.fire();
     static_assert(std::is_nothrow_move_constructible_v<AppendEntriesResult>);
     return {std::move(result)};
   }
@@ -204,24 +232,26 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
           << req.entries.front().entry().logTermIndexPair() << ".";
       return InMemoryLog{req.entries};
     }
-    return self->_inMemoryLog.append(_loggerContext, req.entries);
+    return dataGuard->_inMemoryLog.append(_loggerContext, req.entries);
   });
   auto iter = std::make_unique<InMemoryPersistedLogIterator>(req.entries);
 
-  auto* core = self->_logCore.get();
+  auto* core = dataGuard->_logCore.get();
   static_assert(std::is_nothrow_move_constructible_v<decltype(newInMemoryLog)>);
-  auto checkResultAndCommitIndex = [selfGuard = std::move(self),
-                                    req = std::move(req),
-                                    newInMemoryLog = std::move(newInMemoryLog),
-                                    toBeResolved = std::move(toBeResolved)](
-                                       futures::Try<Result>&& tryRes) mutable
+
+  auto checkResultAndCommitIndex =
+      [self = shared_from_this(), inFlightGuard = std::move(inFlightScopeGuard),
+       req = std::move(req), newInMemoryLog = std::move(newInMemoryLog),
+       toBeResolved =
+           std::move(toBeResolved)](futures::Try<Result>&& tryRes) mutable
       -> std::pair<AppendEntriesResult, DeferredAction> {
     // We have to release the guard after this lambda is finished.
     // Otherwise it would be released when the lambda is destroyed, which
     // happens *after* the following thenValue calls have been executed. In
     // particular the lock is held until the end of the future chain is reached.
     // This will cause deadlocks.
-    decltype(selfGuard) self = std::move(selfGuard);
+    decltype(inFlightGuard) inFlightGuardLocal = std::move(inFlightGuard);
+    auto data = self->_guardedFollowerData.getLockedGuard();
 
     auto const& res = tryRes.get();
     {
@@ -229,40 +259,46 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       // we wrote to the on-disk-log.
       static_assert(noexcept(res.fail()));
       if (res.fail()) {
-        LOG_CTX("216d8", ERR, self->_follower._loggerContext)
+        LOG_CTX("216d8", ERR, data->_follower._loggerContext)
             << "failed to insert log entries: " << res.errorMessage();
         return std::make_pair(
             AppendEntriesResult::withPersistenceError(
-                self->_follower._currentTerm, req.messageId, res),
+                data->_follower._currentTerm, req.messageId, res),
             DeferredAction{});
       }
 
       // commit the write in memory
       static_assert(
           std::is_nothrow_move_assignable_v<decltype(newInMemoryLog)>);
-      self->_inMemoryLog = std::move(newInMemoryLog);
-
-      LOG_CTX("dd72d", TRACE, self->_follower._loggerContext)
+      data->_inMemoryLog = std::move(newInMemoryLog);
+      self->_logMetrics->replicatedLogNumberAcceptedEntries->count(
+          req.entries.size());
+      LOG_CTX("dd72d", TRACE, data->_follower._loggerContext)
           << "appended " << req.entries.size() << " log entries after "
           << req.prevLogEntry.index
           << ", leader commit index = " << req.leaderCommit;
     }
 
-    auto action = self->checkCommitIndex(
-        req.leaderCommit, req.largestCommonIndex, std::move(toBeResolved));
+    auto action = data->checkCommitIndex(
+        req.leaderCommit, req.lowestIndexToKeep, std::move(toBeResolved));
 
     static_assert(noexcept(AppendEntriesResult::withOk(
-        self->_follower._currentTerm, req.messageId)));
+        data->_follower._currentTerm, req.messageId)));
     static_assert(std::is_nothrow_move_constructible_v<DeferredAction>);
     return std::make_pair(AppendEntriesResult::withOk(
-                              self->_follower._currentTerm, req.messageId),
+                              data->_follower._currentTerm, req.messageId),
                           std::move(action));
   };
   static_assert(std::is_nothrow_move_constructible_v<
                 decltype(checkResultAndCommitIndex)>);
 
   // Action
-  return core->insertAsync(std::move(iter), req.waitForSync)
+  auto f = core->insertAsync(std::move(iter), req.waitForSync);
+  // Release mutex here, otherwise we might deadlock in
+  // checkResultAndCommitIndex if another request arrives before the previous
+  // one was processed.
+  dataGuard.unlock();
+  return std::move(f)
       .then(std::move(checkResultAndCommitIndex))
       .then([measureTime = std::move(measureTimeGuard)](auto&& res) mutable {
         measureTime.fire();
@@ -275,7 +311,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
-    LogIndex newCommitIndex, LogIndex newLCI,
+    LogIndex newCommitIndex, LogIndex newLITK,
     std::unique_ptr<WaitForQueue> outQueue) noexcept -> DeferredAction {
   TRI_ASSERT(outQueue != nullptr) << "expect outQueue to be preallocated";
 
@@ -318,27 +354,32 @@ auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
     }
   };
 
-  // This assertion is no longer true, as followers can now be added.
-  // TRI_ASSERT(newLCI >= _largestCommonIndex)
-  //     << "req.lci = " << newLCI << ", this.lci = " << _largestCommonIndex;
-  if (_largestCommonIndex < newLCI) {
+  if (_lowestIndexToKeep < newLITK) {
     LOG_CTX("fc467", TRACE, _follower._loggerContext)
-        << "largest common index went from " << _largestCommonIndex << " to "
-        << newLCI << ".";
-    _largestCommonIndex = newLCI;
+        << "largest common index went from " << _lowestIndexToKeep << " to "
+        << newLITK << ".";
+    _lowestIndexToKeep = newLITK;
     // TODO do we want to call checkCompaction here?
-    std::ignore = checkCompaction();
+    // std::ignore = checkCompaction();
   }
 
   if (_commitIndex < newCommitIndex && !_inMemoryLog.empty()) {
+    auto const oldCommitIndex = _commitIndex;
     _commitIndex =
         std::min(newCommitIndex, _inMemoryLog.back().entry().logIndex());
+    _follower._logMetrics->replicatedLogNumberCommittedEntries->count(
+        _commitIndex.value - oldCommitIndex.value);
     LOG_CTX("1641d", TRACE, _follower._loggerContext)
         << "increment commit index: " << _commitIndex;
     return generateToBeResolved();
   }
 
   return {};
+}
+
+auto replicated_log::LogFollower::GuardedFollowerData::didResign()
+    const noexcept -> bool {
+  return _logCore == nullptr;
 }
 
 replicated_log::LogFollower::GuardedFollowerData::GuardedFollowerData(
@@ -358,7 +399,7 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
     status.local = followerData.getLocalStatistics();
     status.leader = _leaderId;
     status.term = _currentTerm;
-    status.largestCommonIndex = followerData._largestCommonIndex;
+    status.lowestIndexToKeep = followerData._lowestIndexToKeep;
     return LogStatus{std::move(status)};
   });
 }
@@ -385,46 +426,62 @@ auto replicated_log::LogFollower::getParticipantId() const noexcept
 
 auto replicated_log::LogFollower::resign() && -> std::tuple<
     std::unique_ptr<LogCore>, DeferredAction> {
-  return _guardedFollowerData.doUnderLock([this](GuardedFollowerData&
-                                                     followerData) {
-    LOG_CTX("838fe", DEBUG, _loggerContext) << "follower resign";
-    if (followerData._logCore == nullptr) {
-      LOG_CTX("55a1d", WARN, _loggerContext)
-          << "follower log core is already gone. Resign was called twice!";
-      basics::abortOrThrowException(ParticipantResignedException(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE));
-    }
+  return _guardedFollowerData.doUnderLock(
+      [this](GuardedFollowerData& followerData) {
+        LOG_CTX("838fe", DEBUG, _loggerContext) << "follower resign";
+        if (followerData.didResign()) {
+          LOG_CTX("55a1d", WARN, _loggerContext)
+              << "follower log core is already gone. Resign was called twice!";
+          basics::abortOrThrowException(ParticipantResignedException(
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
+              ADB_HERE));
+        }
 
-    // use a unique ptr because move constructor for multimaps is not noexcept
-    auto queue = std::make_unique<WaitForQueue>(
-        std::move(followerData._waitForQueue.getLockedGuard().get()));
+        // use a unique ptr because move constructor for multimaps is not
+        // noexcept
+        struct Queues {
+          WaitForQueue waitForQueue;
+          WaitForBag waitForResignQueue;
+        };
+        auto queues = std::make_unique<Queues>();
+        std::swap(queues->waitForQueue,
+                  followerData._waitForQueue.getLockedGuard().get());
+        queues->waitForResignQueue =
+            std::move(followerData._waitForResignQueue);
 
-    auto action = [queue = std::move(queue)]() noexcept {
-      std::for_each(queue->begin(), queue->end(), [](auto& pair) {
-        pair.second.setException(ParticipantResignedException(
-            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE));
+        auto action = [queues = std::move(queues)]() noexcept {
+          std::for_each(
+              queues->waitForQueue.begin(), queues->waitForQueue.end(),
+              [](auto& pair) {
+                pair.second.setException(ParticipantResignedException(
+                    TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
+                    ADB_HERE));
+              });
+          queues->waitForResignQueue.resolveAll();
+        };
+        using action_type = decltype(action);
+
+        static_assert(std::is_nothrow_move_constructible_v<action_type>);
+        static_assert(
+            std::is_nothrow_constructible_v<
+                DeferredAction, std::add_rvalue_reference_t<action_type>>);
+
+        // make_tuple is noexcept, _logCore is a unique_ptr which is nothrow
+        // move constructable
+        return std::make_tuple(std::move(followerData._logCore),
+                               DeferredAction{std::move(action)});
       });
-    };
-    using action_type = decltype(action);
-
-    static_assert(std::is_nothrow_move_constructible_v<action_type>);
-    static_assert(std::is_nothrow_constructible_v<
-                  DeferredAction, std::add_rvalue_reference_t<action_type>>);
-
-    // make_tuple is noexcept, _logCore is a unique_ptr which is nothrow move
-    // constructable
-    return std::make_tuple(std::move(followerData._logCore),
-                           DeferredAction{std::move(action)});
-  });
 }
 
 replicated_log::LogFollower::LogFollower(
     LoggerContext const& logContext,
-    std::shared_ptr<ReplicatedLogMetrics> logMetrics, ParticipantId id,
-    std::unique_ptr<LogCore> logCore, LogTerm term,
+    std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+    std::shared_ptr<ReplicatedLogGlobalSettings const> options,
+    ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
     std::optional<ParticipantId> leaderId,
     replicated_log::InMemoryLog inMemoryLog)
     : _logMetrics(std::move(logMetrics)),
+      _options(std::move(options)),
       _loggerContext(
           logContext.with<logContextKeyLogComponent>("follower")
               .with<logContextKeyLeaderId>(leaderId.value_or("<none>"))
@@ -439,6 +496,12 @@ replicated_log::LogFollower::LogFollower(
 auto replicated_log::LogFollower::waitFor(LogIndex idx)
     -> replicated_log::ILogParticipant::WaitForFuture {
   auto self = _guardedFollowerData.getLockedGuard();
+  if (self->didResign()) {
+    auto promise = WaitForPromise{};
+    promise.setException(ParticipantResignedException(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE));
+    return promise.getFuture();
+  }
   if (self->_commitIndex >= idx) {
     return futures::Future<WaitForResult>{
         std::in_place, self->_commitIndex,
@@ -446,6 +509,7 @@ auto replicated_log::LogFollower::waitFor(LogIndex idx)
   }
   // emplace might throw a std::bad_alloc but the remainder is noexcept
   // so either you inserted it and or nothing happens
+  // TODO locking ok? Iterator stored but lock guard is temporary
   auto it =
       self->_waitForQueue.getLockedGuard()->emplace(idx, WaitForPromise{});
   auto& promise = it->second;
@@ -473,14 +537,19 @@ auto replicated_log::LogFollower::waitForIterator(LogIndex index)
            * next entry containing payload.
            */
 
-          auto actualIndex = index;
+          auto actualIndex =
+              std::max(index, followerData._inMemoryLog.getFirstIndex());
           while (actualIndex <= followerData._commitIndex) {
             auto memtry =
                 followerData._inMemoryLog.getEntryByIndex(actualIndex);
+            TRI_ASSERT(memtry.has_value())
+                << "first index is "
+                << followerData._inMemoryLog
+                       .getFirstIndex();  // should always have a value
             if (!memtry.has_value()) {
               break;
             }
-            if (memtry->entry().logPayload().has_value()) {
+            if (memtry->entry().hasPayload()) {
               break;
             }
             actualIndex = actualIndex + 1;
@@ -542,17 +611,21 @@ replicated_log::LogFollower::~LogFollower() {
 }
 
 auto LogFollower::release(LogIndex doneWithIdx) -> Result {
-  return _guardedFollowerData.doUnderLock(
-      [&](GuardedFollowerData& self) -> Result {
-        TRI_ASSERT(doneWithIdx <= self._inMemoryLog.getLastIndex());
-        if (doneWithIdx <= self._releaseIndex) {
-          return {};
-        }
-        self._releaseIndex = doneWithIdx;
-        LOG_CTX("a0c95", TRACE, _loggerContext)
-            << "new release index set to " << self._releaseIndex;
-        return self.checkCompaction();
-      });
+  auto guard = _guardedFollowerData.getLockedGuard();
+  if (guard->didResign()) {
+    return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
+  }
+  guard.wait(_appendEntriesInFlightCondVar,
+             [&] { return !_appendEntriesInFlight; });
+
+  TRI_ASSERT(doneWithIdx <= guard->_inMemoryLog.getLastIndex());
+  if (doneWithIdx <= guard->_releaseIndex) {
+    return {};
+  }
+  guard->_releaseIndex = doneWithIdx;
+  LOG_CTX("a0c95", TRACE, _loggerContext)
+      << "new release index set to " << guard->_releaseIndex;
+  return guard->checkCompaction();
 }
 
 auto LogFollower::waitForLeaderAcked() -> WaitForFuture {
@@ -568,33 +641,102 @@ auto LogFollower::getCommitIndex() const noexcept -> LogIndex {
   return _guardedFollowerData.getLockedGuard()->_commitIndex;
 }
 
+auto LogFollower::waitForResign() -> futures::Future<futures::Unit> {
+  auto&& [future, action] =
+      _guardedFollowerData.getLockedGuard()->waitForResign();
+
+  action.fire();
+
+  return std::move(future);
+}
+
+auto LogFollower::construct(
+    LoggerContext const& loggerContext,
+    std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+    std::shared_ptr<ReplicatedLogGlobalSettings const> options,
+    ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+    std::optional<ParticipantId> leaderId) -> std::shared_ptr<LogFollower> {
+  auto log = InMemoryLog::loadFromLogCore(*logCore);
+
+  auto const lastIndex = log.getLastTermIndexPair();
+
+  if (lastIndex.term >= term) {
+    LOG_CTX("2d80c", WARN, loggerContext)
+        << "Becoming follower in term " << term
+        << " but spearhead is already at term " << lastIndex.term;
+  }
+
+  struct MakeSharedWrapper : LogFollower {
+    MakeSharedWrapper(
+        LoggerContext const& loggerContext,
+        std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+        std::shared_ptr<ReplicatedLogGlobalSettings const> options,
+        ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+        std::optional<ParticipantId> leaderId, InMemoryLog inMemoryLog)
+        : LogFollower(loggerContext, std::move(logMetrics), std::move(options),
+                      std::move(id), std::move(logCore), term,
+                      std::move(leaderId), std::move(inMemoryLog)) {}
+  };
+
+  return std::make_shared<MakeSharedWrapper>(
+      loggerContext, std::move(logMetrics), std::move(options), std::move(id),
+      std::move(logCore), term, std::move(leaderId), std::move(log));
+}
+auto LogFollower::copyInMemoryLog() const -> InMemoryLog {
+  return _guardedFollowerData.getLockedGuard()->_inMemoryLog;
+}
+
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()
     const noexcept -> LogStatistics {
   auto result = LogStatistics{};
   result.commitIndex = _commitIndex;
   result.firstIndex = _inMemoryLog.getFirstIndex();
   result.spearHead = _inMemoryLog.getLastTermIndexPair();
+  result.releaseIndex = _releaseIndex;
   return result;
 }
 
 auto LogFollower::GuardedFollowerData::checkCompaction() -> Result {
-  auto const compactionStop = std::min(_largestCommonIndex, _releaseIndex + 1);
+  auto const compactionStop = std::min(_lowestIndexToKeep, _releaseIndex + 1);
   LOG_CTX("080d5", TRACE, _follower._loggerContext)
       << "compaction index calculated as " << compactionStop;
-  if (compactionStop <= _inMemoryLog.getFirstIndex() + 1000) {
-    // only do a compaction every 1000 entries
+  if (compactionStop <= _inMemoryLog.getFirstIndex() +
+                            _follower._options->_thresholdLogCompaction) {
+    // only do a compaction every _thresholdLogCompaction entries
     LOG_CTX("ebb9f", TRACE, _follower._loggerContext)
         << "won't trigger a compaction, not enough entries. First index = "
         << _inMemoryLog.getFirstIndex();
     return {};
   }
-
+  auto const numberOfCompactedEntries =
+      compactionStop.value - _inMemoryLog.getFirstIndex().value;
   auto newLog = _inMemoryLog.release(compactionStop);
   auto res = _logCore->removeFront(compactionStop).get();
   if (res.ok()) {
     _inMemoryLog = std::move(newLog);
+    _follower._logMetrics->replicatedLogNumberCompactedEntries->count(
+        numberOfCompactedEntries);
   }
   LOG_CTX("f1028", TRACE, _follower._loggerContext)
       << "compaction result = " << res.errorMessage();
   return res;
+}
+auto LogFollower::GuardedFollowerData::waitForResign()
+    -> std::pair<futures::Future<futures::Unit>, DeferredAction> {
+  if (!didResign()) {
+    auto future = _waitForResignQueue.addWaitFor();
+    return {std::move(future), DeferredAction{}};
+  } else {
+    TRI_ASSERT(_waitForResignQueue.empty());
+    auto promise = futures::Promise<futures::Unit>{};
+    auto future = promise.getFuture();
+
+    auto action =
+        DeferredAction([promise = std::move(promise)]() mutable noexcept {
+          TRI_ASSERT(promise.valid());
+          promise.setValue();
+        });
+
+    return {std::move(future), std::move(action)};
+  }
 }

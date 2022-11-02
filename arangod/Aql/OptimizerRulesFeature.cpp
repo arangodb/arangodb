@@ -22,18 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRulesFeature.h"
-#include "Aql/ExecutionPlan.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/IResearchViewOptimizerRules.h"
 #include "Aql/IndexNodeOptimizerRules.h"
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "RestServer/AqlFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -48,10 +46,8 @@ std::vector<OptimizerRule> OptimizerRulesFeature::_rules;
 // @brief lookup from rule name to rule level
 std::unordered_map<std::string_view, int> OptimizerRulesFeature::_ruleLookup;
 
-OptimizerRulesFeature::OptimizerRulesFeature(
-    arangodb::application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "OptimizerRules"),
-      _parallelizeGatherWrites(true) {
+OptimizerRulesFeature::OptimizerRulesFeature(Server& server)
+    : ArangodFeature{server, *this}, _parallelizeGatherWrites(true) {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
@@ -61,13 +57,14 @@ OptimizerRulesFeature::OptimizerRulesFeature(
 void OptimizerRulesFeature::collectOptions(
     std::shared_ptr<arangodb::options::ProgramOptions> options) {
   options
-      ->addOption(
-          "--query.optimizer-rules",
-          "enable or disable specific optimizer rules (use rule name "
-          "prefixed with '-' for disabling, '+' for enabling)",
-          new arangodb::options::VectorParameter<
-              arangodb::options::StringParameter>(&_optimizerRules),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption("--query.optimizer-rules",
+                  "Enable or disable specific optimizer rules by default. "
+                  "Specify the rule name prefixed with `-` for disabling, or "
+                  "`+` for enabling.",
+                  new arangodb::options::VectorParameter<
+                      arangodb::options::StringParameter>(&_optimizerRules),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30600);
 
   options
@@ -316,10 +313,16 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::removeFiltersCoveredByTraversal,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
-  // move filters and sort conditions into views
+  // move search and scorers into views
   registerRule(
       "handle-arangosearch-views", arangodb::iresearch::handleViewsRule,
       OptimizerRule::handleArangoSearchViewsRule, OptimizerRule::makeFlags());
+
+  // move constrained sort into views
+  registerRule("arangosearch-constrained-sort",
+               arangodb::iresearch::handleConstrainedSortInView,
+               OptimizerRule::handleConstrainedSortInView,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-2",
@@ -358,7 +361,8 @@ void OptimizerRulesFeature::addRules() {
   registerRule("cluster-one-shard", clusterOneShardRule,
                OptimizerRule::clusterOneShardRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::ClusterOnly));
+                                        OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly));
 #endif
 
 #ifdef USE_ENTERPRISE
@@ -367,7 +371,8 @@ void OptimizerRulesFeature::addRules() {
   registerRule("cluster-lift-constant-for-disjoint-graph-nodes",
                clusterLiftConstantsForDisjointGraphNodes,
                OptimizerRule::clusterLiftConstantsForDisjointGraphNodes,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
+               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly));
 #endif
 
   registerRule("distribute-in-cluster", distributeInClusterRule,
@@ -377,7 +382,8 @@ void OptimizerRulesFeature::addRules() {
 #ifdef USE_ENTERPRISE
   registerRule("smart-joins", smartJoinsRule, OptimizerRule::smartJoinsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::ClusterOnly));
+                                        OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly));
 #endif
 
   // distribute operations in cluster
@@ -385,7 +391,14 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::scatterInClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
 
-  // distribute operations in cluster
+#ifdef USE_ENTERPRISE
+  registerRule("distribute-offset-info-to-cluster",
+               distributeOffsetInfoToClusterRule,
+               OptimizerRule::distributeOffsetInfoToClusterRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly));
+#endif
+
   registerRule("distribute-filtercalc-to-cluster",
                distributeFilterCalcToClusterRule,
                OptimizerRule::distributeFilterCalcToClusterRule,
@@ -415,17 +428,20 @@ void OptimizerRulesFeature::addRules() {
   registerRule("scatter-satellite-graphs", scatterSatelliteGraphRule,
                OptimizerRule::scatterSatelliteGraphRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::ClusterOnly));
+                                        OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly));
 
   registerRule("remove-satellite-joins", removeSatelliteJoinsRule,
                OptimizerRule::removeSatelliteJoinsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::ClusterOnly));
+                                        OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly));
 
   registerRule("remove-distribute-nodes", removeDistributeNodesRule,
                OptimizerRule::removeDistributeNodesRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::ClusterOnly));
+                                        OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly));
 #endif
 
   registerRule("undistribute-remove-after-enum-coll",
@@ -466,19 +482,29 @@ void OptimizerRulesFeature::addRules() {
   registerRule("push-subqueries-to-dbserver", clusterPushSubqueryToDBServer,
                OptimizerRule::clusterPushSubqueryToDBServer,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::ClusterOnly));
+                                        OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly));
 #endif
+
+  // apply late materialization for view queries
+  registerRule("late-document-materialization-arangosearch",
+               iresearch::lateDocumentMaterializationArangoSearchRule,
+               OptimizerRule::lateDocumentMaterializationArangoSearchRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // apply late materialization for index queries
   registerRule("late-document-materialization", lateDocumentMaterializationRule,
                OptimizerRule::lateDocumentMaterializationRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
-  // apply late materialization for view queries
-  registerRule("late-document-materialization-arangosearch",
-               arangodb::iresearch::lateDocumentMaterializationArangoSearchRule,
-               OptimizerRule::lateDocumentMaterializationArangoSearchRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+#ifdef USE_ENTERPRISE
+  // apply late materialization for offset infos
+  registerRule("late-materialization-offset-info",
+               lateMaterialiationOffsetInfoRule,
+               OptimizerRule::lateMaterialiationOffsetInfoRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::EnterpriseOnly));
+#endif
 
   // add the storage-engine specific rules
   addStorageEngineRules();

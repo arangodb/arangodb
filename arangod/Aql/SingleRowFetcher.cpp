@@ -52,17 +52,17 @@ SingleRowFetcher<passBlocksThrough>::execute(AqlCallStack& stack) {
   if (state == ExecutionState::WAITING) {
     // On waiting we have nothing to return
     return {state, SkipResult{},
-            AqlItemBlockInputRange{ExecutorState::HASMORE}};
+            AqlItemBlockInputRange{MainQueryState::HASMORE}};
   }
   if (block == nullptr) {
     if (state == ExecutionState::HASMORE) {
       return {state, skipped,
-              AqlItemBlockInputRange{ExecutorState::HASMORE,
+              AqlItemBlockInputRange{MainQueryState::HASMORE,
                                      skipped.getSkipCount()}};
     }
     return {
         state, skipped,
-        AqlItemBlockInputRange{ExecutorState::DONE, skipped.getSkipCount()}};
+        AqlItemBlockInputRange{MainQueryState::DONE, skipped.getSkipCount()}};
   }
 
   auto [start, end] = block->getRelevantRange();
@@ -70,11 +70,11 @@ SingleRowFetcher<passBlocksThrough>::execute(AqlCallStack& stack) {
     TRI_ASSERT(block != nullptr);
     return {
         state, skipped,
-        AqlItemBlockInputRange{ExecutorState::HASMORE, skipped.getSkipCount(),
+        AqlItemBlockInputRange{MainQueryState::HASMORE, skipped.getSkipCount(),
                                std::move(block), start}};
   }
   return {state, skipped,
-          AqlItemBlockInputRange{ExecutorState::DONE, skipped.getSkipCount(),
+          AqlItemBlockInputRange{MainQueryState::DONE, skipped.getSkipCount(),
                                  std::move(block), start}};
 }
 

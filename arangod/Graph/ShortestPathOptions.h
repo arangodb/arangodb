@@ -93,7 +93,8 @@ struct ShortestPathOptions : public BaseOptions {
   void addReverseLookupInfo(aql::ExecutionPlan* plan,
                             std::string const& collectionName,
                             std::string const& attributeName,
-                            aql::AstNode* condition);
+                            aql::AstNode* condition, bool onlyEdgeIndexes,
+                            TRI_edge_direction_e direction);
 
   // Compute the weight of the given edge
   double weightEdge(arangodb::velocypack::Slice const) const;

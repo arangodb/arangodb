@@ -35,6 +35,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchCommon.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Replication/InitialSyncer.h"
@@ -61,7 +62,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -129,8 +129,7 @@ TailingSyncer::~TailingSyncer() { abortOngoingTransactions(); }
 /// @brief decide based on _state.leader which api to use
 ///        GlobalTailingSyncer should overwrite this probably
 std::string TailingSyncer::tailingBaseUrl(std::string const& cc) {
-  std::string const& base = TailingSyncer::WalAccessUrl;
-  return base + "/" + cc + "?";
+  return TailingSyncer::WalAccessUrl + "/" + cc + "?";
 }
 
 /// @brief set the applier progress
@@ -835,7 +834,7 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
 
   arangodb::CollectionGuard guard(vocbase, col->id());
 
-  return guard.collection()->properties(data, false);  // always a full-update
+  return guard.collection()->properties(data);
 }
 
 /// @brief truncate a collections. Assumes no trx are running
@@ -905,15 +904,15 @@ Result TailingSyncer::truncateCollection(
 /// based on the VelocyPack provided
 Result TailingSyncer::changeView(VPackSlice const& slice) {
   if (!slice.isObject()) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  "view marker slice is no object");
+    return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+            "view marker slice is no object"};
   }
 
   VPackSlice data = slice.get("data");
 
   if (!data.isObject()) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  "data slice is no object in view change marker");
+    return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+            "data slice is no object in view change marker"};
   }
 
   VPackSlice d = data.get("deleted");
@@ -925,16 +924,16 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
     if (isDeleted) {
       // not a problem if a view that is going to be deleted anyway
       // does not exist on follower
-      return Result();
+      return {};
     }
-    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
   }
 
   VPackSlice guidSlice = data.get(StaticStrings::DataSourceGuid);
 
   if (!guidSlice.isString() || guidSlice.getStringLength() == 0) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  "no guid specified for view");
+    return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+            "no guid specified for view"};
   }
 
   auto view = vocbase->lookupView(guidSlice.copyString());
@@ -943,10 +942,10 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
     if (isDeleted) {
       // not a problem if a collection that is going to be deleted anyway
       // does not exist on follower
-      return Result();
+      return {};
     }
 
-    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
   VPackSlice nameSlice = data.get(StaticStrings::DataSourceName);
@@ -959,14 +958,12 @@ Result TailingSyncer::changeView(VPackSlice const& slice) {
     }
   }
 
-  VPackSlice properties = data.get("properties");
-
-  if (properties.isObject()) {
-    // always a full-update
-    return view->properties(properties, false, false);
-  }
-
-  return {};
+  // do a partial update only for views of type "arangosearch".
+  // for "search-alias" views, always do a full update.
+  bool const partialUpdate =
+      data.get(StaticStrings::DataSourceType).stringView() !=
+      iresearch::StaticStrings::ViewSearchAliasType;
+  return view->properties(data, false, partialUpdate);
 }
 
 /// @brief apply a single marker from the continuous log
@@ -1804,8 +1801,7 @@ void TailingSyncer::fetchLeaderLog(
     setProgress(std::string("fetching leader log from tick ") +
                 StringUtils::itoa(fetchTick) + ", last scanned tick " +
                 StringUtils::itoa(lastScannedTick) + ", first regular tick " +
-                StringUtils::itoa(firstRegularTick) + ", open transactions: " +
-                std::to_string(_ongoingTransactions.size()) + ", chunk size " +
+                StringUtils::itoa(firstRegularTick) + ", chunk size " +
                 std::to_string(_state.applier._chunkSize));
 
     // stringify list of open transactions

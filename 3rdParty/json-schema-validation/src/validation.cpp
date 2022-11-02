@@ -3,7 +3,6 @@
 #include <tao/json/contrib/schema.hpp>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <validation/events_from_slice.hpp>
 #include <validation/types.hpp>

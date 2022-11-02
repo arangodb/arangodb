@@ -40,7 +40,6 @@ class Slice;
 }  // namespace velocypack
 namespace basics {
 struct AttributeName;
-class StringBuffer;
 }  // namespace basics
 
 namespace aql {
@@ -88,8 +87,11 @@ enum AstNodeFlagType : AstNodeFlagsType {
   FLAG_SUBQUERY_REFERENCE = 0x0080000,  // node references a subquery
 
   FLAG_INTERNAL_CONST = 0x0100000,  // internal, constant node
+
+  FLAG_BOOLEAN_EXPANSION = 0x0200000,  // make expansion result boolean
+
   FLAG_READ_OWN_WRITES =
-      0x0200000,  // reads own writes (only needed for UPSERT FOR nodes)
+      0x0400000,  // reads own writes (only needed for UPSERT FOR nodes)
 };
 
 /// @brief enumeration of AST node value types
@@ -214,11 +216,12 @@ enum AstNodeType : uint32_t {
   NODE_TYPE_QUANTIFIER = 73,
   NODE_TYPE_WITH = 74,
   NODE_TYPE_SHORTEST_PATH = 75,
-  NODE_TYPE_K_SHORTEST_PATHS = 76,
+  NODE_TYPE_ENUMERATE_PATHS = 76,
   NODE_TYPE_VIEW = 77,
   NODE_TYPE_PARAMETER_DATASOURCE = 78,
   NODE_TYPE_FOR_VIEW = 79,
   NODE_TYPE_WINDOW = 80,
+  NODE_TYPE_ARRAY_FILTER = 81,
 };
 
 static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types order");
@@ -408,6 +411,10 @@ struct AstNode {
   /// this may also set the FLAG_V8 flag for the node
   bool willUseV8() const;
 
+  /// @brief whether or not a node's filter condition can be used inside a
+  /// TraversalNode
+  bool canBeUsedInFilter(bool isOneShard) const;
+
   /// @brief whether or not a node is a simple comparison operator
   bool isSimpleComparisonOperator() const;
 
@@ -549,16 +556,11 @@ struct AstNode {
   /// NODE_TYPE_OBJECT (only for objects that do not contain dynamic attributes)
   /// note that this may throw and that the caller is responsible for
   /// catching the error
-  void stringify(arangodb::basics::StringBuffer*, bool, bool) const;
+  void stringify(std::string& buffer, bool failIfLong) const;
 
   /// note that this may throw and that the caller is responsible for
   /// catching the error
   std::string toString() const;
-
-  /// @brief stringify the value of a node into a string buffer
-  /// this method is used when generated JavaScript code for the node!
-  /// this creates an equivalent to what JSON.stringify() would do
-  void appendValue(arangodb::basics::StringBuffer*) const;
 
   /// @brief If the node has not been marked finalized, mark its subtree so.
   /// If it runs into a finalized node, it assumes the whole subtree beneath
@@ -569,7 +571,6 @@ struct AstNode {
   /// @brief sets the computed value pointer.
   void setComputedValue(uint8_t* data);
 
- public:
   /// @brief the node type
   AstNodeType type;
 
@@ -590,7 +591,11 @@ struct AstNode {
   void computeValue(arangodb::velocypack::Builder& builder) const;
   void freeComputedValue() noexcept;
 
- private:
+  /// @brief stringify the value of a node into a string buffer.
+  /// this method is used when generating JavaScript code for the node!
+  /// this creates an equivalent to what JSON.stringify() would do
+  void appendValue(std::string& buffer) const;
+
   /// @brief precomputed VPack value (used when executing expressions)
   uint8_t mutable* _computedValue;
 
@@ -661,7 +666,7 @@ std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const&);
   }                                                                     \
   auto sg = arangodb::scopeGuard([&]() noexcept {                       \
     FINALIZE_SUBTREE_CONDITIONAL(n, wasFinalizedAlready);               \
-  });
+  })
 #else
 #define FINALIZE_SUBTREE(n) \
   while (0) {               \

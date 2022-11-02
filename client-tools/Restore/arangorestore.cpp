@@ -21,6 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "arangorestore.h"
+
 #include "Basics/Common.h"
 #include "Basics/signals.h"
 #include "Basics/directories.h"
@@ -28,6 +30,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/FileSystemFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
@@ -60,29 +63,38 @@ int main(int argc, char* argv[]) {
         new options::ProgramOptions(
             argv[0], "Usage: arangorestore [<options>]",
             "For more information use:", BIN_DIRECTORY));
-    ApplicationServer server(options, BIN_DIRECTORY);
+
     int ret = EXIT_SUCCESS;
+    ArangoRestoreServer server(options, BIN_DIRECTORY);
 
-    server.addFeature<BasicFeaturePhaseClient>();
-    server.addFeature<CommunicationFeaturePhase>();
-    server.addFeature<GreetingsFeaturePhase>(true);
-
-    server.addFeature<ClientFeature, HttpEndpointProvider>(
-        true, std::numeric_limits<size_t>::max());
-    server.addFeature<ConfigFeature>("arangorestore");
-    server.addFeature<LoggerFeature>(false);
-    server.addFeature<RandomFeature>();
-    server.addFeature<RestoreFeature>(ret);
-    server.addFeature<ShellColorsFeature>();
-    server.addFeature<ShutdownFeature>(
-        std::vector<std::type_index>{std::type_index(typeid(RestoreFeature))});
-    server.addFeature<SslFeature>();
-    server.addFeature<TempFeature>("arangorestore");
-    server.addFeature<VersionFeature>();
-
-#ifdef USE_ENTERPRISE
-    server.addFeature<EncryptionFeature>();
-#endif
+    server.addFeatures(Visitor{
+        []<typename T>(auto& server, TypeTag<T>) {
+          return std::make_unique<T>(server);
+        },
+        [](ArangoRestoreServer& server, TypeTag<GreetingsFeaturePhase>) {
+          return std::make_unique<GreetingsFeaturePhase>(server,
+                                                         std::true_type{});
+        },
+        [&](ArangoRestoreServer& server, TypeTag<ConfigFeature>) {
+          return std::make_unique<ConfigFeature>(server, context.binaryName());
+        },
+        [](ArangoRestoreServer& server, TypeTag<LoggerFeature>) {
+          return std::make_unique<LoggerFeature>(server, false);
+        },
+        [](ArangoRestoreServer& server, TypeTag<HttpEndpointProvider>) {
+          return std::make_unique<ClientFeature>(
+              server, true, std::numeric_limits<size_t>::max());
+        },
+        [&ret](ArangoRestoreServer& server, TypeTag<RestoreFeature>) {
+          return std::make_unique<RestoreFeature>(server, ret);
+        },
+        [](ArangoRestoreServer& server, TypeTag<ShutdownFeature>) {
+          return std::make_unique<ShutdownFeature>(
+              server, std::array{ArangoRestoreServer::id<RestoreFeature>()});
+        },
+        [&](ArangoRestoreServer& server, TypeTag<TempFeature>) {
+          return std::make_unique<TempFeature>(server, context.binaryName());
+        }});
 
     try {
       server.run(argc, argv);

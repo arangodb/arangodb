@@ -37,7 +37,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -51,11 +50,18 @@ AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs,
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
   fakeit::When(Method(expressionContextMock, registerWarning))
-      .AlwaysDo([](ErrorCode, char const*) {});
+      .AlwaysDo([](ErrorCode, std::string_view) {});
 
+  std::string buffer;
   VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;
   fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysReturn(&options);
+  fakeit::When(Method(trxCtxMock, leaseString)).AlwaysDo([&buffer]() {
+    buffer.clear();
+    return &buffer;
+  });
+  fakeit::When(Method(trxCtxMock, returnString))
+      .AlwaysDo([&buffer](std::string*) { buffer.clear(); });
   transaction::Context& trxCtx = trxCtxMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
@@ -66,8 +72,7 @@ AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs,
   fakeit::When(Method(expressionContextMock, trx))
       .AlwaysDo([&]() -> transaction::Methods& { return trxMock.get(); });
 
-  SmallVector<AqlValue>::allocator_type::arena_type arena;
-  SmallVector<AqlValue> params{arena};
+  containers::SmallVector<AqlValue, 4> params;
   params.reserve(3 + (transpositions ? 2 : 0));
   params.emplace_back(lhs);
   params.emplace_back(rhs);
@@ -77,12 +82,12 @@ AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs,
     params.emplace_back(VPackSlice::nullSlice());  // redundant argument
   }
 
-  arangodb::aql::Function f("LEVENSHTEIN_MATCH", &Functions::LevenshteinMatch);
+  arangodb::aql::Function f("LEVENSHTEIN_MATCH", &functions::LevenshteinMatch);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&f));
 
   AqlValue result =
-      Functions::LevenshteinMatch(&expressionContext, node, params);
+      functions::LevenshteinMatch(&expressionContext, node, params);
 
   // explicitly call cleanup on the mocked transaction context because
   // for whatever reason the context's dtor does not fire and thus we

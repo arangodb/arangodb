@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include "RestServer/arangod.h"
+
 namespace rocksdb {
 class TransactionDB;
 }
@@ -32,6 +34,6 @@ namespace application_features {
 class ApplicationServer;
 }
 
-void rocksdbStartupVersionCheck(application_features::ApplicationServer& server,
-                                rocksdb::TransactionDB*, bool dbExisted);
+void rocksdbStartupVersionCheck(ArangodServer& server, rocksdb::TransactionDB*,
+                                bool dbExisted);
 }  // namespace arangodb

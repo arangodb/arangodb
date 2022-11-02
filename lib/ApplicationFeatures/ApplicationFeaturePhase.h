@@ -39,9 +39,6 @@ class ApplicationFeaturePhase : public ApplicationFeature {
   friend class ApplicationServer;
 
  public:
-  explicit ApplicationFeaturePhase(ApplicationServer& server,
-                                   std::string const& name);
-
   // validate options of this phase
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
@@ -59,6 +56,15 @@ class ApplicationFeaturePhase : public ApplicationFeature {
 
   // Start shut down the phase
   void unprepare() override;
+
+ protected:
+  template<typename Server, typename Impl>
+  ApplicationFeaturePhase(Server& server, const Impl&)
+      : ApplicationFeaturePhase{server, Server::template id<Impl>(),
+                                Impl::name()} {}
+
+  ApplicationFeaturePhase(ApplicationServer& server, size_t registration,
+                          std::string_view name);
 };
 
 }  // namespace application_features

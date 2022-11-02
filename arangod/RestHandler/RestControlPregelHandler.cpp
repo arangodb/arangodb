@@ -33,21 +33,18 @@
 #include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
 #include "Transaction/StandaloneContext.h"
-#include "V8/v8-vpack.h"
-#include "VocBase/Methods/Tasks.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace arangodb {
 
-RestControlPregelHandler::RestControlPregelHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestControlPregelHandler::RestControlPregelHandler(ArangodServer& server,
+                                                   GeneralRequest* request,
+                                                   GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _pregel(server.getFeature<pregel::PregelFeature>()) {}
 
@@ -100,8 +97,16 @@ RestControlPregelHandler::forwardingTarget() {
   if (sourceServer == ServerState::instance()->getShortId()) {
     return {std::make_pair(StaticStrings::Empty, false)};
   }
+
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-  return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
+  auto coordinatorId = ci.getCoordinatorByShortID(sourceServer);
+
+  if (coordinatorId.empty()) {
+    return ResultT<std::pair<std::string, bool>>::error(
+        TRI_ERROR_CURSOR_NOT_FOUND, "cannot find target server for pregel id");
+  }
+
+  return {std::make_pair(std::move(coordinatorId), false)};
 }
 
 void RestControlPregelHandler::startExecution() {

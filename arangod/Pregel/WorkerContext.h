@@ -24,7 +24,6 @@
 #pragma once
 
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 #include "Basics/Common.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Utils.h"

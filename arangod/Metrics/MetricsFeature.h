@@ -22,26 +22,30 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/DownCast.h"
+#include "Metrics/Batch.h"
 #include "Metrics/Builder.h"
 #include "Metrics/Metric.h"
+#include "Metrics/IBatch.h"
 #include "Metrics/MetricKey.h"
+#include "Metrics/CollectMode.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/arangod.h"
 #include "Statistics/ServerStatistics.h"
+#include "Containers/FlatHashMap.h"
 
 #include <map>
-#include <mutex>
-#include <unordered_map>
-#include <unordered_set>
+#include <shared_mutex>
 
 namespace arangodb::metrics {
 
-class MetricsFeature final : public application_features::ApplicationFeature {
+class MetricsFeature final : public ArangodFeature {
  public:
-  explicit MetricsFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Metrics"; }
+
+  explicit MetricsFeature(Server& server);
 
   bool exportAPI() const;
-  bool exportReadWriteMetrics() const;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
@@ -56,26 +60,48 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     return std::static_pointer_cast<typename MetricBuilder::MetricT>(
         doAdd(builder));
   }
-  Metric* get(MetricKey const& key);
+  Metric* get(MetricKeyView const& key);
   bool remove(Builder const& builder);
 
-  void toPrometheus(std::string& result, bool V2) const;
+  void toPrometheus(std::string& result, CollectMode mode) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief That used for collect some metrics
+  /// to array for ClusterMetricsFeature
+  //////////////////////////////////////////////////////////////////////////////
+  void toVPack(velocypack::Builder& builder) const;
 
   ServerStatistics& serverStatistics() noexcept;
 
+  template<typename MetricType>
+  MetricType& batchAdd(std::string_view name, std::string_view labels) {
+    std::unique_lock lock{_mutex};
+    auto& iBatch = _batch[name];
+    if (!iBatch) {
+      iBatch = std::make_unique<metrics::Batch<MetricType>>();
+    }
+    return basics::downCast<metrics::Batch<MetricType>>(*iBatch).add(labels);
+  }
+  std::pair<std::shared_lock<std::shared_mutex>, metrics::IBatch*> getBatch(
+      std::string_view name) const;
+  void batchRemove(std::string_view name, std::string_view labels);
+
  private:
   std::shared_ptr<Metric> doAdd(Builder& builder);
+  std::shared_lock<std::shared_mutex> initGlobalLabels() const;
 
-  std::map<MetricKey, std::shared_ptr<Metric>>
-      _registry;  // TODO(MBkkt) abseil btree map?
+  mutable std::shared_mutex _mutex;
 
-  mutable std::unordered_map<std::string, std::string>
-      _globalLabels;  // TODO(MBkkt) abseil hash map
-  mutable std::string _globalLabelsStr;
+  // TODO(MBkkt) abseil btree map? or hashmap<name, hashmap<labels, Metric>>?
+  std::map<MetricKeyView, std::shared_ptr<Metric>> _registry;
 
-  mutable std::recursive_mutex _lock;
+  containers::FlatHashMap<std::string_view, std::unique_ptr<IBatch>> _batch;
 
   std::unique_ptr<ServerStatistics> _serverStatistics;
+
+  mutable std::string _globals;
+  mutable bool hasShortname = false;
+  mutable bool hasRole = false;
 
   bool _export;
   bool _exportReadWriteMetrics;

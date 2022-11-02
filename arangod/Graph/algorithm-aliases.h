@@ -34,32 +34,47 @@
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/PathManagement/PathValidator.h"
+#include "Graph/PathManagement/PathValidatorTracer.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Types/UniquenessLevel.h"
 
-namespace arangodb {
-namespace graph {
+namespace arangodb::graph {
 
-// K_PATH implementation
 template<class Provider>
-using KPathEnumerator = TwoSidedEnumerator<
+using TwoSidedEnumeratorWithProvider = TwoSidedEnumerator<
     FifoQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
     Provider,
     PathValidator<Provider, PathStore<typename Provider::Step>,
-                  VertexUniquenessLevel::PATH>>;
+                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
-// K_PATH implementation using Tracing
 template<class Provider>
-using TracedKPathEnumerator = TwoSidedEnumerator<
+using TracedTwoSidedEnumeratorWithProvider = TwoSidedEnumerator<
     QueueTracer<FifoQueue<typename Provider::Step>>,
     PathStoreTracer<PathStore<typename Provider::Step>>,
     ProviderTracer<Provider>,
     PathValidator<ProviderTracer<Provider>,
                   PathStoreTracer<PathStore<typename Provider::Step>>,
-                  VertexUniquenessLevel::PATH>>;
+                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+
+// K_PATH implementation
+template<class Provider>
+using KPathEnumerator = TwoSidedEnumeratorWithProvider<Provider>;
+
+// K_PATH implementation using Tracing
+template<class Provider>
+using TracedKPathEnumerator = TracedTwoSidedEnumeratorWithProvider<Provider>;
+
+// ALL_SHORTEST_PATHS implementation
+template<class Provider>
+using AllShortestPathsEnumerator = TwoSidedEnumeratorWithProvider<Provider>;
+
+// ALL_SHORTEST_PATHS implementation using Tracing
+template<class Provider>
+using TracedAllShortestPathsEnumerator =
+    TracedTwoSidedEnumeratorWithProvider<Provider>;
 
 template<class ProviderType, VertexUniquenessLevel vertexUniqueness,
-         bool useTracing>
+         EdgeUniquenessLevel edgeUniqueness, bool useTracing>
 struct BFSConfiguration {
   using Provider =
       typename std::conditional<useTracing, ProviderTracer<ProviderType>,
@@ -71,11 +86,15 @@ struct BFSConfiguration {
   using Store =
       typename std::conditional<useTracing, PathStoreTracer<PathStore<Step>>,
                                 PathStore<Step>>::type;
-  using Validator = PathValidator<Provider, Store, vertexUniqueness>;
+  using Validator = typename std::conditional<
+      useTracing,
+      PathValidatorTracer<
+          PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>>,
+      PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>>::type;
 };
 
 template<class ProviderType, VertexUniquenessLevel vertexUniqueness,
-         bool useTracing>
+         EdgeUniquenessLevel edgeUniqueness, bool useTracing>
 struct DFSConfiguration {
   using Provider =
       typename std::conditional<useTracing, ProviderTracer<ProviderType>,
@@ -87,11 +106,15 @@ struct DFSConfiguration {
   using Store =
       typename std::conditional<useTracing, PathStoreTracer<PathStore<Step>>,
                                 PathStore<Step>>::type;
-  using Validator = PathValidator<Provider, Store, vertexUniqueness>;
+  using Validator = typename std::conditional<
+      useTracing,
+      PathValidatorTracer<
+          PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>>,
+      PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>>::type;
 };
 
 template<class ProviderType, VertexUniquenessLevel vertexUniqueness,
-         bool useTracing>
+         EdgeUniquenessLevel edgeUniqueness, bool useTracing>
 struct WeightedConfiguration {
   using Provider =
       typename std::conditional<useTracing, ProviderTracer<ProviderType>,
@@ -103,40 +126,49 @@ struct WeightedConfiguration {
   using Store =
       typename std::conditional<useTracing, PathStoreTracer<PathStore<Step>>,
                                 PathStore<Step>>::type;
-  using Validator = PathValidator<Provider, Store, vertexUniqueness>;
+  using Validator = typename std::conditional<
+      useTracing,
+      PathValidatorTracer<
+          PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>>,
+      PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>>::type;
 };
 
 // BFS Traversal Enumerator implementation
-template<class Provider, VertexUniquenessLevel vertexUniqueness>
-using BFSEnumerator =
-    OneSidedEnumerator<BFSConfiguration<Provider, vertexUniqueness, false>>;
+template<class Provider, VertexUniquenessLevel vertexUniqueness,
+         EdgeUniquenessLevel edgeUniqueness>
+using BFSEnumerator = OneSidedEnumerator<
+    BFSConfiguration<Provider, vertexUniqueness, edgeUniqueness, false>>;
 
 // BFS Traversal Enumerator implementation using Tracing
-template<class Provider, VertexUniquenessLevel vertexUniqueness>
-using TracedBFSEnumerator =
-    OneSidedEnumerator<BFSConfiguration<Provider, vertexUniqueness, true>>;
+template<class Provider, VertexUniquenessLevel vertexUniqueness,
+         EdgeUniquenessLevel edgeUniqueness>
+using TracedBFSEnumerator = OneSidedEnumerator<
+    BFSConfiguration<Provider, vertexUniqueness, edgeUniqueness, true>>;
 
 // DFS Traversal Enumerator implementation
-template<class Provider, VertexUniquenessLevel vertexUniqueness>
-using DFSEnumerator =
-    OneSidedEnumerator<DFSConfiguration<Provider, vertexUniqueness, false>>;
+template<class Provider, VertexUniquenessLevel vertexUniqueness,
+         EdgeUniquenessLevel edgeUniqueness>
+using DFSEnumerator = OneSidedEnumerator<
+    DFSConfiguration<Provider, vertexUniqueness, edgeUniqueness, false>>;
 
 // DFS Traversal Enumerator implementation using Tracing
-template<class Provider, VertexUniquenessLevel vertexUniqueness>
-using TracedDFSEnumerator =
-    OneSidedEnumerator<DFSConfiguration<Provider, vertexUniqueness, true>>;
+template<class Provider, VertexUniquenessLevel vertexUniqueness,
+         EdgeUniquenessLevel edgeUniqueness>
+using TracedDFSEnumerator = OneSidedEnumerator<
+    DFSConfiguration<Provider, vertexUniqueness, edgeUniqueness, true>>;
 
 // Weighted Traversal Enumerator implementation
-// TODO: Needs to be renamed as soon as we replace the existing variant, whic
+// TODO: Needs to be renamed as soon as we replace the existing variant, which
 // occupies this name
-template<class Provider, VertexUniquenessLevel vertexUniqueness>
+template<class Provider, VertexUniquenessLevel vertexUniqueness,
+         EdgeUniquenessLevel edgeUniqueness>
 using WeightedEnumeratorRefactored = OneSidedEnumerator<
-    WeightedConfiguration<Provider, vertexUniqueness, false>>;
+    WeightedConfiguration<Provider, vertexUniqueness, edgeUniqueness, false>>;
 
 // BFS Traversal Enumerator implementation using Tracing
-template<class Provider, VertexUniquenessLevel vertexUniqueness>
-using TracedWeightedEnumerator =
-    OneSidedEnumerator<WeightedConfiguration<Provider, vertexUniqueness, true>>;
+template<class Provider, VertexUniquenessLevel vertexUniqueness,
+         EdgeUniquenessLevel edgeUniqueness>
+using TracedWeightedEnumerator = OneSidedEnumerator<
+    WeightedConfiguration<Provider, vertexUniqueness, edgeUniqueness, true>>;
 
-}  // namespace graph
-}  // namespace arangodb
+}  // namespace arangodb::graph

@@ -27,7 +27,6 @@
 #include "RowFetcherHelper.h"
 #include "VelocyPackHelper.h"
 
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/FilterExecutor.h"
@@ -40,7 +39,6 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::tests;

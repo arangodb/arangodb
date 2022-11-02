@@ -26,7 +26,7 @@
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
-#include "utils/frozen_attributes.hpp"
+#include "utils/attribute_helper.hpp"
 #include "Aql/Ast.h"
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AqlItemBlockManager.h"
@@ -92,10 +92,10 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
   bool isOptimized() const;
 #endif
 
-  static bool normalize_vpack(const irs::string_ref& args, std::string& out);
-  static irs::analysis::analyzer::ptr make_vpack(irs::string_ref const& args);
-  static bool normalize_json(const irs::string_ref& args, std::string& out);
-  static irs::analysis::analyzer::ptr make_json(irs::string_ref const& args);
+  static bool normalize_vpack(irs::string_ref args, std::string& out);
+  static irs::analysis::analyzer::ptr make_vpack(irs::string_ref args);
+  static bool normalize_json(irs::string_ref args, std::string& out);
+  static irs::analysis::analyzer::ptr make_json(irs::string_ref args);
 
   explicit AqlAnalyzer(Options const& options);
 
@@ -105,7 +105,7 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
   }
 
   virtual bool next() override;
-  virtual bool reset(irs::string_ref const& field) noexcept override;
+  virtual bool reset(irs::string_ref field) noexcept override;
 
  private:
   using ResetImplFunctor = void (*)(AqlAnalyzer* analyzer);
@@ -120,8 +120,6 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
   Options _options;
   aql::AqlValue _valueBuffer;
   std::unique_ptr<aql::QueryContext> _query;
-  containers::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type
-      _params_arena;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   aql::AqlItemBlockManager _itemBlockManager;
   aql::ExecutionEngine _engine;

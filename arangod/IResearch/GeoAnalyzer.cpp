@@ -30,7 +30,6 @@
 
 #include "analysis/analyzers.hpp"
 #include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
 #include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"
 #include "IResearch/Geo.h"
@@ -39,6 +38,7 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 #include "VPackDeserializer/deserializer.h"
+#include "Basics/DownCast.h"
 
 namespace {
 
@@ -70,7 +70,7 @@ using GeoJSONTypeEnumDeserializer =
 
 struct GeoOptionsValidator {
   std::optional<deserialize_error> operator()(GeoOptions const& opts) const {
-    if (opts.minLevel < 0 || opts.maxCells < 0 || opts.maxCells < 0) {
+    if (opts.minLevel < 0 || opts.maxLevel < 0 || opts.maxCells < 0) {
       return deserialize_error{
           "'minLevel', 'maxLevel', 'maxCells' must be a positive integer"};
     }
@@ -218,8 +218,7 @@ void toVelocyPack(VPackBuilder& builder,
 }
 
 template<typename Analyzer>
-bool fromVelocyPack(irs::string_ref const& args,
-                    typename Analyzer::Options& out) {
+bool fromVelocyPack(irs::string_ref args, typename Analyzer::Options& out) {
   auto const slice = arangodb::iresearch::slice(args);
 
   auto const res = deserialize<typename Deserializer<Analyzer>::type,
@@ -238,7 +237,7 @@ bool fromVelocyPack(irs::string_ref const& args,
 }
 
 template<typename Analyzer>
-bool normalize(const irs::string_ref& args, std::string& out) {
+bool normalize(irs::string_ref args, std::string& out) {
   typename Analyzer::Options opts;
 
   if (!fromVelocyPack<Analyzer>(args, opts)) {
@@ -254,7 +253,7 @@ bool normalize(const irs::string_ref& args, std::string& out) {
 }
 
 template<typename Analyzer>
-irs::analysis::analyzer::ptr make(irs::string_ref const& args) {
+irs::analysis::analyzer::ptr make(irs::string_ref args) {
   typename Analyzer::Options opts;
 
   if (!fromVelocyPack<Analyzer>(args, opts)) {
@@ -269,14 +268,8 @@ irs::analysis::analyzer::ptr make(irs::string_ref const& args) {
 namespace arangodb {
 namespace iresearch {
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                      GeoAnalyzer
-// ----------------------------------------------------------------------------
-
 GeoAnalyzer::GeoAnalyzer(const irs::type_info& type)
-    : attributes{{{irs::type<irs::increment>::id(), &_inc},
-                  {irs::type<irs::term_attribute>::id(), &_term}},
-                 type} {}
+    : irs::analysis::analyzer{type} {}
 
 bool GeoAnalyzer::next() noexcept {
   if (_begin >= _end) {
@@ -285,8 +278,8 @@ bool GeoAnalyzer::next() noexcept {
 
   auto& value = *_begin++;
 
-  _term.value = irs::bytes_ref(
-      reinterpret_cast<const irs::byte_type*>(value.c_str()), value.size());
+  std::get<irs::term_attribute>(_attrs).value = {
+      reinterpret_cast<const irs::byte_type*>(value.c_str()), value.size()};
 
   return true;
 }
@@ -297,17 +290,13 @@ void GeoAnalyzer::reset(std::vector<std::string>&& terms) noexcept {
   _end = _begin + _terms.size();
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                  GeoJSONAnalyzer
-// ----------------------------------------------------------------------------
-
-/*static*/ bool GeoJSONAnalyzer::normalize(const irs::string_ref& args,
+/*static*/ bool GeoJSONAnalyzer::normalize(irs::string_ref args,
                                            std::string& out) {
   return ::normalize<GeoJSONAnalyzer>(args, out);
 }
 
 /*static*/ irs::analysis::analyzer::ptr GeoJSONAnalyzer::make(
-    irs::string_ref const& args) {
+    irs::string_ref args) {
   return ::make<GeoJSONAnalyzer>(args);
 }
 
@@ -315,14 +304,7 @@ void GeoAnalyzer::reset(std::vector<std::string>&& terms) noexcept {
     irs::token_stream const* ctx, VPackSlice slice,
     velocypack::Buffer<uint8_t>& buf) noexcept {
   TRI_ASSERT(ctx);
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* impl = dynamic_cast<GeoJSONAnalyzer const*>(ctx);
-  TRI_ASSERT(impl);
-#else
-  auto* impl = static_cast<GeoJSONAnalyzer const*>(ctx);
-#endif
-
+  auto const* impl = basics::downCast<GeoJSONAnalyzer>(ctx);
   if (Type::CENTROID == impl->shapeType()) {
     TRI_ASSERT(!impl->_shape.empty());
     S2LatLng const centroid(impl->_shape.centroid());
@@ -346,7 +328,7 @@ void GeoJSONAnalyzer::prepare(S2RegionTermIndexer::Options& opts) const {
   opts.set_index_contains_points_only(_type != Type::SHAPE);
 }
 
-bool GeoJSONAnalyzer::reset(const irs::string_ref& value) {
+bool GeoJSONAnalyzer::reset(irs::string_ref value) {
   auto const slice = iresearch::slice(value);
 
   if (!parseShape(slice, _shape, _type == Type::POINT)) {
@@ -372,17 +354,13 @@ bool GeoJSONAnalyzer::reset(const irs::string_ref& value) {
   return true;
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                 GeoPointAnalyzer
-// ----------------------------------------------------------------------------
-
-/*static*/ bool GeoPointAnalyzer::normalize(const irs::string_ref& args,
+/*static*/ bool GeoPointAnalyzer::normalize(irs::string_ref args,
                                             std::string& out) {
   return ::normalize<GeoPointAnalyzer>(args, out);
 }
 
 /*static*/ irs::analysis::analyzer::ptr GeoPointAnalyzer::make(
-    irs::string_ref const& args) {
+    irs::string_ref args) {
   return ::make<GeoPointAnalyzer>(args);
 }
 
@@ -415,7 +393,7 @@ bool GeoPointAnalyzer::parsePoint(VPackSlice json, S2LatLng& point) const {
   return iresearch::parsePoint(latitude, longitude, point);
 }
 
-bool GeoPointAnalyzer::reset(const irs::string_ref& value) {
+bool GeoPointAnalyzer::reset(irs::string_ref value) {
   if (!parsePoint(iresearch::slice(value), _point)) {
     return false;
   }
@@ -428,11 +406,8 @@ bool GeoPointAnalyzer::reset(const irs::string_ref& value) {
                                               [[maybe_unused]] VPackSlice slice,
                                               VPackBuffer<uint8_t>& buf) {
   TRI_ASSERT(ctx);
-
+  auto const* impl = basics::downCast<GeoPointAnalyzer>(ctx);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* impl = dynamic_cast<GeoPointAnalyzer const*>(ctx);
-  TRI_ASSERT(impl);
-
   {
     S2LatLng point;
     if (!impl->parsePoint(slice, point)) {
@@ -440,8 +415,6 @@ bool GeoPointAnalyzer::reset(const irs::string_ref& value) {
     }
     TRI_ASSERT(point == impl->_point);
   }
-#else
-  auto* impl = static_cast<GeoPointAnalyzer const*>(ctx);
 #endif
 
   // reuse already parsed point

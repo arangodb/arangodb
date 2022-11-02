@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2020-2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@
 #include "Mocks/Servers.h"
 #include "WaitingExecutionBlockMock.h"
 
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/CountCollectExecutor.h"
@@ -47,6 +46,7 @@
 #include "Aql/UnsortedGatherExecutor.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
+#include "RestServer/TemporaryStorageFeature.h"
 
 static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 
@@ -65,7 +65,7 @@ using InsertExecutor =
  * Right now we use the following Executors:
  *   FilterExecutor => SingleRowFetcher, non-passthrough
  *   IdExecutor => SingleRowFetcher, passthrough
- *   SortExecutor => AllRowsFetcher;
+ *   SortExecutor => SingleRowFetcher, passthrough;
  *   UnsortedGatherExecutor => MultiDependencySingleRowFetcher
  *   Insert/Update => SideEffectExecutor
  */
@@ -103,6 +103,7 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
           TRI_ASSERT(col != nullptr);  // failed to add collection
         }
       })};
+  arangodb::TemporaryStorageFeature tempStorage{fakedQuery->vocbase().server()};
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
 
   // Used for AllRowsFetcherCases
@@ -256,10 +257,17 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
       std::vector<SortRegister> sortRegisters{};
       // We do not care for sorting, we skip anyways.
       sortRegisters.emplace_back(SortRegister{0, SortElement{nullptr, true}});
-      SortExecutorInfos execInfos{1,       1,
-                                  {},      std::move(sortRegisters),
-                                  0,       fakedQuery->itemBlockManager(),
-                                  nullptr, monitor,
+      SortExecutorInfos execInfos{1,
+                                  1,
+                                  {},
+                                  std::move(sortRegisters),
+                                  0,
+                                  fakedQuery->itemBlockManager(),
+                                  tempStorage,
+                                  nullptr,
+                                  monitor,
+                                  /*spillOverThresholdNumRows*/ 1000,
+                                  /*spillOverThresholdMemoryUsage*/ 1024 * 1024,
                                   true};
       return ExecutionBlockImpl<ExecutorType>{
           fakedQuery->rootEngine(), generateNodeDummy(),
@@ -323,24 +331,16 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
     }
     if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
                                  AqlItemBlockInputRange>) {
-      AqlItemBlockInputRange fakedInternalRange{ExecutorState::DONE, 0,
+      AqlItemBlockInputRange fakedInternalRange{MainQueryState::DONE, 0,
                                                 leftoverBlock, 0};
       testee.testInjectInputRange(std::move(fakedInternalRange),
                                   std::move(skip));
     }
     if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
-                                 AqlItemBlockInputMatrix>) {
-      _aqlItemBlockMatrix = std::make_unique<AqlItemMatrix>(1);
-      _aqlItemBlockMatrix->addBlock(leftoverBlock);
-      AqlItemBlockInputMatrix fakedInternalRange{ExecutorState::DONE,
-                                                 _aqlItemBlockMatrix.get()};
-      testee.testInjectInputRange(std::move(fakedInternalRange),
-                                  std::move(skip));
-    }
-    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
                                  MultiAqlItemBlockInputRange>) {
-      MultiAqlItemBlockInputRange fakedInternalRange{ExecutorState::DONE, 0, 1};
-      AqlItemBlockInputRange tmpInternalRange{ExecutorState::DONE, 0,
+      MultiAqlItemBlockInputRange fakedInternalRange{MainQueryState::DONE, 0,
+                                                     1};
+      AqlItemBlockInputRange tmpInternalRange{MainQueryState::DONE, 0,
                                               leftoverBlock, 0};
       fakedInternalRange.setDependency(0, tmpInternalRange);
       testee.testInjectInputRange(std::move(fakedInternalRange),
@@ -392,7 +392,7 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
     auto prod = leftoverProducer(skip.subqueryDepth());
     {
       // Create the fake internal state for leftoverProducer
-      AqlItemBlockInputRange fakedInternalRange{ExecutorState::DONE, 0,
+      AqlItemBlockInputRange fakedInternalRange{MainQueryState::DONE, 0,
                                                 dependencyLeftover, 0};
       // We want to copy Skip here, we need it twice
       prod.testInjectInputRange(std::move(fakedInternalRange), skip);
@@ -403,25 +403,16 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
 
     if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
                                  AqlItemBlockInputRange>) {
-      AqlItemBlockInputRange fakedInternalRange{ExecutorState::HASMORE, 0,
+      AqlItemBlockInputRange fakedInternalRange{MainQueryState::HASMORE, 0,
                                                 leftoverBlock, 0};
       testee.testInjectInputRange(std::move(fakedInternalRange),
                                   std::move(skip));
     }
     if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
-                                 AqlItemBlockInputMatrix>) {
-      _aqlItemBlockMatrix = std::make_unique<AqlItemMatrix>(1);
-      _aqlItemBlockMatrix->addBlock(leftoverBlock);
-      AqlItemBlockInputMatrix fakedInternalRange{ExecutorState::HASMORE,
-                                                 _aqlItemBlockMatrix.get()};
-      testee.testInjectInputRange(std::move(fakedInternalRange),
-                                  std::move(skip));
-    }
-    if constexpr (std::is_same_v<typename ExecutorType::Fetcher::DataRange,
                                  MultiAqlItemBlockInputRange>) {
-      MultiAqlItemBlockInputRange fakedInternalRange{ExecutorState::HASMORE, 0,
+      MultiAqlItemBlockInputRange fakedInternalRange{MainQueryState::HASMORE, 0,
                                                      1};
-      AqlItemBlockInputRange tmpInternalRange{ExecutorState::HASMORE, 0,
+      AqlItemBlockInputRange tmpInternalRange{MainQueryState::HASMORE, 0,
                                               leftoverBlock, 0};
       fakedInternalRange.setDependency(0, tmpInternalRange);
       testee.testInjectInputRange(std::move(fakedInternalRange),

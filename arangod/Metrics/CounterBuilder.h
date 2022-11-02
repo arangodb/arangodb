@@ -51,7 +51,3 @@ class CounterBuilder : public GenericBuilder<Derived> {
       _help = help;                                       \
     }                                                     \
   }
-
-// This macro is needed to ignore the script that checks that the metric has
-// documentation
-#define DECLARE_LEGACY_COUNTER(name, help) DECLARE_COUNTER(name, help)

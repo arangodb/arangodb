@@ -30,6 +30,7 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Iterator.h>
+#include <atomic>
 
 namespace arangodb {
 
@@ -69,9 +70,14 @@ class Cursor {
 
   inline double ttl() const { return _ttl; }
 
-  inline double expires() const { return _expires; }
+  inline double expires() const {
+    return _expires.load(std::memory_order_relaxed);
+  }
 
-  inline bool isUsed() const { return _isUsed; }
+  inline bool isUsed() const {
+    // (1) - this release-store synchronizes-with the acquire-load (2)
+    return _isUsed.load(std::memory_order_acquire);
+  }
 
   inline bool isDeleted() const { return _isDeleted; }
 
@@ -81,13 +87,14 @@ class Cursor {
     TRI_ASSERT(!_isDeleted);
     TRI_ASSERT(!_isUsed);
 
-    _isUsed = true;
+    _isUsed.store(true, std::memory_order_relaxed);
   }
 
   void release() noexcept {
     TRI_ASSERT(_isUsed);
-    _isUsed = false;
-    _expires = TRI_microtime() + _ttl;
+    _expires.store(TRI_microtime() + _ttl, std::memory_order_relaxed);
+    // (2) - this release-store synchronizes-with the acquire-load (1)
+    _isUsed.store(false, std::memory_order_release);
   }
 
   virtual void kill() {}
@@ -131,11 +138,13 @@ class Cursor {
   virtual void setWakeupHandler(std::function<bool()> const& cb) {}
   virtual void resetWakeupHandler() {}
 
+  virtual bool allowDirtyReads() const { return false; }
+
  protected:
   CursorId const _id;
   size_t const _batchSize;
   double _ttl;
-  double _expires;
+  std::atomic<double> _expires;
   bool const _hasCount;
   bool _isDeleted;
   std::atomic<bool> _isUsed;

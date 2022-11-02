@@ -25,6 +25,9 @@
 
 #include "Basics/Common.h"
 
+#include <atomic>
+#include <cstdint>
+
 namespace arangodb {
 
 /// @brief a class for tracking a global version number

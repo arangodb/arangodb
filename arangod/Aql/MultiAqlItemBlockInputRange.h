@@ -32,20 +32,11 @@ namespace arangodb::aql {
 
 class MultiAqlItemBlockInputRange {
  public:
-  explicit MultiAqlItemBlockInputRange(ExecutorState state,
+  explicit MultiAqlItemBlockInputRange(MainQueryState state,
                                        std::size_t skipped = 0,
                                        std::size_t nrInputRanges = 1);
 
-  MultiAqlItemBlockInputRange(ExecutorState, std::size_t skipped,
-                              arangodb::aql::SharedAqlItemBlockPtr const&,
-                              std::size_t startIndex);
-
-  MultiAqlItemBlockInputRange(ExecutorState, std::size_t skipped,
-                              arangodb::aql::SharedAqlItemBlockPtr&&,
-                              std::size_t startIndex) noexcept;
-
   ExecutorState upstreamState(size_t const dependency) const noexcept;
-  bool upstreamHasMore(size_t const dependency) const noexcept;
 
   bool hasValidRow() const noexcept;
 
@@ -60,13 +51,13 @@ class MultiAqlItemBlockInputRange {
    * @return AqlItemBlockInputRange& Modifyable reference to the input data
    * stream
    */
-  auto rangeForDependency(size_t const dependency) -> AqlItemBlockInputRange&;
+  auto rangeForDependency(size_t dependency) -> AqlItemBlockInputRange&;
 
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow(
-      size_t const dependency) const;
+      size_t dependency) const;
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow(
-      size_t const dependency);
-  auto skipAll(size_t const dependency) noexcept -> std::size_t;
+      size_t dependency);
+  auto skipAll(size_t dependency) noexcept -> std::size_t;
 
   [[nodiscard]] auto skippedInFlight(size_t dependency) const noexcept
       -> std::size_t;
@@ -79,7 +70,7 @@ class MultiAqlItemBlockInputRange {
   auto isDone() const -> bool;
   auto state() const -> ExecutorState;
 
-  auto resizeOnce(ExecutorState state, size_t skipped, size_t nrInputRanges)
+  auto resizeOnce(MainQueryState state, size_t skipped, size_t nrInputRanges)
       -> void;
 
   [[nodiscard]] auto getBlock(size_t dependency = 0) const noexcept
@@ -97,9 +88,9 @@ class MultiAqlItemBlockInputRange {
   auto skipAllShadowRowsOfDepth(size_t depth) -> std::vector<size_t>;
 
   // Subtract up to count rows from the local _skipped state
-  auto skipForDependency(size_t const dependency, size_t count) -> size_t;
+  auto skipForDependency(size_t dependency, size_t count) -> size_t;
   // Skipp all that is available
-  auto skipAllForDependency(size_t const dependency) -> size_t;
+  auto skipAllForDependency(size_t dependency) -> size_t;
 
   auto numberDependencies() const noexcept -> size_t;
 
@@ -125,9 +116,9 @@ class MultiAqlItemBlockInputRange {
    * @brief The final State of all ranges. Combined
    *        Will be DONE only if all inputs are DONE
    *
-   * @return ExecutorState
+   * @return MainQueryState
    */
-  [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
+  [[nodiscard]] auto finalState() const noexcept -> MainQueryState;
 
  private:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

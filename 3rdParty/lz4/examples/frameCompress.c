@@ -32,12 +32,12 @@ static void safe_fwrite(void* buf, size_t eltSize, size_t nbElt, FILE* f)
 {
     size_t const writtenSize = fwrite(buf, eltSize, nbElt, f);
     size_t const expectedSize = eltSize * nbElt;
-    assert(expectedSize / nbElt == eltSize);   /* check overflow */
+    if (nbElt>0) assert(expectedSize / nbElt == eltSize);  /* check overflow */
     if (writtenSize < expectedSize) {
         if (ferror(f))  /* note : ferror() must follow fwrite */
             fprintf(stderr, "Write failed \n");
         else
-            fprintf(stderr, "Short write \n");
+            fprintf(stderr, "Write too short \n");
         exit(1);
     }
 }

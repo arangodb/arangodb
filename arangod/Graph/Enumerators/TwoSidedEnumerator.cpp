@@ -47,7 +47,6 @@
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -65,7 +64,8 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
       _provider(std::move(provider)),
       _validator(_provider, _interior, std::move(validatorOptions)),
       _direction(dir),
-      _minDepth(options.getMinDepth()) {}
+      _minDepth(options.getMinDepth()),
+      _graphOptions(options) {}
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
@@ -304,6 +304,7 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
             validatorOptions, resourceMonitor},
       _right{Direction::BACKWARD, std::move(backwardProvider), _options,
              std::move(validatorOptions), resourceMonitor},
+      _baselineDepth(_options.getMaxDepth()),
       _resultPath{_left.provider(), _right.provider()} {}
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -433,6 +434,13 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     }
   }
 
+  if (_options.getStopAtFirstDepth()) {
+    size_t currentDepth = _left.getDepth() + _right.getDepth();
+    if (currentDepth < _baselineDepth) {
+      _baselineDepth = currentDepth;
+    }
+  }
+
   fetchResults();
 }
 
@@ -477,7 +485,7 @@ template<class QueueType, class PathStoreType, class ProviderType,
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                         PathValidator>::searchDone() const -> bool {
   return _left.noPathLeft() || _right.noPathLeft() ||
-         _left.getDepth() + _right.getDepth() > _options.getMaxDepth();
+         _left.getDepth() + _right.getDepth() > _baselineDepth;
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -509,7 +517,8 @@ template class ::arangodb::graph::TwoSidedEnumerator<
     SingleServerProvider<SingleServerProviderStep>,
     ::arangodb::graph::PathValidator<
         SingleServerProvider<SingleServerProviderStep>,
-        PathStore<SingleServerProviderStep>, VertexUniquenessLevel::PATH>>;
+        PathStore<SingleServerProviderStep>, VertexUniquenessLevel::PATH,
+        EdgeUniquenessLevel::PATH>>;
 
 template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::QueueTracer<
@@ -523,25 +532,26 @@ template class ::arangodb::graph::TwoSidedEnumerator<
             SingleServerProvider<SingleServerProviderStep>>,
         ::arangodb::graph::PathStoreTracer<
             ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-        VertexUniquenessLevel::PATH>>;
+        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
 /* ClusterProvider Section */
 
 template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProvider::Step>,
-    ::arangodb::graph::PathStore<ClusterProvider::Step>, ClusterProvider,
-    ::arangodb::graph::PathValidator<ClusterProvider,
-                                     PathStore<ClusterProvider::Step>,
-                                     VertexUniquenessLevel::PATH>>;
+    ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProviderStep>,
+    ::arangodb::graph::PathStore<ClusterProviderStep>,
+    ClusterProvider<ClusterProviderStep>,
+    ::arangodb::graph::PathValidator<
+        ClusterProvider<ClusterProviderStep>, PathStore<ClusterProviderStep>,
+        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
 template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::QueueTracer<
-        ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProvider::Step>>,
+        ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProviderStep>>,
     ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<ClusterProvider::Step>>,
-    ::arangodb::graph::ProviderTracer<ClusterProvider>,
+        ::arangodb::graph::PathStore<ClusterProviderStep>>,
+    ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
     ::arangodb::graph::PathValidator<
-        ::arangodb::graph::ProviderTracer<ClusterProvider>,
+        ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
         ::arangodb::graph::PathStoreTracer<
-            ::arangodb::graph::PathStore<ClusterProvider::Step>>,
-        VertexUniquenessLevel::PATH>>;
+            ::arangodb::graph::PathStore<ClusterProviderStep>>,
+        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;

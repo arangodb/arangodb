@@ -28,7 +28,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryRegistry.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -48,8 +47,7 @@ static constexpr uint64_t readyBit = 0x8000000000000000ULL;
 
 namespace arangodb {
 
-AqlFeature::AqlFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Aql") {
+AqlFeature::AqlFeature(Server& server) : ArangodFeature{server, *this} {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 

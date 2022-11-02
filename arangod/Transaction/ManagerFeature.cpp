@@ -26,11 +26,10 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/application-exit.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "Metrics/CounterBuilder.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -42,20 +41,22 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-namespace arangodb {
-namespace transaction {
+namespace arangodb::transaction {
 
 DECLARE_COUNTER(arangodb_transactions_expired_total,
                 "Total number of expired transactions");
 
 std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
-ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "TransactionManager"),
+ManagerFeature::ManagerFeature(Server& server)
+    : ArangodFeature{server, *this},
       _streamingLockTimeout(8.0),
       _streamingIdleTimeout(defaultStreamingIdleTimeout),
       _numExpiredTransactions(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_transactions_expired_total{})) {
+  static_assert(
+      Server::isCreatedAfter<ManagerFeature, metrics::MetricsFeature>());
+
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
   startsAfter<EngineSelectorFeature>();
@@ -85,7 +86,8 @@ void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           "lock timeout in seconds "
           "in case of parallel access to the same streaming transaction",
           new DoubleParameter(&_streamingLockTimeout),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30605)
       .setIntroducedIn(30701);
 
@@ -93,21 +95,14 @@ void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       ->addOption("--transaction.streaming-idle-timeout",
                   "idle timeout for streaming "
                   "transactions in seconds",
-                  new DoubleParameter(&_streamingIdleTimeout),
+                  new DoubleParameter(&_streamingIdleTimeout, /*base*/ 1.0,
+                                      /*minValue*/ 0.0,
+                                      /*maxValue*/ maxStreamingIdleTimeout),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30800);
-}
-
-void ManagerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_streamingIdleTimeout > maxStreamingIdleTimeout) {
-    LOG_TOPIC("7fb2d", FATAL, Logger::TRANSACTIONS)
-        << "invalid value for --transaction.streaming-idle-timeout. "
-        << "value should be at most " << maxStreamingIdleTimeout;
-    FATAL_ERROR_EXIT();
-  }
 }
 
 void ManagerFeature::prepare() {
@@ -183,11 +178,10 @@ void ManagerFeature::queueGarbageCollection() {
   _workItem = std::move(workItem);
 }
 
-void ManagerFeature::trackExpired(uint64_t numExpired) {
+void ManagerFeature::trackExpired(uint64_t numExpired) noexcept {
   if (numExpired > 0) {
     _numExpiredTransactions.count(numExpired);
   }
 }
 
-}  // namespace transaction
-}  // namespace arangodb
+}  // namespace arangodb::transaction

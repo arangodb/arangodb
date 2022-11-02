@@ -43,7 +43,6 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
@@ -429,8 +428,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
     AstNode* q2 = other.operatorNode->getMemberUnchecked(2);
     TRI_ASSERT(q2->type == NODE_TYPE_QUANTIFIER);
     // do only cover ALL and NONE when both sides have same quantifier
-    if (q1->getIntValue() != q2->getIntValue() ||
-        q1->getIntValue() == Quantifier::ANY) {
+    if (q1->getIntValue() != q2->getIntValue() || Quantifier::isAny(q1)) {
       return false;
     }
 
@@ -634,7 +632,7 @@ void Condition::andCombine(AstNode const* node) {
 std::pair<bool, bool> Condition::findIndexes(
     EnumerateCollectionNode const* node,
     std::vector<transaction::Methods::IndexHandle>& usedIndexes,
-    SortCondition const* sortCondition) {
+    SortCondition const* sortCondition, bool& isAllCoveredByIndex) {
   TRI_ASSERT(usedIndexes.empty());
   Variable const* reference = node->outVariable();
   aql::Collection const& coll = *node->collection();
@@ -666,8 +664,8 @@ std::pair<bool, bool> Condition::findIndexes(
   }
 
   return arangodb::aql::utils::getBestIndexHandlesForFilterCondition(
-      coll, _ast, _root, reference, sortCondition, itemsInIndex, node->hint(),
-      usedIndexes, _isSorted);
+      trx, coll, _ast, _root, reference, sortCondition, itemsInIndex,
+      node->hint(), usedIndexes, _isSorted, isAllCoveredByIndex);
 }
 
 /// @brief get the attributes for a sub-condition that are const
@@ -935,6 +933,24 @@ AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan,
                                          Index const* index) {
   TRI_ASSERT(index != nullptr);
 
+  return removeCondition(plan, variable, condition, index, false);
+}
+
+/// @brief remove filter conditions already covered by the traversal
+AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
+                                             Variable const* variable,
+                                             AstNode* other,
+                                             bool isPathCondition) {
+  return removeCondition(plan, variable, other, nullptr,
+                         /*isFromTraverser*/ isPathCondition);
+}
+
+AstNode* Condition::removeCondition(ExecutionPlan const* plan,
+                                    Variable const* variable,
+                                    AstNode const* condition,
+                                    Index const* index, bool isFromTraverser) {
+  TRI_ASSERT(!isFromTraverser || index == nullptr);
+
   if (_root == nullptr || condition == nullptr) {
     return _root;
   }
@@ -958,7 +974,7 @@ AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan,
 
   ::arangodb::containers::HashSet<size_t> toRemove;
   collectOverlappingMembers(plan, variable, andNode, conditionAndNode, toRemove,
-                            index, false);
+                            index, isFromTraverser);
 
   if (toRemove.empty()) {
     return _root;
@@ -967,56 +983,6 @@ AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan,
   // build a new AST condition
   AstNode* newNode = nullptr;
 
-  for (size_t i = 0; i < n; ++i) {
-    if (toRemove.find(i) == toRemove.end()) {
-      auto what = andNode->getMemberUnchecked(i);
-
-      if (newNode == nullptr) {
-        // the only node so far
-        newNode = what;
-      } else {
-        // AND-combine with existing node
-        newNode = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND,
-                                                 newNode, what);
-      }
-    }
-  }
-
-  return newNode;
-}
-
-/// @brief remove filter conditions already covered by the traversal
-AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
-                                             Variable const* variable,
-                                             AstNode* other) {
-  if (_root == nullptr || other == nullptr) {
-    return _root;
-  }
-  TRI_ASSERT(_root != nullptr);
-  TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
-
-  TRI_ASSERT(other != nullptr);
-  TRI_ASSERT(other->type == NODE_TYPE_OPERATOR_NARY_OR);
-  if (other->numMembers() != 1 && _root->numMembers() != 1) {
-    return _root;
-  }
-
-  auto andNode = _root->getMemberUnchecked(0);
-  TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
-  auto otherAndNode = other->getMemberUnchecked(0);
-  TRI_ASSERT(otherAndNode->type == NODE_TYPE_OPERATOR_NARY_AND);
-  size_t const n = andNode->numMembers();
-
-  ::arangodb::containers::HashSet<size_t> toRemove;
-  collectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove,
-                            nullptr, true);
-
-  if (toRemove.empty()) {
-    return _root;
-  }
-
-  // build a new AST condition
-  AstNode* newNode = nullptr;
   for (size_t i = 0; i < n; ++i) {
     if (toRemove.find(i) == toRemove.end()) {
       auto what = andNode->getMemberUnchecked(i);

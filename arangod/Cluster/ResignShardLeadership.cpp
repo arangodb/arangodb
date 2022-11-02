@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ResignShardLeadership.h"
-#include "MaintenanceFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
@@ -46,7 +45,6 @@
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -130,7 +128,11 @@ bool ResignShardLeadership::first() {
     // leader, until we have negotiated a deal with it. Then the actual
     // name of the leader will be set.
     col->followers()->setTheLeader(LeaderNotYetKnownString);  // resign
-    trx.abort();                                              // unlock
+    res = trx.abort();                                        // unlock
+    if (res.fail()) {
+      LOG_TOPIC("10c35", ERR, Logger::MAINTENANCE)
+          << "Failed to abort transaction during resign leadership: " << res;
+    }
 
     transaction::cluster::abortLeaderTransactionsOnShard(col->id());
 

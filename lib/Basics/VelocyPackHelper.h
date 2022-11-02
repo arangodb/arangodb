@@ -38,7 +38,6 @@
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/ValueType.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/system-compiler.h"
 
@@ -433,6 +432,35 @@ VelocyPackHelper::getNumericValue<ErrorCode, ErrorCode, std::string>(
   return ErrorCode{
       getNumericValue<int>(slice, name, static_cast<int>(defaultValue))};
 }
+
+namespace velocypackhelper {
+
+template<typename T, typename = void>
+struct HasToVelocyPack : std::false_type {};
+// Check whether a `T::toVelocyPack(Builder&)` exists:
+template<typename T>
+struct HasToVelocyPack<T, decltype(std::declval<T>().toVelocyPack(
+                              std::declval<velocypack::Builder&>()))>
+    : std::true_type {};
+template<typename T>
+constexpr bool HasToVelocyPack_v = HasToVelocyPack<T>::value;
+
+/// @brief Convert any object which provides a `toVelocyPack(Builder&)` method
+/// to a JSON string, by first converting it to VelocyPack.
+///
+/// The enable_if part would have liked to be a
+///   requires requires(T thing, velocypack::Builder builder) {
+///     thing.toVelocyPack(builder);
+///   }
+/// constraint (or HasToVelocyPack an equivalent concept), but AppleClang
+/// doesn't like C++20.
+template<typename T, std::enable_if_t<HasToVelocyPack_v<T>, bool> = true>
+auto toJson(T thing) -> std::string {
+  auto builder = velocypack::Builder();
+  thing.toVelocyPack(builder);
+  return builder.toJson();
+}
+}  // namespace velocypackhelper
 
 }  // namespace basics
 }  // namespace arangodb

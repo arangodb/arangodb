@@ -99,14 +99,11 @@ class GeoFilter final : public irs::filter_base<GeoFilterOptions> {
     return "arangodb::iresearch::GeoFilter";
   }
 
-  static ptr make();
-
   using filter::prepare;
 
-  virtual prepared::ptr prepare(
-      const irs::index_reader& rdr, const irs::order::prepared& ord,
-      irs::boost_t boost,
-      const irs::attribute_provider* /*ctx*/) const override;
+  prepared::ptr prepare(irs::index_reader const& rdr, irs::Order const& ord,
+                        irs::score_t boost,
+                        irs::attribute_provider const* /*ctx*/) const override;
 };  // GeoFilter
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,13 +139,10 @@ class GeoDistanceFilter final
     return "arangodb::iresearch::GeoFilter";
   }
 
-  static ptr make();
-
   using filter::prepare;
 
   virtual prepared::ptr prepare(
-      const irs::index_reader& rdr, const irs::order::prepared& ord,
-      irs::boost_t boost,
+      const irs::index_reader& rdr, const irs::Order& ord, irs::score_t boost,
       const irs::attribute_provider* /*ctx*/) const override;
 };  // GeoDistanceFilter
 

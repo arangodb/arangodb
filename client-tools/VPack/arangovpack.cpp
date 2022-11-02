@@ -21,12 +21,15 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "arangovpack.h"
+
 #include "Basics/Common.h"
 #include "Basics/signals.h"
 #include "Basics/directories.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/FileSystemFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
@@ -56,21 +59,33 @@ int main(int argc, char* argv[]) {
         new options::ProgramOptions(
             argv[0], "Usage: arangovpack [<options>]",
             "For more information use:", BIN_DIRECTORY));
-    ApplicationServer server(options, BIN_DIRECTORY);
+
     int ret = EXIT_SUCCESS;
+    ArangoVPackServer server(options, BIN_DIRECTORY);
 
-    server.addFeature<BasicFeaturePhaseClient>();
-    server.addFeature<GreetingsFeaturePhase>(true);
-
-    // default is to use no config file
-    server.addFeature<ConfigFeature>("arangovpack", "none");
-    server.addFeature<LoggerFeature>(false);
-    server.addFeature<RandomFeature>();
-    server.addFeature<ShellColorsFeature>();
-    server.addFeature<ShutdownFeature>(
-        std::vector<std::type_index>{std::type_index(typeid(VPackFeature))});
-    server.addFeature<VPackFeature>(&ret);
-    server.addFeature<VersionFeature>();
+    server.addFeatures(Visitor{
+        []<typename T>(auto& server, TypeTag<T>) {
+          return std::make_unique<T>(server);
+        },
+        [&](ArangoVPackServer& server, TypeTag<VPackFeature>) {
+          return std::make_unique<VPackFeature>(server, &ret);
+        },
+        [&](ArangoVPackServer& server, TypeTag<ConfigFeature>) {
+          // default is to use no config file
+          return std::make_unique<ConfigFeature>(server, context.binaryName(),
+                                                 "none");
+        },
+        [](ArangoVPackServer& server, TypeTag<ShutdownFeature>) {
+          return std::make_unique<ShutdownFeature>(
+              server, std::array{ArangoVPackServer::id<VPackFeature>()});
+        },
+        [](ArangoVPackServer& server, TypeTag<GreetingsFeaturePhase>) {
+          return std::make_unique<GreetingsFeaturePhase>(server,
+                                                         std::true_type{});
+        },
+        [](ArangoVPackServer& server, TypeTag<LoggerFeature>) {
+          return std::make_unique<LoggerFeature>(server, false);
+        }});
 
     try {
       server.run(argc, argv);

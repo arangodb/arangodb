@@ -140,8 +140,7 @@ void AttributeAccessor::replaceVariable(
 }
 
 AttributeAccessor* AttributeAccessor::create(
-    arangodb::aql::AttributeNamePath&& path, Variable const* variable,
-    bool dataIsFromCollection) {
+    arangodb::aql::AttributeNamePath&& path, Variable const* variable) {
   TRI_ASSERT(variable != nullptr);
   TRI_ASSERT(!path.empty());
 
@@ -151,7 +150,7 @@ AttributeAccessor* AttributeAccessor::create(
   // use them for non-collection data, as the optimized functions may easily
   // create out-of-bounds accesses in that case
   AttributeNamePath::Type type = path.type();
-  if (!dataIsFromCollection && path.size() == 1) {
+  if (!variable->isFullDocumentFromCollection && path.size() == 1) {
     type = AttributeNamePath::Type::SingleAttribute;
   }
 

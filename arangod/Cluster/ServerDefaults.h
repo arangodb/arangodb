@@ -24,18 +24,27 @@
 #pragma once
 
 #include <cstdint>
+#include "RestServer/arangod.h"
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 
 struct ServerDefaults {
   uint64_t numberOfShards = 1;
   uint64_t replicationFactor = 1;
   uint64_t writeConcern = 1;
 
-  explicit ServerDefaults(application_features::ApplicationServer& server);
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // We use the default constructor for tests,
+  // we do not want to use the Server for testing
+  // usage of the values. But in production these
+  // values have to be taken from the Server.
+  ServerDefaults() = default;
+#endif
+  explicit ServerDefaults(ArangodServer& server);
+
+  explicit ServerDefaults(TRI_vocbase_t const& vocbase);
 };
 
 }  // namespace arangodb

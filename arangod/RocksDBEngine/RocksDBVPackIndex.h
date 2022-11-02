@@ -44,6 +44,8 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <span>
+
 namespace arangodb {
 namespace aql {
 class SortCondition;
@@ -56,19 +58,28 @@ namespace transaction {
 class Methods;
 }
 
+enum class RocksDBVPackIndexSearchValueFormat : uint8_t {
+  kDetect,
+  kOperatorsAndValues,
+  kValuesOnly
+};
+
 class RocksDBVPackIndex : public RocksDBIndex {
-  template<bool reverse>
+  template<bool unique, bool reverse, bool mustCheckBounds>
   friend class RocksDBVPackIndexIterator;
 
  public:
-  static uint64_t HashForKey(const rocksdb::Slice& key);
+  static uint64_t HashForKey(rocksdb::Slice const& key);
 
   RocksDBVPackIndex() = delete;
 
   RocksDBVPackIndex(IndexId iid, LogicalCollection& collection,
-                    arangodb::velocypack::Slice const& info);
+                    velocypack::Slice info);
 
   ~RocksDBVPackIndex();
+
+  std::vector<std::vector<basics::AttributeName>> const& coveredFields()
+      const override;
 
   bool hasSelectivityEstimate() const override;
 
@@ -85,45 +96,48 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   bool canBeDropped() const override { return true; }
 
-  bool hasCoveringIterator() const override { return true; }
-
   /// @brief return the attribute paths
   std::vector<std::vector<std::string>> const& paths() const { return _paths; }
 
-  /// @brief return the attribute paths, a -1 entry means none is expanding,
-  /// otherwise the non-negative number is the index of the expanding one.
-  std::vector<int> const& expanding() const { return _expanding; }
-
-  static constexpr size_t minimalPrefixSize() { return sizeof(TRI_voc_tick_t); }
-
-  /// @brief attempts to locate an entry in the index
-  std::unique_ptr<IndexIterator> lookup(transaction::Methods*,
-                                        arangodb::velocypack::Slice const,
-                                        bool reverse,
-                                        ReadOwnWrites readOwnWrites) const;
+  /// @brief whether or not the index has estimates
+  bool hasEstimates() const noexcept { return _estimates; }
 
   Index::FilterCosts supportsFilterCondition(
-      std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-      arangodb::aql::AstNode const* node,
-      arangodb::aql::Variable const* reference,
+      transaction::Methods& trx,
+      std::vector<std::shared_ptr<Index>> const& allIndexes,
+      aql::AstNode const* node, aql::Variable const* reference,
       size_t itemsInIndex) const override;
 
   Index::SortCosts supportsSortCondition(
-      arangodb::aql::SortCondition const* sortCondition,
-      arangodb::aql::Variable const* reference,
+      aql::SortCondition const* sortCondition, aql::Variable const* reference,
       size_t itemsInIndex) const override;
 
-  arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode* node,
-      arangodb::aql::Variable const* reference) const override;
+  aql::AstNode* specializeCondition(
+      transaction::Methods& trx, aql::AstNode* node,
+      aql::Variable const* reference) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, arangodb::aql::AstNode const* node,
-      arangodb::aql::Variable const* reference,
-      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites) override;
+      transaction::Methods* trx, aql::AstNode const* node,
+      aql::Variable const* reference, IndexIteratorOptions const& opts,
+      ReadOwnWrites readOwnWrites, int) override;
 
-  void afterTruncate(TRI_voc_tick_t tick,
-                     arangodb::transaction::Methods* trx) override;
+  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override;
+
+  std::shared_ptr<cache::Cache> makeCache() const override;
+
+  size_t numFieldsToConsiderInIndexSelection() const noexcept override {
+    return _fields.size() + _storedValues.size();
+  }
+
+  bool hasStoredValues() const noexcept { return !_storedValues.empty(); }
+
+  // build new search values. this can also be called from the
+  // VPackIndexIterator
+  void buildSearchValues(aql::AstNode const* node,
+                         aql::Variable const* reference,
+                         VPackBuilder& searchValues,
+                         RocksDBVPackIndexSearchValueFormat& format,
+                         bool& needNormalize) const;
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
@@ -140,6 +154,22 @@ class RocksDBVPackIndex : public RocksDBIndex {
                 OperationOptions const& options, bool performChecks) override;
 
  private:
+  // build an index iterator from a VelocyPack range description
+  std::unique_ptr<IndexIterator> buildIterator(
+      transaction::Methods* trx, velocypack::Slice searchValues,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      RocksDBVPackIndexSearchValueFormat format) const;
+
+  // build bounds for an index range
+  void buildIndexRangeBounds(transaction::Methods* trx, VPackSlice searchValues,
+                             VPackBuilder& leftSearch, VPackSlice lastNonEq,
+                             RocksDBKeyBounds& bounds) const;
+
+  std::unique_ptr<IndexIterator> buildIteratorFromBounds(
+      transaction::Methods* trx, bool reverse, ReadOwnWrites readOwnWrites,
+      RocksDBKeyBounds&& bounds, RocksDBVPackIndexSearchValueFormat format,
+      bool useCache) const;
+
   /// @brief returns whether the document can be inserted into the index
   /// (or if there will be a conflict)
   [[nodiscard]] Result checkInsert(transaction::Methods& trx,
@@ -163,61 +193,68 @@ class RocksDBVPackIndex : public RocksDBIndex {
                                       OperationOptions const& options,
                                       bool ignoreExisting);
 
-  /// @brief return the number of paths
-  inline size_t numPaths() const { return _paths.size(); }
-
   /// @brief helper function to transform AttributeNames into string lists
-  void fillPaths(std::vector<std::vector<std::string>>& paths,
-                 std::vector<int>& expanding);
+  void fillPaths(std::vector<std::vector<basics::AttributeName>> const& source,
+                 std::vector<std::vector<std::string>>& paths,
+                 std::vector<int>* expanding);
 
   /// @brief helper function to insert a document into any index type
-  ErrorCode fillElement(
-      velocypack::Builder& leased, LocalDocumentId const& documentId,
-      VPackSlice const& doc,
-      ::arangodb::containers::SmallVector<RocksDBKey>& elements,
-      ::arangodb::containers::SmallVector<uint64_t>& hashes);
+  ErrorCode fillElement(velocypack::Builder& leased,
+                        LocalDocumentId const& documentId, VPackSlice doc,
+                        containers::SmallVector<RocksDBKey, 4>& elements,
+                        containers::SmallVector<uint64_t, 4>& hashes);
 
   /// @brief helper function to build the key and value for rocksdb from the
   /// vector of slices
   /// @param hashes list of VPackSlice hashes for the estimator.
-  void addIndexValue(
-      velocypack::Builder& leased, LocalDocumentId const& documentId,
-      VPackSlice const& document,
-      ::arangodb::containers::SmallVector<RocksDBKey>& elements,
-      ::arangodb::containers::SmallVector<uint64_t>& hashes,
-      ::arangodb::containers::SmallVector<VPackSlice>& sliceStack);
+  void addIndexValue(velocypack::Builder& leased,
+                     LocalDocumentId const& documentId, VPackSlice document,
+                     containers::SmallVector<RocksDBKey, 4>& elements,
+                     containers::SmallVector<uint64_t, 4>& hashes,
+                     std::span<VPackSlice const> sliceStack);
 
   /// @brief helper function to create a set of value combinations to insert
   /// into the rocksdb index.
   /// @param elements vector of resulting index entries
   /// @param sliceStack working list of values to insert into the index
   /// @param hashes list of VPackSlice hashes for the estimator.
-  void buildIndexValues(
-      velocypack::Builder& leased, LocalDocumentId const& documentId,
-      VPackSlice const document, size_t level,
-      ::arangodb::containers::SmallVector<RocksDBKey>& elements,
-      ::arangodb::containers::SmallVector<uint64_t>& hashes,
-      ::arangodb::containers::SmallVector<VPackSlice>& sliceStack);
+  void buildIndexValues(velocypack::Builder& leased,
+                        LocalDocumentId const& documentId,
+                        VPackSlice const document, size_t level,
+                        containers::SmallVector<RocksDBKey, 4>& elements,
+                        containers::SmallVector<uint64_t, 4>& hashes,
+                        containers::SmallVector<VPackSlice, 4>& sliceStack);
 
- private:
-  /// @brief the attribute paths
+  /// @brief the attribute paths (for regular fields)
   std::vector<std::vector<std::string>> _paths;
+  /// @brief the attribute paths (for stored values)
+  std::vector<std::vector<std::string>> _storedValuesPaths;
 
   /// @brief ... and which of them expands
+  /// @brief a -1 entry means none is expanding,
+  /// otherwise the non-negative number is the index of the expanding one.
   std::vector<int> _expanding;
 
-  /// @brief whether or not array indexes will de-duplicate their input values
-  bool _deduplicate;
+  /// @brief whether or not the user requested to use a cache for the index.
+  /// note: even if this is set to true, it may not mean that the cache is
+  /// effectively in use. for example, for system collections and on the
+  /// coordinator, no cache will actually be used although this flag may be true
+  bool const _cacheEnabled;
 
-  /// @brief whether or not partial indexing is allowed
-  bool _allowPartialIndex;
+  /// @brief whether or not array indexes will de-duplicate their input values
+  bool const _deduplicate;
 
   /// @brief whether or not we want to have estimates
   bool _estimates;
 
-  /// @brief A fixed size library to estimate the selectivity of the index.
+  /// @brief A fixed size buffer to estimate the selectivity of the index.
   /// On insertion of a document we have to insert it into the estimator,
   /// On removal we have to remove it in the estimator as well.
   std::unique_ptr<RocksDBCuckooIndexEstimatorType> _estimator;
+
+  std::vector<std::vector<basics::AttributeName>> const _storedValues;
+
+  std::vector<std::vector<basics::AttributeName>> const _coveredFields;
 };
+
 }  // namespace arangodb

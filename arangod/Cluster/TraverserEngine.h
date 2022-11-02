@@ -47,6 +47,7 @@ class VariableGenerator;
 }  // namespace aql
 
 namespace graph {
+struct BaseOptions;
 class EdgeCursor;
 struct ShortestPathOptions;
 }  // namespace graph
@@ -85,12 +86,14 @@ class BaseEngine {
 
   virtual bool produceVertices() const { return true; }
 
-  arangodb::aql::EngineId engineId() const { return _engineId; }
+  arangodb::aql::EngineId engineId() const noexcept { return _engineId; }
+
+  virtual graph::BaseOptions const& options() const = 0;
 
  protected:
   arangodb::aql::EngineId const _engineId;
   arangodb::aql::QueryContext& _query;
-  transaction::Methods* _trx;
+  std::unique_ptr<transaction::Methods> _trx;
   std::unordered_map<std::string, std::vector<std::string>> _vertexShards;
 };
 
@@ -116,6 +119,9 @@ class BaseTraverserEngine : public BaseEngine {
   virtual void smartSearch(arangodb::velocypack::Slice,
                            arangodb::velocypack::Builder&) = 0;
 
+  virtual void smartSearchUnified(arangodb::velocypack::Slice,
+                                  arangodb::velocypack::Builder&) = 0;
+
   EngineType getType() const override { return TRAVERSER; }
 
   bool produceVertices() const override;
@@ -125,9 +131,13 @@ class BaseTraverserEngine : public BaseEngine {
 
   aql::VariableGenerator const* variables() const;
 
+  graph::BaseOptions const& options() const override;
+
  protected:
   std::unique_ptr<traverser::TraverserOptions> _opts;
-  std::vector<std::unique_ptr<graph::EdgeCursor>> _cursors;
+  std::unordered_map<uint64_t, std::unique_ptr<graph::EdgeCursor>>
+      _depthSpecificCursors;
+  std::unique_ptr<graph::EdgeCursor> _generalCursor;
   aql::VariableGenerator const* _variables;
 };
 
@@ -148,6 +158,8 @@ class ShortestPathEngine : public BaseEngine {
                 arangodb::velocypack::Builder&);
 
   EngineType getType() const override { return SHORTESTPATH; }
+
+  graph::BaseOptions const& options() const override;
 
  private:
   void addEdgeData(arangodb::velocypack::Builder& builder, bool backward,
@@ -175,6 +187,9 @@ class TraverserEngine : public BaseTraverserEngine {
 
   void smartSearch(arangodb::velocypack::Slice,
                    arangodb::velocypack::Builder&) override;
+
+  void smartSearchUnified(arangodb::velocypack::Slice,
+                          arangodb::velocypack::Builder&) override;
 };
 
 }  // namespace traverser

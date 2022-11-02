@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+﻿////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
@@ -42,6 +42,7 @@
 
 namespace arangodb {
 class ClientFeature;
+class EncryptionFeature;
 namespace httpclient {
 class SimpleHttpClient;
 class SimpleHttpResult;
@@ -82,7 +83,8 @@ class ImportHelper {
   ImportHelper& operator=(ImportHelper const&) = delete;
 
  public:
-  ImportHelper(ClientFeature const& client, std::string const& endpoint,
+  ImportHelper(EncryptionFeature* encryption, ClientFeature const& client,
+               std::string const& endpoint,
                httpclient::SimpleHttpClientParams const& params,
                uint64_t maxUploadSize, uint32_t threadCount,
                bool autoUploadSize = false);
@@ -105,6 +107,17 @@ class ImportHelper {
 
   bool importJson(std::string const& collectionName,
                   std::string const& fileName, bool assumeLinewise);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief imports a file with JSON objects
+  /// each line must contain a complete JSON object
+  /// Has the option to rewrite the JSON documents on
+  /// client side (e.g. remove attributes) but is less perfromant then
+  /// importJson
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool importJsonWithRewrite(std::string const& collectionName,
+                             std::string const& fileName, bool assumeLinewise);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the action to carry out on duplicate _key
@@ -133,6 +146,14 @@ class ImportHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   void setTo(std::string const& to) { _toCollectionPrefix = to; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief set if we want to overwrite existing collection prefixes
+  //////////////////////////////////////////////////////////////////////////////
+
+  void setOverwritePrefix(bool overwrite) {
+    _overwriteCollectionPrefix = overwrite;
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not backslashes can be used for escaping quotes
@@ -330,7 +351,7 @@ class ImportHelper {
   void waitForSenders();
 
  private:
-  ClientFeature const& _clientFeature;
+  EncryptionFeature* _encryption;
   std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
   std::atomic<uint64_t> _maxUploadSize;
   std::atomic<uint64_t> _periodByteCount;
@@ -366,6 +387,7 @@ class ImportHelper {
   std::string _collectionName;
   std::string _fromCollectionPrefix;
   std::string _toCollectionPrefix;
+  bool _overwriteCollectionPrefix;
   arangodb::basics::StringBuffer _lineBuffer;
   arangodb::basics::StringBuffer _outputBuffer;
   std::string _firstLine;

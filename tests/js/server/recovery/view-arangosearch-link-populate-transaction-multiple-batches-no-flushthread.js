@@ -45,7 +45,7 @@ function runSetup () {
   db._view('UnitTestsRecoveryView').properties(meta);
 
   internal.wal.flush(true, true);
-  internal.debugSetFailAt("FlushThreadDisableAll");
+  internal.debugSetFailAt("RocksDBBackgroundThread::run");
   internal.wait(2); // make sure failure point takes effect
 
   var tx = {

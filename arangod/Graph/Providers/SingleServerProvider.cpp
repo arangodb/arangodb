@@ -53,11 +53,17 @@ void SingleServerProvider<Step>::addEdgeToBuilder(
   }
 };
 
+template<class StepImpl>
+auto SingleServerProvider<StepImpl>::getEdgeDocumentToken(
+    typename Step::Edge const& edge) -> EdgeDocumentToken {
+  return edge.getID();
+}
+
 template<class Step>
 void SingleServerProvider<Step>::addEdgeIDToBuilder(
     typename Step::Edge const& edge, arangodb::velocypack::Builder& builder) {
   if (edge.isValid()) {
-    insertEdgeIntoResult(edge.getID(), builder);
+    insertEdgeIdIntoResult(edge.getID(), builder);
   } else {
     // We can never hand out invalid ids.
     // For production just be sure to add something sensible.
@@ -66,14 +72,24 @@ void SingleServerProvider<Step>::addEdgeIDToBuilder(
 };
 
 template<class Step>
+void SingleServerProvider<Step>::addEdgeToLookupMap(
+    typename Step::Edge const& edge, arangodb::velocypack::Builder& builder) {
+  if (edge.isValid()) {
+    _cache.insertEdgeIntoLookupMap(edge.getID(), builder);
+  }
+}
+
+template<class Step>
 SingleServerProvider<Step>::SingleServerProvider(
-    arangodb::aql::QueryContext& queryContext, BaseProviderOptions opts,
+    arangodb::aql::QueryContext& queryContext,
+    SingleServerBaseProviderOptions opts,
     arangodb::ResourceMonitor& resourceMonitor)
     : _trx(std::make_unique<arangodb::transaction::Methods>(
           queryContext.newTrxContext())),
       _opts(std::move(opts)),
       _cache(_trx.get(), &queryContext, resourceMonitor, _stats,
-             _opts.collectionToShardMap()),
+             _opts.collectionToShardMap(), _opts.getVertexProjections(),
+             _opts.getEdgeProjections()),
       _stats{} {
   // TODO CHECK RefactoredTraverserCache (will be discussed in the future, need
   // to do benchmarks if affordable) activateCache(false);
@@ -135,7 +151,7 @@ auto SingleServerProvider<Step>::expand(
   TRI_ASSERT(_cursor != nullptr);
   LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding " << vertex.getID();
-  _cursor->rearm(vertex.getID(), step.getDepth());
+  _cursor->rearm(vertex.getID(), step.getDepth(), _stats);
   _cursor->readAll(
       *this, _stats, step.getDepth(),
       [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
@@ -156,13 +172,12 @@ auto SingleServerProvider<Step>::expand(
         LOG_TOPIC("c9168", TRACE, Logger::GRAPHS)
             << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> "
             << id;
-        if (_opts.hasWeightMethod()) {
-          callback(Step{id, std::move(eid), previous, step.getDepth() + 1,
-                        _opts.weightEdge(step.getWeight(), edge), cursorID});
-        } else {
-          callback(Step{id, std::move(eid), previous, step.getDepth() + 1, 1.0,
-                        cursorID});
-        }
+
+        callback(Step{id, std::move(eid), previous, step.getDepth() + 1,
+                      _opts.weightEdge(step.getWeight(), edge), cursorID});
+        // TODO [GraphRefactor]: Why is cursorID set, but never used?
+        // Note: There is one implementation that used, it, but there is a high
+        // probability we do not need it anymore after refactoring is complete.
       });
 }
 
@@ -194,10 +209,45 @@ void SingleServerProvider<Step>::insertEdgeIdIntoResult(
 }
 
 template<class Step>
+std::string SingleServerProvider<Step>::getEdgeId(
+    typename Step::Edge const& edge) {
+  return _cache.getEdgeId(edge.getID());
+}
+
+template<class Step>
+EdgeType SingleServerProvider<Step>::getEdgeIdRef(
+    typename Step::Edge const& edge) {
+  // TODO: Maybe we can simplify this
+  auto id = getEdgeId(edge);
+  VPackHashedStringRef hashed{id.data(), static_cast<uint32_t>(id.size())};
+  return _cache.persistString(hashed);
+}
+
+template<class Step>
 void SingleServerProvider<Step>::prepareIndexExpressions(aql::Ast* ast) {
   TRI_ASSERT(_cursor != nullptr);
   _cursor->prepareIndexExpressions(ast);
 }
+
+template<class Step>
+void SingleServerProvider<Step>::prepareContext(aql::InputAqlItemRow input) {
+  _opts.prepareContext(std::move(input));
+}
+
+template<class Step>
+void SingleServerProvider<Step>::unPrepareContext() {
+  _opts.unPrepareContext();
+}
+
+#ifndef USE_ENTERPRISE
+template<class Step>
+bool SingleServerProvider<Step>::isResponsible(Step const& step) const {
+  return true;
+}
+#else
+// Include Enterprise part of the template implementation
+#include "Enterprise/Graph/Providers/SingleServerProviderEE.tpp"
+#endif
 
 template<class Step>
 std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>>
@@ -206,7 +256,7 @@ SingleServerProvider<Step>::buildCursor(
   return std::make_unique<RefactoredSingleServerEdgeCursor<Step>>(
       trx(), _opts.tmpVar(), _opts.indexInformations().first,
       _opts.indexInformations().second, expressionContext,
-      _opts.hasWeightMethod());
+      _opts.hasWeightMethod() /*, requiresFullDocument*/);
 }
 
 template<class Step>
@@ -218,12 +268,41 @@ arangodb::transaction::Methods* SingleServerProvider<Step>::trx() {
 }
 
 template<class Step>
+TRI_vocbase_t const& SingleServerProvider<Step>::vocbase() const {
+  TRI_ASSERT(_trx != nullptr);
+  TRI_ASSERT(_trx->state() != nullptr);
+  TRI_ASSERT(_trx->transactionContextPtr() != nullptr);
+  return _trx.get()->vocbase();
+}
+
+template<class Step>
 arangodb::aql::TraversalStats SingleServerProvider<Step>::stealStats() {
   auto t = _stats;
-  // Placement new of stats, do not reallocate space.
-  _stats.~TraversalStats();
-  new (&_stats) aql::TraversalStats{};
+  _stats.clear();
   return t;
+}
+
+template<class StepType>
+auto SingleServerProvider<StepType>::fetchVertices(
+    const std::vector<Step*>& looseEnds)
+    -> futures::Future<std::vector<Step*>> {
+  // We will never need to fetch anything
+  TRI_ASSERT(false);
+  return std::move(fetch(looseEnds));
+}
+
+template<class StepType>
+auto SingleServerProvider<StepType>::fetchEdges(
+    const std::vector<Step*>& fetchedVertices) -> Result {
+  // We will never need to fetch anything
+  TRI_ASSERT(false);
+  return TRI_ERROR_NO_ERROR;
+}
+
+template<class StepType>
+bool SingleServerProvider<StepType>::hasDepthSpecificLookup(
+    uint64_t depth) const noexcept {
+  return _cursor->hasDepthSpecificLookup(depth);
 }
 
 template class arangodb::graph::SingleServerProvider<SingleServerProviderStep>;

@@ -4,7 +4,6 @@
 #include "Greenspun/Primitives.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
-#include "velocypack/velocypack-aliases.h"
 
 #include "gtest/gtest.h"
 
@@ -1938,7 +1937,7 @@ TEST_F(GreenspunTest, rand_range) {
 }
 
 #ifdef AIR_PRIMITIVE_TESTS_MAIN
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

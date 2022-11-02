@@ -28,12 +28,14 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
+#include "Agency/AgencyComm.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"
+#include "Cluster/ClusterFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -41,20 +43,22 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-AgencyCallback::AgencyCallback(application_features::ApplicationServer& server,
-                               std::string const& key,
+AgencyCallback::AgencyCallback(ArangodServer& server, std::string key,
+                               CallbackType cb, bool needsValue,
+                               bool needsInitialValue)
+    : key(std::move(key)),
+      _server(server),
+      _cb(std::move(cb)),
+      _needsValue(needsValue),
+      _needsInitialValue(needsInitialValue) {}
+
+AgencyCallback::AgencyCallback(ArangodServer& server, std::string const& key,
                                std::function<bool(VPackSlice const&)> const& cb,
                                bool needsValue, bool needsInitialValue)
-    : key(key),
-      _server(server),
-      _cb(cb),
-      _needsValue(needsValue),
-      _wasSignaled(false),
-      _local(true) {
-  if (_needsValue && needsInitialValue) {
-    refetchAndUpdate(true, false);
-  }
-}
+    : AgencyCallback(
+          server, key,
+          [cb](VPackSlice slice, consensus::index_t) { return cb(slice); },
+          needsValue, needsInitialValue) {}
 
 void AgencyCallback::local(bool b) {
   _local = b;
@@ -124,25 +128,32 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex,
   auto newData = std::make_shared<VPackBuilder>();
   newData->add(result[0].get(kv));
 
+  auto const callCheckValue = [&] {
+    if (_lastSeenIndex < idx) {
+      _lastSeenIndex = idx;
+      checkValue(std::move(newData), idx, forceCheck);
+    }
+  };
+
   if (needToAcquireMutex) {
     CONDITION_LOCKER(locker, _cv);
-    checkValue(std::move(newData), forceCheck);
+    callCheckValue();
   } else {
-    checkValue(std::move(newData), forceCheck);
+    callCheckValue();
   }
 }
 
 void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData,
-                                bool forceCheck) {
+                                consensus::index_t raftIndex, bool forceCheck) {
   // Only called from refetchAndUpdate, we always have the mutex when
   // we get here!
   if (!_lastData || forceCheck ||
       !arangodb::basics::VelocyPackHelper::equal(_lastData->slice(),
                                                  newData->slice(), false)) {
-    LOG_TOPIC("2bd14", DEBUG, Logger::CLUSTER)
+    LOG_TOPIC("2bd14", TRACE, Logger::CLUSTER)
         << "AgencyCallback: Got new value " << newData->slice().typeName()
         << " " << newData->toJson() << " forceCheck=" << forceCheck;
-    if (execute(newData->slice())) {
+    if (execute(newData->slice(), raftIndex)) {
       _lastData = newData;
     } else {
       LOG_TOPIC("337dc", DEBUG, Logger::CLUSTER)
@@ -153,17 +164,19 @@ void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData,
 
 bool AgencyCallback::executeEmpty() {
   // only called from refetchAndUpdate, we always have the mutex when
-  // we get here!
-  return execute(VPackSlice::noneSlice());
+  // we get here! No value is needed, so this is just a notify.
+  // No index available in that case.
+  return execute(VPackSlice::noneSlice(), 0);
 }
 
-bool AgencyCallback::execute(velocypack::Slice newData) {
+bool AgencyCallback::execute(velocypack::Slice newData,
+                             consensus::index_t raftIndex) {
   // only called from refetchAndUpdate, we always have the mutex when
   // we get here!
-  LOG_TOPIC("add4e", DEBUG, Logger::CLUSTER)
+  LOG_TOPIC("add4e", TRACE, Logger::CLUSTER)
       << "Executing" << (newData.isNone() ? " (empty)" : "");
   try {
-    bool result = _cb(newData);
+    bool result = _cb(newData, raftIndex);
     if (result) {
       _wasSignaled = true;
       _cv.signal();

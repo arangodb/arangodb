@@ -25,17 +25,21 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/DocumentExpressionContext.h"
-#include "Aql/DocumentIndexExpressionContext.h"
+#include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/Expression.h"
+#include "Aql/IndexExecutor.h"
+#include "Aql/LateMaterializedExpressionContext.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
-#include "Basics/StaticStrings.h"
+#include "StorageEngine/PhysicalCollection.h"
+#include "VocBase/LogicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -54,11 +58,9 @@ IndexIterator::DocumentCallback aql::getCallback(
 
     context.incrScanned();
 
-    if (context.hasFilter()) {
-      if (!context.checkFilter(slice)) {
-        context.incrFiltered();
-        return false;
-      }
+    if (context.hasFilter() && !context.checkFilter(slice)) {
+      context.incrFiltered();
+      return false;
     }
 
     if constexpr (skip) {
@@ -78,8 +80,8 @@ IndexIterator::DocumentCallback aql::getCallback(
     RegisterId registerId = context.getOutputRegister();
 
     TRI_ASSERT(!output.isFull());
-    output.moveValueInto<InputAqlItemRow, VPackSlice const>(
-        registerId, input, objectBuilder.slice());
+    VPackSlice s = objectBuilder.slice();
+    output.moveValueInto<InputAqlItemRow, VPackSlice>(registerId, input, s);
     TRI_ASSERT(output.produced());
     output.advanceRow();
 
@@ -91,7 +93,7 @@ template<bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(
     DocumentProducingCallbackVariant::DocumentCopy,
     DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId const& token, VPackSlice const slice) {
+  return [&context](LocalDocumentId const& token, VPackSlice slice) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -101,11 +103,9 @@ IndexIterator::DocumentCallback aql::getCallback(
 
     context.incrScanned();
 
-    if (context.hasFilter()) {
-      if (!context.checkFilter(slice)) {
-        context.incrFiltered();
-        return false;
-      }
+    if (context.hasFilter() && !context.checkFilter(slice)) {
+      context.incrFiltered();
+      return false;
     }
 
     if constexpr (skip) {
@@ -132,7 +132,7 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
     if (!context.getProduceResult()) {
       // This callback is disallowed use getNullCallback instead
       TRI_ASSERT(false);
-      return [](LocalDocumentId const&, VPackSlice slice) -> bool {
+      return [](LocalDocumentId const&, VPackSlice /*slice*/) -> bool {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid callback");
       };
     }
@@ -140,19 +140,13 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
 
   if (!context.getProjections().empty()) {
     // return a projection
-    if (context.getProjections().supportsCoveringIndex()) {
-      // projections from an index value (covering index)
-      return getCallback<checkUniqueness, skip>(
-          DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex{},
-          context);
-    } else {
-      // projections from a "real" document
-      return getCallback<checkUniqueness, skip>(
-          DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex{},
-          context);
-    }
+    TRI_ASSERT(!context.getProjections().usesCoveringIndex() ||
+               !context.getAllowCoveringIndexOptimization());
+    // projections from a "real" document
+    return getCallback<checkUniqueness, skip>(
+        DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex{},
+        context);
   }
-
   // return the document as is
   return getCallback<checkUniqueness, skip>(
       DocumentProducingCallbackVariant::DocumentCopy{}, context);
@@ -161,9 +155,9 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
 template<bool checkUniqueness>
 std::function<bool(LocalDocumentId const& token)> aql::getNullCallback(
     DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId const& token) {
-    TRI_ASSERT(!context.hasFilter());
+  TRI_ASSERT(!context.hasFilter());
 
+  return [&context](LocalDocumentId const& token) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -187,24 +181,98 @@ std::function<bool(LocalDocumentId const& token)> aql::getNullCallback(
 }
 
 DocumentProducingFunctionContext::DocumentProducingFunctionContext(
-    InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
-    RegisterId const outputRegister, bool produceResult,
-    aql::QueryContext& query, transaction::Methods& trx, Expression* filter,
-    arangodb::aql::Projections const& projections,
-    bool allowCoveringIndexOptimization, bool checkUniqueness)
+    transaction::Methods& trx, InputAqlItemRow const& inputRow,
+    EnumerateCollectionExecutorInfos& infos)
     : _inputRow(inputRow),
-      _outputRow(outputRow),
-      _query(query),
+      _outputRow(nullptr),
+      _query(infos.getQuery()),
       _trx(trx),
-      _filter(filter),
-      _projections(projections),
+      _physical(*infos.getCollection()->getCollection()->getPhysical()),
+      _filter(infos.getFilter()),
+      _projections(infos.getProjections()),
+      _filterProjections(infos.getFilterProjections()),
       _numScanned(0),
       _numFiltered(0),
-      _outputRegister(outputRegister),
-      _produceResult(produceResult),
-      _allowCoveringIndexOptimization(allowCoveringIndexOptimization),
-      _isLastIndex(false),
-      _checkUniqueness(checkUniqueness) {}
+      _outputRegister(infos.getOutputRegisterId()),
+      _outputVariable(infos.getOutVariable()),
+      _readOwnWrites(infos.canReadOwnWrites()),
+      _checkUniqueness(false),
+      _produceResult(infos.getProduceResult()),
+      _allowCoveringIndexOptimization(false),
+      _isLastIndex(false) {
+  // build ExpressionContext for filtering if we need one
+  if (hasFilter()) {
+    TRI_ASSERT(_outputVariable != nullptr);
+    auto const& filterVars = infos.getFilterVarsToRegister();
+    if (filterVars.size() == 1 && filterVars[0].first == _outputVariable->id) {
+      // filter condition only refers to the current document, but no other
+      // variables. we can get away with building a very simple expression
+      // context
+      _expressionContext = std::make_unique<SimpleDocumentExpressionContext>(
+          _trx, _query, _aqlFunctionsInternalCache,
+          infos.getFilterVarsToRegister(), _inputRow, _outputVariable);
+    } else {
+      // filter condition refers to addition variables.
+      // we have to use a more generic expression context
+      _expressionContext = std::make_unique<GenericDocumentExpressionContext>(
+          _trx, _query, _aqlFunctionsInternalCache,
+          infos.getFilterVarsToRegister(), _inputRow, _outputVariable);
+    }
+  }
+}
+
+DocumentProducingFunctionContext::DocumentProducingFunctionContext(
+    transaction::Methods& trx, InputAqlItemRow const& inputRow,
+    IndexExecutorInfos& infos)
+    : _inputRow(inputRow),
+      _outputRow(nullptr),
+      _query(infos.query()),
+      _trx(trx),
+      _physical(*infos.getCollection()->getCollection()->getPhysical()),
+      _filter(infos.getFilter()),
+      _projections(infos.getProjections()),
+      _filterProjections(infos.getFilterProjections()),
+      _numScanned(0),
+      _numFiltered(0),
+      _outputRegister(infos.getOutputRegisterId()),
+      _outputVariable(infos.getOutVariable()),
+      _readOwnWrites(infos.canReadOwnWrites()),
+      _checkUniqueness(infos.getIndexes().size() > 1 ||
+                       infos.hasMultipleExpansions()),
+      _produceResult(infos.getProduceResult()),
+      _allowCoveringIndexOptimization(false),  // can be updated later
+      _isLastIndex(false) {
+  // build ExpressionContext for filtering if we need one
+  if (hasFilter()) {
+    if (infos.isLateMaterialized()) {
+      // special handling for late materialization
+      _expressionContext = std::make_unique<LateMaterializedExpressionContext>(
+          _trx, _query, _aqlFunctionsInternalCache,
+          infos.getFilterVarsToRegister(), _inputRow,
+          infos.getOutNonMaterializedIndVars());
+    } else {
+      TRI_ASSERT(_outputVariable != nullptr);
+      auto const& filterVars = infos.getFilterVarsToRegister();
+      if (filterVars.size() == 1 &&
+          filterVars[0].first == _outputVariable->id) {
+        // filter condition only refers to the current document, but no other
+        // variables. we can get away with building a very simple expression
+        // context
+        _expressionContext = std::make_unique<SimpleDocumentExpressionContext>(
+            _trx, _query, _aqlFunctionsInternalCache,
+            infos.getFilterVarsToRegister(), _inputRow, _outputVariable);
+      } else {
+        // filter condition refers to additional variables.
+        // we have to use a more generic expression context
+        _expressionContext = std::make_unique<GenericDocumentExpressionContext>(
+            _trx, _query, _aqlFunctionsInternalCache,
+            infos.getFilterVarsToRegister(), _inputRow, _outputVariable);
+      }
+    }
+  }
+}
+
+DocumentProducingFunctionContext::~DocumentProducingFunctionContext() = default;
 
 void DocumentProducingFunctionContext::setOutputRow(
     OutputAqlItemRow* outputRow) {
@@ -220,9 +288,19 @@ DocumentProducingFunctionContext::getProjections() const noexcept {
   return _projections;
 }
 
+arangodb::aql::Projections const&
+DocumentProducingFunctionContext::getFilterProjections() const noexcept {
+  return _filterProjections;
+}
+
 transaction::Methods* DocumentProducingFunctionContext::getTrxPtr()
     const noexcept {
   return &_trx;
+}
+
+PhysicalCollection& DocumentProducingFunctionContext::getPhysical()
+    const noexcept {
+  return _physical;
 }
 
 arangodb::velocypack::Builder&
@@ -246,16 +324,12 @@ void DocumentProducingFunctionContext::incrFiltered() noexcept {
   ++_numFiltered;
 }
 
-size_t DocumentProducingFunctionContext::getAndResetNumScanned() noexcept {
-  size_t const numScanned = _numScanned;
-  _numScanned = 0;
-  return numScanned;
+uint64_t DocumentProducingFunctionContext::getAndResetNumScanned() noexcept {
+  return std::exchange(_numScanned, 0);
 }
 
-size_t DocumentProducingFunctionContext::getAndResetNumFiltered() noexcept {
-  size_t const numFiltered = _numFiltered;
-  _numFiltered = 0;
-  return numFiltered;
+uint64_t DocumentProducingFunctionContext::getAndResetNumFiltered() noexcept {
+  return std::exchange(_numFiltered, 0);
 }
 
 InputAqlItemRow const& DocumentProducingFunctionContext::getInputRow()
@@ -271,6 +345,11 @@ OutputAqlItemRow& DocumentProducingFunctionContext::getOutputRow()
 RegisterId DocumentProducingFunctionContext::getOutputRegister()
     const noexcept {
   return _outputRegister;
+}
+
+ReadOwnWrites DocumentProducingFunctionContext::getReadOwnWrites()
+    const noexcept {
+  return _readOwnWrites;
 }
 
 bool DocumentProducingFunctionContext::checkUniqueness(
@@ -293,20 +372,34 @@ bool DocumentProducingFunctionContext::checkUniqueness(
 }
 
 bool DocumentProducingFunctionContext::checkFilter(velocypack::Slice slice) {
-  DocumentExpressionContext ctx(_trx, _query, _aqlFunctionsInternalCache,
-                                slice);
+  TRI_ASSERT(_expressionContext != nullptr);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(!_expressionContext->isLateMaterialized());
+#endif
+
+  DocumentExpressionContext& ctx =
+      *static_cast<DocumentExpressionContext*>(_expressionContext.get());
+  ctx.setCurrentDocument(slice);
   return checkFilter(ctx);
 }
 
 bool DocumentProducingFunctionContext::checkFilter(
-    AqlValue (*getValue)(void const* ctx, Variable const* var, bool doCopy),
-    void const* filterContext) {
-  DocumentIndexExpressionContext ctx(_trx, _query, _aqlFunctionsInternalCache,
-                                     getValue, filterContext);
+    IndexIteratorCoveringData const* covering) {
+  TRI_ASSERT(covering != nullptr);
+  TRI_ASSERT(_expressionContext != nullptr);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(_expressionContext->isLateMaterialized());
+#endif
+
+  LateMaterializedExpressionContext& ctx =
+      *static_cast<LateMaterializedExpressionContext*>(
+          _expressionContext.get());
+  ctx.setCurrentCoveringData(covering);
   return checkFilter(ctx);
 }
 
-bool DocumentProducingFunctionContext::checkFilter(ExpressionContext& ctx) {
+bool DocumentProducingFunctionContext::checkFilter(
+    DocumentProducingExpressionContext& ctx) {
   _killCheckCounter = (_killCheckCounter + 1) % 1024;
   if (ADB_UNLIKELY(_killCheckCounter == 0 && _query.killed())) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
@@ -335,10 +428,12 @@ bool DocumentProducingFunctionContext::hasFilter() const noexcept {
 }
 
 template<bool checkUniqueness, bool skip>
-IndexIterator::DocumentCallback aql::getCallback(
+IndexIterator::CoveringCallback aql::getCallback(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context) {
-  return [&context](LocalDocumentId const& token, VPackSlice slice) {
+  return [&context](LocalDocumentId const& token,
+                    IndexIteratorCoveringData& covering) {
+    TRI_ASSERT(context.getAllowCoveringIndexOptimization());
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -348,45 +443,30 @@ IndexIterator::DocumentCallback aql::getCallback(
 
     context.incrScanned();
 
-    bool checkFilter = context.hasFilter();
-    if (checkFilter && !context.getAllowCoveringIndexOptimization()) {
-      if (!context.checkFilter(slice)) {
+    // recycle our Builder object
+    VPackBuilder& objectBuilder = context.getBuilder();
+    if (!skip || context.hasFilter()) {
+      objectBuilder.clear();
+      objectBuilder.openObject(true);
+
+      // projections from a covering index
+      context.getProjections().toVelocyPackFromIndex(objectBuilder, covering,
+                                                     context.getTrxPtr());
+
+      objectBuilder.close();
+
+      if (context.hasFilter() && !context.checkFilter(objectBuilder.slice())) {
         context.incrFiltered();
         return false;
       }
-      // no need to check later again
-      checkFilter = false;
     }
-
-    // recycle our Builder object
-    VPackBuilder& objectBuilder = context.getBuilder();
-    objectBuilder.clear();
-    objectBuilder.openObject(true);
-
-    if (context.getAllowCoveringIndexOptimization()) {
-      // projections from a covering index
-      context.getProjections().toVelocyPackFromIndex(objectBuilder, slice,
-                                                     context.getTrxPtr());
-    } else {
-      // projections from a "real" document
-      context.getProjections().toVelocyPackFromDocument(objectBuilder, slice,
-                                                        context.getTrxPtr());
-    }
-
-    objectBuilder.close();
-
-    if (checkFilter && !context.checkFilter(objectBuilder.slice())) {
-      context.incrFiltered();
-      return false;
-    }
-
     if constexpr (!skip) {
       InputAqlItemRow const& input = context.getInputRow();
       OutputAqlItemRow& output = context.getOutputRow();
       RegisterId registerId = context.getOutputRegister();
       TRI_ASSERT(!output.isFull());
-      output.moveValueInto<InputAqlItemRow, VPackSlice const>(
-          registerId, input, objectBuilder.slice());
+      VPackSlice s = objectBuilder.slice();
+      output.moveValueInto<InputAqlItemRow, VPackSlice>(registerId, input, s);
       TRI_ASSERT(output.produced());
       output.advanceRow();
     }
@@ -395,17 +475,105 @@ IndexIterator::DocumentCallback aql::getCallback(
   };
 }
 
-template IndexIterator::DocumentCallback aql::getCallback<false, false>(
+template<bool checkUniqueness, bool skip>
+IndexIterator::CoveringCallback aql::getCallback(
+    DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
+    DocumentProducingFunctionContext& context) {
+  return [&context](LocalDocumentId const& token,
+                    IndexIteratorCoveringData& covering) {
+    // this must only be used if we have a filter!
+    TRI_ASSERT(context.hasFilter());
+    TRI_ASSERT(context.getAllowCoveringIndexOptimization());
+    if constexpr (checkUniqueness) {
+      if (!context.checkUniqueness(token)) {
+        // Document already found, skip it
+        return false;
+      }
+    }
+
+    context.incrScanned();
+
+    // recycle our Builder object
+    VPackBuilder& objectBuilder = context.getBuilder();
+    objectBuilder.clear();
+    objectBuilder.openObject(true);
+
+    // projections from the index for the filter condition
+    context.getFilterProjections().toVelocyPackFromIndex(
+        objectBuilder, covering, context.getTrxPtr());
+
+    objectBuilder.close();
+
+    if (!context.checkFilter(objectBuilder.slice())) {
+      context.incrFiltered();
+      return false;
+    }
+
+    if constexpr (!skip) {
+      // read the full document from the storage engine only now,
+      // after checking the filter condition
+      context.getPhysical().read(
+          context.getTrxPtr(), token,
+          [&](LocalDocumentId const&, VPackSlice s) -> bool {
+            OutputAqlItemRow& output = context.getOutputRow();
+            TRI_ASSERT(!output.isFull());
+
+            RegisterId registerId = context.getOutputRegister();
+            InputAqlItemRow const& input = context.getInputRow();
+
+            if (context.getProjections().empty()) {
+              output.moveValueInto<InputAqlItemRow, VPackSlice>(registerId,
+                                                                input, s);
+            } else {
+              objectBuilder.clear();
+              objectBuilder.openObject(true);
+
+              // projections from the index for the filter condition
+              context.getProjections().toVelocyPackFromDocument(
+                  objectBuilder, s, context.getTrxPtr());
+
+              objectBuilder.close();
+
+              VPackSlice projectedSlice = objectBuilder.slice();
+              output.moveValueInto<InputAqlItemRow, VPackSlice>(
+                  registerId, input, projectedSlice);
+            }
+
+            TRI_ASSERT(output.produced());
+            output.advanceRow();
+            return false;
+          },
+          context.getReadOwnWrites());
+    }
+
+    return true;
+  };
+}
+
+template IndexIterator::CoveringCallback aql::getCallback<false, false>(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::getCallback<true, false>(
+template IndexIterator::CoveringCallback aql::getCallback<true, false>(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::getCallback<false, true>(
+template IndexIterator::CoveringCallback aql::getCallback<false, true>(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context);
-template IndexIterator::DocumentCallback aql::getCallback<true, true>(
+template IndexIterator::CoveringCallback aql::getCallback<true, true>(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
+    DocumentProducingFunctionContext& context);
+
+template IndexIterator::CoveringCallback aql::getCallback<false, false>(
+    DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
+    DocumentProducingFunctionContext& context);
+template IndexIterator::CoveringCallback aql::getCallback<true, false>(
+    DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
+    DocumentProducingFunctionContext& context);
+template IndexIterator::CoveringCallback aql::getCallback<false, true>(
+    DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
+    DocumentProducingFunctionContext& context);
+template IndexIterator::CoveringCallback aql::getCallback<true, true>(
+    DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
 
 template IndexIterator::DocumentCallback aql::getCallback<false, false>(

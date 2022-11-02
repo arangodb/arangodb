@@ -37,12 +37,13 @@
 #include "Aql/AstNode.h"
 #include "Aql/AstResources.h"
 #include "Aql/AttributeNamePath.h"
+#include "Aql/Quantifier.h"
 #include "Aql/Scopes.h"
 #include "Aql/VariableGenerator.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
 #include "Containers/HashSet.h"
-#include "Graph/ShortestPathType.h"
+#include "Graph/PathType.h"
 #include "VocBase/AccessMode.h"
 
 namespace arangodb {
@@ -61,9 +62,6 @@ class BindParameters;
 class QueryContext;
 class AqlFunctionsInternalCache;
 struct Variable;
-
-typedef std::unordered_map<Variable const*, std::unordered_set<std::string>>
-    TopLevelAttributes;
 
 /// @brief type for Ast flags
 using AstPropertiesFlagsType = uint32_t;
@@ -88,6 +86,22 @@ class Ast {
 
   /// @brief destroy the AST
   ~Ast();
+
+  struct ValidateAndOptimizeOptions {
+    // try to optimize non-cacheable expressions as well. this is true for
+    // most use cases, but we cannot activate this for computed values, as
+    // we need a freshly calculated value every time.
+    bool optimizeNonCacheable = true;
+    // whether or not to optimize function calls
+    bool optimizeFunctionCalls = true;
+  };
+
+  // frees all data
+  void clear() noexcept;
+
+  // frees most data (keeps a bit of memory around to avoid later
+  // re-allocations)
+  void clearMost() noexcept;
 
   /// @brief maximum nesting level for expressions
   static constexpr uint64_t maxExpressionNesting = 500;
@@ -184,9 +198,6 @@ class Ast {
   /// @brief create an AST let node, without creating a variable
   AstNode* createNodeLet(AstNode const*, AstNode const*);
 
-  /// @brief create an AST let node, with an IF condition
-  AstNode* createNodeLet(char const*, size_t, AstNode const*, AstNode const*);
-
   /// @brief create an AST filter node
   AstNode* createNodeFilter(AstNode const*);
 
@@ -273,7 +284,10 @@ class Ast {
   AstNode* createNodeParameterDatasource(std::string_view name);
 
   /// @brief create an AST quantifier node
-  AstNode* createNodeQuantifier(int64_t);
+  AstNode* createNodeQuantifier(Quantifier::Type type);
+
+  /// @brief create an AST quantifier node
+  AstNode* createNodeQuantifier(Quantifier::Type type, AstNode const* value);
 
   /// @brief create an AST unary operator
   AstNode* createNodeUnaryOperator(AstNodeType, AstNode const*);
@@ -315,6 +329,13 @@ class Ast {
 
   /// @brief create an AST array limit node (offset, count)
   AstNode* createNodeArrayLimit(AstNode const*, AstNode const*);
+
+  /// @brief create an AST array filter node (quantifier, filter)
+  AstNode* createNodeArrayFilter(AstNode const*, AstNode const*);
+
+  /// @brief create an AST boolean expansion node
+  AstNode* createNodeBooleanExpansion(int64_t, AstNode const*, AstNode const*,
+                                      AstNode const*);
 
   /// @brief create an AST expansion node
   AstNode* createNodeExpansion(int64_t, AstNode const*, AstNode const*,
@@ -390,9 +411,8 @@ class Ast {
   AstNode* createNodeShortestPath(AstNode const*, AstNode const*);
 
   /// @brief create an AST k-shortest paths node
-  AstNode* createNodeKShortestPaths(
-      arangodb::graph::ShortestPathType::Type type, AstNode const*,
-      AstNode const*);
+  AstNode* createNodeEnumeratePaths(arangodb::graph::PathType::Type type,
+                                    AstNode const*, AstNode const*);
 
   /// @brief create an AST function call node
   AstNode* createNodeFunctionCall(std::string_view functionName,
@@ -440,7 +460,8 @@ class Ast {
   static size_t extractParallelism(AstNode const* optionsNode);
 
   /// @brief optimizes the AST
-  void validateAndOptimize(transaction::Methods&);
+  void validateAndOptimize(transaction::Methods&,
+                           ValidateAndOptimizeOptions const& options);
 
   /// @brief determines the variables referenced in an expression
   static void getReferencedVariables(AstNode const*, VarSet&);
@@ -448,19 +469,10 @@ class Ast {
   /// @brief count how many times a variable is referenced in an expression
   static size_t countReferences(AstNode const*, Variable const*);
 
-  /// @brief determines the top-level attributes used in an expression, grouped
-  /// by variable
-  static TopLevelAttributes getReferencedAttributes(AstNode const*, bool&);
-
-  /// @brief determines the top-level attributes used in an expression for the
-  /// specified variable
-  static bool getReferencedAttributes(AstNode const*, Variable const*,
-                                      std::unordered_set<std::string>&);
-
   /// @brief determines the attributes and subattributes used in an expression
   /// for the specified variable
   static bool getReferencedAttributesRecursive(
-      AstNode const*, Variable const*,
+      AstNode const*, Variable const*, std::string_view expectedAttribute,
       std::unordered_set<arangodb::aql::AttributeNamePath>&);
 
   /// @brief replace an attribute access with just the variable
@@ -549,16 +561,13 @@ class Ast {
 
   /// @brief optimizes a call to a built-in function
   AstNode* optimizeFunctionCall(transaction::Methods&,
-                                AqlFunctionsInternalCache&, AstNode*);
-
-  /// @brief optimizes a reference to a variable
-  AstNode* optimizeReference(AstNode*);
+                                AqlFunctionsInternalCache&, AstNode*,
+                                ValidateAndOptimizeOptions const& options);
 
   /// @brief optimizes indexed access, e.g. a[0] or a['foo']
-  AstNode* optimizeIndexedAccess(AstNode*);
-
-  /// @brief optimizes the LET statement
-  AstNode* optimizeLet(AstNode*);
+  AstNode* optimizeIndexedAccess(
+      AstNode* node, std::unordered_map<Variable const*, AstNode const*> const&
+                         variableDefinitions);
 
   /// @brief optimizes the FILTER statement
   AstNode* optimizeFilter(AstNode*);

@@ -30,6 +30,8 @@
 #include <vector>
 
 #include "Aql/Projections.h"
+#include "Aql/types.h"
+#include "Utils/OperationOptions.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -51,6 +53,11 @@ class DocumentProducingNode {
  public:
   void cloneInto(ExecutionPlan* plan, DocumentProducingNode& c) const;
 
+  /// @brief replaces variables in the internals of the execution node
+  /// replacements are { old variable id => new variable }
+  void replaceVariables(
+      std::unordered_map<VariableId, Variable const*> const& replacements);
+
   /// @brief return the out variable
   Variable const* outVariable() const;
 
@@ -58,13 +65,15 @@ class DocumentProducingNode {
 
   arangodb::aql::Projections& projections() noexcept;
 
-  void setProjections(arangodb::aql::Projections projections);
+  virtual void setProjections(arangodb::aql::Projections projections);
 
   /// @brief remember the condition to execute for early filtering
-  void setFilter(std::unique_ptr<Expression> filter);
+  virtual void setFilter(std::unique_ptr<Expression> filter);
 
   /// @brief return the early pruning condition for the node
   Expression* filter() const { return _filter.get(); }
+
+  arangodb::aql::Projections const& filterProjections() const noexcept;
 
   /// @brief whether or not the node has an early pruning filter condition
   bool hasFilter() const { return _filter != nullptr; }
@@ -80,6 +89,10 @@ class DocumentProducingNode {
 
   /// @brief wheter or not the node can be used for counting
   bool doCount() const;
+
+  [[nodiscard]] bool useCache() const noexcept { return _useCache; }
+
+  void setUseCache(bool value) noexcept { _useCache = value; }
 
   ReadOwnWrites canReadOwnWrites() const noexcept { return _readOwnWrites; }
 
@@ -98,10 +111,14 @@ class DocumentProducingNode {
   /// @brief produce only the following attributes
   arangodb::aql::Projections _projections;
 
+  arangodb::aql::Projections _filterProjections;
+
   /// @brief early filtering condition
   std::unique_ptr<Expression> _filter;
 
   bool _count;
+
+  bool _useCache = true;
 
   /// @brief Whether we should read our own writes performed by the current
   /// query. ATM this is only necessary for UPSERTS.

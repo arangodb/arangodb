@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global assertTrue, assertFalse, assertEqual, require*/
+/* global assertTrue, assertFalse, assertEqual, assertMatch, require*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -33,29 +33,11 @@ const request = require("@arangodb/request");
 const url = require('url');
 const _ = require("lodash");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const errors = require('internal').errors;
 const dbs = ["testDatabase", "abc123", "maçã", "mötör", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "かわいい犬"];
+const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
 
-function getCoordinators() {
-  const isCoordinator = (d) => (_.toLower(d.role) === 'coordinator');
-  const toEndpoint = (d) => (d.endpoint);
-  const endpointToURL = (endpoint) => {
-    if (endpoint.substr(0, 6) === 'ssl://') {
-      return 'https://' + endpoint.substr(6);
-    }
-    var pos = endpoint.indexOf('://');
-    if (pos === -1) {
-      return 'http://' + endpoint;
-    }
-    return 'http' + endpoint.substr(pos);
-  };
-
-  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(isCoordinator)
-                              .map(toEndpoint)
-                              .map(endpointToURL);
-}
-
-const servers = getCoordinators();
+const servers = getCoordinatorEndpoints();
 
 function CursorSyncSuite (databaseName) {
   'use strict';
@@ -94,7 +76,7 @@ function CursorSyncSuite (databaseName) {
   return {
     
     setUpAll: function() {
-      coordinators = getCoordinators();
+      coordinators = getCoordinatorEndpoints();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }
@@ -270,14 +252,57 @@ function CursorSyncSuite (databaseName) {
       assertTrue(result.error);
       assertEqual(result.code, 404);
     },
+    
+    testCursorForwardingDeletionWrongId: function() {
+      let url = baseCursorUrl;
+      const query = {
+        query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
+        count: true,
+        batchSize: 2,
+        bindVars: {
+          "@coll": cns[0]
+        }
+      };
+      let result = sendRequest('POST', url, query, true);
+
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.error);
+      assertEqual(result.code, 201);
+      assertTrue(result.hasMore);
+      assertEqual(result.count, 4);
+      assertEqual(result.result.length, 2);
+
+      const cursorId = result.id;
+      // send using wrong id
+      result = sendRequest('DELETE', `${baseCursorUrl}/12345${cursorId}`, {}, true);
+      assertEqual(errors.ERROR_CURSOR_NOT_FOUND.code, result.errorNum);
+      assertMatch(/cannot find target server/, result.errorMessage);
+      
+      result = sendRequest('DELETE', `${baseCursorUrl}/12345${cursorId}`, {}, false);
+      assertEqual(errors.ERROR_CURSOR_NOT_FOUND.code, result.errorNum);
+      assertMatch(/cannot find target server/, result.errorMessage);
+      
+      result = sendRequest('DELETE', `${baseCursorUrl}/${cursorId}`, {}, true);
+
+      assertFalse(result === undefined || result === {});
+      assertFalse(result.error);
+      assertEqual(result.code, 202);
+
+      url = `${baseCursorUrl}/${cursorId}`;
+      result = sendRequest('POST', url, {}, false);
+
+      assertFalse(result === undefined || result === {});
+      assertTrue(result.error);
+      assertEqual(result.code, 404);
+    },
 
   };
 }
 
 dbs.forEach((databaseName) => {
   let func = function() {
-   let suite = {};
-   deriveTestSuite(CursorSyncSuite(databaseName), suite, databaseName);
+    let suite = {};
+    deriveTestSuite(CursorSyncSuite(databaseName), suite, databaseName);
     return suite;
   };
   Object.defineProperty(func, 'name', {value: "CursorSyncSuite" + databaseName, writable: false});

@@ -49,7 +49,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
 
   bool canBeDropped() const override { return IResearchLink::canBeDropped(); }
 
-  Result drop() override { return IResearchLink::drop(); }
+  Result drop() override /*noexcept*/ { return IResearchLink::drop(); }
 
   bool hasSelectivityEstimate() const override {
     return IResearchLink::hasSelectivityEstimate();
@@ -80,8 +80,8 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
   }
 
   Result remove(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId, VPackSlice doc) override {
-    return IResearchLink::remove(trx, documentId, doc);
+                LocalDocumentId const& documentId, VPackSlice) override {
+    return IResearchLink::remove(trx, documentId, hasNested());
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -94,8 +94,8 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
       VPackBuilder& builder,
       std::underlying_type<Index::Serialize>::type flags) const override;
 
-  void toVelocyPackFigures(VPackBuilder& builder) const override {
-    IResearchLink::toVelocyPackStats(builder);
+  void toVelocyPackFigures(velocypack::Builder& builder) const final {
+    IResearchDataStore::toVelocyPackStats(builder);
   }
 
   IndexType type() const override { return IResearchLink::type(); }
@@ -117,7 +117,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
     friend class IResearchRocksDBLink;
 
    private:
-    IndexFactory(application_features::ApplicationServer& server);
+    IndexFactory(ArangodServer& server);
 
    public:
     bool equal(VPackSlice lhs, VPackSlice rhs,
@@ -132,8 +132,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
                              TRI_vocbase_t const& vocbase) const override;
   };
 
-  static std::shared_ptr<IndexFactory> createFactory(
-      application_features::ApplicationServer&);
+  static std::shared_ptr<IndexFactory> createFactory(ArangodServer&);
 };
 
 }  // namespace iresearch

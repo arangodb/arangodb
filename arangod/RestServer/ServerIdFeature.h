@@ -23,16 +23,19 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/debugging.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/arangod.h"
 #include "VocBase/Identifiers/ServerId.h"
 
 namespace arangodb {
 
-class ServerIdFeature final : public application_features::ApplicationFeature {
+class ServerIdFeature final : public ArangodFeature {
  public:
-  explicit ServerIdFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "ServerId"; }
+
+  explicit ServerIdFeature(Server& server);
+  ~ServerIdFeature();
 
   void start() override final;
 

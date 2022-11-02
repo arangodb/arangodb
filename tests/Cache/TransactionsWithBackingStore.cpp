@@ -30,7 +30,7 @@
 #include <thread>
 #include <vector>
 
-#include "ApplicationFeatures/SharedPRNGFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "Cache/Manager.h"
 #include "Cache/Rebalancer.h"
 #include "Logger/LogMacros.h"
@@ -348,7 +348,7 @@ TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
   auto writeWaitInterval = std::chrono::milliseconds(50);
   std::uint32_t storeBias;
 
-  bool doneRebalancing = false;
+  std::atomic_bool doneRebalancing = false;
   auto rebalanceWorker = [&rebalancer, &doneRebalancing]() -> void {
     while (!doneRebalancing) {
       auto status = rebalancer.rebalance();

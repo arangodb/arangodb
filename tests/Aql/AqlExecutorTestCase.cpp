@@ -72,5 +72,11 @@ auto AqlExecutorTestCase<enableQueryTrace>::manager() const
   return fakedQuery->rootEngine()->itemBlockManager();
 }
 
+template<bool enableQueryTrace>
+auto AqlExecutorTestCase<enableQueryTrace>::query() const
+    -> std::shared_ptr<arangodb::aql::Query> {
+  return fakedQuery;
+}
+
 template class ::arangodb::tests::aql::AqlExecutorTestCase<true>;
 template class ::arangodb::tests::aql::AqlExecutorTestCase<false>;

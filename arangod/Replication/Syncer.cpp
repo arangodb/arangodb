@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Syncer.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
@@ -59,7 +60,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 
@@ -515,7 +515,7 @@ Syncer::~Syncer() = default;
 std::string Syncer::rewriteLocation(void* data, std::string const& location) {
   Syncer* s = static_cast<Syncer*>(data);
   TRI_ASSERT(s != nullptr);
-  if (location.compare(0, 5, "/_db/", 5) == 0) {
+  if (location.starts_with("/_db/")) {
     // location already contains /_db/
     return location;
   }
@@ -714,7 +714,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
     // use this id so we can discard the "cid" and "id" values for the
     // collection
     s.add(StaticStrings::DataSourceId, VPackSlice::nullSlice());
-    s.add("cid", VPackSlice::nullSlice());
+    s.add(StaticStrings::DataSourceCid, VPackSlice::nullSlice());
   }
 
   s.close();

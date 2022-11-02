@@ -23,7 +23,6 @@
 
 #include "ApplicationFeatures/VersionFeature.h"
 
-#include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Rest/Version.h"
 
@@ -33,15 +32,6 @@ using namespace arangodb::rest;
 using namespace arangodb::options;
 
 namespace arangodb {
-
-VersionFeature::VersionFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Version"),
-      _printVersion(false),
-      _printVersionJson(false) {
-  setOptional(false);
-
-  startsAfter<ShellColorsFeature>();
-}
 
 void VersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(

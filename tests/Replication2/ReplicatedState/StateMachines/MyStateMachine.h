@@ -33,12 +33,16 @@ struct MyFactory;
 struct MyEntryType;
 struct MyLeaderState;
 struct MyFollowerState;
+struct MyCoreType;
 
 struct MyState {
   using LeaderType = MyLeaderState;
   using FollowerType = MyFollowerState;
   using EntryType = MyEntryType;
   using FactoryType = MyFactory;
+  using CoreType = MyCoreType;
+  using CoreParameterType = void;
+  using CleanupHandlerType = void;
 };
 
 struct MyEntryType {
@@ -55,29 +59,50 @@ struct MyStateBase {
 
 struct MyLeaderState : MyStateBase,
                        replicated_state::IReplicatedLeaderState<MyState> {
+  explicit MyLeaderState(std::unique_ptr<MyCoreType> core)
+      : _core(std::move(core)) {}
   void set(std::string key, std::string value);
-  auto wasRecoveryRun() -> bool { return recoveryRan; }
+  [[nodiscard]] auto wasRecoveryRun() const noexcept -> bool {
+    return recoveryRan;
+  }
+
+  [[nodiscard]] auto resign() && noexcept
+      -> std::unique_ptr<MyCoreType> override;
 
  protected:
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
       -> futures::Future<Result> override;
 
   bool recoveryRan = false;
+
+  std::unique_ptr<MyCoreType> _core;
 };
 
 struct MyFollowerState : MyStateBase,
                          replicated_state::IReplicatedFollowerState<MyState> {
+  explicit MyFollowerState(std::unique_ptr<MyCoreType> core)
+      : _core(std::move(core)) {}
+  [[nodiscard]] auto resign() && noexcept
+      -> std::unique_ptr<MyCoreType> override;
+
  protected:
   auto acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept
       -> futures::Future<Result> override;
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
       -> futures::Future<Result> override;
+
+  std::unique_ptr<MyCoreType> _core;
 };
 
 struct MyFactory {
-  auto constructFollower() -> std::shared_ptr<MyFollowerState>;
-  auto constructLeader() -> std::shared_ptr<MyLeaderState>;
+  auto constructFollower(std::unique_ptr<MyCoreType>)
+      -> std::shared_ptr<MyFollowerState>;
+  auto constructLeader(std::unique_ptr<MyCoreType>)
+      -> std::shared_ptr<MyLeaderState>;
+  auto constructCore(GlobalLogIdentifier const&) -> std::unique_ptr<MyCoreType>;
 };
+
+struct MyCoreType {};
 
 }  // namespace arangodb::replication2::test
 

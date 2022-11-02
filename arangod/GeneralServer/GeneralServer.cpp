@@ -49,16 +49,23 @@ using namespace arangodb::rest;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
 GeneralServer::GeneralServer(GeneralServerFeature& feature,
-                             uint64_t numIoThreads)
-    : _feature(feature), _endpointList(nullptr), _contexts() {
+                             uint64_t numIoThreads, bool allowEarlyConnections)
+    : _feature(feature), _allowEarlyConnections(allowEarlyConnections) {
   auto& server = feature.server();
+
+  _contexts.reserve(numIoThreads);
   for (size_t i = 0; i < numIoThreads; ++i) {
     _contexts.emplace_back(server);
   }
 }
 
 GeneralServer::~GeneralServer() = default;
+
+bool GeneralServer::allowEarlyConnections() const noexcept {
+  return _allowEarlyConnections;
+}
 
 void GeneralServer::registerTask(std::shared_ptr<CommTask> task) {
   if (_feature.server().isStopping()) {
@@ -89,33 +96,32 @@ void GeneralServer::unregisterTask(CommTask* task) {
   old.reset();
 }
 
-void GeneralServer::setEndpointList(EndpointList const* list) {
-  _endpointList = list;
-}
-
-void GeneralServer::startListening() {
+void GeneralServer::startListening(EndpointList& list) {
   unsigned int i = 0;
 
-  for (auto& it : _endpointList->allEndpoints()) {
+  list.apply([&i, this](std::string const& specification, Endpoint& ep) {
     LOG_TOPIC("e62e0", TRACE, arangodb::Logger::FIXME)
-        << "trying to bind to endpoint '" << it.first << "' for requests";
+        << "trying to bind to endpoint '" << specification << "' for requests";
 
     // distribute endpoints across all io contexts
     IoContext& ioContext = _contexts[i++ % _contexts.size()];
-    bool ok = openEndpoint(ioContext, it.second);
+    bool ok = openEndpoint(ioContext, &ep);
 
     if (ok) {
       LOG_TOPIC("dc45a", DEBUG, arangodb::Logger::FIXME)
-          << "bound to endpoint '" << it.first << "'";
+          << "bound to endpoint '" << specification << "'";
     } else {
       LOG_TOPIC("c81f6", FATAL, arangodb::Logger::FIXME)
-          << "failed to bind to endpoint '" << it.first
+          << "failed to bind to endpoint '" << specification
           << "'. Please check whether another instance is already "
              "running using this endpoint and review your endpoints "
              "configuration.";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_COULD_NOT_BIND_PORT);
     }
-  }
+  });
+
+  // print out messages to which endpoints the server is bound to
+  list.dump();
 }
 
 /// stop accepting new connections
@@ -149,8 +155,12 @@ void GeneralServer::stopWorking() {
     std::lock_guard<std::recursive_mutex> guard(_tasksLock);
     _commTasks.clear();
   }
+  // need to stop IoThreads before cleaning up the acceptors
+  for (auto& ctx : _contexts) {
+    ctx.stop();
+  }
   _acceptors.clear();
-  _contexts.clear();  // stops threads
+  _contexts.clear();
 }
 
 // -----------------------------------------------------------------------------
@@ -231,6 +241,4 @@ Result GeneralServer::reloadTLS() {
   }
 }
 
-application_features::ApplicationServer& GeneralServer::server() const {
-  return _feature.server();
-}
+ArangodServer& GeneralServer::server() const { return _feature.server(); }

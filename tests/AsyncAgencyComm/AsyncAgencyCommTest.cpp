@@ -31,7 +31,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <utility>
 
@@ -181,7 +180,7 @@ struct AsyncAgencyCommTest
     : public ::testing::Test,
       public arangodb::tests::LogSuppressor<arangodb::Logger::THREADS,
                                             arangodb::LogLevel::FATAL> {
-  AsyncAgencyCommTest() : server(false) {
+  AsyncAgencyCommTest() : server("CRDN_0001", false) {
     server.addFeature<SchedulerFeature>(true);
     server.startFeatures();
   }

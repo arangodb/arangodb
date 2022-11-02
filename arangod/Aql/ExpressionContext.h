@@ -25,6 +25,7 @@
 
 #include "Basics/ErrorCode.h"
 
+#include <string_view>
 #include <unicode/regex.h>
 
 struct TRI_vocbase_t;
@@ -49,29 +50,34 @@ class ExpressionContext {
 
   virtual ~ExpressionContext() = default;
 
-  /// true if the variable we are referring to is set by
-  /// a collection enumeration/index enumeration
-  virtual bool isDataFromCollection(Variable const* variable) const = 0;
-
   virtual AqlValue getVariableValue(Variable const* variable, bool doCopy,
                                     bool& mustDestroy) const = 0;
 
-  virtual void registerWarning(ErrorCode errorCode, char const* msg) = 0;
-  virtual void registerError(ErrorCode errorCode, char const* msg) = 0;
+  virtual void registerWarning(ErrorCode errorCode, std::string_view msg) = 0;
+  virtual void registerError(ErrorCode errorCode, std::string_view msg) = 0;
 
-  virtual icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
+  virtual icu::RegexMatcher* buildRegexMatcher(std::string_view expr,
                                                bool caseInsensitive) = 0;
-  virtual icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
+  virtual icu::RegexMatcher* buildLikeMatcher(std::string_view expr,
                                               bool caseInsensitive) = 0;
   virtual icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression,
                                                velocypack::Options const* opts,
                                                bool& isEmptyExpression) = 0;
-  virtual arangodb::ValidatorBase* buildValidator(
-      arangodb::velocypack::Slice const&) = 0;
+  virtual arangodb::ValidatorBase* buildValidator(velocypack::Slice) = 0;
 
   virtual TRI_vocbase_t& vocbase() const = 0;
   virtual transaction::Methods& trx() const = 0;
   virtual bool killed() const = 0;
+
+  // register a temporary variable in the ExpressionContext. the
+  // slice used here is not owned by the QueryExpressionContext!
+  // the caller has to make sure the data behind the slice remains
+  // valid until clearVariable() is called or the context is discarded.
+  virtual void setVariable(Variable const* variable,
+                           velocypack::Slice value) = 0;
+
+  // unregister a temporary variable from the ExpressionContext.
+  virtual void clearVariable(Variable const* variable) noexcept = 0;
 };
 }  // namespace aql
 }  // namespace arangodb

@@ -29,14 +29,12 @@
 #include "RestVersionHandler.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-static void addVersionDetails(application_features::ApplicationServer& server,
-                              VPackBuilder& result) {
+static void addVersionDetails(ArangodServer& server, VPackBuilder& result) {
   result.add("details", VPackValue(VPackValueType::Object));
   Version::getVPack(result);
 
@@ -59,14 +57,13 @@ static void addVersionDetails(application_features::ApplicationServer& server,
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVersionHandler::RestVersionHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestVersionHandler::RestVersionHandler(ArangodServer& server,
+                                       GeneralRequest* request,
+                                       GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
-void RestVersionHandler::getVersion(
-    application_features::ApplicationServer& server, bool allowInfo,
-    bool includeDetails, VPackBuilder& result) {
+void RestVersionHandler::getVersion(ArangodServer& server, bool allowInfo,
+                                    bool includeDetails, VPackBuilder& result) {
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));
 #ifdef USE_ENTERPRISE

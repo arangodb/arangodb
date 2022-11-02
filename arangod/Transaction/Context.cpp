@@ -23,8 +23,8 @@
 
 #include "Context.h"
 
-#include "Basics/StringBuffer.h"
 #include "Cluster/ClusterInfo.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
@@ -37,7 +37,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
@@ -69,7 +68,7 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
 transaction::Context::Context(TRI_vocbase_t& vocbase)
     : _vocbase(vocbase),
       _customTypeHandler(),
-      _options(arangodb::velocypack::Options::Defaults),
+      _options(velocypack::Options::Defaults),
       _transaction{TransactionId::none(), false, false} {}
 
 /// @brief destroy the context
@@ -104,8 +103,6 @@ void transaction::Context::cleanup() noexcept {
   }
   _strings.clear();
 
-  _stringBuffer.reset();
-
   _resolver.reset();
 }
 
@@ -114,24 +111,6 @@ std::unique_ptr<VPackCustomTypeHandler>
 transaction::Context::createCustomTypeHandler(
     TRI_vocbase_t& vocbase, CollectionNameResolver const& resolver) {
   return std::make_unique<::CustomTypeHandler>(vocbase, resolver);
-}
-
-/// @brief temporarily lease a StringBuffer object
-basics::StringBuffer* transaction::Context::leaseStringBuffer(
-    size_t initialSize) {
-  if (_stringBuffer == nullptr) {
-    _stringBuffer = std::make_unique<basics::StringBuffer>(initialSize, false);
-  } else {
-    _stringBuffer->reset();
-  }
-
-  return _stringBuffer.release();
-}
-
-/// @brief return a temporary StringBuffer object
-void transaction::Context::returnStringBuffer(
-    basics::StringBuffer* stringBuffer) noexcept {
-  _stringBuffer.reset(stringBuffer);
 }
 
 /// @brief temporarily lease a std::string
@@ -143,6 +122,7 @@ std::string* transaction::Context::leaseString() {
 
   // re-use an existing string
   std::string* s = _strings.back();
+  TRI_ASSERT(s != nullptr);
   s->clear();
   _strings.pop_back();
   return s;
@@ -150,6 +130,7 @@ std::string* transaction::Context::leaseString() {
 
 /// @brief return a temporary std::string object
 void transaction::Context::returnString(std::string* str) noexcept {
+  TRI_ASSERT(str != nullptr);
   try {  // put string back into our vector of strings
     _strings.push_back(str);
   } catch (...) {
@@ -167,6 +148,7 @@ VPackBuilder* transaction::Context::leaseBuilder() {
 
   // re-use an existing builder
   VPackBuilder* b = _builders.back();
+  TRI_ASSERT(b != nullptr);
   b->clear();
   _builders.pop_back();
 
@@ -175,6 +157,7 @@ VPackBuilder* transaction::Context::leaseBuilder() {
 
 /// @brief return a temporary Builder object
 void transaction::Context::returnBuilder(VPackBuilder* builder) noexcept {
+  TRI_ASSERT(builder != nullptr);
   try {
     // put builder back into our vector of builders
     _builders.push_back(builder);

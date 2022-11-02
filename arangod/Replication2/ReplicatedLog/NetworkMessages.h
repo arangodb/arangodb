@@ -45,6 +45,7 @@
 #endif
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/LogEntries.h"
 #include "Replication2/ReplicatedLog/types.h"
 
 namespace arangodb {
@@ -72,6 +73,10 @@ auto operator++(MessageId& id) -> MessageId&;
 auto operator<<(std::ostream& os, MessageId id) -> std::ostream&;
 auto to_string(MessageId id) -> std::string;
 
+#if (defined(__GNUC__) && !defined(__clang__))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 struct AppendEntriesResult {
   LogTerm const logTerm;
   ErrorCode const errorCode;
@@ -99,6 +104,9 @@ struct AppendEntriesResult {
       -> AppendEntriesResult;
   static auto withOk(LogTerm, MessageId) noexcept -> AppendEntriesResult;
 };
+#if (defined(__GNUC__) && !defined(__clang__))
+#pragma GCC diagnostic pop
+#endif
 
 struct AppendEntriesRequest {
   using EntryContainer =
@@ -109,7 +117,7 @@ struct AppendEntriesRequest {
   ParticipantId leaderId;
   TermIndexPair prevLogEntry;
   LogIndex leaderCommit;
-  LogIndex largestCommonIndex;
+  LogIndex lowestIndexToKeep;
   MessageId messageId;
   EntryContainer entries{};
   bool waitForSync = false;
@@ -117,7 +125,7 @@ struct AppendEntriesRequest {
   AppendEntriesRequest() = default;
   AppendEntriesRequest(LogTerm leaderTerm, ParticipantId leaderId,
                        TermIndexPair prevLogEntry, LogIndex leaderCommit,
-                       LogIndex largestCommonIndex, MessageId messageId,
+                       LogIndex lowestIndexToKeep, MessageId messageId,
                        bool waitForSync, EntryContainer entries);
   ~AppendEntriesRequest() noexcept = default;
 

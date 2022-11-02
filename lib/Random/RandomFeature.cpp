@@ -34,11 +34,11 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-RandomFeature::RandomFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Random"),
+RandomFeature::RandomFeature(application_features::ApplicationServer& server,
+                             size_t registration)
+    : ApplicationFeature(server, registration, name()),
       _randomGenerator((uint32_t)RandomGenerator::RandomType::MERSENNE) {
   setOptional(false);
-  startsAfter<LoggerFeature>();
 }
 
 void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -54,10 +54,11 @@ void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--random.generator",
       "random number generator to use (1 = MERSENNE, 2 = RANDOM, "
       "3 = URANDOM, 4 = COMBINED (not for Windows), 5 = WinCrypt (Windows "
-      "only)",
+      "only). Options 2, 3, 4 and 5 are deprecated and will be removed in a "
+      "future version.",
       new DiscreteValuesParameter<UInt32Parameter>(&_randomGenerator,
                                                    generators),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 void RandomFeature::prepare() {

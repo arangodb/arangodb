@@ -42,15 +42,7 @@ let { debugCanUseFailAt,
       debugClearFailAt
     } = require('@arangodb/test-helper');
 
-const getMetric = (name) => {
-  let res = arango.GET_RAW("/_admin/metrics/v2");
-  let re = new RegExp("^" + name + "({[^}]*})?");
-  let matches = res.body.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
-  if (!matches.length) {
-    throw "Metric " + name + " not found";
-  }
-  return Number(matches[0].replace(/^.*? (\d+.*?)$/, '$1'));
-};
+const getMetric = require('@arangodb/test-helper').getMetricSingle;
 
 const endpointToURL = (endpoint) => {
   if (endpoint.substr(0, 6) === 'ssl://') {

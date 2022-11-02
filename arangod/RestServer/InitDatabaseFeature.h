@@ -23,15 +23,18 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include <span>
+
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class InitDatabaseFeature final
-    : public application_features::ApplicationFeature {
+class InitDatabaseFeature final : public ArangodFeature {
  public:
-  InitDatabaseFeature(application_features::ApplicationServer& server,
-                      std::vector<std::type_index> const& nonServerFeatures);
+  static constexpr std::string_view name() noexcept { return "InitDatabase"; }
+
+  InitDatabaseFeature(Server& server,
+                      std::span<const size_t> nonServerFeatures);
 
   std::string const& defaultPassword() const { return _password; }
   bool isInitDatabase() const { return _initDatabase; }
@@ -52,7 +55,7 @@ class InitDatabaseFeature final
   std::string readPassword(std::string const&);
 
   bool _seenPassword = false;
-  std::vector<std::type_index> _nonServerFeatures;
+  std::span<const size_t> _nonServerFeatures;
 };
 
 }  // namespace arangodb

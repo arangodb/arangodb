@@ -43,7 +43,6 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -153,11 +152,14 @@ QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false),
       _query(std::move(q)),
       _queryResultPos(0),
-      _finalization(false) {
+      _finalization(false),
+      _allowDirtyReads(false) {
   _query->prepareQuery(SerializationFormat::SHADOWROWS);
+  _allowDirtyReads = _query->allowDirtyReads();  // is set by prepareQuery!
   TRI_IF_FAILURE("QueryStreamCursor::directKillAfterPrepare") {
     debugKillQuery();
   }
+
   // In all the following ASSERTs it is valid (though unlikely) that the query
   // is already killed In the cluster this kill operation will trigger cleanup
   // side-effects, such as changing the STATE and commiting / aborting the

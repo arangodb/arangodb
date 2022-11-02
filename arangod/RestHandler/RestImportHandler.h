@@ -29,7 +29,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 struct OperationOptions;
@@ -62,8 +61,7 @@ struct RestImportResult {
 
 class RestImportHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestImportHandler(application_features::ApplicationServer&,
-                             GeneralRequest*, GeneralResponse*);
+  explicit RestImportHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   RestStatus execute() override final;
@@ -186,6 +184,8 @@ class RestImportHandler : public RestVocbaseBaseHandler {
 
   std::string _fromPrefix;
   std::string _toPrefix;
+
+  bool _overwritePrefix{false};
 
   /// @brief whether or not we will tolerate missing values for the CSV import
   bool _ignoreMissing;

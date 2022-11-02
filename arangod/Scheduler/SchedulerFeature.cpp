@@ -23,12 +23,12 @@
 
 #include <atomic>
 #include <chrono>
+#include <limits>
 #include <thread>
 
 #include "SchedulerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/application-exit.h"
 #include "Basics/signals.h"
@@ -40,7 +40,6 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
@@ -68,20 +67,32 @@ size_t defaultNumberOfThreads() {
   return result;
 }
 
+// atomic flag to track shutdown requests
+std::atomic<bool> receivedShutdownRequest{false};
+
+#ifndef _WIN32
+// id of process that will not be used to send SIGHUP requests
+constexpr pid_t processIdUnspecified{std::numeric_limits<pid_t>::min()};
+
+static_assert(processIdUnspecified != 0, "minimum pid number must be != 0");
+
+// id of process that requested a log rotation via SIGHUP
+std::atomic<pid_t> processIdRequestingLogRotate{processIdUnspecified};
+#endif
+
 }  // namespace
 
 namespace arangodb {
 
 SupervisedScheduler* SchedulerFeature::SCHEDULER = nullptr;
 
-SchedulerFeature::SchedulerFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
+SchedulerFeature::SchedulerFeature(Server& server)
+    : ArangodFeature{server, *this}, _scheduler(nullptr) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
-#ifdef TRI_HAVE_GETRLIMIT
-  startsAfter<FileDescriptorsFeature>();
-#endif
+  if constexpr (Server::contains<FileDescriptorsFeature>()) {
+    startsAfter<FileDescriptorsFeature>();
+  }
 }
 
 SchedulerFeature::~SchedulerFeature() = default;
@@ -104,7 +115,7 @@ void SchedulerFeature::collectOptions(
       "--server.minimal-threads",
       "minimum number of request handling threads to run",
       new UInt64Parameter(&_nrMinimalThreads),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   // max / min number of threads
 
@@ -119,7 +130,7 @@ void SchedulerFeature::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::Hidden))
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800);
 
   options->addOption("--server.maximal-queue-size",
@@ -127,11 +138,13 @@ void SchedulerFeature::collectOptions(
                      new UInt64Parameter(&_fifo3Size));
 
   options
-      ->addOption("--server.unavailability-queue-fill-grade",
-                  "queue fill grade from which onwards the server is "
-                  "considered unavailable because of overload (ratio, use a "
-                  "value of 0 to disable it)",
-                  new DoubleParameter(&_unavailabilityQueueFillGrade))
+      ->addOption(
+          "--server.unavailability-queue-fill-grade",
+          "queue fill grade from which onwards the server is "
+          "considered unavailable because of overload (ratio, use a "
+          "value of 0 to disable it)",
+          new DoubleParameter(&_unavailabilityQueueFillGrade, /*base*/ 1.0,
+                              /*minValue*/ 0.0, /*maxValue*/ 1.0))
       .setIntroducedIn(30610)
       .setIntroducedIn(30706);
 
@@ -139,19 +152,19 @@ void SchedulerFeature::collectOptions(
       "--server.scheduler-queue-size",
       "number of simultaneously queued requests inside the scheduler",
       new UInt64Parameter(&_queueSize),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
-      ->addOption(
-          "--server.prio2-size", "size of the priority 2 fifo",
-          new UInt64Parameter(&_fifo2Size),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption("--server.prio2-size", "size of the priority 2 fifo",
+                  new UInt64Parameter(&_fifo2Size),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800);
 
   options->addOption(
       "--server.prio1-size", "size of the priority 1 fifo",
       new UInt64Parameter(&_fifo1Size),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   // obsolete options
   options->addObsoleteOption("--server.threads", "number of threads", true);
@@ -198,13 +211,6 @@ void SchedulerFeature::validateOptions(
         << "--server.maximal-threads (" << _nrMaximalThreads
         << ") should be at least " << (_nrMinimalThreads + 1) << ", raising it";
     _nrMaximalThreads = _nrMinimalThreads;
-  }
-
-  if (_unavailabilityQueueFillGrade < 0.0 ||
-      _unavailabilityQueueFillGrade > 1.0) {
-    LOG_TOPIC("055a1", FATAL, arangodb::Logger::THREADS)
-        << "invalid value for --server.unavailability-queue-fill-grade";
-    FATAL_ERROR_EXIT();
   }
 
   if (_queueSize == 0) {
@@ -311,21 +317,19 @@ void SchedulerFeature::signalStuffInit() {
 }
 
 void SchedulerFeature::signalStuffDeinit() {
-  {
-    // cancel signals
-    if (_exitSignals != nullptr) {
-      auto exitSignals = _exitSignals;
-      _exitSignals.reset();
-      exitSignals->cancel();
-    }
+  // cancel signals
+  if (_exitSignals != nullptr) {
+    auto exitSignals = _exitSignals;
+    _exitSignals.reset();
+    exitSignals->cancel();
+  }
 
 #ifndef _WIN32
-    if (_hangupSignals != nullptr) {
-      _hangupSignals->cancel();
-      _hangupSignals.reset();
-    }
-#endif
+  if (_hangupSignals != nullptr) {
+    _hangupSignals->cancel();
+    _hangupSignals.reset();
   }
+#endif
 }
 
 #ifdef _WIN32
@@ -376,15 +380,12 @@ bool CtrlHandler(DWORD eventType) {
     return true;
   }
 
-  static bool seen = false;
-
-  if (!seen) {
+  if (!::receivedShutdownRequest.exchange(true)) {
     LOG_TOPIC("3278a", INFO, arangodb::Logger::FIXME)
         << shutdownMessage << ", beginning shut down sequence";
 
     application_features::ApplicationServer::CTRL_C.store(true);
 
-    seen = true;
     return true;
   }
 
@@ -402,15 +403,10 @@ bool CtrlHandler(DWORD eventType) {
 
 extern "C" void c_exit_handler(int signal, siginfo_t* info, void*) {
   if (signal == SIGQUIT || signal == SIGTERM || signal == SIGINT) {
-    static std::atomic<bool> seen{false};
-
-    if (!seen.exchange(true)) {
-      std::string sender =
-          info ? std::to_string(info->si_pid) : std::string("unknown");
+    if (!::receivedShutdownRequest.exchange(true)) {
       LOG_TOPIC("b4133", INFO, arangodb::Logger::FIXME)
-          << signals::name(signal) << " received (sender pid " << sender
-          << "), beginning shut down sequence";
-
+          << signals::name(signal) << " received (sender pid "
+          << (info ? info->si_pid : 0) << "), beginning shut down sequence";
       application_features::ApplicationServer::CTRL_C.store(true);
     } else {
       LOG_TOPIC("11ca3", FATAL, arangodb::Logger::FIXME)
@@ -423,16 +419,44 @@ extern "C" void c_exit_handler(int signal, siginfo_t* info, void*) {
 }
 
 extern "C" void c_hangup_handler(int signal, siginfo_t* info, void*) {
-  if (signal == SIGHUP) {
-    std::string sender =
-        info ? std::to_string(info->si_pid) : std::string("unknown");
-    LOG_TOPIC("33eae", INFO, arangodb::Logger::FIXME)
-        << "hangup received, about to reopen logfile (sender pid " << sender
-        << ")";
-    LogAppender::reopen();
-    LOG_TOPIC("23db2", INFO, arangodb::Logger::FIXME)
-        << "hangup received, reopened logfile";
+  TRI_ASSERT(signal == SIGHUP);
+
+  // id of process that issued the SIGHUP.
+  // if we don't have any information about the issuing process, we
+  // assume a pid of 0.
+  pid_t processIdRequesting = info ? info->si_pid : 0;
+  // note that we need to be able to tell pid 0 and the "unspecified"
+  // process id apart.
+  static_assert(::processIdUnspecified != 0, "unspecified pid should be != 0");
+
+  // the expected process id that we want to see
+  pid_t processIdExpected = ::processIdUnspecified;
+
+  // only set log rotate request if we don't have one queued already. this
+  // prevents duplicate execution of log rotate requests.
+  // if the CAS fails, it doesn't matter, because it means that a log rotate
+  // request was already queued
+  if (!::processIdRequestingLogRotate.compare_exchange_strong(
+          processIdExpected, processIdRequesting)) {
+    // already a log rotate request queued. do nothing...
+    return;
   }
+
+  // no log rotate request queued before. now issue one.
+  SchedulerFeature::SCHEDULER->queue(
+      RequestLane::CLIENT_SLOW, [processIdRequesting]() {
+        try {
+          LOG_TOPIC("33eae", INFO, arangodb::Logger::FIXME)
+              << "hangup received, about to reopen logfile (sender pid "
+              << processIdRequesting << ")";
+          LogAppender::reopen();
+          LOG_TOPIC("23db2", INFO, arangodb::Logger::FIXME)
+              << "hangup received, reopened logfile";
+        } catch (...) {
+          // cannot do much if log rotate request goes wrong
+        }
+        ::processIdRequestingLogRotate.store(::processIdUnspecified);
+      });
 }
 #endif
 
@@ -448,7 +472,7 @@ void SchedulerFeature::buildHangupHandler() {
 
   if (res < 0) {
     LOG_TOPIC("b7ed0", ERR, arangodb::Logger::FIXME)
-        << "cannot initialize signal handlers for hang up";
+        << "cannot initialize signal handler for hang up";
   }
 #endif
 }

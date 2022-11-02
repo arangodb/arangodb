@@ -26,8 +26,7 @@
 #include "Agency/Store.h"
 #include "Basics/Result.h"
 #include "Basics/Thread.h"
-#include "Cluster/AgencyCallbackRegistry.h"
-#include "Cluster/ClusterFeature.h"
+#include "Containers/FlatHashMap.h"
 #include "Futures/Promise.h"
 #include "Metrics/Fwd.h"
 
@@ -36,9 +35,15 @@
 
 namespace arangodb {
 
-class AgencyCache final : public arangodb::Thread {
+class AgencyCallbackRegistry;
+
+namespace cluster::paths {
+class Path;
+}
+
+class AgencyCache final : public ServerThread<ArangodServer> {
  public:
-  typedef std::unordered_map<std::string, consensus::query_t> databases_t;
+  using databases_t = containers::FlatHashMap<std::string, consensus::query_t>;
 
   struct change_set_t {
     consensus::index_t ind;   // Raft index
@@ -57,7 +62,7 @@ class AgencyCache final : public arangodb::Thread {
   };
 
   /// @brief start off with our server
-  explicit AgencyCache(application_features::ApplicationServer& server,
+  explicit AgencyCache(ArangodServer& server,
                        AgencyCallbackRegistry& callbackRegistry,
                        ErrorCode shutdownCode);
 
@@ -80,6 +85,11 @@ class AgencyCache final : public arangodb::Thread {
   /// @brief Get velocypack from node downward. AgencyCommHelper::path is
   /// prepended
   consensus::query_t dump() const;
+
+  /// @brief Get velocypack from node downward.
+  consensus::index_t get(
+      arangodb::velocypack::Builder& result,
+      std::shared_ptr<const cluster::paths::Path> const& path) const;
 
   /// @brief Get velocypack from node downward. AgencyCommHelper::path is
   /// prepended
@@ -211,9 +221,9 @@ class AgencyCache final : public arangodb::Thread {
   metrics::Gauge<uint64_t>& _callbacksCount;
 };
 
-}  // namespace arangodb
+std::ostream& operator<<(std::ostream& o,
+                         arangodb::AgencyCache::change_set_t const& c);
+std::ostream& operator<<(std::ostream& o,
+                         arangodb::AgencyCache::databases_t const& d);
 
-namespace std {
-ostream& operator<<(ostream& o, arangodb::AgencyCache::change_set_t const& c);
-ostream& operator<<(ostream& o, arangodb::AgencyCache::databases_t const& d);
-}  // namespace std
+}  // namespace arangodb

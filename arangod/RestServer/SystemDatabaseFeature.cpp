@@ -31,10 +31,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "VocBase/vocbase.h"
 
-namespace {
-static std::string const FEATURE_NAME("SystemDatabase");
-}
-
 namespace arangodb {
 
 void SystemDatabaseFeature::VocbaseReleaser::operator()(TRI_vocbase_t* ptr) {
@@ -44,16 +40,9 @@ void SystemDatabaseFeature::VocbaseReleaser::operator()(TRI_vocbase_t* ptr) {
 }
 
 SystemDatabaseFeature::SystemDatabaseFeature(
-    application_features::ApplicationServer& server,
-    TRI_vocbase_t* vocbase /*= nullptr*/
-    )
-    : ApplicationFeature(server, SystemDatabaseFeature::name()),
-      _vocbase(vocbase) {
+    Server& server, TRI_vocbase_t* vocbase /*= nullptr*/)
+    : ArangodFeature{server, *this}, _vocbase(vocbase) {
   startsAfter<DatabaseFeature>();
-}
-
-/*static*/ std::string const& SystemDatabaseFeature::name() noexcept {
-  return FEATURE_NAME;
 }
 
 void SystemDatabaseFeature::start() {
@@ -65,8 +54,8 @@ void SystemDatabaseFeature::start() {
   }
 
   LOG_TOPIC("59d62", WARN, arangodb::Logger::FIXME)
-      << "failure to find feature 'Database' while starting feature '"
-      << FEATURE_NAME << "'";
+      << "failure to find feature 'Database' while starting feature '" << name()
+      << "'";
   FATAL_ERROR_EXIT();
 }
 
@@ -79,7 +68,3 @@ SystemDatabaseFeature::ptr SystemDatabaseFeature::use() const {
 }
 
 }  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

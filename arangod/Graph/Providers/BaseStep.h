@@ -23,7 +23,10 @@
 
 #pragma once
 
+#include "Basics/ResultT.h"
+
 #include <velocypack/HashedStringRef.h>
+#include "Basics/ResultT.h"
 
 #include <numeric>
 
@@ -33,6 +36,14 @@ namespace graph {
 
 template<class StepDetails>
 class BaseStep {
+ public:
+  enum class FetchedType {
+    UNFETCHED,
+    VERTEX_FETCHED,
+    EDGES_FETCHED,
+    VERTEX_AND_EDGES_FETCHED
+  };
+
  public:
   BaseStep(size_t prev = std::numeric_limits<size_t>::max(), size_t depth = 0,
            double weight = 1.0)
@@ -52,7 +63,7 @@ class BaseStep {
 
   double getWeight() const { return _weight; }
 
-  ResultT<std::pair<std::string, size_t>> extractCollectionName(
+  [[nodiscard]] ResultT<std::pair<std::string, size_t>> extractCollectionName(
       arangodb::velocypack::HashedStringRef const& idHashed) const {
     size_t pos = idHashed.find('/');
     if (pos == std::string::npos) {
@@ -64,7 +75,7 @@ class BaseStep {
     }
 
     std::string colName = idHashed.substr(0, pos).toString();
-    return std::make_pair(colName, pos);
+    return std::make_pair(std::move(colName), pos);
   }
 
  private:

@@ -35,6 +35,8 @@
 #include "Aql/Query.h"
 #include "Cluster/ClusterFeature.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/Counter.h"
+#include "StorageEngine/TransactionState.h"
 #include "Utilities/NameValidator.h"
 
 using namespace arangodb;
@@ -101,7 +103,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
   TRI_ASSERT(_serverToLockTypeToShard.empty());
   TRI_ASSERT(_serverToCollectionToShard.empty());
   switch (baseNode->getType()) {
-    case ExecutionNode::K_SHORTEST_PATHS:
+    case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::TRAVERSAL: {
       // Add GraphNode
@@ -167,13 +169,14 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unable to cast node to ViewNode");
       }
-      for (aql::Collection const& col : viewNode->collections()) {
+      // TODO Enumerate for indexes, not collection?
+      for (auto const& [collection, _] : viewNode->collections()) {
         std::unordered_set<std::string> restrictedShards;
         if (useRestrictedShard) {
-          addRestrictedShard(&col, restrictedShards);
+          addRestrictedShard(&(collection.get()), restrictedShards);
         }
-        updateLocking(&col, AccessMode::Type::READ, snippetId, restrictedShards,
-                      false);
+        updateLocking(&(collection.get()), AccessMode::Type::READ, snippetId,
+                      restrictedShards, false);
       }
 
       break;
@@ -356,9 +359,10 @@ void ShardLocking::serializeIntoBuilder(
   TRI_ASSERT(builder.isOpenObject());
 }
 
-std::unordered_map<ShardID, ServerID> const& ShardLocking::getShardMapping() {
+containers::FlatHashMap<ShardID, ServerID> const&
+ShardLocking::getShardMapping() {
   if (_shardMapping.empty() && !_collectionLocking.empty()) {
-    std::unordered_set<ShardID> shardIds;
+    containers::FlatHashSet<ShardID> shardIds;
     for (auto& lockInfo : _collectionLocking) {
       auto& allShards = lockInfo.second.allShards;
       TRI_ASSERT(!allShards.empty());
@@ -377,16 +381,27 @@ std::unordered_map<ShardID, ServerID> const& ShardLocking::getShardMapping() {
         }
       }
     }
+    TRI_ASSERT(!shardIds.empty());
     auto& server = _query.vocbase().server();
     if (!server.hasFeature<ClusterFeature>()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
-    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
-    // We have at least one shard, otherwise we would not have snippets!
-    TRI_ASSERT(!shardIds.empty());
-    _shardMapping = ci.getResponsibleServers(shardIds);
-
+    auto& cf = server.getFeature<ClusterFeature>();
+    auto& ci = cf.clusterInfo();
+#ifdef USE_ENTERPRISE
+    TRI_ASSERT(ServerState::instance()->isCoordinator());
+    auto& trx = _query.trxForOptimization();
+    if (trx.state()->options().allowDirtyReads) {
+      ++cf.dirtyReadQueriesCounter();
+      _shardMapping = trx.state()->whichReplicas(shardIds);
+    } else
+#endif
+    {
+      // We have at least one shard, otherwise we would not have snippets!
+      _shardMapping = ci.getResponsibleServers(shardIds);
+    }
     TRI_ASSERT(_shardMapping.size() == shardIds.size());
+
     for (auto const& lockInfo : _collectionLocking) {
       for (auto const& sid : lockInfo.second.allShards) {
         auto mapped = _shardMapping.find(sid);

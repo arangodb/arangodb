@@ -37,8 +37,10 @@
 #include "Cluster/TakeoverShardLeadership.h"
 #include "Cluster/UpdateCollection.h"
 #include "Cluster/UpdateReplicatedLogAction.h"
+#include "Cluster/UpdateReplicatedStateAction.h"
 
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::maintenance;
@@ -105,6 +107,10 @@ static factories_t factories = factories_t{
        return std::make_unique<UpdateReplicatedLogAction>(f, a);
      }},
 
+    {UPDATE_REPLICATED_STATE,
+     [](MaintenanceFeature& f, ActionDescription const& a) {
+       return std::make_unique<UpdateReplicatedStateAction>(f, a);
+     }},
 };
 
 Action::Action(MaintenanceFeature& feature,

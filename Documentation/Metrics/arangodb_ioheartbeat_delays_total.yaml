@@ -1,0 +1,21 @@
+name: arangodb_ioheartbeat_delays_total
+introducedIn: "3.8.7"
+help: |
+  Number of delays in the io heartbeat test.
+unit: number
+type: counter
+category: Health
+complexity: medium
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This counter is increased whenever the io heartbeat encounters a delay
+  of at least 1s when writing a small file to the database directory,
+  reading it and then removing it again.
+  This test is done periodically to ensure that the underlying volume is
+  usable and performs reasonably well. The test can be switched off
+  explicitly with the flag `--database.io-heartbeat=false`, but the
+  default is `true`. Furthermore, every such failure leads to a line in
+  the log at INFO level for the `ENGINES` topic.

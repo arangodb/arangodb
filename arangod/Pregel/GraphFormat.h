@@ -28,7 +28,6 @@
 #include <cstddef>
 #include <type_traits>
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterFeature.h"
 #include "Pregel/Graph.h"

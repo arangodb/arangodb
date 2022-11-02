@@ -30,15 +30,9 @@
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Options.h>
-
 struct TRI_vocbase_t;
 
 namespace arangodb {
-
-namespace basics {
-class StringBuffer;
-}
 
 namespace velocypack {
 class Builder;
@@ -54,11 +48,10 @@ class Methods;
 struct Options;
 
 class Context {
- public:
+ protected:
   Context(Context const&) = delete;
   Context& operator=(Context const&) = delete;
 
- protected:
   /// @brief create the context
   explicit Context(TRI_vocbase_t& vocbase);
 
@@ -82,17 +75,11 @@ class Context {
   /// @brief return the vocbase
   TRI_vocbase_t& vocbase() const { return _vocbase; }
 
-  /// @brief temporarily lease a StringBuffer object
-  basics::StringBuffer* leaseStringBuffer(size_t initialSize);
-
-  /// @brief return a temporary StringBuffer object
-  void returnStringBuffer(basics::StringBuffer* stringBuffer) noexcept;
-
   /// @brief temporarily lease a std::string
-  std::string* leaseString();
+  TEST_VIRTUAL std::string* leaseString();
 
   /// @brief return a temporary std::string object
-  void returnString(std::string* str) noexcept;
+  TEST_VIRTUAL void returnString(std::string* str) noexcept;
 
   /// @brief temporarily lease a Builder object
   TEST_VIRTUAL arangodb::velocypack::Builder* leaseBuilder();
@@ -101,7 +88,7 @@ class Context {
   TEST_VIRTUAL void returnBuilder(arangodb::velocypack::Builder*) noexcept;
 
   /// @brief get velocypack options with a custom type handler
-  TEST_VIRTUAL arangodb::velocypack::Options* getVPackOptions();
+  TEST_VIRTUAL velocypack::Options* getVPackOptions();
 
   /// @brief unregister the transaction
   /// this will save the transaction's id and status locally
@@ -109,7 +96,6 @@ class Context {
                               bool isReadOnlyTransaction,
                               bool isFollowerTranaction) noexcept;
 
- public:
   /// @brief get a custom type handler
   virtual arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() = 0;
 
@@ -140,18 +126,13 @@ class Context {
   std::shared_ptr<TransactionState> createState(
       transaction::Options const& options);
 
- protected:
   TRI_vocbase_t& _vocbase;
   std::unique_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
 
-  ::arangodb::containers::SmallVectorWithArena<arangodb::velocypack::Builder*,
-                                               32>
-      _builders;
-  ::arangodb::containers::SmallVectorWithArena<std::string*, 32> _strings;
+  containers::SmallVector<arangodb::velocypack::Builder*, 8> _builders;
+  containers::SmallVector<std::string*, 4> _strings;
 
-  std::unique_ptr<arangodb::basics::StringBuffer> _stringBuffer;
-
-  arangodb::velocypack::Options _options;
+  velocypack::Options _options;
 
  private:
   std::unique_ptr<CollectionNameResolver> _resolver;

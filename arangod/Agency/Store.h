@@ -26,6 +26,7 @@
 #include "AgentInterface.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
+#include "RestServer/arangod.h"
 #include "Node.h"
 #include <map>
 
@@ -70,7 +71,7 @@ class Agent;
 class Store {
  public:
   /// @brief Construct with name
-  explicit Store(application_features::ApplicationServer& server, Agent* agent,
+  explicit Store(arangodb::ArangodServer& server, Agent* agent,
                  std::string const& name = "root");
 
   /// @brief Destruct
@@ -159,6 +160,11 @@ class Store {
   /// and ignoring multiple subsequent forward slashes
   static std::vector<std::string> split(std::string const& str);
 
+  using AgencyTriggerCallback =
+      std::function<void(std::string_view path, VPackSlice trx)>;
+
+  void registerPrefixTrigger(std::string prefix, AgencyTriggerCallback);
+
 #if !defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
  private:
 #endif  // defined(MAKE_NOTIFY_OBSERVERS_PUBLIC)
@@ -182,7 +188,7 @@ class Store {
 
  private:
   /// @brief underlying application server, needed for testing code
-  application_features::ApplicationServer& _server;
+  arangodb::ArangodServer& _server;
 
   /// @brief Condition variable guarding removal of expired entries
   mutable arangodb::basics::ConditionVariable _cv;
@@ -203,6 +209,16 @@ class Store {
 
   /// @brief Root node
   Node _node;
+
+  struct AgencyTrigger {
+    explicit AgencyTrigger(AgencyTriggerCallback callback)
+        : callback(std::move(callback)) {}
+    AgencyTriggerCallback callback;
+  };
+
+  void callTriggers(std::string_view key, std::string_view op, VPackSlice trx);
+  std::mutex _triggersMutex;
+  std::map<std::string, AgencyTrigger, std::less<>> _triggers;
 };
 
 inline std::ostream& operator<<(std::ostream& o, Store const& store) {

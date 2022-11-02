@@ -26,8 +26,6 @@
 #include "Basics/debugging.h"
 #include "MessageData.h"
 
-#include "velocypack/velocypack-aliases.h"
-
 using namespace arangodb::pregel::algos::accumulators;
 
 void MessageData::reset(std::string accumulatorName, VPackSlice const& value,

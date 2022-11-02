@@ -27,9 +27,16 @@
 #include "Basics/DataProtector.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
+#include "Metrics/Counter.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LogScale.h"
+#include "Replication2/Version.h"
+#include "RestServer/arangod.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/Methods/Databases.h"
+
+#include <condition_variable>
 
 struct TRI_vocbase_t;
 
@@ -49,12 +56,12 @@ class Slice;    // forward declaration
 
 namespace arangodb {
 
-class DatabaseManagerThread final : public Thread {
+class DatabaseManagerThread final : public ServerThread<ArangodServer> {
  public:
   DatabaseManagerThread(DatabaseManagerThread const&) = delete;
   DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;
 
-  explicit DatabaseManagerThread(application_features::ApplicationServer&);
+  explicit DatabaseManagerThread(Server&);
   ~DatabaseManagerThread();
 
   void run() override;
@@ -66,11 +73,43 @@ class DatabaseManagerThread final : public Thread {
   }
 };
 
-class DatabaseFeature : public application_features::ApplicationFeature {
+class IOHeartbeatThread final : public ServerThread<ArangodServer> {
+ public:
+  IOHeartbeatThread(IOHeartbeatThread const&) = delete;
+  IOHeartbeatThread& operator=(IOHeartbeatThread const&) = delete;
+
+  explicit IOHeartbeatThread(Server&, metrics::MetricsFeature& metricsFeature);
+  ~IOHeartbeatThread();
+
+  void run() override;
+  void wakeup() {
+    std::lock_guard<std::mutex> guard(_mutex);
+    _cv.notify_one();
+  }
+
+ private:
+  // how long will the thread pause between iterations, in case of trouble:
+  static constexpr std::chrono::duration<int64_t> checkIntervalTrouble =
+      std::chrono::seconds(1);
+  // how long will the thread pause between iterations:
+  static constexpr std::chrono::duration<int64_t> checkIntervalNormal =
+      std::chrono::seconds(15);
+
+  std::mutex _mutex;
+  std::condition_variable _cv;  // for waiting with wakeup
+
+  metrics::Histogram<metrics::LogScale<double>>& _exeTimeHistogram;
+  metrics::Counter& _failures;
+  metrics::Counter& _delays;
+};
+
+class DatabaseFeature : public ArangodFeature {
   friend class DatabaseManagerThread;
 
  public:
-  explicit DatabaseFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Database"; }
+
+  explicit DatabaseFeature(Server& server);
   ~DatabaseFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -144,6 +183,9 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool forceSyncProperties() const { return _forceSyncProperties; }
   void forceSyncProperties(bool value) { _forceSyncProperties = value; }
   bool waitForSync() const { return _defaultWaitForSync; }
+  replication::Version defaultReplicationVersion() const {
+    return _defaultReplicationVersion;
+  }
 
   /// @brief whether or not extended names for databases can be used
   bool extendedNamesForDatabases() const { return _extendedNamesForDatabases; }
@@ -173,8 +215,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   static TRI_vocbase_t& getCalculationVocbase();
 
  private:
-  static void initCalculationVocbase(
-      application_features::ApplicationServer& server);
+  static void initCalculationVocbase(ArangodServer& server);
 
   void stopAppliers();
 
@@ -207,11 +248,15 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool _isInitiallyEmpty;
   bool _checkVersion;
   bool _upgrade;
+  replication::Version _defaultReplicationVersion;
 
   /// @brief whether or not the allow extended database names
   bool _extendedNamesForDatabases;
 
+  bool _performIOHeartbeat;
+
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
+  std::unique_ptr<IOHeartbeatThread> _ioHeartbeatThread;
 
   std::atomic<DatabasesLists*> _databasesLists;
   // TODO: Make this again a template once everybody has gcc >= 4.9.2

@@ -32,7 +32,6 @@
 #include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
 #include <random>

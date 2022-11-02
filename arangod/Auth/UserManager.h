@@ -32,6 +32,7 @@
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "Rest/CommonDefines.h"
+#include "RestServer/arangod.h"
 
 #ifdef USE_ENTERPRISE
 #include "Auth/Handler.h"
@@ -61,9 +62,9 @@ typedef std::unordered_map<std::string, auth::User> UserMap;
 /// exist on coordinators and single servers.
 class UserManager {
  public:
-  explicit UserManager(application_features::ApplicationServer&);
+  explicit UserManager(ArangodServer&);
 #ifdef USE_ENTERPRISE
-  explicit UserManager(application_features::ApplicationServer&,
+  explicit UserManager(ArangodServer&,
                        std::unique_ptr<arangodb::auth::Handler>);
 #endif
   ~UserManager() = default;
@@ -167,7 +168,7 @@ class UserManager {
 
  private:
   /// underlying application server
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
 
   /// Protected the sync process from db, always lock
   /// before locking _userCacheLock

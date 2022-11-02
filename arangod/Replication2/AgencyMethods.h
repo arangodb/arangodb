@@ -29,6 +29,7 @@
 #include <optional>
 
 #include "Futures/Future.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
 
 namespace arangodb {
 class Result;
@@ -80,12 +81,30 @@ auto deleteReplicatedLog(DatabaseID const& database, LogId id)
     -> futures::Future<ResultT<uint64_t>>;
 
 auto createReplicatedLogTrx(arangodb::agency::envelope envelope,
-                            DatabaseID const& database,
-                            LogPlanSpecification const& spec)
+                            DatabaseID const& database, LogTarget const& spec)
     -> arangodb::agency::envelope;
-auto createReplicatedLog(DatabaseID const& database,
-                         LogPlanSpecification const& spec)
+auto createReplicatedLog(DatabaseID const& database, LogTarget const& spec)
+    -> futures::Future<ResultT<uint64_t>>;
+auto createReplicatedState(DatabaseID const& database,
+                           replicated_state::agency::Target const& spec)
+    -> futures::Future<ResultT<uint64_t>>;
+auto deleteReplicatedStateTrx(arangodb::agency::envelope envelope,
+                              DatabaseID const& database, LogId id)
+    -> arangodb::agency::envelope;
+auto deleteReplicatedState(DatabaseID const& database, LogId)
     -> futures::Future<ResultT<uint64_t>>;
 auto getCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)
     -> LogCurrentSupervision;
+
+auto replaceReplicatedStateParticipant(
+    std::string const& databaseName, LogId id,
+    ParticipantId const& participantToRemove,
+    ParticipantId const& participantToAdd,
+    std::optional<ParticipantId> const& currentLeader)
+    -> futures::Future<Result>;
+
+auto replaceReplicatedSetLeader(std::string const& databaseName, LogId id,
+                                std::optional<ParticipantId> const& leaderId)
+    -> futures::Future<Result>;
+
 }  // namespace arangodb::replication2::agency::methods

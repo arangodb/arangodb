@@ -35,8 +35,8 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
+#include <velocypack/Sink.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
 
 #include "Basics/operating-system.h"
@@ -54,7 +54,6 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
-#include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/memory.h"
@@ -192,7 +191,7 @@ void VelocyPackHelper::initialize() {
   LOG_TOPIC("bbce8", TRACE, arangodb::Logger::FIXME) << "initializing vpack";
 
   // initialize attribute translator
-  ::translator.reset(new VPackAttributeTranslator);
+  ::translator = std::make_unique<VPackAttributeTranslator>();
 
   // these attribute names will be translated into short integer values
   ::translator->add(StaticStrings::KeyString, KeyAttribute - AttributeBase);
@@ -208,7 +207,7 @@ void VelocyPackHelper::initialize() {
   VPackOptions::Defaults.unsupportedTypeBehavior =
       VPackOptions::ConvertUnsupportedType;
 
-  ::customTypeHandler.reset(new DefaultCustomTypeHandler);
+  ::customTypeHandler = std::make_unique<DefaultCustomTypeHandler>();
 
   VPackOptions::Defaults.customTypeHandler = ::customTypeHandler.get();
 
@@ -222,6 +221,11 @@ void VelocyPackHelper::initialize() {
   // disallow tagged values and BCDs. they are not used in ArangoDB as of now
   VPackOptions::Defaults.disallowTags = true;
   VPackOptions::Defaults.disallowBCD = true;
+
+  // allow at most 200 levels of nested arrays/objects
+  // must be 200 + 1 because in velocypack the threshold value is exclusive,
+  // not inclusive.
+  VPackOptions::Defaults.nestingLimit = 200 + 1;
 
   // set up options for validating incoming end-user requests
   strictRequestValidationOptions = VPackOptions::Defaults;
@@ -501,24 +505,22 @@ VPackBuilder VelocyPackHelper::velocyPackFromFile(std::string const& path) {
   THROW_ARANGO_EXCEPTION(TRI_errno());
 }
 
-static bool PrintVelocyPack(int fd, VPackSlice const& slice,
-                            bool appendNewline) {
+static bool PrintVelocyPack(int fd, VPackSlice slice, bool appendNewline) {
   if (slice.isNone()) {
     return false;
   }
 
-  arangodb::basics::StringBuffer buffer(false);
-  arangodb::basics::VPackStringBufferAdapter bufferAdapter(
-      buffer.stringBuffer());
+  std::string buffer;
+  velocypack::StringSink sink(&buffer);
   try {
-    VPackDumper dumper(&bufferAdapter);
+    velocypack::Dumper dumper(&sink);
     dumper.dump(slice);
   } catch (...) {
     // Writing failed
     return false;
   }
 
-  if (buffer.length() == 0) {
+  if (buffer.empty()) {
     // should not happen
     return false;
   }
@@ -526,14 +528,14 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
   if (appendNewline) {
     // add the newline here so we only need one write operation in the ideal
     // case
-    buffer.appendChar('\n');
+    buffer.push_back('\n');
   }
 
-  char const* p = buffer.begin();
-  size_t n = buffer.length();
+  char const* p = buffer.data();
+  size_t n = buffer.size();
 
   while (0 < n) {
-    ssize_t m = TRI_WRITE(fd, p, static_cast<TRI_write_t>(n));
+    auto m = TRI_WRITE(fd, p, static_cast<TRI_write_t>(n));
 
     if (m <= 0) {
       return false;

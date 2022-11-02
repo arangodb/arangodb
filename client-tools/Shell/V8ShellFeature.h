@@ -33,13 +33,13 @@
 
 namespace arangodb {
 
-class ConsoleFeature;
 class V8ClientConnection;
 
-class V8ShellFeature final : public application_features::ApplicationFeature {
+class V8ShellFeature final : public ArangoshFeature {
  public:
-  V8ShellFeature(application_features::ApplicationServer& server,
-                 std::string const& name);
+  static constexpr std::string_view name() noexcept { return "V8Shell"; }
+
+  V8ShellFeature(Server& server, std::string const& name);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(

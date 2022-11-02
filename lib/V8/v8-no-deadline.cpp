@@ -35,4 +35,6 @@ std::chrono::milliseconds correctTimeoutToExecutionDeadline(
   return timeout;
 }
 
+uint32_t correctTimeoutToExecutionDeadline(uint32_t timeout) { return timeout; }
+
 void TRI_InitV8Deadline(v8::Isolate* isolate) {}

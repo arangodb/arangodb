@@ -25,7 +25,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <Basics/application-exit.h>
 #include <Containers/ImmerMemoryPolicy.h>
@@ -64,7 +63,7 @@ AppendEntriesRequest::AppendEntriesRequest(
       leaderId(std::move(other.leaderId)),
       prevLogEntry(other.prevLogEntry),
       leaderCommit(other.leaderCommit),
-      largestCommonIndex(other.largestCommonIndex),
+      lowestIndexToKeep(other.lowestIndexToKeep),
       messageId(other.messageId),
       entries(std::move(other.entries)),
       waitForSync(other.waitForSync) {
@@ -114,7 +113,7 @@ auto AppendEntriesRequest::operator=(
   leaderId = std::move(other.leaderId);
   prevLogEntry = other.prevLogEntry;
   leaderCommit = other.leaderCommit;
-  largestCommonIndex = other.largestCommonIndex;
+  lowestIndexToKeep = other.lowestIndexToKeep;
   messageId = other.messageId;
   waitForSync = other.waitForSync;
   entries = std::move(other.entries);
@@ -268,7 +267,7 @@ void replicated_log::AppendEntriesRequest::toVelocyPack(
     builder.add(VPackValue("prevLogEntry"));
     prevLogEntry.toVelocyPack(builder);
     builder.add("leaderCommit", VPackValue(leaderCommit.value));
-    builder.add("largestCommonIndex", VPackValue(largestCommonIndex.value));
+    builder.add("lowestIndexToKeep", VPackValue(lowestIndexToKeep.value));
     builder.add("messageId", VPackValue(messageId));
     builder.add("waitForSync", VPackValue(waitForSync));
     builder.add("entries", VPackValue(VPackValueType::Array));
@@ -285,7 +284,7 @@ auto replicated_log::AppendEntriesRequest::fromVelocyPack(
   auto leaderId = ParticipantId{slice.get("leaderId").copyString()};
   auto prevLogEntry = TermIndexPair::fromVelocyPack(slice.get("prevLogEntry"));
   auto leaderCommit = slice.get("leaderCommit").extract<LogIndex>();
-  auto largestCommonIndex = slice.get("largestCommonIndex").extract<LogIndex>();
+  auto largestCommonIndex = slice.get("lowestIndexToKeep").extract<LogIndex>();
   auto messageId = slice.get("messageId").extract<MessageId>();
   auto waitForSync = slice.get("waitForSync").extract<bool>();
   auto entries = std::invoke([&] {
@@ -306,14 +305,14 @@ auto replicated_log::AppendEntriesRequest::fromVelocyPack(
 
 replicated_log::AppendEntriesRequest::AppendEntriesRequest(
     LogTerm leaderTerm, ParticipantId leaderId, TermIndexPair prevLogEntry,
-    LogIndex leaderCommit, LogIndex largestCommonIndex,
+    LogIndex leaderCommit, LogIndex lowestIndexToKeep,
     replicated_log::MessageId messageId, bool waitForSync,
     EntryContainer entries)
     : leaderTerm(leaderTerm),
       leaderId(std::move(leaderId)),
       prevLogEntry(prevLogEntry),
       leaderCommit(leaderCommit),
-      largestCommonIndex(largestCommonIndex),
+      lowestIndexToKeep(lowestIndexToKeep),
       messageId(messageId),
       entries(std::move(entries)),
       waitForSync(waitForSync) {}

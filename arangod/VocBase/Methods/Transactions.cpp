@@ -24,6 +24,7 @@
 #include <v8.h>
 #include "Transactions.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
@@ -46,16 +47,16 @@
 namespace arangodb {
 
 bool allowTransactions(v8::Isolate* isolate) {
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
 
-  V8DealerFeature& v8Dealer = v8g->_server.getFeature<V8DealerFeature>();
+  V8DealerFeature& v8Dealer = v8g->server().getFeature<V8DealerFeature>();
   if (v8Dealer.allowJavaScriptTransactions()) {
     // JavaScript transactions are not turned off, so allow them
     return true;
   }
   // JavaScript transactions are turned off. However, we must still allow our
   // internal ones
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
   return (v8security.isInternalContext(isolate) ||
           v8security.isAdminScriptContext(isolate));
 }
@@ -428,7 +429,7 @@ Result executeTransactionJS(v8::Isolate* isolate,
                  .FromMaybe(v8::Local<v8::Value>());
 
     if (tryCatch.HasCaught()) {
-      trx.abort();
+      std::ignore = trx.abort();
 
       std::tuple<bool, bool, Result> rvTuple =
           extractArangoError(isolate, tryCatch, TRI_ERROR_TRANSACTION_INTERNAL);

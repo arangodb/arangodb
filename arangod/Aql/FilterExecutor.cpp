@@ -101,7 +101,7 @@ auto FilterExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 [[nodiscard]] auto FilterExecutor::expectedNumberOfRowsNew(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
-  if (input.finalState() == ExecutorState::DONE) {
+  if (input.finalState() == MainQueryState::DONE) {
     return std::min(call.getLimit(), input.countDataRows());
   }
   // We do not know how many more rows will be returned from upstream.

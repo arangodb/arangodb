@@ -62,6 +62,8 @@ enum class TraversalProfileLevel : uint8_t {
 struct QueryOptions {
   QueryOptions();
   explicit QueryOptions(arangodb::velocypack::Slice);
+  QueryOptions(QueryOptions&&) noexcept = default;
+  QueryOptions(QueryOptions const&) = default;
   TEST_VIRTUAL ~QueryOptions() = default;
 
   void fromVelocyPack(arangodb::velocypack::Slice slice);
@@ -76,6 +78,8 @@ struct QueryOptions {
   size_t maxNumberOfPlans;
   size_t maxWarningCount;
   size_t maxNodesPerCallstack;
+  size_t spillOverThresholdNumRows;
+  size_t spillOverThresholdMemoryUsage;
   double maxRuntime;  // query has to execute within the given time or will be
                       // killed
   double satelliteSyncWait;
@@ -84,16 +88,25 @@ struct QueryOptions {
   /// Level 0 nothing, Level 1 profile, Level 2,3 log tracing info
   ProfileLevel profile;
   TraversalProfileLevel traversalProfile;
+  // make explain return all generated query executed plans
   bool allPlans;
+  // add more detail to query execution plans
   bool verbosePlans;
+  // add even more detail (internals) to query execution plans
+  bool explainInternals;
   bool stream;
+  // do not return query results
   bool silent;
+  // make the query fail if a warning is produced
   bool failOnWarning;
+  // whether or not the query result is allowed to be stored in the
+  // query results cache
   bool cache;
+  // whether or not the fullCount should be returned
   bool fullCount;
   bool count;
-  bool verboseErrors;
-  bool skipAudit;  // skips audit logging - used only internally
+  // skips audit logging - used only internally
+  bool skipAudit;
   ExplainRegisterPlan explainRegisters;
 
   /// @brief shard key attribute value used to push a query down
@@ -116,6 +129,8 @@ struct QueryOptions {
   static size_t defaultMemoryLimit;
   static size_t defaultMaxNumberOfPlans;
   static size_t defaultMaxNodesPerCallstack;
+  static size_t defaultSpillOverThresholdNumRows;
+  static size_t defaultSpillOverThresholdMemoryUsage;
   static double defaultMaxRuntime;
   static double defaultTtl;
   static bool defaultFailOnWarning;

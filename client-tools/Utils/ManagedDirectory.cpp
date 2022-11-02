@@ -172,7 +172,7 @@ inline void rawWrite(int fd, char const* data, size_t length,
                      arangodb::Result& status, std::string const& path,
                      int flags) {
   while (length > 0) {
-    ssize_t written = TRI_WRITE(fd, data, static_cast<TRI_write_t>(length));
+    auto written = TRI_WRITE(fd, data, static_cast<TRI_write_t>(length));
     if (written < 0) {
       status = ::genericError(path, flags);
       break;
@@ -245,15 +245,10 @@ void writeEncryptionFile(std::string const& directory, std::string& type) {
 
 namespace arangodb {
 
-ManagedDirectory::ManagedDirectory(
-    application_features::ApplicationServer& server, std::string const& path,
-    bool requireEmpty, bool create, bool writeGzip)
-    :
-#ifdef USE_ENTERPRISE
-      _encryptionFeature{&server.getFeature<EncryptionFeature>()},
-#else
-      _encryptionFeature(nullptr),
-#endif
+ManagedDirectory::ManagedDirectory(EncryptionFeature* encryption,
+                                   std::string const& path, bool requireEmpty,
+                                   bool create, bool writeGzip)
+    : _encryptionFeature{encryption},
       _path{path},
       _encryptionType{::EncryptionTypeNone},
       _writeGzip(writeGzip),

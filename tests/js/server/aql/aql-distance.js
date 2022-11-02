@@ -71,9 +71,6 @@ function distanceSuite () {
 
       var actual = AQL_EXECUTE("RETURN " + query).json;
       assertAlmostEqual(expected[0], actual[0]);
-      
-      actual = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json;
-      assertAlmostEqual(expected[0], actual[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -88,9 +85,6 @@ function distanceSuite () {
       
       var actual = AQL_EXECUTE("RETURN " + query).json;
       assertAlmostEqual(expected[0], actual[0]);
-      
-      actual = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json;
-      assertAlmostEqual(expected[0], actual[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,9 +98,6 @@ function distanceSuite () {
       var expected = [ 20015086.79602057 ]; // Half of equatorial circumference (WGS 84): 20037.5085 km
       
       var actual = AQL_EXECUTE("RETURN " + query).json;
-      assertAlmostEqual(expected[0], actual[0]);
-      
-      actual = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json;
       assertAlmostEqual(expected[0], actual[0]);
     },
 

@@ -1,5 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
-/*global print */
+/*global print, fail, AQL_EXPLAIN */
 
 "use strict";
 
@@ -30,12 +30,13 @@ const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertException, as
   = jsunity.jsUnity.assertions;
 
 const internal = require("internal");
-const db = internal.db;
-const aql = require("@arangodb").aql;
+const {debugSetFailAt, debugCanUseFailAt, debugRemoveFailAt, db, isEnterprise} = internal;
+const {aql, errors} = require("@arangodb");
 const protoGraphs = require('@arangodb/testutils/aql-graph-traversal-generic-graphs').protoGraphs;
 const _ = require("lodash");
-const {getCompactStatsNodes, TraversalBlock } = require("@arangodb/testutils/aql-profiler-test-helper");
-
+const {getCompactStatsNodes, TraversalBlock} = require("@arangodb/testutils/aql-profiler-test-helper");
+const {findExecutionNodes} = require("@arangodb/aql-helper");
+const isCluster = require("internal").isCluster();
 
 /*
   TODO:
@@ -2162,6 +2163,93 @@ function testOpenDiamondKShortestPathEnabledWeightCheckLimit1Gen(testGraph, gene
   });
 }
 
+function testSmallCircleClusterOnlyWithInvalidStartNode(testGraph) {
+  if (isCluster) {
+    assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+    try {
+      const query = aql`
+        FOR v IN 0..1 OUTBOUND ${testGraph.vertex('A') + 'invalidNode'} ${testGraph.edgeCollectionName()}
+        RETURN v
+      `;
+      db._query(query);
+      fail();
+    } catch (err) {
+      assertEqual(err.errorNum, errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code);
+    }
+  }
+}
+
+function testSmallCircleTestDocumentsShardsAPI(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+
+  const vn = testGraph.vertexCollectionName();
+  const en = testGraph.edgeCollectionName();
+  if (isCluster) {
+    // Globally valid
+    assertTrue(db._collection(vn).shards().length > 0, `Collection: "${vn}" does not report shards`);
+    assertTrue(db._collection(en).shards().length > 0, `Collection: "${en}" does not report shards`);
+
+    // Specific tests
+    if (testGraph.isSmart()) {
+      // Valid for:
+      // - Smart Graph
+      // - Disjoint Smart Graph
+      // - Enterprise Graph
+      // - Disjoint Enterprise Graph
+      assertEqual(db._collection(vn).shards().length, testGraph.amountOfShards());
+      if (testGraph.isDisjoint()) {
+        // "x1" (_local_)
+        assertEqual(db._collection(en).shards().length, testGraph.amountOfShards());
+      } else {
+        // "x3" (_local_, _from_, _to_)
+        assertEqual(db._collection(en).shards().length, testGraph.amountOfShards() * 3);
+      }
+    } else if (testGraph.isSatellite()) {
+      assertEqual(db._collection(vn).shards().length, 1);
+      assertEqual(db._collection(en).shards().length, 1);
+    }
+  } else {
+    // SingleServer Test
+    // No matter which graph type we use, the Shards API is not available in a SingleServer environment.
+
+    try {
+      // Test vertex collection
+      db._collection(vn).shards();
+      fail();
+    } catch (err) {
+      assertEqual(err.errorNum, errors.ERROR_NOT_IMPLEMENTED.code);
+      // Unfortunately cannot assert this, different implementations client vs. server (v8)
+      // assertEqual(err.errorMessage, errors.ERROR_NOT_IMPLEMENTED.message);
+    }
+
+    try {
+      // Test edge collection
+      db._collection(en).shards();
+      fail();
+    } catch (err) {
+      assertEqual(err.errorNum, errors.ERROR_NOT_IMPLEMENTED.code);
+      // Unfortunately cannot assert this, different implementations client vs. server (v8)
+      // assertEqual(err.errorMessage, errors.ERROR_NOT_IMPLEMENTED.message);
+    }
+  }
+}
+
+function testSmallCircleClusterOnlyWithoutWithClause(testGraph) {
+  if (isCluster) {
+    assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+    try {
+      const query = aql`
+        FOR v IN 0..1 OUTBOUND ${testGraph.vertex('A')} ${testGraph.edgeCollectionName()}
+        RETURN v
+      `;
+      db._query(query);
+      fail();
+    } catch (err) {
+      assertEqual(err.errorNum, errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code);
+    }
+  }
+}
+
 function testSmallCircleDfsUniqueVerticesPath(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
@@ -2525,6 +2613,256 @@ function testSmallCircleModeUniqueEdgesNoneUniqueVerticesGlobal(testGraph, mode)
   checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
 }
 
+const testProjectionsUsage = (testGraph, mode, useEdges) => {
+  // We will not take a look into the result.
+  // We just need to make sure we get something.
+  // Also we do not require any special graph layout for this test.
+  // it is just testing of Projections take effect.
+  assertTrue(testGraph.hasProjectionPayload());
+  assertNotNull(testGraph.vertex('A'));
+  // NOTE: in the return statement we do a projection on edges or vertices
+  // but keep the other complete. This is to mitigate the side-effect of
+  // the optimizer rule to figure out if one of the two is not used, and
+  // can thereby save memory.
+  const query = `
+    FOR v,e IN 1 OUTBOUND "${testGraph.vertex('A')}" GRAPH "${testGraph.name()}"
+    OPTIONS {order: "${mode}"}
+    LET keys = KEYS(${useEdges ? "v" : "e"})
+    RETURN ${useEdges ? "[keys, e._key]" : "[v._key, keys]"}
+  `;
+  const cursor = db._query(query);
+  const memoryOptimized = cursor.getExtra().stats.peakMemoryUsage;
+  const resultsOptimized = cursor.toArray().length;
+  const cursorNotOptimized = db._query(query, {}, {optimizer: {rules: ["-optimize-traversals"]}});
+  const memoryNotOptimized = cursorNotOptimized.getExtra().stats.peakMemoryUsage;
+  const resultsNotOptimized = cursorNotOptimized.toArray().length;
+  assertEqual(resultsOptimized, resultsNotOptimized, `Optimization has altered the result!`);
+  assertTrue(memoryOptimized < memoryNotOptimized, `Projection optimization has not improved the result optimized memory: ${memoryOptimized} is not less than ${memoryNotOptimized}`);
+};
+
+const testSmallCircleBFSProjectionsVertices = testGraph => testProjectionsUsage(testGraph, "bfs", false);
+const testSmallCircleDFSProjectionsVertices = testGraph => testProjectionsUsage(testGraph, "dfs", false);
+const testSmallCircleWeightedProjectionsVertices = testGraph => testProjectionsUsage(testGraph, "weighted", false);
+const testSmallCircleBFSProjectionsEdges = testGraph => testProjectionsUsage(testGraph, "bfs", true);
+const testSmallCircleDFSProjectionsEdges = testGraph => testProjectionsUsage(testGraph, "dfs", true);
+const testSmallCircleWeightedProjectionsEdges = testGraph => testProjectionsUsage(testGraph, "weighted", true);
+
+const executeParallelQuery = (makeQuery, expectedTotalNumberOfNodes = -1) => {
+  // We are using 1100 start nodes here, to give all worker threads something to work on.
+  // The input will most likely be split into batches of 1000 nodes each (implementation detail)
+  // so with the above batch-size there should be enough work to distribute on 4 threads.
+  const numberOfStartNodes = 1100;
+
+  const query = makeQuery(true, numberOfStartNodes);
+  const nonParallelQuery = makeQuery(false, numberOfStartNodes);
+  const cursor = db._query(nonParallelQuery);
+  const expectedResults = new Map();
+  while (cursor.hasNext()) {
+    const expected = cursor.next();
+    assertFalse(expectedResults.has(expected), `Test setup error, the initial query produced a duplicate result ${expected}`);
+    expectedResults.set(expected, 0);
+  }
+  assertTrue(expectedResults.size > 0, `Test setup error, non-multithreaded query did not yield any results`);
+
+  // By this time the expected results contains all allowed results, each with an assigend counter of 0.
+  // The target is to assert later, that only those allowed results are seen, and each is seen exactly ${numberOfStartNodes} many times.
+  const res = db._query(query);
+
+  while (res.hasNext()) {
+    const actual = res.next();
+    assertTrue(expectedResults.has(actual), `Found unexpected result in parallel variant ${actual}`);
+    // Increase the counter of seen by one
+    expectedResults.set(actual, expectedResults.get(actual) + 1);
+  }
+
+  if (expectedTotalNumberOfNodes !== -1) {
+    let count = 0;
+    for (const [, counter] of expectedResults) {
+      count += counter;
+    }
+    assertEqual(count, expectedTotalNumberOfNodes);
+  } else {
+    for (const [result, counter] of expectedResults) {
+      assertEqual(counter, numberOfStartNodes, `Have seen incorrect number of result: ${result}`);
+    }
+  }
+};
+
+const makeParallelOptions = (parallel, mode) => {
+  return `OPTIONS {
+          ${parallel ? `parallelism: 8,` : ``}
+          uniqueVertices: "global",
+          uniqueEdges: "none",
+          order: "${mode}" }`;
+};
+
+const testParallelism = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+     LET start = "${testGraph.vertex('A')}"
+     ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+        FOR v, e, p IN 0..9 OUTBOUND start GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        RETURN v.key
+      `;
+  };
+
+  if (debugCanUseFailAt()) {
+    const query = makeQuery(true, 1001);
+    // Dry run, try to hit the MutexExecutor, a sign that parallelism is triggereds
+    debugSetFailAt("MutexExecutor::distributeBlock");
+    if (isEnterprise()) {
+      try {
+        db._query(query);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_DEBUG.code);
+      }
+    } else {
+      db._query(query);
+    }
+    debugRemoveFailAt("MutexExecutor::distributeBlock");
+  }
+
+  executeParallelQuery(makeQuery);
+};
+
+const testParallelismTwoTraversals = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+     LET start = "${testGraph.vertex('A')}"
+     ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+        FOR v, e, p IN 0..9 OUTBOUND start GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        FOR v2 IN 1..1 INBOUND v._id GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        RETURN v2.key
+      `;
+  };
+
+  executeParallelQuery(makeQuery);
+};
+
+const testParallelismLimit = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+     LET start = "${testGraph.vertex('A')}"
+     ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+        FOR v, e, p IN 0..9 OUTBOUND start GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        LET d = DOCUMENT(CONCAT(v._id, "_illegal"))
+        FOR v2 IN 1..1 INBOUND v._id GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        ${parallel ? `LIMIT 42, 637` : ``}
+        RETURN v2.key
+      `;
+  };
+
+  executeParallelQuery(makeQuery, 637);
+};
+
+const testParallelismSortLimit = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+     LET start = "${testGraph.vertex('A')}"
+     ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+        FOR v, e, p IN 0..9 OUTBOUND start GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        LET d = DOCUMENT(CONCAT(v._id, "_illegal"))
+        FOR v2 IN 1..1 INBOUND v._id GRAPH "${testGraph.name()}"
+        ${makeParallelOptions(parallel, mode)}
+        SORT v2.key
+        ${parallel ? `LIMIT 42` : ``}
+        RETURN v2.key
+      `;
+  };
+
+  executeParallelQuery(makeQuery, 42);
+};
+
+const testParallelismSubqueryOuterLoopFirstTraversal = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+      FOR myNumber IN [1, 2, 3, 4, 5]
+      LET subQueryResults = ( // SubQuery start
+        LET start = "${testGraph.vertex('A')}"
+        ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+          FOR v, e, p IN 0..9 OUTBOUND start GRAPH "${testGraph.name()}"
+          ${makeParallelOptions(parallel, mode)}
+          RETURN CONCAT(v.key, myNumber)
+        ) // SubQuery end
+        FOR res IN subQueryResults
+          RETURN res
+      `;
+  };
+
+  executeParallelQuery(makeQuery);
+};
+
+const testParallelismSubqueryOuterLoopSecondTraversal = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+      FOR myNumber IN [1, 2, 3, 4, 5]
+      LET subQueryResults = ( // SubQuery start
+        LET start = "${testGraph.vertex('D')}"
+        ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+          FOR v, e, p IN 0..9 INBOUND start GRAPH "${testGraph.name()}"
+          ${makeParallelOptions(parallel, mode)}
+          ${parallel ? `LIMIT 42, 637` : ``}
+          RETURN CONCAT(v.key, myNumber)
+        ) // SubQuery end
+        FOR res IN subQueryResults
+          RETURN res
+      `;
+  };
+
+  executeParallelQuery(makeQuery, 637 * 5); // x10 due to SubQueries
+};
+
+const testParallelismSubqueryOuterLoopBothInnerTraversals = (testGraph, mode) => {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  // Note here: None of the produced results is returned twice by numberOfStartNodes = 1
+  const makeQuery = (parallel, numberOfStartNodes) => {
+    return `
+      FOR myNumber IN [1, 2, 3, 4, 5]
+      LET subQueryResults = ( // SubQuery start
+        LET start = "${testGraph.vertex('A')}"
+        ${parallel ? `FOR i IN 1..${numberOfStartNodes}` : ``}
+          FOR v, e, p IN 0..9 OUTBOUND start GRAPH "${testGraph.name()}"
+          ${makeParallelOptions(parallel, mode)}
+          FOR v2 IN 1..1 INBOUND v._id GRAPH "${testGraph.name()}"
+          ${makeParallelOptions(parallel, mode)}
+          ${parallel ? `LIMIT 42, 637` : ``}
+          RETURN CONCAT(v2.key, myNumber)
+        ) // SubQuery end
+        FOR res IN subQueryResults
+          RETURN res
+      `;
+  };
+
+  executeParallelQuery(makeQuery, 637 * 5); // x5 due to SubQueries
+};
+
+const testSmallCircleBFSParallelism = testGraph => testParallelism(testGraph, "bfs");
+const testSmallCircleBFSParallelismTwoTraversals = testGraph => testParallelismTwoTraversals(testGraph, "bfs");
+const testSmallCircleBFSParallelismLimit = testGraph => testParallelismLimit(testGraph, "bfs");
+const testSmallCircleBFSParallelismSortLimit = testGraph => testParallelismSortLimit(testGraph, "bfs");
+const testSmallCircleBFSParallelismSubqueryOuterLoop = testGraph => testParallelismSubqueryOuterLoopBothInnerTraversals(testGraph, "bfs");
+const testSmallCircleBFSParallelismSubqueryOuterLoopFirstTraversal = testGraph => testParallelismSubqueryOuterLoopFirstTraversal(testGraph, "bfs");
+const testSmallCircleBFSParallelismSubqueryOuterLoopSecondTraversal = testGraph => testParallelismSubqueryOuterLoopSecondTraversal(testGraph, "bfs");
+
 function testSmallCircleShortestPath(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
@@ -2677,6 +3015,117 @@ function testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimitsGen(tes
 
     checkResIsValidKShortestPathListWeights(allowedPaths, actualPath, limit);
   });
+}
+
+function testSmallCircleFilterOptimization(testGraph) {
+  // Which Graph is used here does not matter, enough to test with one of the graphs
+  // we picked the smallCircle graph at random
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+
+  const optimizableConditions = [
+    `v.color == "blue"`,
+    `"blue" == e.color`,
+    `p.edges[1].color == "blue"`,
+    `"blue" == p.vertices[1].color`,
+    `p.edges[*].color ALL == "blue"`,
+    `p.vertices[*].color ALL == "blue"`
+  ];
+
+  // Optimize a single condition
+  const filtersToTest = optimizableConditions.map(f => `FILTER ${f}`);
+  // More complex test.
+  for (let first = 0; first < optimizableConditions.length; ++first) {
+    for (let second = first + 1; second < optimizableConditions.length; ++second) {
+      // Optimize two filter nodes, and erase the filter nodes
+      filtersToTest.push(`FILTER ${optimizableConditions[first]} FILTER ${optimizableConditions[second]}`);
+    }
+  }
+
+  for (const filterCondition of filtersToTest) {
+    const query = `
+      FOR v,e,p IN 1..3 OUTBOUND "${testGraph.vertex('A')}" GRAPH "${testGraph.name()}"
+        ${filterCondition}
+        return v
+    `;
+    const plan = AQL_EXPLAIN(query, {});
+
+
+    assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, query + " Still has FilterNode");
+
+    const traversals = findExecutionNodes(plan, "TraversalNode");
+    assertEqual(traversals.length, 1, query + " Somehow we have removed the Traversal");
+    const travNode = traversals[0];
+    assertTrue(travNode.hasOwnProperty("condition"));
+  }
+
+  // Non optimizable filters
+  const nonOptimizableFilters = [
+    `DOCUMENT(v.docId).color == "blue"`,
+    `DOCUMENT(e.docId).color == "blue"`,
+    /* ASSSERT has side-effects on false so it should not be optimized */
+    `ASSERT(v.color == "blue", "Color is not blue")`,
+    `DATE_YEAR(p.vertices[1].timestamp) == DATE_YEAR(DATE_ADD(p.vertices[0].timestamp, 1, "y"))`,
+    `DATE_YEAR(p.vertices[1].timestamp) == DATE_YEAR(DATE_ADD(DOCUMENT("${testGraph.vertex('A')}").timestamp, 1, "y"))`
+  ];
+
+  /* Note: this set has a chance to be optimized, we cannot reliably detect methods yet
+  * therefore the FILTER node will stay in place, but the Methods is already moved into the Traversal
+  */
+  const optimizedButFilterIsKept = [
+    `DATE_MONTH(v.timestamp) == 11`,
+    `25 == DATE_DAY(e.timestamp)`,
+    `DATE_YEAR(p.vertices[1].timestamp) == DATE_YEAR(DATE_ADD(0, 100, "y"))`,
+  ];
+
+  // This is a pair of FilterCondition and LeftOver non-optimized condition.
+  // The FILTER node needs to stay, and needs to cover the non-optimized condition
+  const nonOptFiltersToTest = nonOptimizableFilters.map(f => [`FILTER ${f}`, `${f}`, false]);
+
+  for (const c of optimizedButFilterIsKept.map(f => [`FILTER ${f}`, `${f}`, true])) {
+    nonOptFiltersToTest.push(c);
+  }
+
+  // NOTE: we only detect one of the two AND branches to be covered.
+  // Actually both are covered, our optimizer does not detect this yet.
+  // NOTE: We only iterate up to 2 as the following all cover Path only conditions which are optimized
+  for (let first = 0; first < 2; ++first) {
+    for (let second = first + 1; second < optimizableConditions.length; ++second) {
+      nonOptFiltersToTest.push([`FILTER ${optimizableConditions[first]} && ${optimizableConditions[second]}`, `${optimizableConditions[first]}`, true]);
+    }
+  }
+
+  // More complex test.
+  for (let first = 0; first < nonOptimizableFilters.length; ++first) {
+    for (let second = 0; second < optimizableConditions.length; ++second) {
+      // Add two filter nodes, one can be optimized, one note. The optimizable one should be erased.
+      nonOptFiltersToTest.push([`FILTER ${nonOptimizableFilters[first]} FILTER ${optimizableConditions[second]}`, `${nonOptimizableFilters[first]}`, true]);
+      // Put it into one big condition, where parts can be optimized, parts not
+      nonOptFiltersToTest.push([`FILTER ${nonOptimizableFilters[first]} && ${optimizableConditions[second]}`, `${nonOptimizableFilters[first]}`, true]);
+    }
+  }
+
+  for (const [filterCondition, _, somethingOptimizedInTraversal] of nonOptFiltersToTest) {
+    const query = `
+      FOR v,e,p IN 1..3 OUTBOUND "${testGraph.vertex('A')}" GRAPH "${testGraph.name()}"
+        ${filterCondition}
+        return v
+    `;
+    const plan = AQL_EXPLAIN(query, {});
+
+    const filters = findExecutionNodes(plan, "FilterNode");
+
+    assertEqual(filters.length, 1, query + " Optimized out the FilterNode");
+    const filterCalc = findExecutionNodes(plan, "CalculationNode").find(n => n.id === filters[0].dependencies[0]);
+    assertNotEqual(filterCalc, undefined);
+
+    // TODO it would be nice to analyse that calculation matches the leftOver condition
+    // but this would require to reverse-implement node structure.
+    const traversals = findExecutionNodes(plan, "TraversalNode");
+    assertEqual(traversals.length, 1, query + " Somehow we have removed the Traversal");
+    const travNode = traversals[0];
+    assertEqual(travNode.hasOwnProperty("condition"), somethingOptimizedInTraversal, JSON.stringify(travNode.condition));
+  }
+
 }
 
 function testCompleteGraphDfsUniqueVerticesPathD1(testGraph) {
@@ -2882,6 +3331,9 @@ function testCompleteGraphDfsUniqueVerticesPathD3(testGraph) {
 }
 
 function testCompleteGraphDfsUniqueVerticesPathD3NotHasExtra(testGraph) {
+  if (!internal.debugCanUseFailAt()) {
+    return;
+  }
   internal.debugSetFailAt("RocksDBEdgeIndex::disableHasExtra");
   try {
     completeGraphDfsUniqueVerticesPathD3Helper(testGraph);
@@ -6064,7 +6516,6 @@ function testEmptyGraphMode(testGraph, mode) {
 
   const res = db._query(query);
   const actualPaths = res.toArray();
-  require('internal').print(actualPaths);
   assertEqual(actualPaths, expectedPaths);
 }
 
@@ -6132,6 +6583,9 @@ const testsByGraph = {
     testOpenDiamondWeightedUniqueEdgesUniqueNoneVerticesGlobalEnableWeights
   },
   smallCircle: {
+    testSmallCircleTestDocumentsShardsAPI,
+    testSmallCircleClusterOnlyWithInvalidStartNode,
+    testSmallCircleClusterOnlyWithoutWithClause,
     testSmallCircleDfsUniqueVerticesPath,
     testSmallCircleDfsUniqueVerticesNone,
     testSmallCircleDfsUniqueEdgesPath,
@@ -6154,6 +6608,19 @@ const testsByGraph = {
     testSmallCircleWeightedUniqueVerticesUniqueEdgesNone,
     testSmallCircleWeightedUniqueEdgesPathUniqueVerticesGlobal,
     testSmallCircleWeightedUniqueEdgesNoneUniqueVerticesGlobal,
+    testSmallCircleBFSProjectionsVertices,
+    testSmallCircleDFSProjectionsVertices,
+    testSmallCircleWeightedProjectionsVertices,
+    testSmallCircleBFSProjectionsEdges,
+    testSmallCircleDFSProjectionsEdges,
+    testSmallCircleWeightedProjectionsEdges,
+    testSmallCircleBFSParallelism,
+    testSmallCircleBFSParallelismTwoTraversals,
+    testSmallCircleBFSParallelismLimit,
+    testSmallCircleBFSParallelismSortLimit,
+    testSmallCircleBFSParallelismSubqueryOuterLoop,
+    testSmallCircleBFSParallelismSubqueryOuterLoopFirstTraversal,
+    testSmallCircleBFSParallelismSubqueryOuterLoopSecondTraversal,
     testSmallCircleShortestPath,
     testSmallCircleKPathsOutbound,
     testSmallCircleKPathsAny,
@@ -6164,7 +6631,8 @@ const testsByGraph = {
     testSmallCircleKShortestPathWithMultipleLimitsWT,
     testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimits,
     testSmallCircleKShortestPathEnabledWeightCheckIndexedWithMultipleLimits,
-    testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimitsWT
+    testSmallCircleKShortestPathEnabledWeightCheckWithMultipleLimitsWT,
+    testSmallCircleFilterOptimization
   },
   completeGraph: {
     testCompleteGraphDfsUniqueVerticesPathD1,

@@ -24,6 +24,8 @@
 #include "GlobalReplicationApplier.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -40,7 +42,9 @@ using namespace arangodb;
 /// @brief server-global replication applier for all databases
 GlobalReplicationApplier::GlobalReplicationApplier(
     ReplicationApplierConfiguration const& configuration)
-    : ReplicationApplier(configuration, "global database") {}
+    : ReplicationApplier(configuration, "global database"),
+      _engine(
+          configuration._server.getFeature<EngineSelectorFeature>().engine()) {}
 
 GlobalReplicationApplier::~GlobalReplicationApplier() {
   try {
@@ -55,9 +59,8 @@ void GlobalReplicationApplier::forget() {
 
   removeState();
 
-  StorageEngine& engine =
-      configuration()._server.getFeature<EngineSelectorFeature>().engine();
-  engine.removeReplicationApplierConfiguration();
+  _engine.removeReplicationApplierConfiguration();
+  WRITE_LOCKER(writeLocker, _statusLock);
   _configuration.reset();
 }
 
@@ -72,10 +75,8 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
       << "storing applier configuration " << builder.slice().toJson() << " for "
       << _databaseName;
 
-  StorageEngine& engine =
-      _configuration._server.getFeature<EngineSelectorFeature>().engine();
   auto res =
-      engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
+      _engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -84,7 +85,7 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
 
 /// @brief load a persisted configuration for the applier
 ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration(
-    application_features::ApplicationServer& server) {
+    ArangodServer& server) {
   StorageEngine& engine = server.getFeature<EngineSelectorFeature>().engine();
   auto res = TRI_ERROR_INTERNAL;
   VPackBuilder builder = engine.getReplicationApplierConfiguration(res);
@@ -113,13 +114,11 @@ std::shared_ptr<TailingSyncer> GlobalReplicationApplier::buildTailingSyncer(
 }
 
 std::string GlobalReplicationApplier::getStateFilename() const {
-  StorageEngine& engine =
-      _configuration._server.getFeature<EngineSelectorFeature>().engine();
   auto& sysDbFeature =
       _configuration._server.getFeature<arangodb::SystemDatabaseFeature>();
   auto vocbase = sysDbFeature.use();
 
-  std::string const path = engine.databasePath(vocbase.get());
+  std::string const path = _engine.databasePath(vocbase.get());
   if (path.empty()) {
     return std::string();
   }

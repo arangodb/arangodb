@@ -26,9 +26,11 @@
 #include "Aql/AqlValue.h"
 #include "Basics/ResourceUsage.h"
 #include "Containers/FlatHashMap.h"
+
 #include "Containers/SmallVector.h"
 
 #include <limits>
+#include <span>
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
@@ -255,8 +257,8 @@ class AqlItemBlock {
    * @return SharedAqlItemBlockPtr A block where all the slices are contained in
    * the order of the list
    */
-  auto slice(arangodb::containers::SmallVector<std::pair<size_t, size_t>> const&
-                 ranges) const -> SharedAqlItemBlockPtr;
+  auto slice(std::span<std::pair<size_t, size_t> const> ranges) const
+      -> SharedAqlItemBlockPtr;
 
   /// @brief create an AqlItemBlock with a single row, with copies of the
   /// specified registers from the current block
@@ -321,6 +323,9 @@ class AqlItemBlock {
   /// @brief return the number of ShadowRows
   size_t numShadowRows() const noexcept;
 
+  /// @brief get the current memory usage
+  std::uint64_t getMemoryUsage() const noexcept { return _memoryUsage; }
+
   /// @brief Moves all values *from* source *to* this block.
   /// Returns the row index of the last written row plus one (may equal size()).
   /// Expects size() - targetRow >= source->size(); and, of course, an equal
@@ -373,6 +378,9 @@ class AqlItemBlock {
   /// note: only AqlValues that point to dynamically allocated memory
   /// should be added to this map. Other types (VPACK_INLINE) are not supported.
   containers::FlatHashMap<void const*, ValueInfo> _valueCount;
+
+  /// @brief _memoryUsage, memory usage
+  uint64_t _memoryUsage = 0;
 
   /// @brief _numRows, number of rows
   size_t _numRows = 0;

@@ -43,11 +43,10 @@ class SupervisedSchedulerManagerThread;
 
 class SupervisedScheduler final : public Scheduler {
  public:
-  SupervisedScheduler(application_features::ApplicationServer& server,
-                      uint64_t minThreads, uint64_t maxThreads,
-                      uint64_t maxQueueSize, uint64_t fifo1Size,
-                      uint64_t fifo2Size, uint64_t fifo3Size,
-                      uint64_t ongoingLowPriorityLimit,
+  SupervisedScheduler(ArangodServer& server, uint64_t minThreads,
+                      uint64_t maxThreads, uint64_t maxQueueSize,
+                      uint64_t fifo1Size, uint64_t fifo2Size,
+                      uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
                       double unavailabilityQueueFillGrade);
   ~SupervisedScheduler() final;
 
@@ -219,9 +218,6 @@ class SupervisedScheduler final : public Scheduler {
   std::unique_ptr<SupervisedSchedulerManagerThread> _manager;
 
   metrics::Gauge<uint64_t>& _metricsQueueLength;
-  metrics::Gauge<uint64_t>& _metricsJobsDone;
-  metrics::Gauge<uint64_t>& _metricsJobsSubmitted;
-  metrics::Gauge<uint64_t>& _metricsJobsDequeued;
   metrics::Counter& _metricsJobsDoneTotal;
   metrics::Counter& _metricsJobsSubmittedTotal;
   metrics::Counter& _metricsJobsDequeuedTotal;

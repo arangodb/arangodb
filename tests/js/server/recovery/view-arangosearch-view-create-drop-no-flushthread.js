@@ -37,7 +37,7 @@ function runSetup () {
   v = db._createView('UnitTestsRecovery', 'arangosearch', {});
 
   internal.wal.flush(true, true);
-  internal.debugSetFailAt("FlushThreadDisableAll");
+  internal.debugSetFailAt("RocksDBBackgroundThread::run");
   internal.wait(2); // make sure failure point takes effect
 
   db._dropView('UnitTestsRecovery');

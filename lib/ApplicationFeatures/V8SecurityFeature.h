@@ -45,10 +45,24 @@ class ProgramOptions;
 
 enum class FSAccessType { READ, WRITE };
 
+class TempFeature;
+class V8PlatformFeature;
+
 class V8SecurityFeature final
     : public application_features::ApplicationFeature {
  public:
-  explicit V8SecurityFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "V8Security"; }
+
+  template<typename Server>
+  explicit V8SecurityFeature(Server& server)
+      : ApplicationFeature{server, *this},
+        _hardenInternalModule(false),
+        _allowProcessControl(false),
+        _allowPortTesting(false) {
+    setOptional(false);
+    startsAfter<TempFeature, Server>();
+    startsAfter<V8PlatformFeature, Server>();
+  }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

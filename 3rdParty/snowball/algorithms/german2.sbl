@@ -43,7 +43,7 @@ define prelude as (
             'ae'   (<- '{a"}')
             'oe'   (<- '{o"}')
             'ue'   (<- '{u"}')
-            'qu'   (hop 2)
+            'qu'   ()
             ''     (next)
         )
     )

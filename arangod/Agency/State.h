@@ -24,8 +24,9 @@
 #pragma once
 
 #include "Agency/Store.h"
-#include "AgencyCommon.h"
+#include "Agency/AgencyCommon.h"
 #include "Metrics/Fwd.h"
+#include "RestServer/arangod.h"
 #include "Utils/OperationOptions.h"
 
 #include <cstdint>
@@ -54,7 +55,7 @@ class Agent;
 class State {
  public:
   /// @brief Default constructor
-  State(application_features::ApplicationServer& server);
+  State(ArangodServer& server);
 
   /// @brief Default Destructor
   virtual ~State();
@@ -127,8 +128,7 @@ class State {
   /// @brief Has entry with index und term
   bool has(index_t, term_t) const;
 
-  /// @brief Get log entries by client Id
-  std::vector<index_t> inquire(query_t const&) const;
+  std::vector<index_t> inquire(velocypack::Slice query) const;
 
   /// @brief Get complete logged commands by lower and upper bounds.
   ///        Default: [first, last]
@@ -268,7 +268,7 @@ class State {
   bool removeObsolete(arangodb::consensus::index_t cind);
 
   /// @brief Our agent
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
 
   /// @brief Our agent
   Agent* _agent;

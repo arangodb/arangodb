@@ -105,7 +105,7 @@ auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 [[nodiscard]] auto ReturnExecutor::expectedNumberOfRowsNew(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
-  if (input.finalState() == ExecutorState::DONE) {
+  if (input.finalState() == MainQueryState::DONE) {
     return input.countDataRows();
   }
   // Otherwise we do not know.

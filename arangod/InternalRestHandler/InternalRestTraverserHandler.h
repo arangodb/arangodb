@@ -32,9 +32,8 @@ class QueryRegistry;
 
 class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
  public:
-  explicit InternalRestTraverserHandler(
-      application_features::ApplicationServer&, GeneralRequest*,
-      GeneralResponse*, aql::QueryRegistry*);
+  explicit InternalRestTraverserHandler(ArangodServer&, GeneralRequest*,
+                                        GeneralResponse*, aql::QueryRegistry*);
 
  public:
   RestStatus execute() override final;

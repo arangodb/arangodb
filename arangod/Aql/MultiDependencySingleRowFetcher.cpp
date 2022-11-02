@@ -31,7 +31,6 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -151,14 +150,14 @@ auto MultiDependencySingleRowFetcher::executeForDependency(
   if (state == ExecutionState::WAITING) {
     TRI_ASSERT(skipped.nothingSkipped());
     return {state, SkipResult{},
-            AqlItemBlockInputRange{ExecutorState::HASMORE}};
+            AqlItemBlockInputRange{MainQueryState::HASMORE}};
   }
 
   reportSkipForDependency(stack, skipped, dependency);
 
-  ExecutorState execState = state == ExecutionState::DONE
-                                ? ExecutorState::DONE
-                                : ExecutorState::HASMORE;
+  MainQueryState execState = state == ExecutionState::DONE
+                                 ? MainQueryState::DONE
+                                 : MainQueryState::HASMORE;
 
   _dependencyStates.at(dependency) = state;
 
@@ -168,9 +167,9 @@ auto MultiDependencySingleRowFetcher::executeForDependency(
   }
   TRI_ASSERT(block != nullptr);
   auto [start, end] = block->getRelevantRange();
-  return {
-      state, skipped,
-      AqlItemBlockInputRange{execState, skipped.getSkipCount(), block, start}};
+  return {state, skipped,
+          AqlItemBlockInputRange{execState, skipped.getSkipCount(),
+                                 std::move(block), start}};
 }
 
 auto MultiDependencySingleRowFetcher::execute(AqlCallStack const& stack,

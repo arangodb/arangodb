@@ -63,11 +63,18 @@
   delete global.ArangoView;
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief ArangoView
+  // / @brief ArangoReplicatedLog
   // //////////////////////////////////////////////////////////////////////////////
 
   exports.ArangoReplicatedLog = global.ArangoReplicatedLog;
   delete global.ArangoReplicatedLog;
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief ArangoPrototypeState
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.ArangoPrototypeState = global.ArangoPrototypeState;
+  delete global.ArangoPrototypeState;
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief ArangoUsers
@@ -557,7 +564,7 @@
     delete global.FORCE_ONE_SHARD;
   }
 
-  // server session timeout (for web UI)
+  // server session timeout (for web interface)
   if (global.SESSION_TIMEOUT) {
     exports.sessionTimeout = global.SESSION_TIMEOUT;
     delete global.SESSION_TIMEOUT;

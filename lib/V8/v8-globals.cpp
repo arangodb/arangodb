@@ -28,9 +28,18 @@
 #include "Basics/debugging.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 TRI_v8_global_t::TRI_v8_global_t(
     arangodb::application_features::ApplicationServer& server,
+    arangodb::V8SecurityFeature& v8security,
+    arangodb::HttpEndpointProvider& endpoints,
+    arangodb::application_features::CommunicationFeaturePhase& comm,
+#ifdef USE_ENTERPRISE
+    arangodb::EncryptionFeature& encryption,
+#endif
     v8::Isolate* isolate, size_t id)
     : AgencyTempl(),
       AgentTempl(),
@@ -62,6 +71,7 @@ TRI_v8_global_t::TRI_v8_global_t(
       PutConstant(),
 
       AddressKey(),
+      AllowDirtyReadsKey(),
       AllowUseDatabaseKey(),
       AuthorizedKey(),
       BodyFromFileKey(),
@@ -145,7 +155,13 @@ TRI_v8_global_t::TRI_v8_global_t(
       _countOfTimes(0),
       _heapMax(0),
       _heapLow(0),
-      _server(server) {
+      _server{server},
+      _v8security{v8security},
+      _endpoints{endpoints},
+#ifdef USE_ENTERPRISE
+      _encryption{encryption},
+#endif
+      _comm{comm} {
   v8::HandleScope scope(isolate);
 
   BufferConstant.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "Buffer"));
@@ -158,6 +174,8 @@ TRI_v8_global_t::TRI_v8_global_t(
   PutConstant.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "PUT"));
 
   AddressKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "address"));
+  AllowDirtyReadsKey.Reset(isolate,
+                           TRI_V8_ASCII_STRING(isolate, "allowDirtyReads"));
   AllowUseDatabaseKey.Reset(isolate,
                             TRI_V8_ASCII_STRING(isolate, "allowUseDatabase"));
   AuthorizedKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "authorized"));
@@ -185,7 +203,9 @@ TRI_v8_global_t::TRI_v8_global_t(
       isolate, TRI_V8_ASCII_STRING(isolate, "isSynchronousReplication"));
   IsSystemKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "isSystem"));
   KeepNullKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "keepNull"));
-  KeyOptionsKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "keyOptions"));
+  KeyOptionsKey.Reset(
+      isolate,
+      TRI_V8_ASCII_STD_STRING(isolate, arangodb::StaticStrings::KeyOptions));
   LengthKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "length"));
   LifeTimeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "lifeTime"));
   MergeObjectsKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "mergeObjects"));
@@ -239,17 +259,15 @@ TRI_v8_global_t::TRI_v8_global_t(
   _ToKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "_to"));
 }
 
-TRI_v8_global_t::SharedPtrPersistent::SharedPtrPersistent(  // constructor
-    v8::Isolate& isolateRef,                                // isolate
-    std::shared_ptr<void> const& value                      // value
-    )
+TRI_v8_global_t::SharedPtrPersistent::SharedPtrPersistent(
+    v8::Isolate& isolateRef, std::shared_ptr<void> const& value)
     : _isolate(isolateRef), _value(value) {
   auto* isolate = &isolateRef;
   TRI_GET_GLOBALS();
 
   _persistent.Reset(isolate, v8::External::New(isolate, value.get()));
-  _persistent.SetWeak(  // set weak reference
-      this,             // parameter
+  _persistent.SetWeak(
+      this,
       [](v8::WeakCallbackInfo<SharedPtrPersistent> const& data)
           -> void {  // callback
         auto isolate = data.GetIsolate();
@@ -258,12 +276,16 @@ TRI_v8_global_t::SharedPtrPersistent::SharedPtrPersistent(  // constructor
 
         auto* key =
             persistent->_value.get();  // same key as used in emplace(...)
+        LOG_TOPIC("44ea7", TRACE, arangodb::Logger::V8)
+            << "Weak UnWrapping ptr " << key << " Context ID: " << v8g->_id;
+
         auto count = v8g->JSSharedPtrs.erase(key);
-        TRI_ASSERT(count);  // zero indicates that v8g was probably deallocated
-                            // before calling the v8::WeakCallbackInfo::Callback
+        TRI_ASSERT(count) << "Did not find weak value the value for '" << key
+                          << "' in the registry! Context ID: " << v8g->_id;
+        // zero indicates that v8g was probably deallocated
+        // before calling the v8::WeakCallbackInfo::Callback
       },
-      v8::WeakCallbackType::kFinalizer  // callback type
-  );
+      v8::WeakCallbackType::kFinalizer);
   v8g->increaseActiveExternals();
 }
 
@@ -271,45 +293,24 @@ TRI_v8_global_t::SharedPtrPersistent::~SharedPtrPersistent() {
   auto* isolate = &_isolate;
   TRI_GET_GLOBALS();
   v8g->decreaseActiveExternals();
-  _persistent
-      .Reset();  // dispose and clear the persistent handle (SIGSEGV here may
-                 // indicate that v8::Isolate was already deallocated)
+  // dispose and clear the persistent handle (SIGSEGV here may
+  // indicate that v8::Isolate was already deallocated)
+  _persistent.Reset();
 }
 
 /*static*/ std::pair<TRI_v8_global_t::SharedPtrPersistent&, bool>
-TRI_v8_global_t::SharedPtrPersistent::emplace(  // emplace a persistent shared
-                                                // pointer
-    v8::Isolate& isolateRef,                    // isolate
-    std::shared_ptr<void> const& value          // persistent pointer
-) {
+TRI_v8_global_t::SharedPtrPersistent::emplace(
+    v8::Isolate& isolateRef, std::shared_ptr<void> const& value) {
   auto* isolate = &isolateRef;
   TRI_GET_GLOBALS();
 
-  auto entry =
-      v8g->JSSharedPtrs.try_emplace(  // ensure shared_ptr is not deallocated
-          value.get(),                // key
-          isolateRef, value           // value
-      );
+  auto entry = v8g->JSSharedPtrs.try_emplace(value.get(), isolateRef, value);
 
-  return std::pair<SharedPtrPersistent&, bool>(  // result
-      entry.first->second, entry.second          // args
-  );
+  return std::pair<SharedPtrPersistent&, bool>(entry.first->second,
+                                               entry.second);
 }
 
 TRI_v8_global_t::~TRI_v8_global_t() = default;
-
-/// @brief creates a global context
-TRI_v8_global_t* TRI_CreateV8Globals(
-    arangodb::application_features::ApplicationServer& server,
-    v8::Isolate* isolate, size_t id) {
-  TRI_GET_GLOBALS();
-
-  TRI_ASSERT(v8g == nullptr);
-  v8g = new TRI_v8_global_t(server, isolate, id);
-  isolate->SetData(arangodb::V8PlatformFeature::V8_DATA_SLOT, v8g);
-
-  return v8g;
-}
 
 /// @brief returns a global context
 TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate* isolate) {

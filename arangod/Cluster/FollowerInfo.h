@@ -24,22 +24,19 @@
 
 #pragma once
 
-#include "ClusterInfo.h"
-
 #include "Basics/Mutex.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/Result.h"
-#include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
-#include "VocBase/LogicalCollection.h"
+#include "Cluster/ClusterTypes.h"
 
 namespace arangodb {
 
 namespace velocypack {
 class Slice;
 }
+
+class LogicalCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a class to track followers that are in sync for a shard
@@ -87,18 +84,9 @@ class FollowerInfo {
   bool _canWrite;
 
  public:
-  explicit FollowerInfo(arangodb::LogicalCollection* d)
-      : _followers(std::make_shared<std::vector<ServerID>>()),
-        _failoverCandidates(std::make_shared<std::vector<ServerID>>()),
-        _docColl(d),
-        _theLeader(""),
-        _theLeaderTouched(false),
-        _canWrite(_docColl->replicationFactor() <= 1) {
-    // On replicationfactor 1 we do not have any failover servers to maintain.
-    // This should also disable satellite tracking.
-  }
+  explicit FollowerInfo(arangodb::LogicalCollection* d);
 
-  enum class WriteState { ALLOWED = 0, FORBIDDEN, STARTUP };
+  enum class WriteState { ALLOWED = 0, FORBIDDEN, STARTUP, UNAVAILABLE };
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.
@@ -221,61 +209,7 @@ class FollowerInfo {
     return _theLeaderTouched;
   }
 
-  WriteState allowedToWrite() {
-    {
-      auto& engine = _docColl->vocbase()
-                         .server()
-                         .getFeature<EngineSelectorFeature>()
-                         .engine();
-      if (engine.inRecovery()) {
-        return WriteState::ALLOWED;
-      }
-      READ_LOCKER(readLocker, _canWriteLock);
-      if (_canWrite) {
-        // Someone has decided we can write, fastPath!
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        // Invariant, we can only WRITE if we do not have other failover
-        // candidates
-        READ_LOCKER(readLockerData, _dataLock);
-        TRI_ASSERT(_followers->size() == _failoverCandidates->size());
-        // Our follower list only contains followers, numFollowers + leader
-        // needs to be at least writeConcern.
-        TRI_ASSERT(_followers->size() + 1 >= _docColl->writeConcern());
-#endif
-        return WriteState::ALLOWED;
-      }
-      READ_LOCKER(readLockerData, _dataLock);
-      TRI_ASSERT(_docColl != nullptr);
-
-      if (!_theLeaderTouched) {
-        // prevent writes before `TakeoverShardLeadership` has run
-        LOG_TOPIC("7c1d4", INFO, Logger::REPLICATION)
-            << "Shard " << _docColl->name()
-            << " is temporarily in read-only mode, since we have not yet run "
-               "TakeoverShardLeadership since the last restart.";
-        return WriteState::STARTUP;
-      }
-      if (_followers->size() + 1 < _docColl->writeConcern()) {
-        // We know that we still do not have enough followers
-        LOG_TOPIC("d7306", ERR, Logger::REPLICATION)
-            << "Shard " << _docColl->name()
-            << " is temporarily in read-only mode, since we have less than "
-               "writeConcern ("
-            << basics::StringUtils::itoa(_docColl->writeConcern())
-            << ") replicas in sync.";
-        return WriteState::FORBIDDEN;
-      }
-    }
-    bool res = updateFailoverCandidates();
-    if (!res) {
-      LOG_TOPIC("2e35a", ERR, Logger::REPLICATION)
-          << "Shard " << _docColl->name()
-          << " is temporarily in read-only mode, since we could not update the "
-             "failover candidates in the agency.";
-    }
-    return res ? WriteState::ALLOWED : WriteState::FORBIDDEN;
-  }
+  WriteState allowedToWrite();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inject the information about followers into the builder.

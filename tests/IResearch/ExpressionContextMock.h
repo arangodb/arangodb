@@ -48,16 +48,21 @@ struct ExpressionContextMock final
   ExpressionContextMock()
       : ViewExpressionContextBase(nullptr, nullptr, nullptr) {}
 
-  virtual ~ExpressionContextMock();
+  ~ExpressionContextMock();
 
-  virtual bool isDataFromCollection(
-      arangodb::aql::Variable const* variable) const override {
-    return variable->isDataFromCollection;
-  }
-
-  virtual arangodb::aql::AqlValue getVariableValue(
+  arangodb::aql::AqlValue getVariableValue(
       arangodb::aql::Variable const* variable, bool doCopy,
       bool& mustDestroy) const override;
+
+  void setVariable(arangodb::aql::Variable const* variable,
+                   arangodb::velocypack::Slice value) override {
+    // do nothing
+  }
+
+  void clearVariable(
+      arangodb::aql::Variable const* variable) noexcept override {
+    // do nothing
+  }
 
   void setTrx(arangodb::transaction::Methods* trx) { this->_trx = trx; }
 

@@ -21,8 +21,8 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
-
 #include "Basics/Common.h"
+#include "Basics/DownCast.h"
 
 #include "IResearchLinkHelper.h"
 
@@ -96,11 +96,6 @@ bool isIgnoredHiddenEnterpriseCollection(std::string const& cName) {
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the string representing the link type
-////////////////////////////////////////////////////////////////////////////////
-std::string const& LINK_TYPE = arangodb::iresearch::DATA_SOURCE_TYPE.name();
-
 Result canUseAnalyzers(IResearchLinkMeta const& meta,
                        TRI_vocbase_t const& defaultVocbase) {
   for (auto& pool : meta._analyzerDefinitions) {
@@ -166,7 +161,7 @@ Result createLink(LogicalCollection& collection, LogicalView const& view,
     return Result(e.code(), e.what());
   }
 
-  return arangodb::Result();
+  return Result();
 }
 
 Result createLink(LogicalCollection& collection,
@@ -188,10 +183,12 @@ Result createLink(LogicalCollection& collection,
 
   velocypack::Builder builder;
   builder.openObject();
-  builder.add(arangodb::StaticStrings::IndexType, velocypack::Value(LINK_TYPE));
+  builder.add(arangodb::StaticStrings::IndexType,
+              velocypack::Value(
+                  arangodb::iresearch::StaticStrings::ViewArangoSearchType));
   builder.add(arangodb::iresearch::StaticStrings::ViewIdField,
               velocypack::Value(view.guid()));
-  if (!arangodb::iresearch::mergeSliceSkipKeys(builder, definition, acceptor)) {
+  if (!mergeSliceSkipKeys(builder, definition, acceptor)) {
     return {TRI_ERROR_INTERNAL,
             std::string("failed to generate definition while creating link "
                         "between arangosearch view '") +
@@ -218,8 +215,8 @@ Result dropLink(LogicalCollection& collection, IResearchLink const& link) {
 }
 
 template<>
-Result dropLink<arangodb::iresearch::IResearchViewCoordinator>(
-    LogicalCollection& collection, IResearchLink const& link) {
+Result dropLink<IResearchViewCoordinator>(LogicalCollection& collection,
+                                          IResearchLink const& link) {
   if (ClusterMethods::filterHiddenCollections(collection)) {
     // Enterprise variant, we only need to drop links on non-hidden
     // collections (e.g. in SmartGraph Case)
@@ -255,7 +252,7 @@ struct State {
 template<typename ViewType>
 Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
                    velocypack::Slice links, LinkVersion defaultVersion,
-                   std::unordered_set<DataSourceId> const& stale = {}) {
+                   std::unordered_set<DataSourceId> const& stale) {
   LOG_TOPIC("4bdd2", DEBUG, arangodb::iresearch::TOPIC)
       << "link modification request for view '" << view.name()
       << "', original definition:" << links.toString();
@@ -330,8 +327,10 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
 
     velocypack::Builder namedJson;
     namedJson.openObject();
-    namedJson.add(arangodb::StaticStrings::IndexType,
-                  velocypack::Value(LINK_TYPE));
+    namedJson.add(
+        arangodb::StaticStrings::IndexType,
+        velocypack::Value(
+            arangodb::iresearch::StaticStrings::ViewArangoSearchType));
     namedJson.add(arangodb::iresearch::StaticStrings::ViewIdField,
                   velocypack::Value(view.guid()));
     if (!mergeSliceSkipKeys(namedJson, link, acceptor)) {
@@ -611,16 +610,17 @@ namespace iresearch {
                 VPackValue(std::to_string(objectId)));
   }
   builder.add(arangodb::StaticStrings::IndexFields, fieldsBuilder.slice());
-
   builder.add(arangodb::StaticStrings::IndexType,
-              arangodb::velocypack::Value(LINK_TYPE));
+              velocypack::Value(
+                  arangodb::iresearch::StaticStrings::ViewArangoSearchType));
   builder.close();
   return builder;
 }
 
-/*static*/ bool IResearchLinkHelper::equal(
-    application_features::ApplicationServer& server, velocypack::Slice lhs,
-    velocypack::Slice rhs, irs::string_ref dbname) {
+/*static*/ bool IResearchLinkHelper::equal(ArangodServer& server,
+                                           velocypack::Slice lhs,
+                                           velocypack::Slice rhs,
+                                           irs::string_ref dbname) {
   if (!lhs.isObject() || !rhs.isObject()) {
     return false;
   }
@@ -730,10 +730,12 @@ namespace iresearch {
     return res;
   }
 
-  normalized.add(arangodb::StaticStrings::IndexType, VPackValue(LINK_TYPE));
+  normalized.add(arangodb::StaticStrings::IndexType,
+                 velocypack::Value(
+                     arangodb::iresearch::StaticStrings::ViewArangoSearchType));
 
   if (ServerState::instance()->isClusterRole() && isCreation &&
-      !collectionName.empty() && meta._collectionName.empty()) {
+      meta._collectionName.empty()) {
     meta._collectionName = collectionName;
 #ifdef USE_ENTERPRISE
     ClusterMethods::realNameFromSmartName(meta._collectionName);
@@ -758,9 +760,10 @@ namespace iresearch {
   }
 
   if (definition.hasKey(arangodb::StaticStrings::IndexInBackground)) {
-    normalized.add(arangodb::StaticStrings::IndexInBackground,
-                   definition.get(arangodb::StaticStrings::IndexInBackground));
+    IndexFactory::processIndexInBackground(definition, normalized);
   }
+
+  IndexFactory::processIndexParallelism(definition, normalized);
 
   if (primarySort) {
     // normalize sort if specified
@@ -785,12 +788,8 @@ namespace iresearch {
   return {};
 }
 
-/*static*/ std::string const& IResearchLinkHelper::type() noexcept {
-  return LINK_TYPE;
-}
-
-/*static*/ arangodb::Result IResearchLinkHelper::validateLinks(
-    TRI_vocbase_t& vocbase, velocypack::Slice links) {
+/*static*/ Result IResearchLinkHelper::validateLinks(TRI_vocbase_t& vocbase,
+                                                     velocypack::Slice links) {
   if (!links.isObject()) {
     return {TRI_ERROR_BAD_PARAMETER,
             std::string("while validating arangosearch link definition, error: "
@@ -829,7 +828,7 @@ namespace iresearch {
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
     if (!ExecContext::current().canUseCollection(
-            vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
+            vocbase.name(), collection->name(), auth::Level::RO)) {
       return {TRI_ERROR_FORBIDDEN,  // code
               std::string("while validating arangosearch link definition, "
                           "error: collection '") +
@@ -919,12 +918,12 @@ namespace iresearch {
   try {
     if (ServerState::instance()->isCoordinator()) {
       return modifyLinks<IResearchViewCoordinator>(
-          modified, LogicalView::cast<IResearchViewCoordinator>(view), links,
+          modified, basics::downCast<IResearchViewCoordinator>(view), links,
           defaultVersion, stale);
     }
 
     return modifyLinks<IResearchView>(modified,
-                                      LogicalView::cast<IResearchView>(view),
+                                      basics::downCast<IResearchView>(view),
                                       links, defaultVersion, stale);
   } catch (basics::Exception& e) {
     LOG_TOPIC("72dde", WARN, arangodb::iresearch::TOPIC)

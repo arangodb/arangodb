@@ -29,9 +29,9 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-RestLogInternalHandler::RestLogInternalHandler(
-    application_features::ApplicationServer& server, GeneralRequest* req,
-    GeneralResponse* resp)
+RestLogInternalHandler::RestLogInternalHandler(ArangodServer& server,
+                                               GeneralRequest* req,
+                                               GeneralResponse* resp)
     : RestVocbaseBaseHandler(server, req, resp) {}
 RestLogInternalHandler::~RestLogInternalHandler() = default;
 

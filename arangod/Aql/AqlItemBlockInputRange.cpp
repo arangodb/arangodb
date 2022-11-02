@@ -25,32 +25,31 @@
 #include "Aql/ShadowAqlItemRow.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 #include <algorithm>
 #include <numeric>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state,
+AqlItemBlockInputRange::AqlItemBlockInputRange(MainQueryState state,
                                                std::size_t skipped)
-    : _finalState{state}, _skipped{skipped} {
+    : _finalState(state), _skipped{skipped} {
   TRI_ASSERT(!hasDataRow());
 }
 
 AqlItemBlockInputRange::AqlItemBlockInputRange(
-    ExecutorState state, std::size_t skipped,
+    MainQueryState state, std::size_t skipped,
     arangodb::aql::SharedAqlItemBlockPtr const& block, std::size_t index)
-    : _block{block}, _rowIndex{index}, _finalState{state}, _skipped{skipped} {
+    : _block{block}, _rowIndex{index}, _finalState(state), _skipped{skipped} {
   TRI_ASSERT(index <= _block->numRows());
 }
 
 AqlItemBlockInputRange::AqlItemBlockInputRange(
-    ExecutorState state, std::size_t skipped,
+    MainQueryState state, std::size_t skipped,
     arangodb::aql::SharedAqlItemBlockPtr&& block, std::size_t index) noexcept
     : _block{std::move(block)},
       _rowIndex{index},
-      _finalState{state},
+      _finalState(state),
       _skipped{skipped} {
   TRI_ASSERT(index <= _block->numRows());
 }
@@ -113,10 +112,6 @@ void AqlItemBlockInputRange::advanceDataRow() noexcept {
 
 ExecutorState AqlItemBlockInputRange::upstreamState() const noexcept {
   return nextState<LookAhead::NOW, RowType::DATA>();
-}
-
-bool AqlItemBlockInputRange::upstreamHasMore() const noexcept {
-  return upstreamState() == ExecutorState::HASMORE;
 }
 
 bool AqlItemBlockInputRange::hasShadowRow() const noexcept {
@@ -202,7 +197,10 @@ ExecutorState AqlItemBlockInputRange::nextState() const noexcept {
     testRowIndex++;
   }
   if (!isIndexValid(testRowIndex)) {
-    return _finalState;
+    if (_finalState == MainQueryState::DONE) {
+      return ExecutorState::DONE;
+    }
+    return ExecutorState::HASMORE;
   }
 
   if constexpr (RowType::DATA == type) {
@@ -261,6 +259,6 @@ auto AqlItemBlockInputRange::countShadowRows() const noexcept -> std::size_t {
 }
 
 [[nodiscard]] auto AqlItemBlockInputRange::finalState() const noexcept
-    -> ExecutorState {
+    -> MainQueryState {
   return _finalState;
 }

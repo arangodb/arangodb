@@ -191,9 +191,7 @@ void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode,
 bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
                                                     ExecutionPlan* plan,
                                                     OptimizerRule const& rule) {
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, EN::INDEX, false);
 
   if (nodes.size() != 1) {
@@ -229,6 +227,12 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
         }
 
         if (mod->collection() != indexNode->collection()) {
+          continue;
+        }
+
+        if (mod->getOptions().exclusive) {
+          // exclusive lock used. this is not supported by the
+          // SingleRemoteOperationNode
           continue;
         }
 
@@ -275,11 +279,11 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
         modified = true;
       } else if (::parentIsReturnOrConstCalc(node)) {
         ExecutionNode* singleOperationNode =
-            plan->registerNode(new SingleRemoteOperationNode(
+            plan->createNode<SingleRemoteOperationNode>(
                 plan, plan->nextId(), EN::INDEX, true, key,
                 indexNode->collection(), ModificationOptions{}, nullptr /*in*/,
                 indexNode->outVariable() /*out*/, nullptr /*old*/,
-                nullptr /*new*/));
+                nullptr /*new*/);
         ::replaceNode(plan, indexNode, singleOperationNode);
         modified = true;
       }
@@ -291,9 +295,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
 
 bool substituteClusterSingleDocumentOperationsNoIndex(
     Optimizer* opt, ExecutionPlan* plan, OptimizerRule const& rule) {
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE}, false);
 
@@ -310,6 +312,12 @@ bool substituteClusterSingleDocumentOperationsNoIndex(
     }
 
     if (!::parentIsReturnOrConstCalc(node)) {
+      continue;
+    }
+
+    if (mod->getOptions().exclusive) {
+      // exclusive lock used. this is not supported by the
+      // SingleRemoteOperationNode
       continue;
     }
 
@@ -411,15 +419,19 @@ bool substituteClusterSingleDocumentOperationsNoIndex(
     }
 
     ExecutionNode* singleOperationNode =
-        plan->registerNode(new SingleRemoteOperationNode(
+        plan->createNode<SingleRemoteOperationNode>(
             plan, plan->nextId(), depType, false, key, mod->collection(),
             mod->getOptions(), update /*in*/, nullptr, mod->getOutVariableOld(),
-            mod->getOutVariableNew()));
+            mod->getOutVariableNew());
 
     ::replaceNode(plan, mod, singleOperationNode);
 
     if (calc) {
-      plan->unlinkNode(calc);
+      plan->clearVarUsageComputed();
+      plan->findVarUsage();
+      if (!calc->isVarUsedLater(calc->outVariable())) {
+        plan->unlinkNode(calc);
+      }
     }
     modified = true;
   }  // for node : nodes

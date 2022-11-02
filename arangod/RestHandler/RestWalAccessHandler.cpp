@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
@@ -52,7 +53,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -76,10 +76,32 @@ struct MyTypeHandler final : public VPackCustomTypeHandler {
   CollectionNameResolver resolver;
 };
 
-RestWalAccessHandler::RestWalAccessHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestWalAccessHandler::RestWalAccessHandler(ArangodServer& server,
+                                           GeneralRequest* request,
+                                           GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
+
+RequestLane RestWalAccessHandler::lane() const {
+  std::vector<std::string> suffixes = _request->decodedSuffixes();
+  if (ServerState::instance()->isDBServer()) {
+    // If we are on a datqbase server this API can only be called internally.
+    // Hence, we can give it a different priority. We do not want to do
+    // this on a SingleServer as it is not necessary there.
+    if (!suffixes.empty() && suffixes[0] == "tail") {
+      // We are in wal tailing API.
+      // Let us check if we are in a hard-locked environment.
+      if (_request->parsedValue("withHardLock", false)) {
+        // We have the QueryParameter usingHardLock set to something that
+        // evaluates to true. We need to push this onto HIGH priority lanes in
+        // order to unlock the hardlock we have accuired
+        return RequestLane::CLUSTER_INTERNAL;
+      } else {
+        return RequestLane::SERVER_REPLICATION_CATCHUP;
+      }
+    }
+  }
+  return RequestLane::SERVER_REPLICATION;
+}
 
 bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
   // determine start and end tick

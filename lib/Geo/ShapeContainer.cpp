@@ -37,7 +37,6 @@
 #include <s2/util/math/vector.h>
 
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ShapeContainer.h"
 
@@ -140,6 +139,7 @@ S2Point ShapeContainer::centroid() const noexcept {
       return (static_cast<S2Polyline const*>(_data))->GetCentroid().Normalize();
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
+      // only used in legacy situations
       return static_cast<S2LatLngRect const*>(_data)->GetCenter().ToPoint();
     }
     case ShapeContainer::Type::S2_POLYGON: {
@@ -241,6 +241,13 @@ bool ShapeContainer::mayIntersect(S2CellId cell) const noexcept {
   return _data->MayIntersect(S2Cell(cell));
 }
 
+static bool isExcessiveLngLat(S1Angle lngsmall, S1Angle lngbig,
+                              S1Angle latsmall, S1Angle latbig) {
+  return std::fabs(lngbig.radians() - lngsmall.radians()) +
+             std::fabs(latbig.radians() - latsmall.radians()) >=
+         M_PI;
+}
+
 /// @brief adjust query parameters (specifically max distance)
 void ShapeContainer::updateBounds(QueryParams& qp) const noexcept {
   TRI_ASSERT(_data != nullptr);
@@ -252,14 +259,54 @@ void ShapeContainer::updateBounds(QueryParams& qp) const noexcept {
   qp.origin = ll;
 
   S2LatLngRect rect = _data->GetRectBound();
+  double radMax = 0.0;
   if (!rect.is_empty() && !rect.is_point()) {
-    S1Angle a1(ll, rect.lo());
-    S1Angle a2(ll, S2LatLng(rect.lat_lo(), rect.lng_hi()));
-    S1Angle a3(ll, S2LatLng(rect.lat_hi(), rect.lng_lo()));
-    S1Angle a4(ll, rect.hi());
-
-    double rad = geo::kRadEps + std::max(std::max(a1.radians(), a2.radians()),
-                                         std::max(a3.radians(), a4.radians()));
+    // The following computation deserves an explanation:
+    // We want to derive from the bounding LatLng box an upper bound for
+    // the maximal distance. The centroid of the shape is contained in the
+    // bounding box and the main idea is to take the maximum distance to
+    // any of the corners and take this as upper bound for the distance.
+    // The hope is then that the complete bounding box is contained in the
+    // circle with radius this maximal distance.
+    // However, this is not correct in all cases. A prominent counterexample
+    // is the bounding box {lat:[-90, 90], lng:[-180, 180]} which is used
+    // for very large polygons. Its "four" corners are twice the north pole
+    // and twice the south pole. Most points on earth have a maximal distance
+    // to north and south pole of less than half the diameter of the earth,
+    // and yet, the smallest circle to contain the whole bounding box has
+    // radius half of the diameter of the earth.
+    // So we need to adjust our bound here. What we do is the following:
+    // If the sum of the added difference in latitude and longitude
+    // is less than 180 degrees, then the actual shortest geodesic to a
+    // corner runs as expected (for example, with increasing lat and lng
+    // towards the upper right corner of the bounding box). In this case
+    // the estimate of the maximal distance is correct, otherwise we simply
+    // take M_PI or 180 degrees or half the diameter of the earth as estimate.
+    if (isExcessiveLngLat(rect.lng_lo(), ll.lng(), rect.lat_lo(), ll.lat())) {
+      radMax = M_PI;
+    } else {
+      S1Angle a1(ll, rect.lo());
+      radMax = a1.radians();
+    }
+    if (isExcessiveLngLat(ll.lng(), rect.lng_hi(), rect.lat_lo(), ll.lat())) {
+      radMax = M_PI;
+    } else {
+      S1Angle a2(ll, S2LatLng(rect.lat_lo(), rect.lng_hi()));
+      radMax = std::max(radMax, a2.radians());
+    }
+    if (isExcessiveLngLat(rect.lng_lo(), ll.lng(), ll.lat(), rect.lat_hi())) {
+      radMax = M_PI;
+    } else {
+      S1Angle a3(ll, S2LatLng(rect.lat_hi(), rect.lng_lo()));
+      radMax = std::max(radMax, a3.radians());
+    }
+    if (isExcessiveLngLat(ll.lng(), rect.lng_hi(), ll.lat(), rect.lat_hi())) {
+      radMax = M_PI;
+    } else {
+      S1Angle a4(ll, rect.hi());
+      radMax = std::max(radMax, a4.radians());
+    }
+    double rad = geo::kRadEps + radMax;
     qp.maxDistance = rad * kEarthRadiusInMeters;
   } else {
     qp.maxDistance = 0;
@@ -286,6 +333,7 @@ bool ShapeContainer::contains(S2Polyline const* other) const {
     }
 
     case ShapeContainer::Type::S2_LATLNGRECT: {
+      // only used in legacy situations
       S2LatLngRect const* rect = static_cast<S2LatLngRect const*>(_data);
       for (int k = 0; k < other->num_vertices(); k++) {
         if (!rect->Contains(other->vertex(k))) {
@@ -323,6 +371,7 @@ bool ShapeContainer::contains(S2Polyline const* other) const {
 }
 
 bool ShapeContainer::contains(S2LatLngRect const* other) const {
+  // only used in legacy situations
   switch (_type) {
     case ShapeContainer::Type::S2_POINT:
       if (other->is_point()) {
@@ -405,6 +454,7 @@ bool ShapeContainer::contains(S2Polygon const* poly) const {
       return false;  // numerically not well defined
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
+      // only used in legacy situations
       S2LatLngRect const* rect = static_cast<S2LatLngRect const*>(_data);
       for (int k = 0; k < poly->num_loops(); k++) {
         S2Loop const* loop = poly->loop(k);
@@ -435,6 +485,7 @@ bool ShapeContainer::contains(ShapeContainer const* cc) const {
       return contains(static_cast<S2Polyline const*>(cc->_data));
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
+      // only used in legacy situations
       return contains(static_cast<S2LatLngRect const*>(cc->_data));
     }
     case ShapeContainer::Type::S2_POLYGON: {
@@ -512,6 +563,7 @@ bool ShapeContainer::equals(S2Polyline const* poly,
 }
 
 bool ShapeContainer::equals(S2LatLngRect const* other) const {
+  // only used in legacy situations
   S2LatLngRect const* llrect = static_cast<S2LatLngRect const*>(_data);
   return llrect->ApproxEquals(*other);
 }
@@ -538,6 +590,7 @@ bool ShapeContainer::equals(ShapeContainer const* cc) const {
       return equals(static_cast<S2Polyline const*>(cc->_data));
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
+      // only used in legacy situations
       return equals(static_cast<S2LatLngRect const*>(cc->_data));
     }
     case ShapeContainer::Type::S2_POLYGON: {
@@ -598,6 +651,7 @@ bool ShapeContainer::intersects(S2Polyline const* other) const {
       return ll->Intersects(other);
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
+      // only used in legacy situations
       auto rectPoly =
           ::latLngRectToPolygon(static_cast<S2LatLngRect const*>(_data));
       auto cuts = rectPoly.IntersectWithPolyline(*other);
@@ -623,6 +677,7 @@ bool ShapeContainer::intersects(S2Polyline const* other) const {
 
 namespace {
 bool intersectRectPolygon(S2LatLngRect const* rect, S2Polygon const* poly) {
+  // only used in legacy situations
   if (rect->is_full()) {
     return true;  // rectangle spans entire sphere
   } else if (rect->is_point()) {
@@ -646,6 +701,7 @@ bool insersectMultiPointsRegion(S2MultiPointRegion const* points,
 }  // namespace
 
 bool ShapeContainer::intersects(S2LatLngRect const* other) const {
+  // only used in legacy situations
   switch (_type) {
     case ShapeContainer::Type::S2_POINT: {
       S2PointRegion const* self = static_cast<S2PointRegion const*>(_data);
@@ -699,6 +755,7 @@ bool ShapeContainer::intersects(S2Polygon const* other) const {
       return !cuts.empty();
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
+      // only used in legacy situations
       S2LatLngRect const* self = static_cast<S2LatLngRect const*>(_data);
       return intersectRectPolygon(self, other);
     }
@@ -739,6 +796,7 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
       return intersects(static_cast<S2Polygon const*>(cc->_data));
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
+      // only used in legacy situations
       return intersects(static_cast<S2LatLngRect const*>(cc->_data));
     }
     case ShapeContainer::Type::S2_MULTIPOINT: {
@@ -777,6 +835,7 @@ double ShapeContainer::area(geo::Ellipsoid const& e) {
   if (e.flattening() == 0.0) {
     switch (_type) {
       case Type::S2_LATLNGRECT:
+        // only used in legacy situations
         return static_cast<S2LatLngRect*>(_data)->Area() *
                kEarthRadiusInMeters * kEarthRadiusInMeters;
       case Type::S2_POLYGON:
@@ -796,6 +855,7 @@ double ShapeContainer::area(geo::Ellipsoid const& e) {
 
   switch (_type) {
     case Type::S2_LATLNGRECT: {
+      // only used in legacy situations
       struct geod_polygon p;
       geod_polygon_init(&p, 0);
 

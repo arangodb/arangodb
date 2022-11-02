@@ -53,7 +53,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 
@@ -61,7 +60,7 @@ namespace {
 /// @brief return a pointer to the system database or nullptr on error
 ////////////////////////////////////////////////////////////////////////////////
 arangodb::SystemDatabaseFeature::ptr getSystemDatabase(
-    arangodb::application_features::ApplicationServer& server) {
+    arangodb::ArangodServer& server) {
   if (!server.hasFeature<arangodb::SystemDatabaseFeature>()) {
     LOG_TOPIC("607b8", WARN, arangodb::Logger::AUTHENTICATION)
         << "failure to find feature '"
@@ -73,6 +72,10 @@ arangodb::SystemDatabaseFeature::ptr getSystemDatabase(
   return server.getFeature<arangodb::SystemDatabaseFeature>().use();
 }
 
+bool isRole(std::string const& name) noexcept {
+  return name.starts_with(":role:");
+}
+
 }  // namespace
 
 using namespace arangodb;
@@ -80,21 +83,17 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
-static bool inline IsRole(std::string const& name) {
-  return StringUtils::isPrefix(name, ":role:");
-}
-
 #ifndef USE_ENTERPRISE
-auth::UserManager::UserManager(application_features::ApplicationServer& server)
+auth::UserManager::UserManager(ArangodServer& server)
     : _server(server), _globalVersion(1), _internalVersion(0) {}
 #else
-auth::UserManager::UserManager(application_features::ApplicationServer& server)
+auth::UserManager::UserManager(ArangodServer& server)
     : _server(server),
       _globalVersion(1),
       _internalVersion(0),
       _authHandler(nullptr) {}
 
-auth::UserManager::UserManager(application_features::ApplicationServer& server,
+auth::UserManager::UserManager(ArangodServer& server,
                                std::unique_ptr<auth::Handler> handler)
     : _server(server),
       _globalVersion(1),
@@ -127,8 +126,7 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
   return result;
 }
 
-static std::shared_ptr<VPackBuilder> QueryAllUsers(
-    application_features::ApplicationServer& server) {
+static std::shared_ptr<VPackBuilder> QueryAllUsers(ArangodServer& server) {
   TRI_IF_FAILURE("QueryAllUsers") {
     // simulates the case that the _users collection is not yet available
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -179,7 +177,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
   } else if (!usersSlice.isArray()) {
     LOG_TOPIC("4b11d", ERR, arangodb::Logger::AUTHENTICATION)
         << "cannot read users from _users collection";
-    return std::shared_ptr<VPackBuilder>();
+    return {};
   }
 
   return queryResult.data;
@@ -272,7 +270,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry,
   if (entry.source() != auth::Source::Local) {
     return Result(TRI_ERROR_USER_EXTERNAL);
   }
-  if (!IsRole(entry.username()) && entry.username() != "root") {
+  if (!::isRole(entry.username()) && entry.username() != "root") {
     AuthenticationFeature* af = AuthenticationFeature::instance();
     TRI_ASSERT(af != nullptr);
     if (af != nullptr && !af->localAuthentication()) {
@@ -338,7 +336,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry,
                                auth::User::fromDocument(userDoc));
       }
 #ifdef USE_ENTERPRISE
-      if (IsRole(entry.username())) {
+      if (::isRole(entry.username())) {
         for (UserMap::value_type& pair : _userCache) {
           if (pair.second.source() != auth::Source::Local &&
               pair.second.roles().find(entry.username()) !=
@@ -448,7 +446,7 @@ void auth::UserManager::triggerGlobalReload() {
         agency.sendTransactionWithFailover(incrementVersion);
     if (result.successful()) {
       _globalVersion.fetch_add(1, std::memory_order_release);
-      _internalVersion.fetch_add(1, std::memory_order_release);
+      _internalVersion.store(0, std::memory_order_release);
       return;
     }
   }
@@ -639,8 +637,8 @@ VPackBuilder auth::UserManager::serializeUser(std::string const& user) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_USER_NOT_FOUND);  // FIXME do not use
 }
 
-static Result RemoveUserInternal(
-    application_features::ApplicationServer& server, auth::User const& entry) {
+static Result RemoveUserInternal(ArangodServer& server,
+                                 auth::User const& entry) {
   TRI_ASSERT(!entry.key().empty());
   auto vocbase = getSystemDatabase(server);
 
@@ -739,7 +737,7 @@ Result auth::UserManager::removeAllUsers() {
 
 bool auth::UserManager::checkPassword(std::string const& username,
                                       std::string const& password) {
-  if (username.empty() || IsRole(username)) {
+  if (username.empty() || ::isRole(username)) {
     return false;  // we cannot authenticate during bootstrap
   }
 

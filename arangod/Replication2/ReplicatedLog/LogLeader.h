@@ -38,12 +38,14 @@
 #include "Basics/Result.h"
 #include "Futures/Future.h"
 #include "Replication2/LoggerContext.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
+#include "Replication2/ReplicatedLog/WaitForBag.h"
 #include "Replication2/ReplicatedLog/types.h"
 
 namespace arangodb {
@@ -69,8 +71,11 @@ namespace arangodb::futures {
 template<typename T>
 class Try;
 }
+namespace arangodb::cluster {
+struct IFailureOracle;
+}
 namespace arangodb::replication2::algorithms {
-struct ParticipantStateTuple;
+struct ParticipantState;
 }
 namespace arangodb::replication2::replicated_log {
 struct LogCore;
@@ -87,30 +92,14 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
  public:
   ~LogLeader() override;
 
-  // Used in tests, forwards to overload below
   [[nodiscard]] static auto construct(
-      LoggerContext const& logContext,
+      std::unique_ptr<LogCore> logCore,
+      std::vector<std::shared_ptr<AbstractFollower>> const& followers,
+      std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
+      ParticipantId id, LogTerm term, LoggerContext const& logContext,
       std::shared_ptr<ReplicatedLogMetrics> logMetrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-      ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
-      std::vector<std::shared_ptr<AbstractFollower>> const& followers,
-      std::size_t writeConcern) -> std::shared_ptr<LogLeader>;
-
-  [[nodiscard]] static auto construct(
-      LogConfig config, std::unique_ptr<LogCore> logCore,
-      std::vector<std::shared_ptr<AbstractFollower>> const& followers,
-      ParticipantId id, LogTerm term, LoggerContext const& logContext,
-      std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-      std::shared_ptr<ReplicatedLogGlobalSettings const> options)
-      -> std::shared_ptr<LogLeader>;
-
-  [[nodiscard]] static auto construct(
-      LogConfig config, std::unique_ptr<LogCore> logCore,
-      std::vector<std::shared_ptr<AbstractFollower>> const& followers,
-      std::shared_ptr<ParticipantsConfig const> participantsConfig,
-      ParticipantId id, LogTerm term, LoggerContext const& logContext,
-      std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-      std::shared_ptr<ReplicatedLogGlobalSettings const> options)
+      std::shared_ptr<cluster::IFailureOracle const> failureOracle)
       -> std::shared_ptr<LogLeader>;
 
   auto insert(LogPayload payload, bool waitForSync = false)
@@ -163,17 +152,17 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
   auto waitForLeadership() -> WaitForFuture override;
 
+  [[nodiscard]] auto waitForResign() -> futures::Future<futures::Unit> override;
+
   // This function returns the current commit index. Do NOT poll this function,
   // use waitFor(idx) instead. This function is used in tests.
   [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
 
   // Updates the flags of the participants.
   auto updateParticipantsConfig(
-      std::shared_ptr<ParticipantsConfig const> config,
-      std::size_t previousGeneration,
-      std::unordered_map<ParticipantId, std::shared_ptr<AbstractFollower>>
-          additionalFollowers,
-      std::vector<ParticipantId> const& followersToRemove) -> LogIndex;
+      std::shared_ptr<agency::ParticipantsConfig const> const& config,
+      std::function<std::shared_ptr<replicated_log::AbstractFollower>(
+          ParticipantId const&)> const& buildFollower) -> LogIndex;
 
   // Returns [acceptedConfig.generation, committedConfig.?generation]
   auto getParticipantConfigGenerations() const noexcept
@@ -184,8 +173,9 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   LogLeader(LoggerContext logContext,
             std::shared_ptr<ReplicatedLogMetrics> logMetrics,
             std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-            LogConfig config, ParticipantId id, LogTerm term,
-            LogIndex firstIndexOfCurrentTerm, InMemoryLog inMemoryLog);
+            ParticipantId id, LogTerm term, LogIndex firstIndexOfCurrentTerm,
+            InMemoryLog inMemoryLog,
+            std::shared_ptr<cluster::IFailureOracle const> failureOracle);
 
  private:
   struct GuardedLeaderData;
@@ -203,9 +193,10 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     std::chrono::steady_clock::time_point _lastRequestStartTP{};
     std::chrono::steady_clock::time_point _errorBackoffEndTP{};
     std::shared_ptr<AbstractFollower> _impl;
-    TermIndexPair lastAckedEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
+    TermIndexPair lastAckedIndex = TermIndexPair{LogTerm{0}, LogIndex{0}};
+    TermIndexPair nextPrevLogIndex = TermIndexPair{LogTerm{0}, LogIndex{0}};
     LogIndex lastAckedCommitIndex = LogIndex{0};
-    LogIndex lastAckedLCI = LogIndex{0};
+    LogIndex lastAckedLowestIndexToKeep = LogIndex{0};
     MessageId lastSentMessageId{0};
     std::size_t numErrorsSinceLastAnswer = 0;
     AppendEntriesErrorReason lastErrorReason;
@@ -283,7 +274,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
     [[nodiscard]] auto handleAppendEntriesResponse(
         FollowerInfo& follower, TermIndexPair lastIndex,
-        LogIndex currentCommitIndex, LogIndex currentLCI, LogTerm currentTerm,
+        LogIndex currentCommitIndex, LogIndex currentLITK, LogTerm currentTerm,
         futures::Try<AppendEntriesResult>&& res,
         std::chrono::steady_clock::duration latency, MessageId messageId)
         -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>,
@@ -291,8 +282,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
     [[nodiscard]] auto checkCommitIndex() -> ResolvedPromiseSet;
 
-    [[nodiscard]] auto collectEligibleFollowerIndexes() const
-        -> std::pair<LogIndex, std::vector<algorithms::ParticipantStateTuple>>;
+    [[nodiscard]] auto collectFollowerStates() const
+        -> std::pair<LogIndex, std::vector<algorithms::ParticipantState>>;
     [[nodiscard]] auto checkCompaction() -> Result;
 
     [[nodiscard]] auto updateCommitIndexLeader(
@@ -315,34 +306,39 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
         -> std::chrono::duration<double, std::milli>;
 
     auto insertInternal(
-        std::optional<LogPayload>, bool waitForSync,
+        std::variant<LogMetaPayload, LogPayload>, bool waitForSync,
         std::optional<InMemoryLogEntry::clock::time_point> insertTp)
         -> LogIndex;
+
+    [[nodiscard]] auto waitForResign()
+        -> std::pair<futures::Future<futures::Unit>, DeferredAction>;
 
     LogLeader& _self;
     InMemoryLog _inMemoryLog;
     std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>>
         _follower{};
     WaitForQueue _waitForQueue{};
+    WaitForBag _waitForResignQueue;
     std::shared_ptr<QuorumData> _lastQuorum{};
     LogIndex _commitIndex{0};
-    LogIndex _largestCommonIndex{0};
+    LogIndex _lowestIndexToKeep{0};
     LogIndex _releaseIndex{0};
     bool _didResign{false};
     bool _leadershipEstablished{false};
     CommitFailReason _lastCommitFailReason;
 
     // active - that is currently used to check for committed entries
-    std::shared_ptr<ParticipantsConfig const> activeParticipantsConfig;
+    std::shared_ptr<agency::ParticipantsConfig const> activeParticipantsConfig;
     // committed - latest active config that has committed at least one entry
     // Note that this will be nullptr until leadership is established!
-    std::shared_ptr<ParticipantsConfig const> committedParticipantsConfig;
+    std::shared_ptr<agency::ParticipantsConfig const>
+        committedParticipantsConfig;
   };
 
   LoggerContext const _logContext;
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
   std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
-  LogConfig const _config;
+  std::shared_ptr<cluster::IFailureOracle const> const _failureOracle;
   ParticipantId const _id;
   LogTerm const _currentTerm;
   LogIndex const _firstIndexOfCurrentTerm;
@@ -352,7 +348,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   // a single mutex.
   Guarded<GuardedLeaderData> _guardedLeaderData;
 
-  void establishLeadership(std::shared_ptr<ParticipantsConfig const> config);
+  void establishLeadership(
+      std::shared_ptr<agency::ParticipantsConfig const> config);
 
   [[nodiscard]] static auto instantiateFollowers(
       LoggerContext const&,

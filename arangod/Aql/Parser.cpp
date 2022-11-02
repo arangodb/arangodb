@@ -160,20 +160,6 @@ void Parser::registerParseError(ErrorCode errorCode, std::string_view data,
                << std::string("' at position ") << line << std::string(":")
                << (column + 1);
 
-  if (_query.queryOptions().verboseErrors) {
-    errorMessage << std::endl << queryString() << std::endl;
-
-    // create a neat pointer to the location of the error.
-    size_t i;
-    for (i = 0; i + 1 < (size_t)column; i++) {
-      errorMessage << ' ';
-    }
-    if (i > 0) {
-      errorMessage << '^';
-    }
-    errorMessage << '^' << '^' << std::endl;
-  }
-
   _query.warnings().registerError(errorCode, errorMessage.str());
 }
 

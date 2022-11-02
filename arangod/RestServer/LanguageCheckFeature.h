@@ -23,17 +23,13 @@
 
 #pragma once
 
-#include <unicode/locid.h>
-#include "ApplicationFeatures/ApplicationFeature.h"
-
+#include "RestServer/arangod.h"
 namespace arangodb {
-
-class LanguageCheckFeature final
-    : public application_features::ApplicationFeature {
+class LanguageCheckFeature final : public ArangodFeature {
  public:
-  explicit LanguageCheckFeature(
-      application_features::ApplicationServer& server);
-  ~LanguageCheckFeature();
+  static constexpr std::string_view name() noexcept { return "LanguageCheck"; }
+
+  explicit LanguageCheckFeature(Server& server);
 
   void start() override final;
 };

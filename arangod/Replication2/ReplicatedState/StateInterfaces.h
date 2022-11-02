@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2021-2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,15 +22,16 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedState/ReplicatedStateCore.h"
+#include "Replication2/ReplicatedState/ReplicatedStateToken.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include "Replication2/Streams/Streams.h"
 
 namespace arangodb::futures {
+struct Unit;
 template<typename T>
 class Future;
-}
+}  // namespace arangodb::futures
 namespace arangodb {
 class Result;
 }
@@ -43,6 +44,9 @@ struct ILogLeader;
 
 namespace replicated_state {
 
+template<typename S>
+struct FollowerStateManager;
+
 struct IReplicatedLeaderStateBase {
   virtual ~IReplicatedLeaderStateBase() = default;
 };
@@ -54,6 +58,7 @@ struct IReplicatedFollowerStateBase {
 template<typename S>
 struct IReplicatedLeaderState : IReplicatedLeaderStateBase {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
+  using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using Stream = streams::ProducerStream<EntryType>;
   using EntryIterator = typename Stream::Iterator;
 
@@ -70,19 +75,38 @@ struct IReplicatedLeaderState : IReplicatedLeaderStateBase {
   virtual auto recoverEntries(std::unique_ptr<EntryIterator>)
       -> futures::Future<Result> = 0;
 
-  auto getStream() const -> std::shared_ptr<Stream> const&;
+  [[nodiscard]] auto getStream() const noexcept
+      -> std::shared_ptr<Stream> const&;
 
-  // TODO make private
+  [[nodiscard]] virtual auto resign() && noexcept
+      -> std::unique_ptr<CoreType> = 0;
+
+  /**
+   * This hook is called after leader recovery is completed and the internal
+   * state has been updated. The underlying stream is guaranteed to have been
+   * initialized.
+   */
+  virtual void onSnapshotCompleted() noexcept {};
+
+  void setStream(std::shared_ptr<Stream> stream) noexcept {
+    _stream = std::move(stream);
+  }
+
+ private:
   std::shared_ptr<Stream> _stream;
 };
 
 template<typename S>
 struct IReplicatedFollowerState : IReplicatedFollowerStateBase {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
+  using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using Stream = streams::Stream<EntryType>;
   using EntryIterator = typename Stream::Iterator;
 
-  // TODO make functions protected
+  using WaitForAppliedFuture = futures::Future<futures::Unit>;
+  [[nodiscard]] auto waitForApplied(LogIndex index) -> WaitForAppliedFuture;
+
+ protected:
   /**
    * Called by the state machine manager if new log entries have been committed
    * and are ready to be applied to the state machine. The implementation
@@ -111,9 +135,24 @@ struct IReplicatedFollowerState : IReplicatedFollowerStateBase {
                                LogIndex localCommitIndex) noexcept
       -> futures::Future<Result> = 0;
 
-  [[nodiscard]] auto getStream() const -> std::shared_ptr<Stream> const&;
+  /**
+   * TODO Comment missing
+   * @return
+   */
+  [[nodiscard]] virtual auto resign() && noexcept
+      -> std::unique_ptr<CoreType> = 0;
 
-  // TODO make private
+ protected:
+  [[nodiscard]] auto getStream() const noexcept
+      -> std::shared_ptr<Stream> const&;
+
+ private:
+  friend struct FollowerStateManager<S>;
+
+  void setStateManager(
+      std::shared_ptr<FollowerStateManager<S>> manager) noexcept;
+
+  std::weak_ptr<FollowerStateManager<S>> _manager;
   std::shared_ptr<Stream> _stream;
 };
 }  // namespace replicated_state

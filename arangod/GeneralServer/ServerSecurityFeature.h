@@ -23,15 +23,15 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class ServerSecurityFeature final
-    : public application_features::ApplicationFeature {
+class ServerSecurityFeature final : public ArangodFeature {
  public:
-  explicit ServerSecurityFeature(
-      application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "ServerSecurity"; }
+
+  explicit ServerSecurityFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 

@@ -1,6 +1,6 @@
 // Some utility functions in js
 
-var u = module.exports = {
+var u = (module.exports = {
   array: {
     // Returns a copy of the array with the value removed once
     //
@@ -11,9 +11,9 @@ var u = module.exports = {
 
       if (index != -1) {
         if (index == 0) {
-         return arr.slice(1)
+          return arr.slice(1);
         } else {
-          return arr.slice(0, index).concat(arr.slice(index+1));
+          return arr.slice(0, index).concat(arr.slice(index + 1));
         }
       } else {
         return arr;
@@ -23,16 +23,16 @@ var u = module.exports = {
     // Returns the first element of the array
     //
     //     [1, 2, 3].first() #=> 1
-    first: function(arr) {
+    first: function (arr) {
       return arr[0];
     },
 
     // Returns the last element of the array
     //
     //     [1, 2, 3].last()  #=> 3
-    last: function(arr) {
-      return arr[arr.length-1];
-    }
+    last: function (arr) {
+      return arr[arr.length - 1];
+    },
   },
   string: {
     // Returns a copy of str with all occurrences of pattern replaced with either replacement or the return value of a function.
@@ -52,7 +52,7 @@ var u = module.exports = {
     //
     gsub: function (str, pattern, replacement) {
       var i, match, matchCmpr, matchCmprPrev, replacementStr, result, self;
-      if (!((pattern != null) && (replacement != null))) return u.string.value(str);
+      if (!(pattern != null && replacement != null)) return u.string.value(str);
       result = '';
       self = str;
       while (self.length > 0) {
@@ -72,7 +72,7 @@ var u = module.exports = {
             replacementStr = replacement;
             for (i = 1; i <= 9; i++) {
               if (matchCmpr[i]) {
-                replacementStr = u.string.gsub(replacementStr, new RegExp("\\\$" + i), matchCmpr[i]);
+                replacementStr = u.string.gsub(replacementStr, new RegExp('\\$' + i), matchCmpr[i]);
               }
             }
             result += replacementStr;
@@ -91,13 +91,13 @@ var u = module.exports = {
     // Returns a copy of the String with the first letter being upper case
     //
     //     "hello".upcase #=> "Hello"
-    upcase: function(str) {
+    upcase: function (str) {
       var self = u.string.gsub(str, /_([a-z])/, function ($) {
-        return "_" + $[1].toUpperCase();
+        return '_' + $[1].toUpperCase();
       });
 
       self = u.string.gsub(self, /\/([a-z])/, function ($) {
-        return "/" + $[1].toUpperCase();
+        return '/' + $[1].toUpperCase();
       });
 
       return self[0].toUpperCase() + self.substr(1);
@@ -115,7 +115,7 @@ var u = module.exports = {
 
       if (!spaces) {
         self = u.string.gsub(self, /\s([a-z])/, function ($) {
-          return " " + $[1].toUpperCase();
+          return ' ' + $[1].toUpperCase();
         });
       }
 
@@ -125,13 +125,13 @@ var u = module.exports = {
     // Returns a copy of the String with the first letter being lower case
     //
     //     "HELLO".downcase #=> "hELLO"
-    downcase: function(str) {
+    downcase: function (str) {
       var self = u.string.gsub(str, /_([A-Z])/, function ($) {
-        return "_" + $[1].toLowerCase();
+        return '_' + $[1].toLowerCase();
       });
 
       self = u.string.gsub(self, /\/([A-Z])/, function ($) {
-        return "/" + $[1].toLowerCase();
+        return '/' + $[1].toLowerCase();
       });
 
       return self[0].toLowerCase() + self.substr(1);
@@ -142,6 +142,6 @@ var u = module.exports = {
     //     "hello".value() #=> "hello"
     value: function (str) {
       return str.substr(0);
-    }
-  }
-}
+    },
+  },
+});

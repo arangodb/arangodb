@@ -28,6 +28,7 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <stdexcept>
 
 #include "debugging.h"
 
@@ -52,6 +53,8 @@ using namespace arangodb;
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 
 namespace {
+std::atomic<bool> hasFailurePoints{false};
+
 /// @brief a read-write lock for thread-safe access to the failure points set
 arangodb::basics::ReadWriteLock failurePointsLock;
 
@@ -77,12 +80,30 @@ void TRI_TerminateDebugging(std::string_view message) {
     // intentionally crashes the program!
     // note: when using ASan/UBSan, this actually does not crash
     // the program but continues.
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wexceptions"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wterminate"
+#elif _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4297)
+#endif
+
     auto f = []() noexcept {
       // intentionally crashes the program!
       // cppcheck-suppress *
-      return std::string(nullptr);
+      throw std::runtime_error("Intentional test error");
     };
     f();
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#elif _MSC_VER
+#pragma warning(pop)
+#endif
     // we will get here at least with ASan/UBSan.
     std::terminate();
   } else if (message == "CRASH-HANDLER-TEST-SEGFAULT") {
@@ -108,8 +129,11 @@ void TRI_TerminateDebugging(std::string_view message) {
 
 /// @brief check whether we should fail at a specific failure point
 bool TRI_ShouldFailDebugging(std::string_view value) noexcept {
-  READ_LOCKER(readLocker, ::failurePointsLock);
-  return ::failurePoints.find(value) != ::failurePoints.end();
+  if (::hasFailurePoints.load(std::memory_order_relaxed)) {
+    READ_LOCKER(readLocker, ::failurePointsLock);
+    return ::failurePoints.find(value) != ::failurePoints.end();
+  }
+  return false;
 }
 
 /// @brief add a failure point
@@ -118,6 +142,7 @@ void TRI_AddFailurePointDebugging(std::string_view value) {
   {
     WRITE_LOCKER(writeLocker, ::failurePointsLock);
     added = ::failurePoints.emplace(value).second;
+    ::hasFailurePoints.store(true, std::memory_order_relaxed);
   }
 
   if (added) {
@@ -133,6 +158,9 @@ void TRI_RemoveFailurePointDebugging(std::string_view value) {
   {
     WRITE_LOCKER(writeLocker, ::failurePointsLock);
     numRemoved = ::failurePoints.erase(std::string(value));
+    if (::failurePoints.size() == 0) {
+      ::hasFailurePoints.store(false, std::memory_order_relaxed);
+    }
   }
 
   if (numRemoved > 0) {
@@ -148,6 +176,7 @@ void TRI_ClearFailurePointsDebugging() noexcept {
     WRITE_LOCKER(writeLocker, ::failurePointsLock);
     numExisting = ::failurePoints.size();
     ::failurePoints.clear();
+    ::hasFailurePoints.store(false, std::memory_order_relaxed);
   }
 
   if (numExisting > 0) {
@@ -177,3 +206,10 @@ template<>
 char const conpar<false>::open = '[';
 template<>
 char const conpar<false>::close = ']';
+
+thread_local std::ostringstream
+    arangodb::debug::AssertionLogger::assertionStringStream;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+thread_local arangodb::debug::AssertionConditionalStream
+    arangodb::debug::AssertionConditionalLogger::assertionStringStream;
+#endif

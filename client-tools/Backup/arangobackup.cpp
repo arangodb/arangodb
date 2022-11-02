@@ -21,6 +21,8 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "arangobackup.h"
+
 #include "Basics/Common.h"
 #include "Basics/signals.h"
 #include "Basics/directories.h"
@@ -28,6 +30,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/FileSystemFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
@@ -50,6 +53,8 @@ using namespace arangodb::application_features;
 int main(int argc, char* argv[]) {
   TRI_GET_ARGV(argc, argv);
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {
+    int ret = EXIT_SUCCESS;
+
     ArangoGlobalContext context(argc, argv, BIN_DIRECTORY);
     arangodb::signals::maskAllSignalsClient();
     context.installHup();
@@ -60,23 +65,32 @@ int main(int argc, char* argv[]) {
             "Usage: arangobackup " + BackupFeature::operationList("|") +
                 " [<options>]",
             "For more information use:", BIN_DIRECTORY));
-    ApplicationServer server(options, BIN_DIRECTORY);
-    int ret = EXIT_SUCCESS;
+    ArangoBackupServer server(options, BIN_DIRECTORY);
 
-    server.addFeature<CommunicationFeaturePhase>();
-    server.addFeature<BasicFeaturePhaseClient>();
-    server.addFeature<GreetingsFeaturePhase>(true);
-
-    server.addFeature<BackupFeature>(ret);
-    server.addFeature<ClientFeature, HttpEndpointProvider>(false);
-    server.addFeature<ConfigFeature>("arangobackup");
-    server.addFeature<LoggerFeature>(false);
-    server.addFeature<RandomFeature>();
-    server.addFeature<ShellColorsFeature>();
-    server.addFeature<ShutdownFeature>(
-        std::vector<std::type_index>{std::type_index(typeid(BackupFeature))});
-    server.addFeature<SslFeature>();
-    server.addFeature<VersionFeature>();
+    server.addFeatures(Visitor{
+        []<typename T>(auto& server, TypeTag<T>) {
+          return std::make_unique<T>(server);
+        },
+        [](ArangoBackupServer& server, TypeTag<GreetingsFeaturePhase>) {
+          return std::make_unique<GreetingsFeaturePhase>(server,
+                                                         std::true_type{});
+        },
+        [&](ArangoBackupServer& server, TypeTag<ConfigFeature>) {
+          return std::make_unique<ConfigFeature>(server, context.binaryName());
+        },
+        [](ArangoBackupServer& server, TypeTag<LoggerFeature>) {
+          return std::make_unique<LoggerFeature>(server, false);
+        },
+        [](ArangoBackupServer& server, TypeTag<HttpEndpointProvider>) {
+          return std::make_unique<ClientFeature>(server, false);
+        },
+        [&](ArangoBackupServer& server, TypeTag<BackupFeature>) {
+          return std::make_unique<BackupFeature>(server, ret);
+        },
+        [](ArangoBackupServer& server, TypeTag<ShutdownFeature>) {
+          return std::make_unique<ShutdownFeature>(
+              server, std::array{ArangoBackupServer::id<BackupFeature>()});
+        }});
 
     try {
       server.run(argc, argv);

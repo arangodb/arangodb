@@ -49,23 +49,28 @@
 
 namespace {
 struct TestView : public arangodb::LogicalView {
+  static constexpr auto typeInfo() noexcept {
+    return std::pair{static_cast<arangodb::ViewType>(42),
+                     std::string_view{"testViewType"}};
+  }
+
   arangodb::Result _appendVelocyPackResult;
   arangodb::velocypack::Builder _properties;
 
   TestView(TRI_vocbase_t& vocbase,
            arangodb::velocypack::Slice const& definition)
-      : arangodb::LogicalView(vocbase, definition) {}
-  virtual arangodb::Result appendVelocyPackImpl(
-      arangodb::velocypack::Builder& builder, Serialization) const override {
-    builder.add("properties", _properties.slice());
+      : arangodb::LogicalView(*this, vocbase, definition) {}
+  arangodb::Result appendVPackImpl(arangodb::velocypack::Builder& build,
+                                   Serialization, bool) const override {
+    build.add("properties", _properties.slice());
     return _appendVelocyPackResult;
   }
   virtual arangodb::Result dropImpl() override {
-    return arangodb::LogicalViewHelperStorageEngine::drop(*this);
+    return arangodb::storage_helper::drop(*this);
   }
   virtual void open() override {}
   virtual arangodb::Result renameImpl(std::string const& oldName) override {
-    return arangodb::LogicalViewHelperStorageEngine::rename(*this, oldName);
+    return arangodb::storage_helper::rename(*this, oldName);
   }
   virtual arangodb::Result properties(arangodb::velocypack::Slice properties,
                                       bool /*isUserRequest*/,
@@ -83,15 +88,16 @@ struct ViewFactory : public arangodb::ViewFactory {
   virtual arangodb::Result create(arangodb::LogicalView::ptr& view,
                                   TRI_vocbase_t& vocbase,
                                   arangodb::velocypack::Slice definition,
-                                  bool /*isUserRequest*/) const override {
-    view = vocbase.createView(definition);
+                                  bool isUserRequest) const override {
+    view = vocbase.createView(definition, isUserRequest);
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result instantiate(
-      arangodb::LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-      arangodb::velocypack::Slice definition) const override {
+  virtual arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
+                                       TRI_vocbase_t& vocbase,
+                                       arangodb::velocypack::Slice definition,
+                                       bool /*isUserRequest*/) const override {
     view = std::make_shared<TestView>(vocbase, definition);
 
     return arangodb::Result();
@@ -100,23 +106,19 @@ struct ViewFactory : public arangodb::ViewFactory {
 
 }  // namespace
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
 class LogicalViewTest
     : public ::testing::Test,
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
                                             arangodb::LogLevel::ERR> {
  protected:
+  arangodb::ArangodServer server;
   StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
       features;
   ViewFactory viewFactory;
 
-  LogicalViewTest() : engine(server), server(nullptr, nullptr) {
+  LogicalViewTest() : server(nullptr, nullptr), engine(server) {
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector, false);
     selector.setEngineTesting(&engine);
@@ -148,9 +150,7 @@ class LogicalViewTest
     }
 
     auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
-    viewTypesFeature.emplace(arangodb::LogicalDataSource::Type::emplace(
-                                 std::string_view("testViewType")),
-                             viewFactory);
+    viewTypesFeature.emplace(TestView::typeInfo().second, viewFactory);
   }
 
   ~LogicalViewTest() {
@@ -170,10 +170,6 @@ class LogicalViewTest
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
 TEST_F(LogicalViewTest, test_auth) {
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
@@ -182,7 +178,7 @@ TEST_F(LogicalViewTest, test_auth) {
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                           testDBInfo(server));
-    auto logicalView = vocbase.createView(viewJson->slice());
+    auto logicalView = vocbase.createView(viewJson->slice(), false);
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RW));
   }
 
@@ -190,7 +186,7 @@ TEST_F(LogicalViewTest, test_auth) {
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                           testDBInfo(server));
-    auto logicalView = vocbase.createView(viewJson->slice());
+    auto logicalView = vocbase.createView(viewJson->slice(), false);
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
@@ -205,7 +201,7 @@ TEST_F(LogicalViewTest, test_auth) {
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                           testDBInfo(server));
-    auto logicalView = vocbase.createView(viewJson->slice());
+    auto logicalView = vocbase.createView(viewJson->slice(), false);
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
@@ -222,7 +218,7 @@ TEST_F(LogicalViewTest, test_auth) {
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                           testDBInfo(server));
-    auto logicalView = vocbase.createView(viewJson->slice());
+    auto logicalView = vocbase.createView(viewJson->slice(), false);
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",

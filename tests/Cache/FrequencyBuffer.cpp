@@ -27,7 +27,7 @@
 #include <cstdint>
 #include <memory>
 
-#include "ApplicationFeatures/SharedPRNGFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "Cache/FrequencyBuffer.h"
 
 #include "Mocks/Servers.h"

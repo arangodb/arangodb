@@ -33,7 +33,6 @@
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 #include <velocypack/SharedSlice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::tests;
 

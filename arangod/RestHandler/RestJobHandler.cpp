@@ -24,7 +24,6 @@
 #include "RestJobHandler.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
@@ -39,8 +38,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestJobHandler::RestJobHandler(application_features::ApplicationServer& server,
-                               GeneralRequest* request,
+RestJobHandler::RestJobHandler(ArangodServer& server, GeneralRequest* request,
                                GeneralResponse* response,
                                AsyncJobManager* jobManager)
     : RestBaseHandler(server, request, response), _jobManager(jobManager) {

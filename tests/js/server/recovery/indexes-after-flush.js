@@ -37,9 +37,9 @@ function runSetup () {
   internal.debugClearFailAt();
 
   db._drop('UnitTestsRecovery');
-  var c = db._create('UnitTestsRecovery');
-  c.ensureSkiplist('value1');
-  c.ensureHashIndex('value2');
+  let c = db._create('UnitTestsRecovery');
+  c.ensureIndex({ type: "skiplist", fields: ["value1"] });
+  c.ensureIndex({ type: "hash", fields: ["value2"] });
   
   internal.wal.flush(true, true);
 

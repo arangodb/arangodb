@@ -31,7 +31,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <numeric>
 #include <unordered_set>
@@ -50,10 +49,16 @@ namespace graph {
 class MockGraph {
  public:
   struct EdgeDef {
-    EdgeDef() : _from(""), _to(""), _weight(0.0), _eCol(""){};
+    EdgeDef() : _id(0), _from(""), _to(""), _weight(0.0), _eCol(""){};
 
-    EdgeDef(std::string from, std::string to, double weight, std::string eCol)
-        : _from(from), _to(to), _weight(weight), _eCol(eCol){};
+    EdgeDef(size_t uniqueEdgeId, std::string from, std::string to,
+            double weight, std::string eCol)
+        : _id(uniqueEdgeId),
+          _from(from),
+          _to(to),
+          _weight(weight),
+          _eCol(eCol){};
+    size_t _id;
     std::string _from;
     std::string _to;
     double _weight;
@@ -62,6 +67,8 @@ class MockGraph {
     std::string toString() const {
       return "<EdgeDef>(_from: " + _from + ", to: " + _to + ")";
     }
+
+    std::string generateId() const;
 
     void addToBuilder(arangodb::velocypack::Builder& builder) const;
   };
@@ -86,7 +93,8 @@ class MockGraph {
   MockGraph() {}
   ~MockGraph() {}
 
-  EdgeDef addEdge(std::string from, std::string to, double weight = 1.0);
+  EdgeDef addEdge(size_t uniqueEdgeId, std::string from, std::string to,
+                  double weight = 1.0);
   EdgeDef addEdge(size_t from, size_t to, double weight = 1.0);
 
   auto edges() const -> std::vector<EdgeDef> const& { return _edges; }
@@ -96,6 +104,10 @@ class MockGraph {
 
   std::string const& getVertexCollectionName() const {
     return _vertexCollectionName;
+  }
+
+  std::string const& getSatVertexCollectionName() const {
+    return _satVertexCollectionName;
   }
 
   std::string const& getEdgeCollectionName() const {
@@ -128,6 +140,13 @@ class MockGraph {
                  std::vector<EdgeDef> const& secondEdges = {}) const;
 
  protected:
+  void storeVertexData(
+      TRI_vocbase_t& vocbase, std::string const& vertexShardName,
+      std::unordered_set<VertexDef, hashVertexDef> const& vertexData) const;
+
+  void storeEdgeData(TRI_vocbase_t& vocbase, std::string const& edgeShardName,
+                     std::vector<EdgeDef> const& edgeData) const;
+
   std::vector<std::pair<std::string, std::string>> const&
   getVertexShardNameServerPairs() const {
     return _vertexShards;
@@ -141,6 +160,7 @@ class MockGraph {
   std::vector<EdgeDef> _edges;
   std::unordered_set<VertexDef, hashVertexDef> _vertices;
   std::string _vertexCollectionName{"v"};
+  std::string _satVertexCollectionName{"satColl"};
   std::string _edgeCollectionName{"e"};
 
  private:

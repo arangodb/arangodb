@@ -34,7 +34,7 @@ function help() {
 
 # defaults
 NRAGENTS=1
-NRDBSERVERS=2
+NRDBSERVERS=3
 NRCOORDINATORS=1
 POOLSZ=""
 TRANSPORT="tcp"

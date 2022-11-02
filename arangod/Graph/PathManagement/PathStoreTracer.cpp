@@ -33,10 +33,12 @@
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
+#include "Graph/Steps/ClusterProviderStep.h"
 #include "Graph/Types/ValidationResult.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #endif
 
 using namespace arangodb;
@@ -201,20 +203,49 @@ template void arangodb::graph::
 /* ClusterProvider Section */
 
 template class ::arangodb::graph::PathStoreTracer<
-    PathStore<ClusterProvider::Step>>;
+    PathStore<ClusterProviderStep>>;
 
 // Tracing
 template void ::arangodb::graph::
-    PathStoreTracer<PathStore<ClusterProvider::Step>>::buildPath<
-        PathResult<ProviderTracer<ClusterProvider>,
-                   ProviderTracer<ClusterProvider>::Step>>(
-        ProviderTracer<ClusterProvider>::Step const& vertex,
-        PathResult<ProviderTracer<ClusterProvider>,
-                   ProviderTracer<ClusterProvider>::Step>& path) const;
+    PathStoreTracer<PathStore<ClusterProviderStep>>::buildPath<
+        PathResult<ProviderTracer<ClusterProvider<ClusterProviderStep>>,
+                   ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>>(
+        ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step const&
+            vertex,
+        PathResult<ProviderTracer<ClusterProvider<ClusterProviderStep>>,
+                   ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>&
+            path) const;
 
-template void
-arangodb::graph::PathStoreTracer<PathStore<ClusterProvider::Step>>::
-    reverseBuildPath<ProviderTracer<ClusterProvider>>(
-        ProviderTracer<ClusterProvider>::Step const& vertex,
-        PathResult<ProviderTracer<ClusterProvider>,
-                   ProviderTracer<ClusterProvider>::Step>& path) const;
+template void arangodb::graph::PathStoreTracer<PathStore<ClusterProviderStep>>::
+    reverseBuildPath<ProviderTracer<ClusterProvider<ClusterProviderStep>>>(
+        ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step const&
+            vertex,
+        PathResult<ProviderTracer<ClusterProvider<ClusterProviderStep>>,
+                   ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>&
+            path) const;
+
+#ifdef USE_ENTERPRISE
+
+template void ::arangodb::graph::
+    PathStoreTracer<PathStore<ClusterProviderStep>>::buildPath<PathResult<
+        ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>,
+        ProviderTracer<SingleServerProvider<ClusterProviderStep>>::Step>>(
+        ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>::
+            Step const& vertex,
+        PathResult<
+            ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>,
+            ProviderTracer<
+                enterprise::SmartGraphProvider<ClusterProviderStep>>::Step>&
+            path) const;
+
+template void arangodb::graph::PathStoreTracer<PathStore<ClusterProviderStep>>::
+    reverseBuildPath<
+        ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>>(
+        ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>::
+            Step const& vertex,
+        PathResult<
+            ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>,
+            ProviderTracer<
+                enterprise::SmartGraphProvider<ClusterProviderStep>>::Step>&
+            path) const;
+#endif

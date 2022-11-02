@@ -25,7 +25,9 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/Expression.h"
+#include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -37,12 +39,17 @@ PruneExpressionEvaluator::PruneExpressionEvaluator(
     size_t pathVarIdx, Expression* expr)
     : _pruneExpression(expr),
       _ctx(trx, query, cache, std::move(vars), std::move(regs), vertexVarIdx,
-           edgeVarIdx, pathVarIdx) {}
+           edgeVarIdx, pathVarIdx) {
+  TRI_ASSERT(_pruneExpression == nullptr ||
+             !ServerState::instance()->isRunningInCluster() ||
+             _pruneExpression->canRunOnDBServer(_ctx.vocbase().isOneShard()));
+}
 
 PruneExpressionEvaluator::~PruneExpressionEvaluator() = default;
 
 bool PruneExpressionEvaluator::evaluate() {
   bool mustDestroy = false;
+  TRI_ASSERT(_pruneExpression != nullptr);
   aql::AqlValue res = _pruneExpression->execute(&_ctx, mustDestroy);
   arangodb::aql::AqlValueGuard guard(res, mustDestroy);
   return res.toBoolean();

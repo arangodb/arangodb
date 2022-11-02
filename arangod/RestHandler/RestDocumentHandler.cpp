@@ -26,11 +26,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Logger/LogContextKeys.h"
 #include "Random/RandomGenerator.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
@@ -47,12 +45,45 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDocumentHandler::RestDocumentHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestDocumentHandler::RestDocumentHandler(ArangodServer& server,
+                                         GeneralRequest* request,
+                                         GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestDocumentHandler::~RestDocumentHandler() = default;
+
+RequestLane RestDocumentHandler::lane() const {
+  if (ServerState::instance()->isDBServer()) {
+    if (_request->requestType() == rest::RequestType::GET) {
+      if (!_request->header(StaticStrings::AqlDocumentCall).empty()) {
+        // DOCUMENT() function call from inside an AQL query. this will only
+        // read data and does not need to wait on other requests. we will
+        // give this somewhat higher priority because finishing this request
+        // can unblock others.
+        static_assert(PriorityRequestLane(RequestLane::CLUSTER_AQL_DOCUMENT) ==
+                          RequestPriority::MED,
+                      "invalid request lane priority");
+        return RequestLane::CLUSTER_AQL_DOCUMENT;
+      }
+      // fall through for non-DOCUMENT() GET requests
+    } else {
+      // non-GET requests
+      bool isSyncReplication = false;
+      // We do not care for the real value, enough if it is there.
+      std::ignore = _request->value(
+          StaticStrings::IsSynchronousReplicationString, isSyncReplication);
+      if (isSyncReplication) {
+        return RequestLane::SERVER_SYNCHRONOUS_REPLICATION;
+        // This leads to the high queue, we want replication requests to be
+        // executed with a higher prio than leader requests, even if they
+        // are done from AQL.
+      }
+
+      // fall through for not-GET, non-replication requests
+    }
+  }
+  return RequestLane::CLIENT_SLOW;
+}
 
 RestStatus RestDocumentHandler::execute() {
   // extract the sub-request type
@@ -85,10 +116,10 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
   if (isFinalized) {
     // reset the transaction so it releases all locks as early as possible
     _activeTrx.reset();
-
+    TRI_ASSERT(_request != nullptr);
+    TRI_ASSERT(_response != nullptr);
     try {
-      GeneralRequest const* request = _request.get();
-      auto const type = request->requestType();
+      auto const type = _request->requestType();
       auto const result = _response->responseCode();
 
       switch (type) {
@@ -100,7 +131,7 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
         case rest::RequestType::PATCH:
           break;
         default:
-          events::IllegalDocumentOperation(*request, result);
+          events::IllegalDocumentOperation(*_request, result);
           break;
       }
     } catch (...) {
@@ -180,6 +211,7 @@ RestStatus RestDocumentHandler::insertDocument() {
       }
     }
   }
+
   opOptions.returnOld =
       _request->parsedValue(StaticStrings::ReturnOldString, false) &&
       opOptions.isOverwriteModeUpdateReplace();
@@ -305,6 +337,20 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   OperationOptions options(_context);
   options.ignoreRevs = true;
 
+  // Check if dirty reads are allowed:
+  // This will be used in `createTransaction` below, if that creates
+  // a new transaction. Otherwise, we use the default given by the
+  // existing transaction.
+  bool found = false;
+  std::string const& val =
+      _request->header(StaticStrings::AllowDirtyReads, found);
+  if (found && StringUtils::boolean(val)) {
+    // This will be used in `createTransaction` below, if that creates
+    // a new transaction. Otherwise, we use the default given by the
+    // existing transaction.
+    options.allowDirtyReads = true;
+  }
+
   RevisionId ifRid = extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
     ifRid = RevisionId::max();  // an impossible rev, so precondition failed
@@ -338,6 +384,10 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   if (!res.ok()) {
     generateTransactionError(collection, OperationResult(res, options), "");
     return RestStatus::DONE;
+  }
+
+  if (_activeTrx->state()->options().allowDirtyReads) {
+    setOutgoingDirtyReadsHeader(true);
   }
 
   return waitForFuture(
@@ -509,7 +559,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     RevisionId revInBody = RevisionId::fromSlice(body);
     if ((headerRev.isSet() && revInBody != headerRev) || keyInBody.isNone() ||
         keyInBody.isNull() ||
-        (keyInBody.isString() && keyInBody.copyString() != key)) {
+        (keyInBody.isString() && keyInBody.stringView() != key)) {
       // We need to rewrite the document with the given revision and key:
       buffer = std::make_shared<VPackBuffer<uint8_t>>();
       VPackBuilder builder(buffer);
@@ -777,6 +827,18 @@ RestStatus RestDocumentHandler::readManyDocuments() {
   opOptions.ignoreRevs =
       _request->parsedValue(StaticStrings::IgnoreRevsString, true);
 
+  // Check if dirty reads are allowed:
+  bool found = false;
+  std::string const& val =
+      _request->header(StaticStrings::AllowDirtyReads, found);
+  if (found && StringUtils::boolean(val)) {
+    opOptions.allowDirtyReads = true;
+    // This will tell `createTransaction` below, that in the case it
+    // actually creates a new transaction (rather than using an existing
+    // one), we want to read from followers. If the transaction is already
+    // there, the flag is ignored.
+  }
+
   _activeTrx = createTransaction(cname, AccessMode::Type::READ, opOptions);
 
   // ...........................................................................
@@ -794,6 +856,10 @@ RestStatus RestDocumentHandler::readManyDocuments() {
   VPackSlice const search = this->parseVPackBody(success);
   if (!success) {  // error message generated in parseVPackBody
     return RestStatus::DONE;
+  }
+
+  if (_activeTrx->state()->options().allowDirtyReads) {
+    setOutgoingDirtyReadsHeader(true);
   }
 
   return waitForFuture(

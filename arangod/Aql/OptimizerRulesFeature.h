@@ -27,17 +27,17 @@
 #include <unordered_map>
 #include <vector>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/OptimizerRule.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace aql {
 
-class OptimizerRulesFeature final
-    : public application_features::ApplicationFeature {
+class OptimizerRulesFeature final : public ArangodFeature {
  public:
-  explicit OptimizerRulesFeature(
-      application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "OptimizerRules"; }
+
+  explicit OptimizerRulesFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;

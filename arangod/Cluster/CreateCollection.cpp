@@ -23,9 +23,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CreateCollection.h"
-#include "MaintenanceFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
@@ -42,7 +42,6 @@
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -137,9 +136,13 @@ bool CreateCollection::first() {
     {
       VPackObjectBuilder d(&docket);
       for (auto const& i : VPackObjectIterator(props)) {
-        auto const& key = i.key.copyString();
-        if (key == ID || key == NAME || key == GLOB_UID || key == OBJECT_ID) {
-          if (key == GLOB_UID || key == OBJECT_ID) {
+        std::string_view key = i.key.stringView();
+        if (key == StaticStrings::DataSourceId ||
+            key == StaticStrings::DataSourceName ||
+            key == StaticStrings::DataSourceGuid ||
+            key == StaticStrings::ObjectId) {
+          if (key == StaticStrings::DataSourceGuid ||
+              key == StaticStrings::ObjectId) {
             LOG_TOPIC("44577", WARN, Logger::MAINTENANCE)
                 << "unexpected " << key << " in " << props.toJson();
           }
@@ -153,7 +156,8 @@ bool CreateCollection::first() {
     std::shared_ptr<LogicalCollection> col;
     OperationOptions options(ExecContext::current());
     res.reset(Collections::create(vocbase, options, shard, type, docket.slice(),
-                                  waitForRepl, enforceReplFact, false, col));
+                                  waitForRepl, enforceReplFact,
+                                  /*isNewDatabase*/ false, col));
     result(res);
     if (col) {
       LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)

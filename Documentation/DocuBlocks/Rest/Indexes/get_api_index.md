@@ -9,6 +9,12 @@
 @RESTQUERYPARAM{collection,string,required}
 The collection name.
 
+@RESTQUERYPARAM{withStats,boolean,optional}
+Whether to include figures and estimates in the result.
+
+@RESTQUERYPARAM{withHidden,boolean,optional}
+Whether to include hidden indexes in the result.
+
 @RESTDESCRIPTION
 Returns an object with an attribute *indexes* containing an array of all
 index descriptions for the given collection. The same information is also
@@ -28,8 +34,8 @@ Return information about all indexes
     var cn = "products";
     db._drop(cn);
     db._create(cn);
-    db[cn].ensureHashIndex("name");
-    db[cn].ensureSkiplist("price", { sparse: true });
+    db[cn].ensureIndex({ type: "persistent", fields: ["name"] });
+    db[cn].ensureIndex({ type: "persistent", fields: ["price"], sparse: true });
 
     var url = "/_api/index?collection=" + cn;
 

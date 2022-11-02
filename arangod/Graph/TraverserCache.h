@@ -29,8 +29,10 @@
 
 #include <velocypack/HashedStringRef.h>
 
+#include <cstdint>
 #include <string_view>
 #include <unordered_set>
+#include <utility>
 
 namespace arangodb {
 
@@ -90,16 +92,28 @@ class TraverserCache {
   virtual bool appendVertex(std::string_view idString,
                             arangodb::aql::AqlValue& result);
 
-  size_t getAndResetInsertedDocuments() {
-    size_t tmp = _insertedDocuments;
-    _insertedDocuments = 0;
-    return tmp;
+  [[nodiscard]] std::uint64_t getAndResetInsertedDocuments() {
+    return std::exchange(_insertedDocuments, 0);
   }
 
-  size_t getAndResetFilteredDocuments() {
-    size_t tmp = _filteredDocuments;
-    _filteredDocuments = 0;
-    return tmp;
+  [[nodiscard]] std::uint64_t getAndResetFiltered() {
+    return std::exchange(_filtered, 0);
+  }
+
+  [[nodiscard]] std::uint64_t getAndResetCursorsCreated() {
+    return std::exchange(_cursorsCreated, 0);
+  }
+
+  [[nodiscard]] std::uint64_t getAndResetCursorsRearmed() {
+    return std::exchange(_cursorsRearmed, 0);
+  }
+
+  [[nodiscard]] std::uint64_t getAndResetCacheHits() {
+    return std::exchange(_cacheHits, 0);
+  }
+
+  [[nodiscard]] std::uint64_t getAndResetCacheMisses() {
+    return std::exchange(_cacheMisses, 0);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -111,9 +125,20 @@ class TraverserCache {
   arangodb::velocypack::HashedStringRef persistString(
       arangodb::velocypack::HashedStringRef idString);
 
-  void increaseFilterCounter() { _filteredDocuments++; }
-
-  void increaseCounter() { _insertedDocuments++; }
+  void incrDocuments(std::uint64_t value = 1) noexcept {
+    _insertedDocuments += value;
+  }
+  void incrFiltered(std::uint64_t value = 1) noexcept { _filtered += value; }
+  void incrCursorsCreated(std::uint64_t value = 1) noexcept {
+    _cursorsCreated += value;
+  }
+  void incrCursorsRearmed(std::uint64_t value = 1) noexcept {
+    _cursorsRearmed += value;
+  }
+  void incrCacheHits(std::uint64_t value = 1) noexcept { _cacheHits += value; }
+  void incrCacheMisses(std::uint64_t value = 1) noexcept {
+    _cacheMisses += value;
+  }
 
   /// Only valid until the next call to this class
   virtual velocypack::Slice lookupToken(EdgeDocumentToken const& token);
@@ -135,15 +160,18 @@ class TraverserCache {
   //////////////////////////////////////////////////////////////////////////////
   arangodb::transaction::Methods* _trx;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Documents inserted in this cache
-  //////////////////////////////////////////////////////////////////////////////
-  size_t _insertedDocuments;
-
-  //////////////////////////////////////////////////////////////////////////////
+  std::uint64_t _insertedDocuments;
   /// @brief Documents filtered
-  //////////////////////////////////////////////////////////////////////////////
-  size_t _filteredDocuments;
+  std::uint64_t _filtered;
+  /// @brief number of cursor objects created
+  std::uint64_t _cursorsCreated;
+  /// @brief number of existing cursor objects that were rearmed
+  std::uint64_t _cursorsRearmed;
+  /// @brief number of cache lookup hits
+  std::uint64_t _cacheHits;
+  /// @brief number of cache lookup misses
+  std::uint64_t _cacheMisses;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Stringheap to take care of _id strings, s.t. they stay valid

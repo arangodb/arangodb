@@ -4,8 +4,6 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for transactions
 // /
-// / @file
-// /
 // / DISCLAIMER
 // /
 // / Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -28,23 +26,22 @@
 // / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require('jsunity');
-var internal = require('internal');
-var arangodb = require('@arangodb');
-var helper = require('@arangodb/aql-helper');
-var db = arangodb.db;
-var testHelper = require('@arangodb/test-helper').Helper;
+const jsunity = require('jsunity');
+const internal = require('internal');
+const arangodb = require('@arangodb');
+const helper = require('@arangodb/aql-helper');
+const db = arangodb.db;
+const testHelper = require('@arangodb/test-helper').Helper;
 const isCluster = require('@arangodb/cluster').isCluster();
 
-var compareStringIds = function (l, r) {
+let compareStringIds = function (l, r) {
   'use strict';
-  var i;
   if (l.length !== r.length) {
     return l.length - r.length < 0 ? -1 : 1;
   }
 
   // length is equal
-  for (i = 0; i < l.length; ++i) {
+  for (let i = 0; i < l.length; ++i) {
     if (l[i] !== r[i]) {
       return l[i] < r[i] ? -1 : 1;
     }
@@ -67,8 +64,8 @@ var sortedKeys = function (col) {
 
 function transactionFailuresSuite () {
   'use strict';
-  var cn = 'UnitTestsTransaction';
-  var c = null;
+  const cn = 'UnitTestsTransaction';
+  let c = null;
 
   return {
 
@@ -81,12 +78,8 @@ function transactionFailuresSuite () {
     tearDown: function () {
       internal.debugClearFailAt();
 
-      if (c !== null) {
-        c.drop();
-      }
-
+      db._drop(cn);
       c = null;
-      internal.wait(0);
     },
     
     testCommitEmptyTransactionFailure : function () {
@@ -114,7 +107,7 @@ function transactionFailuresSuite () {
 
     testCommitTransactionWithRemovalsFailure : function () {
       let docs = [];
-      for (var i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         docs.push({ _key: "test" + i });
       }
       c.insert(docs);
@@ -181,8 +174,8 @@ function transactionFailuresSuite () {
 
 function transactionRevisionsSuite () {
   'use strict';
-  var cn = 'UnitTestsTransaction';
-  var c = null;
+  const cn = 'UnitTestsTransaction';
+  let c = null;
 
   return {
 
@@ -194,13 +187,7 @@ function transactionRevisionsSuite () {
 
     tearDown: function () {
       internal.debugClearFailAt();
-
-      if (c !== null) {
-        c.drop();
-      }
-
-      c = null;
-      internal.wait(0);
+      db._drop(cn);
     },
 
     testInsertUniqueFailing: function () {
@@ -396,20 +383,9 @@ function transactionRevisionsSuite () {
   };
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief test suite
-// //////////////////////////////////////////////////////////////////////////////
-
 function transactionInvocationSuite () {
   'use strict';
   return {
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief set up
-    // //////////////////////////////////////////////////////////////////////////////
-
-    setUp: function () {
-    },
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: invalid invocations of TRANSACTION() function
@@ -657,17 +633,12 @@ function transactionInvocationSuite () {
 
 function transactionCollectionsSuite () {
   'use strict';
-  var cn1 = 'UnitTestsTransaction1';
-  var cn2 = 'UnitTestsTransaction2';
-
-  var c1 = null;
-  var c2 = null;
+  const cn1 = 'UnitTestsTransaction1';
+  const cn2 = 'UnitTestsTransaction2';
+  let c1 = null;
+  let c2 = null;
 
   return {
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief set up
-    // //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       db._drop(cn1);
@@ -677,23 +648,12 @@ function transactionCollectionsSuite () {
       c2 = db._create(cn2);
     },
 
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief tear down
-    // //////////////////////////////////////////////////////////////////////////////
-
     tearDown: function () {
-      if (c1 !== null) {
-        c1.drop();
-      }
-
+      db._drop(cn1);
       c1 = null;
 
-      if (c2 !== null) {
-        c2.drop();
-      }
-
+      db._drop(cn2);
       c2 = null;
-      internal.wait(0);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1021,10 +981,11 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testAqlRead: function () {
-      var i = 0;
-      for (i = 0; i < 10; ++i) {
-        c1.save({ _key: 'test' + i });
+      let docs = [];
+      for (let i = 0; i < 10; ++i) {
+        docs.push({ _key: 'test' + i });
       }
+      c1.insert(docs);
 
       var obj = {
         collections: {
@@ -1045,11 +1006,12 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testAqlReadMulti: function () {
-      var i = 0;
-      for (i = 0; i < 10; ++i) {
-        c1.save({ _key: 'test' + i });
-        c2.save({ _key: 'test' + i });
+      let docs = [];
+      for (let i = 0; i < 10; ++i) {
+        docs.push({ _key: 'test' + i });
       }
+      c1.insert(docs);
+      c2.insert(docs);
 
       var obj = {
         collections: {
@@ -1070,11 +1032,12 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testAqlReadMultiUndeclared: function () {
-      var i = 0;
-      for (i = 0; i < 10; ++i) {
-        c1.save({ _key: 'test' + i });
-        c2.save({ _key: 'test' + i });
+      let docs = [];
+      for (let i = 0; i < 10; ++i) {
+        docs.push({ _key: 'test' + i });
       }
+      c1.insert(docs);
+      c2.insert(docs);
 
       var obj = {
         collections: {
@@ -1095,10 +1058,11 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testAqlWrite: function () {
-      var i = 0;
-      for (i = 0; i < 10; ++i) {
-        c1.save({ _key: 'test' + i });
+      let docs = [];
+      for (let i = 0; i < 10; ++i) {
+        docs.push({ _key: 'test' + i });
       }
+      c1.insert(docs);
 
       var obj = {
         collections: {
@@ -1122,11 +1086,12 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testAqlReadWrite: function () {
-      var i = 0;
-      for (i = 0; i < 10; ++i) {
-        c1.save({ _key: 'test' + i });
-        c2.save({ _key: 'test' + i });
+      let docs = [];
+      for (let i = 0; i < 10; ++i) {
+        docs.push({ _key: 'test' + i });
       }
+      c1.insert(docs);
+      c2.insert(docs);
 
       var obj = {
         collections: {
@@ -1151,11 +1116,12 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testAqlWriteUndeclared: function () {
-      var i = 0;
-      for (i = 0; i < 10; ++i) {
-        c1.save({ _key: 'test' + i });
-        c2.save({ _key: 'test' + i });
+      let docs = [];
+      for (let i = 0; i < 10; ++i) {
+        docs.push({ _key: 'test' + i });
       }
+      c1.insert(docs);
+      c2.insert(docs);
 
       var obj = {
         collections: {
@@ -1185,11 +1151,12 @@ function transactionCollectionsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testAqlMultiWrite: function () {
-      var i = 0;
-      for (i = 0; i < 10; ++i) {
-        c1.save({ _key: 'test' + i });
-        c2.save({ _key: 'test' + i });
+      let docs = [];
+      for (let i = 0; i < 10; ++i) {
+        docs.push({ _key: 'test' + i });
       }
+      c1.insert(docs);
+      c2.insert(docs);
 
       var obj = {
         collections: {
@@ -1223,40 +1190,24 @@ function transactionCollectionsSuite () {
 
 function transactionOperationsSuite () {
   'use strict';
-  var cn1 = 'UnitTestsTransaction1';
-  var cn2 = 'UnitTestsTransaction2';
-
-  var c1 = null;
-  var c2 = null;
+  const cn1 = 'UnitTestsTransaction1';
+  const cn2 = 'UnitTestsTransaction2';
+  let c1 = null;
+  let c2 = null;
 
   return {
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief set up
-    // //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       db._drop(cn1);
       db._drop(cn2);
     },
 
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief tear down
-    // //////////////////////////////////////////////////////////////////////////////
-
     tearDown: function () {
-      if (c1 !== null) {
-        c1.drop();
-      }
-
+      db._drop(cn1);
       c1 = null;
 
-      if (c2 !== null) {
-        c2.drop();
-      }
-
+      db._drop(cn2);
       c2 = null;
-      internal.wait(0);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1333,14 +1284,14 @@ function transactionOperationsSuite () {
     // / @brief test: trx with create index operation
     // //////////////////////////////////////////////////////////////////////////////
 
-    testCreateHashConstraint: function () {
+    testCreateUniqueIndex: function () {
       c1 = db._create(cn1);
 
-      var obj = {
+      let obj = {
         collections: {
         },
         action: function () {
-          c1.ensureUniqueConstraint('foo');
+          c1.ensureIndex({ type: "persistent", fields: ["foo"], unique: true });
           fail();
         }
       };
@@ -1357,62 +1308,14 @@ function transactionOperationsSuite () {
     // / @brief test: trx with create index operation
     // //////////////////////////////////////////////////////////////////////////////
 
-    testCreateHashIndex: function () {
+    testCreateNonUniqueIndex: function () {
       c1 = db._create(cn1);
 
-      var obj = {
+      let obj = {
         collections: {
         },
         action: function () {
-          c1.ensureHashIndex('foo');
-          fail();
-        }
-      };
-
-      try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
-        assertEqual(arangodb.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, err.errorNum);
-      }
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: trx with create index operation
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testCreateSkiplistIndex: function () {
-      c1 = db._create(cn1);
-
-      var obj = {
-        collections: {
-        },
-        action: function () {
-          c1.ensureSkiplist('foo');
-          fail();
-        }
-      };
-
-      try {
-        TRANSACTION(obj);
-        fail();
-      } catch (err) {
-        assertEqual(arangodb.errors.ERROR_TRANSACTION_DISALLOWED_OPERATION.code, err.errorNum);
-      }
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: trx with create index operation
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testCreateSkiplistConstraint: function () {
-      c1 = db._create(cn1);
-
-      var obj = {
-        collections: {
-        },
-        action: function () {
-          c1.ensureUniqueSkiplist('foo');
+          c1.ensureIndex({ type: "persistent", fields: ["foo"] });
           fail();
         }
       };
@@ -1432,11 +1335,11 @@ function transactionOperationsSuite () {
     testCreateFulltextIndex: function () {
       c1 = db._create(cn1);
 
-      var obj = {
+      let obj = {
         collections: {
         },
         action: function () {
-          c1.ensureFulltextIndex('foo');
+          c1.ensureIndex({ type: "fulltext", fields: ["foo"] });
           fail();
         }
       };
@@ -1455,7 +1358,7 @@ function transactionOperationsSuite () {
 
     testDropIndex: function () {
       c1 = db._create(cn1);
-      var idx = c1.ensureUniqueConstraint('foo');
+      var idx = c1.ensureIndex({ type: "persistent", fields: ["foo"], unique: true });
 
       var obj = {
         collections: {
@@ -1526,9 +1429,11 @@ function transactionOperationsSuite () {
 
     testScan1: function () {
       c1 = db._create(cn1);
-      for (var i = 0; i < 100; ++i) {
-        c1.save({ _key: 'foo' + i, a: i });
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: 'foo' + i, a: i });
       }
+      c1.insert(docs);
 
       var obj = {
         collections: {
@@ -1555,9 +1460,11 @@ function transactionOperationsSuite () {
 
     testScan2: function () {
       c1 = db._create(cn1);
-      for (var i = 0; i < 100; ++i) {
-        c1.save({ _key: 'foo' + i, a: i });
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: 'foo' + i, a: i });
       }
+      c1.insert(docs);
 
       var obj = {
         collections: {
@@ -1809,7 +1716,7 @@ function transactionOperationsSuite () {
       c1 = db._create(cn1);
 
       let docs = [];
-      for (var i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         docs.push({ a: i });
       }
       c1.insert(docs);
@@ -1837,7 +1744,7 @@ function transactionOperationsSuite () {
       c1 = db._create(cn1);
 
       let docs = [];
-      for (var i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         docs.push({ a: i });
       }
       c1.insert(docs);
@@ -1864,13 +1771,15 @@ function transactionOperationsSuite () {
 
     testByExample: function () {
       c1 = db._create(cn1);
-      c1.ensureUniqueConstraint('name');
+      c1.ensureIndex({ type: "persistent", fields: ["name"], unique: true });
 
-      for (var i = 0; i < 100; ++i) {
-        c1.save({ name: 'test' + i });
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ name: 'test' + i });
       }
+      c1.insert(docs);
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         },
@@ -1890,15 +1799,15 @@ function transactionOperationsSuite () {
 
     testFirstExample1: function () {
       c1 = db._create(cn1);
-      c1.ensureUniqueConstraint('name');
+      c1.ensureIndex({ type: "persistent", fields: ["name"], unique: true });
 
       let docs = [];
-      for (var i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         docs.push({ name: 'test' + i });
       }
       c1.insert(docs);
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         },
@@ -1917,7 +1826,7 @@ function transactionOperationsSuite () {
 
     testFirstExample2: function () {
       c1 = db._create(cn1);
-      c1.ensureHashIndex('name');
+      c1.ensureIndex({ type: "persistent", fields: ["name"] });
 
       let docs = [];
       for (var i = 0; i < 100; ++i) {
@@ -1925,61 +1834,7 @@ function transactionOperationsSuite () {
       }
       c1.insert(docs);
 
-      var obj = {
-        collections: {
-          write: [ cn1 ]
-        },
-        action: function () {
-          var r = c1.firstExample({ name: 'test99' });
-          assertEqual('test99', r.name);
-        }
-      };
-
-      TRANSACTION(obj);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: trx with firstExample operation
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testFirstExample3: function () {
-      c1 = db._create(cn1);
-      c1.ensureUniqueSkiplist('name');
-
-      let docs = [];
-      for (var i = 0; i < 100; ++i) {
-        docs.push({ name: 'test' + i });
-      }
-      c1.insert(docs);
-
-      var obj = {
-        collections: {
-          write: [ cn1 ]
-        },
-        action: function () {
-          var r = c1.firstExample({ name: 'test99' });
-          assertEqual('test99', r.name);
-        }
-      };
-
-      TRANSACTION(obj);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: trx with firstExample operation
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testFirstExample4: function () {
-      c1 = db._create(cn1);
-      c1.ensureSkiplist('name');
-
-      let docs = [];
-      for (var i = 0; i < 100; ++i) {
-        docs.push({ name: 'test' + i });
-      }
-      c1.insert(docs);
-
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         },
@@ -1998,12 +1853,12 @@ function transactionOperationsSuite () {
 
     testFulltext: function () {
       c1 = db._create(cn1);
-      var idx = c1.ensureFulltextIndex('text');
+      var idx = c1.ensureIndex({ type: "fulltext", fields: ["text"] });
 
       c1.save({ text: 'steam', other: 1 });
       c1.save({ text: 'steamboot', other: 2 });
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         },
@@ -2022,32 +1877,19 @@ function transactionOperationsSuite () {
   };
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief test suite
-// //////////////////////////////////////////////////////////////////////////////
-
 function transactionBarriersSuite () {
   'use strict';
-  var cn1 = 'UnitTestsTransaction1';
-  var cn2 = 'UnitTestsTransaction2';
-
-  var c1 = null;
-  var c2 = null;
+  const cn1 = 'UnitTestsTransaction1';
+  const cn2 = 'UnitTestsTransaction2';
+  let c1 = null;
+  let c2 = null;
 
   return {
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief set up
-    // //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       db._drop(cn1);
       db._drop(cn2);
     },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief tear down
-    // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       if (c1 !== null) {
@@ -2061,7 +1903,6 @@ function transactionBarriersSuite () {
       }
 
       c2 = null;
-      internal.wait(0);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2189,16 +2030,10 @@ function transactionGraphSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
-      if (c1 !== null) {
-        c1.drop();
-      }
-
+      db._drop(cn1);
       c1 = null;
 
-      if (c2 !== null) {
-        c2.drop();
-      }
-
+      db._drop(cn2);
       c2 = null;
       try {
         G._drop('UnitTestsGraph');
@@ -2404,31 +2239,19 @@ function transactionGraphSuite () {
 
 function transactionRollbackSuite () {
   'use strict';
-  var cn1 = 'UnitTestsTransaction1';
+  const cn1 = 'UnitTestsTransaction1';
 
-  var c1 = null;
+  let c1 = null;
 
   return {
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief set up
-    // //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       db._drop(cn1);
     },
 
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief tear down
-    // //////////////////////////////////////////////////////////////////////////////
-
     tearDown: function () {
-      if (c1 !== null) {
-        c1.drop();
-      }
-
+      db._drop(cn1);
       c1 = null;
-      internal.wait(0);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2565,11 +2388,10 @@ function transactionRollbackSuite () {
       c1.save({ _key: 'bar', value: 'bar', a: 1 });
       c1.save({ _key: 'meow', value: 'meow' });
 
-      c1.ensureHashIndex('value');
-      c1.ensureSkiplist('value');
-      var good = false;
+      c1.ensureIndex({ type: "persistent", fields: ["value"] });
+      let good = false;
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         },
@@ -2738,11 +2560,10 @@ function transactionRollbackSuite () {
       c1.save({ _key: 'bar', value: 'bar', a: 1 });
       c1.save({ _key: 'meow', value: 'meow' });
 
-      c1.ensureHashIndex('value');
-      c1.ensureSkiplist('value');
-      var good = false;
+      c1.ensureIndex({ type: "persistent", fields: ["value"] });
+      let good = false;
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         },
@@ -2846,11 +2667,10 @@ function transactionRollbackSuite () {
       c1.save({ _key: 'bar', value: 'bar', a: 1 });
       c1.save({ _key: 'meow', value: 'meow' });
 
-      c1.ensureHashIndex('value');
-      c1.ensureSkiplist('value');
-      var good = false;
+      c1.ensureIndex({ type: "persistent", fields: ["value"] });
+      let good = false;
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         },
@@ -2887,11 +2707,10 @@ function transactionRollbackSuite () {
       c1.save({ _key: 'bar', value: 'bar', a: 1 });
       c1.save({ _key: 'meow', value: 'meow' });
 
-      c1.ensureHashIndex('value');
-      c1.ensureSkiplist('value');
-      var good = false;
+      c1.ensureIndex({ type: "persistent", fields: ["value"] });
+      let good = false;
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         },
@@ -2959,7 +2778,7 @@ function transactionRollbackSuite () {
     testRollbackTruncateNonEmpty: function () {
       c1 = db._create(cn1);
       let docs = [];
-      for (var i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         docs.push({ _key: 'foo' + i });
       }
       c1.insert(docs);
@@ -3025,10 +2844,10 @@ function transactionRollbackSuite () {
 
     testRollbackUniqueSecondary: function () {
       c1 = db._create(cn1);
-      c1.ensureUniqueConstraint('name');
-      var d1 = c1.save({ name: 'foo' });
+      c1.ensureIndex({ type: "persistent", fields: ["name"], unique: true });
+      let d1 = c1.save({ name: 'foo' });
 
-      var obj = {
+      let obj = {
         collections: {
           write: [ cn1 ]
         },
@@ -3057,9 +2876,8 @@ function transactionRollbackSuite () {
     testRollbackMixed1: function () {
       c1 = db._create(cn1);
 
-      var i;
       let docs = [];
-      for (i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         docs.push({_key: 'key' + i, value: i });
       }
       c1.insert(docs);
@@ -3069,6 +2887,8 @@ function transactionRollbackSuite () {
           write: [ cn1 ]
         },
         action: function () {
+          var i;
+
           for (i = 0; i < 50; ++i) {
             c1.remove('key' + i);
           }
@@ -3205,31 +3025,19 @@ function transactionRollbackSuite () {
 
 function transactionCountSuite () {
   'use strict';
-  var cn1 = 'UnitTestsTransaction1';
+  const cn1 = 'UnitTestsTransaction1';
 
-  var c1 = null;
+  let c1 = null;
 
   return {
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief set up
-    // //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       db._drop(cn1);
     },
 
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief tear down
-    // //////////////////////////////////////////////////////////////////////////////
-
     tearDown: function () {
-      if (c1 !== null) {
-        c1.drop();
-      }
-
+      db._drop(cn1);
       c1 = null;
-      internal.wait(0);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -3394,11 +3202,11 @@ function transactionCountSuite () {
 
 function transactionCrossCollectionSuite () {
   'use strict';
-  var cn1 = 'UnitTestsTransaction1';
-  var cn2 = 'UnitTestsTransaction2';
+  const cn1 = 'UnitTestsTransaction1';
+  const cn2 = 'UnitTestsTransaction2';
 
-  var c1 = null;
-  var c2 = null;
+  let c1 = null;
+  let c2 = null;
 
   return {
 
@@ -3416,18 +3224,11 @@ function transactionCrossCollectionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
-      if (c1 !== null) {
-        c1.drop();
-      }
-
+      db._drop(cn1);
       c1 = null;
 
-      if (c2 !== null) {
-        c2.drop();
-      }
-
+      db._drop(cn2);
       c2 = null;
-      internal.wait(0);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -3467,10 +3268,9 @@ function transactionCrossCollectionSuite () {
       c1 = db._create(cn1);
       c2 = db._create(cn2);
 
-      var i;
       let docs1 = [];
       let docs2 = [];
-      for (i = 0; i < 10; ++i) {
+      for (let i = 0; i < 10; ++i) {
         docs1.push({ _key: 'a' + i, a: i });
         docs2.push({ _key: 'b' + i, b: i });
       }
@@ -3482,6 +3282,7 @@ function transactionCrossCollectionSuite () {
           write: [ cn1, cn2 ]
         },
         action: function () {
+          var i;
           for (i = 0; i < 10; ++i) {
             c1.update('a' + i, { a: i + 20 });
 
@@ -3506,10 +3307,9 @@ function transactionCrossCollectionSuite () {
       c1 = db._create(cn1);
       c2 = db._create(cn2);
 
-      var i;
       let docs1 = [];
       let docs2 = [];
-      for (i = 0; i < 10; ++i) {
+      for (let i = 0; i < 10; ++i) {
         docs1.push({ _key: 'a' + i, a: i });
         docs2.push({ _key: 'b' + i, b: i });
       }
@@ -3521,6 +3321,7 @@ function transactionCrossCollectionSuite () {
           write: [ cn1, cn2 ]
         },
         action: function () {
+          var i;
           for (i = 0; i < 10; ++i) {
             c1.remove('a' + i);
             c2.remove('b' + i);
@@ -3543,10 +3344,9 @@ function transactionCrossCollectionSuite () {
       c1 = db._create(cn1);
       c2 = db._create(cn2);
 
-      var i;
       let docs1 = [];
       let docs2 = [];
-      for (i = 0; i < 10; ++i) {
+      for (let i = 0; i < 10; ++i) {
         docs1.push({ _key: 'a' + i, a: i });
         docs2.push({ _key: 'b' + i, b: i });
       }
@@ -3558,6 +3358,7 @@ function transactionCrossCollectionSuite () {
           write: [ cn1, cn2 ]
         },
         action: function () {
+          var i;
           for (i = 0; i < 10; ++i) {
             c1.remove('a' + i);
             c2.remove('b' + i);
@@ -3682,9 +3483,8 @@ function transactionCrossCollectionSuite () {
     testUnloadReloadFailedTrx: function () {
       c1 = db._create(cn1);
 
-      var i;
       let docs1 = [];
-      for (i = 0; i < 10; ++i) {
+      for (let i = 0; i < 10; ++i) {
         docs1.push({ _key: 'a' + i, a: i });
       }
       c1.insert(docs1);
@@ -3703,7 +3503,7 @@ function transactionCrossCollectionSuite () {
         }
       };
 
-      for (i = 0; i < 50; ++i) {
+      for (let i = 0; i < 50; ++i) {
         try {
           TRANSACTION(obj);
           fail();
@@ -3721,58 +3521,40 @@ function transactionCrossCollectionSuite () {
   };
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief test suite
-// //////////////////////////////////////////////////////////////////////////////
-
 function transactionConstraintsSuite () {
   'use strict';
-  var cn = 'UnitTestsTransaction';
-
-  var c = null;
+  const cn = 'UnitTestsTransaction';
+  let c = null;
 
   return {
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief set up
-    // //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       db._drop(cn);
     },
 
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief tear down
-    // //////////////////////////////////////////////////////////////////////////////
-
     tearDown: function () {
-      if (c !== null) {
-        c.drop();
-      }
-
+      db._drop(cn);
       c = null;
-      internal.wait(0);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: rollback in case of a server-side fail
     // //////////////////////////////////////////////////////////////////////////////
 
-    testMultiHashConstraintInsert1: function () {
+    testMultiUniqueConstraintInsert1: function () {
       c = db._create(cn);
-      c.ensureUniqueConstraint('value1');
-      c.ensureUniqueConstraint('value2');
+      c.ensureIndex({ type: "persistent", fields: ["value1"], unique: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], unique: true });
 
-      var i;
       let docs = [];
-      for (i = 0; i < 10; ++i) {
+      for (let i = 0; i < 10; ++i) {
         docs.push({ _key: 'test' + i, value1: i, value2: i });
       }
       c.insert(docs);
       assertEqual(10, c.count());
 
       try {
-        c.save({ value1: 9, value2: 17 });
+        c.insert({ value1: 9, value2: 17 });
         fail();
       } catch (err) {
         assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
@@ -3787,21 +3569,20 @@ function transactionConstraintsSuite () {
     // / @brief test: rollback in case of a server-side fail
     // //////////////////////////////////////////////////////////////////////////////
 
-    testMultiHashConstraintInsert2: function () {
+    testMultiUniqueConstraintInsert2: function () {
       c = db._create(cn);
-      c.ensureUniqueConstraint('value1');
-      c.ensureUniqueConstraint('value2');
+      c.ensureIndex({ type: "persistent", fields: ["value1"], unique: true });
+      c.ensureIndex({ type: "persistent", fields: ["value2"], unique: true });
 
-      var i;
       let docs = [];
-      for (i = 0; i < 10; ++i) {
+      for (let i = 0; i < 10; ++i) {
         docs.push({ _key: 'test' + i, value1: i, value2: i });
       }
       c.insert(docs);
       assertEqual(10, c.count());
 
       try {
-        c.save({ value1: 17, value2: 9 });
+        c.insert({ value1: 17, value2: 9 });
         fail();
       } catch (err) {
         assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
@@ -3811,64 +3592,6 @@ function transactionConstraintsSuite () {
       assertEqual(9, c.document('test9').value1);
       assertEqual(9, c.document('test9').value2);
     },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: rollback in case of a server-side fail
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testMultiSkipConstraintInsert1: function () {
-      c = db._create(cn);
-      c.ensureUniqueSkiplist('value1');
-      c.ensureUniqueSkiplist('value2');
-
-      var i;
-      let docs = [];
-      for (i = 0; i < 10; ++i) {
-        docs.push({ _key: 'test' + i, value1: i, value2: i });
-      }
-      c.insert(docs);
-      assertEqual(10, c.count());
-
-      try {
-        c.save({ value1: 9, value2: 17 });
-        fail();
-      } catch (err) {
-        assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
-      }
-
-      assertEqual(10, c.count());
-      assertEqual(9, c.document('test9').value1);
-      assertEqual(9, c.document('test9').value2);
-    },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test: rollback in case of a server-side fail
-    // //////////////////////////////////////////////////////////////////////////////
-
-    testMultiSkipConstraintInsert2: function () {
-      c = db._create(cn);
-      c.ensureUniqueSkiplist('value1');
-      c.ensureUniqueSkiplist('value2');
-
-      var i;
-      let docs = [];
-      for (i = 0; i < 10; ++i) {
-        docs.push({ _key: 'test' + i, value1: i, value2: i });
-      }
-      c.insert(docs);
-      assertEqual(10, c.count());
-
-      try {
-        c.save({ value1: 17, value2: 9 });
-        fail();
-      } catch (err) {
-        assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
-      }
-
-      assertEqual(10, c.count());
-      assertEqual(9, c.document('test9').value1);
-      assertEqual(9, c.document('test9').value2);
-    }
 
   };
 }
@@ -3879,13 +3602,9 @@ function transactionConstraintsSuite () {
 
 function transactionTraversalSuite () {
   'use strict';
-  var cn = 'UnitTestsTransaction';
+  const cn = 'UnitTestsTransaction';
 
   return {
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief set up
-    // //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       db._drop(cn + 'Vertex');
@@ -3893,15 +3612,14 @@ function transactionTraversalSuite () {
       db._create(cn + 'Vertex');
       db._createEdgeCollection(cn + 'Edge');
 
-      var i;
       let docs = [];
-      for (i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         docs.push({ _key: String(i) });
       }
       db.UnitTestsTransactionVertex.insert(docs);
 
       docs = [];
-      for (i = 1; i < 100; ++i) {
+      for (let i = 1; i < 100; ++i) {
         docs.push({_from: cn + 'Vertex/' + i, _to: cn + 'Vertex/' + (i + 1) });
       }
       db.UnitTestsTransactionEdge.insert(docs);

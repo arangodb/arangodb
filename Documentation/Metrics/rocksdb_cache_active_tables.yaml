@@ -1,0 +1,19 @@
+name: rocksdb_cache_active_tables
+introducedIn: "3.10.0"
+help: |
+  Global current number of hash tables in ArangoDB cache.
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric reflects the current number of active hash tables used by the
+  in-memory cache which sits in front of RocksDB. Active tables are used for
+  caching index entries. There should be one active table per index per shard
+  for each index that has in-memory caching enabled. There can also be
+  additional active tables while an existing hash table is migrated to a
+  larger table.

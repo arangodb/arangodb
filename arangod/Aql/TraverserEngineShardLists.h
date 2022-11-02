@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Cluster/ClusterTypes.h"
+#include "Containers/FlatHashMap.h"
 
 #include <set>
 #include <unordered_map>
@@ -41,7 +42,7 @@ class TraverserEngineShardLists {
  public:
   TraverserEngineShardLists(
       GraphNode const*, ServerID const& server,
-      std::unordered_map<ShardID, ServerID> const& shardMapping,
+      containers::FlatHashMap<ShardID, ServerID> const& shardMapping,
       QueryContext& query);
 
   ~TraverserEngineShardLists() = default;
@@ -57,7 +58,7 @@ class TraverserEngineShardLists {
 
  private:
   std::vector<ShardID> getAllLocalShards(
-      std::unordered_map<ShardID, ServerID> const& shardMapping,
+      containers::FlatHashMap<ShardID, ServerID> const& shardMapping,
       ServerID const& server,
       std::shared_ptr<std::vector<std::string>> shardIds,
       bool allowReadFromFollower);

@@ -21,6 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ClusterV8Functions.h"
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
@@ -77,8 +78,8 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  TRI_GET_GLOBALS();
-  auto& feature = v8g->_server.getFeature<ClusterFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& feature = v8g->server().getFeature<ClusterFeature>();
   auto res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector);
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -173,9 +174,10 @@ static void JS_WaitForEstimatorSync(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
 
-  v8g->_server.getFeature<EngineSelectorFeature>()
+  v8g->server()
+      .getFeature<EngineSelectorFeature>()
       .engine()
       .waitForEstimatorSync(std::chrono::seconds(10));
 
@@ -187,7 +189,7 @@ void ClusterV8Functions::registerResources() {
   ISOLATE;
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
 
   // patch ArangoCollection object
   v8::Handle<v8::ObjectTemplate> rt =

@@ -72,12 +72,10 @@ using namespace arangodb::httpclient;
 ////////////////////////////////////////////////////////////////////////////////
 
 GeneralClientConnection::GeneralClientConnection(
-    application_features::ApplicationServer& server, Endpoint* endpoint,
+    application_features::CommunicationFeaturePhase& comm, Endpoint* endpoint,
     double requestTimeout, double connectTimeout, size_t connectRetries)
-    : _server(server),
-      _endpoint(endpoint),
-      _comm(_server
-                .getFeature<application_features::CommunicationFeaturePhase>()),
+    : _endpoint(endpoint),
+      _comm(comm),
       _requestTimeout(requestTimeout),
       _connectTimeout(connectTimeout),
       _connectRetries(connectRetries),
@@ -93,13 +91,11 @@ GeneralClientConnection::GeneralClientConnection(
 }
 
 GeneralClientConnection::GeneralClientConnection(
-    application_features::ApplicationServer& server,
+    application_features::CommunicationFeaturePhase& comm,
     std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
     double connectTimeout, size_t connectRetries)
-    : _server(server),
-      _endpoint(endpoint.release()),
-      _comm(_server
-                .getFeature<application_features::CommunicationFeaturePhase>()),
+    : _endpoint(endpoint.release()),
+      _comm(comm),
       _requestTimeout(requestTimeout),
       _connectTimeout(connectTimeout),
       _connectRetries(connectRetries),
@@ -129,14 +125,14 @@ GeneralClientConnection::~GeneralClientConnection() {
 ////////////////////////////////////////////////////////////////////////////////
 
 GeneralClientConnection* GeneralClientConnection::factory(
-    application_features::ApplicationServer& server, Endpoint* endpoint,
+    application_features::CommunicationFeaturePhase& comm, Endpoint* endpoint,
     double requestTimeout, double connectTimeout, size_t numRetries,
     uint64_t sslProtocol) {
   if (endpoint->encryption() == Endpoint::EncryptionType::NONE) {
-    return new ClientConnection(server, endpoint, requestTimeout,
-                                connectTimeout, numRetries);
+    return new ClientConnection(comm, endpoint, requestTimeout, connectTimeout,
+                                numRetries);
   } else if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    return new SslClientConnection(server, endpoint, requestTimeout,
+    return new SslClientConnection(comm, endpoint, requestTimeout,
                                    connectTimeout, numRetries, sslProtocol);
   }
 
@@ -144,14 +140,14 @@ GeneralClientConnection* GeneralClientConnection::factory(
 }
 
 GeneralClientConnection* GeneralClientConnection::factory(
-    application_features::ApplicationServer& server,
+    application_features::CommunicationFeaturePhase& comm,
     std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
     double connectTimeout, size_t numRetries, uint64_t sslProtocol) {
   if (endpoint->encryption() == Endpoint::EncryptionType::NONE) {
-    return new ClientConnection(server, endpoint, requestTimeout,
-                                connectTimeout, numRetries);
+    return new ClientConnection(comm, endpoint, requestTimeout, connectTimeout,
+                                numRetries);
   } else if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    return new SslClientConnection(server, endpoint, requestTimeout,
+    return new SslClientConnection(comm, endpoint, requestTimeout,
                                    connectTimeout, numRetries, sslProtocol);
   }
 
@@ -470,5 +466,5 @@ bool GeneralClientConnection::handleRead(double timeout, StringBuffer& buffer,
 
 application_features::ApplicationServer& GeneralClientConnection::server()
     const {
-  return _server;
+  return _comm.server();
 }

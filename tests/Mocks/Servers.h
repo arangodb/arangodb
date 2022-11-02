@@ -29,6 +29,7 @@
 #include "Mocks/LogLevels.h"
 
 #include "Agency/Store.h"
+#include "RestServer/arangod.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
@@ -67,7 +68,7 @@ class MockServer {
              bool injectClusterIndexes = false);
   virtual ~MockServer();
 
-  application_features::ApplicationServer& server();
+  ArangodServer& server();
   void init();
 
   TRI_vocbase_t& getSystemDatabase() const;
@@ -120,7 +121,7 @@ class MockServer {
   arangodb::application_features::ApplicationServer::State
       _oldApplicationServerState = arangodb::application_features::
           ApplicationServer::State::UNINITIALIZED;
-  arangodb::application_features::ApplicationServer _server;
+  arangodb::ArangodServer _server;
   StorageEngineMock _engine;
   std::unordered_map<arangodb::application_features::ApplicationFeature*, bool>
       _features;
@@ -230,6 +231,11 @@ class MockClusterServer
           shardNameToServerNamePairs,
       TRI_col_type_e type,
       VPackSlice additionalProperties = VPackSlice{VPackSlice::nullSlice()});
+
+  std::shared_ptr<LogicalCollection> createSatCollection(
+      const std::string& dbName, std::string collectionName,
+      std::string shardName, std::vector<std::string> allServerNames,
+      TRI_col_type_e type, VPackSlice additionalProperties);
 #endif
 
   void buildCollectionProperties(VPackBuilder& props,
@@ -246,10 +252,13 @@ class MockClusterServer
       bool activateTracing = false, std::string queryString = "",
       std::function<void(arangodb::aql::Query&)> runBeforePrepare =
           [](arangodb::aql::Query&) {}) const;
+
+  ServerID const& getServerID() const;
+
   // You can only create specialized types
  protected:
   MockClusterServer(bool useAgencyMockConnection,
-                    arangodb::ServerState::RoleEnum role,
+                    arangodb::ServerState::RoleEnum role, ServerID serverId,
                     bool injectClusterIndexes = false);
   ~MockClusterServer();
 
@@ -272,23 +281,25 @@ class MockClusterServer
  private:
   bool _useAgencyMockPool;
   int _dummy;
+  ServerID _serverId;
 };
 
 class MockDBServer : public MockClusterServer {
  public:
-  MockDBServer(bool startFeatures = true, bool useAgencyMockConnection = true);
+  MockDBServer(ServerID serverId, bool startFeatures = true,
+               bool useAgencyMockConnection = true);
   ~MockDBServer();
 
   TRI_vocbase_t* createDatabase(std::string const& name) override;
   void dropDatabase(std::string const& name) override;
 
-  void createShard(std::string const& dbName, std::string shardName,
+  void createShard(std::string const& dbName, std::string const& shardName,
                    LogicalCollection& clusterCollection);
 };
 
 class MockCoordinator : public MockClusterServer {
  public:
-  MockCoordinator(bool startFeatures = true,
+  MockCoordinator(ServerID serverId, bool startFeatures = true,
                   bool useAgencyMockConnection = true,
                   bool injectClusterIndexes = false);
   ~MockCoordinator();

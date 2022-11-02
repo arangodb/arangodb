@@ -28,16 +28,32 @@
 
 #include "Basics/system-compiler.h"
 #include "Logger/LogTopic.h"
-#include "VocBase/LogicalDataSource.h"
 
 namespace arangodb {
 namespace iresearch {
 
-LogicalDataSource::Type const& dataSourceType();
-LogTopic& logTopic();
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the delimiter used to separate jSON nesting levels when
+/// generating
+///        flat iResearch field names
+////////////////////////////////////////////////////////////////////////////////
+inline constexpr char const NESTING_LEVEL_DELIMITER = '.';
 
-ADB_IGNORE_UNUSED static auto& DATA_SOURCE_TYPE = dataSourceType();
-ADB_IGNORE_UNUSED extern LogTopic TOPIC;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the prefix used to denote start of jSON list offset when generating
+///        flat iResearch field names
+////////////////////////////////////////////////////////////////////////////////
+inline constexpr char const NESTING_LIST_OFFSET_PREFIX = '[';
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the suffix used to denote end of jSON list offset when generating
+///        flat iResearch field names
+////////////////////////////////////////////////////////////////////////////////
+inline constexpr char const NESTING_LIST_OFFSET_SUFFIX = ']';
+
+[[maybe_unused]] extern LogTopic TOPIC;
+[[maybe_unused]] inline constexpr std::string_view
+    IRESEARCH_INVERTED_INDEX_TYPE = "inverted";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines the implementation version of the iresearch view interface
@@ -49,7 +65,7 @@ enum class ViewVersion : uint32_t {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief defines the implementation version of the iresearch link interface
+/// @brief defines the implementation version of the iresearch index interface
 ///        e.g. which how data is stored in iresearch
 ////////////////////////////////////////////////////////////////////////////////
 enum class LinkVersion : uint32_t {
@@ -58,14 +74,14 @@ enum class LinkVersion : uint32_t {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @return default link version
+/// @return default index version
 ////////////////////////////////////////////////////////////////////////////////
 constexpr LinkVersion getDefaultVersion(bool isUserRequest) noexcept {
   return isUserRequest ? LinkVersion::MAX : LinkVersion::MIN;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @return format identifier according to a specified link version
+/// @return format identifier according to a specified index version
 ////////////////////////////////////////////////////////////////////////////////
 constexpr std::string_view getFormat(LinkVersion version) noexcept {
   constexpr std::array<std::string_view, 2> IRESEARCH_FORMATS{
@@ -77,7 +93,8 @@ constexpr std::string_view getFormat(LinkVersion version) noexcept {
 }
 
 struct StaticStrings {
-  static constexpr std::string_view DataSourceType = "arangosearch";
+  static constexpr std::string_view ViewArangoSearchType = "arangosearch";
+  static constexpr std::string_view ViewSearchAliasType = "search-alias";
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch View definition denoting the
@@ -96,6 +113,13 @@ struct StaticStrings {
   ///        corresponding IResearch View
   ////////////////////////////////////////////////////////////////////////////////
   static constexpr std::string_view ViewIdField{"view"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief attribute name for storing link/inverted index errors
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view LinkError{"error"};
+  static constexpr std::string_view LinkErrorOutOfSync{"outOfSync"};
+  static constexpr std::string_view LinkErrorFailed{"failed"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the
@@ -152,6 +176,52 @@ struct StaticStrings {
   ///        corresponding collection name in cluster (not shard name!)
   ////////////////////////////////////////////////////////////////////////////////
   static constexpr std::string_view CollectionNameField{"collectionName"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        time in Ms between running consolidations
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view ConsolidationIntervalMsec{
+      "consolidationIntervalMsec"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        time in Ms between running commits
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view CommitIntervalMsec{"commitIntervalMsec"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        number of completed consolidtions before cleanup is run
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view CleanupIntervalStep{"cleanupIntervalStep"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///         consolidation policy properties
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view ConsolidationPolicy{"consolidationPolicy"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        maximum number of concurrent active writers (segments) that perform
+  ///        a transaction. Other writers (segments) wait till current active
+  ///        writers (segments) finish.
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view WritebufferActive{"writebufferActive"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        maximum number of writers (segments) cached in the pool.
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view WritebufferIdle{"writebufferIdle"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch View definition denoting the
+  ///        maximum memory byte size per writer (segment) before a writer
+  ///        (segment) flush is triggered
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view WritebufferSizeMax{"writebufferSizeMax"};
 };
 
 }  // namespace iresearch

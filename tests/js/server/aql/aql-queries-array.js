@@ -4,8 +4,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for array indexes in AQL
 ///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2015 ArangoDB GmbH, Cologne, Germany
@@ -28,20 +26,20 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
-var isCluster = require("@arangodb/cluster").isCluster();
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
+const isCluster = require("@arangodb/cluster").isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function arrayIndexSuite () {
-
+function ArrayIndexSuite () {
   const cName = "UnitTestsArray";
-  var col;
+  let col;
+
   const buildTags = function (i) {
-    var tags = [];
+    let tags = [];
     if (i % 10 === 0) {
       // Every tenth Array has the tag "tenth"
       tags.push("tenth");
@@ -202,7 +200,7 @@ function arrayIndexSuite () {
     },
 
     testMultipleFilters : function () {
-      col.ensureHashIndex("a", "b[*]");
+      col.ensureIndex({ type: "persistent", fields: ["a", "b[*]"] });
       col.save({ a: true, b: [1, 2, 3], c: [1, 2, 3] });
 
       let query = `FOR x IN ${cName} FILTER x.a == true && 2 IN x.b && 4 IN x.c RETURN x`;
@@ -219,7 +217,7 @@ function arrayIndexSuite () {
     },
     
     testMultipleFiltersWithOuterLoop : function () {
-      col.ensureHashIndex("a", "b[*]");
+      col.ensureIndex({ type: "persistent", fields: ["a", "b[*]"] });
       col.save({ a: true, b: [1, 2, 3], c: [4, 5, 6] });
 
       let query = `FOR y IN [1, 2, 3] FOR x IN ${cName} FILTER x.a == true && y IN x.b && y IN x.c RETURN x`;
@@ -231,7 +229,7 @@ function arrayIndexSuite () {
     },
     
     testMultipleFiltersWithOuterLoopAttributes : function () {
-      col.ensureHashIndex("a", "b[*]");
+      col.ensureIndex({ type: "persistent", fields: ["a", "b[*]"] });
       col.save({ a: true, b: [1, 2, 3], c: [4, 5, 6] });
 
       let query = `FOR y IN [{ val: 1 }, { val: 2 }, { val: 3 }] FOR x IN ${cName} FILTER x.a == true && y.val IN x.b && y.val IN x.c RETURN x`;
@@ -244,8 +242,8 @@ function arrayIndexSuite () {
       assertEqual(0, AQL_EXECUTE(query).json[2]);
     },
     
-    testHashPrefixMultiExpansion : function () {
-      col.ensureHashIndex("something", "a[*]", "b[*]");
+    testIndexPrefixMultiExpansion : function () {
+      col.ensureIndex({ type: "persistent", fields: ["something", "a[*]", "b[*]"] });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", something: 0, a: i % 10, b: i % 5 });
       }
@@ -254,17 +252,8 @@ function arrayIndexSuite () {
       assertEqual(100, AQL_EXECUTE(query).json.length);
     },
     
-    testSkiplistPrefixMultiExpansion : function () {
-      col.ensureSkiplist("something", "a[*]", "b[*]");
-      for (var i = 0; i < 100; ++i) {
-        col.save({ _key: i + "t", something: 0, a: i % 10, b: i % 5 });
-      }
-      const query = `FOR x IN ${cName} FILTER x.something == 0 RETURN x._key`;
-      assertEqual(100, AQL_EXECUTE(query).json.length);
-    },
-    
-    testHashPrefixMultiExpansionSub1 : function () {
-      col.ensureHashIndex("something", "a[*]", "b[*]");
+    testIndexPrefixMultiExpansionSub1 : function () {
+      col.ensureIndex({ type: "persistent", fields: ["something", "a[*]", "b[*]"] });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", something: 0, a: [ 1, 2, 3, 4 ], b: [ 1, 2, 3, 4, 5 ] });
       }
@@ -273,8 +262,8 @@ function arrayIndexSuite () {
       assertEqual(100, AQL_EXECUTE(query).json.length);
     },
     
-    testHashPrefixMultiExpansionSub2 : function () {
-      col.ensureHashIndex("something", "a[*]", "b[*]");
+    testIndexPrefixMultiExpansionSub2 : function () {
+      col.ensureIndex({ type: "persistent", fields: ["something", "a[*]", "b[*]"] });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", something: 0, a: [ 1, 2, 3, 4 ], b: [ 1 ] });
       }
@@ -283,8 +272,8 @@ function arrayIndexSuite () {
       assertEqual(100, AQL_EXECUTE(query).json.length);
     },
     
-    testHashPrefixMultiExpansionSub3 : function () {
-      col.ensureHashIndex("something", "a[*].a", "b[*].b");
+    testIndexPrefixMultiExpansionSub3 : function () {
+      col.ensureIndex({ type: "persistent", fields: ["something", "a[*].a", "b[*].b"] });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", something: 0, a: [ { a: 1 }, { a: 2 }, { a: 3 }, { a: 4 } ], b: [ { b: 1 }, { b: 2 } ] });
       }
@@ -293,36 +282,8 @@ function arrayIndexSuite () {
       assertEqual(100, AQL_EXECUTE(query).json.length);
     },
     
-    testSkiplistPrefixMultiExpansionSub1 : function () {
-      col.ensureSkiplist("something", "a[*]", "b[*]");
-      for (var i = 0; i < 100; ++i) {
-        col.save({ _key: i + "t", something: 0, a: [ 1, 2, 3, 4 ], b: [ 1, 2, 3, 4, 5 ] });
-      }
-      const query = `FOR x IN ${cName} FILTER x.something == 0 RETURN x._key`;
-      assertEqual(100, AQL_EXECUTE(query).json.length);
-    },
-    
-    testSkiplistPrefixMultiExpansionSub2 : function () {
-      col.ensureSkiplist("something", "a[*]", "b[*]");
-      for (var i = 0; i < 100; ++i) {
-        col.save({ _key: i + "t", something: 0, a: [ 1, 2, 3, 4 ], b: [ 1 ] });
-      }
-      const query = `FOR x IN ${cName} FILTER x.something == 0 RETURN x._key`;
-      assertEqual(100, AQL_EXECUTE(query).json.length);
-    },
-    
-    testSkiplistPrefixMultiExpansionSub3 : function () {
-      col.ensureSkiplist("something", "a[*].a", "b[*].b");
-      for (var i = 0; i < 100; ++i) {
-        col.save({ _key: i + "t", something: 0, a: [ { a: 1 }, { a: 2 }, { a: 3 }, { a: 4 } ], b: [ { b: 1 }, { b: 2 } ] });
-      }
-      // this will use an index with the RocksDB engine
-      const query = `FOR x IN ${cName} FILTER x.something == 0 RETURN x._key`;
-      assertEqual(100, AQL_EXECUTE(query).json.length);
-    },
-
-    testHashPlainArray : function () {
-      col.ensureHashIndex("a[*]");
+    testIndexPlainArray : function () {
+      col.ensureIndex({ type: "persistent", fields: ["a[*]"] });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", a: buildTags(i)});
       }
@@ -336,8 +297,8 @@ function arrayIndexSuite () {
       validateResultsOr(orQuery);
     },
 
-    testHashNestedArray : function () {
-      col.ensureHashIndex("a.b[*]");
+    testIndexNestedArray : function () {
+      col.ensureIndex({ type: "persistent", fields: ["a.b[*]"] });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", a: {b: buildTags(i)}});
       }
@@ -351,8 +312,8 @@ function arrayIndexSuite () {
       validateResultsOr(orQuery);
     },
 
-    testHashArraySubattributes : function () {
-      col.ensureHashIndex("a[*].b");
+    testIndexArraySubattributes : function () {
+      col.ensureIndex({ type: "persistent", fields: ["a[*].b"] });
       for (var i = 0; i < 100; ++i) {
         var tags = buildTags(i);
         var obj = [];
@@ -371,8 +332,8 @@ function arrayIndexSuite () {
       validateResultsOr(orQuery);
     },
 
-    testHashArrayCombinedIndex : function () {
-      col.ensureHashIndex("a[*]", "b");
+    testIndexArrayCombinedIndex : function () {
+      col.ensureIndex({ type: "persistent", fields: ["a[*]", "b"] });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", a: buildTags(i), b: i});
       }
@@ -384,8 +345,8 @@ function arrayIndexSuite () {
       validateCombinedResults(query);
     },
 
-    testHashArrayCombinedArrayIndex : function () {
-      col.ensureHashIndex("a[*]", "b[*]");
+    testIndexArrayCombinedArrayIndex : function () {
+      col.ensureIndex({ type: "persistent", fields: ["a[*]", "b[*]"] });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", a: buildTags(i), b: buildTags(i)});
       }
@@ -399,8 +360,8 @@ function arrayIndexSuite () {
       validateResultsOr(orQuery);
     },
 
-    testHashArrayNotUsed : function () {
-      col.ensureHashIndex("a[*]");
+    testIndexArrayNotUsed : function () {
+      col.ensureIndex({ type: "persistent", fields: ["a[*]"] });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", a: buildTags(i)});
       }
@@ -422,8 +383,8 @@ function arrayIndexSuite () {
       validateIndexNotUsed(query);
     },
 
-    testHashArraySparse : function () {
-      col.ensureHashIndex("a[*]", {sparse: true});
+    testIndexArraySparse : function () {
+      col.ensureIndex({ type: "persistent", fields: ["a[*]"], sparse: true });
       for (var i = 0; i < 100; ++i) {
         col.save({ _key: i + "t", a: buildTags(i)});
       }
@@ -436,128 +397,14 @@ function arrayIndexSuite () {
       const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a[*] || @tag2 IN x.a[*] SORT x._key RETURN x._key`;
       validateResultsOr(orQuery);
     },
-
-    testSkiplistPlainArray : function () {
-      col.ensureSkiplist("a[*]");
-      for (var i = 0; i < 100; ++i) {
-        col.save({ _key: i + "t", a: buildTags(i)});
-      }
-      col.save({_key: "empty"});
-      col.save({_key: "emptyArray", a: []});
-      col.save({_key: "noArray", a: "NoArray"});
-      col.save({_key: "null", a: null});
-      const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] SORT x._key RETURN x._key`;
-      validateResults(query);
-      const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a[*] || @tag2 IN x.a[*] SORT x._key RETURN x._key`;
-      validateResultsOr(orQuery);
-    },
-
-    testSkiplistNestedArray : function () {
-      col.ensureSkiplist("a.b[*]");
-      for (var i = 0; i < 100; ++i) {
-        col.save({ _key: i + "t", a: {b: buildTags(i)}});
-      }
-      col.save({_key: "empty"});
-      col.save({_key: "emptyArray", a: {b:[]}});
-      col.save({_key: "noArray", a: {b: "NoArray"}});
-      col.save({_key: "null", a: {b: null}});
-      const query = `FOR x IN ${cName} FILTER @tag IN x.a.b[*] SORT x._key RETURN x._key`;
-      validateResults(query);
-      const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a.b[*] || @tag2 IN x.a.b[*] SORT x._key RETURN x._key`;
-      validateResultsOr(orQuery);
-    },
-
-    testSkiplistArraySubattributes : function () {
-      col.ensureSkiplist("a[*].b");
-      for (var i = 0; i < 100; ++i) {
-        var tags = buildTags(i);
-        var obj = [];
-        for (var t = 0; t < tags.length; ++t) {
-          obj.push({b: tags[t]});
-        }
-        col.save({ _key: i + "t", a: obj});
-      }
-      col.save({_key: "empty"});
-      col.save({_key: "emptyArray", a: []});
-      col.save({_key: "noArray", a: "NoArray"});
-      col.save({_key: "null", a: null});
-      const query = `FOR x IN ${cName} FILTER @tag IN x.a[*].b SORT x._key RETURN x._key`;
-      validateResults(query);
-      const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a[*].b || @tag2 IN x.a[*].b SORT x._key RETURN x._key`;
-      validateResultsOr(orQuery);
-    },
-
-    testSkiplistArrayCombinedIndex : function () {
-      col.ensureSkiplist("a[*]", "b");
-      for (var i = 0; i < 100; ++i) {
-        col.save({ _key: i + "t", a: buildTags(i), b: i});
-      }
-      col.save({_key: "empty"});
-      col.save({_key: "emptyArray", a: [], b: 1});
-      col.save({_key: "noArray", a: "NoArray", b: 1});
-      col.save({_key: "null", a: null, b: 1});
-      const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] AND x.b IN @list SORT x._key RETURN x`;
-      validateCombinedResults(query);
-    },
-
-    testSkiplistArrayCombinedArrayIndex : function () {
-      col.ensureSkiplist("a[*]", "b[*]");
-      for (var i = 0; i < 100; ++i) {
-        col.save({ _key: i + "t", a: buildTags(i), b: buildTags(i)});
-      }
-      col.save({_key: "empty"});
-      const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] AND @tag IN x.b[*] SORT x._key RETURN x._key`;
-      validateResults(query);
-      const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a[*] && @tag1 IN x.b[*] || @tag2 IN x.a[*] && @tag2 IN x.b[*] SORT x._key RETURN x._key`;
-      validateResultsOr(orQuery);
-    },
-
-    testSkiplistArrayNotUsed : function () {
-      col.ensureHashIndex("a[*]");
-      for (var i = 0; i < 100; ++i) {
-        col.save({ _key: i + "t", a: buildTags(i)});
-      }
-      var operators = ["==", "<", ">", "<=", ">="];
-      var elements = ["x.a", "x.a[*]"];
-      operators.forEach(function(op) {
-        elements.forEach(function(e) {
-          var query = `FOR x IN ${cName} FILTER 1 ${op} ${e} RETURN x`;
-          validateIndexNotUsed(query);
-          query = `FOR x IN ${cName} FILTER ${e} ${op} 1 RETURN x`;
-          validateIndexNotUsed(query);
-        });
-      });
-      var query = `FOR x IN ${cName} FILTER x.a[*] IN [1] RETURN x`;
-      validateIndexNotUsed(query);
-      query = `FOR x IN ${cName} FILTER 1 IN x.a RETURN x`;
-      checkIsOptimizedQuery(query);
-      query = `FOR x IN ${cName} FILTER x.a IN [1] RETURN x`;
-      validateIndexNotUsed(query);
-    },
-
-    testSkiplistArraySparse : function () {
-      col.ensureSkiplist("a[*]", {sparse: true});
-      for (var i = 0; i < 100; ++i) {
-        col.save({ _key: i + "t", a: buildTags(i)});
-      }
-      col.save({_key: "empty"});
-      col.save({_key: "emptyArray", a: []});
-      col.save({_key: "noArray", a: "NoArray"});
-      col.save({_key: "null", a: null});
-      const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] SORT x._key RETURN x._key`;
-      validateResults(query);
-      const orQuery = `FOR x IN ${cName} FILTER @tag1 IN x.a[*] || @tag2 IN x.a[*] SORT x._key RETURN x._key`;
-      validateResultsOr(orQuery);
-    }
 
   };
 
 }
 
-function arrayIndexNonArraySuite () {
-
+function ArrayIndexNonArraySuite () {
   const cName = "UnitTestsArray";
-  var col;
+  let col;
 
   const checkElementsInIndex = function (count) {
     var allIndexes = col.getIndexes(true);
@@ -575,8 +422,8 @@ function arrayIndexNonArraySuite () {
       db._drop(cName);
     },
 
-    testHashSingleAttribute : function () {
-      col.ensureHashIndex("a[*]");
+    testIndexSingleAttribute : function () {
+      col.ensureIndex({ type: "persistent", fields: ["a[*]"] });
       col.save({}); // a is not set
       checkElementsInIndex(0);
       col.save({ a: "This is no array" });
@@ -599,9 +446,9 @@ function arrayIndexNonArraySuite () {
       assertEqual(actual[0], "null");
     },
 
-    testHashMultipleAttributeFirstArray : function () {
+    testIndexMultipleAttributeFirstArray : function () {
       var inserted = 0;
-      col.ensureHashIndex("a[*]", "b");
+      col.ensureIndex({ type: "persistent", fields: ["a[*]", "b"] });
       col.save({}); // a is not set
       checkElementsInIndex(inserted);
       col.save({b: 1}); // a is not set
@@ -642,9 +489,9 @@ function arrayIndexNonArraySuite () {
       assertEqual(actual[0], "null");
     },
 
-    testHashMultipleAttributeMiddleArray : function () {
+    testIndexMultipleAttributeMiddleArray : function () {
       var inserted = 0;
-      col.ensureHashIndex("b", "a[*]", "c");
+      col.ensureIndex({ type: "persistent", fields: ["b", "a[*]", "c"] });
       col.save({}); // a is not set
       checkElementsInIndex(inserted);
       col.save({b: 1}); // a is not set
@@ -693,9 +540,9 @@ function arrayIndexNonArraySuite () {
       assertEqual(actual[0], "null2");
     },
 
-    testHashIndexMultipleAttributeMiddleArraySub : function () {
+    testIndexMultipleAttributeMiddleArraySub : function () {
       var inserted = 0;
-      col.ensureHashIndex("b", "a[*].d", "c");
+      col.ensureIndex({ type: "persistent", fields: ["b", "a[*].d", "c"] });
       col.save({}); // a is not set, no indexing
       checkElementsInIndex(inserted);
       col.save({b: 1}); // a is not set, no indexing
@@ -765,8 +612,8 @@ function arrayIndexNonArraySuite () {
       assertEqual(actual[1], "null4");
     },
 
-    testHashIndexSubAttributeArray : function () {
-      col.ensureHashIndex("b", "a.d[*]", "c");
+    testIndexSubAttributeArray : function () {
+      col.ensureIndex({ type: "persistent", fields: ["b", "a.d[*]", "c"] });
       col.save({b: 1, a:[ {d: [1, 2]}, {d: 3} ], c: 1});
       checkElementsInIndex(0);
 
@@ -776,8 +623,8 @@ function arrayIndexNonArraySuite () {
       // Do not find anything
     },
 
-    testHashIndexMultiArray : function () {
-      col.ensureHashIndex("a[*]", "b[*]");
+    testIndexMultiArray : function () {
+      col.ensureIndex({ type: "persistent", fields: ["a[*]", "b[*]"] });
 
       col.save({a: [1, 2, 3]}); // Do not index
       checkElementsInIndex(0);
@@ -799,8 +646,8 @@ function arrayIndexNonArraySuite () {
       assertEqual(actual.length, 1);
     },
 
-    testHashIndexArraySparse : function () {
-      col.ensureHashIndex("a[*]", "b", {sparse: true});
+    testIndexArraySparse2 : function () {
+      col.ensureIndex({ type: "persistent", fields: ["a[*]", "b"], sparse: true });
       var inserted = 0;
 
       col.save({a: [1, 2, 3]}); // Do not index, b is not set
@@ -835,335 +682,12 @@ function arrayIndexNonArraySuite () {
       // Cannot use the index for sub attribute a
       assertEqual(-1, nodeTypes.indexOf("IndexNode"));
     },
-
-    testSkiplistSingleAttribute : function () {
-      col.ensureSkiplist("a[*]");
-      col.save({}); // a is not set
-      checkElementsInIndex(0);
-      col.save({ a: "This is no array" });
-      checkElementsInIndex(0);
-      col.save({ a: {b: [42] } });
-      checkElementsInIndex(0);
-      col.save({ a: [] }); // Empty Array nothing to insert here
-      checkElementsInIndex(0);
-
-      col.save({ a: [1, 2, 3, 3, 2, 1] });
-      checkElementsInIndex(3); // 1, 2, 3
-
-      col.save({_key: "null", a: [null, "a", "b", "c", "b", "a", null] });
-      checkElementsInIndex(7); // 1, 2, 3, a, b, c, null
-
-      const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] SORT x._key RETURN x._key`;
-      var actual = AQL_EXECUTE(query, { tag : null }).json;
-      // We expect that we can only find the Array that has stored exactly the null value
-      assertEqual(actual.length, 1);
-      assertEqual(actual[0], "null");
-    },
-
-    testSkiplistMultipleAttributeFirstArray : function () {
-      var inserted = 0;
-      col.ensureSkiplist("a[*]", "b");
-      col.save({}); // a is not set
-      checkElementsInIndex(inserted);
-      col.save({b: 1}); // a is not set
-      checkElementsInIndex(inserted);
-      col.save({ a: "This is no array" });
-      checkElementsInIndex(inserted);
-      col.save({ a: "This is no array", b: 1 });
-      checkElementsInIndex(inserted);
-      col.save({ a: {b: [42] } });
-      checkElementsInIndex(inserted);
-      col.save({ a: {b: [42] }, b: 1 });
-      checkElementsInIndex(inserted);
-      col.save({ a: [] }); // Empty Array nothing to insert here
-      checkElementsInIndex(inserted);
-      col.save({ a: [], b: 1 }); // Empty Array nothing to insert here
-      checkElementsInIndex(inserted);
-
-      col.save({ a: [1, 2, 3, 3, 2, 1] });
-      inserted += 3;
-      checkElementsInIndex(inserted); // 1, 2, 3
-
-      col.save({ a: [1, 2, 3, 3, 2, 1], b: 1 });
-      inserted += 3;
-      checkElementsInIndex(inserted); // 1, 2, 3 :: 1
-
-      col.save({a: [null, "a", "b", "c", "b", "a", null] });
-      inserted += 4;
-      checkElementsInIndex(inserted); // 1, 2, 3 :: 1
-
-      col.save({_key: "null", a: [null, "a", "b", "c", "b", "a", null], b: 1 });
-      inserted += 4;
-      checkElementsInIndex(inserted); // 1, 2, 3, a, b, c, null :: 1
-
-      const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] && 1 == x.b SORT x._key RETURN x._key`;
-      var actual = AQL_EXECUTE(query, { tag : null }).json;
-      // We expect that we can only find the Array that has stored exactly the null value
-      assertEqual(actual.length, 1);
-      assertEqual(actual[0], "null");
-    },
-
-    testSkiplistMultipleAttributeMiddleArray : function () {
-      var inserted = 0;
-      var insertedB = 0;
-      col.ensureSkiplist("b", "a[*]", "c");
-      col.save({}); // a is not set, we index b: null
-      inserted += 1;
-      checkElementsInIndex(inserted);
-      col.save({b: 1}); // a is not set, but we can index b only
-      inserted += 1;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-      col.save({b: 1, c: 1}); // a is not set, but we can index b only
-      inserted += 1;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-      col.save({ a: "This is no array" }); // a is illegal. But we can index b only
-      inserted += 1;
-      checkElementsInIndex(inserted);
-      col.save({ a: "This is no array", b: 1 }); // We can index b only
-      inserted += 1;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-      col.save({ a: "This is no array", b: 1, c: 1}); // We can index b only
-      inserted += 1;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-      col.save({ a: {b: [42] } });
-      inserted += 1;
-      checkElementsInIndex(inserted);
-      col.save({ a: {b: [42] }, b: 1 }); // We can index b only
-      inserted += 1;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-      col.save({ a: {b: [42] }, b: 1, c: 1 }); // We can index b only
-      inserted += 1;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-      col.save({ a: [] }); // Empty Array. Nothing for a but index b
-      inserted += 1;
-      checkElementsInIndex(inserted);
-      col.save({ a: [], b: 1 }); // Empty Array. Nothing for a but index b
-      inserted += 1;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-      col.save({ a: [], b: 1, c: 1 });  // Empty Array. Nothing for a but index b
-      inserted += 1;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-
-      col.save({ a: [1, 2, 3, 3, 2, 1] });
-      inserted += 3; // We index b: null a: 1,2,3 c: null
-      checkElementsInIndex(inserted);
-
-      col.save({ a: [1, 2, 3, 3, 2, 1], b: 1 }); // b: 1 a: 1,2,3 c: null
-      inserted += 3;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-
-      col.save({ a: [1, 2, 3, 3, 2, 1], b: 1, c: 1 });
-      inserted += 3;
-      insertedB += 1;
-      checkElementsInIndex(inserted); // 1, 2, 3 :: 1 :: 1
-
-      col.save({_key: "null1", a: [null, "a", "b", "c", "b", "a", null] });
-      inserted += 4;
-      checkElementsInIndex(inserted); // b: null a: "a", "b", "c", null c:null
-
-      col.save({_key: "null2", a: [null, "a", "b", "c", "b", "a", null], b: 1 });
-      inserted += 4;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-
-      col.save({_key: "null3", a: [null, "a", "b", "c", "b", "a", null], b: 1, c: 1});
-      inserted += 4;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-
-      const query = `FOR x IN ${cName} FILTER @tag IN x.a[*] && 1 == x.b SORT x._key RETURN x._key`;
-      var actual = AQL_EXECUTE(query, { tag : null }).json;
-      // We expect that we can only find the Array that has stored exactly the null value
-      assertEqual(actual.length, 2);
-      assertEqual(actual[0], "null2");
-      assertEqual(actual[1], "null3");
-
-      const query2 = `FOR x IN ${cName} FILTER 1 == x.b RETURN x._key`;
-      actual = AQL_EXECUTE(query2).json;
-      assertEqual(actual.length, insertedB);
-      const query3 = `FOR x IN ${cName} FILTER null == x.b RETURN x._key`;
-      actual = AQL_EXECUTE(query3).json;
-      assertEqual(actual.length, col.count() - insertedB);
-    },
-
-    testSkiplistMultipleAttributeMiddleArraySub : function () {
-      var inserted = 0;
-      var insertedB = 0;
-      col.ensureSkiplist("b", "a[*].d", "c");
-      col.save({}); // a is not set, we index b: null
-      inserted += 1;
-      checkElementsInIndex(inserted);
-      col.save({b: 1}); // a is not set, but we can index b only
-      inserted += 1;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-      col.save({b: 1, c: 1}); // a is not set, but we can index b only
-      inserted += 1;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-      col.save({ a: "This is no array" }); // a is illegal. But we can index b only
-      inserted += 1;
-      checkElementsInIndex(inserted);
-      col.save({ a: "This is no array", b: 1 }); // We can index b only
-      inserted += 1;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-      col.save({ a: "This is no array", b: 1, c: 1}); // We can index b only
-      inserted += 1;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-      col.save({ a: {b: [42] } }); // We can index b only
-      inserted += 1;
-      checkElementsInIndex(inserted);
-      col.save({ a: {b: [42] }, b: 1 }); // We can index b only
-      inserted += 1;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-      col.save({ a: {b: [42] }, b: 1, c: 1 }); // We can index b only
-      inserted += 1;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-      col.save({ a: [] }); // Empty Array. Nothing for a but index b
-      inserted += 1;
-      checkElementsInIndex(inserted);
-      col.save({ a: [], b: 1 }); // Empty Array. Nothing for a but index b
-      inserted += 1;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-      col.save({ a: [], b: 1, c: 1 });  // Empty Array. Nothing for a but index b
-      inserted += 1;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-
-      col.save({ a: [1, 2, 3, 3, 2, 1] });
-      inserted += 1; // We index b: null But a does not have any nested value. Index one for null
-      checkElementsInIndex(inserted);
-
-      col.save({ _key: "null1", a: [1, 2, 3, 3, 2, 1], b: 1 }); // b: 1 a: 1,2,3 c: null
-      inserted += 1; // We index b: 1 But a does not have any nested value. Index one for null
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-
-      col.save({ _key: "null2", a: [1, 2, 3, 3, 2, 1], b: 1, c: 1 });
-      inserted += 1; // We index b: 1, c: 1 But a does not have any nested value. Index one for null
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-
-      col.save({ a: [{d: 1}, {d: 2}, {d: 3}, {d: 3}, {d: 2}, {d: 1}] });
-      inserted += 3; // We index b: null and 3 values for a[*].d
-      checkElementsInIndex(inserted);
-
-      col.save({ a: [{d: 1}, {d: 2}, {d: 3}, {d: 3}, {d: 2}, {d: 1}], b: 1 });
-      inserted += 3; // We index b: 1 and 3 values for a[*].d
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-
-      col.save({ a: [{d: 1}, {d: 2}, {d: 3}, {d: 3}, {d: 2}, {d: 1}], b: 1, c: 1 });
-      inserted += 3; // We index b: 1, c: 1 and 3 values for a[*].d
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-
-      col.save({_key: "null3", a: [{d: null}, {d: "a"}, {d: "b"}, {d: "c"}, {d: "b"}, {d: "a"}, {d: null}] });
-      inserted += 4;
-      checkElementsInIndex(inserted); // b: null a: "a", "b", "c", null c:null
-
-      col.save({_key: "null4", a: [{d: null}, {d: "a"}, {d: "b"}, {d: "c"}, {d: "b"}, {d: "a"}, {d: null}], b: 1 });
-      inserted += 4;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-
-      col.save({_key: "null5", a: [{d: null}, {d: "a"}, {d: "b"}, {d: "c"}, {d: "b"}, {d: "a"}, {d: null}], b: 1, c: 1 });
-      inserted += 4;
-      insertedB += 1;
-      checkElementsInIndex(inserted);
-
-      const query = `FOR x IN ${cName} FILTER @tag IN x.a[*].d && 1 == x.b SORT x._key RETURN x._key`;
-      var actual = AQL_EXECUTE(query, { tag : null }).json;
-      // We expect that we can only find the array that stores exactly the null value
-      // And the arrays that do not have the sub attribute.
-      assertEqual(actual.length, 4);
-      assertEqual(actual[0], "null1");
-      assertEqual(actual[1], "null2");
-      assertEqual(actual[2], "null4");
-      assertEqual(actual[3], "null5");
-
-      const query2 = `FOR x IN ${cName} FILTER 1 == x.b RETURN x._key`;
-      actual = AQL_EXECUTE(query2).json;
-      assertEqual(actual.length, insertedB);
-      const query3 = `FOR x IN ${cName} FILTER null == x.b RETURN x._key`;
-      actual = AQL_EXECUTE(query3).json;
-      assertEqual(actual.length, col.count() - insertedB);
-    },
-
-    testSkiplistIndexSubAttributeArray : function () {
-      col.ensureSkiplist("b", "a.d[*]", "c");
-      col.save({b: 1, a:[ {d: [1, 2]}, {d: 3} ], c: 1});
-      // We do only index b: 1 here
-      checkElementsInIndex(1);
-
-      const query = `FOR x IN ${cName} FILTER @tag IN x.a[*].d && 1 == x.b SORT x._key RETURN x._key`;
-      var actual = AQL_EXECUTE(query, { tag : null }).json;
-      assertEqual(actual.length, 0);
-      // Do not find anything
-    },
-
-    testSkiplistIndexArraySparse : function () {
-      col.ensureSkiplist("a[*]", "b", {sparse: true});
-      var inserted = 0;
-
-      col.save({a: [1, 2, 3]}); // Do not index, b is not set
-      checkElementsInIndex(inserted);
-
-      col.save({a: [1, 2, 3], b: null}); // Do not index, b is null
-      checkElementsInIndex(inserted);
-
-      col.save({a: [1, 2, 3], b: 1}); // Do index
-      inserted += 3;
-      checkElementsInIndex(inserted);
-
-      col.save({a: [null, 4], b: 1}); // Do index
-      inserted += 2;
-      checkElementsInIndex(inserted);
-
-      const query = `FOR x IN ${cName} FILTER null IN x.a[*] && 1 == x.b SORT x._key RETURN x._key`;
-      // We can use the index for null in SPARSE
-      var actual = AQL_EXECUTE(query).json;
-      assertEqual(actual.length, 1);
-      var plan = AQL_EXPLAIN(query).plan;
-      var nodeTypes = plan.nodes.map(function(node) {
-        return node.type;
-      });
-      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"));
-
-      const query2 = `FOR x IN ${cName} FILTER null IN x.a[*] SORT x._rev RETURN x._key`;
-      plan = AQL_EXPLAIN(query2).plan;
-      nodeTypes = plan.nodes.map(function(node) {
-        return node.type;
-      });
-      // Cannot use the index for sub attribute a
-      assertEqual(-1, nodeTypes.indexOf("IndexNode"));
-    },
-
 
   };
 
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
-jsunity.run(arrayIndexSuite);
-jsunity.run(arrayIndexNonArraySuite);
+jsunity.run(ArrayIndexSuite);
+jsunity.run(ArrayIndexNonArraySuite);
 
 return jsunity.done();
-

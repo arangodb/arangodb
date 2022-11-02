@@ -17,305 +17,647 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Markus Pfeiffer
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
 
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include <utility>
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/ReplicatedState/Supervision.h"
+#include "Replication2/Helper/AgencyStateBuilder.h"
+#include "Replication2/Helper/AgencyLogBuilder.h"
 
 using namespace arangodb;
-using namespace arangodb::replication2::agency;
+using namespace arangodb::test;
+using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
+namespace RLA = arangodb::replication2::agency;
+namespace RSA = arangodb::replication2::replicated_state::agency;
 
-struct LeaderElectionCampaignTest : ::testing::Test {};
-TEST_F(LeaderElectionCampaignTest, test_computeReason) {
-  {
-    auto r = computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}),
-                           true, LogTerm{1});
-    EXPECT_EQ(r, LeaderElectionCampaign::Reason::OK);
+struct ReplicatedStateSupervisionTest : ::testing::Test {
+  RLA::LogTargetConfig const defaultConfig = {2, 2, false};
+  LogId const logId{12};
+
+  ParticipantFlags const flagsSnapshotComplete{};
+  ParticipantFlags const flagsSnapshotIncomplete{.allowedInQuorum = false,
+                                                 .allowedAsLeader = false};
+};
+
+TEST_F(ReplicatedStateSupervisionTest, check_state_and_log) {
+  AgencyStateBuilder state;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C")
+      .setTargetConfig(defaultConfig);
+
+  replicated_state::SupervisionContext ctx;
+  replicated_state::checkReplicatedState(ctx, std::nullopt, state.get());
+
+  EXPECT_TRUE(ctx.hasUpdates());
+  ASSERT_TRUE(std::holds_alternative<AddStateToPlanAction>(ctx.getAction()));
+  auto const& action = std::get<AddStateToPlanAction>(ctx.getAction());
+  EXPECT_EQ(action.statePlan.id, logId);
+  EXPECT_EQ(action.logTarget.id, logId);
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_wait_current) {
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C")
+      .setTargetConfig(defaultConfig);
+
+  state.makePlan();
+
+  log.setId(logId)
+      .setTargetConfig(defaultConfig)
+      .setTargetParticipant("A", flagsSnapshotIncomplete)
+      .setTargetParticipant("B", flagsSnapshotIncomplete)
+      .setTargetParticipant("C", flagsSnapshotIncomplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  EXPECT_TRUE(ctx.hasUpdates());
+  EXPECT_TRUE(std::holds_alternative<EmptyAction>(ctx.getAction()));
+  auto statusReport = ctx.getReport();
+  ASSERT_EQ(statusReport.size(), 1);
+  auto& message = statusReport[0];
+  EXPECT_EQ(message.code, RSA::StatusCode::kLogCurrentNotAvailable);
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_wait_log_plan) {
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C")
+      .setTargetConfig(defaultConfig);
+
+  state.setPlanParticipants("A", "B", "C");
+  state.makeCurrent();
+
+  log.setId(logId)
+      .setTargetConfig(defaultConfig)
+      .setTargetParticipant("A", flagsSnapshotIncomplete)
+      .setTargetParticipant("B", flagsSnapshotIncomplete)
+      .setTargetParticipant("C", flagsSnapshotIncomplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  EXPECT_TRUE(ctx.hasUpdates());
+  EXPECT_TRUE(std::holds_alternative<EmptyAction>(ctx.getAction()));
+  auto statusReport = ctx.getReport();
+  ASSERT_EQ(statusReport.size(), 1);
+  auto& message = statusReport[0];
+  EXPECT_EQ(message.code, RSA::StatusCode::kLogPlanNotAvailable);
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_wait_snapshot) {
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C")
+      .setTargetConfig(defaultConfig);
+
+  state.setPlanParticipants("A", "B", "C");
+  state.makeCurrent();
+
+  log.setId(logId)
+      .setTargetConfig(defaultConfig)
+      .setTargetParticipant("A", flagsSnapshotIncomplete)
+      .setTargetParticipant("B", flagsSnapshotIncomplete)
+      .setTargetParticipant("C", flagsSnapshotIncomplete);
+
+  log.setPlanParticipant("A", flagsSnapshotIncomplete)
+      .setPlanParticipant("B", flagsSnapshotIncomplete)
+      .setPlanParticipant("C", flagsSnapshotIncomplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  EXPECT_TRUE(ctx.hasUpdates());
+  EXPECT_TRUE(std::holds_alternative<EmptyAction>(ctx.getAction()));
+  auto statusReport = ctx.getReport();
+  ASSERT_EQ(statusReport.size(), 3);
+
+  std::unordered_set<ParticipantId> participants;
+
+  for (int i = 0; i < 3; i++) {
+    auto& message = statusReport[i];
+    EXPECT_EQ(message.code, RSA::StatusCode::kServerSnapshotMissing);
+    if (message.participant) {
+      participants.insert(*message.participant);
+    }
   }
 
-  {
-    auto r = computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}),
-                           false, LogTerm{1});
-    EXPECT_EQ(r, LeaderElectionCampaign::Reason::ServerIll);
+  EXPECT_EQ(participants, (std::unordered_set<ParticipantId>{"A", "B", "C"}));
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_snapshot_complete) {
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C")
+      .setTargetConfig(defaultConfig);
+
+  state.setPlanParticipants("A", "B", "C").setSnapshotCompleteFor("A");
+  state.makeCurrent();
+
+  log.setId(logId)
+      .setTargetConfig(defaultConfig)
+      .setTargetParticipant("A", flagsSnapshotIncomplete)
+      .setTargetParticipant("B", flagsSnapshotIncomplete)
+      .setTargetParticipant("C", flagsSnapshotIncomplete);
+
+  log.setPlanParticipant("A", flagsSnapshotIncomplete)
+      .setPlanParticipant("B", flagsSnapshotIncomplete)
+      .setPlanParticipant("C", flagsSnapshotIncomplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  EXPECT_TRUE(ctx.hasUpdates());
+  ASSERT_TRUE(
+      std::holds_alternative<UpdateParticipantFlagsAction>(ctx.getAction()));
+  auto& action = std::get<UpdateParticipantFlagsAction>(ctx.getAction());
+  EXPECT_EQ(action.participant, "A");
+  EXPECT_EQ(action.flags, flagsSnapshotComplete);
+
+  auto statusReport = ctx.getReport();
+  ASSERT_EQ(statusReport.size(), 2);
+
+  std::unordered_set<ParticipantId> participants;
+
+  for (int i = 0; i < 2; i++) {
+    auto& message = statusReport[i];
+    EXPECT_EQ(message.code, RSA::StatusCode::kServerSnapshotMissing);
+    if (message.participant) {
+      participants.insert(*message.participant);
+    }
   }
 
-  {
-    auto r = computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}),
-                           true, LogTerm{3});
-    EXPECT_EQ(r, LeaderElectionCampaign::Reason::TermNotConfirmed);
-  }
+  EXPECT_EQ(participants, (std::unordered_set<ParticipantId>{"B", "C"}));
 }
 
-TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_allElectible) {
-  auto localStates = LogCurrentLocalStates{
-      {"A", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}}},
-      {"B", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}}},
-      {"C", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}}}};
+TEST_F(ReplicatedStateSupervisionTest, check_all_snapshot_complete) {
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C")
+      .setTargetVersion(12)
+      .setTargetConfig(defaultConfig);
 
-  auto health = ParticipantsHealth{._health{
-      {"A", ParticipantHealth{.rebootId = RebootId{0}, .isHealthy = true}},
-      {"B", ParticipantHealth{.rebootId = RebootId{0}, .isHealthy = true}},
-      {"C", ParticipantHealth{.rebootId = RebootId{0}, .isHealthy = true}}}};
+  state.setPlanParticipants("A", "B", "C").setAllSnapshotsComplete();
+  state.setCurrentVersion(12);
 
-  auto campaign = runElectionCampaign(localStates, health, LogTerm{1});
+  log.setId(logId)
+      .setTargetConfig(defaultConfig)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("B", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete);
 
-  EXPECT_EQ(campaign.numberOKParticipants, 3) << to_string(campaign);
-  EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{1}, LogIndex{1}}))
-      << to_string(campaign);
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete);
 
-  auto expectedElectible = std::set<ParticipantId>{"A", "B", "C"};
-  auto electible = std::set<ParticipantId>{};
-  std::copy(std::begin(campaign.electibleLeaderSet),
-            std::end(campaign.electibleLeaderSet),
-            std::inserter(electible, std::begin(electible)));
-  EXPECT_EQ(electible, expectedElectible);
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  EXPECT_FALSE(ctx.hasUpdates());
 }
 
-TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_oneElectible) {
-  auto localStates = LogCurrentLocalStates{
-      {"A", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}}},
-      {"B", {LogTerm{2}, TermIndexPair{LogTerm{1}, LogIndex{1}}}},
-      {"C", {LogTerm{2}, TermIndexPair{LogTerm{2}, LogIndex{1}}}}};
+TEST_F(ReplicatedStateSupervisionTest, check_add_participant_1) {
+  // Server "D" was added to target
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C", "D")
+      .setTargetVersion(12)
+      .setTargetConfig(defaultConfig);
 
-  auto health = ParticipantsHealth{._health{
-      {"A", ParticipantHealth{.rebootId = RebootId{0}, .isHealthy = false}},
-      {"B", ParticipantHealth{.rebootId = RebootId{0}, .isHealthy = false}},
-      {"C", ParticipantHealth{.rebootId = RebootId{0}, .isHealthy = true}}}};
+  state.setPlanParticipants("A", "B", "C").setAllSnapshotsComplete();
+  state.setCurrentVersion(5);
 
-  auto campaign = runElectionCampaign(localStates, health, LogTerm{2});
+  log.setId(logId)
+      .setTargetConfig(defaultConfig)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("B", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete);
 
-  EXPECT_EQ(campaign.numberOKParticipants, 1);
-  EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{2}, LogIndex{1}}));
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete);
 
-  auto expectedElectible = std::set<ParticipantId>{"C"};
-  auto electible = std::set<ParticipantId>{};
-  std::copy(std::begin(campaign.electibleLeaderSet),
-            std::end(campaign.electibleLeaderSet),
-            std::inserter(electible, std::begin(electible)));
-  EXPECT_EQ(electible, expectedElectible);
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  EXPECT_TRUE(ctx.hasUpdates());
+  ASSERT_TRUE(std::holds_alternative<AddParticipantAction>(ctx.getAction()));
+  auto& action = std::get<AddParticipantAction>(ctx.getAction());
+  EXPECT_EQ(action.participant, "D");
 }
 
-struct LeaderStateMachineTest : ::testing::Test {};
+TEST_F(ReplicatedStateSupervisionTest, check_add_participant_2) {
+  // Server "D" is now in State/Plan and Log/Target
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C", "D")
+      .setTargetVersion(12)
+      .setTargetConfig(defaultConfig);
 
-TEST_F(LeaderStateMachineTest, test_leader_intact) {
-  auto const& config = LogConfig(3, 3, 3, true);
-  auto log = Log{.current = LogCurrent{},
-                 .plan = LogPlanSpecification(
-                     LogId{1},
-                     LogPlanTermSpecification(
-                         LogTerm{1}, config,
-                         LogPlanTermSpecification::Leader{"A", RebootId{1}}),
-                     config, {})};
+  state.setPlanParticipants("A", "B", "C")
+      .setAllSnapshotsComplete()
+      .addPlanParticipant("D");
+  state.setCurrentVersion(5);
 
-  auto health = ParticipantsHealth{
-      ._health = {
-          {"A", ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}},
-          {"B", ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}},
-          {"C",
-           ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}}}};
+  log.setId(logId)
+      .setTargetConfig(defaultConfig)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("B", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete)
+      .setTargetParticipant("D", flagsSnapshotIncomplete);
 
-  auto r = replicatedLogAction(log, health);
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete);
 
-  EXPECT_EQ(r, nullptr);
-}
-TEST_F(LeaderStateMachineTest, test_log_no_leader) {
-  // We have no leader, so we have to first run a leadership campaign and then
-  // select a leader.
-  auto const& config = LogConfig(3, 3, 3, true);
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
 
-  auto logCurrent = LogCurrent();
-  logCurrent.localState =
-      std::unordered_map<ParticipantId, LogCurrentLocalState>(
-          {{"A", LogCurrentLocalState(LogTerm{1},
-                                      TermIndexPair{LogTerm{1}, LogIndex{1}})},
-           {"B", LogCurrentLocalState(LogTerm{1},
-                                      TermIndexPair{LogTerm{1}, LogIndex{1}})},
-           {"C", LogCurrentLocalState(
-                     LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}})}});
-  logCurrent.supervision = LogCurrentSupervision{};
-
-  LogPlanSpecification plan(
-      LogId{1}, LogPlanTermSpecification(LogTerm{1}, config, std::nullopt),
-      config,
-      ParticipantsConfig{
-          .generation = 1,
-          .participants = {
-              {"A", ParticipantFlags{.forced = false, .excluded = false}},
-              {"B", ParticipantFlags{.forced = false, .excluded = false}},
-              {"C", ParticipantFlags{.forced = false, .excluded = false}}}});
-
-  auto log = Log{.current = logCurrent, .plan = std::move(plan)};
-
-  auto health = ParticipantsHealth{
-      ._health = {
-          {"A", ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}},
-          {"B", ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}},
-          {"C",
-           ParticipantHealth{.rebootId = RebootId{1}, .isHealthy = true}}}};
-
-  auto r = replicatedLogAction(log, health);
-  EXPECT_NE(r, nullptr);
-
-  EXPECT_EQ(r->type(), Action::ActionType::SuccessfulLeaderElectionAction)
-      << *r;
-
-  auto& action = dynamic_cast<SuccessfulLeaderElectionAction&>(*r);
-
-  auto possibleLeaders = std::set<ParticipantId>{"A", "B", "C"};
-  EXPECT_TRUE(possibleLeaders.contains(action._newLeader));
+  EXPECT_TRUE(ctx.hasUpdates());
+  EXPECT_TRUE(std::holds_alternative<EmptyAction>(ctx.getAction()));
+  auto& report = ctx.getReport();
+  ASSERT_EQ(report.size(), 1);
+  EXPECT_EQ(report[0].code, RSA::StatusCode::kServerSnapshotMissing);
 }
 
-TEST_F(LeaderStateMachineTest, test_log_with_dead_leader) {
-  // Here the RebootId of the leader "A" in the Plan is 42, but
-  // the health record says its RebootId is 43; this
-  // means that the leader is not acceptable anymore and we
-  // expect a new term that has the leader removed.
-  auto const& config = LogConfig(3, 3, 3, true);
+TEST_F(ReplicatedStateSupervisionTest, check_add_participant_3_1) {
+  // Server "D" is now in Log/Current committed
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C", "D")
+      .setTargetVersion(12)
+      .setTargetConfig(defaultConfig);
 
-  auto logCurrent = LogCurrent();
-  logCurrent.localState =
-      std::unordered_map<ParticipantId, LogCurrentLocalState>(
-          {{"A", LogCurrentLocalState(LogTerm{1},
-                                      TermIndexPair{LogTerm{1}, LogIndex{1}})},
-           {"B", LogCurrentLocalState(LogTerm{1},
-                                      TermIndexPair{LogTerm{1}, LogIndex{1}})},
-           {"C", LogCurrentLocalState(
-                     LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}})}});
-  logCurrent.supervision = LogCurrentSupervision{};
+  state.setPlanParticipants("A", "B", "C")
+      .setAllSnapshotsComplete()
+      .addPlanParticipant("D");
+  state.setCurrentVersion(5);
 
-  LogPlanSpecification plan(
-      LogId{1},
-      LogPlanTermSpecification(
-          LogTerm{1}, config,
-          LogPlanTermSpecification::Leader{"A", RebootId{42}}),
-      config,
-      ParticipantsConfig{
-          .generation = 1,
-          .participants = {
-              {"A", ParticipantFlags{.forced = false, .excluded = false}},
-              {"B", ParticipantFlags{.forced = false, .excluded = false}},
-              {"C", ParticipantFlags{.forced = false, .excluded = false}}}});
+  log.setId(logId)
+      .setTargetConfig(defaultConfig)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("B", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete)
+      .setTargetParticipant("D", flagsSnapshotIncomplete);
 
-  auto log = Log{.current = logCurrent, .plan = std::move(plan)};
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete)
+      .setPlanParticipant("D", flagsSnapshotIncomplete);
 
-  auto health = ParticipantsHealth{
-      ._health = {
-          {"A", ParticipantHealth{.rebootId = RebootId{43}, .isHealthy = true}},
-          {"B", ParticipantHealth{.rebootId = RebootId{14}, .isHealthy = true}},
-          {"C",
-           ParticipantHealth{.rebootId = RebootId{14}, .isHealthy = true}}}};
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
 
-  auto r = replicatedLogAction(log, health);
-
-  ASSERT_NE(r, nullptr);
-  EXPECT_EQ(r->type(), Action::ActionType::UpdateTermAction);
-
-  auto& action = dynamic_cast<UpdateTermAction&>(*r);
-
-  // TODO: Friend op == for newTerm
-  EXPECT_EQ(action._newTerm.term,
-            LogTerm{log.plan.currentTerm->term.value + 1});
-  EXPECT_EQ(action._newTerm.leader, std::nullopt);
+  EXPECT_TRUE(ctx.hasUpdates());
+  EXPECT_TRUE(std::holds_alternative<EmptyAction>(ctx.getAction()));
+  auto& report = ctx.getReport();
+  ASSERT_EQ(report.size(), 1);
+  EXPECT_EQ(report[0].code, RSA::StatusCode::kServerSnapshotMissing);
 }
 
-TEST_F(LeaderStateMachineTest, test_log_establish_leader) {
-  // Here we have no leader, so we expect to get a leadership election;
-  // given the HealthRecord all participants are electible as leader,
-  // but we will get one of them at random.
-  auto const& config = LogConfig(3, 3, 3, true);
+TEST_F(ReplicatedStateSupervisionTest, check_add_participant_3_2) {
+  // Server "D" is not yet in Log/Current but the snapshot is completed
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C", "D")
+      .setTargetVersion(12)
+      .setTargetConfig(defaultConfig);
 
-  auto logCurrent = LogCurrent();
-  logCurrent.localState =
-      std::unordered_map<ParticipantId, LogCurrentLocalState>{
-          {"A", LogCurrentLocalState(LogTerm{1},
-                                     TermIndexPair{LogTerm{1}, LogIndex{1}})},
-          {"B", LogCurrentLocalState(LogTerm{1},
-                                     TermIndexPair{LogTerm{1}, LogIndex{1}})},
-          {"C", LogCurrentLocalState(LogTerm{1},
-                                     TermIndexPair{LogTerm{1}, LogIndex{42}})}};
-  logCurrent.supervision = LogCurrentSupervision{};
+  state.setPlanParticipants("A", "B", "C", "D").setAllSnapshotsComplete();
+  state.setCurrentVersion(5);
 
-  LogPlanSpecification plan(
-      LogId{1}, LogPlanTermSpecification(LogTerm{1}, config, std::nullopt),
-      config,
-      ParticipantsConfig{
-          .generation = 1,
-          .participants = {
-              {"A", ParticipantFlags{.forced = false, .excluded = false}},
-              {"B", ParticipantFlags{.forced = false, .excluded = false}},
-              {"C", ParticipantFlags{.forced = false, .excluded = false}}}});
+  log.setId(logId)
+      .setTargetConfig(defaultConfig)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("B", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete)
+      .setTargetParticipant("D", flagsSnapshotIncomplete);
 
-  auto log = Log{.current = logCurrent, .plan = std::move(plan)};
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete)
+      .setPlanParticipant("D", flagsSnapshotIncomplete);
 
-  auto health = ParticipantsHealth{
-      ._health = {
-          {"A", ParticipantHealth{.rebootId = RebootId{43}, .isHealthy = true}},
-          {"B", ParticipantHealth{.rebootId = RebootId{14}, .isHealthy = true}},
-          {"C",
-           ParticipantHealth{.rebootId = RebootId{14}, .isHealthy = true}}}};
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
 
-  auto r = replicatedLogAction(log, health);
-
-  ASSERT_NE(r, nullptr);
-
-  EXPECT_EQ(r->type(), Action::ActionType::SuccessfulLeaderElectionAction)
-      << *r;
-
-  auto& action = dynamic_cast<SuccessfulLeaderElectionAction&>(*r);
-
-  EXPECT_EQ(action._newLeader, "C") << *r;
+  EXPECT_TRUE(ctx.hasUpdates());
+  ASSERT_TRUE(
+      std::holds_alternative<UpdateParticipantFlagsAction>(ctx.getAction()));
+  auto& action = std::get<UpdateParticipantFlagsAction>(ctx.getAction());
+  EXPECT_EQ(action.participant, "D");
+  EXPECT_EQ(action.flags, flagsSnapshotComplete);
 }
 
-TEST_F(LeaderStateMachineTest, test_log_establish_leader_with_higher_term) {
-  // here we have a participant "C" with a *better* TermIndexPair than the
-  // others because it has a higher LogTerm, but a lower LogIndex
-  // so we expect "C" to be elected leader
-  auto const& config = LogConfig(3, 3, 3, true);
+TEST_F(ReplicatedStateSupervisionTest, check_add_participant_4) {
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C", "D")
+      .setTargetVersion(12)
+      .setTargetConfig(defaultConfig);
 
-  auto logCurrent = LogCurrent();
-  logCurrent.localState =
-      std::unordered_map<ParticipantId, LogCurrentLocalState>{
-          {"A", LogCurrentLocalState(LogTerm{1},
-                                     TermIndexPair{LogTerm{1}, LogIndex{15}})},
-          {"B", LogCurrentLocalState(LogTerm{1},
-                                     TermIndexPair{LogTerm{1}, LogIndex{27}})},
-          {"C", LogCurrentLocalState(LogTerm{1},
-                                     TermIndexPair{LogTerm{4}, LogIndex{42}})}};
-  logCurrent.supervision = LogCurrentSupervision{};
+  state.setPlanParticipants("A", "B", "C", "D").setAllSnapshotsComplete();
+  state.setCurrentVersion(5);
 
-  LogPlanSpecification plan(
-      LogId{1}, LogPlanTermSpecification(LogTerm{1}, config, std::nullopt),
-      config,
-      ParticipantsConfig{
-          .generation = 1,
-          .participants = {
-              {"A", ParticipantFlags{.forced = false, .excluded = false}},
-              {"B", ParticipantFlags{.forced = false, .excluded = false}},
-              {"C", ParticipantFlags{.forced = false, .excluded = false}}}});
+  log.setId(logId)
+      .setTargetConfig(defaultConfig)
+      .setTargetVersion(2)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("B", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete)
+      .setTargetParticipant("D", flagsSnapshotComplete);
 
-  auto log = Log{.current = logCurrent, .plan = std::move(plan)};
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete)
+      .setPlanParticipant("D", flagsSnapshotComplete);
+  log.setCurrentVersion(2);
 
-  auto health = ParticipantsHealth{
-      ._health = {
-          {"A", ParticipantHealth{.rebootId = RebootId{43}, .isHealthy = true}},
-          {"B", ParticipantHealth{.rebootId = RebootId{14}, .isHealthy = true}},
-          {"C",
-           ParticipantHealth{.rebootId = RebootId{14}, .isHealthy = true}}}};
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
 
-  auto r = replicatedLogAction(log, health);
+  EXPECT_TRUE(ctx.hasUpdates());
+  ASSERT_TRUE(std::holds_alternative<CurrentConvergedAction>(ctx.getAction()));
+  auto& action = std::get<CurrentConvergedAction>(ctx.getAction());
+  EXPECT_EQ(action.version, 12);
+}
 
-  ASSERT_NE(r, nullptr);
+TEST_F(ReplicatedStateSupervisionTest, check_remove_two_servers_0) {
+  // "B" and "C" are no longer in State/Target
+  // "D" has been added
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "D")
+      .setTargetVersion(20)
+      .setTargetConfig(defaultConfig);
 
-  EXPECT_EQ(r->type(), Action::ActionType::SuccessfulLeaderElectionAction)
-      << *r;
+  state.setPlanParticipants("A", "B", "C").setAllSnapshotsComplete();
+  state.setCurrentVersion(12);
 
-  auto& action = dynamic_cast<SuccessfulLeaderElectionAction&>(*r);
+  log.setId(logId)
+      .setTargetConfig(defaultConfig)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("B", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete);
 
-  EXPECT_EQ(action._newLeader, "C") << *r;
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  EXPECT_TRUE(ctx.hasUpdates());
+  ASSERT_TRUE(std::holds_alternative<AddParticipantAction>(ctx.getAction()));
+  auto& action = std::get<AddParticipantAction>(ctx.getAction());
+  EXPECT_EQ(action.participant, "D");
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_remove_two_servers_1) {
+  // "B" and "C" are no longer in State/Target
+  // "D" has been added to State/Plan and Log/Target
+  // "D"s snapshot is not yet complete
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "D")
+      .setTargetVersion(20)
+      .setTargetConfig(defaultConfig);
+
+  state.setPlanParticipants("A", "B", "C", "D")
+      .setSnapshotCompleteFor("A", "B", "C");
+  state.setCurrentVersion(12);
+
+  log.setId(logId)
+      .setTargetConfig(defaultConfig)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("B", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete)
+      .setTargetParticipant("D", flagsSnapshotIncomplete);
+
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  EXPECT_TRUE(ctx.hasUpdates());
+  ASSERT_TRUE(std::holds_alternative<RemoveParticipantFromLogTargetAction>(
+      ctx.getAction()))
+      << ctx.getAction().index();
+  auto& action =
+      std::get<RemoveParticipantFromLogTargetAction>(ctx.getAction());
+  EXPECT_TRUE(action.participant == "B" || action.participant == "C")
+      << action.participant;
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_remove_two_servers_2) {
+  // "B" and "C" are no longer in target
+  // assume that "B" was removed from Log/Target
+  // but "D" still has no snapshot
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "D")
+      .setTargetVersion(20)
+      .setTargetConfig(defaultConfig);
+
+  state.setPlanParticipants("A", "B", "C", "D")
+      .setSnapshotCompleteFor("A", "B", "C");
+  state.setCurrentVersion(12);
+
+  log.setId(logId)
+      .setTargetConfig(defaultConfig)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete)
+      .setTargetParticipant("D", flagsSnapshotIncomplete);
+
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete)
+      .setPlanParticipant("D", flagsSnapshotIncomplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  // removing "C" is not yet allowed, because "D" has no snapshot
+  // and we need at least two ok servers
+  // "B" is still in Log/Plan.
+  EXPECT_TRUE(ctx.hasUpdates());
+  EXPECT_TRUE(std::holds_alternative<EmptyAction>(ctx.getAction()));
+  auto& report = ctx.getReport();
+  ASSERT_EQ(report.size(), 3);
+  std::sort(report.begin(), report.end(),
+            [](auto const& left, auto const& right) {
+              return std::tie(left.participant, left.code) <
+                     std::tie(right.participant, right.code);
+            });
+  EXPECT_EQ(report[0].code, RSA::StatusCode::kLogParticipantNotYetGone);
+  EXPECT_EQ(report[0].participant, "B");
+  EXPECT_EQ(report[1].code, RSA::StatusCode::kInsufficientSnapshotCoverage);
+  EXPECT_EQ(report[1].participant, "C");
+  EXPECT_EQ(report[2].code, RSA::StatusCode::kServerSnapshotMissing);
+  EXPECT_EQ(report[2].participant, "D");
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_remove_two_servers_3_1) {
+  // Same as above but now drop "B" from Log/Plan
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "D")
+      .setTargetVersion(20)
+      .setTargetConfig(defaultConfig);
+
+  state.setPlanParticipants("A", "B", "C", "D")
+      .setSnapshotCompleteFor("A", "B", "C");
+  state.setCurrentVersion(12);
+
+  log.setId(logId)
+      .setTargetConfig(defaultConfig)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete)
+      .setTargetParticipant("D", flagsSnapshotIncomplete);
+
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete)
+      .setPlanParticipant("D", flagsSnapshotIncomplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  // We should now be able to remove "B"
+  EXPECT_TRUE(ctx.hasUpdates());
+  ASSERT_TRUE(std::holds_alternative<RemoveParticipantFromStatePlanAction>(
+      ctx.getAction()));
+  auto& action =
+      std::get<RemoveParticipantFromStatePlanAction>(ctx.getAction());
+  EXPECT_EQ(action.participant, "B");
+  auto& report = ctx.getReport();
+  ASSERT_EQ(report.size(), 2);
+  std::sort(report.begin(), report.end(),
+            [](auto const& left, auto const& right) {
+              return std::tie(left.participant, left.code) <
+                     std::tie(right.participant, right.code);
+            });
+  EXPECT_EQ(report[0].code, RSA::StatusCode::kInsufficientSnapshotCoverage);
+  EXPECT_EQ(report[0].participant, "C");
+  EXPECT_EQ(report[1].code, RSA::StatusCode::kServerSnapshotMissing);
+  EXPECT_EQ(report[1].participant, "D");
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_remove_two_servers_3_2) {
+  // Same as above, but complete snapshot of "D"
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "D")
+      .setTargetVersion(20)
+      .setTargetConfig(defaultConfig);
+
+  state.setPlanParticipants("A", "B", "C", "D").setAllSnapshotsComplete();
+  state.setCurrentVersion(12);
+
+  log.setId(logId)
+      .setTargetConfig(defaultConfig)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete)
+      .setTargetParticipant("D", flagsSnapshotIncomplete);
+
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete)
+      .setPlanParticipant("D", flagsSnapshotIncomplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  // removing "C" is not yet allowed, because "D" has no snapshot
+  // and we need at least two ok servers
+  // "B" is still in Log/Plan.
+  EXPECT_TRUE(ctx.hasUpdates());
+  ASSERT_TRUE(
+      std::holds_alternative<UpdateParticipantFlagsAction>(ctx.getAction()));
+  auto& action = std::get<UpdateParticipantFlagsAction>(ctx.getAction());
+  EXPECT_EQ(action.participant, "D");
+  EXPECT_EQ(action.flags, flagsSnapshotComplete);
+  auto& report = ctx.getReport();
+  ASSERT_EQ(report.size(), 2);
+  std::sort(report.begin(), report.end(),
+            [](auto const& left, auto const& right) {
+              return std::tie(left.participant, left.code) <
+                     std::tie(right.participant, right.code);
+            });
+  EXPECT_EQ(report[0].code, RSA::StatusCode::kLogParticipantNotYetGone);
+  EXPECT_EQ(report[0].participant, "B");
+  EXPECT_EQ(report[1].code, RSA::StatusCode::kInsufficientSnapshotCoverage);
+  EXPECT_EQ(report[1].participant, "C");
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_change_config) {
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  RLA::LogTargetConfig newConfig = defaultConfig;
+  newConfig.writeConcern = 3;  // change write concern from 2 -> 3
+
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C")
+      .setTargetVersion(12)
+      .setTargetConfig(newConfig);
+
+  state.setPlanParticipants("A", "B", "C").setAllSnapshotsComplete();
+  state.setCurrentVersion(12);
+
+  log.setId(logId)
+      .setTargetConfig(defaultConfig)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("B", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete);
+
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  EXPECT_TRUE(ctx.hasUpdates());
+  auto& action = ctx.getAction();
+  ASSERT_TRUE(std::holds_alternative<SetLogConfigAction>(action));
+  EXPECT_EQ(std::get<SetLogConfigAction>(action).config, newConfig);
 }

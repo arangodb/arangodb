@@ -21,6 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
@@ -38,17 +39,20 @@
 #include "Indexes/IndexFactory.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utilities/NameValidator.h"
 #include "V8Server/v8-collection.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
@@ -56,7 +60,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 #include <regex>
 
 using namespace arangodb;
@@ -92,10 +95,11 @@ Result Indexes::getIndex(LogicalCollection const* collection,
   }
 
   VPackBuilder tmp;
-  Result res = Indexes::getAll(collection, Index::makeFlags(),
-                               /*withHidden*/ true, tmp, trx);
+  Result res =
+      Indexes::getAll(collection, Index::makeFlags(Index::Serialize::Estimates),
+                      /*withHidden*/ true, tmp, trx);
   if (res.ok()) {
-    for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
+    for (VPackSlice index : VPackArrayIterator(tmp.slice())) {
       if ((index.hasKey(StaticStrings::IndexId) &&
            index.get(StaticStrings::IndexId).compareString(id) == 0) ||
           (index.hasKey(StaticStrings::IndexName) &&
@@ -119,7 +123,7 @@ arangodb::Result Indexes::getAll(
     auto& databaseName = collection->vocbase().name();
     std::string const& cid = collection->name();
 
-    std::unordered_map<std::string, double> estimates;
+    IndexEstMap estimates;
 
     if (Index::hasFlag(flags, Index::Serialize::Estimates)) {
       auto& feature =
@@ -153,7 +157,7 @@ arangodb::Result Indexes::getAll(
                        });
 
     tmp.openArray();
-    for (VPackSlice const& s : VPackArrayIterator(tmpInner.slice())) {
+    for (VPackSlice s : VPackArrayIterator(tmpInner.slice())) {
       std::string_view id = s.get(StaticStrings::IndexId).stringView();
       auto found = std::find_if(estimates.begin(), estimates.end(),
                                 [&id](std::pair<std::string, double> const& v) {
@@ -211,12 +215,12 @@ arangodb::Result Indexes::getAll(
   }
 
   bool mergeEdgeIdxs = !ServerState::instance()->isDBServer();
-
   double selectivity = 0, memory = 0, cacheSize = 0, cacheUsage = 0,
          cacheLifeTimeHitRate = 0, cacheWindowedHitRate = 0;
+  bool useCache = false;
 
   VPackArrayBuilder a(&result);
-  for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
+  for (VPackSlice index : VPackArrayIterator(tmp.slice())) {
     std::string id = collection->name() + TRI_INDEX_HANDLE_SEPARATOR_CHR +
                      index.get(arangodb::StaticStrings::IndexId).copyString();
     VPackBuilder merge;
@@ -232,44 +236,46 @@ arangodb::Result Indexes::getAll(
 
       if (fields.length() == 1) {  // merge indexes
         // read out relevant values
-        VPackSlice val = index.get("selectivityEstimate");
-
-        if (val.isNumber()) {
+        if (VPackSlice val = index.get("selectivityEstimate"); val.isNumber()) {
           selectivity += val.getNumber<double>();
         }
 
-        bool useCache = false;
-        VPackSlice figures = index.get("figures");
-
-        if (figures.isObject() && !figures.isEmptyObject()) {
-          if ((val = figures.get("cacheInUse")).isBool()) {
-            useCache = val.getBool();
+        if (VPackSlice figures = index.get("figures");
+            figures.isObject() && !figures.isEmptyObject()) {
+          if (VPackSlice val = figures.get("cacheInUse"); val.isBool()) {
+            useCache |= val.getBool();
           }
 
-          if ((val = figures.get("memory")).isNumber()) {
+          if (VPackSlice val = figures.get("memory"); val.isNumber()) {
             memory += val.getNumber<double>();
           }
 
-          if ((val = figures.get("cacheSize")).isNumber()) {
+          if (VPackSlice val = figures.get("cacheSize"); val.isNumber()) {
             cacheSize += val.getNumber<double>();
           }
 
-          if ((val = figures.get("cacheUsage")).isNumber()) {
+          if (VPackSlice val = figures.get("cacheUsage"); val.isNumber()) {
             cacheUsage += val.getNumber<double>();
           }
 
-          if ((val = figures.get("cacheLifeTimeHitRate")).isNumber()) {
+          if (VPackSlice val = figures.get("cacheLifeTimeHitRate");
+              val.isNumber()) {
             cacheLifeTimeHitRate += val.getNumber<double>();
           }
 
-          if ((val = figures.get("cacheWindowedHitRate")).isNumber()) {
+          if (VPackSlice val = figures.get("cacheWindowedHitRate");
+              val.isNumber()) {
             cacheWindowedHitRate += val.getNumber<double>();
           }
         }
 
         if (fields[0].compareString(StaticStrings::FromString) == 0) {
+          // ignore one part of the edge index
           continue;
-        } else if (fields[0].compareString(StaticStrings::ToString) == 0) {
+        }
+
+        if (fields[0].compareString(StaticStrings::ToString) == 0) {
+          // fuse the values of the two edge indexes together
           merge.add(StaticStrings::IndexFields,
                     VPackValue(VPackValueType::Array));
           merge.add(VPackValue(StaticStrings::FromString));
@@ -305,7 +311,7 @@ arangodb::Result Indexes::getAll(
 ////////////////////////////////////////////////////////////////////////////////
 
 static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
-                               VPackSlice const& definition, bool create,
+                               VPackSlice definition, bool create,
                                VPackBuilder& output) {
   TRI_ASSERT(collection != nullptr);
 
@@ -392,6 +398,21 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
   }
 
   VPackSlice indexDef = normalized.slice();
+  // for single server or for cluster when the instance is coordinator,
+  // indexes cannot be created covering fields that have preceding or trailing
+  // ":", because the case of preceding or trailing ":" is treated as a special
+  // case for shardKeys, in which the value of the attribute is read until or
+  // starting from where the character ":" of the string is reached, and it
+  // doesn't happen for index fields. We don't disallow this usage for dbservers
+  // because this check must be only done for indexes that will be created, not
+  // for indexes that already exist. Example for shardKeys: ["value:"], if the
+  // document has an attribute {"value": "123:abc"}, the shard key would cover
+  // "123", which is the substring read until we reach a ":"
+  if (create && (ServerState::instance()->isSingleServer() ||
+                 ServerState::instance()->isCoordinator())) {
+    Index::validateFieldsWithSpecialCase(
+        indexDef.get(arangodb::StaticStrings::IndexFields));
+  }
 
   if (ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(indexDef.isObject());
@@ -473,7 +494,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
         res.reset(code);
       } else {
         // flush estimates
-        collection->flushClusterIndexEstimates();
+        collection->getPhysical()->flushClusterIndexEstimates();
 
         // the cluster won't set a proper id value
         std::string iid = tmp.slice().get(StaticStrings::IndexId).copyString();
@@ -627,7 +648,8 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
   }
 
   if (!collectionName.empty()) {
-    if (!EqualCollection(resolver, collectionName, collection)) {
+    if (!methods::Collections::hasName(*resolver, *collection,
+                                       collectionName)) {
       // I wish this error provided me with more information!
       // e.g. 'cannot access index outside the collection it was defined in'
       return Result(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
@@ -694,7 +716,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection,
     }
 
     // flush estimates
-    collection->flushClusterIndexEstimates();
+    collection->getPhysical()->flushClusterIndexEstimates();
 
 #ifdef USE_ENTERPRISE
     res = Indexes::dropCoordinatorEE(collection, iid);
@@ -712,9 +734,12 @@ arangodb::Result Indexes::drop(LogicalCollection* collection,
   } else {
     READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
 
+    transaction::Options trxOpts;
+    trxOpts.requiresReplication = false;
     SingleCollectionTransaction trx(transaction::V8Context::CreateWhenRequired(
                                         collection->vocbase(), false),
-                                    *collection, AccessMode::Type::EXCLUSIVE);
+                                    *collection, AccessMode::Type::EXCLUSIVE,
+                                    trxOpts);
     Result res = trx.begin();
 
     if (!res.ok()) {

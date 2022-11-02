@@ -27,7 +27,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
 #include <chrono>
@@ -38,6 +37,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -67,9 +68,6 @@
 #endif
 
 namespace {
-
-/// @brief name of the feature to report to application server
-constexpr auto FeatureName = "Restore";
 
 /// @brief return the target replication factor for the specified collection
 uint64_t getReplicationFactor(arangodb::RestoreFeature::Options const& options,
@@ -209,9 +207,8 @@ void makeAttributesUnique(arangodb::velocypack::Builder& builder,
 
 /// @brief Create the database to restore to, connecting manually
 arangodb::Result tryCreateDatabase(
-    arangodb::application_features::ApplicationServer& server,
-    std::string const& name, VPackSlice properties,
-    arangodb::RestoreFeature::Options const& options) {
+    arangodb::ArangoRestoreServer& server, std::string const& name,
+    VPackSlice properties, arangodb::RestoreFeature::Options const& options) {
   using arangodb::httpclient::SimpleHttpClient;
   using arangodb::httpclient::SimpleHttpResult;
   using arangodb::rest::RequestType;
@@ -292,9 +289,9 @@ arangodb::Result tryCreateDatabase(
 
 /// @check If directory is encrypted, check that key option is specified
 void checkEncryption(arangodb::ManagedDirectory& directory) {
+#ifdef USE_ENTERPRISE
   using arangodb::Logger;
   if (directory.isEncrypted()) {
-#ifdef USE_ENTERPRISE
     if (!directory.encryptionFeature()->keyOptionSpecified()) {
       LOG_TOPIC("cc58e", WARN, Logger::RESTORE)
           << "the dump data seems to be encrypted with "
@@ -309,8 +306,8 @@ void checkEncryption(arangodb::ManagedDirectory& directory) {
           << "# using encryption type " << directory.encryptionType()
           << " for reading dump";
     }
-#endif
   }
+#endif
 }
 
 void getDBProperties(arangodb::ManagedDirectory& directory,
@@ -342,10 +339,9 @@ void getDBProperties(arangodb::ManagedDirectory& directory,
 }
 
 /// @brief Check the database name specified by the dump file
-arangodb::Result checkDumpDatabase(
-    arangodb::application_features::ApplicationServer& server,
-    arangodb::ManagedDirectory& directory, bool forceSameDatabase,
-    bool& useEnvelope) {
+arangodb::Result checkDumpDatabase(arangodb::ArangoRestoreServer& server,
+                                   arangodb::ManagedDirectory& directory,
+                                   bool forceSameDatabase, bool& useEnvelope) {
   using arangodb::ClientFeature;
   using arangodb::HttpEndpointProvider;
   using arangodb::Logger;
@@ -413,6 +409,22 @@ arangodb::Result sendRestoreCollection(
   }
   newOptions.add(arangodb::StaticStrings::NumberOfShards,
                  VPackValue(getNumberOfShards(options, parameters)));
+
+  // enable revision trees for the collection if the parameters are not set
+  // (likely a collection from the pre-3.8 era)
+  if (options.enableRevisionTrees) {
+    if ((parameters.get(arangodb::StaticStrings::SyncByRevision).isNone() ||
+         parameters.get(arangodb::StaticStrings::SyncByRevision).isTrue()) &&
+        (parameters.get(arangodb::StaticStrings::UsesRevisionsAsDocumentIds)
+             .isNone() ||
+         parameters.get(arangodb::StaticStrings::UsesRevisionsAsDocumentIds)
+             .isTrue())) {
+      newOptions.add(arangodb::StaticStrings::SyncByRevision, VPackValue(true));
+      newOptions.add(arangodb::StaticStrings::UsesRevisionsAsDocumentIds,
+                     VPackValue(true));
+    }
+  }
+
   newOptions.close();
 
   VPackBuilder b;
@@ -809,20 +821,31 @@ arangodb::Result processInputDirectory(
       jobQueue.waitForIdle();
     }
 
-    // Step 5: create arangosearch views
-    if (options.importStructure && !views.empty()) {
-      LOG_TOPIC("f723c", INFO, Logger::RESTORE) << "# Creating views...";
+    auto createViews = [&](std::string_view type) {
+      if (options.importStructure && !views.empty()) {
+        LOG_TOPIC("f723c", INFO, Logger::RESTORE)
+            << "# Creating " << type << " views...";
 
-      for (auto const& viewDefinition : views) {
-        LOG_TOPIC("c608d", DEBUG, Logger::RESTORE)
-            << "# Creating view: " << viewDefinition.toJson();
-
-        auto res = ::restoreView(httpClient, options, viewDefinition.slice());
-
-        if (!res.ok()) {
-          return res;
+        for (auto const& viewDefinition : views) {
+          auto slice = viewDefinition.slice();
+          LOG_TOPIC("c608d", DEBUG, Logger::RESTORE)
+              << "# Creating view: " << slice.toJson();
+          if (auto viewType = slice.get("type");
+              !viewType.isString() || viewType.stringView() != type) {
+            continue;
+          }
+          if (auto r = ::restoreView(httpClient, options, slice); !r.ok()) {
+            return r;
+          }
         }
       }
+      return Result{};
+    };
+
+    // Step 5: create arangosearch views
+    auto r = createViews("arangosearch");
+    if (!r.ok()) {
+      return r;
     }
 
     // Step 6: fire up data transfer
@@ -871,6 +894,12 @@ arangodb::Result processInputDirectory(
 
     jobQueue.waitForIdle();
     jobs.clear();
+
+    // Step 7: create search-alias views
+    r = createViews("search-alias");
+    if (!r.ok()) {
+      return r;
+    }
 
     Result firstError = feature.getFirstError();
     if (firstError.fail()) {
@@ -1038,7 +1067,14 @@ std::vector<RestoreFeature::DatabaseInfo> RestoreFeature::determineDatabaseList(
       std::string path =
           basics::FileUtils::buildFilename(_options.inputPath, it);
       if (basics::FileUtils::isDirectory(path)) {
-        ManagedDirectory dbDirectory(server(), path, false, false, false);
+        EncryptionFeature* encryption{};
+        if constexpr (Server::contains<EncryptionFeature>()) {
+          if (server().hasFeature<EncryptionFeature>()) {
+            encryption = &server().getFeature<EncryptionFeature>();
+          }
+        }
+
+        ManagedDirectory dbDirectory(encryption, path, false, false, false);
         databases.push_back({it, VPackBuilder{}, ""});
         getDBProperties(dbDirectory, databases.back().properties);
         try {
@@ -1083,14 +1119,12 @@ RestoreFeature::RestoreJob::RestoreJob(RestoreFeature& feature,
                                        RestoreProgressTracker& progressTracker,
                                        RestoreFeature::Options const& options,
                                        RestoreFeature::Stats& stats,
-                                       bool useEnvelope,
                                        std::string const& collectionName,
                                        std::shared_ptr<SharedState> sharedState)
     : feature{feature},
       progressTracker{progressTracker},
       options{options},
       stats{stats},
-      useEnvelope{useEnvelope},
       collectionName(collectionName),
       sharedState(std::move(sharedState)) {}
 
@@ -1104,8 +1138,7 @@ Result RestoreFeature::RestoreJob::sendRestoreData(
 
   std::string const url =
       "/_api/replication/restore-data?collection=" + urlEncode(collectionName) +
-      "&force=" + (options.force ? "true" : "false") +
-      "&useEnvelope=" + (useEnvelope ? "true" : "false");
+      "&force=" + (options.force ? "true" : "false");
 
   std::unordered_map<std::string, std::string> headers;
   headers.emplace(arangodb::StaticStrings::ContentTypeHeader,
@@ -1194,11 +1227,12 @@ RestoreFeature::RestoreMainJob::RestoreMainJob(
     RestoreProgressTracker& progressTracker,
     RestoreFeature::Options const& options, RestoreFeature::Stats& stats,
     VPackSlice parameters, bool useEnvelope)
-    : RestoreJob(feature, progressTracker, options, stats, useEnvelope,
+    : RestoreJob(feature, progressTracker, options, stats,
                  parameters.get({"parameters", "name"}).copyString(),
                  std::make_shared<SharedState>()),
       directory{directory},
-      parameters{parameters} {}
+      parameters{parameters},
+      useEnvelope{useEnvelope} {}
 
 Result RestoreFeature::RestoreMainJob::run(
     arangodb::httpclient::SimpleHttpClient& client) {
@@ -1328,8 +1362,8 @@ Result RestoreFeature::RestoreMainJob::dispatchRestoreData(
 
   feature.taskQueue().queueJob(
       std::make_unique<arangodb::RestoreFeature::RestoreSendJob>(
-          feature, progressTracker, options, stats, useEnvelope, collectionName,
-          sharedState, readOffset, std::move(buffer)));
+          feature, progressTracker, options, stats, collectionName, sharedState,
+          readOffset, std::move(buffer)));
 
   // we just scheduled an async job, and no result will be returned from here
   return {};
@@ -1343,7 +1377,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
   using arangodb::basics::StringUtils::formatSize;
 
   int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-      parameters, "type", 2);
+      parameters, std::vector<std::string_view>({"parameters", "type"}), 2);
   std::string const collectionType(type == 2 ? "document" : "edge");
 
   auto&& currentStatus = progressTracker.getStatus(collectionName);
@@ -1436,7 +1470,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
       return {TRI_ERROR_OUT_OF_MEMORY, "out of memory"};
     }
 
-    ssize_t numRead = datafile->read(buffer->end(), bufferSize);
+    auto numRead = datafile->read(buffer->end(), bufferSize);
     if (datafile->status().fail()) {  // error while reading
       return datafile->status();
     }
@@ -1481,7 +1515,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
       // data in order. this is because the enveloped data format may contain
       // documents to insert *AND* documents to remove (this is an MMFiles
       // legacy).
-      bool const forceDirect = (numRead == 0) || !useEnvelope;
+      bool const forceDirect = (numRead == 0) || useEnvelope;
 
       result = dispatchRestoreData(client, datafileReadOffset, buffer->begin(),
                                    length, forceDirect);
@@ -1525,7 +1559,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
         }
 
         LOG_TOPIC("69a73", INFO, Logger::RESTORE)
-            << "# Still loading data into " << collectionType << " collection '"
+            << "# Loading data into " << collectionType << " collection '"
             << collectionName << "', " << formatSize(numReadForThisCollection)
             << ofFilesize << " read" << percentage;
         numReadSinceLastReport = 0;
@@ -1604,11 +1638,10 @@ Result RestoreFeature::RestoreMainJob::sendRestoreIndexes(
 RestoreFeature::RestoreSendJob::RestoreSendJob(
     RestoreFeature& feature, RestoreProgressTracker& progressTracker,
     RestoreFeature::Options const& options, RestoreFeature::Stats& stats,
-    bool useEnvelope, std::string const& collectionName,
-    std::shared_ptr<SharedState> sharedState, size_t readOffset,
-    std::unique_ptr<basics::StringBuffer> buffer)
-    : RestoreJob(feature, progressTracker, options, stats, useEnvelope,
-                 collectionName, std::move(sharedState)),
+    std::string const& collectionName, std::shared_ptr<SharedState> sharedState,
+    size_t readOffset, std::unique_ptr<basics::StringBuffer> buffer)
+    : RestoreJob(feature, progressTracker, options, stats, collectionName,
+                 std::move(sharedState)),
       readOffset(readOffset),
       buffer(std::move(buffer)) {}
 
@@ -1622,13 +1655,14 @@ Result RestoreFeature::RestoreSendJob::run(
   return res;
 }
 
-RestoreFeature::RestoreFeature(application_features::ApplicationServer& server,
-                               int& exitCode)
-    : ApplicationFeature(server, RestoreFeature::featureName()),
-      _clientManager{server, Logger::RESTORE},
+RestoreFeature::RestoreFeature(Server& server, int& exitCode)
+    : ArangoRestoreFeature{server, *this},
+      _clientManager{server.getFeature<HttpEndpointProvider, ClientFeature>(),
+                     Logger::RESTORE},
       _clientTaskQueue{server, ::processJob},
       _exitCode{exitCode} {
-  requiresElevatedPrivileges(false);
+  static_assert(Server::isCreatedAfter<RestoreFeature, HttpEndpointProvider>());
+
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 
@@ -1706,7 +1740,8 @@ void RestoreFeature::collectOptions(
           "clean up duplicate attributes (use first specified value) in input "
           "documents instead of making the restore operation fail",
           new BooleanParameter(&_options.cleanupDuplicateAttributes),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30322)
       .setIntroducedIn(30402);
 
@@ -1732,11 +1767,19 @@ void RestoreFeature::collectOptions(
                   new BooleanParameter(&_options.useEnvelope))
       .setIntroducedIn(30800);
 
+  options
+      ->addOption("--enable-revision-trees",
+                  "Enable revision trees for new collections if the collection "
+                  "attributes `syncByRevision` and "
+                  "`usesRevisionsAsDocumentIds` are missing.",
+                  new BooleanParameter(&_options.enableRevisionTrees))
+      .setIntroducedIn(30807);
+
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   options->addOption(
       "--fail-after-update-continue-file", "",
       new BooleanParameter(&_options.failOnUpdateContinueFile),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 #endif
 
   options
@@ -1769,11 +1812,11 @@ void RestoreFeature::collectOptions(
 
   // deprecated options
   options
-      ->addOption(
-          "--default-number-of-shards",
-          "default value for numberOfShards if not specified in dump",
-          new UInt64Parameter(&_options.defaultNumberOfShards),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      ->addOption("--default-number-of-shards",
+                  "default value for numberOfShards if not specified in dump",
+                  new UInt64Parameter(&_options.defaultNumberOfShards),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30322)
       .setDeprecatedIn(30402);
 
@@ -1782,7 +1825,8 @@ void RestoreFeature::collectOptions(
           "--default-replication-factor",
           "default value for replicationFactor if not specified in dump",
           new UInt64Parameter(&_options.defaultReplicationFactor),
-          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30322)
       .setDeprecatedIn(30402);
 }
@@ -1905,9 +1949,17 @@ void RestoreFeature::start() {
 
   double const start = TRI_microtime();
 
+  EncryptionFeature* encryption{};
+  if constexpr (Server::contains<EncryptionFeature>()) {
+    if (server().hasFeature<EncryptionFeature>()) {
+      encryption = &server().getFeature<EncryptionFeature>();
+    }
+  }
+
   // set up the output directory, not much else
-  _directory = std::make_unique<ManagedDirectory>(server(), _options.inputPath,
-                                                  false, false, true);
+  _directory = std::make_unique<ManagedDirectory>(
+      encryption, _options.inputPath, false, false, true);
+
   if (_directory->status().fail()) {
     switch (static_cast<int>(_directory->status().errorNumber())) {
       case static_cast<int>(TRI_ERROR_FILE_NOT_FOUND):
@@ -2068,8 +2120,16 @@ void RestoreFeature::start() {
       client.setDatabaseName(db.name);
       LOG_TOPIC("36075", INFO, Logger::RESTORE)
           << "Restoring database '" << db.name << "'";
+
+      EncryptionFeature* encryption{};
+      if constexpr (Server::contains<EncryptionFeature>()) {
+        if (server().hasFeature<EncryptionFeature>()) {
+          encryption = &server().getFeature<EncryptionFeature>();
+        }
+      }
+
       _directory = std::make_unique<ManagedDirectory>(
-          server(),
+          encryption,
           basics::FileUtils::buildFilename(_options.inputPath, db.directory),
           false, false, true);
 
@@ -2191,20 +2251,20 @@ void RestoreFeature::start() {
 
     if (_options.importData) {
       LOG_TOPIC("a66e1", INFO, Logger::RESTORE)
-          << "Processed " << _stats.restoredCollections << " collection(s) in "
-          << Logger::FIXED(totalTime, 6) << " s, "
-          << "read " << formatSize(_stats.totalRead) << " from datafiles, "
+          << "Processed " << _stats.restoredCollections
+          << " collection(s) from " << databases.size() << " database(s) in "
+          << Logger::FIXED(totalTime, 2) << " s total time. Read "
+          << formatSize(_stats.totalRead) << " from datafiles, "
           << "sent " << _stats.totalBatches << " data batch(es) of "
-          << formatSize(_stats.totalSent) << " total size";
+          << formatSize(_stats.totalSent) << " total size.";
     } else if (_options.importStructure) {
       LOG_TOPIC("147ca", INFO, Logger::RESTORE)
-          << "Processed " << _stats.restoredCollections << " collection(s) in "
-          << Logger::FIXED(totalTime, 6) << " s";
+          << "Processed " << _stats.restoredCollections
+          << " collection(s) from " << databases.size() << " database(s) in "
+          << Logger::FIXED(totalTime, 2) << " s total time.";
     }
   }
 }
-
-std::string RestoreFeature::featureName() { return ::FeatureName; }
 
 ClientTaskQueue<RestoreFeature::RestoreJob>& RestoreFeature::taskQueue() {
   return _clientTaskQueue;
@@ -2212,8 +2272,10 @@ ClientTaskQueue<RestoreFeature::RestoreJob>& RestoreFeature::taskQueue() {
 
 void RestoreFeature::reportError(Result const& error) {
   try {
-    MUTEX_LOCKER(lock, _workerErrorLock);
-    _workerErrors.emplace(error);
+    {
+      MUTEX_LOCKER(lock, _workerErrorLock);
+      _workerErrors.emplace_back(error);
+    }
     _clientTaskQueue.clearQueue();
   } catch (...) {
   }

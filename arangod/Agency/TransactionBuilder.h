@@ -30,7 +30,6 @@
 #include <vector>
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/debugging.h"
 
@@ -46,14 +45,18 @@ struct no_op_deleter {
 template<typename T>
 using moving_ptr = std::unique_ptr<T, no_op_deleter>;
 
+inline void add_to_builder(VPackBuilder& b, VPackSlice const& v) { b.add(v); }
+
 template<typename V>
-void add_to_builder(VPackBuilder& b, V const& v) {
+auto add_to_builder(VPackBuilder& b, V const& v)
+    -> std::enable_if_t<std::is_constructible_v<velocypack::Value, V>, void> {
   b.add(VPackValue(v));
 }
 
-template<>
-inline void add_to_builder(VPackBuilder& b, VPackSlice const& v) {
-  b.add(v);
+template<typename Path>
+inline auto add_to_builder(VPackBuilder& b, Path const& v)
+    -> std::enable_if_t<std::is_base_of_v<cluster::paths::Path, Path>, void> {
+  b.add(VPackValue(v.str()));
 }
 
 template<typename K, typename V>
@@ -183,6 +186,18 @@ struct envelope {
       return std::move(*this);
     }
 
+    template<typename K, typename F>
+    write_trx push_queue_emplace(K&& k, F&& f, std::size_t max) {
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
+      _builder->openObject();
+      _builder->add("op", VPackValue("push-queue"));
+      _builder->add("len", VPackValue(max));
+      detail::add_to_builder(*_builder.get(), "new");
+      std::invoke(std::forward<F>(f), *_builder);
+      _builder->close();
+      return std::move(*this);
+    }
+
     template<typename K, typename V>
     write_trx set(K&& k, V&& v) {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
@@ -209,6 +224,15 @@ struct envelope {
       _builder->add("op", VPackValue("increment"));
       _builder->add("delta", VPackValue(delta));
       _builder->close();
+      return std::move(*this);
+    }
+
+    template<typename F>
+    write_trx cond(bool condition, F&& func) && {
+      static_assert(std::is_invocable_r_v<write_trx, F, write_trx&&>);
+      if (condition) {
+        return std::invoke(func, std::move(*this));
+      }
       return std::move(*this);
     }
 

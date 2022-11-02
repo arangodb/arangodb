@@ -36,14 +36,15 @@ function runSetup () {
   internal.debugClearFailAt();
 
   db._drop('UnitTestsRecovery');
-  var c = db._create('UnitTestsRecovery'), i;
+  let c = db._create('UnitTestsRecovery');
+  c.ensureIndex({ type: "hash", fields: ["value1"] });
+  c.ensureIndex({ type: "skiplist", fields: ["value2"] });
 
-  c.ensureHashIndex('value1');
-  c.ensureSkiplist('value2');
-
-  for (i = 0; i < 1000; ++i) {
-    c.save({ _key: 'test' + i, value1: i, value2: 'test' + (i % 10) });
+  let docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ _key: 'test' + i, value1: i, value2: 'test' + (i % 10) });
   }
+  c.insert(docs);
 
   c.save({ _key: 'crashme' }, true);
 

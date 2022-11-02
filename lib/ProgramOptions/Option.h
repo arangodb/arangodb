@@ -26,6 +26,11 @@
 #include "Basics/Common.h"
 #include "ProgramOptions/Parameters.h"
 
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <vector>
+
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -34,11 +39,17 @@ namespace options {
 
 /// @brief option flags. these can be bit-ORed to combine multiple flags
 enum class Flags : uint16_t {
-  None = 0,        // nothing special here
-  Hidden = 1,      // the option is hidden by default, only made visible by
-                   // --help-all or --help-.
-  Obsolete = 2,    // the option is obsolete. setting it does not influence the
-                   // program behavior
+  None = 0,      // nothing special here
+  Uncommon = 1,  // the option is not listed by --help, only made visible by
+                 // --help-all, --help-. or --help-uncommon
+  Obsolete = 2,  // the option is obsolete. setting it does not influence the
+                 // program behavior
+  // also see addOldOption() for renamed and addObsoleteOption() for deprecated
+  // options. for internal, "hidden" options use:
+  //   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  //     options->addOption(...);
+  //   #endif
+
   Enterprise = 4,  // the option is only available in the Enterprise Edition
   Command = 8,     // the option executes a special command, e.g. --version,
                    // --check-configuration, --dump-options
@@ -46,7 +57,6 @@ enum class Flags : uint16_t {
                    // target host configuration
   FlushOnFirst = 32,  // when we first see this parameter, we will flush the
                       // contents of its default value before setting it.
-
   // operating systems
   OsLinux = 64,     // option can be used on Linux
   OsWindows = 128,  // option can be used on Windows
@@ -105,9 +115,16 @@ struct Option {
 
   // create an option, consisting of single string
   Option(std::string const& value, std::string const& description,
-         Parameter* parameter, std::underlying_type<Flags>::type flags);
+         std::unique_ptr<Parameter> parameter,
+         std::underlying_type<Flags>::type flags);
 
-  void toVPack(arangodb::velocypack::Builder& builder) const;
+  Option(Option const& other) = delete;
+  Option& operator=(Option const& other) = delete;
+  Option(Option&& other) = default;
+  Option& operator=(Option&& other) = default;
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder,
+                    bool detailed) const;
 
   bool hasFlag(Flags flag) const {
     return (static_cast<std::underlying_type<Flags>::type>(flag) & flags) ==
@@ -194,10 +211,10 @@ struct Option {
   std::string name;
   std::string description;
   std::string shorthand;
-  std::shared_ptr<Parameter> parameter;
+  std::unique_ptr<Parameter> parameter;
 
   /// @brief option flags
-  std::underlying_type<Flags>::type const flags;
+  std::underlying_type<Flags>::type flags;
 
   std::vector<uint32_t> introducedInVersions;
   std::vector<uint32_t> deprecatedInVersions;

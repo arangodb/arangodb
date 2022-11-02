@@ -36,16 +36,12 @@
 #include "velocypack/Parser.h"
 #include "Basics/VelocyPackHelper.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
 class IResearchViewMetaTest : public ::testing::Test {
  protected:
+  arangodb::ArangodServer server;
   StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
 
-  IResearchViewMetaTest() : engine(server), server(nullptr, nullptr) {
+  IResearchViewMetaTest() : server(nullptr, nullptr), engine(server) {
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     selector.setEngineTesting(&engine);
   }
@@ -55,14 +51,6 @@ class IResearchViewMetaTest : public ::testing::Test {
         nullptr);
   }
 };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setup
-////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(IResearchViewMetaTest, test_defaults) {
   arangodb::iresearch::IResearchViewMeta meta;

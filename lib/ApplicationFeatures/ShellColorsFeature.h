@@ -30,7 +30,19 @@ namespace arangodb {
 class ShellColorsFeature final
     : public application_features::ApplicationFeature {
  public:
-  explicit ShellColorsFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "ShellColors"; }
+
+  template<typename Server>
+  explicit ShellColorsFeature(Server& server)
+      : ApplicationFeature{server, *this}, _initialized(false) {
+    setOptional(false);
+
+    // it's admittedly a hack that we already call prepare here...
+    // however, setting the colors is one of the first steps we need to do,
+    // and we do not want to wait for the application server to have
+    // successfully parsed options etc. before we initialize the shell colors
+    prepare();
+  }
 
   // cppcheck-suppress virtualCallInConstructor
   void prepare() override final;

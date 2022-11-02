@@ -24,15 +24,17 @@
 #include "ReplicatedLog.h"
 
 #include "Logger/LogContextKeys.h"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
+#include "Replication2/ReplicatedLog/LogUnconfiguredParticipant.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Metrics/Counter.h"
+#include "Cluster/FailureOracle.h"
 
 #include <Basics/Exceptions.h>
-#include <Basics/StringUtils.h>
 #include <Basics/voc-errors.h>
 
 #include <optional>
@@ -50,9 +52,10 @@ replicated_log::ReplicatedLog::ReplicatedLog(
     std::shared_ptr<ReplicatedLogMetrics> const& metrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     LoggerContext const& logContext)
-    : _logContext(logContext.with<logContextKeyLogId>(core->logId())),
-      _participant(std::make_shared<replicated_log::LogUnconfiguredParticipant>(
-          std::move(core), metrics)),
+    : _logId(core->gid()),
+      _logContext(logContext.with<logContextKeyLogId>(core->logId())),
+      _participant(std::make_shared<LogUnconfiguredParticipant>(std::move(core),
+                                                                metrics)),
       _metrics(metrics),
       _options(std::move(options)) {}
 
@@ -68,13 +71,15 @@ replicated_log::ReplicatedLog::~ReplicatedLog() {
 }
 
 auto replicated_log::ReplicatedLog::becomeLeader(
-    LogConfig config, ParticipantId id, LogTerm newTerm,
-    std::vector<std::shared_ptr<AbstractFollower>> const& follower)
+    ParticipantId id, LogTerm newTerm,
+    std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+    std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
+    std::shared_ptr<cluster::IFailureOracle const> failureOracle)
     -> std::shared_ptr<LogLeader> {
   auto [leader, deferred] = std::invoke([&] {
     std::unique_lock guard(_mutex);
     if (auto currentTerm = _participant->getTerm();
-        currentTerm && *currentTerm > newTerm) {
+        currentTerm && *currentTerm >= newTerm) {
       LOG_CTX("b8bf7", INFO, _logContext)
           << "tried to become leader with term " << newTerm
           << ", but current term is " << *currentTerm;
@@ -84,9 +89,9 @@ auto replicated_log::ReplicatedLog::becomeLeader(
     auto [logCore, deferred] = std::move(*_participant).resign();
     LOG_CTX("23d7b", DEBUG, _logContext)
         << "becoming leader in term " << newTerm;
-    auto leader = LogLeader::construct(config, std::move(logCore), follower,
-                                       std::move(id), newTerm, _logContext,
-                                       _metrics, _options);
+    auto leader = LogLeader::construct(
+        std::move(logCore), follower, participantsConfig, std::move(id),
+        newTerm, _logContext, _metrics, _options, std::move(failureOracle));
     _participant = std::static_pointer_cast<ILogParticipant>(leader);
     _metrics->replicatedLogLeaderTookOverNumber->count();
     return std::make_pair(std::move(leader), std::move(deferred));
@@ -101,7 +106,7 @@ auto replicated_log::ReplicatedLog::becomeFollower(
   auto [follower, deferred] = std::invoke([&] {
     std::unique_lock guard(_mutex);
     if (auto currentTerm = _participant->getTerm();
-        currentTerm && *currentTerm > term) {
+        currentTerm && *currentTerm >= term) {
       LOG_CTX("c97e9", INFO, _logContext)
           << "tried to become follower with term " << term
           << ", but current term is " << *currentTerm;
@@ -111,10 +116,10 @@ auto replicated_log::ReplicatedLog::becomeFollower(
     LOG_CTX("1ed24", DEBUG, _logContext)
         << "becoming follower in term " << term << " with leader "
         << leaderId.value_or("<none>");
-    auto log = InMemoryLog::loadFromLogCore(*logCore);
-    auto follower = std::make_shared<LogFollower>(
-        _logContext, _metrics, std::move(id), std::move(logCore), term,
-        std::move(leaderId), log);
+
+    auto follower =
+        LogFollower::construct(_logContext, _metrics, _options, std::move(id),
+                               std::move(logCore), term, std::move(leaderId));
     _participant = std::static_pointer_cast<ILogParticipant>(follower);
     _metrics->replicatedLogStartedFollowingNumber->operator++();
     return std::make_tuple(follower, std::move(deferred));
@@ -126,8 +131,8 @@ auto replicated_log::ReplicatedLog::getParticipant() const
     -> std::shared_ptr<ILogParticipant> {
   std::unique_lock guard(_mutex);
   if (_participant == nullptr) {
-    THROW_ARANGO_EXCEPTION(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+    throw replicated_log::ParticipantResignedException(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE, ADB_HERE);
   }
 
   return _participant;
@@ -164,5 +169,15 @@ auto replicated_log::ReplicatedLog::drop() -> std::unique_ptr<LogCore> {
     _participant = nullptr;
     return res;
   });
+  // cppcheck-suppress returnStdMoveLocal
   return std::move(core);
+}
+
+auto replicated_log::ReplicatedLog::getId() const noexcept -> LogId {
+  return _logId.id;
+}
+
+auto replicated_log::ReplicatedLog::getGlobalLogId() const noexcept
+    -> GlobalLogIdentifier const& {
+  return _logId;
 }

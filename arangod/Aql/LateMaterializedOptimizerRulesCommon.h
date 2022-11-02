@@ -23,14 +23,22 @@
 
 #pragma once
 
+#include "IResearch/IResearchViewSort.h"
+
 #include <memory>
 #include <vector>
+#include <string>
 
 namespace arangodb {
 
 namespace basics {
 struct AttributeName;
 }
+
+namespace iresearch {
+class IResearchViewSort;
+class IResearchViewStoredValues;
+}  // namespace iresearch
 
 namespace aql {
 struct AstNode;
@@ -52,37 +60,79 @@ struct AstAndFieldData {
   std::vector<std::string> postfix;
 };
 
+struct IndexFieldData {
+  std::vector<arangodb::basics::AttributeName> const* field{nullptr};
+  size_t fieldNumber{0};
+  ptrdiff_t columnNumber{0};
+  size_t postfix{0};
+};
+
 struct AstAndColumnFieldData : AstAndFieldData {
   ptrdiff_t columnNumber{0};
+};
+
+template<typename T>
+struct AttributeAndField {
+  std::vector<arangodb::basics::AttributeName> attr;
+  T afData;
 };
 
 template<typename T>
 struct NodeWithAttrs {
   using DataType = T;
 
-  struct AttributeAndField {
-    std::vector<arangodb::basics::AttributeName> attr;
-    T afData;
-  };
-
   CalculationNode* node;
-  std::vector<AttributeAndField> attrs;
+  std::vector<AttributeAndField<T>> attrs;
 };
 
 struct NodeExpressionWithAttrs : NodeWithAttrs<AstAndFieldData> {
   Expression* expression;
 };
 
-using NodeWithAttrsColumn =
-    latematerialized::NodeWithAttrs<latematerialized::AstAndColumnFieldData>;
+using NodeWithAttrsColumn = NodeWithAttrs<AstAndColumnFieldData>;
+
+template<bool postfixLen>
+struct ColumnVariant {
+  using PostfixType =
+      std::conditional_t<postfixLen, size_t, std::vector<std::string>>;
+  using DataType =
+      std::conditional_t<postfixLen, IndexFieldData, AstAndColumnFieldData>;
+
+  DataType* afData;
+  size_t fieldNum;
+  std::vector<arangodb::basics::AttributeName> const* field;
+  PostfixType postfix;
+
+  ColumnVariant(DataType* afData, size_t fieldNum,
+                std::vector<arangodb::basics::AttributeName> const* field,
+                PostfixType&& postfix)
+      : afData(afData),
+        fieldNum(fieldNum),
+        field(field),
+        postfix(std::move(postfix)) {}
+};
+
+template<bool postfixLen, typename Attrs>
+bool attributesMatch(
+    iresearch::IResearchSortBase const& primarySort,
+    iresearch::IResearchViewStoredValues const& storedValues, Attrs& attrs,
+    std::vector<std::vector<ColumnVariant<postfixLen>>>& usedColumnsCounter,
+    size_t columnsCount);
+
+template<bool postfixLen>
+void setAttributesMaxMatchedColumns(
+    std::vector<std::vector<ColumnVariant<postfixLen>>>& usedColumnsCounter,
+    size_t columnsCount);
 
 template<typename T>
 bool getReferencedAttributes(AstNode* node, Variable const* variable,
                              T& nodeAttrs);
 
+template<bool postfixLen>
 bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
               std::vector<arangodb::basics::AttributeName> const& attrs,
-              bool ignoreExpansionInLast, std::vector<std::string>& postfix);
+              bool ignoreExpansionInLast,
+              typename ColumnVariant<postfixLen>::PostfixType& postfix);
 
 }  // namespace latematerialized
 }  // namespace aql

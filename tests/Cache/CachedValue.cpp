@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <string>
 
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/CachedValue.h"
 
 using namespace arangodb::cache;
@@ -131,19 +132,24 @@ TEST(CacheCachedValueTest, samekey_method_for_key_comparison_works) {
   std::string k3("TEST");
   std::uint64_t v = 1;
 
+  BinaryKeyHasher hasher;
+
   auto cv =
       CachedValue::construct(k1.data(), static_cast<std::uint32_t>(k1.size()),
                              &v, sizeof(std::uint64_t));
   ASSERT_NE(nullptr, cv);
 
   // same key
-  ASSERT_TRUE(cv->sameKey(k1.data(), static_cast<std::uint32_t>(k1.size())));
+  ASSERT_TRUE(hasher.sameKey(cv->key(), cv->keySize(), k1.data(),
+                             static_cast<std::uint32_t>(k1.size())));
 
   // different length, matching prefix
-  ASSERT_FALSE(cv->sameKey(k2.data(), static_cast<std::uint32_t>(k2.size())));
+  ASSERT_FALSE(hasher.sameKey(cv->key(), cv->keySize(), k2.data(),
+                              static_cast<std::uint32_t>(k2.size())));
 
   // same length, different key
-  ASSERT_FALSE(cv->sameKey(k3.data(), static_cast<std::uint32_t>(k3.size())));
+  ASSERT_FALSE(hasher.sameKey(cv->key(), cv->keySize(), k3.data(),
+                              static_cast<std::uint32_t>(k3.size())));
 
   delete cv;
 }

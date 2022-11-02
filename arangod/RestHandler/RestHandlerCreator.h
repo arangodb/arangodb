@@ -24,30 +24,30 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "RestServer/arangod.h"
 
 #include <memory>
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 namespace rest {
 class RestHandler;
 }
+class GeneralRequest;
+class GeneralResponse;
 
 template<typename H>
 class RestHandlerCreator : public H {
  public:
   template<typename D>
   static std::shared_ptr<rest::RestHandler> createData(
-      application_features::ApplicationServer& server, GeneralRequest* request,
-      GeneralResponse* response, void* data) {
+      ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
+      void* data) {
     return std::make_shared<H>(server, request, response, (D)data);
   }
 
   static std::shared_ptr<rest::RestHandler> createNoData(
-      application_features::ApplicationServer& server, GeneralRequest* request,
-      GeneralResponse* response, void*) {
+      ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
+      void*) {
     return std::make_shared<H>(server, request, response);
   }
 

@@ -33,7 +33,8 @@ using namespace arangodb;
 
 auto opts = std::make_shared<arangodb::options::ProgramOptions>(
     "metrics_feature_test", std::string(), std::string(), "path");
-application_features::ApplicationServer server(opts, nullptr);
+
+ArangodServer server(opts, nullptr);
 metrics::MetricsFeature feature(server);
 
 class MetricsFeatureTest : public ::testing::Test {
@@ -50,10 +51,10 @@ TEST_F(MetricsFeatureTest, test_counter) {
 
   ASSERT_EQ(counter.load(), 0);
   std::string s;
-  counter.toPrometheus(s, "", "");
+  counter.toPrometheus(s, "");
   std::cout << s << std::endl;
   s.clear();
-  labeledCounter.toPrometheus(s, "", "");
+  labeledCounter.toPrometheus(s, "");
   std::cout << s << std::endl;
 
   thisMetric = &counter;
@@ -76,10 +77,10 @@ TEST_F(MetricsFeatureTest, test_histogram) {
       feature.add(HISTOGRAMLIN{}.withLabel("label", "label"));
 
   std::string s;
-  histogram.toPrometheus(s, "", "");
+  histogram.toPrometheus(s, "");
   std::cout << s << std::endl;
   s.clear();
-  labeledHistogram.toPrometheus(s, "", "");
+  labeledHistogram.toPrometheus(s, "");
   std::cout << s << std::endl;
 
   thisMetric = &histogram;
@@ -101,10 +102,10 @@ TEST_F(MetricsFeatureTest, test_gauge) {
   auto& labeledGauge = feature.add(GAUGE{}.withLabel("label", "label"));
 
   std::string s;
-  gauge.toPrometheus(s, "", "");
+  gauge.toPrometheus(s, "");
   std::cout << s << std::endl;
   s.clear();
-  labeledGauge.toPrometheus(s, "", "");
+  labeledGauge.toPrometheus(s, "");
   std::cout << s << std::endl;
 
   thisMetric = &gauge;

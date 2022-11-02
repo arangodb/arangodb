@@ -46,24 +46,38 @@ class ClusterTransactionState final : public TransactionState {
   [[nodiscard]] Result beginTransaction(transaction::Hints hints) override;
 
   /// @brief commit a transaction
-  [[nodiscard]] Result commitTransaction(transaction::Methods* trx) override;
+  [[nodiscard]] futures::Future<Result> commitTransaction(
+      transaction::Methods* trx) override;
 
   /// @brief abort a transaction
   [[nodiscard]] Result abortTransaction(transaction::Methods* trx) override;
 
-  [[nodiscard]] Result performIntermediateCommitIfRequired(
+  Result triggerIntermediateCommit() override;
+
+  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId cid) override;
 
   /// @brief return number of commits, including intermediate commits
-  [[nodiscard]] uint64_t numCommits() const override;
+  [[nodiscard]] uint64_t numCommits() const noexcept override;
 
-  [[nodiscard]] bool hasFailedOperations() const override { return false; }
+  [[nodiscard]] uint64_t numIntermediateCommits() const noexcept override;
+
+  [[nodiscard]] bool hasFailedOperations() const noexcept override {
+    return false;
+  }
+
+  void addIntermediateCommits(uint64_t value) override {
+    _numIntermediateCommits += value;
+  }
 
   [[nodiscard]] TRI_voc_tick_t lastOperationTick() const noexcept override;
 
  protected:
   std::unique_ptr<TransactionCollection> createTransactionCollection(
       DataSourceId cid, AccessMode::Type accessType) override;
+
+ private:
+  uint64_t _numIntermediateCommits;
 };
 
 }  // namespace arangodb

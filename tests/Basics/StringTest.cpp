@@ -164,33 +164,6 @@ TEST(CStringTest, tst_upper_ascii_non_ascii) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test equal string
-////////////////////////////////////////////////////////////////////////////////
-
-TEST(CStringTest, tst_equal_string) {
-  EXPECT_TRUE(TRI_EqualString("", ""));
-  EXPECT_TRUE(TRI_EqualString(" ", " "));
-  EXPECT_TRUE(TRI_EqualString("a", "a"));
-  EXPECT_TRUE(TRI_EqualString("the quick brown fox", "the quick brown fox"));
-  EXPECT_TRUE(TRI_EqualString("The Quick Brown FOX", "The Quick Brown FOX"));
-  EXPECT_TRUE(TRI_EqualString("\"\t\r\n ", "\"\t\r\n "));
-
-  EXPECT_FALSE(TRI_EqualString("", " "));
-  EXPECT_FALSE(TRI_EqualString(" ", ""));
-  EXPECT_FALSE(TRI_EqualString("a", ""));
-  EXPECT_FALSE(TRI_EqualString("a", "a "));
-  EXPECT_FALSE(TRI_EqualString(" a", "a"));
-  EXPECT_FALSE(TRI_EqualString("A", "a"));
-  EXPECT_FALSE(TRI_EqualString("a", "A"));
-  EXPECT_FALSE(TRI_EqualString("", "0"));
-  EXPECT_FALSE(TRI_EqualString("0", ""));
-  EXPECT_FALSE(TRI_EqualString(" ", "0"));
-  EXPECT_FALSE(TRI_EqualString("0", " "));
-  EXPECT_FALSE(TRI_EqualString("case matters", "Case matters"));
-  EXPECT_FALSE(TRI_EqualString("CASE matters", "CASE matterS"));
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test case equal string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -217,40 +190,4 @@ TEST(CStringTest, tst_case_equal_string) {
   EXPECT_FALSE(TRI_CaseEqualString("0", ""));
   EXPECT_FALSE(TRI_CaseEqualString(" ", "0"));
   EXPECT_FALSE(TRI_CaseEqualString("0", " "));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test prefix string
-////////////////////////////////////////////////////////////////////////////////
-
-TEST(CStringTest, tst_prefix_string) {
-  EXPECT_TRUE(TRI_IsPrefixString("the quick brown fox", "the"));
-  EXPECT_TRUE(TRI_IsPrefixString("the quick brown fox", "th"));
-  EXPECT_TRUE(TRI_IsPrefixString("the quick brown fox", "t"));
-  EXPECT_TRUE(TRI_IsPrefixString("the quick brown fox", "the q"));
-  EXPECT_TRUE(TRI_IsPrefixString(" the quick brown fox", " "));
-  EXPECT_TRUE(TRI_IsPrefixString("the fox", "the fox"));
-  EXPECT_TRUE(TRI_IsPrefixString("\t\r\n0", "\t"));
-  EXPECT_TRUE(TRI_IsPrefixString("\t\r\n0", "\t\r"));
-  EXPECT_TRUE(TRI_IsPrefixString("the fox", ""));
-
-  EXPECT_FALSE(TRI_IsPrefixString("the quick brown fox", "The"));
-  EXPECT_FALSE(TRI_IsPrefixString("the quick brown fox", " the"));
-  EXPECT_FALSE(TRI_IsPrefixString("the quick brown fox", "the  quick"));
-  EXPECT_FALSE(TRI_IsPrefixString("the quick brown fox", "the q "));
-  EXPECT_FALSE(TRI_IsPrefixString("the quick brown fox", "foo"));
-  EXPECT_FALSE(TRI_IsPrefixString("the quick brown fox", "a"));
-  EXPECT_FALSE(TRI_IsPrefixString("the quick brown fox", "quick"));
-  EXPECT_FALSE(TRI_IsPrefixString("the quick brown fox", "he quick"));
-  EXPECT_FALSE(TRI_IsPrefixString("the quick brown fox", "fox"));
-  EXPECT_FALSE(TRI_IsPrefixString("the quick brown fox", "T"));
-  EXPECT_FALSE(TRI_IsPrefixString("The quick brown fox", "the"));
-  EXPECT_FALSE(TRI_IsPrefixString("THE QUICK BROWN FOX", "The"));
-  EXPECT_FALSE(TRI_IsPrefixString("THE QUICK BROWN FOX", "the"));
-  EXPECT_FALSE(TRI_IsPrefixString("THE QUICK BROWN FOX", "THE quick"));
-  EXPECT_FALSE(TRI_IsPrefixString(" the quick brown fox", "the"));
-  EXPECT_FALSE(TRI_IsPrefixString("the fox", " "));
-  EXPECT_FALSE(TRI_IsPrefixString("\r\n0", "\n"));
-  EXPECT_FALSE(TRI_IsPrefixString("\r\n0", " "));
-  EXPECT_FALSE(TRI_IsPrefixString("", "the"));
 }

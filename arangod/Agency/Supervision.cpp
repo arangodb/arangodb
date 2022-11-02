@@ -32,6 +32,7 @@
 #include "Agency/Agent.h"
 #include "Agency/CleanOutServer.h"
 #include "Agency/FailedServer.h"
+#include "Agency/Helpers.h"
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
 #include "Agency/RemoveFollower.h"
@@ -43,16 +44,20 @@
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ServerState.h"
-#include "Random/RandomGenerator.h"
-#include "Replication2/AgencyMethods.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/Algorithms.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/MetricsFeature.h"
+#include "Random/RandomGenerator.h"
+#include "Replication2/AgencyMethods.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/Algorithms.h"
+#include "Replication2/ReplicatedLog/ParticipantsHealth.h"
+#include "Replication2/ReplicatedLog/Supervision.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Replication2/ReplicatedState/Supervision.h"
 #include "StorageEngine/HealthData.h"
+#include "Basics/ScopeGuard.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -67,11 +72,6 @@ struct WaitForReplicationScale {
   static metrics::LogScale<uint64_t> scale() { return {2, 10, 2000, 10}; }
 };
 
-DECLARE_LEGACY_COUNTER(arangodb_agency_supervision_accum_runtime_msec_total,
-                       "Accumulated Supervision Runtime [ms]");
-DECLARE_LEGACY_COUNTER(
-    arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total,
-    "Accumulated Supervision wait for replication time [ms]");
 DECLARE_COUNTER(arangodb_agency_supervision_failed_server_total,
                 "Counter for FailedServer jobs");
 DECLARE_HISTOGRAM(arangodb_agency_supervision_runtime_msec, RuntimeScale,
@@ -200,7 +200,7 @@ struct HealthRecord {
 // This is initialized in AgencyFeature:
 std::string Supervision::_agencyPrefix = "/arango";
 
-Supervision::Supervision(application_features::ApplicationServer& server)
+Supervision::Supervision(ArangodServer& server)
     : arangodb::Thread(server, "Supervision"),
       _agent(nullptr),
       _spearhead(server, _agent),
@@ -213,7 +213,6 @@ Supervision::Supervision(application_features::ApplicationServer& server)
       _jobIdMax(0),
       _lastUpdateIndex(0),
       _haveAborts(false),
-      _selfShutdown(false),
       _upgraded(false),
       _nextServerCleanup(),
       _supervision_runtime_msec(
@@ -222,12 +221,6 @@ Supervision::Supervision(application_features::ApplicationServer& server)
       _supervision_runtime_wait_for_sync_msec(
           server.getFeature<metrics::MetricsFeature>().add(
               arangodb_agency_supervision_runtime_wait_for_replication_msec{})),
-      _supervision_accum_runtime_msec(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_agency_supervision_accum_runtime_msec_total{})),
-      _supervision_accum_runtime_wait_for_sync_msec(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total{})),
       _supervision_failed_server_counter(
           server.getFeature<metrics::MetricsFeature>().add(
               arangodb_agency_supervision_failed_server_total{})) {}
@@ -417,10 +410,11 @@ void Supervision::upgradeBackupKey(VPackBuilder& builder) {
   }
 }
 
-void handleOnStatusDBServer(Agent* agent, Node const& snapshot,
-                            HealthRecord& persisted, HealthRecord& transisted,
-                            std::string const& serverID, uint64_t const& jobId,
-                            std::shared_ptr<VPackBuilder>& envelope) {
+void handleOnStatusDBServer(
+    Agent* agent, Node const& snapshot, HealthRecord& persisted,
+    HealthRecord& transisted, std::string const& serverID,
+    uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope,
+    std::unordered_set<std::string> const& dbServersInMaintenance) {
   std::string failedServerPath = failedServersPrefix + "/" + serverID;
   // New condition GOOD:
   if (transisted.status == Supervision::HEALTH_STATUS_GOOD) {
@@ -446,11 +440,13 @@ void handleOnStatusDBServer(Agent* agent, Node const& snapshot,
       persisted.status == Supervision::HEALTH_STATUS_BAD &&
       transisted.status == Supervision::HEALTH_STATUS_FAILED) {
     if (!snapshot.has(failedServerPath)) {
-      envelope = std::make_shared<VPackBuilder>();
-      agent->supervision()._supervision_failed_server_counter.operator++();
-      FailedServer(snapshot, agent, std::to_string(jobId), "supervision",
-                   serverID)
-          .create(envelope);
+      if (!dbServersInMaintenance.contains(serverID)) {
+        envelope = std::make_shared<VPackBuilder>();
+        agent->supervision()._supervision_failed_server_counter.operator++();
+        FailedServer(snapshot, agent, std::to_string(jobId), "supervision",
+                     serverID)
+            .create(envelope);
+      }
     }
   }
 }
@@ -515,13 +511,14 @@ void handleOnStatusSingle(Agent* agent, Node const& snapshot,
   }
 }
 
-void handleOnStatus(Agent* agent, Node const& snapshot, HealthRecord& persisted,
-                    HealthRecord& transisted, std::string const& serverID,
-                    uint64_t const& jobId,
-                    std::shared_ptr<VPackBuilder>& envelope) {
+void handleOnStatus(
+    Agent* agent, Node const& snapshot, HealthRecord& persisted,
+    HealthRecord& transisted, std::string const& serverID,
+    uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope,
+    std::unordered_set<std::string> const& dbServersInMaintenance) {
   if (ClusterHelpers::isDBServerName(serverID)) {
     handleOnStatusDBServer(agent, snapshot, persisted, transisted, serverID,
-                           jobId, envelope);
+                           jobId, envelope, dbServersInMaintenance);
   } else if (ClusterHelpers::isCoordinatorName(serverID)) {
     handleOnStatusCoordinator(agent, snapshot, persisted, transisted, serverID);
   } else if (serverID.compare(0, 4, "SNGL") == 0) {
@@ -531,30 +528,6 @@ void handleOnStatus(Agent* agent, Node const& snapshot, HealthRecord& persisted,
     LOG_TOPIC("86191", ERR, Logger::SUPERVISION)
         << "Unknown server type. No supervision action taken. " << serverID;
   }
-}
-
-// Build transaction for removing unattended servers from health monitoring
-query_t arangodb::consensus::removeTransactionBuilder(
-    std::vector<std::string> const& todelete) {
-  query_t del = std::make_shared<Builder>();
-  {
-    VPackArrayBuilder trxs(del.get());
-    {
-      VPackArrayBuilder trx(del.get());
-      {
-        VPackObjectBuilder server(del.get());
-        for (auto const& srv : todelete) {
-          del->add(VPackValue(Supervision::agencyPrefix() +
-                              arangodb::consensus::healthPrefix + srv));
-          {
-            VPackObjectBuilder oper(del.get());
-            del->add("op", VPackValue("delete"));
-          }
-        }
-      }
-    }
-  }
-  return del;
 }
 
 // Check all DB servers, guarded above doChecks
@@ -584,7 +557,9 @@ std::vector<check_t> Supervision::check(std::string const& type) {
   }
 
   if (!todelete.empty()) {
-    _agent->write(removeTransactionBuilder(todelete));
+    velocypack::Builder builder;
+    removeTransactionBuilder(builder, todelete);
+    _agent->write(builder.slice());
   }
 
   auto startTimeLoop = std::chrono::system_clock::now();
@@ -786,7 +761,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
             << "Status of server " << serverID << " has changed from "
             << persist.status << " to " << transist.status;
         handleOnStatus(_agent, snapshot(), persist, transist, serverID, _jobId,
-                       envelope);
+                       envelope, _DBServersInMaintenance);
         persist =
             transist;  // Now copy Status, SyncStatus from transient to persited
       } else {
@@ -1023,7 +998,280 @@ void Supervision::reportStatus(std::string const& status) {
   }
 }
 
-void Supervision::run() {
+void Supervision::updateDBServerMaintenance() {
+  // This method checks all entries in /arango/Target/MaintenanceDBServers
+  // and makes sure that /arango/Current/MaintenanceDBServers reflects
+  // the state of the Target entries (including potentially run out
+  // timeouts. Furthermore, it updates the set _DBServersInMaintenance,
+  // which will be used for the rest of the supervision run.
+
+  // Algorithm for each entry in Target:
+  //   If Target says maintenance:
+  //     if timeout reached:
+  //       remove entry from Target
+  //       stop
+  //     else:
+  //       if Current entry differs: copy over
+  //       put server in _DBServersInMaintenance
+  // Algorithm for each entry in Current:
+  //   If Current says maintenance:
+  //     if server not in _DBServersInMaintenance:
+  //       remove entry
+
+  velocypack::Builder builder;
+  builder.openArray();
+
+  auto ensureDBServerInCurrent = [&](std::string const& serverId, bool yes) {
+    // This closure will copy the entry
+    // /Target/MaintenanceDBServers/<serverId>
+    // to /Current/MaintenanceDBServers/<serverId> if they differ and `yes`
+    // is `true`. If `yes` is `false`, the entry will be removed.
+    std::string targetPath =
+        std::string(TARGET_MAINTENANCE_DBSERVERS) + "/" + serverId;
+    std::string currentPath =
+        std::string(CURRENT_MAINTENANCE_DBSERVERS) + "/" + serverId;
+    auto current = snapshot().has(currentPath);
+    if (yes == false) {
+      if (current) {
+        {
+          VPackArrayBuilder ab(&builder);
+          {
+            VPackObjectBuilder ob(&builder);
+            builder.add(VPackValue("/arango/" + currentPath));
+            {
+              VPackObjectBuilder ob2(&builder);
+              builder.add("op", "delete");
+            }
+          }
+        }
+      }
+      return;
+    }
+    auto target = snapshot().get(targetPath);
+    if (target.has_value()) {
+      if (!current || target.has_value() != current) {
+        {
+          VPackArrayBuilder ab(&builder);
+          {
+            VPackObjectBuilder ob(&builder);
+            builder.add(VPackValue("/arango/" + currentPath));
+            {
+              VPackObjectBuilder ob2(&builder);
+              builder.add("op", "set");
+              builder.add(VPackValue("new"));
+              target->get().toBuilder(builder);
+            }
+          }
+        }
+      }
+    }
+  };
+
+  std::unordered_set<std::string> newDBServersInMaintenance;
+  auto target = snapshot().hasAsChildren(TARGET_MAINTENANCE_DBSERVERS);
+  if (target) {
+    // If the key is not there or there is no object there, nobody is in
+    // maintenance.
+    Node::Children const& targetServers = target.value().get();
+    for (auto const& p : targetServers) {
+      std::string const& serverId = p.first;
+      std::shared_ptr<Node> const& entry = p.second;
+      auto mode = entry->hasAsString("Mode");
+      if (mode) {
+        std::string const& modeSt = mode.value();
+        if (modeSt == "maintenance") {
+          // Yes, it says maintenance, now check the timeout:
+          auto timeout = entry->hasAsString("Until");
+          if (timeout) {
+            auto const maintenanceExpires = stringToTimepoint(timeout.value());
+            if (maintenanceExpires < std::chrono::system_clock::now()) {
+              // Need to switch off maintenance mode
+              ensureDBServerInCurrent(serverId, false);
+            } else {
+              // Server is in maintenance mode:
+              newDBServersInMaintenance.insert(serverId);
+              ensureDBServerInCurrent(serverId, true);
+            }
+          }
+        }
+      }
+    }
+  }
+  auto current = snapshot().hasAsChildren(CURRENT_MAINTENANCE_DBSERVERS);
+  if (current) {
+    Node::Children const& currentServers = current.value().get();
+    for (auto const& p : currentServers) {
+      std::string const& serverId = p.first;
+      if (newDBServersInMaintenance.find(serverId) ==
+          newDBServersInMaintenance.end()) {
+        ensureDBServerInCurrent(serverId, false);
+      }
+    }
+  }
+  _DBServersInMaintenance.swap(newDBServersInMaintenance);
+
+  builder.close();
+  if (builder.slice().length() > 0) {
+    write_ret_t res = _agent->write(builder.slice());
+    if (!res.successful()) {
+      LOG_TOPIC("2d6fa", WARN, Logger::SUPERVISION)
+          << "failed to update maintenance servers in agency. Will retry. "
+          << builder.toJson();
+    }
+  }
+}
+
+void Supervision::step() {
+  _lock.assertLockedByCurrentThread();
+  if (_jobId == 0 || _jobId == _jobIdMax) {
+    getUniqueIds();  // cannot fail but only hang
+  }
+  LOG_TOPIC("edeee", TRACE, Logger::SUPERVISION) << "Begin updateSnapshot";
+  updateSnapshot();
+  LOG_TOPIC("aaabb", TRACE, Logger::SUPERVISION) << "Finished updateSnapshot";
+
+  if (!_upgraded) {
+    upgradeAgency();
+  }
+
+  bool maintenanceMode = false;
+  if (snapshot().has(supervisionMaintenance)) {
+    try {
+      if (snapshot().get(supervisionMaintenance).value().get().isString()) {
+        std::string tmp = snapshot()
+                              .get(supervisionMaintenance)
+                              .value()
+                              .get()
+                              .getString()
+                              .value();
+        if (tmp.size() < 18) {  // legacy behaviour
+          maintenanceMode = true;
+        } else {
+          auto const maintenanceExpires = stringToTimepoint(tmp);
+          if (maintenanceExpires >= std::chrono::system_clock::now()) {
+            maintenanceMode = true;
+          }
+        }
+      } else {  // legacy behaviour
+        maintenanceMode = true;
+      }
+    } catch (std::exception const& e) {
+      LOG_TOPIC("cf236", ERR, Logger::SUPERVISION)
+          << "Supervision maintenance key in agency is not a string. "
+             "This should never happen and will prevent hot backups. "
+          << e.what();
+      return;
+    }
+  }
+
+  if (!maintenanceMode) {
+    reportStatus("Normal");
+
+    _haveAborts = false;
+
+    // We now need to check for any changes in DBServer maintenance modes.
+    // Note that if we confirm a switch to maintenance mode from
+    // /arango/Target/MaintenanceDBServers in
+    // /arango/Current/MaintenanceDBServers, then this maintenance mode
+    // must already count for **this** run of the supervision. Therefore,
+    // the following function not only updates the actual place in Current,
+    // but also computes the list of DBServers in maintenance mode in
+    // _DBServersInMaintenance, which can then be used in the rest of the
+    // checks.
+    updateDBServerMaintenance();
+
+    if (_agent->leaderFor() > 55 || earlyBird()) {
+      // 55 seconds is less than a minute, which fits to the
+      // 60 seconds timeout in /_admin/cluster/health
+
+      try {
+        LOG_TOPIC("aa565", TRACE, Logger::SUPERVISION) << "Begin doChecks";
+        doChecks();
+        LOG_TOPIC("675fc", TRACE, Logger::SUPERVISION) << "Finished doChecks";
+      } catch (std::exception const& e) {
+        LOG_TOPIC("e0869", ERR, Logger::SUPERVISION) << e.what();
+      } catch (...) {
+        LOG_TOPIC("ac4c4", ERR, Logger::SUPERVISION)
+            << "Supervision::doChecks() generated an uncaught "
+               "exception.";
+      }
+
+      // wait 5 min or until next scheduled run
+      if (_agent->leaderFor() > 300 &&
+          _nextServerCleanup < std::chrono::system_clock::now()) {
+        // Make sure that we have the latest and greatest information
+        // about heartbeats in _transient. Note that after a long
+        // Maintenance mode of the supervision, the `doChecks` above
+        // might have updated /arango/Supervision/Health in the
+        // transient store *just now above*. We need to reflect these
+        // changes in _transient.
+        _agent->executeTransientLocked([&]() {
+          if (_agent->transient().has(_agencyPrefix)) {
+            _transient = _agent->transient().get(_agencyPrefix);
+          }
+        });
+
+        LOG_TOPIC("dcded", TRACE, Logger::SUPERVISION)
+            << "Begin cleanupExpiredServers";
+        cleanupExpiredServers(snapshot(), _transient);
+        LOG_TOPIC("dedcd", TRACE, Logger::SUPERVISION)
+            << "Finished cleanupExpiredServers";
+      }
+
+    } else {
+      LOG_TOPIC("7928f", INFO, Logger::SUPERVISION)
+          << "Postponing supervision for now, waiting for incoming "
+             "heartbeats: "
+          << _agent->leaderFor();
+    }
+    try {
+      LOG_TOPIC("7895a", TRACE, Logger::SUPERVISION) << "Begin handleJobs";
+      handleJobs();
+      LOG_TOPIC("febbc", TRACE, Logger::SUPERVISION) << "Finished handleJobs";
+    } catch (std::exception const& e) {
+      LOG_TOPIC("76123", WARN, Logger::SUPERVISION)
+          << "Caught exception in handleJobs(), error message: " << e.what();
+    }
+  } else {
+    reportStatus("Maintenance");
+  }
+}
+
+void Supervision::waitForIndexCommitted(index_t index) {
+  if (index != 0) {
+    auto wait_for_repl_start = std::chrono::steady_clock::now();
+
+    while (!this->isStopping() && _agent->leading()) {
+      auto result = _agent->waitFor(index);
+      if (result == Agent::raft_commit_t::TIMEOUT) {  // Oh snap
+        // Note that we can get UNKNOWN if we have lost leadership or
+        // if we are shutting down. In both cases we just leave the
+        // loop.
+        LOG_TOPIC("c72b0", WARN, Logger::SUPERVISION)
+            << "Waiting for commits to be done ... ";
+        continue;
+      } else {  // Good we can continue
+        break;
+      }
+    }
+
+    auto wait_for_repl_end = std::chrono::steady_clock::now();
+    auto repl_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                       wait_for_repl_end - wait_for_repl_start)
+                       .count();
+    _supervision_runtime_wait_for_sync_msec.count(repl_ms);
+  }
+}
+
+void Supervision::notify() noexcept {
+  {
+    CONDITION_LOCKER(guard, _cv);
+    _shouldRunAgain = true;
+  }
+  _cv.signal();
+}
+
+void Supervision::waitForSupervisionNode() {
   // First wait until somebody has initialized the ArangoDB data, before
   // that running the supervision does not make sense and will indeed
   // lead to horrible errors:
@@ -1059,6 +1307,11 @@ void Supervision::run() {
     LOG_TOPIC("9a79b", DEBUG, Logger::SUPERVISION) << "Waiting for ArangoDB to "
                                                       "initialize its data.";
   }
+}
+
+void Supervision::run() {
+  // wait for cluster bootstrap
+  waitForSupervisionNode();
 
   bool shutdown = false;
   {
@@ -1066,185 +1319,48 @@ void Supervision::run() {
     TRI_ASSERT(_agent != nullptr);
 
     while (!this->isStopping()) {
+      _shouldRunAgain =
+          false;  // we start running, no reason to run again, yet.
       try {
         auto lapStart = std::chrono::steady_clock::now();
-
         {
-          MUTEX_LOCKER(locker, _lock);
+          guard.unlock();
+          ScopeGuard scopeGuard([&]() noexcept { guard.lock(); });
 
-          if (_snapshot != nullptr && isShuttingDown()) {
-            handleShutdown();
-          } else if (_selfShutdown) {
-            shutdown = true;
-            break;
-          }
+          {
+            MUTEX_LOCKER(locker, _lock);
 
-          // Only modifiy this condition with extreme care:
-          // Supervision needs to wait until the agent has finished leadership
-          // preparation or else the local agency snapshot might be behind its
-          // last state.
-          if (_agent->leading() && _agent->getPrepareLeadership() == 0) {
-            if (_jobId == 0 || _jobId == _jobIdMax) {
-              getUniqueIds();  // cannot fail but only hang
-            }
-            LOG_TOPIC("edeee", TRACE, Logger::SUPERVISION)
-                << "Begin updateSnapshot";
-            updateSnapshot();
-            LOG_TOPIC("aaabb", TRACE, Logger::SUPERVISION)
-                << "Finished updateSnapshot";
-
-            if (!_upgraded) {
-              upgradeAgency();
-            }
-
-            bool maintenanceMode = false;
-            if (snapshot().has(supervisionMaintenance)) {
-              try {
-                if (snapshot()
-                        .get(supervisionMaintenance)
-                        .value()
-                        .get()
-                        .isString()) {
-                  std::string tmp = snapshot()
-                                        .get(supervisionMaintenance)
-                                        .value()
-                                        .get()
-                                        .getString()
-                                        .value();
-                  if (tmp.size() < 18) {  // legacy behaviour
-                    maintenanceMode = true;
-                  } else {
-                    auto const maintenanceExpires = stringToTimepoint(tmp);
-                    if (maintenanceExpires >=
-                        std::chrono::system_clock::now()) {
-                      maintenanceMode = true;
-                    }
-                  }
-                } else {  // legacy behaviour
-                  maintenanceMode = true;
-                }
-              } catch (std::exception const& e) {
-                LOG_TOPIC("cf236", ERR, Logger::SUPERVISION)
-                    << "Supervision maintenace key in agency is not a string. "
-                       "This should never happen and will prevent hot backups. "
-                    << e.what();
-                return;
-              }
-            }
-
-            if (!maintenanceMode) {
-              reportStatus("Normal");
-
-              _haveAborts = false;
-
-              if (_agent->leaderFor() > 55 || earlyBird()) {
-                // 55 seconds is less than a minute, which fits to the
-                // 60 seconds timeout in /_admin/cluster/health
-
-                try {
-                  LOG_TOPIC("aa565", TRACE, Logger::SUPERVISION)
-                      << "Begin doChecks";
-                  doChecks();
-                  LOG_TOPIC("675fc", TRACE, Logger::SUPERVISION)
-                      << "Finished doChecks";
-                } catch (std::exception const& e) {
-                  LOG_TOPIC("e0869", ERR, Logger::SUPERVISION) << e.what();
-                } catch (...) {
-                  LOG_TOPIC("ac4c4", ERR, Logger::SUPERVISION)
-                      << "Supervision::doChecks() generated an uncaught "
-                         "exception.";
-                }
-
-                // wait 5 min or until next scheduled run
-                if (_agent->leaderFor() > 300 &&
-                    _nextServerCleanup < std::chrono::system_clock::now()) {
-                  // Make sure that we have the latest and greatest information
-                  // about heartbeats in _transient. Note that after a long
-                  // Maintenance mode of the supervision, the `doChecks` above
-                  // might have updated /arango/Supervision/Health in the
-                  // transient store *just now above*. We need to reflect these
-                  // changes in _transient.
-                  _agent->executeTransientLocked([&]() {
-                    if (_agent->transient().has(_agencyPrefix)) {
-                      _transient = _agent->transient().get(_agencyPrefix);
-                    }
-                  });
-
-                  LOG_TOPIC("dcded", TRACE, Logger::SUPERVISION)
-                      << "Begin cleanupExpiredServers";
-                  cleanupExpiredServers(snapshot(), _transient);
-                  LOG_TOPIC("dedcd", TRACE, Logger::SUPERVISION)
-                      << "Finished cleanupExpiredServers";
-                }
-
-              } else {
-                LOG_TOPIC("7928f", INFO, Logger::SUPERVISION)
-                    << "Postponing supervision for now, waiting for incoming "
-                       "heartbeats: "
-                    << _agent->leaderFor();
-              }
-              try {
-                LOG_TOPIC("7895a", TRACE, Logger::SUPERVISION)
-                    << "Begin handleJobs";
-                handleJobs();
-                LOG_TOPIC("febbc", TRACE, Logger::SUPERVISION)
-                    << "Finished handleJobs";
-              } catch (std::exception const& e) {
-                LOG_TOPIC("76123", WARN, Logger::SUPERVISION)
-                    << "Caught exception in handleJobs(), error message: "
-                    << e.what();
-              }
+            // Only modifiy this condition with extreme care:
+            // Supervision needs to wait until the agent has finished leadership
+            // preparation or else the local agency snapshot might be behind its
+            // last state.
+            if (_agent->leading() && _agent->getPrepareLeadership() == 0) {
+              step();
             } else {
-              reportStatus("Maintenance");
-            }
-          } else {
-            // Once we lose leadership, we need to restart building our snapshot
-            if (_lastUpdateIndex > 0) {
-              _lastUpdateIndex = 0;
-            }
-          }
-        }
-
-        // If anything was rafted, we need to wait until it is replicated,
-        // otherwise it is not "committed" in the Raft sense. However, let's
-        // only wait for our changes not for new ones coming in during the wait.
-        if (_agent->leading()) {
-          index_t leaderIndex = _agent->index();
-          if (leaderIndex != 0) {
-            auto wait_for_repl_start = std::chrono::steady_clock::now();
-
-            while (!this->isStopping() && _agent->leading()) {
-              auto result = _agent->waitFor(leaderIndex);
-              if (result == Agent::raft_commit_t::TIMEOUT) {  // Oh snap
-                // Note that we can get UNKNOWN if we have lost leadership or
-                // if we are shutting down. In both cases we just leave the
-                // loop.
-                LOG_TOPIC("c72b0", WARN, Logger::SUPERVISION)
-                    << "Waiting for commits to be done ... ";
-                continue;
-              } else {  // Good we can continue
-                break;
+              // Once we lose leadership, we need to restart building our
+              // snapshot
+              if (_lastUpdateIndex > 0) {
+                _lastUpdateIndex = 0;
               }
             }
+          }
 
-            auto wait_for_repl_end = std::chrono::steady_clock::now();
-            auto repl_ms =
-                std::chrono::duration_cast<std::chrono::milliseconds>(
-                    wait_for_repl_end - wait_for_repl_start)
-                    .count();
-            _supervision_runtime_wait_for_sync_msec.count(repl_ms);
-            _supervision_accum_runtime_wait_for_sync_msec.count(repl_ms);
+          // If anything was rafted, we need to wait until it is replicated,
+          // otherwise it is not "committed" in the Raft sense. However, let's
+          // only wait for our changes not for new ones coming in during the
+          // wait.
+          if (_agent->leading()) {
+            waitForIndexCommitted(_agent->index());
           }
         }
-
         auto lapTime = std::chrono::duration_cast<std::chrono::microseconds>(
                            std::chrono::steady_clock::now() - lapStart)
                            .count();
 
         _supervision_runtime_msec.count(lapTime / 1000);
-        _supervision_accum_runtime_msec.count(lapTime / 1000);
 
-        if (lapTime < 1000000) {
+        if (!_shouldRunAgain && lapTime < 1000000) {
+          // wait returns false if timeout was reached
           _cv.wait(static_cast<uint64_t>((1000000 - lapTime) * _frequency));
         }
       } catch (std::exception const& ex) {
@@ -1264,15 +1380,6 @@ void Supervision::run() {
   }
 }
 
-// Guarded by caller
-bool Supervision::isShuttingDown() {
-  _lock.assertLockedByCurrentThread();
-  if (_snapshot && snapshot().has("Shutdown")) {
-    return snapshot().hasAsBool("Shutdown").value();
-  }
-  return false;
-}
-
 std::string Supervision::serverHealthFunctional(Node const& snapshot,
                                                 std::string const& serverName) {
   std::string const serverStatus(healthPrefix + serverName + "/Status");
@@ -1286,70 +1393,6 @@ std::string Supervision::serverHealth(std::string const& serverName) {
   _lock.assertLockedByCurrentThread();
   return Supervision::serverHealthFunctional(snapshot(), serverName);
 }
-
-// Guarded by caller
-void Supervision::handleShutdown() {
-  _lock.assertLockedByCurrentThread();
-
-  _selfShutdown = true;
-  LOG_TOPIC("f1f68", DEBUG, Logger::SUPERVISION)
-      << "Waiting for clients to shut down";
-  auto const& serversRegistered =
-      snapshot().hasAsChildren(currentServersRegisteredPrefix).value().get();
-  bool serversCleared = true;
-  for (auto const& server : serversRegistered) {
-    if (server.first == "Version") {
-      continue;
-    }
-
-    LOG_TOPIC("d212a", DEBUG, Logger::SUPERVISION)
-        << "Waiting for " << server.first << " to shutdown";
-
-    if (serverHealth(server.first) != HEALTH_STATUS_GOOD) {
-      LOG_TOPIC("3db81", WARN, Logger::SUPERVISION)
-          << "Server " << server.first
-          << " did not shutdown properly it seems!";
-      continue;
-    }
-    serversCleared = false;
-  }
-
-  if (serversCleared) {
-    if (_agent->leading()) {
-      auto del = std::make_shared<Builder>();
-      {
-        VPackArrayBuilder txs(del.get());
-        {
-          VPackArrayBuilder tx(del.get());
-          {
-            VPackObjectBuilder o(del.get());
-            del->add(VPackValue(_agencyPrefix + "/Shutdown"));
-            {
-              VPackObjectBuilder oo(del.get());
-              del->add("op", VPackValue("delete"));
-            }
-          }
-        }
-      }
-      auto result = _agent->write(del);
-      if (result.indices.size() != 1) {
-        LOG_TOPIC("3bba4", ERR, Logger::SUPERVISION)
-            << "Invalid resultsize of " << result.indices.size()
-            << " found during shutdown";
-      } else {
-        if (!_agent->waitFor(result.indices.at(0))) {
-          LOG_TOPIC("d98af", ERR, Logger::SUPERVISION)
-              << "Result was not written to followers during shutdown";
-        }
-      }
-    }
-  }
-}
-
-struct ServerLists {
-  std::unordered_map<ServerID, uint64_t> dbservers;
-  std::unordered_map<ServerID, uint64_t> coordinators;
-};
 
 //  Get all planned servers
 //  If heartbeat in transient too old or missing
@@ -1458,8 +1501,7 @@ void Supervision::cleanupExpiredServers(Node const& snapshot,
     del.add("op", VPackValue("delete"));
   }
 
-  auto envelope = std::make_shared<VPackBuilder>();
-  VPackBuilder& trxs = *envelope;  // Transactions
+  velocypack::Builder trxs;
   {
     VPackArrayBuilder t(&trxs);
     for (auto const& server : servers) {
@@ -1496,7 +1538,7 @@ void Supervision::cleanupExpiredServers(Node const& snapshot,
   if (servers.size() > 0) {
     _nextServerCleanup =
         std::chrono::system_clock::now() + std::chrono::seconds(3600);
-    _agent->write(envelope);
+    _agent->write(trxs.slice());
   }
 
   trxs.clear();
@@ -1531,7 +1573,7 @@ void Supervision::cleanupExpiredServers(Node const& snapshot,
     }
   }
   if (servers.size() > 0) {
-    _agent->write(envelope);
+    _agent->write(trxs.slice());
   }
   _nextServerCleanup =
       std::chrono::system_clock::now() + std::chrono::seconds(3600);
@@ -1540,8 +1582,6 @@ void Supervision::cleanupExpiredServers(Node const& snapshot,
 void Supervision::cleanupLostCollections(Node const& snapshot,
                                          AgentInterface* agent,
                                          uint64_t& jobId) {
-  std::unordered_set<std::string> failedServers;
-
   // Search for failed server
   //  Could also use `Target/FailedServers`
   auto const& health = snapshot.hasAsChildren(healthPrefix);
@@ -1549,6 +1589,7 @@ void Supervision::cleanupLostCollections(Node const& snapshot,
     return;
   }
 
+  std::unordered_set<std::string> failedServers;
   for (auto const& server : health->get()) {
     HealthRecord record(*server.second.get());
 
@@ -1557,7 +1598,7 @@ void Supervision::cleanupLostCollections(Node const& snapshot,
     }
   }
 
-  if (failedServers.size() == 0) {
+  if (failedServers.empty()) {
     return;
   }
 
@@ -1567,9 +1608,9 @@ void Supervision::cleanupLostCollections(Node const& snapshot,
     return;
   }
 
-  auto builder = std::make_shared<VPackBuilder>();
+  velocypack::Builder builder;
   {
-    VPackArrayBuilder trxs(builder.get());
+    VPackArrayBuilder trxs(&builder);
 
     for (auto const& database : collections->get()) {
       auto const& dbname = database.first;
@@ -1609,62 +1650,62 @@ void Supervision::cleanupLostCollections(Node const& snapshot,
                   << "Found a lost shard: " << shard.first;
               // Now remove that shard
               {
-                VPackArrayBuilder trx(builder.get());
+                VPackArrayBuilder trx(&builder);
                 {
-                  VPackObjectBuilder update(builder.get());
+                  VPackObjectBuilder update(&builder);
                   // remove the shard in current
-                  builder->add(VPackValue(currenturl));
+                  builder.add(VPackValue(currenturl));
                   {
-                    VPackObjectBuilder op(builder.get());
-                    builder->add("op", VPackValue("delete"));
+                    VPackObjectBuilder op(&builder);
+                    builder.add("op", VPackValue("delete"));
                   }
                   // add a job done entry to "Target/Finished"
                   std::string jobIdStr = std::to_string(jobId++);
-                  builder->add(
+                  builder.add(
                       VPackValue("/arango/Target/Finished/" + jobIdStr));
                   {
-                    VPackObjectBuilder op(builder.get());
-                    builder->add("op", VPackValue("set"));
-                    builder->add(VPackValue("new"));
+                    VPackObjectBuilder op(&builder);
+                    builder.add("op", VPackValue("set"));
+                    builder.add(VPackValue("new"));
                     {
-                      VPackObjectBuilder job(builder.get());
-                      builder->add("type", VPackValue("cleanUpLostCollection"));
-                      builder->add("server", VPackValue(shardname));
-                      builder->add("jobId", VPackValue(jobIdStr));
-                      builder->add("creator", VPackValue("supervision"));
-                      builder->add("timeCreated",
-                                   VPackValue(timepointToString(
-                                       std::chrono::system_clock::now())));
+                      VPackObjectBuilder job(&builder);
+                      builder.add("type", VPackValue("cleanUpLostCollection"));
+                      builder.add("server", VPackValue(shardname));
+                      builder.add("jobId", VPackValue(jobIdStr));
+                      builder.add("creator", VPackValue("supervision"));
+                      builder.add("timeCreated",
+                                  VPackValue(timepointToString(
+                                      std::chrono::system_clock::now())));
                     }
                   }
                   // increase current version
-                  builder->add(VPackValue("/arango/Current/Version"));
+                  builder.add(VPackValue("/arango/Current/Version"));
                   {
-                    VPackObjectBuilder op(builder.get());
-                    builder->add("op", VPackValue("increment"));
+                    VPackObjectBuilder op(&builder);
+                    builder.add("op", VPackValue("increment"));
                   }
                 }
                 {
-                  VPackObjectBuilder precon(builder.get());
+                  VPackObjectBuilder precon(&builder);
                   // pre condition:
                   //  still in current
                   //  not in plan
                   //  still failed
-                  builder->add(VPackValue(planurl));
+                  builder.add(VPackValue(planurl));
                   {
-                    VPackObjectBuilder cond(builder.get());
-                    builder->add("oldEmpty", VPackValue(true));
+                    VPackObjectBuilder cond(&builder);
+                    builder.add("oldEmpty", VPackValue(true));
                   }
-                  builder->add(VPackValue(currenturl));
+                  builder.add(VPackValue(currenturl));
                   {
-                    VPackObjectBuilder cond(builder.get());
-                    builder->add("oldEmpty", VPackValue(false));
+                    VPackObjectBuilder cond(&builder);
+                    builder.add("oldEmpty", VPackValue(false));
                   }
-                  builder->add(VPackValue(healthurl));
+                  builder.add(VPackValue(healthurl));
                   {
-                    VPackObjectBuilder cond(builder.get());
-                    builder->add("old",
-                                 VPackValue(Supervision::HEALTH_STATUS_FAILED));
+                    VPackObjectBuilder cond(&builder);
+                    builder.add("old",
+                                VPackValue(Supervision::HEALTH_STATUS_FAILED));
                   }
                 }
               }
@@ -1675,11 +1716,9 @@ void Supervision::cleanupLostCollections(Node const& snapshot,
     }
   }
 
-  auto const& trx = builder->slice();
-
-  if (trx.length() > 0) {
+  if (builder.slice().length() > 0) {
     // do it! fire and forget!
-    agent->write(builder);
+    agent->write(builder.slice());
   }
 }
 
@@ -1710,7 +1749,7 @@ void Supervision::unlockHotBackup() {
 }
 
 // Guarded by caller
-bool Supervision::handleJobs() {
+void Supervision::handleJobs() {
   _lock.assertLockedByCurrentThread();
   // Do supervision
   LOG_TOPIC("67eef", TRACE, Logger::SUPERVISION) << "Begin unlockHotBackup";
@@ -1727,7 +1766,7 @@ bool Supervision::handleJobs() {
   cleanupLostCollections(snapshot(), _agent, _jobId);
   // Note that this function consumes job IDs, potentially many, so the member
   // is incremented inside the function. Furthermore, `cleanupLostCollections`
-  // is static for catch testing purposes.
+  // is static for unit testing purposes.
 
   LOG_TOPIC("00789", TRACE, Logger::SUPERVISION)
       << "Begin readyOrphanedIndexCreations";
@@ -1745,8 +1784,18 @@ bool Supervision::handleJobs() {
       << "Begin checkBrokenAnalyzers";
   checkBrokenAnalyzers();
 
+  LOG_TOPIC("f7aa5", TRACE, Logger::SUPERVISION)
+      << "Begin checkReplicatedStates";
+  checkReplicatedStates();
+  updateSnapshot();  // make updates from replicated state visible
+
   LOG_TOPIC("f7d05", TRACE, Logger::SUPERVISION) << "Begin checkReplicatedLogs";
   checkReplicatedLogs();
+
+  LOG_TOPIC("83676", TRACE, Logger::SUPERVISION)
+      << "Begin cleanupReplicatedLogs";
+  cleanupReplicatedLogs();  // TODO do this only every x seconds?
+  cleanupReplicatedStates();
 
   LOG_TOPIC("00aab", TRACE, Logger::SUPERVISION) << "Begin workJobs";
   workJobs();
@@ -1762,8 +1811,6 @@ bool Supervision::handleJobs() {
   LOG_TOPIC("0892d", TRACE, Logger::SUPERVISION)
       << "Begin failBrokenHotbackupTransferJobs";
   failBrokenHotbackupTransferJobs();
-
-  return true;
 }
 
 // Guarded by caller
@@ -1869,7 +1916,7 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
           // appears to be ongoing, or at a new style, properly ongoing
           // We ignore non-completedness of old crud and only consider
           // new jobs with a rebootId as incomplete:
-          auto const& rebootId = pp.second->hasAsUInt("rebootId");
+          auto const& rebootId = pp.second->hasAsUInt(StaticStrings::RebootId);
           if (status.value().compare("NEW") == 0 || rebootId) {
             completed = false;
           }
@@ -2175,7 +2222,7 @@ bool Supervision::verifyServerRebootID(Node const& snapshot,
 
   // if the server is not found, health is an empty string
   serverFound = !health.empty();
-  if (health != "GOOD" && health != "BAD") {
+  if (health != HEALTH_STATUS_GOOD && health != HEALTH_STATUS_BAD) {
     return false;
   }
 
@@ -2188,84 +2235,86 @@ bool Supervision::verifyServerRebootID(Node const& snapshot,
   return rebootID && *rebootID == wantedRebootID;
 }
 
-void Supervision::deleteBrokenDatabase(std::string const& database,
+void Supervision::deleteBrokenDatabase(AgentInterface* agent,
+                                       std::string const& database,
                                        std::string const& coordinatorID,
                                        uint64_t rebootID,
                                        bool coordinatorFound) {
-  auto envelope = std::make_shared<Builder>();
+  velocypack::Builder envelope;
   {
-    VPackArrayBuilder trxs(envelope.get());
+    VPackArrayBuilder trxs(&envelope);
     {
-      VPackArrayBuilder trx(envelope.get());
+      VPackArrayBuilder trx(&envelope);
       {
-        VPackObjectBuilder operation(envelope.get());
+        VPackObjectBuilder operation(&envelope);
 
         // increment Plan Version
         {
-          VPackObjectBuilder o(envelope.get(),
-                               _agencyPrefix + "/" + PLAN_VERSION);
-          envelope->add("op", VPackValue("increment"));
+          VPackObjectBuilder o(&envelope, _agencyPrefix + "/" + PLAN_VERSION);
+          envelope.add("op", VPackValue("increment"));
         }
 
         // delete the database from Plan/Databases
         {
-          VPackObjectBuilder o(envelope.get(),
+          VPackObjectBuilder o(&envelope,
                                _agencyPrefix + planDBPrefix + database);
-          envelope->add("op", VPackValue("delete"));
+          envelope.add("op", VPackValue("delete"));
         }
 
         // delete the database from Plan/Collections
         {
-          VPackObjectBuilder o(envelope.get(),
+          VPackObjectBuilder o(&envelope,
                                _agencyPrefix + planColPrefix + database);
-          envelope->add("op", VPackValue("delete"));
+          envelope.add("op", VPackValue("delete"));
         }
 
         // delete the database from Plan/Analyzers
         {
-          VPackObjectBuilder o(envelope.get(),
+          VPackObjectBuilder o(&envelope,
                                _agencyPrefix + planAnalyzersPrefix + database);
-          envelope->add("op", VPackValue("delete"));
+          envelope.add("op", VPackValue("delete"));
         }
       }
       {
         // precondition that this database is still in Plan and is building
-        VPackObjectBuilder preconditions(envelope.get());
+        VPackObjectBuilder preconditions(&envelope);
         auto const databasesPath =
             plan()->databases()->database(database)->str();
-        envelope->add(databasesPath + "/" + StaticStrings::AttrIsBuilding,
-                      VPackValue(true));
-        envelope->add(
+        envelope.add(databasesPath + "/" + StaticStrings::AttrIsBuilding,
+                     VPackValue(true));
+        envelope.add(
             databasesPath + "/" + StaticStrings::AttrCoordinatorRebootId,
             VPackValue(rebootID));
-        envelope->add(databasesPath + "/" + StaticStrings::AttrCoordinator,
-                      VPackValue(coordinatorID));
+        envelope.add(databasesPath + "/" + StaticStrings::AttrCoordinator,
+                     VPackValue(coordinatorID));
 
         {
           VPackObjectBuilder precondition(
-              envelope.get(), _agencyPrefix + healthPrefix + coordinatorID);
-          envelope->add("oldEmpty", VPackValue(!coordinatorFound));
+              &envelope, _agencyPrefix + healthPrefix + coordinatorID);
+          envelope.add("oldEmpty", VPackValue(!coordinatorFound));
         }
       }
     }
   }
 
-  write_ret_t res = _agent->write(envelope);
+  write_ret_t res = agent->write(envelope.slice());
+
   if (!res.successful()) {
     LOG_TOPIC("38482", DEBUG, Logger::SUPERVISION)
         << "failed to delete broken database in agency. Will retry "
-        << envelope->toJson();
+        << envelope.toJson();
   }
 }
 
-void Supervision::deleteBrokenCollection(std::string const& database,
+void Supervision::deleteBrokenCollection(AgentInterface* agent,
+                                         std::string const& database,
                                          std::string const& collection,
                                          std::string const& coordinatorID,
                                          uint64_t rebootID,
                                          bool coordinatorFound) {
-  auto envelope = std::make_shared<Builder>();
+  velocypack::Builder envelope;
   {
-    VPackArrayBuilder trxs(envelope.get());
+    VPackArrayBuilder trxs(&envelope);
     {
       std::string collection_path = plan()
                                         ->collections()
@@ -2273,47 +2322,46 @@ void Supervision::deleteBrokenCollection(std::string const& database,
                                         ->collection(collection)
                                         ->str();
 
-      VPackArrayBuilder trx(envelope.get());
+      VPackArrayBuilder trx(&envelope);
       {
-        VPackObjectBuilder operation(envelope.get());
+        VPackObjectBuilder operation(&envelope);
         // increment Plan Version
         {
-          VPackObjectBuilder o(envelope.get(),
-                               _agencyPrefix + "/" + PLAN_VERSION);
-          envelope->add("op", VPackValue("increment"));
+          VPackObjectBuilder o(&envelope, _agencyPrefix + "/" + PLAN_VERSION);
+          envelope.add("op", VPackValue("increment"));
         }
         // delete the collection from Plan/Collections/<db>
         {
-          VPackObjectBuilder o(envelope.get(), collection_path);
-          envelope->add("op", VPackValue("delete"));
+          VPackObjectBuilder o(&envelope, collection_path);
+          envelope.add("op", VPackValue("delete"));
         }
       }
       {
         // precondition that this collection is still in Plan and is building
-        VPackObjectBuilder preconditions(envelope.get());
-        envelope->add(collection_path + "/" + StaticStrings::AttrIsBuilding,
-                      VPackValue(true));
-        envelope->add(
+        VPackObjectBuilder preconditions(&envelope);
+        envelope.add(collection_path + "/" + StaticStrings::AttrIsBuilding,
+                     VPackValue(true));
+        envelope.add(
             collection_path + "/" + StaticStrings::AttrCoordinatorRebootId,
             VPackValue(rebootID));
-        envelope->add(collection_path + "/" + StaticStrings::AttrCoordinator,
-                      VPackValue(coordinatorID));
+        envelope.add(collection_path + "/" + StaticStrings::AttrCoordinator,
+                     VPackValue(coordinatorID));
 
         {
           VPackObjectBuilder precondition(
-              envelope.get(),
-              _agencyPrefix + healthPrefix + "/" + coordinatorID);
-          envelope->add("oldEmpty", VPackValue(!coordinatorFound));
+              &envelope, _agencyPrefix + healthPrefix + "/" + coordinatorID);
+          envelope.add("oldEmpty", VPackValue(!coordinatorFound));
         }
       }
     }
   }
 
-  write_ret_t res = _agent->write(envelope);
+  write_ret_t res = agent->write(envelope.slice());
+
   if (!res.successful()) {
     LOG_TOPIC("38485", DEBUG, Logger::SUPERVISION)
         << "failed to delete broken collection in agency. Will retry. "
-        << envelope->toJson();
+        << envelope.toJson();
   }
 }
 
@@ -2322,66 +2370,63 @@ void Supervision::restoreBrokenAnalyzersRevision(
     AnalyzersRevision::Revision buildingRevision,
     std::string const& coordinatorID, uint64_t rebootID,
     bool coordinatorFound) {
-  auto envelope = std::make_shared<Builder>();
+  velocypack::Builder envelope;
   {
-    VPackArrayBuilder trxs(envelope.get());
+    VPackArrayBuilder trxs(&envelope);
     {
       std::string anPath = _agencyPrefix + planAnalyzersPrefix + database + "/";
 
-      VPackArrayBuilder trx(envelope.get());
+      VPackArrayBuilder trx(&envelope);
       {
-        VPackObjectBuilder operation(envelope.get());
+        VPackObjectBuilder operation(&envelope);
         // increment Plan Version
         {
-          VPackObjectBuilder o(envelope.get(),
-                               _agencyPrefix + "/" + PLAN_VERSION);
-          envelope->add("op", VPackValue("increment"));
+          VPackObjectBuilder o(&envelope, _agencyPrefix + "/" + PLAN_VERSION);
+          envelope.add("op", VPackValue("increment"));
         }
         // restore the analyzers revision from Plan/Analyzers/<db>/
         {
           VPackObjectBuilder o(
-              envelope.get(),
-              anPath + StaticStrings::AnalyzersBuildingRevision);
-          envelope->add("op", VPackValue("decrement"));
+              &envelope, anPath + StaticStrings::AnalyzersBuildingRevision);
+          envelope.add("op", VPackValue("decrement"));
         }
         {
-          VPackObjectBuilder o(envelope.get(),
+          VPackObjectBuilder o(&envelope,
                                anPath + StaticStrings::AttrCoordinatorRebootId);
-          envelope->add("op", VPackValue("delete"));
+          envelope.add("op", VPackValue("delete"));
         }
         {
-          VPackObjectBuilder o(envelope.get(),
+          VPackObjectBuilder o(&envelope,
                                anPath + StaticStrings::AttrCoordinator);
-          envelope->add("op", VPackValue("delete"));
+          envelope.add("op", VPackValue("delete"));
         }
       }
       {
         // precondition that this analyzers revision is still in Plan and is
         // building
-        VPackObjectBuilder preconditions(envelope.get());
-        envelope->add(anPath + StaticStrings::AnalyzersRevision,
-                      VPackValue(revision));
-        envelope->add(anPath + StaticStrings::AnalyzersBuildingRevision,
-                      VPackValue(buildingRevision));
-        envelope->add(anPath + StaticStrings::AttrCoordinatorRebootId,
-                      VPackValue(rebootID));
-        envelope->add(anPath + StaticStrings::AttrCoordinator,
-                      VPackValue(coordinatorID));
+        VPackObjectBuilder preconditions(&envelope);
+        envelope.add(anPath + StaticStrings::AnalyzersRevision,
+                     VPackValue(revision));
+        envelope.add(anPath + StaticStrings::AnalyzersBuildingRevision,
+                     VPackValue(buildingRevision));
+        envelope.add(anPath + StaticStrings::AttrCoordinatorRebootId,
+                     VPackValue(rebootID));
+        envelope.add(anPath + StaticStrings::AttrCoordinator,
+                     VPackValue(coordinatorID));
         {
           VPackObjectBuilder precondition(
-              envelope.get(),
-              _agencyPrefix + healthPrefix + "/" + coordinatorID);
-          envelope->add("oldEmpty", VPackValue(!coordinatorFound));
+              &envelope, _agencyPrefix + healthPrefix + "/" + coordinatorID);
+          envelope.add("oldEmpty", VPackValue(!coordinatorFound));
         }
       }
     }
   }
 
-  write_ret_t res = _agent->write(envelope);
+  write_ret_t res = _agent->write(envelope.slice());
   if (!res.successful()) {
     LOG_TOPIC("e43cb", DEBUG, Logger::SUPERVISION)
         << "failed to restore broken analyzers revision in agency. Will retry. "
-        << envelope->toJson();
+        << envelope.toJson();
   }
 }
 
@@ -2396,14 +2441,14 @@ void Supervision::resourceCreatorLost(
   bool coordinatorFound = false;
 
   if (rebootID && coordinatorID) {
-    keepResource = Supervision::verifyServerRebootID(
-        snapshot(), *coordinatorID, *rebootID, coordinatorFound);
+    keepResource = verifyServerRebootID(snapshot(), *coordinatorID, *rebootID,
+                                        coordinatorFound);
     // incomplete data, should not happen
   } else {
     //          v---- Please note this awesome log-id
     LOG_TOPIC("dbbad", WARN, Logger::SUPERVISION)
-        << "resource has set `isBuilding` but is missing coordinatorID and "
-           "rebootID";
+        << "resource has set `isBuilding` but is missing coordinatorId and "
+           "rebootId";
   }
 
   if (!keepResource) {
@@ -2444,7 +2489,7 @@ void Supervision::checkBrokenCreatedDatabases() {
              "name "
           << dbpair.first;
       // delete this database and all of its collections
-      deleteBrokenDatabase(dbpair.first, ev.coordinatorId,
+      deleteBrokenDatabase(_agent, dbpair.first, ev.coordinatorId,
                            ev.coordinatorRebootId, ev.coordinatorFound);
     });
   }
@@ -2478,11 +2523,52 @@ void Supervision::checkBrokenCollections() {
                 << "checkBrokenCollections: removing broken collection with "
                    "name "
                 << dbpair.first;
-            // delete this database and all of its collections
-            deleteBrokenCollection(dbpair.first, collectionPair.first,
+            // delete this collection
+            deleteBrokenCollection(_agent, dbpair.first, collectionPair.first,
                                    ev.coordinatorId, ev.coordinatorRebootId,
                                    ev.coordinatorFound);
           });
+
+      // also check all indexes of the collection to see if they are abandoned
+      if (collectionPair.second->has("indexes")) {
+        Slice indexes = collectionPair.second->get("indexes")
+                            .value()
+                            .get()
+                            .getArray()
+                            .value();
+        // check if the coordinator which started creating this index is
+        // still present...
+        for (VPackSlice planIndex : VPackArrayIterator(indexes)) {
+          if (VPackSlice isBuildingSlice =
+                  planIndex.get(StaticStrings::AttrIsBuilding);
+              !isBuildingSlice.isTrue()) {
+            // we are only interested in indexes that are still building
+            continue;
+          }
+
+          VPackSlice rebootIDSlice =
+              planIndex.get(StaticStrings::AttrCoordinatorRebootId);
+          VPackSlice coordinatorIDSlice =
+              planIndex.get(StaticStrings::AttrCoordinator);
+
+          if (rebootIDSlice.isNumber() && coordinatorIDSlice.isString()) {
+            auto rebootID = rebootIDSlice.getUInt();
+            auto coordinatorID = coordinatorIDSlice.copyString();
+
+            bool coordinatorFound = false;
+            bool keepResource = verifyServerRebootID(
+                snapshot(), coordinatorID, rebootID, coordinatorFound);
+
+            if (!keepResource) {
+              // index creation still ongoing, but started by a coordinator that
+              // has failed by now. delete this index
+              deleteBrokenIndex(_agent, dbpair.first, collectionPair.first,
+                                planIndex, coordinatorID, rebootID,
+                                coordinatorFound);
+            }
+          }
+        }
+      }
     }
   }
 }
@@ -2518,122 +2604,293 @@ void Supervision::checkBrokenAnalyzers() {
   }
 }
 
+void Supervision::deleteBrokenIndex(AgentInterface* agent,
+                                    std::string const& database,
+                                    std::string const& collection,
+                                    arangodb::velocypack::Slice index,
+                                    std::string const& coordinatorID,
+                                    uint64_t rebootID, bool coordinatorFound) {
+  VPackBuilder envelope;
+  {
+    VPackArrayBuilder trxs(&envelope);
+    {
+      std::string collectionPath = plan()
+                                       ->collections()
+                                       ->database(database)
+                                       ->collection(collection)
+                                       ->str();
+      std::string indexesPath = plan()
+                                    ->collections()
+                                    ->database(database)
+                                    ->collection(collection)
+                                    ->indexes()
+                                    ->str();
+
+      VPackArrayBuilder trx(&envelope);
+      {
+        VPackObjectBuilder operation(&envelope);
+        // increment Plan Version
+        {
+          VPackObjectBuilder o(&envelope, _agencyPrefix + "/" + PLAN_VERSION);
+          envelope.add("op", VPackValue("increment"));
+        }
+        // delete the index from Plan/Collections/<db>/<collection>
+        {
+          VPackObjectBuilder o(&envelope, indexesPath);
+          envelope.add("op", VPackValue("erase"));
+          envelope.add("val", index);
+        }
+      }
+      {
+        // precondition that the collection is still in Plan
+        VPackObjectBuilder preconditions(&envelope);
+        {
+          VPackObjectBuilder precondition(&envelope, collectionPath);
+          envelope.add("oldEmpty", VPackValue(false));
+        }
+      }
+    }
+  }
+
+  write_ret_t res = agent->write(envelope.slice());
+
+  if (!res.successful()) {
+    LOG_TOPIC("01598", DEBUG, Logger::SUPERVISION)
+        << "failed to delete broken index in agency. Will retry. "
+        << envelope.toJson();
+  }
+}
+
+namespace {
+template<typename T>
+auto parseSomethingFromNode(Node const& n) -> T {
+  auto builder = n.toBuilder();
+  return velocypack::deserialize<T>(builder.slice());
+}
+
+template<typename T>
+auto parseIfExists(Node const& root, std::string const& url)
+    -> std::optional<T> {
+  if (auto node = root.get(url); node.has_value()) {
+    return parseSomethingFromNode<T>(node->get());
+  }
+  return std::nullopt;
+}
+
+auto parseReplicatedLogAgency(Node const& root, std::string const& dbName,
+                              std::string const& idString)
+    -> std::optional<replication2::agency::Log> {
+  auto targetPath =
+      aliases::target()->replicatedLogs()->database(dbName)->log(idString);
+  // first check if target exists
+  if (auto targetNode = root.hasAsNode(targetPath->str(SkipComponents(1)));
+      targetNode.has_value()) {
+    auto log = replication2::agency::Log{
+        .target = parseSomethingFromNode<replication2::agency::LogTarget>(
+            *targetNode),
+        .plan = parseIfExists<LogPlanSpecification>(
+            root, aliases::plan()
+                      ->replicatedLogs()
+                      ->database(dbName)
+                      ->log(idString)
+                      ->str(SkipComponents(1))),
+        .current =
+            parseIfExists<LogCurrent>(root, aliases::current()
+                                                ->replicatedLogs()
+                                                ->database(dbName)
+                                                ->log(idString)
+                                                ->str(SkipComponents(1)))};
+    return log;
+  } else {
+    return std::nullopt;
+  }
+}
+
+auto parseReplicatedStateAgency(Node const& root, Node const& targetNode,
+                                std::string const& dbName,
+                                std::string const& idString)
+    -> replication2::replicated_state::agency::State {
+  return replication2::replicated_state::agency::State{
+      .target = parseSomethingFromNode<
+          replication2::replicated_state::agency::Target>(targetNode),
+      .plan = parseIfExists<replication2::replicated_state::agency::Plan>(
+          root, aliases::plan()
+                    ->replicatedStates()
+                    ->database(dbName)
+                    ->state(idString)
+                    ->str(SkipComponents(1))),
+      .current = parseIfExists<replication2::replicated_state::agency::Current>(
+          root, aliases::current()
+                    ->replicatedStates()
+                    ->database(dbName)
+                    ->state(idString)
+                    ->str(SkipComponents(1)))};
+}
+}  // namespace
+
+namespace {
+using namespace replication2::replicated_log;
+
+auto replicatedLogOwnerGone(Node const& snapshot, Node const& node,
+                            std::string const& dbName,
+                            std::string const& idString) -> bool {
+  if (auto owner = node.hasAsString("owner");
+      !owner.has_value() || owner != "replicated-state") {
+    return false;
+  }
+
+  auto const& targetNode = snapshot.hasAsNode(planRepStatePrefix);
+  // now check if there is a replicated state in plan with that id
+  if (targetNode.has_value() &&
+      targetNode->get().has(std::vector{dbName, idString})) {
+    return false;
+  }
+  return true;
+}
+
+auto handleReplicatedLog(Node const& snapshot, Node const& targetNode,
+                         std::string const& dbName, std::string const& idString,
+                         ParticipantsHealth const& health,
+                         arangodb::agency::envelope envelope)
+    -> arangodb::agency::envelope try {
+  if (replicatedLogOwnerGone(snapshot, targetNode, dbName, idString)) {
+    auto logId = replication2::LogId{basics::StringUtils::uint64(idString)};
+    return methods::deleteReplicatedLogTrx(std::move(envelope), dbName, logId);
+  }
+
+  std::optional<replication2::agency::Log> maybeLog;
+  try {
+    maybeLog = parseReplicatedLogAgency(snapshot, dbName, idString);
+  } catch (std::exception const& err) {
+    LOG_TOPIC("fe14e", ERR, Logger::REPLICATION2)
+        << "Supervision caught exception while parsing replicated log" << dbName
+        << "/" << idString << ": " << err.what();
+    throw;
+  }
+  if (maybeLog.has_value()) {
+    try {
+      auto& log = *maybeLog;
+      return replication2::replicated_log::executeCheckReplicatedLog(
+          dbName, idString, std::move(log), health, std::move(envelope));
+    } catch (std::exception const& err) {
+      LOG_TOPIC("b6d7d", ERR, Logger::REPLICATION2)
+          << "Supervision caught exception while handling replicated log"
+          << dbName << "/" << idString << ": " << err.what();
+      throw;
+    }
+  } else {
+    LOG_TOPIC("56a0c", ERR, Logger::REPLICATION2)
+        << "Supervision could not parse Target node for replicated log "
+        << dbName << "/" << idString;
+    return envelope;
+  }
+} catch (std::exception const& err) {
+  LOG_TOPIC("9f7fb", ERR, Logger::REPLICATION2)
+      << "Supervision caught exception while working with replicated log"
+      << dbName << "/" << idString << ": " << err.what();
+  return envelope;
+}
+}  // namespace
+
 void Supervision::checkReplicatedLogs() {
   _lock.assertLockedByCurrentThread();
 
   using namespace replication2::agency;
 
-  auto const readPlanSpecification =
-      [](Node const& node) -> LogPlanSpecification {
-    auto builder = node.toBuilder();
-    return LogPlanSpecification{from_velocypack, builder.slice()};
-  };
-
-  auto const readLogCurrent = [](Node const& node) -> LogCurrent {
-    auto builder = node.toBuilder();
-    return LogCurrent(from_velocypack, builder.slice());
-  };
-
-  // check if Plan has replicated logs
-  auto const& planNode = snapshot().hasAsNode(planRepLogPrefix);
-  if (!planNode) {
+  // check if Target has replicated logs
+  auto const& targetNode = snapshot().hasAsNode(targetRepLogPrefix);
+  if (!targetNode) {
     return;
   }
 
-  using namespace replication2::algorithms;
+  using namespace replication2::replicated_log;
 
-  ParticipantInfo info = std::invoke([&] {
-    ParticipantInfo info;
+  ParticipantsHealth participantsHealth = std::invoke([&] {
+    std::unordered_map<replication2::ParticipantId, ParticipantHealth> info;
     auto& dbservers = snapshot().hasAsChildren(plannedServers).value().get();
     for (auto const& [serverId, node] : dbservers) {
-      bool const isHealthy = serverHealth(serverId) == HEALTH_STATUS_GOOD;
-      auto rebootID = snapshot().hasAsUInt(curServersKnown + serverId + "/" +
-                                           StaticStrings::RebootId);
+      bool const notIsFailed = (serverHealth(serverId) == HEALTH_STATUS_GOOD) or
+                               (serverHealth(serverId) == HEALTH_STATUS_BAD);
+
+      auto rebootID = snapshot().hasAsUInt(basics::StringUtils::concatT(
+          curServersKnown, serverId, "/", StaticStrings::RebootId));
       if (rebootID) {
         info.emplace(serverId,
-                     ParticipantRecord{RebootId{*rebootID}, isHealthy});
+                     ParticipantHealth{RebootId{*rebootID}, notIsFailed});
       }
     }
-    return info;
+    return ParticipantsHealth{info};
   });
 
-  auto builder = std::make_shared<Builder>();
-  auto envelope = arangodb::agency::envelope::into_builder(*builder);
-  for (auto const& [dbName, db] : planNode->get().children()) {
+  velocypack::Builder builder;
+  auto envelope = arangodb::agency::envelope::into_builder(builder);
+
+  for (auto const& [dbName, db] : targetNode->get().children()) {
     for (auto const& [idString, node] : db->children()) {
-      auto const spec = readPlanSpecification(*node);
-      auto const
-          current =
-              std::invoke(
-                  [&, &dbName = dbName, &idString = idString]() -> LogCurrent {
-                    using namespace cluster::paths;
-                    auto currentPath =
-                aliases::current()
-                    ->replicatedLogs()
-                    ->database(dbName)
-                    ->log(idString)
-                    ->str(SkipComponents(1) /* skip first path component, i.e. 'arango' */);
-
-                    if (auto cnode = snapshot().get(currentPath);
-                        cnode.has_value()) {
-                      return readLogCurrent(cnode->get());
-                    }
-                    return {};
-                  });
-
-      auto checkParticipantsResult =
-          checkReplicatedLogParticipants(dbName, spec, info);
-
-      auto const checkResult = checkReplicatedLog(dbName, spec, current, info);
-      TRI_ASSERT(  // holds(LogPlanTermSpecification) =>
-                   // !participantsConfig.participants.empty()
-          !std::holds_alternative<LogPlanTermSpecification>(checkResult) ||
-          !spec.participantsConfig.participants.empty());
-      envelope = std::visit(
-          overload{
-              [&, &dbName = dbName](
-                  replication2::ParticipantsConfig const& participantsConfig) {
-                return arangodb::replication2::agency::methods::
-                    updateParticipantsConfigTrx(std::move(envelope), dbName,
-                                                spec.id, participantsConfig,
-                                                spec.participantsConfig);
-              },
-              [&](std::monostate) { return std::move(envelope); },
-          },
-          std::move(checkParticipantsResult));
-      envelope = std::visit(
-          overload{
-              [&, &dbName = dbName](LogPlanTermSpecification const& newSpec) {
-                envelope = arangodb::replication2::agency::methods::
-                    removeElectionResult(std::move(envelope), dbName, spec.id);
-
-                return arangodb::replication2::agency::methods::
-                    updateTermSpecificationTrx(
-                        std::move(envelope), dbName, spec.id, newSpec,
-                        spec.currentTerm.has_value()
-                            ? std::optional{spec.currentTerm->term}
-                            : std::nullopt);
-              },
-              [&, &dbName = dbName](
-                  LogCurrentSupervisionElection const& newElection) {
-                return arangodb::replication2::agency::methods::
-                    updateElectionResult(std::move(envelope), dbName, spec.id,
-                                         newElection);
-              },
-              [&](std::monostate const&) {
-                return std::move(envelope);  // do nothing
-              }},
-          checkResult);
+      envelope = handleReplicatedLog(snapshot(), *node, dbName, idString,
+                                     participantsHealth, std::move(envelope));
     }
   }
 
   envelope.done();
-  if (builder->slice().length() > 0) {
-    write_ret_t res = _agent->write(builder);
+  if (builder.slice().length() > 0) {
+    write_ret_t res = _agent->write(builder.slice());
     if (!res.successful()) {
       LOG_TOPIC("12d36", WARN, Logger::SUPERVISION)
           << "failed to update term in agency. Will retry. "
-          << builder->toJson();
+          << builder.toJson();
+    }
+  }
+}
+
+namespace {
+auto handleReplicatedState(Node const& snapshot, Node const& targetNode,
+                           std::string const& dbName,
+                           std::string const& idString,
+                           arangodb::agency::envelope envelope)
+    -> arangodb::agency::envelope try {
+  auto log = parseReplicatedLogAgency(snapshot, dbName, idString);
+  auto state =
+      parseReplicatedStateAgency(snapshot, targetNode, dbName, idString);
+
+  return replication2::replicated_state::executeCheckReplicatedState(
+      dbName, std::move(state), std::move(log), std::move(envelope));
+} catch (std::exception const& err) {
+  LOG_TOPIC("676d1", ERR, Logger::REPLICATION2)
+      << "Supervision caught exception while parsing "
+         "replicated state "
+      << dbName << "/" << idString << ": " << err.what();
+  return envelope;
+}
+}  // namespace
+
+void Supervision::checkReplicatedStates() {
+  _lock.assertLockedByCurrentThread();
+
+  using namespace replication2::agency;
+
+  auto targetNode = snapshot().hasAsNode(targetRepStatePrefix);
+  if (!targetNode.has_value()) {
+    return;
+  }
+
+  velocypack::Builder builder;
+  auto envelope = arangodb::agency::envelope::into_builder(builder);
+
+  for (auto const& [dbName, db] : targetNode->get().children()) {
+    for (auto const& [idString, node] : db->children()) {
+      envelope = handleReplicatedState(snapshot(), *node, dbName, idString,
+                                       std::move(envelope));
+    }
+  }
+
+  envelope.done();
+  if (builder.slice().length() > 0) {
+    write_ret_t res = _agent->write(builder.slice());
+    if (!res.successful()) {
+      LOG_TOPIC("12e37", WARN, Logger::SUPERVISION)
+          << "failed to update term in agency. Will retry. "
+          << builder.toJson();
     }
   }
 }
@@ -2659,7 +2916,7 @@ void Supervision::readyOrphanedIndexCreations() {
         if (collection.has("indexes")) {
           indexes = collection.get("indexes").value().get().getArray().value();
           if (indexes.length() > 0) {
-            for (auto const& planIndex : VPackArrayIterator(indexes)) {
+            for (auto planIndex : VPackArrayIterator(indexes)) {
               if (planIndex.hasKey(StaticStrings::IndexIsBuilding) &&
                   collection.has("shards")) {
                 auto const& planId = planIndex.get("id");
@@ -2686,6 +2943,14 @@ void Supervision::readyOrphanedIndexCreations() {
                               .slice();
                       for (auto const& curIndex :
                            VPackArrayIterator(curIndexes)) {
+                        VPackSlice errorSlice =
+                            curIndex.get(StaticStrings::Error);
+                        if (errorSlice.isTrue()) {
+                          // index creation for this shard has failed - don't
+                          // count it as valid!
+                          continue;
+                        }
+
                         auto const& curId = curIndex.get("id");
                         if (basics::VelocyPackHelper::equal(planId, curId,
                                                             false)) {
@@ -2703,56 +2968,155 @@ void Supervision::readyOrphanedIndexCreations() {
           }
         }
 
-        // We have some indexes, that have been built and are isBuilding still
+        // We have some indexes, that have been fully built and have their
+        // isBuilding attribute still set.
         if (!built.empty()) {
-          auto envelope = std::make_shared<Builder>();
+          velocypack::Builder envelope;
           {
-            VPackArrayBuilder trxs(envelope.get());
+            VPackArrayBuilder trxs(&envelope);
             {
-              VPackArrayBuilder trx(envelope.get());
+              VPackArrayBuilder trx(&envelope);
               {
-                VPackObjectBuilder operation(envelope.get());
-                envelope->add(VPackValue(_agencyPrefix + "/" + PLAN_VERSION));
+                VPackObjectBuilder operation(&envelope);
+                envelope.add(VPackValue(_agencyPrefix + "/" + PLAN_VERSION));
                 {
-                  VPackObjectBuilder o(envelope.get());
-                  envelope->add("op", VPackValue("increment"));
+                  VPackObjectBuilder o(&envelope);
+                  envelope.add("op", VPackValue("increment"));
                 }
-                envelope->add(VPackValue(_agencyPrefix + planColPrefix +
-                                         colPath + "indexes"));
-                VPackArrayBuilder value(envelope.get());
-                for (auto const& planIndex : VPackArrayIterator(indexes)) {
+                envelope.add(VPackValue(_agencyPrefix + planColPrefix +
+                                        colPath + "indexes"));
+                VPackArrayBuilder value(&envelope);
+                for (auto planIndex : VPackArrayIterator(indexes)) {
                   if (built.find(planIndex.get("id").copyString()) !=
                       built.end()) {
                     {
-                      VPackObjectBuilder props(envelope.get());
-                      for (auto const& prop : VPackObjectIterator(planIndex)) {
-                        auto const& key = prop.key.copyString();
-                        if (key != StaticStrings::IndexIsBuilding) {
-                          envelope->add(key, prop.value);
+                      VPackObjectBuilder props(&envelope);
+                      for (auto prop : VPackObjectIterator(planIndex)) {
+                        auto key = prop.key.stringView();
+                        if (key != StaticStrings::IndexIsBuilding &&
+                            key != StaticStrings::AttrCoordinator &&
+                            key != StaticStrings::AttrCoordinatorRebootId) {
+                          envelope.add(key, prop.value);
                         }
                       }
                     }
                   } else {
-                    envelope->add(planIndex);
+                    envelope.add(planIndex);
                   }
                 }
               }
               {
-                VPackObjectBuilder precondition(envelope.get());
-                envelope->add(VPackValue(_agencyPrefix + planColPrefix +
-                                         colPath + "indexes"));
-                envelope->add(indexes);
+                VPackObjectBuilder precondition(&envelope);
+                envelope.add(VPackValue(_agencyPrefix + planColPrefix +
+                                        colPath + "indexes"));
+                envelope.add(indexes);
               }
             }
           }
 
-          write_ret_t res = _agent->write(envelope);
+          write_ret_t res = _agent->write(envelope.slice());
           if (!res.successful()) {
             LOG_TOPIC("3848f", DEBUG, Logger::SUPERVISION)
                 << "failed to report ready index to agency. Will retry.";
           }
         }
       }
+    }
+  }
+}
+
+void Supervision::cleanupReplicatedLogs() {
+  _lock.assertLockedByCurrentThread();
+
+  using namespace replication2::agency;
+
+  // check if Plan has replicated logs
+  auto const& planNode = snapshot().hasAsNode(planRepLogPrefix);
+  if (!planNode) {
+    return;
+  }
+
+  auto const& targetNode = snapshot().hasAsNode(targetRepLogPrefix);
+
+  velocypack::Builder builder;
+  auto envelope = arangodb::agency::envelope::into_builder(builder);
+
+  for (auto const& [dbName, db] : planNode->get().children()) {
+    for (auto const& [idString, node] : db->children()) {
+      // check if this node has an owner and the owner is 'target'
+      if (auto owner = node->hasAsString("owner");
+          !owner.has_value() || owner != "target") {
+        continue;
+      }
+
+      // now check if there is a replicated log in target with that id
+      if (targetNode.has_value() &&
+          targetNode->get().has(std::vector{dbName, idString})) {
+        continue;
+      }
+
+      // delete plan and target
+      auto logId = replication2::LogId{basics::StringUtils::uint64(idString)};
+      envelope =
+          methods::deleteReplicatedLogTrx(std::move(envelope), dbName, logId);
+    }
+  }
+
+  envelope.done();
+  if (builder.slice().length() > 0) {
+    write_ret_t res = _agent->write(builder.slice());
+    if (!res.successful()) {
+      LOG_TOPIC("df4b1", WARN, Logger::SUPERVISION)
+          << "failed to update replicated log in agency. Will retry. "
+          << builder.toJson();
+    }
+  }
+}
+
+void Supervision::cleanupReplicatedStates() {
+  _lock.assertLockedByCurrentThread();
+
+  using namespace replication2::agency;
+
+  // check if Plan has replicated logs
+  auto const& planNode = snapshot().hasAsNode(planRepStatePrefix);
+  if (!planNode) {
+    return;
+  }
+
+  auto const& targetNode = snapshot().hasAsNode(targetRepStatePrefix);
+
+  velocypack::Builder builder;
+  auto envelope = arangodb::agency::envelope::into_builder(builder);
+
+  for (auto const& [dbName, db] : planNode->get().children()) {
+    for (auto const& [idString, node] : db->children()) {
+      // check if this node has an owner and the owner is 'target'
+      if (auto owner = node->hasAsString("owner");
+          !owner.has_value() || owner != "target") {
+        continue;
+      }
+
+      // now check if there is a replicated log in target with that id
+      if (targetNode.has_value() &&
+          targetNode->get().has(std::vector{dbName, idString})) {
+        continue;
+      }
+
+      // delete plan and target
+      auto logId = replication2::LogId{basics::StringUtils::uint64(idString)};
+      envelope =
+          methods::deleteReplicatedStateTrx(std::move(envelope), dbName, logId);
+    }
+  }
+
+  envelope.done();
+  if (builder.slice().length() > 0) {
+    write_ret_t res = _agent->write(builder.slice());
+    if (!res.successful()) {
+      LOG_TOPIC("df4c4", WARN, Logger::SUPERVISION)
+          << "failed to update replicated log in agency. Will retry. "
+          << builder.toJson();
     }
   }
 }
@@ -2786,8 +3150,14 @@ void arangodb::consensus::enforceReplicationFunctional(
 
   // We will loop over plannedDBs, so we use hasAsChildren
   auto const& plannedDBs = snapshot.hasAsChildren(planColPrefix).value().get();
+  auto const& databaseProperties =
+      snapshot.hasAsChildren("/Plan/Databases").value().get();
 
   for (const auto& db_ : plannedDBs) {  // Planned databases
+    if (isReplicationTwoDB(databaseProperties, db_.first)) {
+      continue;
+    }
+
     auto const& db = *(db_.second);
     for (const auto& col_ : db.children()) {  // Planned collections
       auto const& col = *(col_.second);
@@ -2836,7 +3206,8 @@ void arangodb::consensus::enforceReplicationFunctional(
           size_t actualReplicationFactor =
               1 +
               Job::countGoodOrBadServersInList(snapshot, onlyFollowers.slice());
-          // leader plus GOOD or BAD followers (not FAILED)
+          // leader plus GOOD or BAD followers (not FAILED (except maintenance
+          // servers))
           size_t apparentReplicationFactor = shard.slice().length();
 
           if (actualReplicationFactor != replicationFactor ||
@@ -3028,28 +3399,28 @@ void Supervision::getUniqueIds() {
   int64_t n = 10000;
 
   std::string path = _agencyPrefix + "/Sync/LatestID";
-  auto builder = std::make_shared<Builder>();
+  velocypack::Builder builder;
   {
-    VPackArrayBuilder a(builder.get());
+    VPackArrayBuilder a(&builder);
     {
-      VPackArrayBuilder b(builder.get());
+      VPackArrayBuilder b(&builder);
       {
-        VPackObjectBuilder c(builder.get());
+        VPackObjectBuilder c(&builder);
         {
-          builder->add(VPackValue(path));
-          VPackObjectBuilder b(builder.get());
-          builder->add("op", VPackValue("increment"));
-          builder->add("step", VPackValue(n));
+          builder.add(VPackValue(path));
+          VPackObjectBuilder b(&builder);
+          builder.add("op", VPackValue("increment"));
+          builder.add("step", VPackValue(n));
         }
       }
     }
     {
-      VPackArrayBuilder a(builder.get());
-      builder->add(VPackValue(path));
+      VPackArrayBuilder a(&builder);
+      builder.add(VPackValue(path));
     }
   }  // [[{path:{"op":"increment","step":n}}],[path]]
 
-  auto ret = _agent->transact(builder);
+  auto ret = _agent->transact(builder.slice());
   if (ret.accepted) {
     try {
       _jobIdMax =
@@ -3079,4 +3450,23 @@ Node const& Supervision::snapshot() const {
                     : _spearhead.nodePtr();
   }
   return *_snapshot;
+}
+
+void Supervision::removeTransactionBuilder(
+    velocypack::Builder& del, std::vector<std::string> const& todelete) {
+  VPackArrayBuilder trxs(&del);
+  {
+    VPackArrayBuilder trx(&del);
+    {
+      VPackObjectBuilder server(&del);
+      for (auto const& srv : todelete) {
+        del.add(VPackValue(Supervision::agencyPrefix() +
+                           arangodb::consensus::healthPrefix + srv));
+        {
+          VPackObjectBuilder oper(&del);
+          del.add("op", VPackValue("delete"));
+        }
+      }
+    }
+  }
 }

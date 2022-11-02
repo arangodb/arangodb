@@ -23,7 +23,6 @@
 
 #include "Strings.h"
 #include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Greenspun/Extractor.h"
 

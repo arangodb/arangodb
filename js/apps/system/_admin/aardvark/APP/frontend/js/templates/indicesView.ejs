@@ -11,6 +11,7 @@
                 <th class="collectionInfoTh">Extras</th>
                 <th class="collectionInfoTh">Selectivity Est.</th>
                 <th class="collectionInfoTh">Fields</th>
+                <th class="collectionInfoTh">Stored Values</th>
                 <th class="collectionInfoTh">Name</th>
                 <th class="collectionInfoTh">Action</th>
               </tr>
@@ -19,6 +20,7 @@
             </tbody>
             <tfoot>
               <tr>
+                <td></td>
                 <td></td>
                 <td></td>
                 <td></td>
@@ -142,6 +144,17 @@
                   </th>
                 </tr>
                 <tr>
+                  <th class="collectionTh">Extra stored values:</th>
+                  <th><input type="text" id="newPersistentStoredValues" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of extra attribute paths. The values of these attributes will be stored in the index as well. They can be used for projections, but cannot be used for filtering or sorting.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
                   <th class="collectionTh">Name:</th>
                   <th><input type="text" id="newPersistentName" value=""/></th>
                   <th class="tooltipInfoTh">
@@ -172,7 +185,7 @@
                   </th>
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
-                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index. Sparse indexes do not include documents for which the index attributes do not exist or have a value of null. Sparse indexes will exclude any such documents, so they can save space, but are less versatile than non-sparse indexes. For example, sparse indexes may not be usable for sort operations, range or point lookup queries if the query optimizer cannot prove that the index query range excludes null values.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -199,6 +212,19 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Maintain index selectivity estimates for this index. This option can be turned off for non-unique-indexes to improve efficiency of write operations, but will lead to the optimizer being unaware of the data distribution inside this index">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Enable in-memory cache for index lookups:</th>
+                  <th>
+                    <input id="newPersistentCacheEnabled" type="checkbox" name="newPersistentCacheEnabled" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Cache index lookup values in memory for faster lookups of the same values. Note that the cache will be initially empty and be populated lazily during lookups. The cache can only be used for equality lookups on all index attributes. It cannot be used for range scans, partial lookups or sorting.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -290,6 +316,19 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Maintain index selectivity estimates for this index. This option can be turned off for non-unique-indexes to improve efficiency of write operations, but will lead to the optimizer being unaware of the data distribution inside this index">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Enable in-memory cache for index lookups:</th>
+                  <th>
+                    <input id="newHashCacheEnabled" type="checkbox" name="newHashCacheEnabled" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Cache index lookup values in memory for faster lookups of the same values. Note that the cache will be initially empty and be populated lazily during lookups. The cache can only be used for equality lookups on all index attributes. It cannot be used for range scans, partial lookups or sorting.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -432,6 +471,19 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Maintain index selectivity estimates for this index. This option can be turned off for non-unique-indexes to improve efficiency of write operations, but will lead to the optimizer being unaware of the data distribution inside this index">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Enable in-memory cache for index lookups:</th>
+                  <th>
+                    <input id="newSkiplistCacheEnabled" type="checkbox" name="newSkiplistCacheEnabled" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Cache index lookup values in memory for faster lookups of the same values. Note that the cache will be initially empty and be populated lazily during lookups. The cache can only be used for equality lookups on all index attributes. It cannot be used for range scans, partial lookups or sorting.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>

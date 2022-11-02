@@ -1,0 +1,21 @@
+with "stemmer_config";
+project Stemwords is
+
+   Mains := ("stemwords.adb");
+
+   for Main use Mains;
+
+   for Source_Dirs use ("src", "algorithms");
+
+   for Object_Dir use "./" & Stemmer_Config'Object_Dir & "/obj";
+   for Exec_Dir use "./" & Stemmer_Config'Exec_Dir & "/bin";
+
+   package Binder renames Stemmer_Config.Binder;
+
+   package Builder renames Stemmer_Config.Builder;
+
+   package Compiler renames Stemmer_Config.Compiler;
+
+   package Linker renames Stemmer_Config.Linker;
+
+end Stemwords;

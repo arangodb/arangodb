@@ -34,9 +34,14 @@
 #include "Cluster/Action.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/ClusterTypes.h"
 #include "Metrics/MetricsFeature.h"
+#include "Mocks/Servers.h"
+#include "RestServer/UpgradeFeature.h"
 
 #include "MaintenanceFeatureMock.h"
+
+static arangodb::ServerID const DBSERVER_ID;
 
 //
 // TestActionBasic simulates a multistep action by counting down
@@ -162,6 +167,25 @@ class TestActionBasic : public ActionBase {
 
 };  // TestActionBasic
 
+class MaintenanceFeatureTestDBServer
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AGENCY,
+                                            arangodb::LogLevel::FATAL>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
+                                            arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER,
+                                            arangodb::LogLevel::FATAL> {
+ protected:
+  arangodb::tests::mocks::MockDBServer server;
+
+  MaintenanceFeatureTestDBServer() : server(DBSERVER_ID, false) {
+    arangodb::ServerState::instance()->setRebootId(
+        arangodb::RebootId{1});  // Hack.
+    server.untrackFeature<arangodb::UpgradeFeature>();
+    server.startFeatures();
+  }
+};
+
 //
 //
 // Unit Tests start here
@@ -179,9 +203,10 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_ok) {
   std::shared_ptr<arangodb::options::ProgramOptions> po =
       std::make_shared<arangodb::options::ProgramOptions>(
           "test", std::string(), std::string(), "path");
-  arangodb::application_features::ApplicationServer as(po, nullptr);
+  arangodb::ArangodServer as(po, nullptr);
   as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
+  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
+      std::true_type{});
 
   TestMaintenanceFeature tf(as);
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
@@ -214,9 +239,10 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_fail) {
   std::shared_ptr<arangodb::options::ProgramOptions> po =
       std::make_shared<arangodb::options::ProgramOptions>(
           "test", std::string(), std::string(), "path");
-  arangodb::application_features::ApplicationServer as(po, nullptr);
+  arangodb::ArangodServer as(po, nullptr);
   as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
+  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
+      std::false_type{});
 
   TestMaintenanceFeature tf(as);
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
@@ -252,9 +278,10 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_ok) {
   std::shared_ptr<arangodb::options::ProgramOptions> po =
       std::make_shared<arangodb::options::ProgramOptions>(
           "test", std::string(), std::string(), "path");
-  arangodb::application_features::ApplicationServer as(po, nullptr);
+  arangodb::ArangodServer as(po, nullptr);
   as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
+  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
+      std::false_type{});
   TestMaintenanceFeature tf(as);
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
@@ -288,9 +315,10 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_fail) {
   std::shared_ptr<arangodb::options::ProgramOptions> po =
       std::make_shared<arangodb::options::ProgramOptions>(
           "test", std::string(), std::string(), "path");
-  arangodb::application_features::ApplicationServer as(po, nullptr);
+  arangodb::ArangodServer as(po, nullptr);
   as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
+  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
+      std::false_type{});
   TestMaintenanceFeature tf(as);
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
@@ -327,9 +355,10 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_2_times_ok) {
   std::shared_ptr<arangodb::options::ProgramOptions> po =
       std::make_shared<arangodb::options::ProgramOptions>(
           "test", std::string(), std::string(), "path");
-  arangodb::application_features::ApplicationServer as(po, nullptr);
+  arangodb::ArangodServer as(po, nullptr);
   as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
+  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
+      std::false_type{});
   TestMaintenanceFeature tf(as);
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
@@ -365,9 +394,10 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_ok) {
   std::shared_ptr<arangodb::options::ProgramOptions> po =
       std::make_shared<arangodb::options::ProgramOptions>(
           "test", std::string(), std::string(), "path");
-  arangodb::application_features::ApplicationServer as(po, nullptr);
+  arangodb::ArangodServer as(po, nullptr);
   as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
+  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
+      std::false_type{});
   TestMaintenanceFeature tf(as);
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
@@ -403,9 +433,10 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_fail) {
   std::shared_ptr<arangodb::options::ProgramOptions> po =
       std::make_shared<arangodb::options::ProgramOptions>(
           "test", std::string(), std::string(), "path");
-  arangodb::application_features::ApplicationServer as(po, nullptr);
+  arangodb::ArangodServer as(po, nullptr);
   as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
+  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
+      std::false_type{});
   TestMaintenanceFeature tf(as);
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
@@ -444,15 +475,14 @@ TEST(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
   std::shared_ptr<arangodb::options::ProgramOptions> po =
       std::make_shared<arangodb::options::ProgramOptions>(
           "test", std::string(), std::string(), "path");
-  arangodb::application_features::ApplicationServer as(po, nullptr);
+  arangodb::ArangodServer as(po, nullptr);
   as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
-  as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
-  TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
-      &as.getFeature<arangodb::MaintenanceFeature>());
+  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
+      std::false_type{});
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
 
-  std::thread th(&arangodb::application_features::ApplicationServer::run, &as,
-                 0, nullptr);
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
 
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
@@ -534,15 +564,14 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_preaction) {
   std::shared_ptr<arangodb::options::ProgramOptions> po =
       std::make_shared<arangodb::options::ProgramOptions>(
           "test", std::string(), std::string(), "path");
-  arangodb::application_features::ApplicationServer as(po, nullptr);
+  arangodb::ArangodServer as(po, nullptr);
   as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
-  as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
-  TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
-      &as.getFeature<arangodb::MaintenanceFeature>());
+  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
+      std::false_type{});
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
 
-  std::thread th(&arangodb::application_features::ApplicationServer::run, &as,
-                 0, nullptr);
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
 
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
@@ -600,15 +629,14 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_postaction) {
   std::shared_ptr<arangodb::options::ProgramOptions> po =
       std::make_shared<arangodb::options::ProgramOptions>(
           "test", std::string(), std::string(), "path");
-  arangodb::application_features::ApplicationServer as(po, nullptr);
+  arangodb::ArangodServer as(po, nullptr);
   as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
-  as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
-  TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
-      &as.getFeature<arangodb::MaintenanceFeature>());
+  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
+      std::false_type{});
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
 
-  std::thread th(&arangodb::application_features::ApplicationServer::run, &as,
-                 0, nullptr);
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
 
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
@@ -668,15 +696,14 @@ TEST(MaintenanceFeatureTestThreaded,
       std::make_shared<arangodb::options::ProgramOptions>(
           "test", std::string(), std::string(), "path");
 
-  arangodb::application_features::ApplicationServer as(po, nullptr);
+  arangodb::ArangodServer as(po, nullptr);
   as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
-  as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
-  TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
-      &as.getFeature<arangodb::MaintenanceFeature>());
+  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
+      std::false_type{});
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
 
-  std::thread th(&arangodb::application_features::ApplicationServer::run, &as,
-                 0, nullptr);
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
 
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
@@ -720,15 +747,14 @@ TEST(MaintenanceFeatureTestThreaded, action_delete) {
   std::shared_ptr<arangodb::options::ProgramOptions> po =
       std::make_shared<arangodb::options::ProgramOptions>(
           "test", std::string(), std::string(), "path");
-  arangodb::application_features::ApplicationServer as(po, nullptr);
+  arangodb::ArangodServer as(po, nullptr);
   as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
-  as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
-  TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
-      &as.getFeature<arangodb::MaintenanceFeature>());
+  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
+      std::false_type{});
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
 
-  std::thread th(&arangodb::application_features::ApplicationServer::run, &as,
-                 0, nullptr);
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
 
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
@@ -784,15 +810,14 @@ TEST(MaintenanceFeatureTestThreaded,
   std::shared_ptr<arangodb::options::ProgramOptions> po =
       std::make_shared<arangodb::options::ProgramOptions>(
           "test", std::string(), std::string(), "path");
-  arangodb::application_features::ApplicationServer as(po, nullptr);
+  arangodb::ArangodServer as(po, nullptr);
   as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(false);
-  as.addFeature<TestMaintenanceFeature, arangodb::MaintenanceFeature>();
-  TestMaintenanceFeature& tf = *dynamic_cast<TestMaintenanceFeature*>(
-      &as.getFeature<arangodb::MaintenanceFeature>());
+  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
+      std::false_type{});
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
 
-  std::thread th(&arangodb::application_features::ApplicationServer::run, &as,
-                 0, nullptr);
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
 
   auto threadGuard = arangodb::scopeGuard([&]() noexcept {
     as.beginShutdown();
@@ -846,4 +871,27 @@ TEST(MaintenanceFeatureTestThreaded,
 #if 0  // for debugging
   std::cout << tf.toVelocyPack().toJson() << std::endl;
 #endif
+}
+
+// temporarily disabled since it may hang
+TEST_F(MaintenanceFeatureTestDBServer, test_synchronize_shard_abort) {
+  auto& mf = server.getFeature<arangodb::MaintenanceFeature>();
+  mf.start();
+
+  std::shared_ptr<ActionDescription> description =
+      std::make_shared<ActionDescription>(
+          std::map<std::string, std::string>{{NAME, SYNCHRONIZE_SHARD},
+                                             {DATABASE, "_system"},
+                                             {COLLECTION, "tmp"},
+                                             {SHARD, "s1"},
+                                             {THE_LEADER, "PRMR-1"},
+                                             {SHARD_VERSION, "1"},
+                                             {FORCED_RESYNC, "false"}},
+          SYNCHRONIZE_PRIORITY, true);
+
+  // The following will execute the action right away:
+  auto res = mf.addAction(description, true /* executeNow */);
+  ASSERT_FALSE(res.ok());  // must have been aborted
+  mf.beginShutdown();
+  mf.stop();
 }

@@ -39,7 +39,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 #include <set>
 
 using namespace arangodb;
@@ -58,7 +57,7 @@ class InRangeFunctionTest : public ::testing::Test {
     fakeit::Mock<ExpressionContext> expressionContextMock;
     ExpressionContext& expressionContext = expressionContextMock.get();
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .AlwaysDo([warnings](ErrorCode c, char const*) {
+        .AlwaysDo([warnings](ErrorCode c, std::string_view) {
           if (warnings) {
             warnings->insert(static_cast<int>(c));
           }
@@ -69,8 +68,7 @@ class InRangeFunctionTest : public ::testing::Test {
     fakeit::When(Method(expressionContextMock, trx))
         .AlwaysDo([&trx]() -> transaction::Methods& { return *trx; });
 
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> params{arena};
+    containers::SmallVector<AqlValue, 5> params;
     if (attribute) {
       params.emplace_back(*attribute);
     }
@@ -87,11 +85,11 @@ class InRangeFunctionTest : public ::testing::Test {
       params.emplace_back(*includeUpper);
     }
 
-    arangodb::aql::Function f("IN_RANGE", &Functions::InRange);
+    arangodb::aql::Function f("IN_RANGE", &functions::InRange);
     arangodb::aql::AstNode node(NODE_TYPE_FCALL);
     node.setData(static_cast<void const*>(&f));
 
-    return Functions::InRange(&expressionContext, node, params);
+    return functions::InRange(&expressionContext, node, params);
   }
 
   void assertInRangeFail(size_t line, std::set<int> const& expected_warnings,

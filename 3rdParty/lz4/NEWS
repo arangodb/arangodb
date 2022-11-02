@@ -1,3 +1,39 @@
+v1.9.3
+perf: highly improved speed in kernel space, by @terrelln
+perf: faster speed with Visual Studio, thanks to @wolfpld and @remittor
+perf: improved dictionary compression speed, by @felixhandte
+perf: fixed LZ4_compress_HC_destSize() ratio, detected by @hsiangkao
+perf: reduced stack usage in high compression mode, by @Yanpas
+api : LZ4_decompress_safe_partial() supports unknown compressed size, requested by @jfkthame
+api : improved LZ4F_compressBound() with automatic flushing, by Christopher Harvie
+api : can (de)compress to/from NULL without UBs
+api : fix alignment test on 32-bit systems (state initialization)
+api : fix LZ4_saveDictHC() in corner case scenario, detected by @IgorKorkin
+cli : `-l` legacy format is now compatible with `-m` multiple files, by Filipe Calasans
+cli : benchmark mode supports dictionary, by @rkoradi
+cli : fix --fast with large argument, detected by @picoHz
+build: link to user-defined memory functions with LZ4_USER_MEMORY_FUNCTIONS, suggested by Yuriy Levchenko
+build: contrib/cmake_unofficial/ moved to build/cmake/
+build: visual/* moved to build/
+build: updated meson script, by @neheb
+build: tinycc support, by Anton Kochkov
+install: Haiku support, by Jerome Duval
+doc : updated LZ4 frame format, clarify EndMark
+
+v1.9.2
+fix : out-of-bound read in exceptional circumstances when using decompress_partial(), by @terrelln
+fix : slim opportunity for out-of-bound write with compress_fast() with a large enough input and when providing an output smaller than recommended (< LZ4_compressBound(inputSize)), by @terrelln
+fix : rare data corruption bug with LZ4_compress_destSize(), by @terrelln
+fix : data corruption bug when Streaming with an Attached Dict in HC Mode, by @felixhandte
+perf: enable LZ4_FAST_DEC_LOOP on aarch64/GCC by default, by @prekageo
+perf: improved lz4frame streaming API speed, by @dreambottle
+perf: speed up lz4hc on slow patterns when using external dictionary, by @terrelln
+api: better in-place decompression and compression support
+cli : --list supports multi-frames files, by @gstedman
+cli: --version outputs to stdout
+cli : add option --best as an alias of -12 , by @Low-power
+misc: Integration into oss-fuzz by @cmeister2, expanded list of scenarios by @terrelln
+
 v1.9.1
 fix : decompression functions were reading a few bytes beyond input size (introduced in v1.9.0, reported by @ppodolsky and @danlark1)
 api : fix : lz4frame initializers compatibility with c++, reported by @degski

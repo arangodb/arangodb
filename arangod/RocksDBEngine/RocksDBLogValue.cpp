@@ -319,11 +319,13 @@ RevisionId RocksDBLogValue::revisionId(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + (sizeof(uint64_t)));
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
   if (type == RocksDBLogType::DocumentRemoveV2) {
-    return RevisionId::fromPersistent(slice.data() + sizeof(RocksDBLogType));
+    char const* data = slice.data() + sizeof(RocksDBLogType);
+    return RevisionId{rocksutils::uint64FromPersistent(data)};
   } else if (type == RocksDBLogType::SingleRemoveV2) {
     TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + (3 * sizeof(uint64_t)));
-    return RevisionId::fromPersistent(slice.data() + sizeof(RocksDBLogType) +
-                                      2 * sizeof(uint64_t));
+    char const* data =
+        slice.data() + sizeof(RocksDBLogType) + 2 * sizeof(uint64_t);
+    return RevisionId{rocksutils::uint64FromPersistent(data)};
   }
   TRI_ASSERT(false);  // invalid type
   return RevisionId::none();

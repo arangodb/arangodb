@@ -27,13 +27,16 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include <Replication2/ReplicatedLog/AgencyLogSpecification.h>
+
 #include <Replication2/Streams/LogMultiplexer.h>
 #include <Replication2/Streams/StreamSpecification.h>
 
+#include <Mocks/LogLevels.h>
+#include <Replication2/Mocks/FakeFailureOracle.h>
 #include <Replication2/Mocks/FakeReplicatedLog.h>
 #include <Replication2/Mocks/PersistedLog.h>
 #include <Replication2/Mocks/ReplicatedLogMetricsMock.h>
-#include <Mocks/LogLevels.h>
 
 namespace arangodb::replication2::test {
 
@@ -57,6 +60,26 @@ struct LogMultiplexerTestBase
       -> std::shared_ptr<replication2::test::TestReplicatedLog> {
     return createReplicatedLogImpl<replication2::test::TestReplicatedLog,
                                    test::MockLog>(id);
+  }
+
+  static auto createLeaderWithDefaultFlags(
+      std::shared_ptr<replication2::replicated_log::ReplicatedLog>& log,
+      ParticipantId id, LogTerm term,
+      std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+      std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
+    auto config = agency::LogPlanConfig{writeConcern, false};
+    auto participants =
+        std::unordered_map<ParticipantId, ParticipantFlags>{{id, {}}};
+    for (auto const& participant : follower) {
+      participants.emplace(participant->getParticipantId(), ParticipantFlags{});
+    }
+    auto participantsConfig = std::make_shared<agency::ParticipantsConfig>(
+        agency::ParticipantsConfig{.generation = 1,
+                                   .participants = std::move(participants),
+                                   .config = config});
+    return log->becomeLeader(std::move(id), term, follower,
+                             std::move(participantsConfig),
+                             std::make_shared<FakeFailureOracle>());
   }
 
  private:

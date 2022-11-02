@@ -39,15 +39,14 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestImportHandler::RestImportHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestImportHandler::RestImportHandler(ArangodServer& server,
+                                     GeneralRequest* request,
+                                     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _onDuplicateAction(DUPLICATE_ERROR),
       _ignoreMissing(false) {}
@@ -90,6 +89,9 @@ RestStatus RestImportHandler::execute() {
           _toPrefix.push_back('/');
         }
       }
+
+      _overwritePrefix = _request->parsedValue(
+          StaticStrings::OverwriteCollectionPrefix, false);
 
       // extract the import type
       std::string const& documentType = _request->value("type", found);
@@ -213,9 +215,13 @@ ErrorCode RestImportHandler::handleSingleDocument(
       VPackSlice from = slice.get(StaticStrings::FromString);
       if (from.isString()) {
         std::string f = from.copyString();
-        if (f.find('/') == std::string::npos) {
+        auto slashPos = f.find('/');
+        if (slashPos == std::string::npos) {
           tempBuilder.add(StaticStrings::FromString,
                           VPackValue(_fromPrefix + f));
+        } else if (_overwritePrefix) {
+          tempBuilder.add(StaticStrings::FromString,
+                          VPackValue(_fromPrefix + f.substr(slashPos + 1)));
         }
       } else if (from.isInteger()) {
         uint64_t f = from.getNumber<uint64_t>();
@@ -227,8 +233,12 @@ ErrorCode RestImportHandler::handleSingleDocument(
       VPackSlice to = slice.get(StaticStrings::ToString);
       if (to.isString()) {
         std::string t = to.copyString();
-        if (t.find('/') == std::string::npos) {
+        auto slashPos = t.find('/');
+        if (slashPos == std::string::npos) {
           tempBuilder.add(StaticStrings::ToString, VPackValue(_toPrefix + t));
+        } else if (_overwritePrefix) {
+          tempBuilder.add(StaticStrings::ToString,
+                          VPackValue(_toPrefix + t.substr(slashPos + 1)));
         }
       } else if (to.isInteger()) {
         uint64_t t = to.getNumber<uint64_t>();
@@ -1047,7 +1057,7 @@ bool RestImportHandler::checkKeys(VPackSlice const& keys) const {
     return false;
   }
 
-  for (VPackSlice const& key : VPackArrayIterator(keys)) {
+  for (VPackSlice key : VPackArrayIterator(keys)) {
     if (!key.isString()) {
       return false;
     }

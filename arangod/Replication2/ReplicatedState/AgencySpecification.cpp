@@ -24,171 +24,73 @@
 #include "AgencySpecification.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
-#include "velocypack/velocypack-aliases.h"
+
+#include "Logger/LogMacros.h"
+#include "Inspection/VPack.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::agency;
 
-namespace {
-auto const StringMessage = velocypack::StringRef{"message"};
-auto const String_Status = velocypack::StringRef{"status"};
-auto const String_Snapshot = velocypack::StringRef{"snapshot"};
-auto const String_Generation = velocypack::StringRef{"generation"};
-auto const String_InProgress = std::string_view{"InProgress"};
-auto const String_Completed = std::string_view{"Completed"};
-auto const String_Failed = std::string_view{"Failed"};
-}  // namespace
+auto StatusCodeStringTransformer::toSerialized(StatusCode source,
+                                               std::string& target) const
+    -> inspection::Status {
+  target = to_string(source);
+  return {};
+}
 
-void Current::ParticipantStatus::Snapshot::Error::toVelocyPack(
-    velocypack::Builder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  ob->add(StaticStrings::Error, velocypack::Value(error));
-  ob->add(StaticStrings::ErrorMessage,
-          velocypack::Value(TRI_errno_string(error)));
-  if (message) {
-    ob->add(StringMessage, velocypack::Value(*message));
+auto StatusCodeStringTransformer::fromSerialized(std::string const& source,
+                                                 StatusCode& target) const
+    -> inspection::Status {
+  if (source == "LogNotCreated") {
+    target = StatusCode::kLogNotCreated;
+  } else if (source == "LogCurrentNotAvailable") {
+    target = StatusCode::kLogCurrentNotAvailable;
+  } else if (source == "ServerSnapshotMissing") {
+    target = StatusCode::kServerSnapshotMissing;
+  } else if (source == "InsufficientSnapshotCoverage") {
+    target = StatusCode::kInsufficientSnapshotCoverage;
+  } else if (source == "LogParticipantNotYetGone") {
+    target = StatusCode::kLogParticipantNotYetGone;
+  } else {
+    return inspection::Status{"Invalid status code name " +
+                              std::string{source}};
   }
-  // TODO timestamp
+  return {};
 }
 
-auto Current::ParticipantStatus::Snapshot::Error::fromVelocyPack(
-    velocypack::Slice slice) -> Error {
-  auto errorCode = ErrorCode{slice.get(StaticStrings::Error).extract<int>()};
-  std::optional<std::string> message;
-  if (auto message_slice = slice.get(StringMessage); !message_slice.isNone()) {
-    message = message_slice.copyString();
-  }
-  return Error{errorCode, message, {}};
-}
-
-using Status = Current::ParticipantStatus::Snapshot::Status;
-
-auto agency::to_string(Status status) -> std::string_view {
-  switch (status) {
-    case Status::kInProgress:
-      return String_InProgress;
-    case Status::kCompleted:
-      return String_Completed;
-    case Status::kFailed:
-      return String_Failed;
-  }
-  TRI_ASSERT(false) << "status value was " << static_cast<int>(status);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
-}
-
-auto agency::from_string(std::string_view string) -> Status {
-  if (string == String_InProgress) {
-    return Status::kInProgress;
-  } else if (string == String_Completed) {
-    return Status::kCompleted;
-  } else if (string == String_Failed) {
-    return Status::kFailed;
-  }
-  // TODO make a proper error code
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
-}
-
-void Current::ParticipantStatus::Snapshot::toVelocyPack(
-    velocypack::Builder& builder) const {
-  // TODO add timestamp
-  VPackObjectBuilder ob(&builder);
-  if (error) {
-    ob->add(velocypack::Value(StaticStrings::Error));
-    error->toVelocyPack(*ob);
-  }
-  ob->add(String_Status, velocypack::Value(to_string(status)));
-}
-
-auto Current::ParticipantStatus::Snapshot::fromVelocyPack(
-    velocypack::Slice slice) -> Snapshot {
-  std::optional<Error> error;
-  if (auto error_slice = slice.get(StaticStrings::Error);
-      !error_slice.isNone()) {
-    error = Error::fromVelocyPack(error_slice);
-  }
-  Status status = agency::from_string(slice.get(String_Status).stringView());
-  return Snapshot{.status = status, .timestamp = {}, .error = std::move(error)};
-}
-
-void Current::ParticipantStatus::toVelocyPack(
-    velocypack::Builder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  builder.add(String_Generation, velocypack::Value(generation));
-  builder.add(velocypack::Value(String_Snapshot));
-  snapshot.toVelocyPack(builder);
-}
-
-auto Current::ParticipantStatus::fromVelocyPack(velocypack::Slice slice)
-    -> ParticipantStatus {
-  auto generation = slice.get(String_Generation).extract<StateGeneration>();
-  auto snapshot = Snapshot::fromVelocyPack(slice.get(String_Snapshot));
-  return ParticipantStatus{.generation = generation,
-                           .snapshot = std::move(snapshot)};
-}
-
-void Current::toVelocyPack(velocypack::Builder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  builder.add(StaticStrings::Id, velocypack::Value(id));
-  {
-    VPackObjectBuilder ab(&builder, StaticStrings::Participants);
-    for (auto const& [pid, status] : participants) {
-      builder.add(velocypack::Value(pid));
-      status.toVelocyPack(builder);
-    }
+auto replicated_state::agency::to_string(StatusCode code) noexcept
+    -> std::string_view {
+  switch (code) {
+    case Current::Supervision::kLogNotCreated:
+      return "LogNotCreated";
+    case Current::Supervision::kLogCurrentNotAvailable:
+      return "LogCurrentNotAvailable";
+    case Current::Supervision::kServerSnapshotMissing:
+      return "ServerSnapshotMissing";
+    case Current::Supervision::kInsufficientSnapshotCoverage:
+      return "InsufficientSnapshotCoverage";
+    case Current::Supervision::kLogParticipantNotYetGone:
+      return "LogParticipantNotYetGone";
+    default:
+      return "(unknown status code)";
   }
 }
 
-auto Current::fromVelocyPack(velocypack::Slice slice) -> Current {
-  Current c;
-  c.id = slice.get(StaticStrings::Id).extract<LogId>();
-  for (auto [key, value] :
-       velocypack::ObjectIterator(slice.get(StaticStrings::Participants))) {
-    auto status = ParticipantStatus::fromVelocyPack(value);
-    c.participants.emplace(key.copyString(), std::move(status));
+auto replicated_state::agency::operator==(ImplementationSpec const& s,
+                                          ImplementationSpec const& s2) noexcept
+    -> bool {
+  if (s.type != s2.type ||
+      s.parameters.has_value() != s2.parameters.has_value()) {
+    return false;
   }
-  return c;
-}
-
-auto Plan::Participant::fromVelocyPack(velocypack::Slice slice) -> Participant {
-  return Participant{
-      .generation = slice.get(String_Generation).extract<StateGeneration>()};
-}
-
-void Plan::Participant::toVelocyPack(velocypack::Builder& builder) const {
-  velocypack::ObjectBuilder ob(&builder);
-  builder.add(String_Generation, velocypack::Value(generation));
-}
-
-void Plan::toVelocyPack(velocypack::Builder& builder) const {
-  velocypack::ObjectBuilder ob(&builder);
-  builder.add(StaticStrings::Id, velocypack::Value(id));
-  builder.add(String_Generation, velocypack::Value(generation));
-  {
-    velocypack::ObjectBuilder pob(&builder, StaticStrings::Participants);
-    for (auto const& [pid, state] : participants) {
-      builder.add(velocypack::Value(pid));
-      state.toVelocyPack(builder);
-    }
-  }
-}
-
-auto Plan::fromVelocyPack(velocypack::Slice slice) -> Plan {
-  auto id = slice.get(StaticStrings::Id).extract<LogId>();
-  auto generation = slice.get(String_Generation).extract<StateGeneration>();
-  auto participants = std::unordered_map<ParticipantId, Participant>{};
-  for (auto [key, value] :
-       velocypack::ObjectIterator(slice.get(StaticStrings::Participants))) {
-    auto status = Participant::fromVelocyPack(value);
-    participants.emplace(key.copyString(), status);
-  }
-
-  return Plan{.id = id,
-              .generation = generation,
-              .participants = std::move(participants)};
+  return !s.parameters.has_value() ||
+         basics::VelocyPackHelper::equal(s.parameters->slice(),
+                                         s2.parameters->slice(), true);
 }

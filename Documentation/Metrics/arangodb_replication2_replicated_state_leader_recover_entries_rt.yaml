@@ -1,0 +1,13 @@
+name: arangodb_replication2_replicated_state_leader_recover_entries_rt
+introducedIn: "3.10.0"
+help: |
+  Histogram of the duration of recoverEntries calls in microseconds.
+unit: us
+type: histogram
+category: Replication
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Histogram of the duration of recoverEntries calls in microseconds. This measures the time
+  a new leader takes to recover from existing log entries after it was elected.

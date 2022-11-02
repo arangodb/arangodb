@@ -25,17 +25,22 @@
 
 #include "RestHandler/RestBaseHandler.h"
 
+#include <string>
+
 namespace arangodb {
+
 class RestMetricsHandler : public arangodb::RestBaseHandler {
  public:
-  RestMetricsHandler(application_features::ApplicationServer&, GeneralRequest*,
-                     GeneralResponse*);
+  RestMetricsHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
-  char const* name() const override final { return "RestMetricsHandler"; }
+  char const* name() const final { return "RestMetricsHandler"; }
   /// @brief must be on fast lane so that metrics can always be retrieved,
   /// even from otherwise totally busy servers
-  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
-  RestStatus execute() override;
+  RequestLane lane() const final { return RequestLane::CLIENT_FAST; }
+  RestStatus execute() final;
+
+ private:
+  RestStatus makeRedirection(std::string const& serverId, bool last);
 };
 
 }  // namespace arangodb

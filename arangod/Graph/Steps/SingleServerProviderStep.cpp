@@ -65,7 +65,8 @@ VertexType const& SingleServerProviderStep::Vertex::getID() const {
   return _vertex;
 }
 
-EdgeDocumentToken const& SingleServerProviderStep::Edge::getID() const {
+SingleServerProviderStep::EdgeType const&
+SingleServerProviderStep::Edge::getID() const {
   return _token;
 }
 
@@ -79,8 +80,6 @@ void SingleServerProviderStep::Edge::addToBuilder(
   provider.insertEdgeIntoResult(getID(), builder);
 }
 
-#ifndef USE_ENTERPRISE
-bool SingleServerProviderStep::isResponsible(transaction::Methods* trx) const {
+bool SingleServerProviderStep::isResponsible(transaction::Methods*) const {
   return true;
 };
-#endif

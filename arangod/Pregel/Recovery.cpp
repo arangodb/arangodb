@@ -127,19 +127,15 @@ ErrorCode RecoveryManager::filterGoodServers(
 }
 
 void RecoveryManager::updatedFailedServers(
-    std::vector<ServerID> const& failed) {
+    containers::FlatHashSet<ServerID> const& failedServers) {
   MUTEX_LOCKER(guard, _lock);  // we are accessing _primaryServers
 
-  for (auto const& pair : _primaryServers) {
-    auto const& it = std::find(failed.begin(), failed.end(), pair.second);
-    if (it != failed.end()) {
-      // found a failed server
-      ShardID const& shard = pair.first;
-
+  for (auto const& [shard, server] : _primaryServers) {
+    if (failedServers.contains(server)) {
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       Scheduler* scheduler = SchedulerFeature::SCHEDULER;
       scheduler->queue(RequestLane::INTERNAL_LOW,
-                       [this, shard] { _renewPrimaryServer(shard); });
+                       [this, shard = shard] { _renewPrimaryServer(shard); });
     }
   }
 }

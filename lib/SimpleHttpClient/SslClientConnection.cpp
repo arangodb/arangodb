@@ -181,10 +181,10 @@ static void sslTlsTrace(int direction, int sslVersion, int contentType,
 ////////////////////////////////////////////////////////////////////////////////
 
 SslClientConnection::SslClientConnection(
-    application_features::ApplicationServer& server, Endpoint* endpoint,
+    application_features::CommunicationFeaturePhase& comm, Endpoint* endpoint,
     double requestTimeout, double connectTimeout, size_t connectRetries,
     uint64_t sslProtocol)
-    : GeneralClientConnection(server, endpoint, requestTimeout, connectTimeout,
+    : GeneralClientConnection(comm, endpoint, requestTimeout, connectTimeout,
                               connectRetries),
       _ssl(nullptr),
       _ctx(nullptr),
@@ -193,10 +193,10 @@ SslClientConnection::SslClientConnection(
 }
 
 SslClientConnection::SslClientConnection(
-    application_features::ApplicationServer& server,
+    application_features::CommunicationFeaturePhase& comm,
     std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
     double connectTimeout, size_t connectRetries, uint64_t sslProtocol)
-    : GeneralClientConnection(server, endpoint, requestTimeout, connectTimeout,
+    : GeneralClientConnection(comm, endpoint, requestTimeout, connectTimeout,
                               connectRetries),
       _ssl(nullptr),
       _ctx(nullptr),
@@ -333,7 +333,7 @@ bool SslClientConnection::connectSocket() {
   _ssl = SSL_new(_ctx);
 
   if (_ssl == nullptr) {
-    _errorDetails = std::string("failed to create ssl context");
+    _errorDetails = "failed to create ssl context";
     disconnectSocket();
     _isConnected = false;
     return false;
@@ -411,8 +411,7 @@ bool SslClientConnection::connectSocket() {
           _errorDetails += std::string("certificate problem: ") +
                            X509_verify_cert_error_string(certError);
         } else {
-          _errorDetails =
-              std::string("certificate problem, verify that the CA cert is OK");
+          _errorDetails = "certificate problem, verify that the CA cert is OK";
         }
         break;
 

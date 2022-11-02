@@ -41,6 +41,7 @@ struct MockLog : replication2::replicated_log::PersistedLog {
       std::map<replication2::LogIndex, replication2::PersistingLogEntry>;
 
   explicit MockLog(replication2::LogId id);
+  explicit MockLog(replication2::GlobalLogIdentifier gid);
   MockLog(replication2::LogId id, storeType storage);
 
   auto insert(replication2::PersistedLogIterator& iter, WriteOptions const&)
@@ -60,9 +61,36 @@ struct MockLog : replication2::replicated_log::PersistedLog {
 
   [[nodiscard]] storeType getStorage() const { return _storage; }
 
+  auto checkEntryWaitedForSync(LogIndex idx) const noexcept -> bool {
+    return _writtenWithWaitForSync.find(idx) != _writtenWithWaitForSync.end();
+  }
+
  private:
   using iteratorType = storeType::iterator;
   storeType _storage;
+  std::unordered_set<LogIndex> _writtenWithWaitForSync;
+};
+
+struct DelayedMockLog : MockLog {
+  explicit DelayedMockLog(replication2::LogId id) : MockLog(id) {}
+
+  auto insertAsync(std::unique_ptr<replication2::PersistedLogIterator> iter,
+                   WriteOptions const&) -> futures::Future<Result> override;
+
+  auto hasPendingInsert() const noexcept -> bool {
+    return _pending.has_value();
+  }
+  void runAsyncInsert();
+
+  struct PendingRequest {
+    PendingRequest(std::unique_ptr<replication2::PersistedLogIterator> iter,
+                   WriteOptions options);
+    std::unique_ptr<replication2::PersistedLogIterator> iter;
+    WriteOptions options;
+    futures::Promise<Result> promise;
+  };
+
+  std::optional<PendingRequest> _pending;
 };
 
 struct AsyncMockLog : MockLog {

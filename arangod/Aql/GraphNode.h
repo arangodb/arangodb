@@ -26,7 +26,6 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
-#include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
 #include "Aql/types.h"
 #include "Cluster/ClusterTypes.h"
@@ -80,17 +79,6 @@ class GraphNode : public ExecutionNode {
 
   GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
- public:
-  // QueryPlan decided that we use this graph as a satellite
-  bool isUsedAsSatellite() const;
-  // Defines whether a GraphNode can fully be pushed down to a DBServer
-  bool isLocalGraphNode() const;
-  // Will wait as soon as any of our collections is a satellite (in sync)
-  void waitForSatelliteIfRequired(ExecutionEngine const* engine) const;
-  // Can be fully pushed down to a DBServer and is available on all DBServers
-  bool isEligibleAsSatelliteTraversal() const;
-
- protected:
   /// @brief Internal constructor to clone the node.
   GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
             std::vector<Collection*> const& edgeColls,
@@ -115,6 +103,15 @@ class GraphNode : public ExecutionNode {
  public:
   ~GraphNode() override = default;
 
+  // QueryPlan decided that we use this graph as a satellite
+  bool isUsedAsSatellite() const;
+  // Defines whether a GraphNode can fully be pushed down to a DBServer
+  bool isLocalGraphNode() const;
+  // Will wait as soon as any of our collections is a satellite (in sync)
+  void waitForSatelliteIfRequired(ExecutionEngine const* engine) const;
+  // Can be fully pushed down to a DBServer and is available on all DBServers
+  bool isEligibleAsSatelliteTraversal() const;
+
   /// @brief the cost of a graph node
   CostEstimate estimateCost() const override;
 
@@ -125,6 +122,10 @@ class GraphNode : public ExecutionNode {
   /// only!)
   bool isDisjoint() const;
 
+  /// @brief flag, if the graph is a Hybrid Disjoint SmartGraph
+  /// (Enterprise Edition only!)
+  bool isHybridDisjoint() const;
+
   /// @brief return the database
   TRI_vocbase_t* vocbase() const;
 
@@ -133,6 +134,8 @@ class GraphNode : public ExecutionNode {
 
   /// @brief checks if the vertex out variable is used
   bool isVertexOutVariableUsedLater() const;
+
+  void markUnusedConditionVariable(Variable const* var);
 
   /// @brief set the vertex out variable
   void setVertexOutput(Variable const* outVar);
@@ -203,6 +206,10 @@ class GraphNode : public ExecutionNode {
 
   void initializeIndexConditions() const;
 
+  void setVertexProjections(Projections projections);
+
+  void setEdgeProjections(Projections projections);
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // Internal helpers used in tests to modify enterprise detections.
   // These should not be used in production, as their detection
@@ -211,6 +218,10 @@ class GraphNode : public ExecutionNode {
 
   void setIsDisjoint(bool target) { _isDisjoint = target; }
 #endif
+
+  void enableClusterOneShardRule(bool enable);
+  bool isClusterOneShardRuleEnabled() const;
+
  protected:
   void doToVelocyPack(arangodb::velocypack::Builder& nodes,
                       unsigned flags) const override;
@@ -229,6 +240,10 @@ class GraphNode : public ExecutionNode {
   void setGraphInfoAndCopyColls(std::vector<Collection*> const& edgeColls,
                                 std::vector<Collection*> const& vertexColls);
 
+  Collection const* getShardingPrototype() const;
+
+  void determineEnterpriseFlags(AstNode const* edgeCollectionList);
+
  protected:
   /// @brief the database
   TRI_vocbase_t* _vocbase;
@@ -238,6 +253,9 @@ class GraphNode : public ExecutionNode {
 
   /// @brief vertex output variable
   Variable const* _edgeOutVariable;
+
+  /// @brief variables that got optimized out
+  VarIdSet _optimizedOutVariables;
 
   /// @brief our graph...
   graph::Graph const* _graphObj;
@@ -273,6 +291,10 @@ class GraphNode : public ExecutionNode {
 
   /// @brief flag, if graph is smart *and* disjoint (Enterprise Edition only!)
   bool _isDisjoint;
+
+  /// @brief flag, if the graph being used inside the clusterOneShardRule
+  /// optimization (Enterprise Edition only!)
+  bool _enabledClusterOneShardRule;
 
   /// @brief The directions edges are followed
   std::vector<TRI_edge_direction_e> _directions;

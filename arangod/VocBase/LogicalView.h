@@ -20,21 +20,21 @@
 ///
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
 #include "Auth/Common.h"
 #include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Meta/utility.h"
+#include "Basics/ReadWriteLock.h"
+#include "Containers/SmallVector.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Buffer.h>
+#include <functional>
+#include <span>
 
 namespace arangodb {
 namespace velocypack {
@@ -43,81 +43,28 @@ class Builder;
 class Slice;
 
 }  // namespace velocypack
-}  // namespace arangodb
 
-namespace arangodb {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @class LogicalView
-////////////////////////////////////////////////////////////////////////////////
 class LogicalView : public LogicalDataSource {
  public:
-  typedef std::shared_ptr<LogicalView> ptr;
-  typedef std::function<bool(DataSourceId)> CollectionVisitor;
+  using ptr = std::shared_ptr<LogicalView>;
+  using Indexes = containers::SmallVector<IndexId, 1>;
+  // TODO(MBkkt) fu2::function_view
+  // visitor for map<CollectionId, set<IndexId>>, Indexes is movable
+  using CollectionVisitor = std::function<bool(DataSourceId, Indexes*)>;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief casts a specified 'LogicalView' to a provided Target type
-  //////////////////////////////////////////////////////////////////////////////
-  template<typename Target, typename Source>
-  inline static typename meta::adjustConst<Source, Target>::reference cast(
-      Source& view) noexcept {
-    typedef typename meta::adjustConst<
-        Source, std::enable_if_t<
-                    std::is_base_of_v<LogicalView, Target> &&
-                        std::is_same_v<typename std::remove_const<Source>::type,
-                                       LogicalView>,
-                    Target>>
-        target_type_t;
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // do not use dynamic_cast<typename target_type_t::reference>(view)
-    // to explicitly expose our intention to fail in 'noexcept' function
-    // in case of wrong type
-    auto impl = dynamic_cast<typename target_type_t::pointer>(&view);
-
-    if (!impl) {
-      LOG_TOPIC("62e7f", ERR, Logger::VIEWS)
-          << "invalid convertion attempt from '" << typeid(Source).name() << "'"
-          << " to '" << typeid(typename target_type_t::value_type).name()
-          << "'";
-      TRI_ASSERT(false);
-    }
-
-    return *impl;
-#else
-    return static_cast<typename target_type_t::reference>(view);
-#endif
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief casts a specified 'LogicalView' to a provided Target type
-  //////////////////////////////////////////////////////////////////////////////
-  template<typename Target, typename Source>
-  inline static typename meta::adjustConst<Source, Target>::pointer cast(
-      Source* view) noexcept {
-    typedef typename meta::adjustConst<
-        Source, typename std::enable_if<
-                    std::is_base_of<LogicalView, Target>::value &&
-                        std::is_same<typename std::remove_const<Source>::type,
-                                     LogicalView>::value,
-                    Target>::type>::pointer target_type_t;
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    return dynamic_cast<target_type_t>(view);
-#else
-    return static_cast<target_type_t>(view);
-#endif
-  }
-
-  constexpr static Category category() noexcept { return Category::kView; }
+  static constexpr Category category() noexcept { return Category::kView; }
 
   using LogicalDataSource::properties;
+
+  ViewType type() const noexcept { return _typeInfo.first; }
+
+  std::string_view typeName() const noexcept { return _typeInfo.second; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates properties of an existing DataSource
   /// @param definition the properties being updated
+  /// @param isUserRequest TODO what?
   /// @param partialUpdate modify only the specified properties (false == all)
-  /// @param ctx request context
   //////////////////////////////////////////////////////////////////////////////
   virtual Result properties(velocypack::Slice definition, bool isUserRequest,
                             bool partialUpdate) = 0;
@@ -125,13 +72,13 @@ class LogicalView : public LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief queries properties of an existing view
   //////////////////////////////////////////////////////////////////////////////
-  virtual Result appendVelocyPack(velocypack::Builder& builder,
-                                  Serialization context) const override final;
+  Result appendVPack(velocypack::Builder& build, Serialization ctx,
+                     bool safe) const final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return the current view is granted 'level' access
   //////////////////////////////////////////////////////////////////////////////
-  bool canUse(arangodb::auth::Level const& level);
+  bool canUse(auth::Level const& level);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a new view according to a definition
@@ -148,7 +95,7 @@ class LogicalView : public LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an existing view
   //////////////////////////////////////////////////////////////////////////////
-  virtual Result drop() override final;
+  Result drop() final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief calls the callback on every view found for the specified vocbase
@@ -166,7 +113,7 @@ class LogicalView : public LogicalDataSource {
   /// @return view instance or nullptr on error
   //////////////////////////////////////////////////////////////////////////////
   static Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                            velocypack::Slice definition);
+                            velocypack::Slice definition, bool isUserRequest);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief opens an existing view when the server is restarted
@@ -176,7 +123,7 @@ class LogicalView : public LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief renames an existing view
   //////////////////////////////////////////////////////////////////////////////
-  virtual Result rename(std::string&& newName) override final;
+  Result rename(std::string&& newName) final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invoke visitor on all collections that a view will return
@@ -185,13 +132,15 @@ class LogicalView : public LogicalDataSource {
   virtual bool visitCollections(CollectionVisitor const& visitor) const = 0;
 
  protected:
-  LogicalView(TRI_vocbase_t& vocbase, velocypack::Slice definition);
+  template<typename Impl, typename... Args>
+  explicit LogicalView(Impl const& /*self*/, Args&&... args)
+      : LogicalView{Impl::typeInfo(), std::forward<Args>(args)...} {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief queries properties of an existing view
   //////////////////////////////////////////////////////////////////////////////
-  virtual Result appendVelocyPackImpl(velocypack::Builder& builder,
-                                      Serialization context) const = 0;
+  virtual Result appendVPackImpl(velocypack::Builder& build, Serialization ctx,
+                                 bool safe) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop implementation-specific parts of an existing view
@@ -206,49 +155,45 @@ class LogicalView : public LogicalDataSource {
   virtual Result renameImpl(std::string const& oldName) = 0;
 
  private:
-  // FIXME seems to be ugly
-  friend struct ::TRI_vocbase_t;
+  LogicalView(std::pair<ViewType, std::string_view> typeInfo,
+              TRI_vocbase_t& vocbase, velocypack::Slice definition);
 
+  // TODO seems to be ugly
+  friend struct ::TRI_vocbase_t;
   // ensure LogicalDataSource members (e.g. _deleted/_name) are not modified
   // asynchronously
   mutable basics::ReadWriteLock _lock;
-};  // LogicalView
+
+  std::pair<ViewType, std::string_view> _typeInfo;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a helper for ClusterInfo View operations
 ////////////////////////////////////////////////////////////////////////////////
-struct LogicalViewHelperClusterInfo {
-  static Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                          velocypack::Slice definition) noexcept;
+namespace cluster_helper {
 
-  static Result drop(LogicalView const& view) noexcept;
+Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+                 velocypack::Slice definition, bool isUserRequest) noexcept;
 
-  static Result properties(velocypack::Builder& builder,
-                           LogicalView const& view) noexcept;
+Result drop(LogicalView const& view) noexcept;
 
-  static Result properties(LogicalView const& view) noexcept;
+Result properties(LogicalView const& view, bool safe) noexcept;
 
-  static Result rename(LogicalView const& view,
-                       std::string const& oldName) noexcept;
-};
+}  // namespace cluster_helper
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a helper for StorageEngine View operations
 ////////////////////////////////////////////////////////////////////////////////
-struct LogicalViewHelperStorageEngine {
-  static Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                          velocypack::Slice definition) noexcept;
+namespace storage_helper {
 
-  static Result destruct(LogicalView const& view) noexcept;
-  static Result drop(LogicalView const& view) noexcept;
+Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+                 velocypack::Slice definition, bool isUserRequest) noexcept;
 
-  static Result properties(velocypack::Builder& builder,
-                           LogicalView const& view) noexcept;
+Result drop(LogicalView const& view) noexcept;
 
-  static Result properties(LogicalView const& view) noexcept;
+Result properties(LogicalView const& view, bool safe) noexcept;
 
-  static Result rename(LogicalView const& view,
-                       std::string const& oldName) noexcept;
-};
+Result rename(LogicalView const& view, std::string const& oldName) noexcept;
 
+}  // namespace storage_helper
 }  // namespace arangodb

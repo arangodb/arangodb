@@ -29,7 +29,6 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "Geo/GeoJson.h"
 #include "velocypack/Parser.h"
-#include "velocypack/velocypack-aliases.h"
 
 using namespace arangodb;
 using namespace arangodb::iresearch;
@@ -123,7 +122,7 @@ TEST(GeoPointAnalyzerTest, ctor) {
     {
       auto* inc = irs::get<irs::increment>(a);
       ASSERT_NE(nullptr, inc);
-      ASSERT_EQ(1, inc->value);
+      ASSERT_EQ(1U, inc->value);
     }
     {
       auto* term = irs::get<irs::term_attribute>(a);
@@ -692,8 +691,8 @@ TEST(GeoJSONAnalyzerTest, tokenizeLatLngRect) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parsePolygon(json->slice(), shape).ok());
-  ASSERT_EQ(geo::ShapeContainer::Type::S2_LATLNGRECT, shape.type());
+  ASSERT_TRUE(geo::geojson::parsePolygon(json->slice(), shape, false).ok());
+  ASSERT_EQ(geo::ShapeContainer::Type::S2_POLYGON, shape.type());
 
   // tokenize shape
   {
@@ -851,7 +850,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePolygon) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parsePolygon(json->slice(), shape).ok());
+  ASSERT_TRUE(geo::geojson::parsePolygon(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_POLYGON, shape.type());
 
   // tokenize shape
@@ -1012,7 +1011,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeLineString) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), shape).ok());
+  ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_POLYLINE, shape.type());
 
   // tokenize shape
@@ -1181,7 +1180,8 @@ TEST(GeoJSONAnalyzerTest, tokenizeMultiPolygon) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parseMultiPolygon(json->slice(), shape).ok());
+  ASSERT_TRUE(
+      geo::geojson::parseMultiPolygon(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_POLYGON, shape.type());
 
   // tokenize shape
@@ -1460,7 +1460,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeMultiPolyLine) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), shape).ok());
+  ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_MULTIPOLYLINE, shape.type());
 
   // tokenize shape
@@ -1583,7 +1583,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePoint) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), shape).ok());
+  ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_POINT, shape.type());
 
   // tokenize shape

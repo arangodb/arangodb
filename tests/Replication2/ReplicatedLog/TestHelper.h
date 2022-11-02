@@ -22,8 +22,11 @@
 
 #pragma once
 
+#include "Replication2/Mocks/FakeFailureOracle.h"
 #include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
 
+#include "Cluster/FailureOracle.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -41,31 +44,81 @@
 #include <memory>
 #include <utility>
 
-#include "Replication2/Mocks/PersistedLog.h"
 #include "Replication2/Mocks/FakeReplicatedLog.h"
+#include "Replication2/Mocks/PersistedLog.h"
 
 namespace arangodb::replication2::test {
 
 using namespace replicated_log;
 
+template<typename I>
+struct SimpleIterator : PersistedLogIterator {
+  SimpleIterator(I begin, I end) : current(begin), end(end) {}
+  ~SimpleIterator() override = default;
+
+  auto next() -> std::optional<PersistingLogEntry> override {
+    if (current == end) {
+      return std::nullopt;
+    }
+
+    return *(current++);
+  }
+
+  I current, end;
+};
+template<typename C, typename Iter = typename C::const_iterator>
+auto make_iterator(C const& c) -> std::shared_ptr<SimpleIterator<Iter>> {
+  return std::make_shared<SimpleIterator<Iter>>(c.begin(), c.end());
+}
+
 struct ReplicatedLogTest : ::testing::Test {
+  template<typename MockLogT = MockLog>
   auto makeLogCore(LogId id) -> std::unique_ptr<LogCore> {
-    auto persisted = makePersistedLog(id);
+    auto persisted = makePersistedLog<MockLogT>(id);
     return std::make_unique<LogCore>(persisted);
   }
 
-  auto getPersistedLogById(LogId id) -> std::shared_ptr<MockLog> {
-    return _persistedLogs.at(id);
+  template<typename MockLogT = MockLog>
+  auto makeLogCore(GlobalLogIdentifier gid) -> std::unique_ptr<LogCore> {
+    auto persisted = makePersistedLog<MockLogT>(std::move(gid));
+    return std::make_unique<LogCore>(persisted);
   }
 
-  auto makePersistedLog(LogId id) -> std::shared_ptr<MockLog> {
-    auto persisted = std::make_shared<MockLog>(id);
+  template<typename MockLogT = MockLog>
+  auto getPersistedLogById(LogId id) -> std::shared_ptr<MockLogT> {
+    return std::dynamic_pointer_cast<MockLogT>(_persistedLogs.at(id));
+  }
+
+  template<typename MockLogT = MockLog>
+  auto makePersistedLog(LogId id) -> std::shared_ptr<MockLogT> {
+    auto persisted = std::make_shared<MockLogT>(id);
     _persistedLogs[id] = persisted;
     return persisted;
   }
 
+  template<typename MockLogT = MockLog>
+  auto makePersistedLog(GlobalLogIdentifier gid) -> std::shared_ptr<MockLogT> {
+    auto persisted = std::make_shared<MockLogT>(gid);
+    _persistedLogs[gid.id] = persisted;
+    return persisted;
+  }
+
+  auto makeDelayedPersistedLog(LogId id) {
+    return makePersistedLog<DelayedMockLog>(id);
+  }
+
+  template<typename MockLogT = MockLog>
   auto makeReplicatedLog(LogId id) -> std::shared_ptr<TestReplicatedLog> {
-    auto core = makeLogCore(id);
+    auto core = makeLogCore<MockLogT>(id);
+    return std::make_shared<TestReplicatedLog>(
+        std::move(core), _logMetricsMock, _optionsMock,
+        LoggerContext(Logger::REPLICATION2));
+  }
+
+  template<typename MockLogT = MockLog>
+  auto makeReplicatedLog(GlobalLogIdentifier gid)
+      -> std::shared_ptr<TestReplicatedLog> {
+    auto core = makeLogCore<MockLogT>(std::move(gid));
     return std::make_shared<TestReplicatedLog>(
         std::move(core), _logMetricsMock, _optionsMock,
         LoggerContext(Logger::REPLICATION2));
@@ -82,6 +135,32 @@ struct ReplicatedLogTest : ::testing::Test {
   }
 
   auto defaultLogger() { return LoggerContext(Logger::REPLICATION2); }
+
+  auto createLeaderWithDefaultFlags(
+      ParticipantId id, LogTerm term, std::unique_ptr<LogCore> logCore,
+      std::vector<std::shared_ptr<AbstractFollower>> const& follower,
+      std::size_t effectiveWriteConcern, bool waitForSync = false,
+      std::shared_ptr<cluster::IFailureOracle> failureOracle = nullptr)
+      -> std::shared_ptr<LogLeader> {
+    auto config = agency::LogPlanConfig{effectiveWriteConcern, waitForSync};
+    auto participants =
+        std::unordered_map<ParticipantId, ParticipantFlags>{{id, {}}};
+    for (auto const& participant : follower) {
+      participants.emplace(participant->getParticipantId(), ParticipantFlags{});
+    }
+    auto participantsConfig = std::make_shared<agency::ParticipantsConfig>(
+        agency::ParticipantsConfig{.generation = 1,
+                                   .participants = std::move(participants),
+                                   .config = config});
+
+    if (!failureOracle) {
+      failureOracle = std::make_shared<FakeFailureOracle>();
+    }
+
+    return LogLeader::construct(
+        std::move(logCore), {follower}, std::move(participantsConfig), id, term,
+        defaultLogger(), _logMetricsMock, _optionsMock, failureOracle);
+  }
 
   auto stopAsyncMockLogs() -> void {
     for (auto const& it : _persistedLogs) {

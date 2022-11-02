@@ -28,9 +28,9 @@
 
 #include <fuerte/requests.h>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Network/ConnectionPool.h"
 #include "Metrics/Fwd.h"
+#include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
@@ -38,15 +38,16 @@ namespace network {
 struct RequestOptions;
 }
 
-class NetworkFeature final : public application_features::ApplicationFeature {
+class NetworkFeature final : public ArangodFeature {
  public:
   using RequestCallback = std::function<void(
       fuerte::Error err, std::unique_ptr<fuerte::Request> req,
       std::unique_ptr<fuerte::Response> res, bool isFromPool)>;
 
-  explicit NetworkFeature(application_features::ApplicationServer& server);
-  explicit NetworkFeature(application_features::ApplicationServer& server,
-                          network::ConnectionPool::Config);
+  static constexpr std::string_view name() noexcept { return "Network"; }
+
+  explicit NetworkFeature(Server& server);
+  NetworkFeature(Server& server, network::ConnectionPool::Config);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;

@@ -35,7 +35,6 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 
@@ -328,7 +327,7 @@ UpgradeResult methods::Upgrade::runTasks(
     // check that the database occurs in the database list
     if (!(t.databaseFlags & dbFlag)) {
       // special optimization: for local server and new database,
-      // an one-shot task can be viewed as executed.
+      // a one-shot task can be viewed as executed.
       if (isLocal && dbFlag == DATABASE_INIT &&
           (t.databaseFlags & DATABASE_ONLY_ONCE)) {
         vinfo.tasks.try_emplace(t.name, true);

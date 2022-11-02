@@ -29,7 +29,6 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <v8.h>
 #include <iostream>
@@ -85,13 +84,13 @@
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-general-graph.h"
 #include "V8Server/v8-replicated-logs.h"
+#include "V8Server/v8-prototype-state.h"
 #include "V8Server/v8-replication.h"
 #include "V8Server/v8-statistics.h"
 #include "V8Server/v8-users.h"
 #include "V8Server/v8-views.h"
 #include "V8Server/v8-voccursor.h"
 #include "V8Server/v8-vocindex.h"
-#include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/Methods/Queries.h"
@@ -255,9 +254,9 @@ static void JS_Compact(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
   StorageEngine& engine =
-      v8g->_server.getFeature<EngineSelectorFeature>().engine();
+      v8g->server().getFeature<EngineSelectorFeature>().engine();
   Result res = engine.compactAll(changeLevel, compactBottomMostLevel);
 
   if (res.fail()) {
@@ -635,7 +634,7 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("expecting string for <queryString>");
   }
 
-  std::string const queryString(TRI_ObjectToString(isolate, args[0]));
+  std::string queryString(TRI_ObjectToString(isolate, args[0]));
 
   // bind parameters
   std::shared_ptr<VPackBuilder> bindVars;
@@ -663,7 +662,7 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // bind parameters will be freed by the query later
   auto query = arangodb::aql::Query::create(
       transaction::V8Context::Create(vocbase, true),
-      aql::QueryString(queryString), std::move(bindVars),
+      aql::QueryString(std::move(queryString)), std::move(bindVars),
       aql::QueryOptions(options.slice()));
   auto queryResult = query->explain();
 
@@ -874,7 +873,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("expecting string for <queryString>");
   }
 
-  std::string const queryString(TRI_ObjectToString(isolate, args[0]));
+  std::string queryString(TRI_ObjectToString(isolate, args[0]));
 
   // bind parameters
   std::shared_ptr<VPackBuilder> bindVars;
@@ -901,7 +900,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto query = arangodb::aql::Query::create(
       transaction::V8Context::Create(vocbase, true),
-      aql::QueryString(queryString), std::move(bindVars),
+      aql::QueryString(std::move(queryString)), std::move(bindVars),
       aql::QueryOptions(options.slice()));
 
   arangodb::aql::QueryResultV8 queryResult = query->executeV8(isolate);
@@ -1490,9 +1489,9 @@ static void JS_Engine(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   // return engine data
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
   StorageEngine& engine =
-      v8g->_server.getFeature<EngineSelectorFeature>().engine();
+      v8g->server().getFeature<EngineSelectorFeature>().engine();
   VPackBuilder builder;
   engine.getCapabilities(builder);
 
@@ -1510,11 +1509,11 @@ static void JS_EngineStats(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   // return engine data
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
   StorageEngine& engine =
-      v8g->_server.getFeature<EngineSelectorFeature>().engine();
+      v8g->server().getFeature<EngineSelectorFeature>().engine();
   VPackBuilder builder;
-  engine.getStatistics(builder, true);
+  engine.getStatistics(builder);
 
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
   TRI_V8_RETURN(result);
@@ -1539,9 +1538,9 @@ static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_RETURN(TRI_V8_ASCII_STRING(isolate, ARANGODB_VERSION));
   }
 
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
   VPackBuilder builder;
-  arangodb::RestVersionHandler::getVersion(v8g->_server, true, true, builder);
+  arangodb::RestVersionHandler::getVersion(v8g->server(), true, true, builder);
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
   TRI_V8_TRY_CATCH_END
@@ -1555,9 +1554,9 @@ static void JS_PathDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
   StorageEngine& engine =
-      v8g->_server.getFeature<EngineSelectorFeature>().engine();
+      v8g->server().getFeature<EngineSelectorFeature>().engine();
 
   TRI_V8_RETURN_STD_STRING(engine.databasePath(&vocbase));
   TRI_V8_TRY_CATCH_END
@@ -1568,9 +1567,9 @@ static void JS_VersionFilenameDatabase(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
   StorageEngine& engine =
-      v8g->_server.getFeature<EngineSelectorFeature>().engine();
+      v8g->server().getFeature<EngineSelectorFeature>().engine();
 
   TRI_V8_RETURN_STD_STRING(engine.versionFilename(vocbase.id()));
   TRI_V8_TRY_CATCH_END
@@ -1639,13 +1638,13 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("db._useDatabase(<name>)");
   }
 
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
 
   if (!v8g->_securityContext.canUseDatabase()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  auto& databaseFeature = v8g->_server.getFeature<DatabaseFeature>();
+  auto& databaseFeature = v8g->server().getFeature<DatabaseFeature>();
   std::string const name = TRI_ObjectToString(isolate, args[0]);
   auto* vocbase = &GetContextVocBase(isolate);
 
@@ -1701,8 +1700,9 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
     user = TRI_ObjectToString(isolate, args[0]);
   }
 
-  TRI_GET_GLOBALS();
-  std::vector<std::string> names = methods::Databases::list(v8g->_server, user);
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  std::vector<std::string> names =
+      methods::Databases::list(v8g->server(), user);
   v8::Handle<v8::Array> result = v8::Array::New(isolate, (int)names.size());
 
   for (size_t i = 0; i < names.size(); ++i) {
@@ -1854,9 +1854,9 @@ static void JS_Endpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("db._endpoints()");
   }
 
-  TRI_GET_GLOBALS();
-  TRI_ASSERT(v8g->_server.hasFeature<HttpEndpointProvider>());
-  auto& endpoints = v8g->_server.getFeature<HttpEndpointProvider>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_ASSERT(v8g->server().hasFeature<HttpEndpointProvider>());
+  auto& endpoints = v8g->server().getFeature<HttpEndpointProvider>();
   auto& vocbase = GetContextVocBase(isolate);
 
   if (!vocbase.isSystem()) {
@@ -1883,8 +1883,8 @@ static void JS_TrustedProxies(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   auto context = TRI_IGETC;
 
-  TRI_GET_GLOBALS();
-  auto& gs = v8g->_server.getFeature<GeneralServerFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& gs = v8g->server().getFeature<GeneralServerFeature>();
   if (gs.proxyCheck()) {
     v8::Handle<v8::Array> result = v8::Array::New(isolate);
 
@@ -1910,8 +1910,8 @@ static void JS_AuthenticationEnabled(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
-  auto& authentication = v8g->_server.getFeature<AuthenticationFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& authentication = v8g->server().getFeature<AuthenticationFeature>();
 
   v8::Handle<v8::Boolean> result =
       v8::Boolean::New(isolate, authentication.isActive());
@@ -1925,9 +1925,9 @@ static void JS_LdapEnabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
 #ifdef USE_ENTERPRISE
-  TRI_GET_GLOBALS();
-  TRI_ASSERT(v8g->_server.hasFeature<LdapFeature>());
-  auto& ldap = v8g->_server.getFeature<LdapFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  TRI_ASSERT(v8g->server().hasFeature<LdapFeature>());
+  auto& ldap = v8g->server().getFeature<LdapFeature>();
   TRI_V8_RETURN(v8::Boolean::New(isolate, ldap.isEnabled()));
 #else
   // LDAP only enabled in Enterprise Edition
@@ -2027,9 +2027,9 @@ static void JS_CurrentWalFiles(
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
 
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
   StorageEngine& engine =
-      v8g->_server.getFeature<EngineSelectorFeature>().engine();
+      v8g->server().getFeature<EngineSelectorFeature>().engine();
   std::vector<std::string> names = engine.currentWalFiles();
   std::sort(names.begin(), names.end());
 
@@ -2126,8 +2126,8 @@ static void JS_EncryptionKeyReload(
     TRI_V8_THROW_EXCEPTION_USAGE("encryptionKeyReload()");
   }
 
-  TRI_GET_GLOBALS();
-  auto& selector = v8g->_server.getFeature<EngineSelectorFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& selector = v8g->server().getFeature<EngineSelectorFeature>();
   if (!selector.isRocksDB()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -2154,7 +2154,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   v8::HandleScope scope(isolate);
 
   // check the isolate
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
 
   TRI_ASSERT(v8g->_transactionContext == nullptr);
   // register the database
@@ -2234,13 +2234,14 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_InitV8Collections(context, &vocbase, v8g, isolate, ArangoNS);
   TRI_InitV8Views(*v8g, isolate);
   TRI_InitV8ReplicatedLogs(v8g, isolate);
+  TRI_InitV8PrototypeStates(v8g, isolate);
   TRI_InitV8Users(context, &vocbase, v8g, isolate);
   TRI_InitV8GeneralGraph(context, &vocbase, v8g, isolate);
 
   TRI_InitV8cursor(context, v8g);
 
   StorageEngine& engine =
-      v8g->_server.getFeature<EngineSelectorFeature>().engine();
+      v8g->server().getFeature<EngineSelectorFeature>().engine();
   engine.addV8Functions();
 
   // .............................................................................
@@ -2344,8 +2345,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       JS_SystemStatistics, true);
 
 #ifdef USE_ENTERPRISE
-  if (v8g->_server.hasFeature<V8DealerFeature>() &&
-      v8g->_server.getFeature<V8DealerFeature>().allowAdminExecute()) {
+  if (v8g->server().hasFeature<V8DealerFeature>() &&
+      v8g->server().getFeature<V8DealerFeature>().allowAdminExecute()) {
     TRI_AddGlobalFunctionVocbase(
         isolate, TRI_V8_ASCII_STRING(isolate, "ENCRYPTION_KEY_RELOAD"),
         JS_EncryptionKeyReload, true);
@@ -2448,7 +2449,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
           v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
-  // session timeout (used by web UI)
+  // session timeout (used by web interface)
   context->Global()
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "SESSION_TIMEOUT"),

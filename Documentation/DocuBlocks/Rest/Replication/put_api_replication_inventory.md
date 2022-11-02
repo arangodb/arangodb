@@ -125,13 +125,13 @@ With some additional indexes:
  EXAMPLE_ARANGOSH_RUN{RestReplicationInventoryIndexes_mmfiles}
     db._drop("IndexedCollection1");
     var c1 = db._create("IndexedCollection1");
-    c1.ensureHashIndex("name");
-    c1.ensureUniqueSkiplist("a", "b");
+    c1.ensureIndex({ type: "persistent", fields: ["name"] });
+    c1.ensureIndex({ type: "persistent", fields: ["a", "b"], unique: true });
 
     db._drop("IndexedCollection2");
     var c2 = db._create("IndexedCollection2");
-    c2.ensureFulltextIndex("text", 10);
-    c2.ensureSkiplist("a");
+    c2.ensureIndex({ type: "fulltext", fields: ["text"], minLength: 10 });
+    c2.ensureIndex({ type: "persistent", fields: ["a"] });
 
     var url = "/_api/replication/inventory";
     var response = logCurlRequest('GET', url);

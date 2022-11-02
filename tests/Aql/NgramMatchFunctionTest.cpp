@@ -42,7 +42,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 #include <set>
 
 using namespace arangodb;
@@ -84,7 +83,7 @@ class NgramMatchFunctionTest : public ::testing::Test {
     fakeit::Mock<ExpressionContext> expressionContextMock;
     ExpressionContext& expressionContext = expressionContextMock.get();
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .AlwaysDo([warnings](ErrorCode c, char const*) {
+        .AlwaysDo([warnings](ErrorCode c, std::string_view) {
           if (warnings) {
             warnings->insert(static_cast<int>(c));
           }
@@ -93,8 +92,7 @@ class NgramMatchFunctionTest : public ::testing::Test {
     fakeit::When(Method(expressionContextMock, trx)).AlwaysReturn(*trx);
     fakeit::When(Method(expressionContextMock, vocbase))
         .AlwaysReturn(trx->vocbase());
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> params{arena};
+    containers::SmallVector<AqlValue, 5> params;
     if (Attribute) {
       params.emplace_back(*Attribute);
     }
@@ -108,11 +106,11 @@ class NgramMatchFunctionTest : public ::testing::Test {
       params.emplace_back(*analyzer);
     }
 
-    arangodb::aql::Function f("NGRAM_MATCH", &Functions::NgramMatch);
+    arangodb::aql::Function f("NGRAM_MATCH", &functions::NgramMatch);
     arangodb::aql::AstNode node(NODE_TYPE_FCALL);
     node.setData(static_cast<void const*>(&f));
 
-    return Functions::NgramMatch(&expressionContext, node, params);
+    return functions::NgramMatch(&expressionContext, node, params);
   }
 
   void assertNgramMatchFail(size_t line, std::set<int> const& expected_warnings,

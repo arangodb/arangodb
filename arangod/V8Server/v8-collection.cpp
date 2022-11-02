@@ -67,7 +67,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace {
 
@@ -260,10 +259,9 @@ static ErrorCode ParseDocumentOrDocumentHandle(
   } else {
     // we read a collection name from the document id
     // check cross-collection requests
-    if (collection != nullptr) {
-      if (!EqualCollection(resolver, collectionName, collection.get())) {
-        return TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST;
-      }
+    if (collection != nullptr && !methods::Collections::hasName(
+                                     *resolver, *collection, collectionName)) {
+      return TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST;
     }
   }
 
@@ -460,15 +458,26 @@ static void DocumentVocbaseCol(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
+  TRI_GET_GLOBALS();
 
   // first and only argument should be a document handle or key or an object
-  if (args.Length() != 1) {
+  if (args.Length() < 1 || args.Length() > 2) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "document(<document-id> or <document-key> or <object> or <array>)");
   }
 
   OperationOptions options;
   options.ignoreRevs = false;
+
+  if (args.Length() == 2 && args[1]->IsObject()) {
+    v8::Local<v8::Object> optsObj = v8::Local<v8::Object>::Cast(args[1]);
+    TRI_GET_GLOBAL_STRING(AllowDirtyReadsKey);
+    if (TRI_HasProperty(context, isolate, optsObj, AllowDirtyReadsKey)) {
+      options.allowDirtyReads =
+          TRI_ObjectToBoolean(isolate, optsObj->Get(context, AllowDirtyReadsKey)
+                                           .FromMaybe(v8::Local<v8::Value>()));
+    }
+  }
 
   // Find collection and vocbase
   auto* col = UnwrapCollection(isolate, args.Holder());
@@ -1067,9 +1076,7 @@ static void JS_FiguresVocbaseCol(
   OperationOptions options(ExecContext::current());
   auto opRes = collection->figures(details, options).get();
 
-  trx.finish(TRI_ERROR_NO_ERROR);
-
-  if (opRes.ok()) {
+  if (trx.finish(opRes.result).ok()) {
     TRI_V8_RETURN(TRI_VPackToV8(isolate, opRes.slice()));
   } else {
     TRI_V8_RETURN_NULL();
@@ -1149,12 +1156,7 @@ static void JS_LoadVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto res = methods::Collections::load(vocbase, collection);
-
-  if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
+  // load is a no-op starting with ArangoDB 3.9
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
@@ -2384,11 +2386,7 @@ static void JS_UnloadVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto res = methods::Collections::unload(&(collection->vocbase()), collection);
-
-  if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  // unload is a no-op starting with ArangoDB 3.9
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -2473,15 +2471,7 @@ static void JS_CollectionsVocbase(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto colls = GetCollections(vocbase);
-
-  std::sort(colls.begin(), colls.end(),
-            [](std::shared_ptr<LogicalCollection> const& lhs,
-               std::shared_ptr<LogicalCollection> const& rhs) -> bool {
-              return arangodb::basics::StringUtils::tolower(lhs->name()) <
-                     arangodb::basics::StringUtils::tolower(rhs->name());
-            });
-
+  auto colls = methods::Collections::sorted(vocbase);
   bool error = false;
 
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
@@ -2579,8 +2569,6 @@ static void JS_CompletionsVocbase(
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_dropDatabase()"))
       .FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_dropView()"))
-      .FromMaybe(false);
-  result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_engine()"))
       .FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_engineStats()"))
       .FromMaybe(false);

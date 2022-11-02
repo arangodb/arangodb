@@ -298,8 +298,8 @@ function CollectionTruncateFailuresSuite() {
     setUp: function () {
       cleanUp();
       c = db._create(cn);
-      c.ensureHashIndex("value");
-      c.ensureSkiplist("value2");
+      c.ensureIndex({ type: "hash", fields: ["value"] });
+      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
 
       // Add two packs of 10.000 Documents.
       // Intermediate commits will commit after 10.000 removals

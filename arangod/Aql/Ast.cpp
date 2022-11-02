@@ -23,7 +23,6 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Ast.h"
 
@@ -39,6 +38,7 @@
 #include "Aql/Function.h"
 #include "Aql/Graphs.h"
 #include "Aql/ModificationOptions.h"
+#include "Aql/Quantifier.h"
 #include "Aql/QueryContext.h"
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Basics/Exceptions.h"
@@ -47,10 +47,12 @@
 #include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Graph/Graph.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
@@ -62,15 +64,133 @@ namespace StringUtils = arangodb::basics::StringUtils;
 
 namespace {
 
+struct RecursiveAttributeFinderContext {
+  Variable const* variable;
+  bool couldExtractAttributePath;
+  std::string_view expectedAttribute;
+  containers::SmallVector<AstNode const*, 128> seen;
+  std::unordered_set<arangodb::aql::AttributeNamePath>& attributes;
+};
+
+struct ValidateAndOptimizeContext {
+  explicit ValidateAndOptimizeContext(transaction::Methods& t) : trx(t) {}
+
+  std::unordered_set<std::string> writeCollectionsSeen;
+  std::unordered_map<Variable const*, AstNode const*> variableDefinitions;
+  AqlFunctionsInternalCache aqlFunctionsInternalCache;
+  transaction::Methods& trx;
+  int64_t stopOptimizationRequests = 0;
+  int64_t nestingLevel = 0;     // only used for subqueries
+  int64_t filterDepth = -1;     // -1 = not in filter
+  uint64_t recursionDepth = 0;  // current depth of the tree we walk
+  bool hasSeenAnyWriteNode = false;
+  bool hasSeenWriteNodeInCurrentScope = false;
+};
+
 auto doNothingVisitor = [](AstNode const*) {};
 
 [[noreturn]] void throwFormattedError(arangodb::aql::QueryContext& query,
                                       ErrorCode code,
                                       std::string_view details) {
-  std::string msg =
-      arangodb::aql::QueryWarnings::buildFormattedString(code, details);
+  // ensure that details is null-terminated
+  // TODO: if we get rid of vsprintf in FillExceptionString, we don't
+  // need to pass a raw C-style string into it
+  std::string temp(details);
+  std::string msg = basics::Exception::FillExceptionString(code, temp.c_str());
   query.warnings().registerError(code, msg);
 }
+
+/// @brief translate the stack of seen AqlNodes inside the
+/// AttributeFinderContext to a single AttributePath, and injects it into the
+/// attributeNamePath within the Context.
+/// Returns true if and only if the context found an attribute access path.
+bool translateNodeStackToAttributePath(RecursiveAttributeFinderContext& state) {
+  TRI_ASSERT(!state.seen.empty());
+  AstNode const* top = state.seen.back();
+  TRI_ASSERT(top->type == NODE_TYPE_REFERENCE);
+
+  auto v = static_cast<Variable const*>(top->getData());
+  state.seen.pop_back();
+
+  if (v == state.variable) {
+    // the target variable we are looking for.
+    // e.g.
+    // - p.vertices....
+    //   ^
+    // - v.x
+    //   ^
+    if (state.seen.empty()) {
+      // only the variable found.
+      return false;
+    }
+
+    if (!state.expectedAttribute.empty()) {
+      // p.vertices....
+      //   ^
+      top = state.seen.back();
+      if (top->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+        return false;
+      }
+
+      // take attribute name off the stack
+      if (top->getStringView() != state.expectedAttribute) {
+        // different attribute, e.g. p.lump
+        return true;
+      }
+
+      // p.vertices
+      //   ^
+      state.seen.pop_back();
+
+      if (state.seen.empty()) {
+        return false;
+      }
+
+      top = state.seen.back();
+
+      if (top->type != NODE_TYPE_INDEXED_ACCESS &&
+          top->type != NODE_TYPE_EXPANSION) {
+        return false;
+      }
+
+      // p.vertices[0]...
+      //           ^
+      // or
+      //
+      // v[0]...
+      //  ^
+      state.seen.pop_back();
+
+      if (state.seen.empty()) {
+        return false;
+      }
+    }
+
+    TRI_ASSERT(!state.seen.empty());
+    top = state.seen.back();
+
+    if (top->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // something following that we cannot handle
+      return false;
+    }
+
+    // now take off all projections from the stack
+    std::vector<std::string> path;
+    while (top->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      path.emplace_back(top->getString());
+      state.seen.pop_back();
+      if (state.seen.empty()) {
+        break;
+      }
+      top = state.seen.back();
+    }
+
+    TRI_ASSERT(!path.empty());
+    state.attributes.emplace(std::move(path));
+  }
+
+  return true;
+};
 
 /**
  * @brief Register the given datasource with the given accesstype in the query.
@@ -253,6 +373,12 @@ Ast::Ast(QueryContext& query,
 /// @brief destroy the AST
 Ast::~Ast() = default;
 
+// frees all data
+void Ast::clear() noexcept { _resources.clear(); }
+
+// frees most data (keeps a bit of memory around to avoid later re-allocations)
+void Ast::clearMost() noexcept { _resources.clearMost(); }
+
 /// @brief convert the AST into VelocyPack
 void Ast::toVelocyPack(VPackBuilder& builder, bool verbose) const {
   {
@@ -425,26 +551,6 @@ AstNode* Ast::createNodeLet(AstNode const* variable,
 
   node->addMember(variable);
   node->addMember(expression);
-
-  return node;
-}
-
-/// @brief create an AST let node, with an IF condition
-AstNode* Ast::createNodeLet(char const* variableName, size_t nameLength,
-                            AstNode const* expression,
-                            AstNode const* condition) {
-  if (variableName == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  AstNode* node = createNode(NODE_TYPE_LET);
-  node->reserve(3);
-
-  AstNode* variable =
-      createNodeVariable(std::string_view(variableName, nameLength), true);
-  node->addMember(variable);
-  node->addMember(expression);
-  node->addMember(condition);
 
   return node;
 }
@@ -930,9 +1036,19 @@ AstNode* Ast::createNodeParameterDatasource(std::string_view name) {
 }
 
 /// @brief create an AST quantifier node
-AstNode* Ast::createNodeQuantifier(int64_t type) {
+AstNode* Ast::createNodeQuantifier(Quantifier::Type type) {
   AstNode* node = createNode(NODE_TYPE_QUANTIFIER);
-  node->setIntValue(type);
+  node->setIntValue(static_cast<int64_t>(type));
+
+  return node;
+}
+
+/// @brief create an AST quantifier node, with a value
+AstNode* Ast::createNodeQuantifier(Quantifier::Type type,
+                                   AstNode const* value) {
+  TRI_ASSERT(type == Quantifier::Type::kAtLeast);
+  AstNode* node = createNodeQuantifier(type);
+  node->addMember(value);
 
   return node;
 }
@@ -1097,6 +1213,51 @@ AstNode* Ast::createNodeArrayLimit(AstNode const* offset,
   return node;
 }
 
+/// @brief create an AST array limit node (quantifier, filter)
+AstNode* Ast::createNodeArrayFilter(AstNode const* quantifier,
+                                    AstNode const* filter) {
+  AstNode* node = createNode(NODE_TYPE_ARRAY_FILTER);
+  node->reserve(2);
+
+  if (quantifier == nullptr) {
+    quantifier = createNodeNop();
+  }
+
+  TRI_ASSERT(filter != nullptr);
+
+  node->addMember(quantifier);
+  node->addMember(filter);
+
+  return node;
+}
+
+/// @brief create an AST boolean expansion node, with or without a filter
+AstNode* Ast::createNodeBooleanExpansion(int64_t levels,
+                                         AstNode const* iterator,
+                                         AstNode const* expanded,
+                                         AstNode const* filter) {
+  AstNode* node = createNode(NODE_TYPE_EXPANSION);
+  node->reserve(5);
+  node->setFlag(FLAG_BOOLEAN_EXPANSION);
+  node->setIntValue(levels);
+
+  node->addMember(iterator);
+  node->addMember(expanded);
+
+  if (filter == nullptr) {
+    node->addMember(createNodeNop());
+  } else {
+    node->addMember(filter);
+  }
+
+  node->addMember(createNodeNop());
+  node->addMember(createNodeNop());
+
+  TRI_ASSERT(node->numMembers() == 5);
+
+  return node;
+}
+
 /// @brief create an AST expansion node, with or without a filter
 AstNode* Ast::createNodeExpansion(int64_t levels, AstNode const* iterator,
                                   AstNode const* expanded,
@@ -1105,6 +1266,7 @@ AstNode* Ast::createNodeExpansion(int64_t levels, AstNode const* iterator,
   AstNode* node = createNode(NODE_TYPE_EXPANSION);
   node->reserve(5);
   node->setIntValue(levels);
+  TRI_ASSERT(!node->hasFlag(FLAG_BOOLEAN_EXPANSION));
 
   node->addMember(iterator);
   node->addMember(expanded);
@@ -1592,20 +1754,21 @@ AstNode* Ast::createNodeShortestPath(AstNode const* outVars,
   return node;
 }
 
-/// @brief create an AST k-shortest paths or k-paths node
-AstNode* Ast::createNodeKShortestPaths(
-    arangodb::graph::ShortestPathType::Type type, AstNode const* outVars,
-    AstNode const* graphInfo) {
+/// @brief create an AST k-shortest paths, k-paths or all-shortest paths node
+AstNode* Ast::createNodeEnumeratePaths(arangodb::graph::PathType::Type type,
+                                       AstNode const* outVars,
+                                       AstNode const* graphInfo) {
   TRI_ASSERT(outVars->type == NODE_TYPE_ARRAY);
   TRI_ASSERT(graphInfo->type == NODE_TYPE_ARRAY);
-  AstNode* node = createNode(NODE_TYPE_K_SHORTEST_PATHS);
+  AstNode* node = createNode(NODE_TYPE_ENUMERATE_PATHS);
   node->reserve(1 + outVars->numMembers() + graphInfo->numMembers());
 
   TRI_ASSERT(graphInfo->numMembers() == 5);
   TRI_ASSERT(outVars->numMembers() == 1);
 
-  TRI_ASSERT(type == arangodb::graph::ShortestPathType::Type::KShortestPaths ||
-             type == arangodb::graph::ShortestPathType::Type::KPaths);
+  TRI_ASSERT(type == arangodb::graph::PathType::Type::KShortestPaths ||
+             type == arangodb::graph::PathType::Type::KPaths ||
+             type == arangodb::graph::PathType::Type::AllShortestPaths);
 
   // type: K_SHORTEST_PATH vs. K_PATHS
   TRI_ASSERT(node->numMembers() == 0);
@@ -1795,7 +1958,7 @@ void Ast::injectBindParameters(
                                 param);
         }
 
-        VPackSlice value = parameters.markUsed(param);
+        auto [value, cachedNode] = parameters.get(param);
         if (value.isNone()) {
           // query uses a bind parameter that was not defined by the user
           ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING,
@@ -1804,23 +1967,53 @@ void Ast::injectBindParameters(
 
         if (node->type == NODE_TYPE_PARAMETER) {
           auto const constantParameter = node->isConstant();
-          // bind parameter containing a value literal
-          node = nodeFromVPack(value, true);
 
-          if (node != nullptr) {
+          if (cachedNode != nullptr) {
+            // we have already processed this bind parameter and turned it into
+            // an AstNode before.
+            // now only create a shallow copy of the bind parameter.
+            node = shallowCopyForModify(cachedNode);
+
             if (constantParameter) {
-              // already mark node as constant here if parameters are constant
-              node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+              TRI_ASSERT(node->hasFlag(DETERMINED_CONSTANT));
+              TRI_ASSERT(node->hasFlag(VALUE_CONSTANT));
             }
-            // mark node as simple
-            node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-            // mark node as executable on db-server
-            node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-            // mark node as deterministic
-            node->setFlag(DETERMINED_NONDETERMINISTIC);
+            TRI_ASSERT(node->hasFlag(DETERMINED_SIMPLE));
+            TRI_ASSERT(node->hasFlag(VALUE_SIMPLE));
+            TRI_ASSERT(node->hasFlag(DETERMINED_RUNONDBSERVER));
+            TRI_ASSERT(node->hasFlag(VALUE_RUNONDBSERVER));
+            TRI_ASSERT(node->hasFlag(DETERMINED_NONDETERMINISTIC));
+            TRI_ASSERT(!node->hasFlag(VALUE_NONDETERMINISTIC));
+            TRI_ASSERT(node->hasFlag(FLAG_BIND_PARAMETER));
+          } else {
+            // bind parameter containing a value literal. not processed before.
+            node = nodeFromVPack(value, true);
 
-            // finally note that the node was created from a bind parameter
-            node->setFlag(FLAG_BIND_PARAMETER);
+            if (node != nullptr) {
+              if (constantParameter) {
+                // already mark node as constant here if parameters are constant
+                node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+              }
+              // mark node as simple
+              node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+              // mark node as executable on db-server
+              node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
+              // mark node as deterministic
+              node->setFlag(DETERMINED_NONDETERMINISTIC);
+
+              // finally note that the node was created from a bind parameter
+              node->setFlag(FLAG_BIND_PARAMETER);
+
+              // register the AstNode for this bind parameter, so when the query
+              // string refers to the same bind parameter multiple times, we
+              // don't have to regenerate an AstNode for it. in case a bind
+              // parameter is used multiple times in the query string, upon any
+              // following occurrences the AstNode registered here will be
+              // found, and only a shallow copy of the existing AstNode will be
+              // created. This helps to save memory and processing time for
+              // large bind parameter values.
+              parameters.registerNode(param, node);
+            }
           }
         } else {
           TRI_ASSERT(node->type == NODE_TYPE_PARAMETER_DATASOURCE);
@@ -1887,7 +2080,25 @@ void Ast::injectBindParameters(
               }
             }
           }
+
+          TRI_ASSERT(newNode != nullptr);
           node = newNode;
+
+          if (cachedNode == nullptr) {
+            // store the just created AstNode for this bind parameter, to mark
+            // the bind parameter as being "used". It does not matter which
+            // AstNode we store for the bind parameter, but we have to store one
+            // if none was yet registered. Otherwise we'll run into an error
+            // "unused bind parameter
+            // '@...' later.
+            parameters.registerNode(param, node);
+          } else {
+            // double check that the already registered node has the correct
+            // type
+            TRI_ASSERT(cachedNode->type == NODE_TYPE_VIEW ||
+                       cachedNode->type == NODE_TYPE_COLLECTION);
+            TRI_ASSERT(cachedNode->getStringView() == name);
+          }
         }
       } else if (node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
         // look at second sub-node. this is the (replaced) bind parameter
@@ -1937,7 +2148,7 @@ void Ast::injectBindParameters(
         extractCollectionsFromGraph(node->getMember(2));
       } else if (node->type == NODE_TYPE_SHORTEST_PATH) {
         extractCollectionsFromGraph(node->getMember(3));
-      } else if (node->type == NODE_TYPE_K_SHORTEST_PATHS) {
+      } else if (node->type == NODE_TYPE_ENUMERATE_PATHS) {
         extractCollectionsFromGraph(node->getMember(4));
       }
 
@@ -1980,13 +2191,15 @@ void Ast::injectBindParameters(
     }
   }
 
-  // visit all bind parameters to ensure that they are all marked as used
-  parameters.visit([](std::string const& key, VPackSlice /*value*/, bool used) {
-    if (!used) {
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED,
-                                    key.c_str());
-    }
-  });
+  // visit all bind parameters to ensure that they have all been accessed via
+  // registerNode
+  parameters.visit(
+      [](std::string const& key, VPackSlice /*value*/, AstNode* node) {
+        if (node == nullptr) {
+          THROW_ARANGO_EXCEPTION_PARAMS(
+              TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED, key.c_str());
+        }
+      });
 }
 
 /// @brief replace an attribute access with just the variable
@@ -2150,23 +2363,9 @@ size_t Ast::extractParallelism(AstNode const* optionsNode) {
 /// this does not only optimize but also performs a few validations after
 /// bind parameter injection. merging this pass with the regular AST
 /// optimizations saves one extra pass over the AST
-void Ast::validateAndOptimize(transaction::Methods& trx) {
-  struct TraversalContext {
-    TraversalContext(transaction::Methods& t) : trx(t) {}
-
-    std::unordered_set<std::string> writeCollectionsSeen;
-    std::unordered_map<Variable const*, AstNode const*> variableDefinitions;
-    AqlFunctionsInternalCache aqlFunctionsInternalCache;
-    transaction::Methods& trx;
-    int64_t stopOptimizationRequests = 0;
-    int64_t nestingLevel = 0;     // only used for subqueries
-    int64_t filterDepth = -1;     // -1 = not in filter
-    uint64_t recursionDepth = 0;  // current depth of the tree we walk
-    bool hasSeenAnyWriteNode = false;
-    bool hasSeenWriteNodeInCurrentScope = false;
-  };
-
-  TraversalContext context(trx);
+void Ast::validateAndOptimize(transaction::Methods& trx,
+                              Ast::ValidateAndOptimizeOptions const& options) {
+  ::ValidateAndOptimizeContext context(trx);
 
   auto preVisitor = [&](AstNode const* node) -> bool {
     auto ctx = &context;
@@ -2189,7 +2388,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
 
       if (func->hasFlag(Function::Flags::NoEval)) {
         // NOOPT will turn all function optimizations off
-        ++(ctx->stopOptimizationRequests);
+        ++ctx->stopOptimizationRequests;
       }
       if (node->willUseV8()) {
         setWillUseV8();
@@ -2206,6 +2405,8 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
     } else if (node->type == NODE_TYPE_SUBQUERY) {
       ++ctx->nestingLevel;
     } else if (node->hasFlag(FLAG_BIND_PARAMETER)) {
+      // don't traverse deeper into values that were created
+      // from a bind parameter
       return false;
     } else if (node->type == NODE_TYPE_REMOVE ||
                node->type == NODE_TYPE_INSERT ||
@@ -2221,6 +2422,11 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
       return false;
     } else if (node->type == NODE_TYPE_ARRAY && node->isConstant()) {
       // nothing to be done in constant arrays
+      return false;
+    } else if (node->type == NODE_TYPE_OBJECT && node->isConstant() &&
+               node->hasFlag(DETERMINED_CHECKUNIQUENESS) &&
+               !node->hasFlag(VALUE_CHECKUNIQUENESS)) {
+      // nothing to be done in constant objects with known-to-be-unique keys
       return false;
     }
 
@@ -2370,8 +2576,8 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
 
       if (ctx->stopOptimizationRequests == 0) {
         // optimization allowed
-        return this->optimizeFunctionCall(ctx->trx,
-                                          ctx->aqlFunctionsInternalCache, node);
+        return this->optimizeFunctionCall(
+            ctx->trx, ctx->aqlFunctionsInternalCache, node, options);
       }
       // optimization not allowed
       return node;
@@ -2380,12 +2586,26 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
     // reference to a variable, may be able to insert the variable value
     // directly
     if (node->type == NODE_TYPE_REFERENCE) {
-      return this->optimizeReference(node);
+      // this may be a reference to a variable name, not a reference to the
+      // result this can be happen for variables that are specified in the
+      // COLLECT...KEEP clause.
+      if (!node->hasFlag(FLAG_KEEP_VARIABLENAME)) {
+        // look up the definition for the variable
+        auto it = ctx->variableDefinitions.find(
+            static_cast<Variable*>(node->getData()));
+        if (it != ctx->variableDefinitions.end() &&
+            (*it).second->isConstant()) {
+          // if the definition is a constant, return the const value
+          return const_cast<AstNode*>((*it).second);
+        }
+      }
+      // optimization not allowed
+      return node;
     }
 
     // indexed access, e.g. a[0] or a['foo']
     if (node->type == NODE_TYPE_INDEXED_ACCESS) {
-      return this->optimizeIndexedAccess(node);
+      return this->optimizeIndexedAccess(node, ctx->variableDefinitions);
     }
 
     // LET
@@ -2394,20 +2614,20 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
       TRI_ASSERT(node->numMembers() == 2);
       Variable const* variable =
           static_cast<Variable const*>(node->getMember(0)->getData());
-      AstNode const* definition = node->getMember(1);
+      AstNode const* source = node->getMember(1);
       // recursively process assignments so we can track LET a = b LET c = b
 
-      while (definition->type == NODE_TYPE_REFERENCE) {
+      while (source->type == NODE_TYPE_REFERENCE) {
         auto it = ctx->variableDefinitions.find(
-            static_cast<Variable const*>(definition->getData()));
+            static_cast<Variable const*>(source->getData()));
         if (it == ctx->variableDefinitions.end()) {
           break;
         }
-        definition = (*it).second;
+        source = (*it).second;
       }
 
-      ctx->variableDefinitions.try_emplace(variable, definition);
-      return this->optimizeLet(node);
+      ctx->variableDefinitions.try_emplace(variable, source);
+      return node;
     }
 
     // FILTER
@@ -2520,175 +2740,138 @@ size_t Ast::countReferences(AstNode const* node, Variable const* search) {
   return result.count;
 }
 
-/// @brief determines the top-level attributes referenced in an expression,
-/// grouped by variable name
-TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node,
-                                                bool& isSafeForOptimization) {
-  TopLevelAttributes result;
-
-  // traversal state
-  char const* attributeName = nullptr;
-  size_t nameLength = 0;
-  isSafeForOptimization = true;
-
-  auto visitor = [&](AstNode const* node) {
-    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      attributeName = node->getStringValue();
-      nameLength = node->getStringLength();
-      return true;
-    }
-
-    if (node->type == NODE_TYPE_REFERENCE) {
-      // reference to a variable
-      if (attributeName == nullptr) {
-        // we haven't seen an attribute access directly before...
-        // this may have been an access to an indexed property, e.g value[0] or
-        // a reference to the complete value, e.g. FUNC(value)
-        // note that this is unsafe to optimize this away
-        isSafeForOptimization = false;
-        return true;
-      }
-
-      TRI_ASSERT(attributeName != nullptr);
-
-      auto variable = static_cast<Variable const*>(node->getData());
-
-      if (variable == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-      }
-
-      auto [it, emp] =
-          result.try_emplace(variable, arangodb::lazyConstruct([&] {
-                               return std::unordered_set<std::string>(
-                                   {std::string(attributeName, nameLength)});
-                             }));
-      if (emp) {
-        // insert attributeName only
-        (*it).second.emplace(attributeName, nameLength);
-      }
-
-      // fall-through
-    }
-
-    attributeName = nullptr;
-    nameLength = 0;
-    return true;
-  };
-
-  traverseReadOnly(node, visitor, ::doNothingVisitor);
-
-  return result;
-}
-
-/// @brief determines the top-level attributes referenced in an expression for
-/// the specified out variable
-bool Ast::getReferencedAttributes(AstNode const* node, Variable const* variable,
-                                  std::unordered_set<std::string>& vars) {
-  // traversal state
-  struct TraversalState {
-    Variable const* variable;
-    char const* attributeName;
-    size_t nameLength;
-    bool isSafeForOptimization;
-    std::unordered_set<std::string>& vars;
-  };
-
-  TraversalState state{variable, nullptr, 0, true, vars};
-
-  auto visitor = [&state](AstNode const* node) -> bool {
-    if (node == nullptr || !state.isSafeForOptimization) {
-      return false;
-    }
-
-    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      state.attributeName = node->getStringValue();
-      state.nameLength = node->getStringLength();
-      return true;
-    }
-
-    if (node->type == NODE_TYPE_REFERENCE) {
-      // reference to a variable
-      auto v = static_cast<Variable const*>(node->getData());
-      if (v == state.variable) {
-        if (state.attributeName == nullptr) {
-          // we haven't seen an attribute access directly before...
-          // this may have been an access to an indexed property, e.g value[0]
-          // or a reference to the complete value, e.g. FUNC(value) note that
-          // this is unsafe to optimize this away
-          state.isSafeForOptimization = false;
-          return false;
-        }
-        // insert attributeName only
-        state.vars.emplace(state.attributeName, state.nameLength);
-      }
-
-      // fall-through
-    }
-
-    state.attributeName = nullptr;
-    state.nameLength = 0;
-
-    return true;
-  };
-
-  traverseReadOnly(node, visitor, ::doNothingVisitor);
-
-  return state.isSafeForOptimization;
-}
-
-/// @brief determines the attributes (and their subattributes) referenced in an
-/// expression for the specified out variable
+// @brief Analyzes the handed in expression (as ASTNode node).
+// If the handed in expression contains the given variable, this method
+// extracts which AttributePath on the given variable is accessed.
+// (e.g. v.a.b will extract ["a", "b"] on variable "v")
+// The identified AttributePath will be appended to the attributes parameter.
+// If expectedAttribute is a non-empty this method starts extracting the
+// attribute path only inside the expectedAttribute, and only if
+// expectedAttribute is on top-level. (e.g NODE= p.vertices[*].a.b with
+// expectedAttribute "vertices[*]" will extract ["a", "b"]) if expectedAttribute
+// is empty the method will extract from top-level. Here are some more examples
+// of expected results:
+// - v                  => no projections
+// - v[0]               => no projections
+// - v[0][1]            => no projections
+// - v.x                => ["x"]
+// - v[0].x             => no projections
+// - v[0][1].x          => no projections
+// - v[0].x[1].x        => no projections
+// - v.x.y              => [["x", "y"]]
+// - p                  => no projections
+// - p[0].vertices      => no projections
+// - p.vertices         => no projections
+// - p.vertices[0][1].x => no projections
+// - p.vertices.x       => no projections
+// - p.vertices[0].x    => ["x"]
+// - p.vertices[0].x.y  => [["x", "y"]]
 bool Ast::getReferencedAttributesRecursive(
     AstNode const* node, Variable const* variable,
-    std::unordered_set<arangodb::aql::AttributeNamePath>& vars) {
-  // traversal state
-  struct TraversalState {
-    Variable const* variable;
-    bool isSafeForOptimization;
-    std::unordered_set<arangodb::aql::AttributeNamePath>& vars;
-    arangodb::aql::AttributeNamePath path;
-  };
+    std::string_view expectedAttribute,
+    std::unordered_set<arangodb::aql::AttributeNamePath>& attributes) {
+  RecursiveAttributeFinderContext state{variable,
+                                        /*couldExtractAttributePath*/ true,
+                                        expectedAttribute,
+                                        {},
+                                        attributes};
 
-  TraversalState state{variable, true, vars, {}};
-
-  auto visitor = [&state](AstNode const* node) -> bool {
-    if (node == nullptr || !state.isSafeForOptimization) {
+  // Recursively visit an analyze all members of an expression.
+  // If no attribute access is found abort visiting and fail.
+  // If only attribute access found up until all leaves:
+  // Map the collected Nodes to a flat attribute access path.
+  auto visitor = [&](AstNode const* node) -> bool {
+    if (node == nullptr || !state.couldExtractAttributePath) {
       return false;
     }
 
-    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      state.path.path.emplace_back(node->getStringValue(),
-                                   node->getStringLength());
+    if (node->type == NODE_TYPE_EXPANSION) {
+      // special stunt needed here for the [*] operator...
+      // NOTE: Every [*] operator is represented as an EXPANSION
+      // with 5 (or more) members.
+      if (node->numMembers() >= 5) {
+        if (node->getMember(2)->type != NODE_TYPE_NOP ||
+            node->getMember(4)->type != NODE_TYPE_NOP) {
+          // expansion has a filter or a projection set, e.g.
+          // p.vertices[FILTER CURRENT.x == 1 RETURN CURRENT.y].
+          // we currently cannot handle this.
+          state.couldExtractAttributePath = false;
+          state.seen.clear();
+          return false;
+        }
+
+        if (node->getIntValue(true) != 1) {
+          // incompatible flattening level: p.vertices[**]...
+          state.couldExtractAttributePath = false;
+          state.seen.clear();
+          return false;
+        }
+        AstNode const* lhs = node->getMember(0);
+        TRI_ASSERT(lhs->type == NODE_TYPE_ITERATOR);
+        TRI_ASSERT(lhs->numMembers() == 2);
+
+        AstNode const* rhs = node->getMember(1);
+
+        while (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+               rhs->type == NODE_TYPE_INDEXED_ACCESS) {
+          state.seen.push_back(rhs);
+          rhs = rhs->getMember(0);
+        }
+
+        if (rhs->type == NODE_TYPE_REFERENCE) {
+          AstNode const* iterLhs = lhs->getMember(0);
+          TRI_ASSERT(rhs->getData() == iterLhs->getData());
+
+          AstNode const* iterRhs = lhs->getMember(1);
+          // push the expansion on the stack
+          state.seen.push_back(node);
+
+          while (iterRhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+                 iterRhs->type == NODE_TYPE_INDEXED_ACCESS) {
+            state.seen.push_back(iterRhs);
+            iterRhs = iterRhs->getMember(0);
+          }
+
+          if (iterRhs->type == NODE_TYPE_REFERENCE) {
+            state.seen.push_back(iterRhs);
+            // finally the stack is complete... now eval it to find the
+            // projection
+            if (!::translateNodeStackToAttributePath(state)) {
+              state.couldExtractAttributePath = false;
+            }
+          }
+        }
+      }
+      state.seen.clear();
+      // don't descend into the expansion itself (already handled it)
+      return false;
+    }
+
+    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+        node->type == NODE_TYPE_INDEXED_ACCESS) {
+      state.seen.push_back(node);
       return true;
     }
 
     if (node->type == NODE_TYPE_REFERENCE) {
       // reference to a variable
-      auto v = static_cast<Variable const*>(node->getData());
-      if (v == state.variable) {
-        if (state.path.empty()) {
-          // we haven't seen an attribute access directly before...
-          // this may have been an access to an indexed property, e.g value[0]
-          // or a reference to the complete value, e.g. FUNC(value) note that
-          // this is unsafe to optimize this away
-          state.isSafeForOptimization = false;
-          return false;
-        }
-        // we picked attribute names up in reverse order, so now reverse them
-        state.path.reverse();
-        state.vars.emplace(std::move(state.path.path));
-        state.path.clear();
+      state.seen.push_back(node);
+      // evaluate whatever we have on the stack
+      if (!translateNodeStackToAttributePath(state)) {
+        state.couldExtractAttributePath = false;
       }
-      // fall-through
+      // fall-through intentional
     }
 
-    state.path.clear();
-    return true;
+    // different node type. no idea how to handle it...
+    state.seen.clear();
+    // go deeper or don't.
+    return state.couldExtractAttributePath;
   };
 
   traverseReadOnly(node, visitor, ::doNothingVisitor);
 
-  return state.isSafeForOptimization;
+  return state.couldExtractAttributePath;
 }
 
 /// @brief copies node payload from node into copy. this is *not* copying
@@ -2759,6 +2942,12 @@ AstNode* Ast::clone(AstNode const* node) {
   if (type == NODE_TYPE_NOP) {
     // nop node is a singleton
     return const_cast<AstNode*>(node);
+  }
+
+  if (node->hasFlag(FLAG_BIND_PARAMETER)) {
+    // use a simplified (i.e. fast) shallow cloning for values
+    // originally created from bind parameters
+    return shallowCopyForModify(node);
   }
 
   AstNode* copy = createNode(type);
@@ -2942,7 +3131,7 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
   }
 
   AstNode* result = nullptr;
-  ::arangodb::containers::SmallVectorWithArena<std::string_view> attributeParts;
+  containers::SmallVector<std::string_view, 4> attributeParts;
 
   std::function<void(AstNode const*)> createCondition =
       [&](AstNode const* object) -> void {
@@ -3508,10 +3697,16 @@ AstNode* Ast::optimizeAttributeAccess(
 /// @brief optimizes a call to a built-in function
 AstNode* Ast::optimizeFunctionCall(
     transaction::Methods& trx,
-    AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node) {
+    AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node,
+    Ast::ValidateAndOptimizeOptions const& options) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_FCALL);
   TRI_ASSERT(node->numMembers() == 1);
+
+  if (!options.optimizeFunctionCalls) {
+    // function call optimization not allowed
+    return node;
+  }
 
   auto func = static_cast<Function*>(node->getData());
   TRI_ASSERT(func != nullptr);
@@ -3575,7 +3770,7 @@ AstNode* Ast::optimizeFunctionCall(
       std::string unescapedPattern;
       bool wildcardFound;
       bool wildcardIsLastChar;
-      std::tie(wildcardFound, wildcardIsLastChar) = AqlFunctionsInternalCache::inspectLikePattern(unescapedPattern, patternArg->getStringValue(), patternArg->getStringLength());
+      std::tie(wildcardFound, wildcardIsLastChar) = AqlFunctionsInternalCache::inspectLikePattern(unescapedPattern, patternArg->getStringView());
 
       if (!wildcardFound) {
         TRI_ASSERT(!wildcardIsLastChar);
@@ -3615,6 +3810,12 @@ AstNode* Ast::optimizeFunctionCall(
     return node;
   }
 
+  if (!options.optimizeNonCacheable &&
+      !func->hasFlag(Function::Flags::Cacheable)) {
+    // non-cacheable function
+    return node;
+  }
+
   if (!node->getMember(0)->isConstant()) {
     // arguments to function call are not constant
     return node;
@@ -3638,35 +3839,10 @@ AstNode* Ast::optimizeFunctionCall(
   return nodeFromVPack(materializer.slice(a, false), true);
 }
 
-/// @brief optimizes a reference to a variable
-/// references are replaced with constants if possible
-AstNode* Ast::optimizeReference(AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_REFERENCE);
-
-  auto variable = static_cast<Variable*>(node->getData());
-
-  if (variable == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  // constant propagation
-  if (variable->getConstAstNode() == nullptr) {
-    return node;
-  }
-
-  if (node->hasFlag(FLAG_KEEP_VARIABLENAME)) {
-    // this is a reference to a variable name, not a reference to the result
-    // this can be happen for variables that are specified in the COLLECT...KEEP
-    // clause
-    return node;
-  }
-
-  return variable->getConstAstNode();
-}
-
 /// @brief optimizes indexed access, e.g. a[0] or a['foo']
-AstNode* Ast::optimizeIndexedAccess(AstNode* node) {
+AstNode* Ast::optimizeIndexedAccess(
+    AstNode* node, std::unordered_map<Variable const*, AstNode const*> const&
+                       variableDefinitions) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_INDEXED_ACCESS);
   TRI_ASSERT(node->numMembers() == 2);
@@ -3684,39 +3860,13 @@ AstNode* Ast::optimizeIndexedAccess(AstNode* node) {
       // we have to be careful with numeric values here...
       // e.g. array['0'] is not the same as array.0 but must remain a['0'] or
       // (a[0])
-      return createNodeAttributeAccess(node->getMember(0),
-                                       index->getStringView());
+      return this->optimizeAttributeAccess(
+          createNodeAttributeAccess(node->getMember(0), indexValue),
+          variableDefinitions);
     }
   }
 
   // can't optimize when we get here
-  return node;
-}
-
-/// @brief optimizes the LET statement
-AstNode* Ast::optimizeLet(AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_LET);
-  TRI_ASSERT(node->numMembers() >= 2);
-
-  AstNode* variable = node->getMember(0);
-  AstNode* expression = node->getMember(1);
-
-  bool const hasCondition = (node->numMembers() > 2);
-
-  auto v = static_cast<Variable*>(variable->getData());
-  TRI_ASSERT(v != nullptr);
-
-  if (!hasCondition && expression->isConstant()) {
-    // if the expression assigned to the LET variable is constant, we'll store
-    // a pointer to the const value in the variable
-    // further optimizations can then use this pointer and optimize further,
-    // e.g.
-    // LET a = 1 LET b = a + 1, c = b + a can be optimized to LET a = 1 LET b =
-    // 2 LET c = 4
-    v->setConstAstNode(expression);
-  }
-
   return node;
 }
 
@@ -3782,29 +3932,25 @@ AstNode* Ast::optimizeObject(AstNode* node) {
   size_t const n = node->numMembers();
 
   // only useful to check when there are 2 or more keys
-  if (n < 2) {
-    // no need to check for uniqueless later
-    node->setFlag(DETERMINED_CHECKUNIQUENESS);
-    return node;
-  }
+  if (n >= 2) {
+    containers::FlatHashSet<std::string> keys;
 
-  std::unordered_set<std::string> keys;
+    for (size_t i = 0; i < n; ++i) {
+      auto member = node->getMemberUnchecked(i);
 
-  for (size_t i = 0; i < n; ++i) {
-    auto member = node->getMemberUnchecked(i);
-
-    if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
-      // constant key
-      if (!keys.emplace(member->getString()).second) {
-        // duplicate key
+      if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
+        // constant key
+        if (!keys.emplace(member->getString()).second) {
+          // duplicate key
+          node->setFlag(DETERMINED_CHECKUNIQUENESS, VALUE_CHECKUNIQUENESS);
+          return node;
+        }
+      } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+        // dynamic key... we don't know the key yet, so there's no
+        // way around check it at runtime later
         node->setFlag(DETERMINED_CHECKUNIQUENESS, VALUE_CHECKUNIQUENESS);
         return node;
       }
-    } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-      // dynamic key... we don't know the key yet, so there's no
-      // way around check it at runtime later
-      node->setFlag(DETERMINED_CHECKUNIQUENESS, VALUE_CHECKUNIQUENESS);
-      return node;
     }
   }
 
@@ -3909,7 +4055,7 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node,
   TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
   AstNode const* original = node;
 
-  ::arangodb::containers::SmallVectorWithArena<std::string_view> attributeNames;
+  containers::SmallVector<std::string_view, 4> attributeNames;
 
   while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     attributeNames.push_back(node->getStringView());

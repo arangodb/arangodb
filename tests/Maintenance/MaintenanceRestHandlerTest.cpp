@@ -34,13 +34,12 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 // give access to some protected routines for more thorough unit tests
 class TestHandler : public arangodb::MaintenanceRestHandler {
  public:
-  TestHandler(arangodb::application_features::ApplicationServer& server,
-              arangodb::GeneralRequest* req, arangodb::GeneralResponse* res)
+  TestHandler(arangodb::ArangodServer& server, arangodb::GeneralRequest* req,
+              arangodb::GeneralResponse* res)
       : arangodb::MaintenanceRestHandler(server, req, res){};
 
   bool test_parsePutBody(VPackSlice const& parameters) {
@@ -75,8 +74,7 @@ TEST(MaintenanceRestHandler, parse_rest_put) {
 
   auto* dummyResponse =
       new arangodb::HttpResponse(arangodb::rest::ResponseCode::OK, 1, nullptr);
-  arangodb::application_features::ApplicationServer dummyServer{nullptr,
-                                                                nullptr};
+  arangodb::ArangodServer dummyServer{nullptr, nullptr};
   TestHandler dummyHandler(dummyServer, dummyRequest, dummyResponse);
 
   ASSERT_TRUE(dummyHandler.test_parsePutBody(body.slice()));

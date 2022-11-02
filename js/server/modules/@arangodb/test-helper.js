@@ -28,9 +28,9 @@
 // / @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-let internal = require('internal'); // OK: processCsvFile
+const internal = require('internal'); // OK: processCsvFile
 const request = require('@arangodb/request');
-let { 
+const {
   getServerById,
   getServersByType,
   getEndpointById,
@@ -41,7 +41,8 @@ let {
   typeName,
   isEqual,
   compareStringIds,
-    } = require('@arangodb/test-helper-common');
+  endpointToURL,
+} = require('@arangodb/test-helper-common');
 const clusterInfo = global.ArangoClusterInfo;
 
 exports.getServerById = getServerById;
@@ -111,17 +112,28 @@ exports.getChecksum = function (endpoint, name) {
   return JSON.parse(res.body).checksum;
 };
 
-exports.getMetric = function (endpoint, name) {
-
-  let res = request.get({
-    url: endpoint + '/_admin/metrics/v2',
-  });
+function getMetricName(text, name) {
   let re = new RegExp("^" + name);
-  let matches = res.body.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
+  let matches = text.split("\n").filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
   if (!matches.length) {
     throw "Metric " + name + " not found";
   }
-  return Number(matches[0].replace(/^.* (\d+)$/, '$1'));
+  return Number(matches[0].replace(/^.*{.*}([0-9.]+)$/, "$1"));
+}
+
+exports.getMetric = function (endpoint, name) {
+  let res = request.get({
+    url: endpoint + "/_admin/metrics",
+  });
+  return getMetricName(res.body, name);
+};
+
+exports.getMetricSingle = function (name) {
+  let res = arango.GET_RAW("/_admin/metrics");
+  if (res.code !== 200) {
+    throw "error fetching metric";
+  }
+  return getMetricName(res.body, name);
 };
 
 exports.waitForShardsInSync = function(cn, timeout) {
@@ -169,5 +181,19 @@ exports.waitForShardsInSync = function(cn, timeout) {
     internal.wait(1);
   }
   assertTrue(false, "Shards were not getting in sync in time, giving up!");
-  return;
 };
+
+exports.getCoordinators = function () {
+  // Note that the client implementation has more information, not all of which
+  // we have available.
+  return global.ArangoClusterInfo.getCoordinators().map(id => ({id}));
+};
+
+exports.getDBServers = function() {
+  // Note that the client implementation has more information, not all of which
+  // we have available.
+  return global.ArangoClusterInfo.getDBServers().map(x => ({id: x.serverId}));
+};
+
+exports.uniqid = global.ArangoClusterInfo.uniqid;
+exports.agency = global.ArangoAgency;

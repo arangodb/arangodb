@@ -27,7 +27,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <cstddef>
 #include <iosfwd>

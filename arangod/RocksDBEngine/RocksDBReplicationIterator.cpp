@@ -101,10 +101,13 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
 }
 
 bool RocksDBRevisionReplicationIterator::hasMore() const {
-  // TODO - check if the comparator is still necessary (thus the assertion)
+  // checking the comparator is actually not necessary here,
+  // because we have iterate_upper_bound set. Anyway, it does
+  // no harm in production and adds another line of defense
+  // in maintainer mode.
   TRI_ASSERT(!_iter->Valid() ||
              _cmp->Compare(_iter->key(), _bounds.end()) <= 0);
-  return _iter->Valid() && _cmp->Compare(_iter->key(), _bounds.end()) <= 0;
+  return _iter->Valid();
 }
 
 void RocksDBRevisionReplicationIterator::reset() {

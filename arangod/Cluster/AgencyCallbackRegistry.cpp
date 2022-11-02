@@ -24,7 +24,6 @@
 #include "AgencyCallbackRegistry.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
@@ -34,6 +33,7 @@
 #include "Basics/WriteLocker.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallback.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/LogMacros.h"
@@ -53,8 +53,7 @@ DECLARE_GAUGE(arangodb_agency_callback_number, uint64_t,
               "Current number of agency callbacks registered");
 
 AgencyCallbackRegistry::AgencyCallbackRegistry(
-    application_features::ApplicationServer& server,
-    std::string const& callbackBasePath)
+    ArangodServer& server, std::string const& callbackBasePath)
     : _agency(server),
       _callbackBasePath(callbackBasePath),
       _totalCallbacksRegistered(
@@ -89,6 +88,10 @@ Result AgencyCallbackRegistry::registerCallback(
     if (res.ok()) {
       _callbacksCount += 1;
       ++_totalCallbacksRegistered;
+
+      if (cb->needsInitialValue()) {
+        cb->refetchAndUpdate(true, false);
+      }
       return res;
     }
   } catch (std::exception const& e) {

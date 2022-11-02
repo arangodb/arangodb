@@ -28,6 +28,7 @@
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
+#include "Aql/Ast.h"
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/IndexNode.h"
@@ -45,6 +46,7 @@ class IndexIterator;
 namespace aql {
 
 class ExecutionEngine;
+class ExecutorExpressionContext;
 class RegisterInfos;
 class Expression;
 class InputAqlItemRow;
@@ -65,8 +67,11 @@ class IndexExecutorInfos {
       Collection const* collection, Variable const* outVariable,
       bool produceResult, Expression* filter,
       arangodb::aql::Projections projections,
+      arangodb::aql::Projections filterProjections,
+      std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs,
       NonConstExpressionContainer&& nonConstExpressions, bool count,
       ReadOwnWrites readOwnWrites, AstNode const* condition,
+      bool oneIndexCondition,
       std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
       IndexIteratorOptions options,
       IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
@@ -80,6 +85,7 @@ class IndexExecutorInfos {
   Collection const* getCollection() const;
   Variable const* getOutVariable() const;
   arangodb::aql::Projections const& getProjections() const noexcept;
+  arangodb::aql::Projections const& getFilterProjections() const noexcept;
   aql::QueryContext& query() noexcept;
   Expression* getFilter() const noexcept;
   bool getProduceResult() const noexcept;
@@ -104,8 +110,8 @@ class IndexExecutorInfos {
   std::vector<std::pair<VariableId, RegisterId>> const& getVarsToRegister()
       const noexcept;
 
-  // setter
-  void setHasMultipleExpansions(bool flag);
+  std::vector<std::pair<VariableId, RegisterId>> const&
+  getFilterVarsToRegister() const noexcept;
 
   bool hasNonConstParts() const;
 
@@ -122,6 +128,8 @@ class IndexExecutorInfos {
       const noexcept {
     return _outNonMaterializedIndRegs;
   }
+
+  bool isOneIndexCondition() const noexcept { return _oneIndexCondition; }
 
  private:
   /// @brief _indexes holds all Indexes used in this block
@@ -149,6 +157,9 @@ class IndexExecutorInfos {
   Variable const* _outVariable;
   Expression* _filter;
   arangodb::aql::Projections _projections;
+  arangodb::aql::Projections _filterProjections;
+
+  std::vector<std::pair<VariableId, RegisterId>> _filterVarsToRegs;
 
   NonConstExpressionContainer _nonConstExpressions;
 
@@ -159,14 +170,17 @@ class IndexExecutorInfos {
 
   /// @brief true if one of the indexes uses more than one expanded attribute,
   /// e.g. the index is on values[*].name and values[*].type
-  bool _hasMultipleExpansions;
+  bool const _hasMultipleExpansions;
 
-  bool _produceResult;
+  bool const _produceResult;
 
   /// @brief Counter how many documents have been returned/skipped
   ///        during one call. Retained during WAITING situations.
   ///        Needs to be 0 after we return a result.
-  bool _count;
+  bool const _count;
+
+  bool const _oneIndexCondition;
+
   ReadOwnWrites const _readOwnWrites;
 };
 
@@ -175,12 +189,29 @@ class IndexExecutorInfos {
  */
 class IndexExecutor {
  private:
+  struct CursorStats {
+    std::uint64_t cursorsCreated = 0;
+    std::uint64_t cursorsRearmed = 0;
+    std::uint64_t cacheHits = 0;
+    std::uint64_t cacheMisses = 0;
+
+    void incrCursorsCreated(std::uint64_t value = 1) noexcept;
+    void incrCursorsRearmed(std::uint64_t value = 1) noexcept;
+    void incrCacheHits(std::uint64_t value = 1) noexcept;
+    void incrCacheMisses(std::uint64_t value = 1) noexcept;
+
+    [[nodiscard]] std::uint64_t getAndResetCursorsCreated() noexcept;
+    [[nodiscard]] std::uint64_t getAndResetCursorsRearmed() noexcept;
+    [[nodiscard]] std::uint64_t getAndResetCacheHits() noexcept;
+    [[nodiscard]] std::uint64_t getAndResetCacheMisses() noexcept;
+  };
+
   struct CursorReader {
    public:
     CursorReader(transaction::Methods& trx, IndexExecutorInfos const& infos,
                  AstNode const* condition, std::shared_ptr<Index> const& index,
                  DocumentProducingFunctionContext& context,
-                 bool checkUniqueness);
+                 CursorStats& cursorStats, bool checkUniqueness);
     bool readIndex(OutputAqlItemRow& output);
     size_t skipIndex(size_t toSkip);
     void reset();
@@ -191,10 +222,35 @@ class IndexExecutor {
 
     CursorReader(const CursorReader&) = delete;
     CursorReader& operator=(const CursorReader&) = delete;
-    CursorReader(CursorReader&& other) noexcept;
+    CursorReader(CursorReader&& other) noexcept = default;
 
    private:
-    enum Type { NoResult, Covering, Document, LateMaterialized, Count };
+    enum Type {
+      // no need to produce any result. we can scan over the index
+      // but do not have to look into its values
+      NoResult,
+
+      // index covers all projections of the query. we can get
+      // away with reading data from the index only
+      Covering,
+
+      // index covers the IndexNode's filter condition only,
+      // but not the rest of the query. that means we can use the
+      // index data to evaluate the IndexNode's post-filter condition,
+      // but for any entries that pass the filter, we will need to
+      // read the full documents in addition
+      CoveringFilterOnly,
+
+      // index does not cover the required data. we will need to
+      // read the full documents for all index entries
+      Document,
+
+      // late materialization
+      LateMaterialized,
+
+      // we only need to count the number of index entries
+      Count
+    };
 
     transaction::Methods& _trx;
     IndexExecutorInfos const& _infos;
@@ -202,6 +258,7 @@ class IndexExecutor {
     std::shared_ptr<Index> const& _index;
     std::unique_ptr<IndexIterator> _cursor;
     DocumentProducingFunctionContext& _context;
+    CursorStats& _cursorStats;
     Type const _type;
     bool const _checkUniqueness;
 
@@ -211,6 +268,8 @@ class IndexExecutor {
     IndexIterator::LocalDocumentIdCallback _documentNonProducer;
     IndexIterator::DocumentCallback _documentProducer;
     IndexIterator::DocumentCallback _documentSkipper;
+    IndexIterator::CoveringCallback _coveringProducer;
+    IndexIterator::CoveringCallback _coveringSkipper;
   };
 
  public:
@@ -265,6 +324,11 @@ class IndexExecutor {
 
   DocumentProducingFunctionContext _documentProducingFunctionContext;
   Infos& _infos;
+  std::unique_ptr<ExecutorExpressionContext> _expressionContext;
+
+  // an AST owned by the IndexExecutor, used to store data of index
+  // expressions
+  Ast _ast;
 
   /// @brief a vector of cursors for the index block
   /// cursors can be reused
@@ -277,6 +341,9 @@ class IndexExecutor {
   ///        Retained during WAITING situations.
   ///        Needs to be 0 after we return a result.
   size_t _skipped;
+
+  /// statistics for cursors. is shared by reference with CursorReader instances
+  CursorStats _cursorStats;
 };
 
 }  // namespace aql

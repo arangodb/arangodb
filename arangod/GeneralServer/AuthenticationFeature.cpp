@@ -30,7 +30,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -43,15 +42,16 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include <limits>
+
 using namespace arangodb::options;
 
 namespace arangodb {
 
 AuthenticationFeature* AuthenticationFeature::INSTANCE = nullptr;
 
-AuthenticationFeature::AuthenticationFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Authentication"),
+AuthenticationFeature::AuthenticationFeature(Server& server)
+    : ArangodFeature{server, *this},
       _userManager(nullptr),
       _authCache(nullptr),
       _authenticationUnixSockets(true),
@@ -64,9 +64,9 @@ AuthenticationFeature::AuthenticationFeature(
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
-#ifdef USE_ENTERPRISE
-  startsAfter<LdapFeature>();
-#endif
+  if constexpr (Server::contains<LdapFeature>()) {
+    startsAfter<LdapFeature>();
+  }
 }
 
 void AuthenticationFeature::collectOptions(
@@ -88,13 +88,18 @@ void AuthenticationFeature::collectOptions(
       new DoubleParameter(&_authenticationTimeout));
 
   options
-      ->addOption("--server.session-timeout",
-                  "timeout in seconds for web interface JWT sessions",
-                  new DoubleParameter(&_sessionTimeout),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
+      ->addOption(
+          "--server.session-timeout",
+          "lifetime for tokens in seconds that can be obtained from "
+          "the POST /_open/auth endpoint. Used by the web interface "
+          "for JWT-based sessions",
+          new DoubleParameter(&_sessionTimeout, /*base*/ 1.0, /*minValue*/ 1.0,
+                              /*maxValue*/ std::numeric_limits<double>::max(),
+                              /*minInclusive*/ false),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30900);
 
   options->addOption("--server.local-authentication",
@@ -169,12 +174,6 @@ void AuthenticationFeature::validateOptions(
           << "Given JWT secret too long. Max length is " << _maxSecretLength;
       FATAL_ERROR_EXIT();
     }
-  }
-
-  if (_sessionTimeout <= 1.0) {
-    LOG_TOPIC("85046", FATAL, arangodb::Logger::AUTHENTICATION)
-        << "--server.session-timeout has an invalid value: " << _sessionTimeout;
-    FATAL_ERROR_EXIT();
   }
 
   if (options->processingResult().touched("server.jwt-secret")) {

@@ -28,30 +28,40 @@
 #include "Basics/debugging.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
 /// @brief create the variable
-Variable::Variable(std::string name, VariableId id, bool isDataFromCollection)
+Variable::Variable(std::string name, VariableId id,
+                   bool isFullDocumentFromCollection)
     : id(id),
       name(std::move(name)),
-      isDataFromCollection(isDataFromCollection) {}
+      isFullDocumentFromCollection(isFullDocumentFromCollection) {}
 
 Variable::Variable(arangodb::velocypack::Slice const& slice)
     : id(arangodb::basics::VelocyPackHelper::checkAndGetNumericValue<
           VariableId>(slice, "id")),
       name(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(slice,
                                                                       "name")),
-      isDataFromCollection(arangodb::basics::VelocyPackHelper::getBooleanValue(
-          slice, "isDataFromCollection", false)),
-      _constantValue(slice.get("constantValue")) {}
+      isFullDocumentFromCollection(
+          arangodb::basics::VelocyPackHelper::getBooleanValue(
+              slice, "isFullDocumentFromCollection", false)),
+      _constantValue(slice.get("constantValue")) {
+  if (!isFullDocumentFromCollection) {
+    // "isDataFromCollection" used to be the old attribute name, used
+    // before 3.10. for downwards-compatibility we also check the old attribute
+    // here. this can be removed after 3.10.
+    isFullDocumentFromCollection |=
+        arangodb::basics::VelocyPackHelper::getBooleanValue(
+            slice, "isDataFromCollection", false);
+  }
+}
 
 /// @brief destroy the variable
 Variable::~Variable() { _constantValue.destroy(); }
 
 Variable* Variable::clone() const {
-  return new Variable(name, id, isDataFromCollection);
+  return new Variable(name, id, isFullDocumentFromCollection);
 }
 
 bool Variable::isUserDefined() const {
@@ -72,7 +82,12 @@ void Variable::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder b(&builder);
   builder.add("id", VPackValue(id));
   builder.add("name", VPackValue(name));
-  builder.add("isDataFromCollection", VPackValue(isDataFromCollection));
+  builder.add("isFullDocumentFromCollection",
+              VPackValue(isFullDocumentFromCollection));
+  // "isDataFromCollection" was the attribute name used before 3.10 and can be
+  // removed after 3.10.
+  builder.add("isDataFromCollection", VPackValue(isFullDocumentFromCollection));
+
   if (type() == Variable::Type::Const) {
     builder.add(VPackValue("constantValue"));
     _constantValue.toVelocyPack(nullptr, builder, /*resolveExternals*/ false,

@@ -26,7 +26,7 @@
 let jsunity = require('jsunity');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
-let { getServersByType } = require('@arangodb/test-helper');
+let { getDBServers } = require('@arangodb/test-helper');
 
 function shardStatisticsDatabaseSuite() {
   'use strict';
@@ -129,7 +129,7 @@ function shardStatisticsDatabaseSuite() {
         db._create("test" + i, { numberOfShards: 3, replicationFactor: 2 });
       }
         
-      let dbservers = getServersByType("dbserver");
+      let dbservers = getDBServers();
       assertTrue(dbservers.length > 0);
 
       let partialValues = {

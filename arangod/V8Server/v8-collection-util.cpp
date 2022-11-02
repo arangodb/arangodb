@@ -32,35 +32,6 @@
 
 using namespace arangodb;
 
-/// @brief check if a name belongs to a collection
-bool EqualCollection(CollectionNameResolver const* resolver,
-                     std::string const& collectionName,
-                     LogicalCollection const* collection) {
-  if (collectionName == collection->name()) {
-    return true;
-  }
-
-  if (collectionName == std::to_string(collection->id().id())) {
-    return true;
-  }
-
-  // Shouldn't it just be: If we are on DBServer we also have to check for
-  // global ID name and cid should be the shard.
-  if (ServerState::instance()->isCoordinator()) {
-    if (collectionName ==
-        resolver->getCollectionNameCluster(collection->id())) {
-      return true;
-    }
-    return false;
-  }
-
-  if (collectionName == resolver->getCollectionName(collection->id())) {
-    return true;
-  }
-
-  return false;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unwrap a LogicalCollection wrapped via WrapCollection(...)
 /// @return collection or nullptr on failure
@@ -74,11 +45,9 @@ arangodb::LogicalCollection* UnwrapCollection(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a LogicalCollection
 ////////////////////////////////////////////////////////////////////////////////
-v8::Handle<v8::Object> WrapCollection(  // wrap collection
-    v8::Isolate* isolate,               // isolate
-    std::shared_ptr<arangodb::LogicalCollection> const&
-        collection  // collection
-) {
+v8::Handle<v8::Object> WrapCollection(
+    v8::Isolate* isolate,
+    std::shared_ptr<arangodb::LogicalCollection> const& collection) {
   v8::EscapableHandleScope scope(isolate);
   TRI_GET_GLOBALS();
   auto context = TRI_IGETC;
@@ -90,6 +59,10 @@ v8::Handle<v8::Object> WrapCollection(  // wrap collection
   if (result.IsEmpty()) {
     return scope.Escape<v8::Object>(result);
   }
+
+  LOG_TOPIC("44ea5", TRACE, arangodb::Logger::V8)
+      << "Wrapping Collection " << collection->name() << " with ptr "
+      << (void*)collection.get() << " to context ID " << v8g->_id;
 
   auto value = std::shared_ptr<void>(  // persistent value
       collection.get(),                // value

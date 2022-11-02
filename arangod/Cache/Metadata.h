@@ -28,10 +28,9 @@
 #include <atomic>
 #include <cstdint>
 
-namespace arangodb {
-namespace cache {
+namespace arangodb::cache {
 
-class Cache;  // forward declaration
+class Cache;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Metadata object to facilitate information sharing between individual
@@ -53,13 +52,13 @@ struct Metadata {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Default constructor for placeholder objects.
   //////////////////////////////////////////////////////////////////////////////
-  Metadata();
+  Metadata() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes record with given information.
   //////////////////////////////////////////////////////////////////////////////
   Metadata(std::uint64_t usage, std::uint64_t fixed, std::uint64_t table,
-           std::uint64_t max);
+           std::uint64_t max) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes record from an existing record.
@@ -74,7 +73,7 @@ struct Metadata {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the lock for the metadata structure
   //////////////////////////////////////////////////////////////////////////////
-  basics::ReadWriteSpinLock& lock() const;
+  basics::ReadWriteSpinLock& lock() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Adjusts usage by the specified amount if it will not violate
@@ -144,5 +143,4 @@ struct Metadata {
   bool _resizing;
 };
 
-};  // end namespace cache
-};  // end namespace arangodb
+};  // end namespace arangodb::cache

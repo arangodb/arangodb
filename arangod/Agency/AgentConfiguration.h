@@ -27,20 +27,17 @@
 #include "Basics/ReadWriteLock.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <map>
 #include <string>
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 struct config_t {
  private:
   std::string _id;
   std::string _recoveryId;
   size_t _agencySize;
-  size_t _poolSize;
   double _minPing;
   double _maxPing;
   int64_t _timeoutMult;
@@ -56,7 +53,6 @@ struct config_t {
   uint64_t _compactionKeepSize;
   double _supervisionGracePeriod;
   double _supervisionOkThreshold;
-  bool _cmdLineTimings;
   size_t _version;
   std::string _startup;
   size_t _maxAppendSize;
@@ -92,10 +88,10 @@ struct config_t {
   config_t();
 
   /// @brief ctor
-  config_t(std::string const& rid, size_t as, size_t ps, double minp,
-           double maxp, std::string const& e, std::vector<std::string> const& g,
-           bool s, bool st, bool w, double f, uint64_t c, uint64_t k, double p,
-           double o, bool t, size_t a);
+  config_t(std::string const& rid, size_t as, double minp, double maxp,
+           std::string const& e, std::vector<std::string> const& g, bool s,
+           bool st, bool w, double f, uint64_t c, uint64_t k, double p,
+           double o, size_t a);
 
   /// @brief copy constructor
   config_t(config_t const&);
@@ -110,7 +106,7 @@ struct config_t {
   config_t& operator=(config_t&&);
 
   /// @brief update leadership changes
-  void update(query_t const&);
+  void update(velocypack::Slice message);
 
   /// @brief agent id
   std::string id() const;
@@ -161,9 +157,6 @@ struct config_t {
 
   /// @brief active empty?
   bool activeEmpty() const;
-
-  /// @brief pool size
-  size_t poolSize() const;
 
   /// @brief pool size
   size_t compactionStepSize() const;
@@ -228,9 +221,6 @@ struct config_t {
   void setTimeoutMult(int64_t);
 
   /// @brief Supervision grace period
-  bool cmdLineTimings() const;
-
-  /// @brief Supervision grace period
   double supervisionGracePeriod() const;
 
   /// @brief Supervision ok threshold
@@ -249,7 +239,7 @@ struct config_t {
   bool updateEndpoint(std::string const&, std::string const&);
 
   /// @brief Update configuration with an other
-  void updateConfiguration(VPackSlice const& other);
+  void updateConfiguration(velocypack::Slice other);
 };
-}  // namespace consensus
-}  // namespace arangodb
+
+}  // namespace arangodb::consensus

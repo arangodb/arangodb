@@ -32,6 +32,7 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/Exceptions.h"
 
 #include <utility>
 
@@ -143,7 +144,7 @@ void BaseWindowExecutor::produceOutputRow(InputAqlItemRow& input,
 
 void BaseWindowExecutor::produceInvalidOutputRow(InputAqlItemRow& input,
                                                  OutputAqlItemRow& output) {
-  VPackSlice const nullSlice = VPackSlice::nullSlice();
+  VPackSlice nullSlice = VPackSlice::nullSlice();
   for (auto const& regId : _infos.getAggregatedRegisters()) {
     output.moveValueInto(/*outRegister*/ regId.first, input, nullSlice);
   }
@@ -205,7 +206,7 @@ auto AccuWindowExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
 [[nodiscard]] auto AccuWindowExecutor::expectedNumberOfRowsNew(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
-  if (input.finalState() == ExecutorState::DONE) {
+  if (input.finalState() == MainQueryState::DONE) {
     // For every input row we produce a new row.
     auto estOnInput = input.countDataRows();
     return std::min(call.getLimit(), estOnInput);
@@ -242,7 +243,7 @@ ExecutorState WindowExecutor::consumeInputRange(
       return state;
     }
   }
-  return inputRange.finalState();
+  return inputRange.upstreamState();
 }
 
 void WindowExecutor::trimBounds() {
@@ -442,7 +443,7 @@ WindowExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
 [[nodiscard]] auto WindowExecutor::expectedNumberOfRowsNew(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
-  if (input.finalState() == ExecutorState::DONE) {
+  if (input.finalState() == MainQueryState::DONE) {
     size_t remain = _currentIdx < _rows.size() ? _rows.size() - _currentIdx : 0;
     remain += input.countDataRows();
     return std::min(call.getLimit(), remain);

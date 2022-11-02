@@ -37,14 +37,16 @@ function runSetup () {
   internal.debugClearFailAt();
 
   db._drop('UnitTestsRecovery');
-  var c = db._create('UnitTestsRecovery'), i;
+  let c = db._create('UnitTestsRecovery');
 
-  c.ensureHashIndex('value1');
-  c.ensureSkiplist('value2');
+  c.ensureIndex({ type: "hash", fields: ["value1"] });
+  c.ensureIndex({ type: "skiplist", fields: ["value2"] });
 
-  for (i = 0; i < 100; ++i) {
-    c.save({ value1: i, value2: i });
+  let docs = [];
+  for (let i = 0; i < 100; ++i) {
+    docs.push({ value1: i, value2: i });
   }
+  c.insert(docs);
 
   c.drop();
   internal.wait(3);

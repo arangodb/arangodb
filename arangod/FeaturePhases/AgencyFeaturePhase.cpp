@@ -22,20 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
-#include "Agency/AgencyFeature.h"
-#include "FeaturePhases/FoxxFeaturePhase.h"
+namespace arangodb::application_features {
 
-namespace arangodb {
-namespace application_features {
-
-AgencyFeaturePhase::AgencyFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "AgencyPhase") {
+AgencyFeaturePhase::AgencyFeaturePhase(ArangodServer& server)
+    : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<FoxxFeaturePhase>();
-
-  startsAfter<AgencyFeature>();
+  startsAfter<FoxxFeaturePhase, ArangodServer>();
+  startsAfter<AgencyFeature, ArangodServer>();
 }
 
-}  // namespace application_features
-}  // namespace arangodb
+}  // namespace arangodb::application_features

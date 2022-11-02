@@ -25,13 +25,14 @@
 #pragma once
 
 #include "Basics/Common.h"
-
+#include "Shell/arangosh.h"
 #include <fuerte/connection.h>
 #include <fuerte/loop.h>
 #include <fuerte/types.h>
 #include <v8.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -41,6 +42,10 @@ class ClientFeature;
 
 namespace application_features {
 class ApplicationServer;
+}
+
+namespace fuzzer {
+class RequestFuzzer;
 }
 
 namespace httpclient {
@@ -64,16 +69,19 @@ class V8ClientConnection {
   V8ClientConnection& operator=(V8ClientConnection const&) = delete;
 
  public:
-  explicit V8ClientConnection(application_features::ApplicationServer&,
-                              ClientFeature&);
+  explicit V8ClientConnection(ArangoshServer&, ClientFeature&);
   ~V8ClientConnection();
 
   void setInterrupted(bool interrupted);
+
   bool isConnected() const;
 
   void connect();
   void reconnect();
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  void reconnectWithNewPassword(std::string const& password);
+#endif
   double timeout() const;
 
   void timeout(double value);
@@ -92,7 +100,7 @@ class V8ClientConnection {
   std::string const& role() const { return _role; }
   std::string endpointSpecification() const;
 
-  application_features::ApplicationServer& server();
+  ArangoshServer& server();
 
   v8::Handle<v8::Value> getData(
       v8::Isolate* isolate, std::string_view location,
@@ -134,10 +142,18 @@ class V8ClientConnection {
       std::unordered_map<std::string, std::string> const& headerFields,
       bool raw);
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  uint32_t sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer);
+#endif
+
+  // forces a new connection to be used
+  void forceNewConnection();
+
   void initServer(v8::Isolate*, v8::Handle<v8::Context> context);
 
  private:
-  std::shared_ptr<fuerte::Connection> createConnection();
+  std::shared_ptr<fuerte::Connection> createConnection(
+      bool bypassCache = false);
   std::shared_ptr<fuerte::Connection> acquireConnection();
 
   v8::Local<v8::Value> requestData(
@@ -166,7 +182,7 @@ class V8ClientConnection {
   }
 
  private:
-  application_features::ApplicationServer& _server;
+  ArangoshServer& _server;
   ClientFeature& _client;
 
   std::string _databaseName;

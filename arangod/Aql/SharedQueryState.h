@@ -27,6 +27,8 @@
 #include <condition_variable>
 #include <function2.hpp>
 
+#include "RestServer/arangod.h"
+
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
@@ -39,7 +41,7 @@ class SharedQueryState final
   SharedQueryState(SharedQueryState const&) = delete;
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
-  explicit SharedQueryState(application_features::ApplicationServer& server);
+  explicit SharedQueryState(ArangodServer& server);
   SharedQueryState() = delete;
   ~SharedQueryState() = default;
 
@@ -136,7 +138,7 @@ class SharedQueryState final
   bool queueAsyncTask(fu2::unique_function<void()>);
 
  private:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
   mutable std::mutex _mutex;
   std::condition_variable _cv;
 

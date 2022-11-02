@@ -34,9 +34,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestExplainHandler::RestExplainHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestExplainHandler::RestExplainHandler(ArangodServer& server,
+                                       GeneralRequest* request,
+                                       GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestExplainHandler::execute() {

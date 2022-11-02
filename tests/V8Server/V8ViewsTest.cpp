@@ -21,15 +21,13 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+#include "Basics/DownCast.h"
 
 #include "Mocks/Servers.h"  // this must be first because windows
 
-#include "src/objects/objects.h"  // must be included before src/api/api.h to avoid errors with MSVC
-
-#include "src/api/api.h"  // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
-// #include "src/objects-inl.h"  // (required to avoid compile warnings) must
-// inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
-#include "src/objects/scope-info.h"  // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
+#include "src/objects/objects.h"
+#include "src/api/api.h"
+#include "src/objects/scope-info.h"
 
 #include "gtest/gtest.h"
 
@@ -38,6 +36,9 @@
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 
+#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -56,6 +57,7 @@
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
+#include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
 
 namespace {
@@ -76,20 +78,25 @@ struct TestView : public arangodb::LogicalView {
   arangodb::Result _appendVelocyPackResult;
   arangodb::velocypack::Builder _properties;
 
+  static constexpr auto typeInfo() noexcept {
+    return std::pair{static_cast<arangodb::ViewType>(42),
+                     std::string_view{"testViewType"}};
+  }
+
   TestView(TRI_vocbase_t& vocbase,
            arangodb::velocypack::Slice const& definition)
-      : arangodb::LogicalView(vocbase, definition) {}
-  virtual arangodb::Result appendVelocyPackImpl(
-      arangodb::velocypack::Builder& builder, Serialization) const override {
-    builder.add("properties", _properties.slice());
+      : arangodb::LogicalView(*this, vocbase, definition) {}
+  arangodb::Result appendVPackImpl(arangodb::velocypack::Builder& build,
+                                   Serialization, bool) const override {
+    build.add("properties", _properties.slice());
     return _appendVelocyPackResult;
   }
   virtual arangodb::Result dropImpl() override {
-    return arangodb::LogicalViewHelperStorageEngine::drop(*this);
+    return arangodb::storage_helper::drop(*this);
   }
   virtual void open() override {}
   virtual arangodb::Result renameImpl(std::string const& oldName) override {
-    return arangodb::LogicalViewHelperStorageEngine::rename(*this, oldName);
+    return arangodb::storage_helper::rename(*this, oldName);
   }
   virtual arangodb::Result properties(arangodb::velocypack::Slice properties,
                                       bool isUserRequest,
@@ -110,14 +117,15 @@ struct ViewFactory : public arangodb::ViewFactory {
                                   arangodb::velocypack::Slice definition,
                                   bool isUserRequest) const override {
     EXPECT_TRUE(isUserRequest);
-    view = vocbase.createView(definition);
+    view = vocbase.createView(definition, false);
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result instantiate(
-      arangodb::LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-      arangodb::velocypack::Slice definition) const override {
+  virtual arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
+                                       TRI_vocbase_t& vocbase,
+                                       arangodb::velocypack::Slice definition,
+                                       bool /*isUserRequest*/) const override {
     view = std::make_shared<TestView>(vocbase, definition);
 
     return arangodb::Result();
@@ -169,10 +177,6 @@ v8::Local<v8::Function> getViewMethodFunction(
   return v8::Local<v8::Function>::Cast(fn);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
 class V8ViewsTest
     : public ::testing::Test,
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
@@ -185,15 +189,9 @@ class V8ViewsTest
     arangodb::tests::v8Init();  // on-time initialize V8
 
     auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
-    viewTypesFeature.emplace(arangodb::LogicalDataSource::Type::emplace(
-                                 std::string_view("testViewType")),
-                             viewFactory);
+    viewTypesFeature.emplace(TestView::typeInfo().second, viewFactory);
   }
 };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
 
 TEST_F(V8ViewsTest, test_auth) {
   // test create
@@ -221,15 +219,14 @@ TEST_F(V8ViewsTest, test_auth) {
     auto context = v8::Context::New(isolate.get());
     v8::Context::Scope contextScope(
         context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(
-        TRI_CreateV8Globals(server.server(), isolate.get(),
-                            0));  // create and set inside 'isolate' for use
-                                  // with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(
-        isolate.get(),
-        v8::ObjectTemplate::New(
-            isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...)
-                              // will fail
+
+    // create and set inside 'isolate' for use 'TRI_GET_GLOBALS()'
+    std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
+        CreateV8Globals(server.server(), isolate.get(), 0));
+
+    // otherwise v8:-utils::CreateErrorObject(...) will fail
+    v8g->ArangoErrorTempl.Reset(isolate.get(),
+                                v8::ObjectTemplate::New(isolate.get()));
     v8g->_vocbase = &vocbase;
     auto db = getDbInstance(v8g.get(), isolate.get());
     auto fn_createView =
@@ -339,7 +336,8 @@ TEST_F(V8ViewsTest, test_auth) {
           WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
       EXPECT_FALSE(!v8View);
       EXPECT_EQ(std::string("testView"), v8View->name());
-      EXPECT_EQ(std::string("testViewType"), v8View->type().name());
+      EXPECT_EQ(arangodb::ViewType{42}, v8View->type());
+      EXPECT_EQ(std::string("testViewType"), v8View->typeName());
       auto view = vocbase.lookupView("testView");
       EXPECT_FALSE(!view);
     }
@@ -351,7 +349,7 @@ TEST_F(V8ViewsTest, test_auth) {
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                           testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
@@ -361,29 +359,24 @@ TEST_F(V8ViewsTest, test_auth) {
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
     ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(
-        isolate.get());  // otherwise v8::Isolate::Logger() will fail (called
-                         // from v8::Exception::Error)
-    v8::internal::Isolate::Current()
-        ->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger()
-                                           // will fail (called from
-                                           // v8::Exception::Error)
-    v8::HandleScope handleScope(
-        isolate.get());  // required for v8::Context::New(...),
-                         // v8::ObjectTemplate::New(...) and
-                         // TRI_AddMethodVocbase(...)
+    // otherwise v8::Isolate::Logger() will fail (called
+    // from v8::Exception::Error)
+    v8::Isolate::Scope isolateScope(isolate.get());
+    // otherwise v8::Isolate::Logger() will fail (called from
+    // v8::Exception::Error)
+    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
+    // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
+    // TRI_AddMethodVocbase(...)
+    v8::HandleScope handleScope(isolate.get());
     auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(
-        context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(
-        TRI_CreateV8Globals(server.server(), isolate.get(),
-                            0));  // create and set inside 'isolate' for use
-                                  // with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(
-        isolate.get(),
-        v8::ObjectTemplate::New(
-            isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...)
-                              // will fail
+    // required for TRI_AddMethodVocbase(...)
+    v8::Context::Scope contextScope(context);
+    // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+    std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
+        CreateV8Globals(server.server(), isolate.get(), 0));
+    // otherwise v8:-utils::CreateErrorObject(...) will fail
+    v8g->ArangoErrorTempl.Reset(isolate.get(),
+                                v8::ObjectTemplate::New(isolate.get()));
     v8g->_vocbase = &vocbase;
     auto db = getDbInstance(v8g.get(), isolate.get());
     auto fn_dropView =
@@ -411,8 +404,8 @@ TEST_F(V8ViewsTest, test_auth) {
     // not authorized (missing user)
     {
       arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-      userManager->setAuthInfo(userMap);  // set user map to avoid loading
-                                          // configuration from system database
+      // set user map to avoid loading configuration from system database
+      userManager->setAuthInfo(userMap);
 
       arangodb::velocypack::Builder response;
       v8::TryCatch tryCatch(isolate.get());
@@ -497,7 +490,7 @@ TEST_F(V8ViewsTest, test_auth) {
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                           testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
@@ -507,29 +500,24 @@ TEST_F(V8ViewsTest, test_auth) {
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
     ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(
-        isolate.get());  // otherwise v8::Isolate::Logger() will fail (called
-                         // from v8::Exception::Error)
-    v8::internal::Isolate::Current()
-        ->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger()
-                                           // will fail (called from
-                                           // v8::Exception::Error)
-    v8::HandleScope handleScope(
-        isolate.get());  // required for v8::Context::New(...),
-                         // v8::ObjectTemplate::New(...) and
-                         // TRI_AddMethodVocbase(...)
+    // otherwise v8::Isolate::Logger() will fail (called
+    // from v8::Exception::Error)
+    v8::Isolate::Scope isolateScope(isolate.get());
+    // otherwise v8::Isolate::Logger() will fail (called from
+    // v8::Exception::Error)
+    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
+    // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
+    // TRI_AddMethodVocbase(...)
+    v8::HandleScope handleScope(isolate.get());
     auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(
-        context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(
-        TRI_CreateV8Globals(server.server(), isolate.get(),
-                            0));  // create and set inside 'isolate' for use
-                                  // with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(
-        isolate.get(),
-        v8::ObjectTemplate::New(
-            isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...)
-                              // will fail
+    // required for TRI_AddMethodVocbase(...)
+    v8::Context::Scope contextScope(context);
+    // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+    std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
+        CreateV8Globals(server.server(), isolate.get(), 0));
+    // otherwise v8:-utils::CreateErrorObject(...) will fail
+    v8g->ArangoErrorTempl.Reset(isolate.get(),
+                                v8::ObjectTemplate::New(isolate.get()));
     v8g->_vocbase = &vocbase;
 
     auto arangoView = getViewInstance(v8g.get(), isolate.get());
@@ -641,7 +629,7 @@ TEST_F(V8ViewsTest, test_auth) {
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                           testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
@@ -651,29 +639,25 @@ TEST_F(V8ViewsTest, test_auth) {
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
     ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(
-        isolate.get());  // otherwise v8::Isolate::Logger() will fail (called
-                         // from v8::Exception::Error)
-    v8::internal::Isolate::Current()
-        ->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger()
-                                           // will fail (called from
-                                           // v8::Exception::Error)
-    v8::HandleScope handleScope(
-        isolate.get());  // required for v8::Context::New(...),
-                         // v8::ObjectTemplate::New(...) and
-                         // TRI_AddMethodVocbase(...)
+    // otherwise v8::Isolate::Logger() will fail (called from
+    // v8::Exception::Error)
+    v8::Isolate::Scope isolateScope(isolate.get());
+
+    // otherwise v8::Isolate::Logger() will fail (called from
+    // v8::Exception::Error)
+    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
+    // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
+    // TRI_AddMethodVocbase(...)
+    v8::HandleScope handleScope(isolate.get());
     auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(
-        context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(
-        TRI_CreateV8Globals(server.server(), isolate.get(),
-                            0));  // create and set inside 'isolate' for use
-                                  // with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(
-        isolate.get(),
-        v8::ObjectTemplate::New(
-            isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...)
-                              // will fail
+    // required for TRI_AddMethodVocbase(...)
+    v8::Context::Scope contextScope(context);
+    // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+    std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
+        CreateV8Globals(server.server(), isolate.get(), 0));
+    // otherwise v8:-utils::CreateErrorObject(...) will fail
+    v8g->ArangoErrorTempl.Reset(isolate.get(),
+                                v8::ObjectTemplate::New(isolate.get()));
     v8g->_vocbase = &vocbase;
     auto arangoView = getViewInstance(v8g.get(), isolate.get());
     auto fn_rename =
@@ -779,7 +763,7 @@ TEST_F(V8ViewsTest, test_auth) {
                            arangodb::auth::Level::NONE);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                           // configuration from system database
-      auto* testView = arangodb::LogicalView::cast<TestView>(logicalView.get());
+      auto* testView = arangodb::basics::downCast<TestView>(logicalView.get());
       testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_FORBIDDEN);
       auto resetAppendVelocyPackResult =
           std::shared_ptr<TestView>(testView, [](TestView* p) -> void {
@@ -842,7 +826,7 @@ TEST_F(V8ViewsTest, test_auth) {
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                           testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
@@ -852,38 +836,28 @@ TEST_F(V8ViewsTest, test_auth) {
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
     ASSERT_NE(nullptr, isolate);
-    char isolateData[64];  // 64 >
-                           // sizeof(arangodb::V8PlatformFeature::IsolateData)
-    std::memset(
-        isolateData, 0,
-        64);  // otherwise arangodb::V8PlatformFeature::isOutOfMemory(isolate)
-              // returns true
-    isolate->SetData(
-        arangodb::V8PlatformFeature::V8_INFO,
-        isolateData);  // required for TRI_VPackToV8(...) with nn-empty jSON
-    v8::Isolate::Scope isolateScope(
-        isolate.get());  // otherwise v8::Isolate::Logger() will fail (called
-                         // from v8::Exception::Error)
-    v8::internal::Isolate::Current()
-        ->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger()
-                                           // will fail (called from
-                                           // v8::Exception::Error)
-    v8::HandleScope handleScope(
-        isolate.get());  // required for v8::Context::New(...),
-                         // v8::ObjectTemplate::New(...) and
-                         // TRI_AddMethodVocbase(...)
+    static_assert(sizeof(arangodb::V8PlatformFeature::IsolateData) < 64);
+    char isolateData[64]{};
+    // required for TRI_VPackToV8(...) with nn-empty jSON
+    isolate->SetData(arangodb::V8PlatformFeature::V8_INFO, isolateData);
+    // otherwise v8::Isolate::Logger() will fail (called from
+    // v8::Exception::Error)
+    v8::Isolate::Scope isolateScope(isolate.get());
+    // otherwise v8::Isolate::Logger() will fail (called from
+    // v8::Exception::Error)
+    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
+    // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
+    // TRI_AddMethodVocbase(...)
+    v8::HandleScope handleScope(isolate.get());
     auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(
-        context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(
-        TRI_CreateV8Globals(server.server(), isolate.get(),
-                            0));  // create and set inside 'isolate' for use
-                                  // with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(
-        isolate.get(),
-        v8::ObjectTemplate::New(
-            isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...)
-                              // will fail
+    // required for TRI_AddMethodVocbase(...)
+    v8::Context::Scope contextScope(context);
+    // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+    std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
+        CreateV8Globals(server.server(), isolate.get(), 0));
+    // otherwise v8:-utils::CreateErrorObject(...) will fail
+    v8g->ArangoErrorTempl.Reset(isolate.get(),
+                                v8::ObjectTemplate::New(isolate.get()));
     v8g->_vocbase = &vocbase;
     auto arangoView = getViewInstance(v8g.get(), isolate.get());
     auto fn_properties = getViewMethodFunction(v8g.get(), isolate.get(),
@@ -987,7 +961,7 @@ TEST_F(V8ViewsTest, test_auth) {
                            arangodb::auth::Level::NONE);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                           // configuration from system database
-      auto* testView = arangodb::LogicalView::cast<TestView>(logicalView.get());
+      auto* testView = arangodb::basics::downCast<TestView>(logicalView.get());
       testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_INTERNAL);
       auto resetAppendVelocyPackResult =
           std::shared_ptr<TestView>(testView, [](TestView* p) -> void {
@@ -1013,7 +987,7 @@ TEST_F(V8ViewsTest, test_auth) {
                              .getNumber<int>()}));
       auto view = vocbase.lookupView("testView");
       EXPECT_FALSE(!view);
-      slice = arangodb::LogicalView::cast<TestView>(*view)._properties.slice();
+      slice = arangodb::basics::downCast<TestView>(*view)._properties.slice();
       EXPECT_FALSE(slice.isObject());
     }
 
@@ -1054,7 +1028,7 @@ TEST_F(V8ViewsTest, test_auth) {
                        slice.get("properties").get("key").copyString()));
       auto view = vocbase.lookupView("testView");
       EXPECT_FALSE(!view);
-      slice = arangodb::LogicalView::cast<TestView>(*view)._properties.slice();
+      slice = arangodb::basics::downCast<TestView>(*view)._properties.slice();
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((slice.hasKey("key") && slice.get("key").isString() &&
                    std::string("value") == slice.get("key").copyString()));
@@ -1067,7 +1041,7 @@ TEST_F(V8ViewsTest, test_auth) {
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                           testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
@@ -1077,29 +1051,24 @@ TEST_F(V8ViewsTest, test_auth) {
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
     ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(
-        isolate.get());  // otherwise v8::Isolate::Logger() will fail (called
-                         // from v8::Exception::Error)
-    v8::internal::Isolate::Current()
-        ->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger()
-                                           // will fail (called from
-                                           // v8::Exception::Error)
-    v8::HandleScope handleScope(
-        isolate.get());  // required for v8::Context::New(...),
-                         // v8::ObjectTemplate::New(...) and
-                         // TRI_AddMethodVocbase(...)
+    // otherwise v8::Isolate::Logger() will fail (called from
+    // v8::Exception::Error)
+    v8::Isolate::Scope isolateScope(isolate.get());
+    // otherwise v8::Isolate::Logger() will fail (called from
+    // v8::Exception::Error)
+    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
+    // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
+    // TRI_AddMethodVocbase(...)
+    v8::HandleScope handleScope(isolate.get());
     auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(
-        context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(
-        TRI_CreateV8Globals(server.server(), isolate.get(),
-                            0));  // create and set inside 'isolate' for use
-                                  // with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(
-        isolate.get(),
-        v8::ObjectTemplate::New(
-            isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...)
-                              // will fail
+    // required for TRI_AddMethodVocbase(...)
+    v8::Context::Scope contextScope(context);
+    // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+    std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
+        CreateV8Globals(server.server(), isolate.get(), 0));
+    // otherwise v8:-utils::CreateErrorObject(...) will fail
+    v8g->ArangoErrorTempl.Reset(isolate.get(),
+                                v8::ObjectTemplate::New(isolate.get()));
     v8g->_vocbase = &vocbase;
     auto db = getDbInstance(v8g.get(), isolate.get());
     auto fn_view =
@@ -1165,7 +1134,7 @@ TEST_F(V8ViewsTest, test_auth) {
                                           // returns database auth::Level
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                           // configuration from system database
-      auto* testView = arangodb::LogicalView::cast<TestView>(logicalView.get());
+      auto* testView = arangodb::basics::downCast<TestView>(logicalView.get());
       testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_FORBIDDEN);
       auto resetAppendVelocyPackResult =
           std::shared_ptr<TestView>(testView, [](TestView* p) -> void {
@@ -1218,7 +1187,8 @@ TEST_F(V8ViewsTest, test_auth) {
           WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
       EXPECT_FALSE(!v8View);
       EXPECT_EQ(std::string("testView"), v8View->name());
-      EXPECT_EQ(std::string("testViewType"), v8View->type().name());
+      EXPECT_EQ(TestView::typeInfo().first, v8View->type());
+      EXPECT_EQ(std::string("testViewType"), v8View->typeName());
       auto view = vocbase.lookupView("testView");
       EXPECT_FALSE(!view);
     }
@@ -1230,7 +1200,7 @@ TEST_F(V8ViewsTest, test_auth) {
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                           testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
@@ -1240,38 +1210,29 @@ TEST_F(V8ViewsTest, test_auth) {
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
     ASSERT_NE(nullptr, isolate);
-    char isolateData[64];  // 64 >
-                           // sizeof(arangodb::V8PlatformFeature::IsolateData)
-    std::memset(
-        isolateData, 0,
-        64);  // otherwise arangodb::V8PlatformFeature::isOutOfMemory(isolate)
-              // returns true
-    isolate->SetData(
-        arangodb::V8PlatformFeature::V8_INFO,
-        isolateData);  // required for TRI_VPackToV8(...) with nn-empty jSON
-    v8::Isolate::Scope isolateScope(
-        isolate.get());  // otherwise v8::Isolate::Logger() will fail (called
-                         // from v8::Exception::Error)
-    v8::internal::Isolate::Current()
-        ->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger()
-                                           // will fail (called from
-                                           // v8::Exception::Error)
-    v8::HandleScope handleScope(
-        isolate.get());  // required for v8::Context::New(...),
-                         // v8::ObjectTemplate::New(...) and
-                         // TRI_AddMethodVocbase(...)
+    static_assert(sizeof(arangodb::V8PlatformFeature::IsolateData) < 64);
+    char isolateData[64]{};
+    // required for TRI_VPackToV8(...) with nn-empty jSON
+    isolate->SetData(arangodb::V8PlatformFeature::V8_INFO, isolateData);
+    // otherwise v8::Isolate::Logger() will fail (called
+    // from v8::Exception::Error)
+    v8::Isolate::Scope isolateScope(isolate.get());
+    // otherwise v8::Isolate::Logger() will fail (called from
+    // v8::Exception::Error)
+    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
+    // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
+    // TRI_AddMethodVocbase(...)
+    v8::HandleScope handleScope(isolate.get());
     auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(
-        context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(
-        TRI_CreateV8Globals(server.server(), isolate.get(),
-                            0));  // create and set inside 'isolate' for use
-                                  // with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(
-        isolate.get(),
-        v8::ObjectTemplate::New(
-            isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...)
-                              // will fail
+    // required for TRI_AddMethodVocbase(...)
+    v8::Context::Scope contextScope(context);
+    // create and set inside 'isolate' for use
+    // with 'TRI_GET_GLOBALS()'
+    std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
+        CreateV8Globals(server.server(), isolate.get(), 0));
+    // otherwise v8:-utils::CreateErrorObject(...) will fail
+    v8g->ArangoErrorTempl.Reset(isolate.get(),
+                                v8::ObjectTemplate::New(isolate.get()));
     v8g->_vocbase = &vocbase;
 
     auto arangoView = getViewInstance(v8g.get(), isolate.get());
@@ -1342,7 +1303,7 @@ TEST_F(V8ViewsTest, test_auth) {
                                           // returns database auth::Level
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                           // configuration from system database
-      auto* testView = arangodb::LogicalView::cast<TestView>(logicalView.get());
+      auto* testView = arangodb::basics::downCast<TestView>(logicalView.get());
       testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_FORBIDDEN);
       auto resetAppendVelocyPackResult =
           std::shared_ptr<TestView>(testView, [](TestView* p) -> void {
@@ -1415,9 +1376,9 @@ TEST_F(V8ViewsTest, test_auth) {
         "{ \"name\": \"testView2\", \"type\": \"testViewType\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                           testDBInfo(server.server()));
-    auto logicalView1 = vocbase.createView(createView1Json->slice());
+    auto logicalView1 = vocbase.createView(createView1Json->slice(), false);
     ASSERT_FALSE(!logicalView1);
-    auto logicalView2 = vocbase.createView(createView2Json->slice());
+    auto logicalView2 = vocbase.createView(createView2Json->slice(), false);
     ASSERT_FALSE(!logicalView2);
 
     v8::Isolate::CreateParams isolateParams;
@@ -1427,29 +1388,24 @@ TEST_F(V8ViewsTest, test_auth) {
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
     ASSERT_NE(nullptr, isolate);
-    v8::Isolate::Scope isolateScope(
-        isolate.get());  // otherwise v8::Isolate::Logger() will fail (called
-                         // from v8::Exception::Error)
-    v8::internal::Isolate::Current()
-        ->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger()
-                                           // will fail (called from
-                                           // v8::Exception::Error)
-    v8::HandleScope handleScope(
-        isolate.get());  // required for v8::Context::New(...),
-                         // v8::ObjectTemplate::New(...) and
-                         // TRI_AddMethodVocbase(...)
+    // otherwise v8::Isolate::Logger() will fail (called from
+    // v8::Exception::Error)
+    v8::Isolate::Scope isolateScope(isolate.get());
+    // otherwise v8::Isolate::Logger() will fail (called from
+    // v8::Exception::Error)
+    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
+    // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
+    // TRI_AddMethodVocbase(...)
+    v8::HandleScope handleScope(isolate.get());
     auto context = v8::Context::New(isolate.get());
-    v8::Context::Scope contextScope(
-        context);  // required for TRI_AddMethodVocbase(...)
-    std::unique_ptr<TRI_v8_global_t> v8g(
-        TRI_CreateV8Globals(server.server(), isolate.get(),
-                            0));  // create and set inside 'isolate' for use
-                                  // with 'TRI_GET_GLOBALS()'
-    v8g->ArangoErrorTempl.Reset(
-        isolate.get(),
-        v8::ObjectTemplate::New(
-            isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...)
-                              // will fail
+    // required for TRI_AddMethodVocbase(...)
+    v8::Context::Scope contextScope(context);
+    // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+    std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
+        CreateV8Globals(server.server(), isolate.get(), 0));
+    // otherwise v8:-utils::CreateErrorObject(...) will fail
+    v8g->ArangoErrorTempl.Reset(isolate.get(),
+                                v8::ObjectTemplate::New(isolate.get()));
     v8g->_vocbase = &vocbase;
     auto db = getDbInstance(v8g.get(), isolate.get());
     auto fn_views =
@@ -1475,8 +1431,8 @@ TEST_F(V8ViewsTest, test_auth) {
     // not authorized (missing user)
     {
       arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-      userManager->setAuthInfo(userMap);  // set user map to avoid loading
-                                          // configuration from system database
+      // set user map to avoid loading configuration from system database
+      userManager->setAuthInfo(userMap);
 
       arangodb::velocypack::Builder response;
       v8::TryCatch tryCatch(isolate.get());
@@ -1520,8 +1476,7 @@ TEST_F(V8ViewsTest, test_auth) {
                                           // returns database auth::Level
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                           // configuration from system database
-      auto* testView =
-          arangodb::LogicalView::cast<TestView>(logicalView2.get());
+      auto* testView = arangodb::basics::downCast<TestView>(logicalView2.get());
       testView->_appendVelocyPackResult = arangodb::Result(TRI_ERROR_FORBIDDEN);
       auto resetAppendVelocyPackResult =
           std::shared_ptr<TestView>(testView, [](TestView* p) -> void {
@@ -1542,7 +1497,8 @@ TEST_F(V8ViewsTest, test_auth) {
           WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
       EXPECT_FALSE(!v8View);
       EXPECT_EQ(std::string("testView1"), v8View->name());
-      EXPECT_EQ(std::string("testViewType"), v8View->type().name());
+      EXPECT_EQ(TestView::typeInfo().first, v8View->type());
+      EXPECT_EQ(std::string("testViewType"), v8View->typeName());
       auto view1 = vocbase.lookupView("testView1");
       EXPECT_FALSE(!view1);
     }
@@ -1581,7 +1537,8 @@ TEST_F(V8ViewsTest, test_auth) {
           WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
       EXPECT_FALSE(!v8View);
       EXPECT_EQ(std::string("testView1"), v8View->name());
-      EXPECT_EQ(std::string("testViewType"), v8View->type().name());
+      EXPECT_EQ(TestView::typeInfo().first, v8View->type());
+      EXPECT_EQ(std::string("testViewType"), v8View->typeName());
       auto view1 = vocbase.lookupView("testView1");
       EXPECT_FALSE(!view1);
     }

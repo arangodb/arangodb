@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-vocindex.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -53,7 +54,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -253,8 +253,8 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   // waitForSync can be 3. or 4. parameter
-  TRI_GET_GLOBALS();
-  auto& cluster = v8g->_server.getFeature<ClusterFeature>();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  auto& cluster = v8g->server().getFeature<ClusterFeature>();
   bool createWaitsForSyncReplication = cluster.createWaitsForSyncReplication();
   bool enforceReplicationFactor = true;
 
@@ -269,13 +269,12 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
         isolate, obj, "enforceReplicationFactor", enforceReplicationFactor);
   }
 
-  VPackBuilder filtered = methods::Collections::filterInput(propSlice);
+  VPackBuilder filtered = methods::Collections::filterInput(propSlice, false);
   propSlice = filtered.slice();
 
   bool allowSystem = VelocyPackHelper::getBooleanValue(
       propSlice, StaticStrings::DataSourceSystem, false);
 
-  v8::Handle<v8::Value> result;
   std::shared_ptr<LogicalCollection> coll;
   OperationOptions options(ExecContext::current());
   auto res = methods::Collections::create(
@@ -286,13 +285,14 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
       propSlice,                      // collection properties
       createWaitsForSyncReplication,  // replication wait flag
       enforceReplicationFactor,
-      false,  // is new Database?, here always false
+      /*isNewDatabase*/ false,  // here always false
       coll, allowSystem);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
+  v8::Handle<v8::Value> result;
   if (coll) {
     result = WrapCollection(isolate, coll);
   }

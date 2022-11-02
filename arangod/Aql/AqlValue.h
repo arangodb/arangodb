@@ -29,6 +29,7 @@
 #include "Basics/Endian.h"
 #include "IResearch/Misc.h"
 
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-common.h>
 #include <string_view>
 #include <vector>
@@ -51,7 +52,6 @@ template<typename T>
 class Buffer;
 class Builder;
 struct Options;
-class Slice;
 }  // namespace velocypack
 }  // namespace arangodb
 
@@ -67,17 +67,17 @@ namespace aql {
 class AqlItemBlock;
 
 // no-op struct used only internally to indicate that we want
-// to copy the data behind the passed pointer
-struct AqlValueHintCopy {
-  explicit AqlValueHintCopy(uint8_t const* ptr) noexcept;
-  uint8_t const* ptr;
+// to copy the data behind the slice
+struct AqlValueHintSliceCopy {
+  explicit AqlValueHintSliceCopy(arangodb::velocypack::Slice s) noexcept;
+  arangodb::velocypack::Slice slice;
 };
 
 // no-op struct used only internally to indicate that we want
-// to NOT copy the database document data behind the passed pointer
-struct AqlValueHintDocumentNoCopy {
-  explicit AqlValueHintDocumentNoCopy(uint8_t const* v) noexcept;
-  uint8_t const* ptr;
+// to NOT copy the slice data
+struct AqlValueHintSliceNoCopy {
+  explicit AqlValueHintSliceNoCopy(arangodb::velocypack::Slice s) noexcept;
+  arangodb::velocypack::Slice slice;
 };
 
 struct AqlValueHintNone {
@@ -149,6 +149,7 @@ struct AqlValue final {
                     VPACK_INLINE_INT64, VPACK_INLINE_INT48>(),
                 "Values are not adjacent");
 
+  // clang-format off
   /// @brief Holds the actual data for this AqlValue
   /// The last byte of this union (_data.internal[15]) will be used to identify
   /// the type of the contained data:
@@ -178,16 +179,14 @@ struct AqlValue final {
   /// ML - managed slice length
   /// ID - isDocument flag
   /// XX - unused
-  /// | 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  | 10 | 11 | 12 | 13 | 14
-  /// | 15 |   Bytes | AT | ID | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD
-  /// | PD | PD | PD | PD |   VPACK_SLICE_POINTER | AT | MO | ML | ML | ML | ML
-  /// | ML | ML | PD | PD | PD | PD | PD | PD | PD | PD |   VPACK_MANAGED_SLICE
-  /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD
-  /// | PD |   RANGE | AT | ST | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD
-  /// | SD | SD | SD | SD |   VPACK_INLINE | AT | ST | SD | SD | SD | SD | SD |
-  /// SD | ND | ND | ND | ND | ND | ND | ND | ND |   VPACK_48BIT_INLINE_INT | AT
-  /// | XX | XX | XX | XX | XX | XX | ST | SD | SD | SD | SD | SD | SD | SD | SD
-  /// |   VPACK_64BIT_INLINE_(INT/UINT/DOUBLE)
+  /// | 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  | 10 | 11 | 12 | 13 | 14 | 15 | Bytes
+  /// | AT | ID | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD | VPACK_SLICE_POINTER
+  /// | AT | MO | ML | ML | ML | ML | ML | ML | PD | PD | PD | PD | PD | PD | PD | PD | VPACK_MANAGED_SLICE
+  /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD | RANGE
+  /// | AT | ST | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | VPACK_INLINE
+  /// | AT | ST | SD | SD | SD | SD | SD | SD | ND | ND | ND | ND | ND | ND | ND | ND | VPACK_48BIT_INLINE_INT
+  /// | AT | XX | XX | XX | XX | XX | XX | ST | SD | SD | SD | SD | SD | SD | SD | SD | VPACK_64BIT_INLINE_(INT/UINT/DOUBLE)
+  // clang-format on
  private:
   union {
     uint8_t aqlValueType;
@@ -293,46 +292,46 @@ struct AqlValue final {
   AqlValue() noexcept;
 
   // construct from pointer, not copying!
-  explicit AqlValue(uint8_t const* pointer);
+  explicit AqlValue(uint8_t const* pointer) noexcept;
 
   // construct from another AqlValue and a new data pointer, not copying!
   explicit AqlValue(AqlValue const& other, void* data) noexcept;
 
-  explicit AqlValue(AqlValueHintNone const&) noexcept;
+  explicit AqlValue(AqlValueHintNone) noexcept;
 
-  explicit AqlValue(AqlValueHintNull const&) noexcept;
+  explicit AqlValue(AqlValueHintNull) noexcept;
 
-  explicit AqlValue(AqlValueHintBool const& v) noexcept;
+  explicit AqlValue(AqlValueHintBool v) noexcept;
 
-  explicit AqlValue(AqlValueHintZero const&) noexcept;
+  explicit AqlValue(AqlValueHintZero) noexcept;
 
   // construct from a double value
-  explicit AqlValue(AqlValueHintDouble const& v) noexcept;
+  explicit AqlValue(AqlValueHintDouble v) noexcept;
 
   // construct from an int64 value
-  explicit AqlValue(AqlValueHintInt const& v) noexcept;
+  explicit AqlValue(AqlValueHintInt v) noexcept;
 
   // construct from a uint64 value
-  explicit AqlValue(AqlValueHintUInt const& v) noexcept;
+  explicit AqlValue(AqlValueHintUInt v) noexcept;
 
   // construct from char* and length, copying the string
-  AqlValue(char const* value, size_t length);
+  [[deprecated]] AqlValue(char const* value, size_t length);
 
   // construct from std::string
-  explicit AqlValue(std::string const& value);
+  explicit AqlValue(std::string_view value);
 
-  explicit AqlValue(AqlValueHintEmptyArray const&) noexcept;
+  explicit AqlValue(AqlValueHintEmptyArray) noexcept;
 
-  explicit AqlValue(AqlValueHintEmptyObject const&) noexcept;
+  explicit AqlValue(AqlValueHintEmptyObject) noexcept;
 
   // construct from Buffer, potentially taking over its ownership
   explicit AqlValue(arangodb::velocypack::Buffer<uint8_t>&& buffer);
 
-  // construct from pointer, not copying!
-  explicit AqlValue(AqlValueHintDocumentNoCopy const& v) noexcept;
+  // construct from slice data, not copying!
+  explicit AqlValue(AqlValueHintSliceNoCopy v) noexcept;
 
-  // construct from pointer, copying the data behind the pointer
-  explicit AqlValue(AqlValueHintCopy const& v);
+  // construct from slice data, copying the data
+  explicit AqlValue(AqlValueHintSliceCopy v);
 
   // construct from Slice, copying contents
   explicit AqlValue(arangodb::velocypack::Slice slice);

@@ -26,10 +26,13 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-#include <string>
-#include <vector>
+
 #include "Pregel/Graph.h"
+
+#include <map>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace arangodb {
 namespace pregel {

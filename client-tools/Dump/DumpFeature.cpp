@@ -28,7 +28,6 @@
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
@@ -61,9 +60,6 @@ namespace {
 /// keeps track of all connected clients
 static std::string clientId;
 static std::string syncerId;
-
-/// @brief name of the feature to report to application server
-constexpr auto FeatureName = "Dump";
 
 /// @brief minimum amount of data to fetch from server in a single batch
 constexpr uint64_t MinChunkSize = 1024 * 128;
@@ -631,13 +627,12 @@ Result DumpFeature::DumpShardJob::run(
   return res;
 }
 
-DumpFeature::DumpFeature(application_features::ApplicationServer& server,
-                         int& exitCode)
-    : ApplicationFeature(server, DumpFeature::featureName()),
-      _clientManager{server, Logger::DUMP},
+DumpFeature::DumpFeature(Server& server, int& exitCode)
+    : ArangoDumpFeature{server, *this},
+      _clientManager{server.getFeature<HttpEndpointProvider, ClientFeature>(),
+                     Logger::DUMP},
       _clientTaskQueue{server, ::processJob},
       _exitCode{exitCode} {
-  requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 
@@ -648,8 +643,6 @@ DumpFeature::DumpFeature(application_features::ApplicationServer& server,
       std::max(uint32_t(_options.threadCount),
                static_cast<uint32_t>(NumberOfCores::getValue()));
 }
-
-std::string DumpFeature::featureName() { return ::FeatureName; }
 
 void DumpFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
@@ -867,8 +860,16 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     // inject current database
     LOG_TOPIC("4af42", INFO, Logger::DUMP)
         << "Dumping database '" << dbName << "' (" << dbId << ")";
+
+    EncryptionFeature* encryption{};
+    if constexpr (Server::contains<EncryptionFeature>()) {
+      if (server().hasFeature<EncryptionFeature>()) {
+        encryption = &server().getFeature<EncryptionFeature>();
+      }
+    }
+
     _directory = std::make_unique<ManagedDirectory>(
-        server(),
+        encryption,
         arangodb::basics::FileUtils::buildFilename(
             _options.outputPath, ::getDatabaseDirName(dbName, dbId)),
         !_options.overwrite, true, _options.useGzip);
@@ -1103,8 +1104,10 @@ Result DumpFeature::storeViews(VPackSlice const& views) const {
 
 void DumpFeature::reportError(Result const& error) {
   try {
-    MUTEX_LOCKER(lock, _workerErrorLock);
-    _workerErrors.emplace(error);
+    {
+      MUTEX_LOCKER(lock, _workerErrorLock);
+      _workerErrors.emplace_back(error);
+    }
     _clientTaskQueue.clearQueue();
   } catch (...) {
   }
@@ -1143,10 +1146,17 @@ void DumpFeature::start() {
 
   double const start = TRI_microtime();
 
+  EncryptionFeature* encryption{};
+  if constexpr (Server::contains<EncryptionFeature>()) {
+    if (server().hasFeature<EncryptionFeature>()) {
+      encryption = &server().getFeature<EncryptionFeature>();
+    }
+  }
+
   // set up the output directory, not much else
-  _directory = std::make_unique<ManagedDirectory>(server(), _options.outputPath,
-                                                  !_options.overwrite, true,
-                                                  _options.useGzip);
+  _directory = std::make_unique<ManagedDirectory>(
+      encryption, _options.outputPath, !_options.overwrite, true,
+      _options.useGzip);
   if (_directory->status().fail()) {
     switch (static_cast<int>(_directory->status().errorNumber())) {
       case static_cast<int>(TRI_ERROR_FILE_EXISTS):
@@ -1273,14 +1283,15 @@ void DumpFeature::start() {
     if (_options.dumpData) {
       LOG_TOPIC("66c0e", INFO, Logger::DUMP)
           << "Processed " << _stats.totalCollections.load()
-          << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s,"
-          << " wrote " << formatSize(_stats.totalWritten.load())
-          << " into datafiles, sent " << _stats.totalBatches.load()
-          << " batch(es)";
+          << " collection(s) from " << databases.size() << " database(s) in "
+          << Logger::FIXED(totalTime, 6) << " s total time. Wrote "
+          << formatSize(_stats.totalWritten.load()) << " into datafiles, sent "
+          << _stats.totalBatches.load() << " batch(es) in total.";
     } else {
       LOG_TOPIC("aaa17", INFO, Logger::DUMP)
           << "Processed " << _stats.totalCollections.load()
-          << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s";
+          << " collection(s) from " << databases.size() << " database(s) in "
+          << Logger::FIXED(totalTime, 6) << " s total time.";
     }
   }
 }

@@ -25,6 +25,7 @@
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/debugging.h"
+#include "Containers/FlatHashSet.h"
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include "VelocyPackHelper.h"
@@ -56,6 +57,10 @@ class IResearchViewStoredValues {
     bool operator!=(StoredColumn const& rhs) const noexcept {
       return !(*this == rhs);
     }
+
+    bool sameName(std::string_view str) const noexcept {
+      return (name.size() == str.size() + 1) && name.ends_with(str);
+    }
   };
 
   bool operator==(IResearchViewStoredValues const& rhs) const noexcept {
@@ -80,8 +85,8 @@ class IResearchViewStoredValues {
  private:
   bool buildStoredColumnFromSlice(
       velocypack::Slice const& columnSlice,
-      std::unordered_set<std::string>& uniqueColumns,
-      std::vector<irs::string_ref>& fieldNames,
+      containers::FlatHashSet<std::string>& uniqueColumns,
+      std::vector<std::string_view>& fieldNames,
       irs::type_info::type_id compression);
 
   void clear() noexcept { _storedColumns.clear(); }

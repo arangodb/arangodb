@@ -28,11 +28,9 @@
 #include <string>
 
 namespace arangodb {
+class ClientFeature;
 class LogTopic;
 class Result;
-namespace application_features {
-class ApplicationServer;
-}
 namespace httpclient {
 class SimpleHttpClient;
 }  // namespace httpclient
@@ -46,8 +44,7 @@ class ClientManager {
    * @brief Initialize a client manager using a specific log topic for output
    * @param topic Topic to log output to
    */
-  explicit ClientManager(application_features::ApplicationServer& server,
-                         LogTopic& topic);
+  explicit ClientManager(ClientFeature& client, LogTopic& topic);
   virtual ~ClientManager();
 
  public:
@@ -116,7 +113,7 @@ class ClientManager {
       httpclient::SimpleHttpClient& httpClient, std::string const& name);
 
  private:
-  application_features::ApplicationServer& _server;
+  ClientFeature& _client;
   LogTopic& _topic;
 };
 }  // namespace arangodb

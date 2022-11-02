@@ -23,7 +23,10 @@
 
 #include "SingleServerEdgeCursor.h"
 
+#include "Aql/AttributeNamePath.h"
+#include "Aql/Projections.h"
 #include "Aql/AstNode.h"
+#include "Basics/StaticStrings.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/TraverserCache.h"
@@ -96,7 +99,7 @@ static bool CheckInaccessible(transaction::Methods* trx, VPackSlice edge) {
   std::string_view str(edge.stringView());
   size_t pos = str.find('/');
   TRI_ASSERT(pos != std::string_view::npos);
-  return trx->isInaccessibleCollection(std::string(str.substr(0, pos)));
+  return trx->isInaccessibleCollection(str.substr(0, pos));
 }
 #endif
 
@@ -118,7 +121,7 @@ void SingleServerEdgeCursor::getDocAndRunCallback(
           }
         }
 #endif
-        _opts->cache()->increaseCounter();
+        _opts->cache()->incrDocuments();
         if (_internalCursorMapping != nullptr) {
           TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
           callback(std::move(etkn), edgeDoc,
@@ -132,8 +135,7 @@ void SingleServerEdgeCursor::getDocAndRunCallback(
 }
 
 bool SingleServerEdgeCursor::advanceCursor(
-    IndexIterator*& cursor,
-    std::vector<std::unique_ptr<IndexIterator>>*& cursorSet) {
+    IndexIterator*& cursor, std::vector<CursorInfo>*& cursorSet) {
   TRI_ASSERT(!_cursors.empty());
   ++_currentSubCursor;
   if (_currentSubCursor >= cursorSet->size()) {
@@ -146,7 +148,7 @@ bool SingleServerEdgeCursor::advanceCursor(
     cursorSet = &_cursors[_currentCursor];
   }
 
-  cursor = (*cursorSet)[_currentSubCursor].get();
+  cursor = (*cursorSet)[_currentSubCursor].cursor.get();
   // If we switch the cursor. We have to clear the cache.
   _cache.clear();
   return true;
@@ -158,6 +160,9 @@ bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
   // connected edges
   TRI_ASSERT(!_cursors.empty());
 
+  // curiously enough, this method is only called in the cluster, but not
+  // on single servers.
+
   if (_currentCursor == _cursors.size()) {
     return false;
   }
@@ -165,8 +170,8 @@ bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
   // There is still something in the cache
   if (_cachePos < _cache.size()) {
     // get the collection
-    getDocAndRunCallback(_cursors[_currentCursor][_currentSubCursor].get(),
-                         callback);
+    getDocAndRunCallback(
+        _cursors[_currentCursor][_currentSubCursor].cursor.get(), callback);
     return true;
   }
 
@@ -175,53 +180,66 @@ bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
   auto* cursorSet = &_cursors[_currentCursor];
 
   // get current cursor
-  auto cursor = (*cursorSet)[_currentSubCursor].get();
+  auto cursor = (*cursorSet)[_currentSubCursor].cursor.get();
+  uint16_t coveringPosition =
+      (*cursorSet)[_currentSubCursor].coveringIndexPosition;
+  TRI_ASSERT(cursor != nullptr);
 
   // NOTE: We cannot clear the cache,
-  // because the cursor expect's it to be filled.
+  // because the cursor expects it to be filled.
   do {
     if (cursorSet->empty() || !cursor->hasMore()) {
       if (!advanceCursor(cursor, cursorSet)) {
         return false;
       }
     } else {
-      if (cursor->hasExtra()) {
+      if (aql::Projections::isCoveringIndexPosition(coveringPosition)) {
         bool operationSuccessful = false;
-        auto extraCB = [&](LocalDocumentId const& token, VPackSlice edge) {
-          if (token.isSet()) {
+        cursor->nextCovering(
+            [&](LocalDocumentId const& token,
+                IndexIteratorCoveringData& covering) {
+              TRI_ASSERT(covering.isArray());
+              VPackSlice edge = covering.at(coveringPosition);
+              TRI_ASSERT(edge.isString());
+
+              if (token.isSet()) {
 #ifdef USE_ENTERPRISE
-            if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
-              return false;
-            }
+                if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
+                  return false;
+                }
 #endif
-            operationSuccessful = true;
-            auto etkn = EdgeDocumentToken(cursor->collection()->id(), token);
-            if (_internalCursorMapping != nullptr) {
-              TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
-              callback(std::move(etkn), edge,
-                       _internalCursorMapping->at(_currentCursor));
-            } else {
-              callback(std::move(etkn), edge, _currentCursor);
-            }
-            return true;
-          }
-          return false;
-        };
-        cursor->nextExtra(extraCB, 1);
+                operationSuccessful = true;
+                auto etkn =
+                    EdgeDocumentToken(cursor->collection()->id(), token);
+                if (_internalCursorMapping != nullptr) {
+                  TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
+                  callback(std::move(etkn), edge,
+                           _internalCursorMapping->at(_currentCursor));
+                } else {
+                  callback(std::move(etkn), edge, _currentCursor);
+                }
+                return true;
+              }
+              return false;
+            },
+            1);
+        // TODO: why are we calling this for just one document, but the
+        // non-covering part we call for 1000 documents at a time?
         if (operationSuccessful) {
           return true;
         }
       } else {
         _cache.clear();
-        auto cb = [&](LocalDocumentId const& token) {
-          if (token.isSet()) {
-            // Document found
-            _cache.emplace_back(token);
-            return true;
-          }
-          return false;
-        };
-        bool tmp = cursor->next(cb, 1000);
+        bool tmp = cursor->next(
+            [&](LocalDocumentId const& token) {
+              if (token.isSet()) {
+                // Document found
+                _cache.emplace_back(token);
+                return true;
+              }
+              return false;
+            },
+            1000);
         TRI_ASSERT(tmp == cursor->hasMore());
       }
     }
@@ -243,17 +261,26 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
       cursorId = _currentCursor;
     }
     auto& cursorSet = _cursors[_currentCursor];
-    for (auto& cursor : cursorSet) {
+    for (auto& [cursor, coveringPosition] : cursorSet) {
       LogicalCollection* collection = cursor->collection();
       auto cid = collection->id();
-      if (cursor->hasExtra()) {
-        cursor->allExtra([&](LocalDocumentId const& token, VPackSlice edge) {
+
+      if (aql::Projections::isCoveringIndexPosition(coveringPosition)) {
+        // thanks AppleClang for having to declare this extra variable!
+        uint16_t cv = coveringPosition;
+
+        cursor->allCovering([&](LocalDocumentId const& token,
+                                IndexIteratorCoveringData& covering) {
+          TRI_ASSERT(covering.isArray());
+          VPackSlice edge = covering.at(cv);
+          TRI_ASSERT(edge.isString());
+
 #ifdef USE_ENTERPRISE
           if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
             return false;
           }
 #endif
-          _opts->cache()->increaseCounter();
+          _opts->cache()->incrDocuments();
           callback(EdgeDocumentToken(cid, token), edge, cursorId);
           return true;
         });
@@ -277,7 +304,7 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
                       }
                     }
 #endif
-                    _opts->cache()->increaseCounter();
+                    _opts->cache()->incrDocuments();
                     callback(EdgeDocumentToken(cid, token), edgeDoc, cursorId);
                     return true;
                   },
@@ -285,6 +312,11 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
               .ok();
         });
       }
+
+      // update cache hits and misses
+      auto [ch, cm] = cursor->getAndResetCacheStats();
+      _opts->cache()->incrCacheHits(ch);
+      _opts->cache()->incrCacheMisses(cm);
     }
   }
 }
@@ -310,10 +342,17 @@ void SingleServerEdgeCursor::rearm(std::string_view vertex,
     size_t j = 0;
     auto& node = info.indexCondition;
     for (auto const& it : info.idxHandles) {
-      auto& cursor = csrs[j];
+      auto& cursor = csrs[j].cursor;
+
+      // steal cache hits and misses before the cursor is recycled
+      auto [ch, cm] = cursor->getAndResetCacheStats();
+      _opts->cache()->incrCacheHits(ch);
+      _opts->cache()->incrCacheMisses(cm);
+
       // check if the underlying index iterator supports rearming
       if (cursor->canRearm()) {
         // rearming supported
+        _opts->cache()->incrCursorsRearmed();
         if (!cursor->rearm(node, _tmpVar, defaultIndexIteratorOptions)) {
           cursor =
               std::make_unique<EmptyIndexIterator>(cursor->collection(), _trx);
@@ -321,8 +360,13 @@ void SingleServerEdgeCursor::rearm(std::string_view vertex,
       } else {
         // rearming not supported - we need to throw away the index iterator
         // and create a new one
+        _opts->cache()->incrCursorsCreated();
         cursor = _trx->indexScanForCondition(
-            it, node, _tmpVar, defaultIndexIteratorOptions, ReadOwnWrites::no);
+            it, node, _tmpVar, defaultIndexIteratorOptions, ReadOwnWrites::no,
+            static_cast<int>(
+                info.conditionNeedUpdate
+                    ? info.conditionMemberToUpdate
+                    : transaction::Methods::kNoMutableConditionIdx));
       }
       ++j;
     }
@@ -357,8 +401,38 @@ void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,
   auto& csrs = _cursors.back();
   csrs.reserve(info.idxHandles.size());
   for (std::shared_ptr<Index> const& index : info.idxHandles) {
-    csrs.emplace_back(_trx->indexScanForCondition(
-        index, info.indexCondition, _tmpVar, defaultIndexIteratorOptions,
-        ReadOwnWrites::no));
+    uint16_t coveringPosition = aql::Projections::kNoCoveringIndexPosition;
+
+    // projections we want to cover
+    aql::Projections edgeProjections(std::vector<aql::AttributeNamePath>(
+        {StaticStrings::FromString, StaticStrings::ToString}));
+
+    if (index->covers(edgeProjections)) {
+      // find opposite attribute
+      edgeProjections.setCoveringContext(index->collection().id(), index);
+
+      TRI_edge_direction_e dir = info.direction;
+      TRI_ASSERT(dir == TRI_EDGE_IN || dir == TRI_EDGE_OUT);
+
+      if (dir == TRI_EDGE_OUT) {
+        coveringPosition = edgeProjections.coveringIndexPosition(
+            aql::AttributeNamePath::Type::ToAttribute);
+      } else {
+        coveringPosition = edgeProjections.coveringIndexPosition(
+            aql::AttributeNamePath::Type::FromAttribute);
+      }
+
+      TRI_ASSERT(aql::Projections::isCoveringIndexPosition(coveringPosition));
+    }
+
+    csrs.emplace_back(
+        _trx->indexScanForCondition(
+            index, info.indexCondition, _tmpVar, defaultIndexIteratorOptions,
+            ReadOwnWrites::no,
+            static_cast<int>(
+                info.conditionNeedUpdate
+                    ? info.conditionMemberToUpdate
+                    : transaction::Methods::kNoMutableConditionIdx)),
+        coveringPosition);
   }
 }

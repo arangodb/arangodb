@@ -1019,11 +1019,10 @@ function IResearchFeatureDDLTestSuite () {
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
-        assertEqual(6, Object.keys(figures).length);
+        assertEqual(5, Object.keys(figures).length);
         assertEqual(0, figures.indexSize);
         assertEqual(0, figures.numDocs);
         assertEqual(0, figures.numLiveDocs);
-        assertEqual(0, figures.numBufferedDocs);
         assertEqual(1, figures.numFiles);
         assertEqual(0, figures.numSegments);
       }
@@ -1039,11 +1038,10 @@ function IResearchFeatureDDLTestSuite () {
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
-        assertEqual(6, Object.keys(figures).length);
+        assertEqual(5, Object.keys(figures).length);
         assertEqual(0, figures.indexSize);
         assertEqual(0, figures.numDocs);
         assertEqual(0, figures.numLiveDocs);
-        assertEqual(2, figures.numBufferedDocs);
         assertEqual(1, figures.numFiles);
         assertEqual(0, figures.numSegments);
       }
@@ -1061,11 +1059,10 @@ function IResearchFeatureDDLTestSuite () {
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
-        assertEqual(6, Object.keys(figures).length);
+        assertEqual(5, Object.keys(figures).length);
         assertTrue(0 < figures.indexSize);
         assertEqual(2, figures.numDocs);
         assertEqual(2, figures.numLiveDocs);
-        assertEqual(0, figures.numBufferedDocs);
         assertEqual(6, figures.numFiles);
         assertEqual(1, figures.numSegments);
       }
@@ -1085,11 +1082,10 @@ function IResearchFeatureDDLTestSuite () {
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
-        assertEqual(6, Object.keys(figures).length);
+        assertEqual(5, Object.keys(figures).length);
         assertTrue(0 < figures.indexSize);
         assertEqual(2, figures.numDocs);
         assertEqual(1, figures.numLiveDocs);
-        assertEqual(0, figures.numBufferedDocs);
         assertEqual(7, figures.numFiles);
         assertEqual(1, figures.numSegments);
       }
@@ -1108,11 +1104,10 @@ function IResearchFeatureDDLTestSuite () {
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
-        assertEqual(6, Object.keys(figures).length);
+        assertEqual(5, Object.keys(figures).length);
         assertEqual(0, figures.indexSize);
         assertEqual(0, figures.numDocs);
         assertEqual(0, figures.numLiveDocs);
-        assertEqual(0, figures.numBufferedDocs);
         assertEqual(1, figures.numFiles);
         assertEqual(0, figures.numSegments);
       }
@@ -1230,23 +1225,25 @@ function IResearchFeatureDDLTestSuite () {
     testLeftAnalyzerInDroppedDatabase: function () {
       const dbName = "TestNameDroppedDB";
       const analyzerName = "TestAnalyzer";
-      db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch (e) {}
-      db._createDatabase(dbName);
-      db._useDatabase(dbName);
-      analyzers.save(analyzerName, "identity");
-      // recreating database
-      db._useDatabase("_system");
-      db._dropDatabase(dbName);
-      db._createDatabase(dbName);
-      db._useDatabase(dbName);
+      try {
+        db._useDatabase("_system");
+        try { db._dropDatabase(dbName); } catch (e) {}
+        db._createDatabase(dbName);
+        db._useDatabase(dbName);
+        analyzers.save(analyzerName, "identity");
+        // recreating database
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+        db._createDatabase(dbName);
+        db._useDatabase(dbName);
 
-      assertNull(analyzers.analyzer(analyzerName));
-      // this should be no name conflict
-      analyzers.save(analyzerName, "text", {"stopwords" : [], "locale":"en"});
-
-      db._useDatabase("_system");
-      db._dropDatabase(dbName);
+        assertNull(analyzers.analyzer(analyzerName));
+        // this should be no name conflict
+        analyzers.save(analyzerName, "text", {"stopwords" : [], "locale":"en"});
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -1255,42 +1252,44 @@ function IResearchFeatureDDLTestSuite () {
     testIndexAnalyzerCollection : function() {
       const dbName = "TestNameDroppedDB";
       const analyzerName = "TestAnalyzer";
-      db._useDatabase("_system");
-      assertNotEqual(null, db._collection("_analyzers"));
-      try { db._dropDatabase(dbName); } catch (e) {}
-      try { analyzers.remove(analyzerName); } catch (e) {}
-      db._createDatabase(dbName);
-      db._useDatabase(dbName);
-      assertEqual(0, db._analyzers.count());
-      analyzers.save(analyzerName, "identity");
-      // recreating database
-      db._useDatabase("_system");
-      db._dropDatabase(dbName);
-      db._createDatabase(dbName);
-      db._useDatabase(dbName);
+      try {
+        db._useDatabase("_system");
+        assertNotEqual(null, db._collection("_analyzers"));
+        try { db._dropDatabase(dbName); } catch (e) {}
+        try { analyzers.remove(analyzerName); } catch (e) {}
+        db._createDatabase(dbName);
+        db._useDatabase(dbName);
+        assertEqual(0, db._analyzers.count());
+        analyzers.save(analyzerName, "identity");
+        // recreating database
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+        db._createDatabase(dbName);
+        db._useDatabase(dbName);
 
-      assertNull(analyzers.analyzer(analyzerName));
-      // this should be no name conflict
-      assertEqual(0, db._analyzers.count());
-      analyzers.save(analyzerName, "text", {"stopwords" : [], "locale":"en"});
-      assertEqual(1, db._analyzers.count());
+        assertNull(analyzers.analyzer(analyzerName));
+        // this should be no name conflict
+        assertEqual(0, db._analyzers.count());
+        analyzers.save(analyzerName, "text", {"stopwords" : [], "locale":"en"});
+        assertEqual(1, db._analyzers.count());
 
-      var view = db._createView("analyzersView", "arangosearch", {
-        links: {
-          _analyzers : {
-            includeAllFields:true,
-            analyzers: [ analyzerName ]
+        var view = db._createView("analyzersView", "arangosearch", {
+          links: {
+            _analyzers : {
+              includeAllFields:true,
+              analyzers: [ analyzerName ]
+            }
           }
-        }
-      });
+        });
 
-      var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
-      assertEqual(1, db._analyzers.count());
-      assertEqual(1, res.length);
-      assertEqual(db._analyzers.toArray()[0], res[0]);
-
-      db._useDatabase("_system");
-      db._dropDatabase(dbName);
+        var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
+        assertEqual(1, db._analyzers.count());
+        assertEqual(1, res.length);
+        assertEqual(db._analyzers.toArray()[0], res[0]);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
     }
 
   };

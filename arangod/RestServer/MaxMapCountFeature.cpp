@@ -23,7 +23,6 @@
 
 #include "MaxMapCountFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
@@ -39,9 +38,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-MaxMapCountFeature::MaxMapCountFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "MaxMapCount") {
+MaxMapCountFeature::MaxMapCountFeature(Server& server)
+    : ArangodFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }

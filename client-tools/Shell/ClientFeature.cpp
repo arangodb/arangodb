@@ -53,10 +53,14 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ClientFeature::ClientFeature(application_features::ApplicationServer& server,
-                             bool allowJwtSecret, size_t maxNumEndpoints,
-                             double connectionTimeout, double requestTimeout)
-    : HttpEndpointProvider(server, "Client"),
+ClientFeature::ClientFeature(ApplicationServer& server,
+                             CommunicationFeaturePhase& comm,
+                             size_t registration, bool allowJwtSecret,
+                             size_t maxNumEndpoints, double connectionTimeout,
+                             double requestTimeout)
+    : HttpEndpointProvider(server, registration, name()),
+      _comm{comm},
+      _console{},
       _databaseName(StaticStrings::SystemDatabase),
       _endpoints{Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP)},
       _maxNumEndpoints(maxNumEndpoints),
@@ -80,9 +84,6 @@ ClientFeature::ClientFeature(application_features::ApplicationServer& server,
       _haveServerPassword(false),
       _forceJson(false) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter<CommunicationFeaturePhase>();
-  startsAfter<GreetingsFeaturePhase>();
 }
 
 void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -137,7 +138,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                     "force to not use VelocyPack for easier debugging",
                     new BooleanParameter(&_forceJson),
                     arangodb::options::makeDefaultFlags(
-                        arangodb::options::Flags::Hidden))
+                        arangodb::options::Flags::Uncommon))
         .setIntroducedIn(30600);
   }
 
@@ -153,7 +154,8 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
         "connections - even when a new connection to another server is "
         "created",
         new BooleanParameter(&_askJwtSecret),
-        arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+        arangodb::options::makeDefaultFlags(
+            arangodb::options::Flags::Uncommon));
 
     options->addOption(
         "--server.jwt-secret-keyfile",
@@ -164,7 +166,8 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
         "connections - even when a new connection to another server is "
         "created",
         new StringParameter(&_jwtSecretFile),
-        arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+        arangodb::options::makeDefaultFlags(
+            arangodb::options::Flags::Uncommon));
   }
 
   options->addOption("--server.connection-timeout",
@@ -180,7 +183,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--server.max-packet-size",
       "maximum packet size (in bytes) for client/server communication",
       new UInt64Parameter(&_maxPacketSize),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
 
@@ -194,7 +197,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new UInt16Parameter(&_codePage),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsWindows,
-                                   arangodb::options::Flags::Hidden));
+                                   arangodb::options::Flags::Uncommon));
 #endif
 }
 
@@ -308,14 +311,9 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 void ClientFeature::readPassword() {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-  try {
-    ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
-
-    if (console.isEnabled()) {
-      _password = console.readPassword("Please specify a password: ");
-      return;
-    }
-  } catch (...) {
+  if (_console && _console->isEnabled()) {
+    _password = _console->readPassword("Please specify a password: ");
+    return;
   }
 
   std::cout << "Please specify a password: " << std::flush;
@@ -326,14 +324,9 @@ void ClientFeature::readPassword() {
 void ClientFeature::readJwtSecret() {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-  try {
-    ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
-
-    if (console.isEnabled()) {
-      _jwtSecret = console.readPassword("Please specify the JWT secret: ");
-      return;
-    }
-  } catch (...) {
+  if (_console && _console->isEnabled()) {
+    _jwtSecret = _console->readPassword("Please specify the JWT secret: ");
+    return;
   }
 
   std::cout << "Please specify the JWT secret: " << std::flush;
@@ -399,7 +392,7 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
   }
 
   std::unique_ptr<GeneralClientConnection> connection(
-      GeneralClientConnection::factory(server(), endpoint, _requestTimeout,
+      GeneralClientConnection::factory(_comm, endpoint, _requestTimeout,
                                        _connectionTimeout, _retries,
                                        _sslProtocol));
 
@@ -437,6 +430,10 @@ void ClientFeature::stop() {
 
 void ClientFeature::setDatabaseName(std::string const& databaseName) {
   _databaseName = normalizeUtf8ToNFC(databaseName);
+}
+
+ApplicationServer& ClientFeature::server() const noexcept {
+  return _comm.server();
 }
 
 std::string ClientFeature::buildConnectedMessage(

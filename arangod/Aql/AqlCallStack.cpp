@@ -26,7 +26,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 // TODO: This class is not yet memory efficient or optimized in any way.
 // it might be reimplemented soon to have the above features, Focus now is on

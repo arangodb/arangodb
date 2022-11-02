@@ -44,7 +44,6 @@ class Slice;
 namespace arangodb::aql {
 
 class ExecutionNode;
-class ExecutionPlan;
 struct Variable;
 
 /// @brief static analysis, walker class and information collector

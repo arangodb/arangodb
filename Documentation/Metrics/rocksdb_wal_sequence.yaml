@@ -5,7 +5,7 @@ help: |
 unit: number
 type: gauge
 category: RocksDB
-complexity: high
+complexity: advanced
 exposedBy:
   - dbserver
   - agent

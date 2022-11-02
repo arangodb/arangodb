@@ -59,13 +59,13 @@ function testSuite() {
         .filter((line) => line.match(/^arangodb_/))
         .forEach((line) => {
           let name = line.replace(/[ \{].*$/g, '');
-          let value = Number(line.replace(/^.+ (\d+)$/, '$1'));
+          let value = Number(line.replace(/^.*{.*}([0-9.]+)$/, '$1'));
           metrics[name] = value;
         });
 
       const expected = [
-        "arangodb_process_statistics_minor_page_faults",
-        "arangodb_process_statistics_major_page_faults",
+        "arangodb_process_statistics_minor_page_faults_total",
+        "arangodb_process_statistics_major_page_faults_total",
         "arangodb_process_statistics_user_time",
         "arangodb_process_statistics_system_time",
         "arangodb_process_statistics_number_of_threads",
@@ -73,7 +73,7 @@ function testSuite() {
         "arangodb_process_statistics_resident_set_size_percent",
         "arangodb_process_statistics_virtual_memory_size",
         "arangodb_server_statistics_physical_memory",
-        "arangodb_server_statistics_server_uptime",
+        "arangodb_server_statistics_server_uptime_total",
       ];
 
       expected.forEach((name) => {

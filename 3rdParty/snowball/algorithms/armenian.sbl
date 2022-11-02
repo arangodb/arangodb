@@ -1,0 +1,301 @@
+stringescapes {}
+
+stringdef a    '{U+0561}' // 531
+stringdef b    '{U+0562}' // 532
+stringdef g    '{U+0563}' // 533
+stringdef d    '{U+0564}' // 534
+stringdef ye   '{U+0565}' // 535
+stringdef z    '{U+0566}' // 536
+stringdef e    '{U+0567}' // 537
+stringdef y    '{U+0568}' // 538
+stringdef dt   '{U+0569}' // 539
+stringdef zh   '{U+056A}' // 53A
+stringdef i    '{U+056B}' // 53B
+stringdef l    '{U+056C}' // 53C
+stringdef kh   '{U+056D}' // 53D
+stringdef ts   '{U+056E}' // 53E
+stringdef k    '{U+056F}' // 53F
+stringdef h    '{U+0570}' // 540
+stringdef dz   '{U+0571}' // 541
+stringdef gh   '{U+0572}' // 542
+stringdef djch '{U+0573}' // 543
+stringdef m    '{U+0574}' // 544
+stringdef j    '{U+0575}' // 545
+stringdef n    '{U+0576}' // 546
+stringdef sh   '{U+0577}' // 547
+stringdef vo   '{U+0578}' // 548
+stringdef ch   '{U+0579}' // 549
+stringdef p    '{U+057A}' // 54A
+stringdef dj   '{U+057B}' // 54B
+stringdef r    '{U+057C}' // 54C
+stringdef s    '{U+057D}' // 54D
+stringdef v    '{U+057E}' // 54E
+stringdef t    '{U+057F}' // 54F
+stringdef r'   '{U+0580}' // 550
+stringdef c    '{U+0581}' // 551
+stringdef u    '{U+0582}' // 552                  //vjun
+stringdef bp   '{U+0583}' // 553
+stringdef q    '{U+0584}' // 554
+stringdef ev   '{U+0587}'
+stringdef o    '{U+0585}' // 555
+stringdef f    '{U+0586}' // 556
+
+routines ( mark_regions R2
+           adjective
+           verb
+           noun
+           ending
+)
+
+externals ( stem )
+
+integers ( pV p2 )
+
+groupings ( v )
+
+define v '{a}{e}{i}{o}{u}{ye}{vo}{y}'
+
+define mark_regions as (
+
+    $pV = limit
+    $p2 = limit
+    do (
+        gopast v  setmark pV  gopast non-v
+        gopast v  gopast non-v  setmark p2
+       )
+)
+
+backwardmode (
+
+    define R2 as $p2 <= cursor
+
+    define adjective as (
+        [substring] among (
+            '{b}{a}{r'}'
+            '{p}{ye}{s}'
+            '{vo}{r'}{e}{n}'
+            '{vo}{v}{i}{n}'
+            '{a}{k}{i}'
+            '{l}{a}{j}{n}'
+            '{r'}{vo}{r'}{d}'
+            '{ye}{r'}{vo}{r'}{d}'
+            '{a}{k}{a}{n}'
+            '{a}{l}{i}'
+            '{k}{vo}{t}'
+            '{ye}{k}{ye}{n}'
+            '{vo}{r'}{a}{k}'
+            '{ye}{gh}'
+            '{v}{vo}{u}{n}'
+            '{ye}{r'}{ye}{n}'
+            '{a}{r'}{a}{n}'
+            '{ye}{n}'
+            '{a}{v}{ye}{t}'
+            '{g}{i}{n}'
+            '{i}{v}'
+            '{a}{t}'
+            '{i}{n}'
+
+              (delete)
+        )
+    )
+
+    define verb as (
+        [substring] among (
+            '{vo}{u}{m}'
+            '{v}{vo}{u}{m}'
+            '{a}{l}{vo}{u}'
+            '{ye}{l}{vo}{u}'
+            '{v}{ye}{l}'
+            '{a}{n}{a}{l}'
+            '{ye}{l}{vo}{u}{c}'
+            '{a}{l}{vo}{u}{c}'
+            '{y}{a}{l}'
+            '{y}{ye}{l}'
+            '{a}{l}{vo}{v}'
+            '{ye}{l}{vo}{v}'
+            '{a}{l}{i}{s}'
+            '{ye}{l}{i}{s}'
+            '{ye}{n}{a}{l}'
+            '{a}{c}{n}{a}{l}'
+            '{ye}{c}{n}{ye}{l}'
+            '{c}{n}{ye}{l}'
+            '{n}{ye}{l}'
+            '{a}{t}{ye}{l}'
+            '{vo}{t}{ye}{l}'
+            '{k}{vo}{t}{ye}{l}'
+            '{t}{ye}{l}'
+            '{v}{a}{ts}'
+            '{ye}{c}{v}{ye}{l}'
+            '{a}{c}{v}{ye}{l}'
+            '{ye}{c}{i}{r'}'
+            '{a}{c}{i}{r'}'
+            '{ye}{c}{i}{n}{q}'
+            '{a}{c}{i}{n}{q}'
+            '{v}{ye}{c}{i}{r'}'
+            '{v}{ye}{c}{i}{n}{q}'
+            '{v}{ye}{c}{i}{q}'
+            '{v}{ye}{c}{i}{n}'
+            '{a}{c}{r'}{i}{r'}'
+            '{a}{c}{r'}{ye}{c}'
+            '{a}{c}{r'}{i}{n}{q}'
+            '{a}{c}{r'}{i}{q}'
+            '{a}{c}{r'}{i}{n}'
+            '{ye}{c}{i}{q}'
+            '{a}{c}{i}{q}'
+            '{ye}{c}{i}{n}'
+            '{a}{c}{i}{n}'
+            '{a}{c}{a}{r'}'
+            '{a}{c}{a}{v}'
+            '{a}{c}{a}{n}{q}'
+            '{a}{c}{a}{q}'
+            '{a}{c}{a}{n}'
+            '{v}{ye}{c}{i}'
+            '{a}{c}{r'}{i}'
+            '{ye}{c}{a}{r'}'
+            '{ye}{c}{a}{v}'
+            '{c}{a}{n}{q}'
+            '{c}{a}{q}'
+            '{c}{a}{n}'
+            '{a}{c}{a}'
+            '{a}{c}{i}'
+            '{ye}{c}{a}'
+            '{ch}{ye}{l}'
+            '{ye}{c}{i}'
+            '{a}{r'}'
+            '{a}{v}'
+            '{a}{n}{q}'
+            '{a}{q}'
+            '{a}{n}'
+            '{a}{l}'
+            '{ye}{l}'
+            '{ye}{c}'
+            '{a}{c}'
+            '{v}{ye}'
+            '{a}'
+
+                (delete)
+        )
+    )
+
+    define noun as (
+        [substring] among (
+            '{a}{ts}{vo}'
+            '{a}{n}{a}{k}'
+            '{a}{n}{o}{c}'
+            '{a}{r'}{a}{n}'
+            '{a}{r'}{q}'
+            '{p}{a}{n}'
+            '{s}{t}{a}{n}'
+            '{ye}{gh}{e}{n}'
+            '{ye}{n}{q}'
+            '{i}{k}'
+            '{i}{ch}'
+            '{i}{q}'
+            '{m}{vo}{u}{n}{q}'
+            '{j}{a}{k}'
+            '{j}{vo}{u}{n}'
+            '{vo}{n}{q}'
+            '{vo}{r'}{d}'
+            '{vo}{c}'
+            '{ch}{ye}{q}'
+            '{v}{a}{ts}{q}'
+            '{v}{vo}{r'}'
+            '{a}{v}{vo}{r'}'
+            '{vo}{u}{dt}{j}{vo}{u}{n}'
+            '{vo}{u}{k}'
+            '{vo}{u}{h}{i}'
+            '{vo}{u}{j}{dt}'
+            '{vo}{u}{j}{q}'
+            '{vo}{u}{s}{t}'
+            '{vo}{u}{s}'
+            '{c}{i}'
+            '{a}{l}{i}{q}'
+            '{a}{n}{i}{q}'
+            '{i}{l}'
+            '{i}{ch}{q}'
+            '{vo}{u}{n}{q}'
+            '{g}{a}{r'}'
+            '{vo}{u}'
+            '{a}{k}'
+            '{a}{n}'
+            '{q}'
+
+                (delete)
+        )
+    )
+
+    define ending as (
+        [substring] R2 among (
+            '{n}{ye}{r'}{y}'
+            '{n}{ye}{r'}{n}'
+            '{n}{ye}{r'}{i}'
+            '{n}{ye}{r'}{d}'
+            '{ye}{r'}{i}{c}'
+            '{n}{ye}{r'}{i}{c}'
+            '{ye}{r'}{i}'
+            '{ye}{r'}{d}'
+            '{ye}{r'}{n}'
+            '{ye}{r'}{y}'
+            '{n}{ye}{r'}{i}{n}'
+            '{vo}{u}{dt}{j}{a}{n}{n}'
+            '{vo}{u}{dt}{j}{a}{n}{y}'
+            '{vo}{u}{dt}{j}{a}{n}{s}'
+            '{vo}{u}{dt}{j}{a}{n}{d}'
+            '{vo}{u}{dt}{j}{a}{n}'
+            '{ye}{r'}{i}{n}'
+            '{i}{n}'
+            '{s}{a}'
+            '{vo}{dj}'
+            '{i}{c}'
+            '{ye}{r'}{vo}{v}'
+            '{n}{ye}{r'}{vo}{v}'
+            '{ye}{r'}{vo}{u}{m}'
+            '{n}{ye}{r'}{vo}{u}{m}'
+            '{vo}{u}{n}'
+            '{vo}{u}{d}'
+            '{v}{a}{n}{s}'
+            '{v}{a}{n}{y}'
+            '{v}{a}{n}{d}'
+            '{a}{n}{y}'
+            '{a}{n}{d}'
+            '{v}{a}{n}'
+            '{vo}{dj}{y}'
+            '{vo}{dj}{s}'
+            '{vo}{dj}{d}'
+            '{vo}{c}'
+            '{vo}{u}{c}'
+            '{vo}{dj}{i}{c}'
+            '{c}{i}{c}'
+            '{v}{i}{c}'
+            '{v}{i}'
+            '{v}{vo}{v}'
+            '{vo}{v}'
+            '{a}{n}{vo}{v}'
+            '{a}{n}{vo}{u}{m}'
+            '{v}{a}{n}{i}{c}'
+            '{a}{m}{b}'
+            '{a}{n}'
+            '{n}{ye}{r'}'
+            '{ye}{r'}'
+            '{v}{a}'
+            '{y}'
+            '{n}'
+            '{d}'
+            '{c}'
+            '{i}'
+
+                (delete)
+        )
+    )
+)
+
+define stem as (
+
+    do mark_regions
+    backwards setlimit tomark pV for (
+        do ending
+        do verb
+        do adjective
+        do noun
+    )
+)

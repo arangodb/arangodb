@@ -27,7 +27,6 @@
 #include "Basics/StringBuffer.h"
 
 #include <velocypack/Sink.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace basics {

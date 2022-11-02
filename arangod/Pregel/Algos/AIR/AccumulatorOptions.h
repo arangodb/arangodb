@@ -27,7 +27,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 #include <map>
 #include <unordered_set>
 #include <string>

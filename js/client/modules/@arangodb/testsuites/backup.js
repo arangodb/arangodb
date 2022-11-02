@@ -33,10 +33,11 @@ const functionsDocumentation = {
 };
 const optionsDocumentation = [
 ];
-
+const fs = require('fs');
 const _ = require('lodash');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const im = require('@arangodb/testutils/instance-manager');
 
 const CYAN = require('internal').COLORS.COLOR_CYAN;
 const RESET = require('internal').COLORS.COLOR_RESET;
@@ -45,10 +46,6 @@ const log = (text) => {
 };
 const makePath = (name) => {
   return tu.makePathUnix(tu.pathForTesting(`server/backup/${name}`));
-};
-
-const isAlive = (info, options) => {
-  return pu.arangod.check.instanceAlive(info, options);
 };
 
 const asRoot = {
@@ -76,137 +73,155 @@ const failPreStartMessage = (msg) => {
 
 var dumpPath;
 
-// //////////////////////////////////////////////////////////////////////////////
-// / We start a temporary system to generate the dumps that are agnostic
-// / of whether its a cluster or not.
-// //////////////////////////////////////////////////////////////////////////////
-const generateDumpData = (options) => {
-  if (dumpPath !== undefined) {
-    return dumpPath;
-  }
-  const conf = {
-    'server.authentication': 'true',
-    'server.jwt-secret': 'haxxmann'
-  };
-  
-  let instanceInfo = pu.startInstance('tcp', options, conf, 'backup');
 
-  if (instanceInfo === false) {
-    return failPreStartMessage('failed to start dataGenerator server!');
+
+class backupTestRunner extends tu.runInArangoshRunner {
+  constructor(options, testname, useAuth, user, restoreDir, checkUsers=true) {
+    super(options, testname, {}, checkUsers, false);
+    this.user = user;
+    this.useAuth = useAuth;
+    this.dumpPath = undefined;
+    this.restoreDir = restoreDir;
   }
 
-  log('Setting up');
-  let path = '';
-
-  try {
-    let setup = tu.runInArangosh(options, instanceInfo, makePath('backup-setup.js'), {});
-    if (!setup.status === true || !isAlive(instanceInfo, options)) {
-      log('Setup failed');
-      setup.failed = 1;
-      setup.state = false;
-      return setup;
+  // //////////////////////////////////////////////////////////////////////////////
+  // / We start a temporary system to generate the dumps that are agnostic
+  // / of whether its a cluster or not.
+  // //////////////////////////////////////////////////////////////////////////////
+  generateDumpData() {
+    let options = _.clone(this.options);
+    if (this.dumpPath !== undefined) {
+      return dumpPath;
     }
 
-    log('Create dump _system incl system collections');
-    path = instanceInfo.rootDir;
-
-    _.defaults(asRoot, options);
-
-    let dump = pu.run.arangoDumpRestore(asRoot, instanceInfo, 'dump', '_system', path, syssys, true, options.coreCheck);
-    if (dump.status === false || !isAlive(instanceInfo, options)) {
-      log('Dump failed');
-      dump.failed = 1;
-      dump.state = false;
-      return dump;
+    this.instanceManager = new im.instanceManager(this.options.protocol,
+                                                  this.options,
+                                                  _.clone(tu.testServerAuthInfo),
+                                                  'backup',
+                                                  fs.join(fs.getTempPath(), this.friendlyName));
+          
+    this.instanceManager.prepareInstance();
+    this.instanceManager.launchTcpDump("");
+    if (!this.instanceManager.launchInstance()) {
+      return failPreStartMessage('failed to start dataGenerator server!');
     }
+    this.instanceManager.reconnect();
 
-    log('Create dump _system excl system collections');
+    log('Setting up');
+    let path = '';
 
-    dump = pu.run.arangoDumpRestore(asRoot, instanceInfo, 'dump', '_system', path, sysNoSys, false, options.coreCheck);
-    if (dump.status === false || !isAlive(instanceInfo, options)) {
-      log('Dump failed');
-      dump.failed = 1;
-      dump.state = false;
-      return dump;
-    }
-
-    log('Dump successful');
-  } finally {
-    log('Shutting down dump server');
-
-    if (isAlive(instanceInfo, options)) {
-      options['server.jwt-secret'] = 'haxxmann';
-      if (!pu.shutdownInstance(instanceInfo, options)) {
-        path = {
-          state: false,
-          failed: 1,
-          shutdown: false,
-          message: "shutdown of dump server failed"
-        };
+    try {
+      let setup = this.runOneTest(makePath('backup-setup.js'));
+      if (!setup.status === true || !this.healthCheck()) {
+        log('Setup failed');
+        setup.failed = 1;
+        setup.state = false;
+        return setup;
       }
+
+      log('Create dump _system incl system collections');
+      path = this.instanceManager.rootDir;
+
+      _.defaults(asRoot, options);
+      let dump = pu.run.arangoDumpRestore(asRoot, this.instanceManager,
+                                          'dump', '_system', path, syssys,
+                                          true, options.coreCheck);
+      if (dump.status === false || !this.healthCheck()) {
+        log('Dump failed');
+        dump.failed = 1;
+        dump.state = false;
+        return dump;
+      }
+
+      log('Create dump _system excl system collections');
+
+      dump = pu.run.arangoDumpRestore(asRoot, this.instanceManager, 'dump', '_system',
+                                      path, sysNoSys, false, options.coreCheck);
+      if (dump.status === false || !this.healthCheck()) {
+        log('Dump failed: ' + JSON.stringify(dump));
+        dump.failed = 1;
+        dump.state = false;
+        return dump;
+      }
+
+      log('Dump successful');
+    } finally {
+      log('Shutting down dump server');
+
+      if (this.healthCheck()) {
+        options = Object.assign({}, options, tu.testServerAuthInfo);
+        if (!this.instanceManager.shutdownInstance()) {
+          path = {
+            state: false,
+            failed: 1,
+            shutdown: false,
+            message: "shutdown of dump server failed"
+          };
+        }
+        this.instanceManager.arangods[0].pid = null;
+        this.instanceManager.arangods[0].exitStatus = null;
+        fs.removeDirectoryRecursive(this.instanceManager.arangods[0].dataDir);
+        fs.makeDirectory(this.instanceManager.arangods[0].dataDir);
+        
+      }
+      log('done.');
+      print();
     }
-    log('done.');
-    print();
-  }
 
-  dumpPath = path;
-  return path;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / set up the test according to the testcase.
-// //////////////////////////////////////////////////////////////////////////////
-const setServerOptions = (options, serverOptions, customInstanceInfos, startStopHandlers) => {
-  let path = generateDumpData(_.clone(options));
-  if (typeof path === 'object' && path.failed === 1) {
-    log('DUMPING FAILED!');
+    dumpPath = path;
     return path;
   }
 
-  startStopHandlers['path'] = path;
-
-  if (startStopHandlers.useAuth) {
-    serverOptions['server.authentication'] = 'true';
-    serverOptions['server.jwt-secret'] = 'haxxmann';
-    options['server.authentication'] = 'true';
-    options['server.jwt-secret'] = 'haxxmann';
-  } else {
-    serverOptions['server.authentication'] = 'false';
-  }
-  return {
-    state: true,
-    shutdown: true
-  };
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / set up the test according to the testcase.
-// //////////////////////////////////////////////////////////////////////////////
-const setupBackupTest = (options, serverOptions, instanceInfo, customInstanceInfos, startStopHandlers) => {
-  let restore = pu.run.arangoDumpRestore(startStopHandlers.user,
-                                         instanceInfo,
-                                         'restore',
-                                         '_system',
-                                         startStopHandlers.path,
-                                         startStopHandlers.restoreDir,
-                                         true,
-                                         options.coreCheck);
-
-  if (restore.status === false || !isAlive(instanceInfo, options)) {
-    log('Restore failed');
-    restore.failed = 1;
+  // //////////////////////////////////////////////////////////////////////////////
+  // / set up the test according to the testcase.
+  // //////////////////////////////////////////////////////////////////////////////
+  preStart() {
+    this.dumpPath = this.generateDumpData();
+    if (typeof this.dumpPath === 'object' && this.dumpPath.failed === 1) {
+      log('DUMPING FAILED!');
+      return this.dumpPath;
+    }
+    if (this.useAuth) {
+      this.serverOptions = _.clone(tu.testServerAuthInfo);
+      this.options = Object.assign({}, this.options, tu.testServerAuthInfo);
+    } else {
+      this.serverOptions['server.authentication'] = 'false';
+    }
     return {
-      state: false,
-      message: restore.message,
+      state: true,
       shutdown: true
     };
   }
 
-  return {
-    shutdown: true,
-    state: true
-  };
-};
+  // //////////////////////////////////////////////////////////////////////////////
+  // / set up the test according to the testcase.
+  // //////////////////////////////////////////////////////////////////////////////
+  postStart(){
+    let restore = pu.run.arangoDumpRestore(this.user,
+                                           this.instanceManager,
+                                           'restore',
+                                           '_system',
+                                           this.dumpPath,
+                                           this.restoreDir,
+                                           true,
+                                           this.options.coreCheck);
+
+    if (restore.status === false || !this.healthCheck()) {
+      log('Restore failed');
+      restore.failed = 1;
+      return {
+        state: false,
+        message: restore.message,
+        shutdown: true
+      };
+    }
+
+    return {
+      shutdown: true,
+      state: true
+    };
+  }
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / testcases themselves
@@ -219,19 +234,12 @@ const setupBackupTest = (options, serverOptions, instanceInfo, customInstanceInf
 const BackupNoAuthSysTests = (options) => {
   log('Test dump without authentication, restore _system incl system collections');
 
-  let startStopHandlers = {
-    preStart: setServerOptions,
-    postStart: setupBackupTest,
-    useAuth: false,
-    user: {},
-    restoreDir: syssys
-  };
-
-  return tu.performTests(options,
-                         testPaths.BackupNoAuthSysTests,
-                         'BackupNoAuthSysTests',
-                         tu.runInArangosh, {},
-                         startStopHandlers);
+  return new backupTestRunner(options,
+                              'BackupNoAuthSysTests',
+                              false,
+                              {},
+                              syssys).run(
+                                testPaths.BackupNoAuthSysTests);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -240,20 +248,12 @@ const BackupNoAuthSysTests = (options) => {
 
 const BackupNoAuthNoSysTests = (options) => {
   log('Test dump without authentication, restore _system excl system collections');
-
-  let startStopHandlers = {
-    preStart: setServerOptions,
-    postStart: setupBackupTest,
-    useAuth: false,
-    user: {},
-    restoreDir: sysNoSys
-  };
-
-  return tu.performTests(options,
-                         testPaths.BackupNoAuthNoSysTests,
-                         'BackupNoAuthNoSysTests',
-                         tu.runInArangosh, {},
-                         startStopHandlers);
+  return new backupTestRunner(options,
+                              'BackupNoAuthSysTests',
+                              false,
+                              {},
+                              sysNoSys).run(
+                                testPaths.BackupNoAuthNoSysTests);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -262,20 +262,12 @@ const BackupNoAuthNoSysTests = (options) => {
 
 const BackupAuthSysTests = (options) => {
   log('Test dump with authentication, restore _system incl system collections');
-
-  let startStopHandlers = {
-    preStart: setServerOptions,
-    postStart: setupBackupTest,
-    useAuth: true,
-    user: asRoot,
-    restoreDir: syssys
-  };
-
-  return tu.performTests(options,
-                         testPaths.BackupAuthSysTests,
-                         'BackupAuthSysTests',
-                         tu.runInArangosh, {},
-                         startStopHandlers);
+  return new backupTestRunner(options,
+                              'BackupAuthSysTests',
+                              true,
+                              asRoot,
+                              syssys).run(
+                                testPaths.BackupAuthSysTests);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -284,20 +276,12 @@ const BackupAuthSysTests = (options) => {
 
 const BackupAuthNoSysTests = (options) => {
   log('Test dump with authentication, restore _system excl system collections');
-
-  let startStopHandlers = {
-    preStart: setServerOptions,
-    postStart: setupBackupTest,
-    useAuth: true,
-    user: asRoot,
-    restoreDir: sysNoSys
-  };
-
-  return tu.performTests(options,
-                         testPaths.BackupAuthNoSysTests,
-                         'BackupAuthNoSysTests',
-                         tu.runInArangosh, {},
-                         startStopHandlers);
+  return new backupTestRunner(options,
+                              'BackupAuthNoSysTests',
+                              true,
+                              asRoot,
+                              sysNoSys).run(
+                                testPaths.BackupAuthNoSysTests);
 };
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {

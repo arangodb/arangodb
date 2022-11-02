@@ -31,7 +31,6 @@
 
 #include <v8.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/Common.h"
 #include "Basics/StringBuffer.h"
@@ -40,6 +39,16 @@
 
 struct TRI_v8_global_t;
 struct TRI_vocbase_t;
+
+namespace arangodb {
+class V8SecurityFeature;
+class HttpEndpointProvider;
+class EncryptionFeature;
+namespace application_features {
+class ApplicationServer;
+class CommunicationFeaturePhase;
+}  // namespace application_features
+}  // namespace arangodb
 
 /// @brief shortcut for fetching the isolate from the thread context
 #define ISOLATE v8::Isolate* isolate = v8::Isolate::GetCurrent()
@@ -453,6 +462,10 @@ inline std::string TRI_ObjectToString(v8::Local<v8::Context>& context,
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>( \
       isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT))
 
+#define TRI_GET_SERVER_GLOBALS(server)                    \
+  V8Global<server>* v8g = static_cast<V8Global<server>*>( \
+      isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT))
+
 #define TRI_GET_GLOBALS2(isolate)                       \
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>( \
       isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT))
@@ -485,21 +498,18 @@ struct TRI_v8_global_t {
   /// @brief wrapper around a v8::Persistent to hold a shared_ptr and cleanup
   class SharedPtrPersistent {
    public:
-    SharedPtrPersistent(                    // constructor used ONLY by
-                                            // SharedPtrPersistent::emplace(...)
-        v8::Isolate& isolate,               // isolate
-        std::shared_ptr<void> const& value  // value
-    );
+    // emplace persistent shared pointer
+    static std::pair<SharedPtrPersistent&, bool> emplace(
+        v8::Isolate& isolate, std::shared_ptr<void> const& value);
+
+    // constructor used ONLY by SharedPtrPersistent::emplace(...)
+    SharedPtrPersistent(v8::Isolate& isolate,
+                        std::shared_ptr<void> const& value);
     SharedPtrPersistent(SharedPtrPersistent&&) = delete;
     SharedPtrPersistent(SharedPtrPersistent const&) = delete;
     ~SharedPtrPersistent();
     SharedPtrPersistent& operator=(SharedPtrPersistent&&) = delete;
     SharedPtrPersistent& operator=(SharedPtrPersistent const&) = delete;
-    static std::pair<SharedPtrPersistent&, bool>
-    emplace(                                // emplace persistent shared pointer
-        v8::Isolate& isolate,               // isolate
-        std::shared_ptr<void> const& value  // value
-    );
     v8::Local<v8::External> get() const { return _persistent.Get(&_isolate); }
 
    private:
@@ -508,8 +518,20 @@ struct TRI_v8_global_t {
     std::shared_ptr<void> _value;
   };
 
-  explicit TRI_v8_global_t(arangodb::application_features::ApplicationServer&,
-                           v8::Isolate*, size_t id);
+  template<typename Server>
+  TRI_v8_global_t(Server& server, v8::Isolate* isolate, size_t id)
+      : TRI_v8_global_t{
+            server,
+            server.template getFeature<arangodb::V8SecurityFeature>(),
+            server.template getFeature<arangodb::HttpEndpointProvider>(),
+            server.template getFeature<
+                arangodb::application_features::CommunicationFeaturePhase>(),
+#ifdef USE_ENTERPRISE
+            server.template getFeature<arangodb::EncryptionFeature>(),
+#endif
+            isolate,
+            id} {
+  }
 
   ~TRI_v8_global_t();
 
@@ -548,6 +570,9 @@ struct TRI_v8_global_t {
 
   /// @brief replicated log template
   v8::Persistent<v8::ObjectTemplate> VocbaseReplicatedLogTempl;
+
+  /// @brief prototype state template
+  v8::Persistent<v8::ObjectTemplate> VocbasePrototypeStateTempl;
 
   /// @brief TRI_vocbase_t template
   v8::Persistent<v8::ObjectTemplate> VocbaseTempl;
@@ -606,6 +631,9 @@ struct TRI_v8_global_t {
 
   /// @brief "address" key name
   v8::Persistent<v8::String> AddressKey;
+
+  /// @brief "allowDirtyReads" key name
+  v8::Persistent<v8::String> AllowDirtyReadsKey;
 
   /// @brief "allowUseDatabase" key name
   v8::Persistent<v8::String> AllowUseDatabaseKey;
@@ -848,17 +876,60 @@ struct TRI_v8_global_t {
 
   arangodb::application_features::ApplicationServer& _server;
 
+  arangodb::V8SecurityFeature& _v8security;
+  arangodb::HttpEndpointProvider& _endpoints;
+#ifdef USE_ENTERPRISE
+  arangodb::EncryptionFeature& _encryption;
+#endif
+  arangodb::application_features::CommunicationFeaturePhase& _comm;
+
  private:
-  /// @brief shared pointer mapping for weak pointers, holds shared pointers so
+  TRI_v8_global_t(
+      arangodb::application_features::ApplicationServer& server,
+      arangodb::V8SecurityFeature& v8security,
+      arangodb::HttpEndpointProvider& endpoints,
+      arangodb::application_features::CommunicationFeaturePhase& comm,
+#ifdef USE_ENTERPRISE
+      arangodb::EncryptionFeature& encryption,
+#endif
+      v8::Isolate* isolate, size_t id);
+
+  /// @brief shared pointer mapping for weak pointers, holds shared pointers
+  /// so
   ///        they don't get deallocated while in use by V8
   /// @note used ONLY by the SharedPtrPersistent class
   std::unordered_map<void*, SharedPtrPersistent> JSSharedPtrs;
 };
 
-/// @brief creates a global context
-TRI_v8_global_t* TRI_CreateV8Globals(
-    arangodb::application_features::ApplicationServer&, v8::Isolate*,
-    size_t id);
+// Intentionally final since we don't have virtual destructor
+template<typename Server>
+struct V8Global final : TRI_v8_global_t {
+  V8Global(Server& server, v8::Isolate* isolate, size_t id)
+      : TRI_v8_global_t{server, isolate, id} {}
+
+  Server& server() noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* p = dynamic_cast<Server*>(&_server);
+    TRI_ASSERT(p);
+    return *p;
+#else
+    return static_cast<Server&>(_server);
+#endif
+  }
+};
+
+// Creates a global context
+template<typename Server>
+V8Global<Server>* CreateV8Globals(Server& server, v8::Isolate* isolate,
+                                  size_t id) {
+  TRI_GET_GLOBALS();
+
+  TRI_ASSERT(v8g == nullptr);
+  v8g = new V8Global<Server>(server, isolate, id);
+  isolate->SetData(arangodb::V8PlatformFeature::V8_DATA_SLOT, v8g);
+
+  return static_cast<V8Global<Server>*>(v8g);
+}
 
 /// @brief gets the global context
 TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate*);

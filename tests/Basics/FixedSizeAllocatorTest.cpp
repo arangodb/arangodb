@@ -34,6 +34,7 @@ TEST(FixedSizeAllocatorTest, test_Int) {
   FixedSizeAllocator<int> allocator;
 
   EXPECT_EQ(0, allocator.numUsed());
+  EXPECT_EQ(0, allocator.usedBlocks());
 
   int* p = allocator.allocate(24);
 
@@ -42,28 +43,33 @@ TEST(FixedSizeAllocatorTest, test_Int) {
   EXPECT_EQ(0, (uintptr_t(p) % alignof(int)));
   EXPECT_EQ(24, *p);
   EXPECT_EQ(1, allocator.numUsed());
+  EXPECT_EQ(1, allocator.usedBlocks());
 
   p = allocator.allocate(42);
 
   EXPECT_EQ(42, *p);
   EXPECT_EQ(0, (uintptr_t(p) % alignof(int)));
   EXPECT_EQ(2, allocator.numUsed());
+  EXPECT_EQ(1, allocator.usedBlocks());
 
   p = allocator.allocate(23);
 
   EXPECT_EQ(23, *p);
   EXPECT_EQ(0, (uintptr_t(p) % alignof(int)));
   EXPECT_EQ(3, allocator.numUsed());
+  EXPECT_EQ(1, allocator.usedBlocks());
 
   allocator.clear();
 
   EXPECT_EQ(0, allocator.numUsed());
+  EXPECT_EQ(0, allocator.usedBlocks());
 }
 
 TEST(FixedSizeAllocatorTest, test_UInt64) {
   FixedSizeAllocator<uint64_t> allocator;
 
   EXPECT_EQ(0, allocator.numUsed());
+  EXPECT_EQ(0, allocator.usedBlocks());
 
   uint64_t* p = allocator.allocate(24);
 
@@ -72,22 +78,26 @@ TEST(FixedSizeAllocatorTest, test_UInt64) {
   EXPECT_EQ(0, (uintptr_t(p) % alignof(uint64_t)));
   EXPECT_EQ(24, *p);
   EXPECT_EQ(1, allocator.numUsed());
+  EXPECT_EQ(1, allocator.usedBlocks());
 
   p = allocator.allocate(42);
 
   EXPECT_EQ(42, *p);
   EXPECT_EQ(0, (uintptr_t(p) % alignof(int)));
   EXPECT_EQ(2, allocator.numUsed());
+  EXPECT_EQ(1, allocator.usedBlocks());
 
   p = allocator.allocate(23);
 
   EXPECT_EQ(23, *p);
   EXPECT_EQ(0, (uintptr_t(p) % alignof(int)));
   EXPECT_EQ(3, allocator.numUsed());
+  EXPECT_EQ(1, allocator.usedBlocks());
 
   allocator.clear();
 
   EXPECT_EQ(0, allocator.numUsed());
+  EXPECT_EQ(0, allocator.usedBlocks());
 }
 
 TEST(FixedSizeAllocatorTest, test_Struct) {
@@ -101,6 +111,7 @@ TEST(FixedSizeAllocatorTest, test_Struct) {
   FixedSizeAllocator<Testee> allocator;
 
   EXPECT_EQ(0, allocator.numUsed());
+  EXPECT_EQ(0, allocator.usedBlocks());
 
   Testee* p = allocator.allocate("foo", "bar");
 
@@ -110,22 +121,26 @@ TEST(FixedSizeAllocatorTest, test_Struct) {
   EXPECT_EQ("foo", p->abc);
   EXPECT_EQ("bar", p->def);
   EXPECT_EQ(1, allocator.numUsed());
+  EXPECT_EQ(1, allocator.usedBlocks());
 
   p = allocator.allocate("foobar", "baz");
   EXPECT_EQ(0, (uintptr_t(p) % alignof(Testee)));
   EXPECT_EQ("foobar", p->abc);
   EXPECT_EQ("baz", p->def);
   EXPECT_EQ(2, allocator.numUsed());
+  EXPECT_EQ(1, allocator.usedBlocks());
 
   allocator.clear();
 
   EXPECT_EQ(0, allocator.numUsed());
+  EXPECT_EQ(0, allocator.usedBlocks());
 }
 
 TEST(FixedSizeAllocatorTest, test_MassAllocation) {
   FixedSizeAllocator<std::string> allocator;
 
   EXPECT_EQ(0, allocator.numUsed());
+  EXPECT_EQ(0, allocator.usedBlocks());
 
   for (size_t i = 0; i < 10 * 1000; ++i) {
     std::string* p = allocator.allocate("test" + std::to_string(i));
@@ -133,8 +148,74 @@ TEST(FixedSizeAllocatorTest, test_MassAllocation) {
     EXPECT_EQ("test" + std::to_string(i), *p);
     EXPECT_EQ(i + 1, allocator.numUsed());
   }
+  EXPECT_GT(allocator.usedBlocks(), 0);
 
   allocator.clear();
 
   EXPECT_EQ(0, allocator.numUsed());
+  EXPECT_EQ(0, allocator.usedBlocks());
+}
+
+TEST(FixedSizeAllocatorTest, test_Clear) {
+  FixedSizeAllocator<uint64_t> allocator;
+
+  EXPECT_EQ(0, allocator.numUsed());
+  EXPECT_EQ(0, allocator.usedBlocks());
+
+  size_t numItemsLeft = 0;
+  size_t usedBlocks = 0;
+  for (size_t i = 0; i < 10 * 1000; ++i) {
+    if (numItemsLeft == 0) {
+      numItemsLeft = FixedSizeAllocator<uint64_t>::capacityForBlock(usedBlocks);
+      ++usedBlocks;
+    }
+    uint64_t* p = allocator.allocate(i);
+    --numItemsLeft;
+
+    EXPECT_EQ(i, *p);
+    EXPECT_EQ(i + 1, allocator.numUsed());
+    EXPECT_EQ(usedBlocks, allocator.usedBlocks());
+  }
+
+  allocator.clear();
+
+  EXPECT_EQ(0, allocator.numUsed());
+  EXPECT_EQ(0, allocator.usedBlocks());
+
+  uint64_t* p = allocator.allocate(42);
+  EXPECT_EQ(42, *p);
+  EXPECT_EQ(1, allocator.numUsed());
+  EXPECT_EQ(1, allocator.usedBlocks());
+}
+
+TEST(FixedSizeAllocatorTest, test_ClearMost) {
+  FixedSizeAllocator<uint64_t> allocator;
+
+  EXPECT_EQ(0, allocator.numUsed());
+  EXPECT_EQ(0, allocator.usedBlocks());
+
+  size_t numItemsLeft = 0;
+  size_t usedBlocks = 0;
+  for (size_t i = 0; i < 10 * 1000; ++i) {
+    if (numItemsLeft == 0) {
+      numItemsLeft = FixedSizeAllocator<uint64_t>::capacityForBlock(usedBlocks);
+      ++usedBlocks;
+    }
+    uint64_t* p = allocator.allocate(i);
+    --numItemsLeft;
+
+    EXPECT_EQ(i, *p);
+    EXPECT_EQ(i + 1, allocator.numUsed());
+    EXPECT_EQ(usedBlocks, allocator.usedBlocks());
+  }
+
+  allocator.clearMost();
+
+  EXPECT_EQ(0, allocator.numUsed());
+  EXPECT_EQ(1, allocator.usedBlocks());
+
+  uint64_t* p = allocator.allocate(42);
+  EXPECT_EQ(42, *p);
+  EXPECT_EQ(1, allocator.numUsed());
+  EXPECT_EQ(1, allocator.usedBlocks());
 }

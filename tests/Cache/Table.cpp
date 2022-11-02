@@ -34,14 +34,14 @@
 using namespace arangodb::cache;
 
 TEST(CacheTableTest, test_static_allocation_size_method) {
-  for (std::uint32_t i = Table::minLogSize; i <= Table::maxLogSize; i++) {
+  for (std::uint32_t i = Table::kMinLogSize; i <= Table::kMaxLogSize; i++) {
     ASSERT_TRUE(Table::allocationSize(i) ==
                 (sizeof(Table) + (BUCKET_SIZE << i) + Table::padding));
   }
 }
 
 TEST(CacheTableTest, test_basic_constructor_behavior) {
-  for (std::uint32_t i = Table::minLogSize; i <= 20; i++) {
+  for (std::uint32_t i = Table::kMinLogSize; i <= 20; i++) {
     auto table = std::make_shared<Table>(i);
     ASSERT_NE(table.get(), nullptr);
     ASSERT_EQ(table->memoryUsage(),
@@ -52,12 +52,12 @@ TEST(CacheTableTest, test_basic_constructor_behavior) {
 }
 
 TEST(CacheTableTest, test_basic_bucket_fetching_behavior) {
-  auto table = std::make_shared<Table>(Table::minLogSize);
+  auto table = std::make_shared<Table>(Table::kMinLogSize);
   ASSERT_NE(table.get(), nullptr);
   table->enable();
   for (std::uint64_t i = 0; i < table->size(); i++) {
     std::uint32_t hash =
-        static_cast<std::uint32_t>(i << (32 - Table::minLogSize));
+        static_cast<std::uint32_t>(i << (32 - Table::kMinLogSize));
     Table::BucketLocker guard = table->fetchAndLockBucket(hash, -1);
     ASSERT_TRUE(guard.isValid());
     ASSERT_TRUE(guard.isLocked());
@@ -81,9 +81,9 @@ class CacheTableMigrationTest : public ::testing::Test {
   std::shared_ptr<Table> huge;
 
   CacheTableMigrationTest()
-      : small(std::make_shared<Table>(Table::minLogSize)),
-        large(std::make_shared<Table>(Table::minLogSize + 2)),
-        huge(std::make_shared<Table>(Table::minLogSize + 4)) {
+      : small(std::make_shared<Table>(Table::kMinLogSize)),
+        large(std::make_shared<Table>(Table::kMinLogSize + 2)),
+        huge(std::make_shared<Table>(Table::kMinLogSize + 4)) {
     small->enable();
     large->enable();
     huge->enable();

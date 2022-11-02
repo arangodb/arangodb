@@ -27,16 +27,7 @@
 namespace arangodb {
 namespace iresearch {
 
-LogTopic TOPIC(std::string{StaticStrings::DataSourceType}, LogLevel::INFO);
-
-arangodb::LogicalDataSource::Type const& dataSourceType() {
-  static auto& type =
-      arangodb::LogicalDataSource::Type::emplace(StaticStrings::DataSourceType);
-
-  return type;
-}
-
-arangodb::LogTopic& logTopic() { return TOPIC; }
+LogTopic TOPIC{std::string{"arangosearch"}, LogLevel::INFO};
 
 }  // namespace iresearch
 }  // namespace arangodb

@@ -37,13 +37,14 @@ class AqlItemBlockInputRange {
   struct HasDataRow {};
 
  public:
-  explicit AqlItemBlockInputRange(ExecutorState state, std::size_t skipped = 0);
+  explicit AqlItemBlockInputRange(MainQueryState state,
+                                  std::size_t skipped = 0);
 
-  AqlItemBlockInputRange(ExecutorState, std::size_t skipped,
+  AqlItemBlockInputRange(MainQueryState, std::size_t skipped,
                          arangodb::aql::SharedAqlItemBlockPtr const&,
                          std::size_t startIndex);
 
-  AqlItemBlockInputRange(ExecutorState, std::size_t skipped,
+  AqlItemBlockInputRange(MainQueryState, std::size_t skipped,
                          arangodb::aql::SharedAqlItemBlockPtr&&,
                          std::size_t startIndex) noexcept;
 
@@ -53,7 +54,6 @@ class AqlItemBlockInputRange {
   arangodb::aql::SharedAqlItemBlockPtr getBlock() const noexcept;
 
   ExecutorState upstreamState() const noexcept;
-  bool upstreamHasMore() const noexcept;
 
   bool hasValidRow() const noexcept;
 
@@ -106,7 +106,7 @@ class AqlItemBlockInputRange {
    */
   [[nodiscard]] auto countShadowRows() const noexcept -> std::size_t;
 
-  [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
+  [[nodiscard]] auto finalState() const noexcept -> MainQueryState;
 
   /**
    * @brief Skip over all remaining data rows until the next shadow row.
@@ -127,7 +127,7 @@ class AqlItemBlockInputRange {
  private:
   arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};
   std::size_t _rowIndex{};
-  ExecutorState _finalState{ExecutorState::HASMORE};
+  MainQueryState _finalState{MainQueryState::HASMORE};
   // How many rows were skipped upstream
   std::size_t _skipped{};
 };

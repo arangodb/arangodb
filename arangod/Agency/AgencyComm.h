@@ -34,14 +34,13 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Agency/PathComponent.h"
-#include "AgencyComm.h"
 #include "Basics/Mutex.h"
 #include "Basics/Result.h"
 #include "Network/types.h"
 #include "Rest/CommonDefines.h"
+#include "RestServer/arangod.h"
 #include "Metrics/Fwd.h"
 
 namespace arangodb {
@@ -584,7 +583,7 @@ class AgencyComm {
   static uint64_t const MAX_SLEEP_TIME = 50000;     // microseconds
 
  public:
-  explicit AgencyComm(application_features::ApplicationServer&);
+  explicit AgencyComm(ArangodServer&);
 
   AgencyCommResult sendServerState(double timeout);
 
@@ -648,7 +647,7 @@ class AgencyComm {
   AgencyCommResult sendTransactionWithFailover(AgencyTransaction const&,
                                                double timeout = 0.0);
 
-  application_features::ApplicationServer& server();
+  ArangodServer& server();
 
   bool ensureStructureInitialized();
 
@@ -668,7 +667,7 @@ class AgencyComm {
   bool shouldInitializeStructure();
 
  private:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
 };
 }  // namespace arangodb

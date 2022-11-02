@@ -29,8 +29,10 @@
 #include "Logger/LogContext.h"
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
+#include "Futures/Unit.h"
 
 #include <atomic>
+#include <memory>
 #include <string_view>
 #include <thread>
 
@@ -45,8 +47,6 @@ class Exception;
 namespace futures {
 template<typename T>
 class Future;
-template<typename T>
-class Try;
 }  // namespace futures
 
 class GeneralRequest;
@@ -63,8 +63,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RestHandler& operator=(RestHandler const&) = delete;
 
  public:
-  RestHandler(application_features::ApplicationServer&, GeneralRequest*,
-              GeneralResponse*);
+  RestHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
   virtual ~RestHandler();
 
   void assignHandlerId();
@@ -89,7 +88,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     return std::move(_response);
   }
 
-  application_features::ApplicationServer& server() { return _server; }
+  ArangodServer& server() { return _server; }
 
   RequestStatistics::Item const& statistics() { return _statistics; }
   RequestStatistics::Item&& stealStatistics();
@@ -120,10 +119,10 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   RequestLane determineRequestLane();
 
-  virtual void prepareExecute(bool isContinue) {}
+  virtual void prepareExecute(bool isContinue);
   virtual RestStatus execute() = 0;
   virtual RestStatus continueExecute() { return RestStatus::DONE; }
-  virtual void shutdownExecute(bool isFinalized) noexcept {}
+  virtual void shutdownExecute(bool isFinalized) noexcept;
 
   // you might need to implment this in your handler
   // if it will be executed in an async job
@@ -156,27 +155,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // generates an error
   void generateError(arangodb::Result const&);
 
-  template<typename T>
-  RestStatus waitForFuture(futures::Future<T>&& f) {
-    if (f.isReady()) {             // fast-path out
-      f.result().throwIfFailed();  // just throw the error upwards
-      return RestStatus::DONE;
-    }
-    bool done = false;
-    std::move(f).thenFinal(withLogContext([self = shared_from_this(),
-                                           &done](futures::Try<T>&& t) -> void {
-      auto thisPtr = self.get();
-      if (t.hasException()) {
-        thisPtr->handleExceptionPtr(std::move(t).exception());
-      }
-      if (std::this_thread::get_id() == thisPtr->_executionMutexOwner.load()) {
-        done = true;
-      } else {
-        thisPtr->wakeupHandler();
-      }
-    }));
-    return done ? RestStatus::DONE : RestStatus::WAITING;
-  }
+  RestStatus waitForFuture(futures::Future<futures::Unit>&& f);
 
   enum class HandlerState : uint8_t {
     PREPARE = 0,
@@ -213,7 +192,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
   RequestStatistics::Item _statistics;
 
  private:
@@ -232,6 +211,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   bool _trackedAsOngoingLowPrio;
 
   RequestLane _lane;
+
+  std::shared_ptr<LogContext::Values> _logContextScopeValues;
+  LogContext::EntryPtr _logContextEntry;
 
  protected:
   std::atomic<bool> _canceled;

@@ -23,22 +23,23 @@
 
 #include "RestReplicationHandler.h"
 
+#include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Basics/ConditionLocker.h"
-#include "Basics/HybridLogicalClock.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/hashes.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ResignShardLeadership.h"
@@ -69,6 +70,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utilities/NameValidator.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Collections.h"
@@ -80,7 +82,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -113,9 +114,9 @@ static bool ignoreHiddenEnterpriseCollection(std::string const& name,
                                              bool force) {
 #ifdef USE_ENTERPRISE
   if (!force && name[0] == '_') {
-    if (strncmp(name.c_str(), "_local_", 7) == 0 ||
-        strncmp(name.c_str(), "_from_", 6) == 0 ||
-        strncmp(name.c_str(), "_to_", 4) == 0) {
+    if (name.starts_with(StaticStrings::FullLocalPrefix) ||
+        name.starts_with(StaticStrings::FullFromPrefix) ||
+        name.starts_with(StaticStrings::FullToPrefix)) {
       LOG_TOPIC("944c4", WARN, arangodb::Logger::REPLICATION)
           << "Restore ignoring collection " << name
           << ". Will be created via SmartGraphs of a full dump. If you want to "
@@ -255,12 +256,10 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   return {};
 }
 
-RestReplicationHandler::RestReplicationHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestReplicationHandler::RestReplicationHandler(ArangodServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
-
-RestReplicationHandler::~RestReplicationHandler() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error if called on a coordinator server
@@ -284,7 +283,6 @@ std::string const RestReplicationHandler::LoggerTickRanges =
 std::string const RestReplicationHandler::LoggerFirstTick = "logger-first-tick";
 std::string const RestReplicationHandler::LoggerFollow = "logger-follow";
 std::string const RestReplicationHandler::Batch = "batch";
-std::string const RestReplicationHandler::Barrier = "barrier";
 std::string const RestReplicationHandler::Inventory = "inventory";
 std::string const RestReplicationHandler::Keys = "keys";
 std::string const RestReplicationHandler::Revisions = "revisions";
@@ -379,11 +377,6 @@ RestStatus RestReplicationHandler::execute() {
       } else {
         handleCommandBatch();
       }
-    } else if (command == Barrier) {
-      if (isCoordinatorError()) {
-        return RestStatus::DONE;
-      }
-      handleCommandBarrier();
     } else if (command == Inventory) {
       // get overview of collections and indexes followed by some extra data
       // example call: curl --dump -
@@ -1339,8 +1332,22 @@ Result RestReplicationHandler::processRestoreCollection(
     }
 #endif
 
+    if (parameters.get(StaticStrings::UsesRevisionsAsDocumentIds).isNone() &&
+        (parameters.get(StaticStrings::SyncByRevision).isNone() ||
+         parameters.get(StaticStrings::SyncByRevision).isTrue())) {
+      // for restored collections that do not have "syncByRevision" nor
+      // "usesRevisionsAsDocumentIds" set, set "usesRevisionsAsDocumentIds"
+      // to true. This allows the usage of revision trees for the collection.
+      toMerge.add(StaticStrings::UsesRevisionsAsDocumentIds, VPackValue(true));
+    }
+
     // Always ignore `shadowCollections` they were accidentially dumped in
     // arangodb versions earlier than 3.3.6
+#ifdef USE_ENTERPRISE
+    LogicalCollection::addEnterpriseShardingStrategy(toMerge, parameters);
+#endif
+
+    // Remove ShadowCollections entry
     toMerge.add(StaticStrings::ShadowCollections,
                 arangodb::velocypack::Slice::nullSlice());
     toMerge.close();  // TopLevel
@@ -1591,7 +1598,7 @@ Result RestReplicationHandler::parseBatch(
             checkRev = false;
 
             char ridBuffer[arangodb::basics::maxUInt64StringSize];
-            RevisionId newRid = physical->newRevisionId();
+            RevisionId newRid = collection->newRevisionId();
 
             documentsToInsert.add(it.key);
             documentsToInsert.add(newRid.toValuePair(ridBuffer));
@@ -1919,6 +1926,12 @@ Result RestReplicationHandler::processRestoreIndexes(
         idx = physical->createIndex(idxDef, /*restore*/ true, created);
       } catch (basics::Exception const& e) {
         if (e.code() == TRI_ERROR_NOT_IMPLEMENTED) {
+          continue;
+        }
+        if (auto const& message = e.message();
+            message.find("arangodb_search_num_failed_commits") !=
+            std::string::npos) {
+          // TODO(MBkkt) Fix it! Now it's single correct and simple way :(
           continue;
         }
 
@@ -2545,6 +2558,21 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
+  TRI_IF_FAILURE("LeaderWrongChecksumOnSoftLock" + col->name()) {
+    // Check if we are a softLock, if yes simulate non-matching checksums.
+    transaction::Manager* mgr = transaction::ManagerFeature::manager();
+    TRI_ASSERT(mgr != nullptr);
+    auto trxCtxtLease =
+        mgr->leaseManagedTrx(readLockId, AccessMode::Type::READ, true);
+    if (trxCtxtLease) {
+      transaction::Methods trx{trxCtxtLease};
+      if (!trx.isLocked(col.get(), AccessMode::Type::EXCLUSIVE)) {
+        referenceChecksum =
+            ResultT<std::string>::success("ThisCannotBeMatched");
+      }
+    }
+  }
+
   LOG_TOPIC("40b17", DEBUG, Logger::REPLICATION)
       << "Compare Leader: " << referenceChecksum.get()
       << " == Follower: " << checksumSlice.copyString();
@@ -2723,7 +2751,7 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
 void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   TRI_ASSERT(ServerState::instance()->isDBServer());
   bool success = false;
-  VPackSlice const body = this->parseVPackBody(success);
+  VPackSlice body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
@@ -2804,6 +2832,10 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     // This has potential to never ever finish, so we need a short
     // hard lock for the final sync.
     lockType = AccessMode::Type::EXCLUSIVE;
+
+    TRI_IF_FAILURE("LeaderBlockRequestsLanesForSyncOnShard" + col->name()) {
+      TRI_AddFailurePointDebugging("BlockSchedulerMediumQueue");
+    }
   }
 
   LOG_TOPIC("4fac2", DEBUG, Logger::REPLICATION)
@@ -3011,14 +3043,6 @@ void RestReplicationHandler::handleCommandLoggerTickRanges() {
 
 bool RestReplicationHandler::prepareRevisionOperation(
     RevisionOperationContext& ctx) {
-  auto& selector = server().getFeature<EngineSelectorFeature>();
-  if (!selector.isRocksDB()) {
-    generateError(
-        rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
-        "this storage engine does not support revision-based replication");
-    return false;
-  }
-
   LOG_TOPIC("253e2", TRACE, arangodb::Logger::REPLICATION)
       << "enter prepareRevisionOperation";
 
@@ -3042,10 +3066,23 @@ bool RestReplicationHandler::prepareRevisionOperation(
     return false;
   }
 
-  // get resume
-  std::string const& resumeString = _request->value("resume", found);
+  // get resume.
+  // we first try the parameter "resumeHLC" - if set, this will contain a
+  // timestamp-encoded HLC value
+  std::string const& resumeString =
+      _request->value(StaticStrings::RevisionTreeResumeHLC, found);
   if (found) {
-    ctx.resume = RevisionId::fromString(resumeString);
+    // "resumeHLC" is set. use it
+    ctx.resume = RevisionId::fromHLC(resumeString);
+  } else {
+    // "resumeHLC" is not set. now fall back to the parameter "resume". this
+    // parameter contains either a numeric value of a timestamp-encoded HLC
+    // value
+    std::string const& resumeString =
+        _request->value(StaticStrings::RevisionTreeResume, found);
+    if (found) {
+      ctx.resume = RevisionId::fromString(resumeString);
+    }
   }
 
   // print request
@@ -3138,8 +3175,10 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
         badFormat = true;
         break;
       }
-      RevisionId left = RevisionId::fromSlice(first);
-      RevisionId right = RevisionId::fromSlice(second);
+      // note: always decoding as HLC timestamps is fine here, because the
+      // sender side unconditionally encodes the revisions using HLC-encoding
+      RevisionId left = RevisionId::fromHLC(first.stringView());
+      RevisionId right = RevisionId::fromHLC(second.stringView());
       if (left == RevisionId::max() || right == RevisionId::max() ||
           left >= right || left < previousRight) {
         badFormat = true;
@@ -3158,6 +3197,8 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
     return;
   }
 
+  bool encodeAsHLC = _request->parsedValue("encodeAsHLC", false);
+
   RevisionReplicationIterator& it =
       *static_cast<RevisionReplicationIterator*>(ctx.iter.get());
   it.seek(ctx.resume);
@@ -3173,8 +3214,9 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
     RevisionId right;
     auto setRange = [&body, &range, &left, &right](std::size_t index) -> void {
       range = body.at(index);
-      left = RevisionId::fromSlice(range.at(0));
-      right = RevisionId::fromSlice(range.at(1));
+      // the sender side always encodes the revisions here using HLC encoding
+      left = RevisionId::fromHLC(range.at(0).stringView());
+      right = RevisionId::fromHLC(range.at(1).stringView());
     };
     setRange(current);
 
@@ -3199,7 +3241,11 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
         }
 
         if (it.hasMore() && it.revision() >= left && it.revision() <= right) {
-          response.add(it.revision().toValuePair(ridBuffer));
+          if (encodeAsHLC) {
+            response.add(VPackValue(it.revision().toHLC()));
+          } else {
+            response.add(it.revision().toValuePair(ridBuffer));
+          }
           ++total;
           resumeNext = it.revision().next();
           it.next();
@@ -3236,6 +3282,8 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
       if (body.length() > 0 && resumeNext <= right) {
         response.add(StaticStrings::RevisionTreeResume,
                      resumeNext.toValuePair(ridBuffer));
+        response.add(StaticStrings::RevisionTreeResumeHLC,
+                     VPackValue(resumeNext.toHLC()));
       }
     }
   }
@@ -3255,6 +3303,14 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
     return;
   }
 
+  // the "encodeAsHLC" parameter is sent from the following versions onwards:
+  // - 3.8.8 or higher
+  // - 3.9.4 or higher
+  // - 3.10.1 or higher
+  // - 3.11.0 or higher
+  // - 4.0 higher
+  bool encodeAsHLC = _request->parsedValue("encodeAsHLC", false);
+
   bool success = false;
   VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
@@ -3268,7 +3324,12 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
         badFormat = true;
         break;
       }
-      RevisionId rev = RevisionId::fromSlice(entry);
+      RevisionId rev;
+      if (encodeAsHLC) {
+        rev = RevisionId::fromHLC(entry.stringView());
+      } else {
+        rev = RevisionId::fromSlice(entry);
+      }
       if (rev == RevisionId::max()) {
         badFormat = true;
         break;
@@ -3303,12 +3364,29 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
     VPackArrayBuilder docs(&response);
 
     for (VPackSlice entry : VPackArrayIterator(body)) {
-      RevisionId rev = RevisionId::fromSlice(entry);
+      RevisionId rev;
+      if (encodeAsHLC) {
+        rev = RevisionId::fromHLC(entry.stringView());
+      } else {
+        rev = RevisionId::fromSlice(entry);
+      }
+      // We assume that the rev is actually present, otherwise it would not
+      // have been ordered. But we want this code to work if revisions in
+      // the list arrive in some arbitrary order. However, in most cases
+      // the list will contain adjacent revs in ascending order. Therefore,
+      // we want to try a next() on the iterator first (if this makes sense).
+      // However, if we then still have not found the right revision, we need
+      // to seek. If the rev exists, the iterator will then point to the right
+      // document:
       if (it.hasMore() && it.revision() < rev) {
+        it.next();
+      }
+      if (!it.hasMore() || it.revision() != rev) {
         it.seek(rev);
       }
-      VPackSlice res =
-          it.hasMore() ? it.document() : velocypack::Slice::emptyObjectSlice();
+      VPackSlice res = it.hasMore() && it.revision() == rev
+                           ? it.document()
+                           : velocypack::Slice::emptyObjectSlice();
 
       auto byteSize = res.byteSize();
       if (size + byteSize > chunkSize && size > 0) {
@@ -3387,6 +3465,14 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
     // needed in case we restore cluster related data into single server
     // instance
     patch.add(StaticStrings::DataSourcePlanId, VPackSlice::nullSlice());
+    if (slice.get(StaticStrings::UsesRevisionsAsDocumentIds).isNone() &&
+        (slice.get(StaticStrings::SyncByRevision).isNone() ||
+         slice.get(StaticStrings::SyncByRevision).isTrue())) {
+      // for restored collections that do not have the attribute
+      // "usesRevisionsAsDocumentIds" set, set "usesRevisionsAsDocumentIds"
+      // to true. This allows the usage of revision trees for the collection.
+      patch.add(StaticStrings::UsesRevisionsAsDocumentIds, VPackValue(true));
+    }
   }
   patch.close();
 
@@ -3397,7 +3483,7 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
 
   // Initializing creation options
   TRI_col_type_e collectionType = Helper::getNumericValue<TRI_col_type_e, int>(
-      slice, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN);
+      slice, StaticStrings::DataSourceType, TRI_COL_TYPE_DOCUMENT);
   std::vector<CollectionCreationInfo> infos{{name, collectionType, slice}};
   bool isNewDatabase = false;
   bool allowSystem = true;
@@ -3415,9 +3501,10 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
   OperationOptions options(_context);
   std::vector<std::shared_ptr<LogicalCollection>> collections;
   Result res = methods::Collections::create(
-      _vocbase, options, infos, true, enforceReplicationFactor, isNewDatabase,
-      nullptr, collections, allowSystem,
-      allowEnterpriseCollectionsOnSingleServer, true);
+      _vocbase, options, infos, /*createWaitsForSyncReplication*/ true,
+      enforceReplicationFactor, isNewDatabase, nullptr, collections,
+      allowSystem, allowEnterpriseCollectionsOnSingleServer,
+      /*isRestore*/ true);
   if (res.fail()) {
     return res.errorNumber();
   }
@@ -3495,17 +3582,27 @@ ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
 }
 
 namespace {
-struct RebootCookie : public arangodb::TransactionState::Cookie {
-  RebootCookie(CallbackGuard&& g) : guard(std::move(g)) {}
-  ~RebootCookie() = default;
+
+struct RebootCookie final : public arangodb::TransactionState::Cookie {
+  explicit RebootCookie(CallbackGuard&& g) noexcept : guard{std::move(g)} {}
+
   CallbackGuard guard;
 };
+
 }  // namespace
 
 Result RestReplicationHandler::createBlockingTransaction(
     TransactionId id, LogicalCollection& col, double ttl,
     AccessMode::Type access, RebootId const& rebootId,
     std::string const& serverId) {
+  // it is ok to acquire the scope here in all cases. otherwise we
+  // may block replication. note: we need this here in case the
+  // leader is read-only (e.g. because the license has expired).
+  // if we are not using superuser scope here and the leader is
+  // read-only, trying to grab the lock in exclusive mode will
+  // return a "read-only" error.
+  ExecContextScope scope(&ExecContext::superuser());
+
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
@@ -3552,8 +3649,7 @@ Result RestReplicationHandler::createBlockingTransaction(
 
       auto rGuard =
           std::make_unique<RebootCookie>(ci.rebootTracker().callMeOnChange(
-              RebootTracker::PeerState(serverId, rebootId), std::move(f),
-              std::move(comment)));
+              {serverId, rebootId}, std::move(f), std::move(comment)));
       auto ctx = mgr->leaseManagedTrx(id, AccessMode::Type::WRITE,
                                       /*isSideUser*/ false);
 
@@ -3726,4 +3822,40 @@ void RestReplicationHandler::registerTombstone(TransactionId id) const {
                  RestReplicationHandler::_tombstoneTimeout);
   }
   timeoutTombstones();
+}
+RequestLane RestReplicationHandler::lane() const {
+  auto const& suffixes = _request->suffixes();
+
+  size_t const len = suffixes.size();
+  if (len >= 1) {
+    std::string const& command = suffixes[0];
+    if (command == AddFollower) {
+      // Adding another server into the follower list
+      // should be done quickly. The follower at this stage
+      // is assumed to be in-sync, but cannot be used for failover
+      // as long as it is not added. So get this sorted out quickly.
+      return RequestLane::CLUSTER_INTERNAL;
+    }
+    if (command == HoldReadLockCollection) {
+      if (_request->requestType() == RequestType::DELETE_REQ) {
+        // A deleting request here, will allow as to unlock
+        // the collection / shard in question.
+        // In case of a hard-lock this shard is actually blocking
+        // other operations. So let's hurry up with this.
+        return RequestLane::CLUSTER_INTERNAL;
+      } else {
+        // This process will determine the start of a replication.
+        // It can be delayed a bit and can be queued after other write
+        // operations The follower is not in sync and requires to catch up
+        // anyways.
+        return RequestLane::SERVER_REPLICATION_CATCHUP;
+      }
+    }
+    if (command == RemoveFollower || command == LoggerFollow ||
+        command == Batch || command == Inventory || command == Revisions ||
+        command == Dump) {
+      return RequestLane::SERVER_REPLICATION_CATCHUP;
+    }
+  }
+  return RequestLane::SERVER_REPLICATION;
 }

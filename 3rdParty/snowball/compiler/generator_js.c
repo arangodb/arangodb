@@ -252,12 +252,20 @@ static void generate_AE(struct generator * g, struct node * p) {
         case c_plus:
             s = " + "; goto label0;
         case c_minus:
-            s = " - "; goto label0;
-        case c_divide:
-            s = " / ";
+            s = " - ";
         label0:
             write_char(g, '('); generate_AE(g, p->left);
             write_string(g, s); generate_AE(g, p->right); write_char(g, ')'); break;
+        case c_divide:
+            /* Snowball specifies integer division with semantics matching C,
+             * so we need to use `Math.trunc(x/y)` here.
+             */
+            write_string(g, "Math.trunc(");
+            generate_AE(g, p->left);
+            write_string(g, " / ");
+            generate_AE(g, p->right);
+            write_char(g, ')');
+            break;
         case c_cursor:
             w(g, "base.cursor"); break;
         case c_limit:
@@ -408,6 +416,7 @@ static void generate_try(struct generator * g, struct node * p) {
     if (keep_c) write_savecursor(g, p, savevar);
 
     g->failure_label = new_label(g);
+    str_clear(g->failure_str);
     if (keep_c) restore_string(p, g->failure_str, savevar);
 
     wsetlab_begin(g, g->failure_label);
@@ -506,6 +515,7 @@ static void generate_GO(struct generator * g, struct node * p, int style) {
     if (keep_c) write_savecursor(g, p, savevar);
 
     g->failure_label = new_label(g);
+    str_clear(g->failure_str);
     wsetlab_begin(g, g->failure_label);
     generate(g, p->left);
 
@@ -654,10 +664,16 @@ static void generate_hop(struct generator * g, struct node * p) {
     w(g, ";~N");
 
     g->I[0] = c_count;
-    if (p->mode == m_forward) {
-        write_failure_if(g, "0 > c~I0 || c~I0 > base.limit", p);
+    g->S[1] = p->mode == m_forward ? "> base.limit" : "< base.limit_backward";
+    g->S[2] = p->mode == m_forward ? "<" : ">";
+    if (p->AE->type == c_number) {
+        // Constant distance hop.
+        //
+        // No need to check for negative hop as that's converted to false by
+        // the analyser.
+        write_failure_if(g, "c~I0 ~S1", p);
     } else {
-        write_failure_if(g, "base.limit_backward > c~I0 || c~I0 > base.limit", p);
+        write_failure_if(g, "c~I0 ~S1 || c~I0 ~S2 base.cursor", p);
     }
     writef(g, "~Mbase.cursor = c~I0;~N", p);
     writef(g, "~}", p);
@@ -1125,7 +1141,15 @@ static void generate(struct generator * g, struct node * p) {
         case c_plusassign:    generate_integer_assign(g, p, "+="); break;
         case c_minusassign:   generate_integer_assign(g, p, "-="); break;
         case c_multiplyassign:generate_integer_assign(g, p, "*="); break;
-        case c_divideassign:  generate_integer_assign(g, p, "/="); break;
+        case c_divideassign:
+            /* Snowball specifies integer division with semantics matching C,
+             * so we need to use `Math.trunc(x/y)` here.
+             */
+            g->V[0] = p->name;
+            w(g, "~M~V0 = Math.trunc(~V0 / ");
+            generate_AE(g, p->AE);
+            w(g, ");~N");
+            break;
         case c_eq:            generate_integer_test(g, p, "=="); break;
         case c_ne:            generate_integer_test(g, p, "!="); break;
         case c_gr:            generate_integer_test(g, p, ">"); break;

@@ -27,8 +27,10 @@
 #include "Basics/Result.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
-#include "Containers/HashSet.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
+#include "Futures/Future.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
@@ -37,7 +39,7 @@
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
-#include <map>
+#include <string_view>
 #include <variant>
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -66,7 +68,7 @@ class TransactionCollection;
 struct TransactionStatistics;
 
 /// @brief transaction type
-class TransactionState {
+class TransactionState : public std::enable_shared_from_this<TransactionState> {
  public:
   /// @brief an implementation-dependent structure for storing runtime data
   struct Cookie {
@@ -96,23 +98,27 @@ class TransactionState {
   /// @return the previously associated cookie, if any
   Cookie::ptr cookie(void const* key, Cookie::ptr&& cookie);
 
-  [[nodiscard]] bool isRunningInCluster() const {
+  [[nodiscard]] bool isRunningInCluster() const noexcept {
     return ServerState::isRunningInCluster(_serverRole);
   }
-  [[nodiscard]] bool isDBServer() const {
+  [[nodiscard]] bool isDBServer() const noexcept {
     return ServerState::isDBServer(_serverRole);
   }
-  [[nodiscard]] bool isCoordinator() const {
+  [[nodiscard]] bool isCoordinator() const noexcept {
     return ServerState::isCoordinator(_serverRole);
   }
-  [[nodiscard]] ServerState::RoleEnum serverRole() const { return _serverRole; }
+  [[nodiscard]] ServerState::RoleEnum serverRole() const noexcept {
+    return _serverRole;
+  }
 
-  [[nodiscard]] transaction::Options& options() { return _options; }
-  [[nodiscard]] transaction::Options const& options() const { return _options; }
-  [[nodiscard]] TRI_vocbase_t& vocbase() const { return _vocbase; }
-  [[nodiscard]] TransactionId id() const { return _id; }
+  [[nodiscard]] transaction::Options& options() noexcept { return _options; }
+  [[nodiscard]] transaction::Options const& options() const noexcept {
+    return _options;
+  }
+  [[nodiscard]] TRI_vocbase_t& vocbase() const noexcept { return _vocbase; }
+  [[nodiscard]] TransactionId id() const noexcept { return _id; }
   [[nodiscard]] transaction::Status status() const noexcept { return _status; }
-  [[nodiscard]] bool isRunning() const {
+  [[nodiscard]] bool isRunning() const noexcept {
     return _status == transaction::Status::RUNNING;
   }
   void setRegistered() noexcept { _registeredTransaction = true; }
@@ -128,7 +134,7 @@ class TransactionState {
   [[nodiscard]] char const* actorName() const noexcept;
 
   /// @brief return a reference to the global transaction statistics/counters
-  TransactionStatistics& statistics() noexcept;
+  TransactionStatistics& statistics() const noexcept;
 
   [[nodiscard]] double lockTimeout() const { return _options.lockTimeout; }
   void lockTimeout(double value) {
@@ -194,21 +200,28 @@ class TransactionState {
   virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;
 
   /// @brief commit a transaction
-  virtual arangodb::Result commitTransaction(transaction::Methods* trx) = 0;
+  virtual futures::Future<arangodb::Result> commitTransaction(
+      transaction::Methods* trx) = 0;
 
   /// @brief abort a transaction
   virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;
 
-  virtual arangodb::Result performIntermediateCommitIfRequired(
+  virtual Result triggerIntermediateCommit() = 0;
+
+  virtual futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId cid) = 0;
 
   /// @brief return number of commits.
   /// for cluster transactions on coordinator, this either returns 0 or 1.
   /// for leader, follower or single-server transactions, this can include any
   /// number, because it will also include intermediate commits.
-  virtual uint64_t numCommits() const = 0;
+  virtual uint64_t numCommits() const noexcept = 0;
 
-  virtual bool hasFailedOperations() const = 0;
+  virtual uint64_t numIntermediateCommits() const noexcept = 0;
+
+  virtual void addIntermediateCommits(uint64_t value) = 0;
+
+  virtual bool hasFailedOperations() const noexcept = 0;
 
   virtual void beginQuery(bool /*isModificationQuery*/) {}
   virtual void endQuery(bool /*isModificationQuery*/) noexcept {}
@@ -229,22 +242,42 @@ class TransactionState {
   }
 
   /// @brief servers already contacted
-  [[nodiscard]] ::arangodb::containers::HashSet<std::string> const&
-  knownServers() const {
+  [[nodiscard]] containers::FlatHashSet<ServerID> const& knownServers() const {
     return _knownServers;
   }
 
-  [[nodiscard]] bool knowsServer(std::string const& uuid) const {
+  [[nodiscard]] bool knowsServer(std::string_view uuid) const {
     return _knownServers.find(uuid) != _knownServers.end();
   }
 
   /// @brief add a server to the known set
-  void addKnownServer(std::string const& uuid) { _knownServers.emplace(uuid); }
+  void addKnownServer(std::string_view uuid) { _knownServers.emplace(uuid); }
 
   /// @brief remove a server from the known set
-  void removeKnownServer(std::string const& uuid) { _knownServers.erase(uuid); }
+  void removeKnownServer(std::string_view uuid) { _knownServers.erase(uuid); }
 
   void clearKnownServers() { _knownServers.clear(); }
+
+  /// @brief add the choice of replica for some more shards to the map
+  /// _chosenReplicas. Please note that the choice of replicas is not
+  /// arbitrary! If two collections have the same `distributeShardsLike`
+  /// (or one has the other as `distributeShardsLike`), then the choices for
+  /// corresponding shards must be made in a coherent fashion. Therefore:
+  /// Do not fill in this map yourself, always use this method for this.
+  /// The Nolock version does not acquire the _replicaMutex and is only
+  /// called from other, public methods in this class.
+ private:
+  void chooseReplicasNolock(containers::FlatHashSet<ShardID> const& shards);
+
+ public:
+  void chooseReplicas(containers::FlatHashSet<ShardID> const& shards);
+
+  /// @brief lookup a replica choice for some shard, this basically looks
+  /// up things in `_chosenReplicas`, but if the shard is not found there,
+  /// it uses `chooseReplicas` to make a choice.
+  ServerID whichReplica(ShardID const& shard);
+  containers::FlatHashMap<ShardID, ServerID> whichReplicas(
+      containers::FlatHashSet<ShardID> const& shardIds);
 
   /// @returns tick of last operation in a transaction
   /// @note the value is guaranteed to be valid only after
@@ -262,7 +295,7 @@ class TransactionState {
 #ifdef USE_ENTERPRISE
   void addInaccessibleCollection(DataSourceId cid, std::string const& cname);
   [[nodiscard]] bool isInaccessibleCollection(DataSourceId cid);
-  [[nodiscard]] bool isInaccessibleCollection(std::string const& cname);
+  [[nodiscard]] bool isInaccessibleCollection(std::string_view cname);
 #endif
 
   /// @brief roll a new transaction ID on the coordintor. Use this method
@@ -312,8 +345,7 @@ class TransactionState {
   /// @brief current status
   transaction::Status _status = transaction::Status::CREATED;
 
-  arangodb::containers::SmallVectorWithArena<TransactionCollection*>
-      _collections;
+  containers::SmallVector<TransactionCollection*, 8> _collections;
 
   transaction::Hints _hints{};  // hints; set on _nestingLevel == 0
 
@@ -325,10 +357,32 @@ class TransactionState {
   TransactionId _id;  /// @brief local trx id
 
   /// a collection of stored cookies
-  std::map<void const*, Cookie::ptr> _cookies;
+  containers::FlatHashMap<void const*, Cookie::ptr> _cookies;
 
   /// @brief servers we already talked to for this transactions
-  ::arangodb::containers::HashSet<std::string> _knownServers;
+  containers::FlatHashSet<ServerID> _knownServers;
+
+  /// @brief current choice of replica to read from for read-from-followers
+  /// (aka allowDirtyReads). Please note that the choice of replicas is not
+  /// arbitrary! If two collections have the same `distributeShardsLike`
+  /// (or one has the other as `distributeShardsLike`), then the choices for
+  /// corresponding shards must be made in a coherent fashion. We call these
+  /// shards the "shard group" and the shard of the collection, of which all
+  /// others are `distributeShardsLike`, the "shard group leader".
+  /// The principle is the following: Whenever a shard appears first in a
+  /// read-from-follower read-only transaction, then we determine its shard
+  /// group leader and decide for it the replica, from which we read for
+  /// the whole shard group in this transaction. Note that this needs to
+  /// take into account **all** shards of the shard group, since we must be
+  /// sure that the server chosen is in sync **for all shards in the group**!
+  /// We store this choice in this map here for the shard group leader as well
+  /// as for the shard which just occurred.
+  /// Do not fill in this map yourself, always use the method `chooseReplicas`
+  /// for this. If you use `whichReplica(<shardID>)`, then this happens
+  /// automatically. This member is only relevant (and != nullptr) if the
+  /// transaction option allowDirtyReads is set.
+  std::mutex _replicaMutex;  // protects access to _chosenReplicas
+  std::unique_ptr<containers::FlatHashMap<ShardID, ServerID>> _chosenReplicas;
 
   QueryAnalyzerRevisions _analyzersRevision;
   bool _registeredTransaction = false;

@@ -23,6 +23,7 @@
 
 #include "RocksDBFulltextIndex.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Basics/StaticStrings.h"
@@ -34,15 +35,16 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <algorithm>
 
@@ -61,9 +63,11 @@ class RocksDBFulltextIndexIterator final : public IndexIterator {
         _docs(std::move(docs)),
         _pos(_docs.begin()) {}
 
-  char const* typeName() const override { return "fulltext-index-iterator"; }
+  std::string_view typeName() const noexcept final {
+    return "fulltext-index-iterator";
+  }
 
-  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, uint64_t limit) override {
     TRI_ASSERT(limit > 0);
     while (_pos != _docs.end() && limit > 0) {
       cb(*_pos);
@@ -73,7 +77,7 @@ class RocksDBFulltextIndexIterator final : public IndexIterator {
     return _pos != _docs.end();
   }
 
-  void resetImpl() override { _pos = _docs.begin(); }
+  void resetImpl() final { _pos = _docs.begin(); }
 
   void skipImpl(uint64_t count, uint64_t& skipped) override {
     while (_pos != _docs.end() && skipped < count) {
@@ -91,17 +95,23 @@ class RocksDBFulltextIndexIterator final : public IndexIterator {
 
 RocksDBFulltextIndex::RocksDBFulltextIndex(
     IndexId iid, arangodb::LogicalCollection& collection,
-    arangodb::velocypack::Slice const& info)
+    arangodb::velocypack::Slice info)
     : RocksDBIndex(iid, collection, info,
                    RocksDBColumnFamilyManager::get(
                        RocksDBColumnFamilyManager::Family::FulltextIndex),
-                   false),
+                   /*useCache*/ false,
+                   /*cacheManager*/ nullptr,
+                   /*engine*/
+                   collection.vocbase()
+                       .server()
+                       .getFeature<EngineSelectorFeature>()
+                       .engine<RocksDBEngine>()),
       _minWordLength(FulltextIndexLimits::minWordLengthDefault) {
   TRI_ASSERT(iid.isSet());
   TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(
                         RocksDBColumnFamilyManager::Family::FulltextIndex));
 
-  VPackSlice const value = info.get("minLength");
+  VPackSlice value = info.get("minLength");
 
   if (value.isNumber()) {
     _minWordLength = value.getNumericValue<int>();
@@ -514,7 +524,7 @@ Result RocksDBFulltextIndex::applyQueryToken(
 std::unique_ptr<IndexIterator> RocksDBFulltextIndex::iteratorForCondition(
     transaction::Methods* trx, aql::AstNode const* condNode,
     aql::Variable const* var, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites) {
+    ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(condNode != nullptr);
   TRI_ASSERT(condNode->numMembers() == 1);  // should only be an FCALL

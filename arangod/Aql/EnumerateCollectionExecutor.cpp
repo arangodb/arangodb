@@ -32,6 +32,7 @@
 #include "Aql/Collection.h"
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Projections.h"
@@ -48,22 +49,20 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace {
-std::vector<size_t> const emptyAttributePositions;
-}
-
 EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     RegisterId outputRegister, aql::QueryContext& query,
     Collection const* collection, Variable const* outVariable,
     bool produceResult, Expression* filter,
-    arangodb::aql::Projections projections, bool random, bool count,
-    ReadOwnWrites readOwnWrites)
+    arangodb::aql::Projections projections,
+    std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs,
+    bool random, bool count, ReadOwnWrites readOwnWrites)
     : _query(query),
       _collection(collection),
       _outVariable(outVariable),
       _filter(filter),
       _projections(std::move(projections)),
       _outputRegisterId(outputRegister),
+      _filterVarsToRegs(std::move(filterVarsToRegs)),
       _produceResult(produceResult),
       _random(random),
       _count(count),
@@ -90,6 +89,11 @@ EnumerateCollectionExecutorInfos::getProjections() const noexcept {
   return _projections;
 }
 
+arangodb::aql::Projections const&
+EnumerateCollectionExecutorInfos::getFilterProjections() const noexcept {
+  return _filterProjections;
+}
+
 bool EnumerateCollectionExecutorInfos::getProduceResult() const noexcept {
   return _produceResult;
 }
@@ -106,19 +110,22 @@ RegisterId EnumerateCollectionExecutorInfos::getOutputRegisterId() const {
   return _outputRegisterId;
 }
 
+std::vector<std::pair<VariableId, RegisterId>> const&
+EnumerateCollectionExecutorInfos::getFilterVarsToRegister() const noexcept {
+  return _filterVarsToRegs;
+}
+
 EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher,
                                                          Infos& infos)
     : _trx(infos.getQuery().newTrxContext()),
       _infos(infos),
-      _documentProducingFunctionContext(
-          _currentRow, nullptr, _infos.getOutputRegisterId(),
-          _infos.getProduceResult(), _infos.getQuery(), _trx,
-          _infos.getFilter(), _infos.getProjections(), true, false),
+      _documentProducingFunctionContext(_trx, _currentRow, infos),
       _state(ExecutionState::HASMORE),
       _executorState(ExecutorState::HASMORE),
       _cursorHasMore(false),
       _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
   TRI_ASSERT(_trx.status() == transaction::Status::RUNNING);
+
   _cursor = _trx.indexScan(
       _infos.getCollection()->name(),
       (_infos.getRandom() ? transaction::Methods::CursorType::ANY
@@ -144,12 +151,13 @@ uint64_t EnumerateCollectionExecutor::skipEntries(
   if (_infos.getFilter() == nullptr) {
     _cursor->skip(toSkip, actuallySkipped);
     stats.incrScanned(actuallySkipped);
-    _documentProducingFunctionContext.getAndResetNumScanned();
+    std::ignore = _documentProducingFunctionContext.getAndResetNumScanned();
   } else {
     _cursor->nextDocument(_documentSkipper, toSkip);
-    size_t filtered =
+    uint64_t filtered =
         _documentProducingFunctionContext.getAndResetNumFiltered();
-    size_t scanned = _documentProducingFunctionContext.getAndResetNumScanned();
+    uint64_t scanned =
+        _documentProducingFunctionContext.getAndResetNumScanned();
     TRI_ASSERT(scanned >= filtered);
     stats.incrFiltered(filtered);
     stats.incrScanned(scanned);
@@ -191,7 +199,8 @@ EnumerateCollectionExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
            * TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned()
            * == skipped);
            */
-          _documentProducingFunctionContext.getAndResetNumScanned();
+          std::ignore =
+              _documentProducingFunctionContext.getAndResetNumScanned();
         } else {
           // We need to call this to do the Accounting of FILTERED correctly.
           skipped += skipEntries(ExecutionBlock::SkipAllSize(), stats);
@@ -220,7 +229,7 @@ void EnumerateCollectionExecutor::initializeNewRow(
     // moves one row forward
     inputRange.advanceDataRow();
   }
-  std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
+  std::tie(std::ignore, _currentRow) = inputRange.peekDataRow();
   if (!_currentRow) {
     return;
   }
@@ -258,6 +267,7 @@ EnumerateCollectionExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   _documentProducingFunctionContext.setOutputRow(&output);
   while (inputRange.hasDataRow() && !output.isFull()) {
     if (!_cursorHasMore) {
+      // the following call can change the value of _cursorHasMore
       initializeNewRow(inputRange);
     }
 

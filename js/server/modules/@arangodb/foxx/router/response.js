@@ -379,9 +379,7 @@ module.exports =
       type = mimeTypes.lookup(type) || type;
 
       let handler;
-      for (const entry of this.context.service.types.entries()) {
-        const key = entry[0];
-        const value = entry[1];
+      for (const [key, value] of this.context.service.types.entries()) {
         let match;
         if (key instanceof RegExp) {
           match = type.test(key);

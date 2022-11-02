@@ -46,7 +46,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::INDEX:
     case EN::RETURN:
     case EN::TRAVERSAL:
-    case EN::K_SHORTEST_PATHS:
+    case EN::ENUMERATE_PATHS:
     case EN::SHORTEST_PATH:
     case EN::ENUMERATE_IRESEARCH_VIEW:
     case EN::WINDOW: {
@@ -129,8 +129,9 @@ bool ConditionFinder::before(ExecutionNode* en) {
       }
 
       std::vector<transaction::Methods::IndexHandle> usedIndexes;
-      auto [filtering, sorting] =
-          condition->findIndexes(node, usedIndexes, sortCondition.get());
+      bool oneIndexCondition{false};
+      auto [filtering, sorting] = condition->findIndexes(
+          node, usedIndexes, sortCondition.get(), oneIndexCondition);
 
       if (filtering || sorting) {
         bool descending = false;
@@ -153,6 +154,8 @@ bool ConditionFinder::before(ExecutionNode* en) {
         IndexIteratorOptions opts;
         opts.ascending = !descending;
         opts.lookahead = node->hint().getLookahead();
+        opts.waitForSync = node->hint().waitForSync();
+        opts.useCache = node->useCache();
         TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
@@ -160,9 +163,10 @@ bool ConditionFinder::before(ExecutionNode* en) {
         // We keep this node's change
         _changes.try_emplace(
             node->id(), arangodb::lazyConstruct([&] {
-              IndexNode* idx = new IndexNode(
-                  _plan, _plan->nextId(), node->collection(),
-                  node->outVariable(), usedIndexes, std::move(condition), opts);
+              IndexNode* idx =
+                  new IndexNode(_plan, _plan->nextId(), node->collection(),
+                                node->outVariable(), usedIndexes,
+                                oneIndexCondition, std::move(condition), opts);
               // if the enumerate collection node had the counting flag
               // set, we can copy it over to the index node as well
               idx->copyCountFlag(node);
@@ -171,6 +175,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
               idx->setCanReadOwnWrites(node->canReadOwnWrites());
               // copy max number of projections
               idx->setMaxProjections(node->maxProjections());
+              idx->setUseCache(node->useCache());
               return idx;
             }));
       }

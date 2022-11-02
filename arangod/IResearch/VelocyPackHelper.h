@@ -28,7 +28,6 @@
 #include "Basics/debugging.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "utils/string.hpp"  // for irs::string_ref
 
@@ -243,7 +242,7 @@ inline bool getString(std::string& buf, velocypack::Slice const& slice,
 //////////////////////////////////////////////////////////////////////////////
 inline bool getString(irs::string_ref& buf, velocypack::Slice const& slice,
                       std::string_view fieldName, bool& seen,
-                      irs::string_ref const& fallback) noexcept {
+                      irs::string_ref fallback) noexcept {
   seen = slice.hasKey(fieldName.data(), fieldName.length());
 
   if (!seen) {
@@ -351,6 +350,12 @@ class Iterator {
   uint8_t const* _begin;
   IteratorValue _value;
 };  // Iterator
+
+bool parseDirectionBool(arangodb::velocypack::Slice slice, bool& direction);
+
+bool parseDirectionString(arangodb::velocypack::Slice slice, bool& direction);
+
+bool keyFromSlice(VPackSlice keySlice, irs::string_ref& key);
 
 }  // namespace iresearch
 }  // namespace arangodb

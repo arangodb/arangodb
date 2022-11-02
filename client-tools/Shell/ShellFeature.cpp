@@ -38,13 +38,11 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ShellFeature::ShellFeature(application_features::ApplicationServer& server,
-                           int* result)
-    : ApplicationFeature(server, "Shell"),
+ShellFeature::ShellFeature(Server& server, int* result)
+    : ArangoshFeature(server, *this),
       _jslint(),
       _result(result),
       _runMode(RunMode::INTERACTIVE) {
-  requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::V8ShellFeaturePhase>();
 }

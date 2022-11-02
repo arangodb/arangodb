@@ -24,6 +24,8 @@
 #include <stdexcept>
 #include <string_view>
 #include <type_traits>
+#include <functional>
+
 #include "gtest/gtest.h"
 
 #include "Basics/overload.h"
@@ -128,6 +130,29 @@ TEST_F(LogContextTest, ScopedValue_sets_Values_for_current_scope) {
   EXPECT_EQ(4, cnt);
 }
 
+TEST_F(LogContextTest,
+       pushValues_adds_shared_values_to_context_and_returns_an_EntryPtr) {
+  unsigned cnt = 0;
+  LogContext::OverloadVisitor countingVisitor(
+      [&cnt](std::string_view, auto&&) { ++cnt; });
+  auto values = LogContext::makeValue().with<LogKey1>("blubb").share();
+
+  LogContext::EntryPtr entry1 = LogContext::Current::pushValues(values);
+  LogContext::EntryPtr entry2 = LogContext::Current::pushValues(
+      LogContext::makeValue().with<LogKey2>(42));
+
+  {
+    LogContext::current().visit(countingVisitor);
+    EXPECT_EQ(2, cnt);
+  }
+
+  LogContext::Current::popEntry(entry2);
+  LogContext::Current::popEntry(entry1);
+
+  LogContext::current().visit(countingVisitor);
+  EXPECT_EQ(2, cnt);
+}
+
 TEST_F(LogContextTest, current_returns_copy_of_the_threads_current_LogContext) {
   unsigned cnt = 0;
   LogContext::OverloadVisitor countingVisitor(
@@ -189,15 +214,56 @@ TEST_F(
   unsigned cnt = 0;
   LogContext::OverloadVisitor countingVisitor(
       [&cnt](std::string_view, auto&&) { ++cnt; });
-  ScopedValue v(
-      LogContext::makeValue().with<LogKey1>("blubb").with<LogKey2>(42));
 
-  auto func = withLogContext([](LogContext::Visitor const& visitor) {
-    LogContext::current().visit(visitor);
+  auto func = std::invoke([]() {
+    ScopedValue v(
+        LogContext::makeValue().with<LogKey1>("blubb").with<LogKey2>(42));
+    return withLogContext([](LogContext::Visitor const& visitor) {
+      LogContext::current().visit(visitor);
+    });
   });
 
   func(countingVisitor);
   EXPECT_EQ(2, cnt);
+}
+
+}  // namespace arangodb
+
+namespace {
+struct Dummy {
+  Dummy() = default;
+  Dummy(Dummy const&) = delete;
+  Dummy(Dummy&&) { ++MoveConstructions; };
+  static unsigned MoveConstructions;
+};
+unsigned Dummy::MoveConstructions = 0;
+}  // namespace
+
+namespace std {
+std::ostream& operator<<(std::ostream& s, Dummy const&) {
+  s << "Dummy";
+  return s;
+}
+}  // namespace std
+
+namespace arangodb {
+TEST_F(LogContextTest,
+       ValueBuilder_chained_with_calls_do_no_result_in_excessive_copies) {
+  Dummy::MoveConstructions = 0;
+  unsigned cnt = 0;
+  LogContext::OverloadVisitor countingVisitor(
+      [&cnt](std::string_view, auto&&) { ++cnt; });
+
+  auto values = LogContext::makeValue()
+                    .with<LogKey1>(Dummy{})
+                    .with<LogKey2>(Dummy{})
+                    .with<LogKey3>(Dummy{})
+                    .with<LogKey4>(Dummy{})
+                    .with<LogKey5>(Dummy{})
+                    .with<LogKey6>(Dummy{})
+                    .share();
+
+  EXPECT_EQ(6, Dummy::MoveConstructions);  // each entry gets moved exactly once
 }
 
 }  // namespace arangodb

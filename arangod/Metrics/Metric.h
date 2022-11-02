@@ -23,14 +23,26 @@
 #pragma once
 
 #include "RestServer/counter.h"
+#include "RestServer/arangod.h"
 
 #include <iosfwd>
 #include <string_view>
+#include <string>
 
+namespace arangodb::velocypack {
+
+class Builder;
+
+}  // namespace arangodb::velocypack
 namespace arangodb::metrics {
 
 class Metric {
  public:
+  static void addInfo(std::string& result, std::string_view name,
+                      std::string_view help, std::string_view type);
+  static void addMark(std::string& result, std::string_view name,
+                      std::string_view globals, std::string_view labels);
+
   Metric(std::string_view name, std::string_view help,
          std::string_view labels) noexcept;
 
@@ -38,11 +50,17 @@ class Metric {
   [[nodiscard]] std::string_view name() const noexcept;
   [[nodiscard]] std::string_view labels() const noexcept;
 
-  virtual std::string_view type() const noexcept = 0;
-  virtual void toPrometheus(std::string& result, std::string_view globals,
-                            std::string_view alternativeName) const = 0;
-  virtual void toPrometheusBegin(std::string& result,
-                                 std::string_view name) const;
+  [[nodiscard]] virtual std::string_view type() const noexcept = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// \param result toPrometheus handler response
+  /// \param globals labels that all metrics have
+  //////////////////////////////////////////////////////////////////////////////
+  virtual void toPrometheus(std::string& result,
+                            std::string_view globals) const = 0;
+  virtual void toVPack(velocypack::Builder& builder,
+                       ArangodServer& server) const;
+
   virtual ~Metric();
 
  private:

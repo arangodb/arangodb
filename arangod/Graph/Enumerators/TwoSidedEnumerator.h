@@ -30,7 +30,6 @@
 
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
-#include "Transaction/Methods.h"
 
 #include <set>
 
@@ -124,6 +123,7 @@ class TwoSidedEnumerator {
     size_t _searchIndex{std::numeric_limits<size_t>::max()};
     Direction _direction;
     size_t _minDepth{0};
+    GraphOptions _graphOptions;
   };
 
  public:
@@ -213,6 +213,7 @@ class TwoSidedEnumerator {
   bool _searchLeft{true};
   ResultList _results{};
   bool _resultsFetched{false};
+  size_t _baselineDepth;
 
   PathResult<ProviderType, Step> _resultPath;
 };

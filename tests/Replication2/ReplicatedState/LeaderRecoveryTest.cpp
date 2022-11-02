@@ -42,15 +42,22 @@ struct ReplicatedStateRecoveryTest;
 namespace arangodb::replication2::test {
 struct MyHelperLeaderState;
 struct MyHelperFactory;
+struct MyCoreType;
 
 struct MyHelperState {
   using FactoryType = MyHelperFactory;
   using LeaderType = MyHelperLeaderState;
   using EntryType = MyEntryType;
   using FollowerType = EmptyFollowerType<MyHelperState>;
+  using CoreType = MyCoreType;
+  using CoreParameterType = void;
+  using CleanupHandlerType = void;
 };
 
 struct MyHelperLeaderState : IReplicatedLeaderState<MyHelperState> {
+  explicit MyHelperLeaderState(std::unique_ptr<MyCoreType> core)
+      : _core(std::move(core)) {}
+
  protected:
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
       -> futures::Future<Result> override {
@@ -59,6 +66,10 @@ struct MyHelperLeaderState : IReplicatedLeaderState<MyHelperState> {
     return promise.getFuture();
   }
 
+  [[nodiscard]] auto resign() && noexcept
+      -> std::unique_ptr<MyCoreType> override;
+  std::unique_ptr<MyCoreType> _core;
+
  public:
   void runRecovery(Result res = {}) { promise.setValue(res); }
 
@@ -66,12 +77,21 @@ struct MyHelperLeaderState : IReplicatedLeaderState<MyHelperState> {
   futures::Promise<Result> promise;
 };
 
+auto MyHelperLeaderState::resign() && noexcept -> std::unique_ptr<MyCoreType> {
+  return std::move(_core);
+}
+
 struct MyHelperFactory {
   explicit MyHelperFactory(ReplicatedStateRecoveryTest& test) : test(test) {}
-  auto constructLeader() -> std::shared_ptr<MyHelperLeaderState>;
-  auto constructFollower()
+  auto constructLeader(std::unique_ptr<MyCoreType> core)
+      -> std::shared_ptr<MyHelperLeaderState>;
+  auto constructFollower(std::unique_ptr<MyCoreType> core)
       -> std::shared_ptr<EmptyFollowerType<MyHelperState>> {
-    return std::make_shared<EmptyFollowerType<MyHelperState>>();
+    return std::make_shared<EmptyFollowerType<MyHelperState>>(std::move(core));
+  }
+  auto constructCore(GlobalLogIdentifier const&)
+      -> std::unique_ptr<MyCoreType> {
+    return std::make_unique<MyCoreType>();
   }
   ReplicatedStateRecoveryTest& test;
 };
@@ -79,6 +99,7 @@ struct MyHelperFactory {
 }  // namespace arangodb::replication2::test
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/Mocks/MockStatePersistorInterface.h"
 
 struct ReplicatedStateRecoveryTest : test::ReplicatedLogTest {
   ReplicatedStateRecoveryTest() {
@@ -88,11 +109,13 @@ struct ReplicatedStateRecoveryTest : test::ReplicatedLogTest {
   std::shared_ptr<MyHelperLeaderState> leaderState;
   std::shared_ptr<ReplicatedStateFeature> feature =
       std::make_shared<ReplicatedStateFeature>();
+  std::shared_ptr<MockStatePersistorInterface> statePersistor =
+      std::make_shared<MockStatePersistorInterface>();
 };
 
-auto MyHelperFactory::constructLeader()
+auto MyHelperFactory::constructLeader(std::unique_ptr<MyCoreType> core)
     -> std::shared_ptr<MyHelperLeaderState> {
-  test.leaderState = std::make_shared<MyHelperLeaderState>();
+  test.leaderState = std::make_shared<MyHelperLeaderState>(std::move(core));
   return test.leaderState;
 }
 
@@ -109,23 +132,25 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery) {
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
 
   auto leaderLog = makeReplicatedLog(LogId{1});
-  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
-                                        LogTerm{1}, {follower});
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
+
   leader->triggerAsyncReplication();
   auto replicatedState =
       std::dynamic_pointer_cast<ReplicatedState<MyHelperState>>(
-          feature->createReplicatedState("my-state", leaderLog));
+          feature->createReplicatedState("my-state", leaderLog,
+                                         statePersistor));
   ASSERT_NE(replicatedState, nullptr);
   ASSERT_EQ(leaderState, nullptr);
 
-  replicatedState->flush();
+  replicatedState->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), std::nullopt);
 
   {
-    auto status = replicatedState->getStatus();
+    auto status = replicatedState->getStatus().value();
     ASSERT_TRUE(
         std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
     auto s = std::get<replicated_state::LeaderStatus>(status.variant);
-    EXPECT_EQ(s.state.state,
+    EXPECT_EQ(s.managerState.state,
               LeaderInternalState::kWaitingForLeadershipEstablished);
   }
 
@@ -145,11 +170,11 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery) {
   EXPECT_TRUE(leaderState->recoveryTriggered);
 
   {
-    auto status = replicatedState->getStatus();
+    auto status = replicatedState->getStatus().value();
     ASSERT_TRUE(
         std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
     auto s = std::get<replicated_state::LeaderStatus>(status.variant);
-    EXPECT_EQ(s.state.state, LeaderInternalState::kRecoveryInProgress);
+    EXPECT_EQ(s.managerState.state, LeaderInternalState::kRecoveryInProgress);
   }
 
   {
@@ -161,11 +186,11 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery) {
   leaderState->runRecovery();
 
   {
-    auto status = replicatedState->getStatus();
+    auto status = replicatedState->getStatus().value();
     ASSERT_TRUE(
         std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
     auto s = std::get<replicated_state::LeaderStatus>(status.variant);
-    EXPECT_EQ(s.state.state, LeaderInternalState::kServiceAvailable);
+    EXPECT_EQ(s.managerState.state, LeaderInternalState::kServiceAvailable);
   }
 
   {
@@ -187,23 +212,24 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery_error_DeathTest) {
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
 
   auto leaderLog = makeReplicatedLog(LogId{1});
-  auto leader = leaderLog->becomeLeader(LogConfig(2, 2, 2, false), "leader",
-                                        LogTerm{1}, {follower});
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
   leader->triggerAsyncReplication();
   auto replicatedState =
       std::dynamic_pointer_cast<ReplicatedState<MyHelperState>>(
-          feature->createReplicatedState("my-state", leaderLog));
+          feature->createReplicatedState("my-state", leaderLog,
+                                         statePersistor));
   ASSERT_NE(replicatedState, nullptr);
   ASSERT_EQ(leaderState, nullptr);
 
-  replicatedState->flush();
+  replicatedState->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), std::nullopt);
 
   {
-    auto status = replicatedState->getStatus();
+    auto status = replicatedState->getStatus().value();
     ASSERT_TRUE(
         std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
     auto s = std::get<replicated_state::LeaderStatus>(status.variant);
-    EXPECT_EQ(s.state.state,
+    EXPECT_EQ(s.managerState.state,
               LeaderInternalState::kWaitingForLeadershipEstablished);
   }
 
@@ -217,11 +243,11 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery_error_DeathTest) {
   EXPECT_TRUE(leaderState->recoveryTriggered);
 
   {
-    auto status = replicatedState->getStatus();
+    auto status = replicatedState->getStatus().value();
     ASSERT_TRUE(
         std::holds_alternative<replicated_state::LeaderStatus>(status.variant));
     auto s = std::get<replicated_state::LeaderStatus>(status.variant);
-    EXPECT_EQ(s.state.state, LeaderInternalState::kRecoveryInProgress);
+    EXPECT_EQ(s.managerState.state, LeaderInternalState::kRecoveryInProgress);
   }
 
   // failing recovery should result in a crash

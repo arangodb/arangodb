@@ -1,31 +1,6 @@
 /*jshint globalstrict:false, strict:false, maxlen: 7000 */
 /*global assertEqual, assertTrue, assertFalse, AQL_EXPLAIN */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for index selection
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
-
 const jsunity = require("jsunity");
 const db = require("internal").db;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
@@ -66,6 +41,32 @@ function BaseTestConfig () {
     
     tearDown: function() {
       resetIndexes(cn);
+    },
+    
+    testStoredValues: function() {
+      // we must create different indexes with different "fields" here, as creating 
+      // multiple indexes with the same "fields" value but different "storedValues"
+      // has no effect (indexes are distinguished only because of their "fields"
+      // attributes - "storedValues" are not taken into account).
+      db[cn].ensureIndex({ type: "persistent", fields: ["pid"] });
+      db[cn].ensureIndex({ type: "persistent", fields: ["pid", "uid"], storedValues: ["dt", "other"] });
+      db[cn].ensureIndex({ type: "persistent", fields: ["pid", "dt"], storedValues: ["uid"] });
+      
+      [
+        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 FILTER doc.dt == 1234 RETURN doc`, ["pid", "dt"], ["uid"] ],
+        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 FILTER doc.dt == 1234 FILTER doc.uid == 1234 RETURN doc`, ["pid", "uid"], ["dt", "other"] ],
+        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 FILTER doc.dt == 1234 FILTER doc.uid == 1234 SORT doc.other5 RETURN doc`, ["pid", "uid"], ["dt", "other"] ],
+      ].forEach((q) => {
+        let nodes = AQL_EXPLAIN(q[0]).plan.nodes;
+        assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
+        let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
+        assertFalse(indexNode.indexCoversProjections);
+        assertEqual(1, indexNode.indexes.length);
+        let index = indexNode.indexes[0];
+        assertEqual("persistent", index.type);
+        assertEqual(q[1], index.fields, q);
+        assertEqual(q[2], index.storedValues, q);
+      });
     },
 
     testManyIndexesWithPrefixes: function() {

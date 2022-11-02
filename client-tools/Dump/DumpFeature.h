@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "Dump/arangodump.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Basics/Mutex.h"
@@ -35,26 +36,23 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace arangodb {
 namespace httpclient {
 class SimpleHttpClient;
 }
 
-class DumpFeature final : public application_features::ApplicationFeature {
+class DumpFeature final : public ArangoDumpFeature {
  public:
-  DumpFeature(application_features::ApplicationServer& server, int& exitCode);
+  static constexpr std::string_view name() noexcept { return "Dump"; }
+
+  DumpFeature(Server& server, int& exitCode);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override;
   void start() override;
-
-  /**
-   * @brief Returns the feature name (for registration with `ApplicationServer`)
-   * @return The name of the feature
-   */
-  static std::string featureName();
 
   /**
    * @brief Saves a worker error for later handling and clears queued jobs
@@ -156,7 +154,7 @@ class DumpFeature final : public application_features::ApplicationFeature {
   Options _options;
   Stats _stats;
   Mutex _workerErrorLock;
-  std::queue<Result> _workerErrors;
+  std::vector<Result> _workerErrors;
   std::unique_ptr<maskings::Maskings> _maskings;
 
   Result runClusterDump(httpclient::SimpleHttpClient& client,

@@ -26,34 +26,35 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
+#include "Pregel/PregelMetrics.h"
 
 struct TRI_vocbase_t;
 
-namespace arangodb {
-namespace pregel {
+namespace arangodb::pregel {
 
 class Conductor;
 class IWorker;
 class RecoveryManager;
 
-class PregelFeature final : public application_features::ApplicationFeature {
+class PregelFeature final : public ArangodFeature {
  public:
-  explicit PregelFeature(application_features::ApplicationServer& server);
-  ~PregelFeature();
+  static constexpr std::string_view name() noexcept { return "Pregel"; }
 
-  static size_t availableParallelism();
+  explicit PregelFeature(Server& server);
+  ~PregelFeature();
 
   std::pair<Result, uint64_t> startExecution(
       TRI_vocbase_t& vocbase, std::string algorithm,
@@ -63,6 +64,10 @@ class PregelFeature final : public application_features::ApplicationFeature {
           edgeCollectionRestrictions,
       VPackSlice const& params);
 
+  void collectOptions(std::shared_ptr<arangodb::options::ProgramOptions>
+                          options) override final;
+  void validateOptions(std::shared_ptr<arangodb::options::ProgramOptions>
+                           options) override final;
   void start() override final;
   void beginShutdown() override final;
   void unprepare() override final;
@@ -101,8 +106,36 @@ class PregelFeature final : public application_features::ApplicationFeature {
                       arangodb::velocypack::Builder& result, bool allDatabases,
                       bool fanout) const;
 
+  size_t defaultParallelism() const noexcept;
+  size_t minParallelism() const noexcept;
+  size_t maxParallelism() const noexcept;
+  std::string tempPath() const;
+  bool useMemoryMaps() const noexcept;
+
+  auto metrics() -> std::shared_ptr<PregelMetrics> { return _metrics; }
+
  private:
   void scheduleGarbageCollection();
+
+  // default parallelism to use per Pregel job
+  size_t _defaultParallelism;
+
+  // min parallelism usable per Pregel job
+  size_t _minParallelism;
+
+  // max parallelism usable per Pregel job
+  size_t _maxParallelism;
+
+  // type of temporary directory location ("custom", "temp-directory",
+  // "database-directory")
+  std::string _tempLocationType;
+
+  // custom path for temporary directory. only populated if _tempLocationType ==
+  // "custom"
+  std::string _tempLocationCustomPath;
+
+  // default "useMemoryMaps" value per Pregel job
+  bool _useMemoryMaps;
 
   mutable Mutex _mutex;
 
@@ -128,7 +161,8 @@ class PregelFeature final : public application_features::ApplicationFeature {
       _workers;
 
   std::atomic<bool> _softShutdownOngoing;
+
+  std::shared_ptr<PregelMetrics> _metrics;
 };
 
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel

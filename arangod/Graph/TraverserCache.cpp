@@ -23,6 +23,7 @@
 
 #include "TraverserCache.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Query.h"
 #include "Basics/StringHeap.h"
@@ -44,7 +45,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -76,7 +76,11 @@ TraverserCache::TraverserCache(aql::QueryContext& query, BaseOptions* opts)
     : _query(query),
       _trx(opts->trx()),
       _insertedDocuments(0),
-      _filteredDocuments(0),
+      _filtered(0),
+      _cursorsCreated(0),
+      _cursorsRearmed(0),
+      _cacheHits(0),
+      _cacheMisses(0),
       _stringHeap(
           query.resourceMonitor(),
           4096), /* arbitrary block-size, may be adjusted for performance */

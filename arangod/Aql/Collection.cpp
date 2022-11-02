@@ -24,7 +24,6 @@
 #include "Collection.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
@@ -34,6 +33,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -274,7 +274,8 @@ std::vector<std::shared_ptr<arangodb::Index>> Collection::indexes() const {
 
   // update selectivity estimates if they were expired
   if (ServerState::instance()->isCoordinator()) {
-    coll->clusterIndexEstimates(true);
+    coll->getPhysical()->clusterIndexEstimates(true,
+                                               /*tid*/ TransactionId::none());
   }
 
   std::vector<std::shared_ptr<Index>> indexes = coll->getIndexes();

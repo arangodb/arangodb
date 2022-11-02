@@ -49,12 +49,10 @@ class RocksDBMetaCollection : public PhysicalCollection {
   void deferDropCollection(
       std::function<bool(LogicalCollection&)> const&) override final;
 
-  /// @brief report extra memory used by indexes etc.
-  size_t memory() const override final { return 0; }
-  uint64_t objectId() const { return _objectId; }
+  uint64_t objectId() const noexcept { return _objectId; }
 
   RocksDBMetadata& meta() { return _meta; }
-  RocksDBMetadata const& meta() const { return _meta; }
+  RocksDBMetadata const& meta() const noexcept { return _meta; }
 
   RevisionId revision(arangodb::transaction::Methods* trx) const override final;
   uint64_t numberDocuments(transaction::Methods* trx) const override final;
@@ -80,7 +78,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   std::unique_ptr<containers::RevisionTree> revisionTree(
       transaction::Methods& trx) override;
   std::unique_ptr<containers::RevisionTree> revisionTree(
-      uint64_t batchId) override;
+      rocksdb::SequenceNumber trxSeq) override;
   std::unique_ptr<containers::RevisionTree> computeRevisionTree(
       uint64_t batchId) override;
 
@@ -145,11 +143,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   void corruptRevisionTree(std::uint64_t count, std::uint64_t hash);
 #endif
-
- protected:
-  /// @brief track the usage of waitForSync option in an operation
-  void trackWaitForSync(arangodb::transaction::Methods* trx,
-                        OperationOptions& options);
 
  private:
   /// @brief sends the collection's revision tree to hibernation

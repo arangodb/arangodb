@@ -24,8 +24,10 @@
 #pragma once
 
 #include <functional>
+#include <string>
+#include <string_view>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Shell/arangosh.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 
 namespace arangodb {
@@ -46,11 +48,31 @@ class ClientFeature final : public HttpEndpointProvider {
   constexpr static double const DEFAULT_CONNECTION_TIMEOUT = 5.0;
   constexpr static size_t const DEFAULT_RETRIES = 2;
   constexpr static double const LONG_TIMEOUT = 86400.0;
+  constexpr static std::string_view name() noexcept { return "Client"; }
 
-  ClientFeature(application_features::ApplicationServer& server,
-                bool allowJwtSecret, size_t maxNumEndpoints = 1,
+  template<typename Server>
+  ClientFeature(Server& server, bool allowJwtSecret, size_t maxNumEndpoints = 1,
                 double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
-                double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
+                double requestTimeout = DEFAULT_REQUEST_TIMEOUT)
+      : ClientFeature{server,
+                      server.template getFeature<CommunicationFeaturePhase>(),
+                      Server::template id<HttpEndpointProvider>(),
+                      allowJwtSecret,
+                      maxNumEndpoints,
+                      connectionTimeout,
+                      requestTimeout} {
+    static_assert(Server::template isCreatedAfter<HttpEndpointProvider,
+                                                  CommunicationFeaturePhase>());
+
+    if constexpr (Server::template contains<ShellConsoleFeature>()) {
+      static_assert(Server::template isCreatedAfter<HttpEndpointProvider,
+                                                    ShellConsoleFeature>());
+      _console = &server.template getFeature<ShellConsoleFeature>();
+    }
+
+    startsAfter<CommunicationFeaturePhase, Server>();
+    startsAfter<GreetingsFeaturePhase, Server>();
+  }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -69,6 +91,7 @@ class ClientFeature final : public HttpEndpointProvider {
   std::string const& password() const { return _password; }
   void setPassword(std::string const& value) { _password = value; }
   std::string const& jwtSecret() const { return _jwtSecret; }
+  void setJwtSecret(std::string_view jwtSecret) { _jwtSecret = jwtSecret; }
   double connectionTimeout() const { return _connectionTimeout; }
   double requestTimeout() const { return _requestTimeout; }
   void requestTimeout(double value) { _requestTimeout = value; }
@@ -100,6 +123,8 @@ class ClientFeature final : public HttpEndpointProvider {
 
   bool getWarnConnect() { return _warnConnect; }
 
+  ApplicationServer& server() const noexcept;
+
   static std::string buildConnectedMessage(
       std::string const& endpointSpecification, std::string const& version,
       std::string const& role, std::string const& mode,
@@ -110,10 +135,18 @@ class ClientFeature final : public HttpEndpointProvider {
       std::function<int(int argc, char* argv[])> const& mainFunc);
 
  private:
+  ClientFeature(ApplicationServer& server, CommunicationFeaturePhase& comm,
+                size_t registration, bool allowJwtSecret,
+                size_t maxNumEndpoints = 1,
+                double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
+                double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
+
   void readPassword();
   void readJwtSecret();
   void loadJwtSecretFile();
 
+  CommunicationFeaturePhase& _comm;
+  ShellConsoleFeature* _console;
   std::string _databaseName;
   std::vector<std::string> _endpoints;
   size_t _maxNumEndpoints;

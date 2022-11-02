@@ -24,7 +24,7 @@
 #include "CacheManagerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/SharedPRNGFeature.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
@@ -33,7 +33,6 @@
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -49,9 +48,8 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-CacheManagerFeature::CacheManagerFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "CacheManager"),
+CacheManagerFeature::CacheManagerFeature(Server& server)
+    : ArangodFeature{server, *this},
       _manager(nullptr),
       _rebalancer(nullptr),
       _cacheSize(
@@ -77,30 +75,26 @@ void CacheManagerFeature::collectOptions(
       new UInt64Parameter(&_cacheSize),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
-  options->addOption("--cache.rebalancing-interval",
-                     "microseconds between rebalancing attempts",
-                     new UInt64Parameter(&_rebalancingInterval));
+  options->addOption(
+      "--cache.rebalancing-interval",
+      "microseconds between rebalancing attempts",
+      new UInt64Parameter(
+          &_rebalancingInterval, /*base*/ 1,
+          /*minValue*/ CacheManagerFeature::minRebalancingInterval));
 }
 
 void CacheManagerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {
-  if (_cacheSize < Manager::minSize) {
+  if (_cacheSize > 0 && _cacheSize < Manager::kMinSize) {
     LOG_TOPIC("75778", FATAL, arangodb::Logger::FIXME)
         << "invalid value for `--cache.size', need at least "
-        << Manager::minSize;
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_rebalancingInterval < (CacheManagerFeature::minRebalancingInterval)) {
-    LOG_TOPIC("8bb45", FATAL, arangodb::Logger::FIXME)
-        << "invalid value for `--cache.rebalancing-interval', need at least "
-        << (CacheManagerFeature::minRebalancingInterval);
+        << Manager::kMinSize;
     FATAL_ERROR_EXIT();
   }
 }
 
 void CacheManagerFeature::start() {
-  if (ServerState::instance()->isAgent()) {
+  if (ServerState::instance()->isAgent() || _cacheSize == 0) {
     // we intentionally do not activate the cache on an agency node, as it
     // is not needed there
     return;
@@ -128,13 +122,14 @@ void CacheManagerFeature::start() {
 
 void CacheManagerFeature::beginShutdown() {
   if (_manager != nullptr) {
-    _manager->beginShutdown();
     _rebalancer->beginShutdown();
+    _manager->beginShutdown();
   }
 }
 
 void CacheManagerFeature::stop() {
   if (_manager != nullptr) {
+    _rebalancer->shutdown();
     _manager->shutdown();
   }
 }

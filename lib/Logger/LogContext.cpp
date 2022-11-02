@@ -23,9 +23,6 @@
 
 #include "LogContext.h"
 
-#include <atomic>
-#include <memory>
-#include <string>
 #include <vector>
 
 using namespace arangodb;

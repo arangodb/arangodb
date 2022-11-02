@@ -30,8 +30,7 @@ namespace arangodb {
 
 class RestQueryHandler : public RestVocbaseBaseHandler {
  public:
-  RestQueryHandler(application_features::ApplicationServer&, GeneralRequest*,
-                   GeneralResponse*);
+  RestQueryHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestQueryHandler"; }
@@ -69,5 +68,8 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
 
   /// @brief parses a query
   void parseQuery();
+
+  /// @brief returns the available optimizer rules
+  void handleAvailableOptimizerRules();
 };
 }  // namespace arangodb

@@ -24,16 +24,11 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-#include "Cache/CacheManagerFeature.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Indexes/IndexFactory.h"
-#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/HealthData.h"
-#include "StorageEngine/StorageEngineFeature.h"
-#include "Transaction/ManagerFeature.h"
+#include "RestServer/arangod.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
@@ -76,6 +71,10 @@ namespace rest {
 class RestHandlerFactory;
 }
 
+namespace replication2::replicated_state {
+struct PersistedStateInfo;
+}
+
 namespace transaction {
 
 class Context;
@@ -86,11 +85,11 @@ struct Options;
 
 }  // namespace transaction
 
-class StorageEngine : public application_features::ApplicationFeature {
+class StorageEngine : public ArangodFeature {
  public:
   // create the storage engine
-  StorageEngine(application_features::ApplicationServer& server,
-                std::string engineName, std::string const& featureName,
+  StorageEngine(Server& server, std::string_view engineName,
+                std::string_view featureName, size_t registration,
                 std::unique_ptr<IndexFactory>&& indexFactory);
 
   virtual HealthData healthCheck() = 0;
@@ -114,7 +113,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // --------------------
 
   // return the name of the specific storage engine e.g. rocksdb
-  virtual std::string const& typeName() const;
+  virtual std::string_view typeName() const;
 
   // inventory functionality
   // -----------------------
@@ -219,6 +218,13 @@ class StorageEngine : public application_features::ApplicationFeature {
           arangodb::replication2::replicated_log::PersistedLog> const&)
       -> Result = 0;
 
+  virtual auto updateReplicatedState(
+      TRI_vocbase_t&, replication2::replicated_state::PersistedStateInfo const&)
+      -> Result = 0;
+
+  virtual auto dropReplicatedState(TRI_vocbase_t&,
+                                   arangodb::replication2::LogId) -> Result = 0;
+
   //// Operations on Collections
   // asks the storage engine to create a collection as specified in the VPack
   // Slice object and persist the creation info. It is guaranteed by the server
@@ -263,15 +269,12 @@ class StorageEngine : public application_features::ApplicationFeature {
                                             LogicalCollection const& collection,
                                             std::string const& oldName) = 0;
 
-  // asks the storage engine to change properties of the view as specified in
-  // the VPack Slice object and persist them. If this operation fails
-  // somewhere in the middle, the storage engine is required to fully revert the
-  // property changes and throw only then, so that subsequent operations will
-  // not fail. the WAL entry for the propery change will be written *after* the
-  // call to "changeView" returns
-  virtual arangodb::Result changeView(TRI_vocbase_t& vocbase,
-                                      arangodb::LogicalView const& view,
-                                      bool doSync) = 0;
+  // If this operation fails somewhere in the middle, the storage engine is
+  // required to fully revert the property changes and throw only then, so that
+  // subsequent operations will not fail. The WAL entry for the property change
+  // will be written *after* the call to "changeView" returns
+  virtual Result changeView(LogicalView const& view,
+                            velocypack::Slice update) = 0;
 
   //// Operations on Views
   // asks the storage engine to create a view as specified in the VPack
@@ -348,9 +351,9 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   void getCapabilities(velocypack::Builder& builder) const;
 
-  virtual void getStatistics(velocypack::Builder& builder, bool v2) const;
+  virtual void getStatistics(velocypack::Builder& builder) const;
 
-  virtual void getStatistics(std::string& result, bool v2) const;
+  virtual void getStatistics(std::string& result) const;
 
   // management methods for synchronizing with external persistent stores
   virtual TRI_voc_tick_t currentTick() const = 0;
@@ -370,9 +373,13 @@ class StorageEngine : public application_features::ApplicationFeature {
       std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>
           log);
 
+  static void registerReplicatedState(
+      TRI_vocbase_t& vocbase,
+      arangodb::replication2::replicated_state::PersistedStateInfo const& info);
+
  private:
   std::unique_ptr<IndexFactory> const _indexFactory;
-  std::string const _typeName;
+  std::string_view _typeName;
 };
 
 }  // namespace arangodb

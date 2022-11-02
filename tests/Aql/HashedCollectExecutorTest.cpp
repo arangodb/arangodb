@@ -43,7 +43,6 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 #include <functional>
 
 using namespace arangodb;

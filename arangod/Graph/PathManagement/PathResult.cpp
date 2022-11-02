@@ -33,10 +33,10 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #endif
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -119,6 +119,18 @@ auto PathResult<ProviderType, Step>::toVelocyPack(
 }
 
 template<class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::lastVertexToVelocyPack(
+    arangodb::velocypack::Builder& builder) -> void {
+  _sourceProvider.addVertexToBuilder(_vertices.back(), builder);
+}
+
+template<class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::lastEdgeToVelocyPack(
+    arangodb::velocypack::Builder& builder) -> void {
+  _sourceProvider.addEdgeToBuilder(_edges.back(), builder);
+}
+
+template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::isEmpty() const -> bool {
   return _vertices.empty();
 }
@@ -148,9 +160,20 @@ template class ::arangodb::graph::PathResult<
 /* ClusterProvider Section */
 
 template class ::arangodb::graph::PathResult<
-    ::arangodb::graph::ClusterProvider,
-    ::arangodb::graph::ClusterProvider::Step>;
+    ::arangodb::graph::ClusterProvider<ClusterProviderStep>,
+    ::arangodb::graph::ClusterProviderStep>;
 
 template class ::arangodb::graph::PathResult<
-    ::arangodb::graph::ProviderTracer<::arangodb::graph::ClusterProvider>,
-    ::arangodb::graph::ClusterProvider::Step>;
+    ::arangodb::graph::ProviderTracer<
+        ::arangodb::graph::ClusterProvider<ClusterProviderStep>>,
+    ::arangodb::graph::ClusterProviderStep>;
+
+#ifdef USE_ENTERPRISE
+template class ::arangodb::graph::PathResult<
+    ::arangodb::graph::enterprise::SmartGraphProvider<ClusterProviderStep>,
+    ClusterProviderStep>;
+template class ::arangodb::graph::PathResult<
+    ::arangodb::graph::ProviderTracer<
+        enterprise::SmartGraphProvider<ClusterProviderStep>>,
+    ClusterProviderStep>;
+#endif

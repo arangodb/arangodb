@@ -6,7 +6,6 @@
 #include "Greenspun/Primitives.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
-#include "velocypack/velocypack-aliases.h"
 
 #include "Utilities/Completer.h"
 #include "Utilities/LineEditor.h"

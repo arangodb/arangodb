@@ -24,8 +24,10 @@
 
 #pragma once
 
+#include <atomic>
+#include <condition_variable>
 #include <memory>
-#include <shared_mutex>
+#include <mutex>
 #include <unordered_map>
 
 #include "Basics/Common.h"
@@ -50,69 +52,121 @@ namespace arangodb {
 namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a read-mutex for a resource
+/// @brief A wrapper to control the lifetime of an object
+///        that is used by multiple threads.
+///
+/// An analogue of shared_ptr and weak_ptr,
+/// in fact AsyncValue is both shared_ptr and weak_ptr, before they called
+/// AsyncValue::reset, after it only weak_ptr to already destroyed shared_ptr.
 ////////////////////////////////////////////////////////////////////////////////
 template<typename T>
 class AsyncValue {
  public:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Same semantics as shared_ptr, expect copy ctor and assign
+  ///        (easy to add but we don't want it).
+  //////////////////////////////////////////////////////////////////////////////
   class Value {
    public:
-    Value() = default;
-    Value(Value&&) = default;
-    Value& operator=(Value&&) = default;
+    constexpr Value() noexcept : _self{nullptr} {}
+    constexpr Value(Value&& other) noexcept
+        : _self{std::exchange(other._self, nullptr)} {}
+    constexpr Value& operator=(Value&& other) noexcept {
+      std::swap(_self, other._self);
+      return *this;
+    }
 
-    T* get() noexcept { return _resource; }
-    const T* get() const noexcept { return _resource; }
+    T* get() noexcept { return _self ? _self->_resource : nullptr; }
+    T const* get() const noexcept { return _self ? _self->_resource : nullptr; }
     T* operator->() noexcept { return get(); }
-    const T* operator->() const noexcept { return get(); }
+    T const* operator->() const noexcept { return get(); }
 
-    explicit operator bool() const noexcept { return nullptr != get(); }
+    explicit operator bool() const noexcept { return get() != nullptr; }
 
-    bool ownsLock() const noexcept { return _lock.owns_lock(); }
+    ~Value() {
+      if (_self) {
+        _self->destroy();
+      }
+    }
 
    private:
-    friend class AsyncValue<T>;
+    friend class AsyncValue;
+    constexpr Value(AsyncValue& self) noexcept : _self{&self} {}
 
-    Value(std::shared_lock<std::shared_mutex>&& lock, T* resource)
-        : _lock{std::move(lock)}, _resource{resource} {}
-
-    std::shared_lock<std::shared_mutex> _lock;
-    T* _resource{};
+    AsyncValue* _self;
   };
 
-  explicit AsyncValue(T* resource) noexcept : _resource{resource} {}
+  explicit AsyncValue(T* resource) noexcept
+      : _resource{resource}, _count{[&] {
+          if (!resource) {
+            return kReset | kDestroy;
+          } else {
+            return kRef;
+          }
+        }()} {}
 
   ~AsyncValue() { reset(); }
 
-  auto lock() const {
-    auto lock = irs::make_shared_lock(_mutex);
-    return Value{std::move(lock), _resource};
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief If return true then reset was call
+  //////////////////////////////////////////////////////////////////////////////
+  [[nodiscard]] bool empty() const noexcept {
+    return _count.load(std::memory_order_acquire) & kReset;
   }
 
-  auto try_lock() const {
-    auto lock = irs::make_shared_lock(_mutex, std::try_to_lock);
-
-    if (lock.owns_lock()) {
-      return Value{std::move(lock), _resource};
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Has the same semantics as weak_ptr::lock
+  //////////////////////////////////////////////////////////////////////////////
+  [[nodiscard]] Value lock() noexcept {
+    if (empty()) {
+      return {};
     }
-
-    return Value{};
+    if (_count.fetch_add(kRef, std::memory_order_acquire) & kDestroy) {
+      return {};
+    }
+    return {*this};
   }
 
-  // will block until a write lock can be acquired on the _mutex
-  void reset() {
-    auto lock = irs::make_unique_lock(_mutex);
-    _resource = nullptr;
-  }
-
-  bool empty() const {
-    auto lock = irs::make_shared_lock(_mutex);
-    return nullptr == _resource;
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Denies access to resource granted by a lock,
+  ///        and waits until all locks on resource have been released.
+  //////////////////////////////////////////////////////////////////////////////
+  void reset() noexcept {
+    auto count = _count.fetch_or(kReset, std::memory_order_release);
+    if ((count & kDestroy) == kDestroy) {
+      return;
+    }
+    if ((count & kReset) != kReset) {  // handle first reset
+      if (destroy()) {                 // handle successfully destroy
+        return;
+      }
+      count -= kRef - kReset;
+    }
+    do {  // wait destroy
+      _count.wait(count, std::memory_order_relaxed);
+      count = _count.load(std::memory_order_acquire);
+    } while ((count & kDestroy) != kDestroy);
   }
 
  private:
-  mutable std::shared_mutex _mutex;  // read-lock to prevent '_resource' reset()
+  static constexpr uint32_t kReset = 1;
+  static constexpr uint32_t kDestroy = 2;
+  static constexpr uint32_t kRef = 4;
+
+  bool destroy() noexcept {
+    auto count = _count.fetch_sub(kRef, std::memory_order_release) - kRef;
+    if (count == kReset &&
+        _count.compare_exchange_strong(count, kReset | kDestroy,
+                                       std::memory_order_acq_rel,
+                                       std::memory_order_relaxed)) {
+      _count.notify_all();
+      return true;
+    }
+    return false;
+  }
+
   T* _resource;
+  mutable std::atomic_uint32_t _count;  // linux futex handle only 32 bit
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -18,7 +18,7 @@ if (!figuresData.figures) {
       <th class="collectionInfoTh2">Wait for sync:</th>
       <th class="collectionInfoTh">
         <div id="show-collection-sync" class="modal-text">
-          <%= figuresData.waitForSync %>
+          <%= figuresData.waitForSync ? "Yes" : "No" %>
         </div>
       </th>
       <th class="tooltipInfoTh">
@@ -68,11 +68,11 @@ if (!figuresData.figures) {
       </th>
     </tr>
 
-    <% if (figuresData.hasOwnProperty('cacheEnabled') && figuresData.cacheEnabled) { %>
+    <% if (figuresData.hasOwnProperty('cacheEnabled')) { %>
       <tr>
         <th class="collectionInfoTh2">Cache enabled:</th>
         <th class="collectionInfoTh">
-          <div class="modal-text"><%= figuresData.cacheEnabled %></div>
+          <div class="modal-text"><%= figuresData.cacheEnabled ? "Yes" : "No" %></div>
         </th>
         <th class="collectionInfoTh">
         </th>
@@ -83,7 +83,7 @@ if (!figuresData.figures) {
       <tr>
         <th class="collectionInfoTh2">System collection:</th>
         <th class="collectionInfoTh">
-          <div class="modal-text"><%= figuresData.isSystem %></div>
+          <div class="modal-text"><%= figuresData.isSystem ? "Yes" : "No" %></div>
         </th>
         <th class="collectionInfoTh">
         </th>
@@ -94,7 +94,18 @@ if (!figuresData.figures) {
       <tr>
         <th class="collectionInfoTh2">Uses revision trees:</th>
         <th class="collectionInfoTh">
-          <div class="modal-text"><%= figuresData.syncByRevision %></div>
+          <div class="modal-text"><%= figuresData.syncByRevision ? "Yes" : "No" %></div>
+        </th>
+        <th class="collectionInfoTh">
+        </th>
+      </tr>
+    <% } %>
+    
+    <% if (figuresData.hasOwnProperty('keyOptions')) { %>
+      <tr>
+        <th class="collectionInfoTh2">Key generator:</th>
+        <th class="collectionInfoTh">
+          <div class="modal-text"><%= figuresData.keyOptions.type %></div>
         </th>
         <th class="collectionInfoTh">
         </th>
@@ -157,9 +168,25 @@ if (!figuresData.figures) {
         <% } %>
 
       <% } %>
-    </table>
+      
+      <% if (figuresData.cacheEnabled && figuresData.figures.hasOwnProperty("cacheSize")) { %>
+      
+          <tr>
+            <th class="collectionInfoTh2">Documents cache usage:</th>
+            <th class="collectionInfoTh">
+              <div class="modal-text">Used: <%= prettyBytes(figuresData.figures.cacheUsage) %>, allocated: <%= prettyBytes(figuresData.figures.cacheSize) %> </div>
+            </th>
+            <th class="tooltipInfoTh">
+            </th>
+          </tr>
 
+      <% } %>
+
+  </table>
   <% } %>
+
+  
+  <% if (content.isCluster) { %>
 
   <div
     style="color: #717d90; font-weight: 600; font-size: 12.5pt; padding: 10px; border-bottom: 1px solid rgba(0, 0, 0, .3); border-top: 1px solid rgba(0, 0, 0, .3)">
@@ -344,5 +371,7 @@ if (!figuresData.figures) {
       </tr>
     <% } %>
   </table>
+  
+  <% } %>
 
 </div>

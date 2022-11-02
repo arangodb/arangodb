@@ -34,6 +34,7 @@
 #include "Aql/QueryOptions.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "Basics/Exceptions.h"
 
 #include <algorithm>
 #include <utility>
@@ -100,7 +101,7 @@ auto IdExecutor<UsedFetcher>::produceRows(AqlItemBlockInputRange& inputRange,
   }
   TRI_ASSERT(!inputRange.hasDataRow());
   if (_infos.doCount()) {
-    stats.addCounted(output.numRowsWritten());
+    stats.incrCounted(output.numRowsWritten());
   }
 
   return {inputRange.upstreamState(), stats, output.getClientCall()};

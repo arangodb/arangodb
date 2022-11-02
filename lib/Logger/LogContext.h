@@ -41,7 +41,7 @@
 namespace arangodb {
 
 namespace rest {
-  class RestHandler;
+class RestHandler;
 }
 
 /// @brief LogContext allows to add thread-local contextual information which
@@ -49,45 +49,56 @@ namespace rest {
 ///
 /// LogContext manages thread-local instances to capture per-thread values.
 /// Values are usually added using ScopedValues which add a value to the context
-/// for the current scope, i.e., once the ScopedValue goes out of scope the value
-/// is again removed from the context. That way the LogContext can be populated
-/// with data when we move up the callstack, and clean up upon returning.
-/// This is simple enough for serial execution, but when we hand execution over
-/// to some other thread (e.g., using futures), we also need to transfer the
-/// context. The easiest way to achieve that is by using the `withLogContext`
-/// helper function.
+/// for the current scope, i.e., once the ScopedValue goes out of scope the
+/// value is again removed from the context. That way the LogContext can be
+/// populated with data when we move up the callstack, and clean up upon
+/// returning. This is simple enough for serial execution, but when we hand
+/// execution over to some other thread (e.g., using futures), we also need to
+/// transfer the context. The easiest way to achieve that is by using the
+/// `withLogContext` helper function.
 ///
-/// Internally the values are managed in an immutable linked list using ref counts.
-/// I.e., values that have been added to some LogContext are never copied, even if
-/// that LogContext is captured in some futures.
+/// Internally the values are managed in an immutable linked list using ref
+/// counts. I.e., values that have been added to some LogContext are never
+/// copied, even if that LogContext is captured in some futures.
 class LogContext {
  public:
   /// @brief Visitor pattern to visit the values of some LogContext.
-  /// Values that are not strings or numbers are stringified using operator<< and visited as string.
+  /// Values that are not strings or numbers are stringified using operator<<
+  /// and visited as string.
   struct Visitor;
 
-  /// @brief Helper class to allow simple visitors with a single templatized visit function.
-  template <class Derived>
+  /// @brief Helper class to allow simple visitors with a single templatized
+  /// visit function.
+  template<class Derived>
   struct GenericVisitor;
 
-  /// @brief Helper class to define a visitor using any type that provides operator().
-  /// This is typically used with overloaded lambdas or a single lambda with auto params.
-  template <class Overloads>
+  /// @brief Helper class to define a visitor using any type that provides
+  /// operator(). This is typically used with overloaded lambdas or a single
+  /// lambda with auto params.
+  template<class Overloads>
   struct OverloadVisitor;
 
   struct Entry;
+  struct EntryPtr;
 
   struct Values;
+
+  template<const char K[], class V>
+  struct KeyValue {
+    static constexpr const char* Key = K;
+    using Value = V;
+  };
 
   /// @brief helper class to create value tuples with the following syntax:
   ///   LogContext::makeValue().with<Key1>(value1).with<Key2>(value2)
   /// The keys must be compile time constant char pointers; the values can
   /// be strings, numbers, or anything else than supports operator<<.
-  /// As shown, the inital ValueBuilder instance can be created via LogContext::makeValue().
-  /// The `ValueBuilder` can be passed directly to `ScopedValue`, or you
-  /// can call `share()` to create a reusable `std::shared_ptr<Values>`
-  /// which can be stored in a member and used for different `ScopedValues`.
-  template <class Vals = std::tuple<>, const char... Keys[]>
+  /// As shown, the inital ValueBuilder instance can be created via
+  /// LogContext::makeValue(). The `ValueBuilder` can be passed directly to
+  /// `ScopedValue`, or you can call `share()` to create a reusable
+  /// `std::shared_ptr<Values>` which can be stored in a member and used for
+  /// different `ScopedValues`.
+  template<class KV = void, class Base = void, std::size_t Depth = 0>
   struct ValueBuilder;
 
   /// @brief sets the given LogContext as the thread's current context for the
@@ -106,10 +117,10 @@ class LogContext {
     // ScopedValues to be created in some inner function where they might cause
     // significant performance overhead.
     friend class arangodb::rest::RestHandler;
-    
+
     friend struct LogContextTest;
   };
-  
+
   /// @brief Helper to create an empty ValueBuilder.
   static ValueBuilder<> makeValue() noexcept;
 
@@ -133,8 +144,40 @@ class LogContext {
   /// @brief sets the given context as the current LogContext.
   static void setCurrent(LogContext ctx) noexcept;
 
+  struct Current {
+    /// @brief adds the provided values to the LogContext. The returned entry
+    /// must later be removed from the LogContext using `popEntry`. You should
+    /// only revert to this function if you cannot use `ScopedValue`.
+    static EntryPtr pushValues(std::shared_ptr<Values>);
+
+    template<class KV, class Base, std::size_t Depth>
+    static EntryPtr pushValues(ValueBuilder<KV, Base, Depth>&&);
+
+    /// @brief removes the previously added entry from the LogContext.
+    /// Note: it is important that entries are popped in the inverse order in
+    /// which they were added.
+    static void popEntry(EntryPtr&) noexcept;
+
+   private:
+    template<class T, class... Args>
+    static EntryPtr appendEntry(Args&&... args);
+  };
+
  private:
   struct ThreadControlBlock;
+
+  template<const char... Ks[]>
+  struct Keys {
+    template<const char K[]>
+    using With = Keys<Ks..., K>;
+  };
+
+  template<class... Vs>
+  struct ValueTypes {
+    template<class V>
+    using With = ValueTypes<Vs..., V>;
+    using Tuple = std::tuple<Vs...>;
+  };
 
   static ThreadControlBlock& controlBlock() noexcept {
     return _threadControlBlock;
@@ -142,10 +185,10 @@ class LogContext {
 
   struct EntryCache;
 
-  template <class Vals, const char... Keys[]>
+  template<class Vals, class Keys>
   struct ValuesImpl;
 
-  template <class Vals>
+  template<class Vals>
   struct EntryImpl;
 
   void doVisit(Visitor const&, Entry const*) const;
@@ -161,15 +204,18 @@ class LogContext {
 
 struct LogContext::Visitor {
   virtual ~Visitor() = default;
-  virtual void visit(std::string_view const& key, std::string_view const& value) const = 0;
+  virtual void visit(std::string_view const& key,
+                     std::string_view const& value) const = 0;
   virtual void visit(std::string_view const& key, double value) const = 0;
   virtual void visit(std::string_view const& key, std::int64_t value) const = 0;
-  virtual void visit(std::string_view const& key, std::uint64_t value) const = 0;
+  virtual void visit(std::string_view const& key,
+                     std::uint64_t value) const = 0;
 };
 
-template <class Derived>
+template<class Derived>
 struct LogContext::GenericVisitor : Visitor {
-  void visit(std::string_view const& key, std::string_view const& value) const override {
+  void visit(std::string_view const& key,
+             std::string_view const& value) const override {
     self().visit(key, value);
   }
   void visit(std::string_view const& key, double value) const override {
@@ -188,33 +234,112 @@ struct LogContext::GenericVisitor : Visitor {
   }
 };
 
-template <class Overloads>
+template<class Overloads>
 struct LogContext::OverloadVisitor : GenericVisitor<OverloadVisitor<Overloads>>,
                                      Overloads {
   explicit OverloadVisitor(Overloads overloads)
       : GenericVisitor<OverloadVisitor>(), Overloads(std::move(overloads)) {}
-  template <class T>
+  template<class T>
   void visit(std::string_view const& key, T&& value) const {
     this->operator()(key, std::forward<T>(value));
   }
 };
 
-template <class Vals, const char... Keys[]>
-struct LogContext::ValueBuilder {
-  template <const char Key[], class Value>
-  auto with(Value v) && {
-    auto vals =
-        std::tuple_cat(std::move(_vals), std::make_tuple(std::forward<Value>(v)));
-    return ValueBuilder<decltype(vals), Keys..., Key>(std::move(vals));
+template<>
+struct LogContext::ValueBuilder<void, void, 0> {
+  template<const char Key[], class Value>
+  auto with(Value&& v) && {
+    return ValueBuilder<KeyValue<Key, Value>, void, 1>(std::forward<Value>(v));
+  }
+};
+
+template<const char K[], class V>
+struct LogContext::ValueBuilder<LogContext::KeyValue<K, V>, void, 1> {
+  template<const char Key[], class Value>
+  auto with(Value&& v) && {
+    return ValueBuilder<KeyValue<Key, Value>, ValueBuilder, 2>(
+        *this, std::forward<Value>(v));
   }
   std::shared_ptr<Values> share() && {
-    return std::make_shared<ValuesImpl<Vals, Keys...>>(std::move(_vals));
+    return std::make_shared<ValuesImpl<ValueTypesT, KeysT>>(std::move(_value));
   }
 
  private:
+  using ValueTypesT = ValueTypes<std::decay_t<std::remove_reference_t<V>>>;
+  using KeysT = Keys<K>;
+
+  template<std::size_t Idx>
+  V&& value() {
+    static_assert(Idx == 0);
+    return std::forward<V>(_value);
+  }
+  template<std::size_t Idx>
+  static constexpr const char* key() {
+    static_assert(Idx == 0);
+    return K;
+  }
+  template<class F>
+  auto passValues(F&& func) && {
+    return std::forward<F>(func)(std::forward<V>(_value));
+  }
+
   friend class LogContext;
-  ValueBuilder(Vals vals) : _vals(std::move(vals)) {}
-  Vals _vals;
+  template<class VV>
+  ValueBuilder(VV&& v) : _value(std::forward<VV>(v)) {}
+  V&& _value;
+};
+
+template<const char K[], class V, class Base, std::size_t Depth>
+struct LogContext::ValueBuilder<LogContext::KeyValue<K, V>, Base, Depth> {
+  template<const char Key[], class Value>
+  auto with(Value&& v) && {
+    return ValueBuilder<KeyValue<Key, Value>, ValueBuilder, Depth + 1>(
+        *this, std::forward<Value>(v));
+  }
+  std::shared_ptr<Values> share() && {
+    return std::move(*this).passValues([]<class... Args>(Args && ... args) {
+      return std::make_shared<ValuesImpl<ValueTypesT, KeysT>>(
+          std::forward<Args>(args)...);
+    });
+  }
+
+ private:
+  using ValueTypesT = typename Base::ValueTypesT::template With<
+      std::decay_t<std::remove_reference_t<V>>>;
+  using KeysT = typename Base::KeysT::template With<K>;
+
+  template<class F>
+  auto passValues(F&& func) && {
+    return [ this, &func ]<std::size_t... I>(std::index_sequence<I...>) {
+      return std::forward<F>(func)(this->template value<I>()...);
+    }
+    (std::make_index_sequence<Depth>{});
+  }
+
+  template<std::size_t Idx>
+  auto&& value() {
+    static_assert(Idx < Depth);
+    if constexpr (Idx + 1 == Depth) {
+      return std::forward<V>(_value);
+    } else {
+      return _base.template value<Idx>();
+    }
+  }
+  template<std::size_t Idx>
+  static constexpr const char* key() {
+    static_assert(Idx < Depth);
+    if constexpr (Idx + 1 == Depth) {
+      return K;
+    } else {
+      return Base::template key<Idx>();
+    }
+  }
+  friend class LogContext;
+  template<class VV>
+  // cppcheck-suppress uninitMemberVarPrivate
+  ValueBuilder(Base& base, VV&& v) : _base(base), _value(std::forward<VV>(v)) {}
+  Base& _base;
+  V&& _value;
 };
 
 struct LogContext::Values {
@@ -222,24 +347,26 @@ struct LogContext::Values {
   virtual void visit(Visitor const&) const = 0;
 };
 
-template <class Vals, const char... Keys[]>
-struct LogContext::ValuesImpl final : Values {
-  explicit ValuesImpl(Vals vals) : _values(std::move(vals)) {}
+template<class Vals, const char... KeyValues[]>
+struct LogContext::ValuesImpl<Vals, LogContext::Keys<KeyValues...>> final
+    : Values {
+  template<class... V>
+  explicit ValuesImpl(V&&... v) : _values(std::forward<V>(v)...) {}
   void visit(Visitor const& visitor) const override {
-    doVisit<0, Keys...>(visitor);
+    doVisit<0, KeyValues...>(visitor);
   }
   ValuesImpl const* operator->() const { return this; }
 
  private:
-  template <std::size_t Idx, const char K[], const char... Ks[]>
+  template<std::size_t Idx, const char K[], const char... Ks[]>
   void doVisit(Visitor const& visitor) const {
     visitor.visit(K, toVisitorType(std::get<Idx>(_values)));
-    if constexpr (Idx + 1 < std::tuple_size<Vals>{}()) {
+    if constexpr (Idx + 1 < std::tuple_size<typename Vals::Tuple>{}()) {
       doVisit<Idx + 1, Ks...>(visitor);
     }
   }
-  
-  template <class T>
+
+  template<class T>
   static auto toVisitorType(T&& v) {
     using TT = std::remove_reference_t<T>;
     if constexpr (std::is_floating_point_v<TT>) {
@@ -259,15 +386,13 @@ struct LogContext::ValuesImpl final : Values {
     }
   }
 
-  Vals _values;
+  typename Vals::Tuple _values;
 };
 
 struct LogContext::Entry {
-  virtual ~Entry() {
-    TRI_ASSERT(_refCount.load() <= 1);
-  }
+  virtual ~Entry() { TRI_ASSERT(_refCount.load() <= 1); }
   virtual void visit(Visitor const&) const = 0;
-  
+
  protected:
   virtual void release(EntryCache& cache) noexcept {
     this->~Entry();
@@ -277,11 +402,14 @@ struct LogContext::Entry {
  private:
   void incRefCnt() noexcept {
     TRI_ASSERT(_refCount.load() > 0);
+    // (1) - this acquire-fetch-add synchronizes-with the release-fetch-sub (2)
     _refCount.fetch_add(1, std::memory_order_acquire);
   }
   [[nodiscard]] std::size_t decRefCnt() noexcept {
     TRI_ASSERT(_refCount.load() > 0);
-    return _refCount.fetch_sub(1, std::memory_order_relaxed);
+    // (2) - this release-fetch-sub synchronizes-with the acquire-fetch-add (1)
+    //       and the acquire-load (3)
+    return _refCount.fetch_sub(1, std::memory_order_release);
   }
 
   friend class LogContext;
@@ -289,9 +417,61 @@ struct LogContext::Entry {
   Entry* _prev{nullptr};
 };
 
-template <class Vals>
+struct LogContext::EntryPtr {
+  friend class LogContext;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  ~EntryPtr() {
+    auto printValues = [](Entry* e) -> std::string {
+      if (e == nullptr) {
+        return {};
+      }
+      std::string out;
+      LogContext::OverloadVisitor visitor([&out](std::string_view const& key,
+                                                 auto&& value) {
+        out.append(key).append(": ", 2);
+        if constexpr (std::is_same_v<std::string_view,
+                                     std::remove_cv_t<std::remove_reference_t<
+                                         decltype(value)>>>) {
+          out.append(value);
+        } else {
+          out.append(std::to_string(value));
+        }
+        out.append("; ", 2);
+      });
+      e->visit(visitor);
+      return out;
+    };
+    TRI_ASSERT(_entry == nullptr)
+        << "entry with the following values has not been removed: "
+        << printValues(_entry);
+  }
+#endif
+ private:
+  Entry* _entry;
+
+ public:
+  constexpr EntryPtr() : _entry(nullptr) {}
+  explicit EntryPtr(Entry* e) noexcept : _entry(e) {}
+
+  EntryPtr(EntryPtr&& other) noexcept : _entry(other._entry) {
+    other._entry = nullptr;
+  }
+  EntryPtr(EntryPtr const&) = delete;
+  EntryPtr& operator=(EntryPtr&& other) noexcept {
+    if (this != &other) {
+      _entry = other._entry;
+      other._entry = nullptr;
+    }
+    return *this;
+  }
+  EntryPtr& operator=(EntryPtr const&) = delete;
+};
+
+template<class Vals>
 struct LogContext::EntryImpl final : Entry {
-  explicit EntryImpl(Vals&& v) : _values(std::move(v)) {}
+  // explicit EntryImpl(Vals&& v) : _values(std::move(v)) {}
+  template<class... Args>
+  explicit EntryImpl(Args&&... args) : _values(std::forward<Args>(args)...) {}
   void visit(Visitor const& visitor) const override { _values->visit(visitor); }
   void release(EntryCache& cache) noexcept override;
 
@@ -304,7 +484,7 @@ struct LogContext::EntryCache {
     explicit CachedEntryAlloc(CachedEntryAlloc* n) noexcept : next(n) {}
     CachedEntryAlloc* const next;
   };
-  
+
   ~EntryCache() {
     auto* e = _cachedEntries;
     while (e) {
@@ -334,17 +514,18 @@ struct LogContext::EntryCache {
     return ::operator new(MinEntryCacheSize);
   }
 
-  template <class T, class Arg>
-  std::unique_ptr<Entry> makeEntry(Arg&& arg) {
+  template<class T, class... Args>
+  std::unique_ptr<Entry> makeEntry(Args&&... args) {
     void* p = sizeof(T) <= MinEntryCacheSize ? popFromCache()
                                              : ::operator new(sizeof(T));
-    auto* e = new (p) T(std::forward<Arg>(arg));
+    auto* e = new (p) T(std::forward<Args>(args)...);
     return std::unique_ptr<Entry>(e);
   }
 
-  static inline constexpr char dummy[] = "dummy"; // only needed to calculate MinEntryCacheSize with MSVC
+  static inline constexpr char dummy[] =
+      "dummy";  // only needed to calculate MinEntryCacheSize with MSVC
   static constexpr std::size_t MinEntryCacheSize =
-      sizeof(EntryImpl<ValuesImpl<std::tuple<std::string>, dummy>>);
+      sizeof(EntryImpl<ValuesImpl<ValueTypes<std::string>, Keys<dummy>>>);
 
  private:
   static constexpr std::size_t MaxCachedEntries = 128;
@@ -359,10 +540,6 @@ struct LogContext::ThreadControlBlock {
   ThreadControlBlock& operator=(ThreadControlBlock const&) = delete;
   ThreadControlBlock& operator=(ThreadControlBlock&&) = delete;
 
-  template <class Vals, const char... Keys[]>
-  LogContext::Entry* push(LogContext::ValueBuilder<Vals, Keys...>&& v);
-  LogContext::Entry* push(std::shared_ptr<LogContext::Values> v);
-
   void pop(LogContext::Entry* entry) noexcept;
 
  private:
@@ -373,28 +550,35 @@ struct LogContext::ThreadControlBlock {
 
 struct LogContext::Accessor::ScopedValue {
   explicit ScopedValue(std::shared_ptr<LogContext::Values> v) {
-    appendEntry(std::move(v));
+    appendEntry<std::shared_ptr<LogContext::Values>>(std::move(v));
   }
 
-  template <class Vals, const char... Keys[]>
-  explicit ScopedValue(ValueBuilder<Vals, Keys...>&& v) {
-    using V = ValuesImpl<Vals, Keys...>;
-    appendEntry(V(std::move(v._vals)));
+  template<class KV, class Base, std::size_t Depth>
+  explicit ScopedValue(ValueBuilder<KV, Base, Depth>&& v) {
+    std::move(v).passValues([this]<class... Args>(Args && ... args) {
+      this->appendEntry<
+          ValuesImpl<typename ValueBuilder<KV, Base, Depth>::ValueTypesT,
+                     typename ValueBuilder<KV, Base, Depth>::KeysT>>(
+          std::forward<Args>(args)...);
+    });
   }
 
   ScopedValue(ScopedValue const&) = delete;
   ScopedValue& operator=(ScopedValue const&) = delete;
-  
+
   ~ScopedValue();
-  
-  template <const char Key[], class Val>
-  static ScopedValue with(Val&& v) { return ScopedValue(LogContext::makeValue().with<Key>(std::forward<Val>(v))); }
+
+  template<const char Key[], class Val>
+  static ScopedValue with(Val&& v) {
+    return ScopedValue(LogContext::makeValue().with<Key>(std::forward<Val>(v)));
+  }
 
  private:
-  template <class V>
-  void appendEntry(V&& v) {
+  template<class T, class... Args>
+  void appendEntry(Args&&... args) {
     auto& local = LogContext::controlBlock();
-    auto e = local._entryCache.makeEntry<EntryImpl<V>>(std::forward<V>(v));
+    auto e =
+        local._entryCache.makeEntry<EntryImpl<T>>(std::forward<Args>(args)...);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _oldTail = e.get();
 #endif
@@ -418,15 +602,19 @@ struct LogContext::ScopedContext {
 };
 
 // These functions are deliberately defined inline in this header file to allow
-// more aggressive inlining for reduced overhead, even when compiling without IPO.
+// more aggressive inlining for reduced overhead, even when compiling without
+// IPO.
 
 // LogContext::EntryImpl
 
-template <class Vals>
+template<class Vals>
 inline void LogContext::EntryImpl<Vals>::release(EntryCache& cache) noexcept {
+  // (3) - this acquire-load synchronizes-with the release-fetch-sub (2)
+  std::ignore = this->_refCount.load(std::memory_order_acquire);
   void* p = this;
   this->~EntryImpl();
-  if (sizeof(*this) <= LogContext::EntryCache::MinEntryCacheSize && !cache.isFull()) {
+  if (sizeof(*this) <= LogContext::EntryCache::MinEntryCacheSize &&
+      !cache.isFull()) {
     cache.addToCache(p);
   } else {
     ::operator delete(p);
@@ -451,17 +639,6 @@ inline void LogContext::ThreadControlBlock::pop(Entry* entry) noexcept {
   _logContext.popTail(_entryCache);
 }
 
-template <class Vals, const char... Keys[]>
-inline LogContext::Entry* LogContext::ThreadControlBlock::push(ValueBuilder<Vals, Keys...>&& v) {
-  using V = ValuesImpl<Vals, Keys...>;
-  return _logContext.pushEntry(_entryCache.makeEntry<EntryImpl<V>>(V(std::move(v._vals))));
-}
-
-inline LogContext::Entry* LogContext::ThreadControlBlock::push(std::shared_ptr<Values> v) {
-  return _logContext.pushEntry(
-      _entryCache.makeEntry<EntryImpl<std::shared_ptr<Values>>>(std::move(v)));
-}
-
 // LogContext
 
 inline LogContext::~LogContext() {
@@ -469,17 +646,15 @@ inline LogContext::~LogContext() {
   auto* t = _tail;
   while (t != nullptr) {
     auto prev = t->_prev;
-    if (t->_refCount == 1) {
-      // we have the only reference to this Entry, so we can "reuse" t's reference
-      // to prev and therefore do not need to update any refCount.
+    if (t->_refCount.load(std::memory_order_relaxed) == 1 ||
+        t->decRefCnt() == 1) {
+      // we have/had the only reference to this Entry, so we can "reuse" t's
+      // reference to prev and therefore do not need to update any refCount.
       t->release(cache);
     } else {
-      if (prev) {
-        prev->incRefCnt();
-      }
-      if (t->decRefCnt() == 1) {
-        t->release(cache);
-      }
+      // we have decremented the refcnt, but some other LogContext still holds
+      // a reference to this entry, so there is nothing left for us to do!
+      break;
     }
     t = prev;
   }
@@ -512,15 +687,58 @@ inline LogContext& LogContext::operator=(LogContext&& r) noexcept {
 }
 
 inline LogContext::ValueBuilder<> LogContext::makeValue() noexcept {
-  return ValueBuilder<std::tuple<>>({});
+  return ValueBuilder<>();
 }
 
-inline LogContext& LogContext::current() noexcept {
+// the following attribute suppresses an UBSan false positive that reports
+// a nullptr access to the LogContext object here. it seems UBSan has issues
+// with thread-locals
+#ifndef _MSC_VER
+__attribute__((no_sanitize("null")))
+#endif
+inline LogContext&
+LogContext::current() noexcept {
   return _threadControlBlock._logContext;
 }
 
-inline LogContext::Entry* LogContext::pushEntry(std::unique_ptr<Entry> entry) noexcept {
-  TRI_ASSERT(entry->_refCount.load() == 0); 
+inline LogContext::EntryPtr LogContext::Current::pushValues(
+    std::shared_ptr<Values> values) {
+  return appendEntry<std::shared_ptr<LogContext::Values>>(std::move(values));
+}
+
+template<class KV, class Base, std::size_t Depth>
+inline LogContext::EntryPtr LogContext::Current::pushValues(
+    ValueBuilder<KV, Base, Depth>&& v) {
+  return std::move(v).passValues([]<class... Args>(Args && ... args) {
+    return Current::appendEntry<
+        ValuesImpl<typename ValueBuilder<KV, Base, Depth>::ValueTypesT,
+                   typename ValueBuilder<KV, Base, Depth>::KeysT>>(
+        std::forward<Args>(args)...);
+  });
+}
+
+template<class T, class... Args>
+inline LogContext::EntryPtr LogContext::Current::appendEntry(Args&&... args) {
+  auto& local = LogContext::controlBlock();
+  auto e =
+      local._entryCache.makeEntry<EntryImpl<T>>(std::forward<Args>(args)...);
+  EntryPtr result(e.get());
+  local._logContext.pushEntry(std::move(e));
+  return result;
+}
+
+inline void LogContext::Current::popEntry(EntryPtr& entry) noexcept {
+  if (entry._entry != nullptr) {
+    auto& local = LogContext::controlBlock();
+    TRI_ASSERT(entry._entry == local._logContext._tail);
+    local._logContext.popTail(local._entryCache);
+    entry._entry = nullptr;
+  }
+}
+
+inline LogContext::Entry* LogContext::pushEntry(
+    std::unique_ptr<Entry> entry) noexcept {
+  TRI_ASSERT(entry->_refCount.load() == 0);
   entry->_prev = _tail;
   entry->_refCount.store(1, std::memory_order_relaxed);
   _tail = entry.release();
@@ -530,33 +748,37 @@ inline LogContext::Entry* LogContext::pushEntry(std::unique_ptr<Entry> entry) no
 inline void LogContext::popTail(EntryCache& cache) noexcept {
   TRI_ASSERT(_tail != nullptr);
   auto prev = _tail->_prev;
-  if (_tail->_refCount == 1) {
-    // we have the only reference to this Entry, so we can "reuse" _tail's reference
-    // to prev and therefore do not need to update any refCount.
+  if (_tail->_refCount.load(std::memory_order_relaxed) == 1) {
+    // we have the only reference to this Entry, so we can "reuse" _tail's
+    // reference to prev and therefore do not need to update any refCount.
     _tail->release(cache);
-  } else {
-    if (prev) {
-      prev->incRefCnt();
-    }
+  } else if (prev) {
+    prev->incRefCnt();
     if (_tail->decRefCnt() == 1) {
+      TRI_ASSERT(prev->_refCount.load() > 1);
+      std::ignore = prev->decRefCnt();
       _tail->release(cache);
     }
+  } else if (_tail->decRefCnt() == 1) {
+    _tail->release(cache);
   }
   _tail = prev;
 }
 
-/// @brief Captures the current LogContext and returns a new function that applies
-/// the captures LogContext before calling the given function.
-/// This is helpful in cases where a function is handed to some other thread but we
-/// want to retain the current LogContext (e.g., when using futures).
-template <typename Func>
+/// @brief Captures the current LogContext and returns a new function that
+/// applies the captures LogContext before calling the given function. This is
+/// helpful in cases where a function is handed to some other thread but we want
+/// to retain the current LogContext (e.g., when using futures).
+template<typename Func>
 auto withLogContext(Func&& func) {
-  return [func = std::forward<Func>(func), ctx = LogContext::current()]
-      <typename... Args, typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>
-      (Args && ... args) mutable {
-        LogContext::ScopedContext ctxGuard(ctx);
-        return std::forward<Func>(func)(std::forward<Args>(args)...);
-      };
+  return [
+    func = std::forward<Func>(func), ctx = LogContext::current()
+  ]<typename... Args,
+    typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
+      Args && ... args) mutable {
+    LogContext::ScopedContext ctxGuard(ctx);
+    return std::forward<Func>(func)(std::forward<Args>(args)...);
+  };
 }
 
 }  // namespace arangodb

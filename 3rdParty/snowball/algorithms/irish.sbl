@@ -33,9 +33,7 @@ define mark_regions as (
 
     do (
         gopast v setmark pV
-    )
-    do (
-        gopast v gopast non-v setmark p1
+        gopast non-v setmark p1
         gopast v gopast non-v setmark p2
     )
 )

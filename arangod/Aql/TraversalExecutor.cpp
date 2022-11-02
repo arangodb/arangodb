@@ -23,82 +23,172 @@
 
 #include "TraversalExecutor.h"
 
+#include <utility>
+
 #include "Aql/ExecutorExpressionContext.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/Query.h"
-#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/system-compiler.h"
-#include "Graph/Traverser.h"
+#include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
+#include "Graph/Providers/ClusterProvider.h"
+#include "Graph/Steps/ClusterProviderStep.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
+#include "Transaction/Helpers.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Providers/SmartGraphProvider.h"
+#include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#endif
+
+#include "Graph/algorithm-aliases.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::traverser;
+using namespace arangodb::graph;
 
+namespace {
+auto toHashedStringRef(std::string const& id)
+    -> arangodb::velocypack::HashedStringRef {
+  return {id.data(), static_cast<uint32_t>(id.length())};
+}
+}  // namespace
+
+// on the coordinator
 TraversalExecutorInfos::TraversalExecutorInfos(
-    std::unique_ptr<Traverser>&& traverser,
-    std::unordered_map<OutputName, RegisterId, OutputNameHash> registerMapping,
-    std::string fixedSource, RegisterId inputRegister,
-    std::vector<std::pair<Variable const*, RegisterId>>
-        filterConditionVariables,
-    Ast* ast)
-    : _traverser(std::move(traverser)),
-      _registerMapping(std::move(registerMapping)),
+    std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId,
+                       TraversalExecutorInfosHelper::OutputNameHash>
+        registerMapping,
+    std::string fixedSource, RegisterId inputRegister, Ast* ast,
+    traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
+    traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
+    traverser::TraverserOptions::Order order, double defaultWeight,
+    std::string weightAttribute, transaction::Methods* trx,
+    arangodb::aql::QueryContext& query,
+    arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
+    arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
+    ClusterBaseProviderOptions&& clusterBaseProviderOptions, bool isSmart)
+    : _registerMapping(std::move(registerMapping)),
       _fixedSource(std::move(fixedSource)),
       _inputRegister(inputRegister),
-      _filterConditionVariables(std::move(filterConditionVariables)),
-      _ast(ast) {
-  TRI_ASSERT(_traverser != nullptr);
+      _uniqueVertices(vertexUniqueness),
+      _uniqueEdges(edgeUniqueness),
+      _order(order),
+      _defaultWeight(defaultWeight),
+      _weightAttribute(std::move(weightAttribute)),
+      _trx(trx),
+      _query(query) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
+
   // _fixedSource XOR _inputRegister
   // note: _fixedSource can be the empty string here
   TRI_ASSERT(_fixedSource.empty() ||
              (!_fixedSource.empty() &&
               _inputRegister.value() == RegisterId::maxRegisterId));
-  // All Nodes are located in the AST it cannot be non existing.
-  TRI_ASSERT(_ast != nullptr);
+
+  /*
+   * In the refactored variant we need to parse the correct enumerator type
+   * here, before we're allowed to use it.
+   */
+  TRI_ASSERT(_traversalEnumerator == nullptr);
+
+  parseTraversalEnumeratorCluster(
+      getOrder(), getUniqueVertices(), getUniqueEdges(), _defaultWeight,
+      _weightAttribute, query, std::move(clusterBaseProviderOptions),
+      std::move(pathValidatorOptions), std::move(enumeratorOptions), isSmart);
+
+  TRI_ASSERT(_traversalEnumerator != nullptr);
 }
 
-Traverser& TraversalExecutorInfos::traverser() {
-  TRI_ASSERT(_traverser != nullptr);
-  return *_traverser.get();
+// on non-coordinator (single server or DB-server)
+TraversalExecutorInfos::TraversalExecutorInfos(
+    std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId,
+                       TraversalExecutorInfosHelper::OutputNameHash>
+        registerMapping,
+    std::string fixedSource, RegisterId inputRegister, Ast* ast,
+    traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
+    traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
+    traverser::TraverserOptions::Order order, double defaultWeight,
+    std::string weightAttribute, transaction::Methods* trx,
+    arangodb::aql::QueryContext& query,
+    arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
+    arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
+    graph::SingleServerBaseProviderOptions&& singleServerBaseProviderOptions,
+    bool isSmart)
+    : _registerMapping(std::move(registerMapping)),
+      _fixedSource(std::move(fixedSource)),
+      _inputRegister(inputRegister),
+      _uniqueVertices(vertexUniqueness),
+      _uniqueEdges(edgeUniqueness),
+      _order(order),
+      _defaultWeight(defaultWeight),
+      _weightAttribute(std::move(weightAttribute)),
+      _trx(trx),
+      _query(query) {
+  // _fixedSource XOR _inputRegister
+  // note: _fixedSource can be the empty string here
+  TRI_ASSERT(_fixedSource.empty() ||
+             (!_fixedSource.empty() &&
+              _inputRegister.value() == RegisterId::maxRegisterId));
+
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  /*
+   * In the refactored variant we need to parse the correct enumerator type
+   * here, before we're allowed to use it.
+   */
+  TRI_ASSERT(_traversalEnumerator == nullptr);
+
+  parseTraversalEnumeratorSingleServer(
+      getOrder(), getUniqueVertices(), getUniqueEdges(), _defaultWeight,
+      _weightAttribute, query, std::move(singleServerBaseProviderOptions),
+      std::move(pathValidatorOptions), std::move(enumeratorOptions), isSmart);
+
+  TRI_ASSERT(_traversalEnumerator != nullptr);
 }
 
-bool TraversalExecutorInfos::usesOutputRegister(OutputName type) const {
-  return _registerMapping.find(type) != _registerMapping.end();
+// REFACTOR
+arangodb::graph::TraversalEnumerator*
+TraversalExecutorInfos::traversalEnumerator() const {
+  TRI_ASSERT(_traversalEnumerator != nullptr);
+  return _traversalEnumerator.get();
+}
+
+bool TraversalExecutorInfos::usesOutputRegister(
+    TraversalExecutorInfosHelper::OutputName type) const {
+  return _registerMapping.contains(type);
 }
 
 bool TraversalExecutorInfos::useVertexOutput() const {
-  return usesOutputRegister(OutputName::VERTEX);
+  return usesOutputRegister(TraversalExecutorInfosHelper::OutputName::VERTEX);
 }
 
 bool TraversalExecutorInfos::useEdgeOutput() const {
-  return usesOutputRegister(OutputName::EDGE);
+  return usesOutputRegister(TraversalExecutorInfosHelper::OutputName::EDGE);
 }
 
 bool TraversalExecutorInfos::usePathOutput() const {
-  return usesOutputRegister(OutputName::PATH);
+  return usesOutputRegister(TraversalExecutorInfosHelper::OutputName::PATH);
 }
 
-Ast* TraversalExecutorInfos::getAst() const { return _ast; }
-
-static std::string typeToString(TraversalExecutorInfos::OutputName type) {
+std::string TraversalExecutorInfos::typeToString(
+    TraversalExecutorInfosHelper::OutputName type) {
   switch (type) {
-    case TraversalExecutorInfos::VERTEX:
+    case TraversalExecutorInfosHelper::VERTEX:
       return std::string{"VERTEX"};
-    case TraversalExecutorInfos::EDGE:
+    case TraversalExecutorInfosHelper::EDGE:
       return std::string{"EDGE"};
-    case TraversalExecutorInfos::PATH:
+    case TraversalExecutorInfosHelper::PATH:
       return std::string{"PATH"};
     default:
       return std::string{"<INVALID("} + std::to_string(type) + ")>";
   }
 }
 
-RegisterId TraversalExecutorInfos::findRegisterChecked(OutputName type) const {
+RegisterId TraversalExecutorInfos::findRegisterChecked(
+    TraversalExecutorInfosHelper::OutputName type) const {
   auto const& it = _registerMapping.find(type);
   if (ADB_UNLIKELY(it == _registerMapping.end())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -108,21 +198,22 @@ RegisterId TraversalExecutorInfos::findRegisterChecked(OutputName type) const {
   return it->second;
 }
 
-RegisterId TraversalExecutorInfos::getOutputRegister(OutputName type) const {
+RegisterId TraversalExecutorInfos::getOutputRegister(
+    TraversalExecutorInfosHelper::OutputName type) const {
   TRI_ASSERT(usesOutputRegister(type));
   return findRegisterChecked(type);
 }
 
 RegisterId TraversalExecutorInfos::vertexRegister() const {
-  return getOutputRegister(OutputName::VERTEX);
+  return getOutputRegister(TraversalExecutorInfosHelper::OutputName::VERTEX);
 }
 
 RegisterId TraversalExecutorInfos::edgeRegister() const {
-  return getOutputRegister(OutputName::EDGE);
+  return getOutputRegister(TraversalExecutorInfosHelper::OutputName::EDGE);
 }
 
 RegisterId TraversalExecutorInfos::pathRegister() const {
-  return getOutputRegister(OutputName::PATH);
+  return getOutputRegister(TraversalExecutorInfosHelper::OutputName::PATH);
 }
 
 bool TraversalExecutorInfos::usesFixedSource() const {
@@ -140,64 +231,192 @@ RegisterId TraversalExecutorInfos::getInputRegister() const {
   return _inputRegister;
 }
 
-std::vector<std::pair<Variable const*, RegisterId>> const&
-TraversalExecutorInfos::filterConditionVariables() const {
-  return _filterConditionVariables;
+TraverserOptions::UniquenessLevel TraversalExecutorInfos::getUniqueVertices()
+    const {
+  return _uniqueVertices;
+}
+
+TraverserOptions::UniquenessLevel TraversalExecutorInfos::getUniqueEdges()
+    const {
+  return _uniqueEdges;
+}
+
+TraverserOptions::Order TraversalExecutorInfos::getOrder() const {
+  return _order;
+}
+
+transaction::Methods* TraversalExecutorInfos::getTrx() { return _trx; }
+
+arangodb::aql::QueryContext& TraversalExecutorInfos::getQuery() {
+  return _query;
+}
+
+arangodb::aql::QueryWarnings& TraversalExecutorInfos::getWarnings() {
+  return _query.warnings();
+}
+
+// TODO [GraphRefactor]: Add a parameter to toggle tracing variants of
+// enumerators.
+auto TraversalExecutorInfos::parseTraversalEnumeratorSingleServer(
+    TraverserOptions::Order order,
+    TraverserOptions::UniquenessLevel uniqueVertices,
+    TraverserOptions::UniquenessLevel uniqueEdges, double defaultWeight,
+    std::string const& weightAttribute, QueryContext& query,
+    SingleServerBaseProviderOptions&& baseProviderOptions,
+    PathValidatorOptions&& pathValidatorOptions,
+    OneSidedEnumeratorOptions&& enumeratorOptions, bool isSmart) -> void {
+  if (order == TraverserOptions::Order::WEIGHTED) {
+    // It is valid to not have set a weightAttribute.
+    if (weightAttribute.empty()) {
+      baseProviderOptions.setWeightEdgeCallback(
+          [defaultWeight](double previousWeight, VPackSlice edge) -> double {
+            return previousWeight + defaultWeight;
+          });
+    } else {
+      baseProviderOptions.setWeightEdgeCallback(
+          [weightAttribute = weightAttribute, defaultWeight](
+              double previousWeight, VPackSlice edge) -> double {
+            auto const weight =
+                arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                    edge, weightAttribute, defaultWeight);
+            if (weight < 0.) {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+            }
+
+            return previousWeight + weight;
+          });
+    }
+  }
+  // This assertion is not necessary, we could be smart here, for disjoints.
+  // However, the current implementation does not hand in isSmart==true
+  // in the valid combination.
+  TRI_ASSERT(!isSmart);
+  bool useTracing = false;
+  TRI_ASSERT(_traversalEnumerator == nullptr);
+
+  _traversalEnumerator = TraversalEnumerator::createEnumerator<
+      SingleServerProvider<SingleServerProviderStep>>(
+      order, uniqueVertices, uniqueEdges, query, std::move(baseProviderOptions),
+      std::move(pathValidatorOptions), std::move(enumeratorOptions),
+      useTracing);
+
+  TRI_ASSERT(_traversalEnumerator != nullptr);
+}
+
+auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
+    traverser::TraverserOptions::Order order,
+    traverser::TraverserOptions::UniquenessLevel uniqueVertices,
+    traverser::TraverserOptions::UniquenessLevel uniqueEdges,
+    double defaultWeight, const std::string& weightAttribute,
+    arangodb::aql::QueryContext& query,
+    arangodb::graph::ClusterBaseProviderOptions&& baseProviderOptions,
+    arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
+    arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
+    bool isSmart) -> void {
+  if (order == TraverserOptions::Order::WEIGHTED) {
+    // It is valid to not have set a weightAttribute.
+    if (weightAttribute.empty()) {
+      baseProviderOptions.setWeightEdgeCallback(
+          [defaultWeight](double previousWeight, VPackSlice edge) -> double {
+            return previousWeight + defaultWeight;
+          });
+    } else {
+      baseProviderOptions.setWeightEdgeCallback(
+          [weightAttribute = weightAttribute, defaultWeight](
+              double previousWeight, VPackSlice edge) -> double {
+            auto const weight =
+                arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                    edge, weightAttribute, defaultWeight);
+            if (weight < 0.) {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+            }
+
+            return previousWeight + weight;
+          });
+    }
+  }
+  TRI_ASSERT(baseProviderOptions.getCache() != nullptr);
+  bool useTracing = false;
+  TRI_ASSERT(_traversalEnumerator == nullptr);
+
+#ifdef USE_ENTERPRISE
+  if (isSmart) {
+    baseProviderOptions.setRPCCommunicator(
+        std::make_unique<enterprise::SmartGraphRPCCommunicator>(
+            query, query.resourceMonitor(), baseProviderOptions.engines()));
+    _traversalEnumerator = TraversalEnumerator::createEnumerator<
+        enterprise::SmartGraphProvider<ClusterProviderStep>>(
+        order, uniqueVertices, uniqueEdges, query,
+        std::move(baseProviderOptions), std::move(pathValidatorOptions),
+        std::move(enumeratorOptions), useTracing);
+  } else {
+    _traversalEnumerator = TraversalEnumerator::createEnumerator<
+        ClusterProvider<ClusterProviderStep>>(
+        order, uniqueVertices, uniqueEdges, query,
+        std::move(baseProviderOptions), std::move(pathValidatorOptions),
+        std::move(enumeratorOptions), useTracing);
+  }
+#else
+  _traversalEnumerator = TraversalEnumerator::createEnumerator<
+      ClusterProvider<ClusterProviderStep>>(
+      order, uniqueVertices, uniqueEdges, query, std::move(baseProviderOptions),
+      std::move(pathValidatorOptions), std::move(enumeratorOptions),
+      useTracing);
+#endif
+
+  TRI_ASSERT(_traversalEnumerator != nullptr);
 }
 
 TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
+      _ast(infos.getQuery()),
       _inputRow{CreateInvalidInputRowHint{}},
-      _traverser(infos.traverser()) {
+      _traversalEnumerator(nullptr) {
   // reset the traverser, so that no residual state is left in it. This is
   // important because the TraversalExecutor is sometimes reconstructed (in
-  // place) with the same TraversalExecutorInfos as before. Those infos contain
-  // the traverser which might contain state from a previous run.
-  _traverser.done();
+  // place) with the same TraversalExecutorInfos as before. Those
+  // infos contain the traverser which might contain state from a previous run.
+  _traversalEnumerator = infos.traversalEnumerator();
+  traversalEnumerator()->clear(false);
 }
 
 TraversalExecutor::~TraversalExecutor() {
-  auto opts = _traverser.options();
-  if (opts != nullptr) {
-    // The InAndOutRowExpressionContext in the PruneExpressionEvaluator
-    // holds an InputAqlItemRow. As the Plan holds the
-    // PruneExpressionEvaluator and is destroyed after the Engine, this must
-    // be deleted by unPrepareContext() - otherwise, the
-    // SharedAqlItemBlockPtr referenced by the row will return its
-    // AqlItemBlock to an already destroyed AqlItemBlockManager.
-    if (opts->usesPrune()) {
-      auto* evaluator = opts->getPruneEvaluator();
-      if (evaluator != nullptr) {
-        evaluator->unPrepareContext();
-      }
-    }
-    if (opts->usesPostFilter()) {
-      auto* evaluator = opts->getPostFilterEvaluator();
-      if (evaluator != nullptr) {
-        evaluator->unPrepareContext();
-      }
-    }
-  }
-};
+  traversalEnumerator()->clear(false);
+  traversalEnumerator()->unprepareValidatorContext();
+}
 
 auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
-  while (!output.isFull() && _traverser.hasMore() && _traverser.next()) {
+  // Refactored variant
+  auto currentPath = traversalEnumerator()->getNextPath();
+  if (currentPath != nullptr) {
     TRI_ASSERT(_inputRow.isInitialized());
 
     // traverser now has next v, e, p values
+    transaction::BuilderLeaser tmp{_infos.getTrx()};
+
+    // Vertex variable (v)
     if (_infos.useVertexOutput()) {
-      AqlValue vertex = _traverser.lastVertexToAqlValue();
-      AqlValueGuard guard{vertex, true};
+      tmp->clear();
+      currentPath->lastVertexToVelocyPack(*tmp.builder());
+      AqlValue path{tmp->slice()};
+      AqlValueGuard guard{path, true};
       output.moveValueInto(_infos.vertexRegister(), _inputRow, guard);
     }
+
+    // Edge variable (e)
     if (_infos.useEdgeOutput()) {
-      AqlValue edge = _traverser.lastEdgeToAqlValue();
-      AqlValueGuard guard{edge, true};
+      tmp->clear();
+      currentPath->lastEdgeToVelocyPack(*tmp.builder());
+      AqlValue path{tmp->slice()};
+      AqlValueGuard guard{path, true};
       output.moveValueInto(_infos.edgeRegister(), _inputRow, guard);
     }
+
+    // Path variable (p)
     if (_infos.usePathOutput()) {
-      transaction::BuilderLeaser tmp(_traverser.trx());
-      AqlValue path = _traverser.pathToAqlValue(*tmp.builder());
+      tmp->clear();
+      currentPath->toVelocyPack(*tmp.builder());
+      AqlValue path{tmp->slice()};
       AqlValueGuard guard{path, true};
       output.moveValueInto(_infos.pathRegister(), _inputRow, guard);
     }
@@ -213,75 +432,53 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
   }
 }
 
-auto TraversalExecutor::doSkip(AqlCall& call) -> size_t {
-  auto skip = size_t{0};
-
-  while (call.shouldSkip() && _traverser.hasMore() && _traverser.next()) {
-    TRI_ASSERT(_inputRow.isInitialized());
-    skip++;
-    call.didSkip(1);
-  }
-
-  return skip;
-}
-
 auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input,
                                     OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  TraversalStats stats;
-  ExecutorState state{ExecutorState::HASMORE};
-
-  while (true) {
-    if (_traverser.hasMore()) {
-      TRI_ASSERT(_inputRow.isInitialized());
-      doOutput(output);
-
-      if (output.isFull()) {
-        if (_traverser.hasMore()) {
-          state = ExecutorState::HASMORE;
-        } else {
-          state = input.upstreamState();
-        }
-        break;
+  while (!output.isFull()) {
+    if (traversalEnumerator()->isDone()) {
+      if (!initTraverser(input)) {  // will set a new start vertex
+        TRI_ASSERT(!input.hasDataRow());
+        return {input.upstreamState(), stats(), AqlCall{}};
       }
     } else {
-      if (!initTraverser(input)) {
-        state = input.upstreamState();
-        break;
-      }
-      TRI_ASSERT(_inputRow.isInitialized());
+      doOutput(output);
     }
   }
 
-  stats.addFiltered(_traverser.getAndResetFilteredPaths());
-  stats.addScannedIndex(_traverser.getAndResetReadDocuments());
-  stats.addHttpRequests(_traverser.getAndResetHttpRequests());
-
-  return {state, stats, AqlCall{}};
+  if (traversalEnumerator()->isDone()) {
+    return {input.upstreamState(), stats(), AqlCall{}};
+  } else {
+    return {ExecutorState::HASMORE, stats(), AqlCall{}};
+  }
 }
 
 auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input,
                                       AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
-  TraversalStats stats{};
   auto skipped = size_t{0};
 
-  while (true) {
-    skipped += doSkip(call);
-
-    stats.addFiltered(_traverser.getAndResetFilteredPaths());
-    stats.addScannedIndex(_traverser.getAndResetReadDocuments());
-    stats.addHttpRequests(_traverser.getAndResetHttpRequests());
-
-    if (!_traverser.hasMore()) {
+  while (call.shouldSkip()) {
+    if (traversalEnumerator()->isDone()) {
       if (!initTraverser(input)) {
-        return {input.upstreamState(), stats, skipped, AqlCall{}};
+        TRI_ASSERT(!input.hasDataRow());
+        return {input.upstreamState(), stats(), skipped, AqlCall{}};
       }
     } else {
-      TRI_ASSERT(call.getOffset() == 0);
-      return {ExecutorState::HASMORE, stats, skipped, AqlCall{}};
+      if (traversalEnumerator()->skipPath()) {
+        skipped++;
+        call.didSkip(1);
+      }
     }
   }
+
+  if (traversalEnumerator()->isDone()) {
+    return {input.upstreamState(), stats(), skipped, AqlCall{}};
+  } else {
+    return {ExecutorState::HASMORE, stats(), skipped, AqlCall{}};
+  }
+
+  TRI_ASSERT(false);
 }
 
 //
@@ -291,42 +488,17 @@ auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input,
 //
 // TODO: this is quite a big function, refactor
 bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
-  _traverser.clear();
-  auto opts = _traverser.options();
-  opts->clearVariableValues();
+  // refactored variant
+  TRI_ASSERT(traversalEnumerator()->isDone());
 
-  // Now reset the traverser
-  // NOTE: It is correct to ask for whether there is a data row here
-  //       even if we're using a constant start vertex, as we expect
-  //       to provide output for every input row
   while (input.hasDataRow()) {
-    // Try to acquire a starting vertex
-    std::tie(std::ignore, _inputRow) =
-        input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
-    TRI_ASSERT(_inputRow.isInitialized());
-
-    for (auto const& pair : _infos.filterConditionVariables()) {
-      opts->setVariableValue(pair.first, _inputRow.getValue(pair.second));
-    }
-
-    if (opts->usesPrune()) {
-      auto* evaluator = opts->getPruneEvaluator();
-      // Replace by inputRow
-      evaluator->prepareContext(_inputRow);
-      TRI_ASSERT(_inputRow.isInitialized());
-    }
-
-    if (opts->usesPostFilter()) {
-      auto* evaluator = opts->getPostFilterEvaluator();
-      // Replace by inputRow
-      evaluator->prepareContext(_inputRow);
-      TRI_ASSERT(_inputRow.isInitialized());
-    }
-
-    opts->calculateIndexExpressions(_infos.getAst());
+    std::tie(std::ignore, _inputRow) = input.nextDataRow();
 
     std::string sourceString;
     TRI_ASSERT(_inputRow.isInitialized());
+
+    traversalEnumerator()->unprepareValidatorContext();
+    traversalEnumerator()->setValidatorContext(_inputRow);
 
     if (_infos.usesFixedSource()) {
       sourceString = _infos.getFixedSource();
@@ -334,8 +506,7 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
       AqlValue const& in = _inputRow.getValue(_infos.getInputRegister());
       if (in.isObject()) {
         try {
-          sourceString =
-              _traverser.options()->trx()->extractIdString(in.slice());
+          sourceString = _infos.getTrx()->extractIdString(in.slice());
         } catch (...) {
           // on purpose ignore this error.
         }
@@ -347,16 +518,30 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
     auto pos = sourceString.find('/');
 
     if (pos == std::string::npos) {
-      _traverser.options()->query().warnings().registerWarning(
-          TRI_ERROR_BAD_PARAMETER,
-          "Invalid input for traversal: Only "
-          "id strings or objects with _id are "
-          "allowed");
+      _infos.getWarnings().registerWarning(TRI_ERROR_BAD_PARAMETER,
+                                           "Invalid input for traversal: Only "
+                                           "id strings or objects with _id are "
+                                           "allowed");
     } else {
-      _traverser.setStartVertex(sourceString);
+      // prepare index
+      _ast.clearMost();
+      traversalEnumerator()->prepareIndexExpressions(&_ast);
+
+      // start actual search
+      traversalEnumerator()->reset(toHashedStringRef(
+          sourceString));  // TODO [GraphRefactor]: check sourceString memory
       TRI_ASSERT(_inputRow.isInitialized());
       return true;
     }
   }
   return false;
+}
+
+[[nodiscard]] auto TraversalExecutor::stats() -> Stats {
+  return traversalEnumerator()->stealStats();
+}
+
+arangodb::graph::TraversalEnumerator* TraversalExecutor::traversalEnumerator() {
+  TRI_ASSERT(_traversalEnumerator != nullptr);
+  return _traversalEnumerator;
 }

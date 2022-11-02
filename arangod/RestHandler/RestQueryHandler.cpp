@@ -24,10 +24,12 @@
 #include "RestQueryHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
@@ -41,9 +43,9 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestQueryHandler::RestQueryHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestQueryHandler::RestQueryHandler(ArangodServer& server,
+                                   GeneralRequest* request,
+                                   GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestQueryHandler::execute() {
@@ -55,9 +57,14 @@ RestStatus RestQueryHandler::execute() {
     case rest::RequestType::DELETE_REQ:
       deleteQuery();
       break;
-    case rest::RequestType::GET:
-      readQuery();
-      break;
+    case rest::RequestType::GET: {
+      auto const& suffixes = _request->suffixes();
+      if (suffixes.size() == 1 && suffixes[0] == "rules") {
+        handleAvailableOptimizerRules();
+      } else {
+        readQuery();
+      }
+    } break;
     case rest::RequestType::PUT:
       replaceProperties();
       break;
@@ -71,6 +78,31 @@ RestStatus RestQueryHandler::execute() {
 
   // this handler is done
   return RestStatus::DONE;
+}
+
+void RestQueryHandler::handleAvailableOptimizerRules() {
+  VPackBuilder builder;
+  builder.openArray();
+  auto const& optimizerRules = OptimizerRulesFeature::rules();
+  for (auto const& optimizerRule : optimizerRules) {
+    builder.openObject();
+    builder.add("name", VPackValue(optimizerRule.name));
+    builder.add(velocypack::Value("flags"));
+    builder.openObject();
+    builder.add("hidden", VPackValue(optimizerRule.isHidden()));
+    builder.add("clusterOnly", VPackValue(optimizerRule.isClusterOnly()));
+    builder.add("canBeDisabled", VPackValue(optimizerRule.canBeDisabled()));
+    builder.add("canCreateAdditionalPlans",
+                VPackValue(optimizerRule.canCreateAdditionalPlans()));
+    builder.add("disabledByDefault",
+                VPackValue(optimizerRule.isDisabledByDefault()));
+    builder.add("enterpriseOnly", VPackValue(optimizerRule.isEnterpriseOnly()));
+    builder.close();
+    builder.close();
+  }
+  builder.close();
+
+  generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
 void RestQueryHandler::readQueryProperties() {
@@ -344,8 +376,13 @@ ResultT<std::pair<std::string, bool>> RestQueryHandler::forwardingTarget() {
       uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
       if (sourceServer != ServerState::instance()->getShortId()) {
         auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-        return {
-            std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
+        auto coordinatorId = ci.getCoordinatorByShortID(sourceServer);
+        if (coordinatorId.empty()) {
+          return ResultT<std::pair<std::string, bool>>::error(
+              TRI_ERROR_QUERY_NOT_FOUND,
+              "cannot find target server for query id");
+        }
+        return {std::make_pair(std::move(coordinatorId), false)};
       }
     }
   }

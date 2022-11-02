@@ -118,7 +118,7 @@ class ExecutionBlock {
   virtual std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(
       AqlCallStack const& stack) = 0;
 
-  virtual void collectExecStats(ExecutionStats&) const;
+  virtual void collectExecStats(ExecutionStats&);
 
   [[nodiscard]] auto printBlockInfo() const -> std::string const;
   [[nodiscard]] auto printTypeInfo() const -> std::string const;
@@ -160,6 +160,13 @@ class ExecutionBlock {
 
   /// @brief if this is set, we are done, this is reset to false by execute()
   bool _done;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  /// @brief if this is set to true, one thread is using this block, so we can
+  /// assert that no other thread can access this block at the same time - as
+  /// this would harm our implementation.
+  std::atomic<bool> _isBlockInUse{false};
+#endif
 };
 
 }  // namespace aql

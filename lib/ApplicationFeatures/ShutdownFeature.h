@@ -23,14 +23,32 @@
 
 #pragma once
 
+#include <span>
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+namespace application_features {
+class GreetingsFeaturePhase;
+}
+
+class LoggerFeature;
 
 class ShutdownFeature final : public application_features::ApplicationFeature {
  public:
-  ShutdownFeature(application_features::ApplicationServer& server,
-                  std::vector<std::type_index> const& features);
+  static constexpr std::string_view name() noexcept { return "Shutdown"; }
+
+  template<typename Server>
+  ShutdownFeature(Server& server, std::span<const size_t> features)
+      : ApplicationFeature{server, *this} {
+    setOptional(true);
+    startsAfter<application_features::GreetingsFeaturePhase, Server>();
+
+    for (auto feature : features) {
+      if (feature != Server::template id<LoggerFeature>()) {
+        startsAfter(feature);
+      }
+    }
+  }
 
   void start() override final;
 };

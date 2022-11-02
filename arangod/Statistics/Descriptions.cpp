@@ -36,7 +36,6 @@
 #include "V8Server/V8DealerFeature.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
@@ -110,8 +109,7 @@ void stats::Figure::toVPack(velocypack::Builder& b) const {
   b.add("units", VPackValue(stats::fromUnit(units)));
 }
 
-stats::Descriptions::Descriptions(
-    application_features::ApplicationServer& server)
+stats::Descriptions::Descriptions(ArangodServer& server)
     : _server(server),
       _requestTimeCuts(statistics::RequestTimeDistributionCuts),
       _connectionTimeCuts(statistics::ConnectionTimeDistributionCuts),
@@ -454,6 +452,8 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
         VPackValue(info._transactionsStatistics._intermediateCommits.load()));
   b.add("readOnly",
         VPackValue(info._transactionsStatistics._readTransactions.load()));
+  b.add("dirtyReadOnly",
+        VPackValue(info._transactionsStatistics._dirtyReadTransactions.load()));
   b.close();
 
   if (dealer.isEnabled()) {

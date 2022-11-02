@@ -36,16 +36,15 @@
 #include "Logger/LoggerStream.h"
 
 #include "velocypack/Iterator.h"
-#include "velocypack/velocypack-aliases.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-MaintenanceRestHandler::MaintenanceRestHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+MaintenanceRestHandler::MaintenanceRestHandler(ArangodServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus MaintenanceRestHandler::execute() {

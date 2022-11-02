@@ -356,7 +356,7 @@ TEST_F(AqlItemMatrixTest, getBlock_with_shadow_row_in_first_block) {
   auto& manager = this->manager();
   // We do not test skip and State logix for the Matrix, that
   // has to be handled by using Methods.
-  ExecutorState unusedState = ExecutorState::DONE;
+  MainQueryState unusedState = MainQueryState::DONE;
   size_t unusedSkip = 0;
 
   AqlItemMatrix testee(1);
@@ -409,7 +409,7 @@ TEST_F(AqlItemMatrixTest, getBlock_with_shadow_row_in_multiple_blocks) {
   auto& manager = this->manager();
   // We do not test skip and State logix for the Matrix, that
   // has to be handled by using Methods.
-  ExecutorState unusedState = ExecutorState::DONE;
+  MainQueryState unusedState = MainQueryState::DONE;
   size_t unusedSkip = 0;
 
   AqlItemMatrix testee(1);
@@ -533,7 +533,7 @@ TEST_F(AqlItemMatrixTest, getBlock_with_multiple_shadow_row_in_first_block) {
   auto& manager = this->manager();
   // We do not test skip and State logix for the Matrix, that
   // has to be handled by using Methods.
-  ExecutorState unusedState = ExecutorState::DONE;
+  MainQueryState unusedState = MainQueryState::DONE;
   size_t unusedSkip = 0;
 
   AqlItemMatrix testee(1);

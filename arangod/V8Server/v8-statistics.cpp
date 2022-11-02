@@ -114,9 +114,9 @@ static void JS_ServerStatistics(
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
 
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
   ServerStatistics const& info =
-      v8g->_server.getFeature<metrics::MetricsFeature>().serverStatistics();
+      v8g->server().getFeature<metrics::MetricsFeature>().serverStatistics();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
@@ -152,13 +152,17 @@ static void JS_ServerStatistics(
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "readOnly"),
             v8::Number::New(isolate, (double)ts._readTransactions.load()))
       .FromMaybe(false);
+  v8TransactionInfoObj
+      ->Set(context, TRI_V8_ASCII_STRING(isolate, "dirtyReadOnly"),
+            v8::Number::New(isolate, (double)ts._dirtyReadTransactions.load()))
+      .FromMaybe(false);
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "transactions"),
             v8TransactionInfoObj)
       .FromMaybe(false);
 
   // v8 counters
-  V8DealerFeature& dealer = v8g->_server.getFeature<V8DealerFeature>();
+  V8DealerFeature& dealer = v8g->server().getFeature<V8DealerFeature>();
   auto v8Counters = dealer.getCurrentContextNumbers();
   v8::Handle<v8::Object> v8CountersObj = v8::Object::New(isolate);
   v8CountersObj
@@ -266,8 +270,8 @@ static void JS_EnabledStatistics(
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
-  bool enabled = v8g->_server.getFeature<StatisticsFeature>().isEnabled();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  bool enabled = v8g->server().getFeature<StatisticsFeature>().isEnabled();
   v8::Handle<v8::Value> result = v8::Boolean::New(isolate, enabled);
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -278,10 +282,10 @@ static void JS_EnabledStatisticsAllDatabases(
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
-  bool enabled = v8g->_server.getFeature<StatisticsFeature>().isEnabled();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  bool enabled = v8g->server().getFeature<StatisticsFeature>().isEnabled();
   bool allDatabases =
-      v8g->_server.getFeature<StatisticsFeature>().allDatabases();
+      v8g->server().getFeature<StatisticsFeature>().allDatabases();
   v8::Handle<v8::Value> result =
       v8::Boolean::New(isolate, enabled && allDatabases);
   TRI_V8_RETURN(result);
@@ -296,8 +300,9 @@ static void JS_EnabledMetrics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
-  bool enabled = v8g->_server.getFeature<metrics::MetricsFeature>().exportAPI();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+  bool enabled =
+      v8g->server().getFeature<metrics::MetricsFeature>().exportAPI();
   v8::Handle<v8::Value> result = v8::Boolean::New(isolate, enabled);
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

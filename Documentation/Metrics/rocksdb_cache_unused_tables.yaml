@@ -1,0 +1,18 @@
+name: rocksdb_cache_unused_tables
+introducedIn: "3.10.0"
+help: |
+  Global current number of inactive/reserve hash tables in ArangoDB cache.
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric reflects the current number of unused hash tables used by the
+  in-memory cache which sits in front of RocksDB. Unused tables can be kept as
+  backups to provide new, readily initialized tables for new caches.
+  Unused tables can consume some memory, but the overall memory usage of
+  unused tables is capped.

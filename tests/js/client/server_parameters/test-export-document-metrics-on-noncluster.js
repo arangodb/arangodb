@@ -53,7 +53,7 @@ function testSuite() {
       assertNotEqual(0, lines.filter((line) => line.match(/^arangodb_collection_truncate_time/) ).length);
 
       // now check that metrics actually work
-      let oldInserts = parseInt(lines.filter((line) => line.match(/^arangodb_document_insert_time_count/))[0].split(" ")[1]);
+      let oldInserts = parseInt(lines.filter((line) => line.match(/^arangodb_document_insert_time_count/))[0].split("}")[1]);
 
       let cn = "UnitTestsReplication";
       db._drop(cn);
@@ -64,7 +64,7 @@ function testSuite() {
         }
         // fetch updated metrics
         lines = getMetrics();
-        let newInserts = parseInt(lines.filter((line) => line.match(/^arangodb_document_insert_time_count/))[0].split(" ")[1]);
+        let newInserts = parseInt(lines.filter((line) => line.match(/^arangodb_document_insert_time_count/))[0].split("}")[1]);
         assertTrue(newInserts >= oldInserts + 1000, { oldInserts, newInserts });
       } finally {
         db._drop(cn);

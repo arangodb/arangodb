@@ -27,13 +27,16 @@
 
 /// @brief statistics per ExecutionNode
 struct ExecutionNodeStats {
-  size_t calls = 0;
-  size_t items = 0;
+  uint64_t calls = 0;
+  uint64_t items = 0;
+  // filtered is only populated by some nodes
+  uint64_t filtered = 0;
   double runtime = 0.0;
 
   ExecutionNodeStats& operator+=(ExecutionNodeStats const& other) {
     calls += other.calls;
     items += other.items;
+    filtered += other.filtered;
     runtime += other.runtime;
     return *this;
   }

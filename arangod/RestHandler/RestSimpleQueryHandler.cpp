@@ -33,14 +33,13 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::rest;
 
 RestSimpleQueryHandler::RestSimpleQueryHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response, arangodb::aql::QueryRegistry* queryRegistry)
+    ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
+    arangodb::aql::QueryRegistry* queryRegistry)
     : RestCursorHandler(server, request, response, queryRegistry) {}
 
 RestStatus RestSimpleQueryHandler::execute() {

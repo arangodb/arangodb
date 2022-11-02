@@ -38,18 +38,20 @@ namespace statistics {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct Counter {
-  Counter() : _count(0) {}
+  constexpr Counter() noexcept : _count(0) {}
 
   Counter& operator=(Counter const& other) {
     _count.store(other._count.load());
     return *this;
   }
 
-  void incCounter() { ++_count; }
+  void incCounter() noexcept { ++_count; }
 
-  void decCounter() { --_count; }
+  void decCounter() noexcept { --_count; }
 
-  int64_t get() const { return _count.load(std::memory_order_relaxed); }
+  int64_t get() const noexcept {
+    return _count.load(std::memory_order_relaxed);
+  }
 
  private:
   std::atomic<int64_t> _count;

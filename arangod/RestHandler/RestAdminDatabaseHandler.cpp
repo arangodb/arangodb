@@ -28,14 +28,13 @@
 #include "Rest/Version.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAdminDatabaseHandler::RestAdminDatabaseHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestAdminDatabaseHandler::RestAdminDatabaseHandler(ArangodServer& server,
+                                                   GeneralRequest* request,
+                                                   GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAdminDatabaseHandler::execute() {

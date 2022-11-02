@@ -30,7 +30,6 @@
 #include "IResearch/VelocyPackHelper.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace tests {
@@ -57,7 +56,7 @@ struct StringField final {
   mutable irs::string_token_stream stream;
   irs::string_ref value;
   irs::string_ref fieldName;
-  irs::features_t _featuresRange{nullptr, 0};
+  irs::features_t _featuresRange;
 };
 
 struct GeoField final {
@@ -86,7 +85,7 @@ struct GeoField final {
   mutable iresearch::GeoJSONAnalyzer stream{{}};
   VPackSlice shapeSlice;
   irs::string_ref fieldName;
-  irs::features_t _featuresRange{nullptr, 0};
+  irs::features_t _featuresRange;
 };
 
 }  // namespace tests

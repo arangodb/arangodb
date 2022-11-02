@@ -23,9 +23,9 @@
 
 #include "SortNode.h"
 
-#include "Aql/AllRowsFetcher.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/ConstrainedSortExecutor.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
@@ -35,10 +35,9 @@
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/WalkerWorker.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
+#include "RestServer/TemporaryStorageFeature.h"
 #include "Transaction/Context.h"
-#include "Transaction/Methods.h"
 
 namespace {
 std::string const ConstrainedHeap = "constrained-heap";
@@ -123,9 +122,9 @@ bool SortNode::simplify(ExecutionPlan* plan) {
 }
 
 /// @brief returns all sort information
-SortInformation SortNode::getSortInformation(
-    ExecutionPlan* plan, arangodb::basics::StringBuffer* buffer) const {
+SortInformation SortNode::getSortInformation() const {
   SortInformation result;
+  std::string buffer;
 
   auto const& elms = elements();
   for (auto it = elms.begin(); it != elms.end(); ++it) {
@@ -153,16 +152,17 @@ SortInformation SortNode::getSortInformation(
         break;
       }
 
+      // fix buffer if it was in an invalid state of being moved-away
+      buffer.clear();
       try {
         expression->stringify(buffer);
       } catch (...) {
         result.isValid = false;
         return result;
       }
-      result.criteria.emplace_back(std::make_tuple(
-          const_cast<ExecutionNode const*>(setter),
-          std::string(buffer->c_str(), buffer->length()), (*it).ascending));
-      buffer->reset();
+      result.criteria.emplace_back(
+          std::make_tuple(const_cast<ExecutionNode const*>(setter),
+                          std::move(buffer), (*it).ascending));
     } else {
       // use variable only. note that we cannot use the variable's name as it is
       // not
@@ -192,13 +192,19 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     sortRegs.emplace_back(id, element);
     inputRegs.emplace(id);
   }
+
   auto registerInfos = createRegisterInfos(std::move(inputRegs), {});
   auto executorInfos = SortExecutorInfos(
       registerInfos.numberOfInputRegisters(),
       registerInfos.numberOfOutputRegisters(), registerInfos.registersToClear(),
       std::move(sortRegs), _limit, engine.itemBlockManager(),
+      engine.getQuery()
+          .vocbase()
+          .server()
+          .getFeature<TemporaryStorageFeature>(),
       &engine.getQuery().vpackOptions(), engine.getQuery().resourceMonitor(),
-      _stable);
+      engine.getQuery().queryOptions().spillOverThresholdNumRows,
+      engine.getQuery().queryOptions().spillOverThresholdMemoryUsage, _stable);
   if (sorterType() == SorterType::Standard) {
     return std::make_unique<ExecutionBlockImpl<SortExecutor>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));

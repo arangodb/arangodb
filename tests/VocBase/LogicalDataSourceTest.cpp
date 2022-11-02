@@ -41,12 +41,17 @@ namespace {
 
 class LogicalViewImpl : public arangodb::LogicalView {
  public:
+  static constexpr auto typeInfo() noexcept {
+    return std::pair{static_cast<arangodb::ViewType>(52),
+                     std::string_view{"LogicalViewImpl"}};
+  }
+
   LogicalViewImpl(TRI_vocbase_t& vocbase,
                   arangodb::velocypack::Slice const& definition)
-      : LogicalView(vocbase, definition) {}
-  virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder&,
-                                                Serialization) const override {
-    return arangodb::Result();
+      : LogicalView(*this, vocbase, definition) {}
+  arangodb::Result appendVPackImpl(arangodb::velocypack::Builder&,
+                                   Serialization, bool) const override {
+    return {};
   }
   virtual arangodb::Result dropImpl() override { return arangodb::Result(); }
   virtual void open() override {}
@@ -68,13 +73,13 @@ class LogicalViewImpl : public arangodb::LogicalView {
 
 class LogicalDataSourceTest : public ::testing::Test {
  protected:
+  arangodb::ArangodServer server;
   StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
   std::vector<
       std::pair<arangodb::application_features::ApplicationFeature&, bool>>
       features;
 
-  LogicalDataSourceTest() : engine(server), server(nullptr, nullptr) {
+  LogicalDataSourceTest() : server(nullptr, nullptr), engine(server) {
     // setup required application features
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector, false);

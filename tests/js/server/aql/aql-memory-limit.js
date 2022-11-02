@@ -32,6 +32,7 @@ const internal = require("internal");
 const errors = internal.errors;
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
+const isCluster = require('@arangodb/cluster').isCluster();
 
 function ahuacatlMemoryLimitStaticQueriesTestSuite () {
   return {
@@ -253,7 +254,22 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
         assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
       }
     },
-    
+
+    testAllShortestPaths : function () {
+      const query = "WITH " + vn + " FOR p IN OUTBOUND ALL_SHORTEST_PATHS '" + vn + "/test0' TO '" + vn + "/test11' " + en + " RETURN p";
+
+      let actual = AQL_EXECUTE(query, null, { memoryLimit: 250 * 1000 }).json;
+      // no shortest path available
+      assertEqual(1, actual.length);
+
+      try {
+        AQL_EXECUTE(query, null, { memoryLimit: 30 * 1000 });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
     testKPaths : function () {
       const query = "WITH " + vn + " FOR p IN OUTBOUND K_PATHS '" + vn + "/test0' TO '" + vn + "/test317' " + en + " RETURN p";
       
@@ -299,9 +315,17 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
 
     testTraversal : function () {
       const query = "WITH " + vn + " FOR v, e, p IN 1..@maxDepth OUTBOUND '" + vn + "/test0' " + en + " RETURN v";
-      
-      let actual = AQL_EXECUTE(query, { maxDepth: 2 }, { memoryLimit: 20 * 1000 * 1000 }).json;
-      assertEqual(79800, actual.length);
+
+      if (isCluster) {
+        // TODO [GraphRefactor]: Refactored variant uses now more memory. Check if we can improve here.
+        // [GraphRefactor] Note: Related to #GORDO-1361
+        let actual = AQL_EXECUTE(query, { maxDepth: 2 }, { memoryLimit: 27 * 1000 * 1000 }).json;
+        assertEqual(79800, actual.length);
+      } else {
+        let actual = AQL_EXECUTE(query, { maxDepth: 2 }, { memoryLimit: 20 * 1000 * 1000 }).json;
+        assertEqual(79800, actual.length);
+      }
+
       
       try {
         // run query with same depth, but lower mem limit

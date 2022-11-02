@@ -30,9 +30,9 @@
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
+#include "Aql/Projections.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/types.h"
-#include "Containers/HashSet.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -63,7 +63,8 @@ class IndexNode : public ExecutionNode,
   IndexNode(ExecutionPlan* plan, ExecutionNodeId id,
             aql::Collection const* collection, Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
-            std::unique_ptr<Condition> condition, IndexIteratorOptions const&);
+            bool allCoveredByOneIndex, std::unique_ptr<Condition> condition,
+            IndexIteratorOptions const&);
 
   IndexNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -98,6 +99,11 @@ class IndexNode : public ExecutionNode,
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
+  /// @brief replaces variables in the internals of the execution node
+  /// replacements are { old variable id => new variable }
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
+                            replacements) override;
+
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
 
@@ -119,12 +125,14 @@ class IndexNode : public ExecutionNode,
   }
 
   bool canApplyLateDocumentMaterializationRule() const {
-    return isProduceResult() && !_projections.supportsCoveringIndex();
+    return isProduceResult() && !_projections.usesCoveringIndex();
   }
 
   bool isDeterministic() override final {
     return canReadOwnWrites() == ReadOwnWrites::no;
   }
+
+  bool isAllCoveredByOneIndex() const noexcept { return _allCoveredByOneIndex; }
 
   struct IndexVariable {
     size_t indexFieldNum;
@@ -145,7 +153,13 @@ class IndexNode : public ExecutionNode,
                            IndexId commonIndexId,
                            IndexVarsInfo const& indexVariables);
 
-  void setProjections(arangodb::aql::Projections projections);
+  void setProjections(Projections projections) override;
+
+  /// @brief remember the condition to execute for early filtering
+  void setFilter(std::unique_ptr<Expression> filter) override;
+
+  // prepare projections for usage with an index
+  void prepareProjections();
 
  protected:
   /// @brief export to VelocyPack
@@ -153,16 +167,19 @@ class IndexNode : public ExecutionNode,
                       unsigned flags) const override final;
 
  private:
-  NonConstExpressionContainer initializeOnce() const;
+  NonConstExpressionContainer buildNonConstExpressions() const;
 
   bool isProduceResult() const {
     return (isVarUsedLater(_outVariable) || _filter != nullptr) && !doCount();
   }
 
   /// @brief adds a UNIQUE() to a dynamic IN condition
-  arangodb::aql::AstNode* makeUnique(arangodb::aql::AstNode*) const;
+  arangodb::aql::AstNode* makeUnique(AstNode*) const;
 
- private:
+  // returns the single index pointer if the IndexNode uses a single index,
+  // nullptr otherwise
+  [[nodiscard]] transaction::Methods::IndexHandle getSingleIndex() const;
+
   /// @brief the index
   std::vector<transaction::Methods::IndexHandle> _indexes;
 
@@ -171,6 +188,13 @@ class IndexNode : public ExecutionNode,
 
   /// @brief the index sort order - this is the same order for all indexes
   bool _needsGatherNodeSort;
+
+  /// @brief We have single index and this index covered whole condition
+  bool _allCoveredByOneIndex;
+
+  /// @brief if the (post) filter condition is fully covered by the index
+  /// attributes
+  bool _indexCoversFilterCondition;
 
   /// @brief the index iterator options - same for all indexes
   IndexIteratorOptions _options;

@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print, params */
+/* global print, arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -25,6 +25,7 @@
 // / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
+const internal = require('internal');
 const _ = require('lodash');
 const time = require('internal').time;
 const fs = require('fs');
@@ -32,18 +33,20 @@ const yaml = require('js-yaml');
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const im = require('@arangodb/testutils/instance-manager');
 
-const toArgv = require('internal').toArgv;
-const executeScript = require('internal').executeScript;
-const executeExternalAndWait = require('internal').executeExternalAndWait;
+const toArgv = internal.toArgv;
+const executeScript = internal.executeScript;
+const executeExternalAndWait = internal.executeExternalAndWait;
+const ArangoError = require('@arangodb').ArangoError;
 
-const platform = require('internal').platform;
+const platform = internal.platform;
 
-const BLUE = require('internal').COLORS.COLOR_BLUE;
-const CYAN = require('internal').COLORS.COLOR_CYAN;
-const GREEN = require('internal').COLORS.COLOR_GREEN;
-const RED = require('internal').COLORS.COLOR_RED;
-const RESET = require('internal').COLORS.COLOR_RESET;
+const BLUE = internal.COLORS.COLOR_BLUE;
+const CYAN = internal.COLORS.COLOR_CYAN;
+const GREEN = internal.COLORS.COLOR_GREEN;
+const RED = internal.COLORS.COLOR_RED;
+const RESET = internal.COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const functionsDocumentation = {
@@ -56,120 +59,220 @@ const testPaths = {
   'server_parameters': [tu.pathForTesting('client/server_parameters')]
 };
 
-function startParameterTest(options, testpath, suiteName) {
-  let count = 0;
-  let results = { shutdown: true };
-  let filtered = {};
-  const tests = tu.scanTestPaths(testpath, options);
+class permissionsRunner extends tu.runLocalInArangoshRunner {
+  constructor(options, testname, ...optionalArgs) {
+    super(options, testname, ...optionalArgs);
+    this.info = "runInDriverTest";
+  }
+  run(testList) {
+    let beforeStart = time();
+    this.continueTesting = true;
+    this.testList = testList;
+    let testrunStart = time();
+    this.results = {
+      shutdown: true,
+      startupTime: testrunStart - beforeStart
+    };
+    let serverDead = false;
+    let count = 0;
+    let forceTerminate = false;
+    for (let i = 0; i < this.testList.length; i++) {
+      let te = this.testList[i];
+      let filtered = {};
+      if (tu.filterTestcaseByOptions(te, this.options, filtered)) {
+        let loopCount = 0;
+        count += 1;
+        // pass on JWT secret
+        let shutdownStatus;
+        let clonedOpts = _.clone(this.options);
+        let paramsFirstRun = {};
 
-  tests.forEach(function (testFile, i) {
-    count += 1;
-    if (tu.filterTestcaseByOptions(testFile, options, filtered)) {
-      // pass on JWT secret
-      let instanceInfo;
-      let shutdownStatus;
-      let clonedOpts = _.clone(options);
-      let paramsFirstRun = {};
-      let serverOptions = {};
-
-      let fileContent = fs.read(testFile);
-      let content = `(function(){ const runSetup = false; const getOptions = true; ${fileContent} 
+        let fileContent = fs.read(te);
+        let content = `(function(){ const runSetup = false; const getOptions = true; ${fileContent} 
 }())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
 
-      let paramsSecondRun = executeScript(content, true, testFile);
-      let rootDir = fs.join(fs.getTempPath(), count.toString());
-      let runSetup = paramsSecondRun.hasOwnProperty('runSetup');
-      if (paramsSecondRun.hasOwnProperty('server.jwt-secret')) {
-        clonedOpts['server.jwt-secret'] = paramsSecondRun['server.jwt-secret'];
-      }
-      if (paramsSecondRun.hasOwnProperty('database.password')) {
-        clonedOpts['server.password'] = paramsSecondRun['database.password'];
-        clonedOpts['password'] = paramsSecondRun['database.password'];
-        paramsFirstRun['server.password'] = paramsSecondRun['database.password'];
-      }
-      if (runSetup) {
-        delete paramsSecondRun.runSetup;
-        if (options.extremeVerbosity) {
-          print(paramsFirstRun);
+        let paramsSecondRun = executeScript(content, true, te);
+        let rootDir = fs.join(fs.getTempPath(), count.toString());
+        let runSetup = paramsSecondRun.hasOwnProperty('runSetup');
+        clonedOpts['startupMaxCount'] = 600; // Slow startups may occur on slower machines.
+        if (paramsSecondRun.hasOwnProperty('server.jwt-secret')) {
+          clonedOpts['server.jwt-secret'] = paramsSecondRun['server.jwt-secret'];
         }
-        instanceInfo = pu.startInstance(clonedOpts.protocol, clonedOpts, paramsFirstRun, suiteName, rootDir); // first start
-        pu.cleanupDBDirectoriesAppend(instanceInfo.rootDir);      
-        try {
-          print(BLUE + '================================================================================' + RESET);
-          print(CYAN + 'Running Setup of: ' + testFile + RESET);
-          content = `(function(){ const runSetup = true; const getOptions = false; ${fileContent}
+        if (paramsSecondRun.hasOwnProperty('database.password')) {
+          clonedOpts['server.password'] = paramsSecondRun['database.password'];
+          clonedOpts['password'] = paramsSecondRun['database.password'];
+          paramsFirstRun['server.password'] = paramsSecondRun['database.password'];
+        }
+        print('\n' + (new Date()).toISOString() + GREEN + " [============] " + this.info + ': Trying', te, '...', RESET);
+
+        if (runSetup) {
+          delete paramsSecondRun.runSetup;
+          if (this.options.extremeVerbosity !== 'silent') {
+            print(paramsFirstRun);
+          }
+          this.instanceManager = new im.instanceManager(clonedOpts.protocol,
+                                                       clonedOpts,
+                                                       paramsFirstRun,
+                                                       this.friendlyName,
+                                                       rootDir);
+          
+          this.instanceManager.prepareInstance();
+          this.instanceManager.launchTcpDump("");
+          if (!this.instanceManager.launchInstance()) {
+            this.instanceManager.destructor(false);
+            throw new Error("failed to launch instance");
+          }
+          this.instanceManager.reconnect();
+          try {
+            print(CYAN + 'Running Setup of: ' + te + RESET);
+            content = `(function(){ const runSetup = true; const getOptions = false; ${fileContent}
 }())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
 
-          if (!executeScript(content, true, testFile)) {
-            throw new Error("setup of test failed");
+            if (!executeScript(content, true, te)) {
+              throw new Error("setup of test failed");
+            }
+          } catch (ex) {
+            if (ex instanceof ArangoError &&
+                ex.errorNum === internal.errors.ERROR_DISABLED.code) {
+              forceTerminate = true;
+            }
+            shutdownStatus = this.instanceManager.shutdownInstance(forceTerminate);                               // stop
+            this.instanceManager.destructor(false);
+            this.results[te] = {
+              status: false,
+              messages: 'Warmup of system failed: ' + ex,
+              shutdown: shutdownStatus
+            };
+            this.results['shutdown'] = this.results['shutdown'] && shutdownStatus;
+            return this.results;
           }
-        } catch (ex) {
-          shutdownStatus = pu.shutdownInstance(instanceInfo, clonedOpts, false);                                     // stop
-          results[testFile] = {
-            status: false,
-            messages: 'Warmup of system failed: ' + ex,
-            shutdown: shutdownStatus
-          };
-          results['shutdown'] = results['shutdown'] && shutdownStatus;
-          return;
-        }
-        if (pu.shutdownInstance(instanceInfo, clonedOpts, false)) {                                                     // stop
-          instanceInfo.arangods.forEach(function(arangod) {
-            arangod.pid = null;
-          });
-          if (options.extremeVerbosity) {
-            print(paramsSecondRun);
+          if (this.instanceManager.shutdownInstance(forceTerminate)) {                                            // stop
+            this.instanceManager.arangods.forEach(function(arangod) {
+              arangod.pid = null;
+            });
+            if (this.options.extremeVerbosity !== 'silent') {
+              print(paramsSecondRun);
+            }
+            try {
+              // if failurepoints are active, disable SUT-sanity checks:
+              if (paramsSecondRun.hasOwnProperty('server.failure-point')) {
+                print("Failure points active, marking suspended");
+                this.instanceManager.arangods.forEach(
+                  arangod => { arangod.suspended = true; });
+              }
+              this.instanceManager.reStartInstance(paramsSecondRun);      // restart with restricted permissions
+            } catch (ex) {
+              if (ex instanceof ArangoError &&
+                  ex.errorNum === internal.errors.ERROR_DISABLED.code) {
+                forceTerminate = true;
+              }
+              this.results[te] = {
+                message: "Aborting testrun; failed to launch instance: " +
+                  ex.message + " - " +
+                  JSON.stringify(this.instanceManager.getStructure()),
+                status: false,
+                shutdown: false
+              };
+              this.results.status = false;
+              this.instanceManager.shutdownInstance(true);
+              return this.results;
+            }
           }
-          pu.reStartInstance(clonedOpts, instanceInfo, paramsSecondRun);      // restart with restricted permissions
+          else {
+            this.results.shutdown = false;
+            this.results[te] = {
+              status: false,
+              message: "failed to stop instance",
+              shutdown: false
+            };
+          }
+        } else {
+          this.instanceManager = new im.instanceManager(clonedOpts.protocol,
+                                                       clonedOpts,
+                                                       paramsSecondRun,
+                                                       this.friendlyName,
+                                                       rootDir);
+          
+          // if failurepoints are active, disable SUT-sanity checks:
+          let failurePoints = paramsSecondRun.hasOwnProperty('server.failure-point');
+          if (failurePoints) {
+            print("Failure points active, marking suspended");
+            this.instanceManager.arangods.forEach(
+              arangod => { arangod.suspended = true; });
+          }
+          this.instanceManager.prepareInstance();
+          this.instanceManager.launchTcpDump("");
+          try {
+            if (!this.instanceManager.launchInstance()) {
+              this.results[te] = {
+                message: "Aborting testrun; failed to launch instance: " + JSON.stringify(this.instanceManager.getStructure()),
+                status: false,
+                shutdown: false
+              };
+              this.results.status = false;
+              this.instanceManager.shutdownInstance(true);
+              this.instanceManager.destructor(false);
+              return this.results;
+            }
+          } catch (ex) {
+              this.results[te] = {
+                message: "Aborting testrun; failed to launch instance: " +
+                  ex.message + " - " +
+                  JSON.stringify(this.instanceManager.getStructure()),
+                status: false,
+                shutdown: false
+              };
+            this.results.shutdown = false;
+            this.results.status = false;
+            this.instanceManager.shutdownInstance(true);
+            this.instanceManager.destructor(false);
+            return this.results;
+          }
+          if (!failurePoints) {
+            this.instanceManager.reconnect();
+          }
         }
-        else {
-          results[testFile] = {
-            status: false,
-            message: "failed to stop instance",
-            shutdown: false
-          };
+
+        this.results[te] = this.runOneTest(te);
+        if (this.instanceManager.addArgs.hasOwnProperty("authOpts") &&
+            this.instanceInfo.addArgs.hasOwnProperty("server.jwt-secret")) {
+          // Reconnect to set the server credentials right
+          arango.reconnect(arango.getEndpoint(), '_system', "root", "", true,
+                           this.instanceManager.addArgs["server.jwt-secret"]);
         }
+        shutdownStatus = this.instanceManager.shutdownInstance(false);
+        this.results['shutdown'] = this.results['shutdown'] && shutdownStatus;
+        this.instanceManager.destructor(this.results[te].status && shutdownStatus);
       } else {
-        instanceInfo = pu.startInstance(clonedOpts.protocol, clonedOpts, paramsSecondRun, suiteName, rootDir); // one start
-      }
-
-      results[testFile] = tu.runInLocalArangosh(clonedOpts, instanceInfo, testFile, {});
-      shutdownStatus = pu.shutdownInstance(instanceInfo, clonedOpts, false);
-
-      results['shutdown'] = results['shutdown'] && shutdownStatus;
-      
-      if (!results[testFile].status || !shutdownStatus) {
-        print("Not cleaning up " + instanceInfo.rootDir);
-        results.status = false;
-      }
-      else {
-        pu.cleanupLastDirectory(clonedOpts);
-      }
-    } else {
-      if (options.extremeVerbosity) {
-        print('Skipped ' + testFile + ' because of ' + filtered.filter);
+        if (this.options.extremeVerbosity !== 'silent') {
+          print('Skipped ' + te + ' because of ' + filtered.filter);
+        }
       }
     }
-  });
-  return results;
+    return this.results;
+  }
 }
 
 function server_permissions(options) {
-  return startParameterTest(options, testPaths.server_permissions, "server_permissions");
+  return new permissionsRunner(options, "server_permissions").run(
+    tu.scanTestPaths(testPaths.server_permissions, options));
 }
 
 function server_parameters(options) {
-  return startParameterTest(options, testPaths.server_parameters, "server_parameters");
+  return new permissionsRunner(options, "server_parameters").run(
+    tu.scanTestPaths(testPaths.server_parameters, options));
 }
 
 function server_secrets(options) {
 
   let secretsDir = fs.join(fs.getTempPath(), 'arango_jwt_secrets');
   fs.makeDirectory(secretsDir);
-  pu.cleanupDBDirectoriesAppend(secretsDir);
-
-  fs.write(fs.join(secretsDir, 'secret1'), 'jwtsecret-1');
-  fs.write(fs.join(secretsDir, 'secret2'), 'jwtsecret-2');
+  let secretFiles = [
+    fs.join(secretsDir, 'secret1'),
+    fs.join(secretsDir, 'secret2')
+  ];
+  fs.write(secretFiles[0], 'jwtsecret-1');
+  fs.write(secretFiles[1], 'jwtsecret-2');
 
   process.env["jwt-secret-folder"] = secretsDir;
 
@@ -177,7 +280,6 @@ function server_secrets(options) {
   let keyfileDir = fs.join(fs.getTempPath(), 'arango_tls_keyfile');
   let keyfileName = fs.join(keyfileDir, "server.pem");
   fs.makeDirectory(keyfileDir);
-  pu.cleanupDBDirectoriesAppend(keyfileDir);
 
   fs.copyFile("./UnitTests/server.pem", keyfileName);
 
@@ -186,6 +288,7 @@ function server_secrets(options) {
   let copyOptions = _.clone(options);
   // necessary to fix shitty process-utils handling
   copyOptions['server.jwt-secret-folder'] = secretsDir;
+  copyOptions['jwtFiles'] = secretFiles;
   copyOptions['protocol'] = "ssl";
 
   const testCases = tu.scanTestPaths([tu.pathForTesting('client/server_secrets')], copyOptions);
@@ -200,7 +303,12 @@ function server_secrets(options) {
     additionalArguments['ssl.server-name-indication']
       = "hans.arangodb.com=./UnitTests/tls.keyfile";
   }
-  return tu.performTests(copyOptions, testCases, 'server_secrets', tu.runInLocalArangosh, additionalArguments);
+  let rc = new tu.runLocalInArangoshRunner(copyOptions, 'server_secrets', additionalArguments).run(testCases);
+  if (rc.status && options.cleanup) {
+    fs.removeDirectoryRecursive(keyfileDir, true);
+    fs.removeDirectoryRecursive(secretsDir, true);
+  }
+  return rc;
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {

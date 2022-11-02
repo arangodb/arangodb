@@ -27,76 +27,82 @@
 namespace arangodb {
 
 void ControlCharsSuppressor::writeCharIntoOutputBuffer(uint32_t c,
-                                                       char*& output,
+                                                       std::string& output,
                                                        int numBytes) {
-  *output++ = ' ';
+  output.push_back(' ');
 }
 
-void ControlCharsEscaper::writeCharIntoOutputBuffer(uint32_t c, char*& output,
+void ControlCharsEscaper::writeCharIntoOutputBuffer(uint32_t c,
+                                                    std::string& output,
                                                     int numBytes) {
   switch (c) {
     case '\n':
-      *output++ = '\\';
-      *output++ = 'n';
+      output.append("\\n");
       break;
 
     case '\r':
-      *output++ = '\\';
-      *output++ = 'r';
+      output.append("\\r");
       break;
 
     case '\t':
-      *output++ = '\\';
-      *output++ = 't';
+      output.append("\\t");
+      break;
+
+    case '\b':
+      output.append("\\b");
+      break;
+
+    case '\f':
+      output.append("\\f");
       break;
 
     default: {
       uint8_t n1 = c >> 4;
       uint8_t n2 = c & 0x0F;
 
-      *output++ = '\\';
-      *output++ = 'x';
-      *output++ = (n1 < 10) ? ('0' + n1) : ('A' + n1 - 10);
-      *output++ = (n2 < 10) ? ('0' + n2) : ('A' + n2 - 10);
+      output.append("\\x");
+      output.push_back((n1 < 10) ? ('0' + n1) : ('A' + n1 - 10));
+      output.push_back((n2 < 10) ? ('0' + n2) : ('A' + n2 - 10));
     }
   }
 }
 
-void UnicodeCharsRetainer::writeCharIntoOutputBuffer(uint32_t c, char*& output,
+void UnicodeCharsRetainer::writeCharIntoOutputBuffer(uint32_t c,
+                                                     std::string& output,
                                                      int numBytes) {
   if (numBytes == 2) {
     uint16_t num1 = c & 0xffff;
-    *output++ = ((num1 >> 6) & 0x1f) | 0xc0;
-    *output++ = (num1 & 0x3f) | 0x80;
+    output.push_back(((num1 >> 6) & 0x1f) | 0xc0);
+    output.push_back((num1 & 0x3f) | 0x80);
   } else if (numBytes == 3) {
     uint16_t num1 = c & 0xffff;
-    *output++ = ((num1 >> 12) & 0x0f) | 0xe0;
-    *output++ = ((num1 >> 6) & 0x3f) | 0x80;
-    *output++ = (num1 & 0x3f) | 0x80;
+    output.push_back(((num1 >> 12) & 0x0f) | 0xe0);
+    output.push_back(((num1 >> 6) & 0x3f) | 0x80);
+    output.push_back((num1 & 0x3f) | 0x80);
   } else if (numBytes == 4) {
-    *output++ = ((c >> 18) & 0x07) | 0xF0;
-    *output++ = ((c >> 12) & 0x3f) | 0x80;
-    *output++ = ((c >> 6) & 0x3f) | 0x80;
-    *output++ = (c & 0x3f) | 0x80;
+    output.push_back(((c >> 18) & 0x07) | 0xF0);
+    output.push_back(((c >> 12) & 0x3f) | 0x80);
+    output.push_back(((c >> 6) & 0x3f) | 0x80);
+    output.push_back((c & 0x3f) | 0x80);
   }
 }
 
-void UnicodeCharsEscaper::writeCharHelper(uint16_t c, char*& output) {
-  *output++ = '\\';
-  *output++ = 'u';
+void UnicodeCharsEscaper::writeCharHelper(uint16_t c, std::string& output) {
+  output.append("\\u");
 
   uint16_t i1 = (c & 0xF000) >> 12;
   uint16_t i2 = (c & 0x0F00) >> 8;
   uint16_t i3 = (c & 0x00F0) >> 4;
   uint16_t i4 = (c & 0x000F);
 
-  *output++ = (i1 < 10) ? ('0' + i1) : ('A' + i1 - 10);
-  *output++ = (i2 < 10) ? ('0' + i2) : ('A' + i2 - 10);
-  *output++ = (i3 < 10) ? ('0' + i3) : ('A' + i3 - 10);
-  *output++ = (i4 < 10) ? ('0' + i4) : ('A' + i4 - 10);
+  output.push_back((i1 < 10) ? ('0' + i1) : ('A' + i1 - 10));
+  output.push_back((i2 < 10) ? ('0' + i2) : ('A' + i2 - 10));
+  output.push_back((i3 < 10) ? ('0' + i3) : ('A' + i3 - 10));
+  output.push_back((i4 < 10) ? ('0' + i4) : ('A' + i4 - 10));
 }
 
-void UnicodeCharsEscaper::writeCharIntoOutputBuffer(uint32_t c, char*& output,
+void UnicodeCharsEscaper::writeCharIntoOutputBuffer(uint32_t c,
+                                                    std::string& output,
                                                     int numBytes) {
   if (numBytes == 4) {  // when the unicode requires 4 bytes for representation,
                         // its code is escaped with surrogate pairs, the highest
@@ -113,19 +119,11 @@ void UnicodeCharsEscaper::writeCharIntoOutputBuffer(uint32_t c, char*& output,
 }
 
 template<typename ControlCharHandler, typename UnicodeCharHandler>
-size_t
-Escaper<ControlCharHandler, UnicodeCharHandler>::determineOutputBufferSize(
-    std::string const& message) const {
-  return message.size() * std::max(this->_controlHandler.maxCharLength(),
-                                   this->_unicodeHandler.maxCharLength());
-}
-
-template<typename ControlCharHandler, typename UnicodeCharHandler>
 void Escaper<ControlCharHandler, UnicodeCharHandler>::writeIntoOutputBuffer(
-    std::string const& message, char*& buffer) {
+    std::string_view message, std::string& buffer) {
   unsigned char const* p =
       reinterpret_cast<unsigned char const*>(message.data());
-  unsigned char const* end = p + message.length();
+  unsigned char const* end = p + message.size();
   while (p < end) {
     unsigned char c = *p;
     if (c < 128) {  // the character is ASCII
@@ -133,35 +131,35 @@ void Escaper<ControlCharHandler, UnicodeCharHandler>::writeIntoOutputBuffer(
           c ==
               0x7f) {  // the character is either control, which comprises codes
                        // until 32, or is DEL, which is not a visible character
-        this->_controlHandler.writeCharIntoOutputBuffer(
+        ControlCharHandler::writeCharIntoOutputBuffer(
             c, buffer, 1);  // retain or escape the control character
       } else {              // is a visible ascii character
-        *buffer++ = c;
+        buffer.push_back(c);
       }
       p++;
     } else if (c < 224) {  // unicode which requires 2 bytes for representation
       if ((p + 1) >=
           end) {  // no next byte to represent it, so it's broken unicode
-        *buffer++ = '?';
+        buffer.push_back('?');
         p++;
         continue;
       }
       uint8_t d = (uint8_t) * (p + 1);
       if ((d & 0xC0) == 0x80) {  // is within the rules for representing unicode
                                  // characters for the second byte
-        this->_unicodeHandler.writeCharIntoOutputBuffer(
+        UnicodeCharHandler::writeCharIntoOutputBuffer(
             ((c & 0x1F) << 6) | (d & 0x3F), buffer,
             2);  // retain or escape the unicode character represented by 2
                  // bytes
         ++p;
       } else {  // the next byte is broken unicode
-        *buffer++ = '?';
+        buffer.push_back('?');
       }
       p++;
     } else if (c < 240) {  // unicode which requires 3 bytes for representation
       if ((p + 2) >= end) {  // there's no 2 other sequential bytes to represent
                              // the unicode character, so it's broken unicode
-        *buffer++ = '?';
+        buffer.push_back('?');
         p++;
         continue;
       }
@@ -175,23 +173,23 @@ void Escaper<ControlCharHandler, UnicodeCharHandler>::writeIntoOutputBuffer(
                                    // representing a unicode character that
                                    // requires 3 bytes for representation
           ++p;
-          this->_unicodeHandler.writeCharIntoOutputBuffer(
+          UnicodeCharHandler::writeCharIntoOutputBuffer(
               ((c & 0x0F) << 12) | ((d & 0x3F) << 6) | (e & 0x3F), buffer,
               3);  // retain or escape the unicode character represented by 3
                    // bytes
         } else {   // second byte is not within the rules for representing a
                    // unicode character
-          *buffer++ = '?';
+          buffer.push_back('?');
         }
       } else {  // third byte is not within the rules for representing a unicode
                 // character
-        *buffer++ = '?';
+        buffer.push_back('?');
       }
       p++;
     } else if (c < 248) {  // unicode which requires 4 bytes for representation
       if ((p + 3) >= end) {  // there's not 3 sequential bytes for representing
                              // this unicode character, so it's broken unicode
-        *buffer++ = '?';
+        buffer.push_back('?');
         p++;
         continue;
       }
@@ -210,39 +208,39 @@ void Escaper<ControlCharHandler, UnicodeCharHandler>::writeIntoOutputBuffer(
                                      // representing a unicode character that
                                      // requires 3 bytes for representation
             p++;
-            this->_unicodeHandler.writeCharIntoOutputBuffer(
+            UnicodeCharHandler::writeCharIntoOutputBuffer(
                 ((c & 0x07) << 18) | ((d & 0x3F) << 12) | ((e & 0x3F) << 6) |
                     (f & 0x3F),
                 buffer, 4);  // retain or escape the unicode character
                              // represented by 4 bytes
           } else {  // second byte is not within the rules for representing a
                     // unicode character
-            *buffer++ = '?';
+            buffer.push_back('?');
           }
         } else {  // third byte is not within the rules for representing a
                   // unicode character
-          *buffer++ = '?';
+          buffer.push_back('?');
         }
       } else {  // fourth byte is not within the rules for representing a
                 // unicode character
-        *buffer++ = '?';
+        buffer.push_back('?');
       }
       p++;
     } else {  // broken unicode, is not ascii and not represented with 2, 3 or 4
               // bytes
-      *buffer++ = '?';
+      buffer.push_back('?');
       // invalid UTF-8 sequence
       break;
     }
   }
 }
 
-template class Escaper<ControlCharsSuppressor, UnicodeCharsRetainer>;
+template struct Escaper<ControlCharsSuppressor, UnicodeCharsRetainer>;
 
-template class Escaper<ControlCharsSuppressor, UnicodeCharsEscaper>;
+template struct Escaper<ControlCharsSuppressor, UnicodeCharsEscaper>;
 
-template class Escaper<ControlCharsEscaper, UnicodeCharsRetainer>;
+template struct Escaper<ControlCharsEscaper, UnicodeCharsRetainer>;
 
-template class Escaper<ControlCharsEscaper, UnicodeCharsEscaper>;
+template struct Escaper<ControlCharsEscaper, UnicodeCharsEscaper>;
 
 }  // namespace arangodb

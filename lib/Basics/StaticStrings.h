@@ -66,6 +66,7 @@ class StaticStrings {
   static std::string const SilentString;
   static std::string const WaitForSyncString;
   static std::string const SkipDocumentValidation;
+  static std::string const OverwriteCollectionPrefix;
   static std::string const IsSynchronousReplicationString;
   static std::string const Group;
   static std::string const Namespace;
@@ -73,6 +74,7 @@ class StaticStrings {
   static std::string const Overwrite;
   static std::string const OverwriteMode;
   static std::string const Compact;
+  static std::string const DontWaitForCommit;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
@@ -125,16 +127,22 @@ class StaticStrings {
   static std::string const DataSourceParameters;
 
   // Index definition fields
+  static std::string const
+      IndexDeduplicate;  // index deduplicate flag (for array indexes)
   static std::string const IndexExpireAfter;   // ttl index expire value
   static std::string const IndexFields;        // index fields
   static std::string const IndexId;            // index id
   static std::string const IndexInBackground;  // index in background
-  static std::string const IndexIsBuilding;    // index build in-process
-  static std::string const IndexName;          // index name
-  static std::string const IndexSparse;        // index sparsity marker
-  static std::string const IndexType;          // index type
-  static std::string const IndexUnique;        // index uniqueness marker
-  static std::string const IndexEstimates;     // index estimates flag
+  static std::string_view constexpr IndexParallelism{"parallelism"};
+  static std::string const IndexIsBuilding;      // index build in-process
+  static std::string const IndexName;            // index name
+  static std::string const IndexSparse;          // index sparsity marker
+  static std::string const IndexStoredValues;    // index stored values
+  static std::string const IndexType;            // index type
+  static std::string const IndexUnique;          // index uniqueness marker
+  static std::string const IndexEstimates;       // index estimates flag
+  static std::string const IndexLegacyPolygons;  // index legacyPolygons flag
+  static std::string_view constexpr IndexLookahead{"lookahead"};
 
   // static index names
   static std::string const IndexNameEdge;
@@ -146,9 +154,17 @@ class StaticStrings {
 
   // index hint strings
   static std::string const IndexHintDisableIndex;
-  static std::string const IndexHintMaxProjections;
   static std::string const IndexHintOption;
   static std::string const IndexHintOptionForce;
+
+  // query options
+  static std::string const Filter;
+  static std::string const MaxProjections;
+  static std::string const ProducesResult;
+  static std::string const ReadOwnWrites;
+  static std::string const UseCache;
+  static std::string const Parallelism;
+  static std::string const ForceOneShardAttributeValue;
 
   // HTTP headers
   static std::string const Accept;
@@ -221,11 +237,14 @@ class StaticStrings {
   static std::string const ParsedBody;
 
   // collection attributes
-  static std::string const CacheEnabled;
+  static std::string const AllowUserKeys;
+  static std::string const CacheEnabled;  // also used for indexes
+  static std::string const ComputedValues;
   static std::string const DistributeShardsLike;
   static std::string const Indexes;
   static std::string const IsSmart;
   static std::string const IsSmartChild;
+  static std::string const KeyOptions;
   static std::string const MinReplicationFactor;
   static std::string const NumberOfShards;
   static std::string const ObjectId;
@@ -245,6 +264,7 @@ class StaticStrings {
   static std::string const ReplicationVersion;
   static std::string const ReplicatedLogs;
   static std::string_view const SoftWriteConcern;
+  static std::string_view const EffectiveWriteConcern;
 
   // graph attribute names
   static std::string const GraphCollection;
@@ -273,6 +293,11 @@ class StaticStrings {
   static std::string const FullLocalPrefix;
   static std::string const FullFromPrefix;
   static std::string const FullToPrefix;
+
+  // Graph directions
+  static std::string const GraphDirection;
+  static std::string const GraphDirectionInbound;
+  static std::string const GraphDirectionOutbound;
 
   // Pregel Section Start
 
@@ -323,7 +348,10 @@ class StaticStrings {
   static std::string const RevisionTreeRangeMin;
   static std::string const RevisionTreeInitialRangeMin;
   static std::string const RevisionTreeRanges;
+  // deprecated
   static std::string const RevisionTreeResume;
+
+  static std::string const RevisionTreeResumeHLC;
   static std::string const RevisionTreeVersion;
   static std::string const FollowingTermId;
 
@@ -341,6 +369,10 @@ class StaticStrings {
   static std::string const TargetConfig;
   static std::string const Term;
   static std::string const CommitIndex;
+  static std::string const FirstIndex;
+  static std::string const ReleaseIndex;
+  static std::string const LowestIndexToKeep;
+  static std::string const Outcome;
 
   // generic attribute names
   static std::string const AttrCoordinator;
@@ -398,6 +430,9 @@ class StaticStrings {
 
   // API Strings
   static std::string_view const ApiLogInternal;
+  static std::string_view const ApiLogExternal;
+  static std::string_view const ApiReplicatedStateExternal;
+  static std::string_view const ApiDocumentStateExternal;
 
   // TODO: remove me after refactor is done
   static std::string const GraphRefactorFlag;

@@ -28,63 +28,113 @@
 const profHelper = require("@arangodb/testutils/aql-profiler-test-helper");
 
 const _ = require('lodash');
-const db = require('@arangodb').db;
-const jsunity = require("jsunity");
+ const db = require('@arangodb').db;
+ const jsunity = require("jsunity");
+ const internal = require("internal");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @file test suite for AQL tracing/profiling: noncluster tests
-/// Contains tests for EnumerateCollectionBlock, IndexBlock and TraversalBlock.
-/// The main test suite (including comments) is in aql-profiler.js.
-////////////////////////////////////////////////////////////////////////////////
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @file test suite for AQL tracing/profiling: noncluster tests
+ /// Contains tests for EnumerateCollectionBlock, IndexBlock and TraversalBlock.
+ /// The main test suite (including comments) is in aql-profiler.js.
+ ////////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlProfilerTestSuite () {
+ // import some names from profHelper directly into our namespace
+ const colName = profHelper.colName;
+ const edgeColName = profHelper.edgeColName;
+ const viewName = profHelper.viewName;
+ const defaultBatchSize = profHelper.defaultBatchSize;
+ const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
-  // import some names from profHelper directly into our namespace:
-  const colName = profHelper.colName;
-  const edgeColName = profHelper.edgeColName;
-  const viewName = profHelper.viewName;
-  const defaultBatchSize = profHelper.defaultBatchSize;
+ const {
+   AsyncNode, CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
+   EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
+   InsertNode, LimitNode, MaterializeNode, MutexNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
+   ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
+   TraversalNode, UpdateNode, UpsertNode
+ } = profHelper;
 
-  const { AsyncNode, CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
-    EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
-    InsertNode, LimitNode, MutexNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
-    ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
-    TraversalNode, UpdateNode, UpsertNode } = profHelper;
+ const {
+   AsyncBlock, CalculationBlock, CountCollectBlock, DistinctCollectBlock,
+   EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
+   HashedCollectBlock, IndexBlock, LimitBlock, MaterializeBlock, MutexBlock, NoResultsBlock, RemoteBlock,
+   ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
+   SortedCollectBlock, SortingGatherBlock, TraversalBlock,
+   UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
+   UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
+   IResearchViewBlock, IResearchViewOrderedBlock
+ } = profHelper;
 
-  const { AsyncBlock, CalculationBlock, CountCollectBlock, DistinctCollectBlock,
-    EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
-    HashedCollectBlock, IndexBlock, LimitBlock, MutexBlock, NoResultsBlock, RemoteBlock,
-    ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
-    SortedCollectBlock, SortingGatherBlock, TraversalBlock,
-    UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
-    UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
-    IResearchViewBlock, IResearchViewOrderedBlock } = profHelper;
+ function ahuacatlProfilerTestSuite() {
+   return {
+     tearDown: function () {
+       db._drop(colName);
+       db._drop(edgeColName);
+     },
 
-  return {
+     testMaterializeBlock: function () {
+       const col = db._create(colName);
+      col.ensureIndex({ type: "persistent", fields: ["value", "other", "more"]});
+      
+      const bind = () => ({'@col': colName});
+      const prepare = (rows) => {
+        col.truncate({ compact: false });
+        col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+      };
+      const query = `FOR d IN @@col FILTER d.value <= 10 SORT d.more LIMIT 3 RETURN d`;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
+      const genNodeList = (rows, batches) => {
+        return [
+          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+          {type: IndexBlock, calls: 1, items: Math.min(rows, 10), filtered: 0},
+          {type: SortBlock, calls: 1, items: Math.min(rows, 3), filtered: 0},
+          {type: LimitBlock, calls: 1, items: Math.min(rows, 3), filtered: 0},
+          {type: MaterializeBlock, calls: 1, items: Math.min(rows, 3), filtered: 0},
+          {type: ReturnBlock, calls: 1, items: Math.min(rows, 3), filtered: 0}
+        ];
+      };
+      profHelper.runDefaultChecks(
+        {query, genNodeList, prepare, bind}
+      );
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+    testMaterializeBlockThatFilters: function () {
+      if (!internal.debugCanUseFailAt()) {
+        return;
+      }
 
-    tearDown : function () {
-      db._drop(colName);
-      db._drop(edgeColName);
-      db._dropView(viewName);
+      try {
+        const col = db._create(colName);
+        col.ensureIndex({ type: "persistent", fields: ["value", "other", "more"]});
+        
+        const bind = () => ({'@col': colName});
+        const prepare = (rows) => {
+          col.truncate({ compact: false });
+          col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+        };
+        const query = `FOR d IN @@col FILTER d.value <= 10 SORT d.more LIMIT 3 RETURN d`;
+
+        const genNodeList = (rows, batches) => {
+          return [
+            {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+            {type: IndexBlock, calls: 1, items: Math.min(rows, 10), filtered: 0},
+            {type: SortBlock, calls: 1, items: Math.min(rows, 3), filtered: 0},
+            {type: LimitBlock, calls: 1, items: Math.min(rows, 3), filtered: 0},
+            {type: MaterializeBlock, calls: 1, items: 0, filtered: Math.min(rows, 3)},
+            {type: ReturnBlock, calls: 1, items: 0, filtered: 0}
+          ];
+        };
+        
+        internal.debugSetFailAt("MaterializeExecutor::all_fail_and_count");
+        profHelper.runDefaultChecks(
+          {query, genNodeList, prepare, bind}
+        );
+      } finally {
+        // clear failure points!
+        internal.debugClearFailAt();
+      }
     },
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test EnumerateCollectionBlock
-////////////////////////////////////////////////////////////////////////////////
-
-    /*testEnumerateCollectionBlock1: function () {
+    testEnumerateCollectionBlock: function () {
       const col = db._create(colName);
       const prepare = (rows) => {
         col.truncate({ compact: false });
@@ -95,10 +145,31 @@ function ahuacatlProfilerTestSuite () {
 
       const genNodeList = (rows, batches) => {
         return [
-          {type: SingletonBlock, calls: 1, items: 1},
-          {type: EnumerateCollectionBlock, calls: batches, items: rows},
-          {type: CalculationBlock, calls: batches, items: rows},
-          {type: ReturnBlock, calls: batches, items: rows}
+          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+          {type: EnumerateCollectionBlock, calls: batches, items: rows, filtered: 0},
+          {type: CalculationBlock, calls: batches, items: rows, filtered: 0},
+          {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
+        ];
+      };
+      profHelper.runDefaultChecks(
+        {query, genNodeList, prepare, bind}
+      );
+    },
+    
+    testEnumerateCollectionBlockWithFilter: function () {
+      const col = db._create(colName);
+      const prepare = (rows) => {
+        col.truncate({ compact: false });
+        col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+      };
+      const bind = () => ({'@col': colName});
+      const query = `FOR d IN @@col FILTER d.value <= 10 RETURN d`;
+
+      const genNodeList = (rows, batches) => {
+        return [
+          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+          {type: EnumerateCollectionBlock, calls: 1, items: Math.min(rows, 10), filtered: rows <= 10 ? 0 : rows - 10},
+          {type: ReturnBlock, calls: 1, items: Math.min(rows, 10), filtered: 0}
         ];
       };
       profHelper.runDefaultChecks(
@@ -106,10 +177,33 @@ function ahuacatlProfilerTestSuite () {
       );
     },
 
+    testFilterBlock: function () {
+      const col = db._create(colName);
+      const prepare = (rows) => {
+        col.truncate({ compact: false });
+        col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+      };
+      const bind = () => ({'@col': colName});
+      const query = `FOR d IN @@col FILTER d.value <= 10 RETURN d`;
+
+      const genNodeList = (rows, batches) => {
+        return [
+          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+          {type: EnumerateCollectionBlock, calls: batches, items: rows, filtered: 0},
+          {type: CalculationBlock, calls: batches, items: rows, filtered: 0},
+          {type: FilterBlock, calls: 1, items: Math.min(rows, 10), filtered: rows <= 10 ? 0 : rows - 10},
+          {type: ReturnBlock, calls: 1, items: Math.min(rows, 10), filtered: 0}
+        ];
+      };
+      profHelper.runDefaultChecks(
+        {query, genNodeList, prepare, bind, options: { optimizer: { rules: ["-move-filters-into-enumerate"] } }}
+      );
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test IndexBlock
 ////////////////////////////////////////////////////////////////////////////////
-
+    
     testIndexBlock1 : function () {
       const col = db._create(colName);
       col.ensureIndex({ type: "hash", fields: [ "value" ] });
@@ -128,16 +222,16 @@ function ahuacatlProfilerTestSuite () {
         const indexBatches = [optimalBatches, maxIndexBatches];
 
         return [
-          {type: SingletonBlock, calls: 1, items: 1},
-          {type: CalculationBlock, calls: 1, items: 1},
-          {type: EnumerateListBlock, calls: batches, items: rows},
-          {type: IndexBlock, calls: indexBatches, items: rows},
-          {type: CalculationBlock, calls: indexBatches, items: rows},
-          {type: ReturnBlock, calls: indexBatches, items: rows}
+          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+          {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
+          {type: EnumerateListBlock, calls: batches, items: rows, filtered: 0},
+          {type: IndexBlock, calls: indexBatches, items: rows, filtered: 0},
+          {type: CalculationBlock, calls: indexBatches, items: rows, filtered: 0},
+          {type: ReturnBlock, calls: indexBatches, items: rows, filtered: 0}
         ];
       };
       profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind}
+        {query, genNodeList, prepare, bind, options: { optimizer: { rules: ["-interchange-adjacent-enumerations"] } }}
       );
     },
 
@@ -155,7 +249,7 @@ function ahuacatlProfilerTestSuite () {
       const bind = (rows) => ({'@col': colName, rows});
       const query = `FOR i IN 0..FLOOR(@rows / 3)
         FOR d IN @@col
-        FILTER i*3+1 == d.value
+        FILTER i * 3 + 1 == d.value
         RETURN d.value`;
 
       const genNodeList = (rows) => {
@@ -176,18 +270,63 @@ function ahuacatlProfilerTestSuite () {
         ];
 
         return [
-          {type: SingletonBlock, calls: 1, items: 1},
-          {type: CalculationBlock, calls: 1, items: 1},
-          {type: EnumerateListBlock, calls: enumBatches, items: enumRows},
-          {type: IndexBlock, calls: indexBatches, items: indexRows},
-          {type: CalculationBlock, calls: indexBatches, items: indexRows},
-          {type: ReturnBlock, calls: indexBatches, items: indexRows}
+          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+          {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
+          {type: EnumerateListBlock, calls: enumBatches, items: enumRows, filtered: 0},
+          {type: IndexBlock, calls: indexBatches, items: indexRows, filtered: 0},
+          {type: CalculationBlock, calls: indexBatches, items: indexRows, filtered: 0},
+          {type: ReturnBlock, calls: indexBatches, items: indexRows, filtered: 0}
+        ];
+      };
+      profHelper.runDefaultChecks(
+        {query, genNodeList, prepare, bind, options: { optimizer: { rules: ["-interchange-adjacent-enumerations"] } }}
+      );
+    },
+    
+    testIndexBlockWithProjection: function () {
+      const col = db._create(colName);
+      col.ensureIndex({ type: "hash", fields: [ "value" ] });
+      const prepare = (rows) => {
+        col.truncate({ compact: false });
+        col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+      };
+      const bind = () => ({'@col': colName});
+      const query = `FOR d IN @@col RETURN d.value`;
+
+      const genNodeList = (rows, batches) => {
+        return [
+          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+          {type: IndexBlock, calls: batches, items: rows, filtered: 0},
+          {type: CalculationBlock, calls: batches, items: rows, filtered: 0},
+          {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
         ];
       };
       profHelper.runDefaultChecks(
         {query, genNodeList, prepare, bind}
       );
-    },*/
+    },
+    
+    testIndexBlockWithFilter: function () {
+      const col = db._create(colName);
+      col.ensureIndex({ type: "hash", fields: [ "value" ] });
+      const prepare = (rows) => {
+        col.truncate({ compact: false });
+        col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+      };
+      const bind = () => ({'@col': colName});
+      const query = `FOR d IN @@col FILTER d.value <= 10 RETURN d`;
+
+      const genNodeList = (rows, batches) => {
+        return [
+          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+          {type: IndexBlock, calls: 1, items: Math.min(rows, 10), filtered: 0},
+          {type: ReturnBlock, calls: 1, items: Math.min(rows, 10), filtered: 0}
+        ];
+      };
+      profHelper.runDefaultChecks(
+        {query, genNodeList, prepare, bind}
+      );
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test TraversalBlock: traverse a tree
@@ -210,9 +349,9 @@ function ahuacatlProfilerTestSuite () {
 
       const genNodeList = (rows, batches) => {
         return [
-          {type: SingletonBlock, calls: 1, items: 1},
-          {type: TraversalBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows},
-          {type: ReturnBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows}
+          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+          {type: TraversalBlock, calls: batches, items: rows, filtered: 0},
+          {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
         ];
       };
       profHelper.runDefaultChecks(
@@ -244,15 +383,15 @@ function ahuacatlProfilerTestSuite () {
         '@edgeCol': edgeColName,
         '@vertexCol': colName,
       });
-      const visitedNodes = rows => Math.pow(2, depth(rows)+1)-1;
+      const visitedNodes = rows => Math.pow(2, depth(rows)+1) - 1;
 
       const genNodeList = (rows, batches) => {
         rows = visitedNodes(rows);
         batches = Math.ceil(rows / defaultBatchSize);
         return [
-          {type: SingletonBlock, calls: 1, items: 1},
-          {type: TraversalBlock, calls: batches, items: rows},
-          {type: ReturnBlock, calls: batches, items: rows}
+          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+          {type: TraversalBlock, calls: batches, items: rows, filtered: 0},
+          {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
         ];
       };
       profHelper.runDefaultChecks(
@@ -285,23 +424,66 @@ function ahuacatlProfilerTestSuite () {
         '@edgeCol': edgeColName,
         '@vertexCol': colName,
       });
-      const skippedNodes = rows => Math.pow(2, depth(rows))-1;
+      const skippedNodes = rows => Math.pow(2, depth(rows)) - 1;
       const visitedNodes = rows => rows - skippedNodes(rows);
 
       const genNodeList = (rows, batches) => {
         rows = visitedNodes(rows);
         batches = Math.max(1, Math.ceil(rows / defaultBatchSize));
         return [
-          {type: SingletonBlock, calls: 1, items: 1},
-          {type: TraversalBlock, calls: batches, items: rows},
-          {type: ReturnBlock, calls: batches, items: rows}
+          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+          {type: TraversalBlock, calls: batches, items: rows, filtered: 0},
+          {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
         ];
       };
       profHelper.runDefaultChecks(
         {query, genNodeList, prepare, bind}
       );
     },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test TraversalBlock: check filter result
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    testTraversalBlockWithFilter: function () {
+      const col = db._createDocumentCollection(colName);
+      const edgeCol = db._createEdgeCollection(edgeColName);
+      const prepare = (rows) => {
+        profHelper.createBinaryTree(col, edgeCol, rows);
+      };
+      const query = `WITH @@vertexCol FOR v, e, p IN @depth..@rows OUTBOUND @root @@edgeCol FILTER p.vertices[*].value ALL > 100000 RETURN v`;
+      const rootNodeId = `${colName}/1`;
+      // actual tree depth:
+      // const treeDepth = rows => Math.ceil(Math.log2(rows));
+      // tree is perfect up to this depth:
+      const maxFullDepth = rows => Math.floor(Math.log2(rows));
+      // substract one to leave ~half the nodes, but never go below 0
+      const depth = rows => Math.max(0, maxFullDepth(rows) - 1);
+      const bind = rows => ({
+        rows: rows,
+        depth: depth(rows),
+        root: rootNodeId,
+        '@edgeCol': edgeColName,
+        '@vertexCol': colName,
+      });
+      const skippedNodes = rows => Math.pow(2, depth(rows)) - 1;
+      const visitedNodes = rows => rows - skippedNodes(rows);
 
+      const genNodeList = (rows, batches) => {
+        // note: filter condition is never true
+        rows = 0;
+        batches = Math.max(1, Math.ceil(rows / defaultBatchSize));
+
+        return [
+          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+          {type: TraversalBlock, calls: batches, items: rows, filtered: 1},
+          {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
+        ];
+      };
+      profHelper.runDefaultChecks(
+        {query, genNodeList, prepare, bind}
+      );
+    },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test TraversalBlock: traverse ~half a tree
@@ -347,108 +529,6 @@ function ahuacatlProfilerTestSuite () {
     },
     */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test EnumerateViewBlock1
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnumerateViewBlock1: function () {
-      const col = db._create(colName);
-      const view = db._createView(viewName, "arangosearch", { links: { [colName]: { includeAllFields: true } } });
-      const prepare = (rows) => {
-        col.truncate({ compact: false });
-        col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
-      };
-      const bind = () => ({'@view': viewName});
-      const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } RETURN d.value`;
-
-      const genNodeList = (rows, batches) => {
-        // EnumerateViewBlock returns HASMORE when asked for the exact number
-        // of items it has left. This could be improved.
-        const optimalBatches = Math.ceil(rows / defaultBatchSize);
-        const maxViewBatches = Math.floor(rows / defaultBatchSize) + 1;
-        const viewBatches = [optimalBatches, maxViewBatches];
-
-        return [
-          {type: SingletonBlock, calls: 1, items: 1},
-          {type: EnumerateViewNode, calls: viewBatches, items: rows},
-          {type: CalculationBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows},
-          {type: ReturnBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows}
-        ];
-      };
-      profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind}
-      );
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test EnumerateViewBlock2
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnumerateViewBlock2: function () {
-      const col = db._create(colName);
-      const view = db._createView(viewName, "arangosearch", { links: { [colName]: { includeAllFields: true } } });
-      const prepare = (rows) => {
-        col.truncate({ compact: false });
-        col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
-      };
-      const bind = () => ({'@view': viewName});
-      const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } SORT d.value DESC RETURN d.value`;
-
-      const genNodeList = (rows, batches) => {
-        // EnumerateViewBlock returns HASMORE when asked for the exact number
-        // of items it has left. This could be improved.
-        const optimalBatches = Math.ceil(rows / defaultBatchSize);
-        const maxViewBatches = Math.floor(rows / defaultBatchSize) + 1;
-        const viewBatches = [optimalBatches, maxViewBatches];
-
-        return [
-          {type: SingletonBlock, calls: 1, items: 1},
-          {type: EnumerateViewNode, calls: viewBatches, items: rows},
-          {type: CalculationBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows},
-          {type: SortBlock, calls: batches, items: rows},
-          {type: ReturnBlock, calls: batches, items: rows}
-        ];
-      };
-      profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind}
-      );
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test EnumerateViewBlock3
-////////////////////////////////////////////////////////////////////////////////
-
-    testEnumerateViewBlock3: function () {
-      const col = db._create(colName);
-      const view = db._createView(viewName, "arangosearch", { links: { [colName]: { includeAllFields: true } } });
-      const prepare = (rows) => {
-        col.truncate({ compact: false });
-        col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
-      };
-      const bind = () => ({'@view': viewName});
-      const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } SORT TFIDF(d) ASC, BM25(d) RETURN d.value`;
-
-      const genNodeList = (rows, batches) => {
-        // EnumerateViewBlock returns HASMORE when asked for the exact number
-        // of items it has left. This could be improved.
-        const optimalBatches = Math.ceil(rows / defaultBatchSize);
-        const maxViewBatches = Math.floor(rows / defaultBatchSize) + 1;
-        const viewBatches = [optimalBatches, maxViewBatches];
-
-        return [
-          {type: SingletonBlock, calls: 1, items: 1},
-          {type: EnumerateViewNode, calls: viewBatches, items: rows},
-          {type: SortBlock, calls: batches, items: rows},
-          {type: CalculationBlock, calls: batches, items: rows},
-          {type: ReturnBlock, calls: batches, items: rows}
-        ];
-      };
-
-      profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind}
-      );
-    },
-
     testLimitCollectCombination: function () {
       const query = `
             FOR x IN 1..@rows
@@ -460,29 +540,217 @@ function ahuacatlProfilerTestSuite () {
       const bind = (rows) => ({rows});
       const genNodeList = (rows, batches) => {
         return [
-          {type: SingletonBlock, calls: 1, items: 1},
-          {type: CalculationBlock, calls: 1, items: 1},
-          {type: EnumerateListBlock, calls: batches, items: rows},
-          {type: SortedCollectBlock, calls: 1, items: 1},
-          {type: LimitBlock, calls: 1, items: 1},
-          {type: ReturnBlock, calls: 1, items: 1}
+          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+          {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
+          {type: EnumerateListBlock, calls: batches, items: rows, filtered: 0},
+          {type: SortedCollectBlock, calls: 1, items: 1, filtered: 0},
+          {type: LimitBlock, calls: 1, items: 1, filtered: 0},
+          {type: ReturnBlock, calls: 1, items: 1, filtered: 0}
         ];
       };
 
       profHelper.runDefaultChecks(
         {query, genNodeList, prepare, bind}
       );
-
-
     }
 
-  };
-}
+   };
+ }
+
+ function ahuacatlProfilerViewTestSuite(isSearchAlias) {
+   return {
+     tearDown: function () {
+       db._drop(colName);
+       db._drop(edgeColName);
+       db._dropView(viewName);
+     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
+/// @brief test EnumerateViewBlock1
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(ahuacatlProfilerTestSuite);
+     testEnumerateViewBlock1: function () {
+       const col = db._create(colName);
+       let view;
+       if (isSearchAlias) {
+         let i = col.ensureIndex({type: "inverted", includeAllFields: true});
+         view = db._createView(viewName, "search-alias", {indexes: [{collection: colName, index: i.name}]});
+       } else {
+         view = db._createView(viewName, "arangosearch", {links: {[colName]: {includeAllFields: true}}});
+       }
+       const prepare = (rows) => {
+         col.truncate({compact: false});
+         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+       };
+       const bind = () => ({'@view': viewName});
+       const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } RETURN d.value`;
 
-return jsunity.done();
+       const genNodeList = (rows, batches) => {
+         // EnumerateViewBlock returns HASMORE when asked for the exact number
+         // of items it has left. This could be improved.
+         const optimalBatches = Math.ceil(rows / defaultBatchSize);
+         const maxViewBatches = Math.floor(rows / defaultBatchSize) + 1;
+         const viewBatches = [optimalBatches, maxViewBatches];
+
+         return [
+           {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+           {type: EnumerateViewNode, calls: viewBatches, items: rows, filtered: 0},
+           {
+             type: CalculationBlock,
+             calls: rows % defaultBatchSize === 0 ? batches + 1 : batches,
+             items: rows,
+             filtered: 0
+           },
+           {type: ReturnBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows, filtered: 0}
+         ];
+       };
+       profHelper.runDefaultChecks(
+         {query, genNodeList, prepare, bind}
+       );
+     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test EnumerateViewBlock2
+////////////////////////////////////////////////////////////////////////////////
+
+     testEnumerateViewBlock2: function () {
+       const col = db._create(colName);
+       let view;
+       if (isSearchAlias) {
+         let i = col.ensureIndex({type: "inverted", includeAllFields: true});
+         view = db._createView(viewName, "search-alias", {indexes: [{collection: colName, index: i.name}]});
+       } else {
+         view = db._createView(viewName, "arangosearch", {links: {[colName]: {includeAllFields: true}}});
+       }
+       const prepare = (rows) => {
+         col.truncate({compact: false});
+         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+       };
+       const bind = () => ({'@view': viewName});
+       const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } SORT d.value DESC RETURN d.value`;
+
+       const genNodeList = (rows, batches) => {
+         // EnumerateViewBlock returns HASMORE when asked for the exact number
+         // of items it has left. This could be improved.
+         const optimalBatches = Math.ceil(rows / defaultBatchSize);
+         const maxViewBatches = Math.floor(rows / defaultBatchSize) + 1;
+         const viewBatches = [optimalBatches, maxViewBatches];
+
+         return [
+           {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+           {type: EnumerateViewNode, calls: viewBatches, items: rows, filtered: 0},
+           {
+             type: CalculationBlock,
+             calls: rows % defaultBatchSize === 0 ? batches + 1 : batches,
+             items: rows,
+             filtered: 0
+           },
+           {type: SortBlock, calls: batches, items: rows, filtered: 0},
+           {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
+         ];
+       };
+       profHelper.runDefaultChecks(
+         {query, genNodeList, prepare, bind}
+       );
+     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test EnumerateViewBlock3
+////////////////////////////////////////////////////////////////////////////////
+
+     testEnumerateViewBlock3: function () {
+       const col = db._create(colName);
+       let view;
+       if (isSearchAlias) {
+         let i = col.ensureIndex({type: "inverted", includeAllFields: true});
+         view = db._createView(viewName, "search-alias", {indexes: [{collection: colName, index: i.name}]});
+       } else {
+         view = db._createView(viewName, "arangosearch", {links: {[colName]: {includeAllFields: true}}});
+       }
+       const prepare = (rows) => {
+         col.truncate({compact: false});
+         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+       };
+       const bind = () => ({'@view': viewName});
+       const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } SORT TFIDF(d) ASC, BM25(d) RETURN d.value`;
+
+       const genNodeList = (rows, batches) => {
+         // EnumerateViewBlock returns HASMORE when asked for the exact number
+         // of items it has left. This could be improved.
+         const optimalBatches = Math.ceil(rows / defaultBatchSize);
+         const maxViewBatches = Math.floor(rows / defaultBatchSize) + 1;
+         const viewBatches = [optimalBatches, maxViewBatches];
+
+         return [
+           {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+           {type: EnumerateViewNode, calls: viewBatches, items: rows, filtered: 0},
+           {type: SortBlock, calls: batches, items: rows, filtered: 0},
+           {type: CalculationBlock, calls: batches, items: rows, filtered: 0},
+           {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
+         ];
+       };
+
+       profHelper.runDefaultChecks(
+         {query, genNodeList, prepare, bind}
+       );
+     },
+
+     testLimitCollectCombination: function () {
+       const query = `
+            FOR x IN 1..@rows
+              COLLECT AGGREGATE total = SUM(x)
+              LIMIT 0, 1
+              RETURN total
+      `;
+       const prepare = () => {
+       };
+       const bind = (rows) => ({rows});
+       const genNodeList = (rows, batches) => {
+         return [
+           {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
+           {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
+           {type: EnumerateListBlock, calls: batches, items: rows, filtered: 0},
+           {type: SortedCollectBlock, calls: 1, items: 1, filtered: 0},
+           {type: LimitBlock, calls: 1, items: 1, filtered: 0},
+           {type: ReturnBlock, calls: 1, items: 1, filtered: 0}
+         ];
+       };
+
+       profHelper.runDefaultChecks(
+         {query, genNodeList, prepare, bind}
+       );
+     }
+
+   };
+ }
+
+ ////////////////////////////////////////////////////////////////////////////////
+ /// @brief executes the test suite
+ ////////////////////////////////////////////////////////////////////////////////
+
+ //jsunity.run(ahuacatlProfilerTestSuite);
+
+ function ahuacatlProfilerArangoSearchTestSuite() {
+   let suite = {};
+   deriveTestSuite(
+     ahuacatlProfilerViewTestSuite(false),
+     suite,
+     "_arangosearch"
+   );
+   return suite;
+ }
+
+ function ahuacatlProfilerSearchAliasTestSuite() {
+   let suite = {};
+   deriveTestSuite(
+     ahuacatlProfilerViewTestSuite(true),
+     suite,
+     "_search-alias"
+   );
+   return suite;
+ }
+
+ jsunity.run(ahuacatlProfilerArangoSearchTestSuite);
+ jsunity.run(ahuacatlProfilerSearchAliasTestSuite);
+
+ return jsunity.done();

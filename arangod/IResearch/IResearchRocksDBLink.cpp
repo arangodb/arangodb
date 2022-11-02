@@ -22,6 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"  // required for RocksDBColumnFamilyManager.h
 #include "IResearchLinkHelper.h"
 #include "IResearchView.h"
@@ -29,15 +30,14 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
-#include <rocksdb/env_encryption.h>
-
 #include "IResearchRocksDBLink.h"
-#include "utils/encryption.hpp"
+#include "IResearchRocksDBEncryption.h"
 
 namespace arangodb {
 namespace iresearch {
@@ -49,7 +49,13 @@ IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid,
                    IResearchLinkHelper::emptyIndexSlice(objectId).slice(),
                    RocksDBColumnFamilyManager::get(
                        RocksDBColumnFamilyManager::Family::Invalid),
-                   false),
+                   /*useCache*/ false,
+                   /*cacheManager*/ nullptr,
+                   /*engine*/
+                   collection.vocbase()
+                       .server()
+                       .getFeature<EngineSelectorFeature>()
+                       .engine<RocksDBEngine>()),
       IResearchLink(iid, collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
@@ -93,77 +99,7 @@ void IResearchRocksDBLink::toVelocyPack(
   builder.close();
 }
 
-class RocksDBCipherStream final : public irs::encryption::stream {
- public:
-  typedef std::unique_ptr<rocksdb::BlockAccessCipherStream> StreamPtr;
-
-  explicit RocksDBCipherStream(StreamPtr&& stream) noexcept
-      : _stream(std::move(stream)) {
-    TRI_ASSERT(_stream);
-  }
-
-  virtual size_t block_size() const override { return _stream->BlockSize(); }
-
-  virtual bool decrypt(uint64_t offset, irs::byte_type* data,
-                       size_t size) override {
-    return _stream->Decrypt(offset, reinterpret_cast<char*>(data), size).ok();
-  }
-
-  virtual bool encrypt(uint64_t offset, irs::byte_type* data,
-                       size_t size) override {
-    return _stream->Encrypt(offset, reinterpret_cast<char*>(data), size).ok();
-  }
-
- private:
-  StreamPtr _stream;
-};  // RocksDBCipherStream
-
-class RocksDBEncryptionProvider final : public irs::encryption {
- public:
-  static std::shared_ptr<RocksDBEncryptionProvider> make(
-      rocksdb::EncryptionProvider& encryption,
-      rocksdb::Options const& options) {
-    return std::make_shared<RocksDBEncryptionProvider>(encryption, options);
-  }
-
-  explicit RocksDBEncryptionProvider(rocksdb::EncryptionProvider& encryption,
-                                     rocksdb::Options const& options)
-      : _encryption(&encryption), _options(options) {}
-
-  virtual size_t header_length() override {
-    return _encryption->GetPrefixLength();
-  }
-
-  virtual bool create_header(std::string const& filename,
-                             irs::byte_type* header) override {
-    return _encryption
-        ->CreateNewPrefix(filename, reinterpret_cast<char*>(header),
-                          header_length())
-        .ok();
-  }
-
-  virtual encryption::stream::ptr create_stream(
-      std::string const& filename, irs::byte_type* header) override {
-    rocksdb::Slice headerSlice(reinterpret_cast<char const*>(header),
-                               header_length());
-
-    std::unique_ptr<rocksdb::BlockAccessCipherStream> stream;
-    if (!_encryption
-             ->CreateCipherStream(filename, _options, headerSlice, &stream)
-             .ok()) {
-      return nullptr;
-    }
-
-    return std::make_unique<RocksDBCipherStream>(std::move(stream));
-  }
-
- private:
-  rocksdb::EncryptionProvider* _encryption;
-  rocksdb::EnvOptions _options;
-};  // RocksDBEncryptionProvider
-
-IResearchRocksDBLink::IndexFactory::IndexFactory(
-    application_features::ApplicationServer& server)
+IResearchRocksDBLink::IndexFactory::IndexFactory(ArangodServer& server)
     : IndexTypeFactory(server) {}
 
 bool IResearchRocksDBLink::IndexFactory::equal(
@@ -177,9 +113,19 @@ std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
   uint64_t objectId = basics::VelocyPackHelper::stringUInt64(
       definition, arangodb::StaticStrings::ObjectId);
   auto link = std::make_shared<IResearchRocksDBLink>(id, collection, objectId);
-
+  bool pathExists = false;
+  auto cleanup = scopeGuard([&]() noexcept {
+    if (pathExists) {
+      try {
+        link->unload();  // TODO(MBkkt) unload should be implicit noexcept?
+      } catch (...) {
+      }
+    } else {
+      link->drop();
+    }
+  });
   auto const res =
-      link->init(definition, [this]() -> irs::directory_attributes {
+      link->init(definition, pathExists, [this]() -> irs::directory_attributes {
         auto& selector = _server.getFeature<EngineSelectorFeature>();
         TRI_ASSERT(selector.isRocksDB());
         auto& engine = selector.engine<RocksDBEngine>();
@@ -191,11 +137,10 @@ std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
         }
         return irs::directory_attributes{};
       });
-
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-
+  cleanup.cancel();
   return link;
 }
 
@@ -210,20 +155,9 @@ Result IResearchRocksDBLink::IndexFactory::normalize(
 }
 
 std::shared_ptr<IResearchRocksDBLink::IndexFactory>
-IResearchRocksDBLink::createFactory(
-    application_features::ApplicationServer& server) {
+IResearchRocksDBLink::createFactory(ArangodServer& server) {
   return std::shared_ptr<IResearchRocksDBLink::IndexFactory>(
       new IResearchRocksDBLink::IndexFactory(server));
 }
-
 }  // namespace iresearch
 }  // namespace arangodb
-
-namespace iresearch {
-
-// use base irs::encryption type for ancestors
-template<>
-struct type<arangodb::iresearch::RocksDBEncryptionProvider>
-    : type<irs::encryption> {};
-
-}  // namespace iresearch

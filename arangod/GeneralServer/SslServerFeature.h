@@ -26,28 +26,25 @@
 #include <memory>
 #include <string>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/asio_ns.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 namespace options {
 class ProgramOptions;
 }
 
-class SslServerFeature : public application_features::ApplicationFeature {
+class SslServerFeature : public ArangodFeature {
  public:
   typedef std::shared_ptr<std::vector<asio_ns::ssl::context>> SslContextList;
 
-  explicit SslServerFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "SslServer"; }
+
+  explicit SslServerFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;

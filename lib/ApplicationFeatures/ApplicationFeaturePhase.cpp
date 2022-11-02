@@ -31,8 +31,9 @@ namespace arangodb {
 namespace application_features {
 
 ApplicationFeaturePhase::ApplicationFeaturePhase(ApplicationServer& server,
-                                                 std::string const& name)
-    : ApplicationFeature(server, name) {}
+                                                 size_t registration,
+                                                 std::string_view name)
+    : ApplicationFeature(server, registration, name) {}
 
 void ApplicationFeaturePhase::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {

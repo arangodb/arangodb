@@ -46,8 +46,6 @@
 #include "Utilities/NameValidator.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-utils.h"
-#include "V8/v8-vpack.h"
-#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Tasks.h"
 #include "VocBase/Methods/Upgrade.h"
@@ -60,7 +58,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::methods;
@@ -70,8 +67,8 @@ std::string Databases::normalizeName(std::string const& name) {
   return normalizeUtf8ToNFC(name);
 }
 
-std::vector<std::string> Databases::list(
-    application_features::ApplicationServer& server, std::string const& user) {
+std::vector<std::string> Databases::list(ArangodServer& server,
+                                         std::string const& user) {
   if (!server.hasFeature<DatabaseFeature>()) {
     return std::vector<std::string>();
   }
@@ -328,10 +325,11 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
   return std::move(upgradeRes.result());
 }
 
-arangodb::Result Databases::create(
-    application_features::ApplicationServer& server, ExecContext const& exec,
-    std::string const& dbName, VPackSlice const& users,
-    VPackSlice const& options) {
+arangodb::Result Databases::create(ArangodServer& server,
+                                   ExecContext const& exec,
+                                   std::string const& dbName,
+                                   VPackSlice const& users,
+                                   VPackSlice const& options) {
   // Only admin users are permitted to create databases
   if (!exec.isAdminUser() || (ServerState::readOnly() && !exec.isSuperuser())) {
     events::CreateDatabase(dbName, Result(TRI_ERROR_FORBIDDEN), exec);

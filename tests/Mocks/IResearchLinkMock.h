@@ -42,10 +42,10 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
  public:
   IResearchLinkMock(IndexId iid, arangodb::LogicalCollection& collection);
 
-  [[nodiscard]] static auto setCallbakForScope(
-      std::function<irs::directory_attributes()> callback) {
+  [[nodiscard]] static auto setCallbackForScope(
+      std::function<irs::directory_attributes()> const& callback) {
     InitCallback = callback;
-    return irs::make_finally([]() { InitCallback = nullptr; });
+    return irs::make_finally([]() noexcept { InitCallback = nullptr; });
   }
 
   bool canBeDropped() const override { return IResearchLink::canBeDropped(); }
@@ -80,12 +80,6 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
     return stats().indexSize;
   }
 
-  arangodb::Result remove(transaction::Methods& trx,
-                          arangodb::LocalDocumentId const& documentId,
-                          VPackSlice const doc) {
-    return IResearchLink::remove(trx, documentId, doc);
-  }
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
@@ -96,8 +90,8 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
       arangodb::velocypack::Builder& builder,
       std::underlying_type<arangodb::Index::Serialize>::type) const override;
 
-  void toVelocyPackFigures(velocypack::Builder& builder) const override {
-    IResearchLink::toVelocyPackStats(builder);
+  void toVelocyPackFigures(velocypack::Builder& builder) const final {
+    IResearchDataStore::toVelocyPackStats(builder);
   }
 
   IndexType type() const override { return IResearchLink::type(); }

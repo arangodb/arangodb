@@ -25,8 +25,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/QueryExpressionContext.h"
-
-#include <unordered_map>
+#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -42,9 +41,7 @@ class FixedVarExpressionContext final : public QueryExpressionContext {
                                      QueryContext& query,
                                      AqlFunctionsInternalCache& cache);
 
-  ~FixedVarExpressionContext() override = default;
-
-  bool isDataFromCollection(Variable const* variable) const override;
+  ~FixedVarExpressionContext() = default;
 
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;
@@ -57,39 +54,26 @@ class FixedVarExpressionContext final : public QueryExpressionContext {
 
   // @brief This method will only clear the given variable, and keep
   // all others intact. If the variable does not exist, this is a noop.
-  void clearVariableValue(Variable const*);
+  void clearVariableValue(Variable const*) noexcept;
 
   void serializeAllVariables(velocypack::Options const& opts,
                              arangodb::velocypack::Builder&) const;
 
  private:
-  /// @brief temporary storage for expression data context
-  std::unordered_map<Variable const*, AqlValue> _vars;
+  // temporary storage for expression data context
+  containers::FlatHashMap<Variable const*, AqlValue> _vars;
 };
 
-class SingleVarExpressionContext final : public QueryExpressionContext {
+class NoVarExpressionContext final : public QueryExpressionContext {
  public:
-  explicit SingleVarExpressionContext(transaction::Methods& trx,
-                                      QueryContext& query,
-                                      AqlFunctionsInternalCache& cache);
+  explicit NoVarExpressionContext(transaction::Methods& trx,
+                                  QueryContext& query,
+                                  AqlFunctionsInternalCache& cache);
 
-  explicit SingleVarExpressionContext(transaction::Methods& trx,
-                                      QueryContext& query,
-                                      AqlFunctionsInternalCache& cache,
-                                      Variable* var, AqlValue val);
-
-  ~SingleVarExpressionContext() override;
-
-  bool isDataFromCollection(Variable const* variable) const override;
+  ~NoVarExpressionContext() = default;
 
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;
-
-  void setVariableValue(Variable* var, AqlValue& val);
-
- private:
-  const Variable* _variable;
-  AqlValue _value;
 };
 
 }  // namespace aql

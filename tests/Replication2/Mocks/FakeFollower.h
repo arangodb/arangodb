@@ -24,6 +24,7 @@
 
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/WaitForBag.h"
 #include "Replication2/Helper/WaitForQueue.h"
 #include "Basics/UnshackledMutex.h"
 #include "Basics/Guarded.h"
@@ -44,6 +45,7 @@ struct FakeFollower final : replicated_log::ILogFollower,
   void resign() &;
   auto waitFor(LogIndex index) -> WaitForFuture override;
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
+  auto waitForResign() -> futures::Future<futures::Unit> override;
   auto getCommitIndex() const noexcept -> LogIndex override;
 
   auto release(LogIndex doneWithIdx) -> Result override;
@@ -62,15 +64,16 @@ struct FakeFollower final : replicated_log::ILogFollower,
   auto addEntry(LogPayload) -> LogIndex;
   void triggerLeaderAcked();
 
+  auto copyInMemoryLog() const -> replicated_log::InMemoryLog override;
+
   template<typename State>
   auto insertMultiplexedValue(typename State::EntryType const& t) -> LogIndex {
     using streamSpec =
         typename replicated_state::ReplicatedStateStreamSpec<State>;
-    velocypack::UInt8Buffer buffer;
-    velocypack::Builder builder(buffer);
+    velocypack::Builder builder;
     using descriptor = streams::stream_descriptor_by_id_t<1, streamSpec>;
     streams::MultiplexedValues::toVelocyPack<descriptor>(t, builder);
-    return addEntry(LogPayload(std::move(buffer)));
+    return addEntry(LogPayload::createFromSlice(builder.slice()));
   }
 
  private:
@@ -83,6 +86,7 @@ struct FakeFollower final : replicated_log::ILogFollower,
   test::WaitForQueue<LogIndex, replicated_log::WaitForResult> waitForQueue;
   test::SimpleWaitForQueue<replicated_log::WaitForResult>
       waitForLeaderAckedQueue;
+  WaitForBag waitForResignQueue;
   Guarded<GuardedFollowerData, basics::UnshackledMutex> guarded;
   ParticipantId const id;
   std::optional<ParticipantId> const leaderId;

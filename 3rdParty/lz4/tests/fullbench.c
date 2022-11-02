@@ -24,8 +24,8 @@
 */
 
 
-// S_ISREG & gettimeofday() are not supported by MSVC
 #if defined(_MSC_VER) || defined(_WIN32)
+   /* S_ISREG & gettimeofday() are not supported by MSVC */
 #  define BMK_LEGACY_TIMER 1
 #endif
 
@@ -134,7 +134,7 @@ static clock_t BMK_GetClockSpan( clock_t clockStart )
 static size_t BMK_findMaxMem(U64 requiredMem)
 {
     size_t step = 64 MB;
-    BYTE* testmem=NULL;
+    BYTE* testmem = NULL;
 
     requiredMem = (((requiredMem >> 26) + 1) << 26);
     requiredMem += 2*step;
@@ -153,6 +153,14 @@ static size_t BMK_findMaxMem(U64 requiredMem)
 
     return (size_t)requiredMem;
 }
+
+
+/*********************************************************
+*  Memory management, to test LZ4_USER_MEMORY_FUNCTIONS
+*********************************************************/
+void* LZ4_malloc(size_t s) { return malloc(s); }
+void* LZ4_calloc(size_t n, size_t s) { return calloc(n,s); }
+void  LZ4_free(void* p) { free(p); }
 
 
 /*********************************************************
@@ -292,9 +300,14 @@ static int local_LZ4_decompress_fast_usingExtDict(const char* in, char* out, int
     return outSize;
 }
 
+static int local_LZ4_decompress_safe_withPrefix64k(const char* in, char* out, int inSize, int outSize)
+{
+    LZ4_decompress_safe_withPrefix64k(in, out, inSize, outSize);
+    return outSize;
+}
+
 static int local_LZ4_decompress_safe_usingDict(const char* in, char* out, int inSize, int outSize)
 {
-    (void)inSize;
     LZ4_decompress_safe_usingDict(in, out, inSize, outSize, out - 65536, 65536);
     return outSize;
 }
@@ -381,6 +394,39 @@ static int local_LZ4F_decompress_followHint(const char* src, char* dst, int srcS
 
 }
 
+/* always provide input by block of 64 KB */
+static int local_LZ4F_decompress_noHint(const char* src, char* dst, int srcSize, int dstSize)
+{
+    size_t totalInSize = (size_t)srcSize;
+    size_t maxOutSize = (size_t)dstSize;
+
+    size_t inPos = 0;
+    size_t inSize = 64 KB;
+    size_t outPos = 0;
+    size_t outRemaining = maxOutSize - outPos;
+
+    for (;;) {
+        size_t const sizeHint = LZ4F_decompress(g_dCtx, dst+outPos, &outRemaining, src+inPos, &inSize, NULL);
+        assert(!LZ4F_isError(sizeHint));
+
+        inPos += inSize;
+        inSize = (inPos + 64 KB <= totalInSize) ? 64 KB : totalInSize - inPos;
+
+        outPos += outRemaining;
+        outRemaining = maxOutSize - outPos;
+
+        if (!sizeHint) break;
+    }
+
+    /* frame completed */
+    if (inPos != totalInSize) {
+        DISPLAY("Error decompressing frame : must read (%u) full frame (%u) \n",
+                (unsigned)inPos, (unsigned)totalInSize);
+        exit(10);
+    }
+    return (int)outPos;
+
+}
 
 #define NB_COMPRESSION_ALGORITHMS 100
 #define NB_DECOMPRESSION_ALGORITHMS 100
@@ -399,25 +445,25 @@ int fullSpeedBench(const char** fileNamesTable, int nbFiles)
       char* compressed_buff=NULL;
       const char* const inFileName = fileNamesTable[fileIdx++];
       FILE* const inFile = fopen( inFileName, "rb" );
-      U64   inFileSize;
-      size_t benchedSize;
+      U64 const inFileSize = UTIL_getFileSize(inFileName);
+      size_t benchedSize = BMK_findMaxMem(inFileSize*2) / 2;   /* because 2 buffers */
       int nbChunks;
       int maxCompressedChunkSize;
       size_t readSize;
       int compressedBuffSize;
       U32 crcOriginal;
 
-      /* Check file existence */
-      if (inFile==NULL) { DISPLAY( "Pb opening %s\n", inFileName); return 11; }
+      /* Check infile pre-requisites */
+      if (inFile==NULL) { DISPLAY("Pb opening %s \n", inFileName); return 11; }
+      if (inFileSize==0) { DISPLAY("file is empty \n"); fclose(inFile); return 11; }
+      if (benchedSize==0) { DISPLAY("not enough memory \n"); fclose(inFile); return 11; }
 
       /* Memory size adjustments */
-      inFileSize = UTIL_getFileSize(inFileName);
-      if (inFileSize==0) { DISPLAY( "file is empty\n"); fclose(inFile); return 11; }
-      benchedSize = BMK_findMaxMem(inFileSize*2) / 2;   /* because 2 buffers */
-      if (benchedSize==0) { DISPLAY( "not enough memory\n"); fclose(inFile); return 11; }
       if ((U64)benchedSize > inFileSize) benchedSize = (size_t)inFileSize;
-      if (benchedSize < inFileSize)
-          DISPLAY("Not enough memory for '%s' full size; testing %i MB only...\n", inFileName, (int)(benchedSize>>20));
+      if (benchedSize < inFileSize) {
+          DISPLAY("Not enough memory for '%s' full size; testing %i MB only... \n",
+                inFileName, (int)(benchedSize>>20));
+      }
 
       /* Allocation */
       chunkP = (struct chunkParameters*) malloc(((benchedSize / (size_t)g_chunkSize)+1) * sizeof(struct chunkParameters));
@@ -427,7 +473,7 @@ int fullSpeedBench(const char** fileNamesTable, int nbFiles)
       compressedBuffSize = nbChunks * maxCompressedChunkSize;
       compressed_buff = (char*)malloc((size_t)compressedBuffSize);
       if(!chunkP || !orig_buff || !compressed_buff) {
-          DISPLAY("\nError: not enough memory!\n");
+          DISPLAY("\nError: not enough memory! \n");
           fclose(inFile);
           free(orig_buff);
           free(compressed_buff);
@@ -475,7 +521,7 @@ int fullSpeedBench(const char** fileNamesTable, int nbFiles)
                 size_t remaining = benchedSize;
                 char* in = orig_buff;
                 char* out = compressed_buff;
-                nbChunks = (int) (((int)benchedSize + (g_chunkSize-1))/ g_chunkSize);
+                assert(nbChunks >= 1);
                 for (i=0; i<nbChunks; i++) {
                     chunkP[i].id = (U32)i;
                     chunkP[i].origBuffer = in; in += g_chunkSize;
@@ -608,6 +654,7 @@ int fullSpeedBench(const char** fileNamesTable, int nbFiles)
             case 2: decompressionFunction = local_LZ4_decompress_fast_usingDict_prefix; dName = "LZ4_decompress_fast_usingDict(prefix)"; break;
             case 3: decompressionFunction = local_LZ4_decompress_fast_usingExtDict; dName = "LZ4_decompress_fast_using(Ext)Dict"; break;
             case 4: decompressionFunction = LZ4_decompress_safe; dName = "LZ4_decompress_safe"; break;
+            case 5: decompressionFunction = local_LZ4_decompress_safe_withPrefix64k; dName = "LZ4_decompress_safe_withPrefix64k"; break;
             case 6: decompressionFunction = local_LZ4_decompress_safe_usingDict; dName = "LZ4_decompress_safe_usingDict"; break;
             case 7: decompressionFunction = local_LZ4_decompress_safe_partial; dName = "LZ4_decompress_safe_partial"; checkResult = 0; break;
 #ifndef LZ4_DLL_IMPORT
@@ -615,8 +662,10 @@ int fullSpeedBench(const char** fileNamesTable, int nbFiles)
 #endif
             case 10:
             case 11:
+            case 12:
                 if (dAlgNb == 10) { decompressionFunction = local_LZ4F_decompress; dName = "LZ4F_decompress"; }  /* can be skipped */
                 if (dAlgNb == 11) { decompressionFunction = local_LZ4F_decompress_followHint; dName = "LZ4F_decompress_followHint"; }  /* can be skipped */
+                if (dAlgNb == 12) { decompressionFunction = local_LZ4F_decompress_noHint; dName = "LZ4F_decompress_noHint"; }  /* can be skipped */
                 /* prepare compressed data using frame format */
                 {   size_t const fcsize = LZ4F_compressFrame(compressed_buff, (size_t)compressedBuffSize, orig_buff, benchedSize, NULL);
                     assert(!LZ4F_isError(fcsize));

@@ -26,10 +26,10 @@
 #include <array>
 #include <initializer_list>
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Result.h"
 #include "Basics/system-functions.h"
 #include "Rest/CommonDefines.h"
+#include "RestServer/arangod.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/figures.h"
 
@@ -82,21 +82,21 @@ extern RequestFigures SuperuserRequestFigures;
 extern RequestFigures UserRequestFigures;
 }  // namespace statistics
 
-class StatisticsFeature final
-    : public application_features::ApplicationFeature {
+class StatisticsFeature final : public ArangodFeature {
  public:
   static double time() { return TRI_microtime(); }
 
  public:
-  explicit StatisticsFeature(application_features::ApplicationServer& server);
-  ~StatisticsFeature();
+  static constexpr std::string_view name() noexcept { return "Statistics"; }
+
+  explicit StatisticsFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void stop() override final;
-  void toPrometheus(std::string& result, double const& now, bool v2);
+  void toPrometheus(std::string& result, double const& now);
 
   stats::Descriptions const& descriptions() const { return _descriptions; }
 
@@ -106,10 +106,9 @@ class StatisticsFeature final
   static void appendHistogram(std::string& result,
                               statistics::Distribution const& dist,
                               std::string const& label,
-                              std::initializer_list<std::string> const& les,
-                              bool v2);
+                              std::initializer_list<std::string> const& les);
   static void appendMetric(std::string& result, std::string const& val,
-                           std::string const& label, bool v2);
+                           std::string const& label);
 
   Result getClusterSystemStatistics(
       TRI_vocbase_t& vocbase, double start,

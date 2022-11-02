@@ -23,7 +23,7 @@
 
 #include "FileDescriptorsFeature.h"
 
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Logger/LogMacros.h"
@@ -31,6 +31,7 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/EnvironmentFeature.h"
 
 #ifdef TRI_HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
@@ -111,12 +112,12 @@ struct FileDescriptors {
   }
 };
 
-FileDescriptorsFeature::FileDescriptorsFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "FileDescriptors"),
+FileDescriptorsFeature::FileDescriptorsFeature(Server& server)
+    : ArangodFeature{server, *this},
       _descriptorsMinimum(FileDescriptors::recommendedMinimum()) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
+  startsAfter<EnvironmentFeature>();
 }
 
 void FileDescriptorsFeature::collectOptions(
@@ -131,7 +132,7 @@ void FileDescriptorsFeature::collectOptions(
 }
 
 void FileDescriptorsFeature::validateOptions(
-    std::shared_ptr<ProgramOptions> options) {
+    std::shared_ptr<ProgramOptions> /*options*/) {
   if (_descriptorsMinimum > 0 &&
       (_descriptorsMinimum < FileDescriptors::requiredMinimum ||
        _descriptorsMinimum > std::numeric_limits<rlim_t>::max())) {
@@ -143,9 +144,9 @@ void FileDescriptorsFeature::validateOptions(
   }
 }
 
-void FileDescriptorsFeature::prepare() { adjustFileDescriptors(); }
+void FileDescriptorsFeature::prepare() {
+  adjustFileDescriptors();
 
-void FileDescriptorsFeature::start() {
   FileDescriptors current = FileDescriptors::load();
 
   LOG_TOPIC("a1c60", INFO, arangodb::Logger::SYSCALL)

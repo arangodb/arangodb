@@ -99,7 +99,6 @@ function ahuacatlOperatorsTestSuite () {
       var values = [ null ];
       values.forEach(function (v) {
         assertTrue(db._query(`RETURN IS_NULL(${v})`).next());
-        assertTrue(db._query(`RETURN NOOPT(IS_NULL(${v}))`).next());
       });
     },
 
@@ -133,7 +132,6 @@ function ahuacatlOperatorsTestSuite () {
       ];
       values.forEach(function (v) {
         assertFalse(db._query(`RETURN IS_NULL(${v})`).next());
-        assertFalse(db._query(`RETURN NOOPT(IS_NULL(${v}))`).next());
       });
     },
 
@@ -145,7 +143,6 @@ function ahuacatlOperatorsTestSuite () {
       var values = [ false, true ];
       values.forEach(function (v) {
         assertTrue(db._query(`RETURN IS_BOOL(${v})`).next());
-        assertTrue(db._query(`RETURN NOOPT(IS_BOOL(${v}))`).next());
       });
     },
 
@@ -184,7 +181,6 @@ function ahuacatlOperatorsTestSuite () {
 
       values.forEach(function (v) {
         assertFalse(db._query(`RETURN IS_BOOL(${v})`).next());
-        assertFalse(db._query(`RETURN NOOPT(IS_BOOL(${v}))`).next());
       });
     },
 
@@ -197,7 +193,6 @@ function ahuacatlOperatorsTestSuite () {
 
       values.forEach(function (v) {
         assertTrue(db._query(`RETURN IS_NUMBER(${v})`).next());
-        assertTrue(db._query(`RETURN NOOPT(IS_NUMBER(${v}))`).next());
       });
     },
 
@@ -233,7 +228,6 @@ function ahuacatlOperatorsTestSuite () {
 
       values.forEach(function (v) {
         assertFalse(db._query(`RETURN IS_NUMBER(${v})`).next());
-        assertFalse(db._query(`RETURN NOOPT(IS_NUMBER(${v}))`).next());
       });
     },
 
@@ -245,7 +239,6 @@ function ahuacatlOperatorsTestSuite () {
       var values = ["'abc'", "'null'", "'false'", "'undefined'", "''", "' '"];
       values.forEach(function (v) {
         assertTrue(db._query(`RETURN IS_STRING(${v})`).next());
-        assertTrue(db._query(`RETURN NOOPT(IS_STRING(${v}))`).next());
       });
     },
 
@@ -280,7 +273,6 @@ function ahuacatlOperatorsTestSuite () {
 
       values.forEach(function (v) {
         assertFalse(db._query(`RETURN IS_STRING(${v})`).next());
-        assertFalse(db._query(`RETURN NOOPT(IS_STRING(${v}))`).next());
       });
     },
 
@@ -302,7 +294,6 @@ function ahuacatlOperatorsTestSuite () {
       ];
       values.forEach(function (v) {
         assertTrue(db._query(`RETURN IS_LIST(${v})`).next());
-        assertTrue(db._query(`RETURN NOOPT(IS_LIST(${v}))`).next());
       });
     },
 
@@ -333,7 +324,6 @@ function ahuacatlOperatorsTestSuite () {
       ];
       values.forEach(function (v) {
         assertFalse(db._query(`RETURN IS_LIST(${v})`).next());
-        assertFalse(db._query(`RETURN NOOPT(IS_LIST(${v}))`).next());
       });
     },
 
@@ -355,7 +345,6 @@ function ahuacatlOperatorsTestSuite () {
       ];
       values.forEach(function (v) {
         assertTrue(db._query(`RETURN IS_ARRAY(${v})`).next());
-        assertTrue(db._query(`RETURN NOOPT(IS_ARRAY(${v}))`).next());
       });
     },
 
@@ -386,7 +375,6 @@ function ahuacatlOperatorsTestSuite () {
       ];
       values.forEach(function (v) {
         assertFalse(db._query(`RETURN IS_ARRAY(${v})`).next());
-        assertFalse(db._query(`RETURN NOOPT(IS_ARRAY(${v}))`).next());
       });
     },
 
@@ -405,7 +393,6 @@ function ahuacatlOperatorsTestSuite () {
       ];
       values.forEach(function(v) {
         assertTrue(db._query(`RETURN IS_DOCUMENT(${v})`).next());
-        assertTrue(db._query(`RETURN NOOPT(IS_DOCUMENT(${v}))`).next());
       });
     },
 
@@ -441,7 +428,6 @@ function ahuacatlOperatorsTestSuite () {
       ];
       values.forEach(function(v) {
         assertFalse(db._query(`RETURN IS_DOCUMENT(${v})`).next());
-        assertFalse(db._query(`RETURN NOOPT(IS_DOCUMENT(${v}))`).next());
       });
     },
 
@@ -460,7 +446,6 @@ function ahuacatlOperatorsTestSuite () {
       ];
       values.forEach(function(v) {
         assertTrue(db._query(`RETURN IS_OBJECT(${v})`).next());
-        assertTrue(db._query(`RETURN NOOPT(IS_OBJECT(${v}))`).next());
       });
     },
 
@@ -496,7 +481,6 @@ function ahuacatlOperatorsTestSuite () {
       ];
       values.forEach(function(v) {
         assertFalse(db._query(`RETURN IS_OBJECT(${v})`).next());
-        assertFalse(db._query(`RETURN NOOPT(IS_OBJECT(${v}))`).next());
       });
     },
 
@@ -540,7 +524,6 @@ function ahuacatlOperatorsTestSuite () {
       ];
       values.forEach(function(v) {
         assertEqual(true, db._query(`RETURN TO_BOOL(${v})`).next());
-        assertEqual(true, db._query(`RETURN NOOPT(TO_BOOL(${v}))`).next());
       });
     },
 
@@ -552,7 +535,6 @@ function ahuacatlOperatorsTestSuite () {
       var values = [0, "''", null, false];
       values.forEach(function(v) {
         assertEqual(false, db._query(`RETURN TO_BOOL(${v})`).next());
-        assertEqual(false, db._query(`RETURN NOOPT(TO_BOOL(${v}))`).next());
       });
     },
 
@@ -613,12 +595,9 @@ function ahuacatlOperatorsTestSuite () {
         {ex: null, val: "{ 'a' : [ ], 'b' : [ ] }"}
       ];
       values.forEach(function(v) {
-        // double precission check for e=0.0001
+        // double precision check for e=0.0001
         var q = `RETURN TO_NUMBER(${v.val})`;
         var diff = db._query(q).next() - v.ex;
-        assertTrue(diff < 0.0001, q);
-        q = `RETURN NOOPT(TO_NUMBER(${v.val}))`;
-        diff = db._query(q).next() - v.ex;
         assertTrue(diff < 0.0001, q);
       });
     },
@@ -663,8 +642,6 @@ function ahuacatlOperatorsTestSuite () {
       ];
       values.forEach(function(v) {
         var q = `RETURN TO_STRING(${v.val})`;
-        assertEqual(v.ex, db._query(q).next(), q);
-        q = `RETURN NOOPT(TO_STRING(${v.val}))`;
         assertEqual(v.ex, db._query(q).next(), q);
       });
     },

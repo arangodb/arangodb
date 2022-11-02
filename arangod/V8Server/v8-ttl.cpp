@@ -23,6 +23,7 @@
 
 #include "v8-ttl.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Result.h"
 #include "RestServer/TtlFeature.h"
 #include "V8/v8-globals.h"
@@ -31,7 +32,6 @@
 #include "VocBase/Methods/Ttl.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
@@ -47,17 +47,17 @@ static void JS_TtlProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder builder;
   Result result;
 
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
   if (args.Length() == 0) {
     // get properties
-    result = methods::Ttl::getProperties(v8g->_server.getFeature<TtlFeature>(),
+    result = methods::Ttl::getProperties(v8g->server().getFeature<TtlFeature>(),
                                          builder);
   } else {
     // set properties
     VPackBuilder properties;
     TRI_V8ToVPack(isolate, properties, args[0], false);
 
-    result = methods::Ttl::setProperties(v8g->_server.getFeature<TtlFeature>(),
+    result = methods::Ttl::setProperties(v8g->server().getFeature<TtlFeature>(),
                                          properties.slice(), builder);
   }
 
@@ -77,9 +77,9 @@ static void JS_TtlStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   VPackBuilder builder;
-  TRI_GET_GLOBALS();
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
   Result result = methods::Ttl::getStatistics(
-      v8g->_server.getFeature<TtlFeature>(), builder);
+      v8g->server().getFeature<TtlFeature>(), builder);
 
   if (result.fail()) {
     THROW_ARANGO_EXCEPTION(result);

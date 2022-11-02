@@ -109,7 +109,7 @@ class IResearchFilterCompareTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParameters const& params) {
+           arangodb::aql::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -125,7 +125,7 @@ class IResearchFilterCompareTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParameters const& params) {
+           arangodb::aql::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -367,7 +367,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
 
   // string expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -624,7 +624,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
 
   // boolean expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -859,7 +859,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
 
   // null expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -917,7 +917,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
 
   // null expression, boost
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -1171,7 +1171,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
 
   // numeric expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -1222,7 +1222,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
 
   // numeric expression, boost
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -1461,7 +1461,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a");
       filter.mutable_options()->term =
           irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
@@ -1483,7 +1484,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("[4]");
       filter.mutable_options()->term =
           irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
@@ -1499,7 +1501,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b.c");
       filter.mutable_options()->term =
           irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
@@ -1537,7 +1540,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
       filter.mutable_options()->term =
           irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
@@ -1575,7 +1579,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
   // string expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -1584,7 +1588,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
       filter.mutable_options()->term =
           irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
@@ -1623,7 +1628,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
   // string expression, boost, analyzer
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -1632,7 +1637,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       filter.boost(42);
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
       filter.mutable_options()->term =
@@ -1649,7 +1655,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
   // string expression, boost, analyzer
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -1658,7 +1664,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       filter.boost(42);
       *filter.mutable_field() = mangleString("a.b[23].c", "test_analyzer");
       filter.mutable_options()->term =
@@ -1688,7 +1695,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() =
           mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
       filter.mutable_options()->term =
@@ -1783,7 +1791,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
           irs::boolean_token_stream::value_true());
@@ -1808,7 +1817,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c.bool");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
@@ -1834,7 +1844,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a[12].b.c.bool");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
@@ -1863,7 +1874,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c.bool");
       filter.mutable_options()->term =
           irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
@@ -1889,7 +1901,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c[3].bool");
       filter.mutable_options()->term =
           irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
@@ -1915,7 +1928,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
   // boolean expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -1924,7 +1937,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b[23].c");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
@@ -1963,7 +1977,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
   // boolean expression, boost
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -1972,7 +1986,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       filter.boost(42);
       *filter.mutable_field() = mangleBool("a.b[23].c");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
@@ -2002,7 +2017,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c.e[4].f[5].g[3].g.a");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
           irs::boolean_token_stream::value_true());
@@ -2094,7 +2110,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
   // null expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -2103,7 +2119,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b[23].c");
       filter.mutable_options()->term =
           irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
@@ -2147,7 +2164,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
   // null expression, boost
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -2156,7 +2173,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       filter.boost(1.5);
       *filter.mutable_field() = mangleNull("a.b[23].c");
       filter.mutable_options()->term =
@@ -2186,7 +2204,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c.e[4].f[5].g[3].g.a");
       filter.mutable_options()->term =
           irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
@@ -2285,7 +2304,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNumeric("a.b.c.numeric");
       filter.mutable_options()->term = term->value;
     }
@@ -2321,7 +2341,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNumeric("a.b.c.numeric[1]");
       filter.mutable_options()->term = term->value;
     }
@@ -2354,7 +2375,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
   // numeric expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -2368,7 +2389,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNumeric("a.b[23].c");
       filter.mutable_options()->term = term->value;
     }
@@ -2410,7 +2432,7 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
   // numeric expression, boost
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -2424,7 +2446,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       filter.boost(42);
       *filter.mutable_field() = mangleNumeric("a.b[23].c");
       filter.mutable_options()->term = term->value;
@@ -2458,7 +2481,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNumeric("a.b.c.e[4].f[5].g[3].g.a");
       filter.mutable_options()->term = term->value;
     }
@@ -2551,7 +2575,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
           irs::boolean_token_stream::value_true());
@@ -2778,7 +2803,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
 
   // string expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -2817,7 +2842,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
 
   // string expression, boost, analyzer
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -3040,7 +3065,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
 
   // boolean expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -3081,7 +3106,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
 
   // boolean expression, boost
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -3274,7 +3299,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
 
   // null expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -3319,7 +3344,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
 
   // null expression, boost
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -3533,7 +3558,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
 
   // numeric expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -3574,7 +3599,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
 
   // numeric expression, boost
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -3915,7 +3940,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
 
   // string expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -3955,7 +3980,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
 
   // string expression, boost, analyzer
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -4180,7 +4205,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
 
   // boolean expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -4226,7 +4251,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
 
   // boolean expression, boost
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -4387,7 +4412,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
 
   // null expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -4432,7 +4457,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
 
   // null expression, boost
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -4703,7 +4728,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
 
   // numeric expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -4749,7 +4774,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
 
   // numeric expression, boost
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -5090,7 +5115,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
 
   // string expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -5129,7 +5154,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
 
   // string expression, analyzer, boost
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -5351,7 +5376,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
 
   // boolean expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -5396,7 +5421,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
 
   // boolean expression, boost
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -5587,7 +5612,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
 
   // null expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -5632,7 +5657,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
 
   // null expression, boost
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -5847,7 +5872,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
 
   // numeric expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -5893,7 +5918,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
 
   // numeric expression, boost
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -6234,7 +6259,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
 
   // string expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -6273,7 +6298,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
 
   // string expression, analyzer, boost
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -6499,7 +6524,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
 
   // boolean expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -6545,7 +6570,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
 
   // boolean expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -6735,7 +6760,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
 
   // null expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -6780,7 +6805,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
 
   // null expression, boost
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -6992,7 +7017,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
 
   // numeric expression
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -7038,7 +7063,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
 
   // numeric expression, boost
   {
-    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 

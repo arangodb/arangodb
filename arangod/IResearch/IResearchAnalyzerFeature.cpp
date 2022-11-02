@@ -28,26 +28,26 @@
 #include "date/date.h"
 #endif
 
-#include "velocypack/velocypack-aliases.h"
-
 #include "analysis/analyzers.hpp"
-#include "analysis/token_attributes.hpp"
-#include "analysis/text_token_stream.hpp"
 #include "analysis/delimited_token_stream.hpp"
+#include "analysis/collation_token_stream.hpp"
 #include "analysis/ngram_token_stream.hpp"
-#include "analysis/token_streams.hpp"
-#include "analysis/text_token_stemming_stream.hpp"
 #include "analysis/text_token_normalizing_stream.hpp"
+#include "analysis/text_token_stemming_stream.hpp"
+#include "analysis/text_token_stream.hpp"
+#include "analysis/token_stopwords_stream.hpp"
 #include "analysis/pipeline_token_stream.hpp"
+#include "analysis/segmentation_token_stream.hpp"
+#include "analysis/token_attributes.hpp"
+#include "analysis/token_streams.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/object_pool.hpp"
 #include "index/norm.hpp"
 
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "Agency/AgencyComm.h"
 #include "ApplicationServerHelper.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExpressionContext.h"
-#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Basics/StaticStrings.h"
@@ -56,8 +56,8 @@
 #include "Basics/FunctionUtils.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/GeoAnalyzer.h"
 #include "IResearchAqlAnalyzer.h"
@@ -68,9 +68,7 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
-#include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -89,6 +87,10 @@
 #include "frozen/map.h"
 #include <Containers/HashSet.h>
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchAnalyzerFeature.h"
+#endif
+
 namespace {
 
 using namespace std::literals::string_literals;
@@ -99,7 +101,6 @@ namespace StringUtils = arangodb::basics::StringUtils;
 char constexpr ANALYZER_PREFIX_DELIM = ':';  // name prefix delimiter (2 chars)
 size_t constexpr ANALYZER_PROPERTIES_SIZE_MAX = 1024 * 1024;  // arbitrary value
 size_t constexpr DEFAULT_POOL_SIZE = 8;                       // arbitrary value
-std::string const FEATURE_NAME("ArangoSearchAnalyzer");
 static constexpr frozen::map<irs::string_ref, irs::string_ref, 13>
     STATIC_ANALYZERS_NAMES{{irs::type<IdentityAnalyzer>::name(),
                             irs::type<IdentityAnalyzer>::name()},
@@ -129,7 +130,7 @@ REGISTER_ANALYZER_VPACK(AqlAnalyzer, AqlAnalyzer::make_vpack,
 REGISTER_ANALYZER_JSON(AqlAnalyzer, AqlAnalyzer::make_json,
                        AqlAnalyzer::normalize_json);
 
-bool normalize(std::string& out, irs::string_ref const& type,
+bool normalize(std::string& out, irs::string_ref type,
                VPackSlice const properties) {
   if (type.empty()) {
     // in ArangoSearch we don't allow to have analyzers with empty type string
@@ -144,7 +145,7 @@ bool normalize(std::string& out, irs::string_ref const& type,
 
 aql::AqlValue aqlFnTokens(aql::ExpressionContext* expressionContext,
                           aql::AstNode const&,
-                          aql::VPackFunctionParameters const& args) {
+                          aql::VPackFunctionParametersView args) {
   if (ADB_UNLIKELY(args.empty() || args.size() > 2)) {
     irs::string_ref const message =
         "invalid arguments count while computing result for function 'TOKENS'";
@@ -378,7 +379,8 @@ void addFunctions(aql::AqlFunctionFeature& functions) {
           "TOKENS",  // name
           ".|.",     // positional arguments (data[,analyzer])
           // deterministic (true == called during AST optimization and will be
-          // used to calculate values for constant expressions)
+          // used to calculate values for constant expressions).
+          // not usable in analyzers!
           aql::Function::makeFlags(
               aql::Function::Flags::Deterministic,
               aql::Function::Flags::Cacheable,
@@ -391,7 +393,7 @@ void addFunctions(aql::AqlFunctionFeature& functions) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @return pool will generate analyzers as per supplied parameters
 ////////////////////////////////////////////////////////////////////////////////
-bool equalAnalyzer(AnalyzerPool const& pool, irs::string_ref const& type,
+bool equalAnalyzer(AnalyzerPool const& pool, irs::string_ref type,
                    VPackSlice const properties, Features const& features) {
   std::string normalizedProperties;
 
@@ -671,37 +673,21 @@ Result parseAnalyzerSlice(VPackSlice const& slice, irs::string_ref& name,
   if (slice.hasKey("features")) {
     auto subSlice = slice.get("features");
 
-    if (!subSlice.isArray()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "failed to find an array value for analyzer 'features'"};
-    }
-
-    for (VPackArrayIterator subItr(subSlice); subItr.valid(); ++subItr) {
-      auto subEntry = *subItr;
-
-      if (!subEntry.isString() && !subSlice.isNull()) {
-        return {TRI_ERROR_BAD_PARAMETER,
-                "failed to find a string value for an entry in analyzer "
-                "'features'"};
-      }
-      const auto featureName = ::arangodb::iresearch::getStringRef(subEntry);
-      if (!features.add(featureName)) {
-        return {TRI_ERROR_BAD_PARAMETER,
-                "failed to find feature '"s.append(std::string(featureName))
-                    .append("'")};
-      }
+    auto featuresRes = features.fromVelocyPack(subSlice);
+    if (featuresRes.fail()) {
+      return {TRI_ERROR_BAD_PARAMETER, "Error in analyzer 'features': "s.append(
+                                           featuresRes.errorMessage())};
     }
   }
   return {};
 }
 
 inline std::string normalizedAnalyzerName(std::string database,
-                                          irs::string_ref const& analyzer) {
+                                          irs::string_ref analyzer) {
   return database.append(2, ANALYZER_PREFIX_DELIM).append(analyzer);
 }
 
-bool analyzerInUse(application_features::ApplicationServer& server,
-                   irs::string_ref const& dbName,
+bool analyzerInUse(ArangodServer& server, irs::string_ref dbName,
                    AnalyzerPool::ptr const& analyzerPtr) {
   TRI_ASSERT(analyzerPtr);
 
@@ -724,15 +710,17 @@ bool analyzerInUse(application_features::ApplicationServer& server,
       }
 
       for (auto const& index : collection->getIndexes()) {
-        if (!index ||
-            arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
+        if (!index || (Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type() &&
+                       Index::TRI_IDX_TYPE_INVERTED_INDEX != index->type())) {
           continue;  // not an IResearchLink
         }
 
         // TODO FIXME find a better way to retrieve an iResearch Link
         // cannot use static_cast/reinterpret_cast since Index is not related to
         // IResearchLink
-        auto link = std::dynamic_pointer_cast<IResearchLink>(index);
+        auto link =
+            std::dynamic_pointer_cast<arangodb::iresearch::IResearchDataStore>(
+                index);
 
         if (!link) {
           continue;
@@ -777,8 +765,7 @@ bool analyzerInUse(application_features::ApplicationServer& server,
 }
 
 AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransaction(
-    application_features::ApplicationServer& server,
-    irs::string_ref const& vocbase) {
+    ArangodServer& server, irs::string_ref const& vocbase) {
   if (ServerState::instance()->isCoordinator() && !vocbase.empty()) {
     TRI_ASSERT(server.hasFeature<ClusterFeature>());
     auto& engine = server.getFeature<ClusterFeature>().clusterInfo();
@@ -836,11 +823,9 @@ void AnalyzerPool::toVelocyPack(VPackBuilder& builder,
   builder.add(StaticStrings::AnalyzerPropertiesField, properties());
 
   // add features
-  VPackArrayBuilder featuresScope(&builder,
-                                  StaticStrings::AnalyzerFeaturesField);
-
-  features().visit(
-      [&builder](std::string_view feature) { addStringRef(builder, feature); });
+  VPackBuilder tmp;
+  features().toVelocyPack(tmp);
+  builder.add(StaticStrings::AnalyzerFeaturesField, tmp.slice());
 }
 
 void AnalyzerPool::toVelocyPack(VPackBuilder& builder,
@@ -885,7 +870,7 @@ void AnalyzerPool::toVelocyPack(VPackBuilder& builder,
 }
 
 /*static*/ AnalyzerPool::Builder::ptr AnalyzerPool::Builder::make(
-    irs::string_ref const& type, VPackSlice properties) {
+    irs::string_ref type, VPackSlice properties) {
   if (type.empty()) {
     // in ArangoSearch we don't allow to have analyzers with empty type string
     return nullptr;
@@ -956,6 +941,7 @@ bool AnalyzerPool::init(irs::string_ref const& type,
         _type = irs::string_ref(_config.c_str() + _properties.byteSize(),
                                 type.size());
       }
+      _requireMangling = isGeoAnalyzer(_type);
 
       if (instance->type() ==
           irs::type<irs::analysis::pipeline_token_stream>::id()) {
@@ -1023,7 +1009,7 @@ bool AnalyzerPool::init(irs::string_ref const& type,
   _type = irs::string_ref::NIL;           // set as uninitialized
   _properties = VPackSlice::noneSlice();  // set as uninitialized
   _features.clear();                      // set as uninitialized
-
+  _requireMangling = false;
   return false;
 }
 
@@ -1085,9 +1071,8 @@ AnalyzerPool::CacheType::ptr AnalyzerPool::get() const noexcept {
   return {};
 }
 
-IResearchAnalyzerFeature::IResearchAnalyzerFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, IResearchAnalyzerFeature::name()) {
+IResearchAnalyzerFeature::IResearchAnalyzerFeature(Server& server)
+    : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
   // used for registering IResearch analyzer functions
@@ -1281,10 +1266,10 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
     return pool ? irs::hashed_string_ref(key.hash(), pool->name())
                 : key;  // reuse hash but point ref at value in pool
   };
-  auto itr = irs::map_utils::try_emplace_update_key(
+  auto emplaceRes = irs::map_utils::try_emplace_update_key(
       analyzers, generator,
       irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
-  auto analyzer = itr.first->second;
+  auto analyzer = emplaceRes.first->second;
 
   if (!analyzer) {
     return {TRI_ERROR_BAD_PARAMETER,
@@ -1294,15 +1279,16 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
   }
 
   // new analyzer creation, validate
-  if (itr.second) {
+  if (emplaceRes.second) {
     bool erase = true;  // potentially invalid insertion took place
-    auto cleanup = irs::make_finally([&erase, &analyzers, &itr]() -> void {
-      // cppcheck-suppress knownConditionTrueFalse
-      if (erase) {
-        analyzers.erase(
-            itr.first);  // ensure no broken analyzers are left behind
-      }
-    });
+    auto cleanup =
+        irs::make_finally([&erase, &analyzers, &emplaceRes]() noexcept {
+          // cppcheck-suppress knownConditionTrueFalse
+          if (erase) {
+            // ensure no broken analyzers are left behind
+            analyzers.erase(emplaceRes.first);
+          }
+        });
 
     // emplaceAnalyzer is used by Analyzers API where we don't actually use
     // features
@@ -1352,7 +1338,7 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
     return {TRI_ERROR_BAD_PARAMETER, errorText.str()};
   }
 
-  result = itr;
+  result = emplaceRes;
 
   return {};
 }
@@ -1394,9 +1380,9 @@ Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
     WRITE_LOCKER(lock, _mutex);
 
     // validate and emplace an analyzer
-    EmplaceAnalyzerResult itr;
+    EmplaceAnalyzerResult emplaceRes;
     auto res = emplaceAnalyzer(
-        itr, _analyzers, name, type, properties, features,
+        emplaceRes, _analyzers, name, type, properties, features,
         transaction ? transaction->buildingRevision() : AnalyzersRevision::MIN);
 
     if (!res.ok()) {
@@ -1404,17 +1390,17 @@ Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
     }
 
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
-    bool erase = itr.second;  // an insertion took place
-    auto cleanup = irs::make_finally([&erase, this, &itr]() -> void {
+    bool erase = emplaceRes.second;  // an insertion took place
+    auto cleanup = irs::make_finally([&erase, this, &emplaceRes]() noexcept {
       if (erase) {
-        _analyzers.erase(
-            itr.first);  // ensure no broken analyzers are left behind
+        // ensure no broken analyzers are left behind
+        _analyzers.erase(emplaceRes.first);
       }
     });
-    auto pool = itr.first->second;
+    auto pool = emplaceRes.first->second;
 
     // new pool creation
-    if (itr.second) {
+    if (emplaceRes.second) {
       if (!pool) {
         return {
             TRI_ERROR_INTERNAL,
@@ -1451,7 +1437,7 @@ Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
       }
       erase = false;
     }
-    result = std::make_pair(pool, itr.second);
+    result = std::make_pair(pool, emplaceRes.second);
   } catch (basics::Exception const& e) {
     return {e.code(),
             StringUtils::concatT("caught exception while registering an "
@@ -1612,14 +1598,11 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
     TRI_ASSERT(!engine.inRecovery());
     bool erase = true;
     std::vector<irs::hashed_string_ref> inserted;
-    auto cleanup = irs::make_finally([&erase, &inserted, this]() {
+    auto cleanup = irs::make_finally([&erase, &inserted, this]() noexcept {
       if (erase) {
         for (auto const& s : inserted) {
-          auto itr = _analyzers.find(s);
-          if (itr == _analyzers.end()) {
-            _analyzers.erase(
-                itr);  // ensure no broken analyzers are left behind
-          }
+          // ensure no broken analyzers are left behind
+          _analyzers.erase(s);
         }
       }
     });
@@ -1693,6 +1676,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
     }
     // cppcheck-suppress unreadVariable
     if (transaction) {
+      // TODO: add fail point and test in case of failed commit
       res = transaction->commit();
       if (res.fail()) {
         return res;
@@ -2368,10 +2352,6 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
   return {};
 }
 
-/*static*/ std::string const& IResearchAnalyzerFeature::name() noexcept {
-  return FEATURE_NAME;
-}
-
 /*static*/ bool IResearchAnalyzerFeature::analyzerReachableFromDb(
     irs::string_ref dbNameFromAnalyzer, irs::string_ref currentDbName,
     bool forGetters) noexcept {
@@ -2495,9 +2475,18 @@ void IResearchAnalyzerFeature::prepare() {
   if (!isEnabled()) {
     return;
   }
-
-  // load all known analyzers
-  ::iresearch::analysis::analyzers::init();
+  ::iresearch::analysis::delimited_token_stream::init();
+  ::iresearch::analysis::collation_token_stream::init();
+  ::iresearch::analysis::ngram_token_stream_base::init();
+  ::iresearch::analysis::normalizing_token_stream::init();
+  ::iresearch::analysis::stemming_token_stream::init();
+  ::iresearch::analysis::text_token_stream::init();
+  ::iresearch::analysis::token_stopwords_stream::init();
+  ::iresearch::analysis::pipeline_token_stream::init();
+  ::iresearch::analysis::segmentation_token_stream::init();
+#ifdef USE_ENTERPRISE
+  initAnalyzersEE();
+#endif
 
   // load all static analyzers
   _analyzers = getStaticAnalyzers();
@@ -2533,7 +2522,7 @@ Result IResearchAnalyzerFeature::removeFromCollection(irs::string_ref name,
                            builder.slice(), options);
 
   if (!result.ok()) {
-    trx.abort();
+    std::ignore = trx.abort();
 
     return result.result;
   }
@@ -2708,7 +2697,7 @@ Result IResearchAnalyzerFeature::remove(irs::string_ref const& name,
                                builder.slice(), options);
 
       if (!result.ok()) {
-        trx.abort();
+        std::ignore = trx.abort();
 
         return result.result;
       }
@@ -2875,7 +2864,7 @@ Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
                              builder.slice(), options);
 
     if (!result.ok()) {
-      trx.abort();
+      std::ignore = trx.abort();
 
       return result.result;
     }
@@ -2901,7 +2890,7 @@ Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
     res = trx.commit();
 
     if (!res.ok()) {
-      trx.abort();
+      std::ignore = trx.abort();
 
       return res;
     }
@@ -3010,10 +2999,10 @@ void IResearchAnalyzerFeature::cleanupAnalyzers(irs::string_ref database) {
 void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
   WRITE_LOCKER(lock, _mutex);
   auto database = irs::string_ref(vocbase.name());
-  auto itr = _lastLoad.find(
-      static_cast<std::string>(  // FIXME: after C++20 remove cast and use
-                                 // heterogeneous lookup
-          irs::make_hashed_ref(database, std::hash<irs::string_ref>())));
+  // FIXME: after C++20 remove cast and use
+  // heterogeneous lookup
+  auto itr = _lastLoad.find(static_cast<std::string>(
+      irs::make_hashed_ref(database, std::hash<irs::string_ref>())));
   if (itr != _lastLoad.end()) {
     cleanupAnalyzers(database);
     _lastLoad.erase(itr);
@@ -3021,11 +3010,14 @@ void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
 }
 
 void Features::visit(std::function<void(std::string_view)> visitor) const {
-  if (irs::IndexFeatures::FREQ == (_indexFeatures & irs::IndexFeatures::FREQ)) {
+  if (hasFeatures(irs::IndexFeatures::FREQ)) {
     visitor(irs::type<irs::frequency>::name());
   }
-  if (irs::IndexFeatures::POS == (_indexFeatures & irs::IndexFeatures::POS)) {
+  if (hasFeatures(irs::IndexFeatures::POS)) {
     visitor(irs::type<irs::position>::name());
+  }
+  if (hasFeatures(irs::IndexFeatures::OFFS)) {
+    visitor(irs::type<irs::offset>::name());
   }
   if (FieldFeatures::NORM == (_fieldFeatures & FieldFeatures::NORM)) {
     visitor(irs::type<irs::Norm>::name());
@@ -3042,6 +3034,35 @@ std::vector<irs::type_info::type_id> Features::fieldFeatures(
                                      : irs::type<irs::Norm>::id()};
 }
 
+void Features::toVelocyPack(VPackBuilder& builder) const {
+  VPackArrayBuilder featuresScope(&builder);
+  visit(
+      [&builder](std::string_view feature) { addStringRef(builder, feature); });
+}
+
+Result Features::fromVelocyPack(VPackSlice slice) {
+  if (!slice.isArray()) {
+    return {TRI_ERROR_BAD_PARAMETER, "array expected"};
+  }
+  for (VPackArrayIterator subItr(slice); subItr.valid(); ++subItr) {
+    auto subEntry = *subItr;
+
+    if (!subEntry.isString()) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "array entry #"s.append(std::to_string(subItr.index()))
+                  .append(" is not a string")};
+    }
+    const auto featureName = ::arangodb::iresearch::getStringRef(subEntry);
+    if (!add(featureName)) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "failed to find feature '"s.append(std::string(featureName))
+                  .append("' see array entry #")
+                  .append(std::to_string(subItr.index()))};
+    }
+  }
+  return validate();
+}
+
 bool Features::add(irs::string_ref featureName) {
   if (featureName == irs::type<irs::position>::name()) {
     _indexFeatures |= irs::IndexFeatures::POS;
@@ -3050,6 +3071,11 @@ bool Features::add(irs::string_ref featureName) {
 
   if (featureName == irs::type<irs::frequency>::name()) {
     _indexFeatures |= irs::IndexFeatures::FREQ;
+    return true;
+  }
+
+  if (featureName == irs::type<irs::offset>::name()) {
+    _indexFeatures |= irs::IndexFeatures::OFFS;
     return true;
   }
 
@@ -3062,17 +3088,25 @@ bool Features::add(irs::string_ref featureName) {
 }
 
 Result Features::validate() const {
-  if (irs::IndexFeatures::POS == (_indexFeatures & irs::IndexFeatures::POS)) {
-    if (irs::IndexFeatures::FREQ !=
-        (_indexFeatures & irs::IndexFeatures::FREQ)) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "missing feature 'frequency' required when 'position' feature is "
-              "specified"};
-    }
+  if (hasFeatures(irs::IndexFeatures::OFFS) &&
+      !hasFeatures(irs::IndexFeatures::POS)) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "missing feature 'position' required when 'offset' feature is "
+            "specified"};
   }
 
-  if ((irs::IndexFeatures::POS | irs::IndexFeatures::FREQ) !=
-      (_indexFeatures | irs::IndexFeatures::POS | irs::IndexFeatures::FREQ)) {
+  if (hasFeatures(irs::IndexFeatures::POS) &&
+      !hasFeatures(irs::IndexFeatures::FREQ)) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "missing feature 'frequency' required when 'position' feature is "
+            "specified"};
+  }
+
+  constexpr irs::IndexFeatures kSupportedFeatures = irs::IndexFeatures::OFFS |
+                                                    irs::IndexFeatures::POS |
+                                                    irs::IndexFeatures::FREQ;
+
+  if (kSupportedFeatures != (_indexFeatures | kSupportedFeatures)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Unsupported index features are specified: "s +
                 std::to_string(
@@ -3085,7 +3119,3 @@ Result Features::validate() const {
 
 }  // namespace iresearch
 }  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

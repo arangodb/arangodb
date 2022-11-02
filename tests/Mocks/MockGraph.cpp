@@ -25,7 +25,6 @@
 #include "IResearch/RestHandlerMock.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 
-#include "MockGraph.h"
 #include "gtest/gtest.h"
 
 #include "Mocks/PreparedResponseConnectionPool.h"
@@ -61,7 +60,8 @@ void MockGraph::EdgeDef::addToBuilder(
     arangodb::velocypack::Builder& builder) const {
   std::string fromId = _from;
   std::string toId = _to;
-  std::string keyId = _from.substr(2) + "-" + _to.substr(2);
+  std::string keyId =
+      _from.substr(_from.find('/') + 1) + "-" + _to.substr(_to.find("/") + 1);
 
   builder.openObject();
   builder.add(StaticStrings::IdString, VPackValue(_eCol + "/" + keyId));
@@ -72,6 +72,12 @@ void MockGraph::EdgeDef::addToBuilder(
   builder.close();
 }
 
+std::string MockGraph::EdgeDef::generateId() const {
+  std::string keyId =
+      _from.substr(_from.find('/') + 1) + "-" + _to.substr(_to.find("/") + 1);
+  return _eCol + "/" + keyId;
+}
+
 void MockGraph::VertexDef::addToBuilder(
     arangodb::velocypack::Builder& builder) const {
   builder.openObject();
@@ -80,9 +86,9 @@ void MockGraph::VertexDef::addToBuilder(
   builder.close();
 }
 
-MockGraph::EdgeDef MockGraph::addEdge(std::string from, std::string to,
-                                      double weight) {
-  EdgeDef newEdge{from, to, weight, _edgeCollectionName};
+MockGraph::EdgeDef MockGraph::addEdge(size_t uniqueEdgeId, std::string from,
+                                      std::string to, double weight) {
+  EdgeDef newEdge{uniqueEdgeId, from, to, weight, _edgeCollectionName};
   _edges.emplace_back(newEdge);
   _vertices.emplace(std::move(from));
   _vertices.emplace(std::move(to));
@@ -92,8 +98,54 @@ MockGraph::EdgeDef MockGraph::addEdge(std::string from, std::string to,
 
 MockGraph::EdgeDef MockGraph::addEdge(size_t from, size_t to, double weight) {
   return addEdge(
+      _edges.size(),
       getVertexCollectionName() + "/" + basics::StringUtils::itoa(from),
       getVertexCollectionName() + "/" + basics::StringUtils::itoa(to), weight);
+}
+
+void MockGraph::storeVertexData(
+    TRI_vocbase_t& vocbase, std::string const& vertexShardName,
+    std::unordered_set<VertexDef, hashVertexDef> const& vertexData) const {
+  arangodb::OperationOptions options;
+  arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      vertexShardName, arangodb::AccessMode::Type::WRITE);
+  EXPECT_TRUE((trx.begin().ok()));
+
+  size_t added = 0;
+  velocypack::Builder b;
+  for (auto& v : vertexData) {
+    b.clear();
+    v.addToBuilder(b);
+    auto res = trx.insert(vertexShardName, b.slice(), options);
+    EXPECT_TRUE((res.ok()));
+    added++;
+  }
+
+  EXPECT_TRUE((trx.commit().ok()));
+  EXPECT_TRUE(added == vertexData.size());
+}
+
+void MockGraph::storeEdgeData(TRI_vocbase_t& vocbase,
+                              std::string const& edgeShardName,
+                              std::vector<EdgeDef> const& edgeData) const {
+  arangodb::OperationOptions options;
+  arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase), edgeShardName,
+      arangodb::AccessMode::Type::WRITE);
+  EXPECT_TRUE((trx.begin().ok()));
+  size_t added = 0;
+  velocypack::Builder b;
+  for (auto& edge : edgeData) {
+    b.clear();
+    edge.addToBuilder(b);
+    auto res = trx.insert(edgeShardName, b.slice(), options);
+    EXPECT_TRUE(res.ok()) << res.errorMessage() << " " << b.toJson();
+    added++;
+  }
+
+  EXPECT_TRUE((trx.commit().ok()));
+  EXPECT_TRUE(added == edgeData.size());
 }
 
 void MockGraph::storeData(TRI_vocbase_t& vocbase,
@@ -101,58 +153,12 @@ void MockGraph::storeData(TRI_vocbase_t& vocbase,
                           std::string const& edgeCollectionName,
                           std::string const& edgeCollectionSecondName,
                           std::vector<EdgeDef> const& secondEdges) const {
-  {
-    // Insert vertices
-    arangodb::OperationOptions options;
-    arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
-        vertexCollectionName, arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE((trx.begin().ok()));
+  // Insert vertices
+  storeVertexData(vocbase, vertexCollectionName, vertices());
 
-    size_t added = 0;
-    velocypack::Builder b;
-    for (auto& v : vertices()) {
-      b.clear();
-      v.addToBuilder(b);
-      auto res = trx.insert(vertexCollectionName, b.slice(), options);
-      EXPECT_TRUE((res.ok()));
-      added++;
-    }
-
-    EXPECT_TRUE((trx.commit().ok()));
-    EXPECT_TRUE(added == vertices().size());
-  }
-
-  auto insertEdges = [&](std::string const& edgeCollectionToInsert,
-                         std::vector<EdgeDef> const& edges) -> void {
-    {
-      // Insert edges
-      arangodb::OperationOptions options;
-      arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
-          edgeCollectionToInsert, arangodb::AccessMode::Type::WRITE);
-      EXPECT_TRUE((trx.begin().ok()));
-      size_t added = 0;
-      velocypack::Builder b;
-      for (auto& edge : edges) {
-        b.clear();
-        edge.addToBuilder(b);
-        auto res = trx.insert(edgeCollectionToInsert, b.slice(), options);
-        if (res.fail()) {
-          LOG_DEVEL << res.errorMessage() << " " << b.toJson();
-        }
-        EXPECT_TRUE((res.ok()));
-        added++;
-      }
-
-      EXPECT_TRUE((trx.commit().ok()));
-      EXPECT_TRUE(added == edges.size());
-    }
-  };
-
-  insertEdges(edgeCollectionName, edges());
+  storeEdgeData(vocbase, edgeCollectionName, edges());
   if (!edgeCollectionSecondName.empty()) {
-    insertEdges(edgeCollectionSecondName, secondEdges);
+    storeEdgeData(vocbase, edgeCollectionSecondName, secondEdges);
   }
 }
 
@@ -350,6 +356,7 @@ MockGraph::simulateApi(
       leased.openObject();
       leased.add("keys", VPackValue(vertexToId(vertex)));
       leased.add("backward", VPackValue(false));
+      leased.add("depth", VPackValue(0));
       leased.close();  // base object
 
       prep.setRequestType(arangodb::rest::RequestType::PUT);

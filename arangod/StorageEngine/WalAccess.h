@@ -150,8 +150,7 @@ class WalAccess {
 /// @brief helper class used to resolve vocbases
 ///        and collections from wal markers in an efficient way
 struct WalAccessContext {
-  WalAccessContext(application_features::ApplicationServer& server,
-                   WalAccess::Filter const& filter,
+  WalAccessContext(ArangodServer& server, WalAccess::Filter const& filter,
                    WalAccess::MarkerCallback const& c)
       : _server(server), _filter(filter), _callback(c), _responseSize(0) {}
 
@@ -173,7 +172,7 @@ struct WalAccessContext {
   LogicalCollection* loadCollection(TRI_voc_tick_t dbid, DataSourceId cid);
 
  private:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
 
  public:
   /// @brief arbitrary collection filter (inclusive)

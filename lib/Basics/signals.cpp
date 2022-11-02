@@ -24,6 +24,7 @@
 #include "Basics/signals.h"
 #include "Basics/operating-system.h"
 
+#include <atomic>
 #ifdef TRI_HAVE_SIGNAL_H
 #include <signal.h>
 #endif
@@ -32,12 +33,11 @@
 #endif
 #include <sys/types.h>
 
-namespace arangodb {
-namespace signals {
+namespace arangodb::signals {
 
 #ifndef _WIN32
 /// @brief find out what impact a signal will have to the process we send it.
-SignalType signalType(int signal) {
+SignalType signalType(int signal) noexcept {
   // Some platforms don't have these. To keep our table clean
   // we just define them here:
 #ifndef SIGPOLL
@@ -124,7 +124,7 @@ SignalType signalType(int signal) {
 #endif
 
 /// @brief whether or not the signal is deadly
-bool isDeadly(int signal) {
+bool isDeadly(int signal) noexcept {
 #ifndef _WIN32
   switch (signalType(signal)) {
     case SignalType::term:
@@ -148,7 +148,7 @@ bool isDeadly(int signal) {
 }
 
 /// @brief return the name for a signal
-char const* name(int signal) {
+std::string_view name(int signal) noexcept {
   if (signal >= 128) {
     signal -= 128;
   }
@@ -214,7 +214,7 @@ char const* name(int signal) {
   }
 }
 
-bool isServer = true;
+std::atomic<bool> isServer = true;
 
 void maskAllSignalsServer() {
 #ifdef TRI_HAVE_POSIX_THREADS
@@ -230,7 +230,7 @@ void maskAllSignalsServer() {
 }
 
 void maskAllSignalsClient() {
-  isServer = false;
+  isServer.store(false);
 #ifdef TRI_HAVE_POSIX_THREADS
   sigset_t all;
   sigfillset(&all);
@@ -245,7 +245,7 @@ void maskAllSignalsClient() {
 }
 
 void maskAllSignals() {
-  if (isServer) {
+  if (isServer.load()) {
     maskAllSignalsServer();
   } else {
     maskAllSignalsClient();
@@ -260,5 +260,4 @@ void unmaskAllSignals() {
 #endif
 }
 
-}  // namespace signals
-}  // namespace arangodb
+}  // namespace arangodb::signals

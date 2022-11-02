@@ -23,6 +23,7 @@
 
 #include "RestActionHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Actions/actions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -34,9 +35,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestActionHandler::RestActionHandler(
-    application_features::ApplicationServer& server, GeneralRequest* request,
-    GeneralResponse* response)
+RestActionHandler::RestActionHandler(ArangodServer& server,
+                                     GeneralRequest* request,
+                                     GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
       _action(TRI_LookupActionVocBase(request)),
       _data(nullptr) {}

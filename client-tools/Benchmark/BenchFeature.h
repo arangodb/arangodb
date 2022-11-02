@@ -26,9 +26,9 @@
 #include <atomic>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Benchmark/arangobench.h"
 #include "Benchmark/BenchmarkThread.h"
 #include "Benchmark/BenchmarkStats.h"
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace arangobench {
@@ -52,9 +52,11 @@ struct BenchRunResult {
   }
 };
 
-class BenchFeature final : public application_features::ApplicationFeature {
+class BenchFeature final : public ArangoBenchFeature {
  public:
-  BenchFeature(application_features::ApplicationServer& server, int* result);
+  static constexpr std::string_view name() noexcept { return "Bench"; }
+
+  BenchFeature(Server& server, int* result);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void start() override final;
@@ -63,6 +65,7 @@ class BenchFeature final : public application_features::ApplicationFeature {
   uint64_t threadCount() const { return _threadCount; }
   uint64_t operations() const { return _operations; }
   uint64_t batchSize() const { return _batchSize; }
+  bool createCollection() const { return _createCollection; }
   bool keepAlive() const { return _keepAlive; }
   std::string const& collection() const { return _collection; }
   std::string const& testCase() const { return _testCase; }
@@ -110,6 +113,7 @@ class BenchFeature final : public application_features::ApplicationFeature {
   bool _async;
   bool _keepAlive;
   bool _createDatabase;
+  bool _createCollection{true};
   bool _delay;
   bool _progress;
   bool _verbose;

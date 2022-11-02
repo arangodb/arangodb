@@ -30,7 +30,6 @@
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/FinalFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
@@ -47,9 +46,8 @@ static std::string const upgradeVersionKey = "ClusterUpgradeVersion";
 static std::string const upgradeExecutedByKey = "ClusterUpgradeExecutedBy";
 }  // namespace
 
-ClusterUpgradeFeature::ClusterUpgradeFeature(
-    application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "ClusterUpgrade"), _upgradeMode("auto") {
+ClusterUpgradeFeature::ClusterUpgradeFeature(Server& server)
+    : ArangodFeature{server, *this}, _upgradeMode("auto") {
   startsAfter<application_features::FinalFeaturePhase>();
 }
 

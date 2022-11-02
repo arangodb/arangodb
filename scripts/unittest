@@ -31,10 +31,30 @@ if [ `uname -s` == "Darwin" ]; then
 else
   EXEC_PATH="$(dirname "$(dirname "$(readlink -m "$0")")")"
 fi
+
+get_single_long_opt () {
+    opt="$1"; shift
+    args=("$@")
+    i=0
+    for arg in "${args[@]}"; do
+        if [ "$arg" = "$opt" ]; then
+            param="${args[$(($i+1))]}"
+        fi
+        i="$(($i+1))"
+    done
+    echo "$param"
+}
+
+BUILD_DIR_PARAM="$(get_single_long_opt --build "$@")"
+
 declare -a EXTRA_ARGS
 
+guessed_arangosh_location=""
+
 if [ -z "${ARANGOSH}" ];  then
-    if [ -x build/bin/arangosh -a ! -d build/bin/arangosh ];  then
+    if ! [ -z "${BUILD_DIR_PARAM}" ] && [ -x "${BUILD_DIR_PARAM}"/bin/arangosh -a ! -d "${BUILD_DIR_PARAM}"/bin/arangosh ]; then
+        ARANGOSH="${BUILD_DIR_PARAM}/bin/arangosh${EXT}"
+    elif [ -x build/bin/arangosh -a ! -d build/bin/arangosh ];  then
         ARANGOSH="build/bin/arangosh${EXT}"
     elif [ -x bin/arangosh -a ! -d bin/arangosh ];  then
         ARANGOSH="bin/arangosh${EXT}"
@@ -48,13 +68,15 @@ if [ -z "${ARANGOSH}" ];  then
           echo "$0: cannot locate arangosh"
           exit 1
         }
+        guessed_arangosh_location=1
+        echo "WARNING: Using guessed arangosh location $ARANGOSH"
     fi
 fi
 
 [ "$(uname -s)" != "Darwin" -a -x "${ARANGOSH}" ] && ARANGOSH="$(readlink -m "${ARANGOSH}")"
 [ "$(uname -s)" = "Darwin" -a -x "${ARANGOSH}" ] && ARANGOSH="$(cd -P -- "$(dirname -- "${ARANGOSH}")" && pwd -P)/$(basename -- "${ARANGOSH}")"
 
-[[ " $@ " =~ "--build" ]] || {
+if [ -z "${BUILD_DIR_PARAM}" ]; then
   BUILD_PATH="$(dirname "$(dirname "${ARANGOSH}")")"
   BUILD_PATH="${BUILD_PATH#${EXEC_PATH}/}"
 
@@ -63,7 +85,10 @@ fi
       BUILD_PATH=$(cygpath --windows "$BUILD_PATH")
   fi
   EXTRA_ARGS=("--build" "${BUILD_PATH}")
-}
+  if ! [ -z "$guessed_arangosh_location" ]; then
+      echo "WARNING: Using guessed build dir location $BUILD_PATH"
+  fi
+fi
 
 (
   cd "${EXEC_PATH}"

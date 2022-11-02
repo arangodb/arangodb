@@ -34,7 +34,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -53,12 +52,16 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
                                        SerializationFormat::SHADOWROWS};
 
   AqlItemBlockInputRange createEmpty() {
-    return AqlItemBlockInputRange{GetParam()};
+    auto state = GetParam() == ExecutorState::HASMORE ? MainQueryState::HASMORE
+                                                      : MainQueryState::DONE;
+    return AqlItemBlockInputRange{state};
   }
 
   AqlItemBlockInputRange createFromBlock(
       arangodb::aql::SharedAqlItemBlockPtr& block) {
-    return AqlItemBlockInputRange(GetParam(), 0, block, 0);
+    auto state = GetParam() == ExecutorState::HASMORE ? MainQueryState::HASMORE
+                                                      : MainQueryState::DONE;
+    return AqlItemBlockInputRange(state, 0, block, 0);
   }
 
   void validateEndReached(AqlItemBlockInputRange& testee) {

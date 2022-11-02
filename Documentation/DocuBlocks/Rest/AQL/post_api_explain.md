@@ -124,7 +124,7 @@ A plan with some optimizer rules applied
     var cn = "products";
     db._drop(cn);
     db._create(cn);
-    db.products.ensureSkiplist("id");
+    db.products.ensureIndex({ type: "persistent", fields: ["id"] });
     for (var i = 0; i < 10; ++i) { db.products.save({ id: i }); }
     body = {
       query : "FOR p IN products LET a = p.id FILTER a == 4 LET name = p.name SORT p.id LIMIT 1 RETURN name",
@@ -145,7 +145,7 @@ Using some options
     var cn = "products";
     db._drop(cn);
     db._create(cn);
-    db.products.ensureSkiplist("id");
+    db.products.ensureIndex({ type: "persistent", fields: ["id"] });
     for (var i = 0; i < 10; ++i) { db.products.save({ id: i }); }
     body = {
       query : "FOR p IN products LET a = p.id FILTER a == 4 LET name = p.name SORT p.id LIMIT 1 RETURN name",
@@ -173,7 +173,7 @@ Returning all plans
     var cn = "products";
     db._drop(cn);
     db._create(cn);
-    db.products.ensureHashIndex("id");
+    db.products.ensureIndex({ type: "persistent", fields: ["id"] });
     body = {
       query : "FOR p IN products FILTER p.id == 25 RETURN p",
       options: {

@@ -41,23 +41,15 @@ var SimpleQueryArray = require('@arangodb/simple-query').SimpleQueryArray;
 function SimpleQueryLookupByKeysSuite () {
   'use strict';
 
-  var cn = 'SimpleQueryLookupByKeysSuite';
-  var c = null;
+  const cn = 'SimpleQueryLookupByKeysSuite';
+  let c = null;
 
   return {
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief set up
-// //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       db._drop(cn);
       c = db._create(cn);
     },
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief tear down
-// //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       db._drop(cn);
@@ -293,23 +285,15 @@ function SimpleQueryLookupByKeysSuite () {
 function SimpleQueryRemoveByKeysSuite () {
   'use strict';
 
-  var cn = 'SimpleQueryRemoveByKeysSuite';
-  var c = null;
+  const cn = 'SimpleQueryRemoveByKeysSuite';
+  let c = null;
 
   return {
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief set up
-// //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       db._drop(cn);
       c = db._create(cn);
     },
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief tear down
-// //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       db._drop(cn);
@@ -514,18 +498,10 @@ function SimpleQueryArraySkipLimitSuite () {
 
   return {
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief set up
-// //////////////////////////////////////////////////////////////////////////////
-
     setUp: function () {
       numbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
       query = new SimpleQueryArray(numbers);
     },
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief test: skip
-// //////////////////////////////////////////////////////////////////////////////
 
     testSkip: function () {
       var n = query.clone().skip(0).toArray();
@@ -628,24 +604,18 @@ function SimpleQueryAllSkipLimitSuite () {
 
   return {
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief set up
-// //////////////////////////////////////////////////////////////////////////////
-
     setUp: function () {
       db._drop(cn);
-      collection = db._create(cn, { waitForSync: false });
+      collection = db._create(cn);
 
-      for (var i = 0; i < 10; ++i) {
-        collection.save({ n: i });
+      let docs = [];
+      for (let i = 0; i < 10; ++i) {
+        docs.push({ n: i });
       }
+      collection.insert(docs);
 
       numbers = collection.all().toArray().map(num);
     },
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief tear down
-// //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       collection.drop();
@@ -728,18 +698,10 @@ function SimpleQueryByExampleSuite () {
 
   return {
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief set up
-// //////////////////////////////////////////////////////////////////////////////
-
     setUp: function () {
       db._drop(cn);
       collection = db._create(cn);
     },
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief tear down
-// //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       collection.drop();
@@ -753,7 +715,7 @@ function SimpleQueryByExampleSuite () {
       var d, s;
       var example = { 'a': { 'b': true, 'c': 'foo' }, 'd': true };
 
-      collection.ensureHashIndex('d');
+      collection.ensureIndex({ type: "hash", fields: ["d"] });
 
       d = collection.save(example);
       s = collection.firstExample({ 'd': true });
@@ -780,7 +742,7 @@ function SimpleQueryByExampleSuite () {
       var example3 = { 'a': { 'b': null } };
       var example4 = { 'c': 1 };
 
-      collection.ensureHashIndex('a.b');
+      collection.ensureIndex({ type: "hash", fields: ["a.b"] });
 
       d1 = collection.save(example1);
       d2 = collection.save(example2);
@@ -815,7 +777,7 @@ function SimpleQueryByExampleSuite () {
       var example3 = { 'a': { 'b': null } };
       var example4 = { 'c': 1 };
 
-      collection.ensureHashIndex('a.b', { sparse: true });
+      collection.ensureIndex({ type: "hash", fields: ["a.b"], sparse: true });
 
       d1 = collection.save(example1);
       d2 = collection.save(example2);
@@ -847,7 +809,7 @@ function SimpleQueryByExampleSuite () {
       var d, s;
       var example = { 'a': { 'b': true, 'c': 'foo' }, 'd': true };
 
-      collection.ensureSkiplist('d');
+      collection.ensureIndex({ type: "skiplist", fields: ["d"] });
 
       d = collection.save(example);
       s = collection.firstExample({ 'd': true });
@@ -874,7 +836,7 @@ function SimpleQueryByExampleSuite () {
       var example3 = { 'a': { 'b': null } };
       var example4 = { 'c': 1 };
 
-      collection.ensureSkiplist('a.b');
+      collection.ensureIndex({ type: "skiplist", fields: ["a.b"] });
 
       d1 = collection.save(example1);
       d2 = collection.save(example2);
@@ -909,7 +871,7 @@ function SimpleQueryByExampleSuite () {
       var example3 = { 'a': { 'b': null } };
       var example4 = { 'c': 1 };
 
-      collection.ensureSkiplist('a.b', { sparse: true });
+      collection.ensureIndex({ type: "skiplist", fields: ["a.b"], sparse: true });
 
       d1 = collection.save(example1);
       d2 = collection.save(example2);
@@ -953,7 +915,7 @@ function SimpleQueryByExampleSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testByExampleMultipleValuesHashIndex: function () {
-      collection.ensureHashIndex('value');
+      collection.ensureIndex({ type: "hash", fields: ["value"] });
 
       [ null, 1, 2, true, false, '1', '2', 'foo', 'barbazbark', [ ] ].forEach(function (v) {
         for (var i = 0; i < 5; ++i) {
@@ -970,7 +932,7 @@ function SimpleQueryByExampleSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testByExampleMultipleValuesSparseHashIndex: function () {
-      collection.ensureHashIndex('value', { sparse: true });
+      collection.ensureIndex({ type: "hash", fields: ["value"], sparse: true });
 
       [ null, 1, 2, true, false, '1', '2', 'foo', 'barbazbark', [ ] ].forEach(function (v) {
         for (var i = 0; i < 5; ++i) {
@@ -987,7 +949,7 @@ function SimpleQueryByExampleSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testByExampleMultipleValuesSkiplist: function () {
-      collection.ensureSkiplist('value');
+      collection.ensureIndex({ type: "skiplist", fields: ["value"] });
 
       [ null, 1, 2, true, false, '1', '2', 'foo', 'barbazbark', [ ] ].forEach(function (v) {
         for (var i = 0; i < 5; ++i) {
@@ -1004,7 +966,7 @@ function SimpleQueryByExampleSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testByExampleMultipleValuesSparseSkiplist: function () {
-      collection.ensureSkiplist('value', { sparse: true });
+      collection.ensureIndex({ type: "skiplist", fields: ["value"], sparse: true });
 
       [ null, 1, 2, true, false, '1', '2', 'foo', 'barbazbark', [ ] ].forEach(function (v) {
         for (var i = 0; i < 5; ++i) {
@@ -1860,16 +1822,12 @@ function SimpleQueryByExampleSuite () {
 
 function SimpleQueryByExampleEdgeSuite () {
   'use strict';
-  var cn = 'UnitTestsCollectionByExample';
-  var c1 = 'UnitTestsCollectionByExampleEdge';
-  var collection = null;
-  var edge = null;
+  const cn = 'UnitTestsCollectionByExample';
+  const c1 = 'UnitTestsCollectionByExampleEdge';
+  let collection = null;
+  let edge = null;
 
   return {
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief set up
-// //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       db._drop(cn);
@@ -1877,10 +1835,6 @@ function SimpleQueryByExampleEdgeSuite () {
       collection = db._create(cn);
       edge = db._createEdgeCollection(c1);
     },
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief tear down
-// //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       collection.drop();
@@ -2037,32 +1991,25 @@ function SimpleQueryByExampleEdgeSuite () {
 
 function SimpleQueryRangeSuite () {
   'use strict';
-  var cn = 'UnitTestsCollectionRange';
-  var collection = null;
+  const cn = 'UnitTestsCollectionRange';
+  let collection = null;
   var age = function (d) { return d.age; };
   var ageSort = function (l, r) { if (l !== r) { if (l < r) { return -1; } return 1; } return 0; };
 
   return {
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief set up
-// //////////////////////////////////////////////////////////////////////////////
-
     setUp: function () {
       db._drop(cn);
       collection = db._create(cn);
 
-      for (var i = 0; i < 100; ++i) {
-        collection.save({ age: i });
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ age: i });
       }
-
-      collection.ensureSkiplist('age');
+      collection.insert(docs);
+      collection.ensureIndex({ type: "skiplist", fields: ["age"] });
     },
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief tear down
-// //////////////////////////////////////////////////////////////////////////////
-
+    
     tearDown: function () {
       collection.drop();
     },
@@ -2093,31 +2040,24 @@ function SimpleQueryRangeSuite () {
 
 function SimpleQuerySparseRangeSuite () {
   'use strict';
-  var cn = 'UnitTestsCollectionRange';
-  var collection = null;
+  const cn = 'UnitTestsCollectionRange';
+  let collection = null;
   var age = function (d) { return d.age; };
   var ageSort = function (l, r) { if (l !== r) { if (l < r) { return -1; } return 1; } return 0; };
 
   return {
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief set up
-// //////////////////////////////////////////////////////////////////////////////
-
     setUp: function () {
       db._drop(cn);
       collection = db._create(cn);
 
-      for (var i = 0; i < 100; ++i) {
-        collection.save({ age: i });
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ age: i });
       }
-
-      collection.ensureSkiplist('age', { sparse: true });
+      collection.insert(docs);
+      collection.ensureIndex({ type: "skiplist", fields: ["age"], sparse: true });
     },
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief tear down
-// //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       collection.drop();
@@ -2147,7 +2087,7 @@ function SimpleQuerySparseRangeSuite () {
 
     testSparseRangeMultipleIndexes: function () {
       // now we have a sparse and a non-sparse index
-      collection.ensureSkiplist('age', { sparse: false });
+      collection.ensureIndex({ type: "skiplist", fields: ["age"] });
 
       var l = collection.range('age', 10, 13).toArray().map(age).sort(ageSort);
       assertEqual([ 10, 11, 12 ], l);
@@ -2178,24 +2118,17 @@ function SimpleQueryUniqueRangeSuite () {
 
   return {
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief set up
-// //////////////////////////////////////////////////////////////////////////////
-
     setUp: function () {
       db._drop(cn);
       collection = db._create(cn);
 
-      for (var i = 0; i < 100; ++i) {
-        collection.save({ age: i });
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ age: i });
       }
-
-      collection.ensureUniqueSkiplist('age');
+      collection.insert(docs);
+      collection.ensureIndex({ type: "skiplist", fields: ["age"], unique: true });
     },
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief tear down
-// //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       collection.drop();
@@ -2234,24 +2167,17 @@ function SimpleQueryUniqueSparseRangeSuite () {
 
   return {
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief set up
-// //////////////////////////////////////////////////////////////////////////////
-
     setUp: function () {
       db._drop(cn);
       collection = db._create(cn);
 
-      for (var i = 0; i < 100; ++i) {
-        collection.save({ age: i });
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ age: i });
       }
-
-      collection.ensureUniqueSkiplist('age', { sparse: true });
+      collection.insert(docs);
+      collection.ensureIndex({ type: "skiplist", fields: ["age"], unique: true, sparse: true });
     },
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief tear down
-// //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       collection.drop();
@@ -2281,7 +2207,7 @@ function SimpleQueryUniqueSparseRangeSuite () {
 
     testUniqueSparseRangeMultipleIndexes: function () {
       // now we have a sparse and a non-sparse index
-      collection.ensureUniqueSkiplist('age', { sparse: false });
+      collection.ensureIndex({ type: "skiplist", fields: ["age"], sparse: false, unique: true });
 
       var l = collection.range('age', 10, 13).toArray().map(age).sort(ageSort);
       assertEqual([ 10, 11, 12 ], l);
@@ -2304,32 +2230,22 @@ function SimpleQueryUniqueSparseRangeSuite () {
 
 function SimpleQueryAnySuite () {
   'use strict';
-  var cn = 'UnitTestsCollectionAny';
+  const cn = 'UnitTestsCollectionAny';
   var collectionEmpty = null;
   var collectionOne = null;
 
   return {
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief set up
-// //////////////////////////////////////////////////////////////////////////////
-
     setUp: function () {
-      var name;
-
-      name = cn + 'Empty';
+      let name = cn + 'Empty';
       db._drop(name);
       collectionEmpty = db._create(name);
 
       name = cn + 'One';
       db._drop(name);
-      collectionOne = db._create(name, { waitForSync: false });
-      collectionOne.save({ age: 1 });
+      collectionOne = db._create(name);
+      collectionOne.insert({ age: 1 });
     },
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief tear down
-// //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       collectionEmpty.drop();

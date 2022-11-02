@@ -39,7 +39,7 @@ class ApplicationServer;
 
 class AgencyCallbackRegistry {
  public:
-  explicit AgencyCallbackRegistry(application_features::ApplicationServer&,
+  explicit AgencyCallbackRegistry(ArangodServer&,
                                   std::string const& callbackBasePath);
 
   ~AgencyCallbackRegistry();

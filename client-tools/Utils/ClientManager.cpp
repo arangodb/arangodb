@@ -80,9 +80,8 @@ arangodb::Result getHttpErrorMessage(
 
 namespace arangodb {
 
-ClientManager::ClientManager(application_features::ApplicationServer& server,
-                             LogTopic& topic)
-    : _server(server), _topic{topic} {}
+ClientManager::ClientManager(ClientFeature& client, LogTopic& topic)
+    : _client(client), _topic{topic} {}
 
 ClientManager::~ClientManager() = default;
 
@@ -90,12 +89,8 @@ Result ClientManager::getConnectedClient(
     std::unique_ptr<httpclient::SimpleHttpClient>& httpClient, bool force,
     bool logServerVersion, bool logDatabaseNotFound, bool quiet,
     size_t threadNumber) {
-  TRI_ASSERT(_server.hasFeature<HttpEndpointProvider>());
-  ClientFeature& client =
-      _server.getFeature<HttpEndpointProvider, ClientFeature>();
-
   try {
-    httpClient = client.createHttpClient(threadNumber);
+    httpClient = _client.createHttpClient(threadNumber);
   } catch (...) {
     LOG_TOPIC("2b5fd", FATAL, _topic)
         << "cannot create server connection, giving up!";
@@ -103,14 +98,14 @@ Result ClientManager::getConnectedClient(
   }
 
   // set client parameters
-  std::string dbName = client.databaseName();
-  httpClient->params().setLocationRewriter(static_cast<void*>(&client),
+  std::string dbName = _client.databaseName();
+  httpClient->params().setLocationRewriter(static_cast<void*>(&_client),
                                            &rewriteLocation);
-  httpClient->params().setUserNamePassword("/", client.username(),
-                                           client.password());
-  if (!client.jwtSecret().empty()) {
+  httpClient->params().setUserNamePassword("/", _client.username(),
+                                           _client.password());
+  if (!_client.jwtSecret().empty()) {
     httpClient->params().setJwt(fuerte::jwt::generateInternalToken(
-        client.jwtSecret(), client.endpoint()));
+        _client.jwtSecret(), _client.endpoint()));
   }
 
   // now connect by retrieving version
@@ -122,9 +117,9 @@ Result ClientManager::getConnectedClient(
       // arangorestore does not log "database not found" errors in case
       // it tries to create the database...
       LOG_TOPIC("775bd", ERR, _topic)
-          << "Could not connect to endpoint '" << client.endpoint()
-          << "', database: '" << dbName << "', username: '" << client.username()
-          << "'";
+          << "Could not connect to endpoint '" << _client.endpoint()
+          << "', database: '" << dbName << "', username: '"
+          << _client.username() << "'";
       LOG_TOPIC("b1ad6", ERR, _topic)
           << "Error message: '" << httpClient->getErrorMessage() << "'";
     }

@@ -27,7 +27,6 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 #include <array>
 #include <utility>
 
@@ -779,6 +778,8 @@ void Graph::verticesToVpack(VPackBuilder& builder) const {
 }
 
 bool Graph::isSmart() const { return false; }
+
+bool Graph::hasSmartGraphAttribute() const { return false; }
 
 bool Graph::isDisjoint() const { return false; }
 

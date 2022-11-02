@@ -414,6 +414,7 @@ static void generate_try(struct generator * g, struct node * p) {
     int keep_c = K_needed(g, p->left);
     int label = new_label(g);
     g->failure_label = label;
+    str_clear(g->failure_str);
 
     write_comment(g, p);
     if (keep_c) {
@@ -515,6 +516,7 @@ static void generate_GO(struct generator * g, struct node * p, int style) {
     if (keep_c) write_savecursor(g, p, savevar);
 
     g->failure_label = new_label(g);
+    str_clear(g->failure_str);
     wsetlab_begin(g, g->failure_label);
     generate(g, p->left);
 
@@ -655,20 +657,19 @@ static void generate_atmark(struct generator * g, struct node * p) {
 }
 
 static void generate_hop(struct generator * g, struct node * p) {
-
-    write_block_start(g);
     write_comment(g, p);
-    g->S[0] = p->mode == m_forward ? "" : "-";
-
-    w(g, "~Mvar c = env.ByteIndexForHop(~S0(");
+    // Generate the AE to a temporary block so we can substitute it in
+    // write_failure_if().
+    struct str * ae = str_new();
+    struct str * s = g->outbuf;
+    g->outbuf = ae;
     generate_AE(g, p->AE);
-    w(g, "))~N");
-
-    g->S[0] = p->mode == m_forward ? "0" : "env.LimitBackward";
-
-    write_failure_if(g, "int32(~S0) > c || c > int32(env.Limit)", p);
-    writef(g, "~Menv.Cursor = int(c)~N", p);
-    write_block_end(g);
+    g->outbuf = s;
+    g->B[0] = str_data(ae);
+    g->S[0] = p->mode == m_forward ? "" : "Back";
+    g->S[1] = p->AE->type == c_number ? "" : "Checked";
+    write_failure_if(g, "!env.Hop~S0~S1(~B0)", p);
+    str_delete(ae);
 }
 
 static void generate_delete(struct generator * g, struct node * p) {

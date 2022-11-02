@@ -4,8 +4,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, ref access
 ///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -28,17 +26,17 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults;
+const internal = require("internal");
+const jsunity = require("jsunity");
+const helper = require("@arangodb/aql-helper");
+const getQueryResults = helper.getQueryResults;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlRefAccessAttributeTestSuite () {
-  var collection;
+  let collection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a given query and return the results as an array
@@ -59,12 +57,12 @@ function ahuacatlRefAccessAttributeTestSuite () {
       collection = internal.db._create("UnitTestsAhuacatlRefAccess");
 
       let docs = [];
-      for (var i = 1; i <= 10; ++i) {
+      for (let i = 1; i <= 10; ++i) {
         docs.push({ "val" : i });
       }
       collection.insert(docs);
 
-      collection.ensureSkiplist("val");
+      collection.ensureIndex({ type: "persistent", fields: ["val"] });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -231,11 +229,6 @@ function ahuacatlRefAccessAttributeTestSuite () {
 
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(ahuacatlRefAccessAttributeTestSuite);
 
 return jsunity.done();
-
