@@ -529,17 +529,17 @@ function ahuacatlParseTestSuite () {
       assertEqual("let", result[0].type);
       let sub = result[0].subNodes;
 
-      assertEqual("variable", sub[0].type)
-      assertEqual("in_time", sub[0].name)
+      assertEqual("variable", sub[0].type);
+      assertEqual("in_time", sub[0].name);
 
       assertEqual("return", result[1].type);
       sub = result[1].subNodes;
 
-      assertEqual("unary not", sub[0].type)
+      assertEqual("unary not", sub[0].type);
       sub = sub[0].subNodes;
 
-      assertEqual("reference", sub[0].type)
-      assertEqual("in_time", sub[0].name)
+      assertEqual("reference", sub[0].type);
+      assertEqual("in_time", sub[0].name);
 
 
       result = AQL_PARSE("RETURN 3 NOT IN[1,2]").ast;
@@ -550,15 +550,15 @@ function ahuacatlParseTestSuite () {
       assertEqual("return", result[0].type);
       result = result[0].subNodes;
 
-      assertEqual("compare not in", result[0].type)
+      assertEqual("compare not in", result[0].type);
       result = result[0].subNodes;
 
-      assertEqual("value", result[0].type)
-      assertEqual("array", result[1].type)
+      assertEqual("value", result[0].type);
+      assertEqual("array", result[1].type);
       result = result[1].subNodes;
 
-      assertEqual("value", result[0].type)
-      assertEqual("value", result[1].type)
+      assertEqual("value", result[0].type);
+      assertEqual("value", result[1].type);
     },
 
     testNotLike : function() {
