@@ -1,6 +1,18 @@
 devel
 -----
 
+* Remove map and map.gz files from repository and add them to gitignore.
+  These files are only used for debugging and therefore should not be
+  included in any release. This also reduces the size of release packages.
+
+* Repair "load indexes into memory" function in the web UI.
+
+* Improved help texts for the collection type and satellite collection
+  options in the web UI.
+
+* APM-517: Add tooltips with values of the displayed properties after
+  clicking a node or an edge in the graph viewer.
+
 * Deprecate the startup option `--agency.pool-size`. This option was never
   properly supported for any values other than the value of `--agency.size`.
   Now any value set for `--agency.pool-size` other than the value set for
