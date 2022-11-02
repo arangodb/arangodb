@@ -46,6 +46,7 @@ const jsunity = require('jsunity');
 const arango = internal.arango;
 const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
+const isServer = require("@arangodb").isServer;
 
 exports.Helper = Helper;
 exports.deriveTestSuite = deriveTestSuite;
@@ -469,6 +470,31 @@ exports.getEndpointsByType = function (type) {
   return instanceInfo.arangods.filter(isType)
     .map(toEndpoint)
     .map(endpointToURL);
+};
+
+exports.triggerMetrics = function () {
+  if (isServer) {
+    request({
+      method: "get",
+      url: "/_db/_system/_admin/metrics?mode=write_global",
+      headers: {accept: "application/json"},
+      body: {}
+    });
+    request({
+      method: "get",
+      url: "/_db/_system/_admin/metrics?mode=trigger_global",
+      headers: {accept: "application/json"},
+      body: {}
+    });
+  } else {
+    let coordinators = exports.getEndpointsByType("coordinator");
+    exports.getRawMetric(coordinators[0], '?mode=write_global');
+    for (let i = 1; i < coordinators.length; i++) {
+      let c = coordinators[i];
+      exports.getRawMetric(c, '?mode=trigger_global');
+    }
+  }
+  require("internal").sleep(2);
 };
 
 exports.getEndpoints = function (role) {

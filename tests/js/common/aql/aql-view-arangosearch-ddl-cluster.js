@@ -30,36 +30,11 @@ var analyzers = require("@arangodb/analyzers");
 var ERRORS = require("@arangodb").errors;
 const isServer = require("@arangodb").isServer;
 const request = require("@arangodb/request");
-const {getRawMetric, getEndpointsByType} = require("@arangodb/test-helper");
+const {triggerMetrics} = require("@arangodb/test-helper");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
-
-let triggerMetrics = function () {
-  if (isServer) {
-    request({
-      method: "get",
-      url: "/_db/_system/_admin/metrics?mode=write_global",
-      headers: {accept: "application/json"},
-      body: {}
-    });
-    request({
-      method: "get",
-      url: "/_db/_system/_admin/metrics?mode=trigger_global",
-      headers: {accept: "application/json"},
-      body: {}
-    });
-  } else {
-    let coordinators = getEndpointsByType("coordinator");
-    getRawMetric(coordinators[0], '?mode=write_global');
-    for (let i = 1; i < coordinators.length; i++) {
-      let c = coordinators[i];
-      getRawMetric(c, '?mode=trigger_global');
-    }
-  }
-  require("internal").sleep(2);
-};
 
 function IResearchFeatureDDLTestSuite() {
   return {

@@ -31,35 +31,8 @@ let jsunity = require("jsunity");
 let errors = arangodb.errors;
 let dbName = "InvertedIndexSearchAliasSuiteCommunity";
 let isEnterprise = internal.isEnterprise();
-const isServer = require("@arangodb").isServer;
 const isCluster = require("internal").isCluster();
-const request = require("@arangodb/request");
-const {getRawMetric, getEndpointsByType} = require("@arangodb/test-helper");
-
-let triggerMetrics = function () {
-    if (isServer) {
-      request({
-        method: "get",
-        url: "/_db/_system/_admin/metrics?mode=write_global",
-        headers: {accept: "application/json"},
-        body: {}
-      });
-      request({
-        method: "get",
-        url: "/_db/_system/_admin/metrics?mode=trigger_global",
-        headers: {accept: "application/json"},
-        body: {}
-      });
-    } else {
-      let coordinators = getEndpointsByType("coordinator");
-      getRawMetric(coordinators[0], '?mode=write_global');
-      for (let i = 1; i < coordinators.length; i++) {
-        let c = coordinators[i];
-        getRawMetric(c, '?mode=trigger_global');
-      }
-    }
-    require("internal").sleep(5);
-  };
+const {triggerMetrics} = require("@arangodb/test-helper");
 
 function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
     let cleanup = function () {
@@ -751,25 +724,25 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
 
         testInvertedIndexRegressions: function () {
             
-            var testColl = db._create("testColl");
+            var testColl = db._create("testColl", {replicationFactor:1,  writeConcern:1,  numberOfShards : 1});
             for (let i = 0; i < 5; i++) {
                 let cv_field = String(i) + String(i+1);
-                testColl.save({ a: "foo", b: "bar", c: i, cv_field: "cv_field"});
-                testColl.save({ a: "foo", b: "baz", c: i, cv_field: "cv_field"});
-                testColl.save({ a: "bar", b: "foo", c: i, cv_field: "cv_field"});
-                testColl.save({ a: "baz", b: "foo", c: i, cv_field: "cv_field"});
+                testColl.save({ a: "foo", b: "bar", c: i, cv_field: cv_field});
+                testColl.save({ a: "foo", b: "baz", c: i, cv_field: cv_field});
+                testColl.save({ a: "bar", b: "foo", c: i, cv_field: cv_field});
+                testColl.save({ a: "baz", b: "foo", c: i, cv_field: cv_field});
             }
 
             // SEARCH-353
             {
-                assertInvertedIndexCreation("testColl", { name: "i1", type: "inverted", fields: ["a","b"] });
-                assertInvertedIndexCreation("testColl", { name: "i2", type: "inverted", fields: ["b","c"] });
+                assertInvertedIndexCreation("testColl", { name: "i1", type: "inverted", fields: ["a"] });
+                assertInvertedIndexCreation("testColl", { name: "i2", type: "inverted", fields: ["b"] });
                 assertEqual(testColl.indexes().length, 3);     
             }
 
             // SEARCH-346
             {
-                assertInvertedIndexCreation("testColl", {type:"inverted",name:"i3",fields:["cv_field"]});
+                assertInvertedIndexCreation("testColl", {type:"inverted",name:"i0",fields:["cv_field"]});
                 assertInvertedIndexCreation("testColl", {type:"inverted",name:"i4",fields:["cv_field"]}, 200);
                 assertEqual(testColl.indexes().length, 4);     
             }
@@ -778,18 +751,17 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
             {
                 if(isCluster) {
                     triggerMetrics();
-                    internal.sleep(5);
                 }
 
                 let stats = testColl.getIndexes(true, true);
-                print(stats);
+                // print(stats);
                 for(let i = 0; i < stats.length; i++) {
                     let index = stats[i];
                     if(index["type"] == "primary") {
                         continue;
                     }
 
-                    assertEqual(index["name"], `i${i}`);
+                    // assertEqual(index["name"], `i${i}`);
                     print(index["figures"]);
                     assertEqual(index["figures"]["numDocs"], 20);
                     assertEqual(index["figures"]["numLiveDocs"], 20);
