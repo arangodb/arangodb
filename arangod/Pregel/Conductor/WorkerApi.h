@@ -22,12 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Basics/Guarded.h"
 #include "Futures/Utilities.h"
 #include "Pregel/Connection/Connection.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/Messaging/Aggregate.h"
-#include "Utils/DatabaseGuard.h"
+#include "Pregel/Messaging/Message.h"
+#include "Pregel/Messaging/MessageQueue.h"
 
 namespace arangodb::pregel::conductor {
 
@@ -59,58 +59,48 @@ struct WorkerApi {
 
   template<typename In>
   auto sendToAll(In const& in) -> Result {
-    return _aggregate.doUnderLock([&](auto& aggregate) {
-      auto requests = std::vector<futures::Future<Result>>{};
-      for (auto&& server : _servers) {
-        requests.emplace_back(
-            _connection->post(Destination{Destination::Type::server, server},
-                              ModernMessage{.executionNumber = _executionNumber,
-                                            .payload = {in}}));
+    auto requests = std::vector<futures::Future<Result>>{};
+    for (auto&& server : _servers) {
+      requests.emplace_back(_connection->post(
+          Destination{Destination::Type::server, server},
+          ModernMessage{.executionNumber = _executionNumber, .payload = {in}}));
+    }
+    auto responses = futures::collectAll(requests).get();
+    for (auto const& response : responses) {
+      if (response.get().fail()) {
+        return Result{response.get().errorNumber(),
+                      fmt::format("Got unsuccessful response from worker "
+                                  "after sending message {}: {} ",
+                                  velocypack::serialize(in).toJson(),
+                                  response.get().errorMessage())};
       }
-      auto responses = futures::collectAll(requests).get();
-      for (auto const& response : responses) {
-        if (response.get().fail()) {
-          return Result{
-              response.get().errorNumber(),
-              fmt::format("Got unsuccessful response from worker: {} ",
-                          response.get().errorMessage())};
-        }
-      }
-      aggregate = Aggregate<T>::withComponentsCount(responses.size());
-      return Result{};
-    });
+    }
+    _aggregate = Aggregate<T>::withComponentsCount(responses.size());
+    return Result{};
   }
 
   template<typename In>
   auto send(std::unordered_map<ServerID, In> const& in) -> Result {
-    return _aggregate.doUnderLock([&](auto& aggregate) {
-      auto requests = std::vector<futures::Future<Result>>{};
-      for (auto&& [server, message] : in) {
-        // TODO check that server is inside _servers
-        requests.emplace_back(
-            _connection->post(Destination{Destination::Type::server, server},
-                              ModernMessage{.executionNumber = _executionNumber,
-                                            .payload = {message}}));
+    auto requests = std::vector<futures::Future<Result>>{};
+    for (auto&& [server, message] : in) {
+      // TODO check that server is inside _servers
+      requests.emplace_back(
+          _connection->post(Destination{Destination::Type::server, server},
+                            ModernMessage{.executionNumber = _executionNumber,
+                                          .payload = {message}}));
+    }
+    auto responses = futures::collectAll(requests).get();
+    for (auto const& response : responses) {
+      if (response.get().fail()) {
+        return Result{response.get().errorNumber(),
+                      fmt::format("Got unsuccessful response from worker "
+                                  "after sending messages {}: {} ",
+                                  velocypack::serialize(in).toJson(),
+                                  response.get().errorMessage())};
       }
-      auto responses = futures::collectAll(requests).get();
-      for (auto const& response : responses) {
-        if (response.get().fail()) {
-          return Result{
-              response.get().errorNumber(),
-              fmt::format("Got unsuccessful response from worker: {} ",
-                          response.get().errorMessage())};
-        }
-      }
-      aggregate = Aggregate<T>::withComponentsCount(responses.size());
-      return Result{};
-    });
-  }
-
-  auto collect(T const& message) -> std::optional<T> {
-    return _aggregate.doUnderLock(
-        [message = std::move(message)](auto& aggregate) {
-          return aggregate.aggregate(message);
-        });
+    }
+    _aggregate = Aggregate<T>::withComponentsCount(responses.size());
+    return Result{};
   }
 
   template<Addable Out, typename In>
@@ -152,12 +142,38 @@ struct WorkerApi {
         });
   }
 
+  auto queue(MessagePayload message) -> Result {
+    if (!std::holds_alternative<ResultT<T>>(message)) {
+      return Result{TRI_ERROR_INTERNAL, "Received unexpected message type"};
+    }
+    _queue.push(std::get<ResultT<T>>(message));
+    return Result{};
+  }
+
+  auto aggregateAllResponses() -> ResultT<T> {
+    if (_servers.size() == 0) {
+      return T{};
+    }
+    auto message = _queue.pop();
+    if (message.fail()) {
+      return Result{
+          message.errorNumber(),
+          fmt::format("Got unsuccessful message: {}", message.errorMessage())};
+    }
+    auto aggregate = _aggregate.aggregate(message.get());
+    if (aggregate.has_value()) {
+      return aggregate.value();
+    }
+    return aggregateAllResponses();
+  }
+
   ExecutionNumber _executionNumber;
   std::vector<ServerID> _servers = {};
   std::unique_ptr<Connection> _connection;
 
  private:
-  Guarded<Aggregate<T>> _aggregate;
+  Aggregate<T> _aggregate;
+  MessageQueue<ResultT<T>> _queue;
 };
 
 struct VoidMessage {

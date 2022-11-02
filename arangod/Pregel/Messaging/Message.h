@@ -92,18 +92,4 @@ auto inspect(Inspector& f, ModernMessage& x) {
       f.field("payload", x.payload));
 }
 
-template<typename T>
-auto getResultTMessage(MessagePayload const& message) -> ResultT<T> {
-  if (!std::holds_alternative<ResultT<T>>(message)) {
-    return Result{TRI_ERROR_INTERNAL, "Received unexpected message type"};
-  }
-  auto expectedMessage = std::get<ResultT<T>>(message);
-  if (expectedMessage.fail()) {
-    return Result{expectedMessage.errorNumber(),
-                  fmt::format("Got unsuccessful message: {}",
-                              expectedMessage.errorMessage())};
-  }
-  return expectedMessage.get();
-}
-
 }  // namespace arangodb::pregel

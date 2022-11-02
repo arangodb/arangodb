@@ -36,8 +36,7 @@ struct Initial : State {
   Initial(Conductor& conductor, WorkerApi<WorkerCreated>&& workerApi);
   ~Initial() = default;
   auto run() -> std::optional<std::unique_ptr<State>> override;
-  auto receive(MessagePayload message)
-      -> std::optional<std::unique_ptr<State>> override;
+  auto receive(MessagePayload message) -> void override;
   auto cancel() -> std::optional<std::unique_ptr<State>> override {
     return std::nullopt;
   }

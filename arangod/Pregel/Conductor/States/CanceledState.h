@@ -39,8 +39,7 @@ struct Canceled : State {
   Canceled(Conductor& conductor, WorkerApi<CleanupFinished>&& workerApi);
   ~Canceled() = default;
   auto run() -> std::optional<std::unique_ptr<State>> override;
-  auto receive(MessagePayload message)
-      -> std::optional<std::unique_ptr<State>> override;
+  auto receive(MessagePayload message) -> void override;
   auto cancel() -> std::optional<std::unique_ptr<State>> override {
     return std::nullopt;
   }

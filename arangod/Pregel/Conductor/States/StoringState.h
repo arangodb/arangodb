@@ -36,8 +36,7 @@ struct Storing : State {
   Storing(Conductor& conductor, WorkerApi<Stored>&& workerApi);
   ~Storing();
   auto run() -> std::optional<std::unique_ptr<State>> override;
-  auto receive(MessagePayload message)
-      -> std::optional<std::unique_ptr<State>> override;
+  auto receive(MessagePayload message) -> void override;
   auto cancel() -> std::optional<std::unique_ptr<State>> override;
   auto name() const -> std::string override { return "storing"; };
   auto isRunning() const -> bool override { return true; }

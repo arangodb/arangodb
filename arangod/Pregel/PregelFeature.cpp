@@ -688,11 +688,8 @@ auto PregelFeature::apply(ExecutionNumber const& executionNumber,
               if (!w) {
                 return workerNotFound(executionNumber, message);
               }
-              scheduler->queue(
-                  RequestLane::INTERNAL_LOW, [w = w->shared_from_this()] {
-                    w->send(WorkerCreated{
-                        .senderId = ServerState::instance()->getId()});
-                  });
+              w->send(
+                  WorkerCreated{.senderId = ServerState::instance()->getId()});
               return {Ok{}};
             } catch (basics::Exception& e) {
               return Result{e.code(), e.message()};
@@ -739,10 +736,7 @@ auto PregelFeature::apply(ExecutionNumber const& executionNumber,
               // started
               return {CleanupFinished{}};
             }
-            scheduler->queue(RequestLane::INTERNAL_LOW,
-                             [w = w->shared_from_this(), x = std::move(x)] {
-                               w->send(w->cleanup(x));
-                             });
+            w->send(w->cleanup(x));
             return {Ok{}};
           },
           [&](CollectPregelResults const& x) -> ResultT<MessagePayload> {
@@ -773,10 +767,7 @@ auto PregelFeature::apply(ExecutionNumber const& executionNumber,
             if (!c) {
               return conductorNotFound(executionNumber, message);
             }
-            scheduler->queue(RequestLane::INTERNAL_LOW,
-                             [c = c->shared_from_this(), x = std::move(x)] {
-                               c->receive(x);
-                             });
+            c->receive(x);
             return {Ok{}};
           },
           [&](ResultT<GraphLoaded> const& x) -> ResultT<MessagePayload> {
@@ -784,10 +775,7 @@ auto PregelFeature::apply(ExecutionNumber const& executionNumber,
             if (!c) {
               return conductorNotFound(executionNumber, message);
             }
-            scheduler->queue(RequestLane::INTERNAL_LOW,
-                             [c = c->shared_from_this(), x = std::move(x)] {
-                               c->receive(x);
-                             });
+            c->receive(x);
             return {Ok{}};
           },
           [&](ResultT<GlobalSuperStepFinished> const& x)
@@ -796,10 +784,7 @@ auto PregelFeature::apply(ExecutionNumber const& executionNumber,
             if (!c) {
               return conductorNotFound(executionNumber, message);
             }
-            scheduler->queue(RequestLane::INTERNAL_LOW,
-                             [c = c->shared_from_this(), x = std::move(x)] {
-                               c->receive(x);
-                             });
+            c->receive(x);
             return {Ok{}};
           },
           [&](ResultT<Stored> const& x) -> ResultT<MessagePayload> {
@@ -807,10 +792,7 @@ auto PregelFeature::apply(ExecutionNumber const& executionNumber,
             if (!c) {
               return conductorNotFound(executionNumber, message);
             }
-            scheduler->queue(RequestLane::INTERNAL_LOW,
-                             [c = c->shared_from_this(), x = std::move(x)] {
-                               c->receive(x);
-                             });
+            c->receive(x);
             return {Ok{}};
           },
           [&](ResultT<CleanupFinished> const& x) -> ResultT<MessagePayload> {
@@ -819,10 +801,7 @@ auto PregelFeature::apply(ExecutionNumber const& executionNumber,
               // garbage collection already deleted the conductor
               return {Ok{}};
             }
-            scheduler->queue(RequestLane::INTERNAL_LOW,
-                             [c = c->shared_from_this(), x = std::move(x)] {
-                               c->receive(x);
-                             });
+            c->receive(x);
             return {Ok{}};
           },
           [&](auto const& x) -> ResultT<MessagePayload> {
