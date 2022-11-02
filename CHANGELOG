@@ -1,6 +1,9 @@
 devel
 -----
 
+* APM-517: Add tooltips with values of the displayed properties after
+  clicking a node or an edge in the graph viewer.
+
 * Deprecate the startup option `--agency.pool-size`. This option was never
   properly supported for any values other than the value of `--agency.size`.
   Now any value set for `--agency.pool-size` other than the value set for

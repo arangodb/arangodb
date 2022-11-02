@@ -2147,12 +2147,13 @@
                   }
                   _.each(data.documents[0], function (value, key) {
                     if (key !== '_key' && key !== '_id' && key !== '_rev' && key !== '_from' && key !== '_to') {
-                      attributes += '<span class="nodeAttribute">' + key + '</span>';
+                      attributes += '<span class="nodeAttribute" title="' + arangoHelper.escapeHtml(value, false) + '">' + arangoHelper.escapeHtml(key, false) + '</span>';
                     }
                   });
                   var string = '<div id="nodeInfoDiv" class="nodeInfoDiv" style="display: none;">' + attributes + '</div>';
 
                   $('#graph-container').append(string);
+                  arangoHelper.fixTooltips('.nodeAttribute', 'top');
                   if (self.isFullscreen) {
                     $('.nodeInfoDiv').css('top', '10px');
                     $('.nodeInfoDiv').css('left', '10px');
