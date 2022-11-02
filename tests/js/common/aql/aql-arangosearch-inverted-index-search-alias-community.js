@@ -736,14 +736,16 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
             // SEARCH-353
             {
                 assertInvertedIndexCreation("testColl", { name: "i1", type: "inverted", fields: ["a"] });
+
                 assertInvertedIndexCreation("testColl", { name: "i2", type: "inverted", fields: ["b"] });
                 assertEqual(testColl.indexes().length, 3);     
             }
 
             // SEARCH-346
             {
-                assertInvertedIndexCreation("testColl", {type:"inverted",name:"i0",fields:["cv_field"]});
+                assertInvertedIndexCreation("testColl", {type:"inverted",name:"i3",fields:["cv_field"]});
                 assertInvertedIndexCreation("testColl", {type:"inverted",name:"i4",fields:["cv_field"]}, 200);
+                db._query("for d in testColl OPTIONS {'indexHint': 'i3', 'forceIndexHint': true, 'waitForSync': true} filter d.cv_field == 'cv_field' collect with count into c return c");
                 assertEqual(testColl.indexes().length, 4);     
             }
 
@@ -754,15 +756,13 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                 }
 
                 let stats = testColl.getIndexes(true, true);
-                // print(stats);
                 for(let i = 0; i < stats.length; i++) {
                     let index = stats[i];
                     if(index["type"] == "primary") {
                         continue;
                     }
 
-                    // assertEqual(index["name"], `i${i}`);
-                    print(index["figures"]);
+                    assertEqual(index["name"], `i${i}`);
                     assertEqual(index["figures"]["numDocs"], 20);
                     assertEqual(index["figures"]["numLiveDocs"], 20);
                     assertEqual(index["figures"]["numSegments"], 1);
@@ -960,8 +960,8 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
     };
 }
 
-if (!isEnterprise) {
+// if (!isEnterprise) {
     jsunity.run(IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity);
-}
+// }
 
 return jsunity.done();
