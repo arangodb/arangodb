@@ -25,10 +25,8 @@
 #include "Aql/Optimizer2/PlanNodes/BaseNode.h"
 #include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
 #include "Aql/Optimizer2/PlanNodeTypes/Count.h"
-#include "Inspection/VPackInspection.h"
-// TODO: ^-- compiling stops here after I've included ReturnNode into
-// ExecutionNode.cpp with "file not found". Guess, this needs to be fixed in
-// cmake.
+
+#include <Inspection/VPackWithErrorT.h>
 
 namespace arangodb::aql::optimizer2::nodes {
 
