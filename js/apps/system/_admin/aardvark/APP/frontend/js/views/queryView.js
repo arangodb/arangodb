@@ -873,6 +873,8 @@
       this.delegateEvents();
       this.restoreQuerySize();
       this.getCachedQueryAfterRender();
+      
+      $('#sortByHistory').prop('checked', this.sortByHistory);
     },
 
     cleanupGraphs: function () {
