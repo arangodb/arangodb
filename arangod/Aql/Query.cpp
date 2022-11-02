@@ -616,10 +616,10 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         }
         // will set warnings, stats, profile and cleanup plan and engine
         auto state = finalize(*queryResult.extra);
-        bool isTransactionDisallowed = _transactionContext->isStreaming() &&
-                                       !_trx->state()->isReadOnlyTransaction();
+        bool isCachingAllowed = !_transactionContext->isStreaming() ||
+                                _trx->state()->isReadOnlyTransaction();
         if (state == ExecutionState::DONE && _cacheEntry != nullptr &&
-            !isTransactionDisallowed) {
+            isCachingAllowed) {
           _cacheEntry->_stats = queryResult.extra;
           QueryCache::instance()->store(&_vocbase, std::move(_cacheEntry));
         }
@@ -862,10 +862,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       ss->waitForAsyncWakeup();
       state = finalize(*queryResult.extra);
     }
-    bool isTransactionDisallowed = _transactionContext->isTransactionJS() &&
-                                   !_trx->state()->isReadOnlyTransaction();
+    bool isCachingAllowed = !_transactionContext->isTransactionJS() ||
+                            _trx->state()->isReadOnlyTransaction();
 
-    if (_cacheEntry != nullptr && !isTransactionDisallowed) {
+    if (_cacheEntry != nullptr && isCachingAllowed) {
       _cacheEntry->_stats = queryResult.extra;
       QueryCache::instance()->store(&_vocbase, std::move(_cacheEntry));
     }
@@ -1385,11 +1385,11 @@ uint64_t Query::calculateHash() const {
 
 /// @brief whether or not the query cache can be used for the query
 bool Query::canUseQueryCache() const {
-  bool isTransactionDisallowed = (_transactionContext->isStreaming() ||
-                                  _transactionContext->isTransactionJS()) &&
-                                 !_transactionContext->isReadOnlyTransaction();
-  if (isTransactionDisallowed || _queryString.size() < 8 ||
-      _queryOptions.silent) {
+  bool isCachingAllowed = !(_transactionContext->isStreaming() ||
+                            _transactionContext->isTransactionJS()) ||
+                          _transactionContext->isReadOnlyTransaction();
+
+  if (!isCachingAllowed || _queryString.size() < 8 || _queryOptions.silent) {
     return false;
   }
 
