@@ -57,7 +57,6 @@ std::string const config_t::startupStr = "startup";
 
 config_t::config_t()
     : _agencySize(0),
-      _poolSize(0),
       _minPing(0.0),
       _maxPing(0.0),
       _timeoutMult(1),
@@ -75,14 +74,12 @@ config_t::config_t()
       _maxAppendSize(250),
       _lock() {}
 
-config_t::config_t(std::string const& rid, size_t as, size_t ps, double minp,
-                   double maxp, std::string const& e,
-                   std::vector<std::string> const& g, bool s, bool st, bool w,
-                   double f, uint64_t c, uint64_t k, double p, double o,
-                   size_t a)
+config_t::config_t(std::string const& rid, size_t as, double minp, double maxp,
+                   std::string const& e, std::vector<std::string> const& g,
+                   bool s, bool st, bool w, double f, uint64_t c, uint64_t k,
+                   double p, double o, size_t a)
     : _recoveryId(rid),
       _agencySize(as),
-      _poolSize(ps),
       _minPing(minp),
       _maxPing(maxp),
       _timeoutMult(1),
@@ -112,7 +109,6 @@ config_t& config_t::operator=(config_t const& other) {
   _id = other._id;
   _recoveryId = other._recoveryId;
   _agencySize = other._agencySize;
-  _poolSize = other._poolSize;
   _minPing = other._minPing;
   _maxPing = other._maxPing;
   _timeoutMult = other._timeoutMult;
@@ -139,7 +135,6 @@ config_t& config_t::operator=(config_t&& other) {
 
   _id = std::move(other._id);
   _agencySize = std::move(other._agencySize);
-  _poolSize = std::move(other._poolSize);
   _minPing = std::move(other._minPing);
   _maxPing = std::move(other._maxPing);
   _timeoutMult = std::move(other._timeoutMult);
@@ -329,14 +324,9 @@ size_t config_t::size() const {
   return _agencySize;
 }
 
-size_t config_t::poolSize() const {
-  READ_LOCKER(readLocker, _lock);
-  return _poolSize;
-}
-
 bool config_t::poolComplete() const {
   READ_LOCKER(readLocker, _lock);
-  return _poolSize == _pool.size();
+  return _agencySize == _pool.size();
 }
 
 query_t config_t::activeToBuilder() const {
@@ -450,7 +440,8 @@ void config_t::toBuilder(VPackBuilder& builder) const {
 
     builder.add(idStr, VPackValue(_id));
     builder.add(agencySizeStr, VPackValue(_agencySize));
-    builder.add(poolSizeStr, VPackValue(_poolSize));
+    // deprecated since 3.11
+    builder.add(poolSizeStr, VPackValue(_agencySize));
     builder.add(endpointStr, VPackValue(_endpoint));
     builder.add(minPingStr, VPackValue(_minPing));
     builder.add(maxPingStr, VPackValue(_maxPing));
@@ -535,22 +526,6 @@ bool config_t::merge(VPackSlice const& conf) {
     }
   }
   LOG_TOPIC("c0b77", DEBUG, Logger::AGENCY) << ss.str();
-
-  ss.str("");
-  ss.clear();
-  ss << "Agency pool size: ";
-  if (_poolSize == 0) {  // Command line beats persistence
-    if (conf.hasKey(poolSizeStr)) {
-      _poolSize = conf.get(poolSizeStr).getUInt();
-      ss << _poolSize << " (persisted)";
-    } else {
-      _poolSize = _agencySize;
-      ss << _poolSize << " (default)";
-    }
-  } else {
-    ss << _poolSize << " (command line)";
-  }
-  LOG_TOPIC("474ea", DEBUG, Logger::AGENCY) << ss.str();
 
   ss.str("");
   ss.clear();
@@ -686,15 +661,16 @@ bool config_t::merge(VPackSlice const& conf) {
 }
 
 void config_t::updateConfiguration(velocypack::Slice other) {
-  WRITE_LOCKER(writeLocker, _lock);
-
   auto pool = other.get(poolStr);
   TRI_ASSERT(pool.isObject());
+
+  WRITE_LOCKER(writeLocker, _lock);
+
   _pool.clear();
   for (auto p : VPackObjectIterator(pool)) {
     _pool[p.key.copyString()] = p.value.copyString();
   }
-  _poolSize = _pool.size();
+  _agencySize = _pool.size();
 
   auto active = other.get(activeStr);
   TRI_ASSERT(active.isArray());
@@ -702,7 +678,6 @@ void config_t::updateConfiguration(velocypack::Slice other) {
   for (auto id : VPackArrayIterator(active)) {
     _active.push_back(id.copyString());
   }
-  _agencySize = _pool.size();
 
   if (other.hasKey(minPingStr)) {
     _minPing = other.get(minPingStr).getNumber<double>();

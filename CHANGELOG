@@ -3,6 +3,14 @@ devel
 
 * Repair "load indexes into memory" function in the web UI.
 
+* Deprecate the startup option `--agency.pool-size`. This option was never
+  properly supported for any values other than the value of `--agency.size`.
+  Now any value set for `--agency.pool-size` other than the value set for
+  `--agency.size` will now produce a fatal error on startup.
+
+* BTS-1082: Updating properties of a satellite collection breaks
+  replicationFactor.
+
 * FE-159: When creating a database in cluster mode, there are several parameters
   required. However they are invisible (nothing shown) if I open DB settings
   after creation. Those settings should be visible in readonly mode (grey out).
