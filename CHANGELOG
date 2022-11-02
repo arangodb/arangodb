@@ -1,6 +1,9 @@
 devel
 -----
 
+* BTS_483: Added restriction for usage of query cache for streaming and JS 
+  transactions when they are not read-only.
+
 * Remove map and map.gz files from repository and add them to gitignore.
   These files are only used for debugging and therefore should not be
   included in any release. This also reduces the size of release packages.
