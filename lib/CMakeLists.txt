@@ -231,10 +231,12 @@ target_link_libraries(arango PUBLIC v8_interface)
 add_dependencies(arango v8_build)
 
 set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/frozen/include")
+set(FUNCTION2_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/function2")
 
 target_include_directories(arango
   PUBLIC
   ${FROZEN_INCLUDE_DIR}
+  ${FUNCTION2_INCLUDE_DIR}
 )
 
 add_dependencies(arango snappy)

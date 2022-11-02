@@ -104,6 +104,10 @@ class CalculationTransactionState final : public arangodb::TransactionState {
     return Result{};
   }
 
+  [[nodiscard]] uint64_t numPrimitiveOperations() const noexcept override {
+    return 0;
+  }
+
   [[nodiscard]] bool hasFailedOperations() const noexcept override {
     return false;
   }
