@@ -164,6 +164,7 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_VIEW), "view"},
     {static_cast<int>(NODE_TYPE_PARAMETER_DATASOURCE), "datasource parameter"},
     {static_cast<int>(NODE_TYPE_FOR_VIEW), "view enumeration"},
+    {static_cast<int>(NODE_TYPE_WINDOW), "window"},
 };
 
 /// @brief names for AST node value types
