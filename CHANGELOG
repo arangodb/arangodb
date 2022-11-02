@@ -1,6 +1,8 @@
 devel
 -----
 
+* Repair "load indexes into memory" function in the web UI.
+
 * Improved help texts for the collection type and satellite collection
   options in the web UI.
 
