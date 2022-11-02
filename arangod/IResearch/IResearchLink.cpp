@@ -685,7 +685,7 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
                   sync.unlock();
                   // we are number 2. We must wait for 1/3 to commit
                   // and then crash the server.
-                  std::this_thread::sleep_for(10s);
+                  std::this_thread::sleep_for(20s);
                   TRI_TerminateDebugging(
                       "ArangoSearch::ThreeTransactionsMisorder Number2");
                 }
@@ -988,6 +988,19 @@ Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
       return {};
     }
 
+#if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
+    TRI_IF_FAILURE("ArangoSearch::ThreeTransactionsMisorder::StageOneKill") {
+      std::unique_lock<std::mutex> sync(_t3Failureync);
+      // if all candidates gathered and max tick is committed - it is time to crash
+      if (_t3Candidates.size() >= 3 &&
+          std::find_if(_t3Candidates.begin(), _t3Candidates.end(),
+                       [this](uint64_t t) {
+                         return t > _lastCommittedTickStageOne;
+                       }) == _t3Candidates.end()) {
+        TRI_TerminateDebugging("Killed on commit");
+      }
+    }
+#endif
     _commitStageOne = false;
     auto lastCommittedTickStageTwo = _lastCommittedTickStageTwo;
     // now commit what has possibly accumulated in the second flush context
@@ -1005,6 +1018,20 @@ Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
       _lastCommittedTickStageTwo = lastCommittedTickStageTwo;
       throw;
     }
+#if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
+    TRI_IF_FAILURE("ArangoSearch::ThreeTransactionsMisorder::StageTwoKill") {
+      std::unique_lock<std::mutex> sync(_t3Failureync);
+      // if all candidates gathered and max tick is committed - it is time to
+      // crash
+      if (_t3Candidates.size() >= 3 &&
+          std::find_if(_t3Candidates.begin(), _t3Candidates.end(),
+                       [this](uint64_t t) {
+                         return t > _lastCommittedTickStageOne;
+                       }) == _t3Candidates.end()) {
+        TRI_TerminateDebugging("Killed on commit stage two");
+      }
+    }
+#endif
     // get new reader
     auto reader = _dataStore._reader.reopen();
 

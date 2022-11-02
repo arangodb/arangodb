@@ -51,7 +51,7 @@ function runSetup () {
   db.UnitTestsRecoveryDummy.save(data);
   db._query("FOR d IN UnitTestsRecoveryView OPTIONS {waitForSync:true} LIMIT 1 RETURN d");
   internal.debugSetFailAt("ArangoSearch::ThreeTransactionsMisorder");
-  internal.debugSetFailAt("ArangoSearch::ThreeTransactionsMisorder::StageOneKill");
+  internal.debugSetFailAt("ArangoSearch::ThreeTransactionsMisorder::StageTwoKill");
   tasks.register({
     id: "doc-1",
     command: function(params) {
@@ -114,7 +114,7 @@ function recoverySuite () {
     // / @brief test whether we can restore the trx data
     // //////////////////////////////////////////////////////////////////////////////
 
-    testIResearchLinkThreeTransactions: function () {
+    testIResearchLinkThreeTransactionsStage2: function () {
       var v = db._view('UnitTestsRecoveryView');
       assertEqual(v.name(), 'UnitTestsRecoveryView');
       assertEqual(v.type(), 'arangosearch');
