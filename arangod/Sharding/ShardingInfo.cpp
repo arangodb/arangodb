@@ -29,11 +29,13 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
+#include "Containers/SmallVector.h"
 #include "Logger/LogMacros.h"
 #include "Sharding/ShardingFeature.h"
 #include "Sharding/ShardingStrategyDefault.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 
@@ -308,26 +310,28 @@ LogicalCollection* ShardingInfo::collection() const noexcept {
   return _collection;
 }
 
-void ShardingInfo::toVelocyPack(VPackBuilder& result,
-                                bool translateCids) const {
+void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids,
+                                bool includeShardsEntry) const {
   result.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
 
-  result.add(VPackValue("shards"));
-  result.openObject();
-  auto tmpShards = _shardIds;
+  if (includeShardsEntry) {
+    result.add(VPackValue("shards"));
+    result.openObject();
+    auto tmpShards = _shardIds;
 
-  for (auto const& shards : *tmpShards) {
-    result.add(VPackValue(shards.first));
-    result.openArray();
+    for (auto const& shards : *tmpShards) {
+      result.add(VPackValue(shards.first));
+      result.openArray();
 
-    for (auto const& servers : shards.second) {
-      result.add(VPackValue(servers));
+      for (auto const& servers : shards.second) {
+        result.add(VPackValue(servers));
+      }
+
+      result.close();  // server array
     }
 
-    result.close();  // server array
+    result.close();  // shards
   }
-
-  result.close();  // shards
 
   if (isSatellite()) {
     result.add(StaticStrings::ReplicationFactor,

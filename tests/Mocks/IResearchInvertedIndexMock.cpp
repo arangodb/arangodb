@@ -52,6 +52,12 @@ void IResearchInvertedIndexMock::toVelocyPack(
               arangodb::velocypack::Value(name()));
   builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
+
+  if (Index::hasFlag(flags, Index::Serialize::Figures)) {
+    builder.add("figures", VPackValue(VPackValueType::Object));
+    toVelocyPackFigures(builder);
+    builder.close();
+  }
 }
 
 Index::IndexType IResearchInvertedIndexMock::type() const {
@@ -114,17 +120,19 @@ Index::SortCosts IResearchInvertedIndexMock::supportsSortCondition(
 }
 
 Index::FilterCosts IResearchInvertedIndexMock::supportsFilterCondition(
+    transaction::Methods& trx,
     std::vector<std::shared_ptr<Index>> const& allIndexes,
     aql::AstNode const* node, aql::Variable const* reference,
     size_t itemsInIndex) const {
   return IResearchInvertedIndex::supportsFilterCondition(
-      IResearchDataStore::id(), _fields, allIndexes, node, reference,
+      trx, IResearchDataStore::id(), _fields, allIndexes, node, reference,
       itemsInIndex);
 }
 
 aql::AstNode* IResearchInvertedIndexMock::specializeCondition(
-    aql::AstNode* node, aql::Variable const* reference) const {
-  return IResearchInvertedIndex::specializeCondition(node, reference);
+    transaction::Methods& trx, aql::AstNode* node,
+    aql::Variable const* reference) const {
+  return IResearchInvertedIndex::specializeCondition(trx, node, reference);
 }
 
 Result IResearchInvertedIndexMock::insert(transaction::Methods& trx,
@@ -139,11 +147,6 @@ Result IResearchInvertedIndexMock::insert(transaction::Methods& trx,
 AnalyzerPool::ptr IResearchInvertedIndexMock::findAnalyzer(
     AnalyzerPool const& analyzer) const {
   return IResearchInvertedIndex::findAnalyzer(analyzer);
-}
-
-void IResearchInvertedIndexMock::toVelocyPackFigures(
-    velocypack::Builder& builder) const {
-  IResearchInvertedIndex::toVelocyPackStats(builder);
 }
 
 void IResearchInvertedIndexMock::unload() { shutdownDataStore(); }

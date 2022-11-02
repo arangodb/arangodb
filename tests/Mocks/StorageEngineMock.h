@@ -51,6 +51,11 @@ namespace aql {
 class OptimizerRulesFeature;
 }
 
+namespace futures {
+template<typename T>
+class Future;
+}
+
 }  // namespace arangodb
 
 class PhysicalCollectionMock : public arangodb::PhysicalCollection {
@@ -147,9 +152,9 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
       arangodb::OperationOptions const& options) override;
   virtual arangodb::RevisionId revision(
       arangodb::transaction::Methods* trx) const override;
-  virtual arangodb::Result truncate(
-      arangodb::transaction::Methods& trx,
-      arangodb::OperationOptions& options) override;
+  virtual arangodb::Result truncate(arangodb::transaction::Methods& trx,
+                                    arangodb::OperationOptions& options,
+                                    bool& usedRangeDelete) override;
   virtual void compact() override {}
   virtual arangodb::Result update(
       arangodb::transaction::Methods& trx,
@@ -208,12 +213,15 @@ class TransactionStateMock : public arangodb::TransactionState {
       arangodb::transaction::Hints hints) override;
   virtual arangodb::futures::Future<arangodb::Result> commitTransaction(
       arangodb::transaction::Methods* trx) override;
-  virtual arangodb::Result performIntermediateCommitIfRequired(
-      arangodb::DataSourceId cid) override;
-  virtual uint64_t numCommits() const override;
-  virtual bool hasFailedOperations() const override;
+  virtual arangodb::futures::Future<arangodb::Result>
+  performIntermediateCommitIfRequired(arangodb::DataSourceId cid) override;
+  virtual uint64_t numCommits() const noexcept override;
+  virtual uint64_t numIntermediateCommits() const noexcept override;
+  virtual void addIntermediateCommits(uint64_t value) override;
+  virtual bool hasFailedOperations() const noexcept override;
   TRI_voc_tick_t lastOperationTick() const noexcept override;
 
+  arangodb::Result triggerIntermediateCommit() override;
   std::unique_ptr<arangodb::TransactionCollection> createTransactionCollection(
       arangodb::DataSourceId cid,
       arangodb::AccessMode::Type accessType) override;
@@ -344,6 +352,14 @@ class StorageEngineMock : public arangodb::StorageEngine {
       TRI_vocbase_t& vocbase,
       std::shared_ptr<
           arangodb::replication2::replicated_log::PersistedLog> const& ptr)
+      -> arangodb::Result override;
+
+  auto updateReplicatedState(
+      TRI_vocbase_t& vocbase,
+      const arangodb::replication2::replicated_state::PersistedStateInfo& info)
+      -> arangodb::Result override;
+  auto dropReplicatedState(TRI_vocbase_t& vocbase,
+                           arangodb::replication2::LogId id)
       -> arangodb::Result override;
 
  private:

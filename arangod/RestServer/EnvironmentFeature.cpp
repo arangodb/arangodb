@@ -136,7 +136,7 @@ void EnvironmentFeature::prepare() {
         << "address significantly bigger regions of memory";
   }
 
-#ifdef __arm__
+#if defined(__arm__) || defined(__arm64__) || defined(__aarch64__)
   // detect alignment settings for ARM
   {
     LOG_TOPIC("6aec3", TRACE, arangodb::Logger::MEMORY)
@@ -482,7 +482,7 @@ void EnvironmentFeature::prepare() {
         auto where = first.find(' ');
 
         if (where != std::string::npos &&
-            !StringUtils::isPrefix(first.substr(where), " interleave")) {
+            !first.substr(where).starts_with(" interleave")) {
           LOG_TOPIC("3e451", WARN, Logger::MEMORY)
               << "It is recommended to set NUMA to interleaved.";
           LOG_TOPIC("b25a4", WARN, Logger::MEMORY)

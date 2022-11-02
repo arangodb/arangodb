@@ -56,6 +56,7 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
+#include "Futures/Future.h"
 
 #include "Mocks/IResearchLinkMock.h"
 
@@ -296,6 +297,7 @@ class EdgeIndexMock final : public arangodb::Index {
   }
 
   Index::FilterCosts supportsFilterCondition(
+      arangodb::transaction::Methods& /*trx*/,
       std::vector<std::shared_ptr<arangodb::Index>> const& /*allIndexes*/,
       arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const* reference,
@@ -345,7 +347,7 @@ class EdgeIndexMock final : public arangodb::Index {
   }
 
   arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode* node,
+      arangodb::transaction::Methods& /*trx*/, arangodb::aql::AstNode* node,
       arangodb::aql::Variable const* reference) const override {
     arangodb::SimpleAttributeEqualityMatcher matcher(IndexAttributes);
 
@@ -836,6 +838,7 @@ class HashIndexMock final : public arangodb::Index {
   }
 
   Index::FilterCosts supportsFilterCondition(
+      arangodb::transaction::Methods& /*trx*/,
       std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
       arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const* reference,
@@ -853,7 +856,7 @@ class HashIndexMock final : public arangodb::Index {
   }
 
   arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode* node,
+      arangodb::transaction::Methods& /*trx*/, arangodb::aql::AstNode* node,
       arangodb::aql::Variable const* reference) const override {
     return arangodb::SortedIndexAttributeMatcher::specializeCondition(
         this, node, reference);
@@ -1467,9 +1470,13 @@ arangodb::RevisionId PhysicalCollectionMock::revision(
 }
 
 arangodb::Result PhysicalCollectionMock::truncate(
-    arangodb::transaction::Methods& trx, arangodb::OperationOptions& options) {
+    arangodb::transaction::Methods& trx, arangodb::OperationOptions& options,
+    bool& usedRangeDelete) {
   before();
   _documents.clear();
+
+  // should not matter what we set here
+  usedRangeDelete = true;
   return {};
 }
 
@@ -1967,6 +1974,19 @@ auto StorageEngineMock::dropReplicatedLog(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
+arangodb::Result StorageEngineMock::updateReplicatedState(
+    TRI_vocbase_t& vocbase,
+    const arangodb::replication2::replicated_state::PersistedStateInfo& info) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+arangodb::Result StorageEngineMock::dropReplicatedState(
+    TRI_vocbase_t& vocbase, arangodb::replication2::LogId id) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 TransactionCollectionMock::TransactionCollectionMock(
     arangodb::TransactionState* state, arangodb::DataSourceId cid,
     arangodb::AccessMode::Type accessType)
@@ -2096,16 +2116,32 @@ TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
   return arangodb::Result();
 }
 
-arangodb::Result TransactionStateMock::performIntermediateCommitIfRequired(
+arangodb::Result TransactionStateMock::triggerIntermediateCommit() {
+  ADB_PROD_ASSERT(false) << "triggerIntermediateCommit is not supported in "
+                            "TransactionStateMock";
+  return arangodb::Result{TRI_ERROR_INTERNAL};
+}
+
+arangodb::futures::Future<arangodb::Result>
+TransactionStateMock::performIntermediateCommitIfRequired(
     arangodb::DataSourceId cid) {
   return arangodb::Result();
 }
 
-uint64_t TransactionStateMock::numCommits() const {
+uint64_t TransactionStateMock::numCommits() const noexcept {
   return commitTransactionCount;
 }
 
-bool TransactionStateMock::hasFailedOperations() const {
+uint64_t TransactionStateMock::numIntermediateCommits() const noexcept {
+  return 0;
+}
+
+void TransactionStateMock::addIntermediateCommits(uint64_t /*value*/) {
+  // should never be called during testing
+  TRI_ASSERT(false);
+}
+
+bool TransactionStateMock::hasFailedOperations() const noexcept {
   return false;  // assume no failed operations
 }
 

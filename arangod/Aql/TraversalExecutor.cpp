@@ -158,7 +158,7 @@ TraversalExecutorInfos::traversalEnumerator() const {
 
 bool TraversalExecutorInfos::usesOutputRegister(
     TraversalExecutorInfosHelper::OutputName type) const {
-  return _registerMapping.find(type) != _registerMapping.end();
+  return _registerMapping.contains(type);
 }
 
 bool TraversalExecutorInfos::useVertexOutput() const {

@@ -349,10 +349,10 @@ _Enterprise Edition only_
 ### Google Test
 
 * Name: Google Test (gtest)
-* Version: 1.8.1
-* Date: 2018-08-31 15:53:24Z
+* Version: 1.12.1
+* Date: 2022-06-30 10:14:00Z
 * Project Home: https://github.com/google/googletest
-* License: https://raw.githubusercontent.com/abseil/googletest/master/googletest/LICENSE
+* License: https://raw.githubusercontent.com/google/googletest/release-1.12.1/LICENSE 
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
@@ -524,8 +524,8 @@ _Enterprise Edition only_
 ### zlib
 
 * Name: zlib
-* Version: 1.2.12
-* Date: 2022-03-27 15:47:03 -0700
+* Version: 1.2.13
+* Date: 2022-10-13
 * Project Home: https://github.com/madler/zlib/
 * License: https://raw.githubusercontent.com/madler/zlib/master/README
 * License Comment: free as-is license
@@ -583,8 +583,8 @@ can be found [here](https://github.com/arangodb/arangodb/blob/devel/3rdParty/ire
 ### fmt
 
 * Name: fmt
-* Version: 8.1.1
-* Date: 2022-01-06
+* Version: 9.1.0
+* Date: 2022-08-27 08:57:10-0700
 * Project Home: https://fmt.dev/
 * License: https://github.com/fmtlib/fmt/blob/master/LICENSE.rst
 * License Name: MIT
@@ -611,6 +611,26 @@ Project Home: https://github.com/unicode-org/cldr
 License: https://raw.githubusercontent.com/unicode-org/cldr/master/ICU-LICENSE
 License Name: ICU License
 License Id: ICU
+
+#### The Project Gutenberg eBook, Children of the Frost, by Jack London
+
+Name: The Project Gutenberg eBook, Children of the Frost, by Jack London
+Version: N/A
+Date: N/A
+Project Home: https://www.gutenberg.org/ebooks/10736
+License: https://www.gutenberg.org/policy/license.html
+License Name: The Project Gutenberg License
+License Id: -
+
+#### The Project Gutenberg eBook of A Dream Of Red Mansions, by Xueqin Cao
+
+Name: The Project Gutenberg eBook of A Dream Of Red Mansions, by Xueqin Cao
+Version: N/A
+Date: N/A
+Project Home: https://www.gutenberg.org/ebooks/24264
+License: https://www.gutenberg.org/policy/license.html
+License Name: The Project Gutenberg License
+License Id: -
 
 ## JavaScript
 

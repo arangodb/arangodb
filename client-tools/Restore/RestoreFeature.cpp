@@ -821,20 +821,31 @@ arangodb::Result processInputDirectory(
       jobQueue.waitForIdle();
     }
 
-    // Step 5: create arangosearch views
-    if (options.importStructure && !views.empty()) {
-      LOG_TOPIC("f723c", INFO, Logger::RESTORE) << "# Creating views...";
+    auto createViews = [&](std::string_view type) {
+      if (options.importStructure && !views.empty()) {
+        LOG_TOPIC("f723c", INFO, Logger::RESTORE)
+            << "# Creating " << type << " views...";
 
-      for (auto const& viewDefinition : views) {
-        LOG_TOPIC("c608d", DEBUG, Logger::RESTORE)
-            << "# Creating view: " << viewDefinition.toJson();
-
-        auto res = ::restoreView(httpClient, options, viewDefinition.slice());
-
-        if (!res.ok()) {
-          return res;
+        for (auto const& viewDefinition : views) {
+          auto slice = viewDefinition.slice();
+          LOG_TOPIC("c608d", DEBUG, Logger::RESTORE)
+              << "# Creating view: " << slice.toJson();
+          if (auto viewType = slice.get("type");
+              !viewType.isString() || viewType.stringView() != type) {
+            continue;
+          }
+          if (auto r = ::restoreView(httpClient, options, slice); !r.ok()) {
+            return r;
+          }
         }
       }
+      return Result{};
+    };
+
+    // Step 5: create arangosearch views
+    auto r = createViews("arangosearch");
+    if (!r.ok()) {
+      return r;
     }
 
     // Step 6: fire up data transfer
@@ -883,6 +894,12 @@ arangodb::Result processInputDirectory(
 
     jobQueue.waitForIdle();
     jobs.clear();
+
+    // Step 7: create search-alias views
+    r = createViews("search-alias");
+    if (!r.ok()) {
+      return r;
+    }
 
     Result firstError = feature.getFirstError();
     if (firstError.fail()) {
@@ -1102,14 +1119,12 @@ RestoreFeature::RestoreJob::RestoreJob(RestoreFeature& feature,
                                        RestoreProgressTracker& progressTracker,
                                        RestoreFeature::Options const& options,
                                        RestoreFeature::Stats& stats,
-                                       bool useEnvelope,
                                        std::string const& collectionName,
                                        std::shared_ptr<SharedState> sharedState)
     : feature{feature},
       progressTracker{progressTracker},
       options{options},
       stats{stats},
-      useEnvelope{useEnvelope},
       collectionName(collectionName),
       sharedState(std::move(sharedState)) {}
 
@@ -1123,8 +1138,7 @@ Result RestoreFeature::RestoreJob::sendRestoreData(
 
   std::string const url =
       "/_api/replication/restore-data?collection=" + urlEncode(collectionName) +
-      "&force=" + (options.force ? "true" : "false") +
-      "&useEnvelope=" + (useEnvelope ? "true" : "false");
+      "&force=" + (options.force ? "true" : "false");
 
   std::unordered_map<std::string, std::string> headers;
   headers.emplace(arangodb::StaticStrings::ContentTypeHeader,
@@ -1213,11 +1227,12 @@ RestoreFeature::RestoreMainJob::RestoreMainJob(
     RestoreProgressTracker& progressTracker,
     RestoreFeature::Options const& options, RestoreFeature::Stats& stats,
     VPackSlice parameters, bool useEnvelope)
-    : RestoreJob(feature, progressTracker, options, stats, useEnvelope,
+    : RestoreJob(feature, progressTracker, options, stats,
                  parameters.get({"parameters", "name"}).copyString(),
                  std::make_shared<SharedState>()),
       directory{directory},
-      parameters{parameters} {}
+      parameters{parameters},
+      useEnvelope{useEnvelope} {}
 
 Result RestoreFeature::RestoreMainJob::run(
     arangodb::httpclient::SimpleHttpClient& client) {
@@ -1347,8 +1362,8 @@ Result RestoreFeature::RestoreMainJob::dispatchRestoreData(
 
   feature.taskQueue().queueJob(
       std::make_unique<arangodb::RestoreFeature::RestoreSendJob>(
-          feature, progressTracker, options, stats, useEnvelope, collectionName,
-          sharedState, readOffset, std::move(buffer)));
+          feature, progressTracker, options, stats, collectionName, sharedState,
+          readOffset, std::move(buffer)));
 
   // we just scheduled an async job, and no result will be returned from here
   return {};
@@ -1623,11 +1638,10 @@ Result RestoreFeature::RestoreMainJob::sendRestoreIndexes(
 RestoreFeature::RestoreSendJob::RestoreSendJob(
     RestoreFeature& feature, RestoreProgressTracker& progressTracker,
     RestoreFeature::Options const& options, RestoreFeature::Stats& stats,
-    bool useEnvelope, std::string const& collectionName,
-    std::shared_ptr<SharedState> sharedState, size_t readOffset,
-    std::unique_ptr<basics::StringBuffer> buffer)
-    : RestoreJob(feature, progressTracker, options, stats, useEnvelope,
-                 collectionName, std::move(sharedState)),
+    std::string const& collectionName, std::shared_ptr<SharedState> sharedState,
+    size_t readOffset, std::unique_ptr<basics::StringBuffer> buffer)
+    : RestoreJob(feature, progressTracker, options, stats, collectionName,
+                 std::move(sharedState)),
       readOffset(readOffset),
       buffer(std::move(buffer)) {}
 

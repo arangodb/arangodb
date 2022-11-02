@@ -136,6 +136,9 @@ struct InvertedIndexField {
   bool _overrideValue{false};
   /// @brief if the field is with expansion - calculated value
   bool _hasExpansion{false};
+  /// @brief Field is array/value mix as for arangosearch views.
+  ///        Field is excluded from inverted index optimizations for filter!
+  bool _isSearchField{false};
 };
 
 struct IResearchInvertedIndexMeta;
@@ -144,23 +147,44 @@ struct IResearchInvertedIndexMetaIndexingContext {
   IResearchInvertedIndexMetaIndexingContext(
       IResearchInvertedIndexMeta const* field, bool add = true);
 
-  void addField(InvertedIndexField const& field);
+  void addField(InvertedIndexField const& field, bool nested);
+
+  void setFeatures(Features const& features);
+
+  std::string_view collectionName() const noexcept;
+
+  irs::features_t fieldFeatures() const noexcept {
+    return {_fieldFeatures.data(), _fieldFeatures.size()};
+  }
+  irs::IndexFeatures indexFeatures() const noexcept {
+    return features().indexFeatures();
+  }
+
+  Features const& features() const noexcept { return _features; }
 
   absl::flat_hash_map<std::string_view,
                       IResearchInvertedIndexMetaIndexingContext>
-      _subFields;
+      _fields;
+  absl::flat_hash_map<std::string_view,
+                      IResearchInvertedIndexMetaIndexingContext>
+      _nested;
   std::array<FieldMeta::Analyzer, 1> const* _analyzers;
   size_t _primitiveOffset;
   IResearchInvertedIndexMeta const* _meta;
+  ValueStorage const _storeValues{ValueStorage::ID};
+  IResearchInvertedIndexSort const& _sort;
+  IResearchViewStoredValues const& _storedValues;
+  MissingFieldsMap _missingFieldsMap;
+
   bool _isArray{false};
   bool _hasNested;
   bool _includeAllFields;
   bool _trackListPositions;
-  ValueStorage const _storeValues{ValueStorage::ID};
-  std::string _collectionName;
-  IResearchInvertedIndexSort const& _sort;
-  IResearchViewStoredValues const& _storedValues;
-  MissingFieldsMap _missingFieldsMap;
+  bool _isSearchField;
+
+ private:
+  Features _features;
+  std::vector<irs::type_info::type_id> _fieldFeatures;
 };
 
 struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
@@ -195,7 +219,6 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
   /// just name
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
-  /// @param defaultVocbase fallback vocbase
   ////////////////////////////////////////////////////////////////////////////////
   bool json(arangodb::ArangodServer& server, VPackBuilder& builder,
             bool writeAnalyzerDefinition,
@@ -215,9 +238,7 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
   IResearchInvertedIndexSort _sort;
   // stored values associated with the link
   IResearchViewStoredValues _storedValues;
-  // the version of the iresearch interface e.g. which how data is stored in
-  // iresearch (default == MAX) IResearchInvertedIndexMeta
-  LinkVersion _version{LinkVersion::MAX};
+  mutable std::string _collectionName;
   Consistency _consistency{Consistency::kEventual};
   bool _hasNested{false};
 };

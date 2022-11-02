@@ -68,7 +68,7 @@ namespace arangodb {
 ExportFeature::ExportFeature(Server& server, int* result)
     : ArangoExportFeature{server, *this},
       _xgmmlLabelAttribute("label"),
-      _typeExport("json"),
+      _typeExport("jsonl"),
       _customQueryMaxRuntime(0.0),
       _useMaxRuntime(false),
       _escapeCsvFormulae(true),
@@ -338,10 +338,12 @@ void ExportFeature::start() {
             << std::endl;
 
   uint64_t exportedSize = 0;
+  std::string progressDetails;
 
   if (_typeExport == "json" || _typeExport == "jsonl" || _typeExport == "xml" ||
       _typeExport == "csv") {
     if (_collections.size()) {
+      progressDetails = std::to_string(_collections.size()) + " collection(s)";
       collectionExport(httpClient.get());
 
       for (auto const& collection : _collections) {
@@ -357,6 +359,7 @@ void ExportFeature::start() {
         }
       }
     } else if (!_customQuery.empty()) {
+      progressDetails = "1 query";
       queryExport(httpClient.get());
 
       std::string filePath =
@@ -367,6 +370,7 @@ void ExportFeature::start() {
       exportedSize += TRI_SizeFile(filePath.c_str());
     }
   } else if (_typeExport == "xgmml" && _graphName.size()) {
+    progressDetails = "1 graph";
     graphExport(httpClient.get());
     std::string filePath = _outputDirectory + TRI_DIR_SEPARATOR_STR +
                            _graphName + "." + _typeExport;
@@ -382,7 +386,7 @@ void ExportFeature::start() {
 
   using arangodb::basics::StringUtils::formatSize;
 
-  std::cout << "Processed " << _collections.size() << " collection(s), wrote "
+  std::cout << "Processed " << progressDetails << ", wrote "
             << formatSize(exportedSize) << ", " << _httpRequestsDone
             << " HTTP request(s)" << std::endl;
 

@@ -171,8 +171,8 @@ class IResearchInvertedIndexConditionTest
 
     // optimization time
     {
-      auto costs = index->supportsFilterCondition(id, indexFields, {},
-                                                  filterNode, ref, 0);
+      auto costs = index->supportsFilterCondition(
+          query->trxForOptimization(), id, indexFields, {}, filterNode, ref, 0);
       ASSERT_EQ(expectedCosts.supportsCondition, costs.supportsCondition);
     }
     // runtime is not intended - we must decide during optimize time!
@@ -549,6 +549,7 @@ TEST_F(IResearchInvertedIndexConditionTest, test_exists) {
       "FOR d IN test FILTER EXISTS(d.a, 'string') RETURN d ";
   std::vector<std::string> fields = {"a", "b", "c", "d"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
   estimateFilterCondition(queryString, fields, expected);
 }
 

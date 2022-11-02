@@ -74,6 +74,7 @@ class HttpEndpointProvider;
 class EngineSelectorFeature;
 class EnvironmentFeature;
 class FileDescriptorsFeature;
+class FileSystemFeature;
 class FlushFeature;
 class FortuneFeature;
 class FoxxFeature;
@@ -214,6 +215,7 @@ using ArangodFeatures = TypeList<
     HttpEndpointProvider,
     EngineSelectorFeature,
     EnvironmentFeature,
+    FileSystemFeature,
     FlushFeature,
     FortuneFeature,
     FoxxFeature,

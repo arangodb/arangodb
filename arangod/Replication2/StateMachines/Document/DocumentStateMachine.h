@@ -28,6 +28,10 @@
 
 #include <memory>
 
+namespace arangodb::transaction {
+struct IManager;
+}
+
 namespace arangodb::replication2::replicated_state {
 /**
  * The Document State Machine is used as a middle-man between a shard and a
@@ -44,9 +48,14 @@ struct DocumentCore;
 struct DocumentCoreParameters;
 
 struct IDocumentStateHandlersFactory;
+struct IDocumentStateShardHandler;
 
 struct ReplicationOptions {
   bool waitForCommit{false};
+};
+
+struct DocumentCleanupHandler {
+  void drop(std::unique_ptr<DocumentCore>);
 };
 
 struct DocumentState {
@@ -58,6 +67,7 @@ struct DocumentState {
   using FactoryType = DocumentFactory;
   using CoreType = DocumentCore;
   using CoreParameterType = DocumentCoreParameters;
+  using CleanupHandlerType = DocumentCleanupHandler;
 };
 
 struct DocumentCoreParameters {
@@ -70,12 +80,13 @@ struct DocumentCoreParameters {
                               f.field("databaseName", p.databaseName));
   }
 
-  auto toSharedSlice() -> velocypack::SharedSlice;
+  [[nodiscard]] auto toSharedSlice() const -> velocypack::SharedSlice;
 };
 
 struct DocumentFactory {
   explicit DocumentFactory(
-      std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory);
+      std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
+      transaction::IManager& transactionManager);
 
   auto constructFollower(std::unique_ptr<DocumentCore> core)
       -> std::shared_ptr<DocumentFollowerState>;
@@ -86,8 +97,11 @@ struct DocumentFactory {
   auto constructCore(GlobalLogIdentifier, DocumentCoreParameters)
       -> std::unique_ptr<DocumentCore>;
 
+  auto constructCleanupHandler() -> std::shared_ptr<DocumentCleanupHandler>;
+
  private:
   std::shared_ptr<IDocumentStateHandlersFactory> const _handlersFactory;
+  transaction::IManager& _transactionManager;
 };
 }  // namespace document
 

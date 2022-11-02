@@ -1174,6 +1174,11 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(
         }
 
         if (options.isObject()) {
+          if (options.hasKey(StaticStrings::GraphSatellites) &&
+              !options.get(StaticStrings::GraphSatellites).isArray()) {
+            return Result{TRI_ERROR_BAD_PARAMETER,
+                          "Missing array for field 'satellites'"};
+          }
           VPackSlice replicationFactor =
               options.get(StaticStrings::ReplicationFactor);
           if ((replicationFactor.isNumber() &&

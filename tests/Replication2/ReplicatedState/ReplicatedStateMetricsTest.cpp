@@ -33,6 +33,7 @@
 
 #include "StateMachines/MyStateMachine.h"
 #include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
+#include "Replication2/Mocks/MockStatePersistorInterface.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -44,6 +45,8 @@ struct ReplicatedStateMetricsTest : test::ReplicatedLogTest {
       std::make_shared<ReplicatedStateMetricsMock>("my-state>");
   std::shared_ptr<MyFactory> factory = std::make_shared<MyFactory>();
 
+  std::shared_ptr<MockStatePersistorInterface> statePersistor =
+      std::make_shared<MockStatePersistorInterface>();
   LoggerContext const loggerCtx{Logger::REPLICATED_STATE};
 };
 
@@ -51,8 +54,8 @@ TEST_F(ReplicatedStateMetricsTest, count_replicated_states) {
   auto log = makeReplicatedLog(LogId{1});
   auto follower = log->becomeFollower("follower", LogTerm{1}, "leader");
   auto numberBefore = metrics->replicatedStateNumber->load();
-  auto state = std::make_shared<ReplicatedState<MyState>>(log, factory,
-                                                          loggerCtx, metrics);
+  auto state = std::make_shared<ReplicatedState<MyState>>(
+      log, factory, loggerCtx, metrics, statePersistor);
   auto numberBetween = metrics->replicatedStateNumber->load();
   EXPECT_EQ(numberBefore + 1, numberBetween);
   state.reset();
@@ -64,8 +67,8 @@ TEST_F(ReplicatedStateMetricsTest, count_replicated_states_follower) {
   auto log = makeReplicatedLog(LogId{1});
   auto follower = log->becomeFollower("follower", LogTerm{1}, "leader");
   auto numberBefore = metrics->replicatedStateNumberFollowers->load();
-  auto state = std::make_shared<ReplicatedState<MyState>>(log, factory,
-                                                          loggerCtx, metrics);
+  auto state = std::make_shared<ReplicatedState<MyState>>(
+      log, factory, loggerCtx, metrics, statePersistor);
   state->start(std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
                std::nullopt);
   auto numberBetween = metrics->replicatedStateNumberFollowers->load();
@@ -79,8 +82,8 @@ TEST_F(ReplicatedStateMetricsTest, count_replicated_states_leader) {
   auto log = makeReplicatedLog(LogId{1});
   auto leader = log->becomeLeader("leader", LogTerm{1}, {}, 1);
   auto numberBefore = metrics->replicatedStateNumberLeaders->load();
-  auto state = std::make_shared<ReplicatedState<MyState>>(log, factory,
-                                                          loggerCtx, metrics);
+  auto state = std::make_shared<ReplicatedState<MyState>>(
+      log, factory, loggerCtx, metrics, statePersistor);
   state->start(std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
                std::nullopt);
   auto numberBetween = metrics->replicatedStateNumberLeaders->load();

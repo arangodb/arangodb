@@ -285,6 +285,7 @@ class Logger {
   static bool getUseColor() { return _useColor; };
   static void setUseControlEscaped(bool);
   static void setUseUnicodeEscaped(bool);
+  static void setEscaping();
   static bool getUseControlEscaped() { return _useControlEscaped; };
   static bool getUseUnicodeEscaped() { return _useUnicodeEscaped; };
   static bool getUseLocalTime() {
@@ -309,7 +310,7 @@ class Logger {
 
   static void log(char const* logid, char const* function, char const* file,
                   int line, LogLevel level, size_t topicId,
-                  std::string const& message);
+                  std::string_view message);
 
   static void append(
       LogGroup&, std::unique_ptr<LogMessage> msg, bool forceDirect,
@@ -357,6 +358,7 @@ class Logger {
   static std::atomic<TRI_pid_t> _cachedPid;
   static std::string _outputPrefix;
   static std::string _hostname;
+  static void (*_writerFn)(std::string_view, std::string&);
 
   struct ThreadRef {
     ThreadRef();
