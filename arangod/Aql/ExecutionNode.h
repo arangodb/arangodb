@@ -99,6 +99,7 @@ struct Variable;
 
 namespace optimizer2::nodes {
 struct ReturnNode;
+struct SingletonNode;
 }
 
 /// @brief sort element, consisting of variable, sort direction, and a possible
@@ -634,6 +635,7 @@ class SingletonNode : public ExecutionNode {
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
+  optimizer2::nodes::SingletonNode toInspectable() const;
 };
 
 /// @brief class EnumerateCollectionNode

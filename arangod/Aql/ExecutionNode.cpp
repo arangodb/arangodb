@@ -71,6 +71,7 @@
 #include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 #include "Aql/Optimizer2/PlanNodes/ReturnNode.h"
+#include "Aql/Optimizer2/PlanNodes/SingletonNode.h"
 
 #include <velocypack/Iterator.h>
 
@@ -1636,6 +1637,21 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
 /// @brief doToVelocyPack, for SingletonNode
 void SingletonNode::doToVelocyPack(VPackBuilder&, unsigned) const {
   // nothing to do here!
+}
+
+optimizer2::nodes::SingletonNode SingletonNode::toInspectable() const {
+  AttributeTypes::Dependencies deps{};
+  for (auto const& it : _dependencies) {
+    deps.emplace_back(it->id().id());
+  }
+  CostEstimate estimate = getCost();
+
+  return {{.id = AttributeTypes::Numeric{id().id()},
+           .type = "SingletonNode",
+           .dependencies = std::move(deps),
+           .estimatedCost = estimate.estimatedCost,
+           .estimatedNrItems = estimate.estimatedNrItems,
+           .canThrow = false}};
 }
 
 /// @brief the cost of a singleton is 1, it produces one item only
