@@ -2585,48 +2585,39 @@ ReturnNode::ReturnNode(ExecutionPlan* plan,
       _count(VelocyPackHelper::getBooleanValue(base, "count", false)) {}
 
 optimizer2::nodes::ReturnNode ReturnNode::toInspectable() const {
-  VPackBuilder becauseWeCan;
+  VPackBuilder builder;
   {
     if (_inVariable->type() == Variable::Type::Const) {
-      VPackObjectBuilder b(&becauseWeCan);
+      VPackObjectBuilder b(&builder);
+      builder.add(VPackValue("constantValue"));
+      _inVariable->constantValue().toVelocyPack(nullptr, builder, false, true);
     }
   }
 
-  optimizer2::nodes::ReturnNode planReturnNode = {
-      .inVariable = {
-          .id = _inVariable->id,
-          .name = _inVariable->name,
-          .isFullDocumentFromCollection =
-              _inVariable->isFullDocumentFromCollection,
-          .isDataFromCollection = _inVariable->isFullDocumentFromCollection,
-          .constantValue = becauseWeCan.slice().isObject()
-                               ? std::optional<VPackBuilder>{becauseWeCan}
-                               : std::optional<VPackBuilder>{std::nullopt}}};
-
-  // TODO - fixme start
-  // This whole section will be necessary for every PlanNode which inherits from
-  // BaseNode which is basically every PlanNode ...
-  // This is the "ExecutionNode -> BaseNode (PlanNode)" part.
-  // Reason right now to do it like this is because, we cannot set
-  // embeddedFields directly. I do not like this approach. I want to add some
-  // mechanism that does this for us automatically and not manually like this.
-  // We need to think about a better implementation here.
-  planReturnNode.count = _count;
-  planReturnNode.id = AttributeTypes::Numeric{id().id()};
+  AttributeTypes::Dependencies deps{};
   for (auto const& it : _dependencies) {
-    planReturnNode.dependencies.emplace_back(it->id().id());
+    deps.emplace_back(it->id().id());
   }
-
-  // Think about getting rid of this in total.
   CostEstimate estimate = getCost();
-  // Think about getting rid of this in total.
-  planReturnNode.estimatedCost = estimate.estimatedCost;
-  // Think about getting rid of this in total.
-  planReturnNode.estimatedNrItems = estimate.estimatedNrItems;
-  // "canThrow" attribute seems to be ignored in this case here.
-  // TODO - fixme end
 
-  return std::move(planReturnNode);
+  optimizer2::nodes::ReturnNode planReturnNode = {
+      {.id = AttributeTypes::Numeric{id().id()},
+       .type = "BaseNode",
+       .dependencies = std::move(deps),
+       .estimatedCost = estimate.estimatedCost,
+       .estimatedNrItems = estimate.estimatedNrItems,
+       .canThrow = false},
+      {.count = _count},
+      {.id = _inVariable->id,
+       .name = _inVariable->name,
+       .isFullDocumentFromCollection =
+           _inVariable->isFullDocumentFromCollection,
+       .isDataFromCollection = _inVariable->isFullDocumentFromCollection,
+       .constantValue = builder.slice().isObject()
+                            ? std::optional<VPackBuilder>{builder}
+                            : std::optional<VPackBuilder>{std::nullopt}}};
+
+  return planReturnNode;
 }
 
 /// @brief doToVelocyPack, for ReturnNode

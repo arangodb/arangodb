@@ -31,7 +31,7 @@ struct BaseNode {
   AttributeTypes::NodeId id;
   AttributeTypes::NodeType type;
   AttributeTypes::Dependencies dependencies;
-  AttributeTypes::Numeric estimatedCost;  // TODO: might be double. Check this.
+  AttributeTypes::Double estimatedCost;
   AttributeTypes::Numeric estimatedNrItems;
   std::optional<bool> canThrow;
 
