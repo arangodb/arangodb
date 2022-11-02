@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated OpenSSL to 1.1.1s.
+
 * Remove map and map.gz files from repository and add them to gitignore.
   These files are only used for debugging and therefore should not be
   included in any release. This also reduces the size of release packages.
