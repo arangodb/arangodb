@@ -52,6 +52,10 @@ else()
   message(STATUS "Will not compile in hand-optimized assembler code for CRC32.")
 endif()
 
+add_library(arango_static_strings STATIC
+  Basics/StaticStrings.cpp
+)
+
 add_library(arango STATIC
   ${LIB_ARANGO_APPLE}
   ${LIB_ARANGO_MSVC}
@@ -107,7 +111,6 @@ add_library(arango STATIC
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
   Basics/SourceLocation.cpp
-  Basics/StaticStrings.cpp
   Basics/StringBuffer.cpp
   Basics/StringHeap.cpp
   Basics/StringUtils.cpp
@@ -203,6 +206,7 @@ target_link_libraries(arango PUBLIC
   s2
   boost_system
   boost_boost
+  arango_static_strings
   velocypack
   linenoise-ng
   date_interface
