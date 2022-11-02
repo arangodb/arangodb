@@ -478,6 +478,10 @@ class IResearchLink {
                                 // (read-only, set via init())
   bool _createdInRecovery;      // link was created based on recovery marker
   bool _commitStageOne;   // protected by _commitMutex
+#if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
+  std::mutex _t3Failureync;
+  std::vector<uint64_t> _t3Candidates;
+#endif
 };
 
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,

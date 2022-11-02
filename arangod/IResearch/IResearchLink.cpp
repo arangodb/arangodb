@@ -665,7 +665,42 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
         ctx.reset();
       } else {
         uint64_t const lastOperationTick{state->lastOperationTick()};
-
+#if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
+        TRI_IF_FAILURE("ArangoSearch::ThreeTransactionsMisorder") {
+          bool inList{false};
+          while (true) {
+            std::unique_lock<std::mutex> sync(_t3Failureync);
+            if (_t3Candidates.size() >= 3) {
+              if (inList) {
+                // decide who we are  - 1/3 or 2?
+                bool lessTick{false}, moreTick{false};
+                for (auto t : _t3Candidates) {
+                  if (t > lastOperationTick) {
+                    moreTick = true;
+                  } else if (t < lastOperationTick) {
+                    lessTick = true;
+                  }
+                }
+                if (lessTick && moreTick) {
+                  sync.unlock();
+                  // we are number 2. We must wait for 1/3 to commit
+                  // and then crash the server.
+                  std::this_thread::sleep_for(10s);
+                  TRI_TerminateDebugging(
+                      "ArangoSearch::ThreeTransactionsMisorder Number2");
+                }
+              }
+              break;
+            }
+            if (!inList) {
+              _t3Candidates.push_back(lastOperationTick);
+            } else {
+              // just arbitrary wait. We need all 3 candidates to gather
+              std::this_thread::sleep_for(500ms);
+            }
+          }
+        }
+#endif
         ctx._ctx.SetLastTick(lastOperationTick);
 
         if (ADB_LIKELY(!_engine->inRecovery())) {
