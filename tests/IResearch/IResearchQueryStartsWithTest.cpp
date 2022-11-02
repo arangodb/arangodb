@@ -778,7 +778,7 @@ class QueryStartsWith : public QueryTest {
 
     // exact term, unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]}};
 
@@ -811,7 +811,7 @@ class QueryStartsWith : public QueryTest {
 
     // exact term, unordered via []
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]}, {"B", _insertedDocs[1]}};
 
@@ -843,7 +843,7 @@ class QueryStartsWith : public QueryTest {
     }
 
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]}, {"B", _insertedDocs[1]}};
 
@@ -888,7 +888,7 @@ class QueryStartsWith : public QueryTest {
 
     // exact term, unordered via [] min match count = 1
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]}, {"B", _insertedDocs[1]}};
 
@@ -922,7 +922,7 @@ class QueryStartsWith : public QueryTest {
 
     // exact term, ordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]}};
 
@@ -956,7 +956,7 @@ class QueryStartsWith : public QueryTest {
 
     // exact term, ordered via []
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", _insertedDocs[0]}, {"B", _insertedDocs[1]}};
 
@@ -998,8 +998,8 @@ class QueryStartsWith : public QueryTest {
         arangodb::velocypack::Slice docSlice(doc->data());
         auto const prefixSlice = docSlice.get("prefix");
         if (prefixSlice.isNone() ||
-            !irs::starts_with(arangodb::iresearch::getStringRef(prefixSlice),
-                              "abc")) {
+            !arangodb::iresearch::getStringRef(prefixSlice)
+                 .starts_with("abc")) {
           continue;
         }
         expectedDocs.emplace(docSlice.get("seq").getNumber<ptrdiff_t>(), doc);
@@ -1039,8 +1039,8 @@ class QueryStartsWith : public QueryTest {
         arangodb::velocypack::Slice docSlice(doc->data());
         auto const prefixSlice = docSlice.get("prefix");
         if (prefixSlice.isNone() ||
-            !irs::starts_with(arangodb::iresearch::getStringRef(prefixSlice),
-                              "abc")) {
+            !arangodb::iresearch::getStringRef(prefixSlice)
+                 .starts_with("abc")) {
           continue;
         }
         expectedDocs.emplace(docSlice.get("seq").getNumber<ptrdiff_t>(), doc);
@@ -1203,8 +1203,8 @@ class QueryStartsWith : public QueryTest {
         arangodb::velocypack::Slice docSlice(doc->data());
         auto const prefixSlice = docSlice.get("prefix");
         if (prefixSlice.isNone() ||
-            !irs::starts_with(arangodb::iresearch::getStringRef(prefixSlice),
-                              "abc")) {
+            !arangodb::iresearch::getStringRef(prefixSlice)
+                 .starts_with("abc")) {
           continue;
         }
         expectedDocs.emplace(docSlice.get("seq").getNumber<ptrdiff_t>(), doc);
@@ -1261,8 +1261,8 @@ class QueryStartsWith : public QueryTest {
         arangodb::velocypack::Slice docSlice(doc->data());
         auto const prefixSlice = docSlice.get("prefix");
         if (prefixSlice.isNone() ||
-            !irs::starts_with(arangodb::iresearch::getStringRef(prefixSlice),
-                              "abc")) {
+            !arangodb::iresearch::getStringRef(prefixSlice)
+                 .starts_with("abc")) {
           continue;
         }
         expectedDocs.emplace(docSlice.get("seq").getNumber<ptrdiff_t>(), doc);
