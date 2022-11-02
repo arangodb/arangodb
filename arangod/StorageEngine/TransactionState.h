@@ -211,6 +211,12 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   virtual futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId cid) = 0;
 
+  /// @returns number of insertions/removals in a transaction, update takes 2
+  /// primitive operations
+  /// @note the value is guaranteed to be valid only after
+  ///       transaction is committed
+  [[nodiscard]] virtual uint64_t numPrimitiveOperations() const noexcept = 0;
+
   /// @brief return number of commits.
   /// for cluster transactions on coordinator, this either returns 0 or 1.
   /// for leader, follower or single-server transactions, this can include any

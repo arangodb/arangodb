@@ -45,9 +45,9 @@ static std::vector<std::string> const kEmpty;
 
 // ArangoDB specific string comparer
 struct StringComparer {
-  bool operator()(irs::string_ref lhs, irs::string_ref rhs) const {
+  bool operator()(std::string_view lhs, std::string_view rhs) const {
     return arangodb::basics::VelocyPackHelper::compareStringValues(
-               lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size(), true) < 0;
+               lhs.data(), lhs.size(), rhs.data(), rhs.size(), true) < 0;
   }
 };
 
@@ -373,7 +373,7 @@ class QueryNumericTerm : public QueryTest {
 
     // invalid type, unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs;
       for (auto const& doc : _insertedDocs) {
@@ -410,7 +410,7 @@ class QueryNumericTerm : public QueryTest {
 
     // invalid type, unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs;
       for (auto const& doc : _insertedDocs) {
@@ -482,7 +482,7 @@ class QueryNumericTerm : public QueryTest {
 
     // missing term, unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs;
       for (auto const& doc : _insertedDocs) {
@@ -562,7 +562,7 @@ class QueryNumericTerm : public QueryTest {
 
     // existing unique term, unordered
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
           expectedDocs;
       for (auto const& doc : _insertedDocs) {
@@ -1797,7 +1797,7 @@ class QueryNumericTerm : public QueryTest {
 
     // d.seq > 0 AND d.seq < 31 , TFIDF() ASC, BM25() ASC, d.name DESC
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>,
                StringComparer>
           expectedDocs;
@@ -2102,7 +2102,7 @@ class QueryNumericTerm : public QueryTest {
 
     // d.seq >= 0 AND d.seq < 31 , TFIDF() ASC, BM25() ASC, d.name DESC
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>,
                StringComparer>
           expectedDocs;
@@ -2406,7 +2406,7 @@ class QueryNumericTerm : public QueryTest {
 
     // d.seq > 0 AND d.seq <= 31 , TFIDF() ASC, BM25() ASC, d.name DESC
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>,
                StringComparer>
           expectedDocs;
@@ -2743,7 +2743,7 @@ class QueryNumericTerm : public QueryTest {
 
     // d.seq >= 0 AND d.seq <= 31 , TFIDF() ASC, BM25() ASC, d.name DESC
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>,
                StringComparer>
           expectedDocs;
@@ -2992,7 +2992,7 @@ class QueryNumericTerm : public QueryTest {
 
     // d.seq >= 0 AND d.seq <= 31 , TFIDF() ASC, BM25() ASC, d.name DESC
     {
-      std::map<irs::string_ref,
+      std::map<std::string_view,
                std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>,
                StringComparer>
           expectedDocs;
