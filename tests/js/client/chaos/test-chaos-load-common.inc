@@ -271,8 +271,8 @@ function BaseChaosSuite(testOpts) {
       db._drop(coordination_cn);
       let rf = Math.max(2, getDBServers().length);
       db._create(cn, { numberOfShards: rf * 2, replicationFactor: rf });
-      createViews(false);
-      createViews(true);
+      // createViews(false);
+      // createViews(true);
       db._create(coordination_cn);
       
       if (testOpts.withFailurePoints) {
@@ -314,8 +314,8 @@ function BaseChaosSuite(testOpts) {
 
     tearDown: function () {
       clearAllFailurePoints();
-      removeViews(false);
-      removeViews(true);
+      // removeViews(false);
+      // removeViews(true);
       db._drop(cn);
       
       const shells = db[coordination_cn].all();
@@ -432,11 +432,11 @@ function BaseChaosSuite(testOpts) {
                   query("LET keys = (FOR doc IN " + viewName(cn + "_view_ps_sv", isSearchAlias) + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
                 }
               };
-              if (Math.random() < 0.5) {
-                lookupViews(false);
-              } else {
-                lookupViews(true);
-              }
+              // if (Math.random() < 0.5) {
+              //   lookupViews(false);
+              // } else {
+              //   lookupViews(true);
+              // }
             } else if (d >= 0.65) {
               let o = opts();
               const limit = Math.floor(Math.random() * 10) + 1;
@@ -483,10 +483,10 @@ function BaseChaosSuite(testOpts) {
       clearAllFailurePoints();
       waitForShardsInSync(cn);
       checkCollectionConsistency(cn);
-      checkViewConsistency(cn, false, false);
-      checkViewConsistency(cn, true, false);
-      checkViewConsistency(cn, false, true);
-      checkViewConsistency(cn, true, true);
+      // checkViewConsistency(cn, false, false);
+      // checkViewConsistency(cn, true, false);
+      // checkViewConsistency(cn, false, true);
+      // checkViewConsistency(cn, true, true);
     }
   };
 }
