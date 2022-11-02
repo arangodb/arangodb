@@ -214,6 +214,7 @@ class TransactionStateMock : public arangodb::TransactionState {
       arangodb::transaction::Methods* trx) override;
   virtual arangodb::futures::Future<arangodb::Result>
   performIntermediateCommitIfRequired(arangodb::DataSourceId cid) override;
+  uint64_t numPrimitiveOperations() const noexcept override { return 0; }
   virtual uint64_t numCommits() const noexcept override;
   virtual uint64_t numIntermediateCommits() const noexcept override;
   virtual void addIntermediateCommits(uint64_t value) override;
