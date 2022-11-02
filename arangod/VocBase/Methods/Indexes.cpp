@@ -95,10 +95,11 @@ Result Indexes::getIndex(LogicalCollection const* collection,
   }
 
   VPackBuilder tmp;
-  Result res = Indexes::getAll(collection, Index::makeFlags(),
-                               /*withHidden*/ true, tmp, trx);
+  Result res =
+      Indexes::getAll(collection, Index::makeFlags(Index::Serialize::Estimates),
+                      /*withHidden*/ true, tmp, trx);
   if (res.ok()) {
-    for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
+    for (VPackSlice index : VPackArrayIterator(tmp.slice())) {
       if ((index.hasKey(StaticStrings::IndexId) &&
            index.get(StaticStrings::IndexId).compareString(id) == 0) ||
           (index.hasKey(StaticStrings::IndexName) &&
@@ -733,9 +734,12 @@ arangodb::Result Indexes::drop(LogicalCollection* collection,
   } else {
     READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
 
+    transaction::Options trxOpts;
+    trxOpts.requiresReplication = false;
     SingleCollectionTransaction trx(transaction::V8Context::CreateWhenRequired(
                                         collection->vocbase(), false),
-                                    *collection, AccessMode::Type::EXCLUSIVE);
+                                    *collection, AccessMode::Type::EXCLUSIVE,
+                                    trxOpts);
     Result res = trx.begin();
 
     if (!res.ok()) {

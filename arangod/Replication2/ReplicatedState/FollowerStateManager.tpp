@@ -103,6 +103,10 @@ void FollowerStateManager<S>::run() noexcept {
         LOG_CTX("2feb8", FATAL, self->loggerContext)
             << "Caught unhandled exception in replicated state machine: "
             << ex.message();
+        if (ex.code() == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
+          // TODO this is a temporary fix, see CINFRA-588
+          return;
+        }
         FATAL_ERROR_EXIT();
       } catch (std::exception const& ex) {
         LOG_CTX("8c611", FATAL, self->loggerContext)
@@ -324,14 +328,17 @@ FollowerStateManager<S>::FollowerStateManager(
     std::shared_ptr<replicated_log::ILogFollower> logFollower,
     std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token,
     std::shared_ptr<Factory> factory,
-    std::shared_ptr<ReplicatedStateMetrics> ms) noexcept
+    std::shared_ptr<ReplicatedStateMetrics> ms,
+    std::shared_ptr<StatePersistorInterface> statePersistor) noexcept
     : _guardedData(*this, std::move(core), std::move(token)),
       parent(parent),
       logFollower(std::move(logFollower)),
       factory(std::move(factory)),
       loggerContext(std::move(loggerContext)),
-      metrics(std::move(ms)) {
+      metrics(std::move(ms)),
+      statePersistor(std::move(statePersistor)) {
   TRI_ASSERT(metrics != nullptr);
+  TRI_ASSERT(this->statePersistor != nullptr);
   metrics->replicatedStateNumberFollowers->fetch_add(1);
 }
 

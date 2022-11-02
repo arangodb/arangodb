@@ -35,6 +35,10 @@
 namespace arangodb {
 class Index;
 
+namespace transaction {
+class Methods;
+}
+
 namespace aql {
 
 class Ast;
@@ -68,8 +72,9 @@ bool findProjections(ExecutionNode* n, Variable const* v,
 /// note: the contents of  root  may be modified by this function if
 /// an index is picked!!
 std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
-    aql::Collection const& coll, arangodb::aql::Ast* ast,
-    arangodb::aql::AstNode* root, arangodb::aql::Variable const* reference,
+    transaction::Methods& trx, aql::Collection const& coll,
+    arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
+    arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
     aql::IndexHint const& hint,
     std::vector<std::shared_ptr<Index>>& usedIndexes, bool& isSorted,
@@ -79,10 +84,10 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
 /// note: the contents of  node  may be modified by this function if
 /// an index is picked!!
 bool getBestIndexHandleForFilterCondition(
-    aql::Collection const& collection, arangodb::aql::AstNode* node,
-    arangodb::aql::Variable const* reference, size_t itemsInCollection,
-    aql::IndexHint const& hint, std::shared_ptr<Index>& usedIndex,
-    bool onlyEdgeIndexes = false);
+    transaction::Methods& trx, aql::Collection const& collection,
+    arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference,
+    size_t itemsInCollection, aql::IndexHint const& hint,
+    std::shared_ptr<Index>& usedIndex, bool onlyEdgeIndexes = false);
 
 /// @brief Gets the best fitting index for an AQL sort condition
 bool getIndexForSortCondition(aql::Collection const& coll,
@@ -94,7 +99,7 @@ bool getIndexForSortCondition(aql::Collection const& coll,
 
 NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
     Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-    bool evaluateFCalls, bool sorted, AstNode const* condition,
+    bool evaluateFCalls, Index* index, AstNode const* condition,
     Variable const* indexVariable);
 
 }  // namespace utils

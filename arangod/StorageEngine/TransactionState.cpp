@@ -30,6 +30,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/overload.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -504,7 +505,7 @@ void TransactionState::coordinatorRerollTransactionId() {
 }
 
 /// @brief return a reference to the global transaction statistics
-TransactionStatistics& TransactionState::statistics() noexcept {
+TransactionStatistics& TransactionState::statistics() const noexcept {
   return _vocbase.server()
       .getFeature<metrics::MetricsFeature>()
       .serverStatistics()

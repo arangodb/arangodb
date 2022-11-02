@@ -27,10 +27,18 @@
 
 namespace arangodb {
 
+struct IRocksDBTransactionCallback {
+  virtual ~IRocksDBTransactionCallback() = default;
+  virtual rocksdb::SequenceNumber prepare() = 0;
+  virtual void cleanup() = 0;
+  virtual void commit(rocksdb::SequenceNumber lastWritten) = 0;
+};
+
 /// transaction wrapper, uses the current rocksdb transaction
 class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
  public:
-  explicit RocksDBTrxBaseMethods(RocksDBTransactionState*,
+  explicit RocksDBTrxBaseMethods(RocksDBTransactionState const* state,
+                                 IRocksDBTransactionCallback& callback,
                                  rocksdb::TransactionDB* db);
 
   ~RocksDBTrxBaseMethods();
@@ -53,6 +61,10 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   TRI_voc_tick_t lastOperationTick() const noexcept override;
 
   uint64_t numCommits() const noexcept final override { return _numCommits; }
+
+  uint64_t numIntermediateCommits() const noexcept final override {
+    return _numIntermediateCommits;
+  }
 
   bool ensureSnapshot() final override;
 
@@ -99,6 +111,8 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
 
   arangodb::Result doCommit();
 
+  IRocksDBTransactionCallback& _callback;
+
   rocksdb::TransactionDB* _db{nullptr};
 
   /// @brief shared read options which can be used by operations
@@ -112,6 +126,8 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
 
   /// @brief number of commits, including intermediate commits
   uint64_t _numCommits{0};
+  /// @brief number of intermediate commits
+  uint64_t _numIntermediateCommits{0};
   // if a transaction gets bigger than these values then an automatic
   // intermediate commit will be done
   uint64_t _numInserts{0};

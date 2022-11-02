@@ -53,6 +53,10 @@ class IResearchInvertedIndexMock final : public Index,
       VPackBuilder& builder,
       std::underlying_type<Index::Serialize>::type flags) const final;
 
+  void toVelocyPackFigures(velocypack::Builder& builder) const final {
+    IResearchDataStore::toVelocyPackStats(builder);
+  }
+
   IndexType type() const final;
 
   // CHECK IT
@@ -90,19 +94,19 @@ class IResearchInvertedIndexMock final : public Index,
       size_t itemsInIndex) const final;
 
   Index::FilterCosts supportsFilterCondition(
+      transaction::Methods& trx,
       std::vector<std::shared_ptr<Index>> const& allIndexes,
       aql::AstNode const* node, aql::Variable const* reference,
       size_t itemsInIndex) const final;
 
-  aql::AstNode* specializeCondition(aql::AstNode* node,
+  aql::AstNode* specializeCondition(transaction::Methods& trx,
+                                    aql::AstNode* node,
                                     aql::Variable const* reference) const final;
 
   Result insert(transaction::Methods& trx, LocalDocumentId documentId,
                 velocypack::Slice doc);
 
   AnalyzerPool::ptr findAnalyzer(AnalyzerPool const& analyzer) const final;
-
-  void toVelocyPackFigures(velocypack::Builder& builder) const final;
 
   void unload() final;
 

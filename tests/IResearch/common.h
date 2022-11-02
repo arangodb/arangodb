@@ -30,6 +30,7 @@
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 #include "IResearch/IResearchFilterOptimization.h"
+#include "IResearch/IResearchFilterContext.h"
 
 #include <string>
 #include <vector>
@@ -56,6 +57,7 @@ class Isolate;  // forward declaration
 
 namespace arangodb {
 
+class IndexId;
 class DatabasePathFeature;  // forward declaration
 
 namespace application_features {
@@ -107,6 +109,10 @@ arangodb::aql::QueryResult executeQuery(
     TRI_vocbase_t& vocbase, std::string const& queryString,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& optionsString = "{}");
+
+void checkQuery(TRI_vocbase_t& vocbase,
+                std::span<const velocypack::Slice> expected,
+                std::string const& query);
 
 std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
     TRI_vocbase_t& vocbase, std::string const& queryString,

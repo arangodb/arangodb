@@ -300,6 +300,20 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
   cIter->numberDocumentsDumped = 0;
   cIter->documentCountAdjustmentTicket = documentCountAdjustmentTicket;
 
+  // Prefetch the revision tree of the collection:
+  _collectionGuidOfPrefetchedRevisionTree.clear();
+  _prefetchedRevisionTree = rcoll->revisionTree(_snapshot->GetSequenceNumber());
+  if (_prefetchedRevisionTree != nullptr) {
+    LOG_TOPIC("123aa", DEBUG, Logger::ENGINES)
+        << "Have successfully prefetched revision tree for collection "
+        << logical->guid();
+    _collectionGuidOfPrefetchedRevisionTree = logical->guid();
+  } else {
+    LOG_TOPIC("123ab", INFO, Logger::ENGINES)
+        << "Could not prefetch revision tree for collection "
+        << logical->guid();
+  }
+
   // we should have a valid iterator if there are documents in here
   TRI_ASSERT(numberDocuments == 0 || cIter->hasMore());
   return std::make_tuple(Result{}, cid, numberDocuments);
@@ -518,8 +532,8 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
   RocksDBBlockerGuard blocker(cIter->logical.get());
   auto blockerSeq = blocker.placeBlocker();
 
-  arangodb::basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
-  VPackDumper dumper(&adapter, &cIter->vpackOptions);
+  basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
+  velocypack::Dumper dumper(&adapter, &cIter->vpackOptions);
   TRI_ASSERT(cIter->iter && !cIter->sorted());
   while (cIter->hasMore() && buff.length() < chunkSize) {
     if (useEnvelope) {
@@ -1332,4 +1346,20 @@ void RocksDBReplicationContext::releaseDumpIterator(CollectionIterator* it) {
       it->release();
     }
   }
+}
+
+std::unique_ptr<containers::RevisionTree>
+RocksDBReplicationContext::getPrefetchedRevisionTree(
+    std::string const& collectionGuid) {
+  if (collectionGuid == _collectionGuidOfPrefetchedRevisionTree) {
+    LOG_TOPIC("456aa", DEBUG, Logger::ENGINES)
+        << "Delivering prefetched revision tree for collection "
+        << collectionGuid;
+    _collectionGuidOfPrefetchedRevisionTree.clear();
+    return std::move(_prefetchedRevisionTree);
+  }
+  LOG_TOPIC("456ab", DEBUG, Logger::ENGINES)
+      << "No prefetched revision tree available for collection "
+      << collectionGuid;
+  return {nullptr};
 }

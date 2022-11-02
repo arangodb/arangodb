@@ -47,10 +47,10 @@
     },
     toDocuVersion: function (v) {
       var version;
-      if (v.toLowerCase().indexOf('devel') >= 0 || v.toLowerCase().indexOf('rc') >= 0) {
+      if (v.toLowerCase().indexOf('devel') !== -1 || v.toLowerCase().indexOf('rc') >= 0) {
         version = 'devel';
       } else {
-        version = v.substring(0, 3);
+        version = v.replace(/^(\d+\.\d+).*$/, '$1');
       }
       return version;
     }

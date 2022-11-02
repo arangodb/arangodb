@@ -165,6 +165,8 @@ std::string const StaticStrings::ProducesResult("producesResult");
 std::string const StaticStrings::ReadOwnWrites("readOwnWrites");
 std::string const StaticStrings::UseCache("useCache");
 std::string const StaticStrings::Parallelism("parallelism");
+std::string const StaticStrings::ForceOneShardAttributeValue(
+    "forceOneShardAttributeValue");
 
 // HTTP headers
 std::string const StaticStrings::Accept("accept");
@@ -372,6 +374,7 @@ std::string const StaticStrings::RevisionTreeRangeMin("rangeMin");
 std::string const StaticStrings::RevisionTreeInitialRangeMin("initialRangeMin");
 std::string const StaticStrings::RevisionTreeRanges("ranges");
 std::string const StaticStrings::RevisionTreeResume("resume");
+std::string const StaticStrings::RevisionTreeResumeHLC("resumeHLC");
 std::string const StaticStrings::RevisionTreeVersion("version");
 std::string const StaticStrings::FollowingTermId("followingTermId");
 
@@ -458,6 +461,8 @@ std::string_view const StaticStrings::ApiLogInternal("/_api/log-internal");
 std::string_view const StaticStrings::ApiLogExternal("/_api/log");
 std::string_view const StaticStrings::ApiReplicatedStateExternal(
     "/_api/replicated-state");
+std::string_view const StaticStrings::ApiDocumentStateExternal(
+    "/_api/document-state");
 
 // TODO REMOVE ME AFTER REFACTOR IS DONE
 std::string const StaticStrings::GraphRefactorFlag("refactor");

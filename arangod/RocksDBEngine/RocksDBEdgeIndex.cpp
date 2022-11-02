@@ -125,7 +125,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
  public:
   RocksDBEdgeIndexLookupIterator(LogicalCollection* collection,
                                  transaction::Methods* trx,
-                                 arangodb::RocksDBEdgeIndex const* index,
+                                 RocksDBEdgeIndex const* index,
                                  VPackBuilder&& keys,
                                  std::shared_ptr<cache::Cache> cache,
                                  ReadOwnWrites readOwnWrites)
@@ -176,8 +176,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   bool canRearm() const override { return true; }
 
   /// @brief rearm the index iterator
-  bool rearmImpl(arangodb::aql::AstNode const* node,
-                 arangodb::aql::Variable const* variable,
+  bool rearmImpl(aql::AstNode const* node, aql::Variable const* variable,
                  IndexIteratorOptions const& opts) override {
     TRI_ASSERT(!_index->isSorted() || opts.sorted);
 
@@ -387,15 +386,15 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   RocksDBEdgeIndex const* _index;
 
   std::shared_ptr<EdgeIndexCacheType> _cache;
-  arangodb::velocypack::Builder _keys;
-  arangodb::velocypack::ArrayIterator _keysIterator;
+  velocypack::Builder _keys;
+  velocypack::ArrayIterator _keysIterator;
 
   RocksDBKeyBounds _bounds;
 
   // the following values are required for correct batch handling
-  arangodb::velocypack::Builder _builder;
-  arangodb::velocypack::ArrayIterator _builderIterator;
-  arangodb::velocypack::Slice _lastKey;
+  velocypack::Builder _builder;
+  velocypack::ArrayIterator _builderIterator;
+  velocypack::Slice _lastKey;
 };
 
 }  // namespace arangodb
@@ -411,9 +410,8 @@ uint64_t RocksDBEdgeIndex::HashForKey(rocksdb::Slice const& key) {
   return static_cast<uint64_t>(hasher(tmp));
 }
 
-RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid,
-                                   arangodb::LogicalCollection& collection,
-                                   arangodb::velocypack::Slice info,
+RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, LogicalCollection& collection,
+                                   velocypack::Slice info,
                                    std::string const& attr)
     : RocksDBIndex(
           iid, collection,
@@ -468,7 +466,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid,
 
 RocksDBEdgeIndex::~RocksDBEdgeIndex() = default;
 
-std::vector<std::vector<arangodb::basics::AttributeName>> const&
+std::vector<std::vector<basics::AttributeName>> const&
 RocksDBEdgeIndex::coveredFields() const {
   TRI_ASSERT(_coveredFields.size() == 2);  // _from/_to or _to/_from
   return _coveredFields;
@@ -573,17 +571,18 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
 
 /// @brief checks whether the index supports the condition
 Index::FilterCosts RocksDBEdgeIndex::supportsFilterCondition(
-    std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex) const {
+    transaction::Methods& /*trx*/,
+    std::vector<std::shared_ptr<Index>> const& /*allIndexes*/,
+    aql::AstNode const* node, aql::Variable const* reference,
+    size_t itemsInIndex) const {
   SimpleAttributeEqualityMatcher matcher(this->_fields);
   return matcher.matchOne(this, node, reference, itemsInIndex);
 }
 
 /// @brief creates an IndexIterator for the given Condition
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
-    transaction::Methods* trx, arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts,
+    transaction::Methods* trx, aql::AstNode const* node,
+    aql::Variable const* reference, IndexIteratorOptions const& opts,
     ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
@@ -619,9 +618,9 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
 }
 
 /// @brief specializes the condition for use with the index
-arangodb::aql::AstNode* RocksDBEdgeIndex::specializeCondition(
-    arangodb::aql::AstNode* node,
-    arangodb::aql::Variable const* reference) const {
+aql::AstNode* RocksDBEdgeIndex::specializeCondition(
+    transaction::Methods& trx, aql::AstNode* node,
+    aql::Variable const* reference) const {
   SimpleAttributeEqualityMatcher matcher(this->_fields);
   return matcher.specializeOne(this, node, reference);
 }
@@ -850,8 +849,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
 
 /// @brief create the iterator
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createEqIterator(
-    transaction::Methods* trx, arangodb::aql::AstNode const* attrNode,
-    arangodb::aql::AstNode const* valNode, bool useCache,
+    transaction::Methods* trx, aql::AstNode const* /*attrNode*/,
+    aql::AstNode const* valNode, bool useCache,
     ReadOwnWrites readOwnWrites) const {
   VPackBuilder keys;
   fillLookupValue(keys, valNode);
@@ -862,8 +861,8 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createEqIterator(
 
 /// @brief create the iterator
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createInIterator(
-    transaction::Methods* trx, arangodb::aql::AstNode const* attrNode,
-    arangodb::aql::AstNode const* valNode, bool useCache) const {
+    transaction::Methods* trx, aql::AstNode const* /*attrNode*/,
+    aql::AstNode const* valNode, bool useCache) const {
   VPackBuilder keys;
   fillInLookupValues(trx, keys, valNode);
   // "in"-checks never need to observe own writes.
@@ -872,8 +871,8 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createInIterator(
       ReadOwnWrites::no);
 }
 
-void RocksDBEdgeIndex::fillLookupValue(
-    VPackBuilder& keys, arangodb::aql::AstNode const* value) const {
+void RocksDBEdgeIndex::fillLookupValue(VPackBuilder& keys,
+                                       aql::AstNode const* value) const {
   TRI_ASSERT(keys.isEmpty());
   keys.openArray(/*unindexed*/ true);
   handleValNode(&keys, value);
@@ -883,11 +882,11 @@ void RocksDBEdgeIndex::fillLookupValue(
   keys.close();
 }
 
-void RocksDBEdgeIndex::fillInLookupValues(
-    transaction::Methods* trx, VPackBuilder& keys,
-    arangodb::aql::AstNode const* values) const {
+void RocksDBEdgeIndex::fillInLookupValues(transaction::Methods* /*trx*/,
+                                          VPackBuilder& keys,
+                                          aql::AstNode const* values) const {
   TRI_ASSERT(values != nullptr);
-  TRI_ASSERT(values->type == arangodb::aql::NODE_TYPE_ARRAY);
+  TRI_ASSERT(values->type == aql::NODE_TYPE_ARRAY);
   TRI_ASSERT(keys.isEmpty());
 
   keys.openArray(/*unindexed*/ true);
@@ -906,8 +905,8 @@ void RocksDBEdgeIndex::fillInLookupValues(
 }
 
 /// @brief add a single value node to the iterator's keys
-void RocksDBEdgeIndex::handleValNode(
-    VPackBuilder* keys, arangodb::aql::AstNode const* valNode) const {
+void RocksDBEdgeIndex::handleValNode(VPackBuilder* keys,
+                                     aql::AstNode const* valNode) const {
   if (!valNode->isStringValue() || valNode->getStringLength() == 0) {
     return;
   }
@@ -921,7 +920,7 @@ void RocksDBEdgeIndex::handleValNode(
 }
 
 void RocksDBEdgeIndex::afterTruncate(TRI_voc_tick_t tick,
-                                     arangodb::transaction::Methods* trx) {
+                                     transaction::Methods* trx) {
   TRI_ASSERT(!unique());
   if (_estimator != nullptr) {
     _estimator->bufferTruncate(tick);

@@ -38,11 +38,12 @@
 #include "VocBase/Validators.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
 namespace arangodb {
 
+namespace velocypack {
+class Builder;
+class Slice;
+}  // namespace velocypack
 typedef std::string ServerID;  // ID of a server
 typedef std::string ShardID;   // ID of a shard
 using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
@@ -63,7 +64,12 @@ namespace transaction {
 class Methods;
 }
 
-namespace replication2::replicated_state {
+namespace replication {
+enum class Version;
+}
+namespace replication2 {
+class LogId;
+namespace replicated_state {
 template<typename S>
 struct ReplicatedState;
 namespace document {
@@ -71,7 +77,8 @@ struct DocumentState;
 struct DocumentLeaderState;
 struct DocumentFollowerState;
 }  // namespace document
-}  // namespace replication2::replicated_state
+}  // namespace replicated_state
+}  // namespace replication2
 
 /// please note that coordinator-based logical collections are frequently
 /// created and discarded, so ctor & dtor need to be as efficient as possible.
@@ -227,7 +234,29 @@ class LogicalCollection : public LogicalDataSource {
   bool isSatellite() const noexcept;
   bool usesDefaultShardKeys() const noexcept;
   std::vector<std::string> const& shardKeys() const noexcept;
-  TEST_VIRTUAL std::shared_ptr<ShardMap> shardIds() const;
+
+  virtual std::shared_ptr<ShardMap> shardIds() const;
+
+  // @brief will write the full ShardMap into the builder, containing
+  // all ShardIDs including their server distribution (ServerIDs) as an Object.
+  // Example:
+  //  {
+  //    ...
+  //    "s123456": ["PRMR-a41b97a0-e4d3-482b-925a-ff8efc9e0198", ...]
+  //    ...
+  //  }
+  void shardMapToVelocyPack(arangodb::velocypack::Builder& result) const;
+
+  // @brief will iterate over the whole ShardMap and will write only the
+  // ShardIDs into the builder as an Array. The ShardIDs are sorted and returned
+  // alphabetically.
+  // Example:
+  //  [
+  //    ...
+  //    "s123456",
+  //    ...
+  //  ]
+  void shardIDsToVelocyPack(arangodb::velocypack::Builder& result) const;
 
   // mutation options for sharding
   void setShardMap(std::shared_ptr<ShardMap> map) noexcept;
@@ -319,10 +348,9 @@ class LogicalCollection : public LogicalDataSource {
 
   bool dropIndex(IndexId iid);
 
-  // SECTION: Index access (local only)
-
   /// @brief processes a truncate operation
-  Result truncate(transaction::Methods& trx, OperationOptions& options);
+  Result truncate(transaction::Methods& trx, OperationOptions& options,
+                  bool& usedRangeDelete);
 
   /// @brief compact-data operation
   void compact();
@@ -382,6 +410,11 @@ class LogicalCollection : public LogicalDataSource {
   void setInternalValidatorTypes(uint64_t type);
 
   uint64_t getInternalValidatorTypes() const noexcept;
+
+#ifdef USE_ENTERPRISE
+  static void addEnterpriseShardingStrategy(VPackBuilder& builder,
+                                            VPackSlice collectionProperties);
+#endif
 
  private:
   void initializeSmartAttributesBefore(velocypack::Slice info);

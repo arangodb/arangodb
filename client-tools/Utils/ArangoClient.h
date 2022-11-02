@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Basics/TypeList.h"
-#include "Utils/ArangoClient.h"
 
 namespace arangodb {
 namespace application_features {
@@ -38,6 +37,7 @@ class GreetingsFeaturePhase;
 
 class ClientFeature;
 class ConfigFeature;
+class FileSystemFeature;
 class ShellConsoleFeature;
 class LoggerFeature;
 class RandomFeature;
@@ -56,7 +56,7 @@ using ArangoClientFeatures = TypeList<
     CommunicationFeaturePhase, GreetingsFeaturePhase,
     // Features
     VersionFeature,  // VersionFeature must go first
-    HttpEndpointProvider, ConfigFeature, LoggerFeature, RandomFeature,
-    ShellColorsFeature, ShutdownFeature, SslFeature, T...>;
+    HttpEndpointProvider, ConfigFeature, FileSystemFeature, LoggerFeature,
+    RandomFeature, ShellColorsFeature, ShutdownFeature, SslFeature, T...>;
 
 }  // namespace arangodb

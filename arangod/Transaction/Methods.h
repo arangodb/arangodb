@@ -23,12 +23,7 @@
 
 #pragma once
 
-#include "Aql/IndexHint.h"
 #include "Basics/Common.h"
-#include "Basics/Exceptions.h"
-#include "Basics/Result.h"
-#include "Cluster/FollowerInfo.h"
-#include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Rest/CommonDefines.h"
 #include "Transaction/CountCache.h"
@@ -36,14 +31,9 @@
 #include "Transaction/MethodsApi.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
-#include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
-#include "VocBase/Identifiers/DataSourceId.h"
-#include "VocBase/Identifiers/RevisionId.h"
+#include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
-
-#include <velocypack/Slice.h>
 
 #include <memory>
 #include <string>
@@ -56,15 +46,22 @@
 #define ENTERPRISE_VIRT TEST_VIRTUAL
 #endif
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
 
+namespace futures {
+template<class T>
+class Future;
+}
 namespace basics {
 struct AttributeName;
 }  // namespace basics
 
 namespace velocypack {
 class Builder;
-}
+class Slice;
+}  // namespace velocypack
 
 namespace aql {
 class Ast;
@@ -79,11 +76,17 @@ struct Options;
 }  // namespace transaction
 
 class CollectionNameResolver;
+class DataSourceId;
 class Index;
 class IndexIterator;
 class LocalDocumentId;
+class LogicalDataSource;
 struct IndexIteratorOptions;
 struct OperationOptions;
+struct OperationResult;
+class Result;
+class RevisionId;
+class TransactionId;
 class TransactionState;
 class TransactionCollection;
 
@@ -402,11 +405,14 @@ class Methods {
   static ErrorCode validateSmartJoinAttribute(LogicalCollection const& collinfo,
                                               velocypack::Slice value);
 
+  Result triggerIntermediateCommit();
+
  private:
   enum class ReplicationType { NONE, LEADER, FOLLOWER };
 
   // perform a (deferred) intermediate commit if required
-  Result performIntermediateCommitIfRequired(DataSourceId collectionId);
+  futures::Future<Result> performIntermediateCommitIfRequired(
+      DataSourceId collectionId);
 
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the

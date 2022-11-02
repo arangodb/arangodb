@@ -53,6 +53,7 @@
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
+#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabaseFeature.h"
@@ -68,6 +69,7 @@
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
+#include "RocksDBEngine/RocksDBChecksumEnv.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -130,15 +132,21 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
-#ifdef USE_SST_INGESTION
 namespace {
+#ifdef USE_SST_INGESTION
 void cleanUpTempFiles(std::string_view path) {
   for (auto const& fileName : TRI_FullTreeDirectory(path.data())) {
     TRI_UnlinkFile(basics::FileUtils::buildFilename(path, fileName).data());
   }
 }
-}  // namespace
 #endif
+
+std::unique_ptr<rocksdb::Env> createChecksumEnv(rocksdb::Env* baseEnv,
+                                                std::string const& path) {
+  return std::make_unique<arangodb::checksum::ChecksumEnv>(baseEnv, path);
+}
+
+}  // namespace
 
 namespace arangodb {
 
@@ -288,11 +296,6 @@ RocksDBEngine::RocksDBEngine(Server& server,
 RocksDBEngine::~RocksDBEngine() {
   _recoveryHelpers.clear();
   shutdownRocksDBInstance();
-}
-
-std::unique_ptr<rocksdb::Env> RocksDBEngine::NewChecksumEnv(
-    rocksdb::Env* base_env, std::string const& path) {
-  return std::make_unique<arangodb::checksum::ChecksumEnv>(base_env, path);
 }
 
 /// shuts down the RocksDB instance. this is called from unprepare
@@ -782,7 +785,7 @@ void RocksDBEngine::start() {
   }
 
   if (_createShaFiles) {
-    _checksumEnv = NewChecksumEnv(rocksdb::Env::Default(), _path);
+    _checksumEnv = createChecksumEnv(rocksdb::Env::Default(), _path);
     _dbOptions.env = _checksumEnv.get();
     static_cast<checksum::ChecksumEnv*>(_checksumEnv.get())
         ->getHelper()
@@ -861,6 +864,9 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::ZkdIndex);
 
   bool dbExisted = checkExistingDB(cfFamilies);
+
+  LOG_TOPIC("ab45b", DEBUG, Logger::STARTUP)
+      << "opening RocksDB instance in '" << _path << "'";
 
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
 
@@ -1114,7 +1120,7 @@ std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
   if (vocbase.replicationVersion() == replication::Version::TWO &&
       (tid.isLeaderTransactionId() || tid.isLegacyTransactionId()) &&
       ServerState::instance()->isRunningInCluster() &&
-      !options.allowDirtyReads) {
+      !options.allowDirtyReads && options.requiresReplication) {
     return std::make_shared<ReplicatedRocksDBTransactionState>(vocbase, tid,
                                                                options);
   }
@@ -1290,6 +1296,37 @@ void RocksDBEngine::getReplicatedLogs(TRI_vocbase_t& vocbase,
   result.openArray();
 
   auto rSlice = rocksDBSlice(RocksDBEntryType::ReplicatedLog);
+
+  for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice);
+       iter->Next()) {
+    if (vocbase.id() != RocksDBKey::databaseId(iter->key())) {
+      continue;
+    }
+
+    auto slice =
+        VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
+
+    if (arangodb::basics::VelocyPackHelper::getBooleanValue(
+            slice, StaticStrings::DataSourceDeleted, false)) {
+      continue;
+    }
+
+    result.add(slice);
+  }
+
+  result.close();
+}
+
+void RocksDBEngine::getReplicatedStates(TRI_vocbase_t& vocbase,
+                                        arangodb::velocypack::Builder& result) {
+  rocksdb::ReadOptions readOptions;
+  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(
+      readOptions, RocksDBColumnFamilyManager::get(
+                       RocksDBColumnFamilyManager::Family::Definitions)));
+
+  result.openArray();
+
+  auto rSlice = rocksDBSlice(RocksDBEntryType::ReplicatedState);
 
   for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice);
        iter->Next()) {
@@ -2336,8 +2373,8 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       << "number of prunable files: " << _prunableWalFiles.size();
 
   if (_maxWalArchiveSizeLimit > 0 &&
-      totalArchiveSize <= _maxWalArchiveSizeLimit) {
-    // size of the archive is restricted.
+      totalArchiveSize > _maxWalArchiveSizeLimit) {
+    // size of the archive is restricted, and we overflowed the limit.
 
     // print current archive size
     LOG_TOPIC("8d71b", TRACE, Logger::ENGINES)
@@ -2369,13 +2406,19 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       }
 
       if (doPrint) {
+        TRI_ASSERT(totalArchiveSize > _maxWalArchiveSizeLimit);
+
+        // never change this id without adjusting wal-archive-size-limit tests
+        // in tests/js/client/server-parameters
         LOG_TOPIC("d9793", WARN, Logger::ENGINES)
             << "forcing removal of RocksDB WAL file '" << f->PathName()
             << "' with start sequence " << f->StartSequence()
             << " because of overflowing archive. configured maximum archive "
                "size is "
             << _maxWalArchiveSizeLimit
-            << ", actual archive size is: " << totalArchiveSize;
+            << ", actual archive size is: " << totalArchiveSize
+            << ". if these warnings persist, try to increase the value of "
+            << "the startup option `--rocksdb.wal-archive-size-limit`";
       }
 
       TRI_ASSERT(totalArchiveSize >= f->SizeFileBytes());
@@ -2735,6 +2778,28 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     throw;
   }
 
+  try {
+    VPackBuilder builder;
+    getReplicatedStates(*vocbase, builder);
+
+    VPackSlice const slice = builder.slice();
+    TRI_ASSERT(slice.isArray());
+
+    for (VPackSlice it : VPackArrayIterator(slice)) {
+      auto info = velocypack::deserialize<
+          replication2::replicated_state::PersistedStateInfo>(it);
+      StorageEngine::registerReplicatedState(*vocbase, info);
+    }
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("554c1", ERR, arangodb::Logger::ENGINES)
+        << "error while opening database: " << ex.what();
+    throw;
+  } catch (...) {
+    LOG_TOPIC("5f33d", ERR, arangodb::Logger::ENGINES)
+        << "error while opening database: unknown exception";
+    throw;
+  }
+
   // scan the database path for collections
   try {
     VPackBuilder builder;
@@ -2895,12 +2960,12 @@ void RocksDBEngine::getStatistics(std::string& result) const {
   getStatistics(stats);
   VPackSlice sslice = stats.slice();
   TRI_ASSERT(sslice.isObject());
-  for (auto const& a : VPackObjectIterator(sslice)) {
+  for (auto a : VPackObjectIterator(sslice)) {
     if (a.value.isNumber()) {
       std::string name = a.key.copyString();
       std::replace(name.begin(), name.end(), '.', '_');
       std::replace(name.begin(), name.end(), '-', '_');
-      if (name.front() != 'r') {
+      if (!name.empty() && name.front() != 'r') {
         name = std::string{kEngineName}.append("_").append(name);
       }
       result += "\n# HELP " + name + " " + name + "\n# TYPE " + name +
@@ -2939,9 +3004,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
         // -1 returned for somethings that are valid property but no value
         if (0 < temp) {
           sum += temp;
-        }  // if
-      }    // if
-    }      // for
+        }
+      }
+    }
     builder.add(s, VPackValue(sum));
   };
 
@@ -3016,6 +3081,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addInt(rocksdb::DB::Properties::kBlockCacheCapacity);
   addInt(rocksdb::DB::Properties::kBlockCacheUsage);
   addInt(rocksdb::DB::Properties::kBlockCachePinnedUsage);
+
   addIntAllCf(rocksdb::DB::Properties::kTotalSstFilesSize);
   addInt(rocksdb::DB::Properties::kActualDelayedWriteRate);
   addInt(rocksdb::DB::Properties::kIsWriteStopped);
@@ -3080,13 +3146,14 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf(RocksDBColumnFamilyManager::Family::VPackIndex);
   addCf(RocksDBColumnFamilyManager::Family::GeoIndex);
   addCf(RocksDBColumnFamilyManager::Family::FulltextIndex);
+  addCf(RocksDBColumnFamilyManager::Family::ZkdIndex);
   addCf(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   builder.close();
 
   if (_throttleListener) {
     builder.add("rocksdb_engine.throttle.bps",
                 VPackValue(_throttleListener->getThrottle()));
-  }  // if
+  }
 
   {
     // total disk space in database directory
@@ -3455,6 +3522,38 @@ auto RocksDBEngine::createReplicatedLog(TRI_vocbase_t& vocbase,
         _logPersistor)};
   }
 
+  return rocksutils::convertStatus(s);
+}
+
+Result RocksDBEngine::updateReplicatedState(
+    TRI_vocbase_t& vocbase,
+    replication2::replicated_state::PersistedStateInfo const& info) {
+  auto key = RocksDBKey{};
+  key.constructReplicatedState(vocbase.id(), info.stateId);
+
+  VPackBuilder valueBuilder;
+  velocypack::serialize(valueBuilder, info);
+  auto value = RocksDBValue::ReplicatedLog(valueBuilder.slice());
+
+  rocksdb::WriteOptions opts;
+  auto s = _db->GetRootDB()->Put(
+      opts,
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::Definitions),
+      key.string(), value.string());
+
+  return rocksutils::convertStatus(s);
+}
+
+Result RocksDBEngine::dropReplicatedState(TRI_vocbase_t& vocbase,
+                                          arangodb::replication2::LogId id) {
+  auto key = RocksDBKey{};
+  key.constructReplicatedState(vocbase.id(), id);
+
+  auto s = _db->Delete(rocksdb::WriteOptions{},
+                       RocksDBColumnFamilyManager::get(
+                           RocksDBColumnFamilyManager::Family::Definitions),
+                       key.string());
   return rocksutils::convertStatus(s);
 }
 

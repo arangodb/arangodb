@@ -3,25 +3,17 @@
 ///
 /// Copyright 2022 ArangoDB GmbH, Cologne, Germany
 ///
-/// The Programs (which include both the software and documentation) contain
-/// proprietary information of ArangoDB GmbH; they are provided under a license
-/// agreement containing restrictions on use and disclosure and are also
-/// protected by copyright, patent and other intellectual and industrial
-/// property laws. Reverse engineering, disassembly or decompilation of the
-/// Programs, except to the extent required to obtain interoperability with
-/// other independently created software or as specified by law, is prohibited.
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
 ///
-/// It shall be the licensee's responsibility to take all appropriate fail-safe,
-/// backup, redundancy, and other measures to ensure the safe use of
-/// applications if the Programs are used for purposes such as nuclear,
-/// aviation, mass transit, medical, or other inherently dangerous applications,
-/// and ArangoDB GmbH disclaims liability for any damages caused by such use of
-/// the Programs.
+///     http://www.apache.org/licenses/LICENSE-2.0
 ///
-/// This software is the confidential and proprietary information of ArangoDB
-/// GmbH. You shall not disclose such confidential and proprietary information
-/// and shall use it only in accordance with the terms of the license agreement
-/// you entered into with ArangoDB GmbH.
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
@@ -42,42 +34,10 @@
 #include "Aql/Function.h"
 #include "IResearch/common.h"
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchFilterFactoryCommon.h"
 #include "IResearch/ExpressionContextMock.h"
 #include "RestServer/DatabaseFeature.h"
 #include "VocBase/Methods/Collections.h"
-
-// exists(name)
-auto makeByColumnExistence(std::string_view name) {
-  return [name](irs::sub_reader const& segment) {
-    auto* col = segment.column(name);
-
-    return col ? col->iterator(irs::ColumnHint::kMask |
-                               irs::ColumnHint::kPrevDoc)
-               : nullptr;
-  };
-}
-
-// name == value
-auto makeByTerm(std::string_view name, std::string_view value,
-                irs::score_t boost) {
-  auto filter = std::make_unique<irs::by_term>();
-  *filter->mutable_field() = name;
-  filter->mutable_options()->term = irs::ref_cast<irs::byte_type>(value);
-  filter->boost(boost);
-  return filter;
-}
-
-void makeAnd(
-    irs::Or& root,
-    std::vector<std::tuple<std::string_view, std::string_view, irs::score_t>>
-        parts) {
-  auto& filter = root.add<irs::And>();
-  for (const auto& [name, value, boost] : parts) {
-    auto& sub = filter.add<irs::by_term>();
-    sub =
-        std::move(static_cast<irs::by_term&>(*makeByTerm(name, value, boost)));
-  }
-}
 
 class IResearchFilterNestedTest
     : public ::testing::Test,

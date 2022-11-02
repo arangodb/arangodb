@@ -98,9 +98,10 @@ class Endpoint {
   bool _connected;
   TRI_socket_t _socket;
 };
-}  // namespace arangodb
 
-std::ostream& operator<<(std::ostream&, arangodb::Endpoint::TransportType);
-std::ostream& operator<<(std::ostream&, arangodb::Endpoint::EndpointType);
-std::ostream& operator<<(std::ostream&, arangodb::Endpoint::EncryptionType);
-std::ostream& operator<<(std::ostream&, arangodb::Endpoint::DomainType);
+std::ostream& operator<<(std::ostream&, Endpoint::TransportType);
+std::ostream& operator<<(std::ostream&, Endpoint::EndpointType);
+std::ostream& operator<<(std::ostream&, Endpoint::EncryptionType);
+std::ostream& operator<<(std::ostream&, Endpoint::DomainType);
+
+}  // namespace arangodb
