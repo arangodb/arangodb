@@ -23,6 +23,7 @@
 
 #include "RocksDBTrxBaseMethods.h"
 
+#include "Logger/LogMacros.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBLogValue.h"

@@ -46,7 +46,7 @@ class ClusterTransactionState final : public TransactionState {
   [[nodiscard]] Result beginTransaction(transaction::Hints hints) override;
 
   /// @brief commit a transaction
-  [[nodiscard]] futures::Future<Result> commitTransaction(
+  [[nodiscard]] yaclib::Future<Result> commitTransaction(
       transaction::Methods* trx) override;
 
   /// @brief abort a transaction
@@ -54,7 +54,7 @@ class ClusterTransactionState final : public TransactionState {
 
   Result triggerIntermediateCommit() override;
 
-  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
+  [[nodiscard]] yaclib::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId cid) override;
 
   /// @brief return number of commits, including intermediate commits

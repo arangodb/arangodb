@@ -28,7 +28,6 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Containers/FlatHashMap.h"
-#include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
@@ -37,6 +36,7 @@
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/Validators.h"
 #include "VocBase/voc-types.h"
+#include <yaclib/async/future.hpp>
 
 namespace arangodb {
 
@@ -326,7 +326,7 @@ class LogicalCollection : public LogicalDataSource {
   virtual Result properties(velocypack::Slice definition);
 
   /// @brief return the figures for a collection
-  virtual futures::Future<OperationResult> figures(
+  virtual yaclib::Future<OperationResult> figures(
       bool details, OperationOptions const& options) const;
 
   /// @brief closes an open collection

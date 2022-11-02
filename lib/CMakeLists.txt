@@ -144,7 +144,6 @@ add_library(arango STATIC
   Endpoint/EndpointIpV4.cpp
   Endpoint/EndpointIpV6.cpp
   Endpoint/EndpointList.cpp
-  Futures/Future.cpp
   Logger/Escaper.cpp
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
@@ -206,6 +205,7 @@ target_link_libraries(arango PUBLIC
   velocypack
   linenoise-ng
   date_interface
+  yaclib
   ${V8_LIBS}
   ${SYSTEM_LIBRARIES}
   ${ICU_LIBS}

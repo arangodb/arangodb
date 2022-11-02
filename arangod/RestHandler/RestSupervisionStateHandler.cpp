@@ -69,8 +69,8 @@ RestStatus RestSupervisionStateHandler::execute() {
   return waitForFuture(
       AsyncAgencyComm()
           .getValues(targetPath)
-          .thenValue([this, self, targetPath = std::move(targetPath)](
-                         AgencyReadResult&& result) {
+          .ThenInline([this, self, targetPath = std::move(targetPath)](
+                          AgencyReadResult&& result) {
             if (result.ok() && result.statusCode() == fuerte::StatusOK) {
               VPackBuffer<uint8_t> response;
               {
@@ -92,11 +92,14 @@ RestStatus RestSupervisionStateHandler::execute() {
               generateError(result.asResult());
             }
           })
-          .thenError<VPackException>([this, self](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this, self](std::exception const&) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR);
+          .ThenInline([this](auto&& r) {
+            try {
+              std::ignore = std::move(r).Ok();
+            } catch (VPackException const& e) {
+              generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+            } catch (std::exception const& e) {
+              generateError(rest::ResponseCode::SERVER_ERROR,
+                            TRI_ERROR_HTTP_SERVER_ERROR);
+            }
           }));
 }

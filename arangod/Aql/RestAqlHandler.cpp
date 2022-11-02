@@ -768,7 +768,7 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
 
   auto f = query->finalizeClusterQuery(errorCode);
 
-  return waitForFuture(std::move(f).thenValue(
+  return waitForFuture(std::move(f).ThenInline(
       [me = shared_from_this(), this, q = std::move(query)](Result res) {
         VPackBufferUInt8 buffer;
         VPackBuilder answerBuilder(buffer);

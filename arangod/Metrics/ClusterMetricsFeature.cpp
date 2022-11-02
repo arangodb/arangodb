@@ -102,8 +102,8 @@ std::optional<std::string> ClusterMetricsFeature::update(
   try {
     // TODO(MBkkt) Need to return Future<std::optional<std::string>>:
     // 1) other CollectModes: invalidFuture()
-    // 2) follower:           makeFuture(leader)
-    // 3) leader:             metricsOnLeader(...).thenValue(...)
+    // 2) follower:           yaclib::MakeFuture(leader)
+    // 3) leader:             metricsOnLeader(...).ThenInline(...)
     auto leader = std::move(ci.getMetricsState(false).leader);
     if (leader) {
       return leader;
@@ -116,7 +116,7 @@ std::optional<std::string> ClusterMetricsFeature::update(
                                             .getNumber<uint64_t>()
                                       : 0;
       }();
-      writeData(version, metricsOnLeader(nf, cf).getTry());
+      writeData(version, metricsOnLeader(nf, cf).Get());
     }
   } catch (...) {
   }
@@ -175,8 +175,8 @@ void ClusterMetricsFeature::update() {
     return;
   }
   if (!leader) {  // cannot read leader from agency, so assume it's leader
-    return metricsOnLeader(nf, cf).thenFinal(
-        [this, version](futures::Try<RawDBServers>&& raw) mutable noexcept {
+    return metricsOnLeader(nf, cf).DetachInline(
+        [this, version](auto&& raw) mutable noexcept {
           if (wasStop()) {
             return;
           }
@@ -198,7 +198,7 @@ void ClusterMetricsFeature::update() {
   auto serverId = isData ? oldData.get("ServerId").copyString() : "0";
   data.reset();
   metricsFromLeader(nf, cf, *leader, std::move(serverId), rebootId, version)
-      .thenFinal([this](futures::Try<LeaderResponse>&& raw) mutable noexcept {
+      .DetachInline([this](auto&& raw) mutable noexcept {
         if (wasStop()) {
           return;
         }
@@ -226,11 +226,11 @@ void ClusterMetricsFeature::repeatUpdate(uint32_t timeoutMs) noexcept {
 }
 
 bool ClusterMetricsFeature::writeData(uint64_t version,
-                                      futures::Try<RawDBServers>&& raw) {
-  if (!raw.hasValue()) {
+                                      yaclib::Result<RawDBServers>&& raw) {
+  if (!raw) {
     return false;
   }
-  auto metrics = parse(std::move(raw).get());
+  auto metrics = parse(std::move(raw).Ok());
   if (metrics.values.empty()) {
     return true;
   }
@@ -249,16 +249,20 @@ bool ClusterMetricsFeature::writeData(uint64_t version,
   return true;
 }
 
-bool ClusterMetricsFeature::readData(futures::Try<LeaderResponse>&& raw) {
-  if (!raw.hasValue() || !raw.get()) {
+bool ClusterMetricsFeature::readData(yaclib::Result<LeaderResponse>&& raw) {
+  if (!raw) {
     return false;
   }
-  velocypack::Slice metrics{raw.get()->data()};
+  auto v = std::move(raw).Ok();
+  if (!v) {
+    return false;
+  }
+  velocypack::Slice metrics{v->data()};
   if (!metrics.isObject()) {
     return false;
   }
   auto data = Data::fromVPack(metrics);
-  data->packed = std::move(raw).get();
+  data->packed = std::move(v);
   std::atomic_store_explicit(&_data, std::move(data),
                              std::memory_order_release);
   return true;

@@ -42,6 +42,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Metrics/Counter.h"

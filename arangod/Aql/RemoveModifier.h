@@ -26,7 +26,8 @@
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorInfos.h"
-#include "Futures/Future.h"
+
+#include <yaclib/async/future.hpp>
 
 #include <velocypack/Builder.h>
 
@@ -42,8 +43,8 @@ class RemoveModifierCompletion {
 
   ModifierOperationType accumulate(ModificationExecutorAccumulator& accu,
                                    InputAqlItemRow& row);
-  futures::Future<OperationResult> transact(transaction::Methods& trx,
-                                            VPackSlice const& data);
+  yaclib::Future<OperationResult> transact(transaction::Methods& trx,
+                                           VPackSlice const& data);
 
  private:
   ModificationExecutorInfos& _infos;

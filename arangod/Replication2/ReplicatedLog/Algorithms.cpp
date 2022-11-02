@@ -30,6 +30,7 @@
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 
+#include <yaclib/async/make.hpp>
 #include <algorithm>
 #include <random>
 #include <tuple>
@@ -109,11 +110,11 @@ auto algorithms::updateReplicatedLog(
     LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
     LogId logId, agency::LogPlanSpecification const* spec,
     std::shared_ptr<cluster::IFailureOracle const> failureOracle) noexcept
-    -> futures::Future<arangodb::Result> {
-  auto result = basics::catchToResultT([&]() -> futures::Future<
-                                                 arangodb::Result> {
+    -> yaclib::Future<arangodb::Result> {
+  auto result = basics::catchToResultT([&]()
+                                           -> yaclib::Future<arangodb::Result> {
     if (spec == nullptr) {
-      return ctx.dropReplicatedLog(logId);
+      return yaclib::MakeFuture(ctx.dropReplicatedLog(logId));
     }
 
     TRI_ASSERT(logId == spec->id);
@@ -133,8 +134,8 @@ auto algorithms::updateReplicatedLog(
       auto index = leader->updateParticipantsConfig(
           std::make_shared<ParticipantsConfig const>(spec->participantsConfig),
           buildFollower);
-      return leader->waitFor(index).thenValue(
-          [](auto&& quorum) -> Result { return Result{TRI_ERROR_NO_ERROR}; });
+      return leader->waitFor(index).ThenInline(
+          [](WaitForResult&& quorum) { return Result{TRI_ERROR_NO_ERROR}; });
     } else if (plannedLeader.has_value() &&
                plannedLeader->serverId == myServerId &&
                plannedLeader->rebootId == myRebootId) {
@@ -155,8 +156,8 @@ auto algorithms::updateReplicatedLog(
           std::move(failureOracle));
       newLeader->triggerAsyncReplication();  // TODO move this call into
                                              // becomeLeader?
-      return newLeader->waitForLeadership().thenValue(
-          [](auto&& quorum) -> Result { return Result{TRI_ERROR_NO_ERROR}; });
+      return newLeader->waitForLeadership().ThenInline(
+          [](WaitForResult&& quorum) { return Result{TRI_ERROR_NO_ERROR}; });
     } else {
       auto leaderString = std::optional<ParticipantId>{};
       if (spec->currentTerm->leader) {
@@ -167,13 +168,13 @@ auto algorithms::updateReplicatedLog(
                                         leaderString);
     }
 
-    return futures::Future<arangodb::Result>{std::in_place};
+    return yaclib::MakeFuture<Result>();
   });
 
   if (result.ok()) {
     return *std::move(result);
   } else {
-    return futures::Future<arangodb::Result>{std::in_place, result.result()};
+    return yaclib::MakeFuture<Result>(result.result());
   }
 }
 

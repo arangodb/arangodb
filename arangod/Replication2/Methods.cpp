@@ -23,7 +23,10 @@
 
 #include <Basics/Exceptions.h>
 #include <Basics/voc-errors.h>
-#include <Futures/Future.h>
+
+#include <yaclib/async/make.hpp>
+#include <yaclib/async/future.hpp>
+#include <yaclib/async/when_all.hpp>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/AgencyCallback.h"
@@ -31,7 +34,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Futures/Utilities.h"
 #include "Inspection/VPack.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -64,25 +66,25 @@ struct ReplicatedLogMethodsDBServer final
   explicit ReplicatedLogMethodsDBServer(TRI_vocbase_t& vocbase)
       : vocbase(vocbase) {}
   auto waitForLogReady(LogId id, std::uint64_t version) const
-      -> futures::Future<ResultT<consensus::index_t>> override {
+      -> yaclib::Future<ResultT<consensus::index_t>> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   auto createReplicatedLog(CreateOptions spec) const
-      -> futures::Future<ResultT<CreateResult>> override {
+      -> yaclib::Future<ResultT<CreateResult>> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   auto createReplicatedLog(replication2::agency::LogTarget spec) const
-      -> futures::Future<Result> override {
+      -> yaclib::Future<Result> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> override {
+  auto deleteReplicatedLog(LogId id) const -> yaclib::Future<Result> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  auto getReplicatedLogs() const -> futures::Future<std::unordered_map<
+  auto getReplicatedLogs() const -> yaclib::Future<std::unordered_map<
       arangodb::replication2::LogId,
       std::variant<replicated_log::LogStatus, ParticipantsList>>> override {
     auto result = std::unordered_map<
@@ -91,91 +93,95 @@ struct ReplicatedLogMethodsDBServer final
     for (auto& replicatedLog : vocbase.getReplicatedLogs()) {
       result[replicatedLog.first] = std::move(replicatedLog.second);
     }
-    return result;
+    return yaclib::MakeFuture(std::move(result));
   }
 
   auto getLocalStatus(LogId id) const
-      -> futures::Future<replication2::replicated_log::LogStatus> override {
-    return vocbase.getReplicatedLogById(id)->getParticipant()->getStatus();
+      -> yaclib::Future<replication2::replicated_log::LogStatus> override {
+    return yaclib::MakeFuture(
+        vocbase.getReplicatedLogById(id)->getParticipant()->getStatus());
   }
 
   [[noreturn]] auto getGlobalStatus(
       LogId id, replicated_log::GlobalStatus::SpecificationSource) const
-      -> futures::Future<replication2::replicated_log::GlobalStatus> override {
+      -> yaclib::Future<replication2::replicated_log::GlobalStatus> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  auto getStatus(LogId id) const -> futures::Future<GenericLogStatus> override {
-    return getLocalStatus(id).thenValue(
+  auto getStatus(LogId id) const -> yaclib::Future<GenericLogStatus> override {
+    return getLocalStatus(id).ThenInline(
         [](LogStatus&& status) { return GenericLogStatus(std::move(status)); });
   }
 
   auto getLogEntryByIndex(LogId id, LogIndex index) const
-      -> futures::Future<std::optional<PersistingLogEntry>> override {
+      -> yaclib::Future<std::optional<PersistingLogEntry>> override {
     auto entry = vocbase.getReplicatedLogById(id)
                      ->getParticipant()
                      ->copyInMemoryLog()
                      .getEntryByIndex(index);
     if (entry.has_value()) {
-      return entry->entry();
+      return yaclib::MakeFuture<std::optional<PersistingLogEntry>>(
+          entry->entry());
     } else {
-      return std::nullopt;
+      return yaclib::MakeFuture<std::optional<PersistingLogEntry>>(
+          std::nullopt);
     }
   }
 
   auto slice(LogId id, LogIndex start, LogIndex stop) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
-    return vocbase.getReplicatedLogById(id)
-        ->getParticipant()
-        ->copyInMemoryLog()
-        .getInternalIteratorRange(start, stop);
+      -> yaclib::Future<std::unique_ptr<PersistedLogIterator>> override {
+    return yaclib::MakeFuture(vocbase.getReplicatedLogById(id)
+                                  ->getParticipant()
+                                  ->copyInMemoryLog()
+                                  .getInternalIteratorRange(start, stop));
   }
 
   auto poll(LogId id, LogIndex index, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
+      -> yaclib::Future<std::unique_ptr<PersistedLogIterator>> override {
     auto leader = vocbase.getReplicatedLogLeaderById(id);
     return vocbase.getReplicatedLogById(id)
         ->getParticipant()
         ->waitFor(index)
-        .thenValue([index, limit, leader = std::move(leader),
-                    self = shared_from_this()](
-                       auto&&) -> std::unique_ptr<PersistedLogIterator> {
+        .ThenInline([index, limit, leader = std::move(leader),
+                     self = shared_from_this()](WaitForResult&&)
+                        -> std::unique_ptr<PersistedLogIterator> {
           auto log = leader->copyInMemoryLog();
           return log.getInternalIteratorRange(index, index + limit);
         });
   }
 
   auto tail(LogId id, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
+      -> yaclib::Future<std::unique_ptr<PersistedLogIterator>> override {
     auto log =
         vocbase.getReplicatedLogById(id)->getParticipant()->copyInMemoryLog();
     auto stop = log.getNextIndex();
     auto start = stop.saturatedDecrement(limit);
-    return log.getInternalIteratorRange(start, stop);
+    return yaclib::MakeFuture(log.getInternalIteratorRange(start, stop));
   }
 
   auto head(LogId id, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
+      -> yaclib::Future<std::unique_ptr<PersistedLogIterator>> override {
     auto log =
         vocbase.getReplicatedLogById(id)->getParticipant()->copyInMemoryLog();
     auto start = log.getFirstIndex();
-    return log.getInternalIteratorRange(start, start + limit);
+    return yaclib::MakeFuture(
+        log.getInternalIteratorRange(start, start + limit));
   }
 
   auto insert(LogId id, LogPayload payload, bool waitForSync) const
-      -> futures::Future<
+      -> yaclib::Future<
           std::pair<LogIndex, replicated_log::WaitForResult>> override {
     auto log = vocbase.getReplicatedLogLeaderById(id);
     auto idx = log->insert(std::move(payload), waitForSync);
-    return log->waitFor(idx).thenValue([idx](auto&& result) {
-      return std::make_pair(idx, std::forward<decltype(result)>(result));
+    return log->waitFor(idx).ThenInline([idx](WaitForResult&& result) {
+      return std::make_pair(idx, std::move(result));
     });
   }
 
   auto insert(LogId id, TypedLogIterator<LogPayload>& iter,
               bool waitForSync) const
-      -> futures::Future<std::pair<std::vector<LogIndex>,
-                                   replicated_log::WaitForResult>> override {
+      -> yaclib::Future<std::pair<std::vector<LogIndex>,
+                                  replicated_log::WaitForResult>> override {
     auto log = vocbase.getReplicatedLogLeaderById(id);
     auto indexes = std::vector<LogIndex>{};
     while (auto payload = iter.next()) {
@@ -188,23 +194,23 @@ struct ReplicatedLogMethodsDBServer final
     }
 
     return log->waitFor(indexes.back())
-        .thenValue([indexes = std::move(indexes)](auto&& result) mutable {
-          return std::make_pair(std::move(indexes),
-                                std::forward<decltype(result)>(result));
-        });
+        .ThenInline(
+            [indexes = std::move(indexes)](WaitForResult&& result) mutable {
+              return std::make_pair(std::move(indexes), std::move(result));
+            });
   }
 
   auto insertWithoutCommit(LogId id, LogPayload payload, bool waitForSync) const
-      -> futures::Future<LogIndex> override {
+      -> yaclib::Future<LogIndex> override {
     auto log = vocbase.getReplicatedLogLeaderById(id);
     auto idx = log->insert(std::move(payload), waitForSync);
-    return {idx};
+    return yaclib::MakeFuture(std::move(idx));
   }
 
   auto release(LogId id, LogIndex index) const
-      -> futures::Future<Result> override {
+      -> yaclib::Future<Result> override {
     auto log = vocbase.getReplicatedLogById(id);
-    return log->getParticipant()->release(index);
+    return yaclib::MakeFuture(log->getParticipant()->release(index));
   }
   TRI_vocbase_t& vocbase;
 };
@@ -236,15 +242,17 @@ struct ReplicatedLogMethodsCoordinator final
     : ReplicatedLogMethods,
       std::enable_shared_from_this<ReplicatedLogMethodsCoordinator> {
   auto waitForLogReady(LogId id, std::uint64_t version) const
-      -> futures::Future<ResultT<consensus::index_t>> override {
+      -> yaclib::Future<ResultT<consensus::index_t>> override {
     struct Context {
       explicit Context(uint64_t version) : version(version) {}
-      futures::Promise<ResultT<consensus::index_t>> promise;
+      yaclib::Promise<ResultT<consensus::index_t>> promise;
       std::uint64_t version;
     };
 
     auto ctx = std::make_shared<Context>(version);
-    auto f = ctx->promise.getFuture();
+    yaclib::Future<ResultT<consensus::index_t>> f;
+    std::tie(f, ctx->promise) =
+        yaclib::MakeContract<ResultT<consensus::index_t>>();
 
     using namespace cluster::paths;
     // register an agency callback and wait for the given version to appear in
@@ -264,7 +272,7 @@ struct ReplicatedLogMethodsCoordinator final
           auto supervision = velocypack::deserialize<
               replication2::agency::LogCurrentSupervision>(slice);
           if (supervision.targetVersion >= ctx->version) {
-            ctx->promise.setValue(ResultT<consensus::index_t>{index});
+            std::move(ctx->promise).Set(ResultT<consensus::index_t>{index});
             return true;
           }
           return false;
@@ -274,13 +282,14 @@ struct ReplicatedLogMethodsCoordinator final
     if (auto result =
             clusterFeature.agencyCallbackRegistry()->registerCallback(cb, true);
         result.fail()) {
-      return {result};
+      return yaclib::MakeFuture<ResultT<consensus::index_t>>(std::move(result));
     }
 
-    return std::move(f).then([self = shared_from_this(), cb](auto&& result) {
-      self->clusterFeature.agencyCallbackRegistry()->unregisterCallback(cb);
-      return std::move(result.get());
-    });
+    return std::move(f).ThenInline(
+        [self = shared_from_this(), cb](auto&& result) {
+          self->clusterFeature.agencyCallbackRegistry()->unregisterCallback(cb);
+          return std::move(result).Ok();
+        });
   }
 
   void fillCreateOptions(CreateOptions& options) const {
@@ -348,72 +357,74 @@ struct ReplicatedLogMethodsCoordinator final
   }
 
   auto createReplicatedLog(CreateOptions options) const
-      -> futures::Future<ResultT<CreateResult>> override {
+      -> yaclib::Future<ResultT<CreateResult>> override {
     fillCreateOptions(options);
     TRI_ASSERT(options.id.has_value());
     auto target = createTargetFromCreateOptions(options);
 
     return createReplicatedLog(std::move(target))
-        .thenValue([options = std::move(options),
-                    self = shared_from_this()](auto&& result) mutable
-                   -> futures::Future<ResultT<CreateResult>> {
+        .ThenInline([options = std::move(options),
+                     self = shared_from_this()](Result&& result) mutable
+                    -> yaclib::Future<ResultT<CreateResult>> {
           auto response = CreateResult{*options.id, std::move(options.servers)};
           if (!result.ok()) {
-            return {result};
+            return yaclib::MakeFuture<ResultT<CreateResult>>(std::move(result));
           }
 
           if (options.waitForReady) {
             // wait for the state to be ready
             return self->waitForLogReady(*options.id, 1)
-                .thenValue([self,
-                            resp = std::move(response)](auto&& result) mutable
-                           -> futures::Future<ResultT<CreateResult>> {
+                .ThenInline([self, resp = std::move(response)](
+                                ResultT<consensus::index_t>&& result) mutable
+                            -> yaclib::Future<ResultT<CreateResult>> {
                   if (result.fail()) {
-                    return {result.result()};
+                    return yaclib::MakeFuture<ResultT<CreateResult>>(
+                        result.result());
                   }
                   return self->clusterInfo
                       .fetchAndWaitForPlanVersion(std::chrono::seconds{240})
-                      .thenValue([resp = std::move(resp)](auto&& result) mutable
-                                 -> ResultT<CreateResult> {
-                        if (result.fail()) {
-                          return {result};
-                        }
-                        return std::move(resp);
-                      });
+                      .ThenInline(
+                          [resp = std::move(resp)](Result&& result) mutable
+                          -> ResultT<CreateResult> {
+                            if (result.fail()) {
+                              return {result};
+                            }
+                            return std::move(resp);
+                          });
                 });
           }
-          return response;
+          return yaclib::MakeFuture<ResultT<CreateResult>>(std::move(response));
         });
   }
 
   auto createReplicatedLog(replication2::agency::LogTarget spec) const
-      -> futures::Future<Result> override {
+      -> yaclib::Future<Result> override {
     return replication2::agency::methods::createReplicatedLog(vocbase.name(),
                                                               spec)
-        .thenValue([self = shared_from_this()](
-                       ResultT<uint64_t>&& res) -> futures::Future<Result> {
+        .ThenInline([self = shared_from_this()](
+                        ResultT<uint64_t>&& res) -> yaclib::Future<Result> {
           if (res.fail()) {
-            return futures::Future<Result>{std::in_place, res.result()};
+            return yaclib::MakeFuture<Result>(res.result());
           }
 
           return self->clusterInfo.waitForPlan(res.get());
         });
   }
 
-  auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> override {
+  auto deleteReplicatedLog(LogId id) const -> yaclib::Future<Result> override {
     return replication2::agency::methods::deleteReplicatedLog(vocbase.name(),
                                                               id)
-        .thenValue([self = shared_from_this()](
-                       ResultT<uint64_t>&& res) -> futures::Future<Result> {
+        .ThenInline([self = shared_from_this()](
+                        ResultT<uint64_t>&& res) -> yaclib::Future<Result> {
           if (res.fail()) {
-            return futures::Future<Result>{std::in_place, res.result()};
+            return yaclib::MakeFuture<Result>(res.result());
           }
 
           return self->clusterInfo.waitForPlan(res.get());
         });
   }
 
-  auto getReplicatedLogs() const -> futures::Future<std::unordered_map<
+  auto getReplicatedLogs() const -> yaclib::Future<std::unordered_map<
       arangodb::replication2::LogId,
       std::variant<replicated_log::LogStatus, ParticipantsList>>> override {
     auto logsParticipants =
@@ -429,25 +440,25 @@ struct ReplicatedLogMethodsCoordinator final
     for (auto& replicatedLog : logsParticipants.get()) {
       result[replicatedLog.first] = std::move(replicatedLog.second);
     }
-    return result;
+    return yaclib::MakeFuture(std::move(result));
   }
 
   [[noreturn]] auto getLocalStatus(LogId id) const
-      -> futures::Future<replication2::replicated_log::LogStatus> override {
+      -> yaclib::Future<replication2::replicated_log::LogStatus> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   auto getGlobalStatus(
       LogId id, replicated_log::GlobalStatus::SpecificationSource source) const
-      -> futures::Future<replication2::replicated_log::GlobalStatus> override {
+      -> yaclib::Future<replication2::replicated_log::GlobalStatus> override {
     // 1. Determine which source to use for gathering information
     // 2. Query information from all sources
     auto futureSpec = loadLogSpecification(vocbase.name(), id, source);
     return std::move(futureSpec)
-        .thenValue([self = shared_from_this(), source](
-                       ResultT<std::shared_ptr<
-                           replication2::agency::LogPlanSpecification const>>
-                           result) {
+        .ThenInline([self = shared_from_this(), source](
+                        ResultT<std::shared_ptr<
+                            replication2::agency::LogPlanSpecification const>>
+                            result) {
           if (result.fail()) {
             THROW_ARANGO_EXCEPTION(result.result());
           }
@@ -458,22 +469,22 @@ struct ReplicatedLogMethodsCoordinator final
         });
   }
 
-  auto getStatus(LogId id) const -> futures::Future<GenericLogStatus> override {
+  auto getStatus(LogId id) const -> yaclib::Future<GenericLogStatus> override {
     return getGlobalStatus(id, GlobalStatus::SpecificationSource::kRemoteAgency)
-        .thenValue([](GlobalStatus&& status) {
+        .ThenInline([](GlobalStatus&& status) {
           return GenericLogStatus(std::move(status));
         });
   }
 
   auto getLogEntryByIndex(LogId id, LogIndex index) const
-      -> futures::Future<std::optional<PersistingLogEntry>> override {
+      -> yaclib::Future<std::optional<PersistingLogEntry>> override {
     auto path =
         basics::StringUtils::joinT("/", "_api/log", id, "entry", index.value);
     network::RequestOptions opts;
     opts.database = vocbase.name();
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Get, path, {}, opts)
-        .thenValue([](network::Response&& resp) {
+        .ThenInline([](network::Response&& resp) {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
           }
@@ -484,7 +495,7 @@ struct ReplicatedLogMethodsCoordinator final
   }
 
   auto slice(LogId id, LogIndex start, LogIndex stop) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
+      -> yaclib::Future<std::unique_ptr<PersistedLogIterator>> override {
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "slice");
 
     network::RequestOptions opts;
@@ -493,8 +504,8 @@ struct ReplicatedLogMethodsCoordinator final
     opts.parameters["stop"] = to_string(stop);
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Get, path, {}, opts)
-        .thenValue([](network::Response&& resp)
-                       -> std::unique_ptr<PersistedLogIterator> {
+        .ThenInline([](network::Response&& resp)
+                        -> std::unique_ptr<PersistedLogIterator> {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
           }
@@ -505,7 +516,7 @@ struct ReplicatedLogMethodsCoordinator final
   }
 
   auto poll(LogId id, LogIndex index, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
+      -> yaclib::Future<std::unique_ptr<PersistedLogIterator>> override {
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "poll");
 
     network::RequestOptions opts;
@@ -514,8 +525,8 @@ struct ReplicatedLogMethodsCoordinator final
     opts.parameters["limit"] = std::to_string(limit);
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Get, path, {}, opts)
-        .thenValue([](network::Response&& resp)
-                       -> std::unique_ptr<PersistedLogIterator> {
+        .ThenInline([](network::Response&& resp)
+                        -> std::unique_ptr<PersistedLogIterator> {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
           }
@@ -526,7 +537,7 @@ struct ReplicatedLogMethodsCoordinator final
   }
 
   auto tail(LogId id, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
+      -> yaclib::Future<std::unique_ptr<PersistedLogIterator>> override {
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "tail");
 
     network::RequestOptions opts;
@@ -534,8 +545,8 @@ struct ReplicatedLogMethodsCoordinator final
     opts.parameters["limit"] = std::to_string(limit);
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Get, path, {}, opts)
-        .thenValue([](network::Response&& resp)
-                       -> std::unique_ptr<PersistedLogIterator> {
+        .ThenInline([](network::Response&& resp)
+                        -> std::unique_ptr<PersistedLogIterator> {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
           }
@@ -546,7 +557,7 @@ struct ReplicatedLogMethodsCoordinator final
   }
 
   auto head(LogId id, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
+      -> yaclib::Future<std::unique_ptr<PersistedLogIterator>> override {
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "head");
 
     network::RequestOptions opts;
@@ -554,8 +565,8 @@ struct ReplicatedLogMethodsCoordinator final
     opts.parameters["limit"] = std::to_string(limit);
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Get, path, {}, opts)
-        .thenValue([](network::Response&& resp)
-                       -> std::unique_ptr<PersistedLogIterator> {
+        .ThenInline([](network::Response&& resp)
+                        -> std::unique_ptr<PersistedLogIterator> {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
           }
@@ -566,7 +577,7 @@ struct ReplicatedLogMethodsCoordinator final
   }
 
   auto insert(LogId id, LogPayload payload, bool waitForSync) const
-      -> futures::Future<
+      -> yaclib::Future<
           std::pair<LogIndex, replicated_log::WaitForResult>> override {
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "insert");
 
@@ -577,7 +588,7 @@ struct ReplicatedLogMethodsCoordinator final
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Post, path,
                                 payload.copyBuffer(), opts)
-        .thenValue([](network::Response&& resp) {
+        .ThenInline([](network::Response&& resp) {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
           }
@@ -596,8 +607,8 @@ struct ReplicatedLogMethodsCoordinator final
 
   auto insert(LogId id, TypedLogIterator<LogPayload>& iter,
               bool waitForSync) const
-      -> futures::Future<std::pair<std::vector<LogIndex>,
-                                   replicated_log::WaitForResult>> override {
+      -> yaclib::Future<std::pair<std::vector<LogIndex>,
+                                  replicated_log::WaitForResult>> override {
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "multi-insert");
 
     std::size_t payloadSize{0};
@@ -617,7 +628,7 @@ struct ReplicatedLogMethodsCoordinator final
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Post, path,
                                 builder.bufferRef(), opts)
-        .thenValue([payloadSize](network::Response&& resp) {
+        .ThenInline([payloadSize](network::Response&& resp) {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
           }
@@ -642,7 +653,7 @@ struct ReplicatedLogMethodsCoordinator final
   }
 
   auto insertWithoutCommit(LogId id, LogPayload payload, bool waitForSync) const
-      -> futures::Future<LogIndex> override {
+      -> yaclib::Future<LogIndex> override {
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "insert");
 
     network::RequestOptions opts;
@@ -653,7 +664,7 @@ struct ReplicatedLogMethodsCoordinator final
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Post, path,
                                 payload.copyBuffer(), opts)
-        .thenValue([](network::Response&& resp) {
+        .ThenInline([](network::Response&& resp) {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
           }
@@ -664,7 +675,7 @@ struct ReplicatedLogMethodsCoordinator final
   }
 
   auto release(LogId id, LogIndex index) const
-      -> futures::Future<Result> override {
+      -> yaclib::Future<Result> override {
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "release");
 
     VPackBufferUInt8 body;
@@ -679,7 +690,7 @@ struct ReplicatedLogMethodsCoordinator final
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Post, path, std::move(body),
                                 opts)
-        .thenValue(
+        .ThenInline(
             [](network::Response&& resp) { return resp.combinedResult(); });
   }
 
@@ -705,10 +716,11 @@ struct ReplicatedLogMethodsCoordinator final
 
   auto loadLogSpecification(DatabaseID const& database, replication2::LogId id,
                             GlobalStatus::SpecificationSource source) const
-      -> futures::Future<ResultT<std::shared_ptr<
+      -> yaclib::Future<ResultT<std::shared_ptr<
           arangodb::replication2::agency::LogPlanSpecification const>>> {
     if (source == GlobalStatus::SpecificationSource::kLocalCache) {
-      return clusterInfo.getReplicatedLogPlanSpecification(id);
+      return yaclib::MakeFuture(
+          clusterInfo.getReplicatedLogPlanSpecification(id));
     } else {
       AsyncAgencyComm ac;
       auto f = ac.getValues(arangodb::cluster::paths::aliases::plan()
@@ -717,13 +729,12 @@ struct ReplicatedLogMethodsCoordinator final
                                 ->log(id),
                             std::chrono::seconds{5});
 
-      return std::move(f).then(
-          [self = shared_from_this(),
-           id](futures::Try<AgencyReadResult>&& tryResult)
+      return std::move(f).ThenInline(
+          [self = shared_from_this(), id](auto&& tryResult)
               -> ResultT<std::shared_ptr<
                   arangodb::replication2::agency::LogPlanSpecification const>> {
             auto result = basics::catchToResultT(
-                [&] { return std::move(tryResult.get()); });
+                [&] { return std::move(tryResult).Ok(); });
 
             if (result.fail()) {
               return result.result();
@@ -746,7 +757,7 @@ struct ReplicatedLogMethodsCoordinator final
   }
 
   auto readSupervisionStatus(replication2::LogId id) const
-      -> futures::Future<GlobalStatus::SupervisionStatus> {
+      -> yaclib::Future<GlobalStatus::SupervisionStatus> {
     AsyncAgencyComm ac;
     using Status = GlobalStatus::SupervisionStatus;
     // TODO move this into the agency methods
@@ -756,37 +767,37 @@ struct ReplicatedLogMethodsCoordinator final
                               ->log(id)
                               ->supervision(),
                           std::chrono::seconds{5});
-    return std::move(f).then([self = shared_from_this()](
-                                 futures::Try<AgencyReadResult>&& tryResult) {
-      auto result =
-          basics::catchToResultT([&] { return std::move(tryResult.get()); });
+    return std::move(f).ThenInline(
+        [self = shared_from_this()](auto&& tryResult) {
+          auto result =
+              basics::catchToResultT([&] { return std::move(tryResult).Ok(); });
 
-      auto const statusFromResult = [](Result const& res) {
-        return Status{
-            .connection = {.error = res.errorNumber(),
-                           .errorMessage = std::string{res.errorMessage()}},
-            .response = std::nullopt};
-      };
+          auto const statusFromResult = [](Result const& res) {
+            return Status{
+                .connection = {.error = res.errorNumber(),
+                               .errorMessage = std::string{res.errorMessage()}},
+                .response = std::nullopt};
+          };
 
-      if (result.fail()) {
-        return statusFromResult(result.result());
-      }
-      auto& read = result.get();
-      auto status = statusFromResult(read.asResult());
-      if (read.ok() && !read.value().isNone()) {
-        status.response.emplace(
-            velocypack::deserialize<
-                arangodb::replication2::agency::LogCurrentSupervision>(
-                read.value()));
-      }
+          if (result.fail()) {
+            return statusFromResult(result.result());
+          }
+          auto& read = result.get();
+          auto status = statusFromResult(read.asResult());
+          if (read.ok() && !read.value().isNone()) {
+            status.response.emplace(
+                velocypack::deserialize<
+                    arangodb::replication2::agency::LogCurrentSupervision>(
+                    read.value()));
+          }
 
-      return status;
-    });
+          return status;
+        });
   }
 
   auto queryParticipantsStatus(replication2::LogId id,
                                replication2::ParticipantId const& participant)
-      const -> futures::Future<GlobalStatus::ParticipantStatus> {
+      const -> yaclib::Future<GlobalStatus::ParticipantStatus> {
     using Status = GlobalStatus::ParticipantStatus;
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "local-status");
     network::RequestOptions opts;
@@ -794,9 +805,9 @@ struct ReplicatedLogMethodsCoordinator final
     opts.timeout = std::chrono::seconds{5};
     return network::sendRequest(pool, "server:" + participant,
                                 fuerte::RestVerb::Get, path, {}, opts)
-        .then([](futures::Try<network::Response>&& tryResult) mutable {
-          auto result = basics::catchToResultT(
-              [&] { return std::move(tryResult.get()); });
+        .ThenInline([](auto&& tryResult) mutable {
+          auto result =
+              basics::catchToResultT([&] { return std::move(tryResult).Ok(); });
 
           auto const statusFromResult = [](Result const& res) {
             return Status{
@@ -824,22 +835,37 @@ struct ReplicatedLogMethodsCoordinator final
   auto collectGlobalStatusUsingSpec(
       std::shared_ptr<replication2::agency::LogPlanSpecification const> spec,
       GlobalStatus::SpecificationSource source) const
-      -> futures::Future<GlobalStatus> {
+      -> yaclib::Future<GlobalStatus> {
+    // TODO(MBkkt) Make a coroutine. It will be better!
     // send of a request to all participants
+    using Participants =
+        std::vector<yaclib::Result<GlobalStatus::ParticipantStatus>>;
+    using All = std::variant<GlobalStatus::SupervisionStatus, Participants>;
 
-    auto psf = std::invoke([&] {
-      auto const& participants = spec->participantsConfig.participants;
-      std::vector<futures::Future<GlobalStatus::ParticipantStatus>> pfs;
-      pfs.reserve(participants.size());
-      for (auto const& [id, flags] : participants) {
-        pfs.emplace_back(queryParticipantsStatus(spec->id, id));
-      }
-      return futures::collectAll(pfs);
-    });
-    auto af = readSupervisionStatus(spec->id);
-    return futures::collect(std::move(af), std::move(psf))
-        .thenValue([spec, source](auto&& pairResult) {
-          auto& [agency, participantResults] = pairResult;
+    auto psf =
+        std::invoke([&] {
+          auto const& participants = spec->participantsConfig.participants;
+          std::vector<yaclib::Future<GlobalStatus::ParticipantStatus>> pfs;
+          pfs.reserve(participants.size());
+          for (auto const& [id, flags] : participants) {
+            pfs.emplace_back(queryParticipantsStatus(spec->id, id));
+          }
+          return yaclib::WhenAll<yaclib::FailPolicy::None,
+                                 yaclib::OrderPolicy::Same>(pfs.begin(),
+                                                            pfs.end());
+        }).ThenInline([](Participants&& r) { return All{std::move(r)}; });
+
+    auto af = readSupervisionStatus(spec->id).ThenInline(
+        [](GlobalStatus::SupervisionStatus&& r) { return All{std::move(r)}; });
+
+    return yaclib::WhenAll<yaclib::FailPolicy::FirstFail,
+                           yaclib::OrderPolicy::Same>(std::move(af),
+                                                      std::move(psf))
+        .ThenInline([spec, source](std::vector<All>&& pairResult) {
+          auto [agency, participantResults] = [&] {
+            return std::pair{std::get<0>(pairResult[0]),
+                             std::get<1>(pairResult[1])};
+          }();
 
           auto leader = std::optional<ParticipantId>{};
           if (spec->currentTerm && spec->currentTerm->leader) {
@@ -853,7 +879,7 @@ struct ReplicatedLogMethodsCoordinator final
           std::size_t idx = 0;
           for (auto const& [id, flags] : participants) {
             auto& result = participantResults.at(idx++);
-            participantsMap[id] = std::move(result.get());
+            participantsMap[id] = std::move(result).Ok();
           }
 
           return GlobalStatus{
@@ -877,25 +903,25 @@ struct ReplicatedStateDBServerMethods
       : vocbase(vocbase) {}
 
   auto createReplicatedState(replicated_state::agency::Target spec) const
-      -> futures::Future<Result> override {
+      -> yaclib::Future<Result> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
   }
 
   auto deleteReplicatedState(LogId id) const
-      -> futures::Future<Result> override {
+      -> yaclib::Future<Result> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
   }
 
   [[nodiscard]] auto waitForStateReady(LogId, std::uint64_t)
-      -> futures::Future<ResultT<consensus::index_t>> override {
+      -> yaclib::Future<ResultT<consensus::index_t>> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   auto getLocalStatus(LogId id) const
-      -> futures::Future<replicated_state::StateStatus> override {
+      -> yaclib::Future<replicated_state::StateStatus> override {
     auto state = vocbase.getReplicatedStateById(id);
     if (auto status = state->getStatus(); status.has_value()) {
-      return std::move(*status);
+      return yaclib::MakeFuture(std::move(*status));
     }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
   }
@@ -903,19 +929,19 @@ struct ReplicatedStateDBServerMethods
   auto replaceParticipant(LogId logId, ParticipantId const& participantToRemove,
                           ParticipantId const& participantToAdd,
                           std::optional<ParticipantId> const& currentLeader)
-      const -> futures::Future<Result> override {
+      const -> yaclib::Future<Result> override {
     // Only available on the coordinator
     THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
   }
 
   auto setLeader(LogId id, std::optional<ParticipantId> const& leaderId) const
-      -> futures::Future<Result> override {
+      -> yaclib::Future<Result> override {
     // Only available on the coordinator
     THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
   }
 
   auto getGlobalSnapshotStatus(LogId) const
-      -> futures::Future<ResultT<GlobalSnapshotStatus>> override {
+      -> yaclib::Future<ResultT<GlobalSnapshotStatus>> override {
     // Only available on the coordinator
     THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
   }
@@ -934,28 +960,30 @@ struct ReplicatedStateCoordinatorMethods
         databaseName(std::move(databaseName)) {}
 
   auto createReplicatedState(replicated_state::agency::Target spec) const
-      -> futures::Future<Result> override {
+      -> yaclib::Future<Result> override {
     return replication2::agency::methods::createReplicatedState(databaseName,
                                                                 spec)
-        .thenValue([self = shared_from_this()](
-                       ResultT<uint64_t>&& res) -> futures::Future<Result> {
+        .ThenInline([self = shared_from_this()](
+                        ResultT<uint64_t>&& res) -> yaclib::Future<Result> {
           if (res.fail()) {
-            return futures::Future<Result>{std::in_place, res.result()};
+            return yaclib::MakeFuture<Result>(res.result());
           }
           return self->clusterInfo.waitForPlan(res.get());
         });
   }
 
   [[nodiscard]] virtual auto waitForStateReady(LogId id, std::uint64_t version)
-      -> futures::Future<ResultT<consensus::index_t>> override {
+      -> yaclib::Future<ResultT<consensus::index_t>> override {
     struct Context {
       explicit Context(uint64_t version) : version(version) {}
-      futures::Promise<ResultT<consensus::index_t>> promise;
+      yaclib::Promise<ResultT<consensus::index_t>> promise;
       std::uint64_t version;
     };
 
     auto ctx = std::make_shared<Context>(version);
-    auto f = ctx->promise.getFuture();
+    yaclib::Future<ResultT<consensus::index_t>> f;
+    std::tie(f, ctx->promise) =
+        yaclib::MakeContract<ResultT<consensus::index_t>>();
 
     using namespace cluster::paths;
     // register an agency callback and wait for the given version to appear in
@@ -976,7 +1004,7 @@ struct ReplicatedStateCoordinatorMethods
               replicated_state::agency::Current::Supervision>(slice);
           if (supervision.version.has_value() &&
               supervision.version >= ctx->version) {
-            ctx->promise.setValue(ResultT<consensus::index_t>{index});
+            std::move(ctx->promise).Set(ResultT<consensus::index_t>{index});
             return true;
           }
           return false;
@@ -985,23 +1013,24 @@ struct ReplicatedStateCoordinatorMethods
     if (auto result =
             clusterFeature.agencyCallbackRegistry()->registerCallback(cb, true);
         result.fail()) {
-      return {result};
+      return yaclib::MakeFuture<ResultT<consensus::index_t>>(result);
     }
 
-    return std::move(f).then([self = shared_from_this(), cb](auto&& result) {
-      self->clusterFeature.agencyCallbackRegistry()->unregisterCallback(cb);
-      return std::move(result.get());
-    });
+    return std::move(f).ThenInline(
+        [self = shared_from_this(), cb](auto&& result) {
+          self->clusterFeature.agencyCallbackRegistry()->unregisterCallback(cb);
+          return std::move(result).Ok();
+        });
   }
 
   auto deleteReplicatedState(LogId id) const
-      -> futures::Future<Result> override {
+      -> yaclib::Future<Result> override {
     return replication2::agency::methods::deleteReplicatedState(databaseName,
                                                                 id)
-        .thenValue([self = shared_from_this()](
-                       ResultT<uint64_t>&& res) -> futures::Future<Result> {
+        .ThenInline([self = shared_from_this()](
+                        ResultT<uint64_t>&& res) -> yaclib::Future<Result> {
           if (res.fail()) {
-            return futures::Future<Result>{std::in_place, res.result()};
+            return yaclib::MakeFuture<Result>(res.result());
           }
 
           return self->clusterInfo.waitForPlan(res.get());
@@ -1009,56 +1038,57 @@ struct ReplicatedStateCoordinatorMethods
   }
 
   auto getLocalStatus(LogId id) const
-      -> futures::Future<replicated_state::StateStatus> override {
+      -> yaclib::Future<replicated_state::StateStatus> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   auto replaceParticipant(LogId id, ParticipantId const& participantToRemove,
                           ParticipantId const& participantToAdd,
                           std::optional<ParticipantId> const& currentLeader)
-      const -> futures::Future<Result> override {
+      const -> yaclib::Future<Result> override {
     return replication2::agency::methods::replaceReplicatedStateParticipant(
         databaseName, id, participantToRemove, participantToAdd, currentLeader);
   }
 
   auto setLeader(LogId id, std::optional<ParticipantId> const& leaderId) const
-      -> futures::Future<Result> override {
+      -> yaclib::Future<Result> override {
     return replication2::agency::methods::replaceReplicatedSetLeader(
         databaseName, id, leaderId);
   }
 
   auto getGlobalSnapshotStatus(LogId id) const
-      -> futures::Future<ResultT<GlobalSnapshotStatus>> override {
+      -> yaclib::Future<ResultT<GlobalSnapshotStatus>> override {
     AsyncAgencyComm ac;
     auto f = ac.getValues(arangodb::cluster::paths::aliases::current()
                               ->replicatedStates()
                               ->database(databaseName)
                               ->state(id),
                           std::chrono::seconds{5});
-    return std::move(f).then([self = shared_from_this(),
-                              id](futures::Try<AgencyReadResult>&& tryResult)
-                                 -> ResultT<GlobalSnapshotStatus> {
-      auto result =
-          basics::catchToResultT([&] { return std::move(tryResult.get()); });
+    return std::move(f).ThenInline(
+        [self = shared_from_this(),
+         id](auto&& tryResult) -> ResultT<GlobalSnapshotStatus> {
+          auto result =
+              basics::catchToResultT([&] { return std::move(tryResult).Ok(); });
 
-      if (result.fail()) {
-        return result.result();
-      }
-      if (result->value().isNone()) {
-        return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
-                           id.id());
-      }
-      auto current = velocypack::deserialize<replicated_state::agency::Current>(
-          result->value());
+          if (result.fail()) {
+            return result.result();
+          }
+          if (result->value().isNone()) {
+            return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
+                               id.id());
+          }
+          auto current =
+              velocypack::deserialize<replicated_state::agency::Current>(
+                  result->value());
 
-      GlobalSnapshotStatus status;
-      for (auto const& [p, s] : current.participants) {
-        status[p] = ParticipantSnapshotStatus{.status = s.snapshot,
-                                              .generation = s.generation};
-      }
+          GlobalSnapshotStatus status;
+          for (auto const& [p, s] : current.participants) {
+            status[p] = ParticipantSnapshotStatus{.status = s.snapshot,
+                                                  .generation = s.generation};
+          }
 
-      return status;
-    });
+          return status;
+        });
   }
 
   ArangodServer& server;

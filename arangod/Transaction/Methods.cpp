@@ -45,7 +45,6 @@
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashSet.h"
-#include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Network/Methods.h"
@@ -76,6 +75,7 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
 
+#include <yaclib/async/when_all.hpp>
 #include <sstream>
 
 using namespace arangodb;
@@ -83,7 +83,7 @@ using namespace arangodb::transaction;
 using namespace arangodb::transaction::helpers;
 
 template<typename T>
-using Future = futures::Future<T>;
+using Future = yaclib::Future<T>;
 
 namespace {
 
@@ -475,11 +475,13 @@ velocypack::Options const& transaction::Methods::vpackOptions() const {
 /// @brief Find out if any of the given requests has ended in a refusal
 /// by a leader.
 static bool findRefusal(
-    std::vector<futures::Try<network::Response>> const& responses) {
-  for (auto const& it : responses) {
-    if (it.hasValue() && it.get().ok() &&
-        it.get().statusCode() == fuerte::StatusNotAcceptable) {
-      auto r = it.get().combinedResult();
+    std::vector<yaclib::Future<network::Response>> const& futures) {
+  for (auto const& f : futures) {
+    TRI_ASSERT(f.Ready());
+    auto& res = f.Touch();
+    if (res && res.Value().ok() &&
+        res.Value().statusCode() == fuerte::StatusNotAcceptable) {
+      auto r = res.Value().combinedResult();
       bool followerRefused =
           (r.errorNumber() ==
            TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
@@ -696,39 +698,42 @@ Result transaction::Methods::begin() {
 
 auto Methods::commit() noexcept -> Result {
   return commitInternal(MethodsApi::Synchronous)  //
-      .then(basics::tryToResult)
-      .get();
+      .ThenInline(basics::tryToResult)
+      .Get()
+      .Ok();
 }
 
 /// @brief commit / finish the transaction
 auto transaction::Methods::commitAsync() noexcept -> Future<Result> {
   return commitInternal(MethodsApi::Asynchronous)  //
-      .then(basics::tryToResult);
+      .ThenInline(basics::tryToResult);
 }
 
 auto Methods::abort() noexcept -> Result {
   return abortInternal(MethodsApi::Synchronous)  //
-      .then(basics::tryToResult)
-      .get();
+      .ThenInline(basics::tryToResult)
+      .Get()
+      .Ok();
 }
 
 /// @brief abort the transaction
 auto transaction::Methods::abortAsync() noexcept -> Future<Result> {
   return abortInternal(MethodsApi::Asynchronous)  //
-      .then(basics::tryToResult);
+      .ThenInline(basics::tryToResult);
 }
 
 auto Methods::finish(Result const& res) noexcept -> Result {
   return finishInternal(res, MethodsApi::Synchronous)  //
-      .then(basics::tryToResult)
-      .get();
+      .ThenInline(basics::tryToResult)
+      .Get()
+      .Ok();
 }
 
 /// @brief finish a transaction (commit or abort), based on the previous state
 auto transaction::Methods::finishAsync(Result const& res) noexcept
     -> Future<Result> {
   return finishInternal(res, MethodsApi::Asynchronous)  //
-      .then(basics::tryToResult);
+      .ThenInline(basics::tryToResult);
 }
 
 /// @brief return the transaction id
@@ -900,7 +905,8 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   if (_state->isCoordinator()) {
     OperationResult opRes = documentCoordinator(collectionName, value, options,
                                                 MethodsApi::Synchronous)
-                                .get();
+                                .Get()
+                                .Ok();
     if (!opRes.fail()) {
       result.add(opRes.slice());
     }
@@ -987,7 +993,7 @@ namespace {
 template<typename F>
 Future<OperationResult> addTracking(Future<OperationResult>&& f, F&& func) {
 #ifdef USE_ENTERPRISE
-  return std::move(f).thenValue(func);
+  return std::move(f).ThenInline(func);
 #else
   return std::move(f);
 #endif
@@ -999,7 +1005,8 @@ OperationResult Methods::document(std::string const& collectionName,
                                   OperationOptions const& options) {
   return documentInternal(collectionName, value, options,
                           MethodsApi::Synchronous)
-      .get();
+      .Get()
+      .Ok();
 }
 
 /// @brief return one or multiple documents from a collection
@@ -1018,13 +1025,14 @@ Future<OperationResult> transaction::Methods::documentCoordinator(
   if (!value.isArray()) {
     std::string_view key(transaction::helpers::extractKeyPart(value));
     if (key.empty()) {
-      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, options);
+      return yaclib::MakeFuture(
+          OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, options));
     }
   }
 
   auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
-    return futures::makeFuture(
+    return yaclib::MakeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
 
@@ -1041,12 +1049,12 @@ Future<OperationResult> transaction::Methods::documentLocal(
       addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
   if (trxColl == nullptr) {
-    return futures::makeFuture(
+    return yaclib::MakeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
   std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
   if (collection == nullptr) {
-    return futures::makeFuture(
+    return yaclib::MakeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
 
@@ -1055,7 +1063,7 @@ Future<OperationResult> transaction::Methods::documentLocal(
     if (!followerInfo->getLeader().empty()) {
       // We believe to be a follower!
       if (!options.allowDirtyReads) {
-        return futures::makeFuture(
+        return yaclib::MakeFuture(
             OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
       }
     }
@@ -1126,7 +1134,7 @@ Future<OperationResult> transaction::Methods::documentLocal(
   events::ReadDocument(vocbase().name(), collectionName, value, options,
                        res.errorNumber());
 
-  return futures::makeFuture(OperationResult(
+  return yaclib::MakeFuture(OperationResult(
       std::move(res), resultBuilder.steal(), options, countErrorCodes));
 }
 
@@ -1134,7 +1142,8 @@ OperationResult Methods::insert(std::string const& collectionName,
                                 VPackSlice value,
                                 OperationOptions const& options) {
   return insertInternal(collectionName, value, options, MethodsApi::Synchronous)
-      .get();
+      .Get()
+      .Ok();
 }
 
 /// @brief create one or multiple documents in a collection
@@ -1156,7 +1165,7 @@ Future<OperationResult> transaction::Methods::insertCoordinator(
     OperationOptions const& options, MethodsApi api) {
   auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
-    return futures::makeFuture(
+    return yaclib::MakeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
   return arangodb::createDocumentOnCoordinator(*this, *colptr, value, options,
@@ -1334,12 +1343,12 @@ Future<OperationResult> transaction::Methods::insertLocal(
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   TransactionCollection* trxColl = trxCollection(cid);
   if (trxColl == nullptr) {
-    return futures::makeFuture(
+    return yaclib::MakeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
   std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
   if (collection == nullptr) {
-    return futures::makeFuture(
+    return yaclib::MakeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
 
@@ -1350,7 +1359,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
       *collection, "insert", value, options, replicationType, followers);
 
   if (res.fail()) {
-    return futures::makeFuture(OperationResult(std::move(res), options));
+    return yaclib::MakeFuture(OperationResult(std::move(res), options));
   }
 
   // set up batch options
@@ -1582,7 +1591,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
              resultBuilder.slice().length() == value.length());
 
   std::shared_ptr<VPackBufferUInt8> resDocs = resultBuilder.steal();
-  auto intermediateCommit = futures::makeFuture(res);
+  auto intermediateCommit = yaclib::MakeFuture(res);
   if (res.ok()) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
     StorageEngine& engine = collection->vocbase()
@@ -1608,8 +1617,8 @@ Future<OperationResult> transaction::Methods::insertLocal(
       // Now replicate the good operations on all followers:
       return replicateOperations(*trxColl, followers, options, *replicationData,
                                  TRI_VOC_DOCUMENT_OPERATION_INSERT)
-          .thenValue([options, errs = std::move(errorCounter),
-                      resultData = std::move(resDocs)](Result res) mutable {
+          .ThenInline([options, errs = std::move(errorCounter),
+                       resultData = std::move(resDocs)](Result res) mutable {
             if (!res.ok()) {
               return OperationResult{std::move(res), options};
             }
@@ -1632,8 +1641,8 @@ Future<OperationResult> transaction::Methods::insertLocal(
   }
 
   return std::move(intermediateCommit)
-      .thenValue([options, errorCounter = std::move(errorCounter),
-                  resDocs = std::move(resDocs)](auto&& res) mutable {
+      .ThenInline([options, errorCounter = std::move(errorCounter),
+                   resDocs = std::move(resDocs)](Result&& res) mutable {
         return OperationResult(res, std::move(resDocs), options,
                                std::move(errorCounter));
       });
@@ -1698,7 +1707,8 @@ OperationResult Methods::update(std::string const& collectionName,
                                 OperationOptions const& options) {
   return updateInternal(collectionName, updateValue, options,
                         MethodsApi::Synchronous)
-      .get();
+      .Get()
+      .Ok();
 }
 
 /// @brief update/patch one or multiple documents in a collection
@@ -1722,13 +1732,14 @@ Future<OperationResult> transaction::Methods::modifyCoordinator(
   if (!newValue.isArray()) {
     std::string_view key(transaction::helpers::extractKeyPart(newValue));
     if (key.empty()) {
-      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, options);
+      return yaclib::MakeFuture(
+          OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, options));
     }
   }
 
   auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
-    return futures::makeFuture(
+    return yaclib::MakeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
 
@@ -1743,7 +1754,8 @@ OperationResult Methods::replace(std::string const& collectionName,
                                  OperationOptions const& options) {
   return replaceInternal(collectionName, replaceValue, options,
                          MethodsApi::Synchronous)
-      .get();
+      .Get()
+      .Ok();
 }
 
 /// @brief replace one or multiple documents in a collection
@@ -1766,12 +1778,12 @@ Future<OperationResult> transaction::Methods::modifyLocal(
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   TransactionCollection* trxColl = trxCollection(cid);
   if (trxColl == nullptr) {
-    return futures::makeFuture(
+    return yaclib::MakeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
   std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
   if (collection == nullptr) {
-    return futures::makeFuture(
+    return yaclib::MakeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
   TRI_ASSERT(trxColl->isLocked(AccessMode::Type::WRITE));
@@ -1785,7 +1797,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
       replicationType, followers);
 
   if (res.fail()) {
-    return futures::makeFuture(OperationResult(std::move(res), options));
+    return yaclib::MakeFuture(OperationResult(std::move(res), options));
   }
 
   // set up batch options
@@ -1944,7 +1956,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
              resultBuilder.slice().length() == newValue.length());
 
   auto resDocs = resultBuilder.steal();
-  auto intermediateCommit = futures::makeFuture(res);
+  auto intermediateCommit = yaclib::MakeFuture(res);
   if (res.ok()) {
     if (replicationType == ReplicationType::LEADER &&
         (!followers->empty() ||
@@ -1964,8 +1976,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(
       return replicateOperations(*trxColl, followers, options, *replicationData,
                                  isUpdate ? TRI_VOC_DOCUMENT_OPERATION_UPDATE
                                           : TRI_VOC_DOCUMENT_OPERATION_REPLACE)
-          .thenValue([options, errs = std::move(errorCounter),
-                      resultData = std::move(resDocs)](Result&& res) mutable {
+          .ThenInline([options, errs = std::move(errorCounter),
+                       resultData = std::move(resDocs)](Result&& res) mutable {
             if (!res.ok()) {
               return OperationResult{std::move(res), options};
             }
@@ -1988,8 +2000,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   }
 
   return std::move(intermediateCommit)
-      .thenValue([options, errorCounter = std::move(errorCounter),
-                  resDocs = std::move(resDocs)](auto&& res) mutable {
+      .ThenInline([options, errorCounter = std::move(errorCounter),
+                   resDocs = std::move(resDocs)](Result&& res) mutable {
         return OperationResult(res, std::move(resDocs), options,
                                std::move(errorCounter));
       });
@@ -2099,7 +2111,8 @@ OperationResult Methods::remove(std::string const& collectionName,
                                 VPackSlice value,
                                 OperationOptions const& options) {
   return removeInternal(collectionName, value, options, MethodsApi::Synchronous)
-      .get();
+      .Get()
+      .Ok();
 }
 
 /// @brief remove one or multiple documents in a collection
@@ -2121,7 +2134,7 @@ Future<OperationResult> transaction::Methods::removeCoordinator(
     OperationOptions const& options, MethodsApi api) {
   auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
-    return futures::makeFuture(
+    return yaclib::MakeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
   return arangodb::removeDocumentOnCoordinator(*this, *colptr, value, options,
@@ -2139,12 +2152,12 @@ Future<OperationResult> transaction::Methods::removeLocal(
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   TransactionCollection* trxColl = trxCollection(cid);
   if (trxColl == nullptr) {
-    return futures::makeFuture(
+    return yaclib::MakeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
   std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
   if (collection == nullptr) {
-    return futures::makeFuture(
+    return yaclib::MakeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
   TRI_ASSERT(trxColl->isLocked(AccessMode::Type::WRITE));
@@ -2156,7 +2169,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
       *collection, "remove", value, options, replicationType, followers);
 
   if (res.fail()) {
-    return futures::makeFuture(OperationResult(std::move(res), options));
+    return yaclib::MakeFuture(OperationResult(std::move(res), options));
   }
 
   bool excludeAllFromReplication =
@@ -2288,7 +2301,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
              resultBuilder.slice().length() == value.length());
 
   auto resDocs = resultBuilder.steal();
-  auto intermediateCommit = futures::makeFuture(res);
+  auto intermediateCommit = yaclib::MakeFuture(res);
   if (res.ok()) {
     auto replicationVersion = collection->replicationVersion();
     if (replicationType == ReplicationType::LEADER &&
@@ -2305,8 +2318,8 @@ Future<OperationResult> transaction::Methods::removeLocal(
       // Now replicate the good operations on all followers:
       return replicateOperations(*trxColl, followers, options, *replicationData,
                                  TRI_VOC_DOCUMENT_OPERATION_REMOVE)
-          .thenValue([options, errs = std::move(errorCounter),
-                      resultData = std::move(resDocs)](Result res) mutable {
+          .ThenInline([options, errs = std::move(errorCounter),
+                       resultData = std::move(resDocs)](Result res) mutable {
             if (!res.ok()) {
               return OperationResult{std::move(res), options};
             }
@@ -2329,8 +2342,8 @@ Future<OperationResult> transaction::Methods::removeLocal(
   }
 
   return std::move(intermediateCommit)
-      .thenValue([options, errorCounter = std::move(errorCounter),
-                  resDocs = std::move(resDocs)](auto&& res) mutable {
+      .ThenInline([options, errorCounter = std::move(errorCounter),
+                   resDocs = std::move(resDocs)](Result&& res) mutable {
         return OperationResult(res, std::move(resDocs), options,
                                std::move(errorCounter));
       });
@@ -2434,7 +2447,8 @@ OperationResult transaction::Methods::allLocal(
 OperationResult Methods::truncate(std::string const& collectionName,
                                   OperationOptions const& options) {
   return truncateInternal(collectionName, options, MethodsApi::Synchronous)
-      .get();
+      .Get()
+      .Ok();
 }
 
 /// @brief remove all documents in a collection
@@ -2460,12 +2474,12 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   TransactionCollection* trxColl = trxCollection(cid);
   if (trxColl == nullptr) {
-    return futures::makeFuture(
+    return yaclib::MakeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
   auto const& collection = trxColl->collection();
   if (collection == nullptr) {
-    return futures::makeFuture(
+    return yaclib::MakeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
 
@@ -2489,7 +2503,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(
     // this is because the non-range delete version of truncate
     // removes documents one by one, and also _replicates_ these
     // removal operations.
-    return futures::makeFuture(OperationResult(std::move(res), options));
+    return yaclib::MakeFuture(OperationResult(std::move(res), options));
   }
 
   // range delete version of truncate. we are responsible for the
@@ -2506,12 +2520,14 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       VPackObjectBuilder ob(&body);
       body.add("collection", collectionName);
     }
-    leaderState->replicateOperation(
-        body.sharedSlice(),
-        replication2::replicated_state::document::OperationType::kTruncate,
-        state()->id(),
-        replication2::replicated_state::document::ReplicationOptions{});
-    return OperationResult{Result{}, options};
+    leaderState
+        ->replicateOperation(
+            body.sharedSlice(),
+            replication2::replicated_state::document::OperationType::kTruncate,
+            state()->id(),
+            replication2::replicated_state::document::ReplicationOptions{})
+        .Detach();
+    return yaclib::MakeFuture<OperationResult>(Result{}, options);
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -2566,13 +2582,15 @@ Future<OperationResult> transaction::Methods::truncateLocal(
         futures.emplace_back(std::move(future));
       }
 
-      auto responses = futures::collectAll(futures).get();
+      yaclib::Wait(futures.begin(), futures.end());
       // we drop all followers that were not successful:
       for (size_t i = 0; i < followers->size(); ++i) {
+        TRI_ASSERT(futures[i].Ready());
+        auto& r = std::as_const(futures[i]).Touch();
         bool replicationWorked =
-            responses[i].hasValue() && responses[i].get().ok() &&
-            (responses[i].get().statusCode() == fuerte::StatusAccepted ||
-             responses[i].get().statusCode() == fuerte::StatusOK);
+            r && r.Value().ok() &&
+            (r.Value().statusCode() == fuerte::StatusAccepted ||
+             r.Value().statusCode() == fuerte::StatusOK);
         if (!replicationWorked) {
           if (!vocbase().server().isStopping()) {
             auto const& followerInfo = collection->followers();
@@ -2580,7 +2598,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(
                 << "truncateLocal: dropping follower " << (*followers)[i]
                 << " for shard " << collection->vocbase().name() << "/"
                 << collectionName << ": "
-                << responses[i].get().combinedResult().errorMessage();
+                << r.Ok().combinedResult().errorMessage();
             res = followerInfo->remove((*followers)[i]);
             // intentionally do NOT remove the follower from the list of
             // known servers here. if we do, we will not be able to
@@ -2634,29 +2652,30 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       // this operation to succeed, we simply return with a refusal
       // error (note that we use the follower version, since we have
       // lost leadership):
-      if (findRefusal(responses)) {
+      if (findRefusal(futures)) {
         ++vocbase()
               .server()
               .getFeature<arangodb::ClusterFeature>()
               .followersRefusedCounter();
-        return futures::makeFuture(
+        return yaclib::MakeFuture(
             OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
       }
     }
   }
 
-  return futures::makeFuture(OperationResult(res, options));
+  return yaclib::MakeFuture(OperationResult(res, options));
 }
 
 OperationResult Methods::count(std::string const& collectionName,
                                CountType type,
                                OperationOptions const& options) {
   return countInternal(collectionName, type, options, MethodsApi::Synchronous)
-      .get();
+      .Get()
+      .Ok();
 }
 
 /// @brief count the number of documents in a collection
-futures::Future<OperationResult> transaction::Methods::countAsync(
+yaclib::Future<OperationResult> transaction::Methods::countAsync(
     std::string const& collectionName, transaction::CountType type,
     OperationOptions const& options) {
   return countInternal(collectionName, type, options, MethodsApi::Asynchronous);
@@ -2664,13 +2683,13 @@ futures::Future<OperationResult> transaction::Methods::countAsync(
 
 #ifndef USE_ENTERPRISE
 /// @brief count the number of documents in a collection
-futures::Future<OperationResult> transaction::Methods::countCoordinator(
+yaclib::Future<OperationResult> transaction::Methods::countCoordinator(
     std::string const& collectionName, transaction::CountType type,
     OperationOptions const& options, MethodsApi api) {
   // First determine the collection ID from the name:
   auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
-    return futures::makeFuture(
+    return yaclib::MakeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
 
@@ -2679,7 +2698,7 @@ futures::Future<OperationResult> transaction::Methods::countCoordinator(
 
 #endif
 
-futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
+yaclib::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
     std::shared_ptr<LogicalCollection> const& collinfo,
     std::string const& collectionName, transaction::CountType type,
     OperationOptions const& options, MethodsApi api) {
@@ -2697,7 +2716,7 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
   if (documents == CountCache::NotPopulated) {
     // no cache hit, or detailed results requested
     return arangodb::countOnCoordinator(*this, collectionName, options, api)
-        .thenValue(
+        .ThenInline(
             [&cache, type, options](OperationResult&& res) -> OperationResult {
               if (res.fail()) {
                 return std::move(res);
@@ -2730,7 +2749,8 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
   // return number from cache
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(documents));
-  return OperationResult(Result(), resultBuilder.steal(), options);
+  return yaclib::MakeFuture<OperationResult>(Result(), resultBuilder.steal(),
+                                             options);
 }
 
 /// @brief count the number of documents in a collection
@@ -2994,12 +3014,14 @@ Future<Result> Methods::replicateOperations(
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(
         transactionCollection);
     auto leaderState = rtc.leaderState();
-    leaderState->replicateOperation(
-        replicationData.sharedSlice(),
-        replication2::replicated_state::document::fromDocumentOperation(
-            operation),
-        state()->id(),
-        replication2::replicated_state::document::ReplicationOptions{});
+    leaderState
+        ->replicateOperation(
+            replicationData.sharedSlice(),
+            replication2::replicated_state::document::fromDocumentOperation(
+                operation),
+            state()->id(),
+            replication2::replicated_state::document::ReplicationOptions{})
+        .Detach();
     return performIntermediateCommitIfRequired(collection->id());
   }
 
@@ -3132,8 +3154,9 @@ Future<Result> Methods::replicateOperations(
   // we continue with the operation, since most likely, the follower was
   // simply dropped in the meantime.
   // In any case, we drop the follower here (just in case).
-  auto cb = [=, this](std::vector<futures::Try<network::Response>>&& responses)
-      -> futures::Future<Result> {
+  auto cb = [=,
+             this](std::vector<yaclib::Result<network::Response>>&& responses)
+      -> yaclib::Future<Result> {
     auto duration = std::chrono::steady_clock::now() - startTimeReplication;
     auto& replMetrics =
         vocbase().server().getFeature<ReplicationMetricsFeature>();
@@ -3144,7 +3167,7 @@ Future<Result> Methods::replicateOperations(
     bool didRefuse = false;
     // We drop all followers that were not successful:
     for (size_t i = 0; i < followerList->size(); ++i) {
-      network::Response const& resp = responses[i].get();
+      auto& resp = std::as_const(responses[i]).Ok();
       ServerID const& follower = (*followerList)[i];
 
       std::string replicationFailureReason;
@@ -3251,33 +3274,39 @@ Future<Result> Methods::replicateOperations(
     }
 
     if (didRefuse) {  // case (1), caller may abort this transaction
-      return Result{TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
+      return yaclib::MakeFuture<Result>(
+          TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
     } else {
       // execute a deferred intermediate commit, if required.
       return performIntermediateCommitIfRequired(collection->id());
     }
   };
-  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futures.begin(), futures.end())
+      .ThenInline(std::move(cb));
 }
 
 Future<Result> Methods::commitInternal(MethodsApi api) noexcept try {
-  TRI_IF_FAILURE("TransactionCommitFail") { return Result(TRI_ERROR_DEBUG); }
+  TRI_IF_FAILURE("TransactionCommitFail") {
+    return yaclib::MakeFuture<Result>(TRI_ERROR_DEBUG);
+  }
 
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
-    return Result(TRI_ERROR_TRANSACTION_INTERNAL,
-                  "transaction not running on commit");
+    return yaclib::MakeFuture<Result>(TRI_ERROR_TRANSACTION_INTERNAL,
+                                      "transaction not running on commit");
   }
 
   if (!_state->isReadOnlyTransaction()) {
     auto const& exec = ExecContext::current();
     bool cancelRW = ServerState::readOnly() && !exec.isSuperuser();
     if (exec.isCanceled() || cancelRW) {
-      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
+      return yaclib::MakeFuture<Result>(TRI_ERROR_ARANGO_READ_ONLY,
+                                        "server is in read-only mode");
     }
   }
 
-  auto f = futures::makeFuture(Result());
+  auto f = yaclib::MakeFuture<Result>();
 
   if (!_mainTransaction) {
     return f;
@@ -3292,38 +3321,38 @@ Future<Result> Methods::commitInternal(MethodsApi api) noexcept try {
   }
 
   return std::move(f)
-      .thenValue([this](Result res) -> futures::Future<Result> {
+      .ThenInline([this](Result res) -> yaclib::Future<Result> {
         if (res.fail()) {  // do not commit locally
           LOG_TOPIC("5743a", WARN, Logger::TRANSACTIONS)
               << "failed to commit on subordinates: '" << res.errorMessage()
               << "'";
-          return res;
+          return yaclib::MakeFuture(std::move(res));
         }
 
         return _state->commitTransaction(this);
       })
-      .thenValue([this](Result res) -> Result {
+      .ThenInline([this](Result res) -> Result {
         if (res.ok()) {
           res = applyStatusChangeCallbacks(*this, Status::COMMITTED);
         }
         return res;
       });
 } catch (basics::Exception const& ex) {
-  return Result(ex.code(), ex.message());
+  return yaclib::MakeFuture<Result>(ex.code(), ex.message());
 } catch (std::exception const& ex) {
-  return Result(TRI_ERROR_INTERNAL, ex.what());
+  return yaclib::MakeFuture<Result>(TRI_ERROR_INTERNAL, ex.what());
 } catch (...) {
-  return Result(TRI_ERROR_INTERNAL);
+  return yaclib::MakeFuture<Result>(TRI_ERROR_INTERNAL);
 }
 
 Future<Result> Methods::abortInternal(MethodsApi api) noexcept try {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
-    return Result(TRI_ERROR_TRANSACTION_INTERNAL,
-                  "transaction not running on abort");
+    return yaclib::MakeFuture<Result>(TRI_ERROR_TRANSACTION_INTERNAL,
+                                      "transaction not running on abort");
   }
 
-  auto f = futures::makeFuture(Result());
+  auto f = yaclib::MakeFuture<Result>();
 
   if (!_mainTransaction) {
     return f;
@@ -3337,7 +3366,7 @@ Future<Result> Methods::abortInternal(MethodsApi api) noexcept try {
     f = ClusterTrxMethods::abortTransaction(*this, api);
   }
 
-  return std::move(f).thenValue([this](Result res) -> Result {
+  return std::move(f).ThenInline([this](Result res) -> Result {
     if (res.fail()) {  // do not commit locally
       LOG_TOPIC("d89a8", WARN, Logger::TRANSACTIONS)
           << "failed to abort on subordinates: " << res.errorMessage();
@@ -3351,11 +3380,11 @@ Future<Result> Methods::abortInternal(MethodsApi api) noexcept try {
     return res;
   });
 } catch (basics::Exception const& ex) {
-  return Result(ex.code(), ex.message());
+  return yaclib::MakeFuture<Result>(ex.code(), ex.message());
 } catch (std::exception const& ex) {
-  return Result(TRI_ERROR_INTERNAL, ex.what());
+  return yaclib::MakeFuture<Result>(TRI_ERROR_INTERNAL, ex.what());
 } catch (...) {
-  return Result(TRI_ERROR_INTERNAL);
+  return yaclib::MakeFuture<Result>(TRI_ERROR_INTERNAL);
 }
 
 Future<Result> Methods::finishInternal(Result const& res,
@@ -3366,15 +3395,15 @@ Future<Result> Methods::finishInternal(Result const& res,
   }
 
   // there was a previous error, so we'll abort
-  return this->abortInternal(api).thenValue([res](Result const& ignore) {
+  return this->abortInternal(api).ThenInline([res](Result const& ignore) {
     return res;  // return original error
   });
 } catch (basics::Exception const& ex) {
-  return Result(ex.code(), ex.message());
+  return yaclib::MakeFuture<Result>(ex.code(), ex.message());
 } catch (std::exception const& ex) {
-  return Result(TRI_ERROR_INTERNAL, ex.what());
+  return yaclib::MakeFuture<Result>(TRI_ERROR_INTERNAL, ex.what());
 } catch (...) {
-  return Result(TRI_ERROR_INTERNAL);
+  return yaclib::MakeFuture<Result>(TRI_ERROR_INTERNAL);
 }
 
 Future<OperationResult> Methods::documentInternal(
@@ -3415,10 +3444,10 @@ Future<OperationResult> Methods::insertInternal(
   if (value.isArray() && value.length() == 0) {
     events::CreateDocument(vocbase().name(), collectionName, value, options,
                            TRI_ERROR_NO_ERROR);
-    return emptyResult(options);
+    return yaclib::MakeFuture(emptyResult(options));
   }
 
-  auto f = Future<OperationResult>::makeEmpty();
+  yaclib::Future<OperationResult> f;
   if (_state->isCoordinator()) {
     f = insertCoordinator(collectionName, value, options, api);
   } else {
@@ -3449,10 +3478,10 @@ Future<OperationResult> Methods::updateInternal(
   if (newValue.isArray() && newValue.length() == 0) {
     events::ModifyDocument(vocbase().name(), collectionName, newValue, options,
                            TRI_ERROR_NO_ERROR);
-    return emptyResult(options);
+    return yaclib::MakeFuture(emptyResult(options));
   }
 
-  auto f = Future<OperationResult>::makeEmpty();
+  yaclib::Future<OperationResult> f;
   if (_state->isCoordinator()) {
     f = modifyCoordinator(collectionName, newValue, options,
                           TRI_VOC_DOCUMENT_OPERATION_UPDATE, api);
@@ -3481,10 +3510,10 @@ Future<OperationResult> Methods::replaceInternal(
   if (newValue.isArray() && newValue.length() == 0) {
     events::ReplaceDocument(vocbase().name(), collectionName, newValue, options,
                             TRI_ERROR_NO_ERROR);
-    return futures::makeFuture(emptyResult(options));
+    return yaclib::MakeFuture(emptyResult(options));
   }
 
-  auto f = Future<OperationResult>::makeEmpty();
+  yaclib::Future<OperationResult> f;
   if (_state->isCoordinator()) {
     f = modifyCoordinator(collectionName, newValue, options,
                           TRI_VOC_DOCUMENT_OPERATION_REPLACE, api);
@@ -3513,10 +3542,10 @@ Future<OperationResult> Methods::removeInternal(
   if (value.isArray() && value.length() == 0) {
     events::DeleteDocument(vocbase().name(), collectionName, value, options,
                            TRI_ERROR_NO_ERROR);
-    return emptyResult(options);
+    return yaclib::MakeFuture(emptyResult(options));
   }
 
-  auto f = Future<OperationResult>::makeEmpty();
+  yaclib::Future<OperationResult> f;
   if (_state->isCoordinator()) {
     f = removeCoordinator(collectionName, value, options, api);
   } else {
@@ -3542,12 +3571,12 @@ Future<OperationResult> Methods::truncateInternal(
   };
 
   if (_state->isCoordinator()) {
-    return truncateCoordinator(collectionName, optionsCopy, api).thenValue(cb);
+    return truncateCoordinator(collectionName, optionsCopy, api).ThenInline(cb);
   }
-  return truncateLocal(collectionName, optionsCopy).thenValue(cb);
+  return truncateLocal(collectionName, optionsCopy).ThenInline(cb);
 }
 
-futures::Future<OperationResult> Methods::countInternal(
+yaclib::Future<OperationResult> Methods::countInternal(
     std::string const& collectionName, CountType type,
     OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
@@ -3562,11 +3591,11 @@ futures::Future<OperationResult> Methods::countInternal(
     type = CountType::Normal;
   }
 
-  return futures::makeFuture(countLocal(collectionName, type, options));
+  return yaclib::MakeFuture(countLocal(collectionName, type, options));
 }
 
 // perform a (deferred) intermediate commit if required
-futures::Future<Result> Methods::performIntermediateCommitIfRequired(
+yaclib::Future<Result> Methods::performIntermediateCommitIfRequired(
     DataSourceId collectionId) {
   return _state->performIntermediateCommitIfRequired(collectionId);
 }

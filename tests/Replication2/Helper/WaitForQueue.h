@@ -21,12 +21,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+
 #include <map>
 #include <optional>
 #include <mutex>
 #include <variant>
 
-#include "Futures/Future.h"
+#include <yaclib/async/make.hpp>
+#include <yaclib/async/contract.hpp>
+#include <yaclib/async/future.hpp>
+
+#include "Basics/debugging.h"
 
 namespace arangodb::replication2::test {
 
@@ -36,22 +41,22 @@ struct WaitForQueue {
 
   static_assert(std::is_copy_constructible_v<ResultType>);
 
-  auto waitFor(IndexType index) -> futures::Future<ResultType> {
+  auto waitFor(IndexType index) -> yaclib::Future<ResultType> {
     std::unique_lock guard(mutex);
     if (index <= resolvedIndex) {
       TRI_ASSERT(lastResult.has_value());
-      return futures::Future<ResultType>{*lastResult};
+      return yaclib::MakeFuture<ResultType>(*lastResult);
     }
-
-    return queue.emplace(index, futures::Promise<ResultType>{})
-        ->second.getFuture();
+    auto [f, p] = yaclib::MakeContract<ResultType>();
+    queue.emplace(index, std::move(p));
+    return std::move(f);
   }
 
   void resolve(IndexType upTo, ResultType withValue) {
-    resolve(upTo, futures::Try<ResultType>{withValue});
+    resolve(upTo, yaclib::Result<ResultType>{withValue});
   }
 
-  void resolve(IndexType upTo, futures::Try<ResultType> withTry) {
+  void resolve(IndexType upTo, yaclib::Result<ResultType> withTry) {
     auto resolveSet = QueueType{};
     {
       std::unique_lock guard(mutex);
@@ -68,30 +73,32 @@ struct WaitForQueue {
     }
 
     for (auto& [index, promise] : resolveSet) {
-      promise.setTry(std::move(withTry));
+      TRI_ASSERT(promise.Valid());
+      std::move(promise).Set(std::move(withTry));
     }
   }
 
   void resolveAll(ResultType withValue) {
-    resolveAll(futures::Try<ResultType>(withValue));
+    resolveAll(yaclib::Result<ResultType>(withValue));
   }
-  void resolveAll(futures::Try<ResultType> withTry) {
+  void resolveAll(yaclib::Result<ResultType> withTry) {
     auto resolveSet = QueueType{};
     {
       std::unique_lock guard(mutex);
       std::swap(resolveSet, queue);
     }
     for (auto& [index, promise] : resolveSet) {
-      promise.setTry(std::move(withTry));
+      TRI_ASSERT(promise.Valid());
+      std::move(promise).Set(std::move(withTry));
     }
   }
 
  private:
-  using QueueType = std::multimap<IndexType, futures::Promise<ResultType>>;
+  using QueueType = std::multimap<IndexType, yaclib::Promise<ResultType>>;
 
   std::mutex mutex;
   std::optional<IndexType> resolvedIndex;
-  std::optional<futures::Try<ResultType>> lastResult;
+  std::optional<yaclib::Result<ResultType>> lastResult;
   QueueType queue;
 };
 

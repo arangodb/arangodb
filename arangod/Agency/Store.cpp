@@ -366,7 +366,7 @@ std::vector<bool> Store::applyLogEntries(
         try {
           network::sendRequest(cp, endpoint, fuerte::RestVerb::Post, path,
                                buffer, reqOpts)
-              .thenValue([=, this](network::Response r) {
+              .DetachInline([=, this](network::Response r) {
                 if (r.fail()) {
                   LOG_TOPIC("9dbf1", TRACE, Logger::AGENCY)
                       << url << "(no response, " << fuerte::to_string(r.error)

@@ -31,7 +31,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
-#include "Futures/Utilities.h"
+#include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -44,11 +44,11 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
+#include <yaclib/async/when_all.hpp>
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::futures;
 
 namespace {
 // Wait 2s to get the Lock in FastPath, otherwise assume dead-lock.
@@ -137,9 +137,9 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
 }
 
 /// @brief lazily begin a transaction on subordinate servers
-Future<network::Response> beginTransactionRequest(TransactionState& state,
-                                                  ServerID const& server,
-                                                  transaction::MethodsApi api) {
+yaclib::Future<network::Response> beginTransactionRequest(
+    TransactionState& state, ServerID const& server,
+    transaction::MethodsApi api) {
   TransactionId tid = state.id().child();
   TRI_ASSERT(!tid.isLegacyTransactionId());
 
@@ -223,13 +223,13 @@ Result checkTransactionResult(TransactionId desiredTid,
   return r.withError([&](result::Error& err) { err.appendErrorMessage(msg); });
 }
 
-Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
-                                      transaction::Status status,
-                                      transaction::MethodsApi api) {
+yaclib::Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
+                                              transaction::Status status,
+                                              transaction::MethodsApi api) {
   TRI_ASSERT(state->isRunning());
 
   if (state->knownServers().empty()) {
-    return Result();
+    return yaclib::MakeFuture<Result>();
   }
 
   // only commit managed transactions, and AQL leader transactions (on
@@ -237,7 +237,7 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
   if (!ClusterTrxMethods::isElCheapo(*state) ||
       (state->isCoordinator() &&
        state->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL))) {
-    return Result();
+    return yaclib::MakeFuture<Result>();
   }
   TRI_ASSERT(!state->isDBServer() || !state->id().isFollowerTransactionId());
 
@@ -269,7 +269,7 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
   }
 
   auto* pool = state->vocbase().server().getFeature<NetworkFeature>().pool();
-  std::vector<Future<network::Response>> requests;
+  std::vector<yaclib::Future<network::Response>> requests;
   requests.reserve(state->knownServers().size());
   for (std::string const& server : state->knownServers()) {
     TRI_ASSERT(server.substr(0, 7) != "server:");
@@ -277,88 +277,90 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
         pool, "server:" + server, verb, path, VPackBuffer<uint8_t>(), reqOpts));
   }
 
-  return futures::collectAll(requests).thenValue(
-      [=](std::vector<Try<network::Response>>&& responses) -> Result {
-        if (state->isCoordinator()) {
-          TRI_ASSERT(state->id().isCoordinatorTransactionId());
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             requests.begin(), requests.end())
+      .ThenInline(
+          [=](std::vector<yaclib::Result<network::Response>>&& responses)
+              -> Result {
+            if (state->isCoordinator()) {
+              TRI_ASSERT(state->id().isCoordinatorTransactionId());
 
-          Result res;
-          for (Try<arangodb::network::Response> const& tryRes : responses) {
-            network::Response const& resp =
-                tryRes.get();  // throws exceptions upwards
-            res = ::checkTransactionResult(tidPlus, status, resp);
-            if (res.fail()) {
-              break;
-            }
-          }
-
-          return res;
-        }
-
-        TRI_ASSERT(state->isDBServer());
-        TRI_ASSERT(state->id().isLeaderTransactionId());
-
-        // Drop all followers that were not successful:
-        for (Try<arangodb::network::Response> const& tryRes : responses) {
-          network::Response const& resp =
-              tryRes.get();  // throws exceptions upwards
-
-          Result res = ::checkTransactionResult(tidPlus, status, resp);
-          if (res.fail()) {  // remove followers for all participating
-                             // collections
-            ServerID follower = resp.serverId();
-            LOG_TOPIC("230c3", INFO, Logger::REPLICATION)
-                << "synchronous replication of transaction " << stateString
-                << " operation: "
-                << "dropping follower " << follower
-                << " for all participating shards in"
-                << " transaction " << state->id().id() << " (status "
-                << arangodb::transaction::statusString(status)
-                << "), status code: " << static_cast<int>(resp.statusCode())
-                << ", message: " << resp.combinedResult().errorMessage();
-            state->allCollections([&](TransactionCollection& tc) {
-              auto cc = tc.collection();
-              if (cc) {
-                LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
-                    << "synchronous replication of transaction " << stateString
-                    << " operation: "
-                    << "dropping follower " << follower << " for shard "
-                    << cc->vocbase().name() << "/" << tc.collectionName()
-                    << ": " << resp.combinedResult().errorMessage();
-
-                Result r = cc->followers()->remove(follower);
-                if (r.fail()) {
-                  LOG_TOPIC("4971f", ERR, Logger::REPLICATION)
-                      << "synchronous replication: could not drop follower "
-                      << follower << " for shard " << cc->vocbase().name()
-                      << "/" << tc.collectionName() << ": " << r.errorMessage();
-                  if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
-                    // In this case, we know that we are not or no longer
-                    // the leader for this shard. Therefore we need to
-                    // send a code which let's the coordinator retry.
-                    res.reset(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
-                  } else {
-                    // In this case, some other error occurred and we
-                    // most likely are still the proper leader, so
-                    // the error needs to be reported and the local
-                    // transaction must be rolled back.
-                    res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
-                  }
+              Result res;
+              for (auto const& tryRes : responses) {
+                auto& resp = tryRes.Ok();  // throws exceptions upwards
+                res = ::checkTransactionResult(tidPlus, status, resp);
+                if (res.fail()) {
+                  break;
                 }
               }
-              // continue dropping the follower for all shards in this
-              // transaction
-              return true;
-            });
-          }
-        }
-        return Result();  // succeed even if some followers did not commit
-      });
+
+              return res;
+            }
+
+            TRI_ASSERT(state->isDBServer());
+            TRI_ASSERT(state->id().isLeaderTransactionId());
+
+            // Drop all followers that were not successful:
+            for (auto const& tryRes : responses) {
+              auto& resp = tryRes.Ok();  // throws exceptions upwards
+
+              Result res = ::checkTransactionResult(tidPlus, status, resp);
+              if (res.fail()) {  // remove followers for all participating
+                                 // collections
+                ServerID follower = resp.serverId();
+                LOG_TOPIC("230c3", INFO, Logger::REPLICATION)
+                    << "synchronous replication of transaction " << stateString
+                    << " operation: "
+                    << "dropping follower " << follower
+                    << " for all participating shards in"
+                    << " transaction " << state->id().id() << " (status "
+                    << arangodb::transaction::statusString(status)
+                    << "), status code: " << static_cast<int>(resp.statusCode())
+                    << ", message: " << resp.combinedResult().errorMessage();
+                state->allCollections([&](TransactionCollection& tc) {
+                  auto cc = tc.collection();
+                  if (cc) {
+                    LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
+                        << "synchronous replication of transaction "
+                        << stateString << " operation: "
+                        << "dropping follower " << follower << " for shard "
+                        << cc->vocbase().name() << "/" << tc.collectionName()
+                        << ": " << resp.combinedResult().errorMessage();
+
+                    Result r = cc->followers()->remove(follower);
+                    if (r.fail()) {
+                      LOG_TOPIC("4971f", ERR, Logger::REPLICATION)
+                          << "synchronous replication: could not drop follower "
+                          << follower << " for shard " << cc->vocbase().name()
+                          << "/" << tc.collectionName() << ": "
+                          << r.errorMessage();
+                      if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
+                        // In this case, we know that we are not or no longer
+                        // the leader for this shard. Therefore we need to
+                        // send a code which let's the coordinator retry.
+                        res.reset(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+                      } else {
+                        // In this case, some other error occurred and we
+                        // most likely are still the proper leader, so
+                        // the error needs to be reported and the local
+                        // transaction must be rolled back.
+                        res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+                      }
+                    }
+                  }
+                  // continue dropping the follower for all shards in this
+                  // transaction
+                  return true;
+                });
+              }
+            }
+            return Result();  // succeed even if some followers did not commit
+          });
 }
 
-Future<Result> commitAbortTransaction(transaction::Methods& trx,
-                                      transaction::Status status,
-                                      transaction::MethodsApi api) {
+yaclib::Future<Result> commitAbortTransaction(transaction::Methods& trx,
+                                              transaction::Status status,
+                                              transaction::MethodsApi api) {
   arangodb::TransactionState* state = trx.state();
   TRI_ASSERT(trx.isMainTransaction());
   return commitAbortTransaction(state, status, api);
@@ -367,7 +369,6 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx,
 }  // namespace
 
 namespace arangodb::ClusterTrxMethods {
-using namespace arangodb::futures;
 
 bool IsServerIdLessThan::operator()(ServerID const& lhs,
                                     ServerID const& rhs) const noexcept {
@@ -375,7 +376,7 @@ bool IsServerIdLessThan::operator()(ServerID const& lhs,
 }
 
 /// @brief begin a transaction on all leaders
-Future<Result> beginTransactionOnLeaders(
+yaclib::Future<Result> beginTransactionOnLeaders(
     TransactionState& state, ClusterTrxMethods::SortedServersSet const& leaders,
     // everything in this function is done synchronously, so the `api` parameter
     // is currently unused.
@@ -384,7 +385,7 @@ Future<Result> beginTransactionOnLeaders(
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
   Result res;
   if (leaders.empty()) {
-    return res;
+    return yaclib::MakeFuture(std::move(res));
   }
 
   // If !state.knownServers.empty() => We have already locked something.
@@ -403,7 +404,7 @@ Future<Result> beginTransactionOnLeaders(
       state.options().lockTimeout = FAST_PATH_LOCK_TIMEOUT;
     }
     // Run fastPath
-    std::vector<Future<network::Response>> requests;
+    std::vector<yaclib::Future<network::Response>> requests;
     for (ServerID const& leader : leaders) {
       if (state.knowsServer(leader)) {
         continue;  // already sent a begin transaction there
@@ -416,27 +417,27 @@ Future<Result> beginTransactionOnLeaders(
     state.options().lockTimeout = oldLockTimeout;
 
     if (requests.empty()) {
-      return res;
+      return yaclib::MakeFuture(std::move(res));
     }
 
     const TransactionId tid = state.id().child();
 
     Result fastPathResult =
-        futures::collectAll(requests)
-            .thenValue(
+        yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+            requests.begin(), requests.end())
+            .ThenInline(
                 [&tid, &state](
-                    std::vector<Try<network::Response>>&& responses) -> Result {
+                    std::vector<yaclib::Result<network::Response>>&& responses)
+                    -> Result {
                   // We need to make sure to get() all responses.
                   // Otherwise they will eventually resolve and trigger the
-                  // .then() callback which might be after we left this
+                  // .ThenInline() callback which might be after we left this
                   // function. Especially if one response errors with
                   // "non-repairable" code so we actually abort here and cannot
                   // revert to slow path execution.
                   Result result{TRI_ERROR_NO_ERROR};
-                  for (Try<arangodb::network::Response> const& tryRes :
-                       responses) {
-                    network::Response const& resp =
-                        tryRes.get();  // throws exceptions upwards
+                  for (auto const& tryRes : responses) {
+                    auto& resp = tryRes.Ok();  // throws exceptions upwards
 
                     Result res = ::checkTransactionResult(
                         tid, transaction::Status::RUNNING, resp);
@@ -452,14 +453,15 @@ Future<Result> beginTransactionOnLeaders(
 
                   return result;
                 })
-            .get();
+            .Get()
+            .Ok();
 
     if (fastPathResult.isNot(TRI_ERROR_LOCK_TIMEOUT) || !canRevertToSlowPath) {
       // We are either good or we cannot use the slow path.
       // We need to return the result here.
       // We made sure that all servers that reported success are known to the
       // transaction.
-      return fastPathResult;
+      return yaclib::MakeFuture(std::move(fastPathResult));
     }
 
     // Entering slow path
@@ -471,10 +473,11 @@ Future<Result> beginTransactionOnLeaders(
       Result resetRes =
           commitAbortTransaction(&state, transaction::Status::ABORTED,
                                  transaction::MethodsApi::Synchronous)
-              .get();
+              .Get()
+              .Ok();
       if (resetRes.fail()) {
         // return here if cleanup failed - this needs to be a success
-        return resetRes;
+        return yaclib::MakeFuture(std::move(resetRes));
       }
     }
 
@@ -497,27 +500,27 @@ Future<Result> beginTransactionOnLeaders(
 
       auto resp = ::beginTransactionRequest(
           state, leader, transaction::MethodsApi::Synchronous);
-      auto const& resolvedResponse = resp.get();
+      auto resolvedResponse = std::move(resp).Get().Ok();
       if (resolvedResponse.fail()) {
-        return resolvedResponse.combinedResult();
+        return yaclib::MakeFuture(resolvedResponse.combinedResult());
       } else {
         state.addKnownServer(leader);  // add server id to known list
       }
     }
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return yaclib::MakeFuture<Result>(TRI_ERROR_NO_ERROR);
 }
 
 /// @brief commit a transaction on a subordinate
-Future<Result> commitTransaction(transaction::Methods& trx,
-                                 transaction::MethodsApi api) {
+yaclib::Future<Result> commitTransaction(transaction::Methods& trx,
+                                         transaction::MethodsApi api) {
   return commitAbortTransaction(trx, transaction::Status::COMMITTED, api);
 }
 
 /// @brief commit a transaction on a subordinate
-Future<Result> abortTransaction(transaction::Methods& trx,
-                                transaction::MethodsApi api) {
+yaclib::Future<Result> abortTransaction(transaction::Methods& trx,
+                                        transaction::MethodsApi api) {
   return commitAbortTransaction(trx, transaction::Status::ABORTED, api);
 }
 

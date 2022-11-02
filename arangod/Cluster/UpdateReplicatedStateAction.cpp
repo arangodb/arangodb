@@ -33,8 +33,6 @@
 #include "Utils/DatabaseGuard.h"
 #include "Replication2/ReplicatedState/UpdateReplicatedState.h"
 
-#include "Futures/Try.h"
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::replication2;

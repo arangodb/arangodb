@@ -35,7 +35,7 @@
 #include "Endpoint/Endpoint.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
-#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/FrontendFeature.h"

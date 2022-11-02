@@ -32,7 +32,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "Network/ConnectionPool.h"
 #include "Network/NetworkFeature.h"
@@ -53,7 +52,7 @@ namespace arangodb {
 namespace network {
 using namespace arangodb::fuerte;
 
-using PromiseRes = arangodb::futures::Promise<network::Response>;
+using PromiseRes = yaclib::Promise<network::Response>;
 
 Response::Response() noexcept : error(fuerte::Error::ConnectionCanceled) {}
 
@@ -221,14 +220,18 @@ namespace {
 
 struct Pack {
   DestinationId dest;
-  futures::Promise<network::Response> promise;
+  yaclib::Promise<network::Response> promise;
   std::unique_ptr<fuerte::Response> tmp_res;
   std::unique_ptr<fuerte::Request> tmp_req;
   fuerte::Error tmp_err;
   RequestLane continuationLane;
   bool skipScheduler;
-  Pack(DestinationId&& dest, RequestLane lane, bool skip)
-      : dest(std::move(dest)), continuationLane(lane), skipScheduler(skip) {}
+  Pack(DestinationId&& dest, yaclib::Promise<network::Response>&& promise,
+       RequestLane lane, bool skip)
+      : dest(std::move(dest)),
+        promise(std::move(promise)),
+        continuationLane(lane),
+        skipScheduler(skip) {}
 };
 
 void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
@@ -255,8 +258,10 @@ void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
         auto* sch = SchedulerFeature::SCHEDULER;
         // cppcheck-suppress accessMoved
         if (p->skipScheduler || sch == nullptr) {
-          p->promise.setValue(network::Response{
-              std::move(p->dest), err, std::move(req), std::move(res)});
+          TRI_ASSERT(p->promise.Valid());
+          std::move(p->promise)
+              .Set(network::Response{std::move(p->dest), err, std::move(req),
+                                     std::move(res)});
           return;
         }
 
@@ -267,9 +272,10 @@ void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
         TRI_ASSERT(p->tmp_req != nullptr);
 
         sch->queue(p->continuationLane, [p]() mutable {
-          p->promise.setValue(Response{std::move(p->dest), p->tmp_err,
-                                       std::move(p->tmp_req),
-                                       std::move(p->tmp_res)});
+          TRI_ASSERT(p->promise.Valid());
+          std::move(p->promise)
+              .Set(Response{std::move(p->dest), p->tmp_err,
+                            std::move(p->tmp_req), std::move(p->tmp_res)});
         });
       });
 }
@@ -294,7 +300,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     if (!pool || !pool->config().clusterInfo) {
       LOG_TOPIC("59b95", ERR, Logger::COMMUNICATION)
           << "connection pool unavailable";
-      return futures::makeFuture(Response{
+      return yaclib::MakeFuture(Response{
           std::move(dest), Error::ConnectionCanceled, std::move(req), nullptr});
     }
 
@@ -308,20 +314,20 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
       // We fake a successful request with statusCode 503 and a backend not
       // available error here:
       auto resp = buildResponse(fuerte::StatusServiceUnavailable, Result{res});
-      return futures::makeFuture(Response{std::move(dest), Error::NoError,
-                                          std::move(req), std::move(resp)});
+      return yaclib::MakeFuture(Response{std::move(dest), Error::NoError,
+                                         std::move(req), std::move(resp)});
     }
     TRI_ASSERT(!spec.endpoint.empty());
 
     // fits in SSO of std::function
     static_assert(sizeof(std::shared_ptr<Pack>) <= 2 * sizeof(void*), "");
-
-    auto p = std::make_shared<Pack>(std::move(dest), options.continuationLane,
-                                    options.skipScheduler);
-    FutureRes f = p->promise.getFuture();
+    auto [f, promise] = yaclib::MakeContract<Response>();
+    auto p =
+        std::make_shared<Pack>(std::move(dest), std::move(promise),
+                               options.continuationLane, options.skipScheduler);
     actuallySendRequest(std::move(p), pool, options, spec.endpoint,
                         std::move(req));
-    return f;
+    return std::move(f);
 
   } catch (std::exception const& e) {
     LOG_TOPIC("236d7", DEBUG, Logger::COMMUNICATION)
@@ -330,7 +336,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     LOG_TOPIC("36d72", DEBUG, Logger::COMMUNICATION)
         << "failed to send request.";
   }
-  return futures::makeFuture(
+  return yaclib::MakeFuture(
       Response{std::string(), Error::ConnectionCanceled, nullptr, nullptr});
 }
 
@@ -338,13 +344,15 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
 /// a request until an overall timeout is hit (or the request succeeds)
 class RequestsState final : public std::enable_shared_from_this<RequestsState> {
  public:
-  RequestsState(ConnectionPool* pool, DestinationId&& destination,
+  RequestsState(yaclib::Promise<network::Response>&& promise,
+                ConnectionPool* pool, DestinationId&& destination,
                 RestVerb type, std::string&& path,
                 velocypack::Buffer<uint8_t>&& payload, Headers&& headers,
                 RequestOptions const& options)
       : _destination(std::move(destination)),
         _options(options),
         _pool(pool),
+        _promise(std::move(promise)),
         _startTime(std::chrono::steady_clock::now()),
         _endTime(
             _startTime +
@@ -365,7 +373,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
   std::unique_ptr<fuerte::Request> _tmp_req;
   std::unique_ptr<fuerte::Response> _tmp_res;  /// temporary response
 
-  futures::Promise<network::Response> _promise;  /// promise called
+  yaclib::Promise<network::Response> _promise;  /// promise called
 
   std::chrono::steady_clock::time_point const _startTime;
   std::chrono::steady_clock::time_point const _endTime;
@@ -373,8 +381,6 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
   fuerte::Error _tmp_err;
 
  public:
-  FutureRes future() { return _promise.getFuture(); }
-
   // scheduler requests that are due
   void startRequest() {
     TRI_ASSERT(_tmp_req != nullptr);
@@ -567,17 +573,20 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
     Scheduler* sch = SchedulerFeature::SCHEDULER;
     if (_options.skipScheduler || sch == nullptr) {
-      _promise.setValue(Response{std::move(_destination), _tmp_err,
-                                 std::move(_tmp_req), std::move(_tmp_res)});
+      TRI_ASSERT(_promise.Valid());
+      std::move(_promise).Set(Response{std::move(_destination), _tmp_err,
+                                       std::move(_tmp_req),
+                                       std::move(_tmp_res)});
       return;
     }
 
-    sch->queue(
-        _options.continuationLane, [self = shared_from_this()]() mutable {
-          self->_promise.setValue(
-              Response{std::move(self->_destination), self->_tmp_err,
-                       std::move(self->_tmp_req), std::move(self->_tmp_res)});
-        });
+    sch->queue(_options.continuationLane, [self =
+                                               shared_from_this()]() mutable {
+      TRI_ASSERT(self->_promise.Valid());
+      std::move(self->_promise)
+          .Set(Response{std::move(self->_destination), self->_tmp_err,
+                        std::move(self->_tmp_req), std::move(self->_tmp_res)});
+    });
   }
 
   void retryLater(std::chrono::steady_clock::duration tryAgainAfter) {
@@ -589,23 +598,25 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
     auto* sch = SchedulerFeature::SCHEDULER;
     if (ADB_UNLIKELY(sch == nullptr)) {
-      _promise.setValue(Response{std::move(_destination),
-                                 fuerte::Error::ConnectionCanceled, nullptr,
-                                 nullptr});
+      TRI_ASSERT(_promise.Valid());
+      std::move(_promise).Set(Response{std::move(_destination),
+                                       fuerte::Error::ConnectionCanceled,
+                                       nullptr, nullptr});
       return;
     }
 
-    _workItem =
-        sch->queueDelayed(_options.continuationLane, tryAgainAfter,
-                          [self = shared_from_this()](bool canceled) {
-                            if (canceled) {
-                              self->_promise.setValue(Response{
-                                  std::move(self->_destination),
-                                  Error::ConnectionCanceled, nullptr, nullptr});
-                            } else {
-                              self->startRequest();
-                            }
-                          });
+    _workItem = sch->queueDelayed(
+        _options.continuationLane, tryAgainAfter,
+        [self = shared_from_this()](bool canceled) {
+          if (canceled) {
+            TRI_ASSERT(self->_promise.Valid());
+            std::move(self->_promise)
+                .Set(Response{std::move(self->_destination),
+                              Error::ConnectionCanceled, nullptr, nullptr});
+          } else {
+            self->startRequest();
+          }
+        });
   }
 };
 
@@ -619,19 +630,19 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
     if (!pool || !pool->config().clusterInfo) {
       LOG_TOPIC("59b96", ERR, Logger::COMMUNICATION)
           << "connection pool unavailable";
-      return futures::makeFuture(Response{
+      return yaclib::MakeFuture(Response{
           std::move(destination), Error::ConnectionCanceled, nullptr, nullptr});
     }
 
     LOG_TOPIC("2713b", DEBUG, Logger::COMMUNICATION)
         << "request to '" << destination << "' '" << fuerte::to_string(type)
         << " " << path << "'";
-
+    auto [f, p] = yaclib::MakeContract<Response>();
     auto rs = std::make_shared<RequestsState>(
-        pool, std::move(destination), type, std::move(path), std::move(payload),
-        std::move(headers), options);
+        std::move(p), pool, std::move(destination), type, std::move(path),
+        std::move(payload), std::move(headers), options);
     rs->startRequest();  // will auto reference itself
-    return rs->future();
+    return std::move(f);
 
   } catch (std::exception const& e) {
     LOG_TOPIC("6d723", DEBUG, Logger::COMMUNICATION)
@@ -641,7 +652,7 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
         << "failed to send request.";
   }
 
-  return futures::makeFuture(
+  return yaclib::MakeFuture(
       Response{std::string(), Error::ConnectionCanceled, nullptr, nullptr});
 }
 

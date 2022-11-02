@@ -46,7 +46,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
-#include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "VocBase/Methods/Queries.h"
 

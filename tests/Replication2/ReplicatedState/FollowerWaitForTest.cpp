@@ -87,10 +87,10 @@ TEST_F(FollowerWaitForAppliedTest, wait_for_applied_future_test) {
   state->apply.reset();
 
   auto f1 = state->waitForApplied(LogIndex{1});
-  ASSERT_TRUE(f1.isReady());
+  ASSERT_TRUE(f1.Ready());
 
   auto f2 = state->waitForApplied(LogIndex{4});
-  ASSERT_FALSE(f2.isReady());
+  ASSERT_FALSE(f2.Ready());
 
   // insert more entries
   for (int i = 0; i < 5; i++) {
@@ -101,7 +101,7 @@ TEST_F(FollowerWaitForAppliedTest, wait_for_applied_future_test) {
 
   EXPECT_TRUE(state->apply.wasTriggered());
   state->apply.resolveWith({});
-  EXPECT_TRUE(f2.isReady());
+  EXPECT_TRUE(f2.Ready());
 }
 
 TEST_F(FollowerWaitForAppliedTest, wait_for_applied_resign_resolve) {
@@ -127,15 +127,17 @@ TEST_F(FollowerWaitForAppliedTest, wait_for_applied_resign_resolve) {
   state->apply.reset();
 
   auto f1 = state->waitForApplied(LogIndex{1});
-  ASSERT_TRUE(f1.isReady());
+  ASSERT_TRUE(f1.Ready());
 
   auto f2 = state->waitForApplied(LogIndex{4});
-  ASSERT_FALSE(f2.isReady());
+  ASSERT_FALSE(f2.Ready());
   auto [core, token, action] = std::move(*manager).resign();
   action.fire();
 
   // This is now fulfilled because we dropped the return value of resign
-  ASSERT_TRUE(f2.isReady());
-  ASSERT_TRUE(f2.hasException());
-  ASSERT_THROW({ f2.get(); }, replicated_log::ParticipantResignedException);
+  ASSERT_TRUE(f2.Ready());
+  ASSERT_TRUE(std::as_const(f2).Touch().State() ==
+              yaclib::ResultState::Exception);
+  ASSERT_THROW({ std::ignore = std::move(f2).Get().Ok(); },
+               replicated_log::ParticipantResignedException);
 }

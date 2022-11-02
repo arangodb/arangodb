@@ -39,7 +39,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/CollectionInfoCurrent.h"
-#include "Futures/Utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -346,7 +345,7 @@ TEST_F(
       EXPECT_TRUE(false);
     }
 
-    return futures::makeFuture(std::move(response));
+    return yaclib::MakeFuture(std::move(response));
   };
 
   {  // testing distribution for database
@@ -871,7 +870,7 @@ TEST_F(
       EXPECT_TRUE(false);
     }
 
-    return futures::makeFuture(std::move(response));
+    return yaclib::MakeFuture(std::move(response));
   };
 
   {    // testing collection distribution for database
@@ -966,7 +965,7 @@ TEST_F(
       EXPECT_TRUE(false);
     }
 
-    return futures::makeFuture(std::move(response));
+    return yaclib::MakeFuture(std::move(response));
   };
 
   {  // It should use the defaults total: 1 current: 0
@@ -1022,7 +1021,7 @@ TEST_F(
       EXPECT_TRUE(false);
     }
 
-    return futures::makeFuture(std::move(response));
+    return yaclib::MakeFuture(std::move(response));
   };
 
   {  // It should use the leader and the other one
@@ -1077,7 +1076,7 @@ TEST_F(
       EXPECT_TRUE(false);
     }
 
-    return futures::makeFuture(std::move(response));
+    return yaclib::MakeFuture(std::move(response));
   };
 
   {  // It should use the leader
@@ -1128,7 +1127,7 @@ TEST_F(
       EXPECT_TRUE(false);
     }
 
-    return futures::makeFuture(std::move(response));
+    return yaclib::MakeFuture(std::move(response));
   };
 
   {  // It should use the defaults total: 1 current: 0
@@ -1184,7 +1183,7 @@ TEST_F(
       EXPECT_TRUE(false);
     }
 
-    return futures::makeFuture(std::move(response));
+    return yaclib::MakeFuture(std::move(response));
   };
 
   {  // It should use the leader and the other one
@@ -1241,7 +1240,7 @@ TEST_F(
       EXPECT_TRUE(false);
     }
 
-    return futures::makeFuture(std::move(response));
+    return yaclib::MakeFuture(std::move(response));
   };
 
   {  // It should use the leader and the default current of 0

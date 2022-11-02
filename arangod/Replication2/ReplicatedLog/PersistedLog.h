@@ -27,8 +27,8 @@
 #include "Replication2/ReplicatedLog/LogEntries.h"
 
 #include "Basics/Result.h"
-#include "Futures/Future.h"
 
+#include <yaclib/async/future.hpp>
 #include <memory>
 #include <utility>
 
@@ -53,10 +53,10 @@ struct PersistedLog {
   virtual auto insert(PersistedLogIterator& iter, WriteOptions const&)
       -> Result = 0;
   virtual auto insertAsync(std::unique_ptr<PersistedLogIterator> iter,
-                           WriteOptions const&) -> futures::Future<Result> = 0;
+                           WriteOptions const&) -> yaclib::Future<Result> = 0;
   virtual auto read(LogIndex start)
       -> std::unique_ptr<PersistedLogIterator> = 0;
-  virtual auto removeFront(LogIndex stop) -> futures::Future<Result> = 0;
+  virtual auto removeFront(LogIndex stop) -> yaclib::Future<Result> = 0;
   virtual auto removeBack(LogIndex start) -> Result = 0;
 
   virtual auto drop() -> Result = 0;

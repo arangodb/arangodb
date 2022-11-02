@@ -84,7 +84,7 @@ TEST_F(SimpleReplicatedLogTest, become_leader_test_same_term) {
       { auto newLeader = log->becomeLeader("leader", LogTerm{1}, {}, 1); });
   auto newLeader = log->becomeLeader("leader", LogTerm{2}, {}, 1);
   ASSERT_NE(newLeader, nullptr);
-  EXPECT_TRUE(leader->waitForResign().isReady());
+  EXPECT_TRUE(leader->waitForResign().Ready());
 }
 
 TEST_F(SimpleReplicatedLogTest, become_follower_test_same_term) {
@@ -95,5 +95,5 @@ TEST_F(SimpleReplicatedLogTest, become_follower_test_same_term) {
   });
   auto newFollower = log->becomeFollower("follower", LogTerm{2}, "leader");
   ASSERT_NE(newFollower, nullptr);
-  EXPECT_TRUE(follower->waitForResign().isReady());
+  EXPECT_TRUE(follower->waitForResign().Ready());
 }

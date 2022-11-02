@@ -24,17 +24,14 @@
 
 #include <memory>
 
+#include <yaclib/fwd.hpp>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
 
 template<typename T>
 class ResultT;
-
-namespace futures {
-template<typename T>
-class Future;
-}
 
 namespace velocypack {
 class SharedSlice;
@@ -55,7 +52,7 @@ struct DocumentStateMethods {
 
   [[nodiscard]] virtual auto getSnapshot(LogId logId,
                                          LogIndex waitForIndex) const
-      -> futures::Future<ResultT<velocypack::SharedSlice>> = 0;
+      -> yaclib::Future<ResultT<velocypack::SharedSlice>> = 0;
 };
 }  // namespace replication2
 }  // namespace arangodb

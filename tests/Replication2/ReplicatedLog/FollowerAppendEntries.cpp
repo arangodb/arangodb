@@ -77,9 +77,9 @@ TEST_F(FollowerAppendEntriesTest, valid_append_entries) {
                            LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
-    ASSERT_TRUE(f.isReady());
+    ASSERT_TRUE(f.Ready());
     {
-      auto result = f.get();
+      auto result = std::move(f).Get().Ok();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
       EXPECT_EQ(result.reason, AppendEntriesErrorReason{});
@@ -96,9 +96,9 @@ TEST_F(FollowerAppendEntriesTest, valid_append_entries) {
     request.entries = {};
 
     auto f = follower->appendEntries(std::move(request));
-    ASSERT_TRUE(f.isReady());
+    ASSERT_TRUE(f.Ready());
     {
-      auto result = f.get();
+      auto result = std::move(f).Get().Ok();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
       EXPECT_EQ(result.reason, AppendEntriesErrorReason{});
@@ -122,9 +122,9 @@ TEST_F(FollowerAppendEntriesTest, wrong_term) {
                            LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
-    ASSERT_TRUE(f.isReady());
+    ASSERT_TRUE(f.Ready());
     {
-      auto result = f.get();
+      auto result = std::move(f).Get().Ok();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode,
                 TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
@@ -151,9 +151,9 @@ TEST_F(FollowerAppendEntriesTest, missing_prev_log_index) {
                            LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
-    ASSERT_TRUE(f.isReady());
+    ASSERT_TRUE(f.Ready());
     {
-      auto result = f.get();
+      auto result = std::move(f).Get().Ok();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode,
                 TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
@@ -181,9 +181,9 @@ TEST_F(FollowerAppendEntriesTest, missmatch_prev_log_term) {
                            LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
-    ASSERT_TRUE(f.isReady());
+    ASSERT_TRUE(f.Ready());
     {
-      auto result = f.get();
+      auto result = std::move(f).Get().Ok();
       ASSERT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
     }
   }
@@ -201,9 +201,9 @@ TEST_F(FollowerAppendEntriesTest, missmatch_prev_log_term) {
                            LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
-    ASSERT_TRUE(f.isReady());
+    ASSERT_TRUE(f.Ready());
     {
-      auto result = f.get();
+      auto result = std::move(f).Get().Ok();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode,
                 TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
@@ -230,9 +230,9 @@ TEST_F(FollowerAppendEntriesTest, wrong_leader_name) {
                            LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
-    ASSERT_TRUE(f.isReady());
+    ASSERT_TRUE(f.Ready());
     {
-      auto result = f.get();
+      auto result = std::move(f).Get().Ok();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       // TODO this is known to fail
       EXPECT_EQ(result.errorCode,
@@ -261,9 +261,9 @@ TEST_F(FollowerAppendEntriesTest, resigned_follower) {
                            LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
-    ASSERT_TRUE(f.isReady());
+    ASSERT_TRUE(f.Ready());
     {
-      auto result = f.get();
+      auto result = std::move(f).Get().Ok();
       ASSERT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
     }
   }
@@ -290,9 +290,9 @@ TEST_F(FollowerAppendEntriesTest, resigned_follower) {
                            LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
-    ASSERT_TRUE(f.isReady());
+    ASSERT_TRUE(f.Ready());
     {
-      auto result = f.get();
+      auto result = std::move(f).Get().Ok();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode,
                 TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
@@ -320,9 +320,9 @@ TEST_F(FollowerAppendEntriesTest, outdated_message_id) {
                            LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
-    ASSERT_TRUE(f.isReady());
+    ASSERT_TRUE(f.Ready());
     {
-      auto result = f.get();
+      auto result = std::move(f).Get().Ok();
       ASSERT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
     }
   }
@@ -339,9 +339,9 @@ TEST_F(FollowerAppendEntriesTest, outdated_message_id) {
                            LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
-    ASSERT_TRUE(f.isReady());
+    ASSERT_TRUE(f.Ready());
     {
-      auto result = f.get();
+      auto result = std::move(f).Get().Ok();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode,
                 TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
@@ -368,9 +368,9 @@ TEST_F(FollowerAppendEntriesTest, rewrite_log) {
                            LogPayload::createFromString("some payload")))};
 
     auto f = follower->appendEntries(std::move(request));
-    ASSERT_TRUE(f.isReady());
+    ASSERT_TRUE(f.Ready());
     {
-      auto result = f.get();
+      auto result = std::move(f).Get().Ok();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
       EXPECT_EQ(result.reason, AppendEntriesErrorReason{});
@@ -414,7 +414,7 @@ TEST_F(FollowerAppendEntriesTest, deuplicate_append_entries_test) {
       LogTerm{1}, LogIndex{1}, LogPayload::createFromString("some payload")))};
 
   auto f = follower->appendEntries(std::move(request));
-  ASSERT_FALSE(f.isReady());
+  ASSERT_FALSE(f.Ready());
   ASSERT_TRUE(persisted->hasPendingInsert());
 
   // send another append entries request
@@ -430,9 +430,9 @@ TEST_F(FollowerAppendEntriesTest, deuplicate_append_entries_test) {
                            LogPayload::createFromString("some payload")))};
 
     auto f2 = follower->appendEntries(std::move(request2));
-    ASSERT_TRUE(f2.isReady());
+    ASSERT_TRUE(f2.Ready());
     {
-      auto result = f2.get();
+      auto result = std::move(f2).Get().Ok();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode,
                 TRI_ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED);
@@ -445,9 +445,10 @@ TEST_F(FollowerAppendEntriesTest, deuplicate_append_entries_test) {
 
   // now resolve the insertAsync
   persisted->runAsyncInsert();
-  ASSERT_TRUE(f.isReady());
+  ASSERT_TRUE(f.Ready());
   {
-    auto result = f.get();
+    Wait(f);
+    auto result = std::as_const(f).Touch().Ok();
     EXPECT_EQ(result.logTerm, LogTerm{5});
     EXPECT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
     EXPECT_EQ(result.reason, AppendEntriesErrorReason{});
@@ -468,9 +469,10 @@ TEST_F(FollowerAppendEntriesTest, deuplicate_append_entries_test) {
 
     auto f2 = follower->appendEntries(std::move(request2));
     persisted->runAsyncInsert();  // and resolve immediately
-    ASSERT_TRUE(f2.isReady());
+    ASSERT_TRUE(f2.Ready());
     {
-      auto result = f.get();
+      // TODO(Lars Maier) Maybe f2? see above first check for f
+      auto result = std::move(f).Get().Ok();
       EXPECT_EQ(result.logTerm, LogTerm{5});
       EXPECT_EQ(result.errorCode, TRI_ERROR_NO_ERROR);
       EXPECT_EQ(result.reason, AppendEntriesErrorReason{});
@@ -496,10 +498,10 @@ TEST_F(FollowerAppendEntriesTest, append_entries_locking_regression_test) {
       LogTerm{1}, LogIndex{1}, LogPayload::createFromString("some payload")))};
 
   auto f = follower->appendEntries(request);
-  ASSERT_FALSE(f.isReady());
+  ASSERT_FALSE(f.Ready());
   ASSERT_TRUE(persisted->hasPendingInsert());
 
-  std::move(f).thenValue([&](auto&& res) {
+  std::move(f).DetachInline([&](AppendEntriesResult&& res) {
     EXPECT_TRUE(res.errorCode == TRI_ERROR_NO_ERROR) << res.errorCode;
     ASSERT_FALSE(persisted->hasPendingInsert());
 
@@ -514,7 +516,7 @@ TEST_F(FollowerAppendEntriesTest, append_entries_locking_regression_test) {
     // send another request to the follower. This will acquire the lock
     // again and should wait for the persistor to act.
     auto f2 = follower->appendEntries(request);
-    EXPECT_FALSE(f2.isReady());
+    EXPECT_FALSE(f2.Ready());
 
     // This will block without the fix.
     auto status = follower->getStatus();

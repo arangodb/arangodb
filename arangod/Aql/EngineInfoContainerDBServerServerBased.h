@@ -121,7 +121,7 @@ class EngineInfoContainerDBServerServerBased {
       std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
       std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
 
-  arangodb::futures::Future<Result> buildSetupRequest(
+  yaclib::Future<Result> buildSetupRequest(
       transaction::Methods& trx, ServerID const& server, VPackSlice infoSlice,
       std::vector<bool> didCreateEngine, MapRemoteToSnippet& snippetIds,
       aql::ServerQueryIdList& serverToQueryId, std::mutex& serverToQueryIdLock,
@@ -144,7 +144,7 @@ class EngineInfoContainerDBServerServerBased {
    * (remoteNodeId:shardId)
    * -> queryid.
    */
-  std::vector<futures::Future<network::Response>> cleanupEngines(
+  std::vector<yaclib::Future<network::Response>> cleanupEngines(
       ErrorCode errorCode, std::string const& dbname,
       aql::ServerQueryIdList& serverQueryIds) const;
 

@@ -57,7 +57,7 @@ struct LogUnconfiguredParticipant final
       -> arangodb::Result override;
   [[nodiscard]] auto waitForIterator(arangodb::replication2::LogIndex index)
       -> WaitForIteratorFuture override;
-  [[nodiscard]] auto waitForResign() -> futures::Future<futures::Unit> override;
+  [[nodiscard]] auto waitForResign() -> yaclib::Future<> override;
   [[nodiscard]] auto getCommitIndex() const noexcept
       -> arangodb::replication2::LogIndex override;
 
@@ -80,7 +80,7 @@ struct LogUnconfiguredParticipant final
     [[nodiscard]] auto didResign() const noexcept -> bool;
 
     [[nodiscard]] auto waitForResign()
-        -> std::pair<futures::Future<futures::Unit>, DeferredAction>;
+        -> std::pair<yaclib::Future<>, DeferredAction>;
 
     std::unique_ptr<arangodb::replication2::replicated_log::LogCore> _logCore;
     WaitForBag _waitForResignQueue;

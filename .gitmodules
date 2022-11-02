@@ -13,3 +13,6 @@
 [submodule "3rdParty/gtest"]
 	path = 3rdParty/gtest
 	url = https://github.com/arangodb/googletest.git
+[submodule "3rdParty/yaclib"]
+	path = 3rdParty/yaclib
+	url = https://github.com/arangodb/YACLib

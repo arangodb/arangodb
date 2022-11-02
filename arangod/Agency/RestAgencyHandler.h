@@ -24,9 +24,9 @@
 #pragma once
 
 #include "Agency/Agent.h"
-#include "Futures/Future.h"
-#include "Futures/Unit.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+
+#include <yaclib/async/future.hpp>
 
 namespace arangodb {
 
@@ -48,7 +48,7 @@ class RestAgencyHandler : public RestVocbaseBaseHandler {
 
   RestStatus execute() override;
 
-  using fvoid = futures::Future<futures::Unit>;
+  using fvoid = yaclib::Future<>;
 
   /**
    * @brief Async call to Agent poll with index to wait for within timeout

@@ -48,11 +48,11 @@ struct DocumentLeaderState
       -> std::unique_ptr<DocumentCore> override;
 
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
-      -> futures::Future<Result> override;
+      -> yaclib::Future<Result> override;
 
   auto replicateOperation(velocypack::SharedSlice payload,
                           OperationType operation, TransactionId transactionId,
-                          ReplicationOptions opts) -> futures::Future<LogIndex>;
+                          ReplicationOptions opts) -> yaclib::Future<LogIndex>;
 
   std::unordered_set<TransactionId> getActiveTransactions() const;
 

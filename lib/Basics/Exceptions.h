@@ -28,6 +28,7 @@
 #include <new>
 #include <string>
 #include <utility>
+#include <yaclib/fwd.hpp>
 
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
@@ -57,10 +58,6 @@
 #define THROW_ARANGO_EXCEPTION_MESSAGE(code, message) \
   throw ::arangodb::basics::Exception(code, message, ADB_HERE)
 
-namespace arangodb::futures {
-template<typename T>
-class Try;
-}
 namespace arangodb::basics {
 
 /// @brief arango exception type
@@ -206,7 +203,7 @@ template<typename F>
   return catchToResult(wrapped);
 }
 
-[[nodiscard]] auto tryToResult(futures::Try<Result>&& tryResult) noexcept
+[[nodiscard]] auto tryToResult(yaclib::Result<Result>&& tryResult) noexcept
     -> Result;
 
 namespace helper {

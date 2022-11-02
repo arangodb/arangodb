@@ -44,9 +44,9 @@ struct DocumentFollowerState
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<DocumentCore> override;
   auto acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept
-      -> futures::Future<Result> override;
+      -> yaclib::Future<Result> override;
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
-      -> futures::Future<Result> override;
+      -> yaclib::Future<Result> override;
 
  private:
   struct GuardedData {

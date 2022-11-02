@@ -39,7 +39,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "Cluster/ClusterTypes.h"
-#include "Futures/Utilities.h"
 #include "Graph/ClusterGraphDatalake.h"
 #include "Graph/ClusterTraverserCache.h"
 #include "Metrics/Counter.h"
@@ -73,6 +72,9 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
 #endif
+
+#include <yaclib/async/when_all.hpp>
+
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -95,7 +97,6 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::futures;
 using namespace arangodb::rest;
 
 using Helper = arangodb::basics::VelocyPackHelper;
@@ -135,10 +136,9 @@ T addFigures(VPackSlice const& v1, VPackSlice const& v2,
 
 /// @brief begin a transaction on some leader shards
 template<typename ShardDocsMap>
-Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
-                                             LogicalCollection const& coll,
-                                             ShardDocsMap const& shards,
-                                             transaction::MethodsApi api) {
+yaclib::Future<Result> beginTransactionOnSomeLeaders(
+    TransactionState& state, LogicalCollection const& coll,
+    ShardDocsMap const& shards, transaction::MethodsApi api) {
   TRI_ASSERT(state.isCoordinator());
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 
@@ -159,7 +159,9 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
     for (auto const& pair : shards) {
       auto const& it = shardMap->find(pair.first);
       if (it->second.empty()) {
-        return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;  // something is broken
+        // something is broken
+        return yaclib::MakeFuture<Result>(
+            TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
       }
       // now we got the shard leader
       std::string const& leader = it->second[0];
@@ -172,9 +174,9 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
 }
 
 // begin transaction on shard leaders
-Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx,
-                                            ShardMap const& shards,
-                                            transaction::MethodsApi api) {
+yaclib::Future<Result> beginTransactionOnAllLeaders(
+    transaction::Methods& trx, ShardMap const& shards,
+    transaction::MethodsApi api) {
   TRI_ASSERT(trx.state()->isCoordinator());
   TRI_ASSERT(trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED));
   ClusterTrxMethods::SortedServersSet servers{};
@@ -244,7 +246,7 @@ void addTransactionHeaderForShard(transaction::Methods const& trx,
 /// callback and then returned via the OperationResult.
 OperationResult handleResponsesFromAllShards(
     OperationOptions const& options,
-    std::vector<futures::Try<arangodb::network::Response>>& responses,
+    std::vector<yaclib::Result<arangodb::network::Response>>& responses,
     std::function<void(Result&, VPackBuilder&, ShardID const&,
                        VPackSlice)> const& handler,
     std::function<void(Result&, VPackBuilder&)> const& pre =
@@ -258,8 +260,8 @@ OperationResult handleResponsesFromAllShards(
   pre(result, builder);
 
   if (!result.fail()) {
-    for (Try<arangodb::network::Response> const& tryRes : responses) {
-      network::Response const& res = tryRes.get();  // throws exceptions upwards
+    for (auto const& tryRes : responses) {
+      auto& res = tryRes.Ok();  // throws exceptions upwards
 
       TRI_ASSERT(result.ok());
       result = res.combinedResult();
@@ -351,7 +353,7 @@ void mergeResultsAllShards(
 template<typename F, typename CT>
 OperationResult handleCRUDShardResponsesFast(
     F&& func, CT const& opCtx,
-    std::vector<Try<network::Response>> const& results) {
+    std::vector<yaclib::Result<network::Response>> const& results) {
   std::map<ShardID, VPackSlice> resultMap;
   std::map<ShardID, int> shardError;
   std::unordered_map<::ErrorCode, size_t> errorCounter;
@@ -359,8 +361,8 @@ OperationResult handleCRUDShardResponsesFast(
   fuerte::StatusCode code = fuerte::StatusInternalError;
   // If none of the shards responded we return a SERVER_ERROR;
 
-  for (Try<arangodb::network::Response> const& tryRes : results) {
-    network::Response const& res = tryRes.get();  // throws exceptions upwards
+  for (auto const& tryRes : results) {
+    auto& res = tryRes.Ok();  // throws exceptions upwards
     ShardID sId = res.destinationShard();
 
     auto commError = network::fuerteToArangoErrorCode(res);
@@ -424,7 +426,7 @@ OperationResult handleCRUDShardResponsesFast(
 template<typename F>
 OperationResult handleCRUDShardResponsesSlow(
     F&& func, size_t expectedLen, OperationOptions options,
-    std::vector<Try<network::Response>> const& responses) {
+    std::vector<yaclib::Result<network::Response>> const& responses) {
   if (expectedLen == 0) {  // Only one can answer, we react a bit differently
     std::shared_ptr<VPackBuffer<uint8_t>> buffer;
 
@@ -432,7 +434,7 @@ OperationResult handleCRUDShardResponsesSlow(
     auto commError = TRI_ERROR_NO_ERROR;
     fuerte::StatusCode code;
     for (size_t i = 0; i < responses.size(); i++) {
-      network::Response const& res = responses[i].get();
+      auto& res = responses[i].Ok();
 
       if (res.error == fuerte::Error::NoError) {
         // if no shard has the document, use NF answer from last shard
@@ -466,8 +468,8 @@ OperationResult handleCRUDShardResponsesSlow(
 
   std::unordered_map<::ErrorCode, size_t> errorCounter;
   // If no server responds we return 500
-  for (Try<network::Response> const& tryRes : responses) {
-    network::Response const& res = tryRes.get();
+  for (auto& tryRes : responses) {
+    auto& res = tryRes.Ok();
     if (res.error != fuerte::Error::NoError) {
       return OperationResult(network::fuerteToArangoErrorCode(res), options);
     }
@@ -921,7 +923,7 @@ void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart,
 /// @brief returns revision for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> revisionOnCoordinator(
+yaclib::Future<OperationResult> revisionOnCoordinator(
     ClusterFeature& feature, std::string const& dbname,
     std::string const& collname, OperationOptions const& options) {
   // Set a few variables needed for our work:
@@ -931,7 +933,7 @@ futures::Future<OperationResult> revisionOnCoordinator(
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
-    return futures::makeFuture(
+    return yaclib::MakeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
 
@@ -942,7 +944,7 @@ futures::Future<OperationResult> revisionOnCoordinator(
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
   std::shared_ptr<ShardMap> shards = collinfo->shardIds();
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(shards->size());
 
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
@@ -954,9 +956,8 @@ futures::Future<OperationResult> revisionOnCoordinator(
     futures.emplace_back(std::move(future));
   }
 
-  auto cb =
-      [options](
-          std::vector<Try<network::Response>>&& results) -> OperationResult {
+  auto cb = [options](std::vector<yaclib::Result<network::Response>>&& results)
+      -> OperationResult {
     return handleResponsesFromAllShards(
         options, results,
         [](Result& result, VPackBuilder& builder, ShardID const&,
@@ -978,10 +979,12 @@ futures::Future<OperationResult> revisionOnCoordinator(
           result.reset(TRI_ERROR_INTERNAL);
         });
   };
-  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futures.begin(), futures.end())
+      .ThenInline(std::move(cb));
 }
 
-futures::Future<OperationResult> checksumOnCoordinator(
+yaclib::Future<OperationResult> checksumOnCoordinator(
     ClusterFeature& feature, std::string const& dbname,
     std::string const& collname, OperationOptions const& options,
     bool withRevisions, bool withData) {
@@ -992,7 +995,7 @@ futures::Future<OperationResult> checksumOnCoordinator(
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
-    return futures::makeFuture(
+    return yaclib::MakeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
 
@@ -1003,7 +1006,7 @@ futures::Future<OperationResult> checksumOnCoordinator(
   reqOpts.param("withData", withData ? "true" : "false");
 
   std::shared_ptr<ShardMap> shards = collinfo->shardIds();
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(shards->size());
 
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
@@ -1015,8 +1018,8 @@ futures::Future<OperationResult> checksumOnCoordinator(
     futures.emplace_back(std::move(future));
   }
 
-  auto cb = [options](std::vector<Try<network::Response>>&& results) mutable
-      -> OperationResult {
+  auto cb = [options](std::vector<yaclib::Result<network::Response>>&&
+                          results) mutable -> OperationResult {
     auto pre = [](Result&, VPackBuilder& builder) -> void {
       VPackObjectBuilder b(&builder);
       builder.add("checksum", VPackValue(0));
@@ -1066,13 +1069,15 @@ futures::Future<OperationResult> checksumOnCoordinator(
     };
     return handleResponsesFromAllShards(options, results, handler, pre);
   };
-  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futures.begin(), futures.end())
+      .ThenInline(std::move(cb));
 }
 
-futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
-                                            std::string const& dbname,
-                                            std::string const& cid,
-                                            OperationOptions const& options) {
+yaclib::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
+                                           std::string const& dbname,
+                                           std::string const& cid,
+                                           OperationOptions const& options) {
   // Set a few variables needed for our work:
   ClusterInfo& ci = feature.clusterInfo();
 
@@ -1080,7 +1085,7 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci.getCollectionNT(dbname, cid);
   if (collinfo == nullptr) {
-    return futures::makeFuture(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
+    return yaclib::MakeFuture<Result>(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   // If we get here, the sharding attributes are not only _key, therefore
@@ -1091,7 +1096,7 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
   opts.database = dbname;
   opts.timeout = network::Timeout(300.0);
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(shards->size());
 
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
@@ -1108,9 +1113,8 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
     futures.emplace_back(std::move(future));
   }
 
-  auto cb =
-      [options](
-          std::vector<Try<network::Response>>&& results) -> OperationResult {
+  auto cb = [options](std::vector<yaclib::Result<network::Response>>&& results)
+      -> OperationResult {
     return handleResponsesFromAllShards(
         options, results,
         [](Result&, VPackBuilder&, ShardID const&, VPackSlice) -> void {
@@ -1118,9 +1122,10 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
           // succeeded
         });
   };
-  return futures::collectAll(std::move(futures))
-      .thenValue(std::move(cb))
-      .thenValue(
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futures.begin(), futures.end())
+      .ThenInline(std::move(cb))
+      .ThenInline(
           [](OperationResult&& opRes) -> Result { return opRes.result; });
 }
 
@@ -1128,7 +1133,7 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
 /// @brief returns figures for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> figuresOnCoordinator(
+yaclib::Future<OperationResult> figuresOnCoordinator(
     ClusterFeature& feature, std::string const& dbname,
     std::string const& collname, bool details,
     OperationOptions const& options) {
@@ -1139,7 +1144,7 @@ futures::Future<OperationResult> figuresOnCoordinator(
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
-    return futures::makeFuture(
+    return yaclib::MakeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
 
@@ -1151,7 +1156,7 @@ futures::Future<OperationResult> figuresOnCoordinator(
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
   std::shared_ptr<ShardMap> shards = collinfo->shardIds();
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(shards->size());
 
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
@@ -1163,9 +1168,8 @@ futures::Future<OperationResult> figuresOnCoordinator(
     futures.emplace_back(std::move(future));
   }
 
-  auto cb = [details,
-             options](std::vector<Try<network::Response>>&& results) mutable
-      -> OperationResult {
+  auto cb = [details, options](std::vector<yaclib::Result<network::Response>>&&
+                                   results) mutable -> OperationResult {
     auto handler = [details](Result& result, VPackBuilder& builder,
                              ShardID const&,
                              VPackSlice answer) mutable -> void {
@@ -1186,14 +1190,16 @@ futures::Future<OperationResult> figuresOnCoordinator(
     };
     return handleResponsesFromAllShards(options, results, handler, pre);
   };
-  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futures.begin(), futures.end())
+      .ThenInline(std::move(cb));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts number of documents in a coordinator, by shard
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> countOnCoordinator(
+yaclib::Future<OperationResult> countOnCoordinator(
     transaction::Methods& trx, std::string const& cname,
     OperationOptions const& options, transaction::MethodsApi api) {
   std::vector<std::pair<std::string, uint64_t>> result;
@@ -1207,7 +1213,7 @@ futures::Future<OperationResult> countOnCoordinator(
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci.getCollectionNT(dbname, cname);
   if (collinfo == nullptr) {
-    return futures::makeFuture(
+    return yaclib::MakeFuture(
         OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
 
@@ -1217,9 +1223,10 @@ futures::Future<OperationResult> countOnCoordinator(
   if (isManaged) {
     Result res = ::beginTransactionOnAllLeaders(
                      trx, *shardIds, transaction::MethodsApi::Synchronous)
-                     .get();
+                     .Get()
+                     .Ok();
     if (res.fail()) {
-      return futures::makeFuture(OperationResult(res, options));
+      return yaclib::MakeFuture(OperationResult(res, options));
     }
   }
 
@@ -1235,7 +1242,7 @@ futures::Future<OperationResult> countOnCoordinator(
     reqOpts.timeout = network::Timeout(5.0);
   }
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(shardIds->size());
 
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
@@ -1254,8 +1261,8 @@ futures::Future<OperationResult> countOnCoordinator(
         VPackBuffer<uint8_t>(), reqOpts, std::move(headers)));
   }
 
-  auto cb = [options](std::vector<Try<network::Response>>&& results) mutable
-      -> OperationResult {
+  auto cb = [options](std::vector<yaclib::Result<network::Response>>&&
+                          results) mutable -> OperationResult {
     auto handler = [](Result& result, VPackBuilder& builder,
                       ShardID const& shardId,
                       VPackSlice answer) mutable -> void {
@@ -1284,20 +1291,22 @@ futures::Future<OperationResult> countOnCoordinator(
     };
     return handleResponsesFromAllShards(options, results, handler, pre, post);
   };
-  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futures.begin(), futures.end())
+      .ThenInline(std::move(cb));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the metrics from DBServers
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<metrics::RawDBServers> metricsOnLeader(
-    NetworkFeature& network, ClusterFeature& cluster) {
+yaclib::Future<metrics::RawDBServers> metricsOnLeader(NetworkFeature& network,
+                                                      ClusterFeature& cluster) {
   LOG_TOPIC("badf0", TRACE, Logger::CLUSTER) << "Start collect metrics";
   auto* pool = network.pool();
   auto serverIds = cluster.clusterInfo().getCurrentDBServers();
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(serverIds.size());
   for (auto const& id : serverIds) {
     network::Headers headers;
@@ -1308,17 +1317,18 @@ futures::Future<metrics::RawDBServers> metricsOnLeader(
         network::RequestOptions{}.param("type", metrics::kDBJson),
         std::move(headers)));
   }
-  return collectAll(futures).then(
-      [](Try<std::vector<Try<network::Response>>>&& responses) {
-        TRI_ASSERT(responses.hasValue());  // collectAll always return value
+  using Responses = std::vector<yaclib::Result<network::Response>>;
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futures.begin(), futures.end())
+      .ThenInline([](Responses&& responses) {
         metrics::RawDBServers metrics;
-        metrics.reserve(responses->size());
-        for (auto& response : *responses) {
-          if (!response.hasValue() || !response->hasResponse() ||
-              response->fail()) {
+        metrics.reserve(responses.size());
+        for (auto const& response : responses) {
+          if (!response || !response.Value().hasResponse() ||
+              response.Value().fail()) {
             continue;  // Shit happens, just ignore it
           }
-          auto payload = response->response().stealPayload();
+          auto payload = response.Value().response().stealPayload();
           if (!payload) {
             TRI_ASSERT(false);
             continue;
@@ -1341,7 +1351,7 @@ futures::Future<metrics::RawDBServers> metricsOnLeader(
 /// @brief gets the metrics from leader Coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<metrics::LeaderResponse> metricsFromLeader(
+yaclib::Future<metrics::LeaderResponse> metricsFromLeader(
     NetworkFeature& network, ClusterFeature& cluster, std::string_view leader,
     std::string serverId, uint64_t rebootId, uint64_t version) {
   LOG_TOPIC("badf1", TRACE, Logger::CLUSTER) << "Start receive metrics";
@@ -1356,11 +1366,12 @@ futures::Future<metrics::LeaderResponse> metricsFromLeader(
   auto future = network::sendRequest(
       pool, absl::StrCat("server:", leader), fuerte::RestVerb::Get,
       "/_admin/metrics", {}, std::move(options), std::move(headers));
-  return std::move(future).then([](Try<network::Response>&& response) {
-    if (!response.hasValue() || !response->hasResponse() || response->fail()) {
+  return std::move(future).ThenInline([](auto const& response) {
+    if (!response || !response.Value().hasResponse() ||
+        response.Value().fail()) {
       return metrics::LeaderResponse{};
     }
-    return response->response().stealPayload();
+    return response.Value().response().stealPayload();
   });
 }
 
@@ -1400,7 +1411,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
     reqOpts.timeout = network::Timeout(5.0);
   }
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(shards->size());
 
   std::string requestsUrl;
@@ -1429,8 +1440,8 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
   // }
 
   containers::FlatHashMap<std::string, std::vector<double>> indexEstimates;
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+  for (auto&& f : std::move(futures)) {
+    auto r = std::move(f).Get().Ok();
 
     if (r.fail()) {
       return r.combinedResult();
@@ -1484,7 +1495,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
 /// for their documents.
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> createDocumentOnCoordinator(
+yaclib::Future<OperationResult> createDocumentOnCoordinator(
     transaction::Methods const& trx, LogicalCollection& coll, VPackSlice slice,
     OperationOptions const& options, transaction::MethodsApi api) {
   // create vars used in this function
@@ -1498,20 +1509,20 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
     for (VPackSlice value : VPackArrayIterator(slice)) {
       auto res = distributeInsertBatchOnShards(opCtx, coll, value);
       if (res != TRI_ERROR_NO_ERROR) {
-        return makeFuture(OperationResult(res, options));
+        return yaclib::MakeFuture(OperationResult(res, options));
       }
     }
   } else {
     auto res = distributeInsertBatchOnShards(opCtx, coll, slice);
     if (res != TRI_ERROR_NO_ERROR) {
-      return makeFuture(OperationResult(res, options));
+      return yaclib::MakeFuture(OperationResult(res, options));
     }
   }
 
   bool const isJobsCollection =
       coll.system() && coll.name() == StaticStrings::JobsCollection;
 
-  Future<Result> f = makeFuture(Result());
+  yaclib::Future<Result> f = yaclib::MakeFuture<Result>();
   bool const isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (isManaged &&
@@ -1519,11 +1530,11 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
     f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap, api);
   }
 
-  return std::move(f).thenValue([=, &trx,
-                                 opCtx(std::move(opCtx))](Result&& r) mutable
-                                -> Future<OperationResult> {
+  return std::move(f).ThenInline([=, &trx,
+                                  opCtx(std::move(opCtx))](Result&& r) mutable
+                                 -> yaclib::Future<OperationResult> {
     if (r.fail()) {
-      return OperationResult(std::move(r), options);
+      return yaclib::MakeFuture<OperationResult>(std::move(r), options);
     }
 
     std::string const baseUrl = "/_api/document/";
@@ -1556,7 +1567,7 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
 
     // Now prepare the requests:
     auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-    std::vector<Future<network::Response>> futures;
+    std::vector<yaclib::Future<network::Response>> futures;
     futures.reserve(opCtx.shardMap.size());
     for (auto const& it : opCtx.shardMap) {
       VPackBuffer<uint8_t> reqBuffer;
@@ -1627,16 +1638,18 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
                                             res.response().stealPayload(),
                                             std::move(options), {});
       };
-      return std::move(futures[0]).thenValue(cb);
+      return std::move(futures[0]).ThenInline(cb);
     }
 
-    return futures::collectAll(std::move(futures))
-        .thenValue([opCtx(std::move(opCtx))](
-                       std::vector<Try<network::Response>>&& results)
-                       -> OperationResult {
-          return handleCRUDShardResponsesFast(network::clusterResultInsert,
-                                              opCtx, results);
-        });
+    return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+               futures.begin(), futures.end())
+        .ThenInline(
+            [opCtx(std::move(opCtx))](
+                std::vector<yaclib::Result<network::Response>>&& results)
+                -> OperationResult {
+              return handleCRUDShardResponsesFast(network::clusterResultInsert,
+                                                  opCtx, std::move(results));
+            });
   });
 }
 
@@ -1644,7 +1657,7 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
 /// @brief remove a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> removeDocumentOnCoordinator(
+yaclib::Future<OperationResult> removeDocumentOnCoordinator(
     transaction::Methods& trx, LogicalCollection& coll, VPackSlice const slice,
     OperationOptions const& options, transaction::MethodsApi api) {
   // Set a few variables needed for our work:
@@ -1694,23 +1707,23 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
     // Contact all shards directly with the correct information.
 
     // lazily begin transactions on leaders
-    Future<Result> f = makeFuture(Result());
+    yaclib::Future<Result> f = yaclib::MakeFuture<Result>();
     if (isManaged && opCtx.shardMap.size() > 1) {
       f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap,
                                         api);
     }
 
-    return std::move(f).thenValue(
+    return std::move(f).ThenInline(
         [=, &trx, opCtx(std::move(opCtx))](
-            Result&& r) mutable -> Future<OperationResult> {
+            Result&& r) mutable -> yaclib::Future<OperationResult> {
           if (r.fail()) {
-            return OperationResult(std::move(r), options);
+            return yaclib::MakeFuture<OperationResult>(std::move(r), options);
           }
 
           // Now prepare the requests:
           auto* pool =
               trx.vocbase().server().getFeature<NetworkFeature>().pool();
-          std::vector<Future<network::Response>> futures;
+          std::vector<yaclib::Future<network::Response>> futures;
           futures.reserve(opCtx.shardMap.size());
 
           for (auto const& it : opCtx.shardMap) {
@@ -1752,15 +1765,17 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
                                                   res.response().stealPayload(),
                                                   std::move(options), {});
             };
-            return std::move(futures[0]).thenValue(cb);
+            return std::move(futures[0]).ThenInline(cb);
           }
 
-          return futures::collectAll(std::move(futures))
-              .thenValue([opCtx = std::move(opCtx)](
-                             std::vector<Try<network::Response>>&& results)
-                             -> OperationResult {
+          return yaclib::WhenAll<yaclib::FailPolicy::None,
+                                 yaclib::OrderPolicy::Same>(futures.begin(),
+                                                            futures.end())
+              .ThenInline([opCtx = std::move(opCtx)](
+                              std::vector<yaclib::Result<network::Response>>&&
+                                  results) -> OperationResult {
                 return handleCRUDShardResponsesFast(
-                    network::clusterResultRemove, opCtx, results);
+                    network::clusterResultRemove, opCtx, std::move(results));
               });
         });
   }
@@ -1769,63 +1784,63 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
   // We contact all shards with the complete body and ignore NOT_FOUND
 
   // lazily begin transactions on leaders
-  Future<Result> f = makeFuture(Result());
+  yaclib::Future<Result> f = yaclib::MakeFuture<Result>();
   if (isManaged && shardIds->size() > 1) {
     f = ::beginTransactionOnAllLeaders(trx, *shardIds, api);
   }
 
-  return std::move(f).thenValue(
-      [=, &trx](Result&& r) mutable -> Future<OperationResult> {
-        if (r.fail()) {
-          return OperationResult(r, options);
-        }
+  return std::move(f).ThenInline([=, &trx](Result&& r) mutable
+                                 -> yaclib::Future<OperationResult> {
+    if (r.fail()) {
+      return yaclib::MakeFuture<OperationResult>(r, options);
+    }
 
-        // We simply send the body to all shards and await their results.
-        // As soon as we have the results we merge them in the following way:
-        // For 1 .. slice.length()
-        //    for res : allResults
-        //      if res != NOT_FOUND => insert this result. skip other results
-        //    end
-        //    if (!skipped) => insert NOT_FOUND
+    // We simply send the body to all shards and await their results.
+    // As soon as we have the results we merge them in the following way:
+    // For 1 .. slice.length()
+    //    for res : allResults
+    //      if res != NOT_FOUND => insert this result. skip other results
+    //    end
+    //    if (!skipped) => insert NOT_FOUND
 
-        auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-        std::vector<Future<network::Response>> futures;
-        futures.reserve(shardIds->size());
+    auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
+    std::vector<yaclib::Future<network::Response>> futures;
+    futures.reserve(shardIds->size());
 
-        const size_t expectedLen = useMultiple ? slice.length() : 0;
-        VPackBuffer<uint8_t> buffer;
-        buffer.append(slice.begin(), slice.byteSize());
+    const size_t expectedLen = useMultiple ? slice.length() : 0;
+    VPackBuffer<uint8_t> buffer;
+    buffer.append(slice.begin(), slice.byteSize());
 
-        for (auto const& shardServers : *shardIds) {
-          ShardID const& shard = shardServers.first;
-          network::Headers headers;
-          // Just make sure that no dirty read flag makes it here, since we
-          // are writing and then `addTransactionHeaderForShard` might
-          // misbehave!
-          TRI_ASSERT(!trx.state()->options().allowDirtyReads);
-          addTransactionHeaderForShard(trx, *shardIds, shard, headers);
-          futures.emplace_back(network::sendRequestRetry(
-              pool, "shard:" + shard, fuerte::RestVerb::Delete,
-              "/_api/document/" + StringUtils::urlEncode(shard),
-              /*cannot move*/ buffer, reqOpts, std::move(headers)));
-        }
+    for (auto const& shardServers : *shardIds) {
+      ShardID const& shard = shardServers.first;
+      network::Headers headers;
+      // Just make sure that no dirty read flag makes it here, since we
+      // are writing and then `addTransactionHeaderForShard` might
+      // misbehave!
+      TRI_ASSERT(!trx.state()->options().allowDirtyReads);
+      addTransactionHeaderForShard(trx, *shardIds, shard, headers);
+      futures.emplace_back(network::sendRequestRetry(
+          pool, "shard:" + shard, fuerte::RestVerb::Delete,
+          "/_api/document/" + StringUtils::urlEncode(shard),
+          /*cannot move*/ buffer, reqOpts, std::move(headers)));
+    }
 
-        return futures::collectAll(std::move(futures))
-            .thenValue(
-                [=](std::vector<Try<network::Response>>&& responses) mutable
-                -> OperationResult {
-                  return ::handleCRUDShardResponsesSlow(
-                      network::clusterResultRemove, expectedLen,
-                      std::move(options), responses);
-                });
-      });
+    return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+               futures.begin(), futures.end())
+        .ThenInline([=](std::vector<yaclib::Result<network::Response>>&&
+                            responses) mutable -> OperationResult {
+          return ::handleCRUDShardResponsesSlow(network::clusterResultRemove,
+                                                expectedLen, std::move(options),
+                                                responses);
+        });
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> truncateCollectionOnCoordinator(
+yaclib::Future<OperationResult> truncateCollectionOnCoordinator(
     transaction::Methods& trx, std::string const& collname,
     OperationOptions const& options, transaction::MethodsApi api) {
   Result res;
@@ -1837,7 +1852,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci.getCollectionNT(trx.vocbase().name(), collname);
   if (collinfo == nullptr) {
-    return futures::makeFuture(OperationResult(
+    return yaclib::MakeFuture(OperationResult(
         res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND), options));
   }
 
@@ -1849,9 +1864,10 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     res = ::beginTransactionOnAllLeaders(trx, *shardIds,
                                          transaction::MethodsApi::Synchronous)
-              .get();
+              .Get()
+              .Ok();
     if (res.fail()) {
-      return futures::makeFuture(OperationResult(res, options));
+      return yaclib::MakeFuture(OperationResult(res, options));
     }
   }
 
@@ -1863,7 +1879,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
   reqOpts.param(StaticStrings::Compact,
                 (options.truncateCompact ? "true" : "false"));
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(shardIds->size());
 
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
@@ -1887,21 +1903,22 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
     futures.emplace_back(std::move(future));
   }
 
-  auto cb =
-      [options](
-          std::vector<Try<network::Response>>&& results) -> OperationResult {
+  auto cb = [options](std::vector<yaclib::Result<network::Response>>&& results)
+      -> OperationResult {
     return handleResponsesFromAllShards(
         options, results,
         [](Result&, VPackBuilder&, ShardID const&, VPackSlice) -> void {});
   };
-  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futures.begin(), futures.end())
+      .ThenInline(std::move(cb));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-Future<OperationResult> getDocumentOnCoordinator(
+yaclib::Future<OperationResult> getDocumentOnCoordinator(
     transaction::Methods& trx, LogicalCollection& coll, VPackSlice slice,
     OperationOptions const& options, transaction::MethodsApi api) {
   // Set a few variables needed for our work:
@@ -1962,23 +1979,23 @@ Future<OperationResult> getDocumentOnCoordinator(
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
 
-    Future<Result> f = makeFuture(Result());
+    yaclib::Future<Result> f = yaclib::MakeFuture<Result>();
     if (isManaged &&
         opCtx.shardMap.size() > 1) {  // lazily begin the transaction
       f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap,
                                         api);
     }
 
-    return std::move(f).thenValue([=, &trx,
-                                   opCtx(std::move(opCtx))](Result&& r) mutable
-                                  -> Future<OperationResult> {
+    return std::move(f).ThenInline([=, &trx,
+                                    opCtx(std::move(opCtx))](Result&& r) mutable
+                                   -> yaclib::Future<OperationResult> {
       if (r.fail()) {
-        return OperationResult(std::move(r), options);
+        return yaclib::MakeFuture<OperationResult>(std::move(r), options);
       }
 
       // Now prepare the requests:
       auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-      std::vector<Future<network::Response>> futures;
+      std::vector<yaclib::Future<network::Response>> futures;
       futures.reserve(opCtx.shardMap.size());
 
       for (auto const& it : opCtx.shardMap) {
@@ -2035,7 +2052,7 @@ Future<OperationResult> getDocumentOnCoordinator(
       if (!useMultiple) {  // single-shard fast track
         TRI_ASSERT(futures.size() == 1);
         return std::move(futures[0])
-            .thenValue([options](network::Response res) -> OperationResult {
+            .ThenInline([options](network::Response res) -> OperationResult {
               if (res.error != fuerte::Error::NoError) {
                 return OperationResult(network::fuerteToArangoErrorCode(res),
                                        options);
@@ -2046,12 +2063,15 @@ Future<OperationResult> getDocumentOnCoordinator(
             });
       }
 
-      return futures::collectAll(std::move(futures))
-          .thenValue([opCtx = std::move(opCtx)](
-                         std::vector<Try<network::Response>>&& results) {
-            return handleCRUDShardResponsesFast(network::clusterResultDocument,
-                                                opCtx, results);
-          });
+      return yaclib::WhenAll<yaclib::FailPolicy::None,
+                             yaclib::OrderPolicy::Same>(futures.begin(),
+                                                        futures.end())
+          .ThenInline(
+              [opCtx = std::move(opCtx)](
+                  std::vector<yaclib::Result<network::Response>>&& results) {
+                return handleCRUDShardResponsesFast(
+                    network::clusterResultDocument, opCtx, std::move(results));
+              });
     });
   }
 
@@ -2061,14 +2081,15 @@ Future<OperationResult> getDocumentOnCoordinator(
   if (isManaged) {  // lazily begin the transaction
     Result res = ::beginTransactionOnAllLeaders(
                      trx, *shardIds, transaction::MethodsApi::Synchronous)
-                     .get();
+                     .Get()
+                     .Ok();
     if (res.fail()) {
-      return makeFuture(OperationResult(res, options));
+      return yaclib::MakeFuture(OperationResult(res, options));
     }
   }
 
   // Now prepare the requests:
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(shardIds->size());
 
   auto& cf = trx.vocbase().server().getFeature<ClusterFeature>();
@@ -2128,9 +2149,10 @@ Future<OperationResult> getDocumentOnCoordinator(
     }
   }
 
-  return futures::collectAll(std::move(futures))
-      .thenValue([=](std::vector<Try<network::Response>>&& responses) mutable
-                 -> OperationResult {
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futures.begin(), futures.end())
+      .ThenInline([=](std::vector<yaclib::Result<network::Response>>&&
+                          responses) mutable -> OperationResult {
         return ::handleCRUDShardResponsesSlow(network::clusterResultDocument,
                                               expectedLen, std::move(options),
                                               responses);
@@ -2179,7 +2201,7 @@ Result fetchEdgesFromEngines(
   reqOpts.database = trx.vocbase().name();
   reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(engines->size());
 
   for (auto const& engine : *engines) {
@@ -2189,8 +2211,8 @@ Result fetchEdgesFromEngines(
         reqOpts));
   }
 
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+  for (auto&& f : std::move(futures)) {
+    auto r = std::move(f).Get().Ok();
 
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
@@ -2279,7 +2301,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
   reqOpts.database = trx.vocbase().name();
   reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(engines->size());
 
   for (auto const& engine : *engines) {
@@ -2289,8 +2311,8 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
         reqOpts));
   }
 
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+  for (auto&& f : std::move(futures)) {
+    auto r = std::move(f).Get().Ok();
 
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
@@ -2376,7 +2398,7 @@ void fetchVerticesFromEngines(
   reqOpts.database = trx.vocbase().name();
   reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(engines->size());
 
   for (auto const& engine : *engines) {
@@ -2386,8 +2408,8 @@ void fetchVerticesFromEngines(
         reqOpts));
   }
 
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+  for (auto&& f : std::move(futures)) {
+    auto r = std::move(f).Get().Ok();
 
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(network::fuerteToArangoErrorCode(r));
@@ -2441,7 +2463,7 @@ void fetchVerticesFromEngines(
 /// @brief modify a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> modifyDocumentOnCoordinator(
+yaclib::Future<OperationResult> modifyDocumentOnCoordinator(
     transaction::Methods& trx, LogicalCollection& coll,
     arangodb::velocypack::Slice const& slice, OperationOptions const& options,
     bool isPatch, transaction::MethodsApi api) {
@@ -2484,7 +2506,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
       auto res = distributeBabyOnShards(opCtx, coll, value);
       if (res != TRI_ERROR_NO_ERROR) {
         if (!isPatch) {  // shard keys cannot be changed, error out early
-          return makeFuture(OperationResult(res, options));
+          return yaclib::MakeFuture(OperationResult(res, options));
         }
         canUseFastPath = false;
         break;
@@ -2494,7 +2516,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
     auto res = distributeBabyOnShards(opCtx, coll, slice);
     if (res != TRI_ERROR_NO_ERROR) {
       if (!isPatch) {  // shard keys cannot be changed, error out early
-        return makeFuture(OperationResult(res, options));
+        return yaclib::MakeFuture(OperationResult(res, options));
       }
       canUseFastPath = false;
     }
@@ -2542,24 +2564,24 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
 
-    Future<Result> f = makeFuture(Result());
+    yaclib::Future<Result> f = yaclib::MakeFuture<Result>();
     if (isManaged &&
         opCtx.shardMap.size() > 1) {  // lazily begin transactions on leaders
       f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap,
                                         api);
     }
 
-    return std::move(f).thenValue(
+    return std::move(f).ThenInline(
         [=, &trx, opCtx(std::move(opCtx))](
-            Result&& r) mutable -> Future<OperationResult> {
+            Result&& r) mutable -> yaclib::Future<OperationResult> {
           if (r.fail()) {  // bail out
-            return OperationResult(r, opCtx.options);
+            return yaclib::MakeFuture<OperationResult>(r, opCtx.options);
           }
 
           // Now prepare the requests:
           auto* pool =
               trx.vocbase().server().getFeature<NetworkFeature>().pool();
-          std::vector<Future<network::Response>> futures;
+          std::vector<yaclib::Future<network::Response>> futures;
           futures.reserve(opCtx.shardMap.size());
 
           for (auto const& it : opCtx.shardMap) {
@@ -2613,15 +2635,17 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
                                                   res.response().stealPayload(),
                                                   std::move(options), {});
             };
-            return std::move(futures[0]).thenValue(cb);
+            return std::move(futures[0]).ThenInline(cb);
           }
 
-          return futures::collectAll(std::move(futures))
-              .thenValue([opCtx = std::move(opCtx)](
-                             std::vector<Try<network::Response>>&& results)
-                             -> OperationResult {
+          return yaclib::WhenAll<yaclib::FailPolicy::None,
+                                 yaclib::OrderPolicy::Same>(futures.begin(),
+                                                            futures.end())
+              .ThenInline([opCtx = std::move(opCtx)](
+                              std::vector<yaclib::Result<network::Response>>&&
+                                  results) -> OperationResult {
                 return handleCRUDShardResponsesFast(
-                    network::clusterResultModify, opCtx, results);
+                    network::clusterResultModify, opCtx, std::move(results));
               });
         });
   }
@@ -2629,53 +2653,53 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
   // Not all shard keys are known in all documents.
   // We contact all shards with the complete body and ignore NOT_FOUND
 
-  Future<Result> f = makeFuture(Result());
+  yaclib::Future<Result> f = yaclib::MakeFuture<Result>();
   if (isManaged && shardIds->size() > 1) {  // lazily begin the transaction
     f = ::beginTransactionOnAllLeaders(trx, *shardIds, api);
   }
 
-  return std::move(f).thenValue(
-      [=, &trx](Result&&) mutable -> Future<OperationResult> {
-        auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-        std::vector<Future<network::Response>> futures;
-        futures.reserve(shardIds->size());
+  return std::move(f).ThenInline([=, &trx](Result&&) mutable
+                                 -> yaclib::Future<OperationResult> {
+    auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
+    std::vector<yaclib::Future<network::Response>> futures;
+    futures.reserve(shardIds->size());
 
-        const size_t expectedLen = useMultiple ? slice.length() : 0;
-        VPackBuffer<uint8_t> buffer;
-        buffer.append(slice.begin(), slice.byteSize());
+    const size_t expectedLen = useMultiple ? slice.length() : 0;
+    VPackBuffer<uint8_t> buffer;
+    buffer.append(slice.begin(), slice.byteSize());
 
-        for (auto const& shardServers : *shardIds) {
-          ShardID const& shard = shardServers.first;
-          network::Headers headers;
-          // Just make sure that no dirty read flag makes it here, since we
-          // are writing and then `addTransactionHeaderForShard` might
-          // misbehave!
-          TRI_ASSERT(!trx.state()->options().allowDirtyReads);
-          addTransactionHeaderForShard(trx, *shardIds, shard, headers);
+    for (auto const& shardServers : *shardIds) {
+      ShardID const& shard = shardServers.first;
+      network::Headers headers;
+      // Just make sure that no dirty read flag makes it here, since we
+      // are writing and then `addTransactionHeaderForShard` might
+      // misbehave!
+      TRI_ASSERT(!trx.state()->options().allowDirtyReads);
+      addTransactionHeaderForShard(trx, *shardIds, shard, headers);
 
-          std::string url;
-          if (!useMultiple) {  // send to single API
-            std::string_view const key(
-                slice.get(StaticStrings::KeyString).stringView());
-            url = "/_api/document/" + StringUtils::urlEncode(shard) + "/" +
-                  StringUtils::urlEncode(key.data(), key.size());
-          } else {
-            url = "/_api/document/" + StringUtils::urlEncode(shard);
-          }
-          futures.emplace_back(network::sendRequestRetry(
-              pool, "shard:" + shard, restVerb, std::move(url),
-              /*cannot move*/ buffer, reqOpts, std::move(headers)));
-        }
+      std::string url;
+      if (!useMultiple) {  // send to single API
+        std::string_view const key(
+            slice.get(StaticStrings::KeyString).stringView());
+        url = "/_api/document/" + StringUtils::urlEncode(shard) + "/" +
+              StringUtils::urlEncode(key.data(), key.size());
+      } else {
+        url = "/_api/document/" + StringUtils::urlEncode(shard);
+      }
+      futures.emplace_back(network::sendRequestRetry(
+          pool, "shard:" + shard, restVerb, std::move(url),
+          /*cannot move*/ buffer, reqOpts, std::move(headers)));
+    }
 
-        return futures::collectAll(std::move(futures))
-            .thenValue(
-                [=](std::vector<Try<network::Response>>&& responses) mutable
-                -> OperationResult {
-                  return ::handleCRUDShardResponsesSlow(
-                      network::clusterResultModify, expectedLen,
-                      std::move(options), responses);
-                });
-      });
+    return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+               futures.begin(), futures.end())
+        .ThenInline([=](std::vector<yaclib::Result<network::Response>>&&
+                            responses) mutable -> OperationResult {
+          return ::handleCRUDShardResponsesSlow(network::clusterResultModify,
+                                                expectedLen, std::move(options),
+                                                responses);
+        });
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2696,7 +2720,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
       .param(StaticStrings::WaitForSyncString, (waitForSync ? "true" : "false"))
       .param("waitForCollector", (waitForCollector ? "true" : "false"));
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(DBservers.size());
 
   VPackBufferUInt8 buffer;
@@ -2708,8 +2732,8 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
         buffer, reqOpts));
   }
 
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+  for (auto&& f : std::move(futures)) {
+    auto r = std::move(f).Get().Ok();
 
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
@@ -2740,7 +2764,7 @@ Result compactOnAllDBServers(ClusterFeature& feature, bool changeLevel,
       .param("compactBottomMostLevel",
              (compactBottomMostLevel ? "true" : "false"));
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(DBservers.size());
 
   VPackBufferUInt8 buffer;
@@ -2752,8 +2776,8 @@ Result compactOnAllDBServers(ClusterFeature& feature, bool changeLevel,
         buffer, reqOpts));
   }
 
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+  for (auto&& f : std::move(futures)) {
+    auto r = std::move(f).Get().Ok();
 
     if (r.fail()) {
       return {network::fuerteToArangoErrorCode(r),
@@ -3023,7 +3047,7 @@ arangodb::Result hotBackupList(
 
   std::string const url = apiStr + "list";
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(dbServers.size());
   for (auto const& dbServer : dbServers) {
     futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
@@ -3032,8 +3056,9 @@ arangodb::Result hotBackupList(
   }
 
   size_t nrGood = 0;
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+  yaclib::Wait(futures.begin(), futures.end());
+  for (auto const& f : futures) {
+    auto& r = f.Touch().Ok();
     if (!r.ok()) {
       continue;
     }
@@ -3055,8 +3080,8 @@ arangodb::Result hotBackupList(
         std::string("not all db servers could be reached for backup listing"));
   }
 
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+  for (auto const& f : futures) {
+    auto& r = f.Touch().Ok();
     if (!r.ok()) {
       continue;
     }
@@ -3233,7 +3258,7 @@ arangodb::Result controlMaintenanceFeature(
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(dbServers.size());
   std::string const url = "/_admin/actions";
 
@@ -3249,8 +3274,8 @@ arangodb::Result controlMaintenanceFeature(
       << builder.toJson();
 
   // Now listen to the results:
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+  for (auto&& f : std::move(futures)) {
+    auto r = std::move(f).Get().Ok();
 
     if (r.fail()) {
       return arangodb::Result(
@@ -3302,7 +3327,7 @@ arangodb::Result restoreOnDBServers(network::ConnectionPool* pool,
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(dbServers.size());
 
   for (auto const& dbServer : dbServers) {
@@ -3314,8 +3339,8 @@ arangodb::Result restoreOnDBServers(network::ConnectionPool* pool,
   LOG_TOPIC("37960", DEBUG, Logger::BACKUP) << "Restoring backup " << backupId;
 
   // Now listen to the results:
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+  for (auto&& f : std::move(futures)) {
+    auto r = std::move(f).Get().Ok();
 
     if (r.fail()) {
       // oh-oh cluster is in a bad state
@@ -3638,7 +3663,7 @@ arangodb::Result lockDBServerTransactions(
   reqOpts.skipScheduler = true;
   reqOpts.timeout = network::Timeout(lockWait + 5.0);
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(dbServers.size());
 
   for (auto const& dbServer : dbServers) {
@@ -3663,8 +3688,8 @@ arangodb::Result lockDBServerTransactions(
           c, StringUtils::concatT(finalRes.errorMessage(), ", ", m));
     }
   };
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+  for (auto&& f : std::move(futures)) {
+    auto r = std::move(f).Get().Ok();
 
     if (r.fail()) {
       reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
@@ -3754,7 +3779,7 @@ arangodb::Result unlockDBServerTransactions(
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(lockedServers.size());
 
   for (auto const& dbServer : lockedServers) {
@@ -3762,8 +3787,7 @@ arangodb::Result unlockDBServerTransactions(
                                                    fuerte::RestVerb::Post, url,
                                                    body, reqOpts));
   }
-
-  std::ignore = futures::collectAll(futures).get();
+  yaclib::Wait(futures.begin(), futures.end());
 
   LOG_TOPIC("2ba8f", DEBUG, Logger::BACKUP)
       << "best try to kill all locks on db servers";
@@ -3795,7 +3819,7 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(dbServers.size());
 
   for (auto const& dbServer : dbServers) {
@@ -3813,8 +3837,8 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
   std::vector<std::string> secretHashes;
   std::string version;
   bool sizeValid = true;
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+  for (auto&& f : std::move(futures)) {
+    auto r = std::move(f).Get().Ok();
 
     if (r.fail()) {
       return arangodb::Result(
@@ -3916,7 +3940,7 @@ arangodb::Result removeLocalBackups(network::ConnectionPool* pool,
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(dbServers.size());
 
   for (auto const& dbServer : dbServers) {
@@ -3930,8 +3954,8 @@ arangodb::Result removeLocalBackups(network::ConnectionPool* pool,
   size_t notFoundCount = 0;
 
   // Now listen to the results:
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+  for (auto&& f : std::move(futures)) {
+    auto r = std::move(f).Get().Ok();
 
     if (r.fail()) {
       return arangodb::Result(
@@ -4012,7 +4036,7 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(
   reqOpts.skipScheduler = true;
   reqOpts.timeout = network::Timeout(lockWait + 5.0);
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(dbServers.size());
 
   for (auto const& dbServer : dbServers) {
@@ -4024,8 +4048,8 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(
   }
 
   // Perform the requests
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+  for (auto&& f : std::move(futures)) {
+    auto r = std::move(f).Get().Ok();
 
     if (r.fail()) {
       return arangodb::Result(
@@ -4067,7 +4091,7 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
   reqOpts.skipScheduler = true;
   reqOpts.timeout = network::Timeout(lockWait + 5.0);
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(dbserverLockIds.size());
 
   VPackBufferUInt8 body;  // empty body
@@ -4078,8 +4102,8 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
   }
 
   // Perform the requests
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+  for (auto&& f : std::move(futures)) {
+    auto r = std::move(f).Get().Ok();
 
     if (r.fail()) {
       return arangodb::Result(
@@ -4164,7 +4188,7 @@ void hotbackupCancelAsyncLocks(
   reqOpts.skipScheduler = true;
   reqOpts.timeout = network::Timeout(5.0);
 
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(dbserverLockIds.size());
 
   VPackBufferUInt8 body;  // empty body
@@ -4660,7 +4684,7 @@ arangodb::Result getEngineStatsFromDBServers(ClusterFeature& feature,
 
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(DBservers.size());
 
   for (std::string const& server : DBservers) {
@@ -4669,11 +4693,11 @@ arangodb::Result getEngineStatsFromDBServers(ClusterFeature& feature,
         VPackBuffer<uint8_t>(), reqOpts));
   }
 
-  auto responses = futures::collectAll(std::move(futures)).get();
+  yaclib::Wait(futures.begin(), futures.end());
 
   report.openObject();
-  for (auto const& tryRes : responses) {
-    network::Response const& r = tryRes.get();
+  for (auto const& f : futures) {
+    auto& r = f.Touch().Ok();
 
     if (r.fail()) {
       return {network::fuerteToArangoErrorCode(r),

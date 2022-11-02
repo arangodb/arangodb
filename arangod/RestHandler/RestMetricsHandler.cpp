@@ -280,7 +280,7 @@ RestStatus RestMetricsHandler::makeRedirection(std::string const& serverId,
                            _request->requestPath(), VPackBuffer<uint8_t>{},
                            options, buildHeaders(_request->headers()));
 
-  return waitForFuture(std::move(f).thenValue(
+  return waitForFuture(std::move(f).ThenInline(
       [self = shared_from_this(), last](network::Response&& r) {
         auto& me = basics::downCast<RestMetricsHandler>(*self);
         if (r.fail() || !r.hasResponse()) {

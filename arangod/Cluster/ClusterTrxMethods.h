@@ -25,10 +25,10 @@
 
 #include "Basics/Common.h"
 #include "Cluster/ClusterTypes.h"
-#include "Futures/Future.h"
 #include "Transaction/MethodsApi.h"
 #include "VocBase/voc-types.h"
 
+#include <yaclib/async/future.hpp>
 #include <velocypack/Slice.h>
 #include <set>
 
@@ -42,7 +42,6 @@ namespace transaction {
 class Methods;
 }
 namespace ClusterTrxMethods {
-using arangodb::futures::Future;
 
 struct IsServerIdLessThan {
   bool operator()(ServerID const& lhs, ServerID const& rhs) const noexcept;
@@ -51,17 +50,17 @@ struct IsServerIdLessThan {
 using SortedServersSet = std::set<ServerID, IsServerIdLessThan>;
 
 /// @brief begin a transaction on all followers
-Future<Result> beginTransactionOnLeaders(
+yaclib::Future<Result> beginTransactionOnLeaders(
     TransactionState&, ClusterTrxMethods::SortedServersSet const& leaders,
     transaction::MethodsApi api);
 
 /// @brief commit a transaction on a subordinate
-Future<arangodb::Result> commitTransaction(transaction::Methods& trx,
-                                           transaction::MethodsApi api);
+yaclib::Future<arangodb::Result> commitTransaction(transaction::Methods& trx,
+                                                   transaction::MethodsApi api);
 
 /// @brief commit a transaction on a subordinate
-Future<arangodb::Result> abortTransaction(transaction::Methods& trx,
-                                          transaction::MethodsApi api);
+yaclib::Future<arangodb::Result> abortTransaction(transaction::Methods& trx,
+                                                  transaction::MethodsApi api);
 
 /// @brief add the transaction ID header for servers
 template<typename MapT>

@@ -72,6 +72,7 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <yaclib/async/when_all.hpp>
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
@@ -1514,7 +1515,7 @@ ExecutionEngine* Query::rootEngine() const {
 
 namespace {
 
-futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
+yaclib::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   auto const& serverQueryIds = query.serverQueryIds();
   TRI_ASSERT(!serverQueryIds.empty());
@@ -1523,7 +1524,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
       query.vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
-    return futures::makeFuture(Result{TRI_ERROR_SHUTTING_DOWN});
+    return yaclib::MakeFuture<Result>(TRI_ERROR_SHUTTING_DOWN);
   }
 
   network::RequestOptions options;
@@ -1540,7 +1541,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 
   query.incHttpRequests(static_cast<unsigned>(serverQueryIds.size()));
 
-  std::vector<futures::Future<Result>> futures;
+  std::vector<yaclib::Future<Result>> futures;
   futures.reserve(serverQueryIds.size());
   auto ss = query.sharedState();
   TRI_ASSERT(ss != nullptr);
@@ -1552,7 +1553,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
         network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Delete,
                              "/_api/aql/finish/" + std::to_string(queryId),
                              body, options)
-            .thenValue([ss, &query](network::Response&& res) mutable -> Result {
+            .ThenInline([ss, &query](network::Response&& res) mutable {
               // simon: checked until 3.5, shutdown result is always ignored
               if (res.fail()) {
                 return Result{network::fuerteToArangoErrorCode(res)};
@@ -1594,19 +1595,24 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
               }
               return Result();
             })
-            .thenError<std::exception>([](std::exception ptr) {
-              return Result(TRI_ERROR_INTERNAL,
-                            "unhandled query shutdown exception");
+            .ThenInline([](auto&& r) {
+              try {
+                return std::move(r).Ok();
+              } catch (std::exception const&) {
+                return Result(TRI_ERROR_INTERNAL,
+                              "unhandled query shutdown exception");
+              }
             });
 
     futures.emplace_back(std::move(f));
   }
 
-  return futures::collectAll(std::move(futures))
-      .thenValue([](std::vector<futures::Try<Result>>&& results) -> Result {
-        for (futures::Try<Result>& tryRes : results) {
-          if (tryRes.get().fail()) {
-            return std::move(tryRes).get();
+  return yaclib::WhenAll<yaclib::FailPolicy::None, yaclib::OrderPolicy::Same>(
+             futures.begin(), futures.end())
+      .ThenInline([](std::vector<yaclib::Result<Result>>&& results) -> Result {
+        for (auto&& tryRes : std::move(results)) {
+          if (auto r = std::move(tryRes).Ok(); r.fail()) {
+            return r;
           }
         }
         return Result();
@@ -1655,10 +1661,10 @@ ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       // endless looping.
       _shutdownState.store(ShutdownState::None, std::memory_order_relaxed);
     });
-    futures::Future<Result> commitResult = _trx->commitAsync();
-    TRI_ASSERT(commitResult.isReady());
-    if (commitResult.get().fail()) {
-      THROW_ARANGO_EXCEPTION(std::move(commitResult).get());
+    yaclib::Future<Result> commitResult = _trx->commitAsync();
+    TRI_ASSERT(commitResult.Ready());
+    if (auto r = std::move(commitResult).Get().Ok(); r.fail()) {
+      THROW_ARANGO_EXCEPTION(std::move(r));
     }
     TRI_IF_FAILURE("Query::finalize_before_done") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -1689,7 +1695,7 @@ ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
     }
     ::finishDBServerParts(*this, errorCode)
-        .thenValue([ss = _sharedState, this](Result r) {
+        .DetachInline([ss = _sharedState, this](Result r) {
           LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES,
                        r.fail() && r.isNot(TRI_ERROR_HTTP_NOT_FOUND))
               << "received error from DBServer on query finalization: "

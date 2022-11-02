@@ -31,10 +31,9 @@
 #include <mutex>
 #include <queue>
 #include <utility>
-
-#include "Futures/Future.h"
-#include "Futures/Unit.h"
-#include "Futures/Utilities.h"
+#include <yaclib/async/make.hpp>
+#include <yaclib/async/contract.hpp>
+#include <function2.hpp>
 
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
@@ -183,20 +182,19 @@ class Scheduler {
   // delay Future returns a future that will be fulfilled after the given
   // duration requires scheduler If d is zero, the future is fulfilled
   // immediately. Throws a logic error if delay was cancelled.
-  futures::Future<futures::Unit> delay(clock::duration d) {
+  yaclib::Future<> delay(clock::duration d) {
     if (d == clock::duration::zero()) {
-      return futures::makeFuture();
+      return yaclib::MakeFuture();
     }
-
-    futures::Promise<bool> p;
-    futures::Future<bool> f = p.getFuture();
+    auto [f, p] = yaclib::MakeContract<bool>();
 
     auto item = queueDelayed(RequestLane::DELAYED_FUTURE, d,
-                             [pr = std::move(p)](bool cancelled) mutable {
-                               pr.setValue(cancelled);
+                             [p = std::move(p)](bool cancelled) mutable {
+                               TRI_ASSERT(p.Valid());
+                               std::move(p).Set(cancelled);
                              });
 
-    return std::move(f).thenValue([item = std::move(item)](bool cancelled) {
+    return std::move(f).ThenInline([item = std::move(item)](bool cancelled) {
       if (cancelled) {
         throw std::logic_error("delay was cancelled");
       }

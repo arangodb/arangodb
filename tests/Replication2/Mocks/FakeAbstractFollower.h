@@ -29,6 +29,8 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/types.h"
 
+#include <yaclib/async/contract.hpp>
+
 namespace arangodb::replication2::test {
 
 /**
@@ -48,12 +50,15 @@ struct FakeAbstractFollower : AbstractFollower {
   };
 
   auto appendEntries(AppendEntriesRequest request)
-      -> futures::Future<AppendEntriesResult> override {
-    return requests.emplace_back(std::move(request)).promise.getFuture();
+      -> yaclib::Future<AppendEntriesResult> override {
+    auto [f, p] = yaclib::MakeContract<AppendEntriesResult>();
+    requests.emplace_back(std::move(request), std::move(p));
+    return std::move(f);
   }
 
   void resolveRequest(AppendEntriesResult result) {
-    requests.front().promise.setValue(std::move(result));
+    TRI_ASSERT(requests.front().promise.Valid());
+    std::move(requests.front().promise).Set(std::move(result));
     requests.pop_front();
   }
 
@@ -64,7 +69,9 @@ struct FakeAbstractFollower : AbstractFollower {
 
   template<typename E>
   void resolveRequestWithException(E&& e) {
-    requests.front().promise.setException(std::forward<E>(e));
+    TRI_ASSERT(requests.front().promise.Valid());
+    std::move(requests.front().promise)
+        .Set(std::make_exception_ptr(std::forward<E>(e)));
     requests.pop_front();
   }
 
@@ -83,10 +90,11 @@ struct FakeAbstractFollower : AbstractFollower {
   }
 
   struct AsyncRequest {
-    explicit AsyncRequest(AppendEntriesRequest request)
-        : request(std::move(request)) {}
+    explicit AsyncRequest(AppendEntriesRequest request,
+                          yaclib::Promise<AppendEntriesResult>&& promise)
+        : request(std::move(request)), promise(std::move(promise)) {}
     AppendEntriesRequest request;
-    futures::Promise<AppendEntriesResult> promise;
+    yaclib::Promise<AppendEntriesResult> promise;
   };
 
   std::deque<AsyncRequest> requests;

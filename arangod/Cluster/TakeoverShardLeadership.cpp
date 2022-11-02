@@ -35,7 +35,6 @@
 #include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
-#include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -149,15 +148,14 @@ static void sendLeaderChangeRequests(
     futures.emplace_back(std::move(f));
   }
 
-  auto responses = futures::collectAll(futures).get();
+  yaclib::Wait(futures.begin(), futures.end());
 
   // This code intentionally ignores all errors
   realInsyncFollowers = std::make_shared<std::vector<ServerID>>();
-  for (auto const& res : responses) {
-    if (res.hasValue() && res.get().ok()) {
-      auto& result = res.get();
-      if (result.statusCode() == fuerte::StatusOK) {
-        realInsyncFollowers->push_back(::stripServerPrefix(result.destination));
+  for (auto const& f : futures) {
+    if (auto& r = f.Touch(); r) {
+      if (auto& v = r.Value(); v.ok() && v.statusCode() == fuerte::StatusOK) {
+        realInsyncFollowers->push_back(::stripServerPrefix(v.destination));
       }
     }
   }
@@ -207,7 +205,7 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
     }
     LOG_TOPIC("fe222", DEBUG, Logger::MAINTENANCE)
         << "Waiting until ClusterInfo has version " << currVersion;
-    ci.waitForCurrentVersion(currVersion).get();
+    std::ignore = ci.waitForCurrentVersion(currVersion).Get().Ok();
 
     auto currentInfo = ci.getCollectionCurrent(
         databaseName, std::to_string(collection.planId().id()));

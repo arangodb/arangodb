@@ -72,7 +72,7 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState,
   /// @brief only called on replication2 follower
   virtual arangodb::Result triggerIntermediateCommit() override;
 
-  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
+  [[nodiscard]] yaclib::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId collectionId) override;
 
  protected:
@@ -84,7 +84,7 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState,
   std::unique_ptr<TransactionCollection> createTransactionCollection(
       DataSourceId cid, AccessMode::Type accessType) override;
 
-  futures::Future<Result> doCommit() override;
+  yaclib::Future<Result> doCommit() override;
   Result doAbort() override;
 
  private:

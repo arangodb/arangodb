@@ -27,7 +27,6 @@
 #include "Basics/debugging.h"
 #include "Basics/system-compiler.h"
 
-#include "Futures/Future.h"
 #include "Graph/Options/OneSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathValidator.h"
 #include "Graph/Providers/ClusterProvider.h"
@@ -42,6 +41,7 @@
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #endif
 
+#include <yaclib/async/future.hpp>
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 
@@ -116,13 +116,17 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
   TRI_ASSERT(!_queue.isEmpty());
   if (!_queue.firstIsVertexFetched()) {
     std::vector<Step*> looseEnds = _queue.getStepsWithoutFetchedVertex();
-    futures::Future<std::vector<Step*>> futureEnds =
-        _provider.fetchVertices(looseEnds);
+    [[maybe_unused]] auto ends = _provider.fetchVertices(looseEnds);
 
-    // Will throw all network errors here
-    std::vector<Step*> preparedEnds = std::move(futureEnds.get());
+    if constexpr (!std::is_same_v<std::vector<Step*>, decltype(ends)>) {
+      // Will throw all network errors here
+      [[maybe_unused]] std::vector<Step*> preparedEnds =
+          std::move(ends).Get().Ok();
+      TRI_ASSERT(preparedEnds.size() != 0);
+    } else {
+      TRI_ASSERT(ends.size() != 0);
+    }
 
-    TRI_ASSERT(preparedEnds.size() != 0);
     TRI_ASSERT(_queue.firstIsVertexFetched());
   }
 
@@ -329,10 +333,11 @@ auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
       }
 
       if (!looseEnds.empty()) {
-        // Will throw all network errors here
-        futures::Future<std::vector<Step*>> futureEnds =
-            _provider.fetchVertices(looseEnds);
-        futureEnds.get();
+        auto ends = _provider.fetchVertices(looseEnds);
+        if constexpr (!std::is_same_v<std::vector<Step*>, decltype(ends)>) {
+          // Will throw all network errors here
+          std::ignore = std::move(ends).Get().Ok();
+        }
         // Notes for the future:
         // Vertices are now fetched. Think about other less-blocking and
         // batch-wise fetching (e.g. re-fetch at some later point).

@@ -106,8 +106,8 @@ struct LeaderStateManager
  private:
   void beginWaitingForLogLeaderResigned();
 
-  auto waitForLeadership() noexcept -> futures::Future<futures::Unit>;
-  auto recoverEntries() noexcept -> futures::Future<Result>;
+  auto waitForLeadership() noexcept -> yaclib::Future<>;
+  auto recoverEntries() noexcept -> yaclib::Future<Result>;
   auto startService() -> Result;
 };
 

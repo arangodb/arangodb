@@ -74,7 +74,7 @@ auto updateReplicatedLog(
     LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
     LogId logId, agency::LogPlanSpecification const* spec,
     std::shared_ptr<cluster::IFailureOracle const> failureOracle) noexcept
-    -> futures::Future<arangodb::Result>;
+    -> yaclib::Future<arangodb::Result>;
 
 struct ParticipantState {
   TermIndexPair lastAckedEntry;

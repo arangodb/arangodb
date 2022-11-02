@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Futures/Utilities.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -42,7 +41,6 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::futures;
 using namespace arangodb::rest;
 
 namespace arangodb {
@@ -56,7 +54,7 @@ Result getTtlStatisticsFromAllDBServers(ClusterFeature& feature,
   std::string const url("/_api/ttl/statistics");
 
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(DBservers.size());
   for (std::string const& server : DBservers) {
     futures.emplace_back(network::sendRequestRetry(pool, "server:" + server,
@@ -64,8 +62,8 @@ Result getTtlStatisticsFromAllDBServers(ClusterFeature& feature,
                                                    VPackBufferUInt8()));
   }
 
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+  for (yaclib::Future<network::Response>& f : futures) {
+    network::Response r = std::move(f).Get().Ok();
 
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
@@ -91,7 +89,7 @@ Result getTtlPropertiesFromAllDBServers(ClusterFeature& feature,
   std::string const url("/_api/ttl/properties");
 
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(DBservers.size());
   for (std::string const& server : DBservers) {
     futures.emplace_back(network::sendRequestRetry(pool, "server:" + server,
@@ -99,8 +97,8 @@ Result getTtlPropertiesFromAllDBServers(ClusterFeature& feature,
                                                    VPackBufferUInt8()));
   }
 
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+  for (yaclib::Future<network::Response>& f : futures) {
+    network::Response r = std::move(f).Get().Ok();
 
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
@@ -128,7 +126,7 @@ Result setTtlPropertiesOnAllDBServers(ClusterFeature& feature,
   std::string const url("/_api/ttl/properties");
 
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
-  std::vector<Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(DBservers.size());
 
   VPackBufferUInt8 buffer;
@@ -138,8 +136,8 @@ Result setTtlPropertiesOnAllDBServers(ClusterFeature& feature,
         pool, "server:" + server, fuerte::RestVerb::Put, url, buffer));
   }
 
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+  for (yaclib::Future<network::Response>& f : futures) {
+    network::Response r = std::move(f).Get().Ok();
 
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);

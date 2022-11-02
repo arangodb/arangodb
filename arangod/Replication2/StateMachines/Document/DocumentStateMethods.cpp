@@ -26,12 +26,12 @@
 #include <Basics/Exceptions.h>
 #include <Basics/Exceptions.tpp>
 #include "Cluster/ServerState.h"
-#include "Futures/Future.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "VocBase/vocbase.h"
 
 #include <memory>
+#include <yaclib/async/make.hpp>
 
 namespace arangodb::replication2 {
 
@@ -41,10 +41,11 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
       : _vocbase(vocbase) {}
 
   [[nodiscard]] auto getSnapshot(LogId logId, LogIndex waitForIndex) const
-      -> futures::Future<ResultT<velocypack::SharedSlice>> override {
+      -> yaclib::Future<ResultT<velocypack::SharedSlice>> override {
     auto leaderResult = getDocumentStateLeaderById(logId);
     if (leaderResult.fail()) {
-      return leaderResult.result();
+      return yaclib::MakeFuture<ResultT<velocypack::SharedSlice>>(
+          leaderResult.result());
     }
 
     // Dummy values
@@ -68,8 +69,8 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
         builder.add("baz", 2);
       }
     }
-    return futures::Future<ResultT<velocypack::SharedSlice>>{
-        builder.sharedSlice()};
+    return yaclib::MakeFuture<ResultT<velocypack::SharedSlice>>(
+        builder.sharedSlice());
   }
 
  private:

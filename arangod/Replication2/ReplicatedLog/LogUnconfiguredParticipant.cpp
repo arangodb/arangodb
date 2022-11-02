@@ -24,6 +24,7 @@
 
 #include <Basics/Exceptions.h>
 #include <Basics/voc-errors.h>
+#include <yaclib/async/contract.hpp>
 
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
@@ -82,8 +83,7 @@ LogUnconfiguredParticipant::GuardedData::GuardedData(
     std::unique_ptr<arangodb::replication2::replicated_log::LogCore> logCore)
     : _logCore(std::move(logCore)) {}
 
-auto LogUnconfiguredParticipant::waitForResign()
-    -> futures::Future<futures::Unit> {
+auto LogUnconfiguredParticipant::waitForResign() -> yaclib::Future<> {
   auto&& [future, action] = _guardedData.getLockedGuard()->waitForResign();
 
   action.fire();
@@ -110,19 +110,18 @@ auto LogUnconfiguredParticipant::GuardedData::didResign() const noexcept
 }
 
 auto LogUnconfiguredParticipant::GuardedData::waitForResign()
-    -> std::pair<futures::Future<futures::Unit>, DeferredAction> {
+    -> std::pair<yaclib::Future<>, DeferredAction> {
   if (!didResign()) {
     auto future = _waitForResignQueue.addWaitFor();
     return {std::move(future), DeferredAction{}};
   } else {
     TRI_ASSERT(_waitForResignQueue.empty());
-    auto promise = futures::Promise<futures::Unit>{};
-    auto future = promise.getFuture();
+    auto [future, promise] = yaclib::MakeContract();
 
     auto action =
         DeferredAction([promise = std::move(promise)]() mutable noexcept {
-          TRI_ASSERT(promise.valid());
-          promise.setValue();
+          TRI_ASSERT(promise.Valid());
+          std::move(promise).Set();
         });
 
     return {std::move(future), std::move(action)};

@@ -820,7 +820,7 @@ void Agent::sendAppendEntriesRPC() {
       network::sendRequest(
           cp, _config.poolAt(followerId), fuerte::RestVerb::Post,
           "/_api/agency_priv/appendEntries", std::move(buffer), reqOpts)
-          .thenValue([=](network::Response r) { ac->operator()(r); });
+          .DetachInline([=](network::Response r) { ac->operator()(r); });
 
       // Note the timeout is relatively long, but due to the 30 seconds
       // above, we only ever have at most 5 messages in flight.
@@ -907,7 +907,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
   network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post,
                        "/_api/agency_priv/appendEntries", std::move(buffer),
                        reqOpts)
-      .thenValue([=](network::Response r) { ac->operator()(r); });
+      .DetachInline([=](network::Response r) { ac->operator()(r); });
   double diff = TRI_microtime() - now;
   if (diff > 0.01) {
     LOG_TOPIC("cfb7c", DEBUG, Logger::AGENCY)
@@ -984,7 +984,7 @@ void Agent::advanceCommitIndex() {
   }
 }
 
-std::tuple<futures::Future<query_t>, bool, std::string> Agent::poll(
+std::tuple<yaclib::Future<query_t>, bool, std::string> Agent::poll(
     index_t index, double timeout) {
   using namespace std::chrono;
 
@@ -1001,8 +1001,8 @@ std::tuple<futures::Future<query_t>, bool, std::string> Agent::poll(
 
   std::string leader = _constituent.leaderID();
   if (!loaded() || (size() > 1 && leader != id())) {
-    return std::tuple<futures::Future<query_t>, bool, std::string const&>{
-        futures::makeFuture(std::move(builder)), false, std::move(leader)};
+    return std::tuple<yaclib::Future<query_t>, bool, std::string const&>{
+        yaclib::MakeFuture(std::move(builder)), false, std::move(leader)};
   }
 
   {
@@ -1043,8 +1043,8 @@ std::tuple<futures::Future<query_t>, bool, std::string> Agent::poll(
       }
     }
     if (builder != nullptr) {
-      return std::tuple<futures::Future<query_t>, bool, std::string>{
-          futures::makeFuture(std::move(builder)), true, std::string()};
+      return std::tuple<yaclib::Future<query_t>, bool, std::string>{
+          yaclib::MakeFuture(std::move(builder)), true, std::string()};
     }
   }
 
@@ -1053,12 +1053,13 @@ std::tuple<futures::Future<query_t>, bool, std::string> Agent::poll(
             duration_cast<milliseconds>(duration<double>(timeout));
 
   try {
-    auto res = _promises.emplace(tp, futures::Promise<query_t>());
+    auto [f, p] = yaclib::MakeContract<query_t>();
+    _promises.emplace(tp, std::move(p));
     if (_lowestPromise > index) {
       _lowestPromise = index;
     }
-    return std::tuple<futures::Future<query_t>, bool, std::string>{
-        res->second.getFuture(), true, std::string()};
+    return std::tuple<yaclib::Future<query_t>, bool, std::string>{
+        std::move(f), true, std::string()};
   } catch (...) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Failed to add promise for polling");
@@ -1589,10 +1590,11 @@ void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
   auto pit = _promises.begin();
   while (pit != _promises.end()) {
     if (pit->first < tp) {
-      auto pp =
-          std::make_shared<futures::Promise<query_t>>(std::move(pit->second));
       scheduler->queue(RequestLane::CLUSTER_INTERNAL,
-                       [pp = std::move(pp), qu] { pp->setValue(qu); });
+                       [p = std::move(pit->second), qu]() mutable {
+                         TRI_ASSERT(p.Valid());
+                         std::move(p).Set(std::move(qu));
+                       });
       pit = _promises.erase(pit);
     } else {
       ++pit;

@@ -29,7 +29,6 @@
 #include "Basics/system-compiler.h"
 #include "Basics/voc-errors.h"
 
-#include "Futures/Future.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
@@ -44,6 +43,7 @@
 #include "Graph/Types/ValidationResult.h"
 #include "Graph/algorithm-aliases.h"
 
+#include <yaclib/async/future.hpp>
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
@@ -179,11 +179,11 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   }
 
   if (!looseEnds.empty()) {
+    yaclib::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
     // Will throw all network errors here
-    futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
-    futureEnds.get();
+    std::ignore = std::move(futureEnds).Get().Ok();
     // Notes for the future:
-    // Vertices are now fetched. Thnink about other less-blocking and batch-wise
+    // Vertices are now fetched. Think about other less-blocking and batch-wise
     // fetching (e.g. re-fetch at some later point).
     // TODO: Discuss how to optimize here. Currently we'll mark looseEnds in
     // fetch as fetched. This works, but we might create a batch limit here in
@@ -202,10 +202,10 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   TRI_ASSERT(!_queue.isEmpty());
   if (!_queue.hasProcessableElement()) {
     std::vector<Step*> looseEnds = _queue.getLooseEnds();
-    futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
+    yaclib::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
 
     // Will throw all network errors here
-    auto&& preparedEnds = futureEnds.get();
+    [[maybe_unused]] auto preparedEnds = std::move(futureEnds).Get().Ok();
 
     TRI_ASSERT(preparedEnds.size() != 0);
     TRI_ASSERT(_queue.hasProcessableElement());

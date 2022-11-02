@@ -32,12 +32,14 @@
 #include "Aql/QueryProfile.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Cluster/TraverserEngine.h"
 
+#include <yaclib/async/make.hpp>
 #include <velocypack/Iterator.h>
 
 using namespace arangodb;
@@ -201,8 +203,7 @@ void ClusterQuery::prepareClusterQuery(
   enterState(QueryExecutionState::ValueType::EXECUTION);
 }
 
-futures::Future<Result> ClusterQuery::finalizeClusterQuery(
-    ErrorCode errorCode) {
+yaclib::Future<Result> ClusterQuery::finalizeClusterQuery(ErrorCode errorCode) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
@@ -210,8 +211,9 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(
   // be good practice to prevent the other cleanup code from running
   ShutdownState exp = ShutdownState::None;
   if (!_shutdownState.compare_exchange_strong(exp, ShutdownState::InProgress)) {
-    return Result{TRI_ERROR_INTERNAL,
-                  "query already finalized"};  // someone else got here
+    return yaclib::MakeFuture<Result>(
+        TRI_ERROR_INTERNAL,
+        "query already finalized");  // someone else got here
   }
 
   LOG_TOPIC("fc33c", DEBUG, Logger::QUERIES)
@@ -227,7 +229,7 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(
   }
 
   // Use async API, commit on followers sends a request
-  futures::Future<Result> finishResult(Result{});
+  auto finishResult = yaclib::MakeFuture<Result>();
   if (_trx->status() == transaction::Status::RUNNING) {
     if (errorCode == TRI_ERROR_NO_ERROR) {
       // no error. we need to commit the transaction
@@ -238,7 +240,7 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(
     }
   }
 
-  return std::move(finishResult).thenValue([this](Result res) -> Result {
+  return std::move(finishResult).ThenInline([this](Result res) -> Result {
     LOG_TOPIC("8ea28", DEBUG, Logger::QUERIES)
         << elapsedSince(_startTime) << " Query::finalizeSnippets post commit()"
         << " this: " << (uintptr_t)this;

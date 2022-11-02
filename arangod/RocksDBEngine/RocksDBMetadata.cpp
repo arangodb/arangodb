@@ -44,6 +44,7 @@
 #include "Transaction/Context.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+#include "Logger/LogMacros.h"
 
 #include <chrono>
 #include <thread>

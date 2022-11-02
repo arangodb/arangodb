@@ -75,7 +75,7 @@ auto FakeLeader::waitFor(LogIndex index) -> WaitForFuture {
 
 auto FakeLeader::waitForIterator(LogIndex index)
     -> replicated_log::ILogParticipant::WaitForIteratorFuture {
-  return waitFor(index).thenValue(
+  return waitFor(index).ThenInline(
       [this, index](auto&&) -> std::unique_ptr<LogRangeIterator> {
         auto guard = guarded.getLockedGuard();
         return guard->log.getIteratorRange(index, guard->commitIndex + 1);
@@ -83,7 +83,7 @@ auto FakeLeader::waitForIterator(LogIndex index)
 }
 
 auto arangodb::replication2::test::FakeLeader::waitForResign()
-    -> futures::Future<futures::Unit> {
+    -> yaclib::Future<> {
   return waitForResignQueue.addWaitFor();
 }
 
@@ -119,9 +119,9 @@ void FakeLeader::resign() & {
   auto const exPtr =
       std::make_exception_ptr(replicated_log::ParticipantResignedException(
           TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE));
-  waitForQueue.resolveAll(futures::Try<replicated_log::WaitForResult>(exPtr));
+  waitForQueue.resolveAll(yaclib::Result<replicated_log::WaitForResult>(exPtr));
   waitForLeaderEstablishedQueue.resolveAll(
-      futures::Try<replicated_log::WaitForResult>(exPtr));
+      yaclib::Result<replicated_log::WaitForResult>(exPtr));
   waitForResignQueue.resolveAll();
 }
 

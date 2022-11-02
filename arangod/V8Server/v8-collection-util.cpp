@@ -23,6 +23,7 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
+#include "Logger/LogMacros.h"
 #include "V8/v8-conv.h"
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbaseprivate.h"

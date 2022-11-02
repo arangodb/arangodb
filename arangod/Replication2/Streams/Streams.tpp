@@ -43,11 +43,10 @@ struct StreamGenericImplementationBase
   using WaitForResult = typename StreamInterface<ValueType>::WaitForResult;
 
   auto waitForIterator(LogIndex index)
-      -> futures::Future<std::unique_ptr<Iterator>> override final {
+      -> yaclib::Future<std::unique_ptr<Iterator>> override final {
     return implementation().template waitForIteratorInternal<Descriptor>(index);
   }
-  auto waitFor(LogIndex index)
-      -> futures::Future<WaitForResult> override final {
+  auto waitFor(LogIndex index) -> yaclib::Future<WaitForResult> override final {
     return implementation().template waitForInternal<Descriptor>(index);
   }
   auto release(LogIndex index) -> void override final {

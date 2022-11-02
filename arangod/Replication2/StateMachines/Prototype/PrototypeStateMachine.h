@@ -25,12 +25,12 @@
 
 #include "Basics/ResultT.h"
 #include "Basics/UnshackledMutex.h"
-#include "Futures/Future.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
 
 #include <string>
 #include <unordered_map>
+#include <yaclib/async/future.hpp>
 
 namespace rocksdb {
 class TransactionDB;
@@ -66,7 +66,7 @@ struct IPrototypeLeaderInterface {
   virtual ~IPrototypeLeaderInterface() = default;
   virtual auto getSnapshot(GlobalLogIdentifier const& logId,
                            LogIndex waitForIndex)
-      -> futures::Future<
+      -> yaclib::Future<
           ResultT<std::unordered_map<std::string, std::string>>> = 0;
 };
 

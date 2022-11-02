@@ -34,9 +34,9 @@
 #include "Cluster/ClusterMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterIndex.h"
-#include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -196,7 +196,7 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
 }
 
 /// @brief return the figures for a collection
-futures::Future<OperationResult> ClusterCollection::figures(
+yaclib::Future<OperationResult> ClusterCollection::figures(
     bool details, OperationOptions const& options) {
   auto& feature =
       _logicalCollection.vocbase().server().getFeature<ClusterFeature>();

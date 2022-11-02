@@ -42,18 +42,16 @@ UnconfiguredStateManager<S>::UnconfiguredStateManager(
 
 template<typename S>
 void UnconfiguredStateManager<S>::run() noexcept {
-  _unconfiguredParticipant->waitForResign().thenFinal(
-      [weak = this->weak_from_this()](
-          futures::Try<futures::Unit>&& result) noexcept {
-        TRI_ASSERT(result.valid());
-        if (result.hasValue()) {
+  _unconfiguredParticipant->waitForResign().DetachInline(
+      [weak = this->weak_from_this()](auto&& result) noexcept {
+        if (result) {
           if (auto self = weak.lock(); self != nullptr) {
             if (auto parentPtr = self->_parent.lock(); parentPtr != nullptr) {
               static_assert(noexcept(parentPtr->rebuildMe(self.get())));
               parentPtr->rebuildMe(self.get());
             }
           }
-        } else if (result.hasException()) {
+        } else {
           // This can be a FutureException(ErrorCode::BrokenPromise), or
           // TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE.
           // In either case, the ReplicatedLog itself is dropped or destroyed
@@ -61,8 +59,6 @@ void UnconfiguredStateManager<S>::run() noexcept {
           LOG_TOPIC("4ffab", TRACE, Logger::REPLICATED_STATE)
               << "Replicated log participant is gone. Replicated state will go "
                  "soon as well.";
-        } else {
-          TRI_ASSERT(false);
         }
       });
 }

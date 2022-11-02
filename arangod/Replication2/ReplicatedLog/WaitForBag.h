@@ -24,21 +24,15 @@
 
 #include <exception>
 #include <vector>
-
-namespace arangodb::futures {
-template<typename T>
-class Future;
-template<typename T>
-class Promise;
-struct Unit;
-}  // namespace arangodb::futures
+#include <yaclib/async/future.hpp>
+#include <yaclib/async/promise.hpp>
 
 namespace arangodb {
 
 struct WaitForBag {
   WaitForBag() = default;
 
-  auto addWaitFor() -> futures::Future<futures::Unit>;
+  auto addWaitFor() -> yaclib::Future<>;
 
   void resolveAll();
 
@@ -47,7 +41,7 @@ struct WaitForBag {
   [[nodiscard]] auto empty() const noexcept -> bool;
 
  private:
-  std::vector<futures::Promise<futures::Unit>> _waitForBag;
+  std::vector<yaclib::Promise<>> _waitForBag;
 };
 
 }  // namespace arangodb

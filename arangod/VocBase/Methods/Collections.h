@@ -24,13 +24,13 @@
 #pragma once
 
 #include "Basics/Result.h"
-#include "Futures/Future.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <yaclib/async/future.hpp>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <functional>
@@ -153,10 +153,10 @@ struct Collections {
           false  // flag if we want to keep access rights in-place
   );
 
-  static futures::Future<Result> warmup(TRI_vocbase_t& vocbase,
-                                        LogicalCollection const& coll);
+  static yaclib::Future<Result> warmup(TRI_vocbase_t& vocbase,
+                                       LogicalCollection const& coll);
 
-  static futures::Future<OperationResult> revisionId(
+  static yaclib::Future<OperationResult> revisionId(
       Context& ctxt, OperationOptions const& options);
 
   typedef std::function<void(velocypack::Slice const&)> DocCallback;

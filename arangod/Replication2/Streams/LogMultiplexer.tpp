@@ -28,6 +28,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <yaclib/async/make.hpp>
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -67,18 +68,17 @@ namespace arangodb::replication2::streams {
 namespace {
 template<typename Queue, typename Result>
 auto allUnresolved(std::pair<Queue, Result>& q) {
-  return std::all_of(
-      std::begin(q.first), std::end(q.first),
-      [&](auto const& pair) { return !pair.second.isFulfilled(); });
+  return std::all_of(std::begin(q.first), std::end(q.first),
+                     [&](auto const& pair) { return pair.second.Valid(); });
 }
 template<typename Descriptor, typename Queue, typename Result,
          typename Block = StreamInformationBlock<Descriptor>>
 auto resolvePromiseSet(std::pair<Queue, Result>& q) {
   TRI_ASSERT(allUnresolved(q));
   std::for_each(std::begin(q.first), std::end(q.first), [&](auto& pair) {
-    TRI_ASSERT(!pair.second.isFulfilled());
-    if (!pair.second.isFulfilled()) {
-      pair.second.setTry(std::move(q.second));
+    TRI_ASSERT(pair.second.Valid());
+    if (pair.second.Valid()) {
+      std::move(pair.second).Set(std::move(q.second));
     }
   });
 }
@@ -108,10 +108,10 @@ struct LogMultiplexerImplementationBase {
            typename T = stream_descriptor_type_t<StreamDescriptor>,
            typename E = StreamEntryView<T>>
   auto waitForIteratorInternal(LogIndex first)
-      -> futures::Future<std::unique_ptr<TypedLogRangeIterator<E>>> {
-    return waitForInternal<StreamDescriptor>(first).thenValue(
-        [weak = weak_from_self(),
-         first](auto&&) -> std::unique_ptr<TypedLogRangeIterator<E>> {
+      -> yaclib::Future<std::unique_ptr<TypedLogRangeIterator<E>>> {
+    return waitForInternal<StreamDescriptor>(first).ThenInline(
+        [weak = weak_from_self(), first](typename Stream<T>::WaitForResult&&)
+            -> std::unique_ptr<TypedLogRangeIterator<E>> {
           if (auto that = weak.lock(); that != nullptr) {
             return that->_guardedData.doUnderLock(
                 [&](MultiplexerData<Spec>& self) {
@@ -130,10 +130,10 @@ struct LogMultiplexerImplementationBase {
   template<typename StreamDescriptor,
            typename T = stream_descriptor_type_t<StreamDescriptor>,
            typename W = typename Stream<T>::WaitForResult>
-  auto waitForInternal(LogIndex index) -> futures::Future<W> {
+  auto waitForInternal(LogIndex index) -> yaclib::Future<W> {
     return _guardedData.doUnderLock([&](MultiplexerData<Spec>& self) {
       if (self._firstUncommittedIndex > index) {
-        return futures::Future<W>{std::in_place};
+        return yaclib::MakeFuture<W>();
       }
       auto& block =
           std::get<StreamInformationBlock<StreamDescriptor>>(self._blocks);
@@ -217,7 +217,7 @@ struct LogMultiplexerImplementationBase {
     auto getChangeLeaderResolveSet(std::exception_ptr ptr) {
       return std::make_tuple(std::make_pair(
           std::move(getBlockForDescriptor<Descriptors>()._waitForQueue),
-          futures::Try<
+          yaclib::Result<
               typename StreamInformationBlock<Descriptors>::WaitForResult>{
               ptr})...);
     }
@@ -226,8 +226,10 @@ struct LogMultiplexerImplementationBase {
       return std::make_tuple(std::make_pair(
           getBlockForDescriptor<Descriptors>().getWaitForResolveSet(
               commitIndex),
-          futures::Try{typename StreamInformationBlock<
-              Descriptors>::WaitForResult{}})...);
+          yaclib::Result<
+              typename StreamInformationBlock<Descriptors>::WaitForResult>{
+              typename StreamInformationBlock<
+                  Descriptors>::WaitForResult{}})...);
     }
 
     // returns a LogIndex to wait for (if necessary)
@@ -302,16 +304,14 @@ struct LogDemultiplexerImplementation
  private:
   void triggerWaitFor(LogIndex waitForIndex) {
     this->_interface->waitForIterator(waitForIndex)
-        .thenFinal([weak = this->weak_from_this()](
-                       futures::Try<std::unique_ptr<LogRangeIterator>>&&
-                           result) noexcept {
+        .DetachInline([weak = this->weak_from_this()](auto&& result) noexcept {
           if (auto locked = weak.lock(); locked) {
             auto that =
                 std::static_pointer_cast<LogDemultiplexerImplementation>(
                     locked);
             try {
               auto iter =
-                  std::move(result).get();  // potentially throws an exception
+                  std::move(result).Ok();  // potentially throws an exception
               auto [nextIndex, promiseSets] =
                   that->_guardedData.doUnderLock([&](auto& self) {
                     self._firstUncommittedIndex = iter->range().to;
@@ -438,16 +438,15 @@ struct LogMultiplexerImplementation
     LOG_TOPIC("2b7b1", TRACE, Logger::REPLICATION2)
         << "multiplexer trigger wait for index " << waitForIndex;
     auto f = this->_interface->waitFor(waitForIndex);
-    std::move(f).thenFinal(
-        [weak = this->weak_from_this()](
-            futures::Try<replicated_log::WaitForResult>&& tryResult) noexcept {
+    std::move(f).DetachInline(
+        [weak = this->weak_from_this()](auto&& tryResult) noexcept {
           LOG_TOPIC("2b7b1", TRACE, Logger::REPLICATION2)
               << "multiplexer trigger wait for returned";
           // First lock the shared pointer
           if (auto locked = weak.lock(); locked) {
             auto that = std::static_pointer_cast<SelfClass>(locked);
             try {
-              auto& result = tryResult.get();
+              auto& result = std::as_const(tryResult).Ok();
               // now acquire the mutex
               auto [resolveSets, nextIndex] =
                   that->_guardedData.doUnderLock([&](auto& self) {

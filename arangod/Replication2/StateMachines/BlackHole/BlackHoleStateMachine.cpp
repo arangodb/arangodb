@@ -21,7 +21,8 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #include <Basics/voc-errors.h>
-#include <Futures/Future.h>
+#include <yaclib/async/make.hpp>
+#include <yaclib/async/future.hpp>
 
 #include "BlackHoleStateMachine.h"
 
@@ -31,8 +32,8 @@ using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::black_hole;
 
 auto BlackHoleLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
-    -> futures::Future<Result> {
-  return {TRI_ERROR_NO_ERROR};
+    -> yaclib::Future<Result> {
+  return yaclib::MakeFuture<Result>(TRI_ERROR_NO_ERROR);
 }
 
 auto BlackHoleLeaderState::write(std::string_view data) -> LogIndex {
@@ -50,13 +51,13 @@ auto BlackHoleLeaderState::resign() && noexcept
 
 auto BlackHoleFollowerState::acquireSnapshot(ParticipantId const& destination,
                                              LogIndex) noexcept
-    -> futures::Future<Result> {
-  return {TRI_ERROR_NO_ERROR};
+    -> yaclib::Future<Result> {
+  return yaclib::MakeFuture<Result>(TRI_ERROR_NO_ERROR);
 }
 
 auto BlackHoleFollowerState::applyEntries(
-    std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
-  return {TRI_ERROR_NO_ERROR};
+    std::unique_ptr<EntryIterator> ptr) noexcept -> yaclib::Future<Result> {
+  return yaclib::MakeFuture<Result>(TRI_ERROR_NO_ERROR);
 }
 
 BlackHoleFollowerState::BlackHoleFollowerState(

@@ -58,7 +58,7 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
                                 bool showProperties, FiguresType showFigures,
                                 CountType showCount);
 
-  futures::Future<futures::Unit> collectionRepresentationAsync(
+  yaclib::Future<> collectionRepresentationAsync(
       methods::Collections::Context& ctxt, bool showProperties,
       FiguresType showFigures, CountType showCount);
 

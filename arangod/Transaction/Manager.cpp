@@ -33,7 +33,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
@@ -1405,12 +1404,13 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
     }
 
     if (!futures.empty()) {
-      auto responses = futures::collectAll(futures).get();
-      for (auto const& it : responses) {
-        if (!it.hasValue()) {
+      yaclib::Wait(futures.begin(), futures.end());
+      for (auto const& f : futures) {
+        auto& r = f.Touch();
+        if (!r) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
         }
-        auto& res = it.get();
+        auto& res = r.Value();
         if (res.statusCode() == fuerte::StatusOK) {
           VPackSlice slice = res.slice();
           if (slice.isObject()) {
@@ -1501,8 +1501,8 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username,
       futures.emplace_back(std::move(f));
     }
 
-    for (auto& f : futures) {
-      network::Response const& resp = f.get();
+    for (auto&& f : std::move(futures)) {
+      auto resp = std::move(f).Get().Ok();
 
       if (resp.statusCode() != fuerte::StatusOK) {
         VPackSlice slice = resp.slice();

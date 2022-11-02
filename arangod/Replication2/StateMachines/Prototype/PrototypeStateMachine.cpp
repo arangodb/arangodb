@@ -26,12 +26,12 @@
 #include "PrototypeFollowerState.h"
 #include "PrototypeCore.h"
 
-#include "Futures/Future.h"
 #include "Logger/LogContextKeys.h"
 #include "velocypack/Iterator.h"
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
+#include <yaclib/async/future.hpp>
 #include <utility>
 
 using namespace arangodb;

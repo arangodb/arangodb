@@ -35,10 +35,8 @@ struct WaitForResignTest : ReplicatedLogTest {
   bool resigned = false;
 
   auto getSetResignStatusCallback() {
-    using namespace arangodb::futures;
-    return [&](Try<Unit>&& result) {
-      ASSERT_TRUE(result.valid());
-      ASSERT_TRUE(result.hasValue());
+    return [&](yaclib::Result<>&& result) {
+      ASSERT_TRUE(result);
       resigned = true;
     };
   }
@@ -47,7 +45,7 @@ struct WaitForResignTest : ReplicatedLogTest {
 TEST_F(WaitForResignTest, wait_for_resign_unconfigured_participant_resign) {
   auto testLog = makeReplicatedLog(LogId{1});
   auto participant = testLog->getParticipant();
-  participant->waitForResign().thenFinal(getSetResignStatusCallback());
+  participant->waitForResign().DetachInline(getSetResignStatusCallback());
 
   ASSERT_FALSE(resigned);
   std::ignore = testLog->drop();
@@ -58,7 +56,7 @@ TEST_F(WaitForResignTest,
        wait_for_resign_unconfigured_participant_become_follower) {
   auto testLog = makeReplicatedLog(LogId{1});
   auto participant = testLog->getParticipant();
-  participant->waitForResign().thenFinal(getSetResignStatusCallback());
+  participant->waitForResign().DetachInline(getSetResignStatusCallback());
 
   ASSERT_FALSE(resigned);
   testLog->becomeFollower("follower", LogTerm{1}, "leader");
@@ -69,7 +67,7 @@ TEST_F(WaitForResignTest,
        wait_for_resign_unconfigured_participant_become_leader) {
   auto testLog = makeReplicatedLog(LogId{1});
   auto participant = testLog->getParticipant();
-  participant->waitForResign().thenFinal(getSetResignStatusCallback());
+  participant->waitForResign().DetachInline(getSetResignStatusCallback());
 
   ASSERT_FALSE(resigned);
   testLog->becomeLeader("leader", LogTerm{1}, {}, 1);
@@ -80,7 +78,7 @@ TEST_F(WaitForResignTest, wait_for_resign_unconfigured_participant_destroy) {
   {
     auto testLog = makeReplicatedLog(LogId{1});
     auto participant = testLog->getParticipant();
-    participant->waitForResign().thenFinal(getSetResignStatusCallback());
+    participant->waitForResign().DetachInline(getSetResignStatusCallback());
 
     ASSERT_FALSE(resigned);
   }
@@ -91,7 +89,7 @@ TEST_F(WaitForResignTest, wait_for_resign_follower_resign) {
   auto testLog = makeReplicatedLog(LogId{1});
   testLog->becomeFollower("follower", LogTerm{1}, "leader");
   auto participant = testLog->getParticipant();
-  participant->waitForResign().thenFinal(getSetResignStatusCallback());
+  participant->waitForResign().DetachInline(getSetResignStatusCallback());
 
   ASSERT_FALSE(resigned);
   std::ignore = testLog->drop();
@@ -102,7 +100,7 @@ TEST_F(WaitForResignTest, wait_for_resign_follower_become_follower) {
   auto testLog = makeReplicatedLog(LogId{1});
   testLog->becomeFollower("follower", LogTerm{1}, "leader");
   auto participant = testLog->getParticipant();
-  participant->waitForResign().thenFinal(getSetResignStatusCallback());
+  participant->waitForResign().DetachInline(getSetResignStatusCallback());
 
   ASSERT_FALSE(resigned);
   testLog->becomeFollower("follower", LogTerm{2}, "leader");
@@ -113,7 +111,7 @@ TEST_F(WaitForResignTest, wait_for_resign_follower_become_leader) {
   auto testLog = makeReplicatedLog(LogId{1});
   testLog->becomeFollower("follower", LogTerm{1}, "leader");
   auto participant = testLog->getParticipant();
-  participant->waitForResign().thenFinal(getSetResignStatusCallback());
+  participant->waitForResign().DetachInline(getSetResignStatusCallback());
 
   ASSERT_FALSE(resigned);
   testLog->becomeLeader("leader", LogTerm{2}, {}, 1);
@@ -125,7 +123,7 @@ TEST_F(WaitForResignTest, wait_for_resign_follower_destroy) {
     auto testLog = makeReplicatedLog(LogId{1});
     testLog->becomeFollower("follower", LogTerm{1}, "leader");
     auto participant = testLog->getParticipant();
-    participant->waitForResign().thenFinal(getSetResignStatusCallback());
+    participant->waitForResign().DetachInline(getSetResignStatusCallback());
 
     ASSERT_FALSE(resigned);
   }
@@ -136,7 +134,7 @@ TEST_F(WaitForResignTest, wait_for_resign_leader_resign) {
   auto testLog = makeReplicatedLog(LogId{1});
   testLog->becomeLeader("leader", LogTerm{1}, {}, 1);
   auto participant = testLog->getParticipant();
-  participant->waitForResign().thenFinal(getSetResignStatusCallback());
+  participant->waitForResign().DetachInline(getSetResignStatusCallback());
 
   ASSERT_FALSE(resigned);
   std::ignore = testLog->drop();
@@ -147,7 +145,7 @@ TEST_F(WaitForResignTest, wait_for_resign_leader_become_follower) {
   auto testLog = makeReplicatedLog(LogId{1});
   testLog->becomeLeader("leader", LogTerm{1}, {}, 1);
   auto participant = testLog->getParticipant();
-  participant->waitForResign().thenFinal(getSetResignStatusCallback());
+  participant->waitForResign().DetachInline(getSetResignStatusCallback());
 
   ASSERT_FALSE(resigned);
   testLog->becomeFollower("follower", LogTerm{2}, "leader");
@@ -158,7 +156,7 @@ TEST_F(WaitForResignTest, wait_for_resign_leader_become_leader) {
   auto testLog = makeReplicatedLog(LogId{1});
   testLog->becomeLeader("leader", LogTerm{1}, {}, 1);
   auto participant = testLog->getParticipant();
-  participant->waitForResign().thenFinal(getSetResignStatusCallback());
+  participant->waitForResign().DetachInline(getSetResignStatusCallback());
 
   ASSERT_FALSE(resigned);
   testLog->becomeLeader("leader", LogTerm{2}, {}, 1);
@@ -170,7 +168,7 @@ TEST_F(WaitForResignTest, wait_for_resign_leader_destroy) {
     auto testLog = makeReplicatedLog(LogId{1});
     testLog->becomeLeader("leader", LogTerm{1}, {}, 1);
     auto participant = testLog->getParticipant();
-    participant->waitForResign().thenFinal(getSetResignStatusCallback());
+    participant->waitForResign().DetachInline(getSetResignStatusCallback());
 
     ASSERT_FALSE(resigned);
   }

@@ -166,7 +166,7 @@ RestStatus RestAgencyHandler::pollIndex(index_t const& start,
   if (std::get<1>(pollResult)) {
     return waitForFuture(
         std::move(std::get<0>(pollResult))
-            .thenValue([this, start](std::shared_ptr<VPackBuilder>&& rb) {
+            .ThenInline([this, start](std::shared_ptr<VPackBuilder>&& rb) {
               VPackSlice res = rb->slice();
 
               if (res.isObject() && res.hasKey("result")) {
@@ -231,12 +231,15 @@ RestStatus RestAgencyHandler::pollIndex(index_t const& start,
                               TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
               }
             })
-            .thenError<VPackException>([this](VPackException const& e) {
-              generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-            })
-            .thenError<std::exception>([this](std::exception const& e) {
-              generateError(rest::ResponseCode::SERVER_ERROR,
-                            TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+            .ThenInline([this](auto&& r) {
+              try {
+                std::ignore = std::move(r).Ok();
+              } catch (VPackException const& e) {
+                generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+              } catch (std::exception const& e) {
+                generateError(rest::ResponseCode::SERVER_ERROR,
+                              TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+              }
             }));
   } else {
     auto const& leader = std::get<2>(pollResult);

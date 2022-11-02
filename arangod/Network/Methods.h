@@ -23,13 +23,14 @@
 
 #pragma once
 
+#include "Basics/debugging.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
-#include "Futures/Future.h"
 #include "GeneralServer/RequestLane.h"
 #include "Network/ConnectionPool.h"
 #include "Network/types.h"
 
+#include <yaclib/async/future.hpp>
 #include <fuerte/message.h>
 
 #include <chrono>
@@ -116,7 +117,7 @@ struct Response {
 };
 
 static_assert(std::is_nothrow_move_constructible<Response>::value, "");
-using FutureRes = arangodb::futures::Future<Response>;
+using FutureRes = yaclib::Future<Response>;
 
 static constexpr Timeout TimeoutDefault = Timeout(120.0);
 

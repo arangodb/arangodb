@@ -167,7 +167,7 @@ TEST_F(RocksDBLogTest, insert_remove_iterate) {
   }
 
   {
-    auto s = log->removeFront(LogIndex{1000}).get();
+    auto s = log->removeFront(LogIndex{1000}).Get().Ok();
     ASSERT_TRUE(s.ok());
   }
 
@@ -211,7 +211,7 @@ TEST_F(RocksDBLogTest, insert_iterate_remove_iterate) {
   auto iter = log->read(LogIndex{1});
 
   {
-    auto s = log->removeFront(LogIndex{1000}).get();
+    auto s = log->removeFront(LogIndex{1000}).Get().Ok();
     ASSERT_TRUE(s.ok());
   }
 

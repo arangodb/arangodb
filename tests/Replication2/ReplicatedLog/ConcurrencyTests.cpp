@@ -115,8 +115,10 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
           auto const idx = log->insert(payload, false,
                                        LogLeader::doNotTriggerAsyncReplication);
           std::this_thread::sleep_for(1ns);
-          auto fut = log->waitFor(idx);
-          fut.get();
+          {
+            auto fut = log->waitFor(idx);
+            std::ignore = std::move(fut).Get().Ok();
+          }
           auto snapshot = log->getReplicatedLogSnapshot();
           ASSERT_LT(0, idx.value);
           ASSERT_LE(idx.value, snapshot.size());
@@ -153,8 +155,10 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
                               LogLeader::doNotTriggerAsyncReplication);
       }
       std::this_thread::sleep_for(1ns);
-      auto fut = log->waitFor(idxs.back());
-      fut.get();
+      {
+        auto fut = log->waitFor(idxs.back());
+        std::ignore = std::move(fut).Get().Ok();
+      }
       auto snapshot = log->getReplicatedLogSnapshot();
       for (auto k = 0; k < batch && i + k < maxIter; ++k) {
         using namespace std::string_literals;

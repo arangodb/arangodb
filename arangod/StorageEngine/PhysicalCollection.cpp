@@ -33,7 +33,6 @@
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/TransactionState.h"
@@ -45,6 +44,7 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <yaclib/async/make.hpp>
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -222,7 +222,7 @@ void PhysicalCollection::getIndexesVPack(
 }
 
 /// @brief return the figures for a collection
-futures::Future<OperationResult> PhysicalCollection::figures(
+yaclib::Future<OperationResult> PhysicalCollection::figures(
     bool details, OperationOptions const& options) {
   auto buffer = std::make_shared<VPackBufferUInt8>();
   VPackBuilder builder(buffer);
@@ -256,7 +256,8 @@ futures::Future<OperationResult> PhysicalCollection::figures(
   // add engine-specific figures
   figuresSpecific(details, builder);
   builder.close();
-  return OperationResult(Result(), std::move(buffer), options);
+  return yaclib::MakeFuture<OperationResult>(Result{}, std::move(buffer),
+                                             options);
 }
 
 std::unique_ptr<ReplicationIterator> PhysicalCollection::getReplicationIterator(

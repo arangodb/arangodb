@@ -56,10 +56,10 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
-#include "Futures/Future.h"
 
 #include "Mocks/IResearchLinkMock.h"
 
+#include <yaclib/async/make.hpp>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 
@@ -2106,14 +2106,14 @@ arangodb::Result TransactionStateMock::beginTransaction(
   return arangodb::Result();
 }
 
-arangodb::futures::Future<arangodb::Result>
-TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
+yaclib::Future<arangodb::Result> TransactionStateMock::commitTransaction(
+    arangodb::transaction::Methods* trx) {
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
   resetTransactionId();
   //  releaseUsage();
 
-  return arangodb::Result();
+  return yaclib::MakeFuture<arangodb::Result>();
 }
 
 arangodb::Result TransactionStateMock::triggerIntermediateCommit() {
@@ -2122,10 +2122,10 @@ arangodb::Result TransactionStateMock::triggerIntermediateCommit() {
   return arangodb::Result{TRI_ERROR_INTERNAL};
 }
 
-arangodb::futures::Future<arangodb::Result>
+yaclib::Future<arangodb::Result>
 TransactionStateMock::performIntermediateCommitIfRequired(
     arangodb::DataSourceId cid) {
-  return arangodb::Result();
+  return yaclib::MakeFuture<arangodb::Result>();
 }
 
 uint64_t TransactionStateMock::numCommits() const noexcept {

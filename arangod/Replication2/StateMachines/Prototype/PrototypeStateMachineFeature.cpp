@@ -52,7 +52,7 @@ class PrototypeLeaderInterface : public IPrototypeLeaderInterface {
       : _participantId(std::move(participantId)), _pool(pool){};
 
   auto getSnapshot(GlobalLogIdentifier const& logId, LogIndex waitForIndex)
-      -> futures::Future<
+      -> yaclib::Future<
           ResultT<std::unordered_map<std::string, std::string>>> override {
     auto path = basics::StringUtils::joinT("/", "_api/prototype-state",
                                            logId.id, "snapshot");
@@ -62,7 +62,7 @@ class PrototypeLeaderInterface : public IPrototypeLeaderInterface {
 
     return network::sendRequest(_pool, "server:" + _participantId,
                                 fuerte::RestVerb::Get, path, {}, opts)
-        .thenValue(
+        .ThenInline(
             [](network::Response&& resp)
                 -> ResultT<std::unordered_map<std::string, std::string>> {
               if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {

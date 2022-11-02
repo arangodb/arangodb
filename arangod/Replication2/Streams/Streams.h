@@ -30,11 +30,6 @@ namespace arangodb {
 struct DeferredAction;
 }
 
-namespace arangodb::futures {
-template<typename>
-class Future;
-}
-
 namespace arangodb::replication2::streams {
 
 /**
@@ -58,11 +53,11 @@ struct Stream {
   virtual ~Stream() = default;
 
   struct WaitForResult {};
-  virtual auto waitFor(LogIndex) -> futures::Future<WaitForResult> = 0;
+  virtual auto waitFor(LogIndex) -> yaclib::Future<WaitForResult> = 0;
 
   using Iterator = TypedLogRangeIterator<StreamEntryView<T>>;
   virtual auto waitForIterator(LogIndex)
-      -> futures::Future<std::unique_ptr<Iterator>> = 0;
+      -> yaclib::Future<std::unique_ptr<Iterator>> = 0;
 
   virtual auto release(LogIndex) -> void = 0;
 };

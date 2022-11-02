@@ -35,7 +35,7 @@
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
-#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"

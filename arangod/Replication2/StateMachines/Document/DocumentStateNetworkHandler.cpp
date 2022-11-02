@@ -37,7 +37,7 @@ DocumentStateLeaderInterface::DocumentStateLeaderInterface(
       _pool(pool) {}
 
 auto DocumentStateLeaderInterface::getSnapshot(LogIndex waitForIndex)
-    -> futures::Future<ResultT<velocypack::SharedSlice>> {
+    -> yaclib::Future<ResultT<velocypack::SharedSlice>> {
   auto path = basics::StringUtils::joinT(
       "/", StaticStrings::ApiDocumentStateExternal, _gid.id, "snapshot");
   network::RequestOptions opts;
@@ -46,7 +46,7 @@ auto DocumentStateLeaderInterface::getSnapshot(LogIndex waitForIndex)
 
   return network::sendRequest(_pool, "server:" + _participantId,
                               fuerte::RestVerb::Get, path, {}, opts)
-      .thenValue(
+      .ThenInline(
           [](network::Response&& resp) -> ResultT<velocypack::SharedSlice> {
             if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
               return resp.combinedResult();

@@ -108,7 +108,7 @@ ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
   }
 }
 
-futures::Future<OperationResult> UpdateReplaceModifierCompletion::transact(
+yaclib::Future<OperationResult> UpdateReplaceModifierCompletion::transact(
     transaction::Methods& trx, VPackSlice const data) {
   if (_infos._isReplace) {
     return trx.replaceAsync(_infos._aqlCollection->name(), data,

@@ -31,7 +31,6 @@
 #include "Cluster/MaintenanceStrings.h"
 #include "Cluster/ServerDefaults.h"
 #include "Cluster/ServerState.h"
-#include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -46,6 +45,7 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Properties/PlanCollection.h"
 
+#include <yaclib/async/make.hpp>
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 
@@ -192,7 +192,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
             /*showProperties*/ true,
             details ? FiguresType::Detailed : FiguresType::Standard,
             CountType::Standard)
-            .thenValue([this](futures::Unit&&) { standardResponse(); }));
+            .ThenInline([this] { standardResponse(); }));
   } else if (sub == "count") {
     // /_api/collection/<identifier>/count
     initializeTransaction(*coll);
@@ -234,7 +234,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
             /*showProperties*/ true,
             /*showFigures*/ FiguresType::None,
             /*showCount*/ details ? CountType::Detailed : CountType::Standard)
-            .thenValue([this, checkSyncStatus](futures::Unit&&) {
+            .ThenInline([this, checkSyncStatus] {
               if (checkSyncStatus) {
                 // checkSyncStatus == true, so we opened the _builder on our own
                 // before, and we are now responsible for closing it again.
@@ -257,7 +257,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
     OperationOptions options(_context);
     return waitForFuture(
         methods::Collections::revisionId(*_ctxt, options)
-            .thenValue([this, coll](OperationResult&& res) {
+            .ThenInline([this, coll](OperationResult&& res) {
               if (res.fail()) {
                 generateTransactionError(coll->name(), res);
                 return;
@@ -519,7 +519,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
 
     return waitForFuture(
         _activeTrx->truncateAsync(coll->name(), opts)
-            .thenValue([this, coll, opts](OperationResult&& opres) {
+            .ThenInline([this, coll, opts](OperationResult&& opres) {
               // Will commit if no error occured.
               // or abort if an error occured.
               // result stays valid!
@@ -598,7 +598,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
   } else if (sub == "loadIndexesIntoMemory") {
     OperationOptions options(_context);
     return waitForFuture(methods::Collections::warmup(_vocbase, *coll)
-                             .thenValue([this, coll, options](Result&& res) {
+                             .ThenInline([this, coll, options](Result&& res) {
                                if (res.fail()) {
                                  generateTransactionError(
                                      coll->name(),
@@ -706,12 +706,13 @@ void RestCollectionHandler::collectionRepresentation(
 void RestCollectionHandler::collectionRepresentation(
     methods::Collections::Context& ctxt, bool showProperties,
     FiguresType showFigures, CountType showCount) {
-  collectionRepresentationAsync(ctxt, showProperties, showFigures, showCount)
-      .get();
+  std::ignore = collectionRepresentationAsync(ctxt, showProperties, showFigures,
+                                              showCount)
+                    .Get()
+                    .Ok();
 }
 
-futures::Future<futures::Unit>
-RestCollectionHandler::collectionRepresentationAsync(
+yaclib::Future<> RestCollectionHandler::collectionRepresentationAsync(
     methods::Collections::Context& ctxt, bool showProperties,
     FiguresType showFigures, CountType showCount) {
   bool wasOpen = _builder.isOpenObject();
@@ -740,15 +741,15 @@ RestCollectionHandler::collectionRepresentationAsync(
   }
 
   OperationOptions options(_context);
-  futures::Future<OperationResult> figures =
-      futures::makeFuture(OperationResult(Result(), options));
+  yaclib::Future<OperationResult> figures =
+      yaclib::MakeFuture(OperationResult(Result(), options));
   if (showFigures != FiguresType::None) {
     figures = coll->figures(showFigures == FiguresType::Detailed, options);
   }
 
   return std::move(figures)
-      .thenValue([=, this, &ctxt](OperationResult&& figures)
-                     -> futures::Future<OperationResult> {
+      .ThenInline([=, this, &ctxt](OperationResult&& figures)
+                      -> yaclib::Future<OperationResult> {
         if (figures.fail()) {
           THROW_ARANGO_EXCEPTION(figures.result);
         }
@@ -765,9 +766,9 @@ RestCollectionHandler::collectionRepresentationAsync(
                                      : transaction::CountType::Normal,
                                  options);
         }
-        return futures::makeFuture(OperationResult(Result(), options));
+        return yaclib::MakeFuture(OperationResult(Result(), options));
       })
-      .thenValue([=, this, &ctxt](OperationResult&& opRes) -> void {
+      .ThenInline([=, this, &ctxt](OperationResult&& opRes) -> void {
         if (opRes.fail()) {
           if (showCount != CountType::None) {
             auto trx = ctxt.trx(AccessMode::Type::READ, true, true);

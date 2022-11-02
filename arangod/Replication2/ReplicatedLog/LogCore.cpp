@@ -67,13 +67,13 @@ auto replicated_log::LogCore::read(LogIndex first) const
 
 auto replicated_log::LogCore::insertAsync(
     std::unique_ptr<PersistedLogIterator> iter, bool waitForSync)
-    -> futures::Future<Result> {
+    -> yaclib::Future<Result> {
   std::unique_lock guard(_operationMutex);
   // This will hold the mutex
   PersistedLog::WriteOptions opts;
   opts.waitForSync = waitForSync;
   return _persistedLog->insertAsync(std::move(iter), opts)
-      .thenValue([guard = std::move(guard)](Result&& res) mutable {
+      .ThenInline([guard = std::move(guard)](Result&& res) mutable {
         guard.unlock();
         return std::move(res);
       });
@@ -89,9 +89,9 @@ auto replicated_log::LogCore::logId() const noexcept -> LogId {
   return _persistedLog->id();
 }
 
-auto LogCore::removeFront(LogIndex stop) -> futures::Future<Result> {
+auto LogCore::removeFront(LogIndex stop) -> yaclib::Future<Result> {
   std::unique_lock guard(_operationMutex);
-  return _persistedLog->removeFront(stop).thenValue(
+  return _persistedLog->removeFront(stop).ThenInline(
       [guard = std::move(guard)](Result&& res) mutable {
         guard.unlock();
         return std::move(res);

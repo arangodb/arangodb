@@ -27,11 +27,6 @@
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include "Replication2/Streams/Streams.h"
 
-namespace arangodb::futures {
-struct Unit;
-template<typename T>
-class Future;
-}  // namespace arangodb::futures
 namespace arangodb {
 class Result;
 }
@@ -73,7 +68,7 @@ struct IReplicatedLeaderState : IReplicatedLeaderStateBase {
    * @return Future to be fulfilled when recovery is done.
    */
   virtual auto recoverEntries(std::unique_ptr<EntryIterator>)
-      -> futures::Future<Result> = 0;
+      -> yaclib::Future<Result> = 0;
 
   [[nodiscard]] auto getStream() const noexcept
       -> std::shared_ptr<Stream> const&;
@@ -103,7 +98,7 @@ struct IReplicatedFollowerState : IReplicatedFollowerStateBase {
   using Stream = streams::Stream<EntryType>;
   using EntryIterator = typename Stream::Iterator;
 
-  using WaitForAppliedFuture = futures::Future<futures::Unit>;
+  using WaitForAppliedFuture = yaclib::Future<>;
   [[nodiscard]] auto waitForApplied(LogIndex index) -> WaitForAppliedFuture;
 
  protected:
@@ -121,7 +116,7 @@ struct IReplicatedFollowerState : IReplicatedFollowerStateBase {
    *    operation is retried.
    */
   virtual auto applyEntries(std::unique_ptr<EntryIterator>) noexcept
-      -> futures::Future<Result> = 0;
+      -> yaclib::Future<Result> = 0;
 
   /**
    * Called by the state machine manager if a follower is requested to pull
@@ -133,7 +128,7 @@ struct IReplicatedFollowerState : IReplicatedFollowerStateBase {
    */
   virtual auto acquireSnapshot(ParticipantId const& leader,
                                LogIndex localCommitIndex) noexcept
-      -> futures::Future<Result> = 0;
+      -> yaclib::Future<Result> = 0;
 
   /**
    * TODO Comment missing

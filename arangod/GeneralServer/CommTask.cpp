@@ -469,17 +469,18 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   auto res = handler->forwardRequest(forwarded);
   if (forwarded) {
     statistics(messageId).SET_SUPERUSER();
-    std::move(res).thenFinal(
+    std::move(res).DetachInline(
         [self(shared_from_this()), handler(std::move(handler)),
-         messageId](futures::Try<Result>&& /*ignored*/) -> void {
+         messageId](yaclib::Result<Result>&& /*ignored*/) -> void {
           self->sendResponse(handler->stealResponse(),
                              self->stealStatistics(messageId));
         });
     return;
   }
-
-  if (res.hasValue() && res.get().fail()) {
-    auto& r = res.get();
+  TRI_ASSERT(res.Ready());
+  auto const result = std::move(res).Get();
+  if (result && result.Value().fail()) {
+    auto& r = result.Value();
     sendErrorResponse(GeneralResponse::responseCode(r.errorNumber()), respType,
                       messageId, r.errorNumber(), r.errorMessage());
     return;

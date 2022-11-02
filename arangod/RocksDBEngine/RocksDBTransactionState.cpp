@@ -173,7 +173,7 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
 }
 
 /// @brief commit a transaction
-futures::Future<Result> RocksDBTransactionState::commitTransaction(
+yaclib::Future<Result> RocksDBTransactionState::commitTransaction(
     transaction::Methods* activeTrx) {
   LOG_TRX("5cb03", TRACE, this)
       << "committing " << AccessMode::typeString(_type) << " transaction";
@@ -181,23 +181,24 @@ futures::Future<Result> RocksDBTransactionState::commitTransaction(
   TRI_ASSERT(_status == transaction::Status::RUNNING);
   TRI_ASSERT(activeTrx->isMainTransaction());
   TRI_IF_FAILURE("TransactionWriteCommitMarker") {
-    return Result(TRI_ERROR_DEBUG);
+    return yaclib::MakeFuture<Result>(TRI_ERROR_DEBUG);
   }
 
   auto self =
       std::static_pointer_cast<RocksDBTransactionState>(shared_from_this());
-  return doCommit().thenValue([self = std::move(self), activeTrx](auto&& res) {
-    if (res.ok()) {
-      self->updateStatus(transaction::Status::COMMITTED);
-      self->cleanupTransaction();  // deletes trx
-      ++self->statistics()._transactionsCommitted;
-    } else {
-      // what if this fails?
-      std::ignore = self->abortTransaction(activeTrx);  // deletes trx
-    }
-    TRI_ASSERT(!self->_cacheTx);
-    return std::forward<Result>(res);
-  });
+  return doCommit().ThenInline(
+      [self = std::move(self), activeTrx](Result&& res) {
+        if (res.ok()) {
+          self->updateStatus(transaction::Status::COMMITTED);
+          self->cleanupTransaction();  // deletes trx
+          ++self->statistics()._transactionsCommitted;
+        } else {
+          // what if this fails?
+          std::ignore = self->abortTransaction(activeTrx);  // deletes trx
+        }
+        TRI_ASSERT(!self->_cacheTx);
+        return std::forward<Result>(res);
+      });
 }
 
 /// @brief abort and rollback a transaction

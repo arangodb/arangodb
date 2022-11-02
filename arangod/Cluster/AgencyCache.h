@@ -27,9 +27,10 @@
 #include "Basics/Result.h"
 #include "Basics/Thread.h"
 #include "Containers/FlatHashMap.h"
-#include "Futures/Promise.h"
 #include "Metrics/Fwd.h"
 
+#include <yaclib/async/future.hpp>
+#include <yaclib/async/promise.hpp>
 #include <map>
 #include <shared_mutex>
 
@@ -115,7 +116,7 @@ class AgencyCache final : public ServerThread<ArangodServer> {
   void unregisterCallback(std::string const& key, uint64_t const& id);
 
   /// @brief Wait to be notified, when a Raft index has arrived.
-  [[nodiscard]] futures::Future<Result> waitFor(consensus::index_t index);
+  [[nodiscard]] yaclib::Future<Result> waitFor(consensus::index_t index);
 
   /// @brief Cache has these path? AgencyCommHelper::path is prepended
   bool has(std::string const& path) const;
@@ -207,8 +208,7 @@ class AgencyCache final : public ServerThread<ArangodServer> {
 
   /// @brief Waiting room for indexes during office hours
   mutable std::mutex _waitLock;
-  std::multimap<consensus::index_t, futures::Promise<arangodb::Result>>
-      _waiting;
+  std::multimap<consensus::index_t, yaclib::Promise<arangodb::Result>> _waiting;
 
   /// @ brief changes of index to plan and current
   std::multimap<consensus::index_t, std::string> _planChanges;

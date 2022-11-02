@@ -35,10 +35,6 @@
 
 namespace arangodb {
 class Result;
-namespace futures {
-template<typename T>
-class Future;
-}
 }  // namespace arangodb
 
 namespace arangodb::replication2 {
@@ -84,38 +80,37 @@ struct ReplicatedLogMethods {
   };
 
   virtual auto createReplicatedLog(CreateOptions spec) const
-      -> futures::Future<ResultT<CreateResult>> = 0;
+      -> yaclib::Future<ResultT<CreateResult>> = 0;
 
   virtual auto deleteReplicatedLog(LogId id) const
-      -> futures::Future<Result> = 0;
-  virtual auto getReplicatedLogs() const -> futures::Future<std::unordered_map<
+      -> yaclib::Future<Result> = 0;
+  virtual auto getReplicatedLogs() const -> yaclib::Future<std::unordered_map<
       arangodb::replication2::LogId,
       std::variant<replicated_log::LogStatus, ParticipantsList>>> = 0;
   virtual auto getLocalStatus(LogId) const
-      -> futures::Future<replication2::replicated_log::LogStatus> = 0;
+      -> yaclib::Future<replication2::replicated_log::LogStatus> = 0;
   virtual auto getGlobalStatus(
       LogId, replicated_log::GlobalStatus::SpecificationSource) const
-      -> futures::Future<replication2::replicated_log::GlobalStatus> = 0;
-  virtual auto getStatus(LogId) const -> futures::Future<GenericLogStatus> = 0;
+      -> yaclib::Future<replication2::replicated_log::GlobalStatus> = 0;
+  virtual auto getStatus(LogId) const -> yaclib::Future<GenericLogStatus> = 0;
 
   virtual auto getLogEntryByIndex(LogId, LogIndex) const
-      -> futures::Future<std::optional<PersistingLogEntry>> = 0;
+      -> yaclib::Future<std::optional<PersistingLogEntry>> = 0;
 
   virtual auto slice(LogId, LogIndex start, LogIndex stop) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
+      -> yaclib::Future<std::unique_ptr<PersistedLogIterator>> = 0;
   virtual auto poll(LogId, LogIndex, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
+      -> yaclib::Future<std::unique_ptr<PersistedLogIterator>> = 0;
   virtual auto head(LogId, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
+      -> yaclib::Future<std::unique_ptr<PersistedLogIterator>> = 0;
   virtual auto tail(LogId, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
+      -> yaclib::Future<std::unique_ptr<PersistedLogIterator>> = 0;
 
   virtual auto insert(LogId, LogPayload, bool waitForSync) const
-      -> futures::Future<
-          std::pair<LogIndex, replicated_log::WaitForResult>> = 0;
+      -> yaclib::Future<std::pair<LogIndex, replicated_log::WaitForResult>> = 0;
   virtual auto insert(LogId, TypedLogIterator<LogPayload>& iter,
                       bool waitForSync) const
-      -> futures::Future<
+      -> yaclib::Future<
           std::pair<std::vector<LogIndex>, replicated_log::WaitForResult>> = 0;
 
   // Insert an entry without waiting for the corresponding LogIndex to be
@@ -127,23 +122,23 @@ struct ReplicatedLogMethods {
   // TODO Implement this for a list of payloads as well, as insert() does.
   //      See https://arangodb.atlassian.net/browse/CINFRA-278.
   virtual auto insertWithoutCommit(LogId, LogPayload, bool waitForSync) const
-      -> futures::Future<LogIndex> = 0;
+      -> yaclib::Future<LogIndex> = 0;
 
-  virtual auto release(LogId, LogIndex) const -> futures::Future<Result> = 0;
+  virtual auto release(LogId, LogIndex) const -> yaclib::Future<Result> = 0;
 
   /*
    * Wait until the supervision reports that the replicated log has converged
    * to the given version.
    */
   [[nodiscard]] virtual auto waitForLogReady(LogId, std::uint64_t version) const
-      -> futures::Future<ResultT<consensus::index_t>> = 0;
+      -> yaclib::Future<ResultT<consensus::index_t>> = 0;
 
   static auto createInstance(TRI_vocbase_t& vocbase)
       -> std::shared_ptr<ReplicatedLogMethods>;
 
  private:
   virtual auto createReplicatedLog(agency::LogTarget spec) const
-      -> futures::Future<Result> = 0;
+      -> yaclib::Future<Result> = 0;
 };
 
 template<class Inspector>
@@ -165,15 +160,15 @@ struct ReplicatedStateMethods {
   virtual ~ReplicatedStateMethods() = default;
 
   [[nodiscard]] virtual auto waitForStateReady(LogId, std::uint64_t version)
-      -> futures::Future<ResultT<consensus::index_t>> = 0;
+      -> yaclib::Future<ResultT<consensus::index_t>> = 0;
 
   virtual auto createReplicatedState(replicated_state::agency::Target spec)
-      const -> futures::Future<Result> = 0;
+      const -> yaclib::Future<Result> = 0;
   virtual auto deleteReplicatedState(LogId id) const
-      -> futures::Future<Result> = 0;
+      -> yaclib::Future<Result> = 0;
 
   virtual auto getLocalStatus(LogId) const
-      -> futures::Future<replicated_state::StateStatus> = 0;
+      -> yaclib::Future<replicated_state::StateStatus> = 0;
 
   struct ParticipantSnapshotStatus {
     replicated_state::SnapshotInfo status;
@@ -184,7 +179,7 @@ struct ReplicatedStateMethods {
       std::unordered_map<ParticipantId, ParticipantSnapshotStatus>;
 
   virtual auto getGlobalSnapshotStatus(LogId) const
-      -> futures::Future<ResultT<GlobalSnapshotStatus>> = 0;
+      -> yaclib::Future<ResultT<GlobalSnapshotStatus>> = 0;
 
   static auto createInstance(TRI_vocbase_t& vocbase)
       -> std::shared_ptr<ReplicatedStateMethods>;
@@ -200,11 +195,11 @@ struct ReplicatedStateMethods {
       LogId, ParticipantId const& participantToRemove,
       ParticipantId const& participantToAdd,
       std::optional<ParticipantId> const& currentLeader) const
-      -> futures::Future<Result> = 0;
+      -> yaclib::Future<Result> = 0;
 
   [[nodiscard]] virtual auto setLeader(
       LogId id, std::optional<ParticipantId> const& leaderId) const
-      -> futures::Future<Result> = 0;
+      -> yaclib::Future<Result> = 0;
 };
 
 template<class Inspector>

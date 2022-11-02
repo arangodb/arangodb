@@ -32,7 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/system-functions.h"
-#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"

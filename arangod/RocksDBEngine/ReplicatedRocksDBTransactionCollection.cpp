@@ -37,6 +37,8 @@
 
 #include <algorithm>
 
+#include <yaclib/async/make.hpp>
+
 using namespace arangodb;
 
 ReplicatedRocksDBTransactionCollection::ReplicatedRocksDBTransactionCollection(
@@ -219,7 +221,7 @@ auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
   return res;
 }
 
-futures::Future<Result>
+yaclib::Future<Result>
 ReplicatedRocksDBTransactionCollection::performIntermediateCommitIfRequired() {
   if (_rocksMethods->isIntermediateCommitNeeded()) {
     auto leader = leaderState();
@@ -230,10 +232,10 @@ ReplicatedRocksDBTransactionCollection::performIntermediateCommitIfRequired() {
     return leader
         ->replicateOperation(velocypack::SharedSlice{}, operation,
                              _transaction->id(), options)
-        .thenValue([state = _transaction->shared_from_this(),
-                    this](auto&& res) -> Result {
+        .ThenInline([state = _transaction->shared_from_this(),
+                     this](replication2::LogIndex&& res) -> Result {
           return _rocksMethods->triggerIntermediateCommit();
         });
   }
-  return Result{};
+  return yaclib::MakeFuture<Result>();
 }

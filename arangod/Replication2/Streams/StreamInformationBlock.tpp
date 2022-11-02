@@ -55,7 +55,7 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::appendEntry(
 template<StreamId Id, typename Type, typename Tags>
 auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::
     getWaitForResolveSet(LogIndex commitIndex)
-        -> std::multimap<LogIndex, futures::Promise<WaitForResult>> {
+        -> std::multimap<LogIndex, yaclib::Promise<WaitForResult>> {
   WaitForQueue toBeResolved;
   auto const end = _waitForQueue.upper_bound(commitIndex);
   for (auto it = _waitForQueue.begin(); it != end;) {
@@ -66,9 +66,10 @@ auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::
 
 template<StreamId Id, typename Type, typename Tags>
 auto StreamInformationBlock<stream_descriptor<Id, Type, Tags>>::registerWaitFor(
-    LogIndex index) -> futures::Future<WaitForResult> {
-  return _waitForQueue.emplace(index, futures::Promise<WaitForResult>{})
-      ->second.getFuture();
+    LogIndex index) -> yaclib::Future<WaitForResult> {
+  auto [future, promise] = yaclib::MakeContract<WaitForResult>();
+  _waitForQueue.emplace(index, std::move(promise));
+  return std::move(future);
 }
 
 template<StreamId Id, typename Type, typename Tags>

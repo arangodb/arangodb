@@ -36,7 +36,7 @@
 #include "Cluster/HeartbeatThread.h"
 #include "Endpoint/Endpoint.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
@@ -595,7 +595,7 @@ void ClusterFeature::start() {
   // empty agency. There are also other measures that guard against such a
   // outcome. But there is also no point continuing with a first agency poll.
   if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
-    _agencyCache->waitFor(1).get();
+    std::ignore = _agencyCache->waitFor(1).Get().Ok();
     LOG_TOPIC("13eab", DEBUG, Logger::CLUSTER)
         << "Agency cache is ready. Starting cluster cache syncers";
   }

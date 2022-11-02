@@ -47,11 +47,11 @@ struct MockLog : replication2::replicated_log::PersistedLog {
   auto insert(replication2::PersistedLogIterator& iter, WriteOptions const&)
       -> Result override;
   auto insertAsync(std::unique_ptr<replication2::PersistedLogIterator> iter,
-                   WriteOptions const&) -> futures::Future<Result> override;
+                   WriteOptions const&) -> yaclib::Future<Result> override;
   auto read(replication2::LogIndex start)
       -> std::unique_ptr<replication2::PersistedLogIterator> override;
   auto removeFront(replication2::LogIndex stop)
-      -> futures::Future<Result> override;
+      -> yaclib::Future<Result> override;
   auto removeBack(replication2::LogIndex start) -> Result override;
   auto drop() -> Result override;
 
@@ -75,7 +75,7 @@ struct DelayedMockLog : MockLog {
   explicit DelayedMockLog(replication2::LogId id) : MockLog(id) {}
 
   auto insertAsync(std::unique_ptr<replication2::PersistedLogIterator> iter,
-                   WriteOptions const&) -> futures::Future<Result> override;
+                   WriteOptions const&) -> yaclib::Future<Result> override;
 
   auto hasPendingInsert() const noexcept -> bool {
     return _pending.has_value();
@@ -84,10 +84,10 @@ struct DelayedMockLog : MockLog {
 
   struct PendingRequest {
     PendingRequest(std::unique_ptr<replication2::PersistedLogIterator> iter,
-                   WriteOptions options);
+                   WriteOptions options, yaclib::Promise<Result>&& promise);
     std::unique_ptr<replication2::PersistedLogIterator> iter;
     WriteOptions options;
-    futures::Promise<Result> promise;
+    yaclib::Promise<Result> promise;
   };
 
   std::optional<PendingRequest> _pending;
@@ -99,7 +99,7 @@ struct AsyncMockLog : MockLog {
   ~AsyncMockLog() noexcept;
 
   auto insertAsync(std::unique_ptr<replication2::PersistedLogIterator> iter,
-                   WriteOptions const&) -> futures::Future<Result> override;
+                   WriteOptions const&) -> yaclib::Future<Result> override;
 
   auto stop() noexcept -> void {
     if (!_stopping) {
@@ -116,7 +116,7 @@ struct AsyncMockLog : MockLog {
   struct QueueEntry {
     WriteOptions opts;
     std::unique_ptr<replication2::PersistedLogIterator> iter;
-    futures::Promise<Result> promise;
+    yaclib::Promise<Result> promise;
   };
 
   void runWorker();

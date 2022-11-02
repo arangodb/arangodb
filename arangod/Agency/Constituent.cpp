@@ -498,7 +498,7 @@ void Constituent::callElection() {
     network::sendRequest(cp, _agent->config().poolAt(i), fuerte::RestVerb::Get,
                          "/_api/agency_priv/requestVote",
                          VPackBuffer<uint8_t>(), reqOpts)
-        .thenValue([=](network::Response r) {
+        .DetachInline([=](network::Response r) {
           if (r.ok() && r.statusCode() == 200) {
             VPackSlice slc = r.slice();
 

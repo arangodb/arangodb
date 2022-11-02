@@ -261,12 +261,12 @@ RestStatus RestDocumentHandler::insertDocument() {
 
   return waitForFuture(
       _activeTrx->insertAsync(cname, body, opOptions)
-          .thenValue([=, this](OperationResult&& opres) {
+          .ThenInline([=, this](OperationResult&& opres) {
             // Will commit if no error occured.
             // or abort if an error occured.
             // result stays valid!
             return _activeTrx->finishAsync(opres.result)
-                .thenValue([=, this, opres(std::move(opres))](Result&& res) {
+                .ThenInline([=, this, opres(std::move(opres))](Result&& res) {
                   if (opres.fail()) {
                     generateTransactionError(cname, opres);
                     return;
@@ -392,10 +392,10 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
 
   return waitForFuture(
       _activeTrx->documentAsync(collection, search, options)
-          .thenValue([=, this,
-                      buffer(std::move(buffer))](OperationResult opRes) {
+          .ThenInline([=, this,
+                       buffer(std::move(buffer))](OperationResult opRes) {
             return _activeTrx->finishAsync(opRes.result)
-                .thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
+                .ThenInline([=, this, opRes(std::move(opRes))](Result&& res) {
                   if (!opRes.ok()) {
                     generateTransactionError(collection, opRes, key, ifRid);
                     return;
@@ -621,7 +621,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
             "' with the required access mode.");
   }
 
-  auto f = futures::Future<OperationResult>::makeEmpty();
+  yaclib::Future<OperationResult> f;
   if (isPatch) {
     // patching an existing document
     opOptions.keepNull =
@@ -633,10 +633,10 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     f = _activeTrx->replaceAsync(cname, body, opOptions);
   }
 
-  return waitForFuture(std::move(f).thenValue(
+  return waitForFuture(std::move(f).ThenInline(
       [=, this, buffer(std::move(buffer))](OperationResult opRes) {
         return _activeTrx->finishAsync(opRes.result)
-            .thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
+            .ThenInline([=, this, opRes(std::move(opRes))](Result&& res) {
               // ...........................................................................
               // outside write transaction
               // ...........................................................................
@@ -779,10 +779,10 @@ RestStatus RestDocumentHandler::removeDocument() {
 
   return waitForFuture(
       _activeTrx->removeAsync(cname, search, opOptions)
-          .thenValue([=, this,
-                      buffer(std::move(buffer))](OperationResult opRes) {
+          .ThenInline([=, this,
+                       buffer(std::move(buffer))](OperationResult opRes) {
             return _activeTrx->finishAsync(opRes.result)
-                .thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
+                .ThenInline([=, this, opRes(std::move(opRes))](Result&& res) {
                   // ...........................................................................
                   // outside write transaction
                   // ...........................................................................
@@ -864,9 +864,9 @@ RestStatus RestDocumentHandler::readManyDocuments() {
 
   return waitForFuture(
       _activeTrx->documentAsync(cname, search, opOptions)
-          .thenValue([=, this](OperationResult opRes) {
+          .ThenInline([=, this](OperationResult opRes) {
             return _activeTrx->finishAsync(opRes.result)
-                .thenValue([=, this, opRes(std::move(opRes))](Result&& res) {
+                .ThenInline([=, this, opRes(std::move(opRes))](Result&& res) {
                   if (opRes.fail()) {
                     generateTransactionError(cname, opRes);
                     return;

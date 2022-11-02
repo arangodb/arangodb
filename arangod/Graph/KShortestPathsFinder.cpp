@@ -191,9 +191,9 @@ void KShortestPathsFinder<ProviderType>::computeNeighbourhoodOfVertex(
   if constexpr (std::is_same_v<typename ProviderType::Step,
                                ClusterProviderStep>) {
     std::vector<typename ProviderType::Step*> stepToFetch{&step};
-    futures::Future<std::vector<typename ProviderType::Step*>> futureEnds =
+    yaclib::Future<std::vector<typename ProviderType::Step*>> futureEnds =
         provider->fetch(stepToFetch);
-    futureEnds.wait();
+    yaclib::Wait(futureEnds);
   }
 
   // Expand the step

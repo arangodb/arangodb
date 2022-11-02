@@ -25,7 +25,6 @@
 #pragma once
 
 #include "Basics/Result.h"
-#include "Futures/Future.h"
 #include "IResearchLinkMock.h"
 #include "Indexes/IndexIterator.h"
 #include "Mocks/IResearchLinkMock.h"
@@ -39,6 +38,7 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
+#include <yaclib/async/future.hpp>
 #include <atomic>
 #include <string_view>
 
@@ -211,10 +211,10 @@ class TransactionStateMock : public arangodb::TransactionState {
       arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result beginTransaction(
       arangodb::transaction::Hints hints) override;
-  virtual arangodb::futures::Future<arangodb::Result> commitTransaction(
+  virtual yaclib::Future<arangodb::Result> commitTransaction(
       arangodb::transaction::Methods* trx) override;
-  virtual arangodb::futures::Future<arangodb::Result>
-  performIntermediateCommitIfRequired(arangodb::DataSourceId cid) override;
+  virtual yaclib::Future<arangodb::Result> performIntermediateCommitIfRequired(
+      arangodb::DataSourceId cid) override;
   virtual uint64_t numCommits() const noexcept override;
   virtual uint64_t numIntermediateCommits() const noexcept override;
   virtual void addIntermediateCommits(uint64_t value) override;

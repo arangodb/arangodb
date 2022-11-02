@@ -40,7 +40,7 @@ struct NetworkAttachedFollower
   [[nodiscard]] auto getParticipantId() const noexcept
       -> ParticipantId const& override;
   auto appendEntries(AppendEntriesRequest request)
-      -> futures::Future<AppendEntriesResult> override;
+      -> yaclib::Future<AppendEntriesResult> override;
 
  private:
   network::ConnectionPool* pool;

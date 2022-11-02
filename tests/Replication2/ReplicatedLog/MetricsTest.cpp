@@ -71,8 +71,8 @@ TEST_F(ReplicatedLogMetricsTest, follower_append_count_entries) {
     auto const committedCountBefore =
         _logMetricsMock->replicatedLogNumberCommittedEntries->load();
     auto f = follower->appendEntries(std::move(request));
-    ASSERT_TRUE(f.isReady());
-    ASSERT_EQ(f.get().errorCode, TRI_ERROR_NO_ERROR);
+    ASSERT_TRUE(f.Ready());
+    ASSERT_EQ(std::move(f).Get().Ok().errorCode, TRI_ERROR_NO_ERROR);
 
     auto const acceptedCountAfter =
         _logMetricsMock->replicatedLogNumberAcceptedEntries->load();
@@ -98,8 +98,8 @@ TEST_F(ReplicatedLogMetricsTest, follower_append_count_entries) {
     auto const committedCountBefore =
         _logMetricsMock->replicatedLogNumberCommittedEntries->load();
     auto f = follower->appendEntries(std::move(request));
-    ASSERT_TRUE(f.isReady());
-    ASSERT_EQ(f.get().errorCode, TRI_ERROR_NO_ERROR);
+    ASSERT_TRUE(f.Ready());
+    ASSERT_EQ(std::move(f).Get().Ok().errorCode, TRI_ERROR_NO_ERROR);
 
     auto const acceptedCountAfter =
         _logMetricsMock->replicatedLogNumberAcceptedEntries->load();
@@ -132,8 +132,8 @@ TEST_F(ReplicatedLogMetricsTest, follower_append_dont_count_entries_error) {
     auto const committedCountBefore =
         _logMetricsMock->replicatedLogNumberCommittedEntries->load();
     auto f = follower->appendEntries(std::move(request));
-    ASSERT_TRUE(f.isReady());
-    ASSERT_NE(f.get().errorCode, TRI_ERROR_NO_ERROR);
+    ASSERT_TRUE(f.Ready());
+    ASSERT_NE(std::move(f).Get().Ok().errorCode, TRI_ERROR_NO_ERROR);
 
     auto const acceptedCountAfter =
         _logMetricsMock->replicatedLogNumberAcceptedEntries->load();
@@ -172,9 +172,9 @@ TEST_F(ReplicatedLogMetricsTest, follower_count_compaction) {
     auto const compactedCountBefore =
         _logMetricsMock->replicatedLogNumberCompactedEntries->load();
     auto f = follower->appendEntries(std::move(request));
-    ASSERT_TRUE(f.isReady());
-    ASSERT_EQ(f.get().errorCode, TRI_ERROR_NO_ERROR)
-        << f.get().reason.getErrorMessage();
+    ASSERT_TRUE(f.Ready());
+    ASSERT_EQ(std::as_const(f).Touch().Ok().errorCode, TRI_ERROR_NO_ERROR)
+        << std::as_const(f).Touch().Ok().reason.getErrorMessage();
     auto res = follower->release(LogIndex{2});  // now release index 2
     ASSERT_TRUE(res.ok());
     auto const compactedCountAfter =
@@ -198,7 +198,7 @@ TEST_F(ReplicatedLogMetricsTest, leader_count_compaction) {
   leader->insert(LogPayload::createFromString("third"));
   auto last = leader->insert(LogPayload::createFromString("forth"));
   auto f = leader->waitFor(last);
-  ASSERT_TRUE(f.isReady());
+  ASSERT_TRUE(f.Ready());
 
   auto res = leader->release(idx);  // now trigger compaction
   ASSERT_TRUE(res.ok());
@@ -224,7 +224,7 @@ TEST_F(ReplicatedLogMetricsTest, leader_accept_commit_counter) {
   leader->insert(LogPayload::createFromString("third"));
   auto last = leader->insert(LogPayload::createFromString("forth"));
   auto f = leader->waitFor(last);
-  ASSERT_TRUE(f.isReady());
+  ASSERT_TRUE(f.Ready());
 
   auto const afterAccept =
       _logMetricsMock->replicatedLogNumberAcceptedEntries->load();

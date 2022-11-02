@@ -27,7 +27,6 @@
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
-#include "Futures/Future.h"
 #include "Network/types.h"
 #include "Metrics/Parse.h"
 #include "Rest/CommonDefines.h"
@@ -37,6 +36,7 @@
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
+#include <yaclib/async/future.hpp>
 #include <velocypack/Slice.h>
 
 #include <map>
@@ -67,7 +67,7 @@ void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart,
 /// @brief returns revision for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> revisionOnCoordinator(
+yaclib::Future<OperationResult> revisionOnCoordinator(
     ClusterFeature&, std::string const& dbname, std::string const& collname,
     OperationOptions const& options);
 
@@ -75,7 +75,7 @@ futures::Future<OperationResult> revisionOnCoordinator(
 /// @brief returns checksum for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> checksumOnCoordinator(
+yaclib::Future<OperationResult> checksumOnCoordinator(
     ClusterFeature& feature, std::string const& dbname,
     std::string const& collname, OperationOptions const& options,
     bool withRevisions, bool withData);
@@ -84,16 +84,16 @@ futures::Future<OperationResult> checksumOnCoordinator(
 /// @brief Warmup index caches on Shards
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<Result> warmupOnCoordinator(ClusterFeature&,
-                                            std::string const& dbname,
-                                            std::string const& cid,
-                                            OperationOptions const& options);
+yaclib::Future<Result> warmupOnCoordinator(ClusterFeature&,
+                                           std::string const& dbname,
+                                           std::string const& cid,
+                                           OperationOptions const& options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns figures for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> figuresOnCoordinator(
+yaclib::Future<OperationResult> figuresOnCoordinator(
     ClusterFeature&, std::string const& dbname, std::string const& collname,
     bool details, OperationOptions const& options);
 
@@ -101,7 +101,7 @@ futures::Future<OperationResult> figuresOnCoordinator(
 /// @brief counts number of documents in a coordinator, by shard
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> countOnCoordinator(
+yaclib::Future<OperationResult> countOnCoordinator(
     transaction::Methods& trx, std::string const& collname,
     OperationOptions const& options, arangodb::transaction::MethodsApi api);
 
@@ -109,14 +109,14 @@ futures::Future<OperationResult> countOnCoordinator(
 /// @brief gets the metrics from DBServers
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<metrics::RawDBServers> metricsOnLeader(NetworkFeature& network,
-                                                       ClusterFeature& cluster);
+yaclib::Future<metrics::RawDBServers> metricsOnLeader(NetworkFeature& network,
+                                                      ClusterFeature& cluster);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the metrics from leader Coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<metrics::LeaderResponse> metricsFromLeader(
+yaclib::Future<metrics::LeaderResponse> metricsFromLeader(
     NetworkFeature& network, ClusterFeature& cluster, std::string_view leader,
     std::string serverId, uint64_t rebootId, uint64_t version);
 
@@ -132,7 +132,7 @@ Result selectivityEstimatesOnCoordinator(
 /// @brief creates a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> createDocumentOnCoordinator(
+yaclib::Future<OperationResult> createDocumentOnCoordinator(
     transaction::Methods const& trx, LogicalCollection& coll, VPackSlice slice,
     OperationOptions const& options, transaction::MethodsApi api);
 
@@ -140,7 +140,7 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
 /// @brief remove a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> removeDocumentOnCoordinator(
+yaclib::Future<OperationResult> removeDocumentOnCoordinator(
     transaction::Methods& trx, LogicalCollection& coll, VPackSlice slice,
     OperationOptions const& options, transaction::MethodsApi api);
 
@@ -148,7 +148,7 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
 /// @brief get a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> getDocumentOnCoordinator(
+yaclib::Future<OperationResult> getDocumentOnCoordinator(
     transaction::Methods& trx, LogicalCollection&, VPackSlice slice,
     OperationOptions const& options, transaction::MethodsApi api);
 
@@ -209,7 +209,7 @@ void fetchVerticesFromEngines(
 /// @brief modify a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> modifyDocumentOnCoordinator(
+yaclib::Future<OperationResult> modifyDocumentOnCoordinator(
     transaction::Methods& trx, LogicalCollection& coll,
     arangodb::velocypack::Slice const& slice, OperationOptions const& options,
     bool isPatch, transaction::MethodsApi api);
@@ -218,7 +218,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> truncateCollectionOnCoordinator(
+yaclib::Future<OperationResult> truncateCollectionOnCoordinator(
     transaction::Methods& trx, std::string const& collname,
     OperationOptions const& options, transaction::MethodsApi api);
 

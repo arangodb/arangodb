@@ -4,6 +4,9 @@
 
 #include "PersistedLog.h"
 
+#include <yaclib/async/make.hpp>
+#include <yaclib/async/contract.hpp>
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
@@ -55,9 +58,9 @@ auto MockLog::read(replication2::LogIndex start)
 }
 
 auto MockLog::removeFront(replication2::LogIndex stop)
-    -> futures::Future<Result> {
+    -> yaclib::Future<Result> {
   _storage.erase(_storage.begin(), _storage.lower_bound(stop));
-  return Result{};
+  return yaclib::MakeFuture<Result>();
 }
 
 auto MockLog::removeBack(replication2::LogIndex start) -> Result {
@@ -94,14 +97,16 @@ void MockLog::setEntry(replication2::PersistingLogEntry entry) {
 }
 
 auto MockLog::insertAsync(std::unique_ptr<PersistedLogIterator> iter,
-                          WriteOptions const& opts) -> futures::Future<Result> {
-  return insert(*iter, opts);
+                          WriteOptions const& opts) -> yaclib::Future<Result> {
+  return yaclib::MakeFuture(insert(*iter, opts));
 }
 
 auto AsyncMockLog::insertAsync(std::unique_ptr<PersistedLogIterator> iter,
                                WriteOptions const& opts)
-    -> futures::Future<Result> {
+    -> yaclib::Future<Result> {
   auto entry = std::make_shared<QueueEntry>();
+  auto [f, p] = yaclib::MakeContract<Result>();
+  entry->promise = std::move(p);
   entry->opts = opts;
   entry->iter = std::move(iter);
 
@@ -113,7 +118,7 @@ auto AsyncMockLog::insertAsync(std::unique_ptr<PersistedLogIterator> iter,
     _cv.notify_all();
   }
 
-  return entry->promise.getFuture();
+  return std::move(f);
 }
 
 void AsyncMockLog::runWorker() {
@@ -134,29 +139,33 @@ void AsyncMockLog::runWorker() {
     }
     for (auto& entry : queue) {
       auto res = insert(*entry->iter, entry->opts);
-      entry->promise.setValue(res);
+      TRI_ASSERT(entry->promise.Valid());
+      std::move(entry->promise).Set(res);
     }
   }
 }
 
 auto DelayedMockLog::insertAsync(
     std::unique_ptr<replication2::PersistedLogIterator> iter,
-    PersistedLog::WriteOptions const& opts) -> futures::Future<Result> {
+    PersistedLog::WriteOptions const& opts) -> yaclib::Future<Result> {
   TRI_ASSERT(!_pending.has_value());
-  return _pending.emplace(std::move(iter), opts).promise.getFuture();
+  auto [f, p] = yaclib::MakeContract<Result>();
+  _pending.emplace(std::move(iter), opts, std::move(p));
+  return std::move(f);
 }
 
 void DelayedMockLog::runAsyncInsert() {
   TRI_ASSERT(_pending.has_value());
   MockLog::insertAsync(std::move(_pending->iter), _pending->options)
-      .thenFinal([this](futures::Try<Result>&& res) {
+      .DetachInline([this](auto&& res) {
         auto promise = std::move(_pending->promise);
         _pending.reset();
-        promise.setTry(std::move(res));
+        TRI_ASSERT(promise.Valid());
+        std::move(promise).Set(std::move(res));
       });
 }
 
 DelayedMockLog::PendingRequest::PendingRequest(
     std::unique_ptr<replication2::PersistedLogIterator> iter,
-    WriteOptions options)
-    : iter(std::move(iter)), options(options) {}
+    WriteOptions options, yaclib::Promise<Result>&& promise)
+    : iter(std::move(iter)), options(options), promise(std::move(promise)) {}

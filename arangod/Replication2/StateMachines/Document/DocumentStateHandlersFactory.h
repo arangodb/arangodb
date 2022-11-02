@@ -23,13 +23,13 @@
 
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 
-#include "Futures/Future.h"
 #include "RestServer/arangod.h"
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
 #include "Transaction/Options.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
+#include <yaclib/async/future.hpp>
 #include <string>
 #include <memory>
 #include <optional>

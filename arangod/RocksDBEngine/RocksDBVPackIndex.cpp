@@ -37,6 +37,7 @@
 #include "Cache/VPackKeyHasher.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
+#include "Logger/LogMacros.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"

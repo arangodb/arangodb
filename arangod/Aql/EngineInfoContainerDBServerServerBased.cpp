@@ -183,7 +183,7 @@ std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
   return didCreateEngine;
 }
 
-arangodb::futures::Future<Result>
+yaclib::Future<Result>
 EngineInfoContainerDBServerServerBased::buildSetupRequest(
     transaction::Methods& trx, ServerID const& server, VPackSlice infoSlice,
     std::vector<bool> didCreateEngine, MapRemoteToSnippet& snippetIds,
@@ -204,12 +204,11 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
       << "unexpected clusterQueryId: " << infoSlice.toJson();
   auto const globalId = infoSlice.get("clusterQueryId").getNumber<QueryId>();
 
-  auto buildCallback =
-      [this, server, didCreateEngine = std::move(didCreateEngine),
-       &serverToQueryId, &serverToQueryIdLock, &snippetIds, globalId](
-          arangodb::futures::Try<arangodb::network::Response> const& response)
-      -> Result {
-    auto const& resolvedResponse = response.get();
+  auto buildCallback = [this, server,
+                        didCreateEngine = std::move(didCreateEngine),
+                        &serverToQueryId, &serverToQueryIdLock, &snippetIds,
+                        globalId](auto const& response) -> Result {
+    auto& resolvedResponse = response.Ok();
     auto queryId = globalId;
     RebootId rebootId{0};
 
@@ -242,10 +241,8 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
   return network::sendRequestRetry(
              pool, "server:" + server, fuerte::RestVerb::Post,
              "/_api/aql/setup", std::move(buffer), options, std::move(headers))
-      .then([buildCallback = std::move(buildCallback)](
-                futures::Try<network::Response>&& resp) mutable {
-        return buildCallback(resp);
-      });
+      .ThenInline([buildCallback = std::move(buildCallback)](
+                      auto&& resp) mutable { return buildCallback(resp); });
 }
 
 bool EngineInfoContainerDBServerServerBased::isNotSatelliteLeader(
@@ -314,7 +311,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
             // complete shutdown to have finished before we return to the
             // caller. this is done so that there will be no 2 AQL queries in
             // the same streaming transaction at the same time
-            futures::collectAll(requests).wait();
+            yaclib::Wait(requests.begin(), requests.end());
           }
         } catch (std::exception const& ex) {
           LOG_TOPIC("2a9fe", WARN, Logger::AQL)
@@ -350,7 +347,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   ::arangodb::containers::HashSet<std::string> serversAdded;
 
   transaction::Methods& trx = _query.trxForOptimization();
-  std::vector<arangodb::futures::Future<Result>> networkCalls{};
+  std::vector<yaclib::Future<Result>> networkCalls{};
 
   network::RequestOptions options;
   options.database = _query.vocbase().name();
@@ -415,51 +412,46 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
                                    std::move(didCreateEngine));
     _query.incHttpRequests(unsigned(1));
   }
-
-  futures::Future<Result> fastPathResult =
-      futures::collectAll(networkCalls)
-          .thenValue([](std::vector<arangodb::futures::Try<Result>>&& responses)
-                         -> Result {
-            // We can directly report a non TRI_ERROR_LOCK_TIMEOUT
-            // error as we need to abort after.
-            // Otherwise we need to report
-            Result res;
-            for (auto const& tryRes : responses) {
-              auto response = tryRes.get();
-              if (response.fail()) {
-                if (response.isNot(TRI_ERROR_LOCK_TIMEOUT)) {
-                  // Found something we cannot recover from.
-                  // Return and give up
-                  return response;
-                }
-                // track that we have lock_timeout_present
-                res = response;
-              }
-            }
-            // Return what we have, this will be ok() if and only
-            // if none of the requests failed.
-            // It will be LOCK_TIMEOUT if and only if the only error
-            // we see was LOCK_TIMEOUT.
-            return res;
-          });
-  if (fastPathResult.get().fail()) {
-    if (fastPathResult.get().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+  yaclib::Wait(networkCalls.begin(), networkCalls.end());
+  // We can directly report a non TRI_ERROR_LOCK_TIMEOUT
+  // error as we need to abort after.
+  // Otherwise we need to report
+  Result fastPathResult;
+  for (auto&& f : std::move(networkCalls)) {
+    auto response = std::move(f).Touch().Ok();
+    if (response.fail()) {
+      if (response.isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+        // Found something we cannot recover from.
+        // Return and give up
+        fastPathResult = response;
+        break;
+      }
+      // track that we have lock_timeout_present
+      fastPathResult = response;
+    }
+  }
+  // Return what we have, this will be ok() if and only
+  // if none of the requests failed.
+  // It will be LOCK_TIMEOUT if and only if the only error
+  // we see was LOCK_TIMEOUT.
+  if (fastPathResult.fail()) {
+    if (fastPathResult.isNot(TRI_ERROR_LOCK_TIMEOUT)) {
       // we got an error. this will trigger the cleanupGuard!
       // set the proper error reason.
-      cleanupReason = fastPathResult.get().errorNumber();
-      return fastPathResult.get();
+      cleanupReason = fastPathResult.errorNumber();
+      return fastPathResult;
     }
 
     // we got a lock timeout response for the fast path locking...
     {
       // in case of fast path failure, we need to cleanup engines
-      auto requests = cleanupEngines(fastPathResult.get().errorNumber(),
+      auto requests = cleanupEngines(fastPathResult.errorNumber(),
                                      _query.vocbase().name(), serverToQueryId);
       // Wait for all cleanup requests to complete.
       // So we know that all Transactions are aborted.
       Result res;
-      for (auto& tryRes : requests) {
-        network::Response const& response = tryRes.get();
+      for (auto&& f : std::move(requests)) {
+        auto response = std::move(f).Get().Ok();
         if (response.fail()) {
           // note first error, but continue iterating over all results
           LOG_TOPIC("2d319", DEBUG, Logger::AQL)
@@ -552,11 +544,11 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
           std::move(didCreateEngine), snippetIds, serverToQueryId,
           serverToQueryIdLock, pool, options);
       _query.incHttpRequests(unsigned(1));
-      if (request.get().fail()) {
+      if (auto r = std::move(request).Get().Ok(); r.fail()) {
         // this will trigger the cleanupGuard.
         // set the proper error reason
-        cleanupReason = request.get().errorNumber();
-        return request.get();
+        cleanupReason = r.errorNumber();
+        return r;
       }
     }
   }

@@ -34,9 +34,9 @@
 #include <tuple>
 #include <utility>
 #include <vector>
+#include <yaclib/async/future.hpp>
 
 #include "Basics/Result.h"
-#include "Futures/Future.h"
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
@@ -67,10 +67,6 @@ struct DeferredAction;
 #pragma warning(pop)
 #endif
 
-namespace arangodb::futures {
-template<typename T>
-class Try;
-}
 namespace arangodb::cluster {
 struct IFailureOracle;
 }
@@ -152,7 +148,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
   auto waitForLeadership() -> WaitForFuture override;
 
-  [[nodiscard]] auto waitForResign() -> futures::Future<futures::Unit> override;
+  [[nodiscard]] auto waitForResign() -> yaclib::Future<> override;
 
   // This function returns the current commit index. Do NOT poll this function,
   // use waitFor(idx) instead. This function is used in tests.
@@ -225,7 +221,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     [[nodiscard]] auto getParticipantId() const noexcept
         -> ParticipantId const& override;
     [[nodiscard]] auto appendEntries(AppendEntriesRequest request)
-        -> arangodb::futures::Future<AppendEntriesResult> override;
+        -> yaclib::Future<AppendEntriesResult> override;
 
     [[nodiscard]] auto resign() && noexcept -> std::unique_ptr<LogCore>;
     [[nodiscard]] auto release(LogIndex stop) const -> Result;
@@ -275,7 +271,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     [[nodiscard]] auto handleAppendEntriesResponse(
         FollowerInfo& follower, TermIndexPair lastIndex,
         LogIndex currentCommitIndex, LogIndex currentLITK, LogTerm currentTerm,
-        futures::Try<AppendEntriesResult>&& res,
+        yaclib::Result<AppendEntriesResult>&& res,
         std::chrono::steady_clock::duration latency, MessageId messageId)
         -> std::pair<std::vector<std::optional<PreparedAppendEntryRequest>>,
                      ResolvedPromiseSet>;
@@ -311,7 +307,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
         -> LogIndex;
 
     [[nodiscard]] auto waitForResign()
-        -> std::pair<futures::Future<futures::Unit>, DeferredAction>;
+        -> std::pair<yaclib::Future<>, DeferredAction>;
 
     LogLeader& _self;
     InMemoryLog _inMemoryLog;

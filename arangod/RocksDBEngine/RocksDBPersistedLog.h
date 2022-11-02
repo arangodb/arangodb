@@ -28,6 +28,9 @@
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "RocksDBKeyBounds.h"
 
+#include <yaclib/async/promise.hpp>
+#include <function2.hpp>
+
 #include <array>
 #include <variant>
 #include <memory>
@@ -63,7 +66,7 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
     PersistRequest(
         std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>
             log,
-        Action action, futures::Promise<Result> promise)
+        Action action, yaclib::Promise<Result> promise)
         : log(std::move(log)),
           action(std::move(action)),
           promise(std::move(promise)) {}
@@ -72,12 +75,12 @@ struct RocksDBLogPersistor : std::enable_shared_from_this<RocksDBLogPersistor> {
 
     std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log;
     Action action;
-    futures::Promise<Result> promise;
+    yaclib::Promise<Result> promise;
   };
 
   auto persist(
       std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log,
-      Action action, WriteOptions const& options) -> futures::Future<Result>;
+      Action action, WriteOptions const& options) -> yaclib::Future<Result>;
 
   struct Lane {
     Lane() = delete;
@@ -116,11 +119,11 @@ class RocksDBPersistedLog
   auto insert(replication2::PersistedLogIterator& iter, WriteOptions const&)
       -> Result override;
   auto insertAsync(std::unique_ptr<replication2::PersistedLogIterator> iter,
-                   WriteOptions const&) -> futures::Future<Result> override;
+                   WriteOptions const&) -> yaclib::Future<Result> override;
   auto read(replication2::LogIndex start)
       -> std::unique_ptr<replication2::PersistedLogIterator> override;
   auto removeFront(replication2::LogIndex stop)
-      -> futures::Future<Result> override;
+      -> yaclib::Future<Result> override;
   auto removeBack(replication2::LogIndex start) -> Result override;
 
   // On success, iter will be completely consumed and written to wb.

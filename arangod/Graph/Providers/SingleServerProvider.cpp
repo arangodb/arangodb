@@ -28,14 +28,14 @@
 #include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Transaction/Helpers.h"
-
-#include "Futures/Future.h"
-#include "Futures/Utilities.h"
+#include "Logger/LogMacros.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #endif
 
+#include <yaclib/async/make.hpp>
+#include <yaclib/async/future.hpp>
 #include <vector>
 
 using namespace arangodb;
@@ -131,7 +131,7 @@ auto SingleServerProvider<Step>::startVertex(VertexType vertex, size_t depth,
 
 template<class Step>
 auto SingleServerProvider<Step>::fetch(std::vector<Step*> const& looseEnds)
-    -> futures::Future<std::vector<Step*>> {
+    -> yaclib::Future<std::vector<Step*>> {
   // Should never be called in SingleServer case
   TRI_ASSERT(false);
   LOG_TOPIC("c9160", TRACE, Logger::GRAPHS)
@@ -139,7 +139,7 @@ auto SingleServerProvider<Step>::fetch(std::vector<Step*> const& looseEnds)
   std::vector<Step*> result{};
   result.reserve(looseEnds.size());
 
-  return futures::makeFuture(std::move(result));
+  return yaclib::MakeFuture(std::move(result));
 }
 
 template<class Step>
@@ -284,8 +284,7 @@ arangodb::aql::TraversalStats SingleServerProvider<Step>::stealStats() {
 
 template<class StepType>
 auto SingleServerProvider<StepType>::fetchVertices(
-    const std::vector<Step*>& looseEnds)
-    -> futures::Future<std::vector<Step*>> {
+    const std::vector<Step*>& looseEnds) -> yaclib::Future<std::vector<Step*>> {
   // We will never need to fetch anything
   TRI_ASSERT(false);
   return std::move(fetch(looseEnds));

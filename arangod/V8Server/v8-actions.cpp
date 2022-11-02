@@ -37,7 +37,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Futures/Utilities.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogMacros.h"
@@ -1646,7 +1645,7 @@ static ErrorCode clusterSendToAllServers(
   reqOpts.timeout = network::Timeout(3600);
   reqOpts.contentType = StaticStrings::MimeTypeJsonNoEncoding;
 
-  std::vector<futures::Future<network::Response>> futures;
+  std::vector<yaclib::Future<network::Response>> futures;
   futures.reserve(DBServers.size());
 
   // Have to propagate to DB Servers
@@ -1658,8 +1657,8 @@ static ErrorCode clusterSendToAllServers(
     futures.emplace_back(std::move(f));
   }
 
-  for (auto& f : futures) {
-    network::Response const& res = f.get();  // throws exceptions upwards
+  for (auto&& f : futures) {
+    auto res = std::move(f).Get().Ok();  // throws exceptions upwards
     auto commError = network::fuerteToArangoErrorCode(res);
     if (commError != TRI_ERROR_NO_ERROR) {
       return commError;

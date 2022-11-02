@@ -95,7 +95,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
       EXPECT_EQ(status.local.spearHead.index, LogIndex{0});
     }
     auto f = leader->waitFor(idx);
-    EXPECT_FALSE(f.isReady());
+    EXPECT_FALSE(f.Ready());
 
     // Nothing sent to the follower yet, but only after triggerAsyncReplication
     EXPECT_FALSE(follower->hasPendingAppendEntries());
@@ -128,9 +128,9 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
     }
 
     // Run async step, now the future should be fulfilled
-    EXPECT_FALSE(f.isReady());
+    EXPECT_FALSE(f.Ready());
     follower->runAsyncAppendEntries();
-    EXPECT_TRUE(f.isReady());
+    EXPECT_TRUE(f.Ready());
 
     {
       // Leader commit index is 2
@@ -171,8 +171,8 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
 
     {
       // Expect the quorum to consist of the follower and the leader
-      ASSERT_TRUE(f.isReady());
-      auto result = f.get();
+      ASSERT_TRUE(f.Ready());
+      auto result = std::move(f).Get().Ok();
       EXPECT_EQ(result.currentCommitIndex, LogIndex{2});
       EXPECT_EQ(result.quorum->index, LogIndex{2});
       EXPECT_EQ(result.quorum->term, LogTerm{1});
@@ -260,7 +260,7 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
 
   // Nothing should be ready
   auto f = leader->waitFor(LogIndex{3});
-  EXPECT_FALSE(f.isReady());
+  EXPECT_FALSE(f.Ready());
 
   // this should trigger a sendAppendEntries to all follower
   EXPECT_FALSE(follower->hasPendingAppendEntries());
@@ -332,7 +332,7 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   EXPECT_EQ(index,
             LogIndex{2});  // first entry is for term, second is used entry
   auto future = leader->waitFor(index);
-  EXPECT_FALSE(future.isReady());
+  EXPECT_FALSE(future.Ready());
 
   {
     // Leader has spearhead at 1 but not committed
@@ -364,7 +364,7 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   follower_1->runAsyncAppendEntries();
   // We do not expect any requests pending
   EXPECT_FALSE(follower_1->hasPendingAppendEntries());
-  EXPECT_FALSE(future.isReady());
+  EXPECT_FALSE(future.Ready());
   {
     // Leader has spearhead at 1 but not committed
     auto status = std::get<LeaderStatus>(leader->getStatus().getVariant());
@@ -391,8 +391,8 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   // now write concern 3 is reached, future is ready
   // and update of commitIndex on both follower
   {
-    ASSERT_TRUE(future.isReady());
-    auto result = future.get();
+    ASSERT_TRUE(future.Ready());
+    auto result = std::move(future).Get().Ok();
     EXPECT_EQ(result.currentCommitIndex, LogIndex{2});
     EXPECT_EQ(result.quorum->term, LogTerm{1});
     EXPECT_EQ(result.quorum->index, LogIndex{2});
@@ -507,7 +507,7 @@ TEST_F(ReplicatedLogTest,
 
   // Older entries should be ready
   auto f = leader->waitFor(LogIndex{3});
-  EXPECT_TRUE(f.isReady());
+  EXPECT_TRUE(f.Ready());
 
   EXPECT_TRUE(follower->hasPendingAppendEntries());
   {

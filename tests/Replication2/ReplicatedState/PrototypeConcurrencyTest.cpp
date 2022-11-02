@@ -49,7 +49,7 @@ struct MockPrototypeLeaderInterface : public IPrototypeLeaderInterface {
       : leaderState(std::move(leaderState)) {}
 
   auto getSnapshot(GlobalLogIdentifier const&, LogIndex waitForIndex)
-      -> futures::Future<
+      -> yaclib::Future<
           ResultT<std::unordered_map<std::string, std::string>>> override {
     return leaderState->getSnapshot(waitForIndex);
   }
@@ -102,7 +102,7 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
         "prototype-state", networkMock, storageMock);
     leader->triggerAsyncReplication();
 
-    leader->waitForLeadership().get();
+    std::ignore = leader->waitForLeadership().Get().Ok();
     auto replicatedState = feature->createReplicatedState(
         "prototype-state", leaderLog, statePersistor);
     replicatedState->start(
@@ -196,7 +196,8 @@ TEST_F(PrototypeConcurrencyTest, test_concurrent_writes) {
                     ->set(std::unordered_map<std::string, std::string>(
                               {{std::to_string(x), myName}}),
                           options)
-                    .get();
+                    .Get()
+                    .Ok();
     }
   };
 
@@ -208,7 +209,7 @@ TEST_F(PrototypeConcurrencyTest, test_concurrent_writes) {
   a.join();
   b.join();
 
-  auto snapshot = leaderState->getSnapshot(LogIndex{1}).get();
+  auto snapshot = leaderState->getSnapshot(LogIndex{1}).Get().Ok();
   ASSERT_TRUE(snapshot.ok());
   for (int x = 0; x <= numKeys; x++) {
     bool expectA = aIdxs[x] > bIdxs[x];

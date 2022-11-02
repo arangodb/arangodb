@@ -65,7 +65,7 @@ RestStatus RestLogInternalHandler::execute() {
   auto request = replicated_log::AppendEntriesRequest::fromVelocyPack(body);
   auto f = _vocbase.getReplicatedLogFollowerById(logId)
                ->appendEntries(request)
-               .thenValue([this](replicated_log::AppendEntriesResult&& res) {
+               .ThenInline([this](replicated_log::AppendEntriesResult&& res) {
                  VPackBuilder builder;
                  res.toVelocyPack(builder);
                  // TODO fix the result type here. Currently we always return

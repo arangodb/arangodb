@@ -37,7 +37,6 @@
 #include "Agency/PathComponent.h"
 #include "Basics/ResultT.h"
 #include "Basics/debugging.h"
-#include "Futures/Future.h"
 #include "Network/Methods.h"
 #include "Network/Utils.h"
 
@@ -189,8 +188,8 @@ class AsyncAgencyCommManager final {
 
 class AsyncAgencyComm final {
  public:
-  using FutureResult = arangodb::futures::Future<AsyncAgencyCommResult>;
-  using FutureReadResult = arangodb::futures::Future<AgencyReadResult>;
+  using FutureResult = yaclib::Future<AsyncAgencyCommResult>;
+  using FutureReadResult = yaclib::Future<AgencyReadResult>;
 
   [[nodiscard]] FutureResult getValues(
       std::string const& path,

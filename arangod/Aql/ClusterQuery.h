@@ -25,7 +25,8 @@
 
 #include "Aql/Query.h"
 #include "Cluster/ClusterTypes.h"
-#include "Futures/Future.h"
+
+#include <yaclib/async/future.hpp>
 
 namespace arangodb::aql {
 
@@ -57,7 +58,7 @@ class ClusterQuery : public Query {
                            velocypack::Builder& answer,
                            QueryAnalyzerRevisions const& analyzersRevision);
 
-  futures::Future<Result> finalizeClusterQuery(ErrorCode errorCode);
+  yaclib::Future<Result> finalizeClusterQuery(ErrorCode errorCode);
 
  private:
   /// @brief first one should be the local one
