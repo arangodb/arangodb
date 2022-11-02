@@ -694,8 +694,10 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
             }
             if (!inList) {
               _t3Candidates.push_back(lastOperationTick);
+              inList = true;
             } else {
               // just arbitrary wait. We need all 3 candidates to gather
+              sync.unlock();
               std::this_thread::sleep_for(500ms);
             }
           }

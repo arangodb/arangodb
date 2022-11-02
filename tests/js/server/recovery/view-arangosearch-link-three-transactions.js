@@ -50,23 +50,28 @@ function runSetup () {
   }
   db.UnitTestsRecoveryDummy.save(data);
   db._query("FOR d IN UnitTestsRecoveryView OPTIONS {waitForSync:true} LIMIT 1 RETURN d");
-  
+  internal.debugSetFailAt("ArangoSearch::ThreeTransactionsMisorder");
   tasks.register({
     id: "doc-1",
     command: function(params) {
           const db = require('@arangodb').db;
           let col = db._collection('UnitTestsRecoveryDummy');
-          let i = 1001;
-          col.save({ a: 'foo_' + i, b: 'bar_' + i, c: i });
+          let data = [];
+          for (let i = 1250; i < 1500; i++) {
+            data.push({ a: "foo_" + i, b: "bar_" + i, c: i });
+          }
+          db.UnitTestsRecoveryDummy.save(data);
     }
   });
   tasks.register({
     id: "doc-2",
     command: function(params) {
           const db = require('@arangodb').db;
-          let col = db._collection('UnitTestsRecoveryDummy');
-          let i = 1002;
-          col.save({ a: 'foo_' + i, b: 'bar_' + i, c: i });
+          let data = [];
+          for (let i = 1000; i < 1100; i++) {
+            data.push({ a: "foo_" + i, b: "bar_" + i, c: i });
+          }
+          db.UnitTestsRecoveryDummy.save(data);
     }
   });
   tasks.register({
@@ -74,11 +79,22 @@ function runSetup () {
     command: function(params) {
           const db = require('@arangodb').db;
           let col = db._collection('UnitTestsRecoveryDummy');
-          let i = 1003;
-          col.save({ a: 'foo_' + i, b: 'bar_' + i, c: i });
+          let data = [];
+          for (let i = 1500; i < 2000; i++) {
+            data.push({ a: "foo_" + i, b: "bar_" + i, c: i });
+          }
+          db.UnitTestsRecoveryDummy.save(data);
     }
   });
-
+  let wait = 100;
+  while(wait > 0 ) {
+    print("waiting: " + wait);
+    wait--;
+    internal.wait(1);
+    // checking if server is alive.
+    db._query("FOR d IN UnitTestsRecoveryDummy LIMIT 1 RETURN d");
+  }
+  // kill it for sure in case of it does not dies itself
   internal.debugTerminate('crashing server');
 }
 
@@ -109,7 +125,7 @@ function recoverySuite () {
       var result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
       var expectedResult = db._query("FOR doc IN UnitTestsRecoveryDummy FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
       assertEqual(result[0], expectedResult[0]);
-      assertEqual(result[0], 1003);
+      assertEqual(result[0], 1850);
     }
 
   };
