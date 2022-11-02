@@ -710,7 +710,7 @@ auto LogFollower::release(LogIndex doneWithIdx) -> Result {
   guard->_releaseIndex = doneWithIdx;
   LOG_CTX("a0c95", TRACE, _loggerContext)
       << "new release index set to " << guard->_releaseIndex;
-  return guard->checkCompaction();
+  return guard->checkCompaction().result();
 }
 
 auto LogFollower::waitForLeaderAcked() -> WaitForFuture {
@@ -779,7 +779,7 @@ Result LogFollower::onSnapshotCompleted() {
   return {};
 }
 
-auto LogFollower::compact() -> Result {
+auto LogFollower::compact() -> ResultT<CompactionResult> {
   auto guard = _guardedFollowerData.getLockedGuard();
   auto compactionStop =
       std::min(guard->_lowestIndexToKeep, guard->_releaseIndex + 1);
@@ -798,7 +798,8 @@ auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()
   return result;
 }
 
-auto LogFollower::GuardedFollowerData::checkCompaction() -> Result {
+auto LogFollower::GuardedFollowerData::checkCompaction()
+    -> ResultT<CompactionResult> {
   auto const compactionStop = std::min(_lowestIndexToKeep, _releaseIndex + 1);
   LOG_CTX("080d5", TRACE, _follower._loggerContext)
       << "compaction index calculated as " << compactionStop;
@@ -814,7 +815,7 @@ auto LogFollower::GuardedFollowerData::checkCompaction() -> Result {
 }
 
 auto LogFollower::GuardedFollowerData::runCompaction(LogIndex compactionStop)
-    -> Result {
+    -> ResultT<CompactionResult> {
   auto const numberOfCompactedEntries =
       compactionStop.value - _inMemoryLog.getFirstIndex().value;
   auto newLog = _inMemoryLog.release(compactionStop);
@@ -823,6 +824,7 @@ auto LogFollower::GuardedFollowerData::runCompaction(LogIndex compactionStop)
     _inMemoryLog = std::move(newLog);
     _follower._logMetrics->replicatedLogNumberCompactedEntries->count(
         numberOfCompactedEntries);
+    return CompactionResult{.numEntriesCompacted = numberOfCompactedEntries};
   }
   LOG_CTX("f1028", TRACE, _follower._loggerContext)
       << "compaction result = " << res.errorMessage();

@@ -1069,11 +1069,11 @@ auto replicated_log::LogLeader::release(LogIndex doneWithIdx) -> Result {
     self._releaseIndex = doneWithIdx;
     LOG_CTX("a0c96", TRACE, _logContext)
         << "new release index set to " << self._releaseIndex;
-    return self.checkCompaction();
+    return self.checkCompaction().result();
   });
 }
 
-auto replicated_log::LogLeader::compact() -> Result {
+auto replicated_log::LogLeader::compact() -> ResultT<CompactionResult> {
   auto guard = _guardedLeaderData.getLockedGuard();
   auto compactionStop =
       std::min(guard->_lowestIndexToKeep, guard->_releaseIndex + 1);
@@ -1083,7 +1083,7 @@ auto replicated_log::LogLeader::compact() -> Result {
 }
 
 [[nodiscard]] auto replicated_log::LogLeader::GuardedLeaderData::runCompaction(
-    LogIndex compactionStop) -> Result {
+    LogIndex compactionStop) -> ResultT<CompactionResult> {
   auto const numberOfCompactedEntries =
       compactionStop.value - _inMemoryLog.getFirstIndex().value;
   auto newLog = _inMemoryLog.release(compactionStop);
@@ -1092,13 +1092,15 @@ auto replicated_log::LogLeader::compact() -> Result {
     _inMemoryLog = std::move(newLog);
     _self._logMetrics->replicatedLogNumberCompactedEntries->count(
         numberOfCompactedEntries);
+    return CompactionResult{.numEntriesCompacted = numberOfCompactedEntries};
   }
   LOG_CTX("f1029", TRACE, _self._logContext)
       << "compaction result = " << res.errorMessage();
   return res;
 }
 
-auto replicated_log::LogLeader::GuardedLeaderData::checkCompaction() -> Result {
+auto replicated_log::LogLeader::GuardedLeaderData::checkCompaction()
+    -> ResultT<CompactionResult> {
   auto const compactionStop = std::min(_lowestIndexToKeep, _releaseIndex + 1);
   LOG_CTX("080d6", TRACE, _self._logContext)
       << "compaction index calculated as " << compactionStop;

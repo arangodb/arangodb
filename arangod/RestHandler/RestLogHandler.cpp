@@ -162,9 +162,9 @@ RestStatus RestLogHandler::handlePostRequest(
   } else if (verb == "multi-insert") {
     return handlePostInsertMulti(methods, logId, body);
   } else {
-    generateError(
-        rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-        "expecting one of the resources 'insert', 'release', 'multi-insert'");
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                  "expecting one of the resources 'insert', 'release', "
+                  "'multi-insert', 'compact'");
   }
   return RestStatus::DONE;
 }
@@ -258,12 +258,10 @@ RestStatus RestLogHandler::handlePostRelease(
 
 RestStatus RestLogHandler::handlePostCompact(
     ReplicatedLogMethods const& methods, replication2::LogId logId) {
-  return waitForFuture(methods.compact(logId).thenValue([this](Result&& res) {
-    if (res.fail()) {
-      generateError(res);
-    } else {
-      generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::noneSlice());
-    }
+  return waitForFuture(methods.compact(logId).thenValue([this](auto&& res) {
+    VPackBuilder builder;
+    velocypack::serialize(builder, res);
+    generateOk(rest::ResponseCode::ACCEPTED, builder.slice());
   }));
 }
 

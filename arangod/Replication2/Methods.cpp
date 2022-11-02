@@ -203,9 +203,14 @@ struct ReplicatedLogMethodsDBServer final
     return {idx};
   }
 
-  auto compact(LogId id) const -> futures::Future<Result> {
+  auto compact(LogId id) const
+      -> futures::Future<CompactionResultMap> override {
     auto log = vocbase.getReplicatedLogById(id);
-    return log->getParticipant()->compact();
+    auto result = log->getParticipant()->compact();
+
+    CompactionResultMap map;
+    map.byParticipant[ServerState::instance()->getId()] = result;
+    return map;
   }
 
   auto release(LogId id, LogIndex index) const
@@ -714,11 +719,13 @@ struct ReplicatedLogMethodsCoordinator final
         vocbaseName, id, leaderId);
   }
 
-  auto compact(LogId id) const -> futures::Future<Result> override {
+  auto compact(LogId id) const
+      -> futures::Future<CompactionResultMap> override {
     auto spec = clusterInfo.getReplicatedLogPlanSpecification(id).get();
 
+    using ResultPair = std::pair<ParticipantId, ResultT<CompactionResultMap>>;
     auto const compactParticipant =
-        [&](ParticipantId const& participant) -> futures::Future<Result> {
+        [&](ParticipantId const& participant) -> futures::Future<ResultPair> {
       auto path = basics::StringUtils::joinT("/", "_api/log", id, "compact");
       network::RequestOptions opts;
       opts.database = vocbaseName;
@@ -730,28 +737,38 @@ struct ReplicatedLogMethodsCoordinator final
       }
       return network::sendRequest(pool, "server:" + participant,
                                   fuerte::RestVerb::Post, path, buffer, opts)
-          .thenValue([participant](network::Response&& resp) {
-            return resp.combinedResult().withError([&](auto& err) {
-              return err.appendErrorMessage("; compaction for participant " +
-                                            participant);
-            });
+          .thenValue([participant](network::Response&& resp) -> ResultPair {
+            if (auto res = resp.combinedResult(); res.fail()) {
+              return std::make_pair(participant, res);
+            }
+            auto map = velocypack::deserialize<CompactionResultMap>(
+                resp.response().slice().get("result"));
+
+            return std::make_pair(participant, std::move(map));
           });
     };
 
-    std::vector<futures::Future<Result>> futs;
+    std::vector<futures::Future<ResultPair>> futs;
     for (auto const& [participant, p] : spec->participantsConfig.participants) {
       futs.emplace_back(compactParticipant(participant));
     }
 
-    return futures::collectAll(std::move(futs)).thenValue([](auto&& results) {
-      // return first error
-      for (auto const& tryRes : results) {
-        if (auto res = tryRes.get(); res.fail()) {
-          return res;
-        }
-      }
-      return Result{};
-    });
+    return futures::collectAll(std::move(futs))
+        .thenValue([](auto&& results) -> CompactionResultMap {
+          CompactionResultMap map;
+          // return first error
+          for (auto const& tryRes : results) {
+            auto const& [p, localRes] = tryRes.get();
+            if (localRes.fail()) {
+              map.byParticipant[p] = localRes.result();
+            } else {
+              for (auto const& [pLocal, res] : localRes.get().byParticipant) {
+                map.byParticipant[pLocal] = res;
+              }
+            }
+          }
+          return map;
+        });
   }
 
   explicit ReplicatedLogMethodsCoordinator(DatabaseID vocbase,

@@ -148,9 +148,10 @@ auto inspect(Inspector& f, TermIndexPair& x) {
 }
 
 struct LogRange {
-  LogIndex from;
-  LogIndex to;
+  LogIndex from{0};
+  LogIndex to{0};
 
+  LogRange() noexcept = default;
   LogRange(LogIndex from, LogIndex to) noexcept;
 
   [[nodiscard]] auto empty() const noexcept -> bool;
@@ -432,6 +433,75 @@ auto operator<<(std::ostream&,
     -> std::ostream&;
 
 auto to_string(CommitFailReason const&) -> std::string;
+
+struct CompactionStopReason {
+  struct CompactionThresholdNotReached {
+    LogIndex nextCompactionAt;
+    template<class Inspector>
+    friend auto inspect(Inspector& f, CompactionThresholdNotReached& x) {
+      return f.object(x).fields(
+          f.field("nextCompactionAt", x.nextCompactionAt));
+    }
+    friend auto operator==(CompactionThresholdNotReached const& left,
+                           CompactionThresholdNotReached const& right) noexcept
+        -> bool = default;
+  };
+  struct NotReleasedByStateMachine {
+    LogIndex releasedIndex;
+    template<class Inspector>
+    friend auto inspect(Inspector& f, NotReleasedByStateMachine& x) {
+      return f.object(x).fields(f.field("releasedIndex", x.releasedIndex));
+    }
+    friend auto operator==(NotReleasedByStateMachine const& left,
+                           NotReleasedByStateMachine const& right) noexcept
+        -> bool = default;
+  };
+  struct ParticipantMissingEntries {
+    ParticipantId who;
+    template<class Inspector>
+    friend auto inspect(Inspector& f, ParticipantMissingEntries& x) {
+      return f.object(x).fields(f.field("who", x.who));
+    }
+    friend auto operator==(ParticipantMissingEntries const& left,
+                           ParticipantMissingEntries const& right) noexcept
+        -> bool = default;
+  };
+
+  std::variant<CompactionThresholdNotReached, NotReleasedByStateMachine,
+               ParticipantMissingEntries>
+      value;
+
+  friend auto operator==(CompactionStopReason const& left,
+                         CompactionStopReason const& right) noexcept
+      -> bool = default;
+
+  template<class Inspector>
+  friend auto inspect(Inspector& f, CompactionStopReason& x) {
+    namespace insp = arangodb::inspection;
+    return f.variant(x.value).embedded("reason").alternatives(
+        insp::type<CompactionThresholdNotReached>(
+            "CompactionThresholdNotReached"),
+        insp::type<NotReleasedByStateMachine>("NotReleasedByStateMachine"),
+        insp::type<ParticipantMissingEntries>("ParticipantMissingEntries"));
+  }
+};
+
+struct CompactionResult {
+  std::size_t numEntriesCompacted;
+  std::optional<CompactionStopReason> stopReason;
+
+  friend auto operator==(CompactionResult const& left,
+                         CompactionResult const& right) noexcept
+      -> bool = default;
+
+  template<class Inspector>
+  friend auto inspect(Inspector& f, CompactionResult& x) {
+    return f.object(x).fields(
+        f.field("numEntriesCompacted", x.numEntriesCompacted),
+        f.field("stopReason", x.stopReason));
+  }
+};
+
 }  // namespace replicated_log
 
 }  // namespace arangodb::replication2
