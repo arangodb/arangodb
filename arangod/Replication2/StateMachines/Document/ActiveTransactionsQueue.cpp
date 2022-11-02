@@ -38,7 +38,7 @@ LogIndex ActiveTransactionsQueue::getReleaseIndex(LogIndex current) const {
     return current;
   }
   auto const& idx = _logIndices.front();
-  TRI_ASSERT(idx.second == Status::ACTIVE);
+  TRI_ASSERT(idx.second == Status::kActive);
   return idx.first.saturatedDecrement();
 }
 
@@ -55,10 +55,10 @@ bool ActiveTransactionsQueue::erase(TransactionId const& tid) {
 
   auto deactivateIdx =
       std::lower_bound(std::begin(_logIndices), std::end(_logIndices),
-                       std::make_pair(it->second, Status::ACTIVE));
+                       std::make_pair(it->second, Status::kActive));
   TRI_ASSERT(deactivateIdx != std::end(_logIndices) &&
              deactivateIdx->first == it->second);
-  deactivateIdx->second = Status::INACTIVE;
+  deactivateIdx->second = Status::kInactive;
   _transactions.erase(it);
 
   popInactive();
@@ -75,7 +75,7 @@ void ActiveTransactionsQueue::emplace(TransactionId tid, LogIndex index) {
     if (!_logIndices.empty()) {
       TRI_ASSERT(index > _logIndices.back().first);
     }
-    _logIndices.emplace_back(index, Status::ACTIVE);
+    _logIndices.emplace_back(index, Status::kActive);
   }
 }
 
@@ -84,7 +84,7 @@ void ActiveTransactionsQueue::emplace(TransactionId tid, LogIndex index) {
  * inactive. This ensures that we always have a release index to report.
  */
 void ActiveTransactionsQueue::popInactive() {
-  while (!_logIndices.empty() && _logIndices.front().second == INACTIVE) {
+  while (!_logIndices.empty() && _logIndices.front().second == kInactive) {
     _logIndices.pop_front();
   }
 }
