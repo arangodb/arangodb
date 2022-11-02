@@ -3,6 +3,12 @@ devel
 
 * Fixed BTS-441: Honour read only mode with disabled authentication
 
+* Remove map and map.gz files from repository and add them to gitignore.
+  These files are only used for debugging and therefore should not be
+  included in any release. This also reduces the size of release packages.
+
+* Repair "load indexes into memory" function in the web UI.
+
 * Improved help texts for the collection type and satellite collection
   options in the web UI.
 

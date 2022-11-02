@@ -234,7 +234,7 @@ function CollectionSuite () {
         idxs.forEach(function(idx, i) {
           if (idx.figures.cacheInUse) {
             let diff = Math.abs(initial[i].cacheSize - idx.figures.cacheSize);
-            assertTrue(diff <= Math.pow(2, 21), idx);
+            assertTrue(diff <= Math.pow(2, 23), { diff, initial: initial[i], figures: idx.figures });
             // this assumption is simply not safe
             //assertTrue(idx.figures.cacheLifeTimeHitRate > 15, idx);
             initial[i] = idx.figures;
