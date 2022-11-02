@@ -2683,7 +2683,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 ::ErrorCode flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
-                                   bool waitForCollector) {
+                                   bool flushColumnFamilies) {
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ServerID> DBservers = ci.getCurrentDBServers();
@@ -2694,7 +2694,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
   reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
   reqOpts
       .param(StaticStrings::WaitForSyncString, (waitForSync ? "true" : "false"))
-      .param("waitForCollector", (waitForCollector ? "true" : "false"));
+      .param("waitForCollector", (flushColumnFamilies ? "true" : "false"));
 
   std::vector<Future<network::Response>> futures;
   futures.reserve(DBservers.size());
