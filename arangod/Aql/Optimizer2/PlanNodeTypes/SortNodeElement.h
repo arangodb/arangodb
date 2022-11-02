@@ -18,31 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Aql/Optimizer2/PlanNodes/BaseNode.h"
-#include "Aql/Optimizer2/PlanNodeTypes/Expression.h"
-#include "Aql/Optimizer2/PlanNodeTypes/SortNodeElement.h"
+#include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
+#include "Aql/Optimizer2/Types/Types.h"
 
-#include <Inspection/VPackWithErrorT.h>
+#include "velocypack/Builder.h"
 
-namespace arangodb::aql::optimizer2::nodes {
+namespace arangodb::aql::optimizer2::types {
 
-struct SortNode : optimizer2::nodes::BaseNode {
-  std::vector<optimizer2::types::SortNodeElement> elements;
-  bool stable;
-  AttributeTypes::Numeric limit;
-  AttributeTypes::String strategy;
+struct SortNodeElement : Variable {
+  Variable inVariable;
+  bool ascending;
+  std::optional<std::vector<AttributeTypes::String>> path;
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, SortNode& x) {
-  return f.object(x).fields(
-      f.embedFields(static_cast<optimizer2::nodes::BaseNode&>(x)),
-      f.field("stable", x.stable), f.field("elements", x.elements),
-      f.field("limit", x.limit), f.field("strategy", x.strategy));
+auto inspect(Inspector& f, SortNodeElement& x) {
+  return f.object(x).fields(f.field("inVariable", x.inVariable),
+                            f.field("ascending", x.ascending),
+                            f.field("path", x.path));
 }
 
-}  // namespace arangodb::aql::optimizer2::nodes
+}  // namespace arangodb::aql::optimizer2::types

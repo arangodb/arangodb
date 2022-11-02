@@ -39,6 +39,9 @@
 #include "RestServer/TemporaryStorageFeature.h"
 #include "Transaction/Context.h"
 
+#include "Aql/Optimizer2/PlanNodes/SortNode.h"
+#include "Aql/Optimizer2/PlanNodeTypes/SortNodeElement.h"
+
 namespace {
 std::string const ConstrainedHeap = "constrained-heap";
 std::string const Standard = "standard";
@@ -46,6 +49,7 @@ std::string const Standard = "standard";
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
+using namespace arangodb::aql::optimizer2;
 
 std::string const& SortNode::sorterTypeName(SorterType type) {
   switch (type) {
@@ -88,6 +92,43 @@ void SortNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   nodes.add("stable", VPackValue(_stable));
   nodes.add("limit", VPackValue(_limit));
   nodes.add("strategy", VPackValue(sorterTypeName(sorterType())));
+}
+
+optimizer2::nodes::SortNode SortNode::toInspectable() const {
+  // BaseNode relevant
+  AttributeTypes::Dependencies deps{};
+  for (auto const& it : _dependencies) {
+    deps.emplace_back(it->id().id());
+  }
+  CostEstimate estimate = getCost();
+
+  // SortNode relevant
+  std::vector<optimizer2::types::SortNodeElement> elements{};
+  for (auto const& it : _elements) {
+    optimizer2::types::Variable var{};
+    std::vector<AttributeTypes::String> attributePath{};
+
+    if (!it.attributePath.empty()) {
+      for (auto const& a : it.attributePath) {
+        attributePath.emplace_back(a);
+      }
+    }
+    optimizer2::types::SortNodeElement elem = {
+        .inVariable = var, .ascending = it.ascending, .path = attributePath};
+
+    elements.emplace_back(std::move(elem));
+  }
+
+  return {{.id = AttributeTypes::Numeric{id().id()},
+           .type = "SortNode",
+           .dependencies = std::move(deps),
+           .estimatedCost = estimate.estimatedCost,
+           .estimatedNrItems = estimate.estimatedNrItems,
+           .canThrow = false},
+          elements,
+          _stable,
+          _limit,
+          sorterTypeName(sorterType())};
 }
 
 /// @brief simplifies the expressions of the sort node

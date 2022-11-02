@@ -100,7 +100,7 @@ struct Variable;
 namespace optimizer2::nodes {
 struct ReturnNode;
 struct SingletonNode;
-}
+}  // namespace optimizer2::nodes
 
 /// @brief sort element, consisting of variable, sort direction, and a possible
 /// attribute path to dig into the document

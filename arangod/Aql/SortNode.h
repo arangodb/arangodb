@@ -39,6 +39,10 @@
 namespace arangodb {
 
 namespace aql {
+namespace optimizer2::nodes {
+struct SortNode;
+}
+
 class ExecutionBlock;
 class ExecutionPlan;
 
@@ -125,6 +129,8 @@ class SortNode : public ExecutionNode {
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
+
+  optimizer2::nodes::SortNode toInspectable() const;
 
  private:
   /// @brief pairs, consisting of variable and sort direction

@@ -28,6 +28,7 @@
 #include "Basics/VelocyPackStringLiteral.h"
 #include "InspectTestHelperMakros.h"
 #include "velocypack/Collection.h"
+#include "Inspection/VPackInspection.h"
 
 // Node Class
 #include "Aql/Optimizer2/PlanNodes/SortNode.h"
@@ -106,10 +107,11 @@ GenerateStringAttributeTest(Optimizer2SortNode, strategy);
 
 TEST_F(Optimizer2SortNode, construction) {
   auto SortNodeBuffer = createMinimumBody();
-  auto res = deserializeWithStatus<SortNode>(SortNodeBuffer);
+  auto res = deserializeWithErrorT<SortNode>(SortNodeBuffer);
 
   if (!res) {
-    fmt::print("Something went wrong: {}", res.error());
+    fmt::print("Something went wrong: {} {}", res.error().error(),
+               res.error().path());
     EXPECT_TRUE(res.ok());
   } else {
     auto sortNode = res.get();
@@ -121,9 +123,9 @@ TEST_F(Optimizer2SortNode, construction) {
     EXPECT_TRUE(sortNode.elements.at(0).ascending);
     EXPECT_EQ(sortNode.elements.at(0).inVariable.id, 4ul);
     EXPECT_EQ(sortNode.elements.at(0).inVariable.name, "3");
+    EXPECT_FALSE(sortNode.elements.at(0).path.has_value());
     EXPECT_FALSE(
         sortNode.elements.at(0).inVariable.isFullDocumentFromCollection);
     EXPECT_FALSE(sortNode.elements.at(0).inVariable.isDataFromCollection);
-    EXPECT_FALSE(sortNode.path.has_value());
   }
 }

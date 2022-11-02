@@ -123,7 +123,7 @@ class Optimizer2IndexNode : public testing::Test {
 // Generic tests
 
 GenerateIntegerAttributeTest(Optimizer2IndexNode, id);
-GenerateIntegerAttributeTest(Optimizer2IndexNode, estimatedCost);
+GenerateDoubleAttributeTest(Optimizer2IndexNode, estimatedCost);
 GenerateIntegerAttributeTest(Optimizer2IndexNode, estimatedNrItems);
 
 // Default test

@@ -22,27 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Aql/Optimizer2/PlanNodes/BaseNode.h"
-#include "Aql/Optimizer2/PlanNodeTypes/Expression.h"
-#include "Aql/Optimizer2/PlanNodeTypes/SortNodeElement.h"
+#include "Aql/Optimizer2/Types/Types.h"
 
-#include <Inspection/VPackWithErrorT.h>
+namespace arangodb::aql::optimizer2::invariants {
 
-namespace arangodb::aql::optimizer2::nodes {
-
-struct SortNode : optimizer2::nodes::BaseNode {
-  std::vector<optimizer2::types::SortNodeElement> elements;
-  bool stable;
-  AttributeTypes::Numeric limit;
-  AttributeTypes::String strategy;
-};
-
-template<typename Inspector>
-auto inspect(Inspector& f, SortNode& x) {
-  return f.object(x).fields(
-      f.embedFields(static_cast<optimizer2::nodes::BaseNode&>(x)),
-      f.field("stable", x.stable), f.field("elements", x.elements),
-      f.field("limit", x.limit), f.field("strategy", x.strategy));
+static inline bool greaterOrEqualZeroNumeric(AttributeTypes::Numeric v) {
+  return v >= 0;
 }
 
-}  // namespace arangodb::aql::optimizer2::nodes
+static inline bool greaterOrEqualZeroDouble(AttributeTypes::Double v) {
+  return v >= 0;
+}
+
+}  // namespace arangodb::aql::optimizer2::invariants
