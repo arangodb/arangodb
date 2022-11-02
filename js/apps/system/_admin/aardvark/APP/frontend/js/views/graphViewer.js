@@ -63,6 +63,8 @@
       ]
     },
 
+    nodeColorAttributes: new Map(),
+
     activeNodes: [],
     selectedNodes: {},
 
@@ -1626,7 +1628,7 @@
         contentType: 'application/json',
         data: ajaxData,
         success: function (data) {
-          self.checkExpand(data, id);
+          self.checkExpand(data, id, ajaxData);
         },
         error: function (e) {
           arangoHelper.arangoError('Graph', 'Could not expand node: ' + id + '.');
@@ -1636,7 +1638,7 @@
       self.removeHelp();
     },
 
-    checkExpand: function (data, origin) {
+    checkExpand: function (data, origin, ajaxData) {
       var self = this;
       var newNodes = data.nodes;
       var newEdges = data.edges;
@@ -1664,7 +1666,15 @@
         });
 
         if (found === false) {
-          newNode.originalColor = newNode.color;
+          if(ajaxData.nodeColorAttribute !== undefined && ajaxData.nodeColorAttribute !== '') {
+          let color = self.nodeColorAttributes.get(newNode.nodeColorAttributeValue);
+          if(!color) {
+              const tempNodeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
+              self.nodeColorAttributes.set(newNode.nodeColorAttributeValue, tempNodeColor);
+              color = tempNodeColor;
+            }
+            newNode.color = '#' + color;
+          }
           self.currentGraph.graph.addNode(newNode);
           newNodeCounter++;
         }
@@ -1901,6 +1911,22 @@
 
       return lasso;
       */
+    },
+
+    colorNodesByAttribute: function(s, attribute) {
+      var self = this;
+          
+      s.graph.nodes().forEach(function (n) {
+        let color = self.nodeColorAttributes.get(n.nodeColorAttributeValue);
+        if(!color) {
+          const tempNodeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
+          self.nodeColorAttributes.set(n.nodeColorAttributeValue, tempNodeColor);
+          color = tempNodeColor;
+        }
+
+        n.color = '#' + color;
+      });
+      s.refresh();
     },
 
     renderGraph: function (graph, toFocus, aqlMode, layout, renderer, edgeType) {
@@ -2405,6 +2431,10 @@
       } else {
         $('#toggleForce').fadeOut('fast');
       }
+
+      if(graph.settings.nodeColorAttribute !== undefined && graph.settings.nodeColorAttribute !== '') {
+        this.colorNodesByAttribute(s, graph.settings.nodeColorAttribute);
+      }
     },
 
     reInitDragListener: function () {
@@ -2464,7 +2494,8 @@
             self.currentGraph.refresh({ skipIndexation: true });
             // self.cameraToNode(origin, 1000);
           }
-        }, 500);
+        }, 1000);
+
       }
 
       $('#toggleForce .fa').removeClass('fa-play').addClass('fa-pause');
