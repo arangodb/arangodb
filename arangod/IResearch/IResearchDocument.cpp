@@ -82,7 +82,7 @@ constexpr bool const Endianness = BigEndian;  // current PK endianness
 // --SECTION--                                       FieldIterator dependencies
 // ----------------------------------------------------------------------------
 
-irs::string_ref const PK_COLUMN("@_PK");
+std::string_view const PK_COLUMN("@_PK");
 size_t constexpr DEFAULT_POOL_SIZE = 8;  // arbitrary value
 irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder>
     StringStreamPool(DEFAULT_POOL_SIZE);
@@ -169,7 +169,7 @@ bool canHandleValue(
 
 // returns 'context' in case if can't find the specified 'field'
 arangodb::iresearch::FieldMeta const* findMeta(
-    irs::string_ref key, arangodb::iresearch::FieldMeta const* context) {
+    std::string_view key, arangodb::iresearch::FieldMeta const* context) {
   TRI_ASSERT(context);
 
   auto const* meta = context->_fields.findPtr(key);
@@ -179,7 +179,7 @@ arangodb::iresearch::FieldMeta const* findMeta(
 bool inObjectFiltered(std::string& buffer,
                       arangodb::iresearch::FieldMeta const*& context,
                       arangodb::iresearch::IteratorValue const& value) {
-  irs::string_ref key;
+  std::string_view key;
 
   if (!arangodb::iresearch::keyFromSlice(value.key, key)) {
     return false;
@@ -191,7 +191,7 @@ bool inObjectFiltered(std::string& buffer,
     return false;
   }
 
-  buffer.append(key.c_str(), key.size());
+  buffer.append(key.data(), key.size());
   context = meta;
 
   return canHandleValue(buffer, value.value, *context);
@@ -206,13 +206,13 @@ bool inNestedObjectFiltered(std::string& buffer,
 bool inObject(std::string& buffer,
               arangodb::iresearch::FieldMeta const*& context,
               arangodb::iresearch::IteratorValue const& value) {
-  irs::string_ref key;
+  std::string_view key;
 
   if (!arangodb::iresearch::keyFromSlice(value.key, key)) {
     return false;
   }
 
-  buffer.append(key.c_str(), key.size());
+  buffer.append(key.data(), key.size());
   context = findMeta(key, context);
 
   return canHandleValue(buffer, value.value, *context);
@@ -282,13 +282,13 @@ bool acceptAll(
     arangodb::iresearch::IResearchInvertedIndexMetaIndexingContext const*&
         context,
     arangodb::iresearch::IteratorValue const& value) {
-  irs::string_ref key;
+  std::string_view key;
 
   if (!arangodb::iresearch::keyFromSlice(value.key, key)) {
     return false;
   }
 
-  buffer.append(key.c_str(), key.size());
+  buffer.append(key.data(), key.size());
   auto& container = nested ? context->_nested : context->_fields;
   auto subContext = container.find(key);
   if (subContext != container.end()) {
@@ -393,7 +393,7 @@ namespace iresearch {
   field._fieldFeatures = {};
   field._storeValues = ValueStorage::VALUE;
   field._value =
-      irs::bytes_ref(reinterpret_cast<irs::byte_type const*>(&pk), sizeof(pk));
+      irs::bytes_view(reinterpret_cast<irs::byte_type const*>(&pk), sizeof(pk));
   field._analyzer = StringStreamPool.emplace(AnalyzerPool::StringStreamTag());
   auto& sstream = basics::downCast<irs::string_token_stream>(*field._analyzer);
   sstream.reset(field._value);
@@ -507,7 +507,7 @@ bool FieldIterator<IndexMetaStruct>::setValue(
     return false;
   }
 
-  irs::string_ref valueRef;
+  std::string_view valueRef;
   AnalyzerValueType valueType{AnalyzerValueType::Undefined};
 
   switch (value.type()) {
@@ -694,7 +694,7 @@ void FieldIterator<IndexMetaStruct>::next() {
 
   // restore value
   _value._storeValues = context->_storeValues;
-  _value._value = irs::bytes_ref::NIL;
+  _value._value = irs::bytes_view{};
 #ifdef USE_ENTERPRISE
   _value._root = false;
   _needDoc = false;
@@ -768,7 +768,7 @@ void FieldIterator<IndexMetaStruct>::next() {
       }
 #endif
       _value._storeValues = context->_storeValues;
-      _value._value = irs::bytes_ref::NIL;
+      _value._value = irs::bytes_view{};
       _begin = nullptr;
       _end = nullptr;
       switch (auto const valueSlice = value.value; valueSlice.type()) {
@@ -847,7 +847,7 @@ void FieldIterator<IndexMetaStruct>::next() {
 // --SECTION--                                DocumentPrimaryKey implementation
 // ----------------------------------------------------------------------------
 
-/* static */ irs::string_ref const& DocumentPrimaryKey::PK() noexcept {
+/* static */ std::string_view const& DocumentPrimaryKey::PK() noexcept {
   return PK_COLUMN;
 }
 
@@ -857,9 +857,9 @@ void FieldIterator<IndexMetaStruct>::next() {
 }
 
 // PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)
-// NOTE implementation must match implementation of operator irs::bytes_ref()
+// NOTE implementation must match implementation of operator irs::bytes_view()
 /*static*/ bool DocumentPrimaryKey::read(arangodb::LocalDocumentId& value,
-                                         irs::bytes_ref const& in) noexcept {
+                                         irs::bytes_view const& in) noexcept {
   if (sizeof(arangodb::LocalDocumentId::BaseType) != in.size()) {
     return false;
   }
@@ -867,7 +867,7 @@ void FieldIterator<IndexMetaStruct>::next() {
   // PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)
   value = arangodb::LocalDocumentId(PrimaryKeyEndianness<Endianness>::pkToHost(
       *reinterpret_cast<arangodb::LocalDocumentId::BaseType const*>(
-          in.c_str())));
+          in.data())));
 
   return true;
 }
