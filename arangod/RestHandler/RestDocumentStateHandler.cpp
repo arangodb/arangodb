@@ -27,6 +27,7 @@
 #include "Futures/Future.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentStateMethods.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 
 namespace arangodb {
 
@@ -67,14 +68,20 @@ RestStatus RestDocumentStateHandler::handleGetRequest(
   }
 
   replication2::LogId logId{basics::StringUtils::uint64(suffixes[0])};
-  if (suffixes.size() != 2) {
+  if (suffixes.size() < 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expect GET /_api/document-state/<state-id>/[verb]");
     return RestStatus::DONE;
   }
   auto const& verb = suffixes[1];
   if (verb == "snapshot") {
-    return handleGetSnapshot(methods, logId);
+    if (suffixes.size() != 3) {
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+          "expect GET /_api/document-state/<state-id>/snapshot/<batch>");
+      return RestStatus::DONE;
+    }
+    return handleGetSnapshot(methods, logId, suffixes[2]);
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "expected one of the resources: 'snapshot'");
@@ -84,7 +91,25 @@ RestStatus RestDocumentStateHandler::handleGetRequest(
 
 RestStatus RestDocumentStateHandler::handleGetSnapshot(
     replication2::DocumentStateMethods const& methods,
-    replication2::LogId logId) {
+    replication2::LogId logId, std::string const& batchSuffix) {
+  using namespace replication2::replicated_state::document;
+
+  auto batch = std::invoke([&]() -> ResultT<SnapshotOptions::Batch> {
+    if (batchSuffix == "first") {
+      return SnapshotOptions::Batch::kFirst;
+    } else if (batchSuffix == "next") {
+      return SnapshotOptions::Batch::kNext;
+    } else {
+      return ResultT<SnapshotOptions::Batch>::error(
+          TRI_ERROR_HTTP_BAD_PARAMETER,
+          "expected 'first' or 'next' after snapshot suffix");
+    }
+  });
+  if (batch.fail()) {
+    generateError(batch.result());
+    return RestStatus::DONE;
+  }
+
   auto waitForIndexParam =
       _request->parsedValue<decltype(replication2::LogIndex::value)>(
           "waitForIndex");
@@ -94,8 +119,11 @@ RestStatus RestDocumentStateHandler::handleGetSnapshot(
     return RestStatus::DONE;
   }
 
-  auto waitForIndex = replication2::LogIndex{waitForIndexParam.value()};
-  return waitForFuture(methods.getSnapshot(logId, waitForIndex)
+  auto options =
+      SnapshotOptions{_request->connectionInfo().fullClient(), batch.get(),
+                      replication2::LogIndex{waitForIndexParam.value()}};
+
+  return waitForFuture(methods.getSnapshot(logId, options)
                            .thenValue([this](auto&& waitForResult) {
                              if (waitForResult.fail()) {
                                generateError(waitForResult.result());

@@ -26,6 +26,7 @@
 #include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 
 #include "Basics/UnshackledMutex.h"
 
@@ -59,6 +60,10 @@ struct DocumentLeaderState
     return _activeTransactions.getLockedGuard()->size();
   }
 
+  void resetSnapshot(std::string clientId, velocypack::SharedSlice documents);
+  velocypack::SharedSlice getNextBatch(std::string const& clientId);
+  void deleteSnapshot(std::string const& clientId);
+
   LoggerContext const loggerContext;
   std::string_view const shardId;
   GlobalLogIdentifier const gid;
@@ -77,5 +82,6 @@ struct DocumentLeaderState
   Guarded<ActiveTransactionsQueue, std::mutex> _activeTransactions;
   transaction::IManager& _transactionManager;
   std::atomic_bool _isResigning;
+  std::unordered_map<std::string, SnapshotIterator> _snapshotIterators;
 };
 }  // namespace arangodb::replication2::replicated_state::document

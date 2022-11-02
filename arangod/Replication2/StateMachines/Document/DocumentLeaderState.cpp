@@ -174,6 +174,39 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
   return LogIndex{idx};
 }
 
+void DocumentLeaderState::resetSnapshot(std::string clientId,
+                                        velocypack::SharedSlice documents) {
+  _snapshotIterators.insert_or_assign(std::move(clientId),
+                                      SnapshotIterator(std::move(documents)));
+}
+
+velocypack::SharedSlice DocumentLeaderState::getNextBatch(
+    std::string const& clientId) {
+  static const std::size_t kSizeLimitation = 1024 * 1024;  // 1MB
+  auto snapshot = _snapshotIterators.find(clientId);
+  TRI_ASSERT(snapshot != _snapshotIterators.end());
+  auto& iterator = snapshot->second.it;
+  if (iterator.valid()) {
+    VPackBuilder builder;
+    std::size_t totalSize = 0;
+    {
+      VPackArrayBuilder ab(&builder);
+      while (iterator.valid() && totalSize < kSizeLimitation) {
+        auto doc = iterator.value();
+        totalSize += doc.byteSize();
+        builder.add(doc);
+        iterator.next();
+      }
+    }
+    return builder.sharedSlice();
+  }
+  return velocypack::SharedSlice{};
+}
+
+void DocumentLeaderState::deleteSnapshot(std::string const& clientId) {
+  TRI_ASSERT(_snapshotIterators.erase(clientId));
+}
+
 }  // namespace arangodb::replication2::replicated_state::document
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"

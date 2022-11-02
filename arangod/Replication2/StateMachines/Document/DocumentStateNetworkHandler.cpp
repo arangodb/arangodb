@@ -36,10 +36,12 @@ DocumentStateLeaderInterface::DocumentStateLeaderInterface(
       _gid(std::move(gid)),
       _pool(pool) {}
 
-auto DocumentStateLeaderInterface::getSnapshot(LogIndex waitForIndex)
+auto DocumentStateLeaderInterface::getSnapshot(LogIndex waitForIndex,
+                                               std::string suffix)
     -> futures::Future<ResultT<Snapshot>> {
-  auto path = basics::StringUtils::joinT(
-      "/", StaticStrings::ApiDocumentStateExternal, _gid.id, "snapshot");
+  auto path =
+      basics::StringUtils::joinT("/", StaticStrings::ApiDocumentStateExternal,
+                                 _gid.id, "snapshot", suffix);
   network::RequestOptions opts;
   opts.database = _gid.database;
   opts.param("waitForIndex", std::to_string(waitForIndex.value));

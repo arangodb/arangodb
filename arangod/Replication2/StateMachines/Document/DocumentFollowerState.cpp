@@ -57,29 +57,43 @@ auto DocumentFollowerState::resign() && noexcept
 auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                                             LogIndex waitForIndex) noexcept
     -> futures::Future<Result> {
-  return _guardedData
-      .doUnderLock([self = shared_from_this(), &destination, waitForIndex](
-                       auto& data) -> futures::Future<ResultT<Snapshot>> {
+  return _guardedData.doUnderLock(
+      [self = shared_from_this(), &destination,
+       waitForIndex](auto& data) -> futures::Future<Result> {
         if (data.didResign()) {
-          return ResultT<Snapshot>::error(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
+          return Result{TRI_ERROR_CLUSTER_NOT_FOLLOWER};
         }
 
         if (auto truncateRes = self->truncateLocalShard(); truncateRes.fail()) {
-          return ResultT<Snapshot>::error(truncateRes);
+          return truncateRes;
         }
 
         // A follower may request a snapshot before leadership has been
         // established. A retry will occur in that case.
         auto leaderInterface =
             self->_networkHandler->getLeaderInterface(destination);
-        return leaderInterface->getSnapshot(waitForIndex);
-      })
-      .thenValue([self = shared_from_this()](
-                     auto&& result) -> futures::Future<Result> {
-        if (result.fail()) {
-          return result.result();
+
+        std::string suffix{"first"};
+        while (true) {
+          auto snapshotRes =
+              leaderInterface->getSnapshot(waitForIndex, suffix).get();
+          if (snapshotRes.fail()) {
+            snapshotRes.result();
+          }
+
+          auto& docs = snapshotRes->documents;
+          if (docs.isNone()) {
+            // No documents to insert. We are done.
+            return {TRI_ERROR_NO_ERROR};
+          }
+
+          auto insertRes = self->populateLocalShard(std::move(docs));
+          if (insertRes.fail()) {
+            return insertRes;
+          }
+
+          suffix = "next";
         }
-        return self->populateLocalShard(result->documents);
       });
 }
 

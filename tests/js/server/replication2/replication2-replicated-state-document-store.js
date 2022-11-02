@@ -762,7 +762,7 @@ const replicatedStateSnapshotTransferSuite = function () {
       collection.insert({_key: testName});
       let {leader} = lh.getReplicatedLogLeaderPlan(database, logId);
       let leaderUrl = lh.getServerUrl(leader);
-      let url = `${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot?waitForIndex=0`;
+      let url = `${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/first?waitForIndex=0`;
       let result = request.get({url: url});
       lh.checkRequestResult(result);
     },

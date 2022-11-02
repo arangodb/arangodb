@@ -45,7 +45,7 @@ namespace replication2::replicated_state::document {
  */
 struct IDocumentStateLeaderInterface {
   virtual ~IDocumentStateLeaderInterface() = default;
-  virtual auto getSnapshot(LogIndex waitForIndex)
+  virtual auto getSnapshot(LogIndex waitForIndex, std::string suffix)
       -> futures::Future<ResultT<Snapshot>> = 0;
 };
 
@@ -55,7 +55,7 @@ class DocumentStateLeaderInterface : public IDocumentStateLeaderInterface {
                                         GlobalLogIdentifier gid,
                                         network::ConnectionPool* pool);
 
-  auto getSnapshot(LogIndex waitForIndex)
+  auto getSnapshot(LogIndex waitForIndex, std::string suffix)
       -> futures::Future<ResultT<Snapshot>> override;
 
  private:

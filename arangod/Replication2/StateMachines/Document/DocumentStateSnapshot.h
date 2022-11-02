@@ -37,4 +37,20 @@ struct Snapshot {
     return f.object(s).fields(f.field("documents", s.documents));
   }
 };
+
+struct SnapshotOptions {
+  enum Batch { kFirst, kNext };
+
+  std::string clientId;
+  Batch batch;
+  LogIndex waitForIndex;
+};
+
+struct SnapshotIterator {
+  velocypack::SharedSlice documents;
+  VPackArrayIterator it;
+
+  explicit SnapshotIterator(velocypack::SharedSlice&& arr)
+      : documents(arr), it(documents.slice()) {}
+};
 }  // namespace arangodb::replication2::replicated_state::document
