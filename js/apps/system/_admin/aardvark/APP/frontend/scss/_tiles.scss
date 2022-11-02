@@ -28,15 +28,11 @@ $iconsize: 50px;
   @extend %pull-left;
   @include box-shadow(none);
 
-  //background-color: $c-white;
-  //border: 1px solid $c-lightgreen-2-bg;
   border-radius: 2px;
   font-size: 14px;
   list-style: none;
   margin: {
     bottom: 13px;
-    //left: 6px;
-    //right: 6px;
   }
   position: relative;
   text-align: center;

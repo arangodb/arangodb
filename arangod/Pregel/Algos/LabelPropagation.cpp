@@ -93,8 +93,7 @@ struct LPComputation : public VertexComputation<LPValue, int8_t, uint64_t> {
       }
 
       bool isUnstable = value->stabilizationRounds <= STABILISATION_ROUNDS;
-      bool mayChange = value->currentCommunity != newCommunity;
-      if (mayChange && isUnstable) {
+      if (isUnstable) {
         value->lastCommunity = value->currentCommunity;
         value->currentCommunity = newCommunity;
         value->stabilizationRounds = 0;  // reset stabilization counter

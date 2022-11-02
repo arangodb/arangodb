@@ -109,7 +109,7 @@ class IResearchFilterCompareTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParameters const& params) {
+           arangodb::aql::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -125,7 +125,7 @@ class IResearchFilterCompareTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParameters const& params) {
+           arangodb::aql::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -1461,7 +1461,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a");
       filter.mutable_options()->term =
           irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
@@ -1483,7 +1484,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("[4]");
       filter.mutable_options()->term =
           irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
@@ -1499,7 +1501,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b.c");
       filter.mutable_options()->term =
           irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
@@ -1537,7 +1540,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
       filter.mutable_options()->term =
           irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
@@ -1584,7 +1588,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
       filter.mutable_options()->term =
           irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
@@ -1632,7 +1637,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       filter.boost(42);
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
       filter.mutable_options()->term =
@@ -1658,7 +1664,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       filter.boost(42);
       *filter.mutable_field() = mangleString("a.b[23].c", "test_analyzer");
       filter.mutable_options()->term =
@@ -1688,7 +1695,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() =
           mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
       filter.mutable_options()->term =
@@ -1783,7 +1791,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
           irs::boolean_token_stream::value_true());
@@ -1808,7 +1817,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c.bool");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
@@ -1834,7 +1844,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a[12].b.c.bool");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
@@ -1863,7 +1874,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c.bool");
       filter.mutable_options()->term =
           irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
@@ -1889,7 +1901,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c[3].bool");
       filter.mutable_options()->term =
           irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
@@ -1924,7 +1937,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b[23].c");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
@@ -1972,7 +1986,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       filter.boost(42);
       *filter.mutable_field() = mangleBool("a.b[23].c");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
@@ -2002,7 +2017,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c.e[4].f[5].g[3].g.a");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
           irs::boolean_token_stream::value_true());
@@ -2103,7 +2119,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b[23].c");
       filter.mutable_options()->term =
           irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
@@ -2156,7 +2173,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       filter.boost(1.5);
       *filter.mutable_field() = mangleNull("a.b[23].c");
       filter.mutable_options()->term =
@@ -2186,7 +2204,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c.e[4].f[5].g[3].g.a");
       filter.mutable_options()->term =
           irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
@@ -2285,7 +2304,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNumeric("a.b.c.numeric");
       filter.mutable_options()->term = term->value;
     }
@@ -2321,7 +2341,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNumeric("a.b.c.numeric[1]");
       filter.mutable_options()->term = term->value;
     }
@@ -2368,7 +2389,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNumeric("a.b[23].c");
       filter.mutable_options()->term = term->value;
     }
@@ -2424,7 +2446,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       filter.boost(42);
       *filter.mutable_field() = mangleNumeric("a.b[23].c");
       filter.mutable_options()->term = term->value;
@@ -2458,7 +2481,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNumeric("a.b.c.e[4].f[5].g[3].g.a");
       filter.mutable_options()->term = term->value;
     }
@@ -2551,7 +2575,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c");
       filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
           irs::boolean_token_stream::value_true());

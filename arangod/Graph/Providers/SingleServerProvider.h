@@ -88,18 +88,38 @@ class SingleServerProvider {
   void insertEdgeIdIntoResult(EdgeDocumentToken edge,
                               arangodb::velocypack::Builder& builder);
 
+  std::string getEdgeId(typename Step::Edge const& edge);
+  EdgeType getEdgeIdRef(typename Step::Edge const& edge);
+
   void addVertexToBuilder(typename Step::Vertex const& vertex,
                           arangodb::velocypack::Builder& builder,
                           bool writeIdIfNotFound = false);
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
 
+  // [GraphRefactor] TODO: Temporary method - will be needed until we've
+  // finished the full graph refactor.
+  EdgeDocumentToken getEdgeDocumentToken(typename Step::Edge const& edge);
+
   void addEdgeIDToBuilder(typename Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
+
+  /**
+   * Adds the given Edge into the given builder, which is required to
+   * be an open Object.
+   * We will then add a key value pair:
+   * `edgeId`: edgeData
+   *
+   * @param edge The edge to insert
+   * @param builder The output builder, required to be an openObject
+   */
+  void addEdgeToLookupMap(typename Step::Edge const& edge,
                           arangodb::velocypack::Builder& builder);
 
   void destroyEngines(){};
 
   [[nodiscard]] transaction::Methods* trx();
+  [[nodiscard]] TRI_vocbase_t const& vocbase() const;
 
   aql::TraversalStats stealStats();
 
@@ -107,6 +127,12 @@ class SingleServerProvider {
 
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
+  /**
+   * Return true if the vertex whose id is stored in the class (in _vertex) has
+   * its data on this DB-server.
+   */
+  bool isResponsible(Step const& step) const;
+  [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
  private:
   void activateCache(bool enableDocumentCache);

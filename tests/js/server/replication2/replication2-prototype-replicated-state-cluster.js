@@ -32,6 +32,7 @@ const db = arangodb.db;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const sh = require("@arangodb/testutils/replicated-state-helper");
 const spreds = require("@arangodb/testutils/replicated-state-predicates");
+const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 
 const database = "replication2_prototype_state_test_db";
 
@@ -43,15 +44,23 @@ const insertEntries = function (url, stateId, payload) {
   });
 };
 
-const getEntry = function (url, stateId, entry, waitForApplied) {
-  if (waitForApplied === undefined) {
-    return request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/entry/${entry}`});
-  }
-  return request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/entry/${entry}?waitForApplied=${waitForApplied}`});
+const compareExchange = function (url, stateId, payload) {
+  return request.put({
+    url: `${url}/_db/${database}/_api/prototype-state/${stateId}/cmp-ex`,
+    body: payload,
+    json: true
+  });
 };
 
-const getEntries = function (url, stateId, entries, waitForApplied) {
-  let params = (waitForApplied === undefined ? '' : `?waitForApplied=${waitForApplied}`);
+const getEntry = function (url, stateId, entry, allowDirtyRead,  waitForApplied) {
+  let params = `?allowDirtyRead=${allowDirtyRead}`;
+  params += (waitForApplied === undefined ? '' : `&waitForApplied=${waitForApplied}`);
+  return request.get({url:`${url}/_db/${database}/_api/prototype-state/${stateId}/entry/${entry}${params}`});
+};
+
+const getEntries = function (url, stateId, entries, allowDirtyRead, waitForApplied) {
+  let params = `?allowDirtyRead=${allowDirtyRead}`;
+  params += (waitForApplied === undefined ? '' : `&waitForApplied=${waitForApplied}`);
   return request.post({
     url: `${url}/_db/${database}/_api/prototype-state/${stateId}/multi-get${params}`,
     body: entries,
@@ -61,6 +70,10 @@ const getEntries = function (url, stateId, entries, waitForApplied) {
 
 const removeEntry = function (url, stateId, entry) {
   return request.delete({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/entry/${entry}`});
+};
+
+const dropState = function (url, stateId) {
+  return request.delete({url: `${url}/_db/${database}/_api/replicated-state/${stateId}`});
 };
 
 const removeEntries = function (url, stateId, entries) {
@@ -120,7 +133,6 @@ const replicatedStateSuite = function () {
                                         waitForSync: true,
                                         writeConcern: 2,
                                         softWriteConcern: 3,
-                                        replicationFactor: 3
                                       },
                                       properties: {
                                         implementation: {
@@ -153,28 +165,28 @@ const replicatedStateSuite = function () {
       let index = result.json.result.index;
       assertEqual(index, 2);
 
-      result = getEntry(leaderUrl, stateId, "foo0", index);
+      result = getEntry(leaderUrl, stateId, "foo0", false, index);
       lh.checkRequestResult(result);
       assertEqual(result.json.result.foo0,  "bar0");
 
-      result = getEntry(followerUrl, stateId, "foo0", index);
+      result = getEntry(followerUrl, stateId, "foo0", true, index);
       lh.checkRequestResult(result);
       assertEqual(result.json.result.foo0,  "bar0");
 
-      result = getEntries(leaderUrl, stateId, ["foo1", "foo2"], index);
+      result = getEntries(leaderUrl, stateId, ["foo1", "foo2"], false, index);
       lh.checkRequestResult(result);
       assertEqual(result.json.result, {foo1: "bar1", foo2: "bar2"});
 
-      result = getEntries(followerUrl, stateId, ["foo1", "foo2"], index);
+      result = getEntries(followerUrl, stateId, ["foo1", "foo2"], true, index);
       lh.checkRequestResult(result);
       assertEqual(result.json.result, {foo1: "bar1", foo2: "bar2"});
 
-      result = removeEntry(leaderUrl, stateId, "foo0");
+      result = removeEntry(leaderUrl, stateId, "foo0", false);
       lh.checkRequestResult(result);
       index = result.json.result.index;
       assertEqual(index, 3);
 
-      result = getEntry(leaderUrl, stateId, "foo0", index);
+      result = getEntry(leaderUrl, stateId, "foo0", false, index);
       assertEqual(result.json.code, 404);
 
       result = removeEntries(leaderUrl, stateId, ["foo1", "foo2"]);
@@ -182,7 +194,7 @@ const replicatedStateSuite = function () {
       index = result.json.result.index;
       assertEqual(index, 4);
 
-      result = getEntry(leaderUrl, stateId, "foo2", index);
+      result = getEntry(leaderUrl, stateId, "foo2", false, index);
       assertEqual(result.json.code, 404);
 
       result = insertEntries(coordUrl, stateId, {foo100: "bar100", foo200: "bar200", foo300: "bar300", foo400: "bar400"});
@@ -190,12 +202,11 @@ const replicatedStateSuite = function () {
       index = result.json.result.index;
       assertEqual(index, 5);
 
-      result = getEntry(coordUrl, stateId, "foo100", index);
-
+      result = getEntry(coordUrl, stateId, "foo100", false, index);
       lh.checkRequestResult(result);
       assertEqual(result.json.result.foo100,  "bar100");
 
-      result = getEntries(coordUrl, stateId, ["foo200", "foo300"], index);
+      result = getEntries(coordUrl, stateId, ["foo200", "foo300"], false, index);
       lh.checkRequestResult(result);
       assertEqual(result.json.result.foo200,  "bar200");
       assertEqual(result.json.result.foo300,  "bar300");
@@ -210,7 +221,7 @@ const replicatedStateSuite = function () {
       index = result.json.result.index;
       assertEqual(index, 7);
 
-      result = getEntry(leaderUrl, stateId, "foo400", index);
+      result = getEntry(leaderUrl, stateId, "foo400", false, index);
       lh.checkRequestResult(result);
       assertEqual(result.json.result.foo400,  "bar400");
 
@@ -226,6 +237,35 @@ const replicatedStateSuite = function () {
       result = getSnapshot(leaderUrl, stateId, index);
       lh.checkRequestResult(result);
       assertEqual(result.json.result, {foo400: "bar400"});
+
+      result = compareExchange(leaderUrl, stateId, {"foo400": {"oldValue": "bar400", "newValue": "foobar"}});
+      lh.checkRequestResult(result);
+      index = result.json.result.index;
+      assertEqual(index, 9);
+      result = getEntry(coordUrl, stateId, "foo400", false, index);
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result.foo400,  "foobar");
+
+      result = compareExchange(leaderUrl, stateId, {"foo400": {"oldValue": "bar400", "newValue": "foobar"}});
+      assertEqual(result.json.code, 409);
+      result = getEntry(coordUrl, stateId, "foo400", false, index);
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result.foo400,  "foobar");
+
+      result = compareExchange(coordUrl, stateId, {"foo400": {"oldValue": "foobar", "newValue": "bar400"}});
+      lh.checkRequestResult(result);
+      index = result.json.result.index;
+      assertEqual(index, 10);
+      result = getEntry(coordUrl, stateId, "foo400", index);
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result.foo400,  "bar400");
+
+      result = compareExchange(coordUrl, stateId, {"foo400": {"oldValue": "foobar", "newValue": "bar400"}});
+      assertEqual(result.json.code, 409);
+
+      dropState(coordUrl, stateId);
+      lh.waitFor(spreds.replicatedStateIsGone(database, stateId));
+      lh.waitFor(lpreds.replicatedLogIsGone(database, stateId));
     },
   };
 };

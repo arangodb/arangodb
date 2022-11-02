@@ -67,6 +67,7 @@ class IndexExecutorInfos {
       Collection const* collection, Variable const* outVariable,
       bool produceResult, Expression* filter,
       arangodb::aql::Projections projections,
+      arangodb::aql::Projections filterProjections,
       std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs,
       NonConstExpressionContainer&& nonConstExpressions, bool count,
       ReadOwnWrites readOwnWrites, AstNode const* condition,
@@ -84,6 +85,7 @@ class IndexExecutorInfos {
   Collection const* getCollection() const;
   Variable const* getOutVariable() const;
   arangodb::aql::Projections const& getProjections() const noexcept;
+  arangodb::aql::Projections const& getFilterProjections() const noexcept;
   aql::QueryContext& query() noexcept;
   Expression* getFilter() const noexcept;
   bool getProduceResult() const noexcept;
@@ -155,6 +157,7 @@ class IndexExecutorInfos {
   Variable const* _outVariable;
   Expression* _filter;
   arangodb::aql::Projections _projections;
+  arangodb::aql::Projections _filterProjections;
 
   std::vector<std::pair<VariableId, RegisterId>> _filterVarsToRegs;
 
@@ -222,7 +225,32 @@ class IndexExecutor {
     CursorReader(CursorReader&& other) noexcept = default;
 
    private:
-    enum Type { NoResult, Covering, Document, LateMaterialized, Count };
+    enum Type {
+      // no need to produce any result. we can scan over the index
+      // but do not have to look into its values
+      NoResult,
+
+      // index covers all projections of the query. we can get
+      // away with reading data from the index only
+      Covering,
+
+      // index covers the IndexNode's filter condition only,
+      // but not the rest of the query. that means we can use the
+      // index data to evaluate the IndexNode's post-filter condition,
+      // but for any entries that pass the filter, we will need to
+      // read the full documents in addition
+      CoveringFilterOnly,
+
+      // index does not cover the required data. we will need to
+      // read the full documents for all index entries
+      Document,
+
+      // late materialization
+      LateMaterialized,
+
+      // we only need to count the number of index entries
+      Count
+    };
 
     transaction::Methods& _trx;
     IndexExecutorInfos const& _infos;

@@ -890,7 +890,7 @@ struct AggregatorBitFunction : public Aggregator, BitFunction {
         if (!std::isnan(number) && number >= 0.0) {
           int64_t value = cmpValue.toInt64();
           if (value <=
-              static_cast<int64_t>(Functions::bitFunctionsMaxSupportedValue)) {
+              static_cast<int64_t>(functions::bitFunctionsMaxSupportedValue)) {
             TRI_ASSERT(value >= 0 && value <= UINT32_MAX);
             if (invoked) {
               result = this->compute(result, static_cast<uint64_t>(value));

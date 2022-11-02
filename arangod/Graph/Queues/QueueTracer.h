@@ -43,6 +43,7 @@ class QueueTracer {
 
   void clear();
   void append(Step step);
+  void setStartContent(std::vector<Step> startSteps);
   bool firstIsVertexFetched() const;
   bool hasProcessableElement() const;
   size_t size() const;

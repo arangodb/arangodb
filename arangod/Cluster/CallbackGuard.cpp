@@ -21,39 +21,33 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CallbackGuard.h"
+#include "Cluster/CallbackGuard.h"
 
-using namespace arangodb;
-using namespace arangodb::cluster;
+#include <utility>
 
-CallbackGuard::CallbackGuard() : _callback(nullptr) {}
+namespace arangodb::cluster {
 
-CallbackGuard::CallbackGuard(std::function<void(void)> callback)
-    : _callback(std::move(callback)) {}
+CallbackGuard::CallbackGuard() noexcept = default;
 
-// NOLINTNEXTLINE(hicpp-noexcept-move,performance-noexcept-move-constructor)
-CallbackGuard::CallbackGuard(CallbackGuard&& other)
-    : _callback(std::move(other._callback)) {
-  other._callback = nullptr;
-}
+CallbackGuard::CallbackGuard(Callback callback) noexcept
+    : _callback{std::move(callback)} {}
 
-// NOLINTNEXTLINE(hicpp-noexcept-move,performance-noexcept-move-constructor)
-CallbackGuard& CallbackGuard::operator=(CallbackGuard&& other) {
+CallbackGuard::~CallbackGuard() noexcept { call(); }
+
+CallbackGuard::CallbackGuard(CallbackGuard&& other) noexcept = default;
+
+CallbackGuard& CallbackGuard::operator=(CallbackGuard&& other) noexcept {
   call();
   _callback = std::move(other._callback);
-  other._callback = nullptr;
   return *this;
 }
 
-CallbackGuard::~CallbackGuard() { call(); }
+bool CallbackGuard::empty() const noexcept { return _callback.empty(); }
 
-void CallbackGuard::callAndClear() {
-  call();
-  _callback = nullptr;
-}
-
-void CallbackGuard::call() {
+void CallbackGuard::call() noexcept {
   if (_callback) {
     _callback();
   }
 }
+
+}  // namespace arangodb::cluster

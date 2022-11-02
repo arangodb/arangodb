@@ -212,16 +212,6 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
       // Retain it.
       _opts.getCache()->datalake().add(std::move(payload));
     }
-
-    /* TODO: Needs to be taken care of as soon as we enable shortest paths for
-    ClusterProvider bool forShortestPath = true; if (!forShortestPath) {
-      // Fill everything we did not find with NULL
-      for (auto const& v : vertexIds) {
-        result.try_emplace(v, VPackSlice::nullSlice());
-      }
-    vertexIds.clear();
-    }
-    */
   }
 
   // Note: This disables the ScopeGuard
@@ -515,6 +505,39 @@ auto ClusterProvider<StepImpl>::addEdgeToBuilder(
 }
 
 template<class StepImpl>
+auto ClusterProvider<StepImpl>::getEdgeDocumentToken(
+    typename Step::Edge const& edge) -> EdgeDocumentToken {
+  return EdgeDocumentToken{_opts.getCache()->getCachedEdge(edge.getID())};
+}
+
+template<class StepImpl>
+auto ClusterProvider<StepImpl>::addEdgeIDToBuilder(
+    typename Step::Edge const& edge, arangodb::velocypack::Builder& builder)
+    -> void {
+  builder.add(VPackValue(edge.getID().begin()));
+}
+
+template<class StepImpl>
+void ClusterProvider<StepImpl>::addEdgeToLookupMap(
+    typename Step::Edge const& edge, arangodb::velocypack::Builder& builder) {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add(VPackValue(edge.getID().begin()));
+  builder.add(_opts.getCache()->getCachedEdge(edge.getID()));
+}
+
+template<class StepImpl>
+auto ClusterProvider<StepImpl>::getEdgeId(typename Step::Edge const& edge)
+    -> std::string {
+  return edge.getID().toString();
+}
+
+template<class StepImpl>
+auto ClusterProvider<StepImpl>::getEdgeIdRef(typename Step::Edge const& edge)
+    -> EdgeType {
+  return edge.getID();
+}
+
+template<class StepImpl>
 auto ClusterProvider<StepImpl>::readEdge(EdgeType const& edgeID) -> VPackSlice {
   return _opts.getCache()->getCachedEdge(edgeID);
 }
@@ -528,6 +551,14 @@ void ClusterProvider<StepImpl>::prepareIndexExpressions(aql::Ast* ast) {
 template<class StepImpl>
 arangodb::transaction::Methods* ClusterProvider<StepImpl>::trx() {
   return _trx.get();
+}
+
+template<class Step>
+TRI_vocbase_t const& ClusterProvider<Step>::vocbase() const {
+  TRI_ASSERT(_trx != nullptr);
+  TRI_ASSERT(_trx->state() != nullptr);
+  TRI_ASSERT(_trx->transactionContextPtr() != nullptr);
+  return _trx.get()->vocbase();
 }
 
 template<class StepImpl>
@@ -547,4 +578,14 @@ void ClusterProvider<StepImpl>::unPrepareContext() {
   _opts.unPrepareContext();
 }
 
+template<class StepImpl>
+bool ClusterProvider<StepImpl>::isResponsible(StepImpl const& step) const {
+  return true;
+}
+
+template<class StepImpl>
+bool ClusterProvider<StepImpl>::hasDepthSpecificLookup(
+    uint64_t depth) const noexcept {
+  return _opts.hasDepthSpecificLookup(depth);
+}
 template class graph::ClusterProvider<ClusterProviderStep>;

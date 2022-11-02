@@ -32,6 +32,7 @@
 #include "VocBase/voc-types.h"
 
 #include <rocksdb/types.h>
+#include <unordered_map>
 
 namespace arangodb {
 struct RocksDBDocumentOperation;
@@ -135,6 +136,9 @@ class RocksDBTransactionCollection : public TransactionCollection {
     return empty;
   }
 
+ protected:
+  virtual Result ensureCollection();
+
  private:
   /// @brief request a lock for a collection
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
@@ -144,8 +148,6 @@ class RocksDBTransactionCollection : public TransactionCollection {
 
   /// @brief request an unlock for a collection
   Result doUnlock(AccessMode::Type) override;
-
-  Result ensureCollection();
 
  private:
   uint64_t _initialNumberDocuments;

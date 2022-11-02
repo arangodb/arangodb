@@ -73,17 +73,19 @@ jsunity.run(function dump_cluster_testsuite() {
       // Magic Hint: Those tests are tests which you need to additional blacklist in case they are not supported
       // in that specific environment. Those blacklist is separately and manually maintained per test-suite.
       "testUsers",
-      "testKeygenAutoInc",
       "testTransactionCommit",
       "testTransactionUpdate",
       "testTransactionAbort",
 
       // enterprise sharded graphs on single server tests
       "testEmptySmartGraph",
+      "testEmptyEnterpriseGraph",
       "testEmptySatelliteGraph",
       "testEmptyDisjointGraph",
       "testSmartGraphWithoutData",
+      "testEnterpriseGraphWithoutData",
       "testSmartGraphSingleServer",
+      "testEnterpriseGraphSingleServer",
       "testSatelliteSmartGraphSingleServer",
       "testDisjointGraphSingleServer",
       "testHybridSmartGraphSingleServer",

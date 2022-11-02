@@ -35,6 +35,7 @@
 
 #include <chrono>
 #include <utility>
+#include <fmt/core.h>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -113,29 +114,6 @@ replication2::TermIndexPair::TermIndexPair(LogTerm term,
 auto replication2::operator<<(std::ostream& os, TermIndexPair pair)
     -> std::ostream& {
   return os << '(' << pair.term << ':' << pair.index << ')';
-}
-
-LogConfig::LogConfig(VPackSlice slice) {
-  waitForSync = slice.get(StaticStrings::WaitForSyncString).extract<bool>();
-  writeConcern = slice.get(StaticStrings::WriteConcern).extract<std::size_t>();
-  if (auto sw = slice.get(StaticStrings::SoftWriteConcern); !sw.isNone()) {
-    softWriteConcern = sw.extract<std::size_t>();
-  } else {
-    softWriteConcern = writeConcern;
-  }
-  replicationFactor =
-      slice.get(StaticStrings::ReplicationFactor).extract<std::size_t>();
-}
-
-LogConfig::LogConfig(std::size_t writeConcern, std::size_t softWriteConcern,
-                     std::size_t replicationFactor, bool waitForSync) noexcept
-    : writeConcern(writeConcern),
-      softWriteConcern(softWriteConcern),
-      replicationFactor(replicationFactor),
-      waitForSync(waitForSync) {}
-
-auto LogConfig::toVelocyPack(VPackBuilder& builder) const -> void {
-  serialize(builder, *this);
 }
 
 LogRange::LogRange(LogIndex from, LogIndex to) noexcept : from(from), to(to) {
@@ -235,6 +213,8 @@ inline constexpr std::string_view ForcedParticipantNotInQuorumEnum =
     "ForcedParticipantNotInQuorum";
 inline constexpr std::string_view NonEligibleServerRequiredForQuorumEnum =
     "NonEligibleServerRequiredForQuorum";
+inline constexpr std::string_view FewerParticipantsThanWriteConcernEnum =
+    "FewerParticipantsThanWriteConcern";
 inline constexpr std::string_view WhoFieldName = "who";
 inline constexpr std::string_view CandidatesFieldName = "candidates";
 inline constexpr std::string_view NonEligibleNotAllowedInQuorum =
@@ -426,6 +406,9 @@ auto replicated_log::CommitFailReason::fromVelocyPack(velocypack::Slice s)
   } else if (reason == NonEligibleServerRequiredForQuorumEnum) {
     return CommitFailReason{
         std::in_place, NonEligibleServerRequiredForQuorum::fromVelocyPack(s)};
+  } else if (reason == FewerParticipantsThanWriteConcernEnum) {
+    return CommitFailReason{
+        std::in_place, FewerParticipantsThanWriteConcern::fromVelocyPack(s)};
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -480,13 +463,10 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
     }
     auto operator()(
         CommitFailReason::FewerParticipantsThanWriteConcern const& reason) {
-      using namespace basics::StringUtils;
-      return concatT("Fewer participants than write concern. Have ",
-                     reason.numParticipants,
-                     " participants and effectiveWriteConcern=",
-                     reason.effectiveWriteConcern,
-                     ". With writeConcern=", reason.writeConcern,
-                     " and softWriteConcern=", reason.softWriteConcern, ".");
+      return fmt::format(
+          "Fewer participants than effectove write concern. Have {} ",
+          "participants and effectiveWriteConcern={}.", reason.numParticipants,
+          reason.effectiveWriteConcern);
     }
   };
 
@@ -518,16 +498,6 @@ auto replication2::operator<<(std::ostream& os, ParticipantFlags const& f)
   return os << "}";
 }
 
-void replication2::ParticipantsConfig::toVelocyPack(
-    velocypack::Builder& builder) const {
-  serialize(builder, *this);
-}
-
-auto replication2::ParticipantsConfig::fromVelocyPack(velocypack::Slice s)
-    -> ParticipantsConfig {
-  return deserialize<ParticipantsConfig>(s);
-}
-
 auto replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern::
     fromVelocyPack(velocypack::Slice)
         -> replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern {
@@ -540,10 +510,21 @@ auto replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern::
 void replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern::
     toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder obj(&builder);
-  builder.add(StaticStrings::WriteConcern, writeConcern);
-  builder.add(StaticStrings::SoftWriteConcern, softWriteConcern);
+  builder.add(ReasonFieldName,
+              VPackValue(FewerParticipantsThanWriteConcernEnum));
   builder.add(StaticStrings::EffectiveWriteConcern, effectiveWriteConcern);
 }
 
 GlobalLogIdentifier::GlobalLogIdentifier(std::string database, LogId id)
     : database(std::move(database)), id(id) {}
+
+auto replication2::to_string(GlobalLogIdentifier const& gid) -> std::string {
+  VPackBuilder b;
+  velocypack::serialize(b, gid);
+  return b.toJson();
+}
+
+auto replication2::operator<<(std::ostream& os, GlobalLogIdentifier const& gid)
+    -> std::ostream& {
+  return os << to_string(gid);
+}

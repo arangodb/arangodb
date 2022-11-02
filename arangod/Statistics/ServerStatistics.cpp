@@ -59,6 +59,8 @@ DECLARE_COUNTER(arangodb_intermediate_commits_total,
                 "Number of intermediate commits performed in transactions");
 DECLARE_COUNTER(arangodb_read_transactions_total,
                 "Number of read transactions");
+DECLARE_COUNTER(arangodb_dirty_read_transactions_total,
+                "Number of read transactions which can do dirty reads");
 
 DECLARE_COUNTER(arangodb_collection_truncates_total,
                 "Total number of collection truncate operations (excl. "
@@ -93,6 +95,8 @@ TransactionStatistics::TransactionStatistics(metrics::MetricsFeature& metrics)
           _metrics.add(arangodb_transactions_committed_total{})),
       _intermediateCommits(_metrics.add(arangodb_intermediate_commits_total{})),
       _readTransactions(_metrics.add(arangodb_read_transactions_total{})),
+      _dirtyReadTransactions(
+          _metrics.add(arangodb_dirty_read_transactions_total{})),
       _exclusiveLockTimeouts(
           _metrics.add(arangodb_collection_lock_timeouts_exclusive_total{})),
       _writeLockTimeouts(

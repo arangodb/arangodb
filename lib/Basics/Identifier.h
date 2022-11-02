@@ -28,6 +28,8 @@
 #include <functional>
 #include <iosfwd>
 
+#include <fmt/format.h>
+
 namespace arangodb::basics {
 
 /// @brief a typed wrapper to help prevent unintentional casting of identifiers
@@ -70,6 +72,11 @@ class Identifier {
   /// @brief check if this identifier is at least another
   bool operator>=(Identifier const& other) const noexcept;
 
+  template<class Inspector>
+  inline friend auto inspect(Inspector& f, Identifier& p) {
+    return f.apply(p._id);
+  }
+
  private:
   BaseType _id;
 };
@@ -82,6 +89,22 @@ std::ostream& operator<<(std::ostream& s,
                          arangodb::basics::Identifier const& i);
 
 }  // namespace arangodb::basics
+
+template<>
+struct fmt::formatter<::arangodb::basics::Identifier>
+    : fmt::formatter<::arangodb::basics::Identifier::BaseType> {
+  template<class FormatContext>
+  auto format(::arangodb::basics::Identifier ident, FormatContext& fc) const {
+    return ::fmt::formatter<
+        typename ::arangodb::basics::Identifier::BaseType>::format(ident.id(),
+                                                                   fc);
+  }
+  template<typename ParseContext>
+  auto parse(ParseContext& ctx) {
+    return ::fmt::formatter<
+        typename ::arangodb::basics::Identifier::BaseType>::parse(ctx);
+  }
+};
 
 #define DECLARE_HASH_FOR_IDENTIFIER(T)                        \
   namespace std {                                             \

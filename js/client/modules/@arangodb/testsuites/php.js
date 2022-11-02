@@ -91,7 +91,7 @@ function phpDriver (options) {
       if (global.ARANGODB_CLIENT_VERSION(true).hasOwnProperty('enterprise-version')) {
         enterprise = 'true';
       }
-      let m = this.instanceInfo.url.split(host_re);
+      let m = this.instanceManager.url.split(host_re);
       process.env['ARANGO_ROOT_PASSWORD'] = '';
       process.env['ARANGO_USE_AUTHENTICATION'] = false;
       process.env['ARANGO_HOST'] = m[2];

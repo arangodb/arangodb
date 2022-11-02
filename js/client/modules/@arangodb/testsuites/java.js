@@ -73,7 +73,7 @@ function javaDriver (options) {
     }
     runOneTest(file) {
       let topology;
-      let testResultsDir = fs.join(this.instanceInfo.rootDir, 'javaresults');
+      let testResultsDir = fs.join(this.instanceManager.rootDir, 'javaresults');
       let results = {
         'message': ''
       };
@@ -100,7 +100,7 @@ function javaDriver (options) {
         '-Dtest.useProvidedDeployment=true',
         '-Dtest.arangodb.version='+ db._version(),
         '-Dtest.arangodb.isEnterprise=' + enterprise,
-        '-Dtest.arangodb.hosts=' + this.instanceInfo.url.replace(rx,''),
+        '-Dtest.arangodb.hosts=' + this.instanceManager.url.replace(rx,''),
         '-Dtest.arangodb.authentication=root:',
         '-Dtest.arangodb.topology=' + topology,
         '-Dallure.results.directory=' + testResultsDir

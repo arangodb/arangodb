@@ -33,11 +33,22 @@ const time = internal.time;
 const sleep = internal.sleep;
 
 const pu = require('@arangodb/testutils/process-utils');
+const im = require('@arangodb/testutils/instance-manager');
 
-const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
 const options = JSON.parse(internal.env.OPTIONS);
-const outfn = fs.join(instanceInfo.rootDir, 'stats.jsonl');
-const opts = Object.assign(pu.makeAuthorizationHeaders(options),
+pu.setupBinaries(options.build, options.buildType, options.configDir);
+
+let instanceManager = new im.instanceManager(options.protocol, options, {}, '');
+try {
+  instanceManager.setFromStructure(JSON.parse(internal.env.INSTANCEINFO));
+} catch (ex) {
+  print("Failed to deserialize the instance manager!");
+  print(ex);
+  print(ex.stack);
+}
+const outfn = fs.join(instanceManager.rootDir, 'stats.jsonl');
+// TODO: jwt?
+const opts = Object.assign(pu.makeAuthorizationHeaders(options, {}),
                            { method: 'GET' });
 
 while(true) {
@@ -52,10 +63,10 @@ while(true) {
   const before = time();
     let oneSet = { state: true };
     results.push(oneSet);
-    instanceInfo.arangods.forEach(arangod => {
+    instanceManager.arangods.forEach(arangod => {
       let serverId = arangod.role + '_' + arangod.port;
       let beforeCall = time();
-      let procStats = pu.getProcessStats(arangod.pid);
+      let procStats = arangod._getProcessStats();
       if (arangod.role === "agent") {
         let reply = download(arangod.url + '/_api/version', '', opts);
         if (reply.hasOwnProperty('error') || reply.code !== 200) {

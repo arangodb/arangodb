@@ -23,9 +23,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CreateCollection.h"
-#include "MaintenanceFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
@@ -136,9 +136,13 @@ bool CreateCollection::first() {
     {
       VPackObjectBuilder d(&docket);
       for (auto const& i : VPackObjectIterator(props)) {
-        auto const& key = i.key.copyString();
-        if (key == ID || key == NAME || key == GLOB_UID || key == OBJECT_ID) {
-          if (key == GLOB_UID || key == OBJECT_ID) {
+        std::string_view key = i.key.stringView();
+        if (key == StaticStrings::DataSourceId ||
+            key == StaticStrings::DataSourceName ||
+            key == StaticStrings::DataSourceGuid ||
+            key == StaticStrings::ObjectId) {
+          if (key == StaticStrings::DataSourceGuid ||
+              key == StaticStrings::ObjectId) {
             LOG_TOPIC("44577", WARN, Logger::MAINTENANCE)
                 << "unexpected " << key << " in " << props.toJson();
           }

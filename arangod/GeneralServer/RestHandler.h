@@ -29,6 +29,7 @@
 #include "Logger/LogContext.h"
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
+#include "Futures/Unit.h"
 
 #include <atomic>
 #include <memory>
@@ -46,8 +47,6 @@ class Exception;
 namespace futures {
 template<typename T>
 class Future;
-template<typename T>
-class Try;
 }  // namespace futures
 
 class GeneralRequest;
@@ -156,27 +155,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // generates an error
   void generateError(arangodb::Result const&);
 
-  template<typename T>
-  RestStatus waitForFuture(futures::Future<T>&& f) {
-    if (f.isReady()) {             // fast-path out
-      f.result().throwIfFailed();  // just throw the error upwards
-      return RestStatus::DONE;
-    }
-    bool done = false;
-    std::move(f).thenFinal(withLogContext([self = shared_from_this(),
-                                           &done](futures::Try<T>&& t) -> void {
-      auto thisPtr = self.get();
-      if (t.hasException()) {
-        thisPtr->handleExceptionPtr(std::move(t).exception());
-      }
-      if (std::this_thread::get_id() == thisPtr->_executionMutexOwner.load()) {
-        done = true;
-      } else {
-        thisPtr->wakeupHandler();
-      }
-    }));
-    return done ? RestStatus::DONE : RestStatus::WAITING;
-  }
+  RestStatus waitForFuture(futures::Future<futures::Unit>&& f);
 
   enum class HandlerState : uint8_t {
     PREPARE = 0,

@@ -23,34 +23,37 @@
 
 #pragma once
 
+#include <functional>
+#include <map>
+#include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "Basics/Common.h"
-
 #include "Endpoint/Endpoint.h"
-#include <map>
 
 namespace arangodb {
 class EndpointList {
  public:
+  EndpointList(EndpointList const&) = delete;
+  EndpointList& operator=(EndpointList const&) = delete;
+
   EndpointList();
   ~EndpointList();
 
- public:
-  static std::string encryptionName(Endpoint::EncryptionType);
+  static std::string_view encryptionName(Endpoint::EncryptionType);
 
- public:
   bool empty() const { return _endpoints.empty(); }
-  bool add(std::string const&, int, bool);
-  bool remove(std::string const&, Endpoint**);
+  bool add(std::string const& specification, int backlogSize,
+           bool reuseAddress);
   std::vector<std::string> all() const;
   std::vector<std::string> all(Endpoint::TransportType transport) const;
-  std::map<std::string, Endpoint*> allEndpoints() const { return _endpoints; }
+  void apply(std::function<void(std::string const&, Endpoint&)> const& cb);
   bool hasSsl() const;
   void dump() const;
 
  private:
-  std::map<std::string, Endpoint*> _endpoints;
+  std::map<std::string, std::unique_ptr<Endpoint>> _endpoints;
 };
 }  // namespace arangodb

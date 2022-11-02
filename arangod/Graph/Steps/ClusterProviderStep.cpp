@@ -82,7 +82,3 @@ ClusterProviderStep::EdgeType const& ClusterProviderStep::Edge::getID() const {
   return _edge;
 }
 bool ClusterProviderStep::Edge::isValid() const { return !_edge.empty(); };
-
-bool ClusterProviderStep::isResponsible(transaction::Methods* trx) {
-  return true;
-}

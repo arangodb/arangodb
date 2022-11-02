@@ -68,6 +68,18 @@ class WeightedQueue {
     std::push_heap(_queue.begin(), _queue.end(), _cmpHeap);
   }
 
+  void setStartContent(std::vector<Step> startSteps) {
+    // NOTE: This is not optimal.
+    // We can assume startSteps to be in order.
+    // We do not make any use of this yet.
+    TRI_ASSERT(_queue.empty());
+    for (auto& s : startSteps) {
+      // Just resort on insert.
+      // This is proven to be correct, but may not be the fastest possible way.
+      append(std::move(s));
+    }
+  }
+
   bool firstIsVertexFetched() const {
     if (not isEmpty()) {
       auto const& first = _queue.front();

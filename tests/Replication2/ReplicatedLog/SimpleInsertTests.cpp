@@ -43,8 +43,8 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
   auto followerId = ParticipantId{"follower"};
 
   auto follower = std::make_shared<DelayedFollowerLog>(
-      defaultLogger(), _logMetricsMock, followerId, std::move(coreB),
-      LogTerm{1}, leaderId);
+      defaultLogger(), _logMetricsMock, _optionsMock, followerId,
+      std::move(coreB), LogTerm{1}, leaderId);
   auto leader = createLeaderWithDefaultFlags(leaderId, LogTerm{1},
                                              std::move(coreA), {follower}, 2);
 
@@ -239,8 +239,8 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
 
   auto coreB = makeLogCore(LogId{2});
   auto follower = std::make_shared<DelayedFollowerLog>(
-      defaultLogger(), _logMetricsMock, followerId, std::move(coreB),
-      LogTerm{3}, leaderId);
+      defaultLogger(), _logMetricsMock, _optionsMock, followerId,
+      std::move(coreB), LogTerm{3}, leaderId);
   auto leader = createLeaderWithDefaultFlags(leaderId, LogTerm{3},
                                              std::move(coreA), {follower}, 2);
 
@@ -318,11 +318,11 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
   auto followerId_2 = ParticipantId{"follower2"};
 
   auto follower_1 = std::make_shared<DelayedFollowerLog>(
-      defaultLogger(), _logMetricsMock, followerId_1, std::move(coreB),
-      LogTerm{1}, leaderId);
+      defaultLogger(), _logMetricsMock, _optionsMock, followerId_1,
+      std::move(coreB), LogTerm{1}, leaderId);
   auto follower_2 = std::make_shared<DelayedFollowerLog>(
-      defaultLogger(), _logMetricsMock, followerId_2, std::move(coreC),
-      LogTerm{1}, leaderId);
+      defaultLogger(), _logMetricsMock, _optionsMock, followerId_2,
+      std::move(coreC), LogTerm{1}, leaderId);
   // create leader with write concern 3
   auto leader = createLeaderWithDefaultFlags(
       leaderId, LogTerm{1}, std::move(coreA), {follower_1, follower_2}, 3);
@@ -483,8 +483,8 @@ TEST_F(ReplicatedLogTest,
 
   auto coreB = makeLogCore(LogId{2});
   auto follower = std::make_shared<DelayedFollowerLog>(
-      defaultLogger(), _logMetricsMock, followerId, std::move(coreB),
-      LogTerm{3}, leaderId);
+      defaultLogger(), _logMetricsMock, _optionsMock, followerId,
+      std::move(coreB), LogTerm{3}, leaderId);
   // set write concern to one
   auto leader = createLeaderWithDefaultFlags(leaderId, LogTerm{3},
                                              std::move(coreA), {follower}, 1);

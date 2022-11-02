@@ -45,6 +45,8 @@ const fs = require('fs');
 const toArgv = require('internal').toArgv;
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const im = require('@arangodb/testutils/instance-manager');
+const inst = require('@arangodb/testutils/instance');
 const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const yaml = require('js-yaml');
 const platform = require('internal').platform;
@@ -85,7 +87,7 @@ function makeDataWrapper (options) {
       tests.forEach(file => {
         count += 1;
         let args = pu.makeArgs.arangosh(this.options);
-        args['server.endpoint'] = tu.findEndpoint(this.options, this.instanceInfo);
+        args['server.endpoint'] = this.instanceManager.findEndpoint();
         args['javascript.execute'] = file;
         if (this.options.forceJson) {
           args['server.force-json'] = true;
@@ -106,31 +108,30 @@ function makeDataWrapper (options) {
           argv = argv.concat(toArgv(this.options['makedata_args']));
         }
         if ((this.options.cluster) && (count === 3)) {
-          this.instanceInfo.arangods.forEach(function (oneInstance, i) {
-            if (oneInstance.role === 'dbserver') {
+          this.instanceManager.arangods.forEach(function (oneInstance, i) {
+            if (oneInstance.isRole(inst.instanceRole.dbServer)) {
               stoppedDbServerInstance = oneInstance;
             }
           });
           print('stopping dbserver ' + stoppedDbServerInstance.name +
-                ' ID: ' + stoppedDbServerInstance.id);
-          pu.shutDownOneInstance(this.options, stoppedDbServerInstance, this.instanceInfo, counters, false, 10);
-          print("waiting for shutdown...");
-          internal.statusExternal(stoppedDbServerInstance.pid, true);
-          print("gone");
+                ' ID: ' + stoppedDbServerInstance.id +JSON.stringify( stoppedDbServerInstance.getStructure()));
+          stoppedDbServerInstance.shutDownOneInstance(counters, false, 10);
+          stoppedDbServerInstance.waitForExit();
           argv = argv.concat([ '--disabledDbserverUUID', stoppedDbServerInstance.id]);
         }
-        require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceInfo);
+        require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
         if (this.options.extremeVerbosity !== 'silence') {
           print(argv);
         }
-        let rc = pu.executeAndWait(pu.ARANGOSH_BIN, argv, this.options, 'arangosh', this.instanceInfo.rootDir, this.options.coreCheck);
+        let rc = pu.executeAndWait(pu.ARANGOSH_BIN, argv, this.options, 'arangosh', this.instanceManager.rootDir, this.options.coreCheck);
         res.total++;
         res.duration += rc.duration;
         res.status &= rc.status;
 
         if ((this.options.cluster) && (count === 3)) {
           print('relaunching dbserver');
-          pu.restartOneInstance(this.options, stoppedDbServerInstance, this.instanceInfo, {});
+          stoppedDbServerInstance.restartOneInstance({});
+          
         }
       });
       return res;

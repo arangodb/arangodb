@@ -20,20 +20,25 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include <optional>
-#include <boost/container_hash/hash_fwd.hpp>
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/ReplicatedLog/SupervisionAction.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
+#include "Replication2/ReplicatedLog/SupervisionAction.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include <boost/container_hash/hash_fwd.hpp>
+#include <optional>
 
 namespace arangodb::test {
 
 struct AgencyState {
   std::optional<arangodb::replication2::replicated_state::agency::State>
-      replicatedState;
-  std::optional<arangodb::replication2::agency::Log> replicatedLog;
+      replicatedState{};
+  std::optional<arangodb::replication2::agency::Log> replicatedLog{};
   arangodb::replication2::replicated_log::ParticipantsHealth health;
+
+  // FIXME: strictly speaking this is a hack, as it does not form part of the
+  // agency's state; it is currently the simplest way to persist informatioon
+  // for predicates to access;
+  std::optional<size_t> logLeaderWriteConcern;
 
   friend std::size_t hash_value(AgencyState const& s) {
     std::size_t seed = 0;
@@ -47,33 +52,55 @@ struct AgencyState {
 
   friend auto operator<<(std::ostream& os, AgencyState const& state)
       -> std::ostream& {
-    return os;
+    // return os;
     auto const print = [&](auto const& x) {
       VPackBuilder builder;
-      x.toVelocyPack(builder);
-      os << builder.toJson() << std::endl;
+      velocypack::serialize(builder, x);
+      os << builder.toString() << std::endl;
     };
 
-    print(state.replicatedState->target);
-    if (state.replicatedState->plan) {
-      print(*state.replicatedState->plan);
-    }
-    if (state.replicatedState->current) {
-      print(*state.replicatedState->current);
+    if (state.replicatedState) {
+      os << "State/Target: ";
+      print(state.replicatedState->target);
+      if (state.replicatedState->plan) {
+        os << "State/Plan: ";
+        print(*state.replicatedState->plan);
+      }
+      if (state.replicatedState->current) {
+        os << "State/Current: ";
+        print(*state.replicatedState->current);
+      }
     }
     if (state.replicatedLog) {
+      os << "Log/Target: ";
       print(state.replicatedLog->target);
       if (state.replicatedLog->plan) {
+        os << "Log/Plan: ";
         print(*state.replicatedLog->plan);
       }
       if (state.replicatedLog->current) {
+        os << "Log/Current: ";
         print(*state.replicatedLog->current);
       }
     }
-    for (auto const& [name, ph] : state.health._health) {
-      std::cout << name << " reboot id = " << ph.rebootId.value()
-                << " failed = " << !ph.notIsFailed;
+    if (state.logLeaderWriteConcern) {
+      os << "logLeaderWriteConcern: " << *state.logLeaderWriteConcern
+         << std::endl;
     }
+    {
+      VPackBuilder builder;
+      {
+        VPackObjectBuilder ob(&builder);
+        for (auto const& [name, ph] : state.health._health) {
+          builder.add(VPackValue(name));
+          VPackObjectBuilder ob2(&builder);
+          builder.add("rebootId", ph.rebootId.value());
+          builder.add("failed", !ph.notIsFailed);
+        }
+      }
+      os << builder.toString() << std::endl;
+    }
+
     return os;
   }
 };

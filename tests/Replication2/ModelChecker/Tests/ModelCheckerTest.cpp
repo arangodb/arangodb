@@ -31,7 +31,10 @@
 
 using namespace arangodb::test;
 
-struct ModelCheckerTest : ::testing::Test {};
+template<typename Engine>
+struct TypedModelCheckerTest : ::testing::Test,
+                               model_checker::testing::TracedSeedGenerator {};
+TYPED_TEST_CASE_P(TypedModelCheckerTest);
 
 namespace {
 struct MyState {
@@ -59,8 +62,8 @@ struct MyTransition {
 
 }  // namespace
 
-TEST_F(ModelCheckerTest, simple_model_test) {
-  using Engine = model_checker::SimulationEngine<MyState, MyTransition>;
+TYPED_TEST_P(TypedModelCheckerTest, simple_model_test) {
+  using Engine = model_checker::DFSEngine<MyState, MyTransition>;
 
   auto driver = model_checker::lambda_driver{[&](MyState const& state) {
     auto result = std::vector<std::pair<MyTransition, MyState>>{};
@@ -75,7 +78,8 @@ TEST_F(ModelCheckerTest, simple_model_test) {
     ASSERT_GE(state.x, 0);
   });
 
-  auto result = Engine::run(driver, test, {.x = 0});
+  auto result = Engine::run(driver, test, {.x = 0},
+                            {.iterations = 3, .seed = this->seed(ADB_HERE)});
   EXPECT_FALSE(result.failed) << *result.failed;
 
   auto stats = result.stats;
@@ -85,8 +89,26 @@ TEST_F(ModelCheckerTest, simple_model_test) {
   EXPECT_EQ(stats.finalStates, 1);
 }
 
-TEST_F(ModelCheckerTest, simple_model_test_eventually) {
-  using Engine = model_checker::SimulationEngine<MyState, MyTransition>;
+TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_fail) {
+  using Engine = model_checker::DFSEngine<MyState, MyTransition>;
+
+  auto driver = model_checker::lambda_driver{[&](MyState const& state) {
+    auto result = std::vector<std::pair<MyTransition, MyState>>{};
+    if (state.x < 10) {
+      result.emplace_back(MyTransition{.deltaX = 1}, MyState{.x = state.x + 1});
+    }
+    return result;
+  }};
+
+  auto test = MC_ALWAYS(MC_BOOL_PRED(state, { return state.x <= 5; }));
+
+  auto result = Engine::run(driver, test, {.x = 0},
+                            {.iterations = 3, .seed = this->seed(ADB_HERE)});
+  EXPECT_TRUE(result.failed);
+}
+
+TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_eventually) {
+  using Engine = TypeParam;
   auto driver = model_checker::lambda_driver{[&](MyState const& state) {
     auto result = std::vector<std::pair<MyTransition, MyState>>{};
     if (state.x < 10) {
@@ -97,18 +119,23 @@ TEST_F(ModelCheckerTest, simple_model_test_eventually) {
 
   auto test = MC_EVENTUALLY(MC_BOOL_PRED(state, { return state.x == 5; }));
 
-  auto result = Engine::run(driver, test, {.x = 0});
+  auto result = Engine::run(driver, test, {.x = 0},
+                            {.iterations = 3, .seed = this->seed(ADB_HERE)});
   EXPECT_FALSE(result.failed) << *result.failed;
 
-  auto stats = result.stats;
-  EXPECT_EQ(stats.eliminatedStates, 0);
-  EXPECT_EQ(stats.discoveredStates, 10);
-  EXPECT_EQ(stats.uniqueStates, 10);
-  EXPECT_EQ(stats.finalStates, 1);
+  // RandomEngine doesn't have stats
+  if constexpr (!std::is_same_v<Engine, model_checker::RandomEngine<
+                                            MyState, MyTransition>>) {
+    auto stats = result.stats;
+    EXPECT_EQ(stats.eliminatedStates, 0);
+    EXPECT_EQ(stats.discoveredStates, 10);
+    EXPECT_EQ(stats.uniqueStates, 10);
+    EXPECT_EQ(stats.finalStates, 1);
+  }
 }
 
-TEST_F(ModelCheckerTest, simple_model_test_eventually_always) {
-  using Engine = model_checker::SimulationEngine<MyState, MyTransition>;
+TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_eventually_always) {
+  using Engine = TypeParam;
   auto driver = model_checker::lambda_driver{[&](MyState const& state) {
     auto result = std::vector<std::pair<MyTransition, MyState>>{};
     if (state.x < 10) {
@@ -120,18 +147,23 @@ TEST_F(ModelCheckerTest, simple_model_test_eventually_always) {
   auto test =
       MC_EVENTUALLY_ALWAYS(MC_BOOL_PRED(state, { return state.x > 5; }));
 
-  auto result = Engine::run(driver, test, {.x = 0});
+  auto result = Engine::run(driver, test, {.x = 0},
+                            {.iterations = 3, .seed = this->seed(ADB_HERE)});
   EXPECT_FALSE(result.failed) << *result.failed;
 
-  auto stats = result.stats;
-  EXPECT_EQ(stats.eliminatedStates, 0);
-  EXPECT_EQ(stats.discoveredStates, 10);
-  EXPECT_EQ(stats.uniqueStates, 10);
-  EXPECT_EQ(stats.finalStates, 1);
+  // RandomEngine doesn't have stats
+  if constexpr (!std::is_same_v<Engine, model_checker::RandomEngine<
+                                            MyState, MyTransition>>) {
+    auto stats = result.stats;
+    EXPECT_EQ(stats.eliminatedStates, 0);
+    EXPECT_EQ(stats.discoveredStates, 10);
+    EXPECT_EQ(stats.uniqueStates, 10);
+    EXPECT_EQ(stats.finalStates, 1);
+  }
 }
 
-TEST_F(ModelCheckerTest, simple_model_test_eventually_always_fail) {
-  using Engine = model_checker::SimulationEngine<MyState, MyTransition>;
+TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_eventually_always_fail) {
+  using Engine = TypeParam;
   auto driver = model_checker::lambda_driver{[&](MyState const& state) {
     auto result = std::vector<std::pair<MyTransition, MyState>>{};
     if (state.x < 10) {
@@ -143,9 +175,75 @@ TEST_F(ModelCheckerTest, simple_model_test_eventually_always_fail) {
   auto test =
       MC_EVENTUALLY_ALWAYS(MC_BOOL_PRED(state, { return state.x > 11; }));
 
-  auto result = Engine::run(driver, test, {.x = 0});
+  auto result = Engine::run(driver, test, {.x = 0},
+                            {.iterations = 3, .seed = this->seed(ADB_HERE)});
   EXPECT_TRUE(result.failed);
 }
+
+TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_cycle_detector) {
+  using Engine = TypeParam;
+  auto driver = model_checker::lambda_driver{[&](MyState const& state) {
+    auto result = std::vector<std::pair<MyTransition, MyState>>{};
+    if (state.x < 10) {
+      result.emplace_back(MyTransition{.deltaX = 1},
+                          MyState{.x = (state.x % 5) + 1});
+    }
+    return result;
+  }};
+
+  auto test =
+      MC_EVENTUALLY_ALWAYS(MC_BOOL_PRED(state, { return state.x > 11; }));
+
+  auto result = Engine::run(driver, test, {.x = 0},
+                            {.iterations = 3, .seed = this->seed(ADB_HERE)});
+  ASSERT_TRUE(result.failed);
+  ASSERT_TRUE(result.failed->cycle.has_value());
+  auto& cycle = *result.failed->cycle;
+  EXPECT_EQ(cycle.size(),
+            4);  // 0 -> 1 -> 2 -> 3 -> 4 -> 1 => Cycle of length 4
+  EXPECT_EQ(1, cycle[0].first->state.x);
+  EXPECT_EQ(2, cycle[1].first->state.x);
+  EXPECT_EQ(3, cycle[2].first->state.x);
+  EXPECT_EQ(4, cycle[3].first->state.x);
+}
+
+TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_loop_detector) {
+  using Engine = TypeParam;
+  auto driver = model_checker::lambda_driver{[&](MyState const& state) {
+    auto result = std::vector<std::pair<MyTransition, MyState>>{};
+    if (state.x < 4) {
+      result.emplace_back(MyTransition{.deltaX = 1}, MyState{.x = state.x + 1});
+    } else {
+      result.emplace_back(MyTransition{.deltaX = 1}, MyState{.x = state.x});
+    }
+    return result;
+  }};
+
+  auto test =
+      MC_EVENTUALLY_ALWAYS(MC_BOOL_PRED(state, { return state.x > 11; }));
+
+  auto result = Engine::run(driver, test, {.x = 0},
+                            {.iterations = 3, .seed = this->seed(ADB_HERE)});
+  ASSERT_TRUE(result.failed);
+  ASSERT_TRUE(result.failed->cycle.has_value());
+  auto& cycle = *result.failed->cycle;
+  EXPECT_EQ(cycle.size(),
+            1);  // 0 -> 1 -> 2 -> 3 -> 4 -> 4 => Cycle of length 1
+  EXPECT_EQ(4, cycle[0].first->state.x);
+}
+
+REGISTER_TYPED_TEST_CASE_P(TypedModelCheckerTest, simple_model_test,
+                           simple_model_test_fail, simple_model_test_eventually,
+                           simple_model_test_eventually_always,
+                           simple_model_test_eventually_always_fail,
+                           simple_model_test_loop_detector,
+                           simple_model_test_cycle_detector);
+
+using EngineTypes =
+    ::testing::Types<model_checker::DFSEngine<MyState, MyTransition>,
+                     model_checker::RandomEngine<MyState, MyTransition>>;
+INSTANTIATE_TYPED_TEST_CASE_P(ModelCheckerTestInstant, TypedModelCheckerTest,
+                              EngineTypes);
 
 struct EmptyInternalState {
   friend auto hash_value(EmptyInternalState const&) noexcept -> std::size_t {
@@ -201,6 +299,9 @@ struct IncrementActor {
 };
 }  // namespace
 
+struct ModelCheckerTest : ::testing::Test,
+                          model_checker::testing::TracedSeedGenerator {};
+
 TEST_F(ModelCheckerTest, simple_model_test_actor) {
   auto driver = model_checker::ActorDriver{
       DecrementActor{},
@@ -209,8 +310,10 @@ TEST_F(ModelCheckerTest, simple_model_test_actor) {
 
   auto test = MC_EVENTUALLY_ALWAYS(
       MC_BOOL_PRED(global, { return global.state.x > 2; }));
-  using Engine = model_checker::ActorEngine<MyState, MyTransition>;
+  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+                                            MyState, MyTransition>;
 
-  auto result = Engine::run(driver, test, {.x = 0});
+  auto result = Engine::run(driver, test, {.x = 0},
+                            {.iterations = 3, .seed = this->seed(ADB_HERE)});
   EXPECT_FALSE(result.failed) << *result.failed;
 }

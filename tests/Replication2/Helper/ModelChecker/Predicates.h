@@ -44,6 +44,44 @@ static inline auto isLeaderHealth() {
   });
 }
 
+static inline auto isParticipantPlanned(
+    replication2::ParticipantId participant) {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+    if (state.replicatedLog && state.replicatedLog->plan) {
+      return state.replicatedLog->plan->participantsConfig.participants
+          .contains(participant);
+    }
+    return false;
+  });
+}
+
+static inline auto isParticipantNotPlanned(
+    replication2::ParticipantId participant) {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+    if (state.replicatedLog && state.replicatedLog->plan) {
+      return !state.replicatedLog->plan->participantsConfig.participants
+                  .contains(participant);
+    }
+    return true;
+  });
+}
+
+static inline auto isParticipantCurrent(
+    replication2::ParticipantId participant) {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+    if (state.replicatedLog && state.replicatedLog->current &&
+        state.replicatedLog->current->leader &&
+        state.replicatedLog->current->leader->committedParticipantsConfig) {
+      return state.replicatedLog->current->leader->committedParticipantsConfig
+          ->participants.contains(participant);
+    }
+    return false;
+  });
+}
+
 static inline auto serverIsLeader(std::string_view id) {
   return MC_BOOL_PRED(global, {
     AgencyState const& state = global.state;
@@ -106,6 +144,75 @@ static inline auto nonExcludedServerHasSnapshot() {
       }
     }
 
+    return true;
+  });
+}
+
+static inline auto
+isAssumedWriteConcernLessThanOrEqualToEffectiveWriteConcern() {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+
+    // If the log has not been planned yet, we don't want to
+    // break off.
+    if (state.replicatedLog and not state.replicatedLog->plan.has_value()) {
+      return true;
+    }
+
+    if (state.replicatedLog and state.replicatedLog->plan and
+        state.replicatedLog->current and
+        state.replicatedLog->current->supervision) {
+      auto const& planConfig =
+          state.replicatedLog->plan->participantsConfig.config;
+      auto const& currentSupervision =
+          *state.replicatedLog->current->supervision;
+
+      return currentSupervision.assumedWriteConcern <=
+             planConfig.effectiveWriteConcern;
+    }
+    return false;
+  });
+}
+
+static inline auto isAssumedWriteConcernLessThanWriteConcernUsedForCommit() {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+
+    if (not state.logLeaderWriteConcern) {
+      return true;
+    }
+
+    if (state.replicatedLog and state.replicatedLog->plan and
+        state.replicatedLog->current and
+        state.replicatedLog->current->supervision) {
+      return state.replicatedLog->current->supervision->assumedWriteConcern <=
+             *state.logLeaderWriteConcern;
+    }
+    return false;
+  });
+}
+
+static inline auto isPlannedWriteConcern(bool concern) {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+    if (state.replicatedLog && state.replicatedLog->plan) {
+      return state.replicatedLog->plan->participantsConfig.config.waitForSync ==
+             concern;
+    }
+    return false;
+  });
+}
+
+static inline auto isAssumedWaitForSyncFalse() {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+    if (state.replicatedLog && state.replicatedLog->current &&
+        state.replicatedLog->current->supervision) {
+      return false ==
+             state.replicatedLog->current->supervision->assumedWaitForSync;
+    }
+    // This is intentional as it's ok for current to not exist, and we
+    // want to make sure that assumedWaitForSync is never *set* to *true*
     return true;
   });
 }

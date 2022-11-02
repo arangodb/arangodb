@@ -30,6 +30,7 @@
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogContextKeys.h"
 #include "Logger/LogMacros.h"
@@ -352,24 +353,6 @@ void RestVocbaseBaseHandler::generate20x(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates not implemented
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generateNotImplemented(std::string const& path) {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
-                "'" + path + "' not implemented");
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates forbidden
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::generateForbidden() {
-  generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                "operation forbidden");
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generates precondition failed
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -440,6 +423,9 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& input,
   // set ETAG header
   if (!rev.empty()) {
     _response->setHeaderNC(StaticStrings::Etag, "\"" + rev + "\"");
+  }
+  if (_potentialDirtyReads) {
+    _response->setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
   }
 
   try {
@@ -542,10 +528,7 @@ RevisionId RestVocbaseBaseHandler::extractRevision(char const* header,
       --e;
     }
 
-    RevisionId rid = RevisionId::none();
-
-    bool isOld;
-    rid = RevisionId::fromString(s, e - s, isOld, false);
+    RevisionId rid = RevisionId::fromString({s, static_cast<size_t>(e - s)});
     isValid = (rid.isSet() && rid != RevisionId::max());
 
     return rid;
@@ -575,8 +558,13 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
   std::string const& value =
       _request->header(StaticStrings::TransactionId, found);
   if (!found) {
+    auto opts = transaction::Options();
+    if (opOptions.allowDirtyReads && AccessMode::isRead(type)) {
+      opts.allowDirtyReads = true;
+    }
     auto tmp = std::make_unique<SingleCollectionTransaction>(
-        transaction::StandaloneContext::Create(_vocbase), collectionName, type);
+        transaction::StandaloneContext::Create(_vocbase), collectionName, type,
+        opts);
     if (!opOptions.isSynchronousReplicationFrom.empty() &&
         ServerState::instance()->isDBServer()) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);

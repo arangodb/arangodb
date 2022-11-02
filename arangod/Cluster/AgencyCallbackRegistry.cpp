@@ -33,6 +33,7 @@
 #include "Basics/WriteLocker.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallback.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/LogMacros.h"
@@ -87,6 +88,10 @@ Result AgencyCallbackRegistry::registerCallback(
     if (res.ok()) {
       _callbacksCount += 1;
       ++_totalCallbacksRegistered;
+
+      if (cb->needsInitialValue()) {
+        cb->refetchAndUpdate(true, false);
+      }
       return res;
     }
   } catch (std::exception const& e) {

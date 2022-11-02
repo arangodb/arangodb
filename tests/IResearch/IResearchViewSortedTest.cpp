@@ -35,6 +35,7 @@
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
+#include "IResearch/MakeViewSnapshot.h"
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
@@ -70,7 +71,6 @@
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
@@ -105,7 +105,7 @@ class IResearchViewSortedTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParameters const& params) {
+           arangodb::aql::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -121,7 +121,7 @@ class IResearchViewSortedTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParameters const& params) {
+           arangodb::aql::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -180,7 +180,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(createJson->slice()));
+      vocbase.createView(createJson->slice(), false));
   ASSERT_FALSE(!view);
   EXPECT_FALSE(view->primarySort().empty());
   EXPECT_EQ(1, view->primarySort().size());
@@ -213,21 +213,23 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(slice.get("name").copyString(), "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::StaticStrings::DataSourceType);
+                arangodb::iresearch::StaticStrings::ViewArangoSearchType);
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
   }
 
-  std::deque<arangodb::ManagedDocumentResult> insertedDocs;
+  std::deque<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+      insertedDocs;
 
   // populate view with the data
   {
     arangodb::OperationOptions opt;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
+        {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
+        arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
@@ -247,10 +249,12 @@ TEST_P(IResearchViewSortedTest, SingleField) {
           logicalCollection1, logicalCollection2};
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-        insertedDocs.emplace_back();
-        auto const res =
-            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
+        auto res = trx.insert(collections[i % 2]->name(), doc, opt);
         EXPECT_TRUE(res.ok());
+
+        res = trx.document(collections[i % 2]->name(), res.slice(), opt);
+        EXPECT_TRUE(res.ok());
+        insertedDocs.emplace_back(std::move(res.buffer));
         ++i;
       }
     }
@@ -260,12 +264,13 @@ TEST_P(IResearchViewSortedTest, SingleField) {
         arangodb::tests::executeQuery(
             vocbase, "FOR d IN testView OPTIONS { waitForSync: true } RETURN d")
             .result.ok()));  // commit
-
-    auto snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        view->getLinks(), view.get(), view->name());
     ASSERT_TRUE(snapshot);
-    EXPECT_TRUE(snapshot->size() >
-                1);  // ensure more than 1 segment in index snapshot
+    // ensure more than 1 segment in index snapshot
+    EXPECT_TRUE(snapshot->size() > 1);
   }
 
   // return all
@@ -276,9 +281,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
         vocbase, query,
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
     ASSERT_TRUE(plan);
@@ -313,7 +316,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
       auto const resolved = actualDoc.resolveExternals();
 
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->vpack()),
+                           arangodb::velocypack::Slice((*expectedDoc)->data()),
                            resolved, true));
       ++expectedDoc;
     }
@@ -330,9 +333,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
         vocbase, query,
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
     ASSERT_TRUE(plan);
@@ -353,13 +354,14 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     EXPECT_EQ(1, viewNode->sort().second);
 
     // check query execution
-    std::vector<arangodb::ManagedDocumentResult const*> expectedDocs{
-        &insertedDocs[4],  // seq == 4
-        &insertedDocs[3],  // seq == 3
-        &insertedDocs[2],  // seq == 2
-        &insertedDocs[1],  // seq == 1
-        &insertedDocs[0]   // seq == 0
-    };
+    std::vector<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs{
+            insertedDocs[4],  // seq == 4
+            insertedDocs[3],  // seq == 3
+            insertedDocs[2],  // seq == 2
+            insertedDocs[1],  // seq == 1
+            insertedDocs[0]   // seq == 0
+        };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -375,7 +377,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
       auto const resolved = actualDoc.resolveExternals();
 
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice((*expectedDoc)->vpack()),
+                           arangodb::velocypack::Slice((*expectedDoc)->data()),
                            resolved, true));
       ++expectedDoc;
     }
@@ -392,9 +394,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
         vocbase, query,
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
     ASSERT_TRUE(plan);
@@ -415,11 +415,12 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     EXPECT_EQ(1, viewNode->sort().second);
 
     // check query execution
-    std::vector<arangodb::ManagedDocumentResult const*> expectedDocs{
-        &insertedDocs[2],  // seq == 2
-        &insertedDocs[1],  // seq == 1
-        &insertedDocs[0]   // seq == 0
-    };
+    std::vector<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs{
+            insertedDocs[2],  // seq == 2
+            insertedDocs[1],  // seq == 1
+            insertedDocs[0]   // seq == 0
+        };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -435,7 +436,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
       auto const resolved = actualDoc.resolveExternals();
 
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice((*expectedDoc)->vpack()),
+                           arangodb::velocypack::Slice((*expectedDoc)->data()),
                            resolved, true));
       ++expectedDoc;
     }
@@ -485,7 +486,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(createJson->slice()));
+      vocbase.createView(createJson->slice(), false));
   ASSERT_FALSE(!view);
   EXPECT_FALSE(view->primarySort().empty());
   EXPECT_EQ(4, view->primarySort().size());
@@ -518,21 +519,23 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(slice.get("name").copyString(), "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::StaticStrings::DataSourceType);
+                arangodb::iresearch::StaticStrings::ViewArangoSearchType);
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
   }
 
-  std::deque<arangodb::ManagedDocumentResult> insertedDocs;
+  std::deque<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+      insertedDocs;
 
   // populate view with the data
   {
     arangodb::OperationOptions opt;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
+        {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
+        arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
@@ -552,10 +555,12 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
           logicalCollection1, logicalCollection2};
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
-        insertedDocs.emplace_back();
-        auto const res =
-            collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt);
+        auto res = trx.insert(collections[i % 2]->name(), doc, opt);
         EXPECT_TRUE(res.ok());
+
+        res = trx.document(collections[i % 2]->name(), res.slice(), opt);
+        EXPECT_TRUE(res.ok());
+        insertedDocs.emplace_back(std::move(res.buffer));
         ++i;
       }
     }
@@ -565,12 +570,13 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
         arangodb::tests::executeQuery(
             vocbase, "FOR d IN testView OPTIONS { waitForSync: true } RETURN d")
             .result.ok()));  // commit
-
-    auto snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        view->getLinks(), view.get(), view->name());
     ASSERT_TRUE(snapshot);
-    EXPECT_TRUE(snapshot->size() >
-                1);  // ensure more than 1 segment in index snapshot
+    // ensure more than 1 segment in index snapshot
+    EXPECT_TRUE(snapshot->size() > 1);
   }
 
   // return all
@@ -583,9 +589,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
         vocbase, query,
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
     ASSERT_TRUE(plan);
@@ -620,7 +624,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
       auto const resolved = actualDoc.resolveExternals();
 
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->vpack()),
+                           arangodb::velocypack::Slice((*expectedDoc)->data()),
                            resolved, true));
       ++expectedDoc;
     }
@@ -636,9 +640,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
         vocbase, query,
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
     ASSERT_TRUE(plan);
@@ -673,7 +675,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
       auto const resolved = actualDoc.resolveExternals();
 
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice(expectedDoc->vpack()),
+                           arangodb::velocypack::Slice((*expectedDoc)->data()),
                            resolved, true));
       ++expectedDoc;
     }
@@ -690,9 +692,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
         vocbase, query,
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
     ASSERT_TRUE(plan);
@@ -713,13 +713,14 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     EXPECT_EQ(3, viewNode->sort().second);
 
     // check query execution
-    std::vector<arangodb::ManagedDocumentResult const*> expectedDocs{
-        &insertedDocs[4],  // seq == 4
-        &insertedDocs[3],  // seq == 3
-        &insertedDocs[2],  // seq == 2
-        &insertedDocs[1],  // seq == 1
-        &insertedDocs[0]   // seq == 0
-    };
+    std::vector<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs{
+            insertedDocs[4],  // seq == 4
+            insertedDocs[3],  // seq == 3
+            insertedDocs[2],  // seq == 2
+            insertedDocs[1],  // seq == 1
+            insertedDocs[0]   // seq == 0
+        };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -735,7 +736,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
       auto const resolved = actualDoc.resolveExternals();
 
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice((*expectedDoc)->vpack()),
+                           arangodb::velocypack::Slice((*expectedDoc)->data()),
                            resolved, true));
       ++expectedDoc;
     }
@@ -752,9 +753,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
         vocbase, query,
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
     ASSERT_TRUE(plan);
@@ -775,11 +774,12 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     EXPECT_EQ(4, viewNode->sort().second);
 
     // check query execution
-    std::vector<arangodb::ManagedDocumentResult const*> expectedDocs{
-        &insertedDocs[2],  // seq == 2
-        &insertedDocs[1],  // seq == 1
-        &insertedDocs[0]   // seq == 0
-    };
+    std::vector<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs{
+            insertedDocs[2],  // seq == 2
+            insertedDocs[1],  // seq == 1
+            insertedDocs[0]   // seq == 0
+        };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -795,7 +795,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
       auto const resolved = actualDoc.resolveExternals();
 
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice((*expectedDoc)->vpack()),
+                           arangodb::velocypack::Slice((*expectedDoc)->data()),
                            resolved, true));
       ++expectedDoc;
     }
@@ -812,9 +812,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
         vocbase, query,
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
     ASSERT_TRUE(plan);
@@ -835,7 +833,8 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     EXPECT_EQ(2, viewNode->sort().second);
 
     // check query execution
-    std::vector<arangodb::ManagedDocumentResult const*> expectedDocs{};
+    std::vector<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+        expectedDocs{};
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
     ASSERT_TRUE(queryResult.result.ok());
@@ -851,7 +850,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
       auto const resolved = actualDoc.resolveExternals();
 
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
-                           arangodb::velocypack::Slice((*expectedDoc)->vpack()),
+                           arangodb::velocypack::Slice((*expectedDoc)->data()),
                            resolved, true));
       ++expectedDoc;
     }

@@ -39,7 +39,6 @@ class ClusterProviderStep
     : public arangodb::graph::BaseStep<ClusterProviderStep> {
  public:
   using EdgeType = ::arangodb::graph::EdgeType;
-  friend ClusterProvider<ClusterProviderStep>;
 
   class Vertex {
    public:
@@ -64,8 +63,6 @@ class ClusterProviderStep
     explicit Edge(EdgeType tkn) : _edge(std::move(tkn)) {}
     Edge() : _edge() {}
 
-    void addToBuilder(ClusterProvider<ClusterProviderStep>& provider,
-                      arangodb::velocypack::Builder& builder) const;
     [[nodiscard]] EdgeType const& getID()
         const;  // TODO: Performance Test compare EdgeType
                 // <-> EdgeDocumentToken
@@ -75,12 +72,9 @@ class ClusterProviderStep
     EdgeType _edge;
   };
 
-  enum class FetchedType {
-    UNFETCHED,
-    VERTEX_FETCHED,
-    EDGES_FETCHED,
-    VERTEX_AND_EDGES_FETCHED
-  };
+  ClusterProviderStep(VertexType v, EdgeType edge, size_t prev,
+                      FetchedType fetched, size_t depth, double weight);
+  ClusterProviderStep(VertexType v, size_t depth, double weight = 0.0);
 
  private:
   ClusterProviderStep(const VertexType& v, const EdgeType& edge, size_t prev);
@@ -88,9 +82,6 @@ class ClusterProviderStep
                       FetchedType fetched);
   ClusterProviderStep(VertexType v, EdgeType edge, size_t prev,
                       FetchedType fetched, size_t depth);
-  ClusterProviderStep(VertexType v, EdgeType edge, size_t prev,
-                      FetchedType fetched, size_t depth, double weight);
-  ClusterProviderStep(VertexType v, size_t depth, double weight = 0.0);
 
   explicit ClusterProviderStep(const VertexType& v);
 
@@ -109,12 +100,12 @@ class ClusterProviderStep
   }
 
   bool vertexFetched() const {
-    return _fetchedStatus == FetchedType::VERTEX_FETCHED or
+    return _fetchedStatus == FetchedType::VERTEX_FETCHED ||
            _fetchedStatus == FetchedType::VERTEX_AND_EDGES_FETCHED;
   }
 
   bool edgeFetched() const {
-    return _fetchedStatus == FetchedType::EDGES_FETCHED or
+    return _fetchedStatus == FetchedType::EDGES_FETCHED ||
            _fetchedStatus == FetchedType::VERTEX_AND_EDGES_FETCHED;
   }
 
@@ -139,12 +130,9 @@ class ClusterProviderStep
     return collectionNameResult.get().first;
   };
 
-  static bool isResponsible(transaction::Methods* trx);
-
   friend auto operator<<(std::ostream& out, ClusterProviderStep const& step)
       -> std::ostream&;
 
- private:
   void setVertexFetched() {
     if (edgeFetched()) {
       _fetchedStatus = FetchedType::VERTEX_AND_EDGES_FETCHED;

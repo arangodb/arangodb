@@ -70,11 +70,25 @@ class RestBaseHandler : public rest::RestHandler {
   // generates a canceled message
   void generateCanceled();
 
+  /// @brief generates not implemented
+  void generateNotImplemented(std::string const& path);
+
+  /// @brief generates forbidden
+  void generateForbidden();
+
  protected:
   /// @brief parses the body (request) as VelocyPack, generates body
   arangodb::velocypack::Slice parseVPackBody(bool& success);
 
   template<typename Payload>
   void writeResult(Payload&&, arangodb::velocypack::Options const& options);
+
+  /// @brief configure if outgoing responses will have the potential
+  /// dirty reads header set:
+  void setOutgoingDirtyReadsHeader(bool flag) { _potentialDirtyReads = flag; }
+
+  /// @brief Flag, if the outgoing response should have an HTTP header
+  /// indicating potential dirty reads:
+  bool _potentialDirtyReads;
 };
 }  // namespace arangodb

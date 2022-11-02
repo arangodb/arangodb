@@ -573,9 +573,7 @@ void arangodb::aql::replaceNearWithinFulltextRule(
     OptimizerRule const& rule) {
   bool modified = false;
 
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, ExecutionNode::CALCULATION, true);
 
   for (auto const& node : nodes) {

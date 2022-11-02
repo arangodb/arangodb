@@ -66,16 +66,18 @@
   db._drop("UnitTestsImportVertex");
   db._drop("UnitTestsImportEdge");
   db._drop("UnitTestsImportEdgeGz");
+  db._drop("UnitTestsImportEdgeRewriteCollectionOn");
+  db._drop("UnitTestsImportEdgeRewriteCollectionOff");
   db._drop("UnitTestsImportIgnore");
   db._drop("UnitTestsImportUniqueConstraints");
   db._drop("UnitTestsImportRemoveAttribute");
-  db._drop("UnitTestsImportRemoveAttribute");
-  
+  db._drop("UnitTestsImportRemoveAttributeJSON");
+
   let dbs = {
-    "maçã": true, 
+    "maçã": true,
     "😀": true,
-    "ﻚﻠﺑ ﻞﻄﻴﻓ": false, 
-    "abc mötor !\" ' & <>": false, 
+    "ﻚﻠﺑ ﻞﻄﻴﻓ": false,
+    "abc mötor !\" ' & <>": false,
     "UnitTestImportCreateDatabase": false
   };
   Object.keys(dbs).forEach((name) => {
@@ -104,14 +106,15 @@
   db._create("UnitTestsImportDataBatchSizeWithHeaderFile2");
   db._createEdgeCollection("UnitTestsImportEdge");
   db._createEdgeCollection("UnitTestsImportEdgeGz");
+  db._createEdgeCollection("UnitTestsImportEdgeRewriteCollectionOn");
+  db._createEdgeCollection("UnitTestsImportEdgeRewriteCollectionOff");
   db._create("UnitTestsImportIgnore");
-  db.UnitTestsImportIgnore.ensureIndex({ type: "hash", fields: [ "value" ], unique: true });
+  db.UnitTestsImportIgnore.ensureIndex({type: "hash", fields: ["value"], unique: true});
   db._create("UnitTestsImportUniqueConstraints");
-  db.UnitTestsImportUniqueConstraints.ensureIndex({ type: "hash", fields: [ "value" ], unique: true });
+  db.UnitTestsImportUniqueConstraints.ensureIndex({type: "hash", fields: ["value"], unique: true});
   db._create("UnitTestsImportCsvMergeAttributes");
 })();
 
 return {
   status: true
 };
-

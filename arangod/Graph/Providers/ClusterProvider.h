@@ -34,7 +34,6 @@
 #include "Basics/StringHeap.h"
 #include "Containers/FlatHashMap.h"
 
-#include "Transaction/Methods.h"
 #include "Graph/Steps/ClusterProviderStep.h"
 
 #include <vector>
@@ -55,6 +54,9 @@ class Builder;
 class HashedStringRef;
 }  // namespace velocypack
 
+namespace transaction {
+class Methods;
+}
 namespace graph {
 
 // TODO: we need to control from the outside if and which parts of the vertex -
@@ -92,7 +94,22 @@ class ClusterProvider {
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
+
+  // [GraphRefactor] TODO: Temporary method - will be needed until we've
+  // finished the full graph refactor.
+  EdgeDocumentToken getEdgeDocumentToken(typename Step::Edge const& edge);
+
   VPackSlice readEdge(EdgeType const& edgeID);
+
+  void addEdgeIDToBuilder(typename Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
+
+  void addEdgeToLookupMap(typename Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
+
+  auto getEdgeId(typename Step::Edge const& edge) -> std::string;
+
+  auto getEdgeIdRef(typename Step::Edge const& edge) -> EdgeType;
 
   // fetch vertices and store in cache
   auto fetchVerticesFromEngines(std::vector<Step*> const& looseEnds,
@@ -104,6 +121,7 @@ class ClusterProvider {
   void destroyEngines();
 
   [[nodiscard]] transaction::Methods* trx();
+  [[nodiscard]] TRI_vocbase_t const& vocbase() const;
 
   void prepareIndexExpressions(aql::Ast* ast);
 
@@ -111,6 +129,9 @@ class ClusterProvider {
 
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
+  bool isResponsible(Step const& step) const;
+
+  [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
  private:
   // Unique_ptr to have this class movable, and to keep reference of trx()

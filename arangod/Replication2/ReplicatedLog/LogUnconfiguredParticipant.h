@@ -77,7 +77,10 @@ struct LogUnconfiguredParticipant final
         std::unique_ptr<arangodb::replication2::replicated_log::LogCore>,
         arangodb::DeferredAction>;
 
-    [[nodiscard]] auto waitForResign() -> futures::Future<futures::Unit>;
+    [[nodiscard]] auto didResign() const noexcept -> bool;
+
+    [[nodiscard]] auto waitForResign()
+        -> std::pair<futures::Future<futures::Unit>, DeferredAction>;
 
     std::unique_ptr<arangodb::replication2::replicated_log::LogCore> _logCore;
     WaitForBag _waitForResignQueue;

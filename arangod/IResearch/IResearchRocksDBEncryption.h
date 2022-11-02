@@ -51,12 +51,12 @@ class RocksDBEncryptionProvider final : public irs::encryption {
  public:
   static std::shared_ptr<RocksDBEncryptionProvider> make(
       rocksdb::EncryptionProvider& encryption,
-      rocksdb::Options const& options) {
+      rocksdb::DBOptions const& options) {
     return std::make_shared<RocksDBEncryptionProvider>(encryption, options);
   }
 
   explicit RocksDBEncryptionProvider(rocksdb::EncryptionProvider& encryption,
-                                     rocksdb::Options const& options)
+                                     rocksdb::DBOptions const& options)
       : _encryption(&encryption), _options(options) {}
 
   size_t header_length() override { return _encryption->GetPrefixLength(); }

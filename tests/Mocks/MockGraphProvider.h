@@ -49,6 +49,10 @@ namespace aql {
 class QueryContext;
 }
 
+namespace graph {
+struct EdgeDocumentToken;
+}
+
 namespace velocypack {
 class Builder;
 class HashedStringRef;
@@ -193,8 +197,6 @@ class MockGraphProvider {
     static bool vertexFetched() { return true; }
     static bool edgeFetched() { return true; }
 
-    bool isResponsible(transaction::Methods* trx) const { return true; }
-
     Vertex getVertex() const {
       /*if (!isProcessable()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -290,11 +292,28 @@ class MockGraphProvider {
   void addEdgeToBuilder(Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
 
+  // [GraphRefactor] TODO: Temporary method - will be needed until we've
+  // finished the full graph refactor.
+  arangodb::graph::EdgeDocumentToken getEdgeDocumentToken(
+      typename Step::Edge const& edge);
+
+  void addEdgeIDToBuilder(Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
+  void addEdgeToLookupMap(typename Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
+
+  std::string getEdgeId(Step::Edge const& edge);
+  velocypack::HashedStringRef getEdgeIdRef(Step::Edge const& edge);
+
   void prepareIndexExpressions(aql::Ast* ast);
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
+  bool isResponsible(Step const& step) const;
+
+  [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
   [[nodiscard]] transaction::Methods* trx();
+  [[nodiscard]] TRI_vocbase_t const& vocbase() const;
 
   aql::TraversalStats stealStats();
 

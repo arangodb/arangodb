@@ -33,13 +33,16 @@ const optionsDocumentation = [];
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const im = require('@arangodb/testutils/instance-manager');
 const xmldom = require('@xmldom/xmldom');
 const zlib = require('zlib');
+const internal = require('internal');
 
-const CYAN = require('internal').COLORS.COLOR_CYAN;
-const RESET = require('internal').COLORS.COLOR_RESET;
+const CYAN = internal.COLORS.COLOR_CYAN;
+const RESET = internal.COLORS.COLOR_RESET;
+const GREEN = internal.COLORS.COLOR_GREEN;
 
-const toArgv = require('internal').toArgv;
+const toArgv = internal.toArgv;
 
 const testPaths = {
   'export': [tu.pathForTesting('server/export')] // we have to be fuzzy...
@@ -52,17 +55,19 @@ class exportRunner extends tu.runInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "runExport";
+    this.instanceManage = null;
   }
   
   shutdown (results) {
     print(CYAN + 'Shutting down...' + RESET);
-    results['shutdown'] = pu.shutdownInstance(this.instanceInfo, this.options);
+    results['shutdown'] = this.instanceManager.shutdownInstance(false);
     print(CYAN + 'done.' + RESET);
     print();
     return results;
   }
 
   run() {
+    const timeout = 60;
     const tmpPath = fs.join(this.options.testOutputDirectory, 'export');
     const DOMParser = new xmldom.DOMParser({
       locator: {},
@@ -82,9 +87,10 @@ class exportRunner extends tu.runInArangoshRunner {
 
     print(CYAN + 'export tests...' + RESET);
 
-    this.instanceInfo = pu.startInstance('tcp', this.options, {}, 'export');
-
-    if (this.instanceInfo === false) {
+    this.instanceManager = new im.instanceManager('tcp', this.options, {}, 'export');
+    this.instanceManager.prepareInstance();
+    this.instanceManager.launchTcpDump("");
+    if (!this.instanceManager.launchInstance()) {
       return {
         export: {
           status: false,
@@ -92,6 +98,7 @@ class exportRunner extends tu.runInArangoshRunner {
         }
       };
     }
+    this.instanceManager.reconnect();
 
     print(CYAN + Date() + ': Setting up' + RESET);
 
@@ -99,7 +106,7 @@ class exportRunner extends tu.runInArangoshRunner {
 
     results.setup = this.runOneTest(tu.makePathUnix(tu.pathForTesting('server/export/export-setup.js')));
     results.setup.failed = 0;
-    if (!pu.arangod.check.instanceAlive(this.instanceInfo, this.options) || results.setup.status !== true) {
+    if (!this.instanceManager.checkInstanceAlive() || results.setup.status !== true) {
       results.setup.failed = 1;
       results.failed += 1;
       return this.shutdown(results);
@@ -111,7 +118,7 @@ class exportRunner extends tu.runInArangoshRunner {
       let version = global.ARANGODB_CLIENT_VERSION(true);
       if (version.hasOwnProperty('enterprise-version')) {
         skipEncrypt = false;
-        keyfile = fs.join(this.instanceInfo.rootDir, 'secret-key');
+        keyfile = fs.join(this.instanceManager.rootDir, 'secret-key');
         fs.write(keyfile, 'DER-HUND-der-hund-der-hund-der-h'); // must be exactly 32 chars long
       }
     }
@@ -133,7 +140,7 @@ class exportRunner extends tu.runInArangoshRunner {
         'configuration': fs.join(pu.CONFIG_DIR, 'arangoexport.conf'),
         'server.username': this.options.username,
         'server.password': this.options.password,
-        'server.endpoint': this.instanceInfo.endpoint,
+        'server.endpoint': this.instanceManager.endpoint,
         'server.database': name,
         'overwrite': true,
         'output-directory': tmpPath
@@ -148,11 +155,13 @@ class exportRunner extends tu.runInArangoshRunner {
         args['collection'] = 'UnitTestsExport';
         args['type'] = 'json';
         testName = "exportJson" + idx;
-        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, 'arangosh', tmpPath, this.options.coreCheck);
+        print(GREEN + Date() + " Executing " + testName + RESET);
+        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, false, tmpPath, this.options.coreCheck, timeout);
         results[testName].failed = results[testName].status ? 0 : 1;
       }
       {
         testName = "parseJson" + idx;
+        print(GREEN + Date() + " Executing " + testName + RESET);
         try {
           JSON.parse(fs.read(fs.join(tmpPath, 'UnitTestsExport.json')));
           results[testName] = {
@@ -176,12 +185,14 @@ class exportRunner extends tu.runInArangoshRunner {
         args['collection'] = 'UnitTestsExport';
         args['type'] = 'json';
         testName = "exportJsonGz" + idx;
-        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, 'arangosh', tmpPath, this.options.coreCheck);
+        print(GREEN + Date() + " Executing " + testName + RESET);
+        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, false, tmpPath, this.options.coreCheck, timeout);
         results[testName].failed = results[testName].status ? 0 : 1;
 
       }
       {
         testName = "parseJsonGz" + idx;
+        print(GREEN + Date() + " Executing " + testName + RESET);
         try {
           const zipBuffer = fs.readGzip(fs.join(tmpPath, 'UnitTestsExport.json.gz'));
           JSON.parse(zipBuffer);
@@ -211,12 +222,14 @@ class exportRunner extends tu.runInArangoshRunner {
             }
 
             testName = "exportJsonEncrypt" + idx;
-            results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, 'arangosh', tmpPath, this.options.coreCheck);
+            print(GREEN + Date() + " Executing " + testName + RESET);
+            results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, false, tmpPath, this.options.coreCheck, timeout);
             results[testName].failed = results[testName].status ? 0 : 1;
 
           }
           {
             testName = "parseJsonEncrypt" + idx;
+            print(GREEN + Date() + " Executing " + testName + RESET);
             try {
               const decBuffer = fs.readDecrypt(fs.join(tmpPath, 'UnitTestsExport.json'), keyfile);
               JSON.parse(decBuffer);
@@ -245,11 +258,13 @@ class exportRunner extends tu.runInArangoshRunner {
         args['type'] = 'jsonl';
         args['collection'] = 'UnitTestsExport';
         testName = "exportJsonl" + idx;
-        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, 'arangosh', tmpPath, this.options.coreCheck);
+        print(GREEN + Date() + " Executing " + testName + RESET);
+        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, false, tmpPath, this.options.coreCheck, timeout);
         results[testName].failed = results[testName].status ? 0 : 1;
       }
       {
         testName = "parseJsonl" + idx;
+        print(GREEN + Date() + " Executing " + testName + RESET);
         try {
           fs.read(fs.join(tmpPath, 'UnitTestsExport.jsonl')).split('\n')
             .filter(line => line.trim() !== '')
@@ -276,11 +291,13 @@ class exportRunner extends tu.runInArangoshRunner {
         args['collection'] = 'UnitTestsExport';
         args['type'] = 'jsonl';
         testName = "exportJsonlGz" + idx;
-        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, 'arangosh', tmpPath, this.options.coreCheck);
+        print(GREEN + Date() + " Executing " + testName + RESET);
+        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, false, tmpPath, this.options.coreCheck, timeout);
         results[testName].failed = results[testName].status ? 0 : 1;
       }
       {
         testName = "parseJsonlGz" + idx;
+        print(GREEN + Date() + " Executing " + testName + RESET);
         try {
           fs.readGzip(fs.join(tmpPath, 'UnitTestsExport.jsonl.gz')).split('\n')
             .filter(line => line.trim() !== '')
@@ -307,11 +324,13 @@ class exportRunner extends tu.runInArangoshRunner {
         args['graph-name'] = 'UnitTestsExport';
         args['collection'] = 'UnitTestsExport';
         testName = "exportXgmml" + idx;
-        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, 'arangosh', tmpPath, this.options.coreCheck);
+        print(GREEN + Date() + " Executing " + testName + RESET);
+        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, false, tmpPath, this.options.coreCheck, timeout);
         results[testName].failed = results[testName].status ? 0 : 1;
       }
       {
         testName = "parseXgmml" + idx;
+        print(GREEN + Date() + " Executing " + testName + RESET);
         try {
           const filesContent = fs.read(fs.join(tmpPath, 'UnitTestsExport.xgmml'));
           DOMParser.parseFromString(filesContent);
@@ -344,11 +363,13 @@ class exportRunner extends tu.runInArangoshRunner {
         args['collection'] = 'UnitTestsExport';
         args['type'] = 'xgmml';
         testName = "exportXgmmlGz" + idx;
-        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, 'arangosh', tmpPath, this.options.coreCheck);
+        print(GREEN + Date() + " Executing " + testName + RESET);
+        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, false, tmpPath, this.options.coreCheck, timeout);
         results[testName].failed = results[testName].status ? 0 : 1;
       }
       {
         testName = "parseXgmmlGz" + idx;
+        print(GREEN + Date() + " Executing " + testName + RESET);
         try {
           const filesContent = fs.readGzip(fs.join(tmpPath, 'UnitTestsExport.xgmml.gz'));
           DOMParser.parseFromString(filesContent);
@@ -382,12 +403,14 @@ class exportRunner extends tu.runInArangoshRunner {
         args['type'] = 'jsonl';
         args['custom-query-file'] = tempFile;
         testName = "exportQueryFile" + idx;
-        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, 'arangosh', tmpPath, this.options.coreCheck);
+        print(GREEN + Date() + " Executing " + testName + RESET);
+        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, false, tmpPath, this.options.coreCheck, timeout);
         results[testName].failed = results[testName].status ? 0 : 1;
       }
 
       {
         testName = "parseQueryFile" + idx;
+        print(GREEN + Date() + " Executing " + testName + RESET);
         try {
           fs.read(fs.join(tmpPath, 'query.jsonl')).split('\n')
             .filter(line => line.trim() !== '')
@@ -413,12 +436,14 @@ class exportRunner extends tu.runInArangoshRunner {
         args['type'] = 'jsonl';
         args['custom-query'] = 'FOR doc IN UnitTestsExport RETURN doc';
         testName = "exportQuery" + idx;
-        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, 'arangosh', tmpPath, this.options.coreCheck);
+        print(GREEN + Date() + " Executing " + testName + RESET);
+        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, false, tmpPath, this.options.coreCheck, timeout);
         results[testName].failed = results[testName].status ? 0 : 1;
       }
 
       {
         testName = "parseQuery" + idx;
+        print(GREEN + Date() + " Executing " + testName + RESET);
         try {
           fs.read(fs.join(tmpPath, 'query.jsonl')).split('\n')
             .filter(line => line.trim() !== '')
@@ -448,11 +473,13 @@ class exportRunner extends tu.runInArangoshRunner {
         args['custom-query-bindvars'] = '{"@@collectionName": "UnitTestsExport", "value2": "this is export"}';
 
         testName = "exportQueryWithBindvars" + idx;
-        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, 'arangosh', tmpPath, this.options.coreCheck);
+        print(GREEN + Date() + " Executing " + testName + RESET);
+        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, false, tmpPath, this.options.coreCheck, timeout);
         results[testName].failed = results[testName].status ? 0 : 1;
       }
       {
         testName = "parseQueryWithBindvars" + idx;
+        print(GREEN + Date() + " Executing " + testName + RESET);
         try {
           fs.read(fs.join(tmpPath, 'query.jsonl')).split('\n')
             .filter(line => line.trim() !== '')
@@ -479,11 +506,13 @@ class exportRunner extends tu.runInArangoshRunner {
         args['compress-output'] = 'true';
         args['custom-query'] = 'FOR doc IN UnitTestsExport RETURN doc';
         testName = "exportQueryGz" + idx;
-        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, 'arangosh', tmpPath, this.options.coreCheck);
+        print(GREEN + Date() + " Executing " + testName + RESET);
+        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, false, tmpPath, this.options.coreCheck, timeout);
         results[testName].failed = results[testName].status ? 0 : 1;
       }
       {
         testName = "parseQueryGz" + idx;
+        print(GREEN + Date() + " Executing " + testName + RESET);
         try {
           fs.readGzip(fs.join(tmpPath, 'query.jsonl.gz')).split('\n')
             .filter(line => line.trim() !== '')
@@ -510,7 +539,8 @@ class exportRunner extends tu.runInArangoshRunner {
         args['fields'] = '_key,value1,value2,value3,value4';
 
         testName = "exportCsv" + idx;
-        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, 'arangosh', tmpPath, false, this.options.coreCheck);
+        print(GREEN + Date() + " Executing " + testName + RESET);
+        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, false, tmpPath, false, this.options.coreCheck, timeout);
         results[testName].failed = results[testName].status ? 0 : 1;
       }
       {
@@ -540,7 +570,8 @@ class exportRunner extends tu.runInArangoshRunner {
         args['fields'] = 'value1,value2,value3,value4';
 
         testName = "exportCsvEscaped" + idx;
-        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, 'arangosh', tmpPath, false, this.options.coreCheck);
+        print(GREEN + Date() + " Executing " + testName + RESET);
+        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, false, tmpPath, false, this.options.coreCheck, timeout);
         results[testName].failed = results[testName].status ? 0 : 1;
       }
       {
@@ -575,7 +606,8 @@ class exportRunner extends tu.runInArangoshRunner {
         args['fields'] = 'value1,value2,value3,value4';
 
         testName = "exportCsvEscapedFormulae" + idx;
-        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, 'arangosh', tmpPath, false, this.options.coreCheck);
+        print(GREEN + Date() + " Executing " + testName + RESET);
+        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, false, tmpPath, false, this.options.coreCheck, timeout);
         results[testName].failed = results[testName].status ? 0 : 1;
       }
       {
@@ -610,7 +642,8 @@ class exportRunner extends tu.runInArangoshRunner {
         args['fields'] = 'value1,value2,value3,value4';
 
         testName = "exportCsvUnescapedFormulae" + idx;
-        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, 'arangosh', tmpPath, false, this.options.coreCheck);
+        print(GREEN + Date() + " Executing " + testName + RESET);
+        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, false, tmpPath, false, this.options.coreCheck, timeout);
         results[testName].failed = results[testName].status ? 0 : 1;
       }
       {
@@ -644,7 +677,8 @@ class exportRunner extends tu.runInArangoshRunner {
         args['custom-query-max-runtime'] = '2.0';
 
         testName = "exportQueryMaxRuntimeFail" + idx;
-        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, 'arangosh', tmpPath, this.options.coreCheck);
+        print(GREEN + Date() + " Executing " + testName + RESET);
+        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, false, tmpPath, this.options.coreCheck, timeout);
         // we expect a failure here!
         results[testName].status = !results[testName].status;
         results[testName].failed = results[testName].status ? 0 : 1;
@@ -657,7 +691,8 @@ class exportRunner extends tu.runInArangoshRunner {
         args['custom-query'] = 'RETURN SLEEP(3)';
         args['custom-query-max-runtime'] = '20.0';
         testName = "exportQueryMaxRuntimeOk" + idx;
-        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, 'arangosh', tmpPath, this.options.coreCheck);
+        print(GREEN + Date() + " Executing " + testName + RESET);
+        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, false, tmpPath, this.options.coreCheck, timeout);
         results[testName].failed = results[testName].status ? 0 : 1;
       }
     });

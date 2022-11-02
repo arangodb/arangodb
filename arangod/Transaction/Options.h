@@ -81,6 +81,11 @@ struct Options {
   bool waitForSync = false;
   bool fillBlockCache = true;
   bool isFollowerTransaction = false;
+  /// The following flag indicates if a transaction is allowed to perform
+  /// dirty reads (aka read-from-followers). This is stored in the
+  /// `TransactionState`. The decision is taken when the transaction is
+  /// created.
+  bool allowDirtyReads = false;
 
   /// @brief originating server of this transaction. will be populated
   /// only in the cluster, and with a coordinator id/coordinator reboot id
@@ -90,8 +95,17 @@ struct Options {
   /// abort the transaction should the coordinator die or be rebooted.
   /// the server id and reboot id are intentionally empty in single server
   /// case.
-  arangodb::cluster::RebootTracker::PeerState origin = {"",
-                                                        arangodb::RebootId(0)};
+  arangodb::cluster::RebootTracker::PeerState origin;
+
+  /// @brief determines whether this transaction requires the changes to be
+  /// replicated. E.g., transactions that _must not_ be replicated are those
+  /// that create/drop indexes.
+  /// This option should be set to false for read-only transactions, because
+  /// it allows us to use a the more efficient SimpleRocksDBTransactionState
+  /// on the leader.
+  ///
+  /// This option is only relevant for replication 2.0
+  bool requiresReplication = true;
 };
 
 struct AllowImplicitCollectionsSwitcher {

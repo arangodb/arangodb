@@ -54,7 +54,6 @@ jsunity.run(function dump_single_testsuite() {
       "testRemoved",
       "testIndexes",
       "testTruncated",
-      "testKeygenAutoInc",
       "testKeygenPadded",
       "testKeygenUuid",
       "testStrings",
@@ -63,9 +62,12 @@ jsunity.run(function dump_single_testsuite() {
       "testTransactionAbort",
       "testPersistent",
       "testView",
+      "testSearch",
+      "testInvertedIndex",
       "testAnalyzers",
       "testIndexAnalyzerCollection",
       "testJobsAndQueues",
+      "testComputedValues",
 
       // cluster tests:
       "testDatabaseProperties",
@@ -94,10 +96,13 @@ jsunity.run(function dump_single_testsuite() {
 
       // enterprise sharded graphs on single server tests
       "testEmptySmartGraph",
+      "testEmptyEnterpriseGraph",
       "testEmptySatelliteGraph",
       "testEmptyDisjointGraph",
       "testSmartGraphWithoutData",
+      "testEnterpriseGraphWithoutData",
       "testSmartGraphSingleServer",
+      "testEnterpriseGraphSingleServer",
       "testSatelliteSmartGraphSingleServer",
       "testDisjointGraphSingleServer",
       "testHybridSmartGraphSingleServer",

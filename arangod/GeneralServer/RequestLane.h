@@ -47,7 +47,7 @@ enum class RequestLane {
   // which are not CLIENT_AQL or CLIENT_V8.
   CLIENT_SLOW,
 
-  // Used for all requests sent by the web UI
+  // Used for all requests sent by the web interface
   CLIENT_UI,
 
   // For requests between agents. These are basically the

@@ -93,12 +93,12 @@ function driver (options) {
       if (global.ARANGODB_CLIENT_VERSION(true).hasOwnProperty('enterprise-version')) {
         enterprise = 'true';
       }
-      let m = this.instanceInfo.url.split(host_re);
+      let m = this.instanceManager.url.split(host_re);
       
       let args = [
         this.options.driverScript,
-        '--instanceUrl', this.instanceInfo.url,
-        '--instanceEndpoint', this.instanceInfo.endpoint,
+        '--instanceUrl', this.instanceManager.url,
+        '--instanceEndpoint', this.instanceManager.endpoint,
         '--port', m[4],
         '--host', m[2],
         '--auth', false,

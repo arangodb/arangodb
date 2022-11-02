@@ -21,9 +21,9 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <errno.h>
+#include <cerrno>
 #include <fcntl.h>
-#include <stdint.h>
+#include <cstdint>
 #include <sys/types.h>
 #include <chrono>
 #include <cstring>

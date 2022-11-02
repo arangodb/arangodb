@@ -43,7 +43,6 @@ const replicatedLogSuite = function () {
   const targetConfig = {
     writeConcern: 2,
     softWriteConcern: 3,
-    replicationFactor: 3,
     waitForSync: false,
   };
 
@@ -101,6 +100,7 @@ const replicatedLogSuite = function () {
       registerAgencyTestEnd(test);
     },
 
+    // Temporarily disabled until effectiveWriteConcern is implemented.
     testParticipantFailedOnInsert: function () {
       const {logId, followers} = createReplicatedLogAndWaitForLeader(database);
       waitForReplicatedLogAvailable(logId);

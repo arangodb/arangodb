@@ -44,6 +44,14 @@
 
 struct stat;
 
+#ifdef __linux__
+// whether or not the splice system call should be used for file-copying.
+// by default, splice() will be used for file-copying on Linux, but there are
+// filesystems that don't support it. for those, we can turn the usage of
+// splice() off calling this function with a value of false.
+void TRI_SetCanUseSplice(bool value) noexcept;
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of a file
 ///
@@ -290,8 +298,6 @@ std::string TRI_GetFilename(std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the absolute path of a file
-/// It is the caller's responsibility to free the string created by this
-/// function
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string TRI_GetAbsolutePath(std::string const& fileName,

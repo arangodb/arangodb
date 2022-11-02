@@ -58,8 +58,6 @@ if [ "$POOLSZ" == "" ] ; then
   POOLSZ=$NRAGENTS
 fi
 
-STORAGE_ENGINE="--server.storage-engine=rocksdb"
-
 if [ "$AUTOUPGRADE" == "1" ];then
   echo "-- Using autoupgrade procedure"
 fi
@@ -169,7 +167,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
       --server.descriptors-minimum 0 
 EOM
 
-    AGENCY_OPTIONS="$AGENCY_OPTIONS $STORAGE_ENGINE $AUTHENTICATION $SSLKEYFILE $ENCRYPTION"
+    AGENCY_OPTIONS="$AGENCY_OPTIONS $AUTHENTICATION $SSLKEYFILE $ENCRYPTION"
 
     if [ "$AUTOUPGRADE" == "1" ]; then
       $ARANGOD $AGENCY_OPTIONS \
@@ -234,7 +232,7 @@ start() {
       --javascript.allow-admin-execute true
 EOM
 
-    SERVER_OPTIONS="$SERVER_OPTIONS $SYSTEM_REPLICATION_FACTOR $STORAGE_ENGINE $AUTHENTICATION $SSLKEYFILE $ENCRYPTION"
+    SERVER_OPTIONS="$SERVER_OPTIONS $SYSTEM_REPLICATION_FACTOR $AUTHENTICATION $SSLKEYFILE $ENCRYPTION"
     if [ "$AUTOUPGRADE" == "1" ];then
       $CMD $SERVER_OPTIONS \
           --database.auto-upgrade true \

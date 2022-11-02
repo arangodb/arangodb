@@ -32,92 +32,70 @@ const SH = require("@arangodb/testutils/replicated-state-helper");
 const spreds = require("@arangodb/testutils/replicated-state-predicates");
 const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 const {dbservers} = require("@arangodb/testutils/replicated-logs-helper");
+const request = require('@arangodb/request');
 
 const database = "Replicated_StateMaintenanceTestDB";
 
-const {setUpAll, tearDownAll} = (function () {
-  let previousDatabase, databaseExisted = true;
-  return {
-    setUpAll: function () {
-      previousDatabase = db._name();
-      if (!_.includes(db._databases(), database)) {
-        db._createDatabase(database);
-        databaseExisted = false;
-      }
-      db._useDatabase(database);
-    },
+const {setUpAll, tearDownAll, setUp, tearDown} = LH.testHelperFunctions(database);
 
-    tearDownAll: function () {
-      db._useDatabase(previousDatabase);
-      if (!databaseExisted) {
-        db._dropDatabase(database);
-      }
-    },
-  };
-}());
-
-const replicatedStateSuite = function () {
-
-  const createReplicatedState = function (database, logId, servers, leader) {
-    SH.updateReplicatedStatePlan(database, logId, function () {
-      let log = {
-        id: logId,
-        currentTerm: {
-          term: 1,
-          config: {
-            replicationFactor: 3,
-            writeConcern: 2,
-            softWriteConcern: 2,
-            waitForSync: false,
-          },
-          leader: {
-            serverId: leader,
-            rebootId: LH.getServerRebootId(leader),
-          }
-        },
-        participantsConfig: {
-          generation: 1,
-          participants: {},
+const createReplicatedState = function (database, logId, servers, leader, stateType) {
+  SH.updateReplicatedStatePlan(database, logId, function () {
+    let log = {
+      id: logId,
+      currentTerm: {
+        term: 1,
+        leader: {
+          serverId: leader,
+          rebootId: LH.getServerRebootId(leader),
         }
-      };
-      let state = {
-        id: logId,
+      },
+      participantsConfig: {
         generation: 1,
+        config: {
+          effectiveWriteConcern: 2,
+          waitForSync: false,
+        },
         participants: {},
-        properties: {
-          implementation: {
-            type: "black-hole",
-          }
-        }
-      };
-      for (const server of servers) {
-        state.participants[server] = {
-          generation: 1,
-        };
-        log.participantsConfig.participants[server] = {};
       }
-      return {state, log};
-    });
-  };
+    };
+    let state = {
+      id: logId,
+      generation: 1,
+      participants: {},
+      properties: {
+        implementation: {
+          type: stateType,
+        }
+      }
+    };
+    for (const server of servers) {
+      state.participants[server] = {
+        generation: 1,
+      };
+      log.participantsConfig.participants[server] = {};
+    }
+    return {state, log};
+  });
+};
+
+const replicatedStateSuite = function (stateType) {
 
   return {
-    setUpAll, tearDownAll,
-    setUp: LH.registerAgencyTestBegin,
-    tearDown: LH.registerAgencyTestEnd,
+    setUpAll, tearDownAll, setUp, tearDown,
 
-    testCreateReplicatedState: function () {
+    ["testCreateReplicatedState_" + stateType]: function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];
-      createReplicatedState(database, logId, servers, leader);
+      createReplicatedState(database, logId, servers, leader, stateType);
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
     },
 
-    testCheckTimestampSnapshotStatus: function () {
+    ["testCheckTimestampSnapshotStatus_" + stateType]: function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];
-      createReplicatedState(database, logId, servers, leader);
+      createReplicatedState(database, logId, servers, leader, stateType);
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
       {
         const {current} = SH.readReplicatedStateAgency(database, logId);
@@ -127,11 +105,11 @@ const replicatedStateSuite = function () {
       }
     },
 
-    testReplicatedStateUpdateParticipantGeneration: function () {
+    ["testReplicatedStateUpdateParticipantGeneration_" + stateType]: function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];
-      createReplicatedState(database, logId, servers, leader);
+      createReplicatedState(database, logId, servers, leader, stateType);
 
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
 
@@ -146,11 +124,11 @@ const replicatedStateSuite = function () {
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
     },
 
-    testReplicatedStateChangeLeader: function () {
+    ["testReplicatedStateChangeLeader_" + stateType]: function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];
-      createReplicatedState(database, logId, servers, leader);
+      createReplicatedState(database, logId, servers, leader, stateType);
 
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
 
@@ -163,12 +141,12 @@ const replicatedStateSuite = function () {
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
     },
 
-    testReplicatedStateIncreaseSnapshotGen: function () {
+    ["testReplicatedStateIncreaseSnapshotGen_" + stateType]: function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];
       const follower = servers[1];
-      createReplicatedState(database, logId, servers, leader);
+      createReplicatedState(database, logId, servers, leader, stateType);
 
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
 
@@ -182,11 +160,11 @@ const replicatedStateSuite = function () {
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
     },
 
-    testReplicatedStateDropFollower: function () {
+    ["testReplicatedStateDropFollower_" + stateType]: function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];
-      createReplicatedState(database, logId, servers, leader);
+      createReplicatedState(database, logId, servers, leader, stateType);
 
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
 
@@ -210,5 +188,61 @@ const replicatedStateSuite = function () {
   };
 };
 
-jsunity.run(replicatedStateSuite);
+const replicatedStateDropSuite = function (stateType) {
+
+  const getLocalStatus = function (serverId, database, logId) {
+    let url = LH.getServerUrl(serverId);
+    const res = request.get(`${url}/_db/${database}/_api/replicated-state/${logId}/local-status`);
+    return res.json;
+  };
+
+  return {
+    setUpAll, tearDownAll, setUp, tearDown,
+
+    ["testDropLogOnly_" + stateType]: function () {
+      const logId = LH.nextUniqueLogId();
+      const servers = _.sampleSize(LH.dbservers, 3);
+      const leader = servers[0];
+      createReplicatedState(database, logId, servers, leader, stateType);
+      LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
+
+      LH.waitFor(function () {
+        for (const server of servers) {
+          const response = getLocalStatus(server, database, logId);
+          if (response.code !== 200) {
+            return Error(`Server ${server} returned code ${response.code}, expected ${200}`);
+          }
+        }
+        return true;
+      });
+
+      LH.replicatedLogDeletePlan(database, logId);
+      SH.replicatedStateDeletePlan(database, logId);
+
+      LH.waitFor(function () {
+        for (const server of servers) {
+          const response = getLocalStatus(server, database, logId);
+          if (response.code !== 404) {
+            return Error(`Server ${server} returned code ${response.code}, expected ${404}`);
+          }
+          if (response.errorNum !== 1203) {
+            return Error(`Server ${server} returned errorNum ${response.errorNum}, expected ${1203}`);
+          }
+        }
+        return true;
+      });
+    },
+  };
+};
+
+const suiteWithState = function (suite, stateType) {
+  return function () {
+    return suite(stateType);
+  };
+};
+
+for (const type of ["black-hole", "prototype"]) {
+  jsunity.run(suiteWithState(replicatedStateSuite, type));
+  jsunity.run(suiteWithState(replicatedStateDropSuite, type));
+}
 return jsunity.done();

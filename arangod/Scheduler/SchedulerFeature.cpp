@@ -317,21 +317,19 @@ void SchedulerFeature::signalStuffInit() {
 }
 
 void SchedulerFeature::signalStuffDeinit() {
-  {
-    // cancel signals
-    if (_exitSignals != nullptr) {
-      auto exitSignals = _exitSignals;
-      _exitSignals.reset();
-      exitSignals->cancel();
-    }
+  // cancel signals
+  if (_exitSignals != nullptr) {
+    auto exitSignals = _exitSignals;
+    _exitSignals.reset();
+    exitSignals->cancel();
+  }
 
 #ifndef _WIN32
-    if (_hangupSignals != nullptr) {
-      _hangupSignals->cancel();
-      _hangupSignals.reset();
-    }
-#endif
+  if (_hangupSignals != nullptr) {
+    _hangupSignals->cancel();
+    _hangupSignals.reset();
   }
+#endif
 }
 
 #ifdef _WIN32

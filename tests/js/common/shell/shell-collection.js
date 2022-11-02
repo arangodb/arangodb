@@ -1298,14 +1298,25 @@ function CollectionCacheSuite () {
       c.properties({cacheEnabled:false});
       p = c.properties();
       assertFalse(p.cacheEnabled, p);
-    }
+    },
+
+    testCollectionModifyPropertiesWithInvertedIndex : function () {
+      let c = db._create(cn);
+      c.ensureIndex({ type: "inverted", fields: [{ name: "value1" }], cacheEnabled: true });
+      let idx = c.indexes();
+      assertEqual("inverted", idx[1].type);
+      assertFalse(idx[1].hasOwnProperty("cacheEnabled"));
+
+      // update properties of collection
+      c.properties({ cacheEnabled: true });
+      // verify that cacheEnabledProperty is not there
+      idx = c.indexes();
+      assertEqual("inverted", idx[1].type);
+      assertFalse(idx[1].hasOwnProperty("cacheEnabled"));
+    },
+
   };
 }
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(CollectionSuiteErrorHandling);
 jsunity.run(CollectionSuite);

@@ -88,7 +88,7 @@ var aqlFuncs = {
   "ATTRIBUTES":"a|b,b",
   "VALUES":"a|b",
   "MERGE":"la|+",
-  "MERGE_RECURSIVE":"a,a|+",
+  "MERGE_RECURSIVE":"la|+",
   "DOCUMENT":"h.|.",
   "MATCHES":".,l|b",
   "UNSET":"a,sl|+",

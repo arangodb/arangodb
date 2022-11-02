@@ -244,6 +244,18 @@ namespace arangodb {
 
 template<>
 auto GeneralRequest::parsedValue(std::string const& key)
+    -> std::optional<std::string> {
+  bool found = false;
+  std::string const& val = this->value(key, found);
+  if (found) {
+    return val;
+  } else {
+    return std::nullopt;
+  }
+}
+
+template<>
+auto GeneralRequest::parsedValue(std::string const& key)
     -> std::optional<bool> {
   bool found = false;
   std::string const& val = this->value(key, found);
@@ -292,11 +304,6 @@ template auto GeneralRequest::parsedValue<uint64_t>(std::string const&,
                                                     uint64_t) -> uint64_t;
 template auto GeneralRequest::parsedValue<double>(std::string const&, double)
     -> double;
-
-std::shared_ptr<VPackBuilder> GeneralRequest::toVelocyPackBuilderPtr(
-    bool strictValidation) {
-  return std::make_shared<VPackBuilder>(payload(strictValidation));
-}
 
 /// @brief get VelocyPack options for validation. effectively turns off
 /// validation if strictValidation is false. This optimization can be used for

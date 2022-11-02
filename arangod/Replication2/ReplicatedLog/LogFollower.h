@@ -36,6 +36,7 @@
 #include <Basics/Guarded.h>
 #include <Futures/Future.h>
 
+#include <condition_variable>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -49,11 +50,11 @@ class LogFollower : public ILogFollower,
                     public std::enable_shared_from_this<LogFollower> {
  public:
   ~LogFollower() override;
-  static auto construct(LoggerContext const&,
-                        std::shared_ptr<ReplicatedLogMetrics> logMetrics,
-                        ParticipantId id, std::unique_ptr<LogCore> logCore,
-                        LogTerm term, std::optional<ParticipantId> leaderId)
-      -> std::shared_ptr<LogFollower>;
+  static auto construct(
+      LoggerContext const&, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+      std::shared_ptr<ReplicatedLogGlobalSettings const> options,
+      ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
+      std::optional<ParticipantId> leaderId) -> std::shared_ptr<LogFollower>;
 
   // follower only
   [[nodiscard]] auto appendEntries(AppendEntriesRequest)
@@ -87,6 +88,7 @@ class LogFollower : public ILogFollower,
  private:
   LogFollower(LoggerContext const&,
               std::shared_ptr<ReplicatedLogMetrics> logMetrics,
+              std::shared_ptr<ReplicatedLogGlobalSettings const> options,
               ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
               std::optional<ParticipantId> leaderId, InMemoryLog inMemoryLog);
 
@@ -105,6 +107,9 @@ class LogFollower : public ILogFollower,
         -> DeferredAction;
     [[nodiscard]] auto didResign() const noexcept -> bool;
 
+    [[nodiscard]] auto waitForResign()
+        -> std::pair<futures::Future<futures::Unit>, DeferredAction>;
+
     LogFollower const& _follower;
     InMemoryLog _inMemoryLog;
     std::unique_ptr<LogCore> _logCore;
@@ -116,6 +121,7 @@ class LogFollower : public ILogFollower,
     WaitForBag _waitForResignQueue;
   };
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
+  std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
   LoggerContext const _loggerContext;
   ParticipantId const _participantId;
   std::optional<ParticipantId> const _leaderId;
@@ -127,6 +133,7 @@ class LogFollower : public ILogFollower,
   Guarded<GuardedFollowerData, arangodb::basics::UnshackledMutex>
       _guardedFollowerData;
   std::atomic<bool> _appendEntriesInFlight{false};
+  std::condition_variable_any _appendEntriesInFlightCondVar{};
 
   [[nodiscard]] auto appendEntriesPreFlightChecks(
       GuardedFollowerData const&, AppendEntriesRequest const&) const noexcept

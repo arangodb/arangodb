@@ -30,6 +30,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+
 namespace arangodb {
 
 template<typename T>
@@ -57,7 +59,8 @@ struct PrototypeStateMethods {
   struct CreateOptions {
     bool waitForReady{false};
     std::optional<LogId> id;
-    std::optional<LogConfig> config;
+    std::optional<agency::LogTargetConfig> config;
+    std::optional<std::size_t> numberOfServers;
     std::vector<ParticipantId> servers;
   };
 
@@ -79,11 +82,31 @@ struct PrototypeStateMethods {
       LogId id, std::unordered_map<std::string, std::string> const& entries,
       PrototypeWriteOptions) const -> futures::Future<LogIndex> = 0;
 
+  [[nodiscard]] virtual auto compareExchange(LogId id, std::string key,
+                                             std::string oldValue,
+                                             std::string newValue,
+                                             PrototypeWriteOptions) const
+      -> futures::Future<ResultT<LogIndex>> = 0;
+
   [[nodiscard]] virtual auto get(LogId id, std::string key,
                                  LogIndex waitForApplied) const
-      -> futures::Future<ResultT<std::optional<std::string>>> = 0;
+      -> futures::Future<ResultT<std::optional<std::string>>>;
   [[nodiscard]] virtual auto get(LogId id, std::vector<std::string> keys,
                                  LogIndex waitForApplied) const
+      -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>>;
+
+  struct ReadOptions {
+    LogIndex waitForApplied{0};
+    bool allowDirtyRead{false};
+    std::optional<ParticipantId> readFrom{};
+  };
+
+  [[nodiscard]] virtual auto get(LogId id, std::string key,
+                                 ReadOptions const&) const
+      -> futures::Future<ResultT<std::optional<std::string>>>;
+
+  [[nodiscard]] virtual auto get(LogId id, std::vector<std::string> keys,
+                                 ReadOptions const&) const
       -> futures::Future<
           ResultT<std::unordered_map<std::string, std::string>>> = 0;
 
@@ -97,6 +120,10 @@ struct PrototypeStateMethods {
   [[nodiscard]] virtual auto remove(LogId id, std::vector<std::string> keys,
                                     PrototypeWriteOptions) const
       -> futures::Future<LogIndex> = 0;
+
+  virtual auto waitForApplied(LogId id, LogIndex waitForIndex) const
+      -> futures::Future<Result> = 0;
+  virtual auto drop(LogId id) const -> futures::Future<Result> = 0;
 
   struct PrototypeStatus {
     // TODO
@@ -115,6 +142,7 @@ auto inspect(Inspector& f, PrototypeStateMethods::CreateOptions& x) {
   return f.object(x).fields(
       f.field("waitForReady", x.waitForReady).fallback(true),
       f.field("id", x.id), f.field("config", x.config),
+      f.field("numberOfServers", x.numberOfServers),
       f.field("servers", x.servers).fallback(std::vector<ParticipantId>{}));
 }
 template<class Inspector>

@@ -29,6 +29,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"
@@ -66,8 +67,9 @@ namespace {
 
 const irs::payload NoPayload;
 
-size_t calculateSkipAllCount(CountApproximate approximation, size_t currentPos,
-                             irs::doc_iterator* docs) {
+[[maybe_unused]] size_t calculateSkipAllCount(CountApproximate approximation,
+                                              size_t currentPos,
+                                              irs::doc_iterator* docs) {
   TRI_ASSERT(docs);
   size_t skipped{0};
   switch (approximation) {
@@ -92,11 +94,9 @@ size_t calculateSkipAllCount(CountApproximate approximation, size_t currentPos,
   return skipped;
 }
 
-inline std::shared_ptr<arangodb::LogicalCollection>
-lookupCollection(                         // find collection
-    arangodb::transaction::Methods& trx,  // transaction
-    DataSourceId cid,                     // collection identifier
-    aql::QueryContext& query) {
+[[maybe_unused]] inline std::shared_ptr<arangodb::LogicalCollection>
+lookupCollection(arangodb::transaction::Methods& trx, DataSourceId cid,
+                 aql::QueryContext& query) {
   TRI_ASSERT(trx.state());
 
   // `Methods::documentCollection(DataSourceId)` may throw exception
@@ -117,20 +117,22 @@ lookupCollection(                         // find collection
   return collection->collection();
 }
 
-inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
+[[maybe_unused]] inline irs::doc_iterator::ptr pkColumn(
+    irs::sub_reader const& segment) {
   auto const* reader = segment.column(DocumentPrimaryKey::PK());
 
-  return reader ? reader->iterator(false) : nullptr;
+  return reader ? reader->iterator(irs::ColumnHint::kNormal) : nullptr;
 }
 
-inline irs::doc_iterator::ptr sortColumn(irs::sub_reader const& segment) {
+[[maybe_unused]] inline irs::doc_iterator::ptr sortColumn(
+    irs::sub_reader const& segment) {
   auto const* reader = segment.sort();
 
-  return reader ? reader->iterator(false) : nullptr;
+  return reader ? reader->iterator(irs::ColumnHint::kNormal) : nullptr;
 }
 
-inline void reset(ColumnIterator& column,
-                  irs::doc_iterator::ptr&& itr) noexcept {
+[[maybe_unused]] inline void reset(ColumnIterator& column,
+                                   irs::doc_iterator::ptr&& itr) noexcept {
   TRI_ASSERT(itr);
   column.itr = std::move(itr);
   column.value = irs::get<irs::payload>(*column.itr);
@@ -180,15 +182,11 @@ class BufferHeapSortContext {
 
 }  // namespace
 
-///////////////////////////////////////////////////////////////////////////////
-/// --SECTION--                                       IResearchViewExecutorBase
-///////////////////////////////////////////////////////////////////////////////
-
 IResearchViewExecutorInfos::IResearchViewExecutorInfos(
-    std::shared_ptr<const IResearchView::Snapshot> reader,
-    OutRegisters outRegisters, std::vector<RegisterId> scoreRegisters,
-    arangodb::aql::QueryContext& query, std::vector<Scorer> const& scorers,
-    std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> sort,
+    ViewSnapshotPtr reader, OutRegisters outRegisters,
+    RegisterId searchDocRegister, std::vector<RegisterId> scoreRegisters,
+    arangodb::aql::QueryContext& query, std::vector<SearchFunc> const& scorers,
+    std::pair<arangodb::iresearch::IResearchSortBase const*, size_t> sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
     std::pair<bool, bool> volatility,
@@ -196,27 +194,31 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
     iresearch::CountApproximate countApproximate,
     iresearch::FilterOptimization filterOptimization,
-    std::vector<std::pair<size_t, bool>> scorersSort, size_t scorersSortLimit)
-    : _scoreRegisters(std::move(scoreRegisters)),
-      _reader(std::move(reader)),
-      _query(query),
-      _scorers(scorers),
-      _sort(std::move(sort)),
-      _storedValues(storedValues),
-      _plan(plan),
-      _outVariable(outVariable),
-      _filterCondition(filterCondition),
-      _volatileSort(volatility.second),
+    std::vector<std::pair<size_t, bool>> scorersSort, size_t scorersSortLimit,
+    iresearch::SearchMeta const* meta)
+    : _searchDocOutReg{searchDocRegister},
+      _scoreRegisters{std::move(scoreRegisters)},
+      _scoreRegistersCount{_scoreRegisters.size()},
+      _reader{std::move(reader)},
+      _query{query},
+      _scorers{scorers},
+      _sort{std::move(sort)},
+      _storedValues{storedValues},
+      _plan{plan},
+      _outVariable{outVariable},
+      _filterCondition{filterCondition},
+      _varInfoMap{varInfoMap},
+      _outNonMaterializedViewRegs{std::move(outNonMaterializedViewRegs)},
+      _countApproximate{countApproximate},
+      _filterOptimization{filterOptimization},
+      _scorersSort{std::move(scorersSort)},
+      _scorersSortLimit{scorersSortLimit},
+      _meta{meta},
+      _depth{depth},
+      _filterConditionIsEmpty{isFilterConditionEmpty(&_filterCondition)},
+      _volatileSort{volatility.second},
       // `_volatileSort` implies `_volatileFilter`
-      _volatileFilter(_volatileSort || volatility.first),
-      _varInfoMap(varInfoMap),
-      _depth(depth),
-      _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)),
-      _countApproximate(countApproximate),
-      _filterConditionIsEmpty(::filterConditionIsEmpty(&_filterCondition)),
-      _filterOptimization(filterOptimization),
-      _scorersSort(std::move(scorersSort)),
-      _scorersSortLimit(scorersSortLimit) {
+      _volatileFilter{_volatileSort || volatility.first} {
   TRI_ASSERT(_reader != nullptr);
   std::tie(_documentOutReg, _collectionPointerReg) = std::visit(
       overload{
@@ -239,8 +241,7 @@ IResearchViewExecutorInfos::getOutNonMaterializedViewRegs() const noexcept {
   return _outNonMaterializedViewRegs;
 }
 
-std::shared_ptr<const arangodb::iresearch::IResearchView::Snapshot>
-IResearchViewExecutorInfos::getReader() const noexcept {
+ViewSnapshotPtr IResearchViewExecutorInfos::getReader() const noexcept {
   return _reader;
 }
 
@@ -248,7 +249,7 @@ aql::QueryContext& IResearchViewExecutorInfos::getQuery() noexcept {
   return _query;
 }
 
-const std::vector<arangodb::iresearch::Scorer>&
+const std::vector<arangodb::iresearch::SearchFunc>&
 IResearchViewExecutorInfos::scorers() const noexcept {
   return _scorers;
 }
@@ -286,7 +287,11 @@ bool IResearchViewExecutorInfos::volatileFilter() const noexcept {
   return _volatileFilter;
 }
 
-const std::pair<const arangodb::iresearch::IResearchViewSort*, size_t>&
+bool IResearchViewExecutorInfos::isOldMangling() const noexcept {
+  return _meta == nullptr;
+}
+
+const std::pair<const arangodb::iresearch::IResearchSortBase*, size_t>&
 IResearchViewExecutorInfos::sort() const noexcept {
   return _sort;
 }
@@ -319,15 +324,11 @@ ExecutionStats& aql::operator+=(
   return executionStats;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// --SECTION--                                       IResearchViewExecutorBase
-///////////////////////////////////////////////////////////////////////////////
-
-template<typename Impl, typename Traits>
+template<typename Impl, typename ExecutionTraits>
 template<arangodb::iresearch::MaterializeType, typename>
-IndexIterator::DocumentCallback
-IResearchViewExecutorBase<Impl, Traits>::ReadContext::copyDocumentCallback(
-    ReadContext& ctx) {
+IndexIterator::DocumentCallback IResearchViewExecutorBase<
+    Impl, ExecutionTraits>::ReadContext::copyDocumentCallback(ReadContext&
+                                                                  ctx) {
   typedef std::function<IndexIterator::DocumentCallback(ReadContext&)>
       CallbackFactory;
 
@@ -340,8 +341,8 @@ IResearchViewExecutorBase<Impl, Traits>::ReadContext::copyDocumentCallback(
 
   return callbackFactory(ctx);
 }
-template<typename Impl, typename Traits>
-IResearchViewExecutorBase<Impl, Traits>::ReadContext::ReadContext(
+template<typename Impl, typename ExecutionTraits>
+IResearchViewExecutorBase<Impl, ExecutionTraits>::ReadContext::ReadContext(
     aql::RegisterId documentOutReg, aql::RegisterId collectionPointerReg,
     InputAqlItemRow& inputRow, OutputAqlItemRow& outputRow)
     : inputRow(inputRow),
@@ -380,12 +381,14 @@ auto ScoreIterator::end() noexcept {
 template<typename ValueType, bool copyStored>
 IndexReadBuffer<ValueType, copyStored>::IndexReadBuffer(
     size_t const numScoreRegisters, ResourceMonitor& monitor)
-    : _numScoreRegisters(numScoreRegisters),
-      _keyBaseIdx(0),
-      _maxSize(0),
-      _heapSizeLeft(0),
-      _storedValuesCount(0),
-      _memoryTracker(monitor) {}
+    : _numScoreRegisters{numScoreRegisters},
+      _keyBaseIdx{0},
+      _maxSize{0},
+      _heapSizeLeft{0},
+      _storedValuesCount{0},
+      _memoryTracker{monitor} {
+  // FIXME(gnusi): reserve memory for vectors?
+}
 
 template<typename ValueType, bool copyStored>
 ValueType const& IndexReadBuffer<ValueType, copyStored>::getValue(
@@ -469,13 +472,15 @@ IndexReadBuffer<ValueType, copyStored>::getStoredValues() const noexcept {
 }
 
 template<typename ValueType, bool copyStored>
-void IndexReadBuffer<ValueType, copyStored>::pushScore(float_t scoreValue) {
-  _scoreBuffer.emplace_back(scoreValue);
-}
-
-template<typename ValueType, bool copyStored>
-void IndexReadBuffer<ValueType, copyStored>::pushScoreNone() {
-  _scoreBuffer.emplace_back(std::numeric_limits<float_t>::quiet_NaN());
+irs::score_t* IndexReadBuffer<ValueType, copyStored>::pushNoneScores(
+    size_t count) {
+  const size_t prevSize = _scoreBuffer.size();
+  // count is likely 1 as using several different scores in one query
+  // makes not much sense
+  while (count--) {
+    _scoreBuffer.emplace_back(std::numeric_limits<float_t>::quiet_NaN());
+  }
+  return _scoreBuffer.data() + prevSize;
 }
 
 template<typename ValueType, bool copyStored>
@@ -484,6 +489,7 @@ void IndexReadBuffer<ValueType, copyStored>::clear() noexcept {
   _heapSizeLeft = _maxSize;
   _keyBuffer.clear();
   _scoreBuffer.clear();
+  _searchDocs.clear();
   _storedValuesBuffer.clear();
   _rows.clear();
 }
@@ -521,10 +527,9 @@ void IndexReadBuffer<ValueType, copyStored>::assertSizeCoherence()
   TRI_ASSERT(_scoreBuffer.size() == _keyBuffer.size() * _numScoreRegisters);
 }
 
-template<typename Impl, typename Traits>
-IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(
-    IResearchViewExecutorBase::Fetcher&,
-    IResearchViewExecutorBase::Infos& infos)
+template<typename Impl, typename ExecutionTraits>
+IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
+    Fetcher&, Infos& infos)
     : _trx(infos.getQuery().newTrxContext()),
       _infos(infos),
       _inputRow(CreateInvalidInputRowHint{}),  // TODO: Remove me after refactor
@@ -535,12 +540,41 @@ IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(
       _filterCtx(_ctx),  // arangodb::iresearch::ExpressionExecutionContext
       _reader(infos.getReader()),
       _filter(irs::filter::prepared::empty()),
-      _isInitialized(false) {}
+      _isInitialized(false) {
+  if constexpr (ExecutionTraits::EmitSearchDoc) {
+    TRI_ASSERT(this->infos().searchDocIdRegId().isValid());
+    auto const* key = &infos.outVariable();
+    _filterCookie = &ensureFilterCookie(_trx, key).filter;
+  }
 
-template<typename Impl, typename Traits>
+  if (auto const* meta = infos.meta(); meta != nullptr) {
+    auto const& vocbase = _trx.vocbase();
+    auto const& analyzerFeature =
+        vocbase.server().getFeature<IResearchAnalyzerFeature>();
+    TRI_ASSERT(_trx.state());
+    auto const& revision = _trx.state()->analyzersRevision();
+    auto getAnalyzer = [&](std::string_view shortName) -> FieldMeta::Analyzer {
+      auto analyzer = analyzerFeature.get(shortName, vocbase, revision);
+      if (!analyzer) {
+        return makeEmptyAnalyzer();
+      }
+      return {std::move(analyzer), std::string{shortName}};
+    };
+    _provider = meta->createProvider(getAnalyzer);
+  }
+}
+
+template<typename Impl, typename ExecutionTraits>
+void IResearchViewExecutorBase<Impl, ExecutionTraits>::initializeCursor() {
+  _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  _isInitialized = false;
+}
+
+template<typename Impl, typename ExecutionTraits>
 std::tuple<ExecutorState,
-           typename IResearchViewExecutorBase<Impl, Traits>::Stats, AqlCall>
-IResearchViewExecutorBase<Impl, Traits>::produceRows(
+           typename IResearchViewExecutorBase<Impl, ExecutionTraits>::Stats,
+           AqlCall>
+IResearchViewExecutorBase<Impl, ExecutionTraits>::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   IResearchViewStats stats{};
   AqlCall upstreamCall{};
@@ -589,11 +623,11 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(
   return {reportedState, stats, upstreamCall};
 }
 
-template<typename Impl, typename Traits>
+template<typename Impl, typename ExecutionTraits>
 std::tuple<ExecutorState,
-           typename IResearchViewExecutorBase<Impl, Traits>::Stats, size_t,
-           AqlCall>
-IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(
+           typename IResearchViewExecutorBase<Impl, ExecutionTraits>::Stats,
+           size_t, AqlCall>
+IResearchViewExecutorBase<Impl, ExecutionTraits>::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
   TRI_ASSERT(_indexReadBuffer.empty() ||
              (!this->infos().scoresSort().empty() && call.needsFullCount()));
@@ -656,9 +690,9 @@ IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(
   return {reportedState, stats, call.getSkipCount(), upstreamCall};
 }
 
-template<typename Impl, typename Traits>
-bool IResearchViewExecutorBase<Impl, Traits>::next(ReadContext& ctx,
-                                                   IResearchViewStats& stats) {
+template<typename Impl, typename ExecutionTraits>
+bool IResearchViewExecutorBase<Impl, ExecutionTraits>::next(
+    ReadContext& ctx, IResearchViewStats& stats) {
   auto& impl = static_cast<Impl&>(*this);
 
   while (true) {
@@ -673,7 +707,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::next(ReadContext& ctx,
     if (_indexReadBuffer.empty()) {
       return false;
     }
-    IndexReadBufferEntry bufferEntry = _indexReadBuffer.pop_front();
+    IndexReadBufferEntry const bufferEntry = _indexReadBuffer.pop_front();
 
     if (ADB_LIKELY(impl.writeRow(ctx, bufferEntry))) {
       break;
@@ -687,58 +721,41 @@ bool IResearchViewExecutorBase<Impl, Traits>::next(ReadContext& ctx,
   return true;
 }
 
-template<typename Impl, typename Traits>
-typename IResearchViewExecutorBase<Impl, Traits>::Infos const&
-IResearchViewExecutorBase<Impl, Traits>::infos() const noexcept {
-  return _infos;
-}
-
-template<typename Impl, typename Traits>
-void IResearchViewExecutorBase<Impl, Traits>::fillScores(
-    ReadContext const& /*ctx*/, float_t const* begin, float_t const* end) {
-  TRI_ASSERT(Traits::Ordered);
-
-  // scorer registers are placed right before document output register
-  // is used here currently only for assertions.
-  std::vector<RegisterId> const& scoreRegs = infos().getScoreRegisters();
-  size_t numScoreReg = 0;
-
-  // copy scores, registerId's are sequential
-  for (; begin != end; ++begin, ++numScoreReg) {
-    TRI_ASSERT(numScoreReg < scoreRegs.size());
-    _indexReadBuffer.pushScore(*begin);
-  }
-
-  // We should either have no _scrVals to evaluate, or all
-  //  TRI_ASSERT(begin == nullptr || numScoreReg >= scoreRegs.size());
-
-  while (numScoreReg < scoreRegs.size()) {
-    _indexReadBuffer.pushScoreNone();
-    ++numScoreReg;
-  }
-
-  // we should have written exactly all score registers by now
-  TRI_ASSERT(numScoreReg == scoreRegs.size());
-}
-
-template<typename Impl, typename Traits>
-void IResearchViewExecutorBase<Impl, Traits>::reset() {
+template<typename Impl, typename ExecutionTraits>
+void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
   _ctx._inputRow = _inputRow;
 
-  ExecutionPlan const* plan = &infos().plan();
-  iresearch::QueryContext const queryCtx = {&_trx,
-                                            plan,
-                                            plan->getAst(),
-                                            &_ctx,
-                                            _reader.get(),
-                                            &infos().outVariable(),
-                                            infos().filterOptimization()};
+  // `_volatileSort` implies `_volatileFilter`
+  if (infos().volatileFilter() || !_isInitialized) {
+    iresearch::QueryContext queryCtx{
+        .trx = &_trx,
+        .ast = infos().plan().getAst(),
+        .ctx = &_ctx,
+        .index = _reader.get(),
+        .ref = &infos().outVariable(),
+        .filterOptimization = infos().filterOptimization(),
+        .namePrefix = nestedRoot(_reader->hasNestedFields()),
+        .isSearchQuery = true,
+        .isOldMangling = infos().isOldMangling()};
 
-  if (infos().volatileFilter() ||
-      !_isInitialized) {  // `_volatileSort` implies `_volatileFilter`
+    // The analyzer is referenced in the FilterContext and used during the
+    // following ::makeFilter() call, so can't be a temporary.
+    auto const emptyAnalyzer = makeEmptyAnalyzer();
+    AnalyzerProvider* fieldAnalyzerProvider = nullptr;
+    auto const* contextAnalyzer = &FieldMeta::identity();
+    if (!infos().isOldMangling()) {
+      fieldAnalyzerProvider = &_provider;
+      contextAnalyzer = &emptyAnalyzer;
+    }
+
+    FilterContext const filterCtx{
+        .query = queryCtx,
+        .contextAnalyzer = *contextAnalyzer,
+        .fieldAnalyzerProvider = fieldAnalyzerProvider};
+
     irs::Or root;
-
-    auto rv = FilterFactory::filter(&root, queryCtx, infos().filterCondition());
+    auto const rv =
+        FilterFactory::filter(&root, filterCtx, infos().filterCondition());
 
     if (rv.fail()) {
       arangodb::velocypack::Builder builder;
@@ -751,35 +768,52 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
     }
 
     if (infos().volatileSort() || !_isInitialized) {
-      irs::order order;
-      irs::sort::ptr scorer;
+      auto const& scorers = infos().scorers();
 
-      for (auto const& scorerNode : infos().scorers()) {
+      containers::SmallVector<irs::sort::ptr, 2> order;
+      order.reserve(scorers.size());
+
+      for (irs::sort::ptr scorer; auto const& scorerNode : scorers) {
         TRI_ASSERT(scorerNode.node);
 
-        if (!OrderFactory::scorer(&scorer, *scorerNode.node, queryCtx)) {
-          // failed to append sort
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+        if (!order_factory::scorer(&scorer, *scorerNode.node, queryCtx)) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              "failed to build scorers while querying arangosearch view");
         }
 
-        // sorting order doesn't matter
-        order.add(true, std::move(scorer));
+        assert(scorer);
+        order.emplace_back(std::move(scorer));
       }
 
       // compile order
-      _order = order.prepare();
+      _order = irs::Order::Prepare(order);
     }
 
     // compile filter
-    _filter = root.prepare(*_reader, _order, irs::no_boost(), &_filterCtx);
+    _filter = root.prepare(*_reader, _order, irs::kNoBoost, &_filterCtx);
+
+    if constexpr (ExecutionTraits::EmitSearchDoc) {
+      TRI_ASSERT(_filterCookie);
+      *_filterCookie = _filter.get();
+    }
 
     _isInitialized = true;
   }
 }
 
-template<typename Impl, typename Traits>
+template<typename Impl, typename ExecutionTraits>
+void IResearchViewExecutorBase<Impl, ExecutionTraits>::writeSearchDoc(
+    ReadContext& ctx, SearchDoc const& doc, RegisterId reg) {
+  TRI_ASSERT(doc.isValid());
+  AqlValue value{doc.encode(_buf)};
+  AqlValueGuard guard{value, true};
+  ctx.outputRow.moveValueInto(reg, ctx.inputRow, guard);
+}
+
+template<typename Impl, typename ExecutionTraits>
 template<arangodb::iresearch::MaterializeType, typename>
-bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
+bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeLocalDocumentId(
     ReadContext& ctx, LocalDocumentId const& documentId,
     LogicalCollection const& collection) {
   // we will need collection Id also as View could produce documents from
@@ -805,11 +839,11 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
   }
 }
 
-template<typename Impl, typename Traits>
-inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(
+template<typename Impl, typename ExecutionTraits>
+inline bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeStoredValue(
     ReadContext& ctx,
-    typename IResearchViewExecutorBase<Impl, Traits>::IndexReadBufferType::
-        StoredValuesContainer const& storedValues,
+    typename IResearchViewExecutorBase<Impl, ExecutionTraits>::
+        IndexReadBufferType::StoredValuesContainer const& storedValues,
     size_t index, std::map<size_t, RegisterId> const& fieldsRegs) {
   TRI_ASSERT(index < storedValues.size());
   auto const& storedValue = storedValues[index];
@@ -835,11 +869,19 @@ inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(
   return true;
 }
 
-template<typename Impl, typename Traits>
-bool IResearchViewExecutorBase<Impl, Traits>::writeRow(
+template<typename Impl, typename ExecutionTraits>
+bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
     ReadContext& ctx, IndexReadBufferEntry bufferEntry,
     LocalDocumentId const& documentId, LogicalCollection const& collection) {
   TRI_ASSERT(documentId.isSet());
+
+  if constexpr (ExecutionTraits::EmitSearchDoc) {
+    auto reg = this->infos().searchDocIdRegId();
+    TRI_ASSERT(reg.isValid());
+
+    this->writeSearchDoc(
+        ctx, this->_indexReadBuffer.getSearchDoc(bufferEntry.getKeyIdx()), reg);
+  }
   if constexpr (Traits::MaterializeType == MaterializeType::Materialize) {
     // read document from underlying storage engine, if we got an id
     if (ADB_UNLIKELY(
@@ -873,7 +915,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(
     }
   } else if constexpr (Traits::MaterializeType ==
                            MaterializeType::NotMaterialize &&
-                       !Traits::Ordered) {
+                       !Traits::Ordered && !Traits::EmitSearchDoc) {
     ctx.outputRow.copyRow(ctx.inputRow);
   }
   // in the ordered case we have to write scores as well as a document
@@ -896,8 +938,8 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(
   return true;
 }
 
-template<typename Impl, typename Traits>
-void IResearchViewExecutorBase<Impl, Traits>::readStoredValues(
+template<typename Impl, typename ExecutionTraits>
+void IResearchViewExecutorBase<Impl, ExecutionTraits>::readStoredValues(
     irs::document const& doc, size_t index) {
   TRI_ASSERT(index < _storedValuesReaders.size());
   auto const& reader = _storedValuesReaders[index];
@@ -913,8 +955,8 @@ void IResearchViewExecutorBase<Impl, Traits>::readStoredValues(
   }
 }
 
-template<typename Impl, typename Traits>
-void IResearchViewExecutorBase<Impl, Traits>::pushStoredValues(
+template<typename Impl, typename ExecutionTraits>
+void IResearchViewExecutorBase<Impl, ExecutionTraits>::pushStoredValues(
     irs::document const& doc, size_t storedValuesIndex /*= 0*/) {
   auto const& columnsFieldsRegs = _infos.getOutNonMaterializedViewRegs();
   TRI_ASSERT(!columnsFieldsRegs.empty());
@@ -925,14 +967,14 @@ void IResearchViewExecutorBase<Impl, Traits>::pushStoredValues(
   }
 }
 
-template<typename Impl, typename Traits>
-bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(
+template<typename Impl, typename ExecutionTraits>
+bool IResearchViewExecutorBase<Impl, ExecutionTraits>::getStoredValuesReaders(
     irs::sub_reader const& segmentReader, size_t storedValuesIndex /*= 0*/) {
   auto const& columnsFieldsRegs = _infos.getOutNonMaterializedViewRegs();
   if (!columnsFieldsRegs.empty()) {
     auto columnFieldsRegs = columnsFieldsRegs.cbegin();
     auto index = storedValuesIndex * columnsFieldsRegs.size();
-    if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
+    if (IResearchViewNode::kSortColumnNumber == columnFieldsRegs->first) {
       auto sortReader = ::sortColumn(segmentReader);
       if (ADB_UNLIKELY(!sortReader)) {
         LOG_TOPIC("bc5bd", WARN, arangodb::iresearch::TOPIC)
@@ -948,7 +990,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(
       auto const& columns = _infos.storedValues().columns();
       TRI_ASSERT(!columns.empty());
       for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
-        TRI_ASSERT(IResearchViewNode::SortColumnNumber <
+        TRI_ASSERT(IResearchViewNode::kSortColumnNumber <
                    columnFieldsRegs->first);
         auto const storedColumnNumber =
             static_cast<size_t>(columnFieldsRegs->first);
@@ -962,48 +1004,29 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(
           return false;
         }
         ::reset(_storedValuesReaders[index++],
-                storedValuesReader->iterator(false));
+                storedValuesReader->iterator(irs::ColumnHint::kNormal));
       }
     }
   }
   return true;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// --SECTION--                                           IResearchViewExecutor
-///////////////////////////////////////////////////////////////////////////////
-
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-IResearchViewExecutor<copyStored, ordered,
-                      materializeType>::IResearchViewExecutor(Fetcher& fetcher,
+template<typename ExecutionTraits>
+IResearchViewExecutor<ExecutionTraits>::IResearchViewExecutor(Fetcher& fetcher,
                                                               Infos& infos)
-    : Base(fetcher, infos),
-      _pkReader(),
-      _itr(),
-      _readerOffset(0),
-      _currentSegmentPos(0),
-      _totalPos(0),
-      _scr(&irs::score::no_score()),
-      _numScores(0) {
+    : Base{fetcher, infos},
+      _readerOffset{0},
+      _currentSegmentPos{0},
+      _totalPos{0},
+      _scr{&irs::score::kNoScore},
+      _numScores{0} {
   this->_storedValuesReaders.resize(
       this->_infos.getOutNonMaterializedViewRegs().size());
   TRI_ASSERT(infos.scoresSort().empty());
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-void IResearchViewExecutor<copyStored, ordered, materializeType>::
-    evaluateScores(ReadContext const& ctx) {
-  // This must not be called in the unordered case.
-  TRI_ASSERT(ordered);
-
-  // in arangodb we assume all scorers return float_t
-  auto begin = reinterpret_cast<float_t const*>(_scr->evaluate());
-
-  this->fillScores(ctx, begin, begin + _numScores);
-}
-
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-bool IResearchViewExecutor<copyStored, ordered, materializeType>::readPK(
+template<typename ExecutionTraits>
+bool IResearchViewExecutor<ExecutionTraits>::readPK(
     LocalDocumentId& documentId) {
   TRI_ASSERT(!documentId.isSet());
   TRI_ASSERT(_itr);
@@ -1034,16 +1057,15 @@ bool IResearchViewExecutor<copyStored, ordered, materializeType>::readPK(
   return false;
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::
-    IResearchViewHeapSortExecutor(Fetcher& fetcher, Infos& infos)
-    : Base(fetcher, infos) {
+template<typename ExecutionTraits>
+IResearchViewHeapSortExecutor<ExecutionTraits>::IResearchViewHeapSortExecutor(
+    Fetcher& fetcher, Infos& infos)
+    : Base{fetcher, infos} {
   this->_indexReadBuffer.setScoresSort(this->_infos.scoresSort());
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-size_t
-IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skipAll(
+template<typename ExecutionTraits>
+size_t IResearchViewHeapSortExecutor<ExecutionTraits>::skipAll(
     IResearchViewStats& stats) {
   TRI_ASSERT(this->_filter);
   size_t totalSkipped{0};
@@ -1060,8 +1082,10 @@ IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skipAll(
     size_t const count = this->_reader->size();
     for (size_t readerOffset = 0; readerOffset < count; ++readerOffset) {
       auto& segmentReader = (*this->_reader)[readerOffset];
-      auto itr = this->_filter->execute(segmentReader, this->_order,
-                                        &this->_filterCtx);
+      auto itr = this->_filter->execute({.segment = segmentReader,
+                                         .scorers = this->_order,
+                                         .ctx = &this->_filterCtx,
+                                         .mode = irs::ExecutionMode::kAll});
       TRI_ASSERT(itr);
       if (!itr) {
         continue;
@@ -1085,9 +1109,8 @@ IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skipAll(
   return totalSkipped;
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-size_t
-IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skip(
+template<typename ExecutionTraits>
+size_t IResearchViewHeapSortExecutor<ExecutionTraits>::skip(
     size_t limit, IResearchViewStats& stats) {
   if (fillBufferInternal(limit)) {
     stats.incrScanned(getScanned());
@@ -1106,9 +1129,8 @@ IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skip(
   }
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-void IResearchViewHeapSortExecutor<copyStored, ordered,
-                                   materializeType>::reset() {
+template<typename ExecutionTraits>
+void IResearchViewHeapSortExecutor<ExecutionTraits>::reset() {
   Base::reset();
   _totalCount = 0;
   _bufferedCount = 0;
@@ -1118,24 +1140,24 @@ void IResearchViewHeapSortExecutor<copyStored, ordered,
       this->_infos.getOutNonMaterializedViewRegs().size());
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-bool IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::
-    writeRow(IResearchViewHeapSortExecutor::ReadContext& ctx,
-             IndexReadBufferEntry bufferEntry) {
+template<typename ExecutionTraits>
+bool IResearchViewHeapSortExecutor<ExecutionTraits>::writeRow(
+    IResearchViewHeapSortExecutor::ReadContext& ctx,
+    IndexReadBufferEntry bufferEntry) {
   auto const& val = this->_indexReadBuffer.getValue(bufferEntry);
   return Base::writeRow(ctx, bufferEntry, val.documentId(),
                         *val.collectionPtr());
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-void IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::
-    fillBuffer(IResearchViewHeapSortExecutor::ReadContext&) {
+template<typename ExecutionTraits>
+void IResearchViewHeapSortExecutor<ExecutionTraits>::fillBuffer(
+    IResearchViewHeapSortExecutor::ReadContext&) {
   fillBufferInternal(0);
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-bool IResearchViewHeapSortExecutor<
-    copyStored, ordered, materializeType>::fillBufferInternal(size_t skip) {
+template<typename ExecutionTraits>
+bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
+    size_t skip) {
   if (_bufferFilled) {
     return false;
   }
@@ -1150,6 +1172,11 @@ bool IResearchViewHeapSortExecutor<
       this->_infos.getOutNonMaterializedViewRegs().size());
   auto const count = this->_reader->size();
 
+  containers::SmallVector<irs::score_t, 4> scores;
+  if constexpr (ExecutionTraits::Ordered) {
+    scores.resize(this->infos().scorers().size());
+  }
+
   irs::doc_iterator::ptr itr;
   irs::document const* doc{};
   size_t numScores{0};
@@ -1157,18 +1184,20 @@ bool IResearchViewHeapSortExecutor<
   for (size_t readerOffset = 0; readerOffset < count;) {
     if (!itr) {
       auto& segmentReader = (*this->_reader)[readerOffset];
-      itr = this->_filter->execute(segmentReader, this->_order,
-                                   &this->_filterCtx);
+      itr = this->_filter->execute({.segment = segmentReader,
+                                    .scorers = this->_order,
+                                    .ctx = &this->_filterCtx,
+                                    .mode = irs::ExecutionMode::kAll});
       TRI_ASSERT(itr);
       doc = irs::get<irs::document>(*itr);
       TRI_ASSERT(doc);
-      if constexpr (ordered) {
+      if constexpr (ExecutionTraits::Ordered) {
         scr = irs::get<irs::score>(*itr);
         if (!scr) {
-          scr = &irs::score::no_score();
+          scr = &irs::score::kNoScore;
           numScores = 0;
         } else {
-          numScores = this->infos().scorers().size();
+          numScores = scores.size();
         }
       }
       itr = segmentReader.mask(std::move(itr));
@@ -1182,11 +1211,13 @@ bool IResearchViewHeapSortExecutor<
       continue;
     }
     ++_totalCount;
-    auto scoresBegin = reinterpret_cast<float_t const*>(scr->evaluate());
+
+    (*scr)(scores.data());
+
     this->_indexReadBuffer.pushSortedValue(
         typename decltype(this->_indexReadBuffer)::KeyValueType(doc->value,
                                                                 readerOffset),
-        scoresBegin, numScores);
+        scores.data(), numScores);
   }
   this->_indexReadBuffer.finalizeHeapSort();
   _bufferedCount = this->_indexReadBuffer.size();
@@ -1232,7 +1263,8 @@ bool IResearchViewHeapSortExecutor<
           continue;
         }
         ::reset(pkReader, std::move(pkIt));
-        if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
+        if constexpr ((ExecutionTraits::MaterializeType &
+                       MaterializeType::UseStoredValues) ==
                       MaterializeType::UseStoredValues) {
           if (ADB_UNLIKELY(
                   !this->getStoredValuesReaders(segmentReader, segmentIdx))) {
@@ -1259,7 +1291,8 @@ bool IResearchViewHeapSortExecutor<
         }
       }
       value.decode(documentId, collection.get());
-      if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
+      if constexpr ((ExecutionTraits::MaterializeType &
+                     MaterializeType::UseStoredValues) ==
                     MaterializeType::UseStoredValues) {
         auto const& columnsFieldsRegs =
             this->infos().getOutNonMaterializedViewRegs();
@@ -1283,6 +1316,12 @@ bool IResearchViewHeapSortExecutor<
         }
       }
 
+      if constexpr (ExecutionTraits::EmitSearchDoc) {
+        TRI_ASSERT(this->infos().searchDocIdRegId().isValid());
+        this->_indexReadBuffer.pushSearchDoc((*this->_reader)[segmentIdx],
+                                             irsDocId);
+      }
+
       this->_indexReadBuffer.assertSizeCoherence();
       ++orderIt;
     }
@@ -1290,8 +1329,8 @@ bool IResearchViewHeapSortExecutor<
   return true;
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-void IResearchViewExecutor<copyStored, ordered, materializeType>::fillBuffer(
+template<typename ExecutionTraits>
+void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
     IResearchViewExecutor::ReadContext& ctx) {
   TRI_ASSERT(this->_filter != nullptr);
   size_t const atMost = ctx.outputRow.numRowsLeft();
@@ -1369,13 +1408,20 @@ void IResearchViewExecutor<copyStored, ordered, materializeType>::fillBuffer(
 
     this->_indexReadBuffer.pushValue(documentId);
 
-    // in the ordered case we have to write scores as well as a document
-    if constexpr (ordered) {
-      // Writes into _scoreBuffer
-      evaluateScores(ctx);
+    if constexpr (ExecutionTraits::EmitSearchDoc) {
+      TRI_ASSERT(this->infos().searchDocIdRegId().isValid());
+      this->_indexReadBuffer.pushSearchDoc((*this->_reader)[_readerOffset],
+                                           _doc->value);
     }
 
-    if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
+    // in the ordered case we have to write scores as well as a document
+    if constexpr (ExecutionTraits::Ordered) {
+      // Writes into _scoreBuffer
+      this->fillScores(*_scr);
+    }
+
+    if constexpr ((ExecutionTraits::MaterializeType &
+                   MaterializeType::UseStoredValues) ==
                   MaterializeType::UseStoredValues) {
       TRI_ASSERT(_doc);
       this->pushStoredValues(*_doc);
@@ -1400,9 +1446,8 @@ void IResearchViewExecutor<copyStored, ordered, materializeType>::fillBuffer(
   }
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-bool IResearchViewExecutor<copyStored, ordered,
-                           materializeType>::resetIterator() {
+template<typename ExecutionTraits>
+bool IResearchViewExecutor<ExecutionTraits>::resetIterator() {
   TRI_ASSERT(this->_filter);
   TRI_ASSERT(!_itr);
 
@@ -1419,23 +1464,27 @@ bool IResearchViewExecutor<copyStored, ordered,
 
   ::reset(_pkReader, std::move(it));
 
-  if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
+  if constexpr ((ExecutionTraits::MaterializeType &
+                 MaterializeType::UseStoredValues) ==
                 MaterializeType::UseStoredValues) {
     if (ADB_UNLIKELY(!this->getStoredValuesReaders(segmentReader))) {
       return false;
     }
   }
 
-  _itr = this->_filter->execute(segmentReader, this->_order, &this->_filterCtx);
+  _itr = this->_filter->execute({.segment = segmentReader,
+                                 .scorers = this->_order,
+                                 .ctx = &this->_filterCtx,
+                                 .mode = irs::ExecutionMode::kAll});
   TRI_ASSERT(_itr);
   _doc = irs::get<irs::document>(*_itr);
   TRI_ASSERT(_doc);
 
-  if constexpr (ordered) {
+  if constexpr (ExecutionTraits::Ordered) {
     _scr = irs::get<irs::score>(*_itr);
 
     if (!_scr) {
-      _scr = &irs::score::no_score();
+      _scr = &irs::score::kNoScore;
       _numScores = 0;
     } else {
       _numScores = this->infos().scorers().size();
@@ -1448,8 +1497,8 @@ bool IResearchViewExecutor<copyStored, ordered,
   return true;
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-void IResearchViewExecutor<copyStored, ordered, materializeType>::reset() {
+template<typename ExecutionTraits>
+void IResearchViewExecutor<ExecutionTraits>::reset() {
   Base::reset();
 
   // reset iterator state
@@ -1460,9 +1509,9 @@ void IResearchViewExecutor<copyStored, ordered, materializeType>::reset() {
   _totalPos = 0;
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-size_t IResearchViewExecutor<copyStored, ordered, materializeType>::skip(
-    size_t limit, IResearchViewStats&) {
+template<typename ExecutionTraits>
+size_t IResearchViewExecutor<ExecutionTraits>::skip(size_t limit,
+                                                    IResearchViewStats&) {
   TRI_ASSERT(this->_indexReadBuffer.empty());
   TRI_ASSERT(this->_filter);
 
@@ -1490,9 +1539,8 @@ size_t IResearchViewExecutor<copyStored, ordered, materializeType>::skip(
   return toSkip - limit;
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-size_t IResearchViewExecutor<copyStored, ordered, materializeType>::skipAll(
-    IResearchViewStats&) {
+template<typename ExecutionTraits>
+size_t IResearchViewExecutor<ExecutionTraits>::skipAll(IResearchViewStats&) {
   TRI_ASSERT(this->_indexReadBuffer.empty());
   TRI_ASSERT(this->_filter);
 
@@ -1521,9 +1569,8 @@ size_t IResearchViewExecutor<copyStored, ordered, materializeType>::skipAll(
   return skipped;
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-void IResearchViewExecutor<copyStored, ordered,
-                           materializeType>::saveCollection() {
+template<typename ExecutionTraits>
+void IResearchViewExecutor<ExecutionTraits>::saveCollection() {
   // We're in the middle of a reader, save the collection in case produceRows()
   // needs it.
   if (_itr) {
@@ -1554,8 +1601,8 @@ void IResearchViewExecutor<copyStored, ordered,
   }
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-bool IResearchViewExecutor<copyStored, ordered, materializeType>::writeRow(
+template<typename ExecutionTraits>
+bool IResearchViewExecutor<ExecutionTraits>::writeRow(
     IResearchViewExecutor::ReadContext& ctx, IndexReadBufferEntry bufferEntry) {
   TRI_ASSERT(_collection);
 
@@ -1563,13 +1610,9 @@ bool IResearchViewExecutor<copyStored, ordered, materializeType>::writeRow(
   return Base::writeRow(ctx, bufferEntry, val, *_collection);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// --SECTION--                                      IResearchViewMergeExecutor
-///////////////////////////////////////////////////////////////////////////////
-
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-IResearchViewMergeExecutor<copyStored, ordered, materializeType>::
-    IResearchViewMergeExecutor(Fetcher& fetcher, Infos& infos)
+template<typename ExecutionTraits>
+IResearchViewMergeExecutor<ExecutionTraits>::IResearchViewMergeExecutor(
+    Fetcher& fetcher, Infos& infos)
     : Base{fetcher, infos},
       _heap_it{
           MinHeapContext{*infos.sort().first, infos.sort().second, _segments}} {
@@ -1580,15 +1623,14 @@ IResearchViewMergeExecutor<copyStored, ordered, materializeType>::
   TRI_ASSERT(infos.scoresSort().empty());
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-IResearchViewMergeExecutor<copyStored, ordered, materializeType>::Segment::
-    Segment(irs::doc_iterator::ptr&& docs, irs::document const& doc,
-            irs::score const& score, size_t numScores,
-            LogicalCollection const& collection,
-            irs::doc_iterator::ptr&& pkReader, size_t index,
-            irs::doc_iterator* sortReaderRef,
-            irs::payload const* sortReaderValue,
-            irs::doc_iterator::ptr&& sortReader) noexcept
+template<typename ExecutionTraits>
+IResearchViewMergeExecutor<ExecutionTraits>::Segment::Segment(
+    irs::doc_iterator::ptr&& docs, irs::document const& doc,
+    irs::score const& score, size_t numScores,
+    LogicalCollection const& collection, irs::doc_iterator::ptr&& pkReader,
+    size_t index, irs::doc_iterator* sortReaderRef,
+    irs::payload const* sortReaderValue,
+    irs::doc_iterator::ptr&& sortReader) noexcept
     : docs(std::move(docs)),
       doc(&doc),
       score(&score),
@@ -1609,16 +1651,15 @@ IResearchViewMergeExecutor<copyStored, ordered, materializeType>::Segment::
   TRI_ASSERT(this->pkReader.value);
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-IResearchViewMergeExecutor<copyStored, ordered, materializeType>::
-    MinHeapContext::MinHeapContext(const IResearchViewSort& sort,
-                                   size_t sortBuckets,
-                                   std::vector<Segment>& segments) noexcept
+template<typename ExecutionTraits>
+IResearchViewMergeExecutor<ExecutionTraits>::MinHeapContext::MinHeapContext(
+    IResearchSortBase const& sort, size_t sortBuckets,
+    std::vector<Segment>& segments) noexcept
     : _less(sort, sortBuckets), _segments(&segments) {}
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-bool IResearchViewMergeExecutor<copyStored, ordered, materializeType>::
-    MinHeapContext::operator()(const size_t i) const {
+template<typename ExecutionTraits>
+bool IResearchViewMergeExecutor<ExecutionTraits>::MinHeapContext::operator()(
+    size_t const i) const {
   assert(i < _segments->size());
   auto& segment = (*_segments)[i];
   while (segment.docs->next()) {
@@ -1633,30 +1674,17 @@ bool IResearchViewMergeExecutor<copyStored, ordered, materializeType>::
   return false;
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-bool IResearchViewMergeExecutor<copyStored, ordered, materializeType>::
-    MinHeapContext::operator()(const size_t lhs, const size_t rhs) const {
+template<typename ExecutionTraits>
+bool IResearchViewMergeExecutor<ExecutionTraits>::MinHeapContext::operator()(
+    size_t const lhs, size_t const rhs) const {
   assert(lhs < _segments->size());
   assert(rhs < _segments->size());
   return _less((*_segments)[rhs].sortValue->value,
                (*_segments)[lhs].sortValue->value);
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-void IResearchViewMergeExecutor<copyStored, ordered, materializeType>::
-    evaluateScores(ReadContext const& ctx, irs::score const& score,
-                   size_t numScores) {
-  // This must not be called in the unordered case.
-  TRI_ASSERT(ordered);
-
-  // in arangodb we assume all scorers return float_t
-  auto begin = reinterpret_cast<float_t const*>(score.evaluate());
-
-  this->fillScores(ctx, begin, begin + numScores);
-}
-
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-void IResearchViewMergeExecutor<copyStored, ordered, materializeType>::reset() {
+template<typename ExecutionTraits>
+void IResearchViewMergeExecutor<ExecutionTraits>::reset() {
   Base::reset();
 
   _segments.clear();
@@ -1668,22 +1696,25 @@ void IResearchViewMergeExecutor<copyStored, ordered, materializeType>::reset() {
   this->_storedValuesReaders.resize(size * storedValuesCount);
   auto isSortReaderUsedInStoredValues =
       storedValuesCount > 0 &&
-      IResearchViewNode::SortColumnNumber == columnsFieldsRegs.cbegin()->first;
+      IResearchViewNode::kSortColumnNumber == columnsFieldsRegs.cbegin()->first;
 
   for (size_t i = 0; i < size; ++i) {
     auto& segment = (*this->_reader)[i];
 
-    irs::doc_iterator::ptr it = segment.mask(
-        this->_filter->execute(segment, this->_order, &this->_filterCtx));
+    auto it = segment.mask(
+        this->_filter->execute({.segment = segment,
+                                .scorers = this->_order,
+                                .ctx = &this->_filterCtx,
+                                .mode = irs::ExecutionMode::kAll}));
     TRI_ASSERT(it);
 
     auto const* doc = irs::get<irs::document>(*it);
     TRI_ASSERT(doc);
 
-    auto const* score = &irs::score::no_score();
+    auto const* score = &irs::score::kNoScore;
     size_t numScores = 0;
 
-    if constexpr (ordered) {
+    if constexpr (ExecutionTraits::Ordered) {
       auto* scoreRef = irs::get<irs::score>(*it);
 
       if (scoreRef) {
@@ -1717,7 +1748,8 @@ void IResearchViewMergeExecutor<copyStored, ordered, materializeType>::reset() {
       continue;
     }
 
-    if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
+    if constexpr ((ExecutionTraits::MaterializeType &
+                   MaterializeType::UseStoredValues) ==
                   MaterializeType::UseStoredValues) {
       if (ADB_UNLIKELY(!this->getStoredValuesReaders(segment, i))) {
         continue;
@@ -1757,11 +1789,9 @@ void IResearchViewMergeExecutor<copyStored, ordered, materializeType>::reset() {
   _heap_it.reset(_segments.size());
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-LocalDocumentId
-IResearchViewMergeExecutor<copyStored, ordered, materializeType>::readPK(
-    IResearchViewMergeExecutor<copyStored, ordered,
-                               materializeType>::Segment const& segment) {
+template<typename ExecutionTraits>
+LocalDocumentId IResearchViewMergeExecutor<ExecutionTraits>::readPK(
+    IResearchViewMergeExecutor<ExecutionTraits>::Segment const& segment) {
   TRI_ASSERT(segment.doc);
   TRI_ASSERT(segment.pkReader.itr);
   TRI_ASSERT(segment.pkReader.value);
@@ -1785,9 +1815,8 @@ IResearchViewMergeExecutor<copyStored, ordered, materializeType>::readPK(
   return documentId;
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-void IResearchViewMergeExecutor<copyStored, ordered,
-                                materializeType>::fillBuffer(ReadContext& ctx) {
+template<typename ExecutionTraits>
+void IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   TRI_ASSERT(this->_filter != nullptr);
 
   size_t const atMost = ctx.outputRow.numRowsLeft();
@@ -1818,15 +1847,22 @@ void IResearchViewMergeExecutor<copyStored, ordered,
     this->_indexReadBuffer.pushValue(documentId, segment.collection);
 
     // in the ordered case we have to write scores as well as a document
-    if constexpr (ordered) {
+    if constexpr (ExecutionTraits::Ordered) {
       // Writes into _scoreBuffer
-      evaluateScores(ctx, *segment.score, segment.numScores);
+      this->fillScores(*segment.score);
     }
 
-    if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
+    if constexpr ((ExecutionTraits::MaterializeType &
+                   MaterializeType::UseStoredValues) ==
                   MaterializeType::UseStoredValues) {
       TRI_ASSERT(segment.doc);
       this->pushStoredValues(*segment.doc, segment.segmentIndex);
+    }
+
+    if constexpr (ExecutionTraits::EmitSearchDoc) {
+      TRI_ASSERT(this->infos().searchDocIdRegId().isValid());
+      this->_indexReadBuffer.pushSearchDoc(
+          (*this->_reader)[segment.segmentIndex], segment.doc->value);
     }
 
     // doc and scores are both pushed, sizes must now be coherent
@@ -1838,9 +1874,9 @@ void IResearchViewMergeExecutor<copyStored, ordered,
   }
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-size_t IResearchViewMergeExecutor<copyStored, ordered, materializeType>::skip(
-    size_t limit, IResearchViewStats&) {
+template<typename ExecutionTraits>
+size_t IResearchViewMergeExecutor<ExecutionTraits>::skip(size_t limit,
+                                                         IResearchViewStats&) {
   TRI_ASSERT(this->_indexReadBuffer.empty());
   TRI_ASSERT(this->_filter != nullptr);
 
@@ -1854,9 +1890,8 @@ size_t IResearchViewMergeExecutor<copyStored, ordered, materializeType>::skip(
   return toSkip - limit;
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-size_t
-IResearchViewMergeExecutor<copyStored, ordered, materializeType>::skipAll(
+template<typename ExecutionTraits>
+size_t IResearchViewMergeExecutor<ExecutionTraits>::skipAll(
     IResearchViewStats&) {
   TRI_ASSERT(this->_indexReadBuffer.empty());
   TRI_ASSERT(this->_filter != nullptr);
@@ -1888,13 +1923,13 @@ IResearchViewMergeExecutor<copyStored, ordered, materializeType>::skipAll(
         this->_segments[_heap_it.value()].segmentPos) {
       skipped += (_heap_it.size() - 1);
     }
-    _heap_it.reset();
+    _heap_it.reset(0);
   }
   return skipped;
 }
 
-template<bool copyStored, bool ordered, MaterializeType materializeType>
-bool IResearchViewMergeExecutor<copyStored, ordered, materializeType>::writeRow(
+template<typename ExecutionTraits>
+bool IResearchViewMergeExecutor<ExecutionTraits>::writeRow(
     IResearchViewMergeExecutor::ReadContext& ctx,
     IndexReadBufferEntry bufferEntry) {
   auto const& id = this->_indexReadBuffer.getValue(bufferEntry);
@@ -1906,300 +1941,734 @@ bool IResearchViewMergeExecutor<copyStored, ordered, materializeType>::writeRow(
   return Base::writeRow(ctx, bufferEntry, documentId, *collection);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// --SECTION--                                 explicit template instantiation
-///////////////////////////////////////////////////////////////////////////////
-
 template class ::arangodb::aql::IResearchViewExecutor<
-    false, false, MaterializeType::NotMaterialize>;
+    ExecutionTraits<false, false, false, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewExecutor<
-    false, false, MaterializeType::LateMaterialize>;
+    ExecutionTraits<false, false, false, MaterializeType::LateMaterialize>>;
 template class ::arangodb::aql::IResearchViewExecutor<
-    false, false, MaterializeType::Materialize>;
+    ExecutionTraits<false, false, false, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+    false, false, false,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+    false, false, false,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewExecutor<
-    false, false,
-    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
+    ExecutionTraits<false, false, true, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewExecutor<
-    false, false,
-    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
+    ExecutionTraits<false, false, true, MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutor<
+    ExecutionTraits<false, false, true, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+    false, false, true,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+    false, false, true,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 
 // stored values copying implementation should be used only when stored values
 // are used
-template class ::arangodb::aql::IResearchViewExecutor<
-    true, false,
-    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
-template class ::arangodb::aql::IResearchViewExecutor<
-    true, false,
-    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
+template class ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+    true, false, false,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+    true, false, false,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+    true, false, true,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+    true, false, true,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 
 template class ::arangodb::aql::IResearchViewExecutor<
-    false, true, MaterializeType::NotMaterialize>;
+    ExecutionTraits<false, true, false, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewExecutor<
-    false, true, MaterializeType::LateMaterialize>;
+    ExecutionTraits<false, true, false, MaterializeType::LateMaterialize>>;
 template class ::arangodb::aql::IResearchViewExecutor<
-    false, true, MaterializeType::Materialize>;
+    ExecutionTraits<false, true, false, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+    false, true, false,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+    false, true, false,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewExecutor<
-    false, true,
-    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
+    ExecutionTraits<false, true, true, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewExecutor<
-    false, true,
-    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
+    ExecutionTraits<false, true, true, MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutor<
+    ExecutionTraits<false, true, true, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+    false, true, true,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+    false, true, true,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 
 // stored values copying implementation should be used only when stored values
 // are used
-template class ::arangodb::aql::IResearchViewExecutor<
-    true, true,
-    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
-template class ::arangodb::aql::IResearchViewExecutor<
-    true, true,
-    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
+template class ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+    true, true, false,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+    true, true, false,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+    true, true, true,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+    true, true, true,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 
 template class ::arangodb::aql::IResearchViewMergeExecutor<
-    false, false, MaterializeType::NotMaterialize>;
+    ExecutionTraits<false, false, false, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewMergeExecutor<
-    false, false, MaterializeType::LateMaterialize>;
+    ExecutionTraits<false, false, false, MaterializeType::LateMaterialize>>;
 template class ::arangodb::aql::IResearchViewMergeExecutor<
-    false, false, MaterializeType::Materialize>;
+    ExecutionTraits<false, false, false, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+    false, false, false,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+    false, false, false,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewMergeExecutor<
-    false, false,
-    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
+    ExecutionTraits<false, false, true, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewMergeExecutor<
-    false, false,
-    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
+    ExecutionTraits<false, false, true, MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<
+    ExecutionTraits<false, false, true, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+    false, false, true,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+    false, false, true,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 
 // stored values copying implementation should be used only when stored values
 // are used
-template class ::arangodb::aql::IResearchViewMergeExecutor<
-    true, false,
-    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
-template class ::arangodb::aql::IResearchViewMergeExecutor<
-    true, false,
-    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+    true, false, false,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+    true, false, false,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+    true, false, true,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+    true, false, true,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 
 template class ::arangodb::aql::IResearchViewMergeExecutor<
-    false, true, MaterializeType::NotMaterialize>;
+    ExecutionTraits<false, true, false, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewMergeExecutor<
-    false, true, MaterializeType::LateMaterialize>;
+    ExecutionTraits<false, true, false, MaterializeType::LateMaterialize>>;
 template class ::arangodb::aql::IResearchViewMergeExecutor<
-    false, true, MaterializeType::Materialize>;
+    ExecutionTraits<false, true, false, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+    false, true, false,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+    false, true, false,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewMergeExecutor<
-    false, true,
-    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
+    ExecutionTraits<false, true, true, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewMergeExecutor<
-    false, true,
-    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
+    ExecutionTraits<false, true, true, MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<
+    ExecutionTraits<false, true, true, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+    false, true, true,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+    false, true, true,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 
 // stored values copying implementation should be used only when stored values
 // are used
-template class ::arangodb::aql::IResearchViewMergeExecutor<
-    true, true,
-    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
-template class ::arangodb::aql::IResearchViewMergeExecutor<
-    true, true,
-    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+    true, true, false,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+    true, true, false,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+    true, true, true,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+    true, true, true,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<
-    false, false, MaterializeType::NotMaterialize>;
+    ExecutionTraits<false, false, false, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<
-    false, false, MaterializeType::LateMaterialize>;
+    ExecutionTraits<false, false, false, MaterializeType::LateMaterialize>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<
-    false, false, MaterializeType::Materialize>;
+    ExecutionTraits<false, false, false, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+    false, false, false,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+    false, false, false,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<
-    false, false,
-    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
+    ExecutionTraits<false, false, true, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<
-    false, false,
-    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
+    ExecutionTraits<false, false, true, MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<
+    ExecutionTraits<false, false, true, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+    false, false, true,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+    false, false, true,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 
 // stored values copying implementation should be used only when stored values
 // are used
-template class ::arangodb::aql::IResearchViewHeapSortExecutor<
-    true, false,
-    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
-template class ::arangodb::aql::IResearchViewHeapSortExecutor<
-    true, false,
-    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+    true, false, false,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+    true, false, false,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+    true, false, true,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+    true, false, true,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<
-    false, true, MaterializeType::NotMaterialize>;
+    ExecutionTraits<false, true, false, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<
-    false, true, MaterializeType::LateMaterialize>;
+    ExecutionTraits<false, true, false, MaterializeType::LateMaterialize>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<
-    false, true, MaterializeType::Materialize>;
+    ExecutionTraits<false, true, false, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+    false, true, false,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+    false, true, false,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<
-    false, true,
-    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
+    ExecutionTraits<false, true, true, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<
-    false, true,
-    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
+    ExecutionTraits<false, true, true, MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<
+    ExecutionTraits<false, true, true, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+    false, true, true,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+    false, true, true,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 
 // stored values copying implementation should be used only when stored values
 // are used
-template class ::arangodb::aql::IResearchViewHeapSortExecutor<
-    true, true,
-    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
-template class ::arangodb::aql::IResearchViewHeapSortExecutor<
-    true, true,
-    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
-
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewExecutor<false, false,
-                                           MaterializeType::NotMaterialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewExecutor<false, false,
-                                           MaterializeType::LateMaterialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewExecutor<false, false,
-                                           MaterializeType::Materialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewExecutor<
-        false, false,
-        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewExecutor<
-        false, false,
-        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+    true, true, false,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+    true, true, false,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+    true, true, true,
+    MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+    true, true, true,
+    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewExecutor<
-        true, false,
-        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+        ExecutionTraits<false, false, false, MaterializeType::NotMaterialize>>,
+    ExecutionTraits<false, false, false, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewExecutor<
-        true, false,
-        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
-
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewExecutor<false, true,
-                                           MaterializeType::NotMaterialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewExecutor<false, true,
-                                           MaterializeType::LateMaterialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewExecutor<false, true,
-                                           MaterializeType::Materialize>>;
+        ExecutionTraits<false, false, false, MaterializeType::LateMaterialize>>,
+    ExecutionTraits<false, false, false, MaterializeType::LateMaterialize>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewExecutor<
-        false, true,
-        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+        ExecutionTraits<false, false, false, MaterializeType::Materialize>>,
+    ExecutionTraits<false, false, false, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+        false, false, false,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, false, false,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+        false, false, false,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, false, false,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewExecutor<
-        false, true,
-        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+        ExecutionTraits<false, false, true, MaterializeType::NotMaterialize>>,
+    ExecutionTraits<false, false, true, MaterializeType::NotMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<
+        ExecutionTraits<false, false, true, MaterializeType::LateMaterialize>>,
+    ExecutionTraits<false, false, true, MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<
+        ExecutionTraits<false, false, true, MaterializeType::Materialize>>,
+    ExecutionTraits<false, false, true, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+        false, false, true,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, false, true,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+        false, false, true,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, false, true,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
+
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+        true, false, false,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, false, false,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+        true, false, false,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, false, false,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+        true, false, true,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, false, true,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+        true, false, true,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, false, true,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
 
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewExecutor<
-        true, true,
-        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+        ExecutionTraits<false, true, false, MaterializeType::NotMaterialize>>,
+    ExecutionTraits<false, true, false, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewExecutor<
-        true, true,
-        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+        ExecutionTraits<false, true, false, MaterializeType::LateMaterialize>>,
+    ExecutionTraits<false, true, false, MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<
+        ExecutionTraits<false, true, false, MaterializeType::Materialize>>,
+    ExecutionTraits<false, true, false, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+        false, true, false,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, true, false,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+        false, true, false,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, true, false,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<
+        ExecutionTraits<false, true, true, MaterializeType::NotMaterialize>>,
+    ExecutionTraits<false, true, true, MaterializeType::NotMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<
+        ExecutionTraits<false, true, true, MaterializeType::LateMaterialize>>,
+    ExecutionTraits<false, true, true, MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<
+        ExecutionTraits<false, true, true, MaterializeType::Materialize>>,
+    ExecutionTraits<false, true, true, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+        false, true, true,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, true, true,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+        false, true, true,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, true, true,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
+
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+        true, true, false,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, true, false,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+        true, true, false,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, true, false,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+        true, true, true,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, true, true,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewExecutor<ExecutionTraits<
+        true, true, true,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, true, true,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
 
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewMergeExecutor<
-        false, false, MaterializeType::NotMaterialize>>;
+        ExecutionTraits<false, false, false, MaterializeType::NotMaterialize>>,
+    ExecutionTraits<false, false, false, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewMergeExecutor<
-        false, false, MaterializeType::LateMaterialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewMergeExecutor<false, false,
-                                                MaterializeType::Materialize>>;
+        ExecutionTraits<false, false, false, MaterializeType::LateMaterialize>>,
+    ExecutionTraits<false, false, false, MaterializeType::LateMaterialize>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewMergeExecutor<
-        false, false,
-        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+        ExecutionTraits<false, false, false, MaterializeType::Materialize>>,
+    ExecutionTraits<false, false, false, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+        false, false, false,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, false, false,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+        false, false, false,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, false, false,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewMergeExecutor<
-        false, false,
-        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+        ExecutionTraits<false, false, true, MaterializeType::NotMaterialize>>,
+    ExecutionTraits<false, false, true, MaterializeType::NotMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewMergeExecutor<
+        ExecutionTraits<false, false, true, MaterializeType::LateMaterialize>>,
+    ExecutionTraits<false, false, true, MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewMergeExecutor<
+        ExecutionTraits<false, false, true, MaterializeType::Materialize>>,
+    ExecutionTraits<false, false, true, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+        false, false, true,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, false, true,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+        false, false, true,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, false, true,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
+
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+        true, false, false,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, false, false,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+        true, false, false,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, false, false,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+        true, false, true,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, false, true,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+        true, false, true,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, false, true,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
 
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewMergeExecutor<
-        true, false,
-        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+        ExecutionTraits<false, true, false, MaterializeType::NotMaterialize>>,
+    ExecutionTraits<false, true, false, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewMergeExecutor<
-        true, false,
-        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+        ExecutionTraits<false, true, false, MaterializeType::LateMaterialize>>,
+    ExecutionTraits<false, true, false, MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewMergeExecutor<
+        ExecutionTraits<false, true, false, MaterializeType::Materialize>>,
+    ExecutionTraits<false, true, false, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+        false, true, false,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, true, false,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+        false, true, false,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, true, false,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewMergeExecutor<
+        ExecutionTraits<false, true, true, MaterializeType::NotMaterialize>>,
+    ExecutionTraits<false, true, true, MaterializeType::NotMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewMergeExecutor<
+        ExecutionTraits<false, true, true, MaterializeType::LateMaterialize>>,
+    ExecutionTraits<false, true, true, MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewMergeExecutor<
+        ExecutionTraits<false, true, true, MaterializeType::Materialize>>,
+    ExecutionTraits<false, true, true, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+        false, true, true,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, true, true,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+        false, true, true,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, true, true,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
 
 template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewMergeExecutor<
-        false, true, MaterializeType::NotMaterialize>>;
+    ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+        true, true, false,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, true, false,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewMergeExecutor<
-        false, true, MaterializeType::LateMaterialize>>;
+    ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+        true, true, false,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, true, false,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewMergeExecutor<false, true,
-                                                MaterializeType::Materialize>>;
+    ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+        true, true, true,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, true, true,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewMergeExecutor<
-        false, true,
-        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewMergeExecutor<
-        false, true,
-        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
-
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewMergeExecutor<
-        true, true,
-        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewMergeExecutor<
-        true, true,
-        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
-
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewHeapSortExecutor<
-        false, false, MaterializeType::NotMaterialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewHeapSortExecutor<
-        false, false, MaterializeType::LateMaterialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewHeapSortExecutor<
-        false, false, MaterializeType::Materialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewHeapSortExecutor<
-        false, false,
-        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewHeapSortExecutor<
-        false, false,
-        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+    ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
+        true, true, true,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, true, true,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
 
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewHeapSortExecutor<
-        true, false,
-        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+        ExecutionTraits<false, false, false, MaterializeType::NotMaterialize>>,
+    ExecutionTraits<false, false, false, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewHeapSortExecutor<
-        true, false,
-        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+        ExecutionTraits<false, false, false, MaterializeType::LateMaterialize>>,
+    ExecutionTraits<false, false, false, MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<
+        ExecutionTraits<false, false, false, MaterializeType::Materialize>>,
+    ExecutionTraits<false, false, false, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+        false, false, false,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, false, false,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+        false, false, false,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, false, false,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<
+        ExecutionTraits<false, false, true, MaterializeType::NotMaterialize>>,
+    ExecutionTraits<false, false, true, MaterializeType::NotMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<
+        ExecutionTraits<false, false, true, MaterializeType::LateMaterialize>>,
+    ExecutionTraits<false, false, true, MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<
+        ExecutionTraits<false, false, true, MaterializeType::Materialize>>,
+    ExecutionTraits<false, false, true, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+        false, false, true,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, false, true,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+        false, false, true,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, false, true,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
+
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+        true, false, false,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, false, false,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+        true, false, false,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, false, false,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+        true, false, true,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, false, true,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+        true, false, true,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, false, true,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
 
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewHeapSortExecutor<
-        false, true, MaterializeType::NotMaterialize>>;
+        ExecutionTraits<false, true, false, MaterializeType::NotMaterialize>>,
+    ExecutionTraits<false, true, false, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewHeapSortExecutor<
-        false, true, MaterializeType::LateMaterialize>>;
+        ExecutionTraits<false, true, false, MaterializeType::LateMaterialize>>,
+    ExecutionTraits<false, true, false, MaterializeType::LateMaterialize>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewHeapSortExecutor<
-        false, true, MaterializeType::Materialize>>;
+        ExecutionTraits<false, true, false, MaterializeType::Materialize>>,
+    ExecutionTraits<false, true, false, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+        false, true, false,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, true, false,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+        false, true, false,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, true, false,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewHeapSortExecutor<
-        false, true,
-        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+        ExecutionTraits<false, true, true, MaterializeType::NotMaterialize>>,
+    ExecutionTraits<false, true, true, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewHeapSortExecutor<
-        false, true,
-        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+        ExecutionTraits<false, true, true, MaterializeType::LateMaterialize>>,
+    ExecutionTraits<false, true, true, MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<
+        ExecutionTraits<false, true, true, MaterializeType::Materialize>>,
+    ExecutionTraits<false, true, true, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+        false, true, true,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, true, true,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+        false, true, true,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<false, true, true,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
 
 template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewHeapSortExecutor<
-        true, true,
-        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+        true, true, false,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, true, false,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewHeapSortExecutor<
-        true, true,
-        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+        true, true, false,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, true, false,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+        true, true, true,
+        MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, true, true,
+                    MaterializeType::NotMaterialize |
+                        MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<
+    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+        true, true, true,
+        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
+    ExecutionTraits<true, true, true,
+                    MaterializeType::LateMaterialize |
+                        MaterializeType::UseStoredValues>>;

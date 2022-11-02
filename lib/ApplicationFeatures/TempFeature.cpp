@@ -26,6 +26,8 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/CrashHandler.h"
 #include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
+#include "Basics/Thread.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -46,6 +48,10 @@ void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void TempFeature::validateOptions(std::shared_ptr<ProgramOptions> /*options*/) {
   if (!_path.empty()) {
+    // replace $PID in basepath with current process id
+    _path = basics::StringUtils::replace(
+        _path, "$PID", std::to_string(Thread::currentProcessId()));
+
     basics::FileUtils::makePathAbsolute(_path);
   }
 }

@@ -83,6 +83,7 @@ class EnumerateCollectionExecutorInfos {
   QueryContext& getQuery() const;
   Expression* getFilter() const noexcept;
   arangodb::aql::Projections const& getProjections() const noexcept;
+  arangodb::aql::Projections const& getFilterProjections() const noexcept;
   bool getProduceResult() const noexcept;
   bool getRandom() const noexcept;
   bool getCount() const noexcept;
@@ -99,6 +100,7 @@ class EnumerateCollectionExecutorInfos {
   Variable const* _outVariable;
   Expression* _filter;
   arangodb::aql::Projections _projections;
+  arangodb::aql::Projections _filterProjections;
   RegisterId _outputRegisterId;
   std::vector<std::pair<VariableId, RegisterId>> _filterVarsToRegs;
   bool const _produceResult;

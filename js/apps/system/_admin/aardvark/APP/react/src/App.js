@@ -97,7 +97,7 @@ window.Joi = require('../../frontend/js/lib/joi-browser.min.js');
 window.jQuery = window.$ = jQuery;
 window.parsePrometheusTextFormat = parsePrometheusTextFormat;
 
-require('../../frontend/js/lib/select2.min.js');
+require('../../frontend/js/lib/select2.js');
 window._ = _;
 require('../../frontend/js/arango/templateEngine.js');
 require('../../frontend/js/arango/arango.js');

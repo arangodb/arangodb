@@ -36,6 +36,8 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#include "Enterprise/Graph/Providers/SmartGraphProvider.h"
+
 // For additional information, please read PathValidatorEE.cpp
 #include "Enterprise/Graph/PathValidatorEE.cpp"
 #endif
@@ -251,27 +253,12 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
       evaluator->injectEdge(edgeBuilder.slice());
     }
     if (evaluator->needsPath()) {
-      // TODO [GraphRefactor]: Improve this section. Currently, I do not like
-      // the design here. I. Drop of PathStore const& qualifier was necessary to
-      // initialize PathResultInterface. II. I don't want to distinguish between
-      // different ProviderTypes here if possible (best case).
-      if (std::is_same_v<ProviderType,
-                         SingleServerProvider<SingleServerProviderStep>> ||
-          std::is_same_v<ProviderType, ClusterProvider<ClusterProviderStep>>) {
-        using ResultPathType =
-            SingleProviderPathResult<ProviderType, PathStore, Step>;
-        std::unique_ptr<PathResultInterface> currentPath =
-            std::make_unique<ResultPathType>(step, _provider, _store);
-        currentPath->toVelocyPack(pathBuilder);
-        evaluator->injectPath(pathBuilder.slice());
-      } else {
-        PathResult<ProviderType, Step> currentPath{_provider, _provider};
-        _store.buildPath(step, currentPath);
-        currentPath.toVelocyPack(pathBuilder);
-        evaluator->injectPath(pathBuilder.slice());
-        // Currently unused
-        TRI_ASSERT(false);
-      }
+      using ResultPathType =
+          SingleProviderPathResult<ProviderType, PathStore, Step>;
+      std::unique_ptr<PathResultInterface> currentPath =
+          std::make_unique<ResultPathType>(step, _provider, _store);
+      currentPath->toVelocyPack(pathBuilder);
+      evaluator->injectPath(pathBuilder.slice());
     }
     if (evaluator->evaluate()) {
       res.combine(ValidationResult::Type::PRUNE);
@@ -556,5 +543,46 @@ template class PathValidator<
     PathStoreTracer<
         PathStore<ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>>,
     VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>;
+
+#ifdef USE_ENTERPRISE
+template class PathValidator<
+    enterprise::SmartGraphProvider<ClusterProviderStep>,
+    PathStore<ClusterProviderStep>, VertexUniquenessLevel::NONE,
+    EdgeUniquenessLevel::NONE>;
+template class PathValidator<
+    ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>,
+    PathStoreTracer<PathStore<ProviderTracer<
+        enterprise::SmartGraphProvider<ClusterProviderStep>>::Step>>,
+    VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>;
+template class PathValidator<
+    enterprise::SmartGraphProvider<ClusterProviderStep>,
+    PathStore<ClusterProviderStep>, VertexUniquenessLevel::NONE,
+    EdgeUniquenessLevel::PATH>;
+template class PathValidator<
+    ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>,
+    PathStoreTracer<PathStore<ProviderTracer<
+        enterprise::SmartGraphProvider<ClusterProviderStep>>::Step>>,
+    VertexUniquenessLevel::NONE, EdgeUniquenessLevel::PATH>;
+
+template class PathValidator<
+    enterprise::SmartGraphProvider<ClusterProviderStep>,
+    PathStore<enterprise::SmartGraphProvider<ClusterProviderStep>::Step>,
+    VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>;
+template class PathValidator<
+    ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>,
+    PathStoreTracer<PathStore<ProviderTracer<
+        enterprise::SmartGraphProvider<ClusterProviderStep>>::Step>>,
+    VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>;
+
+template class PathValidator<
+    enterprise::SmartGraphProvider<ClusterProviderStep>,
+    PathStore<enterprise::SmartGraphProvider<ClusterProviderStep>::Step>,
+    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>;
+template class PathValidator<
+    ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>,
+    PathStoreTracer<PathStore<ProviderTracer<
+        enterprise::SmartGraphProvider<ClusterProviderStep>>::Step>>,
+    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>;
+#endif
 
 }  // namespace arangodb::graph

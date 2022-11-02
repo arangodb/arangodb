@@ -47,7 +47,7 @@ function runSetup () {
   db._collection('UnitTestsDummy').save({ _key: 'foo', num: 1 }, { waitForSync: true });
 
   internal.wal.flush(true, true);
-  internal.debugSetFailAt("FlushThreadDisableAll");
+  internal.debugSetFailAt("RocksDBBackgroundThread::run");
   internal.wait(2); // make sure failure point takes effect
 
   v.rename('UnitTestsRecovery2');

@@ -79,6 +79,12 @@ void ShardingFeature::prepare() {
         return std::make_unique<ShardingStrategyEnterpriseHashSmartEdge>(
             sharding);
       });
+  registerFactory(
+      ShardingStrategyEnterpriseHexSmartVertex::NAME,
+      [](ShardingInfo* sharding) {
+        return std::make_unique<ShardingStrategyEnterpriseHexSmartVertex>(
+            sharding);
+      });
 #else
   // in the Community Edition register some stand-ins for the sharding
   // strategies only available in the Enterprise Edition
@@ -140,20 +146,6 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::fromVelocyPack(
   return create(name, sharding);
 }
 
-std::unique_ptr<ShardingStrategy> ShardingFeature::create(
-    std::string const& name, ShardingInfo* sharding) {
-  auto it = _factories.find(name);
-
-  if (it == _factories.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("unknown sharding type '") + name + "'");
-  }
-
-  // now create a sharding strategy instance
-  return (*it).second(sharding);
-}
-
 std::string ShardingFeature::getDefaultShardingStrategy(
     ShardingInfo const* sharding) const {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
@@ -176,6 +168,20 @@ std::string ShardingFeature::getDefaultShardingStrategy(
 #endif
 }
 
+std::unique_ptr<ShardingStrategy> ShardingFeature::create(
+    std::string const& name, ShardingInfo* sharding) {
+  auto it = _factories.find(name);
+
+  if (it == _factories.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("unknown sharding type '") + name + "'");
+  }
+
+  // now create a sharding strategy instance
+  return (*it).second(sharding);
+}
+
 std::string ShardingFeature::getDefaultShardingStrategyForNewCollection(
     VPackSlice const& properties) const {
   // from 3.4 onwards, the default sharding strategy for new collections is
@@ -186,12 +192,30 @@ std::string ShardingFeature::getDefaultShardingStrategyForNewCollection(
   bool isEdge =
       TRI_COL_TYPE_EDGE == VelocyPackHelper::getNumericValue<uint32_t>(
                                properties, "type", TRI_COL_TYPE_DOCUMENT);
-  if (isSmart && isEdge) {
-    // smart edge collection
-    return ShardingStrategyEnterpriseHashSmartEdge::NAME;
+  if (isSmart) {
+    if (isEdge) {
+      // Smart Edge Collection
+      return ShardingStrategyEnterpriseHashSmartEdge::NAME;
+    } else {
+      // Smart Vertex Collection
+      // We need to differentiate between SmartGraphs and EnterpriseGraphs here.
+      VPackSlice sga = properties.get(StaticStrings::GraphSmartGraphAttribute);
+      if (sga.isNone()) {
+        // Means we're in the EnterpriseGraph Case.
+        // In case we do have a SmartVertex collection without a
+        // SmartGraphAttribute given, we use a different sharding strategy.
+        // In case it is given, we fall back to the default ShardingStrategyHash
+        // strategy.
+        return ShardingStrategyEnterpriseHexSmartVertex::NAME;
+      } else {
+        // Means we're in the SmartGraph case.
+        return ShardingStrategyHash::NAME;
+      }
+    }
   }
 #endif
 
+  // Info: Satellite collections will use this ShardingStrategy as well.
   return ShardingStrategyHash::NAME;
 }
 

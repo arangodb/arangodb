@@ -51,7 +51,6 @@ class Slice;
 
 namespace graph {
 struct BaseOptions;
-struct SingleServerEdgeDocumentToken;
 
 class SingleServerEdgeCursor final : public EdgeCursor {
  private:

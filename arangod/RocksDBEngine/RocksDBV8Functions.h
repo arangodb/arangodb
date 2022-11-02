@@ -26,9 +26,10 @@
 #include "Basics/Common.h"
 
 namespace arangodb {
+class RocksDBEngine;
 
 struct RocksDBV8Functions {
-  static void registerResources();
+  static void registerResources(RocksDBEngine& engine);
 };
 
 }  // namespace arangodb

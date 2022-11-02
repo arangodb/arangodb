@@ -24,15 +24,20 @@
 #pragma once
 
 #include "Agency/AgencyCommon.h"
-#include "Agency/AgentInterface.h"
 #include "Agency/Store.h"
-#include "Basics/TimeString.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 #include "Cluster/ClusterTypes.h"
 
 #include "Metrics/Fwd.h"
+
+#include <chrono>
+#include <functional>
+#include <string>
+#include <string_view>
+#include <unordered_set>
+#include <vector>
 
 namespace arangodb {
 namespace velocypack {
@@ -42,6 +47,7 @@ class Slice;
 namespace consensus {
 
 class Agent;
+class AgentInterface;
 
 struct check_t {
   bool good;
@@ -71,46 +77,6 @@ class Supervision : public arangodb::Thread {
  public:
   typedef std::chrono::system_clock::time_point TimePoint;
   typedef std::string ServerID;
-  typedef std::string ServerStatus;
-  typedef std::string ServerTimestamp;
-
-  enum TASKS {
-    LEADER_FAILURE_MIGRATION,
-    FOLLOWER_FAILURE_MIGRATION,
-    LEADER_INTENDED_MIGRATION,
-    FOLLOWER_INTENDED_MIGRATION
-  };
-
-  template<TASKS T>
-  class Task {
-    explicit Task(VPackSlice const& config) {}
-    ServerID _serverID;
-    std::string _endpoint;
-  };
-
-  struct VitalSign {
-    VitalSign(ServerStatus const& s, ServerTimestamp const& t)
-        : myTimestamp(std::chrono::system_clock::now()),
-          serverStatus(s),
-          serverTimestamp(t),
-          jobId("0") {}
-
-    void update(ServerStatus const& s, ServerTimestamp const& t) {
-      myTimestamp = std::chrono::system_clock::now();
-      serverStatus = s;
-      serverTimestamp = t;
-      jobId = "0";
-    }
-
-    void maintenance(std::string const& jid) { jobId = jid; }
-
-    std::string const& maintenance() const { return jobId; }
-
-    TimePoint myTimestamp;
-    ServerStatus serverStatus;
-    ServerTimestamp serverTimestamp;
-    std::string jobId;
-  };
 
   /// @brief Construct cluster consistency checking
   explicit Supervision(ArangodServer& server);
@@ -142,9 +108,19 @@ class Supervision : public arangodb::Thread {
   /// @brief remove hotbackup lock in agency, if expired
   void unlockHotBackup();
 
-  static constexpr char const* HEALTH_STATUS_GOOD = "GOOD";
-  static constexpr char const* HEALTH_STATUS_BAD = "BAD";
-  static constexpr char const* HEALTH_STATUS_FAILED = "FAILED";
+  /**
+   * @brief Helper function to build transaction removing no longer
+   *        present servers from health monitoring
+   *
+   * @param  del       Agency transaction builder
+   * @param  todelete  List of servers to be removed
+   */
+  static void removeTransactionBuilder(
+      velocypack::Builder& del, std::vector<std::string> const& todelete);
+
+  static constexpr std::string_view HEALTH_STATUS_GOOD = "GOOD";
+  static constexpr std::string_view HEALTH_STATUS_BAD = "BAD";
+  static constexpr std::string_view HEALTH_STATUS_FAILED = "FAILED";
 
   static std::string agencyPrefix() { return _agencyPrefix; }
 
@@ -159,7 +135,48 @@ class Supervision : public arangodb::Thread {
                                    std::string const& serverID,
                                    uint64_t wantedRebootID, bool& serverFound);
 
+  // public only for unit testing:
+  static void cleanupLostCollections(Node const& snapshot,
+                                     AgentInterface* agent, uint64_t& jobId);
+
+  // public only for unit testing:
+  static void deleteBrokenDatabase(AgentInterface* agent,
+                                   std::string const& database,
+                                   std::string const& coordinatorID,
+                                   uint64_t rebootID, bool coordinatorFound);
+
+  // public only for unit testing:
+  static void deleteBrokenCollection(AgentInterface* agent,
+                                     std::string const& database,
+                                     std::string const& collection,
+                                     std::string const& coordinatorID,
+                                     uint64_t rebootID, bool coordinatorFound);
+
+  // public only for unit testing:
+  static void deleteBrokenIndex(AgentInterface* agent,
+                                std::string const& database,
+                                std::string const& collection,
+                                arangodb::velocypack::Slice index,
+                                std::string const& coordinatorID,
+                                uint64_t rebootID, bool coordinatorFound);
+
+  void setOkThreshold(double d) noexcept { _okThreshold = d; }
+
+  void setGracePeriod(double d) noexcept { _gracePeriod = d; }
+
+  /// @brief notifies the supervision and triggers a new run
+  void notify() noexcept;
+
  private:
+  /// @brief wait for the supervision node to appear (cluster bootstrap)
+  void waitForSupervisionNode();
+
+  /// @brief does one round of supervision business
+  void step();
+
+  /// @brief waits for the given index to be committed
+  void waitForIndexCommitted(index_t);
+
   /// @brief get reference to the spearhead snapshot
   Node const& snapshot() const;
 
@@ -195,6 +212,12 @@ class Supervision : public arangodb::Thread {
   /// @brief Check replicated logs
   void checkReplicatedStates();
 
+  /// @brief Clean up replicated logs
+  void cleanupReplicatedLogs();
+
+  /// @brief Clean up replicated states
+  void cleanupReplicatedStates();
+
   struct ResourceCreatorLostEvent {
     std::shared_ptr<Node> const& resource;
     std::string const& coordinatorId;
@@ -216,7 +239,6 @@ class Supervision : public arangodb::Thread {
   /// @brief Check for inconsistencies in replication factor vs dbs entries
   void enforceReplication();
 
- private:
   /// @brief Move shard from one db server to other db server
   bool moveShard(std::string const& from, std::string const& to);
 
@@ -258,34 +280,15 @@ class Supervision : public arangodb::Thread {
 
   void shrinkCluster();
 
- public:  // only for unit tests:
-  void setSnapshotForUnitTest(Node* snapshot) { _snapshot = snapshot; }
-
-  static void cleanupLostCollections(Node const& snapshot,
-                                     AgentInterface* agent, uint64_t& jobId);
-
-  void setOkThreshold(double d) { _okThreshold = d; }
-
-  void setGracePeriod(double d) { _gracePeriod = d; }
-
- private:
   /**
    * @brief Report status of supervision in agency
    * @param  status  Status, which will show in Supervision/State
    */
   void reportStatus(std::string const& status);
 
-  bool isShuttingDown();
+  void updateDBServerMaintenance();
 
-  bool handleJobs();
-  void handleShutdown();
-  void deleteBrokenDatabase(std::string const& database,
-                            std::string const& coordinatorID, uint64_t rebootID,
-                            bool coordinatorFound);
-  void deleteBrokenCollection(std::string const& database,
-                              std::string const& collection,
-                              std::string const& coordinatorID,
-                              uint64_t rebootID, bool coordinatorFound);
+  void handleJobs();
 
   void restoreBrokenAnalyzersRevision(
       std::string const& database, AnalyzersRevision::Revision revision,
@@ -311,18 +314,9 @@ class Supervision : public arangodb::Thread {
   uint64_t _jobId;
   uint64_t _jobIdMax;
   uint64_t _lastUpdateIndex;
+  bool _shouldRunAgain = false;
 
   bool _haveAborts; /**< @brief We have accumulated pending aborts in a round */
-
-  // mop: this feels very hacky...we have a hen and egg problem here
-  // we are using /Shutdown in the agency to determine that the cluster should
-  // shutdown. When every member is down we should of course not persist this
-  // flag so we don't immediately initiate shutdown after restart. we use this
-  // flag to temporarily store that shutdown was initiated...when the /Shutdown
-  // stuff has been removed we shutdown ourselves. The assumption (heheh...) is
-  // that while the cluster is shutting down every agent hit the shutdown stuff
-  // at least once so this flag got set at some point
-  bool _selfShutdown;
 
   std::atomic<bool> _upgraded;
   std::chrono::system_clock::time_point _nextServerCleanup;
@@ -331,21 +325,15 @@ class Supervision : public arangodb::Thread {
 
   static std::string _agencyPrefix;  // initialized in AgencyFeature
 
+  // Updated before each supervision run in `updateDBServerMaintenance`:
+  std::unordered_set<std::string> _DBServersInMaintenance;
+
  public:
   metrics::Histogram<metrics::LogScale<uint64_t>>& _supervision_runtime_msec;
   metrics::Histogram<metrics::LogScale<uint64_t>>&
       _supervision_runtime_wait_for_sync_msec;
   metrics::Counter& _supervision_failed_server_counter;
 };
-
-/**
- * @brief Helper function to build transaction removing no longer
- *        present servers from health monitoring
- *
- * @param  todelete  List of servers to be removed
- * @return           Agency transaction
- */
-query_t removeTransactionBuilder(std::vector<std::string> const&);
 
 }  // namespace consensus
 }  // namespace arangodb

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogEntries.h"
+#include "Inspection/VPack.h"
 
 #include <Basics/StaticStrings.h>
 #include <Basics/StringUtils.h>
@@ -230,7 +231,7 @@ void LogMetaPayload::FirstEntryOfTerm::toVelocyPack(
   b.add(StaticStrings::IndexType, velocypack::Value(StringFirstIndexOfTerm));
   b.add(StaticStrings::Leader, velocypack::Value(leader));
   b.add(velocypack::Value(StaticStrings::Participants));
-  participants.toVelocyPack(b);
+  velocypack::serialize(b, participants);
 }
 
 void LogMetaPayload::UpdateParticipantsConfig::toVelocyPack(
@@ -239,15 +240,15 @@ void LogMetaPayload::UpdateParticipantsConfig::toVelocyPack(
   b.add(StaticStrings::IndexType,
         velocypack::Value(StringUpdateParticipantsConfig));
   b.add(velocypack::Value(StaticStrings::Participants));
-  participants.toVelocyPack(b);
+  velocypack::serialize(b, participants);
 }
 
 auto LogMetaPayload::UpdateParticipantsConfig::fromVelocyPack(
     velocypack::Slice s) -> UpdateParticipantsConfig {
   TRI_ASSERT(s.get(StaticStrings::IndexType)
                  .isEqualString(StringUpdateParticipantsConfig));
-  auto participants =
-      ParticipantsConfig::fromVelocyPack(s.get(StaticStrings::Participants));
+  auto participants = velocypack::deserialize<agency::ParticipantsConfig>(
+      s.get(StaticStrings::Participants));
   return UpdateParticipantsConfig{std::move(participants)};
 }
 
@@ -256,20 +257,20 @@ auto LogMetaPayload::FirstEntryOfTerm::fromVelocyPack(velocypack::Slice s)
   TRI_ASSERT(
       s.get(StaticStrings::IndexType).isEqualString(StringFirstIndexOfTerm));
   auto leader = s.get(StaticStrings::Leader).copyString();
-  auto participants =
-      ParticipantsConfig::fromVelocyPack(s.get(StaticStrings::Participants));
+  auto participants = velocypack::deserialize<agency::ParticipantsConfig>(
+      s.get(StaticStrings::Participants));
   return FirstEntryOfTerm{std::move(leader), std::move(participants)};
 }
 
 auto LogMetaPayload::withFirstEntryOfTerm(ParticipantId leader,
-                                          ParticipantsConfig config)
+                                          agency::ParticipantsConfig config)
     -> LogMetaPayload {
   return LogMetaPayload{FirstEntryOfTerm{.leader = std::move(leader),
                                          .participants = std::move(config)}};
 }
 
-auto LogMetaPayload::withUpdateParticipantsConfig(ParticipantsConfig config)
-    -> LogMetaPayload {
+auto LogMetaPayload::withUpdateParticipantsConfig(
+    agency::ParticipantsConfig config) -> LogMetaPayload {
   return LogMetaPayload{
       UpdateParticipantsConfig{.participants = std::move(config)}};
 }

@@ -32,6 +32,7 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Containers/FlatHashMap.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallVector.h"
 
@@ -196,24 +197,22 @@ class ExecutionPlan {
   }
 
   /// @brief find nodes of a certain type
-  void findNodesOfType(
-      ::arangodb::containers::SmallVector<ExecutionNode*>& result,
-      ExecutionNode::NodeType, bool enterSubqueries);
+  void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
+                       ExecutionNode::NodeType, bool enterSubqueries);
 
   /// @brief find nodes of certain types
-  void findNodesOfType(
-      ::arangodb::containers::SmallVector<ExecutionNode*>& result,
-      std::initializer_list<ExecutionNode::NodeType> const&,
-      bool enterSubqueries);
+  void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
+                       std::initializer_list<ExecutionNode::NodeType> const&,
+                       bool enterSubqueries);
 
   /// @brief find unique nodes of certain types
   void findUniqueNodesOfType(
-      ::arangodb::containers::SmallVector<ExecutionNode*>& result,
+      containers::SmallVector<ExecutionNode*, 8>& result,
       std::initializer_list<ExecutionNode::NodeType> const&,
       bool enterSubqueries);
 
   /// @brief find all end nodes in a plan
-  void findEndNodes(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+  void findEndNodes(containers::SmallVector<ExecutionNode*, 8>& result,
                     bool enterSubqueries) const;
 
   /// @brief determine and set _varsUsedLater and _varSetBy
@@ -319,10 +318,9 @@ class ExecutionPlan {
  private:
   template<WalkerUniqueness U>
   /// @brief find nodes of certain types
-  void findNodesOfType(
-      ::arangodb::containers::SmallVector<ExecutionNode*>& result,
-      std::initializer_list<ExecutionNode::NodeType> const&,
-      bool enterSubqueries);
+  void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
+                       std::initializer_list<ExecutionNode::NodeType> const&,
+                       bool enterSubqueries);
 
   /// @brief creates a calculation node
   ExecutionNode* createCalculation(Variable*, AstNode const*, ExecutionNode*);
@@ -361,7 +359,7 @@ class ExecutionPlan {
   ExecutionNode* fromNodeShortestPath(ExecutionNode*, AstNode const*);
 
   /// @brief create an execution plan element from an AST K-SHORTEST PATHS node
-  ExecutionNode* fromNodeKShortestPaths(ExecutionNode*, AstNode const*);
+  ExecutionNode* fromNodeEnumeratePaths(ExecutionNode*, AstNode const*);
 
   /// @brief create an execution plan element from an AST FILTER node
   ExecutionNode* fromNodeFilter(ExecutionNode*, AstNode const*);
@@ -413,7 +411,7 @@ class ExecutionPlan {
   ExecutionNode* _root;
 
   /// @brief get the node where a variable is introduced.
-  std::unordered_map<VariableId, ExecutionNode*> _varSetBy;
+  containers::FlatHashMap<VariableId, ExecutionNode*> _varSetBy;
 
   /// @brief which optimizer rules were applied for a plan
   std::vector<int> _appliedRules;
@@ -451,7 +449,7 @@ class ExecutionPlan {
   ExecutionNode* _lastLimitNode;
 
   /// @brief a lookup map for all subqueries created
-  std::unordered_map<VariableId, ExecutionNode*> _subqueries;
+  containers::FlatHashMap<VariableId, ExecutionNode*> _subqueries;
 
   /// @brief these nodes will be excluded from building scatter/gather
   /// "diamonds" later

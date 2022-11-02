@@ -276,20 +276,30 @@ RestLogHandler::RestLogHandler(ArangodServer& server, GeneralRequest* req,
     : RestVocbaseBaseHandler(server, req, resp) {}
 
 RestStatus RestLogHandler::handleGet(ReplicatedLogMethods const& methods) {
-  return waitForFuture(
-      methods.getReplicatedLogs().thenValue([this](auto&& logs) {
-        VPackBuilder builder;
-        {
-          VPackObjectBuilder ob(&builder);
+  return waitForFuture(methods.getReplicatedLogs().thenValue([this](
+                                                                 auto&& logs) {
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder ob(&builder);
 
-          for (auto const& [idx, status] : logs) {
-            builder.add(VPackValue(std::to_string(idx.id())));
-            status.toVelocyPack(builder);
-          }
-        }
+      for (auto const& [idx, logInfo] : logs) {
+        builder.add(VPackValue(std::to_string(idx.id())));
+        std::visit(overload{[&](replicated_log::LogStatus const& status) {
+                              status.toVelocyPack(builder);
+                            },
+                            [&](ReplicatedLogMethods::ParticipantsList const&
+                                    participants) {
+                              VPackArrayBuilder ab(&builder);
+                              for (auto&& pid : participants) {
+                                builder.add(VPackValue(pid));
+                              }
+                            }},
+                   logInfo);
+      }
+    }
 
-        generateOk(rest::ResponseCode::OK, builder.slice());
-      }));
+    generateOk(rest::ResponseCode::OK, builder.slice());
+  }));
 }
 
 RestStatus RestLogHandler::handleGetLog(const ReplicatedLogMethods& methods,

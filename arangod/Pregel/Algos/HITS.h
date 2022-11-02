@@ -49,20 +49,23 @@ struct HITS : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
   explicit HITS(application_features::ApplicationServer& server,
                 VPackSlice userParams)
       : SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>>(
-            server, "HITS", userParams) {}
+            server, "hits", userParams) {}
 
-  GraphFormat<HITSValue, int8_t>* inputFormat() const override;
-  MessageFormat<SenderMessage<double>>* messageFormat() const override {
+  [[nodiscard]] GraphFormat<HITSValue, int8_t>* inputFormat() const override;
+  [[nodiscard]] MessageFormat<SenderMessage<double>>* messageFormat()
+      const override {
     return new SenderMessageFormat<double>();
   }
 
   VertexComputation<HITSValue, int8_t, SenderMessage<double>>*
   createComputation(WorkerConfig const*) const override;
 
-  WorkerContext* workerContext(VPackSlice userParams) const override;
-  MasterContext* masterContext(VPackSlice userParams) const override;
+  [[nodiscard]] WorkerContext* workerContext(
+      VPackSlice userParams) const override;
+  [[nodiscard]] MasterContext* masterContext(
+      VPackSlice userParams) const override;
 
-  IAggregator* aggregator(std::string const& name) const override;
+  [[nodiscard]] IAggregator* aggregator(std::string const& name) const override;
 };
 }  // namespace algos
 }  // namespace pregel

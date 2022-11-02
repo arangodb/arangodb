@@ -161,44 +161,6 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   return res;
 }
 
-rocksdb::SequenceNumber RocksDBTransactionState::prepareCollections() {
-  auto& engine = vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
-
-  rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
-
-  for (auto& trxColl : _collections) {
-    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
-
-    rocksdb::SequenceNumber seq = coll->prepareTransaction(id());
-    preSeq = std::max(seq, preSeq);
-  }
-
-  return preSeq;
-}
-
-void RocksDBTransactionState::commitCollections(
-    rocksdb::SequenceNumber lastWritten) {
-  TRI_ASSERT(lastWritten > 0);
-  for (auto& trxColl : _collections) {
-    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
-    // we need this in case of an intermediate commit. The number of
-    // initial documents is adjusted and numInserts / removes is set to 0
-    // index estimator updates are buffered
-    coll->commitCounts(id(), lastWritten);
-  }
-}
-
-void RocksDBTransactionState::cleanupCollections() {
-  for (auto& trxColl : _collections) {
-    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
-    coll->abortCommit(id());
-  }
-}
-
 void RocksDBTransactionState::cleanupTransaction() noexcept {
   if (_cacheTx != nullptr) {
     // note: endTransaction() will delete _cacheTrx!
@@ -211,7 +173,7 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
 }
 
 /// @brief commit a transaction
-Result RocksDBTransactionState::commitTransaction(
+futures::Future<Result> RocksDBTransactionState::commitTransaction(
     transaction::Methods* activeTrx) {
   LOG_TRX("5cb03", TRACE, this)
       << "committing " << AccessMode::typeString(_type) << " transaction";
@@ -222,18 +184,20 @@ Result RocksDBTransactionState::commitTransaction(
     return Result(TRI_ERROR_DEBUG);
   }
 
-  arangodb::Result res = doCommit();
-  if (res.ok()) {
-    updateStatus(transaction::Status::COMMITTED);
-    cleanupTransaction();  // deletes trx
-    ++statistics()._transactionsCommitted;
-  } else {
-    // what if this fails?
-    std::ignore = abortTransaction(activeTrx);  // deletes trx
-  }
-  TRI_ASSERT(!_cacheTx);
-
-  return res;
+  auto self =
+      std::static_pointer_cast<RocksDBTransactionState>(shared_from_this());
+  return doCommit().thenValue([self = std::move(self), activeTrx](auto&& res) {
+    if (res.ok()) {
+      self->updateStatus(transaction::Status::COMMITTED);
+      self->cleanupTransaction();  // deletes trx
+      ++self->statistics()._transactionsCommitted;
+    } else {
+      // what if this fails?
+      std::ignore = self->abortTransaction(activeTrx);  // deletes trx
+    }
+    TRI_ASSERT(!self->_cacheTx);
+    return std::forward<Result>(res);
+  });
 }
 
 /// @brief abort and rollback a transaction
@@ -244,7 +208,7 @@ Result RocksDBTransactionState::abortTransaction(
   TRI_ASSERT(_status == transaction::Status::RUNNING);
   TRI_ASSERT(activeTrx->isMainTransaction());
 
-  Result result = doAbort();
+  Result result = basics::catchToResult([&] { return doAbort(); });
 
   cleanupTransaction();  // deletes trx
 
@@ -305,11 +269,6 @@ Result RocksDBTransactionState::addOperation(
   return result;
 }
 
-Result RocksDBTransactionState::performIntermediateCommitIfRequired(
-    DataSourceId cid) {
-  return rocksdbMethods(cid)->checkIntermediateCommit();
-}
-
 RocksDBTransactionCollection::TrackedOperations&
 RocksDBTransactionState::trackedOperations(DataSourceId cid) {
   auto col = findCollection(cid);
@@ -366,7 +325,7 @@ bool RocksDBTransactionState::isOnlyExclusiveTransaction() const noexcept {
   });
 }
 
-bool RocksDBTransactionState::hasFailedOperations() const {
+bool RocksDBTransactionState::hasFailedOperations() const noexcept {
   return (_status == transaction::Status::ABORTED) && hasOperations();
 }
 

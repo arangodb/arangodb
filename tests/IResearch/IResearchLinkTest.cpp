@@ -74,6 +74,7 @@ static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
+using arangodb::LogicalView;
 
 class IResearchLinkTest
     : public ::testing::Test,
@@ -199,7 +200,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
         R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_NE(nullptr, logicalCollection);
-    auto logicalView = vocbase.createView(viewJson->slice());
+    auto logicalView = vocbase.createView(viewJson->slice(), false);
     ASSERT_NE(nullptr, logicalView);
 
     bool created;
@@ -217,7 +218,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(link->sparse());
     EXPECT_TRUE(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
                 link->type());
-    EXPECT_TRUE(arangodb::iresearch::StaticStrings::DataSourceType ==
+    EXPECT_TRUE(arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                 link->typeName());
     EXPECT_FALSE(link->unique());
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -273,7 +274,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
         R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_NE(nullptr, logicalCollection);
-    auto logicalView = vocbase.createView(viewJson->slice());
+    auto logicalView = vocbase.createView(viewJson->slice(), false);
     ASSERT_NE(nullptr, logicalView);
 
     bool created;
@@ -291,7 +292,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(link->sparse());
     EXPECT_TRUE(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
                 link->type());
-    EXPECT_TRUE(arangodb::iresearch::StaticStrings::DataSourceType ==
+    EXPECT_TRUE(arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                 link->typeName());
     EXPECT_FALSE(link->unique());
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -347,7 +348,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
         R"({ "name": "testView", "id": 42, "type": "arangosearch" })");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
-    auto logicalView = vocbase.createView(viewJson->slice());
+    auto logicalView = vocbase.createView(viewJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
     bool created;
@@ -365,7 +366,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(link->sparse());
     EXPECT_EQ(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK,
               link->type());
-    EXPECT_EQ(arangodb::iresearch::StaticStrings::DataSourceType,
+    EXPECT_EQ(arangodb::iresearch::StaticStrings::ViewArangoSearchType,
               link->typeName());
     EXPECT_FALSE(link->unique());
 
@@ -444,7 +445,7 @@ TEST_F(IResearchLinkTest, test_init) {
                           testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
-    auto logicalView = vocbase.createView(viewJson->slice());
+    auto logicalView = vocbase.createView(viewJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
     // no collections in view before
@@ -453,7 +454,7 @@ TEST_F(IResearchLinkTest, test_init) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -477,7 +478,7 @@ TEST_F(IResearchLinkTest, test_init) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -498,7 +499,7 @@ TEST_F(IResearchLinkTest, test_init) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -524,7 +525,7 @@ TEST_F(IResearchLinkTest, test_init) {
                           testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_NE(nullptr, logicalCollection);
-    auto logicalView = vocbase.createView(viewJson->slice());
+    auto logicalView = vocbase.createView(viewJson->slice(), false);
     ASSERT_NE(nullptr, logicalView);
 
     // collection in view before
@@ -534,7 +535,7 @@ TEST_F(IResearchLinkTest, test_init) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -557,7 +558,7 @@ TEST_F(IResearchLinkTest, test_init) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -578,7 +579,7 @@ TEST_F(IResearchLinkTest, test_init) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -613,7 +614,7 @@ TEST_F(IResearchLinkTest, test_self_token) {
                     testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_NE(nullptr, logicalCollection);
-    auto logicalView = vocbase.createView(viewJson->slice());
+    auto logicalView = vocbase.createView(viewJson->slice(), false);
     EXPECT_NE(nullptr, logicalView);
     auto index = StorageEngineMock::buildLinkMock(
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
@@ -650,7 +651,7 @@ TEST_F(IResearchLinkTest, test_drop) {
                           testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
-    auto logicalView = vocbase.createView(viewJson->slice());
+    auto logicalView = vocbase.createView(viewJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
     auto link0 = StorageEngineMock::buildLinkMock(
@@ -664,7 +665,7 @@ TEST_F(IResearchLinkTest, test_drop) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -688,7 +689,7 @@ TEST_F(IResearchLinkTest, test_drop) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -711,7 +712,7 @@ TEST_F(IResearchLinkTest, test_drop) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -733,7 +734,7 @@ TEST_F(IResearchLinkTest, test_drop) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -760,7 +761,7 @@ TEST_F(IResearchLinkTest, test_unload) {
                           testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
-    auto logicalView = vocbase.createView(viewJson->slice());
+    auto logicalView = vocbase.createView(viewJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
     auto link = StorageEngineMock::buildLinkMock(
@@ -774,7 +775,7 @@ TEST_F(IResearchLinkTest, test_unload) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -799,7 +800,7 @@ TEST_F(IResearchLinkTest, test_unload) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -820,7 +821,7 @@ TEST_F(IResearchLinkTest, test_unload) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -859,7 +860,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(viewJson->slice()));
+      vocbase.createView(viewJson->slice(), false));
   ASSERT_TRUE((false == !view));
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
@@ -926,7 +927,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_1) {
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(viewJson->slice()));
+      vocbase.createView(viewJson->slice(), false));
   ASSERT_TRUE((false == !view));
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
@@ -995,7 +996,7 @@ TEST_F(IResearchLinkTest, test_write) {
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(viewJson->slice()));
+      vocbase.createView(viewJson->slice(), false));
   ASSERT_TRUE((false == !view));
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
@@ -1052,7 +1053,7 @@ TEST_F(IResearchLinkTest, test_write) {
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->remove(trx, arangodb::LocalDocumentId(2)).ok()));
+    EXPECT_TRUE((l->remove(trx, arangodb::LocalDocumentId(2), false).ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE((l->commit().ok()));
   }
@@ -1099,14 +1100,14 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() {
+  auto compressorRemover = irs::make_finally([]() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
   });
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(viewJson->slice()));
+      vocbase.createView(viewJson->slice(), false));
   ASSERT_TRUE((false == !view));
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
@@ -1205,14 +1206,14 @@ TEST_F(IResearchLinkTest,
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() {
+  auto compressorRemover = irs::make_finally([]() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
   });
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(viewJson->slice()));
+      vocbase.createView(viewJson->slice(), false));
   ASSERT_TRUE((false == !view));
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
@@ -1318,14 +1319,14 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() {
+  auto compressorRemover = irs::make_finally([]() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
   });
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(viewJson->slice()));
+      vocbase.createView(viewJson->slice(), false));
   ASSERT_TRUE((false == !view));
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
@@ -1429,14 +1430,14 @@ TEST_F(IResearchLinkTest,
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() {
+  auto compressorRemover = irs::make_finally([]() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
   });
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(viewJson->slice()));
+      vocbase.createView(viewJson->slice(), false));
   ASSERT_TRUE((false == !view));
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
@@ -1505,7 +1506,7 @@ TEST_F(
     IResearchLinkTest,
     test_write_with_custom_compression_nondefault_mixed_with_sort_encrypted) {
   auto linkCallbackRemover =
-      arangodb::iresearch::IResearchLinkMock::setCallbakForScope([]() {
+      arangodb::iresearch::IResearchLinkMock::setCallbackForScope([]() {
         return irs::directory_attributes{
             0,
             std::make_unique<iresearch::mock::test_encryption>(kEncBlockSize)};
@@ -1553,14 +1554,14 @@ TEST_F(
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() {
+  auto compressorRemover = irs::make_finally([]() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
   });
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(viewJson->slice()));
+      vocbase.createView(viewJson->slice(), false));
   ASSERT_TRUE((false == !view));
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
@@ -1638,7 +1639,7 @@ TEST_F(IResearchLinkTest, test_maintenance_disabled_at_creation) {
   auto& feature = server.getFeature<IResearchFeature>();
 
   auto blockQueue = [&]() {
-    { auto lock = irs::make_lock_guard(mtx); }
+    { std::lock_guard lock{mtx}; }
     cv.notify_one();
   };
 
@@ -1674,7 +1675,7 @@ TEST_F(IResearchLinkTest, test_maintenance_disabled_at_creation) {
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_NE(nullptr, logicalCollection);
   auto view = std::dynamic_pointer_cast<IResearchView>(
-      vocbase.createView(viewJson->slice()));
+      vocbase.createView(viewJson->slice(), false));
   ASSERT_NE(nullptr, view);
   view->open();
   ASSERT_TRUE(server.server().hasFeature<FlushFeature>());
@@ -1686,7 +1687,7 @@ TEST_F(IResearchLinkTest, test_maintenance_disabled_at_creation) {
 
   // block queues
   {
-    auto lock = irs::make_unique_lock(mtx);
+    std::unique_lock lock{mtx};
     ASSERT_TRUE(feature.queue(ThreadGroup::_0, 0ms, blockQueue));
     ASSERT_TRUE(feature.queue(ThreadGroup::_1, 0ms, blockQueue));
 
@@ -1729,7 +1730,7 @@ TEST_F(IResearchLinkTest, test_maintenance_consolidation) {
   std::atomic<size_t> step{0};
   auto blockQueue = [&]() {
     ++step;
-    { auto lock = irs::make_lock_guard(mtx); }
+    { std::lock_guard lock{mtx}; }
     cv.notify_one();
   };
 
@@ -1776,7 +1777,7 @@ TEST_F(IResearchLinkTest, test_maintenance_consolidation) {
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_NE(nullptr, logicalCollection);
   auto view = std::dynamic_pointer_cast<IResearchView>(
-      vocbase.createView(viewJson->slice()));
+      vocbase.createView(viewJson->slice(), false));
   ASSERT_NE(nullptr, view);
   view->open();
   ASSERT_TRUE(server.server().hasFeature<FlushFeature>());
@@ -1788,7 +1789,7 @@ TEST_F(IResearchLinkTest, test_maintenance_consolidation) {
 
   // block queue
   {
-    auto lock = irs::make_unique_lock(mtx);
+    std::unique_lock lock{mtx};
     ASSERT_TRUE(feature.queue(ThreadGroup::_1, 0ms, blockQueue));
     waitForBlocker();
 
@@ -1936,7 +1937,7 @@ TEST_F(IResearchLinkTest, test_maintenance_consolidation) {
     // ensure no commit is scheduled after dropping a link
     {
       ASSERT_TRUE(link->drop().ok());
-      ASSERT_TRUE(asyncSelf->terminationRequested());
+      ASSERT_TRUE(asyncSelf->empty());
 
       ASSERT_TRUE(cv.wait_for(lock, 10s, [&feature]() {
         return std::make_tuple(size_t(0), size_t(0), size_t(1)) ==
@@ -1960,7 +1961,7 @@ TEST_F(IResearchLinkTest, test_maintenance_commit) {
   std::atomic<size_t> step{0};
   auto blockQueue = [&]() {
     ++step;
-    { auto lock = irs::make_lock_guard(mtx); }
+    { std::lock_guard lock{mtx}; }
     cv.notify_one();
   };
 
@@ -2007,7 +2008,7 @@ TEST_F(IResearchLinkTest, test_maintenance_commit) {
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_NE(nullptr, logicalCollection);
   auto view = std::dynamic_pointer_cast<IResearchView>(
-      vocbase.createView(viewJson->slice()));
+      vocbase.createView(viewJson->slice(), false));
   ASSERT_NE(nullptr, view);
   view->open();
   ASSERT_TRUE(server.server().hasFeature<FlushFeature>());
@@ -2019,7 +2020,7 @@ TEST_F(IResearchLinkTest, test_maintenance_commit) {
 
   // block queue
   {
-    auto lock = irs::make_unique_lock(mtx);
+    std::unique_lock lock{mtx};
     ASSERT_TRUE(feature.queue(ThreadGroup::_0, 0ms, blockQueue));
     waitForBlocker();
 
@@ -2145,7 +2146,7 @@ TEST_F(IResearchLinkTest, test_maintenance_commit) {
     // ensure no commit is scheduled after dropping a link
     {
       ASSERT_TRUE(link->drop().ok());
-      ASSERT_TRUE(asyncSelf->terminationRequested());
+      ASSERT_TRUE(asyncSelf->empty());
 
       ASSERT_TRUE(cv.wait_for(lock, 10s, [&feature]() {
         return std::make_tuple(size_t(0), size_t(0), size_t(1)) ==
@@ -2256,7 +2257,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     auto viewJson = arangodb::velocypack::Parser::fromJson(temp);
 
     _view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-        _vocbase.createView(viewJson->slice()));
+        _vocbase.createView(viewJson->slice(), false));
 
     EXPECT_NE(_view, nullptr);
     _view->open();
@@ -2345,7 +2346,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     for (; begin != end; ++begin) {
-      EXPECT_TRUE(l->remove(trx, arangodb::LocalDocumentId(begin)).ok());
+      EXPECT_TRUE(l->remove(trx, arangodb::LocalDocumentId(begin), false).ok());
     }
 
     EXPECT_TRUE(trx.commit().ok());
@@ -2431,11 +2432,18 @@ TEST_F(IResearchLinkMetricsTest, TimeConsolidate) {
     auto [commitTime2, cleanupTime2, consolidationTime2] = l->avgTime();
     EXPECT_LT(0, commitTime2);
   }
-  {
-    std::this_thread::sleep_for(600ms);
-    auto [commitTime1, cleanupTime1, consolidationTime1] = l->avgTime();
-    EXPECT_LT(0, consolidationTime1);
-  }
+  auto start = std::chrono::steady_clock::now();
+  auto check = [&] {
+    while ((std::chrono::steady_clock::now() - start) < 10s) {
+      auto [commitTime1, cleanupTime1, consolidationTime1] = l->avgTime();
+      if (consolidationTime1 > 0) {
+        return true;
+      }
+      std::this_thread::sleep_for(10ms);
+    }
+    return false;
+  };
+  EXPECT_TRUE(check());
 }
 
 TEST_F(IResearchLinkMetricsTest, CleanupWhenEmptyCommit) {
@@ -2715,7 +2723,8 @@ class IResearchLinkInRecoveryDBServerOnUpgradeTest
   arangodb::tests::mocks::MockDBServer server;
   std::string testFilesystemPath;
 
-  IResearchLinkInRecoveryDBServerOnUpgradeTest() : server(false, true) {
+  IResearchLinkInRecoveryDBServerOnUpgradeTest()
+      : server("PRMR_0001", false, true) {
     arangodb::tests::init();
 
     // ensure ArangoSearch start 1 maintenance for each group
@@ -2777,7 +2786,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
                           testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
-    auto logicalView = vocbase.createView(viewJson->slice());
+    auto logicalView = vocbase.createView(viewJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
     // no collections in view before
@@ -2785,7 +2794,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -2802,7 +2811,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -2824,7 +2833,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
                           testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
-    auto logicalView = vocbase.createView(viewJson->slice());
+    auto logicalView = vocbase.createView(viewJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
     // no collections in view before
@@ -2832,7 +2841,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -2849,7 +2858,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -2871,7 +2880,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
                           testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
-    auto logicalView = vocbase.createView(viewJson->slice());
+    auto logicalView = vocbase.createView(viewJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
     // no collections in view before
@@ -2879,7 +2888,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -2896,7 +2905,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -2918,7 +2927,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
                           testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
-    auto logicalView = vocbase.createView(viewJson->slice());
+    auto logicalView = vocbase.createView(viewJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
     // no collections in view before
@@ -2926,7 +2935,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -2945,7 +2954,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest,
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -2966,7 +2975,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
                           testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
-    auto logicalView = vocbase.createView(viewJson->slice());
+    auto logicalView = vocbase.createView(viewJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
     // no collections in view before
@@ -2974,7 +2983,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -2993,7 +3002,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));
@@ -3008,7 +3017,7 @@ TEST_F(IResearchLinkInRecoveryDBServerOnUpgradeTest, test_init_in_recovery) {
       std::set<arangodb::DataSourceId> actual;
 
       EXPECT_TRUE((logicalView->visitCollections(
-          [&actual](arangodb::DataSourceId cid) -> bool {
+          [&actual](arangodb::DataSourceId cid, LogicalView::Indexes*) {
             actual.emplace(cid);
             return true;
           })));

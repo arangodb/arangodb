@@ -23,6 +23,8 @@
 
 #include "Supervision.h"
 
+#include "Inspection/VPack.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedState/SupervisionAction.h"
 #include <memory>
 #include "Agency/AgencyPaths.h"
@@ -30,6 +32,7 @@
 #include "Logger/LogMacros.h"
 
 using namespace arangodb;
+using namespace arangodb::replication2::agency;
 
 /*
  * This is the flow graph of the replicated state supervision. Operations that
@@ -71,8 +74,10 @@ auto isParticipantSnapshotCompleted(ParticipantId const& participant,
                                     StateGeneration expectedGeneration,
                                     RSA::Current const& current,
                                     RSA::Plan const& plan) -> bool {
-  TRI_ASSERT(plan.participants.contains(participant));
-  TRI_ASSERT(plan.participants.at(participant).generation == expectedGeneration)
+  ADB_PROD_ASSERT(plan.participants.contains(participant))
+      << "plan did not contain participant " << participant;
+  ADB_PROD_ASSERT(plan.participants.at(participant).generation ==
+                  expectedGeneration)
       << "expected = " << expectedGeneration
       << " planned = " << plan.participants.at(participant).generation;
   if (expectedGeneration == StateGeneration{1}) {
@@ -112,9 +117,9 @@ auto isParticipantSnapshotCompleted(ParticipantId const& participant,
  */
 auto isParticipantOk(ParticipantId const& participant, RLA::Log const& log,
                      RSA::State const& state) {
-  TRI_ASSERT(state.current.has_value());
-  TRI_ASSERT(state.plan.has_value());
-  TRI_ASSERT(log.plan.has_value());
+  ADB_PROD_ASSERT(state.current.has_value());
+  ADB_PROD_ASSERT(state.plan.has_value());
+  ADB_PROD_ASSERT(log.plan.has_value());
 
   // check if the participant has an up-to-date snapshot
   auto snapshotOk =
@@ -161,10 +166,14 @@ auto checkStateAdded(SupervisionContext& ctx, RSA::State const& state) {
                   // participants and *then* increments the generation
                   .generation = StateGeneration{2},
                   .properties = state.target.properties,
+                  .owner = "target",
                   .participants = {}};
 
     auto logTarget =
         replication2::agency::LogTarget(id, {}, state.target.config);
+    logTarget.owner = "replicated-state";
+    logTarget.leader = state.target.leader;
+    logTarget.version = 1;
 
     for (auto const& [participantId, _] : state.target.participants) {
       logTarget.participants.emplace(participantId, ParticipantFlags{});
@@ -188,9 +197,19 @@ auto checkLeaderSet(SupervisionContext& ctx, RLA::Log const& log,
   }
 }
 
+auto checkConfigSet(SupervisionContext& ctx, RLA::Log const& log,
+                    RSA::State const& state) {
+  auto const& stateConfig = state.target.config;
+  auto const& logConfig = log.target.config;
+
+  if (stateConfig != logConfig) {
+    ctx.createAction<SetLogConfigAction>(stateConfig);
+  }
+}
+
 auto checkParticipantAdded(SupervisionContext& ctx, RLA::Log const& log,
                            RSA::State const& state) {
-  TRI_ASSERT(state.plan.has_value());
+  ADB_PROD_ASSERT(state.plan.has_value());
 
   auto const& targetParticipants = state.target.participants;
   auto const& planParticipants = state.plan->participants;
@@ -212,7 +231,7 @@ auto checkParticipantAdded(SupervisionContext& ctx, RLA::Log const& log,
 
 void checkTargetParticipantRemoved(SupervisionContext& ctx, RLA::Log const& log,
                                    RSA::State const& state) {
-  TRI_ASSERT(state.plan.has_value());
+  ADB_PROD_ASSERT(state.plan.has_value());
 
   auto const& stateTargetParticipants = state.target.participants;
   auto const& logTargetParticipants = log.target.participants;
@@ -235,7 +254,7 @@ void checkTargetParticipantRemoved(SupervisionContext& ctx, RLA::Log const& log,
 
 auto checkLogParticipantRemoved(SupervisionContext& ctx, RLA::Log const& log,
                                 RSA::State const& state) {
-  TRI_ASSERT(state.plan.has_value());
+  ADB_PROD_ASSERT(state.plan.has_value());
 
   auto const& stateTargetParticipants = state.target.participants;
   auto const& logTargetParticipants = log.target.participants;
@@ -268,7 +287,7 @@ auto checkSnapshotComplete(SupervisionContext& ctx, RLA::Log const& log,
   if (state.current and log.plan) {
     for (auto const& [participant, flags] : log.target.participants) {
       if (!flags.allowedAsLeader || !flags.allowedInQuorum) {
-        TRI_ASSERT(state.plan->participants.contains(participant))
+        ADB_PROD_ASSERT(state.plan->participants.contains(participant))
             << "if a participant is in Log/Target is has to be in State/Plan";
         auto const& plannedGeneration =
             state.plan->participants.at(participant).generation;
@@ -291,8 +310,8 @@ auto checkSnapshotComplete(SupervisionContext& ctx, RLA::Log const& log,
         // otherwise, report error
         ctx.reportStatus(RSA::StatusCode::kServerSnapshotMissing, participant);
       } else {
-        TRI_ASSERT(isParticipantSnapshotCompleted(participant, *state.current,
-                                                  *state.plan))
+        ADB_PROD_ASSERT(isParticipantSnapshotCompleted(
+            participant, *state.current, *state.plan))
             << "If a participant is allowed as leader and in a quorum, its "
                "snapshot must be available";
       }
@@ -300,7 +319,7 @@ auto checkSnapshotComplete(SupervisionContext& ctx, RLA::Log const& log,
   }
 }
 
-auto hasConverged(RSA::State const& state) -> bool {
+auto hasConverged(RSA::State const& state, RLA::Log const& log) -> bool {
   if (!state.plan) {
     return false;
   }
@@ -308,7 +327,15 @@ auto hasConverged(RSA::State const& state) -> bool {
     return false;
   }
 
-  // TODO check that the log has converged
+  if (state.target.leader != log.target.leader) {
+    return false;
+  }
+
+  if (!log.current || !log.current->supervision ||
+      log.current->supervision->targetVersion != log.target.version) {
+    return false;
+  }
+
   for (auto const& [pid, flags] : state.target.participants) {
     if (!state.plan->participants.contains(pid)) {
       return false;
@@ -344,7 +371,7 @@ auto checkConverged(SupervisionContext& ctx, RLA::Log const& log,
   }
 
   // now check if we actually have converged
-  if (hasConverged(state)) {
+  if (hasConverged(state, log)) {
     ctx.createAction<CurrentConvergedAction>(*state.target.version);
   }
 }
@@ -379,6 +406,7 @@ auto checkReplicatedStateParticipants(SupervisionContext& ctx,
 auto checkForwardSettings(SupervisionContext& ctx, RLA::Log const& log,
                           RSA::State const& state) {
   checkLeaderSet(ctx, log, state);
+  checkConfigSet(ctx, log, state);
 }
 
 void checkReplicatedState(SupervisionContext& ctx,
@@ -392,18 +420,19 @@ void checkReplicatedState(SupervisionContext& ctx,
   // we're waiting for the log to appear.
   if (!log.has_value()) {
     // if state/plan is visible, log/target should be visible as well
-    TRI_ASSERT(state.plan == std::nullopt);
+    ADB_PROD_ASSERT(state.plan == std::nullopt);
     ctx.reportStatus(RSA::StatusCode::kLogNotCreated,
                      "replicated log has not yet been created");
     return;
   }
 
-  TRI_ASSERT(state.plan.has_value());
+  ADB_PROD_ASSERT(state.plan.has_value());
   checkReplicatedStateParticipants(ctx, *log, state);
   checkForwardSettings(ctx, *log, state);
   checkConverged(ctx, *log, state);
 }
 
+// TODO: sctx is unused
 auto buildAgencyTransaction(DatabaseID const& database, LogId id,
                             SupervisionContext& sctx, ActionContext& actx,
                             arangodb::agency::envelope envelope)
@@ -426,20 +455,20 @@ auto buildAgencyTransaction(DatabaseID const& database, LogId id,
                   .emplace_object(
                       logTargetPath,
                       [&](VPackBuilder& builder) {
-                        actx.getValue<replication2::agency::LogTarget>()
-                            .toVelocyPack(builder);
+                        velocypack::serialize(
+                            builder,
+                            actx.getValue<replication2::agency::LogTarget>());
                       })
                   .inc(paths::target()->version()->str());
             })
       .cond(actx.hasModificationFor<agency::Plan>(),
             [&](arangodb::agency::envelope::write_trx&& trx) {
               return std::move(trx)
-                  .emplace_object(
-                      statePlanPath,
-                      [&](VPackBuilder& builder) {
-                        actx.getValue<agency::Plan>().toVelocyPack(builder);
-                      })
-                  .inc(paths::plan()->version()->str());
+                  .inc(paths::plan()->version()->str())
+                  .emplace_object(statePlanPath, [&](VPackBuilder& builder) {
+                    velocypack::serialize(builder,
+                                          actx.getValue<agency::Plan>());
+                  });
             })
       .cond(actx.hasModificationFor<agency::Current::Supervision>(),
             [&](arangodb::agency::envelope::write_trx&& trx) {
@@ -447,8 +476,9 @@ auto buildAgencyTransaction(DatabaseID const& database, LogId id,
                   .emplace_object(
                       currentSupervisionPath,
                       [&](VPackBuilder& builder) {
-                        actx.getValue<agency::Current::Supervision>()
-                            .toVelocyPack(builder);
+                        velocypack::serialize(
+                            builder,
+                            actx.getValue<agency::Current::Supervision>());
                       })
                   .inc(paths::plan()->version()->str());
             })

@@ -21,13 +21,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/ReplicatedState/Supervision.h"
 
-using namespace arangodb;
-using namespace arangodb::replication2;
-using namespace arangodb::replication2::replicated_state;
 namespace RLA = arangodb::replication2::agency;
 namespace RSA = arangodb::replication2::replicated_state::agency;
 
@@ -36,7 +34,7 @@ namespace arangodb::test {
 struct AgencyLogBuilder {
   AgencyLogBuilder() = default;
 
-  auto setId(LogId id) -> AgencyLogBuilder& {
+  auto setId(replication2::LogId id) -> AgencyLogBuilder& {
     _log.target.id = id;
     if (_log.plan) {
       _log.plan->id = id;
@@ -44,18 +42,24 @@ struct AgencyLogBuilder {
     return *this;
   }
 
-  auto setTargetParticipant(ParticipantId const& id, ParticipantFlags flags)
+  auto setTargetParticipant(replication2::ParticipantId const& id,
+                            replication2::ParticipantFlags flags)
       -> AgencyLogBuilder& {
     _log.target.participants[id] = flags;
     return *this;
   }
 
-  auto setTargetConfig(LogConfig config) -> AgencyLogBuilder& {
+  auto setTargetConfig(RLA::LogTargetConfig config) -> AgencyLogBuilder& {
     _log.target.config = config;
     return *this;
   }
 
-  auto setTargetLeader(std::optional<ParticipantId> leader)
+  auto setPlanConfig(RLA::LogPlanConfig config) -> AgencyLogBuilder& {
+    makePlan().participantsConfig.config = config;
+    return *this;
+  }
+
+  auto setTargetLeader(std::optional<replication2::ParticipantId> leader)
       -> AgencyLogBuilder& {
     _log.target.leader = std::move(leader);
     return *this;
@@ -67,23 +71,31 @@ struct AgencyLogBuilder {
     return *this;
   }
 
+  auto setCurrentVersion(std::optional<std::uint64_t> version)
+      -> AgencyLogBuilder& {
+    makeCurrent().supervision->targetVersion = version;
+    return *this;
+  }
+
   auto makeTerm() -> RLA::LogPlanTermSpecification& {
     auto& plan = makePlan();
     if (!plan.currentTerm.has_value()) {
       plan.currentTerm.emplace();
-      plan.currentTerm->term = LogTerm{1};
-      plan.currentTerm->config = _log.target.config;
+      plan.currentTerm->term = replication2::LogTerm{1};
+      plan.participantsConfig.config = RLA::LogPlanConfig(
+          _log.target.config.writeConcern, _log.target.config.waitForSync);
     }
     return plan.currentTerm.value();
   }
 
-  auto setPlanLeader(ParticipantId const& id, RebootId rid = RebootId{0})
-      -> AgencyLogBuilder& {
+  auto setPlanLeader(replication2::ParticipantId const& id,
+                     RebootId rid = RebootId{0}) -> AgencyLogBuilder& {
     makeTerm().leader.emplace(id, rid);
     return *this;
   }
 
-  auto setPlanParticipant(ParticipantId const& id, ParticipantFlags flags)
+  auto setPlanParticipant(replication2::ParticipantId const& id,
+                          replication2::ParticipantFlags flags)
       -> AgencyLogBuilder& {
     makePlan().participantsConfig.participants[id] = flags;
     return *this;
@@ -107,7 +119,16 @@ struct AgencyLogBuilder {
     return *this;
   }
 
-  auto acknowledgeTerm(ParticipantId const& id) -> AgencyLogBuilder& {
+  auto setEmptyTerm() -> AgencyLogBuilder& {
+    auto& term = makeTerm();
+
+    term.leader.reset();
+    term.term.value++;
+    return *this;
+  }
+
+  auto acknowledgeTerm(replication2::ParticipantId const& id)
+      -> AgencyLogBuilder& {
     auto& current = makeCurrent();
     current.localState[id].term = makeTerm().term;
     return *this;
@@ -116,6 +137,15 @@ struct AgencyLogBuilder {
   auto makeCurrent() -> RLA::LogCurrent& {
     if (!_log.current.has_value()) {
       _log.current.emplace();
+
+      if (!_log.current->supervision.has_value()) {
+        _log.current->supervision.emplace();
+      }
+      // makeCurrent should really only be called if a plan already exists.
+      if (_log.plan.has_value()) {
+        _log.current->supervision->assumedWriteConcern =
+            _log.plan->participantsConfig.config.effectiveWriteConcern;
+      }
     }
     return _log.current.value();
   }

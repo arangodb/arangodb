@@ -52,11 +52,9 @@ struct StateActionContextImpl : algorithms::StateActionContext {
     }
   }
 
-  auto createReplicatedState(LogId id, std::string_view type,
-                             velocypack::Slice data)
-      -> ResultT<
-          std::shared_ptr<replicated_state::ReplicatedStateBase>> override {
-    return vocbase.createReplicatedState(id, type, data);
+  auto createReplicatedState(LogId id, std::string_view type) -> ResultT<
+      std::shared_ptr<replicated_state::ReplicatedStateBase>> override {
+    return vocbase.createReplicatedState(id, type);
   }
 
   auto dropReplicatedState(LogId id) -> Result override {
@@ -72,7 +70,7 @@ bool arangodb::maintenance::UpdateReplicatedStateAction::first() {
     auto buffer = StringUtils::decodeBase64(_description.get(std::string{key}));
     auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(buffer.c_str()));
     if (!slice.isNone()) {
-      return T::fromVelocyPack(slice);
+      return velocypack::deserialize<T>(slice);
     }
 
     return std::nullopt;

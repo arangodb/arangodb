@@ -29,7 +29,6 @@
 #include "Aql/SkipResult.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
-#include "Containers/SmallVector.h"
 
 #include <algorithm>
 
@@ -55,10 +54,7 @@ auto ConstFetcher::execute(AqlCallStack& stack)
             AqlItemBlockInputRange{MainQueryState::DONE}};
   }
 
-  arangodb::containers::SmallVector<
-      std::pair<size_t, size_t>>::allocator_type::arena_type arena;
-  arangodb::containers::SmallVector<std::pair<size_t, size_t>> sliceIndexes{
-      arena};
+  containers::SmallVector<std::pair<size_t, size_t>, 4> sliceIndexes;
 
   sliceIndexes.emplace_back(_rowIndex, _blockForPassThrough->numRows());
 
@@ -238,8 +234,7 @@ auto ConstFetcher::numRowsLeft() const noexcept -> size_t {
 }
 
 auto ConstFetcher::canUseFullBlock(
-    arangodb::containers::SmallVector<std::pair<size_t, size_t>> const& ranges)
-    const noexcept -> bool {
+    std::span<std::pair<size_t, size_t> const> ranges) const noexcept -> bool {
   TRI_ASSERT(!ranges.empty());
   if (ranges.front().first != 0) {
     // We do not start at the first index.

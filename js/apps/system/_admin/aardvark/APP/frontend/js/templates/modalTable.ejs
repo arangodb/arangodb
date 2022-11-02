@@ -15,6 +15,11 @@ function createInput(row) {
                 <%= row.style ? 'style="' + row.style + '"' : '' %>><%= row.value||''  %></textarea>
 <%
     break;
+    case 'spacer':
+%>
+    <div class="modal-spacer" id="<%= row.id  %>"></div>
+<%
+    break;
     case 'password':
 %>
     <input type="password" id="<%= row.id  %>" value="<%= row.value || ''  %>" placeholder="<%= row.placeholder || ''  %>"
@@ -23,9 +28,7 @@ function createInput(row) {
     break;
     case 'readonly':
 %>
-    <div class="modal-text" id="<%= row.id  %>" <%= row.style ? 'style="' + row.style + '"' : '' %>>
-        <%= row.value||''  %>
-    </div>
+    <div class="modal-text" id="<%= row.id  %>" <%= row.style ? 'style="' + row.style + '"' : '' %>><%= row.value || ''  %></div>
 <%
     break;
     case 'checkbox':
@@ -43,8 +46,14 @@ function createInput(row) {
 <%
     break;
     case 'select':
+      let selectDisabled = '';
+      let selectTitle = '';
+      if (row.options && row.options.length === 1) {
+        selectDisabled = ' disabled';
+        selectTitle = 'Only one entry available.'
+      }
 %>
-        <select id="<%= row.id  %>" class="modalSelect" <%= row.style ? 'style="' + row.style + '"' : '' %>>
+        <select id="<%= row.id  %>" class="modalSelect" <%= row.style ? 'style="' + row.style + '"' : '' %> <%= selectTitle ? 'title="' + selectTitle + '"' : '' %> <%=selectDisabled%>>
         <% _.each(row.options, function(opt) { %>
             <option value="<%= opt.value  %>" <%= row.selected === opt.value?'selected':''  %>
                     <%= opt.style ? 'style="' + opt.style + '"' : '' %>>
@@ -153,7 +162,11 @@ var createTR = function(row) {
 <tr class="tableRow" id="<%= 'row_' + row.id %>">
   <% if (typeof row.label === 'string') { %>
     <th class="collectionTh">
-      <%= row.label%><%= mandatory %>:
+      <% if (row.removeColon) { %>
+        <%= row.label%><%= mandatory %>
+      <% } else { %>
+        <%= row.label%><%= mandatory %>:
+      <% } %>
     </th>
   <% } %>
 

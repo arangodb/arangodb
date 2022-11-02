@@ -31,6 +31,7 @@
 #include "Replication2/StateMachines/Prototype/PrototypeLeaderState.h"
 #include "Replication2/StateMachines/Prototype/PrototypeStateMachine.h"
 #include "Replication2/Mocks/AsyncFollower.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -39,6 +40,7 @@ using namespace arangodb::replication2::replicated_state::prototype;
 using namespace arangodb::replication2::test;
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/Mocks/MockStatePersistorInterface.h"
 
 namespace {
 struct MockPrototypeLeaderInterface : public IPrototypeLeaderInterface {
@@ -101,19 +103,21 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
     leader->triggerAsyncReplication();
 
     leader->waitForLeadership().get();
-    auto replicatedState =
-        feature->createReplicatedState("prototype-state", leaderLog);
+    auto replicatedState = feature->createReplicatedState(
+        "prototype-state", leaderLog, statePersistor);
     replicatedState->start(
-        std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+        std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+        std::nullopt);
     leaderState = std::dynamic_pointer_cast<PrototypeLeaderState>(
         replicatedState->getLeader());
     TRI_ASSERT(leaderState != nullptr);
     networkMock->addLeaderState("leader", leaderState);
 
-    replicatedState =
-        feature->createReplicatedState("prototype-state", followerLog);
+    replicatedState = feature->createReplicatedState(
+        "prototype-state", followerLog, statePersistor);
     replicatedState->start(
-        std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+        std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+        std::nullopt);
     followerState = std::dynamic_pointer_cast<PrototypeFollowerState>(
         replicatedState->getFollower());
   }
@@ -140,32 +144,35 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
       ParticipantId id, LogTerm term,
       std::vector<std::shared_ptr<AbstractFollower>> const& follower,
       std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
-    auto config =
-        LogConfig{writeConcern, writeConcern, follower.size() + 1, false};
     auto participants =
         std::unordered_map<ParticipantId, ParticipantFlags>{{id, {}}};
     for (auto const& participant : follower) {
       participants.emplace(participant->getParticipantId(), ParticipantFlags{});
     }
     auto participantsConfig =
-        std::make_shared<ParticipantsConfig>(ParticipantsConfig{
-            .generation = 1,
-            .participants = std::move(participants),
-        });
-    return log->becomeLeader(config, std::move(id), term, follower,
+        std::make_shared<replication2::agency::ParticipantsConfig>(
+            replication2::agency::ParticipantsConfig{
+                .generation = 1,
+                .participants = std::move(participants),
+            });
+    return log->becomeLeader(std::move(id), term, follower,
                              std::move(participantsConfig),
                              std::make_shared<FakeFailureOracle>());
   }
 
+  std::shared_ptr<MockStatePersistorInterface> statePersistor =
+      std::make_shared<MockStatePersistorInterface>();
+
   std::shared_ptr<ReplicatedStateFeature> feature =
       std::make_shared<ReplicatedStateFeature>();
-  std::shared_ptr<replication2::replicated_log::ReplicatedLog> leaderLog =
-      createAsyncReplicatedLog();
+
   std::shared_ptr<replication2::replicated_log::ReplicatedLog> followerLog =
       createAsyncReplicatedLog();
-
   std::shared_ptr<LogFollower> follower =
       followerLog->becomeFollower("follower", LogTerm{1}, "leader");
+
+  std::shared_ptr<replication2::replicated_log::ReplicatedLog> leaderLog =
+      createAsyncReplicatedLog();
   std::shared_ptr<LogLeader> leader = createLeaderWithDefaultFlags(
       leaderLog, "leader", LogTerm{1}, {follower}, 2);
 

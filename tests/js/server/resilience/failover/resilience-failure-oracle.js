@@ -70,13 +70,12 @@ const FailureOracleSuite = function () {
     },
 
     testFailureOracleStatus: function () {
-      let coordinators = global.instanceInfo.arangods.filter(arangod => arangod.role === 'coordinator');
+      let coordinators = global.instanceManager.arangods.filter(arangod => arangod.instanceRole === 'coordinator');
       assertTrue(coordinators.length > 0);
       let coord = coordinators[0];
       const coordUrl = coord.url;
       const dbs0Url = getServerUrl(dbservers[0]);
       const dbs1Url = getServerUrl(dbservers[1]);
-
       waitFor(allServersHealthy());
 
       // Check the existence of time field
@@ -130,7 +129,7 @@ const FailureOracleSuite = function () {
     },
 
     testFailureOracleFlush: function () {
-      let coordinators = global.instanceInfo.arangods.filter(arangod => arangod.role === 'coordinator');
+      let coordinators = global.instanceManager.arangods.filter(arangod => arangod.instanceRole === 'coordinator');
       assertTrue(coordinators.length > 0);
       let coord = coordinators[0];
       const coordUrl = coord.url;

@@ -130,6 +130,9 @@ class ShardLocking {
   // Get a full mapping of ShardID => LeaderID.
   // This will stay constant during this query, and a query could be aborted in
   // case of failovers.
+  // For ReadFromFollower situations in read-only queries, this map maps
+  // each ShardID to the actual leader or follower which has been chosen
+  // for the query.
   containers::FlatHashMap<ShardID, ServerID> const& getShardMapping();
 
   // Get the shards of the given collection within the given snippet.

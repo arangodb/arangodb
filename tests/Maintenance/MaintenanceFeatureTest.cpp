@@ -34,11 +34,14 @@
 #include "Cluster/Action.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/ClusterTypes.h"
 #include "Metrics/MetricsFeature.h"
 #include "Mocks/Servers.h"
 #include "RestServer/UpgradeFeature.h"
 
 #include "MaintenanceFeatureMock.h"
+
+static arangodb::ServerID const DBSERVER_ID;
 
 //
 // TestActionBasic simulates a multistep action by counting down
@@ -175,7 +178,7 @@ class MaintenanceFeatureTestDBServer
  protected:
   arangodb::tests::mocks::MockDBServer server;
 
-  MaintenanceFeatureTestDBServer() : server(false) {
+  MaintenanceFeatureTestDBServer() : server(DBSERVER_ID, false) {
     arangodb::ServerState::instance()->setRebootId(
         arangodb::RebootId{1});  // Hack.
     server.untrackFeature<arangodb::UpgradeFeature>();

@@ -115,7 +115,7 @@ TEST_P(AppendEntriesBatchTest, test_with_sized_batches) {
                 TermIndexPair(LogTerm{5}, LogIndex{_payloads.size() + 1}));
       EXPECT_EQ(stats.local.commitIndex, LogIndex{0});
 
-      EXPECT_EQ(stats.follower.at("follower").spearHead.index,
+      EXPECT_EQ(stats.follower.at("follower").nextPrevLogIndex.index,
                 LogIndex{_payloads.size() - 1});
     } else {
       // TODO:

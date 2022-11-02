@@ -10,8 +10,11 @@ $c-lightgreen-2-transp-bg: rgba(245, 248, 240, .95);
 
 $c-pong-green: rgb(140, 219, 139);
 
-$c-positive: #2ecc71;
-$c-positive-hover: #58d68d;
+$c-positive: rgb(46, 204, 113);
+$c-positive-hover: rgb(88, 214, 141);
+
+$c-positive-high-transparency: rgba($c-positive, 0.1);
+$c-positive-low-transparency: rgba($c-positive, 0.2);
 
 $c-table-odd-color: rgba(104, 103, 102, .05);
 

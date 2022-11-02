@@ -26,10 +26,15 @@
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/NonConstExpressionContainer.h"
+#include "Aql/Projections.h"
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Transaction/Methods.h"
 #include "Aql/InAndOutRowExpressionContext.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Providers/SmartGraphRPCCommunicator.h"
+#endif
 
 #include <optional>
 #include <vector>
@@ -88,7 +93,9 @@ struct SingleServerBaseProviderOptions {
       std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
           filterConditionVariables,
       std::unordered_map<std::string, std::vector<std::string>> const&
-          collectionToShardMap);
+          collectionToShardMap,
+      aql::Projections const& vertexProjections,
+      aql::Projections const& edgeProjections);
 
   SingleServerBaseProviderOptions(SingleServerBaseProviderOptions const&) =
       delete;
@@ -114,6 +121,10 @@ struct SingleServerBaseProviderOptions {
 
   void setWeightEdgeCallback(WeightCallback callback);
 
+  aql::Projections const& getVertexProjections() const;
+
+  aql::Projections const& getEdgeProjections() const;
+
  private:
   // The temporary Variable used in the Indexes
   aql::Variable const* _temporaryVariable;
@@ -129,6 +140,8 @@ struct SingleServerBaseProviderOptions {
 
   // CollectionName to ShardMap, used if the Traversal is pushed down to
   // DBServer
+  // Ownership of this _collectionToShardMap stays at the BaseOptions, and is
+  // not transferred into this class.
   std::unordered_map<std::string, std::vector<std::string>> const&
       _collectionToShardMap;
 
@@ -139,6 +152,14 @@ struct SingleServerBaseProviderOptions {
   // non-refactored code, we will do a move instead of a copy operation.
   std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
       _filterConditionVariables;
+
+  /// @brief Projections used on vertex data
+  /// Ownership of this struct is at the BaseOptions
+  aql::Projections const& _vertexProjections;
+
+  /// @brief Projections used on edge data.
+  /// Ownership of this struct is at the BaseOptions
+  aql::Projections const& _edgeProjections;
 };
 
 struct ClusterBaseProviderOptions {
@@ -156,7 +177,8 @@ struct ClusterBaseProviderOptions {
       std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
       bool produceVertices, aql::FixedVarExpressionContext* expressionContext,
       std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
-          filterConditionVariables);
+          filterConditionVariables,
+      std::unordered_set<uint64_t> availableDepthsSpecificConditions);
 
   RefactoredClusterTraverserCache* getCache();
 
@@ -180,6 +202,14 @@ struct ClusterBaseProviderOptions {
 
   void setWeightEdgeCallback(WeightCallback callback);
 
+#ifdef USE_ENTERPRISE
+  void setRPCCommunicator(
+      std::unique_ptr<enterprise::SmartGraphRPCCommunicator>);
+  enterprise::SmartGraphRPCCommunicator& getRPCCommunicator();
+#endif
+
+  bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
+
  private:
   std::shared_ptr<RefactoredClusterTraverserCache> _cache;
 
@@ -199,6 +229,16 @@ struct ClusterBaseProviderOptions {
 
   // Optional callback to compute the weight of an edge.
   std::optional<WeightCallback> _weightCallback;
+
+#ifdef USE_ENTERPRISE
+  // TODO: This is right now a little bit hacked in, to allow unittestability.
+  // i would like to clean this up better such that the RPCCommunicator is
+  // properly owned by this class
+  // Ticket [GORDO-1392]
+  std::unique_ptr<enterprise::SmartGraphRPCCommunicator> _communicator;
+#endif
+
+  std::unordered_set<uint64_t> _availableDepthsSpecificConditions;
 };
 
 }  // namespace graph

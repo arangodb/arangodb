@@ -25,6 +25,7 @@
 
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/IdExecutor.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
@@ -62,4 +63,17 @@ std::unique_ptr<ExecutionBlock> DistributeConsumerNode::createBlock(
   return std::make_unique<ExecutionBlockImpl<
       IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
+}
+
+ExecutionNode* DistributeConsumerNode::clone(ExecutionPlan* plan,
+                                             bool withDependencies,
+                                             bool withProperties) const {
+  auto clone = cloneHelper(
+      std::make_unique<DistributeConsumerNode>(plan, _id, getDistributeId()),
+      withDependencies, withProperties);
+
+  static_cast<DistributeConsumerNode*>(clone)->isResponsibleForInitializeCursor(
+      _isResponsibleForInitializeCursor);
+
+  return clone;
 }

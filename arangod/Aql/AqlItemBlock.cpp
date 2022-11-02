@@ -98,7 +98,7 @@ AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t numRows,
 }
 
 /// @brief init the block from VelocyPack, note that this can throw
-void AqlItemBlock::initFromSlice(VPackSlice const slice) {
+void AqlItemBlock::initFromSlice(VPackSlice slice) {
   int64_t numRows =
       VelocyPackHelper::getNumericValue<int64_t>(slice, "nrItems", 0);
   if (numRows <= 0) {
@@ -561,9 +561,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(size_t from, size_t to) const {
   TRI_ASSERT(from < to);
   TRI_ASSERT(to <= _numRows);
 
-  arangodb::containers::SmallVector<
-      std::pair<size_t, size_t>>::allocator_type::arena_type arena;
-  arangodb::containers::SmallVector<std::pair<size_t, size_t>> ranges{arena};
+  containers::SmallVector<std::pair<size_t, size_t>, 4> ranges;
   ranges.emplace_back(from, to);
   return slice(ranges);
 }
@@ -580,8 +578,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(size_t from, size_t to) const {
  * @return SharedAqlItemBlockPtr A block where all the slices are contained in
  * the order of the list
  */
-auto AqlItemBlock::slice(
-    arangodb::containers::SmallVector<std::pair<size_t, size_t>> const& ranges)
+auto AqlItemBlock::slice(std::span<std::pair<size_t, size_t> const> ranges)
     const -> SharedAqlItemBlockPtr {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // Analyze correctness of ranges
@@ -874,25 +871,23 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
 }
 
 void AqlItemBlock::rowToSimpleVPack(
-    size_t const row, velocypack::Options const* options,
+    size_t row, velocypack::Options const* options,
     arangodb::velocypack::Builder& builder) const {
-  {
-    VPackArrayBuilder rowBuilder{&builder};
+  VPackArrayBuilder rowBuilder{&builder};
 
-    if (isShadowRow(row)) {
-      builder.add(VPackValue(getShadowRowDepth(row)));
+  if (isShadowRow(row)) {
+    builder.add(VPackValue(getShadowRowDepth(row)));
+  } else {
+    builder.add(VPackSlice::nullSlice());
+  }
+  auto const n = numRegisters();
+  for (RegisterId::value_t reg = 0; reg < n; ++reg) {
+    AqlValue const& ref = getValueReference(row, reg);
+    if (ref.isEmpty()) {
+      builder.add(VPackSlice::noneSlice());
     } else {
-      builder.add(VPackSlice::nullSlice());
-    }
-    auto const n = numRegisters();
-    for (RegisterId::value_t reg = 0; reg < n; ++reg) {
-      AqlValue const& ref = getValueReference(row, reg);
-      if (ref.isEmpty()) {
-        builder.add(VPackSlice::noneSlice());
-      } else {
-        ref.toVelocyPack(options, builder, /*resolveExternals*/ false,
-                         /*allowUnindexed*/ true);
-      }
+      ref.toVelocyPack(options, builder, /*resolveExternals*/ false,
+                       /*allowUnindexed*/ true);
     }
   }
 }
@@ -966,10 +961,13 @@ AqlItemBlock::~AqlItemBlock() {
 
 void AqlItemBlock::increaseMemoryUsage(size_t value) {
   resourceMonitor().increaseMemoryUsage(value);
+  _memoryUsage += value;
 }
 
 void AqlItemBlock::decreaseMemoryUsage(size_t value) noexcept {
   resourceMonitor().decreaseMemoryUsage(value);
+  TRI_ASSERT(_memoryUsage >= value);
+  _memoryUsage -= value;
 }
 
 AqlValue AqlItemBlock::getValue(size_t index, RegisterId varNr) const {

@@ -53,10 +53,11 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "common.h"
 #include "utils/utf8_path.hpp"
 #include "velocypack/Parser.h"
+
+#include "IResearch/MakeViewSnapshot.h"
 
 namespace {
 
@@ -80,7 +81,7 @@ class IResearchViewDBServerTest : public ::testing::Test {
  protected:
   arangodb::tests::mocks::MockDBServer server;
 
-  IResearchViewDBServerTest() : server() {}
+  IResearchViewDBServerTest() : server("PRMR_0001") {}
 
   void createTestDatabase(TRI_vocbase_t*& vocbase,
                           std::string const name = "testDatabase") {
@@ -146,7 +147,8 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_FALSE(!link);
 
-    static auto visitor = [](arangodb::DataSourceId) -> bool { return false; };
+    static auto visitor = [](arangodb::DataSourceId,
+                             arangodb::LogicalView::Indexes*) { return false; };
     EXPECT_FALSE(impl->visitCollections(visitor));
     EXPECT_TRUE((false == !arangodb::iresearch::IResearchLinkHelper::find(
                               *logicalCollection, *view)));
@@ -187,14 +189,15 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_FALSE(!link);
 
-    static auto visitor = [](arangodb::DataSourceId) -> bool { return false; };
+    static auto visitor = [](arangodb::DataSourceId,
+                             arangodb::LogicalView::Indexes*) { return false; };
     EXPECT_FALSE(impl->visitCollections(visitor));
     EXPECT_TRUE((false == !arangodb::iresearch::IResearchLinkHelper::find(
                               *logicalCollection, *view)));
 
     auto before = PhysicalCollectionMock::before;
     auto restore = irs::make_finally(
-        [&before]() -> void { PhysicalCollectionMock::before = before; });
+        [&before]() noexcept { PhysicalCollectionMock::before = before; });
     PhysicalCollectionMock::before = []() -> void { throw std::exception(); };
 
     EXPECT_FALSE(impl->drop().ok());
@@ -233,7 +236,8 @@ TEST_F(IResearchViewDBServerTest, test_drop_cid) {
       std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
   ASSERT_FALSE(!link);
 
-  static auto visitor = [](arangodb::DataSourceId) -> bool { return false; };
+  static auto visitor = [](arangodb::DataSourceId,
+                           arangodb::LogicalView::Indexes*) { return false; };
   EXPECT_FALSE(impl->visitCollections(visitor));
   EXPECT_TRUE((false == !arangodb::iresearch::IResearchLinkHelper::find(
                             *logicalCollection, *view)));
@@ -257,7 +261,7 @@ TEST_F(IResearchViewDBServerTest, test_drop_database) {
   size_t beforeCount = 0;
   auto before = PhysicalCollectionMock::before;
   auto restore = irs::make_finally(
-      [&before]() -> void { PhysicalCollectionMock::before = before; });
+      [&before]() noexcept { PhysicalCollectionMock::before = before; });
   PhysicalCollectionMock::before = [&beforeCount]() -> void { ++beforeCount; };
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
@@ -312,7 +316,8 @@ TEST_F(IResearchViewDBServerTest, test_ensure) {
       std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
   ASSERT_FALSE(!link);
 
-  static auto visitor = [](arangodb::DataSourceId) -> bool { return false; };
+  static auto visitor = [](arangodb::DataSourceId,
+                           arangodb::LogicalView::Indexes*) { return false; };
   EXPECT_FALSE(view->visitCollections(visitor));  // no collections in view
   EXPECT_TRUE((false == !arangodb::iresearch::IResearchLinkHelper::find(
                             *logicalCollection, *view)));
@@ -332,7 +337,7 @@ TEST_F(IResearchViewDBServerTest, test_make) {
                           testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -342,9 +347,9 @@ TEST_F(IResearchViewDBServerTest, test_make) {
     EXPECT_FALSE(view->deleted());
     EXPECT_EQ(viewId, view->id().id());
     EXPECT_EQ(impl->id(), view->planId());  // same as view ID
-    EXPECT_EQ(arangodb::iresearch::StaticStrings::DataSourceType,
+    EXPECT_EQ(arangodb::iresearch::StaticStrings::ViewArangoSearchType,
               view->typeName());
-    EXPECT_EQ(arangodb::ViewType::kSearch, view->type());
+    EXPECT_EQ(arangodb::ViewType::kArangoSearch, view->type());
     EXPECT_EQ(&vocbase, &(view->vocbase()));
   }
 }
@@ -360,13 +365,14 @@ TEST_F(IResearchViewDBServerTest, test_open) {
                           testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
     EXPECT_NE(nullptr, impl);
 
-    static auto visitor = [](arangodb::DataSourceId) -> bool { return false; };
+    static auto visitor = [](arangodb::DataSourceId,
+                             arangodb::LogicalView::Indexes*) { return false; };
     EXPECT_TRUE(impl->visitCollections(visitor));
     view->open();
   }
@@ -390,7 +396,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -401,7 +407,9 @@ TEST_F(IResearchViewDBServerTest, test_open) {
 
     auto asyncLinkPtr =
         std::make_shared<arangodb::iresearch::AsyncLinkHandle>(&link);
-    auto visitor = [](arangodb::DataSourceId) -> bool { return false; };
+    auto visitor = [](arangodb::DataSourceId, arangodb::LogicalView::Indexes*) {
+      return false;
+    };
     EXPECT_TRUE(impl->visitCollections(visitor));
     EXPECT_TRUE(impl->link(asyncLinkPtr).ok());
     EXPECT_FALSE(impl->visitCollections(visitor));
@@ -456,11 +464,15 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
-    arangodb::containers::FlatHashSet<arangodb::DataSourceId> collections;
-    collections.insert(logicalCollection->id());
-    auto* snapshot = viewImpl->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate,
-        &collections);
+    auto const cid = logicalCollection->id();
+    arangodb::iresearch::ViewSnapshot::Links links;
+    {
+      auto guard = viewImpl->linksReadLock();
+      links.emplace_back(viewImpl->linkLock(guard, cid));
+    }
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        std::move(links), viewImpl, viewImpl->name());
     EXPECT_EQ(0, snapshot->docs_count());
     EXPECT_TRUE(trx.commit().ok());
   }
@@ -518,11 +530,15 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
-    arangodb::containers::FlatHashSet<arangodb::DataSourceId> collections;
-    collections.insert(logicalCollection->id());
-    auto* snapshot = viewImpl->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate,
-        &collections);
+    auto const cid = logicalCollection->id();
+    arangodb::iresearch::ViewSnapshot::Links links;
+    {
+      auto guard = viewImpl->linksReadLock();
+      links.emplace_back(viewImpl->linkLock(guard, cid));
+    }
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        std::move(links), viewImpl, viewImpl->name());
     EXPECT_EQ(12, snapshot->docs_count());
     EXPECT_TRUE(trx.commit().ok());
   }
@@ -561,12 +577,12 @@ TEST_F(IResearchViewDBServerTest, test_query) {
           collections, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
-      arangodb::ManagedDocumentResult inserted;
       arangodb::OperationOptions options;
       for (size_t i = 1; i <= 12; ++i) {
         auto doc = arangodb::velocypack::Parser::fromJson(
             std::string("{ \"key\": ") + std::to_string(i) + " }");
-        logicalCollection->insert(&trx, doc->slice(), inserted, options);
+        EXPECT_TRUE(
+            trx.insert(logicalCollection->name(), doc->slice(), options).ok());
       }
 
       EXPECT_TRUE(trx.commit().ok());
@@ -578,21 +594,26 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         arangodb::transaction::StandaloneContext::Create(*vocbase), collections,
         EMPTY, EMPTY, trxOptions);
     EXPECT_TRUE(trx0.begin().ok());
-    arangodb::containers::FlatHashSet<arangodb::DataSourceId> collectionIds;
-    collectionIds.insert(logicalCollection->id());
-    EXPECT_TRUE(
-        (nullptr == viewImpl->snapshot(
-                        trx0,
-                        arangodb::iresearch::IResearchView::SnapshotMode::Find,
-                        &collectionIds)));
-    auto* snapshot0 = viewImpl->snapshot(
-        trx0, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace,
-        &collectionIds);
-    EXPECT_TRUE(
-        (snapshot0 ==
-         viewImpl->snapshot(
-             trx0, arangodb::iresearch::IResearchView::SnapshotMode::Find,
-             &collectionIds)));
+    auto const cid0 = logicalCollection->id();
+    arangodb::iresearch::ViewSnapshot::Links links01, links02, links03;
+    {
+      auto guard = viewImpl->linksReadLock();
+      links01.emplace_back(viewImpl->linkLock(guard, cid0));
+      links02.emplace_back(viewImpl->linkLock(guard, cid0));
+      links03.emplace_back(viewImpl->linkLock(guard, cid0));
+    }
+    auto* snapshot0 =
+        makeViewSnapshot(trx0, arangodb::iresearch::ViewSnapshotMode::Find,
+                         std::move(links01), viewImpl, viewImpl->name());
+    EXPECT_TRUE(snapshot0 == nullptr);
+    snapshot0 = makeViewSnapshot(
+        trx0, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
+        std::move(links02), viewImpl, viewImpl->name());
+    ASSERT_TRUE(snapshot0 != nullptr);
+    auto* snapshotFind0 =
+        makeViewSnapshot(trx0, arangodb::iresearch::ViewSnapshotMode::Find,
+                         std::move(links03), viewImpl, viewImpl->name());
+    EXPECT_TRUE(snapshotFind0 == snapshot0);
     EXPECT_EQ(12, snapshot0->docs_count());
     EXPECT_TRUE(trx0.commit().ok());
 
@@ -603,12 +624,12 @@ TEST_F(IResearchViewDBServerTest, test_query) {
           collections, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
-      arangodb::ManagedDocumentResult inserted;
       arangodb::OperationOptions options;
       for (size_t i = 13; i <= 24; ++i) {
         auto doc = arangodb::velocypack::Parser::fromJson(
             std::string("{ \"key\": ") + std::to_string(i) + " }");
-        logicalCollection->insert(&trx, doc->slice(), inserted, options);
+        EXPECT_TRUE(
+            trx.insert(logicalCollection->name(), doc->slice(), options).ok());
       }
 
       EXPECT_TRUE(trx.commit().ok());
@@ -622,9 +643,16 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         arangodb::transaction::StandaloneContext::Create(*vocbase), collections,
         EMPTY, EMPTY, trxOptions);
     EXPECT_TRUE(trx1.begin().ok());
-    auto* snapshot1 = viewImpl->snapshot(
-        trx1, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace,
-        &collectionIds);
+    auto const cid1 = logicalCollection->id();
+    arangodb::iresearch::ViewSnapshot::Links links1;
+    {
+      auto guard = viewImpl->linksReadLock();
+      links1.emplace_back(viewImpl->linkLock(guard, cid1));
+    }
+    auto* snapshot1 = makeViewSnapshot(
+        trx1, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
+        std::move(links1), viewImpl, viewImpl->name());
+    ASSERT_TRUE(snapshot1 != nullptr);
     EXPECT_EQ(24, snapshot1->docs_count());
     EXPECT_TRUE(trx1.commit().ok());
   }
@@ -686,12 +714,16 @@ TEST_F(IResearchViewDBServerTest, test_query) {
             std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
             arangodb::transaction::Options{});
         EXPECT_TRUE(trx.begin().ok());
-        arangodb::containers::FlatHashSet<arangodb::DataSourceId> collections;
-        collections.insert(logicalCollection->id());
-        auto* snapshot = viewImpl->snapshot(
-            trx,
-            arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace,
-            &collections);
+        auto const cid = logicalCollection->id();
+        arangodb::iresearch::ViewSnapshot::Links links;
+        {
+          auto guard = viewImpl->linksReadLock();
+          links.emplace_back(viewImpl->linkLock(guard, cid));
+        }
+        auto* snapshot = makeViewSnapshot(
+            trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
+            std::move(links), viewImpl, viewImpl->name());
+        ASSERT_TRUE(snapshot != nullptr);
         EXPECT_EQ(i, snapshot->docs_count());
         EXPECT_TRUE(trx.commit().ok());
       }
@@ -714,7 +746,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -770,7 +802,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -823,7 +855,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
                           testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -844,7 +876,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     EXPECT_TRUE((slice.hasKey("name") && slice.get("name").isString() &&
                  std::string("testView") == slice.get("name").copyString()));
     EXPECT_TRUE((slice.hasKey("type") && slice.get("type").isString() &&
-                 arangodb::iresearch::StaticStrings::DataSourceType ==
+                 arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                      slice.get("type").copyString()));
   }
 
@@ -859,7 +891,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
                           testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -883,7 +915,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     EXPECT_TRUE((slice.hasKey("name") && slice.get("name").isString() &&
                  std::string("testView") == slice.get("name").copyString()));
     EXPECT_TRUE((slice.hasKey("type") && slice.get("type").isString() &&
-                 arangodb::iresearch::StaticStrings::DataSourceType ==
+                 arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                      slice.get("type").copyString()));
     auto expectedStoredValue = arangodb::velocypack::Parser::fromJson(
         "[{ \"fields\":[\"test.t\"], \"compression\":\"none\"}, "
@@ -903,7 +935,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
                           testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -933,7 +965,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     EXPECT_TRUE(slice.hasKey("planId") && slice.get("planId").isString() &&
                 std::string("3") == slice.get("planId").copyString());
     EXPECT_TRUE(slice.hasKey("type") && slice.get("type").isString() &&
-                arangodb::iresearch::StaticStrings::DataSourceType ==
+                arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                     slice.get("type").copyString());
     EXPECT_TRUE(slice.hasKey("cleanupIntervalStep") &&
                 slice.get("cleanupIntervalStep").isNumber());
@@ -1020,12 +1052,16 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
-    arangodb::containers::FlatHashSet<arangodb::DataSourceId> collections;
-    collections.insert(logicalCollection->id());
-    auto* snapshot = viewImpl->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::Find,
-        &collections);
-    EXPECT_EQ(nullptr, snapshot);
+    auto const cid = logicalCollection->id();
+    arangodb::iresearch::ViewSnapshot::Links links;
+    {
+      auto guard = viewImpl->linksReadLock();
+      links.emplace_back(viewImpl->linkLock(guard, cid));
+    }
+    auto* snapshot =
+        makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
+                         std::move(links), viewImpl, viewImpl->name());
+    EXPECT_TRUE(snapshot == nullptr);
     EXPECT_TRUE(trx.commit().ok());
   }
 
@@ -1036,22 +1072,22 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
-    arangodb::containers::FlatHashSet<arangodb::DataSourceId> collections;
-    collections.insert(logicalCollection->id());
-    EXPECT_TRUE(
-        (nullptr == viewImpl->snapshot(
-                        trx,
-                        arangodb::iresearch::IResearchView::SnapshotMode::Find,
-                        &collections)));
-    auto* snapshot = viewImpl->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate,
-        &collections);
-    EXPECT_TRUE((
-        snapshot ==
-        viewImpl->snapshot(
-            trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate,
-            &collections)));
-    EXPECT_EQ(0, snapshot->live_docs_count());
+    auto const cid = logicalCollection->id();
+    arangodb::iresearch::ViewSnapshot::Links links1, links2;
+    {
+      auto guard = viewImpl->linksReadLock();
+      links1.emplace_back(viewImpl->linkLock(guard, cid));
+      links2.emplace_back(viewImpl->linkLock(guard, cid));
+    }
+    auto* snapshot =
+        makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
+                         std::move(links1), viewImpl, viewImpl->name());
+    EXPECT_TRUE(snapshot == nullptr);
+    snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        std::move(links2), viewImpl, viewImpl->name());
+    ASSERT_TRUE(snapshot != nullptr);
+    EXPECT_EQ(snapshot->live_docs_count(), 0);
     EXPECT_TRUE(trx.commit().ok());
   }
 
@@ -1064,12 +1100,16 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         opts);
     EXPECT_TRUE(trx.begin().ok());
-    arangodb::containers::FlatHashSet<arangodb::DataSourceId> collections;
-    collections.insert(logicalCollection->id());
-    auto* snapshot = viewImpl->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::Find,
-        &collections);
-    EXPECT_EQ(nullptr, snapshot);
+    auto const cid = logicalCollection->id();
+    arangodb::iresearch::ViewSnapshot::Links links;
+    {
+      auto guard = viewImpl->linksReadLock();
+      links.emplace_back(viewImpl->linkLock(guard, cid));
+    }
+    auto* snapshot =
+        makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
+                         std::move(links), viewImpl, viewImpl->name());
+    EXPECT_TRUE(snapshot == nullptr);
     EXPECT_TRUE(trx.commit().ok());
   }
 
@@ -1081,28 +1121,32 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         opts);
     EXPECT_TRUE(trx.begin().ok());
-    arangodb::containers::FlatHashSet<arangodb::DataSourceId> collections;
-    collections.insert(logicalCollection->id());
-    EXPECT_TRUE(
-        (nullptr == viewImpl->snapshot(
-                        trx,
-                        arangodb::iresearch::IResearchView::SnapshotMode::Find,
-                        &collections)));
-    auto* snapshot = viewImpl->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace,
-        &collections);
-    EXPECT_TRUE(
-        (snapshot == viewImpl->snapshot(
-                         trx,
-                         arangodb::iresearch::IResearchView::SnapshotMode::Find,
-                         &collections)));
-    EXPECT_TRUE((
-        snapshot ==
-        viewImpl->snapshot(
-            trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate,
-            &collections)));
-    EXPECT_NE(nullptr, snapshot);
-    EXPECT_EQ(1, snapshot->live_docs_count());
+    auto const cid = logicalCollection->id();
+    arangodb::iresearch::ViewSnapshot::Links links1, links2, links3, links4;
+    {
+      auto guard = viewImpl->linksReadLock();
+      links1.emplace_back(viewImpl->linkLock(guard, cid));
+      links2.emplace_back(viewImpl->linkLock(guard, cid));
+      links3.emplace_back(viewImpl->linkLock(guard, cid));
+      links4.emplace_back(viewImpl->linkLock(guard, cid));
+    }
+    auto* snapshot =
+        makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
+                         std::move(links1), viewImpl, viewImpl->name());
+    EXPECT_TRUE(snapshot == nullptr);
+    snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
+        std::move(links2), viewImpl, viewImpl->name());
+    ASSERT_TRUE(snapshot != nullptr);
+    auto* snapshotFind =
+        makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
+                         std::move(links3), viewImpl, viewImpl->name());
+    EXPECT_TRUE(snapshotFind == snapshot);
+    auto* snapshotCreate = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        std::move(links4), viewImpl, viewImpl->name());
+    EXPECT_TRUE(snapshotCreate == snapshot);
+    EXPECT_EQ(snapshot->live_docs_count(), 1);
     EXPECT_TRUE(trx.commit().ok());
   }
 }
@@ -1191,7 +1235,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
     EXPECT_TRUE((false == !arangodb::iresearch::IResearchLinkHelper::find(
                               *logicalCollection, *view)));
-    static auto visitor = [](arangodb::DataSourceId) -> bool { return false; };
+    static auto visitor = [](arangodb::DataSourceId,
+                             arangodb::LogicalView::Indexes*) { return false; };
     EXPECT_FALSE(view->visitCollections(visitor));  // no collections in view
 
     // not for persistence
@@ -1331,7 +1376,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
     EXPECT_TRUE((false == !arangodb::iresearch::IResearchLinkHelper::find(
                               *logicalCollection, *view)));
-    static auto visitor = [](arangodb::DataSourceId) -> bool { return false; };
+    static auto visitor = [](arangodb::DataSourceId,
+                             arangodb::LogicalView::Indexes*) { return false; };
     EXPECT_FALSE(view->visitCollections(visitor));  // no collections in view
 
     // not for persistence
@@ -1421,7 +1467,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     auto link =
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_FALSE(!link);
-    static auto visitor = [](arangodb::DataSourceId) -> bool { return false; };
+    static auto visitor = [](arangodb::DataSourceId,
+                             arangodb::LogicalView::Indexes*) { return false; };
     EXPECT_FALSE(view->visitCollections(visitor));  // 1 collection in view
 
     {
@@ -1574,7 +1621,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     auto link =
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_FALSE(!link);
-    static auto visitor = [](arangodb::DataSourceId) -> bool { return false; };
+    static auto visitor = [](arangodb::DataSourceId,
+                             arangodb::LogicalView::Indexes*) { return false; };
     EXPECT_FALSE(view->visitCollections(visitor));  // 1 collection in view
 
     {
@@ -1702,13 +1750,14 @@ TEST_F(IResearchViewDBServerTest, test_visitCollections) {
                           testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
     EXPECT_NE(nullptr, impl);
 
-    static auto visitor = [](arangodb::DataSourceId) -> bool { return false; };
+    static auto visitor = [](arangodb::DataSourceId,
+                             arangodb::LogicalView::Indexes*) { return false; };
     EXPECT_TRUE(view->visitCollections(visitor));  // no collections in view
   }
 
@@ -1729,7 +1778,7 @@ TEST_F(IResearchViewDBServerTest, test_visitCollections) {
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -1742,7 +1791,8 @@ TEST_F(IResearchViewDBServerTest, test_visitCollections) {
     EXPECT_TRUE(impl->link(asyncLinkPtr).ok());
 
     std::set<arangodb::DataSourceId> cids = {logicalCollection->id()};
-    static auto visitor = [&cids](arangodb::DataSourceId cid) -> bool {
+    static auto visitor = [&cids](arangodb::DataSourceId cid,
+                                  arangodb::LogicalView::Indexes*) {
       return 1 == cids.erase(cid);
     };
     EXPECT_TRUE(view->visitCollections(visitor));  // all collections expected

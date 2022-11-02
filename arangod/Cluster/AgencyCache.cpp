@@ -27,9 +27,13 @@
 #include "Agency/Node.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/application-exit.h"
+#include "Cluster/AgencyCallback.h"
+#include "Cluster/AgencyCallbackRegistry.h"
+#include "Cluster/ClusterFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
+#include "Network/NetworkFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -75,6 +79,17 @@ bool AgencyCache::start() {
   LOG_TOPIC("9a90f", DEBUG, Logger::AGENCY) << "Starting agency cache worker";
   Thread::start();
   return true;
+}
+
+consensus::index_t AgencyCache::get(
+    arangodb::velocypack::Builder& result,
+    std::shared_ptr<const cluster::paths::Path> const& path) const {
+  result.clear();
+  std::shared_lock g(_storeLock);
+  if (_commitIndex > 0) {
+    _readDB.get(path->str(), result, false);
+  }
+  return _commitIndex;
 }
 
 // Fill existing Builder from readDB, mainly /Plan /Current
@@ -665,7 +680,7 @@ void AgencyCache::invokeCallbackNoLock(uint64_t id,
   if (cb != nullptr) {
     try {
       cb->refetchAndUpdate(true, false);
-      LOG_TOPIC("76aa8", DEBUG, Logger::CLUSTER)
+      LOG_TOPIC("76aa8", TRACE, Logger::CLUSTER)
           << "Agency callback " << id << " has been triggered. refetching "
           << key;
     } catch (arangodb::basics::Exception const& e) {
