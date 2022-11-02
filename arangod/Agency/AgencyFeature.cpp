@@ -230,7 +230,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         << "agency pool size is deprecated and is not expected to be set";
     FATAL_ERROR_EXIT();
   }
-  TRI_ASSERT(_poolSize == _size);
+  _poolSize = _size;
 
   // Size needs to be odd
   if (_size % 2 == 0) {
