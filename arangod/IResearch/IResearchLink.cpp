@@ -714,6 +714,28 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
 
     prev.reset();
   };
+
+  _trxPreCommit = [this](transaction::Methods& trx) {
+    auto* state = trx.state();
+    TRI_ASSERT(state != nullptr);
+
+    // check state of the top-most transaction only
+    if (!state) {
+      return;  // NOOP
+    }
+
+    auto prev = state->cookie(this, nullptr);  // get existing cookie
+
+    if (prev) {
+// TODO FIXME find a better way to look up a ViewState
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto& ctx = dynamic_cast<LinkTrxState&>(*prev);
+#else
+      auto& ctx = static_cast<LinkTrxState&>(*prev);
+#endif
+      ctx._ctx.addToFlush();
+    }
+  };
 }
 
 IResearchLink::~IResearchLink() {
@@ -1958,7 +1980,8 @@ Result IResearchLink::insert(transaction::Methods& trx,
     ctx = ptr.get();
     state.cookie(key, std::move(ptr));
 
-    if (!ctx || !trx.addStatusChangeCallback(&_trxCallback)) {
+    if (!ctx || !trx.addStatusChangeCallback(&_trxCallback) ||
+       !trx.addPreCommitCallback(&_trxPreCommit)) {
       return {TRI_ERROR_INTERNAL,
               "failed to store state into a TransactionState for insert into "
               "arangosearch link '" +
@@ -2128,7 +2151,8 @@ Result IResearchLink::remove(transaction::Methods& trx,
     ctx = ptr.get();
     state.cookie(key, std::move(ptr));
 
-    if (!ctx || !trx.addStatusChangeCallback(&_trxCallback)) {
+    if (!ctx || !trx.addStatusChangeCallback(&_trxCallback) ||
+        !trx.addPreCommitCallback(&_trxPreCommit)) {
       return {TRI_ERROR_INTERNAL,
               "failed to store state into a TransactionState for remove from "
               "arangosearch link '" +

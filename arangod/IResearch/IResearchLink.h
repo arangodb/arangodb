@@ -474,6 +474,8 @@ class IResearchLink {
   std::mutex _commitMutex;        // prevents data store sequential commits
   std::function<void(transaction::Methods& trx, transaction::Status status)>
       _trxCallback;             // for insert(...)/remove(...)
+  std::function<void(transaction::Methods& trx)>
+      _trxPreCommit;             // for insert(...)/remove(...)
   std::string const _viewGuid;  // the identifier of the desired view
                                 // (read-only, set via init())
   bool _createdInRecovery;      // link was created based on recovery marker
