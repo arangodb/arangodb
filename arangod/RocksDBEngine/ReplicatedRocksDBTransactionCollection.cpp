@@ -153,6 +153,11 @@ uint64_t ReplicatedRocksDBTransactionCollection::numOperations()
   return _rocksMethods->numOperations();
 }
 
+uint64_t ReplicatedRocksDBTransactionCollection::numPrimitiveOperations()
+    const noexcept {
+  return _rocksMethods->numPrimitiveOperations();
+}
+
 bool ReplicatedRocksDBTransactionCollection::ensureSnapshot() {
   return _rocksMethods->ensureSnapshot();
 }
