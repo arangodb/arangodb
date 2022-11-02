@@ -98,6 +98,8 @@ using RegisterPlan = RegisterPlanT<ExecutionNode>;
 struct Variable;
 
 namespace optimizer2::nodes {
+struct FilterNode;
+struct LimitNode;
 struct ReturnNode;
 struct SingletonNode;
 }  // namespace optimizer2::nodes
@@ -802,6 +804,8 @@ class LimitNode : public ExecutionNode {
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
 
+  optimizer2::nodes::LimitNode toInspectable() const;
+
  private:
   /// @brief the offset
   size_t _offset;
@@ -991,6 +995,8 @@ class FilterNode : public ExecutionNode {
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
+
+  optimizer2::nodes::FilterNode toInspectable() const;
 
  private:
   /// @brief input variable to read from

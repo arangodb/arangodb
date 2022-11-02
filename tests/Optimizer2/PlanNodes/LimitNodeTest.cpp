@@ -28,6 +28,7 @@
 #include "Basics/VelocyPackStringLiteral.h"
 #include "InspectTestHelperMakros.h"
 #include "velocypack/Collection.h"
+#include "Inspection/VPackInspection.h"
 
 // Node Class
 #include "Aql/Optimizer2/PlanNodes/LimitNode.h"
@@ -95,10 +96,11 @@ GenerateBoolAttributeTest(Optimizer2LimitNode, fullCount);
 
 TEST_F(Optimizer2LimitNode, construction) {
   auto LimitNodeBuffer = createMinimumBody();
-  auto res = deserializeWithStatus<LimitNode>(LimitNodeBuffer);
+  auto res = deserializeWithErrorT<LimitNode>(LimitNodeBuffer);
 
   if (!res) {
-    fmt::print("Something went wrong: {}", res.error());
+    fmt::print("Something went wrong: {} {}", res.error().error(),
+               res.error().path());
     EXPECT_TRUE(res.ok());
   } else {
     auto limitNode = res.get();

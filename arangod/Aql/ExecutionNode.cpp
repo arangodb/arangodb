@@ -70,8 +70,12 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
+
+// PlanNodes
 #include "Aql/Optimizer2/PlanNodes/ReturnNode.h"
 #include "Aql/Optimizer2/PlanNodes/SingletonNode.h"
+#include "Aql/Optimizer2/PlanNodes/LimitNode.h"
+#include "Aql/Optimizer2/PlanNodes/FilterNode.h"
 
 #include <velocypack/Iterator.h>
 
@@ -1983,6 +1987,24 @@ void LimitNode::doToVelocyPack(VPackBuilder& nodes, unsigned /*flags*/) const {
   nodes.add("fullCount", VPackValue(_fullCount));
 }
 
+optimizer2::nodes::LimitNode LimitNode::toInspectable() const {
+  AttributeTypes::Dependencies deps{};
+  for (auto const& it : _dependencies) {
+    deps.emplace_back(it->id().id());
+  }
+  CostEstimate estimate = getCost();
+
+  return {{.id = AttributeTypes::Numeric{id().id()},
+           .type = "LimitNode",
+           .dependencies = std::move(deps),
+           .estimatedCost = estimate.estimatedCost,
+           .estimatedNrItems = estimate.estimatedNrItems,
+           .canThrow = false},
+          _offset,
+          _limit,
+          _fullCount};
+}
+
 /// @brief estimateCost
 CostEstimate LimitNode::estimateCost() const {
   TRI_ASSERT(!_dependencies.empty());
@@ -2529,6 +2551,38 @@ void FilterNode::doToVelocyPack(VPackBuilder& nodes, unsigned /*flags*/) const {
   _inVariable->toVelocyPack(nodes);
 }
 
+optimizer2::nodes::FilterNode FilterNode::toInspectable() const {
+  VPackBuilder builder;
+  {
+    if (_inVariable->type() == Variable::Type::Const) {
+      VPackObjectBuilder b(&builder);
+      builder.add(VPackValue("constantValue"));
+      _inVariable->constantValue().toVelocyPack(nullptr, builder, false, true);
+    }
+  }
+
+  AttributeTypes::Dependencies deps{};
+  for (auto const& it : _dependencies) {
+    deps.emplace_back(it->id().id());
+  }
+  CostEstimate estimate = getCost();
+
+  return {{.id = AttributeTypes::Numeric{id().id()},
+           .type = "FilterNode",
+           .dependencies = std::move(deps),
+           .estimatedCost = estimate.estimatedCost,
+           .estimatedNrItems = estimate.estimatedNrItems,
+           .canThrow = false},
+          {.id = _inVariable->id,
+           .name = _inVariable->name,
+           .isFullDocumentFromCollection =
+               _inVariable->isFullDocumentFromCollection,
+           .isDataFromCollection = _inVariable->isFullDocumentFromCollection,
+           .constantValue = builder.slice().isObject()
+                                ? std::optional<VPackBuilder>{builder}
+                                : std::optional<VPackBuilder>{std::nullopt}}};
+}
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
     ExecutionEngine& engine,
@@ -2616,24 +2670,21 @@ optimizer2::nodes::ReturnNode ReturnNode::toInspectable() const {
   }
   CostEstimate estimate = getCost();
 
-  optimizer2::nodes::ReturnNode planReturnNode = {
-      {.id = AttributeTypes::Numeric{id().id()},
-       .type = "BaseNode",
-       .dependencies = std::move(deps),
-       .estimatedCost = estimate.estimatedCost,
-       .estimatedNrItems = estimate.estimatedNrItems,
-       .canThrow = false},
-      {.count = _count},
-      {.id = _inVariable->id,
-       .name = _inVariable->name,
-       .isFullDocumentFromCollection =
-           _inVariable->isFullDocumentFromCollection,
-       .isDataFromCollection = _inVariable->isFullDocumentFromCollection,
-       .constantValue = builder.slice().isObject()
-                            ? std::optional<VPackBuilder>{builder}
-                            : std::optional<VPackBuilder>{std::nullopt}}};
-
-  return planReturnNode;
+  return {{.id = AttributeTypes::Numeric{id().id()},
+           .type = "ReturnNode",
+           .dependencies = std::move(deps),
+           .estimatedCost = estimate.estimatedCost,
+           .estimatedNrItems = estimate.estimatedNrItems,
+           .canThrow = false},
+          {.count = _count},
+          {.id = _inVariable->id,
+           .name = _inVariable->name,
+           .isFullDocumentFromCollection =
+               _inVariable->isFullDocumentFromCollection,
+           .isDataFromCollection = _inVariable->isFullDocumentFromCollection,
+           .constantValue = builder.slice().isObject()
+                                ? std::optional<VPackBuilder>{builder}
+                                : std::optional<VPackBuilder>{std::nullopt}}};
 }
 
 /// @brief doToVelocyPack, for ReturnNode
