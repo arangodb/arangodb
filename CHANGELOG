@@ -1,6 +1,10 @@
 devel
 -----
 
+* Obsolete startup option `--database.force-sync-properties`. This option
+  was useful with the MMFiles storage engine, but didn't have any useful
+  effect when used with the RocksDB engine.
+
 * Deprecate the startup option `--agency.pool-size`. This option was never
   properly supported for any values other than the value of `--agency.size`.
   Now any value set for `--agency.pool-size` other than the value set for

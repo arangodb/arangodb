@@ -1510,12 +1510,12 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::createDatabase(
 }
 
 Result RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
-                                                VPackSlice const& slice) {
+                                                velocypack::Slice slice) {
   return writeDatabaseMarker(id, slice, RocksDBLogValue::DatabaseCreate(id));
 }
 
 Result RocksDBEngine::writeDatabaseMarker(TRI_voc_tick_t id,
-                                          VPackSlice const& slice,
+                                          velocypack::Slice slice,
                                           RocksDBLogValue&& logValue) {
   RocksDBKey key;
   key.constructDatabase(id);
@@ -1534,7 +1534,7 @@ Result RocksDBEngine::writeDatabaseMarker(TRI_voc_tick_t id,
 
 Result RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
                                                   DataSourceId cid,
-                                                  VPackSlice const& slice,
+                                                  velocypack::Slice slice,
                                                   RocksDBLogValue&& logValue) {
   rocksdb::DB* db = _db->GetRootDB();
 

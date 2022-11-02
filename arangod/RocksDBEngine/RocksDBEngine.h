@@ -245,7 +245,7 @@ class RocksDBEngine final : public StorageEngine {
   std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&&,
                                                 ErrorCode& status) override;
   Result writeCreateDatabaseMarker(TRI_voc_tick_t id,
-                                   velocypack::Slice const& slice) override;
+                                   velocypack::Slice slice) override;
   Result prepareDropDatabase(TRI_vocbase_t& vocbase) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
 
@@ -328,10 +328,10 @@ class RocksDBEngine final : public StorageEngine {
 
   rocksdb::TransactionDB* db() const { return _db; }
 
-  Result writeDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice,
+  Result writeDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice slice,
                              RocksDBLogValue&& logValue);
   Result writeCreateCollectionMarker(TRI_voc_tick_t databaseId, DataSourceId id,
-                                     velocypack::Slice const& slice,
+                                     velocypack::Slice slice,
                                      RocksDBLogValue&& logValue);
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, DataSourceId);

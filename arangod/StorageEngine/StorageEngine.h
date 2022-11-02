@@ -182,7 +182,7 @@ class StorageEngine : public ArangodFeature {
 
   // @brief write create marker for database
   virtual Result writeCreateDatabaseMarker(TRI_voc_tick_t id,
-                                           velocypack::Slice const& slice);
+                                           velocypack::Slice slice);
 
   // asks the storage engine to drop the specified database and persist the
   // deletion info. Note that physical deletion of the database data must not
