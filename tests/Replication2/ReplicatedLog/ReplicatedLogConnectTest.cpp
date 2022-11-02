@@ -111,7 +111,8 @@ struct FakeLogFollower : replicated_log::ILogFollower {
                                  DeferredAction> override {
     return std::make_tuple(std::move(core), DeferredAction{});
   }
-  auto compact() -> Result override {
+  auto compact() -> ResultT<
+      arangodb::replication2::replicated_log::CompactionResult> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
   auto waitFor(LogIndex index) -> WaitForFuture override {
@@ -158,7 +159,8 @@ struct FakeLogLeader : replicated_log::ILogLeader {
   auto release(LogIndex doneWithIdx) -> Result override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
-  auto compact() -> Result override {
+  auto compact() -> ResultT<
+      arangodb::replication2::replicated_log::CompactionResult> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
   auto insert(LogPayload payload, bool waitForSync) -> LogIndex {
