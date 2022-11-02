@@ -1,6 +1,8 @@
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
+* Updating properties of a satellite collection breaks replicationFactor.
+
 * Log the documents counts on leader and follower shards at the end of each
   successful shard synchronization.
 
