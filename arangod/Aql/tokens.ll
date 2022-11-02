@@ -126,7 +126,7 @@ class Parser;
   return T_DESC;
 }
 
-(?i:NOT[ \t\r\n]+IN)/[ \t\r\n] {
+(?i:NOT[ \t\r\n]+IN)/[^_a-zA-Z0-9] {
   return T_NOT_IN;
 }
 
@@ -214,7 +214,7 @@ class Parser;
   return T_NONE;
 }
 
-(?i:AT[ \t\r\n]+LEAST)/[ \t\r\n] {
+(?i:AT[ \t\r\n]+LEAST) {
   return T_AT_LEAST;
 }
 
@@ -278,7 +278,7 @@ class Parser;
   return T_ASSIGN;
 }
 
-(?i:![ \t\r\n]*IN)/[ \t\r\n] {
+(?i:![ \t\r\n]*IN)/[^_a-zA-Z0-9] {
   return T_NOT_IN;
 }
 
