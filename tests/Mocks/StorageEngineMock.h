@@ -211,6 +211,7 @@ class TransactionStateMock : public arangodb::TransactionState {
       arangodb::DataSourceId cid) override;
   virtual uint64_t numCommits() const override;
   virtual bool hasFailedOperations() const override;
+  uint64_t numPrimitiveOperations() const noexcept override { return 0; }
   TRI_voc_tick_t lastOperationTick() const noexcept override;
 
   std::unique_ptr<arangodb::TransactionCollection> createTransactionCollection(

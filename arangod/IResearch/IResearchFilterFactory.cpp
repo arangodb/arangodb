@@ -214,7 +214,7 @@ using ConversionHandler = Result (*)(char const* funcName, irs::boolean_filter*,
                                      FilterContext const&, aql::AstNode const&);
 
 /// Appends value tokens to a phrase filter
-void appendTerms(irs::by_phrase& filter, irs::string_ref value,
+void appendTerms(irs::by_phrase& filter, std::string_view value,
                  irs::analysis::analyzer& stream, size_t firstOffset) {
   // reset stream
   stream.reset(value);
@@ -226,8 +226,8 @@ void appendTerms(irs::by_phrase& filter, irs::string_ref value,
 
   // add tokens
   for (auto* options = filter.mutable_options(); stream.next();) {
-    irs::assign(options->push_back<irs::by_term_options>(firstOffset).term,
-                token->value);
+    options->push_back<irs::by_term_options>(firstOffset)
+        .term.assign(token->value);
 
     firstOffset = 0;
   }
@@ -241,8 +241,8 @@ Result byTerm(irs::by_term* filter, std::string&& name,
         kludge::mangleNull(name);
         *filter->mutable_field() = std::move(name);
         filter->boost(filterCtx.boost);
-        irs::assign(filter->mutable_options()->term,
-                    irs::null_token_stream::value_null());
+        filter->mutable_options()->term.assign(irs::ViewCast<irs::byte_type>(
+            irs::null_token_stream::value_null()));
       }
       return {};
     case SCOPED_VALUE_TYPE_BOOL:
@@ -250,8 +250,8 @@ Result byTerm(irs::by_term* filter, std::string&& name,
         kludge::mangleBool(name);
         *filter->mutable_field() = std::move(name);
         filter->boost(filterCtx.boost);
-        irs::assign(filter->mutable_options()->term,
-                    irs::boolean_token_stream::value(value.getBoolean()));
+        filter->mutable_options()->term.assign(irs::ViewCast<irs::byte_type>(
+            irs::boolean_token_stream::value(value.getBoolean())));
       }
       return {};
     case SCOPED_VALUE_TYPE_DOUBLE:
@@ -274,12 +274,12 @@ Result byTerm(irs::by_term* filter, std::string&& name,
 
         *filter->mutable_field() = std::move(name);
         filter->boost(filterCtx.boost);
-        irs::assign(filter->mutable_options()->term, token->value);
+        filter->mutable_options()->term.assign(token->value);
       }
       return {};
     case SCOPED_VALUE_TYPE_STRING:
       if (filter) {
-        irs::string_ref strValue;
+        std::string_view strValue;
         if (!value.getString(strValue)) {
           // something went wrong
           return {TRI_ERROR_BAD_PARAMETER, "could not get string value"};
@@ -295,8 +295,8 @@ Result byTerm(irs::by_term* filter, std::string&& name,
         kludge::mangleField(name, ctx.isOldMangling, analyzer);
         *filter->mutable_field() = std::move(name);
         filter->boost(filterCtx.boost);
-        irs::assign(filter->mutable_options()->term,
-                    irs::ref_cast<irs::byte_type>(strValue));
+        filter->mutable_options()->term.assign(
+            irs::ViewCast<irs::byte_type>(strValue));
       }
       return {};
     default:
@@ -400,10 +400,12 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
         *range.mutable_field() = std::move(name);
         range.boost(filterCtx.boost);
         auto* opts = range.mutable_options();
-        irs::assign(opts->range.min, irs::null_token_stream::value_null());
+        opts->range.min.assign(irs::ViewCast<irs::byte_type>(
+            irs::null_token_stream::value_null()));
         opts->range.min_type =
             minInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
-        irs::assign(opts->range.max, irs::null_token_stream::value_null());
+        opts->range.max.assign(irs::ViewCast<irs::byte_type>(
+            irs::null_token_stream::value_null()));
         opts->range.max_type =
             maxInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
       }
@@ -418,12 +420,12 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
         *range.mutable_field() = std::move(name);
         range.boost(filterCtx.boost);
         auto* opts = range.mutable_options();
-        irs::assign(opts->range.min,
-                    irs::boolean_token_stream::value(min.getBoolean()));
+        opts->range.min.assign(irs::ViewCast<irs::byte_type>(
+            irs::boolean_token_stream::value(min.getBoolean())));
         opts->range.min_type =
             minInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
-        irs::assign(opts->range.max,
-                    irs::boolean_token_stream::value(max.getBoolean()));
+        opts->range.max.assign(irs::ViewCast<irs::byte_type>(
+            irs::boolean_token_stream::value(max.getBoolean())));
         opts->range.max_type =
             maxInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
       }
@@ -465,7 +467,7 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
     }
     case SCOPED_VALUE_TYPE_STRING: {
       if (filter) {
-        irs::string_ref minStrValue, maxStrValue;
+        std::string_view minStrValue, maxStrValue;
         if (!min.getString(minStrValue) || !max.getString(maxStrValue)) {
           // failed to get string value
           return {TRI_ERROR_BAD_PARAMETER, "failed to get string value"};
@@ -482,12 +484,10 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
         range.boost(filterCtx.boost);
 
         auto* opts = range.mutable_options();
-        irs::assign(opts->range.min,
-                    irs::ref_cast<irs::byte_type>(minStrValue));
+        opts->range.min.assign(irs::ViewCast<irs::byte_type>(minStrValue));
         opts->range.min_type =
             minInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
-        irs::assign(opts->range.max,
-                    irs::ref_cast<irs::byte_type>(maxStrValue));
+        opts->range.max.assign(irs::ViewCast<irs::byte_type>(maxStrValue));
         opts->range.max_type =
             maxInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
       }
@@ -558,8 +558,9 @@ Result byRange(irs::boolean_filter* filter, std::string name,
         *range->mutable_field() = std::move(name);
         range->boost(filterCtx.boost);
         auto* opts = range->mutable_options();
-        irs::assign(Min ? opts->range.min : opts->range.max,
-                    irs::null_token_stream::value_null());
+        (Min ? opts->range.min : opts->range.max)
+            .assign(irs::ViewCast<irs::byte_type>(
+                irs::null_token_stream::value_null()));
         (Min ? opts->range.min_type : opts->range.max_type) =
             incl ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
       }
@@ -580,8 +581,9 @@ Result byRange(irs::boolean_filter* filter, std::string name,
         *range->mutable_field() = std::move(name);
         range->boost(filterCtx.boost);
         auto* opts = range->mutable_options();
-        irs::assign(Min ? opts->range.min : opts->range.max,
-                    irs::boolean_token_stream::value(value.getBoolean()));
+        (Min ? opts->range.min : opts->range.max)
+            .assign(irs::ViewCast<irs::byte_type>(
+                irs::boolean_token_stream::value(value.getBoolean())));
         (Min ? opts->range.min_type : opts->range.max_type) =
             incl ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
       }
@@ -621,7 +623,7 @@ Result byRange(irs::boolean_filter* filter, std::string name,
     }
     case SCOPED_VALUE_TYPE_STRING: {
       if (filter) {
-        irs::string_ref strValue;
+        std::string_view strValue;
 
         if (!value.getString(strValue)) {
           // can't parse as string
@@ -646,8 +648,8 @@ Result byRange(irs::boolean_filter* filter, std::string name,
         range->boost(filterCtx.boost);
 
         auto* opts = range->mutable_options();
-        irs::assign(Min ? opts->range.min : opts->range.max,
-                    irs::ref_cast<irs::byte_type>(strValue));
+        (Min ? opts->range.min : opts->range.max)
+            .assign(irs::ViewCast<irs::byte_type>(strValue));
         (Min ? opts->range.min_type : opts->range.max_type) =
             incl ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
       }
@@ -1981,7 +1983,7 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
   }
 
   // 2nd argument defines an analyzer
-  irs::string_ref analyzerId;
+  std::string_view analyzerId;
   ScopedAqlValue analyzerIdValue;
 
   auto rv = evaluateArg<decltype(analyzerId), true>(
@@ -2186,7 +2188,7 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
   if (argc > 1) {
     // 2nd argument defines a type (if present)
     ScopedAqlValue argValue;
-    irs::string_ref arg;
+    std::string_view arg;
     auto rv =
         evaluateArg(arg, argValue, funcName, args, 1, filter != nullptr, ctx);
 
@@ -2206,7 +2208,7 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
                             "of the following: "
                             "'string', 'type', 'analyzer', 'numeric', 'bool', "
                             "'boolean', 'null', but got '")
-                    .append(arg.c_str())
+                    .append(arg.data())
                     .append("'")};
       }
 
@@ -2352,7 +2354,7 @@ class ArgsTraits<aql::AstNode> {
     return v.getInt64();
   }
 
-  static bool getValueString(ValueType const& v, irs::string_ref& str) {
+  static bool getValueString(ValueType const& v, std::string_view& str) {
     return v.getString(str);
   }
 
@@ -2435,7 +2437,7 @@ class ArgsTraits<VPackSlice> {
     return v.getNumber<int64_t>();
   }
 
-  static bool getValueString(ValueType v, irs::string_ref& str) {
+  static bool getValueString(ValueType v, std::string_view& str) {
     if (v.isString()) {
       str = ::getStringRef(v);
       return true;
@@ -2465,7 +2467,7 @@ class ArgsTraits<VPackSlice> {
   static Result evaluateArg(T& out, ValueType& value, char const* funcName,
                             VPackSlice args, size_t i, bool /*isFilter*/,
                             QueryContext const& /*ctx*/) {
-    static_assert(std::is_same<T, irs::string_ref>::value ||
+    static_assert(std::is_same<T, std::string_view>::value ||
                   std::is_same<T, int64_t>::value ||
                   std::is_same<T, double_t>::value ||
                   std::is_same<T, bool>::value);
@@ -2477,7 +2479,7 @@ class ArgsTraits<VPackSlice> {
                   .append(std::to_string(i))};
     }
     value = args.at(i);
-    if constexpr (std::is_same<T, irs::string_ref>::value) {
+    if constexpr (std::is_same<T, std::string_view>::value) {
       if (value.isString()) {
         out = getStringRef(value);
         return {};
@@ -2524,7 +2526,7 @@ std::string getSubFuncErrorSuffix(char const* funcName,
 Result oneArgumentfromFuncPhrase(char const* funcName,
                                  size_t const funcArgumentPosition,
                                  char const* subFuncName, VPackSlice elem,
-                                 irs::string_ref& term) {
+                                 std::string_view& term) {
   if (elem.isArray() && elem.length() != 1) {
     return error::invalidArgsCount<error::ExactValue<1>>(subFuncName)
         .withError([&](arangodb::result::Error& err) {
@@ -2549,7 +2551,7 @@ Result fromFuncPhraseTerm(char const* funcName, size_t funcArgumentPosition,
                           FilterContext const&, const VPackSlice& elem,
                           size_t firstOffset,
                           irs::analysis::analyzer* /*analyzer*/ = nullptr) {
-  irs::string_ref term;
+  std::string_view term;
   auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition,
                                        subFuncName, elem, term);
   if (res.fail()) {
@@ -2558,8 +2560,8 @@ Result fromFuncPhraseTerm(char const* funcName, size_t funcArgumentPosition,
 
   if (filter) {
     auto* opts = filter->mutable_options();
-    irs::assign(opts->push_back<irs::by_term_options>(firstOffset).term,
-                irs::ref_cast<irs::byte_type>(term));
+    opts->push_back<irs::by_term_options>(firstOffset)
+        .term.assign(irs::ViewCast<irs::byte_type>(term));
   }
 
   return {};
@@ -2570,7 +2572,7 @@ Result fromFuncPhraseStartsWith(
     char const* funcName, size_t funcArgumentPosition, char const* subFuncName,
     irs::by_phrase* filter, FilterContext const&, const VPackSlice& elem,
     size_t firstOffset, irs::analysis::analyzer* /*analyzer*/ = nullptr) {
-  irs::string_ref term;
+  std::string_view term;
   auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition,
                                        subFuncName, elem, term);
   if (res.fail()) {
@@ -2579,7 +2581,7 @@ Result fromFuncPhraseStartsWith(
   if (filter) {
     auto& prefix = filter->mutable_options()->push_back<irs::by_prefix_options>(
         firstOffset);
-    irs::assign(prefix.term, irs::ref_cast<irs::byte_type>(term));
+    prefix.term.assign(irs::ViewCast<irs::byte_type>(term));
     prefix.scored_terms_limit = FilterConstants::DefaultScoringTermsLimit;
   }
   return {};
@@ -2592,7 +2594,7 @@ Result fromFuncPhraseLike(char const* funcName,
                           FilterContext const&, const VPackSlice& elem,
                           size_t firstOffset,
                           irs::analysis::analyzer* /*analyzer*/ = nullptr) {
-  irs::string_ref term;
+  std::string_view term;
   auto res = oneArgumentfromFuncPhrase(funcName, funcArgumentPosition,
                                        subFuncName, elem, term);
   if (res.fail()) {
@@ -2602,7 +2604,7 @@ Result fromFuncPhraseLike(char const* funcName,
     auto& wildcard =
         filter->mutable_options()->push_back<irs::by_wildcard_options>(
             firstOffset);
-    irs::assign(wildcard.term, irs::ref_cast<irs::byte_type>(term));
+    wildcard.term.assign(irs::ViewCast<irs::byte_type>(term));
     wildcard.scored_terms_limit = FilterConstants::DefaultScoringTermsLimit;
   }
   return {};
@@ -2650,7 +2652,7 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
   }
 
   // (1 - First) argument defines a target
-  irs::string_ref target;
+  std::string_view target;
   auto res = ElementTraits::evaluateArg(target, targetValue, funcName, args,
                                         1 - First, isFilter, ctx);
 
@@ -2729,7 +2731,7 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
   }
 
   // optional (5 - First) argument defines prefix for target
-  irs::string_ref prefix = irs::string_ref::EMPTY;
+  std::string_view prefix = irs::kEmptyStringView<char>;
   if (5 - First < argc) {
     res = ElementTraits::evaluateArg(prefix, tmpValue, funcName, args,
                                      5 - First, isFilter, ctx);
@@ -2741,12 +2743,12 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
     }
   }
 
-  irs::assign(opts.term, irs::ref_cast<irs::byte_type>(target));
+  opts.term.assign(irs::ViewCast<irs::byte_type>(target));
   opts.with_transpositions = withTranspositions;
   opts.max_distance = static_cast<irs::byte_type>(maxDistance);
   opts.max_terms = static_cast<size_t>(maxTerms);
   opts.provider = &getParametricDescription;
-  irs::assign(opts.prefix, irs::ref_cast<irs::byte_type>(prefix));
+  opts.prefix.assign(irs::ViewCast<irs::byte_type>(prefix));
 
   return {};
 }
@@ -2853,7 +2855,7 @@ Result fromFuncPhraseTerms(char const* funcName, size_t funcArgumentPosition,
 
   irs::by_terms_options::search_terms terms;
   typename ElementTraits::ValueType termValue;
-  irs::string_ref term;
+  std::string_view term;
   for (size_t i = 0; i < argc; ++i) {
     auto res =
         ElementTraits::evaluateArg(term, termValue, subFuncName, array, i,
@@ -2877,7 +2879,7 @@ Result fromFuncPhraseTerms(char const* funcName, size_t funcArgumentPosition,
         terms.emplace(token->value);
       }
     } else {
-      terms.emplace(irs::ref_cast<irs::byte_type>(term));
+      terms.emplace(irs::ViewCast<irs::byte_type>(term));
     }
   }
   if (filter) {
@@ -3018,7 +3020,7 @@ Result fromFuncPhraseInRange(char const* funcName,
           err.appendErrorMessage(errorSuffix);
         });
   }
-  irs::string_ref const minStrValue = getStringRef(min);
+  std::string_view const minStrValue = getStringRef(min);
 
   if (!max.isString()) {
     return error::typeMismatch(subFuncName, 2, SCOPED_VALUE_TYPE_STRING,
@@ -3027,15 +3029,15 @@ Result fromFuncPhraseInRange(char const* funcName,
           err.appendErrorMessage(errorSuffix);
         });
   }
-  irs::string_ref const maxStrValue = getStringRef(max);
+  std::string_view const maxStrValue = getStringRef(max);
 
   if (filter) {
     auto& opts = filter->mutable_options()->push_back<irs::by_range_options>(
         firstOffset);
-    irs::assign(opts.range.min, irs::ref_cast<irs::byte_type>(minStrValue));
+    opts.range.min.assign(irs::ViewCast<irs::byte_type>(minStrValue));
     opts.range.min_type =
         minInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
-    irs::assign(opts.range.max, irs::ref_cast<irs::byte_type>(maxStrValue));
+    opts.range.max.assign(irs::ViewCast<irs::byte_type>(maxStrValue));
     opts.range.max_type =
         maxInclude ? irs::BoundType::INCLUSIVE : irs::BoundType::EXCLUSIVE;
     opts.scored_terms_limit = FilterConstants::DefaultScoringTermsLimit;
@@ -3043,7 +3045,7 @@ Result fromFuncPhraseInRange(char const* funcName,
   return {};
 }
 
-frozen::map<irs::string_ref, ConversionPhraseHandler,
+frozen::map<std::string_view, ConversionPhraseHandler,
             6> constexpr kFCallSystemConversionPhraseHandlers{
     {"TERM", fromFuncPhraseTerm},
     {"STARTS_WITH", fromFuncPhraseStartsWith},
@@ -3083,7 +3085,7 @@ Result processPhraseArgObjectType(char const* funcName,
                   .append(std::to_string(funcArgumentPosition + 1))
                   .append("'")};
     }
-    return entry->second(funcName, funcArgumentPosition, entry->first.c_str(),
+    return entry->second(funcName, funcArgumentPosition, entry->first.data(),
                          filter, filterCtx, value, firstOffset, analyzer);
   } else {
     return {TRI_ERROR_BAD_PARAMETER,
@@ -3101,7 +3103,7 @@ Result processPhraseArgs(char const* funcName, irs::by_phrase* phrase,
                          size_t valueArgsEnd, irs::analysis::analyzer* analyzer,
                          size_t offset, bool allowDefaultOffset,
                          bool isInArray) {
-  irs::string_ref value;
+  std::string_view value;
   bool expectingOffset = false;
   for (size_t idx = valueArgsBegin; idx < valueArgsEnd; ++idx) {
     typename ElementTraits::ValueType valueArg;
@@ -3344,7 +3346,7 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
 
   // 2nd argument defines a value
   ScopedAqlValue matchAqlValue;
-  irs::string_ref matchValue;
+  std::string_view matchValue;
   {
     auto res =
         evaluateArg(matchValue, matchAqlValue, funcName, args, 1, filter, ctx);
@@ -3380,7 +3382,7 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
         return error::failedToEvaluate(funcName, 3);
       }
       if (SCOPED_VALUE_TYPE_STRING == tmpValue.type()) {  // this is analyzer
-        irs::string_ref analyzerId;
+        std::string_view analyzerId;
         if (!tmpValue.getString(analyzerId)) {
           return error::failedToParse(funcName, 3, SCOPED_VALUE_TYPE_STRING);
         }
@@ -3396,19 +3398,20 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
           return error::failedToParse(funcName, 3, SCOPED_VALUE_TYPE_DOUBLE);
         }
       } else {
-        return {TRI_ERROR_BAD_PARAMETER,
-                "'"s.append(funcName)
-                    .append("' AQL function: argument at position '")
-                    .append(std::to_string(3))
-                    .append("' has invalid type '")
-                    .append(ScopedAqlValue::typeString(tmpValue.type()).c_str())
-                    .append("' ('")
-                    .append(ScopedAqlValue::typeString(SCOPED_VALUE_TYPE_DOUBLE)
-                                .c_str())
-                    .append("' or '")
-                    .append(ScopedAqlValue::typeString(SCOPED_VALUE_TYPE_STRING)
-                                .c_str())
-                    .append("' expected)")};
+        return {
+            TRI_ERROR_BAD_PARAMETER,
+            "'"s.append(funcName)
+                .append("' AQL function: argument at position '")
+                .append(std::to_string(3))
+                .append("' has invalid type '")
+                .append(ScopedAqlValue::typeString(tmpValue.type()).data())
+                .append("' ('")
+                .append(
+                    ScopedAqlValue::typeString(SCOPED_VALUE_TYPE_DOUBLE).data())
+                .append("' or '")
+                .append(
+                    ScopedAqlValue::typeString(SCOPED_VALUE_TYPE_STRING).data())
+                .append("' expected)")};
       }
     }
   }
@@ -3473,7 +3476,7 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
     irs::term_attribute const* token = irs::get<irs::term_attribute>(*analyzer);
     TRI_ASSERT(token);
     while (analyzer->next()) {
-      opts->ngrams.emplace_back(token->value.c_str(), token->value.size());
+      opts->ngrams.emplace_back(token->value.data(), token->value.size());
     }
   }
   return {};
@@ -3537,7 +3540,7 @@ Result fromFuncStartsWith(char const* funcName, irs::boolean_filter* filter,
     return error::failedToEvaluate(funcName, currentArgNum + 1);
   }
 
-  std::vector<std::pair<ScopedAqlValue, irs::string_ref>> prefixes;
+  std::vector<std::pair<ScopedAqlValue, std::string_view>> prefixes;
   ScopedAqlValue minMatchCountValue;
   auto minMatchCount = FilterConstants::DefaultStartsWithMinMatchCount;
   bool const isMultiPrefix = prefixesValue.isArray();
@@ -3546,7 +3549,7 @@ Result fromFuncStartsWith(char const* funcName, irs::boolean_filter* filter,
     if (size > 0) {
       prefixes.reserve(size);
       for (size_t i = 0; i < size; ++i) {
-        prefixes.emplace_back(prefixesValue.at(i), irs::string_ref::NIL);
+        prefixes.emplace_back(prefixesValue.at(i), std::string_view{});
         auto& value = prefixes.back();
 
         if (!value.first.getString(value.second)) {
@@ -3646,8 +3649,7 @@ Result fromFuncStartsWith(char const* funcName, irs::boolean_filter* filter,
       }
       auto* opts = prefixFilter.mutable_options();
       opts->scored_terms_limit = scoringLimit;
-      irs::assign(opts->term,
-                  irs::ref_cast<irs::byte_type>(prefixes[i].second));
+      opts->term.assign(irs::ViewCast<irs::byte_type>(prefixes[i].second));
     }
   }
 
@@ -3708,7 +3710,7 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
 
   // 2nd argument defines a matching pattern
   ScopedAqlValue patternValue;
-  irs::string_ref pattern;
+  std::string_view pattern;
   Result res = evaluateArg(pattern, patternValue, funcName, args, 1,
                            filter != nullptr, ctx);
 
@@ -3735,7 +3737,7 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
     wildcardFilter.boost(filterCtx.boost);
     auto* opts = wildcardFilter.mutable_options();
     opts->scored_terms_limit = scoringLimit;
-    irs::assign(opts->term, irs::ref_cast<irs::byte_type>(pattern));
+    opts->term.assign(irs::ViewCast<irs::byte_type>(pattern));
   }
 
   return {};
@@ -3849,13 +3851,13 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
               .append("' AQL function: argument at position '")
               .append(std::to_string(shapeNodeIdx))
               .append("' has invalid type '")
-              .append(ScopedAqlValue::typeString(shapeValue.type()).c_str())
+              .append(ScopedAqlValue::typeString(shapeValue.type()).data())
               .append("' ('")
               .append(
-                  ScopedAqlValue::typeString(SCOPED_VALUE_TYPE_OBJECT).c_str())
+                  ScopedAqlValue::typeString(SCOPED_VALUE_TYPE_OBJECT).data())
               .append("' or '")
               .append(
-                  ScopedAqlValue::typeString(SCOPED_VALUE_TYPE_ARRAY).c_str())
+                  ScopedAqlValue::typeString(SCOPED_VALUE_TYPE_ARRAY).data())
               .append("' expected)")};
     }
 
@@ -3900,7 +3902,7 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
   return {};
 }
 
-frozen::map<irs::string_ref, ConversionHandler,
+frozen::map<std::string_view, ConversionHandler,
             0> constexpr kFCallUserConversionHandlers{};
 
 Result fromFCallUser(irs::boolean_filter* filter,
@@ -3918,7 +3920,7 @@ Result fromFCallUser(irs::boolean_filter* filter,
             "Unable to parse user function arguments as an array'"};
   }
 
-  irs::string_ref name;
+  std::string_view name;
 
   if (!parseValue(name, node)) {
     return {TRI_ERROR_BAD_PARAMETER, "Unable to parse user function name"};
@@ -3933,14 +3935,14 @@ Result fromFCallUser(irs::boolean_filter* filter,
   if (!args->isDeterministic()) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Unable to handle non-deterministic function '"s
-                .append(name.c_str(), name.size())
+                .append(name.data(), name.size())
                 .append("' arguments")};
   }
 
-  return entry->second(entry->first.c_str(), filter, filterCtx, *args);
+  return entry->second(entry->first.data(), filter, filterCtx, *args);
 }
 
-frozen::map<irs::string_ref, ConversionHandler,
+frozen::map<std::string_view, ConversionHandler,
             14> constexpr kFCallSystemConversionHandlers{
     // filter functions
     {"PHRASE", fromFuncPhrase},
@@ -3991,7 +3993,7 @@ Result fromFCall(irs::boolean_filter* filter, FilterContext const& filterCtx,
                 .append("' as an array'")};
   }
 
-  return entry->second(entry->first.c_str(), filter, filterCtx, *args);
+  return entry->second(entry->first.data(), filter, filterCtx, *args);
 }
 
 Result fromFilter(irs::boolean_filter* filter, FilterContext const& filterCtx,
@@ -4033,7 +4035,7 @@ Result fromExpansion(irs::boolean_filter* filter,
 
 namespace arangodb::iresearch {
 
-bool allColumnAcceptor(irs::string_ref, irs::string_ref) noexcept {
+bool allColumnAcceptor(std::string_view, std::string_view) noexcept {
   return true;
 }
 

@@ -66,6 +66,10 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
     return _numInserts + _numUpdates + _numRemoves;
   }
 
+  uint64_t numPrimitiveOperations() const noexcept final override {
+    return _numInserts + 2 * _numUpdates + _numRemoves;
+  }
+
   /// @brief add an operation for a transaction
   Result addOperation(TRI_voc_document_operation_e opType) override;
 

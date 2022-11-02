@@ -1778,8 +1778,8 @@ TEST_F(IResearchFeatureTest, test_start) {
 
   enum class FunctionType { FILTER = 0, SCORER };
 
-  std::map<irs::string_ref, std::pair<irs::string_ref, FunctionType>> expected =
-      {
+  std::map<std::string_view, std::pair<std::string_view, FunctionType>>
+      expected = {
           // filter functions
           {"EXISTS", {".|.,.", FunctionType::FILTER}},
           {"PHRASE", {".,.|.+", FunctionType::FILTER}},

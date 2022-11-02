@@ -242,7 +242,7 @@ class UniqueHeapInstance {
 template<typename CharType, typename V>
 struct UnorderedRefKeyMapBase {
  public:
-  typedef std::unordered_map<irs::hashed_basic_string_ref<CharType>,
+  typedef std::unordered_map<irs::hashed_basic_string_view<CharType>,
                              std::pair<std::basic_string<CharType>, V>>
       MapType;
 
@@ -259,9 +259,9 @@ struct UnorderedRefKeyMapBase {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a map whose key is an irs::hashed_basic_string_ref and the actual
+/// @brief a map whose key is an irs::hashed_basic_string_view and the actual
 ///        key memory is in an std::pair beside the value
-///        allowing the use of the map with an irs::basic_string_ref without
+///        allowing the use of the map with an std::basic_string_view without
 ///        the need to allocaate memmory during find(...)
 ////////////////////////////////////////////////////////////////////////////////
 template<typename CharType, typename V>
@@ -338,7 +338,7 @@ class UnorderedRefKeyMap
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // ensure every key points to valid data
     for (auto& entry : _map) {
-      TRI_ASSERT(entry.first.c_str() == entry.second.first.c_str());
+      TRI_ASSERT(entry.first.data() == entry.second.first.data());
     }
 #endif
   }

@@ -158,6 +158,11 @@ uint64_t SimpleRocksDBTransactionState::numOperations() const noexcept {
   return _rocksMethods->numOperations();
 }
 
+uint64_t SimpleRocksDBTransactionState::numPrimitiveOperations()
+    const noexcept {
+  return _rocksMethods->numPrimitiveOperations();
+}
+
 bool SimpleRocksDBTransactionState::ensureSnapshot() {
   return _rocksMethods->ensureSnapshot();
 }

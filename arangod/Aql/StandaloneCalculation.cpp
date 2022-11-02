@@ -100,6 +100,10 @@ class CalculationTransactionState final : public arangodb::TransactionState {
 
   [[nodiscard]] bool hasFailedOperations() const override { return false; }
 
+  [[nodiscard]] uint64_t numPrimitiveOperations() const noexcept override {
+    return 0;
+  }
+
   /// @brief number of commits, including intermediate commits
   [[nodiscard]] uint64_t numCommits() const override { return 0; }
 
