@@ -25,8 +25,6 @@
 #include <cstdint>
 #include <optional>
 #include <utility>
-#include "Basics/ResultT.h"
-#include "Inspection/VPack.h"
 
 namespace arangodb::pregel {
 
@@ -56,23 +54,6 @@ struct Aggregate {
  private:
   uint64_t _countUntilFinished;
   T _aggregate;
-};
-
-template<typename T>
-struct AggregateCount {
-  AggregateCount() = default;
-  AggregateCount(uint64_t countUntilFinished)
-      : _countUntilFinished{countUntilFinished} {}
-  auto aggregate(T message) -> bool {
-    _countUntilFinished--;
-    if (_countUntilFinished == 0) {
-      return true;
-    }
-    return false;
-  }
-
- private:
-  uint64_t _countUntilFinished;
 };
 
 }  // namespace arangodb::pregel

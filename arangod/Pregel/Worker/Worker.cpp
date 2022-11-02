@@ -76,11 +76,8 @@ using namespace arangodb::pregel;
 template<typename V, typename E, typename M>
 std::function<void()> Worker<V, E, M>::_makeStatusCallback() {
   return [self = shared_from_this(), this] {
-    auto statusUpdatedEvent =
-        StatusUpdated{.senderId = ServerState::instance()->getId(),
-                      .status = _observeStatus()};
-    _callConductor(ModernMessage{.executionNumber = _config.executionNumber(),
-                                 .payload = statusUpdatedEvent});
+    send(StatusUpdated{.senderId = ServerState::instance()->getId(),
+                       .status = _observeStatus()});
   };
 }
 
@@ -418,7 +415,8 @@ auto Worker<V, E, M>::_processVertices(
     if (_currentGssObservables.verticesProcessed %
             Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
         0) {
-      _makeStatusCallback()();
+      send(StatusUpdated{.senderId = ServerState::instance()->getId(),
+                         .status = _observeStatus()});
     }
   }
   // ==================== send messages to other shards ====================
@@ -487,7 +485,8 @@ auto Worker<V, E, M>::_finishProcessing(
     obj.push(this->_currentGssObservables.observe());
   });
   _currentGssObservables.zero();
-  _makeStatusCallback()();
+  send(StatusUpdated{.senderId = ServerState::instance()->getId(),
+                     .status = _observeStatus()});
 
   _readCache->clear();  // no need to keep old messages around
   _config._localSuperstep++;
@@ -611,35 +610,6 @@ auto Worker<V, E, M>::_resultsFct(CollectPregelResults const& message) const
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::_callConductor(ModernMessage message) {
-  if (!ServerState::instance()->isRunningInCluster()) {
-    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->queue(RequestLane::INTERNAL_LOW,
-                     [this, self = shared_from_this(), message] {
-                       _feature.process(message, *_config.vocbase());
-                     });
-  } else {
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder serializedMessage;
-    serialize(serializedMessage, message);
-
-    buffer.append(serializedMessage.data(), serializedMessage.size());
-    auto const& nf = _config.vocbase()
-                         ->server()
-                         .template getFeature<arangodb::NetworkFeature>();
-    network::ConnectionPool* pool = nf.pool();
-
-    network::RequestOptions reqOpts;
-    reqOpts.database = _config.database();
-
-    network::sendRequestRetry(pool, "server:" + _config.coordinatorId(),
-                              fuerte::RestVerb::Post, Utils::apiPrefix,
-                              std::move(buffer), reqOpts);
-  }
-}
-
-template<typename V, typename E, typename M>
 auto Worker<V, E, M>::_observeStatus() -> Status const {
   auto currentGss = _currentGssObservables.observe();
   auto fullGssStatus = _allGssStatus.copy();
@@ -665,7 +635,8 @@ auto Worker<V, E, M>::loadGraph(LoadGraph const& graph)
   LOG_PREGEL("52062", DEBUG)
       << fmt::format("Worker for execution number {} has finished loading.",
                      _config.executionNumber());
-  _makeStatusCallback()();
+  send(StatusUpdated{.senderId = ServerState::instance()->getId(),
+                     .status = _observeStatus()});
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
   return graphLoaded;
 }
@@ -674,9 +645,7 @@ template<typename V, typename E, typename M>
 auto Worker<V, E, M>::send(MessagePayload message) -> void {
   auto response = _conductor.send(message);
   if (response.fail()) {
-    LOG_PREGEL("ef90a", DEBUG) << fmt::format(
-        "Got unsuccessful response from Conductor after sending message {}",
-        velocypack::serialize(message).toJson());
+    LOG_PREGEL("ef90a", DEBUG) << response.errorMessage();
   }
 }
 
