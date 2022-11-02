@@ -973,12 +973,6 @@ bool Index::covers(aql::Projections& projections) const {
   // check if we can use covering indexes
   auto const& covered = coveredFields();
 
-  if (n > covered.size()) {
-    // we have more projections than attributes in the index, so we already know
-    // that the index cannot support all the projections
-    return false;
-  }
-
   for (size_t i = 0; i < n; ++i) {
     bool found = false;
     for (size_t j = 0; j < covered.size(); ++j) {

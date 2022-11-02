@@ -134,7 +134,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   [[nodiscard]] char const* actorName() const noexcept;
 
   /// @brief return a reference to the global transaction statistics/counters
-  TransactionStatistics& statistics() noexcept;
+  TransactionStatistics& statistics() const noexcept;
 
   [[nodiscard]] double lockTimeout() const { return _options.lockTimeout; }
   void lockTimeout(double value) {
