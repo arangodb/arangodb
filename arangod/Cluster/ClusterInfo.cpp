@@ -1640,10 +1640,7 @@ void ClusterInfo::loadPlan() {
           auto col = newShards.find(
               std::to_string(colPair.second.collection->id().id()));
           if (col != newShards.end()) {
-            auto logicalColToBeCreated = colPair.second.collection;
-            if (col->second->size() == 0 ||
-                (logicalColToBeCreated->isSmart() &&
-                 logicalColToBeCreated->type() == TRI_COL_TYPE_EDGE)) {
+            if (col->second->size() == 0) {
               // Can happen for smart edge collections. But in this case we
               // can ignore the collection.
               continue;
