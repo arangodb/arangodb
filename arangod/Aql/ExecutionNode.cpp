@@ -1661,18 +1661,7 @@ void SingletonNode::doToVelocyPack(VPackBuilder&, unsigned) const {
 }
 
 optimizer2::nodes::SingletonNode SingletonNode::toInspectable() const {
-  AttributeTypes::Dependencies deps{};
-  for (auto const& it : _dependencies) {
-    deps.emplace_back(it->id().id());
-  }
-  CostEstimate estimate = getCost();
-
-  return {{.id = AttributeTypes::Numeric{id().id()},
-           .type = "SingletonNode",
-           .dependencies = std::move(deps),
-           .estimatedCost = estimate.estimatedCost,
-           .estimatedNrItems = estimate.estimatedNrItems,
-           .canThrow = false}};
+  return {{ExecutionNode::toInspectable("SingletonNode")}};
 }
 
 /// @brief the cost of a singleton is 1, it produces one item only
@@ -2005,21 +1994,8 @@ void LimitNode::doToVelocyPack(VPackBuilder& nodes, unsigned /*flags*/) const {
 }
 
 optimizer2::nodes::LimitNode LimitNode::toInspectable() const {
-  AttributeTypes::Dependencies deps{};
-  for (auto const& it : _dependencies) {
-    deps.emplace_back(it->id().id());
-  }
-  CostEstimate estimate = getCost();
-
-  return {{.id = AttributeTypes::Numeric{id().id()},
-           .type = "LimitNode",
-           .dependencies = std::move(deps),
-           .estimatedCost = estimate.estimatedCost,
-           .estimatedNrItems = estimate.estimatedNrItems,
-           .canThrow = false},
-          _offset,
-          _limit,
-          _fullCount};
+  return {
+      {ExecutionNode::toInspectable("LimitNode")}, _offset, _limit, _fullCount};
 }
 
 /// @brief estimateCost
@@ -2670,18 +2646,7 @@ optimizer2::nodes::ReturnNode ReturnNode::toInspectable() const {
     }
   }
 
-  AttributeTypes::Dependencies deps{};
-  for (auto const& it : _dependencies) {
-    deps.emplace_back(it->id().id());
-  }
-  CostEstimate estimate = getCost();
-
-  return {{.id = AttributeTypes::Numeric{id().id()},
-           .type = "ReturnNode",
-           .dependencies = std::move(deps),
-           .estimatedCost = estimate.estimatedCost,
-           .estimatedNrItems = estimate.estimatedNrItems,
-           .canThrow = false},
+  return {{ExecutionNode::toInspectable("ReturnNode")},
           {.count = _count},
           {.id = _inVariable->id,
            .name = _inVariable->name,
