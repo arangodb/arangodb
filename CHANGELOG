@@ -1,6 +1,13 @@
 devel
 -----
 
+* Improved the syntax highlighter for AQL queries in the web interface
+  with support for multi-line strings, multi-line identifiers in forward
+  and backticks, colorization of escape sequences, separate tokens for
+  pseudo-keywords and pseudo-variables, an updated regex for numbers, the
+  addition of the AT LEAST and WITH COUNT INTO constructs, and the
+  SHA256() function.
+
 * Updated OpenSSL to 1.1.1s.
 
 * BTS_483: Added restriction for usage of query cache for streaming and JS 
