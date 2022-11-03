@@ -329,3 +329,13 @@ auto replication2::operator<<(std::ostream& os, GlobalLogIdentifier const& gid)
     -> std::ostream& {
   return os << to_string(gid);
 }
+
+auto replicated_log::CompactionResponse::fromResult(
+    ResultT<CompactionResult> res) -> CompactionResponse {
+  if (res.fail()) {
+    return CompactionResponse{
+        Error{res.errorNumber(), std::string{res.errorMessage()}}};
+  } else {
+    return CompactionResponse{std::move(res).get()};
+  }
+}

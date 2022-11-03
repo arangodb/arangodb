@@ -52,6 +52,7 @@
 
 #include "Inspection/Status.h"
 #include "Inspection/Types.h"
+#include "Basics/ErrorCode.h"
 
 #include <Basics/Identifier.h>
 #include <Containers/FlatHashMap.h>
@@ -61,7 +62,10 @@ namespace arangodb::velocypack {
 class Builder;
 class Slice;
 }  // namespace arangodb::velocypack
-
+namespace arangodb {
+template<typename T>
+class ResultT;
+}
 namespace arangodb::replication2 {
 
 struct LogIndex {
@@ -487,7 +491,7 @@ struct CompactionStopReason {
 };
 
 struct CompactionResult {
-  std::size_t numEntriesCompacted;
+  std::size_t numEntriesCompacted{0};
   std::optional<CompactionStopReason> stopReason;
 
   friend auto operator==(CompactionResult const& left,
@@ -499,6 +503,30 @@ struct CompactionResult {
     return f.object(x).fields(
         f.field("numEntriesCompacted", x.numEntriesCompacted),
         f.field("stopReason", x.stopReason));
+  }
+};
+
+struct CompactionResponse {
+  struct Error {
+    ErrorCode error{0};
+    std::string errorMessage;
+
+    template<class Inspector>
+    friend auto inspect(Inspector& f, Error& x) {
+      return f.object(x).fields(f.field("error", x.error),
+                                f.field("errorMessage", x.errorMessage));
+    }
+  };
+  static auto fromResult(ResultT<CompactionResult>) -> CompactionResponse;
+
+  std::variant<CompactionResult, Error> value;
+
+  template<class Inspector>
+  friend auto inspect(Inspector& f, CompactionResponse& x) {
+    namespace insp = arangodb::inspection;
+    return f.variant(x.value).embedded("result").alternatives(
+        insp::type<CompactionResult>("ok"),
+        insp::type<CompactionResponse::Error>("error"));
   }
 };
 

@@ -209,7 +209,8 @@ struct ReplicatedLogMethodsDBServer final
     auto result = log->getParticipant()->compact();
 
     CompactionResultMap map;
-    map.byParticipant[ServerState::instance()->getId()] = result;
+    map[ServerState::instance()->getId()] =
+        CompactionResponse::fromResult(result);
     return map;
   }
 
@@ -723,7 +724,7 @@ struct ReplicatedLogMethodsCoordinator final
       -> futures::Future<CompactionResultMap> override {
     auto spec = clusterInfo.getReplicatedLogPlanSpecification(id).get();
 
-    using ResultPair = std::pair<ParticipantId, ResultT<CompactionResultMap>>;
+    using ResultPair = std::pair<ParticipantId, CompactionResponse>;
     auto const compactParticipant =
         [&](ParticipantId const& participant) -> futures::Future<ResultPair> {
       auto path = basics::StringUtils::joinT("/", "_api/log", id, "compact");
@@ -737,14 +738,16 @@ struct ReplicatedLogMethodsCoordinator final
       }
       return network::sendRequest(pool, "server:" + participant,
                                   fuerte::RestVerb::Post, path, buffer, opts)
-          .thenValue([participant](network::Response&& resp) -> ResultPair {
-            if (auto res = resp.combinedResult(); res.fail()) {
-              return std::make_pair(participant, res);
+          .thenValue([participant](
+                         network::Response&& resp) noexcept -> ResultPair {
+            LOG_DEVEL << resp.slice().toJson();
+            auto result = resp.deserialize<CompactionResultMap>();
+            if (result.fail()) {
+              return std::make_pair(
+                  participant, CompactionResponse::fromResult(result.result()));
             }
-            auto map = velocypack::deserialize<CompactionResultMap>(
-                resp.response().slice().get("result"));
-
-            return std::make_pair(participant, std::move(map));
+            TRI_ASSERT(result->size() == 1 && result->contains(participant));
+            return std::make_pair(participant, result->at(participant));
           });
     };
 
@@ -754,18 +757,12 @@ struct ReplicatedLogMethodsCoordinator final
     }
 
     return futures::collectAll(std::move(futs))
-        .thenValue([](auto&& results) -> CompactionResultMap {
+        .thenValue([](std::vector<futures::Try<ResultPair>>&& results)
+                       -> CompactionResultMap {
           CompactionResultMap map;
-          // return first error
           for (auto const& tryRes : results) {
-            auto const& [p, localRes] = tryRes.get();
-            if (localRes.fail()) {
-              map.byParticipant[p] = localRes.result();
-            } else {
-              for (auto const& [pLocal, res] : localRes.get().byParticipant) {
-                map.byParticipant[pLocal] = res;
-              }
-            }
+            auto const& [p, compactionResponse] = tryRes.get();
+            map[p] = compactionResponse;
           }
           return map;
         });

@@ -131,10 +131,8 @@ struct ReplicatedLogMethods {
 
   virtual auto release(LogId, LogIndex) const -> futures::Future<Result> = 0;
 
-  struct CompactionResultMap {
-    std::unordered_map<ParticipantId, ResultT<replicated_log::CompactionResult>>
-        byParticipant;
-  };
+  using CompactionResultMap =
+      std::unordered_map<ParticipantId, replicated_log::CompactionResponse>;
 
   virtual auto compact(LogId) const -> futures::Future<CompactionResultMap> = 0;
 
@@ -180,11 +178,6 @@ auto inspect(Inspector& f, ReplicatedLogMethods::CreateOptions& x) {
 template<class Inspector>
 auto inspect(Inspector& f, ReplicatedLogMethods::CreateResult& x) {
   return f.object(x).fields(f.field("id", x.id), f.field("servers", x.servers));
-}
-
-template<class Inspector>
-auto inspect(Inspector& f, ReplicatedLogMethods::CompactionResultMap& x) {
-  return f.object(x).fields(f.field("byParticipant", x.byParticipant));
 }
 
 }  // namespace arangodb::replication2
