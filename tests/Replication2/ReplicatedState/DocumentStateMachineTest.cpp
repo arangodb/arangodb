@@ -95,9 +95,9 @@ struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
         .WillByDefault([this](TransactionId tid) {
           return _real->removeTransaction(tid);
         });
-    ON_CALL(*this, getActiveTransactions())
+    ON_CALL(*this, getUnfinishedTransactions())
         .WillByDefault([this]() -> TransactionMap const& {
-          return _real->getActiveTransactions();
+          return _real->getUnfinishedTransactions();
         });
   }
 
@@ -105,7 +105,7 @@ struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
   MOCK_METHOD(std::shared_ptr<IDocumentStateTransaction>, ensureTransaction,
               (DocumentLogEntry const& doc), (override));
   MOCK_METHOD(void, removeTransaction, (TransactionId tid), (override));
-  MOCK_METHOD(TransactionMap const&, getActiveTransactions, (),
+  MOCK_METHOD(TransactionMap const&, getUnfinishedTransactions, (),
               (const, override));
 
  private:
@@ -129,8 +129,8 @@ struct MockDocumentStateShardHandler : IDocumentStateShardHandler {
 };
 
 struct MockDocumentStateLeaderInterface : IDocumentStateLeaderInterface {
-  MOCK_METHOD(futures::Future<ResultT<velocypack::SharedSlice>>, getSnapshot,
-              (LogIndex), (override));
+  MOCK_METHOD(futures::Future<ResultT<Snapshot>>, getSnapshot, (LogIndex),
+              (override));
 };
 
 struct MockDocumentStateNetworkHandler : IDocumentStateNetworkHandler {
@@ -180,7 +180,7 @@ struct DocumentStateMachineTest : test::ReplicatedLogTest {
     });
 
     ON_CALL(*leaderInterfaceMock, getSnapshot).WillByDefault([&](LogIndex) {
-      return futures::Future<ResultT<velocypack::SharedSlice>>{std::in_place};
+      return futures::Future<ResultT<Snapshot>>{std::in_place};
     });
 
     ON_CALL(*networkHandlerMock, getLeaderInterface)
@@ -282,7 +282,7 @@ TEST_F(DocumentStateMachineTest,
                                                   operation, TransactionId{13},
                                                   ReplicationOptions{});
   }
-  EXPECT_EQ(3, leaderState->getActiveTransactions().size());
+  EXPECT_EQ(3, leaderState->getActiveTransactionsCount());
 
   {
     VPackBuilder builder;
@@ -293,7 +293,7 @@ TEST_F(DocumentStateMachineTest,
         builder.sharedSlice(), OperationType::kCommit, TransactionId{9},
         ReplicationOptions{});
   }
-  EXPECT_EQ(1, leaderState->getActiveTransactions().size());
+  EXPECT_EQ(1, leaderState->getActiveTransactionsCount());
 
   EXPECT_CALL(transactionManagerMock,
               abortManagedTrx(TransactionId{13}, globalId.database))
@@ -551,16 +551,14 @@ TEST_F(DocumentStateMachineTest, test_SnapshotTransfer) {
   const std::string_view key = "document1_key";
   const std::string_view value = "document1_value";
   ON_CALL(*leaderInterfaceMock, getSnapshot)
-      .WillByDefault(
-          [&](LogIndex) -> futures::Future<ResultT<velocypack::SharedSlice>> {
-            VPackBuilder builder;
-            {
-              VPackObjectBuilder ob(&builder);
-              builder.add(key, value);
-            }
-            return ResultT<velocypack::SharedSlice>::success(
-                builder.sharedSlice());
-          });
+      .WillByDefault([&](LogIndex) -> futures::Future<ResultT<Snapshot>> {
+        VPackBuilder builder;
+        {
+          VPackObjectBuilder ob(&builder);
+          builder.add(key, value);
+        }
+        return ResultT<Snapshot>::success(Snapshot{builder.sharedSlice()});
+      });
   EXPECT_CALL(*leaderInterfaceMock, getSnapshot(_)).Times(1);
 
   auto allEntries = std::vector<DocumentLogEntry>{};
@@ -667,8 +665,8 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_basic) {
   result = transactionHandler.applyEntry(doc);
   ASSERT_TRUE(result.ok());
   Mock::VerifyAndClearExpectations(transactionMock.get());
-  ASSERT_TRUE(
-      transactionHandler.getActiveTransactions().contains(TransactionId{6}));
+  ASSERT_TRUE(transactionHandler.getUnfinishedTransactions().contains(
+      TransactionId{6}));
 
   // After commit, expect the transaction to be removed
   EXPECT_CALL(*transactionMock, commit).WillOnce(Return(Result{}));
@@ -676,7 +674,7 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_basic) {
   result = transactionHandler.applyEntry(doc);
   ASSERT_TRUE(result.ok());
   Mock::VerifyAndClearExpectations(transactionMock.get());
-  ASSERT_TRUE(transactionHandler.getActiveTransactions().empty());
+  ASSERT_TRUE(transactionHandler.getUnfinishedTransactions().empty());
 
   // Start a new transaction and then abort it.
   doc = DocumentLogEntry{"s1234", OperationType::kRemove,
@@ -685,8 +683,8 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_basic) {
   EXPECT_CALL(*transactionMock, apply).Times(1);
   result = transactionHandler.applyEntry(doc);
   ASSERT_TRUE(result.ok());
-  ASSERT_TRUE(
-      transactionHandler.getActiveTransactions().contains(TransactionId{10}));
+  ASSERT_TRUE(transactionHandler.getUnfinishedTransactions().contains(
+      TransactionId{10}));
   Mock::VerifyAndClearExpectations(transactionMock.get());
   Mock::VerifyAndClearExpectations(handlersFactoryMock.get());
 
@@ -696,8 +694,8 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_basic) {
   result = transactionHandler.applyEntry(doc);
   ASSERT_TRUE(result.ok());
   Mock::VerifyAndClearExpectations(transactionMock.get());
-  ASSERT_TRUE(
-      !transactionHandler.getActiveTransactions().contains(TransactionId{10}));
+  ASSERT_TRUE(!transactionHandler.getUnfinishedTransactions().contains(
+      TransactionId{10}));
 
   // No transaction should be created during AbortAllOngoingTrx
   doc.operation = OperationType::kAbortAllOngoingTrx;
@@ -754,4 +752,22 @@ TEST(DocumentStateTransactionHandlerTest, test_applyEntry_errors) {
   result = transactionHandler.applyEntry(doc);
   ASSERT_TRUE(result.fail());
   Mock::VerifyAndClearExpectations(transactionMock.get());
+}
+
+TEST(ActiveTransactionsQueueTEst, test_activeTransactions) {
+  auto activeTrx = ActiveTransactionsQueue{};
+  ASSERT_EQ(activeTrx.getReleaseIndex(LogIndex{99}), LogIndex{99});
+  activeTrx.emplace(TransactionId{100}, LogIndex{100});
+  ASSERT_TRUE(activeTrx.erase(TransactionId{100}));
+  ASSERT_EQ(activeTrx.getReleaseIndex(LogIndex{103}), LogIndex{103});
+  ASSERT_FALSE(activeTrx.erase(TransactionId{100}));
+  activeTrx.emplace(TransactionId{200}, LogIndex{200});
+  activeTrx.emplace(TransactionId{300}, LogIndex{300});
+  activeTrx.emplace(TransactionId{400}, LogIndex{400});
+  ASSERT_TRUE(activeTrx.erase(TransactionId{200}));
+  ASSERT_EQ(activeTrx.getReleaseIndex(LogIndex{1000}), LogIndex{299});
+  ASSERT_TRUE(activeTrx.erase(TransactionId{400}));
+  ASSERT_EQ(activeTrx.getReleaseIndex(LogIndex{1000}), LogIndex{299});
+  ASSERT_TRUE(activeTrx.erase(TransactionId{300}));
+  ASSERT_EQ(activeTrx.getReleaseIndex(LogIndex{1000}), LogIndex{1000});
 }

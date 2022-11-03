@@ -146,15 +146,13 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
 
 auto DocumentStateTransactionHandler::ensureTransaction(
     DocumentLogEntry const& doc) -> std::shared_ptr<IDocumentStateTransaction> {
+  TRI_ASSERT(doc.operation != OperationType::kAbortAllOngoingTrx);
+
   auto tid = doc.tid;
   auto trx = getTrx(tid);
   if (trx != nullptr) {
     return trx;
   }
-
-  TRI_ASSERT(doc.operation != OperationType::kCommit);
-  TRI_ASSERT(doc.operation != OperationType::kAbort);
-  TRI_ASSERT(doc.operation != OperationType::kAbortAllOngoingTrx);
 
   trx = _factory->createTransaction(doc, *_dbGuard);
   _transactions.emplace(tid, trx);
@@ -165,7 +163,7 @@ void DocumentStateTransactionHandler::removeTransaction(TransactionId tid) {
   _transactions.erase(tid);
 }
 
-auto DocumentStateTransactionHandler::getActiveTransactions() const
+auto DocumentStateTransactionHandler::getUnfinishedTransactions() const
     -> TransactionMap const& {
   return _transactions;
 }

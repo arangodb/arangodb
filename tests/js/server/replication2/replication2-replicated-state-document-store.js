@@ -739,6 +739,7 @@ const replicatedStateSnapshotTransferSuite = function () {
   let shards = null;
   let shardId = null;
   let logId = null;
+  let log = null;
 
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
       lh.testHelperFunctions(database, {replicationVersion: "2"});
@@ -751,6 +752,7 @@ const replicatedStateSnapshotTransferSuite = function () {
       shards = collection.shards();
       shardId = shards[0];
       logId = shardId.slice(1);
+      log = db._replicatedLog(logId);
     }),
     tearDown: tearDownAnd(() => {
       if (collection !== null) {
@@ -759,7 +761,8 @@ const replicatedStateSnapshotTransferSuite = function () {
       collection = null;
     }),
 
-    testLeaderRestAPI: function () {
+    testLeaderRestAPI: function (testName) {
+      collection.insert({_key: testName});
       let {leader} = lh.getReplicatedLogLeaderPlan(database, logId);
       let leaderUrl = lh.getServerUrl(leader);
       let url = `${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot?waitForIndex=0`;
@@ -778,6 +781,17 @@ const replicatedStateSnapshotTransferSuite = function () {
       const newParticipants = _.union(_.without(participants, oldParticipant), [newParticipant]).sort();
 
       collection.insert([{_key: "test1"}, {_key: "test2"}]);
+
+      let documents = [];
+      for (let counter = 0; counter < 100; ++counter) {
+        documents.push({_key: `foo${counter}`});
+      }
+      for (let idx = 0; idx < documents.length; ++idx) {
+        collection.insert(documents[idx]);
+      }
+
+      // Trigger compaction intentionally.
+      log.compact();
 
       // Replace the follower.
       const result = sh.replaceParticipant(database, logId, oldParticipant, newParticipant);
@@ -799,11 +813,38 @@ const replicatedStateSnapshotTransferSuite = function () {
       syncShardsWithLogs(database);
 
       // The new follower should've executed a snapshot transfer.
-      // Expect to find the dummy documents in there, for now.
-      // TODO this is not entirely correct, because we don't have any compaction currently.
-      const dummyKeys = ["test1", "test2"];
-      let bulk = sh.getBulkDocuments(lh.getServerUrl(newParticipant), database, shardId, dummyKeys);
-      let keysSet = new Set(dummyKeys);
+      const checkKeys = ["test1", "test2"];
+      // Skipping some documents to save time
+      checkKeys.push(...documents.map(doc => doc._key));
+      let bulk = sh.getBulkDocuments(lh.getServerUrl(newParticipant), database, shardId, checkKeys);
+      let keysSet = new Set(checkKeys);
+      for (let doc of bulk) {
+        assertFalse(doc.hasOwnProperty("error"), `Expected no error, got ${JSON.stringify(doc)}`);
+        assertTrue(keysSet.has(doc._key));
+        keysSet.delete(doc._key);
+      }
+    },
+
+    testRecoveryAfterCompaction: function () {
+      collection.insert([{_key: "test1"}, {_key: "test2"}]);
+      let documents = [];
+      for (let counter = 0; counter < 100; ++counter) {
+        documents.push({_key: `foo${counter}`});
+      }
+      for (let idx = 0; idx < documents.length; ++idx) {
+        collection.insert(documents[idx]);
+      }
+
+      // Trigger compaction intentionally.
+      log.compact();
+
+      lh.bumpTermOfLogsAndWaitForConfirmation(database, collection);
+
+      // Skipping some documents to save time
+      let checkKeys = documents.map(doc => doc._key);
+      let {leader} = lh.getReplicatedLogLeaderPlan(database, logId);
+      let bulk = sh.getBulkDocuments(lh.getServerUrl(leader), database, shardId, checkKeys);
+      let keysSet = new Set(checkKeys);
       for (let doc of bulk) {
         assertFalse(doc.hasOwnProperty("error"), `Expected no error, got ${JSON.stringify(doc)}`);
         assertTrue(keysSet.has(doc._key));

@@ -58,31 +58,28 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                                             LogIndex waitForIndex) noexcept
     -> futures::Future<Result> {
   return _guardedData
-      .doUnderLock(
-          [self = shared_from_this(), &destination, waitForIndex](
-              auto& data) -> futures::Future<ResultT<velocypack::SharedSlice>> {
-            if (data.didResign()) {
-              return ResultT<velocypack::SharedSlice>::error(
-                  TRI_ERROR_CLUSTER_NOT_FOLLOWER);
-            }
+      .doUnderLock([self = shared_from_this(), &destination, waitForIndex](
+                       auto& data) -> futures::Future<ResultT<Snapshot>> {
+        if (data.didResign()) {
+          return ResultT<Snapshot>::error(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
+        }
 
-            if (auto truncateRes = self->truncateLocalShard();
-                truncateRes.fail()) {
-              return ResultT<velocypack::SharedSlice>::error(truncateRes);
-            }
+        if (auto truncateRes = self->truncateLocalShard(); truncateRes.fail()) {
+          return ResultT<Snapshot>::error(truncateRes);
+        }
 
-            // A follower may request a snapshot before leadership has been
-            // established. A retry will occur in that case.
-            auto leaderInterface =
-                self->_networkHandler->getLeaderInterface(destination);
-            return leaderInterface->getSnapshot(waitForIndex);
-          })
+        // A follower may request a snapshot before leadership has been
+        // established. A retry will occur in that case.
+        auto leaderInterface =
+            self->_networkHandler->getLeaderInterface(destination);
+        return leaderInterface->getSnapshot(waitForIndex);
+      })
       .thenValue([self = shared_from_this()](
                      auto&& result) -> futures::Future<Result> {
         if (result.fail()) {
           return result.result();
         }
-        return self->populateLocalShard(result.get());
+        return self->populateLocalShard(result->documents);
       });
 }
 
@@ -111,7 +108,21 @@ auto DocumentFollowerState::applyEntries(
       if (res.fail()) {
         return res;
       }
+
+      if (doc.operation == OperationType::kAbortAllOngoingTrx) {
+        self->_activeTransactions.clear();
+        self->getStream()->release(
+            self->_activeTransactions.getReleaseIndex(entry->first));
+      } else if (doc.operation == OperationType::kCommit ||
+                 doc.operation == OperationType::kAbort) {
+        self->_activeTransactions.erase(doc.tid);
+        self->getStream()->release(
+            self->_activeTransactions.getReleaseIndex(entry->first));
+      } else {
+        self->_activeTransactions.emplace(doc.tid, entry->first);
+      }
     }
+
     return {TRI_ERROR_NO_ERROR};
   });
 }

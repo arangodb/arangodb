@@ -29,6 +29,7 @@
 #include "Futures/Future.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -84,8 +85,9 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
     }
     builder.close();
 
+    auto snapshot = replicated_state::document::Snapshot{builder.sharedSlice()};
     return futures::Future<ResultT<velocypack::SharedSlice>>{
-        builder.sharedSlice()};
+        velocypack::serialize(snapshot)};
   }
 
  private:

@@ -52,15 +52,16 @@ auto DocumentLeaderState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
   _isResigning.store(true);
 
-  auto transactions = getActiveTransactions();
-  for (auto trx : transactions) {
-    try {
-      _transactionManager.abortManagedTrx(trx, gid.database);
-    } catch (...) {
-      LOG_CTX("7341f", WARN, loggerContext)
-          << "failed to abort active transaction " << gid << " during resign";
+  _activeTransactions.doUnderLock([&](auto& activeTransactions) {
+    for (auto const& trx : activeTransactions.getTransactions()) {
+      try {
+        _transactionManager.abortManagedTrx(trx.first, gid.database);
+      } catch (...) {
+        LOG_CTX("7341f", WARN, loggerContext)
+            << "failed to abort active transaction " << gid << " during resign";
+      }
     }
-  }
+  });
 
   return _guardedData.doUnderLock([](auto& data) {
     if (data.didResign()) {
@@ -107,7 +108,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     auto stream = self->getStream();
     stream->insert(doc);
 
-    for (auto& [tid, trx] : transactionHandler->getActiveTransactions()) {
+    for (auto& [tid, trx] : transactionHandler->getUnfinishedTransactions()) {
       try {
         // the log entries contain follower ids, which is fine since during
         // recovery we apply the entries like a follower, but we have to
@@ -138,38 +139,39 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
                         // returning a dummy index
   }
 
-  // we replicate operations using follower trx ids, but locally we track the
-  // actual trx ids
+  TRI_ASSERT(operation != OperationType::kAbortAllOngoingTrx);
+  if ((operation == OperationType::kCommit ||
+       operation == OperationType::kAbort) &&
+      !_activeTransactions.getLockedGuard()->erase(transactionId)) {
+    // we have not replicated anything for a transaction with this id, so
+    // there is no need to replicate the abort/commit operation
+    return LogIndex{};  // TODO - can we do this differently instead of
+                        // returning a dummy index
+  }
+
+  auto const& stream = getStream();
   auto entry =
       DocumentLogEntry{std::string(shardId), operation, std::move(payload),
                        transactionId.asFollowerTransactionId()};
 
-  TRI_ASSERT(operation != OperationType::kAbortAllOngoingTrx);
-  if (operation == OperationType::kCommit ||
-      operation == OperationType::kAbort) {
-    if (_activeTransactions.getLockedGuard()->erase(transactionId) == 0) {
-      // we have not replicated anything for a transaction with this id, so
-      // there is no need to replicate the abort/commit operation
-      return LogIndex{};  // TODO - can we do this differently instead of
-                          // returning a dummy index
+  // Insert and emplace must happen atomically
+  auto idx = _activeTransactions.doUnderLock([&](auto& activeTransactions) {
+    auto idx = stream->insert(entry);
+    if (operation != OperationType::kCommit &&
+        operation != OperationType::kAbort) {
+      activeTransactions.emplace(transactionId, idx);
+    } else {
+      stream->release(activeTransactions.getReleaseIndex(idx));
     }
-  } else {
-    _activeTransactions.getLockedGuard()->emplace(transactionId);
-  }
-  auto stream = getStream();
-  auto idx = stream->insert(entry);
+    return idx;
+  });
 
   if (opts.waitForCommit) {
     return stream->waitFor(idx).thenValue(
         [idx](auto&& result) { return futures::Future<LogIndex>{idx}; });
   }
 
-  return futures::Future<LogIndex>{idx};
-}
-
-std::unordered_set<TransactionId> DocumentLeaderState::getActiveTransactions()
-    const {
-  return _activeTransactions.getLockedGuard().get();
+  return LogIndex{idx};
 }
 
 }  // namespace arangodb::replication2::replicated_state::document
