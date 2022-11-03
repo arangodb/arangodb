@@ -162,7 +162,7 @@ function runArangodRecovery (params) {
   
   process.env["state-file"] = params.stateFile;
   process.env["crash-log"] = crashLog;
-  process.env["isAsan"] = params.options.isAsan;
+  process.env["isSan"] = params.options.isSan;
   params.instanceInfo.pid = pu.executeAndWait(
     binary,
     argv,
