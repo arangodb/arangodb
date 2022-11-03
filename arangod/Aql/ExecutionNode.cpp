@@ -73,6 +73,7 @@
 
 // PlanNodes
 #include "Aql/Optimizer2/PlanNodes/EnumerateCollectionNode.h"
+#include "Aql/Optimizer2/PlanNodes/EnumerateListNode.h"
 #include "Aql/Optimizer2/PlanNodes/FilterNode.h"
 #include "Aql/Optimizer2/PlanNodes/LimitNode.h"
 #include "Aql/Optimizer2/PlanNodes/ReturnNode.h"
@@ -1855,6 +1856,12 @@ void EnumerateListNode::doToVelocyPack(VPackBuilder& nodes,
 
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
+}
+
+optimizer2::nodes::EnumerateListNode EnumerateListNode::toInspectable() const {
+  return {{ExecutionNode::toInspectable("EnumerateListNode")},
+          _inVariable->toInspectable(),
+          _outVariable->toInspectable()};
 }
 
 /// @brief creates corresponding ExecutionBlock

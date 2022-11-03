@@ -100,6 +100,7 @@ struct Variable;
 namespace optimizer2::nodes {
 struct BaseNode;
 struct EnumerateCollectionNode;
+struct EnumerateListNode;
 struct FilterNode;
 struct LimitNode;
 struct ReturnNode;
@@ -759,6 +760,8 @@ class EnumerateListNode : public ExecutionNode {
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
+
+  optimizer2::nodes::EnumerateListNode toInspectable() const;
 
  private:
   /// @brief input variable to read from
