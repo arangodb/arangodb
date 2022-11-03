@@ -387,8 +387,12 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   std::vector<std::tuple<ServerID, std::shared_ptr<VPackBuffer<uint8_t>>,
                          std::vector<bool>>>
       engineInformation;
-  engineInformation.reserve(dbServers.size());
   serverToQueryId.reserve(dbServers.size());
+
+  bool const isReadOnly = trx.state()->isReadOnlyTransaction();
+  if (!isReadOnly) {
+    engineInformation.reserve(dbServers.size());
+  }
 
   for (ServerID const& server : dbServers) {
     // Build Lookup Infos
@@ -411,8 +415,13 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     networkCalls.emplace_back(
         buildSetupRequest(trx, server, infoSlice, didCreateEngine, snippetIds,
                           serverToQueryId, serverToQueryIdLock, pool, options));
-    engineInformation.emplace_back(server, infoBuilder.steal(),
-                                   std::move(didCreateEngine));
+    if (!isReadOnly) {
+      // need to keep a copy of the request only in case of write queries,
+      // when it is possible that the initial lock request fails due to a
+      // lock timeout error
+      engineInformation.emplace_back(server, infoBuilder.steal(),
+                                     std::move(didCreateEngine));
+    }
     _query.incHttpRequests(unsigned(1));
   }
 
@@ -422,7 +431,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
                          -> Result {
             // We can directly report a non TRI_ERROR_LOCK_TIMEOUT
             // error as we need to abort after.
-            // Otherwise we need to report
+            // Otherwise we need to report.
+            // Note that if a request times out, we will get
+            // TRI_ERROR_CLUSTER_TIMEOUT and not TRI_ERROR_LOCK_TIMEOUT!
             Result res;
             for (auto const& tryRes : responses) {
               auto response = tryRes.get();
@@ -449,6 +460,12 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       cleanupReason = fastPathResult.get().errorNumber();
       return fastPathResult.get();
     }
+
+    // if we ever get here, the initial fast lock request has failed
+    // with "lock timeout" error. this can only happen for write
+    // transactions. if a request times out, we would have gotten
+    // TRI_ERROR_CLUSTER_TIMEOUT instead.
+    TRI_ASSERT(!isReadOnly);
 
     // we got a lock timeout response for the fast path locking...
     {
@@ -521,7 +538,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // Make sure we always maintain the correct ordering of servers
     // here, if we contact them in increasing name, we avoid dead-locks
-    std::string serverBefore = "";
+    std::string serverBefore;
 #endif
     // fallback routine, use synchronous requests (slowPath)
     for (auto& [server, buffer, didCreateEngine] : engineInformation) {

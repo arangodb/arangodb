@@ -3674,8 +3674,7 @@ AstNode* Ast::optimizeAttributeAccess(
 
   if (what->type == NODE_TYPE_OBJECT) {
     // accessing an attribute from an object
-    char const* name = node->getStringValue();
-    size_t const length = node->getStringLength();
+    std::string_view search = node->getStringView();
 
     size_t const n = what->numMembers();
 
@@ -3683,8 +3682,7 @@ AstNode* Ast::optimizeAttributeAccess(
       AstNode const* member = what->getMember(i);
 
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-          member->getStringLength() == length &&
-          memcmp(name, member->getStringValue(), length) == 0) {
+          member->getStringView() == search) {
         // found matching member
         return member->getMember(0);
       }
