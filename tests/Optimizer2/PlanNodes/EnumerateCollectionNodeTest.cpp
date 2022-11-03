@@ -68,11 +68,12 @@ TEST(Optimizer2EnumerateCollectionNode, construction) {
     "isSatelliteOf": null
   })"_vpack;
 
-  auto res = deserializeWithStatus<EnumerateCollectionNode>(
+  auto res = deserializeWithErrorT<EnumerateCollectionNode>(
       enumerateCollectionNodeBuffer);
 
   if (!res) {
-    fmt::print("Something went wrong: {}", res.error());
+    fmt::print("Something went wrong: {} {}", res.error().error(),
+               res.error().path());
     EXPECT_TRUE(res.ok());
   } else {
     auto enumerateCollectionNode = res.get();
@@ -126,7 +127,8 @@ TEST(Optimizer2EnumerateCollectionNode, construction) {
     EXPECT_EQ(enumerateCollectionNode.database, "_system");
     EXPECT_EQ(enumerateCollectionNode.collection, "_graphs");
     EXPECT_FALSE(enumerateCollectionNode.satellite);
-    EXPECT_FALSE(enumerateCollectionNode.isSatellite);
+    EXPECT_TRUE(enumerateCollectionNode.isSatellite.has_value());
+    EXPECT_FALSE(enumerateCollectionNode.isSatellite.value());
     EXPECT_FALSE(enumerateCollectionNode.isSatelliteOf.has_value());
   }
 }

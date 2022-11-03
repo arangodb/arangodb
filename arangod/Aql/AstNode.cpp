@@ -38,6 +38,10 @@
 #include "Basics/fasthash.h"
 #include "Transaction/Methods.h"
 
+// Optimizer2 related
+#include "Aql/Optimizer2/PlanNodeTypes/Expression.h"
+#include <Inspection/VPackWithErrorT.h>
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <iostream>
 #endif
@@ -1095,6 +1099,26 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
     }
     builder.close();
   }
+}
+
+optimizer2::types::Expression AstNode::toInspectable(bool verbose) const {
+  // TODO: Final version should not use deserializeWithErrorT, but should
+  // generate struct using local direct member access.
+  // Currently used this as a quick workaround as toVelocyPack methods are quite
+  // messy here...
+  VPackBuilder builder;
+  this->toVelocyPack(builder, verbose);
+  auto res = inspection::deserializeWithErrorT<optimizer2::types::Expression>(
+      builder.sharedSlice());
+  if (res.ok()) {
+    return res.get();
+  } else {
+    fmt::print("Something went in AstNode::toInspectable {} {}",
+               res.error().error(), res.error().path());
+    TRI_ASSERT(false);
+  }
+
+  return {};
 }
 
 /// @brief iterates whether a node of type "searchType" can be found

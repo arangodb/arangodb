@@ -29,19 +29,13 @@
 namespace arangodb::aql::optimizer2::types {
 
 struct Satellite {
-  bool satellite;    // always set
-  bool isSatellite;  // only in EE set
-  std::optional<AttributeTypes::NodeId> isSatelliteOf =
-      std::nullopt;  // only in EE set
-
+  bool satellite;
   bool operator==(Satellite const& other) const = default;
 };
 
 template<typename Inspector>
 auto inspect(Inspector& f, Satellite& x) {
-  return f.object(x).fields(f.field("satellite", x.satellite),
-                            f.field("isSatellite", x.isSatellite),
-                            f.field("isSatelliteOf", x.isSatelliteOf));
+  return f.object(x).fields(f.field("satellite", x.satellite));
 }
 
 }  // namespace arangodb::aql::optimizer2::types

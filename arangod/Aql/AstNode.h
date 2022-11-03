@@ -46,6 +46,10 @@ namespace aql {
 class Ast;
 struct Variable;
 
+namespace optimizer2::types {
+struct Expression;
+}  // namespace optimizer2::types
+
 /// @brief type for node flags
 using AstNodeFlagsType = uint32_t;
 
@@ -314,6 +318,8 @@ struct AstNode {
 
   /// @brief Create a VelocyPack representation of the node
   void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const;
+
+  optimizer2::types::Expression toInspectable(bool verbose) const;
 
   /// @brief convert the node's value to a boolean value
   /// this may create a new node or return the node itself if it is already a

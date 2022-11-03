@@ -48,6 +48,10 @@ class Slice;
 
 namespace aql {
 
+namespace optimizer2::types {
+struct Projections;
+}  // namespace optimizer2::types
+
 /// @brief helper class to manage projections and extract attribute data from
 /// documents and index entries
 class Projections {
@@ -138,6 +142,8 @@ class Projections {
   /// attribute name
   void toVelocyPack(velocypack::Builder& b,
                     std::string_view attributeName) const;
+
+  optimizer2::types::Projections toInspectable() const;
 
   std::vector<Projection> const& projections() const noexcept;
 

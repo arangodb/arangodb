@@ -31,7 +31,7 @@
 #include "Aql/Optimizer2/PlanNodeTypes/Satellite.h"
 #include "Aql/Optimizer2/PlanNodeTypes/IndexHint.h"
 
-#include "Inspection/VPackInspection.h"
+#include <Inspection/VPackWithErrorT.h>
 
 namespace arangodb::aql::optimizer2::nodes {
 
@@ -53,6 +53,8 @@ auto inspect(Inspector& f, EnumerateCollectionNode& x) {
       f.embedFields(
           static_cast<optimizer2::nodes::CollectionAccessingNode&>(x)),
       f.embedFields(static_cast<optimizer2::types::Satellite&>(x)),
+      // TODO: Check is Satellite is still needed (moved some internals into
+      // CollectionAccessingNode)
       f.field("indexHint", x.indexHint), f.field("random", x.random));
 }
 

@@ -30,13 +30,14 @@ struct IndexHint {
   bool forced;
   AttributeTypes::Numeric lookahead;
   AttributeTypes::IndexType type;
+  std::optional<std::vector<AttributeTypes::String>> hint;
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, IndexHint& v) {
   return f.object(v).fields(f.field("forced", v.forced),
                             f.field("lookahead", v.lookahead),
-                            f.field("type", v.type));
+                            f.field("type", v.type), f.field("hint", v.hint));
 }
 
 }  // namespace arangodb::aql::optimizer2::types

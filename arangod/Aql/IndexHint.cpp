@@ -29,6 +29,8 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 
+#include "Aql/Optimizer2/PlanNodeTypes/IndexHint.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -239,6 +241,17 @@ void IndexHint::toVelocyPack(VPackBuilder& builder) const {
       builder.add(VPackValue(index));
     }
   }
+}
+
+optimizer2::types::IndexHint IndexHint::toInspectable() const {
+  return {.forced = _forced,
+          .lookahead = _lookahead,
+          .type = std::string{typeName()},
+          .hint = _type == HintType::Simple
+                      ? std::optional<std::vector<
+                            optimizer2::AttributeTypes::String>>{_hint.simple}
+                      : std::optional<
+                            std::vector<optimizer2::AttributeTypes::String>>{}};
 }
 
 std::string IndexHint::toString() const {

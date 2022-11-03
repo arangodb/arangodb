@@ -37,6 +37,10 @@ namespace aql {
 struct AstNode;
 class QueryContext;
 
+namespace optimizer2::types {
+struct IndexHint;
+}
+
 /// @brief container for index hint information
 class IndexHint {
  public:
@@ -55,6 +59,8 @@ class IndexHint {
   std::vector<std::string> const& hint() const noexcept;
 
   void toVelocyPack(velocypack::Builder& builder) const;
+  optimizer2::types::IndexHint toInspectable() const;
+
   std::string_view typeName() const;
   std::string toString() const;
 

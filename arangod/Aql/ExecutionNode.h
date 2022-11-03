@@ -99,6 +99,7 @@ struct Variable;
 
 namespace optimizer2::nodes {
 struct BaseNode;
+struct EnumerateCollectionNode;
 struct FilterNode;
 struct LimitNode;
 struct ReturnNode;
@@ -701,6 +702,8 @@ class EnumerateCollectionNode : public ExecutionNode,
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
+
+  optimizer2::nodes::EnumerateCollectionNode toInspectable() const;
 
  private:
   /// @brief whether or not we want a random document from the collection

@@ -35,6 +35,14 @@ struct CollectionAccessingNode {
   // specific
   AttributeTypes::String database;
   AttributeTypes::String collection;
+  // ee specific
+
+  // TODO: Optional because TraversalNode does not set it.....
+  // See note below - also "collection" is handled differently there.
+  std::optional<bool> isSatellite;  // only in EE set
+
+  std::optional<AttributeTypes::NodeId> isSatelliteOf =
+      std::nullopt;  // only in EE set
 
   bool operator==(CollectionAccessingNode const&) const = default;
 };
@@ -48,10 +56,13 @@ auto inspect(Inspector& f, CollectionAccessingNode& v) {
       f.field("restrictedTo", v.restrictedTo),
       // specific
       f.field("database", v.database),
-      f.field("collection", v.collection)
-          .fallback(""));  // TODO: Currently we need a fallback here because
-                           // TraversalNode inherits the CollectionAccessingNode
-                           // but does not set a "collection" property
+      f.field("collection", v.collection).fallback(""),
+      // TODO: Currently we need a fallback here
+      // because TraversalNode inherits the
+      // CollectionAccessingNode but does not set a
+      // "collection" property
+      f.field("isSatellite", v.isSatellite),
+      f.field("isSatelliteOf", v.isSatelliteOf));
 }
 
 }  // namespace arangodb::aql::optimizer2::nodes

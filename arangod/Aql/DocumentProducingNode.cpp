@@ -32,6 +32,8 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 
+#include "Aql/Optimizer2/PlanNodes/DocumentProducingNode.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
@@ -135,6 +137,30 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
 
   builder.add(StaticStrings::UseCache, VPackValue(useCache()));
   builder.add(StaticStrings::MaxProjections, VPackValue(maxProjections()));
+}
+
+arangodb::aql::optimizer2::nodes::DocumentProducingNode
+DocumentProducingNode::toInspectable() const {
+  return {
+      .count = doCount(),
+      .readOwnWrites = (_readOwnWrites == ReadOwnWrites::yes),
+      .useCache = useCache(),
+      .producesResult =
+          (_filter != nullptr ||
+           dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(
+               _outVariable)),
+      .outVariable = {outVariable()->toInspectable()},
+      .filter =
+          _filter != nullptr
+              ? std::optional<
+                    optimizer2::types::Expression>{_filter->toInspectable()}
+              : std::optional<optimizer2::types::Expression>{std::nullopt},
+      .filterProjection =
+          _filter != nullptr
+              ? std::optional<
+                    optimizer2::types::Projections>{_filterProjections
+                                                        .toInspectable()}
+              : std::optional<optimizer2::types::Projections>{std::nullopt}};
 }
 
 Variable const* DocumentProducingNode::outVariable() const {

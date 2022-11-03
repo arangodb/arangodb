@@ -29,6 +29,10 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
+// Optimizer2 related
+#include "Aql/Optimizer2/PlanNodeTypes/Projections.h"
+#include <Inspection/VPackWithErrorT.h>
+
 #include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
@@ -343,6 +347,26 @@ void Projections::toVelocyPack(velocypack::Builder& b,
     }
   }
   b.close();
+}
+
+optimizer2::types::Projections Projections::toInspectable() const {
+  // TODO: Final version should not use deserializeWithErrorT, but should
+  // generate struct using local direct member access.
+  // Currently used this as a quick workaround as toVelocyPack methods are quite
+  // messy here...
+  VPackBuilder builder;
+  this->toVelocyPack(builder);
+  auto res = inspection::deserializeWithErrorT<optimizer2::types::Projections>(
+      builder.sharedSlice());
+  if (res.ok()) {
+    return res.get();
+  } else {
+    fmt::print("Something went in Projections::toInspectable {} {}",
+               res.error().error(), res.error().path());
+    TRI_ASSERT(false);
+  }
+
+  return {};
 }
 
 /*static*/ Projections Projections::fromVelocyPack(velocypack::Slice slice) {

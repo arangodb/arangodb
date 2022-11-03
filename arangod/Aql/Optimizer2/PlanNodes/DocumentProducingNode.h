@@ -36,6 +36,7 @@ struct DocumentProducingNode : optimizer2::types::Projections {
   bool producesResult;
   std::optional<optimizer2::types::Variable> outVariable;
   std::optional<optimizer2::types::Expression> filter;
+  std::optional<optimizer2::types::Projections> filterProjection;
 
   bool operator==(DocumentProducingNode const&) const = default;
 };

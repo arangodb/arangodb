@@ -72,10 +72,12 @@
 #include "Transaction/Methods.h"
 
 // PlanNodes
+#include "Aql/Optimizer2/PlanNodes/EnumerateCollectionNode.h"
+#include "Aql/Optimizer2/PlanNodes/FilterNode.h"
+#include "Aql/Optimizer2/PlanNodes/LimitNode.h"
 #include "Aql/Optimizer2/PlanNodes/ReturnNode.h"
 #include "Aql/Optimizer2/PlanNodes/SingletonNode.h"
-#include "Aql/Optimizer2/PlanNodes/LimitNode.h"
-#include "Aql/Optimizer2/PlanNodes/FilterNode.h"
+
 // PlanNodesTypes
 #include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
 
@@ -1703,6 +1705,16 @@ void EnumerateCollectionNode::doToVelocyPack(VPackBuilder& builder,
 
   // add collection information
   CollectionAccessingNode::toVelocyPack(builder, flags);
+}
+
+optimizer2::nodes::EnumerateCollectionNode
+EnumerateCollectionNode::toInspectable() const {
+  return {{ExecutionNode::toInspectable("EnumerateCollectionNode")},
+          {DocumentProducingNode::toInspectable()},
+          {CollectionAccessingNode::toInspectable()},
+          {},  // TODO: Satellite Extension - check if still needed
+          _hint.toInspectable(),
+          _random};
 }
 
 /// @brief creates corresponding ExecutionBlock
