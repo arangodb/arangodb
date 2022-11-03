@@ -955,13 +955,12 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                     assertEqual(db._view(viewName), null);
                 }
             }
-
         }
     };
 }
 
-// if (!isEnterprise) {
+if (!isEnterprise) {
     jsunity.run(IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity);
-// }
+}
 
 return jsunity.done();
