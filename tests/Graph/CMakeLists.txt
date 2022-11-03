@@ -14,12 +14,10 @@ add_library(arango_tests_graph OBJECT
   FifoQueueTest.cpp
   LifoQueueTest.cpp
   WeightedQueueTest.cpp
-  SingleServerProviderTest.cpp
-  ${ADDITIONAL_GRAPH_TEST_SOURCES})
+  SingleServerProviderTest.cpp)
 
 target_link_libraries(arango_tests_graph
     arango
-    arango_replication2
     arango_tests_basics
     velocypack
     fmt)

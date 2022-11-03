@@ -32,6 +32,7 @@ if (WINDOWS)
 endif ()
 
 add_library(arango_tests_basics OBJECT
+  ${CMAKE_CURRENT_SOURCE_DIR}/Aql/VelocyPackHelper.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchLinkMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchInvertedIndexMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/LogLevels.cpp

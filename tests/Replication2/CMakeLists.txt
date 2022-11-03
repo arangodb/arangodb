@@ -83,18 +83,13 @@ add_library(arango_tests_replication2 OBJECT
 target_include_directories(arango_tests_replication2 PUBLIC
     ${PROJECT_SOURCE_DIR}/arangod
     ${PROJECT_SOURCE_DIR}/lib
-    ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
-    ${PROJECT_SOURCE_DIR}/tests
-    ${PROJECT_SOURCE_DIR}/tests/Mocks/
-  )
+    ${PROJECT_SOURCE_DIR}/tests/Mocks/)
 
 target_link_libraries(arango_tests_replication2
     arango
     arango_replication2
-    arango_tests_basics
     velocypack
     fmt)
-
 
 add_executable(arangodbtests_replication2
   EXCLUDE_FROM_ALL)
