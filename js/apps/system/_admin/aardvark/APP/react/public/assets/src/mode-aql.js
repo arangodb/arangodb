@@ -110,7 +110,7 @@ var AqlHighlightRules = function() {
         "fail|passthru|v8|sleep|schema_get|schema_validate|shard_id|call_greenspun|version|noopt|noeval|not_null|" +
         "first_list|first_document|parse_identifier|current_user|current_database|collection_count|pregel_result|" +
         "collections|document|decode_rev|range|union|union_distinct|minus|intersection|flatten|is_same_collection|check_document|" +
-        "ltrim|rtrim|find_first|find_last|split|substitute|ipv4_to_number|ipv4_from_number|is_ipv4|md5|sha1|sha512|crc32|fnv64|hash|random_token|to_base64|" +
+        "ltrim|rtrim|find_first|find_last|split|substitute|ipv4_to_number|ipv4_from_number|is_ipv4|md5|sha1|sha256|sha512|crc32|fnv64|hash|random_token|to_base64|" +
         "to_hex|encode_uri_component|soundex|assert|warn|is_key|sorted|sorted_unique|count_distinct|count_unique|" +
         "levenshtein_distance|levenshtein_match|regex_matches|regex_split|ngram_match|ngram_similarity|ngram_positional_similarity|uuid|" +
         "tokens|exists|starts_with|phrase|min_match|bm25|tfidf|boost|analyzer|" +
