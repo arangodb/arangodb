@@ -481,11 +481,12 @@ class IResearchLink {
   bool _createdInRecovery;      // link was created based on recovery marker
   bool _commitStageOne;   // protected by _commitMutex
 #if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
+  // auxilary tools to test fail-cases with transactions commit order
   std::mutex _t3Failureync;
   std::vector<uint64_t> _t3Candidates;
   size_t _t3PreCommit{0};
-  bool _t3CommitSignal{false};
   size_t _t3NumFlushRegistered{0};
+  bool _t3CommitSignal{false};
 #endif
 };
 

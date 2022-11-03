@@ -1841,7 +1841,7 @@ TEST_F(IResearchViewTest, test_cleanup) {
         EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE(
-        (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
+        (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), nullptr).ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE(link->commit().ok());
   }
@@ -1856,7 +1856,7 @@ TEST_F(IResearchViewTest, test_cleanup) {
         EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((link->remove(trx, arangodb::LocalDocumentId(0),
-                              arangodb::velocypack::Slice::emptyObjectSlice())
+                              arangodb::velocypack::Slice::emptyObjectSlice(), nullptr)
                      .ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE(link->commit().ok());
@@ -2117,7 +2117,7 @@ TEST_F(IResearchViewTest, test_drop_cid) {
           EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
+          (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), nullptr).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2190,8 +2190,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
+      EXPECT_TRUE((
+          link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), nullptr)
+              .ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2265,8 +2266,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
+      EXPECT_TRUE((
+          link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), nullptr)
+              .ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2364,8 +2366,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
+      EXPECT_TRUE((
+          link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), nullptr)
+              .ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2455,8 +2458,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
+      EXPECT_TRUE((
+          link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), nullptr)
+              .ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2643,8 +2647,9 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
+      EXPECT_TRUE((
+          link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), nullptr)
+              .ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -2718,8 +2723,9 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
+      EXPECT_TRUE((
+          link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), nullptr)
+              .ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
     }
@@ -3213,21 +3219,21 @@ TEST_F(IResearchViewTest, test_insert) {
 
       // skip tick operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(1),
+                               docJson->slice(), nullptr)
               .ok());
       StorageEngineMock::recoveryTickResult = 42;
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2),
+                               docJson->slice(), nullptr)
               .ok());
 
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(1),
+                               docJson->slice(), nullptr)
               .ok());
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2),
+                               docJson->slice(), nullptr)
               .ok());
 
       EXPECT_TRUE(trx.commit().ok());
@@ -3297,16 +3303,16 @@ TEST_F(IResearchViewTest, test_insert) {
       // insert operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+        link->insert(trx, pair.first, pair.second, nullptr);
       }
       StorageEngineMock::recoveryTickResult = 42;
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+        link->insert(trx, pair.first, pair.second, nullptr);
       }
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+        link->insert(trx, pair.first, pair.second, nullptr);
       }
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
@@ -3350,17 +3356,17 @@ TEST_F(IResearchViewTest, test_insert) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1),
+                                docJson->slice(), nullptr)
                .ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2),
+                                docJson->slice(), nullptr)
                .ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1),
+                                docJson->slice(), nullptr)
                .ok()));  // 2nd time
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2),
+                                docJson->slice(), nullptr)
                .ok()));  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
@@ -3405,17 +3411,17 @@ TEST_F(IResearchViewTest, test_insert) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1),
+                                docJson->slice(), nullptr)
                .ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2),
+                                docJson->slice(), nullptr)
                .ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1),
+                                docJson->slice(), nullptr)
                .ok()));  // 2nd time
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2),
+                                docJson->slice(), nullptr)
                .ok()));  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
     }
@@ -3460,8 +3466,8 @@ TEST_F(IResearchViewTest, test_insert) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1),
+                                docJson->slice(), nullptr)
                .ok()));
       EXPECT_TRUE((trx.commit().ok()));
     }
@@ -3510,10 +3516,10 @@ TEST_F(IResearchViewTest, test_insert) {
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+        link->insert(trx, pair.first, pair.second, nullptr);
       }
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+        link->insert(trx, pair.first, pair.second, nullptr);
       }  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
@@ -3564,10 +3570,10 @@ TEST_F(IResearchViewTest, test_insert) {
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+        link->insert(trx, pair.first, pair.second, nullptr);
       }
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+        link->insert(trx, pair.first, pair.second, nullptr);
       }  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
     }
@@ -3620,15 +3626,18 @@ TEST_F(IResearchViewTest, test_remove_within_trx) {
     transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
                              empty, empty, empty, transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
-    EXPECT_TRUE(link->insert(trx, LocalDocumentId(0), doc0->slice()).ok());
+    EXPECT_TRUE(
+        link->insert(trx, LocalDocumentId(0), doc0->slice(), nullptr).ok());
     EXPECT_TRUE(link->remove(trx, LocalDocumentId(0),
-                             velocypack::Slice::emptyObjectSlice())
+                             velocypack::Slice::emptyObjectSlice(), nullptr)
                     .ok());
-    EXPECT_TRUE(link->insert(trx, LocalDocumentId(1), doc1->slice()).ok());
+    EXPECT_TRUE(
+        link->insert(trx, LocalDocumentId(1), doc1->slice(), nullptr).ok());
     EXPECT_TRUE(link->remove(trx, LocalDocumentId(1),
-                             velocypack::Slice::emptyObjectSlice())
+                             velocypack::Slice::emptyObjectSlice(), nullptr)
                     .ok());
-    EXPECT_TRUE(link->insert(trx, LocalDocumentId(2), doc2->slice()).ok());
+    EXPECT_TRUE(
+        link->insert(trx, LocalDocumentId(2), doc2->slice(), nullptr).ok());
     EXPECT_TRUE(trx.commit().ok());
     EXPECT_TRUE(link->commit().ok());
   }
@@ -3719,30 +3728,30 @@ TEST_F(IResearchViewTest, test_remove) {
 
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(1),
+                               docJson->slice(), nullptr)
               .ok());
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2),
+                               docJson->slice(), nullptr)
               .ok());
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(3), docJson->slice())
+      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(3),
+                               docJson->slice(), nullptr)
               .ok());
 
       // skip tick operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
       EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(1),
-                               VPackSlice::noneSlice())
+                               VPackSlice::noneSlice(), nullptr)
                       .ok());
       StorageEngineMock::recoveryTickResult = 42;
       EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2),
-                               VPackSlice::noneSlice())
+                               VPackSlice::noneSlice(), nullptr)
                       .ok());
 
       // apply remove after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
       EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(3),
-                               VPackSlice::noneSlice())
+                               VPackSlice::noneSlice(), nullptr)
                       .ok());
 
       EXPECT_TRUE(trx.commit().ok());
@@ -3811,16 +3820,16 @@ TEST_F(IResearchViewTest, test_remove) {
       // insert operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+        link->insert(trx, pair.first, pair.second, nullptr);
       }
       StorageEngineMock::recoveryTickResult = 42;
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+        link->insert(trx, pair.first, pair.second, nullptr);
       }
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+        link->insert(trx, pair.first, pair.second, nullptr);
       }
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
@@ -3864,17 +3873,19 @@ TEST_F(IResearchViewTest, test_remove) {
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1),
+                                docJson->slice(), nullptr)
+               .ok()));
+      EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2),
+                                docJson->slice(), nullptr)
                .ok()));
       EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
-               .ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
+          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(),
+                        nullptr)
                .ok()));  // 2nd time
       EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
+          (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(),
+                nullptr)
                .ok()));  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
@@ -3920,16 +3931,16 @@ TEST_F(IResearchViewTest, test_remove) {
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
+          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), nullptr)
                .ok()));
       EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
+          (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), nullptr)
                .ok()));
       EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
+          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), nullptr)
                .ok()));  // 2nd time
       EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
+          (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice(), nullptr)
                .ok()));  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
     }
@@ -3975,7 +3986,7 @@ TEST_F(IResearchViewTest, test_remove) {
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
+          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice(), nullptr)
                .ok()));
       EXPECT_TRUE((trx.commit().ok()));
     }
@@ -4024,10 +4035,10 @@ TEST_F(IResearchViewTest, test_remove) {
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+        link->insert(trx, pair.first, pair.second, nullptr);
       }
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+        link->insert(trx, pair.first, pair.second, nullptr);
       }  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
@@ -4078,10 +4089,10 @@ TEST_F(IResearchViewTest, test_remove) {
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+        link->insert(trx, pair.first, pair.second, nullptr);
       }
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+        link->insert(trx, pair.first, pair.second, nullptr);
       }  // 2nd time
       EXPECT_TRUE((trx.commit().ok()));
     }
@@ -4185,7 +4196,7 @@ TEST_F(IResearchViewTest, test_query) {
 
       for (size_t i = 0; i < 12; ++i) {
         EXPECT_TRUE(
-            (link->insert(trx, arangodb::LocalDocumentId(i), doc->slice())
+            (link->insert(trx, arangodb::LocalDocumentId(i), doc->slice(), nullptr)
                  .ok()));
       }
 
@@ -4691,7 +4702,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
           EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
+          (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), nullptr).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE((link->commit().ok()));
     }
@@ -4805,7 +4816,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
           EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
+          (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), nullptr).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE((link->commit().ok()));
     }
@@ -5159,7 +5170,7 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
           EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
+          (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), nullptr).ok()));
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE((link->commit().ok()));  // commit to persisted store
     }
@@ -5785,7 +5796,7 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
         EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE(
-        (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
+        (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), nullptr).ok()));
     EXPECT_TRUE((trx.commit().ok()));
   }
 
@@ -5868,7 +5879,7 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
         EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE(
-        (link->insert(trx, arangodb::LocalDocumentId(1), doc->slice()).ok()));
+        (link->insert(trx, arangodb::LocalDocumentId(1), doc->slice(), nullptr).ok()));
     EXPECT_TRUE((trx.commit().ok()));
   }
 
