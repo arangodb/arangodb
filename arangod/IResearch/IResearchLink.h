@@ -483,6 +483,9 @@ class IResearchLink {
 #if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
   std::mutex _t3Failureync;
   std::vector<uint64_t> _t3Candidates;
+  size_t _t3PreCommit{0};
+  bool _t3CommitSignal{false};
+  size_t _t3NumFlushRegistered{0};
 #endif
 };
 

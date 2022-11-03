@@ -667,6 +667,9 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
         uint64_t const lastOperationTick{state->lastOperationTick()};
 #if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
         TRI_IF_FAILURE("ArangoSearch::ThreeTransactionsMisorder") {
+          LOG_TOPIC("8ac71", DEBUG, TOPIC)
+              << lastOperationTick << " arrived to post commit in thread "
+              << std::this_thread::get_id();
           bool inList{false};
           while (true) {
             std::unique_lock<std::mutex> sync(_t3Failureync);
@@ -684,15 +687,19 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
                 if (lessTick && moreTick) {
                   sync.unlock();
                   // we are number 2. We must wait for 1/3 to commit
-                  // and then crash the server.
-                  std::this_thread::sleep_for(20s);
-                  TRI_TerminateDebugging(
-                      "ArangoSearch::ThreeTransactionsMisorder Number2");
+                  std::this_thread::sleep_for(10s);
+                  TRI_IF_FAILURE("ArangoSearch::ThreeTransactionsMisorder::Number2Crash") {
+                    TRI_TerminateDebugging(
+                        "ArangoSearch::ThreeTransactionsMisorder Number2");
+                  }
                 }
               }
+              LOG_TOPIC("182ec", DEBUG, TOPIC) << lastOperationTick << " released";
               break;
             }
             if (!inList) {
+              LOG_TOPIC("d3db7", DEBUG, TOPIC)
+                  << lastOperationTick << " in wait list";
               _t3Candidates.push_back(lastOperationTick);
               inList = true;
             } else {
@@ -724,7 +731,7 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       return;  // NOOP
     }
 
-    auto prev = state->cookie(this, nullptr);  // get existing cookie
+    auto prev = state->cookie(this);  // get existing cookie
 
     if (prev) {
 // TODO FIXME find a better way to look up a ViewState
@@ -733,7 +740,59 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
 #else
       auto& ctx = static_cast<LinkTrxState&>(*prev);
 #endif
+#if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
+      TRI_IF_FAILURE("ArangoSearch::ThreeTransactionsMisorder") {
+        size_t myNumber{0};
+        while (true) {
+          std::unique_lock<std::mutex> sync(_t3Failureync);
+          if (_t3PreCommit < 3) {
+            if (!myNumber) {
+              myNumber = ++_t3PreCommit;
+              LOG_TOPIC("76f6a", DEBUG, TOPIC)
+                  << myNumber << " arrived to preCommit";
+            } else {
+              sync.unlock();
+              std::this_thread::sleep_for(100ms);
+            }
+          } else {
+            if (myNumber == 2) {
+              // Numer 2 should go tho another flush context
+              // so wait for commit to start and
+              // then give writer some time to switch flush context
+              if (!_t3CommitSignal) {
+                sync.unlock();
+                std::this_thread::sleep_for(100ms);
+                continue;
+              }
+              std::this_thread::sleep_for(5s);
+            }
+            ctx._ctx.addToFlush();
+            LOG_TOPIC("cdc04", DEBUG, TOPIC) << myNumber << " added to flush";
+            ++_t3NumFlushRegistered;
+            break;
+          }
+        }
+        // this transaction is flushed. Need to wait for all to arrive
+        while (true) {
+          std::unique_lock<std::mutex> sync(_t3Failureync);
+          if (_t3NumFlushRegistered == 3) {
+            // all are fluhing. Now release in order 1 2 3
+            sync.unlock();
+            std::this_thread::sleep_for(std::chrono::seconds(myNumber));
+            LOG_TOPIC("0a90a", DEBUG, TOPIC) << myNumber << " released  thread " <<
+                std::this_thread::get_id();
+            break;
+          } else {
+            sync.unlock();
+            std::this_thread::sleep_for(50ms);
+          }
+        }
+      } else {
+        ctx._ctx.addToFlush();
+      }
+#else
       ctx._ctx.addToFlush();
+#endif
     }
   };
 }
@@ -953,7 +1012,6 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
 Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->lock() is valid
-  _commitStageOne = true;
   auto subscription = std::atomic_load(&_flushSubscription);
 
   if (!subscription) {
@@ -985,9 +1043,21 @@ Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
 
       commitLock.lock();
     }
-
+    _commitStageOne = true;
     auto const lastCommittedTick = _lastCommittedTickStageOne;
 
+#if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
+    TRI_IF_FAILURE("ArangoSearch::ThreeTransactionsMisorder") {
+      std::unique_lock<std::mutex> sync(_t3Failureync);
+      while (_t3NumFlushRegistered < 2) {
+        sync.unlock();
+        std::this_thread::sleep_for(100ms);
+        sync.lock();
+      }
+      _t3CommitSignal = true;
+      LOG_TOPIC("4cb66", DEBUG, TOPIC) << "Commit started";
+    }
+#endif
     try {
       // _lastCommittedTick is being updated in '_before_commit'
       *code = _dataStore._writer->commit() ? CommitResult::DONE
@@ -997,7 +1067,6 @@ Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
       _lastCommittedTickStageOne = lastCommittedTick;
       throw;
     }
-
     if (CommitResult::NO_CHANGES == *code) {
       LOG_TOPIC("7e319", TRACE, TOPIC)
           << "no changes registered for arangosearch link '" << id()
@@ -1019,7 +1088,7 @@ Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
                        [this](uint64_t t) {
                          return t > _lastCommittedTickStageOne;
                        }) == _t3Candidates.end()) {
-        TRI_TerminateDebugging("Killed on commit");
+        TRI_TerminateDebugging("Killed on commit stage one");
       }
     }
 #endif
