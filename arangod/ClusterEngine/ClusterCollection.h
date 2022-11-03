@@ -68,8 +68,7 @@ class ClusterCollection final : public PhysicalCollection {
 
   std::string const& path() const override;
 
-  arangodb::Result updateProperties(velocypack::Slice const& slice,
-                                    bool doSync) override;
+  arangodb::Result updateProperties(velocypack::Slice slice) override;
 
   virtual PhysicalCollection* clone(
       LogicalCollection& collection) const override;
