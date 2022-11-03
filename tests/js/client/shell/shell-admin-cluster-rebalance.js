@@ -293,7 +293,7 @@ function clusterRebalanceOtherOptionsSuite() {
         result = getRebalancePlan(false, true, false);
         let moves = result.result.moves;
         const movesAllFlagsTrue = getMovesWithAllFlagsTrue();
-        assertTrue(movesAllFlagsTrue.length > moves.length. {result, movesAllFlagsTrue, moves});
+        assertTrue(movesAllFlagsTrue.length > moves.length, {result, movesAllFlagsTrue, moves});
         if (moves.length > 0) {
           for (const job of moves) {
             if (job.shard === shardName) {
