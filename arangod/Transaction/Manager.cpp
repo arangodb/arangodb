@@ -822,14 +822,22 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
             "not allowed to write lock an AQL transaction");
       }
       if (mtrx.rwlock.tryLockWrite()) {
-        return buildManagedContextUnderLock(tid, mtrx);
+        auto managedContext = buildManagedContextUnderLock(tid, mtrx);
+        if (mtrx.state->isReadOnlyTransaction()) {
+          managedContext->setReadOnly();
+        }
+        return managedContext;
       }
       // continue the loop after a small pause
     } else {
       TRI_ASSERT(mode == AccessMode::Type::READ);
       // even for side user leases, first try acquiring the read lock
       if (mtrx.rwlock.tryLockRead()) {
-        return buildManagedContextUnderLock(tid, mtrx);
+        auto managedContext = buildManagedContextUnderLock(tid, mtrx);
+        if (mtrx.state->isReadOnlyTransaction()) {
+          managedContext->setReadOnly();
+        }
+        return managedContext;
       }
       if (isSideUser) {
         // number of side users is atomically increased under the bucket's read
@@ -843,8 +851,12 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
         try {
           std::shared_ptr<TransactionState> state = mtrx.state;
           TRI_ASSERT(state != nullptr);
-          return std::make_shared<ManagedContext>(tid, std::move(state),
-                                                  TransactionContextSideUser{});
+          auto managedContext = std::make_shared<ManagedContext>(
+              tid, std::move(state), TransactionContextSideUser{});
+          if (mtrx.state->isReadOnlyTransaction()) {
+            managedContext->setReadOnly();
+          }
+          return managedContext;
         } catch (...) {
           // roll back our increase of the number of side users
           auto previous =

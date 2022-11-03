@@ -648,10 +648,10 @@ void registerIndexFactory(
 
 void registerScorers(aql::AqlFunctionFeature& functions) {
   // positional arguments (attribute [<scorer-specific properties>...]);
-  irs::string_ref constexpr args(".|+");
+  std::string_view constexpr args(".|+");
 
   irs::scorers::visit(
-      [&functions, &args](irs::string_ref name,
+      [&functions, &args](std::string_view name,
                           irs::type_info const& args_format) -> bool {
         // ArangoDB, for API consistency, only supports scorers configurable via
         // jSON
@@ -667,7 +667,7 @@ void registerScorers(aql::AqlFunctionFeature& functions) {
 
         // scorers are not usable in analyzers
         arangodb::iresearch::addFunction(
-            functions, {std::move(upperName), args.c_str(),
+            functions, {std::move(upperName), args.data(),
                         aql::Function::makeFlags(
                             aql::Function::Flags::Deterministic,
                             aql::Function::Flags::Cacheable,
