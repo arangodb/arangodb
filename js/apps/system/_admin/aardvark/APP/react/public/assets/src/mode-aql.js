@@ -146,11 +146,11 @@ var AqlHighlightRules = function() {
             regex : "'",
             next: "string_single"
         }, {
-            token : "identifier",           // ` quoted identifier
+            token : "variable.other",   // ` quoted identifier
             regex : "`",
             next: "identifier_backtick"
         }, {
-            token : "identifier",           // ´ quoted identifier
+            token : "variable.other",   // ´ quoted identifier
             regex : "´",
             next: "identifier_forwardtick"
         }, {
@@ -161,10 +161,10 @@ var AqlHighlightRules = function() {
             regex : /0[xX][0-9a-fA-F]+\b/
         }, {
             token : "constant.numeric", // float
-            regex : /(?:(?:0|[1-9][0-9]*)(?:\.[0-9]+)?|\.[0-9]+)(?:[eE][\-\+]?[0-9]+)?/,
+            regex : /(?:(?:0|[1-9][0-9]*)(?:\.[0-9]+)?|\.[0-9]+)(?:[eE][\-\+]?[0-9]+)?/
         }, {
             token : "constant.numeric", // decimal integer
-            regex : /0|[1-9][0-9]*\b/,
+            regex : /0|[1-9][0-9]*\b/
         }, {
             token : "variable.global",
             regex : "@" + aqlBindVariablePattern
@@ -173,7 +173,7 @@ var AqlHighlightRules = function() {
             regex : aqlBindVariablePattern
         }, {
             token : "keyword.operator",
-            regex : /=~|!~|==|!=|>=|>|<=|<|=|!|&&|\|\||\+|\-|\*|\/|%|\?|::|:|\.\./,
+            regex : /=~|!~|==|!=|>=|>|<=|<|=|!|&&|\|\||\+|\-|\*|\/|%|\?|::|:|\.\./
         }, {
             token : "paren.lparen",
             regex : /[\(\{\[]/
@@ -202,42 +202,66 @@ var AqlHighlightRules = function() {
             regex : /(?:\$?|_+)[a-zA-Z]+[_a-zA-Z0-9]*\b/
         }, {
             token : "text",
-            regex : "\\s+"
+            regex : /\s+/
         } ],
         "comment_ml" : [ {
             token : "comment", 
             regex : /\*\//,
-            next : "start",
+            next : "start"
         }, {
           defaultToken : "comment"
         } ],
         "string_double" : [ {
+            token : "constant.character.escape",
+            regex : /\\u[0-9a-fA-F]{4}/
+        }, {
+            token : "constant.character.escape",
+            regex : /\\["'\\\/bfnrt]/
+        }, {
             token : "string", 
             regex : '"',
-            next : "start",
+            next : "start"
         }, {
-          defaultToken : "string"
+            defaultToken : "string"
         } ],
         "string_single" : [ {
+            token : "constant.character.escape",
+            regex : /\\u[0-9a-fA-F]{4}/
+        }, {
+            token : "constant.character.escape",
+            regex : /\\["'\\\/bfnrt]/
+        }, {
             token : "string", 
             regex : "'",
-            next : "start",
+            next : "start"
         }, {
-          defaultToken : "string"
+            defaultToken : "string"
         } ],
         "identifier_backtick" : [ {
-            token : "identifier", 
-            regex : "`",
-            next : "start",
+            token : "constant.character.escape",
+            regex : /\\u[0-9a-fA-F]{4}/
         }, {
-          defaultToken : "identifier"
+            token : "constant.character.escape",
+            regex : /\\[`"'\\\/bfnrt]/
+        }, {
+            token : "variable.other", 
+            regex : "`",
+            next : "start"
+        }, {
+            defaultToken : "variable.other"
         } ],
         "identifier_forwardtick" : [ {
-            token : "identifier", 
-            regex : "´",
-            next : "start",
+            token : "constant.character.escape",
+            regex : /\\u[0-9a-fA-F]{4}/
         }, {
-          defaultToken : "identifier"
+            token : "constant.character.escape",
+            regex : /\\[´"'\\\/bfnrt]/
+        }, {
+            token : "variable.other", 
+            regex : "´",
+            next : "start"
+        }, {
+          defaultToken : "variable.other"
         } ]
     };
 };
