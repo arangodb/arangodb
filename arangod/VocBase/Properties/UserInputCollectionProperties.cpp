@@ -20,7 +20,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CollectionProperties.h"
+#include "UserInputCollectionProperties.h"
 
 #include "Basics/Result.h"
 #include "Utilities/NameValidator.h"
@@ -29,7 +29,7 @@
 using namespace arangodb;
 
 [[nodiscard]] arangodb::Result
-CollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
+UserInputCollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
     DatabaseConfiguration const& config) {
   //  Check name is allowed
   if (!CollectionNameValidator::isAllowedName(

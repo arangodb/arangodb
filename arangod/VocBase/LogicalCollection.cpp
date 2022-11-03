@@ -53,7 +53,7 @@
 #include "VocBase/ComputedValues.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/Properties/CollectionProperties.h"
+#include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "VocBase/Validators.h"
 
 #ifdef USE_ENTERPRISE
@@ -314,9 +314,9 @@ ShardingInfo* LogicalCollection::shardingInfo() const {
   return _sharding.get();
 }
 
-CollectionProperties LogicalCollection::getCollectionProperties()
+UserInputCollectionProperties LogicalCollection::getCollectionProperties()
     const noexcept {
-  CollectionProperties props;
+  UserInputCollectionProperties props;
   // NOTE: This implementation is NOT complete.
   // It only contains what was absolute necessary to get distributeShardsLike
   // to work.

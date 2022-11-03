@@ -28,7 +28,7 @@
 #include <velocypack/Collection.h>
 
 using namespace arangodb;
-PlanCollectionEntry::PlanCollectionEntry(CollectionProperties col,
+PlanCollectionEntry::PlanCollectionEntry(UserInputCollectionProperties col,
                                          ShardDistribution shardDistribution,
                                          AgencyIsBuildingFlags isBuildingFlags)
     : _properties({col}),

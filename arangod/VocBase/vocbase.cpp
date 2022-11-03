@@ -2255,13 +2255,14 @@ auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
     if (!ServerState::instance()->isCoordinator() &&
         !ServerState::instance()->isDBServer()) {
       return {[]() { return DataSourceId(TRI_NewTickServer()); },
-              [](std::string const&) -> ResultT<CollectionProperties> {
+              [](std::string const&) -> ResultT<UserInputCollectionProperties> {
                 return {TRI_ERROR_NOT_IMPLEMENTED};
               }};
     } else {
       auto& ci = cl.clusterInfo();
       return {[&ci]() { return DataSourceId(ci.uniqid(1)); },
-              [this](std::string const& name) -> ResultT<CollectionProperties> {
+              [this](std::string const& name)
+                  -> ResultT<UserInputCollectionProperties> {
                 CollectionNameResolver resolver{*this};
                 auto c = resolver.getCollection(name);
                 if (c == nullptr) {

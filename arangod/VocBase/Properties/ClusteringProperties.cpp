@@ -24,7 +24,7 @@
 
 #include "Basics/debugging.h"
 #include "Basics/ResultT.h"
-#include "VocBase/Properties/CollectionProperties.h"
+#include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
 using namespace arangodb;

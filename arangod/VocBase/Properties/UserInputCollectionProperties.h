@@ -30,18 +30,18 @@
 namespace arangodb {
 struct DatabaseConfiguration;
 
-struct CollectionProperties : public CollectionConstantProperties,
-                              public CollectionMutableProperties,
-                              public CollectionInternalProperties,
-                              public ClusteringProperties {
-  bool operator==(CollectionProperties const& other) const = default;
+struct UserInputCollectionProperties : public CollectionConstantProperties,
+                                       public CollectionMutableProperties,
+                                       public CollectionInternalProperties,
+                                       public ClusteringProperties {
+  bool operator==(UserInputCollectionProperties const& other) const = default;
 
   [[nodiscard]] arangodb::Result applyDefaultsAndValidateDatabaseConfiguration(
       DatabaseConfiguration const& config);
 };
 
 template<class Inspector>
-auto inspect(Inspector& f, CollectionProperties& body) {
+auto inspect(Inspector& f, UserInputCollectionProperties& body) {
   return f.object(body).fields(
       f.template embedFields<CollectionConstantProperties>(body),
       f.template embedFields<CollectionMutableProperties>(body),

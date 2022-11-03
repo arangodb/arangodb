@@ -25,7 +25,7 @@
 #include "Inspection/Status.h"
 #include "Inspection/VPackLoadInspector.h"
 
-#include "VocBase/Properties/CollectionProperties.h"
+#include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "VocBase/Properties/CollectionCreateOptions.h"
 #include "VocBase/voc-types.h"
 
@@ -46,7 +46,7 @@ namespace velocypack {
 class Slice;
 }
 
-struct CreateCollectionBody : public CollectionProperties,
+struct CreateCollectionBody : public UserInputCollectionProperties,
                               public CollectionCreateOptions {
   CreateCollectionBody();
 
@@ -69,7 +69,7 @@ struct CreateCollectionBody : public CollectionProperties,
 template<class Inspector>
 auto inspect(Inspector& f, CreateCollectionBody& body) {
   return f.object(body).fields(
-      f.template embedFields<CollectionProperties>(body),
+      f.template embedFields<UserInputCollectionProperties>(body),
       f.template embedFields<CollectionCreateOptions>(body));
 }
 

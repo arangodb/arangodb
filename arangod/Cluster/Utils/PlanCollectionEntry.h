@@ -26,7 +26,7 @@
 
 #include "Cluster/Utils/AgencyIsBuildingFlags.h"
 #include "VocBase/Properties/CollectionIndexesProperties.h"
-#include "VocBase/Properties/CollectionProperties.h"
+#include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "ShardDistribution.h"
 #include "Cluster/Utils/PlanShardToServerMappping.h"
 #include "Cluster/Utils/IShardDistributionFactory.h"
@@ -37,7 +37,7 @@ class Builder;
 }
 
 struct PlanCollectionEntry {
-  PlanCollectionEntry(CollectionProperties collection,
+  PlanCollectionEntry(UserInputCollectionProperties collection,
                       ShardDistribution shardDistribution,
                       AgencyIsBuildingFlags isBuildingFlags);
 
@@ -56,7 +56,7 @@ struct PlanCollectionEntry {
   void removeBuildingFlags();
 
  private:
-  CollectionProperties _properties{};
+  UserInputCollectionProperties _properties{};
   std::optional<AgencyIsBuildingFlags> _buildingFlags{AgencyIsBuildingFlags{}};
   CollectionIndexesProperties _indexProperties{};
   ShardDistribution _shardDistribution;
